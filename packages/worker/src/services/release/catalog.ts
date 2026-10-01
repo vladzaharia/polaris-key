@@ -223,6 +223,8 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
           channel: r.channel,
           publishedAt: r.published_at,
           yanked: yanked.has(r.release_id),
+          title: r.title,
+          notes: r.notes,
         })),
       };
     },

@@ -1,0 +1,929 @@
+/**
+ * P2b-05 — storefront feeds (`services/distribution/feeds/`), driven through the real dispatcher
+ * against a Diceroll-shaped product: an AltStore source, an AltStore PAL source, an Obtainium
+ * outlet, an F-Droid repository, a direct outlet covering Windows (Scoop) and a Flathub outlet.
+ *
+ * The releases, all ingested through the real descriptor ingest (so `builds[].metadata` is the
+ * stored, validated shape):
+ *
+ *     1.0.0        stable
+ *     1.1.0        stable
+ *     1.1.1        stable   YANKED
+ *     1.2.0-beta.1 beta
+ *     1.2.0        stable   halted on altstore, 5000 bp on fdroid-repo, paused on direct;
+ *                           never reported live on altstore-pal (a store outlet)
+ *
+ * so every feed shows the previous release where 1.2.0 is held back, beta includes stable, and
+ * 1.1.1 never appears. The rendered documents are compared against golden files under
+ * `test/fixtures/feeds/` (`UPDATE_FEED_GOLDENS=1` rewrites them).
+ *
+ * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the other CI-route suites.
+ */
+
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const tokens = vi.hoisted(
+  () =>
+    new Map<
+      string,
+      {
+        product: string;
+        subject: string;
+        scopes: readonly string[];
+        tokenHash: string;
+        expiresAt: number;
+      }
+    >(),
+);
+vi.mock("../src/core/ciTokens.js", () => ({
+  lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
+    tokens.get(token) ?? null,
+}));
+
+import { parseManifest } from "@polaris-key/manifest";
+import { makeTestDb } from "./helpers.js";
+import { KvMock } from "./kvMock.js";
+import { R2Mock, asR2 } from "./r2Mock.js";
+import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { seedDeliveryAccess } from "./releaseSurface.js";
+import { enableServices } from "./releaseRoutesFixture.js";
+import type { Db } from "../src/db/types.js";
+import type { Env } from "../src/env.js";
+import { dispatch } from "../src/dispatch.js";
+import { ingestReleaseDescriptor } from "../src/services/release/descriptor.js";
+import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
+import { yankRelease } from "../src/services/release/model.js";
+import {
+  blobKey,
+  putVerified,
+  recordObject,
+  stagingKey,
+} from "../src/core/blobs.js";
+import { issueUploadTicket } from "../src/core/publisher.js";
+import { feedFileType } from "../src/services/distribution/feeds/fdroid.js";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const GOLDEN_DIR = join(HERE, "fixtures", "feeds");
+const SLUG = "diceroll";
+const CONSOLE = "https://key.example.test";
+const BYTES = "https://dl.example.test";
+const FEEDER = "pkeyci_feeder";
+const PUBLISHER = "pkeyci_publisher";
+const SIGNER = "c".repeat(64);
+
+const sha = (s: string | Uint8Array) =>
+  createHash("sha256").update(s).digest("hex");
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+  tokens.clear();
+  tokens.set(FEEDER, {
+    product: SLUG,
+    subject: "static:tok_feeds",
+    scopes: ["distribution:feeds"],
+    tokenHash: "hash-feeder",
+    expiresAt: NOW + 3600,
+  });
+  tokens.set(PUBLISHER, {
+    product: SLUG,
+    subject: "static:tok_pub",
+    scopes: ["release:publish"],
+    tokenHash: "hash-publisher",
+    expiresAt: NOW + 3600,
+  });
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+// ── The product ──────────────────────────────────────────────────────────────────────────────
+
+const ARTIFACTS = [
+  ["ipa-sideload", "ios", "arm64", "ipa", "Diceroll-*-ios-sideload.ipa"],
+  ["apk", "android", "universal", "apk", "Diceroll-*-android.apk"],
+  ["win-x64", "windows", "x86_64", "zip", "Diceroll-*-windows-x86_64.zip"],
+  ["win-arm64", "windows", "arm64", "zip", "Diceroll-*-windows-arm64.zip"],
+  ["linux-x64", "linux", "x86_64", "tar.gz", "Diceroll-*-linux-x86_64.tar.gz"],
+  ["linux-arm64", "linux", "arm64", "tar.gz", "Diceroll-*-linux-arm64.tar.gz"],
+].map(([id, platform, arch, format, match]) => ({
+  id: id!,
+  platform: platform!,
+  arch: arch!,
+  format: format!,
+  match: match!,
+}));
+
+const PRODUCT_DOC = {
+  slug: SLUG,
+  name: "Diceroll",
+  modules: {
+    license: { enabled: true },
+    release: { enabled: true },
+    distribution: { enabled: true },
+    update: { enabled: true },
+  },
+};
+
+function appDeclaration() {
+  const res = parseManifest({
+    product: JSON.stringify(PRODUCT_DOC),
+    schema: JSON.stringify({ schemaVersion: 1, entries: [] }),
+    release: JSON.stringify({
+      release: {
+        provider: { type: "github", owner: "vladzaharia", repo: "diceroll" },
+        binaryName: "diceroll",
+        deliverables: {
+          app: {
+            kind: "app",
+            versioning: { scheme: "semver", buildNumber: "descriptor" },
+            channels: { beta: { includes: ["stable"] } },
+            artifacts: ARTIFACTS,
+          },
+        },
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(res.errors.join("\n"));
+  return res.manifest.release!.app!;
+}
+
+const LISTING = {
+  name: "Diceroll",
+  subtitle: "A cozy dice-rolling roguelite",
+  description: "Roll, reroll, repeat.",
+  iconUrl: "https://cdn.example.test/diceroll/icon.png",
+  tintColor: "#3b1f1f",
+  category: "games",
+  website: "https://diceroll.example.test",
+  developerName: "Vlad",
+};
+
+const OUTLETS: Array<[string, string, Record<string, unknown>]> = [
+  [
+    "altstore",
+    "altstore",
+    { artifact: "ipa-sideload", bundleId: "gg.vlad.diceroll" },
+  ],
+  [
+    "altstore-pal",
+    "altstore-pal",
+    { bundleId: "gg.vlad.diceroll", marketplaceId: "6740000001" },
+  ],
+  [
+    "obtainium",
+    "obtainium",
+    { artifact: "apk", packageName: "gg.vlad.diceroll" },
+  ],
+  [
+    "fdroid-repo",
+    "fdroid-repo",
+    { artifact: "apk", packageName: "gg.vlad.diceroll" },
+  ],
+  [
+    "direct",
+    "direct",
+    {
+      platforms: ["macos", "windows", "linux"],
+      scoop: {
+        bin: "Diceroll/diceroll.exe",
+        shortcuts: [["Diceroll/diceroll.exe", "Diceroll"]],
+      },
+    },
+  ],
+  ["flathub", "flathub", { appId: "gg.vlad.Diceroll" }],
+];
+
+interface World {
+  env: Env;
+  db: Db;
+  r2: R2Mock;
+}
+
+async function addOutlets(db: Db): Promise<void> {
+  for (const [id, kind, identity] of OUTLETS)
+    await db.run(
+      `INSERT INTO dist_outlets
+         (product, outlet_id, kind, identity_json, listing_json, created_at, modified_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      SLUG,
+      id,
+      kind,
+      JSON.stringify(identity),
+      JSON.stringify(LISTING),
+      NOW,
+      NOW,
+    );
+}
+
+/** One file's fixture bytes, deterministic per name. */
+function bytesFor(name: string): Uint8Array {
+  return new TextEncoder().encode(`bytes of ${name}\n`);
+}
+
+const VERSION_CODES: Record<string, number> = {
+  "1.0.0": 10000,
+  "1.1.0": 10100,
+  "1.1.1": 10101,
+  "1.2.0-beta.1": 10199,
+  "1.2.0": 10200,
+};
+
+function metadataFor(
+  buildId: string,
+  version: string,
+): Record<string, unknown> | undefined {
+  if (buildId === "ipa-sideload")
+    return {
+      bundleIdentifier: "gg.vlad.diceroll",
+      version,
+      buildVersion: String(VERSION_CODES[version]),
+      minOSVersion: "16.0",
+      appPermissions: {
+        entitlements: ["get-task-allow", "com.apple.developer.game-center"],
+        privacy: { NSCameraUsageDescription: "Scan a friend's dice code." },
+      },
+    };
+  if (buildId === "apk")
+    return {
+      packageName: "gg.vlad.diceroll",
+      versionCode: VERSION_CODES[version],
+      versionName: version,
+      minSdk: 24,
+      nativecode: ["arm64-v8a", "armeabi-v7a"],
+      signerSha256: SIGNER,
+    };
+  return undefined;
+}
+
+const DAY = 86400;
+const RELEASES: Array<[string, "stable" | "beta", number]> = [
+  ["1.0.0", "stable", NOW - 40 * DAY],
+  ["1.1.0", "stable", NOW - 30 * DAY],
+  ["1.1.1", "stable", NOW - 25 * DAY],
+  ["1.2.0-beta.1", "beta", NOW - 20 * DAY],
+  ["1.2.0", "stable", NOW - 10 * DAY],
+];
+
+async function publish(w: World, version: string, channel: string, at: number) {
+  const builds = ARTIFACTS.map((a) => {
+    const name = a.match.replace("*", version);
+    const bytes = bytesFor(name);
+    const meta = metadataFor(a.id, version);
+    return {
+      id: a.id,
+      platform: a.platform,
+      arch: a.arch,
+      format: a.format,
+      ...(meta ? { metadata: meta } : {}),
+      artifacts: [
+        {
+          name,
+          role: "payload",
+          sha256: sha(bytes),
+          size: bytes.length,
+          locations: [{ provider: "r2", key: blobKey(sha(bytes)) }],
+        },
+      ],
+    };
+  });
+  const promoted: string[] = [];
+  for (const b of builds) {
+    const a = b.artifacts[0]!;
+    await recordObject(
+      w.db,
+      {
+        storageKey: a.locations[0]!.key,
+        sha256: a.sha256,
+        size: a.size,
+        kind: "blob",
+        gated: false,
+      },
+      NOW,
+    );
+    promoted.push(a.locations[0]!.key);
+  }
+  const res = await ingestReleaseDescriptor(
+    w.db,
+    w.env,
+    SLUG,
+    {
+      descriptorVersion: 1,
+      product: SLUG,
+      deliverable: "app",
+      kind: "app",
+      version,
+      channel,
+      title: `Diceroll ${version}`,
+      notes: `What's new in ${version}.`,
+      publishedAt: new Date(at * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"),
+      builds,
+    },
+    { source: "ci", now: NOW, promoted },
+  );
+  if (!res.ok) throw new Error(JSON.stringify(res));
+}
+
+async function rollout(
+  w: World,
+  outlet: string,
+  releaseId: string,
+  bp: number,
+  state: string,
+): Promise<void> {
+  await w.db.run(
+    `INSERT INTO dist_rollouts
+       (product, deliverable_id, outlet_id, channel, release_id, rollout_bp, rollout_salt, state,
+        mirrored, source, started_at, updated_at, updated_by)
+     VALUES (?, 'app', ?, 'stable', ?, ?, ?, ?, 0, 'admin', ?, ?, 'admin:u1')`,
+    SLUG,
+    outlet,
+    releaseId,
+    bp,
+    "0".repeat(32),
+    state,
+    NOW,
+    NOW,
+  );
+}
+
+async function reportLive(
+  w: World,
+  releaseId: string,
+  outlet: string,
+): Promise<void> {
+  await w.db.run(
+    `INSERT INTO dist_availability
+       (product, release_id, build_id, outlet_id, transport, state, since, source, updated_at)
+     VALUES (?, ?, '', ?, 'pkey-cdn', 'live', ?, 'ci', ?)`,
+    SLUG,
+    releaseId,
+    outlet,
+    NOW,
+    NOW,
+  );
+}
+
+async function setup(opts: { blobOrigin?: string } = {}): Promise<World> {
+  const db = makeTestDb();
+  await seedProduct(db, SLUG);
+  await enableServices(db, true, SLUG);
+  await db.run(
+    `INSERT INTO release_config
+       (product, gh_owner, gh_repo, gh_installation_id, beta_branch, binary_name, summary_marker,
+        metadata_access, artifacts_access)
+     VALUES (?, 'vladzaharia', 'diceroll', 42, 'main', 'diceroll', 'pkey:summary', 'public', 'public')`,
+    SLUG,
+  );
+  await seedDeliveryAccess(db, SLUG, "public");
+  await db.batch(manifestDeliverableStatements(SLUG, appDeclaration(), NOW));
+  await addOutlets(db);
+  const env = makeEnv(new KvMock(), [SLUG]);
+  if (opts.blobOrigin !== undefined) env.BLOB_ORIGIN = opts.blobOrigin;
+  const r2 = new R2Mock();
+  env.BLOBS = asR2(r2);
+  const w = { env, db, r2 };
+  for (const [version, channel, at] of RELEASES)
+    await publish(w, version, channel, at);
+  await yankRelease(db, SLUG, "app@1.1.1", "bad build", "admin:u1", NOW);
+  await rollout(w, "altstore", "app@1.2.0", 10000, "halted");
+  await rollout(w, "fdroid-repo", "app@1.2.0", 5000, "active");
+  await rollout(w, "direct", "app@1.2.0", 2500, "paused");
+  for (const id of ["app@1.0.0", "app@1.1.0"])
+    await reportLive(w, id, "altstore-pal");
+  return w;
+}
+
+function get(
+  w: World,
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  return dispatch(
+    new Request(`${CONSOLE}/${SLUG}/distribution/${path}`, init),
+    w.env,
+    w.db,
+  );
+}
+
+async function golden(name: string, body: string): Promise<void> {
+  const file = join(GOLDEN_DIR, name);
+  if (process.env.UPDATE_FEED_GOLDENS === "1") {
+    mkdirSync(GOLDEN_DIR, { recursive: true });
+    writeFileSync(file, body);
+  }
+  expect(body).toBe(readFileSync(file, "utf8"));
+}
+
+async function feed(
+  w: World,
+  path: string,
+): Promise<{ res: Response; body: string; doc: any }> {
+  const res = await get(w, path);
+  const body = await res.text();
+  return { res, body, doc: res.status === 200 ? JSON.parse(body) : null };
+}
+
+// ── Golden files ─────────────────────────────────────────────────────────────────────────────
+
+describe("storefront feeds: golden files", () => {
+  const cases: Array<[string, string]> = [
+    ["altstore/stable/source.json", "altstore-stable.json"],
+    ["altstore/beta/source.json", "altstore-beta.json"],
+    ["altstore-pal/stable/source.json", "altstore-pal-stable.json"],
+    ["obtainium/stable.json", "obtainium-stable.json"],
+    ["obtainium/beta.json", "obtainium-beta.json"],
+    ["scoop/stable.json", "scoop-stable.json"],
+    ["flathub/stable.json", "flathub-stable.json"],
+    ["flathub/beta.json", "flathub-beta.json"],
+  ];
+  for (const [path, file] of cases) {
+    it(`${path} matches ${file}`, async () => {
+      const w = await setup({ blobOrigin: BYTES });
+      const { res, body } = await feed(w, path);
+      expect(res.status, body).toBe(200);
+      await golden(file, body);
+    });
+  }
+
+  it("the F-Droid generator inputs match fdroid-inputs-stable.json", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    const res = await get(w, "feeds/fdroid/stable", {
+      headers: { authorization: `Bearer ${FEEDER}` },
+    });
+    const body = await res.text();
+    expect(res.status, body).toBe(200);
+    await golden(
+      "fdroid-inputs-stable.json",
+      `${JSON.stringify(JSON.parse(body), null, 2)}\n`,
+    );
+  });
+});
+
+// ── Selection ────────────────────────────────────────────────────────────────────────────────
+
+describe("storefront feeds: which releases appear", () => {
+  it("AltStore Classic: no marketplaceID, legacy top-level fields, newest first, unique", async () => {
+    const w = await setup();
+    const { doc } = await feed(w, "altstore/beta/source.json");
+    const app = doc.apps[0];
+    expect(app).not.toHaveProperty("marketplaceID");
+    expect(app.versions.map((v: any) => v.version)).toEqual([
+      "1.2.0-beta.1",
+      "1.1.0",
+      "1.0.0",
+    ]);
+    const keys = app.versions.map((v: any) => `${v.version}/${v.buildVersion}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    // SideStore #735: the newest version copied to the app level.
+    expect(app.version).toBe("1.2.0-beta.1");
+    expect(app.downloadURL).toBe(app.versions[0].downloadURL);
+    expect(app.size).toBe(app.versions[0].size);
+    expect(app.versionDate).toBe(app.versions[0].date);
+    expect(app.versionDescription).toBe(app.versions[0].localizedDescription);
+    expect(app.appPermissions.entitlements).toEqual([
+      "com.apple.developer.game-center",
+      "get-task-allow",
+    ]);
+    // URLs are absolute (no bytes host here: the console origin).
+    expect(app.downloadURL).toMatch(
+      /^https:\/\/key\.example\.test\/diceroll\/distribution\/files\//,
+    );
+  });
+
+  it("AltStore PAL: marketplaceID, and only releases reported live on the PAL outlet", async () => {
+    const w = await setup();
+    const { doc } = await feed(w, "altstore-pal/stable/source.json");
+    expect(doc.apps[0].marketplaceID).toBe("6740000001");
+    expect(doc.apps[0].versions.map((v: any) => v.version)).toEqual([
+      "1.1.0",
+      "1.0.0",
+    ]);
+  });
+
+  it("a halted, a partial and a paused rollout each leave the release out; the yanked one never appears", async () => {
+    const w = await setup();
+    const alt = (await feed(w, "altstore/stable/source.json")).doc;
+    expect(alt.apps[0].versions.map((v: any) => v.version)).toEqual([
+      "1.1.0",
+      "1.0.0",
+    ]);
+    const fd = await get(w, "feeds/fdroid/stable", {
+      headers: { authorization: `Bearer ${FEEDER}` },
+    });
+    expect(
+      ((await fd.json()) as any).versions.map((v: any) => v.version),
+    ).toEqual(["1.1.0", "1.0.0"]);
+    expect((await feed(w, "scoop/stable.json")).doc.version).toBe("1.1.0");
+    // Flathub: nothing holds 1.2.0 back there.
+    expect((await feed(w, "flathub/stable.json")).doc.version).toBe("1.2.0");
+  });
+
+  it("completing the rollout lists the release", async () => {
+    const w = await setup();
+    await w.db.run(
+      "UPDATE dist_rollouts SET state = 'complete', rollout_bp = 10000 WHERE outlet_id = 'altstore'",
+    );
+    const { doc } = await feed(w, "altstore/stable/source.json");
+    expect(doc.apps[0].versions[0].version).toBe("1.2.0");
+  });
+
+  it("an AltStore release whose IPA metadata is missing is skipped (its permissions are unknown)", async () => {
+    const w = await setup();
+    await w.db.run(
+      "UPDATE release_builds SET metadata_json = NULL WHERE release_id = 'app@1.1.0' AND build_id = 'ipa-sideload'",
+    );
+    const { doc } = await feed(w, "altstore/stable/source.json");
+    expect(doc.apps[0].versions.map((v: any) => v.version)).toEqual(["1.0.0"]);
+  });
+
+  it("Obtainium points at the F-Droid repository, or at the builds route without one", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    const withRepo = (await feed(w, "obtainium/stable.json")).doc;
+    expect(withRepo.overrideSource).toBe("FDroidRepo");
+    expect(withRepo.url).toBe(
+      `${CONSOLE}/${SLUG}/distribution/fdroid/stable/repo`,
+    );
+    expect(typeof withRepo.additionalSettings).toBe("string");
+    expect(JSON.parse(withRepo.additionalSettings)).toEqual({
+      appIdOrName: "gg.vlad.diceroll",
+      pickHighestVersionCode: false,
+      trySelectingSuggestedVersionCode: true,
+    });
+    await w.db.run(
+      "UPDATE dist_outlets SET removed_at = ? WHERE outlet_id = 'fdroid-repo'",
+      NOW,
+    );
+    const direct = (await feed(w, "obtainium/stable.json")).doc;
+    expect(direct.overrideSource).toBe("DirectAPKLink");
+    expect(direct.url).toBe(`${BYTES}/${SLUG}/distribution/builds/stable/apk`);
+    expect(JSON.parse(direct.additionalSettings)).toEqual({
+      defaultPseudoVersioningMethod: "ETag",
+    });
+  });
+
+  it("Scoop: both architectures, bin and shortcuts, checkver and autoupdate pointing at itself", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    const { doc } = await feed(w, "scoop/stable.json");
+    expect(Object.keys(doc.architecture)).toEqual(["64bit", "arm64"]);
+    expect(doc.architecture["64bit"].url).toMatch(
+      /^https:\/\/dl\.example\.test\//,
+    );
+    expect(doc.checkver).toEqual({
+      url: `${CONSOLE}/${SLUG}/distribution/scoop/stable.json`,
+      jsonpath: "$.version",
+    });
+    expect(doc.autoupdate.architecture["64bit"].url).toContain("$version");
+    expect(doc.bin).toBe("Diceroll/diceroll.exe");
+  });
+
+  it("an unknown channel, an unknown area shape, and an absent outlet are not-found", async () => {
+    const w = await setup();
+    expect((await get(w, "altstore/NOPE!/source.json")).status).toBe(404);
+    expect((await get(w, "altstore/stable/other.json")).status).toBe(404);
+    await w.db.run(
+      "UPDATE dist_outlets SET removed_at = ? WHERE outlet_id = 'flathub'",
+      NOW,
+    );
+    expect((await get(w, "flathub/stable.json")).status).toBe(404);
+  });
+
+  it("?outlet= picks one of several outlets of a kind", async () => {
+    const w = await setup();
+    await w.db.run(
+      `INSERT INTO dist_outlets
+         (product, outlet_id, kind, identity_json, listing_json, created_at, modified_at)
+       VALUES (?, 'altstore-beta', 'altstore', ?, NULL, ?, ?)`,
+      SLUG,
+      JSON.stringify({ artifact: "ipa-sideload" }),
+      NOW,
+      NOW,
+    );
+    // The halt is on `altstore`, not on `altstore-beta`.
+    const { doc } = await feed(
+      w,
+      "altstore/stable/source.json?outlet=altstore-beta",
+    );
+    expect(doc.apps[0].versions[0].version).toBe("1.2.0");
+    expect(doc.sourceURL).toBe(
+      `${CONSOLE}/${SLUG}/distribution/altstore/stable/source.json?outlet=altstore-beta`,
+    );
+    expect(
+      (await get(w, "altstore/stable/source.json?outlet=play")).status,
+    ).toBe(404);
+  });
+
+  it("responses carry JSON, a strong ETag of the body, a short cache, and revalidate", async () => {
+    const w = await setup();
+    const { res, body } = await feed(w, "altstore/stable/source.json");
+    expect(res.headers.get("content-type")).toBe(
+      "application/json; charset=utf-8",
+    );
+    expect(res.headers.get("cache-control")).toBe("public, max-age=300");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("etag")).toBe(`"${sha(body)}"`);
+    const again = await get(w, "altstore/stable/source.json", {
+      headers: { "if-none-match": res.headers.get("etag")! },
+    });
+    expect(again.status).toBe(304);
+  });
+});
+
+// ── Access ───────────────────────────────────────────────────────────────────────────────────
+
+describe("storefront feeds: a non-public deliverable has no feed", () => {
+  const paths = [
+    "altstore/stable/source.json",
+    "altstore-pal/stable/source.json",
+    "obtainium/stable.json",
+    "scoop/stable.json",
+    "flathub/stable.json",
+    "fdroid/stable/repo/entry.jar",
+    "fdroid/stable/repo/index-v2.json",
+    "fdroid/stable/repo/Diceroll-1.1.0-android.apk",
+  ];
+  for (const mode of ["authenticated", "licensed", "entitled"]) {
+    it(`${mode}: every feed route is not-found`, async () => {
+      const w = await setup();
+      await registerRepo(w, "stable");
+      // Sanity: public serves.
+      expect((await get(w, "fdroid/stable/repo/entry.jar")).status).toBe(200);
+      await seedDeliveryAccess(w.db, SLUG, mode);
+      for (const p of paths) expect((await get(w, p)).status, p).toBe(404);
+    });
+  }
+
+  it("with Distribution off, every feed route is the registry's not-found", async () => {
+    const w = await setup();
+    await w.db.run(
+      `UPDATE products SET services_json = json_set(services_json, '$.services.distribution.enabled', json('false'))
+        WHERE slug = ?`,
+      SLUG,
+    );
+    for (const p of [
+      "altstore/stable/source.json",
+      "fdroid/stable/repo/entry.jar",
+    ])
+      expect((await get(w, p)).status, p).toBe(404);
+  });
+});
+
+// ── The F-Droid repository ───────────────────────────────────────────────────────────────────
+
+const REPO_FILES: Record<string, Uint8Array> = {
+  "entry.jar": new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3]),
+  "entry.json": new TextEncoder().encode('{"timestamp":1}\n'),
+  "index-v2.json": new TextEncoder().encode('{"repo":{}}\n'),
+  "diff/1.json": new TextEncoder().encode("{}\n"),
+  "icons/icon.png": new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+};
+
+/** Stage the files under a ticket, as `pkey feeds fdroid` uploads them, and register them. */
+async function registerRepo(
+  w: World,
+  channel: string,
+  files: Record<string, Uint8Array> = REPO_FILES,
+  token = FEEDER,
+): Promise<Response> {
+  const holder = tokens.get(token)!;
+  const objects = Object.values(files).map((b) => ({
+    sha256: sha(b),
+    size: b.length,
+    gated: false,
+  }));
+  const ticket = await issueUploadTicket(w.env, w.db, {
+    product: SLUG,
+    holder: { tokenHash: holder.tokenHash, expiresAt: holder.expiresAt },
+    objects,
+    now: NOW,
+  });
+  for (const b of Object.values(files)) {
+    const key = stagingKey(SLUG, ticket.ticketId, sha(b));
+    await putVerified(asR2(w.r2), key, b, { sha256: sha(b), size: b.length });
+  }
+  return get(w, `feeds/fdroid/${channel}`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      ticket: ticket.ticket,
+      files: Object.entries(files).map(([path, b]) => ({
+        path,
+        sha256: sha(b),
+        size: b.length,
+      })),
+    }),
+  });
+}
+
+describe("F-Droid: register and relay", () => {
+  it("registers the uploaded set, then serves exactly those files with their types", async () => {
+    const w = await setup();
+    const res = await registerRepo(w, "stable");
+    expect(res.status, await res.clone().text()).toBe(200);
+    const types: Record<string, string> = {
+      "entry.jar": "application/java-archive",
+      "entry.json": "application/json",
+      "index-v2.json": "application/json",
+      "diff/1.json": "application/json",
+      "icons/icon.png": "image/png",
+    };
+    for (const [path, bytes] of Object.entries(REPO_FILES)) {
+      const r = await get(w, `fdroid/stable/repo/${path}`);
+      expect(r.status, path).toBe(200);
+      expect(r.headers.get("content-type")).toBe(types[path]);
+      expect(r.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(r.headers.get("content-security-policy")).toContain("sandbox");
+      expect(r.headers.get("cache-control")).toBe(
+        "public, max-age=300, no-transform",
+      );
+      expect(r.headers.get("etag")).toBe(`"${sha(bytes)}"`);
+      expect(new Uint8Array(await r.arrayBuffer())).toEqual(bytes);
+    }
+    // The other channel has no repository registered.
+    expect((await get(w, "fdroid/beta/repo/entry.jar")).status).toBe(404);
+    const audit = await w.db.first<{ action: string; actor_sub: string }>(
+      "SELECT action, actor_sub FROM audit WHERE product = ? AND action = 'distribution.feeds.register'",
+      SLUG,
+    );
+    expect(audit).toEqual({
+      action: "distribution.feeds.register",
+      actor_sub: "ci:static:tok_feeds",
+    });
+  });
+
+  it("never registers a path that climbs or is not a repository file type", () => {
+    // A literal `..` never reaches the Worker (the URL parser collapses it first); encoded forms
+    // fail the safe-path check below, and registration refuses both.
+    for (const p of [
+      "../entry.json",
+      "diff/../entry.json",
+      "a//b.json",
+      "%2e%2e/x.json",
+      "index.html",
+      "x.svg",
+      "x.xml",
+    ])
+      expect(feedFileType(p), p).toBeNull();
+    expect(feedFileType("diff/1700000000.json")).toBe("application/json");
+  });
+
+  it("refuses traversal and unregistered paths", async () => {
+    const w = await setup();
+    await registerRepo(w, "stable");
+    for (const p of [
+      "fdroid/stable/repo/%2e%2e/entry.jar",
+      "fdroid/stable/repo/diff/..%2fentry.jar",
+      "fdroid/stable/repo/index.xml",
+      "fdroid/stable/repo/icons/other.png",
+    ])
+      expect((await get(w, p)).status, p).toBe(404);
+  });
+
+  it("an APK the index names is a 302 to its immutable delivery URL; one held back is not", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    await registerRepo(w, "stable");
+    const r = await get(w, "fdroid/stable/repo/Diceroll-1.1.0-android.apk", {
+      redirect: "manual",
+    });
+    expect(r.status).toBe(302);
+    expect(r.headers.get("location")).toBe(
+      `${BYTES}/${SLUG}/distribution/files/app%401.1.0/Diceroll-1.1.0-android.apk`,
+    );
+    // 1.2.0 is at 5000 bp on the repo outlet; 1.1.1 is yanked.
+    expect(
+      (await get(w, "fdroid/stable/repo/Diceroll-1.2.0-android.apk")).status,
+    ).toBe(404);
+    expect(
+      (await get(w, "fdroid/stable/repo/Diceroll-1.1.1-android.apk")).status,
+    ).toBe(404);
+  });
+
+  it("a second register replaces the set wholesale", async () => {
+    const w = await setup();
+    await registerRepo(w, "stable");
+    const next = {
+      "entry.jar": new Uint8Array([0x50, 0x4b, 9]),
+      "entry.json": new TextEncoder().encode('{"timestamp":2}\n'),
+      "index-v2.json": new TextEncoder().encode('{"repo":{"timestamp":2}}\n'),
+    };
+    expect((await registerRepo(w, "stable", next)).status).toBe(200);
+    expect((await get(w, "fdroid/stable/repo/diff/1.json")).status).toBe(404);
+    expect(
+      new Uint8Array(
+        await (await get(w, "fdroid/stable/repo/entry.jar")).arrayBuffer(),
+      ),
+    ).toEqual(next["entry.jar"]);
+    const refs = await w.db.all<{ ref_id: string }>(
+      "SELECT ref_id FROM blob_refs WHERE product = ? AND ref_kind = 'feed' ORDER BY ref_id",
+      SLUG,
+    );
+    expect(refs.map((r) => r.ref_id)).toEqual([
+      "fdroid/stable/entry.jar",
+      "fdroid/stable/entry.json",
+      "fdroid/stable/index-v2.json",
+    ]);
+  });
+
+  it("refuses an incomplete set, a bad path, an object outside the ticket, and a wrong scope", async () => {
+    const w = await setup();
+    const noEntry = { "index-v2.json": REPO_FILES["index-v2.json"]! };
+    const r1 = await registerRepo(w, "stable", noEntry);
+    expect(r1.status).toBe(400);
+    expect(((await r1.json()) as any).reason).toBe("incomplete_repository");
+
+    const evil = {
+      ...REPO_FILES,
+      "index.html": new TextEncoder().encode("<script>"),
+    };
+    const r2 = await registerRepo(w, "stable", evil);
+    expect(r2.status).toBe(400);
+    expect(((await r2.json()) as any).reason).toBe("bad_feed_path");
+
+    const r3 = await get(w, "feeds/fdroid/stable", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${FEEDER}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        files: Object.entries(REPO_FILES).map(([path, b]) => ({
+          path,
+          sha256: sha(b),
+          size: b.length,
+        })),
+      }),
+    });
+    expect(r3.status).toBe(403);
+    expect(((await r3.json()) as any).reason).toBe("invalid_ticket");
+
+    const r4 = await get(w, "feeds/fdroid/stable", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${PUBLISHER}`,
+        "content-type": "application/json",
+      },
+      body: "{}",
+    });
+    expect(r4.status).toBe(403);
+    expect(((await r4.json()) as any).reason).toBe("missing_scope");
+    expect((await get(w, "feeds/fdroid/stable")).status).toBe(401);
+  });
+
+  it("refuses without a live fdroid-repo outlet", async () => {
+    const w = await setup();
+    await w.db.run(
+      "UPDATE dist_outlets SET removed_at = ? WHERE outlet_id = 'fdroid-repo'",
+      NOW,
+    );
+    const res = await registerRepo(w, "stable");
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as any).reason).toBe("unknown_outlet");
+  });
+
+  it("P2-02's uploads route accepts distribution:feeds for a ticket", async () => {
+    const w = await setup();
+    w.env.R2_ACCOUNT_ID = "0".repeat(32);
+    w.env.R2_PARENT_ACCESS_KEY_ID = "AKID";
+    w.env.R2_PARENT_SECRET_ACCESS_KEY = "secret";
+    w.env.BLOBS_BUCKET_NAME = "pkey-blobs";
+    const b = REPO_FILES["entry.jar"]!;
+    const res = await dispatch(
+      new Request(`${CONSOLE}/${SLUG}/release/publish/uploads`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${FEEDER}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ objects: [{ sha256: sha(b), size: b.length }] }),
+      }),
+      w.env,
+      w.db,
+    );
+    expect(res.status, await res.clone().text()).toBe(200);
+    expect(((await res.json()) as any).ticket).toMatch(/^pkeyup_/);
+  });
+});
+
+// ── The descriptor ingest keeps the metadata ─────────────────────────────────────────────────
+
+describe("build metadata", () => {
+  it("is stored as the descriptor carried it and read back through the catalog", async () => {
+    const w = await setup();
+    const row = await w.db.first<{ metadata_json: string }>(
+      "SELECT metadata_json FROM release_builds WHERE product = ? AND release_id = 'app@1.0.0' AND build_id = 'apk'",
+      SLUG,
+    );
+    expect(JSON.parse(row!.metadata_json)).toEqual(metadataFor("apk", "1.0.0"));
+    const none = await w.db.first<{ metadata_json: string | null }>(
+      "SELECT metadata_json FROM release_builds WHERE product = ? AND release_id = 'app@1.0.0' AND build_id = 'win-x64'",
+      SLUG,
+    );
+    expect(none!.metadata_json).toBeNull();
+  });
+});

@@ -15,6 +15,11 @@
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
+ *     /distribution/{altstore,altstore-pal}/:channel/source.json   GET, storefront feeds
+ *     /distribution/{obtainium,scoop,flathub}/:channel.json         (P2b-05, `feeds/`)
+ *     /distribution/fdroid/:channel/repo/:path…              GET, the F-Droid repository relay
+ *     /distribution/feeds/fdroid/:channel                    GET|POST, `pkeyci_` +
+ *                                                            distribution:feeds
  *
  * The permanent aliases (`/<p>/release/{install.sh,dl,builds,files,blobs}/…`, `/<p>/install.sh`)
  * reach this file already rewritten into the canonical segments by the core router, so there is
@@ -34,6 +39,7 @@ import {
 } from "./rollouts.js";
 import { applyReport } from "./availability.js";
 import { connectorOf } from "./connectors/index.js";
+import { handleFeedRoutes } from "./feeds/index.js";
 
 /** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`); a report carries at most two small
  *  JSON objects (`platformRef`, `detail`). */
@@ -66,6 +72,10 @@ export async function handleDistributionRoutes(
     if (req.method !== "POST") return null;
     return handleCiReport(ctx);
   }
+
+  // The storefront feeds and the F-Droid relay (P2b-05, `feeds/`).
+  const feed = await handleFeedRoutes(ctx);
+  if (feed) return feed;
 
   const target = byteTargetOf(rest);
   if (!target) return null;

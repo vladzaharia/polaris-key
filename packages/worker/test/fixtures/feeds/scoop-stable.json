@@ -1,0 +1,44 @@
+{
+  "version": "1.1.0",
+  "description": "A cozy dice-rolling roguelite",
+  "homepage": "https://diceroll.example.test",
+  "architecture": {
+    "64bit": {
+      "url": "https://dl.example.test/diceroll/distribution/files/app%401.1.0/Diceroll-1.1.0-windows-x86_64.zip",
+      "hash": "93f4192755e6322749b1b0d54e6d6571fe5e02b0e862de35b86cdc9b47991bcd"
+    },
+    "arm64": {
+      "url": "https://dl.example.test/diceroll/distribution/files/app%401.1.0/Diceroll-1.1.0-windows-arm64.zip",
+      "hash": "346deb72109626e30e6bcf1fe26e8ad665b9c91fb159481286b992cceda686e5"
+    }
+  },
+  "bin": "Diceroll/diceroll.exe",
+  "shortcuts": [
+    [
+      "Diceroll/diceroll.exe",
+      "Diceroll"
+    ]
+  ],
+  "checkver": {
+    "url": "https://key.example.test/diceroll/distribution/scoop/stable.json",
+    "jsonpath": "$.version"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://dl.example.test/diceroll/distribution/files/app%40$version/Diceroll-$version-windows-x86_64.zip",
+        "hash": {
+          "url": "https://key.example.test/diceroll/distribution/scoop/stable.json",
+          "jsonpath": "$.architecture.64bit.hash"
+        }
+      },
+      "arm64": {
+        "url": "https://dl.example.test/diceroll/distribution/files/app%40$version/Diceroll-$version-windows-arm64.zip",
+        "hash": {
+          "url": "https://key.example.test/diceroll/distribution/scoop/stable.json",
+          "jsonpath": "$.architecture.arm64.hash"
+        }
+      }
+    }
+  }
+}

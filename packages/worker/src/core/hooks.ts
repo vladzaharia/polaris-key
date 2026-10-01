@@ -78,6 +78,13 @@ export interface CatalogRelease {
   yanked: boolean;
 }
 
+/** A release as a channel's history lists it (`ReleaseCatalog.channelReleases`, P2b-05). */
+export interface CatalogChannelRelease extends CatalogRelease {
+  title: string | null;
+  /** The release notes, as stored (Markdown or plain text); `null` when there are none. */
+  notes: string | null;
+}
+
 /** One compiled build of a release, or one variant of a pack release. */
 export interface CatalogBuild {
   releaseId: string;
@@ -253,7 +260,7 @@ export interface ReleaseCatalog {
   channelReleases(
     deliverableId: string,
     channel: string,
-  ): Promise<{ channel: string; releases: CatalogRelease[] } | null>;
+  ): Promise<{ channel: string; releases: CatalogChannelRelease[] } | null>;
   /**
    * The product's METADATA access mode (`release_config.metadata_access`, which Release keeps:
    * the changelog, the version check, the installer), or `null` when the product has no release
