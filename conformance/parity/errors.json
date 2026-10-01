@@ -1,0 +1,307 @@
+{
+  "$schema": "./errors.schema.json",
+  "$comment": "The error-code registry: every code the Worker answers with or an SDK raises. A new code needs an entry here FIRST. `pnpm gen:constants` generates every SDK's ErrorCode constants from this file (tools/gen-sdk-constants.ts) and fails when the Worker's source emits a wire code missing here, or when a `wire` entry is no longer emitted. Each SDK's registry test fails when that SDK raises a code missing here. Codes are recorded as they are: wire codes are snake_case, client codes mostly kebab-case, and hosts match on the exact string, so renaming one is a behaviour change.",
+  "registryVersion": 1,
+  "codes": [
+    {
+      "code": "unauthorized",
+      "kind": "wire",
+      "service": "core",
+      "description": "The device token or licence key is missing, invalid, or belongs to a licence that is no longer usable."
+    },
+    {
+      "code": "not_found",
+      "kind": "wire",
+      "service": "core",
+      "description": "No such product, service or resource. One shape for all three, so a probe learns nothing."
+    },
+    {
+      "code": "bad_request",
+      "kind": "wire",
+      "service": "core",
+      "description": "The request body or parameters failed validation."
+    },
+    {
+      "code": "forbidden",
+      "kind": "wire",
+      "service": "core",
+      "description": "The caller is authenticated but not allowed to do this."
+    },
+    {
+      "code": "rate_limited",
+      "kind": "wire",
+      "service": "core",
+      "description": "Too many requests from this caller; retry later."
+    },
+    {
+      "code": "body_too_large",
+      "kind": "wire",
+      "service": "core",
+      "description": "The request body exceeds the route's size cap."
+    },
+    {
+      "code": "method_not_allowed",
+      "kind": "wire",
+      "service": "core",
+      "description": "The route exists, but not for this HTTP method."
+    },
+    {
+      "code": "misconfigured",
+      "kind": "wire",
+      "service": "core",
+      "description": "The product's server-side configuration for this route is missing or invalid; the Worker fails closed."
+    },
+    {
+      "code": "registration_closed",
+      "kind": "wire",
+      "service": "core",
+      "description": "The product's registration policy refuses an anonymous device registration."
+    },
+    {
+      "code": "device_limit",
+      "kind": "wire",
+      "service": "license",
+      "description": "The licence has no free device seat."
+    },
+    {
+      "code": "license_disabled",
+      "kind": "wire",
+      "service": "license",
+      "description": "An operator disabled the licence."
+    },
+    {
+      "code": "license_expired",
+      "kind": "wire",
+      "service": "license",
+      "description": "The licence has expired."
+    },
+    {
+      "code": "not_entitled",
+      "kind": "wire",
+      "service": "license",
+      "description": "The licence does not grant what was asked for."
+    },
+    {
+      "code": "version_blocked",
+      "kind": "wire",
+      "service": "license",
+      "description": "The build gate refuses this app version; the body carries the allowed range."
+    },
+    {
+      "code": "channel_not_allowed",
+      "kind": "wire",
+      "service": "license",
+      "description": "The licence is not entitled to the requested release channel."
+    },
+    {
+      "code": "hardware_mismatch",
+      "kind": "wire",
+      "service": "license",
+      "description": "The presented hardware fingerprint does not match the one the seat was bound to."
+    },
+    {
+      "code": "fingerprint_required",
+      "kind": "wire",
+      "service": "license",
+      "description": "The product's fingerprint mode is strict and the request carried no fingerprint."
+    },
+    {
+      "code": "enroll_disabled",
+      "kind": "wire",
+      "service": "license",
+      "description": "Automatic enrollment is off for this product."
+    },
+    {
+      "code": "enroll_claimed",
+      "kind": "wire",
+      "service": "license",
+      "description": "This machine's auto-issued licence now belongs to an identity; sign in instead of enrolling."
+    },
+    {
+      "code": "enroll_failed",
+      "kind": "wire",
+      "service": "license",
+      "description": "Enrollment could not issue a licence."
+    },
+    {
+      "code": "managed_by_admin",
+      "kind": "wire",
+      "service": "config",
+      "description": "The setting is enforced by an operator and cannot be changed from the device."
+    },
+    {
+      "code": "catalog_unavailable",
+      "kind": "wire",
+      "service": "config",
+      "description": "The product's active config catalog could not validate the payload, so no document is signed."
+    },
+    {
+      "code": "disabled",
+      "kind": "wire",
+      "service": "identity",
+      "description": "OIDC sign-in is not configured for this product."
+    },
+    {
+      "code": "oidc_error",
+      "kind": "wire",
+      "service": "identity",
+      "description": "The identity provider's token exchange failed or returned an unusable response."
+    },
+    {
+      "code": "auth_method_disabled",
+      "kind": "wire",
+      "service": "identity",
+      "description": "The customer portal's requested sign-in method is turned off."
+    },
+    {
+      "code": "email_not_configured",
+      "kind": "wire",
+      "service": "identity",
+      "description": "Email sign-in was requested but the platform has no email sender configured."
+    },
+    {
+      "code": "download_auth_required",
+      "kind": "wire",
+      "service": "release",
+      "description": "The artifact download needs a device token or licence and none was presented."
+    },
+    {
+      "code": "upstream_rate_limited",
+      "kind": "wire",
+      "service": "release",
+      "description": "The release's upstream host rate-limited the Worker's fetch; retry later."
+    },
+    {
+      "code": "server_misconfigured",
+      "kind": "wire",
+      "service": "release",
+      "description": "The release webhook cannot verify deliveries because its secret is not configured."
+    },
+    {
+      "code": "service-unavailable",
+      "kind": "client",
+      "service": "core",
+      "description": "The product does not run the service this sub-client speaks to."
+    },
+    {
+      "code": "service-disabled",
+      "kind": "client",
+      "service": "core",
+      "description": "React: the product's discovery document has this service turned off."
+    },
+    {
+      "code": "local-only",
+      "kind": "client",
+      "service": "core",
+      "description": "This client is local-only; the call would have opened a network connection."
+    },
+    {
+      "code": "insecure-base-url",
+      "kind": "client",
+      "service": "core",
+      "description": "The base URL would carry the device bearer token in the clear (plain http to a non-loopback host)."
+    },
+    {
+      "code": "bundle-jws-rejected",
+      "kind": "client",
+      "service": "core",
+      "description": "Offline bundle import, step 1: the bundle's signature, `typ` or size cap failed."
+    },
+    {
+      "code": "bundle-claims-rejected",
+      "kind": "client",
+      "service": "core",
+      "description": "Offline bundle import, step 2: `aud`, `deviceId`, the import window or the carried documents failed."
+    },
+    {
+      "code": "bundle-trust-rejected",
+      "kind": "client",
+      "service": "core",
+      "description": "Offline bundle import, step 3: the inner trust manifest failed against the pinned keys."
+    },
+    {
+      "code": "inner-doc-rejected",
+      "kind": "client",
+      "service": "core",
+      "description": "Offline bundle import, step 4: a carried document failed against the effective trust set."
+    },
+    {
+      "code": "bundle",
+      "kind": "client",
+      "service": "core",
+      "description": "Swift: the offline bundle import failed before a refusal step could be named."
+    },
+    {
+      "code": "transport",
+      "kind": "client",
+      "service": "core",
+      "description": "Swift: the transport returned something that is not an HTTP response."
+    },
+    {
+      "code": "network",
+      "kind": "client",
+      "service": "core",
+      "description": "React: the request failed, or the server answered with an unexpected status."
+    },
+    {
+      "code": "refresh-failed",
+      "kind": "client",
+      "service": "core",
+      "description": "React: refreshing the session or documents failed."
+    },
+    {
+      "code": "bridge-missing",
+      "kind": "client",
+      "service": "core",
+      "description": "React desktop: the host bridge the adapter talks through is not installed."
+    },
+    {
+      "code": "unknown",
+      "kind": "client",
+      "service": "core",
+      "description": "React desktop: the host bridge threw something that carries no code."
+    },
+    {
+      "code": "device-management-unsupported",
+      "kind": "client",
+      "service": "core",
+      "description": "Remote device management needs a credential or backend this client does not have."
+    },
+    {
+      "code": "device_list_failed",
+      "kind": "client",
+      "service": "core",
+      "description": "Python, Swift: listing the fleet's devices failed."
+    },
+    {
+      "code": "device_rename_failed",
+      "kind": "client",
+      "service": "core",
+      "description": "Python, Swift: renaming a device failed."
+    },
+    {
+      "code": "device_deauthorize_failed",
+      "kind": "client",
+      "service": "core",
+      "description": "Python, Swift: deauthorizing another device failed."
+    },
+    {
+      "code": "key-entry-unsupported",
+      "kind": "client",
+      "service": "license",
+      "description": "React: this transport cannot accept a typed licence key."
+    },
+    {
+      "code": "sign-in-failed",
+      "kind": "client",
+      "service": "identity",
+      "description": "React: sign-in or activation did not complete."
+    },
+    {
+      "code": "sign-out-failed",
+      "kind": "client",
+      "service": "identity",
+      "description": "React: sign-out did not complete."
+    }
+  ]
+}
