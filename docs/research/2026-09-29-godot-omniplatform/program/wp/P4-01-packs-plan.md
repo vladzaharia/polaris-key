@@ -63,7 +63,7 @@ them once is cheaper than reconciling five PRs.
   `tools/sign-corpus.ts` (`reconcile`, `main`, `SWIFT_V2_RESOURCES`);
   `packages/shared-manifest/src/index.ts`, `schemas/v1/release.schema.json`,
   `test/schema-parity.test.ts`; `packages/worker/src/core/devices.ts:869` (`REPORT_KEYS`);
-  `packages/docs/scripts/gen-reference.mjs` (`corpusInventory` at line 457, `TABLE_OWNERS` at line 312);
+  `packages/docs/scripts/gen-reference.mjs` (`corpusInventory` at line 458, `TABLE_OWNERS` at line 312);
   `.prettierignore`; `sdks/swift/Package.swift` (the `.copy("Resources/v2")` test resource).
 
 ## Scope
