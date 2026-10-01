@@ -47,6 +47,13 @@ const BUNDLE_JWS_REJECTED := &"bundle-jws-rejected"
 const BUNDLE_CLAIMS_REJECTED := &"bundle-claims-rejected"
 const BUNDLE_TRUST_REJECTED := &"bundle-trust-rejected"
 const INNER_DOC_REJECTED := &"inner-doc-rejected"
+## Device-code sign-in (PolarisKey.identity): the wait was cancelled; the code expired (on this
+## client or at the server); the poll answered the generic `error`; a poll answered 5xx
+## (transient, retried at the same interval).
+const CANCELLED := &"cancelled"
+const SIGN_IN_EXPIRED := &"sign-in-expired"
+const SIGN_IN_DENIED := &"sign-in-denied"
+const SERVER_ERROR := &"server-error"
 
 
 ## Reads a JSON error body in either spelling the Worker uses (notes/A2 §1.13):

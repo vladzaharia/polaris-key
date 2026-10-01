@@ -98,8 +98,8 @@
       "note": "Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead."
     },
     "identity.devicecode": {
-      "status": "planned",
-      "wp": "P1-07"
+      "status": "implemented",
+      "note": "PolarisKey.identity (P1-07): begin_sign_in with background polling on the server's cadence, cancel, the opt-in confirm-identity step and licence attach, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
     },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },

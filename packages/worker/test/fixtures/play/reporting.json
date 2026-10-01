@@ -1,0 +1,144 @@
+{
+  "$comment": "Play Developer Reporting API (v1beta1) payloads for apps/gg.acme.djdl, in the shapes of the discovery document (revision 20260930; notes/S-07-policy-recheck.md row 17: vitals.crashrate and vitals.anrrate, get and query; HOURLY is UTC). Built for P5-03 without a real account; test/playFake.ts serves these. Decimal values are fractions of distinct users (0.031 = 3.1 %), which is how the connector reads them — confirm on the first real read.",
+  "crashRateMetricSet.get": {
+    "name": "apps/gg.acme.djdl/crashRateMetricSet",
+    "freshnessInfo": {
+      "freshnesses": [
+        {
+          "aggregationPeriod": "HOURLY",
+          "latestEndTime": {
+            "year": 2026,
+            "month": 8,
+            "day": 27,
+            "hours": 21,
+            "timeZone": { "id": "UTC" }
+          }
+        },
+        {
+          "aggregationPeriod": "DAILY",
+          "latestEndTime": {
+            "year": 2026,
+            "month": 8,
+            "day": 27,
+            "timeZone": { "id": "America/Los_Angeles" }
+          }
+        }
+      ]
+    }
+  },
+  "crashRateMetricSet.query": {
+    "rows": [
+      {
+        "aggregationPeriod": "HOURLY",
+        "startTime": {
+          "year": 2026,
+          "month": 8,
+          "day": 27,
+          "hours": 19,
+          "timeZone": { "id": "UTC" }
+        },
+        "dimensions": [{ "dimension": "versionCode", "int64Value": "111" }],
+        "metrics": [
+          {
+            "metric": "userPerceivedCrashRate",
+            "decimalValue": { "value": "0.031" }
+          },
+          { "metric": "distinctUsers", "decimalValue": { "value": "800" } }
+        ]
+      },
+      {
+        "aggregationPeriod": "HOURLY",
+        "startTime": {
+          "year": 2026,
+          "month": 8,
+          "day": 27,
+          "hours": 20,
+          "timeZone": { "id": "UTC" }
+        },
+        "dimensions": [{ "dimension": "versionCode", "int64Value": "111" }],
+        "metrics": [
+          {
+            "metric": "userPerceivedCrashRate",
+            "decimalValue": { "value": "0.029" }
+          },
+          { "metric": "distinctUsers", "decimalValue": { "value": "700" } }
+        ]
+      },
+      {
+        "aggregationPeriod": "HOURLY",
+        "startTime": {
+          "year": 2026,
+          "month": 8,
+          "day": 27,
+          "hours": 20,
+          "timeZone": { "id": "UTC" }
+        },
+        "dimensions": [{ "dimension": "versionCode", "int64Value": "110" }],
+        "metrics": [
+          {
+            "metric": "userPerceivedCrashRate",
+            "decimalValue": { "value": "0.012" }
+          },
+          { "metric": "distinctUsers", "decimalValue": { "value": "100" } }
+        ]
+      },
+      {
+        "aggregationPeriod": "HOURLY",
+        "startTime": {
+          "year": 2026,
+          "month": 8,
+          "day": 27,
+          "hours": 20,
+          "timeZone": { "id": "UTC" }
+        },
+        "dimensions": [{ "dimension": "versionCode", "int64Value": "100" }],
+        "metrics": [
+          {
+            "metric": "userPerceivedCrashRate",
+            "decimalValue": { "value": "0.004" }
+          },
+          { "metric": "distinctUsers", "decimalValue": { "value": "50000" } }
+        ]
+      }
+    ]
+  },
+  "anrRateMetricSet.get": {
+    "name": "apps/gg.acme.djdl/anrRateMetricSet",
+    "freshnessInfo": {
+      "freshnesses": [
+        {
+          "aggregationPeriod": "HOURLY",
+          "latestEndTime": {
+            "year": 2026,
+            "month": 8,
+            "day": 27,
+            "hours": 21,
+            "timeZone": { "id": "UTC" }
+          }
+        }
+      ]
+    }
+  },
+  "anrRateMetricSet.query": {
+    "rows": [
+      {
+        "aggregationPeriod": "HOURLY",
+        "startTime": {
+          "year": 2026,
+          "month": 8,
+          "day": 27,
+          "hours": 20,
+          "timeZone": { "id": "UTC" }
+        },
+        "dimensions": [{ "dimension": "versionCode", "int64Value": "111" }],
+        "metrics": [
+          {
+            "metric": "userPerceivedAnrRate",
+            "decimalValue": { "value": "0.002" }
+          },
+          { "metric": "distinctUsers", "decimalValue": { "value": "1500" } }
+        ]
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature core.discover core.sync core.cache config.schema config.mint devices.register devices.report
-# @pkey-feature license.activate license.enroll license.deactivate license.reregister
+# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode
 # @pkey-feature release.changelog release.download
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
@@ -126,6 +126,29 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
 		"report":
 			out["result"] = await sdk.devices.report()
+		"beginSignIn":
+			var prompt: PKeySignInPrompt = await sdk.identity.request_sign_in(String(step["args"].get("deviceName", "")))
+			sdk.set_meta("pkey_prompt", prompt)
+			if prompt.ok:
+				out["prompt"] = {
+					"userCode": prompt.user_code,
+					"verificationUri": prompt.verification_uri,
+					"verificationUriComplete": prompt.verification_uri_complete,
+					"expiresIn": prompt.expires_in,
+					"interval": prompt.interval,
+				}
+			else:
+				out["result"] = String(prompt.code)
+		"pollSignIn":
+			var p: Dictionary = await sdk.identity.poll_sign_in(sdk.get_meta("pkey_prompt"))
+			out["result"] = _sign_in_status(p["status"])
+			if p.has("interval"):
+				out["interval"] = p["interval"]
+		"waitForSignIn":
+			# Any wait between polls would be a real timer; the recorded wait starts past expiry.
+			sdk.identity.sleeper = func(_s: float) -> void: pass
+			var r: PKeySignInResult = await sdk.identity.wait_for_sign_in(sdk.get_meta("pkey_prompt"))
+			out["result"] = "ready" if r.ok else _sign_in_status(String(r.kind))
 		"changelog":
 			var r: PKeyChangelogResult = await sdk.release.changelog()
 			out["result"] = "ok" if r.ok else "error"
@@ -148,6 +171,17 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 	out["licenseStatus"] = sdk.status()["status"]
 	out["tokenHeld"] = store.token != ""
 	return out
+
+
+## The transcripts' sign-in vocabulary (sdk-node `SignInPoll`): the server's `timeout` and the
+## client's expiry are both `expired`, and its `error` state is `error`.
+static func _sign_in_status(status: String) -> String:
+	match status:
+		"timeout", "expired":
+			return "expired"
+		"denied":
+			return "error"
+	return status
 
 
 # ── The replayer fails on a doctored transcript (it is not vacuous) ──────────────────────
@@ -180,10 +214,25 @@ func _negative(t: PKeyTestContext) -> void:
 	t.check("negative: a different outcome fails", _mentions(f, "step 1 (sync): documents"), "\n  ".join(f))
 
 
-## JSON equality without GDScript's cross-type `==` errors (a String compared with a bool).
+## JSON equality without GDScript's cross-type `==` errors (a String compared with a bool), and
+## with every number compared as a number at any depth (JSON parses 600 as 600.0).
 static func _same(a: Variant, b: Variant) -> bool:
 	if PKeyClaims.is_number(a) and PKeyClaims.is_number(b):
 		return float(a) == float(b)
+	if a is Dictionary and b is Dictionary:
+		if a.size() != b.size():
+			return false
+		for k in a:
+			if not b.has(k) or not _same(a[k], b[k]):
+				return false
+		return true
+	if a is Array and b is Array:
+		if a.size() != b.size():
+			return false
+		for i in a.size():
+			if not _same(a[i], b[i]):
+				return false
+		return true
 	return typeof(a) == typeof(b) and a == b
 
 

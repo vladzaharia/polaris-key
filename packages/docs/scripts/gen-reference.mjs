@@ -358,6 +358,7 @@ const TABLE_OWNERS = {
     "dist_keys",
     "dist_connector_objects",
     "dist_connector_events",
+    "dist_connector_settings",
   ],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [

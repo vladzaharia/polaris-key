@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(81 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(83 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -83,8 +83,10 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `sign-out-failed` | `identity` | React: sign-out did not complete. |
 | `bad_response` | `core` | Node, Python, Swift: the server answered 200 with a body missing a field the call needs (an edge-mint without its token or expiry, a device sign-in start without a complete prompt). |
 | `network-error` | `core` | Node, Python, Swift: the request never got an answer (edge-mint, device-code sign-in). A device-code sign-in wait treats it as transient and polls again. |
-| `server-error` | `identity` | Node, Python, Swift: a device-code sign-in poll answered 5xx. Transient: the wait polls again at the same interval. |
-| `cancelled` | `identity` | Python: a device-code sign-in wait was cancelled by the host. |
+| `server-error` | `identity` | Node, Python, Swift, Godot: a device-code sign-in poll answered 5xx. Transient: the wait polls again at the same interval. |
+| `cancelled` | `identity` | Python, Godot: a device-code sign-in wait was cancelled by the host. |
+| `sign-in-expired` | `identity` | Godot: a device-code sign-in ended because its code expired: the client's expires_at passed (no poll is sent after it) or the server answered `timeout`. Begin again. |
+| `sign-in-denied` | `identity` | Godot: a device-code sign-in poll answered the generic `error` state: the sign-in failed or was refused, and the server never says why. Begin again. |
 | `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. |
 | `invalid-options` | `core` | The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. |
 | `not-configured` | `core` | A call needs configuration it does not have: in Godot, a call that ran before configure(); in every SDK, update.decide() with no pinned release keys. |
