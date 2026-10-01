@@ -210,27 +210,27 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 
 ## Acceptance criteria
 
-- [ ] On the 4.7.2 editor and release template the runner reports, per section: `jwsCases`
+- [x] On the 4.7.2 editor and release template the runner reports, per section: `jwsCases`
       36/36, `licenseDocCases` 16/16, `configDocCases` 18/18, `trustCases` 11/11,
       `clockFloorCases` 7/7, `bundleCases` 9/9 (including the refusal reason), `deviceIds` 4/4.
-- [ ] `PKeyJson` unit tests reject each of: a trailing comma, a leading zero, `1.`, a raw
+- [x] `PKeyJson` unit tests reject each of: a trailing comma, a leading zero, `1.`, a raw
       control character, a duplicate key at depth 3; and accept `1e400` and 2^53−1 exactly as
       `JSON.parse` does.
-- [ ] Transport tests against the fake server: a same-origin redirect keeps `Authorization`; a
+- [x] Transport tests against the fake server: a same-origin redirect keeps `Authorization`; a
       cross-origin redirect drops it; a body over the cap and a timeout both return a
       `PKeyResult` error; plain `http://` to a non-loopback host is refused at `configure`.
-- [ ] Sync tests: 304 keeps the cached document; parallel 401s cause exactly one re-acquire
+- [x] Sync tests: 304 keeps the cached document; parallel 401s cause exactly one re-acquire
       call; a hard 401 sets `lastSyncUnauthorized`; a 403 block sets `blocked`; a later 200
       clears both; each pass writes `managed.json` exactly once.
-- [ ] A cache file edited by hand (a changed payload byte, a `v` of 2, a foreign `kid`) loads
+- [x] A cache file edited by hand (a changed payload byte, a `v` of 2, a foreign `kid`) loads
       as absent, never as trusted; derived counters are never read from disk.
-- [ ] A failed device-id write is surfaced through `store_error` and `last_store_error`, and no
+- [x] A failed device-id write is surfaced through `store_error` and `last_store_error`, and no
       new id is minted on the next start.
-- [ ] The profile suite records trust + licence + config verification time and a 350 KB bundle
+- [x] The profile suite records trust + licence + config verification time and a 350 KB bundle
       import on the release template in the PR; the main thread is not blocked by the bundle
       verify on a threaded build.
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
-- [ ] `sdks/godot/parity.json` marks `core.verify`, `core.cache`, `core.bundle`,
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job.
+- [x] `sdks/godot/parity.json` marks `core.verify`, `core.cache`, `core.bundle`,
       `core.discover`, `core.sync`, `core.local` implemented, with `# @pkey-feature` test tags
       (once P1b-01 has landed).
 
