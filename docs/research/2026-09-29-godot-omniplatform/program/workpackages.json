@@ -827,7 +827,7 @@
       "optional": false,
       "refs": ["README §3.4 CLI", "README §6.1"],
       "brief": "wp/P2-06-publish-cli-action.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-07",
@@ -916,7 +916,7 @@
       "optional": false,
       "refs": ["README §3.5", "README §3.8", "README §3.9"],
       "brief": "wp/P2b-04-rollouts-delivery.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2b-05",
