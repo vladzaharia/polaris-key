@@ -99,20 +99,31 @@ export {
   type ProbeDeclaration,
 } from "./devices/facts.js";
 export { ReleaseClient, type ChangelogEntry } from "./release/client.js";
-export { UpdateClient, type VersionCheck } from "./update/client.js";
+export {
+  UpdateClient,
+  UpdateError,
+  type FeedCheck,
+  type ReleaseRecordCheck,
+  type UpdateClientOptions,
+  type UpdateDecideOptions,
+  type VersionCheck,
+} from "./update/client.js";
 
 export {
   appcastUrlFrom,
   discoverProduct,
   DEFAULT_SERVICES,
   SERVICE_SLUGS,
+  serviceEndpoint,
   servicesFromList,
+  updateEndpointsFrom,
   type DiscoverProductOptions,
   type DiscoverProductResult,
   type ProductDiscoveryDocument,
   type ProductDiscoveryTrust,
   type ServiceFragment,
   type ServicesMap,
+  type UpdateEndpoints,
 } from "./discovery.js";
 
 // ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──
@@ -144,6 +155,16 @@ export type {
   LicenseStatus,
 } from "@polaris-key/protocol/license";
 export type { ConfigDoc } from "@polaris-key/protocol/config";
+export type {
+  ChannelFeedDoc,
+  DecisionRelease,
+  InstalledBuild,
+  StagedUpdate,
+  UpdateCheck,
+  UpdateDecision,
+  UpdateOutlet,
+} from "@polaris-key/protocol/update";
+export type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 export type { TrustSet } from "@polaris-key/jws";
 export type { BlockedState, LicenseState } from "@polaris-key/client-core";
 // `StoreBackend` and `StoreDegradedReason` (the type and its constants) come from the generated
