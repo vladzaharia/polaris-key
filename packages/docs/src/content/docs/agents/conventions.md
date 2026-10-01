@@ -30,6 +30,7 @@ pnpm build
 pnpm gen:corpus -- --check
 pnpm gen:services -- --check
 pnpm gen:constants -- --check
+pnpm --filter @polaris-key/cli bundle:action -- --check
 pnpm parity:check
 pnpm typecheck
 pnpm test

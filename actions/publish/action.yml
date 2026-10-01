@@ -1,0 +1,59 @@
+# polaris-key/publish (P2-06): publish a release to Polaris Key from a GitHub Actions job.
+#
+# The job needs `permissions: id-token: write` (and `contents: read`): the Action exchanges the
+# job's OIDC token for a short-lived pkeyci_ token, so the repository stores no secret. It never
+# builds, signs binaries or uploads to stores; run your export and vendor tools first, then this.
+#
+# Until the Action is listed as polaris-key/publish@v1, reference it by commit:
+#   uses: vladzaharia/polaris-key/actions/publish@<sha>
+#
+# Guide: /docs/build/ci/ on the docs site (packages/docs/src/content/docs/build/ci.md).
+name: Polaris Key publish
+description: Match built files against .pkey/release, upload them and submit the release descriptor to Polaris Key.
+author: Polaris Key
+branding:
+  icon: upload-cloud
+  color: blue
+inputs:
+  product:
+    description: The product slug (must equal .pkey/product's slug).
+    required: true
+  deliverable:
+    description: The deliverable to publish. Only `app` until pack releases land.
+    required: false
+    default: app
+  version:
+    description: The release version. Defaults to `tag` without a leading `v`.
+    required: false
+  tag:
+    description: The git tag (also the release id) — on a tag push, the github.ref_name context.
+    required: false
+  channel:
+    description: The canonical channel the release is published to (stable, beta or a declared one).
+    required: false
+  dir:
+    description: The directory of built files, searched recursively, relative to the workspace.
+    required: true
+  source:
+    description: Where the bytes live. `r2` uploads them to Polaris Key; `github` locates them on the tagged, immutable GitHub release.
+    required: false
+    default: r2
+  meta:
+    description: 'A JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}, relative to the workspace.'
+    required: false
+  base-url:
+    description: The Polaris Key origin.
+    required: false
+    default: https://key.plrs.im
+  dry-run:
+    description: Print the descriptor and the server's verdict; upload and write nothing.
+    required: false
+    default: "false"
+outputs:
+  release-id:
+    description: The release id (the tag, else `<deliverable>@<version>`).
+  outcome:
+    description: The submit's outcome — `created`, `enriched` or `unchanged` (on a dry run, the outcome the submit would have).
+runs:
+  using: node24
+  main: dist/index.js
