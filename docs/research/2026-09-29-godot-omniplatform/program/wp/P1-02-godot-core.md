@@ -115,11 +115,20 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
     idle.
   - On the no-threads web export, `WorkerThreadPool.add_task` runs the task inline (S-04
     measured the same stall as the main thread).
-  - On web, verify through WebCrypto Ed25519 (`JavaScriptBridge`) wherever the browser has it
-    (Chrome ≥ 137, Firefox ≥ 129, Safari ≥ 17); it is 90–300× faster and asynchronous. Cap its
-    signing inputs at 60,000 B on GCrypt-backed WebKit: WebKitGTK 2.52.6 kills the web process at
-    about 64 KiB. The GDScript path stays the oracle.
-  - Without WebCrypto Ed25519, slice across frames.
+  - **Open decision, not In scope yet: WebCrypto first on web.** S-04 measured WebCrypto Ed25519
+    (through `JavaScriptBridge`) as 90–300× faster than the GDScript path, and asynchronous. It is
+    available in Chrome ≥ 137, Firefox ≥ 129 and Safari ≥ 17. S-04 proposes it in its
+    Recommendation 1, which amends README §5.2's "pure GDScript is the one trust path". That needs
+    the lead's decision. Until the lead adopts it, the Out bullet above stands: the web export
+    uses the sliced GDScript verifier below.
+    - If the lead adopts it, the lead moves it to In with an acceptance row: the web export passes
+      all 36 `jwsCases` through the WebCrypto path.
+    - Signing inputs over 60,000 B on GCrypt-backed WebKit then fall back to the GDScript path, and
+      a test proves it. WebKitGTK 2.52.6 kills the web process at about 64 KiB.
+    - The GDScript path stays the oracle.
+    - The size impact is one small JS shim and no new binary. P1-02 has no web runner today, so
+      the acceptance row needs one (P1-01's runner in a headless browser).
+  - Without WebCrypto Ed25519 (today: always), slice across frames.
     - Use a 6 ms default budget, configurable from 4 to 8 ms.
     - At 4 ms the worst frame stayed within 4 ms of idle and the wall time was ×4–5; at 8 ms it was
       ×2.0–2.3.

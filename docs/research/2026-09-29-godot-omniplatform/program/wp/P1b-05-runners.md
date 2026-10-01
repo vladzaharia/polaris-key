@@ -3,13 +3,13 @@
 | Field       | Value                                                                                                |
 | ----------- | ---------------------------------------------------------------------------------------------------- |
 | Phase       | P1b: SDK parity                                                                                      |
-| Size        | 0.75–1 engineer-weeks                                                                                |
+| Size        | 1–1.25 engineer-weeks                                                                                |
 | Depends on  | [P0-04](P0-04-channel-unification.md)                                                                |
 | Unblocks    | [P4-18](P4-18-web-dcz.md)                                                                            |
 | Role        | `pkey-implementer`                                                                                   |
-| Plan mode   | no for Parts A and B; Part C needs a corpus row change, which only an approved plan may make         |
+| Plan mode   | no for Parts A, B and D; Part C needs a corpus row change, which only an approved plan may make      |
 | Gates       | CI (new jobs); for Part C, the corpus drift gate (`pnpm gen:corpus -- --check`) through P0-04's plan |
-| Human input | none for A and B; Part C rides on the human's approval of P0-04's plan                               |
+| Human input | none for A, B and D; Part C rides on the human's approval of P0-04's plan                            |
 | Repo        | `vladzaharia/polaris-key`                                                                            |
 
 ## Goal
@@ -20,6 +20,8 @@
 - **C:** the build-gate ports in the Node, Python and Swift runners mirror
   `packages/worker/src/core/gate.ts`, and a Worker test proves the gate-matrix rows agree with the
   real server gate.
+- **D:** the same browser runner passes every `cases.json` and `gate-matrix.json` case in Firefox
+  and WebKit too, on the engine builds S-04 measured.
 
 ## Why
 
@@ -60,13 +62,14 @@
 
 - **A. Chromium.** A workspace package `conformance/runners/browser`
   (`@polaris-key/conformance-browser`), added to `pnpm-workspace.yaml`, using Vitest browser mode
-  (`@vitest/browser` with the `playwright` provider, Chromium only).
+  (`@vitest/browser` with the `playwright` provider). Part A is Chromium; Part D adds Firefox and
+  WebKit to the same package.
   - Move the case-driving code out of `corpusV2.test.ts` into a module both runners import (for
     example `conformance/runners/node/suites.ts`, exporting `defineCorpusSuites(corpus, matrix)`).
     The Node runner keeps reading files with `node:fs`; the browser runner imports the JSON through
     Vite.
   - A CI job `browser` that installs Chromium (`pnpm exec playwright install --with-deps chromium`)
-    and runs it.
+    and runs it. Part D adds its own jobs; this one stays Chromium-only.
   - `fingerprint.json` stays Node-only: `@polaris-key/node/devices` hashes with `node:crypto`, and web
     has no fingerprint (PARITY §5.4).
 - **B. Version floors.**
@@ -85,17 +88,26 @@
   - a Worker test, `packages/worker/test/gateMatrixCorpus.test.ts`, that feeds every row's `gate`
     inputs to the real `checkBuildGate` and asserts `expect.reason` and `allowedRange`, so the server
     is the oracle and the ports cannot drift silently again.
-- **D. WebKit and Firefox ([S-04](../../notes/S-04-low-end-performance.md)).** The same browser runner adds WebKit 26.6 and Firefox 155.0,
-  the builds bundled with `playwright-core` 1.63.0, run on Linux: for example in
-  `mcr.microsoft.com/playwright:v1.63.0-noble`. That WebKit is the Linux port and stands in for
-  WebKitGTK.
-  - WebKit's WebCrypto Ed25519 crashes the web process on signing inputs of about 64 KiB and above.
-    Its run must route `payload-at-cap` and `bundle-payload-at-cap` through the documented
-    fallback, or cap them, rather than crash.
-  - Playwright WebKit has no OPFS sync access handle, so OPFS is asserted only in Chromium and
-    Firefox.
+- **D. Firefox and WebKit ([S-04](../../notes/S-04-low-end-performance.md)).** The same browser
+  package runs in the engine builds bundled with `playwright-core` 1.63.0, which S-04 measured:
+  - a CI job `browser-firefox` on Linux runs Firefox 155.0, for example in the image
+    `mcr.microsoft.com/playwright:v1.63.0-noble`;
+  - a CI job `browser-webkit` on a macOS runner runs WebKit 26.6. On macOS, S-04 measured WebCrypto
+    Ed25519 verifying the corpus's 87,474 B and 349,618 B signing inputs correctly, and rejecting
+    them with a flipped signature.
+  - **Do not run WebKit on Linux in this package.** Linux Playwright WebKit, like WebKitGTK 2.52.6
+    with libgcrypt 1.10.3, kills the web process when WebCrypto Ed25519 verifies a message of about
+    64 KiB or more. `payload-at-cap` and `bundle-payload-at-cap` would therefore fail on every run.
+    That is the correct, loud result (AGENTS rule 1; Runner hygiene below). Never skip, cap or
+    special-case those rows to make such a job green. The job becomes possible only when
+    `shared-jws`/`client-core` gains a size-aware Ed25519 fallback for GCrypt-backed WebKit. That
+    work is unowned: [X-02](X-02-tauri-plugin.md)'s plan adds an injectable primitive for Tauri and
+    lists a pure-JS browser fallback only as an option. S-04 flags it to the lead. It touches
+    `shared-jws`, so it needs plan mode (`CLAUDE.md`).
+  - Playwright WebKit has no OPFS sync access handle on either OS. If a later package adds an OPFS
+    assertion to these jobs, it holds only in Chromium and Firefox.
 - Docs: the runner table in `packages/docs/src/content/docs/build/wire/corpus.md` ("Four runners")
-  and `contribute/corpus.md` gain the Chromium and version-floor jobs.
+  and `contribute/corpus.md` gain the Chromium, Firefox, WebKit and version-floor jobs.
 
 **Out** (and where it belongs instead):
 
@@ -104,6 +116,8 @@
   job (→ [P5-05](P5-05-apple-plugin-package.md)); the Godot runner (→ [P1-01](P1-01-godot-scaffold.md)).
 - zstd probes and the WASM decoder in the browser job (→ [P4-06](P4-06-client-core-packs.md),
   [P4-18](P4-18-web-dcz.md)); the Chromium job is where they will run.
+- A Linux WebKit (WebKitGTK-proxy) job and the size-aware Ed25519 fallback in `shared-jws` that
+  would let it pass (unowned; see Part D).
 
 ## Design notes
 
@@ -140,14 +154,18 @@ port.
 1. Extract the shared suite module; keep the Node runner green with zero behaviour change.
 2. Add the browser package and the CI job; confirm Ed25519 verification runs in Chromium's WebCrypto
    (Chromium 137+).
-3. Add `engines`, the `node-floor` job, the Python matrix and the version banners.
-4. Update the runner docs. Open the PR for A and B.
-5. After P0-04's plan is approved: rewrite the three ports, add `gateMatrixCorpus.test.ts`, and
+3. Add the `browser-firefox` and `browser-webkit` jobs (Part D) on Playwright 1.63.0.
+4. Add `engines`, the `node-floor` job, the Python matrix and the version banners.
+5. Update the runner docs. Open the PR for A, B and D.
+6. After P0-04's plan is approved: rewrite the three ports, add `gateMatrixCorpus.test.ts`, and
    regenerate against P0-04's rows.
 
 ## Acceptance criteria
 
 - [ ] The CI `browser` job runs every `cases.json` and `gate-matrix.json` case in Chromium and passes.
+- [ ] (D) The CI `browser-firefox` (Firefox 155.0, Linux) and `browser-webkit` (WebKit 26.6, macOS)
+      jobs run every `cases.json` and `gate-matrix.json` case and pass. No case is skipped, capped
+      or routed around. Each log shows the `navigator.userAgent` banner.
 - [ ] The CI `node-floor` job runs on the version in `engines.node`, which is declared in
       `sdk-node`, `client-core` and `sdk-react`.
 - [ ] The Python job passes on 3.9 and 3.14.
@@ -165,6 +183,9 @@ port.
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-node test
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser exec playwright install chromium
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser test
+mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser exec playwright install firefox webkit
+mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser test -- --browser=firefox  # Linux
+mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser test -- --browser=webkit   # macOS
 mise exec node@<floor> -- pnpm --filter @polaris-key/conformance-node test
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # repeat in 3.9 and 3.14 virtualenvs
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- gateMatrixCorpus   # Part C
@@ -174,7 +195,7 @@ mise exec node@22 -- pnpm gen:corpus -- --check
 ## Hand-off
 
 - **Interfaces:** the shared suite module (`defineCorpusSuites`); the `conformance/runners/browser`
-  package and its CI job; the `node-floor` job and the declared `engines.node`; the Python version
+  package and its CI jobs (`browser`, `browser-firefox`, `browser-webkit`); the `node-floor` job and the declared `engines.node`; the Python version
   matrix.
 - P1b-04's `config-matrix.json` and every later corpus file should run in the browser job too. P4-06
   adds the zstd probe to the floor job, and P4-18 adds `dcz` to the browser job.

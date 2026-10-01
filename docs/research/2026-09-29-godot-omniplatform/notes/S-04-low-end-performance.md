@@ -82,8 +82,10 @@ The questions come from README §5.2, CONTENT §17 Q4 and PARITY §11 Q4.
      verifier helps there. With a 4 ms slice the worst frame stayed within 4 ms of idle in every
      browser, and the verify took 4–5× longer in wall time.
    - **On a low-end phone's web build, slicing is too slow for a bundle.** Under the ×20 throttle
-     the sliced bundle verify took 6.5 s (8 ms slices) to 12 s (4 ms slices). Web must use
-     WebCrypto Ed25519 where it exists, and slice only as the fallback.
+     the sliced bundle verify took 6.5 s (8 ms slices) to 12 s (4 ms slices). This note therefore
+     recommends WebCrypto Ed25519 on web wherever it exists, with slicing only as the fallback.
+     That changes README §5.2's "pure GDScript is the one trust path", so it is a decision for the
+     lead (Recommendation 1). Until the lead makes it, P1-02 slices.
 6. **A Cortex-A53 phone, by derivation [I].** Scaling two quiet anchors (A5's Xeon and this M5
    Pro) by published CPU scores gives, natively:
    - 35–85 ms for a small verify;
@@ -447,11 +449,18 @@ Readings:
      manifests.
    - Run everything **during gameplay** off the main thread too. Even the 252 B verify is an
      estimated 35–85 ms on an A53 phone, which is two to five frames.
-   - On single-threaded web, prefer WebCrypto Ed25519 through `JavaScriptBridge` wherever the
-     browser has it (Chrome ≥ 137, Firefox ≥ 129, Safari ≥ 17). It is 90–300× faster than the
+   - **Open decision for the lead [I]:** on single-threaded web, prefer WebCrypto Ed25519 through
+     `JavaScriptBridge` wherever the browser has it (Chrome ≥ 137, Firefox ≥ 129, Safari ≥ 17). It is 90–300× faster than the
      GDScript path here and asynchronous. Restrict it to signing inputs **≤ 60,000 B** on WebKitGTK
      and other GCrypt-backed WebKit, or detect the engine and skip WebCrypto for large inputs
      there. The GDScript path stays the oracle.
+     - This amends README §5.2's "pure GDScript is the one trust path" and turns P1-02's Out item
+       "WebCrypto or GDExtension verify accelerators" into In for web. So it is proposed, not
+       applied.
+     - P1-02's brief records it as an open decision, with the acceptance row it would need: all 36
+       `jwsCases` through the WebCrypto path in a web runner, and a proven fallback above 60,000 B
+       on GCrypt WebKit.
+     - Until the lead adopts it, P1-02 ships the sliced verifier on web.
    - Without WebCrypto Ed25519, use the sliced verifier with a **6 ms default budget**,
      configurable between 4 and 8 ms. Never rely on `WorkerThreadPool` there. Expect a sliced
      bundle verify to take 6–12 s on a low-end phone, and surface it as progress.
@@ -485,14 +494,25 @@ Readings:
    - Keep the large-set memory in mind. A 37 MB payload needs about 3× its size resident (seed,
      output and decoded chunks) [I]; it ran on the 2 GB emulator [M], but test the ≤ 3 GB phone
      before raising the ceiling.
-4. **P1b-05: browser versions [M].** Add **WebKit 26.6** and **Firefox 155.0**, as bundled by
-   `playwright-core` **1.63.0**, next to Chromium 153.0.8010.12. Run them on Linux, in the image
-   `mcr.microsoft.com/playwright:v1.63.0-noble`. That WebKit is the Linux port, so it also stands
-   in for WebKitGTK.
-   - Cap WebCrypto Ed25519 conformance inputs at 60,000 B on that WebKit, or assert the documented
-     fallback. Otherwise the job crashes on `payload-at-cap` and `bundle-payload-at-cap`.
-   - Do not expect OPFS sync access handles in Playwright WebKit.
-   - A Godot web job in Firefox needs a headed browser under `xvfb-run`; headless has no WebGL2.
+4. **P1b-05: browser versions [M].** Add **Firefox 155.0** and **WebKit 26.6**, as bundled by
+   `playwright-core` **1.63.0**, next to Chromium 153.0.8010.12.
+   - Run Firefox on Linux, for example in `mcr.microsoft.com/playwright:v1.63.0-noble`.
+   - Run WebKit on a **macOS** runner. There, WebCrypto Ed25519 verifies the corpus's 87,474 B and
+     349,618 B signing inputs correctly and rejects them with a flipped signature
+     (`browser-webkit-quiet.json`).
+   - **Do not add a Linux WebKit job yet.** It would crash on `payload-at-cap` and
+     `bundle-payload-at-cap` on every run, because `shared-jws` calls `crypto.subtle.verify`
+     directly (`index.ts:359`) and has no size-aware fallback. Failing loudly there is correct;
+     skipping or capping those rows would weaken the runner (AGENTS rule 1).
+   - The fix is a size-aware Ed25519 fallback in `shared-jws`/`client-core` for GCrypt-backed
+     WebKit. It needs plan mode, because it touches `shared-jws`. No work package owns it.
+     X-02's plan adds an injectable Ed25519 primitive for its Tauri (Rust) fallback. It lists a
+     pure-JS fallback for plain browsers only as an option to compare, not as a deliverable. This
+     is flagged to the lead as unowned. It matters beyond CI, because
+     the React SDK in a WebKitGTK browser would crash the tab on an at-cap licence today [I].
+   - Do not expect OPFS sync access handles in Playwright WebKit on either OS.
+   - Whichever package adds a Godot web job in Firefox needs a headed browser under `xvfb-run`;
+     headless has no WebGL2.
    - Optionally, on a macOS runner, drive Mobile Safari through `simctl openurl` and the same POST
      endpoint.
 5. **P4-18 / PARITY §11 Q4 [M].** WebKit and Gecko pass all 75 content cases with the vendored WASM
@@ -514,6 +534,9 @@ Readings:
    > `WorkerThreadPool` does not help on the no-threads web build (it runs inline), so web uses
    > WebCrypto Ed25519 where present and slices across frames otherwise.
 
+   The last clause assumes the lead adopts Recommendation 1. Otherwise it reads "so web slices
+   across frames".
+
    The recommendation bullet "run bundle-sized verifies off the main thread (chunked on
    single-threaded web)" stands, and gains "all verifies off the main thread during gameplay".
    README §12's "Performance on low-end devices" risk should say the web and emulated numbers are
@@ -522,15 +545,15 @@ Readings:
 
 ## Briefs changed in this branch
 
-| Brief  | Change                                                                                                                                                                      |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1-02  | Design note: the off-thread threshold, `WorkerThreadPool` running inline on no-threads web, WebCrypto first on web, the slice budget, and the 60,000 B cap on GCrypt WebKit |
-| P1-10  | Design note: low-end stage budgets (native and web) and the 250 ms progress / ≥ 10 s (≥ 30 s sliced web) timeout rule                                                       |
-| P4-08  | Design note: the per-device throughput planning figures and the 50 MB native / 25 MB web inline ceilings                                                                    |
-| P4-11  | Design note: the same figures for the SDK chunk-sync progress UX                                                                                                            |
-| P1b-05 | Out → In: the WebKit 26.6 and Firefox 155.0 jobs (Playwright 1.63.0, Linux), with the Ed25519 cap and OPFS caveat                                                           |
-| P4-18  | The WebKit/Gecko precondition is met through the WASM path                                                                                                                  |
-| X-02   | The WebKitGTK Ed25519 crash: choose the fallback by size (or always on Linux), not by feature detection                                                                     |
+| Brief  | Change                                                                                                                                                                                                                |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1-02  | Design note: the off-thread threshold, `WorkerThreadPool` running inline on no-threads web, and the slice budget. WebCrypto first on web is recorded as an open decision for the lead; the Out item stands until then |
+| P1-10  | Design note: low-end stage budgets (native and web) and the 250 ms progress / ≥ 10 s (≥ 30 s sliced web) timeout rule                                                                                                 |
+| P4-08  | Design note: the per-device throughput planning figures and the 50 MB native / 25 MB web inline ceilings                                                                                                              |
+| P4-11  | Design note: the same figures for the SDK chunk-sync progress UX                                                                                                                                                      |
+| P1b-05 | New Part D (Goal, Scope, Steps, Acceptance, Verify, Size): Firefox 155.0 on Linux, WebKit 26.6 on macOS. A Linux WebKit job is Out until the unowned `shared-jws` fallback exists                                     |
+| P4-18  | The WebKit/Gecko precondition is met through the WASM path                                                                                                                                                            |
+| X-02   | The WebKitGTK Ed25519 crash: choose the fallback by size (or always on Linux), not by feature detection                                                                                                               |
 
 This spike's own brief gains one design note: the official iOS template's simulator slice is
 x86_64 only, and `ios-sim-retarget.py` works around it.
@@ -566,6 +589,10 @@ x86_64 only, and `ios-sim-retarget.py` works around it.
   iPhone, then run `collect.sh ios-device`.
 - Serve the harness over HTTPS reachable from the phones, and run `browser/index.html` and the
   Godot web export in iOS Safari and in low-end Android Chrome (≥ 137, for Ed25519).
+- Lead: decide whether to adopt WebCrypto first on web (Recommendation 1). It amends README
+  §5.2 and P1-02's Out list.
+- Lead: assign the size-aware Ed25519 fallback in `shared-jws`/`client-core` for GCrypt-backed
+  WebKit (Recommendation 4). It is unowned, and a Linux WebKit runner waits on it.
 - File the WebKitGTK/libgcrypt Ed25519 ≥ 64 KiB crash upstream, with `browser/gtk.html` as the
   reproduction.
 
