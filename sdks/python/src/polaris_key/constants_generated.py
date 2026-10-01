@@ -98,6 +98,10 @@ class ErrorCode:
     KEY_ENTRY_UNSUPPORTED: Final = "key-entry-unsupported"
     SIGN_IN_FAILED: Final = "sign-in-failed"
     SIGN_OUT_FAILED: Final = "sign-out-failed"
+    BAD_RESPONSE: Final = "bad_response"
+    NETWORK_ERROR: Final = "network-error"
+    SERVER_ERROR: Final = "server-error"
+    CANCELLED: Final = "cancelled"
 
 
 #: Every ``ErrorCode`` value, in source order.
@@ -155,6 +159,10 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "key-entry-unsupported",
     "sign-in-failed",
     "sign-out-failed",
+    "bad_response",
+    "network-error",
+    "server-error",
+    "cancelled",
 )
 
 
@@ -214,6 +222,10 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "key-entry-unsupported": "client",
         "sign-in-failed": "client",
         "sign-out-failed": "client",
+        "bad_response": "client",
+        "network-error": "client",
+        "server-error": "client",
+        "cancelled": "client",
     }
 )
 
@@ -430,6 +442,7 @@ class ServiceSlug:
     LICENSE: Final = "license"
     CONFIG: Final = "config"
     RELEASE: Final = "release"
+    DISTRIBUTION: Final = "distribution"
     UPDATE: Final = "update"
     IDENTITY: Final = "identity"
 
@@ -439,6 +452,7 @@ SERVICE_SLUG_VALUES: Tuple[str, ...] = (
     "license",
     "config",
     "release",
+    "distribution",
     "update",
     "identity",
 )

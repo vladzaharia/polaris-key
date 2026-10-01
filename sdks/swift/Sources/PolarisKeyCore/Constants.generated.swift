@@ -62,6 +62,10 @@ public enum ErrorCode {
     public static let keyEntryUnsupported = "key-entry-unsupported"
     public static let signInFailed = "sign-in-failed"
     public static let signOutFailed = "sign-out-failed"
+    public static let badResponse = "bad_response"
+    public static let networkError = "network-error"
+    public static let serverError = "server-error"
+    public static let cancelled = "cancelled"
 }
 
 /// Every `ErrorCode` value, in source order.
@@ -119,6 +123,10 @@ public let ERROR_CODE_VALUES: [String] = [
     "key-entry-unsupported",
     "sign-in-failed",
     "sign-out-failed",
+    "bad_response",
+    "network-error",
+    "server-error",
+    "cancelled",
 ]
 
 /// The registry: every error code and its kind (`wire` or `client`).
@@ -176,6 +184,10 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "key-entry-unsupported": "client",
     "sign-in-failed": "client",
     "sign-out-failed": "client",
+    "bad_response": "client",
+    "network-error": "client",
+    "server-error": "client",
+    "cancelled": "client",
 ]
 
 /// Every feature id in the parity registry (conformance/parity/features.json).

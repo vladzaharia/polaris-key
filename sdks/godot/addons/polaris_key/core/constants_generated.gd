@@ -65,10 +65,14 @@ class ErrorCode:
 	const KEY_ENTRY_UNSUPPORTED := "key-entry-unsupported"
 	const SIGN_IN_FAILED := "sign-in-failed"
 	const SIGN_OUT_FAILED := "sign-out-failed"
+	const BAD_RESPONSE := "bad_response"
+	const NETWORK_ERROR := "network-error"
+	const SERVER_ERROR := "server-error"
+	const CANCELLED := "cancelled"
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -125,6 +129,10 @@ const ERROR_CODE_KINDS := {
 	"key-entry-unsupported": "client",
 	"sign-in-failed": "client",
 	"sign-out-failed": "client",
+	"bad_response": "client",
+	"network-error": "client",
+	"server-error": "client",
+	"cancelled": "client",
 }
 
 
@@ -251,12 +259,13 @@ class ServiceSlug:
 	const LICENSE := "license"
 	const CONFIG := "config"
 	const RELEASE := "release"
+	const DISTRIBUTION := "distribution"
 	const UPDATE := "update"
 	const IDENTITY := "identity"
 
 
 ## Every `ServiceSlug` value, in source order.
-const SERVICE_SLUG_VALUES := ["license", "config", "release", "update", "identity"]
+const SERVICE_SLUG_VALUES := ["license", "config", "release", "distribution", "update", "identity"]
 
 ## The wire contract version (`@polaris-key/protocol/core`).
 const PROTOCOL_VERSION := 3

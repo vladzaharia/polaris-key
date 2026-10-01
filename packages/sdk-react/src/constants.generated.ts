@@ -60,6 +60,10 @@ export const ErrorCode = {
   keyEntryUnsupported: "key-entry-unsupported",
   signInFailed: "sign-in-failed",
   signOutFailed: "sign-out-failed",
+  badResponse: "bad_response",
+  networkError: "network-error",
+  serverError: "server-error",
+  cancelled: "cancelled",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -118,6 +122,10 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "key-entry-unsupported",
   "sign-in-failed",
   "sign-out-failed",
+  "bad_response",
+  "network-error",
+  "server-error",
+  "cancelled",
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. */
@@ -178,6 +186,10 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "key-entry-unsupported": "client",
   "sign-in-failed": "client",
   "sign-out-failed": "client",
+  bad_response: "client",
+  "network-error": "client",
+  "server-error": "client",
+  cancelled: "client",
 };
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */
@@ -387,6 +399,7 @@ export const ServiceSlug = {
   license: "license",
   config: "config",
   release: "release",
+  distribution: "distribution",
   update: "update",
   identity: "identity",
 } as const;
@@ -397,6 +410,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
   "license",
   "config",
   "release",
+  "distribution",
   "update",
   "identity",
 ];
