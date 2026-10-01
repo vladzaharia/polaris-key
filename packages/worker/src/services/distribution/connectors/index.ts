@@ -2,8 +2,8 @@
  * Store connectors (P5-02 on; README §3.8 "Connectors and credential custody").
  *
  * A connector keeps Distribution's availability, submissions and staged rollouts in step with
- * one store, from that store's own API: the App Store Connect connector today (`asc/`), Play
- * (P5-03) and the Microsoft Store (P5-04) next. Each is one `DistributionConnector`:
+ * one store, from that store's own API: App Store Connect (`asc/`, P5-02), Google Play (`play/`,
+ * P5-03), and the Microsoft Store (P5-04) next. Each is one `DistributionConnector`:
  *
  *   - `poll(ctx)` — run on the connector cron for every product with Distribution on; a product
  *     the connector is not set up for (no outlet of its kinds, no credential) is skipped before
@@ -26,6 +26,7 @@ import type { ServiceContext } from "../../../core/registry.js";
 import type { FetchImpl } from "./asc/client.js";
 import type { ConnectorControl } from "./asc/controls.js";
 import { ascConnector } from "./asc/index.js";
+import { playConnector } from "./play/index.js";
 import { pruneEvents } from "./state.js";
 
 /** What a poll is given: one product, outside any request. */
@@ -71,7 +72,10 @@ export interface DistributionConnector {
 }
 
 /** Every connector this build has. */
-export const CONNECTORS: readonly DistributionConnector[] = [ascConnector];
+export const CONNECTORS: readonly DistributionConnector[] = [
+  ascConnector,
+  playConnector,
+];
 
 export function connectorOf(kind: string): DistributionConnector | null {
   return CONNECTORS.find((c) => c.kind === kind) ?? null;
