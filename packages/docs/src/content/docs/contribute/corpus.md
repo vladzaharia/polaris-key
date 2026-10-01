@@ -17,7 +17,8 @@ fixed keypair and a fixed case list. The runner set is taxonomized in full on
 gate-matrix-only runner); the ones a contributor touches most:
 
 - **Node** — `conformance/runners/node`: `corpusV2.test.ts` covers the JWS, document, trust,
-  and bundle cases plus the gate matrix; `fingerprint.test.ts` covers the fingerprint vectors;
+  and bundle cases plus the gate matrix, and for wire contract v4 the pointer sets, the
+  `update-matrix.json` version cases and the feed and record claim steps; `fingerprint.test.ts` covers the fingerprint vectors;
   `stageMatrix.test.ts` covers the boot stage machine; `headers.test.ts` and
   `configMatrix.test.ts` cover the header values and config resolution.
 - **React** — `packages/sdk-react/test/`: `headers.test.ts` (the `web` rows and the captured
@@ -49,21 +50,24 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 ## What's in the corpus
 
-Six files, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
+Eight files, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
-| File                 | Contents                                                                                                                                                                                                        |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cases.json`         | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles.                                                                                                                   |
-| `gate-matrix.json`   | The client gate's decision table — every input combination and the state it must produce.                                                                                                                       |
-| `fingerprint.json`   | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`. |
-| `stage-matrix.json`  | The boot stage machine (client boot behaviour, outside the wire contract): rows and guard cases.                                                                                                                |
-| `headers.json`       | WIRE-CONTRACT-V3 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                    |
-| `config-matrix.json` | WIRE-CONTRACT-V3 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                      |
+| File                 | Contents                                                                                                                                                                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cases.json`         | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles, and (wire contract v4) channel feeds and release records. A case whose payload holds a number that cannot be a wire integer lists those pointers in `nonWireIntegers`, beside `expect`. |
+| `gate-matrix.json`   | The client gate's decision table — every input combination and the state it must produce.                                                                                                                                                                                             |
+| `fingerprint.json`   | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`.                                                                       |
+| `stage-matrix.json`  | The boot stage machine (client boot behaviour, outside the wire contract): rows, guard cases and (version 2) boot-confirmation cases.                                                                                                                                                 |
+| `headers.json`       | WIRE-CONTRACT-V3 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                                                                                          |
+| `config-matrix.json` | WIRE-CONTRACT-V4 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                                                                                            |
+| `update-matrix.json` | WIRE-CONTRACT-V4 §11.1: version comparisons, capability narrowing, the decision's outlet, rollout buckets and every update-decision row with its boot value.                                                                                                                          |
+| `outlet-matrix.json` | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                            |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the
 files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerprintVersion` **1**,
-`stageMatrixVersion` **1**, `headersVersion` **1**, `configMatrixVersion` **1** — and case counts, generated straight from the corpus files, live at
+`stageMatrixVersion` **2**, `headersVersion` **1**, `configMatrixVersion` **1**,
+`updateMatrixVersion` **1**, `outletMatrixVersion` **1** — and case counts, generated straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
 ## The Swift resource mirror
@@ -84,12 +88,13 @@ every mirror by construction. A JSON file in a mirror that the generator does no
 the check as a stray; it is never deleted automatically.
 
 A GDScript `String` cannot hold U+0000, so `jwsCases` documents carry one generated annotation
-for that platform, `expect.docNulReplaced` (WIRE-CONTRACT-V3 §10). Other runners ignore it.
+for that platform, `expect.docNulReplaced` (WIRE-CONTRACT-V4 §10). Other runners ignore it.
 
 ## Never hand-edit the generated files
 
 `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`,
-`config-matrix.json`, and both mirrors are all output.
+`config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, and both mirrors are all
+output.
 `pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
 committed file differs — mirrors included. A red drift job means a wire-affecting change wasn't
 reflected in the corpus; regenerate and commit the result in the same PR:
@@ -107,7 +112,8 @@ reason to loosen an assertion.
 
 Each case family in `tools/sign-corpus.ts` is an array returned by its own `async function` —
 `buildJwsCases`, `buildLicenseDocCases`, `buildConfigDocCases`, `buildTrustCasesV2`,
-`buildClockFloorCasesV2`, `buildBundleCases` — assembled by `buildV2()` into the object
+`buildClockFloorCasesV2`, `buildBundleCases`, `buildFeedCases`, `buildReleaseRecordCases` —
+assembled by `buildV2()` into the object
 `gen:corpus` writes as `cases.json`. To add a case:
 
 1. Add a case object to the relevant array, with a unique `id` and a `description` explaining
@@ -124,7 +130,7 @@ the reason and a successor row; the frozen array itself is never edited, and the
 refuses to run if a retired name is not a carried row or its successor is not emitted. P0-04
 retired one (the pre-R3-01 dev-build bypass).
 
-The stage matrix is hand-authored too, and **append-only** in the same way. `buildStageMatrixV1`
+The stage matrix is hand-authored too, and **append-only** in the same way. `buildStageMatrix`
 writes literal rows (each an ordered list of host events with the exact emits each produces),
 an `accepts` table and one probe per event type, and self-checks them before writing: the stage
 lists, the vocabulary, the `accepts` table and every cell of the sync and gate tables. Every
@@ -142,6 +148,15 @@ expectation against a generator-local reference of §2.2.1 that imports nothing 
 and fails on a missing or redundant `expectNoEnv`, an unsorted list, an unused source or JSON
 type, a number some SDK would read differently, or a rule whose edges are not pinned. A new row
 keeps `configMatrixVersion`; a changed row or rule bumps it.
+
+`update-matrix.json` and `outlet-matrix.json` (wire contract v4) are hand-authored from the
+plan's row lists (`plans/P3-01.md` §4.6, §4.7) and **append-only** as well. The generator carries
+its own reference `compareVersions`, `effectiveCapabilities`, `resolveUpdateOutlet`,
+`decideUpdate`, `bootDecision` and `detectOutlet`, written from the plan and importing nothing
+from the SDKs, recomputes every version case, capability case, outlet case, bucket vector,
+decision row and detection row, and fails when a result differs from the row's expectation. It
+also runs its own claim checks for all six `typ`s, so every per-claim integer case is proved to
+break its claim alone. A corpus change that edits a row is plan-mode: amend the plan first.
 
 ## HTTP transcripts
 

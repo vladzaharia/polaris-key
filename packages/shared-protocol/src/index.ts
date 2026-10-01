@@ -2,7 +2,8 @@
 // Organized by service since wire contract v3. There is exactly ONE identifier set: this
 // barrel re-exports core's values verbatim (`ISSUER` = `key.plrs.im`, the `X-PKey-*` headers),
 // so an import from here and an import from `@polaris-key/protocol/core` can never disagree.
-// Prefer the service subpaths (`/core`, `/license`, `/config`, `/release`, `/update`, `/trust`)
+// Prefer the service subpaths (`/core`, `/license`, `/config`, `/release`, `/update`, `/trust`,
+// `/distribution`)
 // in new code; the barrel exists for consumers that want one import.
 
 export {
@@ -15,6 +16,9 @@ export {
   HEADER_PLATFORM,
   HEADER_ARCH,
   PROTOCOL_VERSION,
+  MAX_WIRE_INTEGER,
+  MAX_JSON_DEPTH,
+  MAX_RECORD_JWS_BYTES,
   MAX_BUNDLE_BYTES,
   FINGERPRINT_COMPONENTS,
   FINGERPRINT_ANCHOR,
@@ -67,10 +71,74 @@ export type {
 
 export type { ConfigDoc, SecretDelivery } from "./config.js";
 
-export { DEFAULT_RELEASE_ACCESS } from "./release.js";
-export type { ReleaseAccess, ReleaseAccessPolicy } from "./release.js";
+export {
+  DEFAULT_RELEASE_ACCESS,
+  BUILD_ID_PATTERN,
+  RESERVED_RECORD_KINDS,
+} from "./release.js";
+export type {
+  ReleaseAccess,
+  ReleaseAccessPolicy,
+  ReleaseRecordDoc,
+  ReleaseRecordBuild,
+  ReleaseRecordArtifact,
+} from "./release.js";
 
-export type { UpdateArch } from "./update.js";
+export {
+  FEED_VERSION_SCHEMES,
+  FEED_TTL_SECONDS,
+  MAX_FEED_TTL_SECONDS,
+  ROLLOUT_BUCKETS,
+  FEED_PLATFORM_PATTERN,
+  UPDATE_ACTIONS,
+  NONE_REASONS,
+  BLOCKED_REASONS,
+  BINARY_METHODS,
+} from "./update.js";
+export type {
+  UpdateArch,
+  FeedVersionScheme,
+  ReleasePin,
+  FeedRollout,
+  FeedOutletEntry,
+  FeedTarget,
+  FeedApp,
+  FeedSelector,
+  ChannelFeedDoc,
+  UpdateAction,
+  UpdateNoneReason,
+  UpdateBlockedReason,
+  BinaryMethod,
+  UpdateOutlet,
+  InstalledBuild,
+  StagedUpdate,
+  UpdateDecisionInput,
+  DecisionRelease,
+  UpdateDecision,
+  UpdateCheck,
+} from "./update.js";
+
+export {
+  OUTLET_KINDS,
+  OUTLET_ID_PATTERN,
+  OUTLET_UNKNOWN,
+  BINARY_UPDATES_ORDER,
+  OUTLET_CAPABILITY_DEFAULTS,
+  OUTLET_PLATFORMS,
+  PLATFORM_NARROWING,
+  OUTLET_SUBKINDS,
+  SUBKIND_NARROWING,
+  LISTING_URL_PREFIXES,
+  OUTLET_CONFIDENCES,
+} from "./distribution.js";
+export type {
+  OutletKind,
+  BinaryUpdates,
+  OutletCapabilities,
+  CapabilityNarrowing,
+  OutletSubkind,
+  OutletConfidence,
+} from "./distribution.js";
 
 export type {
   SigningKeyStatus,

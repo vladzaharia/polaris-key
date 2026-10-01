@@ -33,30 +33,23 @@ import {
 
 // ── Vocabulary ──────────────────────────────────────────────────────────────────────────────
 
-/** Every outlet kind (README §3.1 "outlet"). An outlet id that is one of these needs no `kind`. */
-export const OUTLET_KINDS = [
-  "direct",
-  "app-store",
-  "testflight",
-  "altstore",
-  "altstore-pal",
-  "play",
-  "play-testing",
-  "obtainium",
-  "fdroid-repo",
-  "ms-store",
-  "app-installer",
-  "steam",
-  "itch",
-  "flathub",
-  "snap",
-  "winget",
-  "web",
-] as const;
-export type OutletKind = (typeof OUTLET_KINDS)[number];
+/**
+ * Every outlet kind (README §3.1 "outlet"), the kind type and the outlet-id pattern. They moved
+ * to `@polaris-key/protocol/distribution` (P3-02), the one table every SDK and the Worker read;
+ * re-exported here with the same values and order. An outlet id that is one of these kinds needs
+ * no `kind`; outlet ids are lower-case, start with a letter and have at most 64 characters.
+ */
+export {
+  OUTLET_KINDS,
+  OUTLET_ID_PATTERN,
+  type OutletKind,
+} from "@polaris-key/protocol/distribution";
+import {
+  OUTLET_KINDS,
+  OUTLET_ID_PATTERN,
+  type OutletKind,
+} from "@polaris-key/protocol/distribution";
 
-/** Outlet ids: lower-case, starting with a letter, at most 64 characters (`altstore-beta`). */
-export const OUTLET_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 /** The most outlets one document may declare. */
 export const MAX_OUTLETS = 32;
 

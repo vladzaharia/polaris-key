@@ -136,8 +136,14 @@ describe("the sources", () => {
       corpusVersion: 2,
       gateMatrixVersion: 2,
       fingerprintVersion: 1,
+      stageMatrixVersion: 2,
+      updateMatrixVersion: 1,
+      outletMatrixVersion: 1,
     });
-    expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(3);
+    expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);
+    expect(SOURCES.protocol.MAX_WIRE_INTEGER).toBe(Number.MAX_SAFE_INTEGER);
+    expect(SOURCES.protocol.MAX_JSON_DEPTH).toBe(64);
+    expect(SOURCES.protocol.MAX_RECORD_JWS_BYTES).toBe(88844);
   });
 });
 
@@ -333,7 +339,7 @@ describe("renderers", () => {
     expect(ts).toContain('macos: "macos",');
     expect(ts).toContain('x86_64: "x86_64",');
     expect(ts).toContain('sdkName: "X-PKey-SDK",');
-    expect(ts).toContain("export const PROTOCOL_VERSION = 3;");
+    expect(ts).toContain("export const PROTOCOL_VERSION = 4;");
     expect(ts).toContain('"local-only": "client",');
 
     const py = renderPython(MODEL);
@@ -342,21 +348,21 @@ describe("renderers", () => {
     );
     expect(py).toContain('    LICENSE_CHANNELS: Final = "license.channels"');
     expect(py).toContain('    SDK_NAME: Final = "X-PKey-SDK"');
-    expect(py).toContain("PROTOCOL_VERSION: Final[int] = 3");
+    expect(py).toContain("PROTOCOL_VERSION: Final[int] = 4");
 
     const swift = renderSwift(MODEL);
     expect(swift).toContain(
       'public static let serviceUnavailable = "service-unavailable"',
     );
     expect(swift).toContain('public static let x86_64 = "x86_64"');
-    expect(swift).toContain("public let PROTOCOL_VERSION = 3");
+    expect(swift).toContain("public let PROTOCOL_VERSION = 4");
 
     const gd = renderGdscript(MODEL);
     expect(gd).toContain("class_name PKeyConstants");
     expect(gd).toContain(
       '\tconst SERVICE_UNAVAILABLE := "service-unavailable"',
     );
-    expect(gd).toContain("const PROTOCOL_VERSION := 3");
+    expect(gd).toContain("const PROTOCOL_VERSION := 4");
   });
 
   it("Swift leaves StoreBackend and StoreDegradedReason to Store.swift; the others emit them", () => {

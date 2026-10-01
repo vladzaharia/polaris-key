@@ -1,6 +1,6 @@
 ---
 title: "The wire contract"
-description: "PROTOCOL_VERSION 3 — the frozen JWS envelope, the four type-separated documents, and where the normative spec and its conformance corpus live."
+description: "PROTOCOL_VERSION 4 — the frozen JWS envelope and its strict verifier, the six type-separated documents, and where the normative spec and its conformance corpus live."
 sidebar:
   order: 5
   label: "The wire contract"
@@ -8,10 +8,11 @@ sidebar:
 
 Everything that crosses the wire or the disk boundary between the Polaris Key Worker and an
 SDK is one thing: a **compact EdDSA JWS**. A license document, a config document, a trust
-manifest and an offline activation bundle are the same envelope with different `typ` values
-and different payloads. Learn the envelope once and all four are the same artifact.
+manifest, an offline activation bundle, a channel feed and a release record are the same
+envelope with different `typ` values and different payloads. Learn the envelope once and all
+six are the same artifact.
 
-`PROTOCOL_VERSION` is **3**. It is exported from `@polaris-key/protocol/core` as
+`PROTOCOL_VERSION` is **4**. It is exported from `@polaris-key/protocol/core` as
 `core.PROTOCOL_VERSION`, and it is bumped on any wire-breaking change to a document shape or
 to the HTTP contract that carries one.
 
@@ -34,8 +35,13 @@ rule that makes that possible:
   because our platform is different" — that is precisely the divergence class the corpus
   exists to catch (spec §10).
 - **A change is a version step.** Altering a document shape or the transport around it means
-  bumping `PROTOCOL_VERSION` and regenerating `conformance/corpus/v2/`. Pre-launch there is
-  no dual-accept window: v3 replaced v2 in one movement (spec §9).
+  bumping `PROTOCOL_VERSION` and regenerating `conformance/corpus/v2/`. v4 added two documents
+  and one stricter verifier without changing the four v3 documents' bytes (spec §9).
+- **Every verifier is equally strict.** Ed25519 encodings (`S < L`, canonical and
+  non-small-order keys and `R`), the JSON (well-formed UTF-8, no BOM, no lone surrogate, no
+  U+0000 in a member name, numbers in binary64's range, at most 64 levels), and every integer
+  claim decided from its token, not from the number a parser made of it (spec §1.1, §1.2,
+  §3.1).
 - **A divergence gets a corpus case before it gets a fix.** The corpus is the only automated
   cross-language enforcement there is, so an observed difference that is fixed without being
   pinned will come back.
@@ -44,12 +50,14 @@ The parts that are frozen _forever_, not merely until the next version step, are
 fingerprint hash domains — renaming `pkey-hw` or `pkey-device:` would orphan every enrolled
 digest. See [Fingerprint constants](/docs/reference/fingerprint-constants/).
 
-## The four documents
+## The six documents
 
 Domain separation is by `typ` in the protected header. Unknown or **missing** `typ` is
 rejected outright; the v2 tolerance window for untyped artifacts is closed (spec §2). One
-product signing key signs all four kinds, so `typ` is the only thing standing between a trust
-manifest and the call site that expects a license document.
+product signing key signs five of the kinds, so `typ` is the only thing standing between a
+trust manifest and the call site that expects a license document. The sixth, the release
+record, is signed in CI by a **release key** that the app pins separately and that is never a
+product key.
 
 | `typ`              | Artifact                  | Where a client gets it                                                     | Payload cap |
 | ------------------ | ------------------------- | -------------------------------------------------------------------------- | ----------- |
@@ -57,12 +65,16 @@ manifest and the call site that expects a license document.
 | `pkey-config+jws`  | Config document           | `GET /<product>/config/document` (`application/jwt`)                       | 65 536 B    |
 | `pkey-trust+jws`   | Trust manifest            | `GET /<product>/.well-known/polaris-trust.jws` (`application/jose`)        | 65 536 B    |
 | `pkey-bundle+jws`  | Offline activation bundle | A file, hand-carried; minted by `POST /manage/api/products/<slug>/bundles` | 262 144 B   |
+| `pkey-feed+jws`    | Channel feed              | `GET /<product>/update/<channel>/feed.jws?platform=` (`application/jose`)  | 65 536 B    |
+| `pkey-release+jws` | Release record            | `GET /<product>/release/records/<sha256>` (`application/jose`)             | 65 536 B    |
 
 The license and config documents are fetched with `Authorization: Bearer pkeyt_…` and carry
 per-document `ETag`/`If-None-Match`. The trust manifest is unauthenticated — it publishes
 public keys, and it is verified against the caller's compiled-in pins, so serving it to
 anyone costs nothing. The bundle has no client-facing fetch endpoint at all: it is a file an
-operator carries to an air-gapped machine.
+operator carries to an air-gapped machine. The feed and record routes arrive with P3-03; a
+feed pins each record by the SHA-256 of its exact bytes, which a client checks before any
+signature work.
 
 The full route table, including every non-document surface, is at
 [Routes](/docs/reference/routes/).
@@ -111,17 +123,19 @@ is unchanged — which is the point of minting bundle documents in the ordinary 
 
 ## Version counters, and who owns them
 
-Six numbers travel in this system and they are deliberately independent. Confusing two of
+Eight numbers travel in this system and they are deliberately independent. Confusing two of
 them is the most common way to misread a document (spec §9).
 
 | Counter               | Value | Owner / meaning                                                                                              |
 | --------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
-| `PROTOCOL_VERSION`    | `3`   | The wire contract itself. `@polaris-key/protocol/core`.                                                      |
+| `PROTOCOL_VERSION`    | `4`   | The wire contract itself. `@polaris-key/protocol/core`.                                                      |
 | `CACHE_VERSION` (`v`) | `3`   | The on-disk cache record format. Any other value is discarded, never migrated.                               |
 | `corpusVersion`       | `2`   | The conformance corpus at `conformance/corpus/v2/`.                                                          |
 | `gateMatrixVersion`   | `2`   | The gate-transition matrix inside that corpus.                                                               |
 | `fingerprintVersion`  | `1`   | The hardware-fingerprint formulas. Unchanged since v1.                                                       |
-| `stageMatrixVersion`  | `1`   | The boot stage machine (client boot behaviour, outside this contract), owned by `client-core/src/stages.ts`. |
+| `stageMatrixVersion`  | `2`   | The boot stage machine (client boot behaviour, outside this contract), owned by `client-core/src/stages.ts`. |
+| `updateMatrixVersion` | `1`   | The update decision (client behaviour, outside this contract), `update-matrix.json`.                         |
+| `outletMatrixVersion` | `1`   | Outlet capabilities and detection (client behaviour), `outlet-matrix.json`.                                  |
 
 Two more `schemaVersion` fields exist and neither is a wire version:
 
@@ -152,16 +166,16 @@ deprecated. No verifier, signer or store has ever accepted them.
 The normative spec is repo-only by decision; it is not published on this site. If you are
 reading these pages with a checkout in front of you:
 
-| What                         | Path                                                                                                               |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| The normative spec           | `docs/security/WIRE-CONTRACT-V3.md`                                                                                |
-| Its predecessor (historical) | `docs/security/WIRE-CONTRACT-V2.md`                                                                                |
-| The conformance corpus       | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`               |
-| The corpus generator         | `tools/sign-corpus.ts`                                                                                             |
-| Frozen JWS encode/verify     | `packages/shared-jws/src/index.ts`                                                                                 |
-| Wire types and constants     | `packages/shared-protocol/src/` — `core.ts`, `license.ts`, `config.ts`, `trust.ts`                                 |
-| The reference client         | `packages/client-core/src/` — `verify.ts`, `trust.ts`, `bundle.ts`, `gate.ts`, `clock.ts`, `store.ts`, `stages.ts` |
-| The signer                   | `packages/worker/src/core/` — `signing.ts`, `trust.ts`, `bundles.ts`                                               |
+| What                          | Path                                                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The normative spec            | `docs/security/WIRE-CONTRACT-V4.md`                                                                                                                                                    |
+| Its predecessors (historical) | `docs/security/WIRE-CONTRACT-V3.md`, `docs/security/WIRE-CONTRACT-V2.md`                                                                                                               |
+| The conformance corpus        | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json` |
+| The corpus generator          | `tools/sign-corpus.ts`                                                                                                                                                                 |
+| Frozen JWS encode/verify      | `packages/shared-jws/src/index.ts`                                                                                                                                                     |
+| Wire types and constants      | `packages/shared-protocol/src/` — `core.ts`, `license.ts`, `config.ts`, `trust.ts`, `update.ts`, `release.ts`, `distribution.ts`                                                       |
+| The reference client          | `packages/client-core/src/` — `verify.ts`, `trust.ts`, `bundle.ts`, `gate.ts`, `clock.ts`, `store.ts`, `stages.ts`                                                                     |
+| The signer                    | `packages/worker/src/core/` — `signing.ts`, `trust.ts`, `bundles.ts`                                                                                                                   |
 
 Case counts for the corpus, generated from the corpus files themselves, are at
 [Conformance corpus v2](/docs/reference/corpus/).

@@ -474,6 +474,12 @@ function corpusInventory() {
   const configMatrix = JSON.parse(
     read("conformance", "corpus", "v2", "config-matrix.json"),
   );
+  const updateMatrix = JSON.parse(
+    read("conformance", "corpus", "v2", "update-matrix.json"),
+  );
+  const outletMatrix = JSON.parse(
+    read("conformance", "corpus", "v2", "outlet-matrix.json"),
+  );
   return page(
     "Conformance corpus v2",
     "The case families every SDK verifies identically, generated from the corpus files themselves.",
@@ -487,7 +493,12 @@ over the source and both generator-owned mirrors (the Swift test resources and t
 only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`,
 \`stageMatrixVersion ${stages.stageMatrixVersion}\`, \`headersVersion ${headers.headersVersion}\`,
-\`configMatrixVersion ${configMatrix.configMatrixVersion}\`.`,
+\`configMatrixVersion ${configMatrix.configMatrixVersion}\`,
+\`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`.
+Wire contract v4 (\`docs/security/WIRE-CONTRACT-V4.md\`) adds the \`feedCases\` and
+\`releaseRecordCases\` families, the strict-verifier \`jwsCases\`, a \`nonWireIntegers\` member
+beside \`expect\` on every case whose payload holds a number that cannot be a wire integer, and the
+two decision tables below.`,
     [
       "## Case families (`cases.json`)",
       "",
@@ -499,9 +510,10 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
       "",
       `Source-rule sections (WIRE-CONTRACT-V3 §6.1): \`windowsCim\` ${fp.windowsCim?.length ?? "?"}, \`linuxAnchor\` ${fp.linuxAnchor?.length ?? "?"}, \`ramBuckets\` ${fp.ramBuckets?.length ?? "?"}, plus the pinned \`windowsCimCommand\`.`,
       "",
-      `## Stage matrix (\`stage-matrix.json\`): ${stages.rows?.length ?? "?"} rows, ${stages.guardCases?.length ?? "?"} guard cases`,
+      `## Stage matrix (\`stage-matrix.json\`): ${stages.rows?.length ?? "?"} rows, ${stages.guardCases?.length ?? "?"} guard cases, ${stages.confirmCases?.length ?? 0} confirm cases`,
       "",
-      "Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach.",
+      "Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach. Version 2's confirm cases pin `bootConfirmation(outcome)`, with `bootOkSeconds` " +
+        `${stages.bootOkSeconds ?? "?"}.`,
       "",
       `## Header values (\`headers.json\`): ${headers.platformCases?.length ?? "?"} platform and ${headers.archCases?.length ?? "?"} arch spellings`,
       "",
@@ -510,6 +522,14 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
       `## Config resolution (\`config-matrix.json\`): ${configMatrix.resolveCases?.length ?? "?"} resolve, ${configMatrix.envValueCases?.length ?? "?"} environment-value and ${configMatrix.listCases?.length ?? "?"} list cases`,
       "",
       "WIRE-CONTRACT-V3 §2.2.1: the precedence, the variable name, the strict environment value and the user-visible list. React runs the no-environment answers.",
+      "",
+      `## Update decision (\`update-matrix.json\`): ${updateMatrix.versionCases?.length ?? "?"} version, ${updateMatrix.capabilityCases?.length ?? "?"} capability and ${updateMatrix.outletCases?.length ?? "?"} outlet cases, ${updateMatrix.bucketVectors?.length ?? "?"} bucket vectors, ${updateMatrix.rows?.length ?? "?"} decision rows`,
+      "",
+      "WIRE-CONTRACT-V4 §11.1, client behaviour beside the contract: `compareVersions`, `effectiveCapabilities`, `resolveUpdateOutlet`, `rolloutBucket` and `decideUpdate` with its `bootDecision`. The generator recomputes every case and row with its own reference implementation.",
+      "",
+      `## Outlets (\`outlet-matrix.json\`): ${Object.keys(outletMatrix.kinds ?? {}).length} kinds (with \`unknown\`), ${outletMatrix.signals?.length ?? "?"} signals, ${outletMatrix.rows?.length ?? "?"} detection rows`,
+      "",
+      "WIRE-CONTRACT-V4 §11.2: the capability defaults per outlet kind and their narrowing, the listing-URL prefixes, and `detectOutlet`. The generator recomputes every detection row.",
     ].join("\n"),
   );
 }

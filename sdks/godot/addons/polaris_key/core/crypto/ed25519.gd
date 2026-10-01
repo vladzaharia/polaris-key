@@ -1295,3 +1295,41 @@ static func prepare_key(pk: PackedByteArray) -> Array:
 	if not ge_frombytes_negate_vartime(A, pk):
 		return []
 	return [pk.duplicate(), A, odd_multiples(A)]
+
+
+# ---- P3-02: WIRE-CONTRACT-V4 §1.1, byte checks on the key A and on R before any curve math.
+
+## The eight small-order point encodings (order 1, 2, the two of order 4, the four of order 8).
+const SMALL_ORDER_ENCODINGS := [
+	"0100000000000000000000000000000000000000000000000000000000000000",
+	"ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+	"0000000000000000000000000000000000000000000000000000000000000000",
+	"0000000000000000000000000000000000000000000000000000000000000080",
+	"26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+	"26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
+	"c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+	"c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",
+]
+## x = 0 with the sign bit set: no point (check 2). Godot's decoder read the first as the identity.
+const NEGATIVE_ZERO_ENCODINGS := [
+	"0100000000000000000000000000000000000000000000000000000000000080",
+	"ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+]
+
+
+## V4 §1.1 checks 1–3 on the trusted key `pk` and the signature `R ‖ S`: `S < L`, canonical
+## encodings (a `y` below p, and not x = 0 with the sign bit), and neither `A` nor `R` of small
+## order. Byte comparisons only; `verify` keeps its own `S` and `y` checks as a second line.
+static func v4_prechecks(pk: PackedByteArray, sig: PackedByteArray) -> bool:
+	if pk.size() != 32 or sig.size() != 64:
+		return false
+	if not s_is_canonical(sig):
+		return false
+	var r := sig.slice(0, 32)
+	for enc in [pk, r]:
+		if not y_is_canonical(enc):
+			return false
+		var h: String = (enc as PackedByteArray).hex_encode()
+		if NEGATIVE_ZERO_ENCODINGS.has(h) or SMALL_ORDER_ENCODINGS.has(h):
+			return false
+	return true

@@ -1061,6 +1061,59 @@ flight across the deploy. Confirmation on both routes is one function: the Fetch
 `no-store`. The confirmation
 page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
 
+### Release keys, the strict verifier and the signed feed (wire contract v4, P3-02)
+
+Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds two signed documents and a second
+signer. P3-02 lands the contract, the types, the corpus and the verifier fixes in every SDK; the
+Worker routes, ingest and composer arrive with P3-03, and the Worker's write checks and signer
+guard with P3-12, each of which extends this section.
+
+- **A third trust input: the pinned release keys.** A release record (`pkey-release+jws`) is
+  signed in CI by a release key and verified **only** against the release keys the app pins
+  (`pinnedReleaseKeys`), never against, merged with or extended from the product trust set. The
+  Worker never holds a release key's private half, so it cannot mint a record (the two-signer
+  model): a compromised Worker or KEK can choose among CI-signed releases, but cannot ship bytes
+  no release key signed, because every SDK verifies the record's signature, and then the
+  payload's `size` and SHA-256 against the record, before staging.
+- **Release keys are never product keys.** If a product key were pinned or declared as a release
+  key, the Worker would hold the private half of a "release key" and the two-signer property
+  would be gone without a trace. Three checks keep them apart: `verifyReleaseRecord` refuses at
+  step `jws` when the selected release key's bytes are also in the effective product trust set
+  (`record-release-key-is-product-key`); every SDK refuses options whose `pinnedReleaseKeys` and
+  trust pins share a key (`invalid-options`); and P3-03's `.pkey/release` sync refuses a declared
+  release key equal to any current or retired product signing key
+  (`release_key_is_product_key`).
+- **Hash before signature.** A feed pins each record by the SHA-256 of its exact compact JWS. A
+  client refuses a body over 88 844 bytes or with a non-ASCII byte without hashing it, and
+  checks the hash before any Ed25519 work, so substituting a record is caught by the cheapest
+  check and no attacker-chosen body reaches the signature code.
+- **One strict verifier for all six `typ`s.** Every SDK applies Ed25519 strictness (`S < L`,
+  canonical and non-small-order `A` and `R`, cofactorless equation) and an I-JSON profile
+  (well-formed UTF-8, no BOM, no lone surrogate, no U+0000 in a member name, numbers inside
+  binary64's range, at most 64 levels) before trusting a byte, and decides every integer claim
+  from its token. Before v4 the four backends disagreed on 25 such vectors (OpenSSL accepted
+  non-canonical keys CryptoKit refused, Python accepted `NaN`, Swift accepted a trailing comma
+  and decided a mistyped bundle member at the wrong step, Godot read `1e4294967297` as 10), and
+  all four accepted a small-order `R`. A divergence between verifiers is a forgery that works
+  against some installs; the corpus now pins the strict verdict in every language. P3-12 makes
+  the Worker unable to sign anything the strict verifier refuses. The verifier's work and memory
+  are linear in the capped payload: each SDK holds the non-wire-integer pointers as a tree of
+  reference tokens and builds full pointer strings only when a caller lists them, because one
+  pointer per number grows with the square of the payload (a 64 KiB document of long member
+  names over fractional numbers cost 0.25 to 1.5 GB). Each of shared-jws, Swift and Godot has a
+  regression test on that document.
+- **The canonical channel and its residual.** A feed's `channel` claim is the canonical channel
+  the Worker resolved, which keys the client's `seq` floor; a `latest` claim is refused, and no
+  SDK resolves an alias itself. One residual is accepted (plan decision 4): a request for
+  `staging` binds to `staging` or to `beta`, so a network attacker can answer it with a genuine,
+  unexpired `beta` feed of the same product. A `staging` grant already covers `beta`, and that
+  feed is checked against `beta`'s own floor; committing it removes a manual `staging` entry, so
+  a later replay of an older `staging` feed meets no floor, but such a feed must still be
+  unexpired, and the attacker could as well have withheld the answer.
+- **Feeds do not move the clock floor**, and their freshness is judged against the effective
+  clock, so winding the system clock back cannot revive an expired feed. A stale feed freezes
+  updates (`none {stale}`); it never stops play.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -1279,6 +1332,15 @@ Poison the release channel
 │   ├── edit `.pkey/release` to loosen the policy  (only workflow/environment are fields; an operator-claimed policy ignores the manifest)
 │   ├── steal a minted `pkeyci_` token from a job log  (30 min, one product, scoped; static tokens ≤ 90 days, revocable)
 │   └── copy another product's gated blob into the ticket prefix to earn a ref  (refused: credentials grant PutObject/HeadObject on one prefix only; promote refuses another product's staging key)
+├── Hold the product key: a compromised Worker or KEK (wire contract v4's two-signer model, P3-02)
+│   ├── CAN withhold an update (serve no target), or delay one (stop re-signing: installs freeze at expiresAt, `none {stale}`)
+│   ├── CAN re-target a channel among CI-signed releases newer than what is installed, halt or re-bucket a rollout, narrow capabilities, or lower a floor
+│   ├── CAN raise a floor: every install of that platform below it gets a prompt it cannot dismiss, including installs whose outlet has nothing newer (`blocked app-floor`), but play continues — no v4 answer maps to `required`, and License's compatibility window stays the one tool that blocks
+│   ├── CAN point a store prompt at another listing on the same store (the listing-URL prefixes fix the store, not the app)
+│   ├── CAN fast-forward `seq` to 2^53 − 1: installs that fetch that feed refuse the recovered Worker's lower `seq` and freeze once it is stale — until the operator runs `feed:seq-ceiling` for the product, which sets its ceiling flag (every `seq` row created later starts at the ceiling, so channels the attacker answered first, a manual or `pr-<n>` channel with no row, are covered), raises every existing row and drops the stored documents; the recovered Worker then signs every channel at the ceiling with a newer `issuedAt`, which clients accept. The freeze ends with the recovery, not with a client release
+│   ├── CANNOT ship bytes no release key signed (records verify against pinned release keys only; the payload's size and SHA-256 are checked against the record)
+│   ├── CANNOT downgrade (no answer offers a version below the installed one), widen a capability (the feed only narrows the per-kind defaults), or send a prompt outside the listing-URL prefixes
+│   └── CANNOT stop an install from running (the licence documents it also signs are AT-1's subject)
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
 ```
 

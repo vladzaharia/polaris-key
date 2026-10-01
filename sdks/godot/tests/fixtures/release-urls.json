@@ -71,7 +71,7 @@
   ],
   "discovery": {
     "version": 2,
-    "protocolVersion": 3,
+    "protocolVersion": 4,
     "schemaVersion": 4,
     "product": "diceroll",
     "slug": "diceroll",

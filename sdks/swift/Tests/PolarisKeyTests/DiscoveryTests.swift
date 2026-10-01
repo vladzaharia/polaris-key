@@ -32,7 +32,7 @@ final class DiscoveryTests: XCTestCase {
     /// The shape the Worker actually emits, reduced to what the SDK consumes.
     private let full = #"""
         {
-          "version": 2, "protocolVersion": 3, "product": "djdl", "slug": "djdl",
+          "version": 2, "protocolVersion": 4, "product": "djdl", "slug": "djdl",
           "name": "DJDL", "baseUrl": "https://key.example",
           "core": {
             "registration": "open",
@@ -68,7 +68,7 @@ final class DiscoveryTests: XCTestCase {
         guard let doc = document(parse(full)) else { return XCTFail("should parse") }
         XCTAssertEqual(doc.product, "djdl")
         XCTAssertEqual(doc.name, "DJDL")
-        XCTAssertEqual(doc.protocolVersion, 3)
+        XCTAssertEqual(doc.protocolVersion, 4)
         XCTAssertEqual(doc.core?.registration, .open)
         XCTAssertEqual(doc.core?.compatMin, "1.0.0")
         XCTAssertEqual(doc.core?.compatMax, "3.0.0")

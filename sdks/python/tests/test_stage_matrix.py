@@ -23,6 +23,9 @@ from typing import Any, Dict, List
 import pytest
 
 from polaris_key.core.stages import (
+    BOOT_CONFIRMATIONS,
+    BOOT_OK_SECONDS,
+    boot_confirmation,
     BOOT_EMIT_TYPES,
     BOOT_EVENT_TYPES,
     BOOT_GUARD_ACTIONS,
@@ -72,8 +75,9 @@ def _probe(state: BootState, where: str) -> int:
 
 def test_version_and_runtime() -> None:
     print(f"stage-matrix runner on Python {platform.python_version()}")
-    assert _MATRIX["stageMatrixVersion"] == 1
+    assert _MATRIX["stageMatrixVersion"] == 2
     assert _MATRIX["maxFailedBoots"] == MAX_FAILED_BOOTS
+    assert _MATRIX["bootOkSeconds"] == BOOT_OK_SECONDS
 
 
 def test_vocabulary_matches_in_order() -> None:
@@ -83,6 +87,7 @@ def test_vocabulary_matches_in_order() -> None:
         "events": list(BOOT_EVENT_TYPES),
         "emits": list(BOOT_EMIT_TYPES),
         "guardActions": list(BOOT_GUARD_ACTIONS),
+        "confirmations": list(BOOT_CONFIRMATIONS),
     }
 
 
@@ -114,3 +119,15 @@ def test_boot_guard_case(case: Dict[str, Any]) -> None:
     inp = case["input"]
     action = boot_guard_action(staged=inp["staged"], failed_boots=inp["failedBoots"])
     assert action == case["expect"]["action"]
+
+
+# Version 2 (plans/P3-01.md §2.10): boot confirmation, one case per outcome.
+def test_one_confirm_case_per_outcome() -> None:
+    assert sorted(c["outcome"] for c in _MATRIX["confirmCases"]) == sorted(BOOT_OUTCOMES)
+
+
+@pytest.mark.parametrize(
+    "case", _MATRIX["confirmCases"], ids=[c["outcome"] for c in _MATRIX["confirmCases"]]
+)
+def test_confirm_case(case: Dict[str, Any]) -> None:
+    assert boot_confirmation(case["outcome"]) == case["expect"]

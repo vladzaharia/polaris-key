@@ -37,7 +37,7 @@
               },
               "body": {
                 "version": 2,
-                "protocolVersion": 3,
+                "protocolVersion": 4,
                 "schemaVersion": 1,
                 "product": "djdl",
                 "slug": "djdl",
