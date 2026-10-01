@@ -45,7 +45,8 @@ ${body}
 const escapeCell = (s) => String(s).replace(/\|/g, "\\|").replace(/\n/g, " ");
 // MDX evaluates bare {…} in prose as JSX — brace-escape any prose cell that can carry
 // template fragments (inside backticked code spans braces are literal and need no escape).
-const mdxProse = (s) => String(s).replace(/([{}])/g, "\\$1");
+// `<` too: a message naming a placeholder (`blobs/sha256/<sha256>`) would open a JSX tag.
+const mdxProse = (s) => String(s).replace(/([{}<])/g, "\\$1");
 const table = (headers, rows) =>
   [
     `| ${headers.join(" | ")} |`,
@@ -89,6 +90,7 @@ function manifestValidationCodes() {
     return true;
   });
   unique.sort((a, b) => a[0].localeCompare(b[0]) || a[3].localeCompare(b[3]));
+  const descriptor = releaseDescriptorCodes();
   return page(
     "Manifest validation codes",
     "Every error and warning validateManifestDocuments and validateIngestDocuments can emit, extracted from the validator source.",
@@ -98,8 +100,41 @@ codes with their JSON-pointer paths. ${unique.length} distinct emit sites.
 
 Interpolated segments (\`\${…}\`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.`,
-    table(["Code", "Severity", "Document", "Path", "Message"], unique),
+    [
+      table(["Code", "Severity", "Document", "Path", "Message"], unique),
+      "",
+      "## Release descriptor codes",
+      "",
+      `\`validateReleaseDescriptor\` (\`@polaris-key/manifest\`, P2-04) checks a release descriptor
+(\`pkey-release.json\`) against its own shape and the product's declared artifact map. Every
+problem is an error; the Worker reports them under the ingest refusal reason
+\`invalid_descriptor\`. ${descriptor.length} distinct emit sites.`,
+      "",
+      table(["Code", "Path", "Message"], descriptor),
+    ].join("\n"),
   );
+}
+
+/** `err(<path>, "<code>", <message>)` calls in the release-descriptor validator. */
+function releaseDescriptorCodes() {
+  const source = read("packages", "shared-manifest", "src", "descriptor.ts");
+  const errRe =
+    /err\(\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z0-9_]+)",\s*(`[^`]*`|"(?:[^"\\]|\\.)*")/g;
+  const rows = [];
+  const seen = new Set();
+  for (const m of source.matchAll(errRe)) {
+    const row = [
+      `\`${m[2]}\``,
+      `\`${m[1].slice(1, -1)}\``,
+      mdxProse(m[3].slice(1, -1).replace(/\\(["\\])/g, "$1")),
+    ];
+    const key = row.join("\0");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(row);
+  }
+  rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+  return rows;
 }
 
 // ── 2. ConfigEntry field reference ─────────────────────────────────────────────

@@ -79,6 +79,7 @@ class ErrorCode:
     DOWNLOAD_AUTH_REQUIRED: Final = "download_auth_required"
     UPSTREAM_RATE_LIMITED: Final = "upstream_rate_limited"
     SERVER_MISCONFIGURED: Final = "server_misconfigured"
+    INTERNAL_ERROR: Final = "internal_error"
     SERVICE_UNAVAILABLE: Final = "service-unavailable"
     SERVICE_DISABLED: Final = "service-disabled"
     LOCAL_ONLY: Final = "local-only"
@@ -156,6 +157,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "download_auth_required",
     "upstream_rate_limited",
     "server_misconfigured",
+    "internal_error",
     "service-unavailable",
     "service-disabled",
     "local-only",
@@ -235,6 +237,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "download_auth_required": "wire",
         "upstream_rate_limited": "wire",
         "server_misconfigured": "wire",
+        "internal_error": "wire",
         "service-unavailable": "client",
         "service-disabled": "client",
         "local-only": "client",

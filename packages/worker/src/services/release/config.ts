@@ -218,7 +218,11 @@ export type ReleaseKind =
   | "dmg"
   | "version"
   | "changelog"
-  | "install";
+  | "install"
+  /** P2-05's three byte routes: a declared build, an exact file, a content-addressed blob. */
+  | "build"
+  | "file"
+  | "blob";
 
 /** Which access mode governs a surface: metadata for the informational reads, else artifacts. */
 export function accessModeFor(

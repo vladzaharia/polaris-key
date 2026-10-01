@@ -1365,17 +1365,18 @@ describe("R10-05 public release surface no longer amplifies into GitHub", () => 
 
   it("CONTRAST: with no Cache API bound, every request still reaches GitHub", async () => {
     // Pins that the previous test measures the CACHE and not some other memoisation, and
-    // documents the pre-fix behaviour exactly.
+    // documents the pre-fix behaviour exactly. P2-05 added a second, deliberate memoisation —
+    // the KV resolution cache (`ghCache.ts`, tested in `test/releaseCache.test.ts`) — so each
+    // request here gets a fresh KV: with neither cache, every request reaches GitHub.
     const db = makeTestDb();
     await seedReleaseCfg(db);
-    const env = releaseEnv(new KvMock());
     const { fetchImpl, calls } = countingReleaseFetch(
       releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]),
     );
     for (let i = 0; i < 5; i++) {
       await handleRelease(
         mkReq("GET", {}),
-        env,
+        releaseEnv(new KvMock()),
         db,
         makeReleaseProduct(),
         "version",

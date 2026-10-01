@@ -132,8 +132,75 @@ describe("bytes host: configuration", () => {
     }
   });
 
-  it("P2-01 registers no byte route: the allowlist is empty until P2-05/P2b-04", () => {
-    expect(BYTE_ROUTES).toEqual([]);
+  it("P2-05 registers exactly Release's three byte routes, each owned by the release service", () => {
+    expect(BYTE_ROUTES.map((r) => [r.name, r.service])).toEqual([
+      ["release.build", "release"],
+      ["release.file", "release"],
+      ["release.blob", "release"],
+    ]);
+    const hex = "a".repeat(64);
+    expect(BYTE_ROUTES[0]!.match("/djdl/release/builds/stable/macos")).toEqual({
+      product: "djdl",
+      params: { kind: "build", selector: "stable", buildId: "macos" },
+    });
+    expect(BYTE_ROUTES[1]!.match("/djdl/release/files/v1.2.3/a.zip")).toEqual({
+      product: "djdl",
+      params: { kind: "file", releaseId: "v1.2.3", name: "a.zip" },
+    });
+    expect(BYTE_ROUTES[2]!.match(`/djdl/release/blobs/sha256/${hex}`)).toEqual({
+      product: "djdl",
+      params: { kind: "blob", sha256: hex },
+    });
+    // Nothing else on the host: not the legacy download, not a short or bad hash.
+    for (const path of [
+      "/djdl/release/dl/latest/djdl-arm64",
+      `/djdl/release/blobs/sha256/${"A".repeat(64)}`,
+      "/djdl/release/blobs/sha256/abc",
+      "/djdl/release/builds/stable",
+      "/DJDL/release/builds/stable/macos",
+      "/djdl/update/appcast.xml",
+    ]) {
+      expect(
+        BYTE_ROUTES.map((r) => r.match(path)).filter(Boolean),
+        path,
+      ).toEqual([]);
+    }
+  });
+
+  /**
+   * The BLOB_ORIGIN guard (P2-05). Two misconfigurations break host isolation silently:
+   * BLOB_ORIGIN equal to the console's hostname (every console path 404s), and a dl* route
+   * deployed without BLOB_ORIGIN (the full console then answers on the same-site sibling). The
+   * committed configuration may contain neither, in any environment.
+   */
+  it("no environment points BLOB_ORIGIN at a console host or deploys a dl route without it", () => {
+    const toml = readFileSync(join(HERE, "..", "wrangler.toml"), "utf8");
+    const blocks = toml.split(/\n(?=\[env\.[a-z]+\]\n)/).slice(1);
+    expect(blocks.length).toBeGreaterThanOrEqual(3);
+    for (const block of blocks) {
+      const name = /^\[env\.([a-z]+)\]/.exec(block)![1]!;
+      const patterns = [...block.matchAll(/pattern = "([^"]+)"/g)].map(
+        (m) => m[1]!,
+      );
+      const origin = /BLOB_ORIGIN = "([^"]+)"/.exec(block)?.[1];
+      const dlHosts = patterns.filter((p) => /^dl[.-]/.test(p));
+      const consoleHosts = patterns.filter((p) => !/^dl[.-]/.test(p));
+      if (dlHosts.length > 0) {
+        expect(origin, `${name}: a dl route needs BLOB_ORIGIN`).toBeDefined();
+      }
+      if (origin !== undefined) {
+        const host = bytesHostname({ BLOB_ORIGIN: origin });
+        expect(host, `${name}: BLOB_ORIGIN must parse`).not.toBeNull();
+        expect(
+          consoleHosts,
+          `${name}: BLOB_ORIGIN is a console host`,
+        ).not.toContain(host);
+        expect(
+          dlHosts,
+          `${name}: BLOB_ORIGIN names its own dl route`,
+        ).toContain(host);
+      }
+    }
   });
 });
 
@@ -677,6 +744,67 @@ describe("bytes host: dispatch", () => {
     for (const [k] of res.headers)
       expect(k.startsWith("access-control-"), k).toBe(false);
     expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+  });
+
+  it("a throw inside a byte route answers a hardened JSON 500, not the platform's HTML error (P2-05)", async () => {
+    const boom: ByteRoute = {
+      ...echo(null, octet),
+      handle: async () => {
+        throw new Error("route exploded with a secret-looking message");
+      },
+    };
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      db,
+      [boom],
+    );
+    expect(res.status).toBe(500);
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expect(await res.json()).toEqual({ error: "internal_error" });
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    expect(res.headers.get("content-security-policy")).toMatch(/\bsandbox\b/);
+  });
+
+  it("a throw while loading the product answers the same hardened JSON 500 (P2-05)", async () => {
+    const broken = {
+      ...db,
+      first: async () => {
+        throw new Error("D1 is down");
+      },
+    } as unknown as Db;
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      broken,
+      [echo("bytes", octet)],
+    );
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "internal_error" });
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    expect(seen).toHaveLength(0);
+  });
+
+  it("a byte route is handed the product WITHOUT its signing key (P2-05)", async () => {
+    let handed: unknown = null;
+    const peek: ByteRoute = {
+      ...echo("bytes", octet),
+      handle: async (_req, ctx) => {
+        handed = ctx.product;
+        return new Response("bytes", { headers: octet });
+      },
+    };
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      db,
+      [peek],
+    );
+    expect(res.status).toBe(200);
+    expect(handed).toMatchObject({ slug: SLUG });
+    expect(handed).not.toHaveProperty("signingKeyPem");
   });
 });
 

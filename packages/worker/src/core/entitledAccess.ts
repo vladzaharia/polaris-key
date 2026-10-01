@@ -38,7 +38,7 @@ import type { AllowedRange } from "@polaris-key/protocol";
 import { channelEntitled } from "./channels.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import type { Product } from "./products.js";
+import type { ProductPublic } from "./products.js";
 import type { DeviceRow, LicenseRow } from "./data.js";
 import {
   licenseUsable,
@@ -66,7 +66,7 @@ import {
 export async function usableLicensedDevice(
   env: Env,
   db: Db,
-  product: Product,
+  product: ProductPublic,
   token: string | null,
   now: number,
 ): Promise<LicensedDeviceToken | { error: "unauthorized" }> {
@@ -133,7 +133,7 @@ export type EntitledDenial =
 export async function entitledAccessCheck(
   env: Env,
   db: Db,
-  product: Product,
+  product: ProductPublic,
   token: string | null,
   selector: EntitledSelector,
   now: number,

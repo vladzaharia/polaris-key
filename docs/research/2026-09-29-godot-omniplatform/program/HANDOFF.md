@@ -14,6 +14,25 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
+## BLOCKING NOW: GitHub Actions creates no runs (since 2026-10-01 07:55 UTC)
+
+- [ ] **Check the account's Actions minutes / spending limit (private repo).** Since ~07:55 UTC no
+      workflow run has been created for any push: `main` pushes a2940806 and 1d29ffd5 got no CI run,
+      and tags `v0.5.1` / `v0.5.2` (both on a2940806) got no Deploy run. githubstatus.com reports
+      Actions operational; the `gh` login lacks the `user` scope to read billing. Once runs start
+      again, re-run the deploy: push a fresh tag on current `main` (or re-run the `v0.5.2` push).
+      Production is still **v0.4.0**; `v0.5.0` stopped at `pnpm test` (admin identity-test race,
+      fixed in a2940806) and never deployed.
+
+## Before djdl's next `.pkey` push (from v0.5.0)
+
+- [ ] **Add `"distribution": { "enabled": true }` to `modules` in `vladzaharia/djdl`'s
+      `.pkey/product.json`.** P2b-01's new coherence rule (`update_requires_distribution`) rejects
+      djdl's current manifest (`update` on, no `distribution`). Migration `0033` already gave the
+      stored row `distribution`, so djdl keeps serving; only its next manifest push would be refused
+      (visible in the console) until this line is added. Also add `beta` to the `channels` enum in
+      djdl's `.pkey/schema` (P0-04; optional, blocks nothing).
+
 ## Before the first production deploy
 
 ### P0-08 (unknown-slug tolerance)
