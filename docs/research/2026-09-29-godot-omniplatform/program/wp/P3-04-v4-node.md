@@ -130,17 +130,17 @@ conformance runner sections. P3-05 is a graph dependency.
 
 ## Acceptance criteria
 
-- [ ] `client.update.decide()` returns the plan's decision shape; every `update-matrix.json` row
+- [x] `client.update.decide()` returns the plan's decision shape; every `update-matrix.json` row
       passes through the projection suite.
-- [ ] Every `feedCases` and `releaseRecordCases` vector gives the expected verdict through
+- [x] Every `feedCases` and `releaseRecordCases` vector gives the expected verdict through
       `UpdateClient` (fake fetch).
-- [ ] After a `FileStore` reload, a feed with a lower `seq` is refused, and the floor came from a
+- [x] After a `FileStore` reload, a feed with a lower `seq` is refused, and the floor came from a
       re-verified cached JWS rather than a stored number.
-- [ ] A record whose SHA-256 differs from the feed's pin is refused before signature
+- [x] A record whose SHA-256 differs from the feed's pin is refused before signature
       verification; a record signed by a key outside `pinnedReleaseKeys` is refused.
-- [ ] `check()` and `appcastUrl()` behave as before (existing tests unchanged).
-- [ ] The green gate passes (`AGENTS.md`).
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] `check()` and `appcastUrl()` behave as before (existing tests unchanged).
+- [x] The green gate passes (`AGENTS.md`).
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
 ## Corrections from the implementation
 
