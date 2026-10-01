@@ -464,9 +464,11 @@ function stmtUpsertMetadata(
  * How the sync classifies a release's files (P2-04):
  *
  *   `sniffed`    no artifact map: name sniffing, exactly as before P2-04. GitHub-derived columns
- *                only; `sha256`, `storage_key`, `metadata_json`, `build_id` and
- *                `locations_json` are inserted as found (NULL) and never updated; `role` is
- *                filled when NULL and never overwritten.
+ *                only; `sha256`, `storage_key`, `metadata_json` and `locations_json` are
+ *                inserted as found (NULL) and never updated; `role` is filled when NULL and never
+ *                overwritten. The one addition: a file a REMOVED map had put in a build
+ *                (`build_id` set on a release with no descriptor) leaves it, and its role is
+ *                re-sniffed — a no-op for every release that never had a map.
  *   `mapped`     the product declares a map and the release has no descriptor: the map is the
  *                truth, so `build_id`, `role`, `platform` and `arch` follow it on every sync, and
  *                `sha256` is filled from GitHub's digest when it is still NULL.
@@ -484,7 +486,10 @@ const ARTIFACT_CONFLICT_SET: Record<ArtifactSyncMode, string> = {
             size_bytes = excluded.size_bytes,
             source_url = excluded.source_url,
             access = excluded.access,
-            role = COALESCE(release_artifacts.role, excluded.role)`,
+            role = CASE WHEN release_artifacts.build_id IS NULL
+                        THEN COALESCE(release_artifacts.role, excluded.role)
+                        ELSE excluded.role END,
+            build_id = NULL`,
   mapped: `name = excluded.name,
             kind = excluded.kind,
             platform = excluded.platform,
