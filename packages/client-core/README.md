@@ -45,19 +45,20 @@ verification primitives with no transport or store attached.
 Each module is also its own entry point, for a host that wants a single concern without
 pulling the barrel (`sideEffects: false`, so an unused subpath costs nothing either way):
 
-| Subpath                           | Exports                                                                         | What it does                                                                                 |
-| --------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `@polaris-key/client-core`        | everything below                                                                | the barrel                                                                                   |
-| `@polaris-key/client-core/verify` | `verifyDoc`, `verifyLicenseDoc`, `verifyConfigDoc`, `LICENSE_DOC`, `CONFIG_DOC` | JWS verification + per-document claim validation                                             |
-| `@polaris-key/client-core/trust`  | `verifyTrustManifest`, `mergeTrust`                                             | trust-manifest verification and the two-tier pinned-then-discovered merge                    |
-| `@polaris-key/client-core/bundle` | `verifyBundle`, `inspectBundle`, `MAX_BUNDLE_BYTES`                             | offline activation bundle verification, all-or-nothing, in wire-contract §7's numbered order |
-| `@polaris-key/client-core/gate`   | `licenseState`, `isUsable`                                                      | the license gate state machine over a cached document + the clock floor                      |
-| `@polaris-key/client-core/config` | `resolveValue`, `resolveSource`, `listUserEntries`                              | layered config resolution                                                                    |
-| `@polaris-key/client-core/semver` | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`               | client-side semver + channel helpers, mirroring the Worker's `gate.ts`                       |
-| `@polaris-key/client-core/claims` | `CLOCK_SKEW_SECONDS`, `MAX_GRACE_SECONDS`, `REFRESH_MARGIN_SECONDS`             | the shared claim-validation constants every implementation must agree on                     |
-| `@polaris-key/client-core/clock`  | `highWaterMark`, `effectiveNow`                                                 | the monotonic clock floor: `max(issuedAt)` over every re-verified artifact                   |
-| `@polaris-key/client-core/errors` | `PolarisError`                                                                  | the one error type, carrying the server's machine-readable code                              |
-| `@polaris-key/client-core/store`  | `CACHE_VERSION`, `Store`, `CacheRecordV3`                                       | the persistence _contract_ (types only) — no concrete store lives here                       |
+| Subpath                           | Exports                                                                                                                   | What it does                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `@polaris-key/client-core`        | everything below                                                                                                          | the barrel                                                                                   |
+| `@polaris-key/client-core/verify` | `verifyDoc`, `verifyLicenseDoc`, `verifyConfigDoc`, `LICENSE_DOC`, `CONFIG_DOC`                                           | JWS verification + per-document claim validation                                             |
+| `@polaris-key/client-core/trust`  | `verifyTrustManifest`, `mergeTrust`                                                                                       | trust-manifest verification and the two-tier pinned-then-discovered merge                    |
+| `@polaris-key/client-core/bundle` | `verifyBundle`, `inspectBundle`, `MAX_BUNDLE_BYTES`                                                                       | offline activation bundle verification, all-or-nothing, in wire-contract §7's numbered order |
+| `@polaris-key/client-core/gate`   | `licenseState`, `isUsable`                                                                                                | the license gate state machine over a cached document + the clock floor                      |
+| `@polaris-key/client-core/config` | `resolveValue`, `resolveSource`, `listUserEntries`                                                                        | layered config resolution                                                                    |
+| `@polaris-key/client-core/semver` | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                         | client-side semver + channel helpers, mirroring the Worker's `gate.ts`                       |
+| `@polaris-key/client-core/claims` | `CLOCK_SKEW_SECONDS`, `MAX_GRACE_SECONDS`, `REFRESH_MARGIN_SECONDS`                                                       | the shared claim-validation constants every implementation must agree on                     |
+| `@polaris-key/client-core/clock`  | `highWaterMark`, `effectiveNow`                                                                                           | the monotonic clock floor: `max(issuedAt)` over every re-verified artifact                   |
+| `@polaris-key/client-core/errors` | `PolarisError`                                                                                                            | the one error type, carrying the server's machine-readable code                              |
+| `@polaris-key/client-core/store`  | `CACHE_VERSION`, `Store`, `CacheRecordV3`                                                                                 | the persistence _contract_ (types only) — no concrete store lives here                       |
+| `@polaris-key/client-core/stages` | `initialBootState`, `bootTransition`, `bootGuardAction`, `MAX_FAILED_BOOTS`, `BOOT_STAGES` and the other vocabulary lists | the boot stage machine every renderer drives, and the boot guard's launch decision           |
 
 ## The pieces
 
@@ -149,6 +150,49 @@ all fail closed by returning `null` (or a tagged refusal), so a call site that f
 byte for byte (pinned by the conformance corpus), so a client-side "is this build too old"
 check and the server's build-gate enforcement can never drift into disagreeing about the same
 version string.
+
+### Stages (`stages.ts`)
+
+The boot protocol as one pure reducer: `bootTransition(state, event) → { state, emits }` over
+`initialBootState({ allowOffline, allowGrace, requiredPacks })`. Every renderer (Godot's
+`PKeyBoot`, a React or SwiftUI view, a terminal) does the work of each stage, reports the result
+as an event, and draws only what the machine emits. The normal path is
+`idle → shell → guard → sync → gate → decide → fetch → mount → ready` (then `background` and back
+to `ready`), and every stage is entered even when it has nothing to do. The stops are
+`offline`, `blocked` and `error`, from which `retry` resumes at the shell, the guard or the
+sync, whichever the boot had not finished. The gate also waits for the player
+(`needs-activation`, `revoked`, and `expired` or a refused `grace` after an answered sync).
+
+An event the current stage does not accept, or a malformed one, is **ignored**: the input
+state comes back as the same object with no emits. Every accepted event emits something, so
+an empty `emits` always means the event was ignored. `bootGuardAction({ staged, failedBoots })`
+is the launch decision of the boot guard: `roll-back` at `MAX_FAILED_BOOTS` (2) unconfirmed
+launches, otherwise `apply-staged` when a verified update is staged, otherwise `none`.
+
+`conformance/corpus/v2/stage-matrix.json` pins the machine row by row, and the Node, Python and
+Swift runners replay every row, every probe of its `accepts` table and every guard case. The
+stage machine is client behaviour, not part of the wire contract.
+
+**What a host sends.** A host reports a result with the stage's own event whenever that event
+can express it, and sends `fail { code }` only for an exception or a broken invariant in its
+own work:
+
+| Stage    | The result event                                                                                                                                                                             | `fail` only for, for example                    |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `shell`  | `shell.done`, also when the SDK discarded a cache that did not re-verify                                                                                                                     | a store it cannot read                          |
+| `guard`  | `guard.done` with the outcome of `bootGuardAction`: `none` → `ok`, `apply-staged` → `applied`, `roll-back` → `rolled-back`, each once done                                                   | a slot swap or a rollback that threw            |
+| `sync`   | `sync.done ok`, `offline` or `error`, classified below. A device with no token first registers inside `sync` when it can do so without the player. The host's own timer sends `sync.timeout` | an exception from `register()` or `sync()`      |
+| `gate`   | `gate.status` from `licenseState`, sent again while waiting after each activation, enrolment, sign-in or bundle import. The gate's Retry sends `retry`                                       | computing the status threw; never while waiting |
+| `decide` | `decide.done optional` when the update check says this build is behind, otherwise `none` (also when the check failed)                                                                        | an exception                                    |
+| `fetch`  | `fetch.done` with `installed`, the pack ids present afterwards; a failed download is `failed`, or `offline` without a network                                                                | the pack store threw                            |
+| `mount`  | `mount.done`                                                                                                                                                                                 | a pack that did not mount                       |
+
+A sync counts each signed document the product runs, and a keyless registration when the host
+makes one, by its final answer. It is `ok` when everything counted was **answered** (200 with a
+verified document, 304, 401, a 403 build block, or 429), `offline` when anything counted got
+**no answer** (no HTTP response, or the SDK's own deadline), and `error` otherwise. A host that
+cannot tell no answer from an unusable one sends `error`. So a 401 still reaches
+`waiting { revoked }` and a 403 still reaches `blocked`, even under `allowOffline: false`.
 
 ## Who consumes it
 

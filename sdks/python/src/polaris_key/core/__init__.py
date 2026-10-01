@@ -1,7 +1,8 @@
 """``polaris_key.core`` — the always-on substrate.
 
 Device principal, credential, trust custody, the verified cache, the monotonic clock
-floor, the sync loop, telemetry and offline bundles. A host that only wants Core (a
+floor, the sync loop, telemetry, offline bundles, and the boot stage machine
+(:mod:`.stages`, the pure reducer every boot renderer drives). A host that only wants Core (a
 headless daemon that ships settings and reports facts, with no licence at all) imports
 this and never pulls a service module.
 
@@ -86,6 +87,22 @@ from .semver import (
     is_dev_build,
     parse_semver,
 )
+from .stages import (
+    BOOT_EMIT_TYPES,
+    BOOT_EVENT_TYPES,
+    BOOT_GUARD_ACTIONS,
+    BOOT_OUTCOMES,
+    BOOT_STAGES,
+    MAX_FAILED_BOOTS,
+    BootEmit,
+    BootEvent,
+    BootOptions,
+    BootState,
+    BootTransition,
+    boot_guard_action,
+    boot_transition,
+    initial_boot_state,
+)
 from .store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle, Store
 from .sync import DocOutcome, SyncDeps, SyncResult, sync
 from .telemetry import build_snapshot, report_snapshot
@@ -169,6 +186,21 @@ __all__ = [
     "inspect_bundle",
     "verify_bundle",
     "import_bundle",
+    # boot stage machine
+    "BOOT_STAGES",
+    "BOOT_OUTCOMES",
+    "BOOT_EVENT_TYPES",
+    "BOOT_EMIT_TYPES",
+    "BOOT_GUARD_ACTIONS",
+    "MAX_FAILED_BOOTS",
+    "BootEvent",
+    "BootEmit",
+    "BootOptions",
+    "BootState",
+    "BootTransition",
+    "initial_boot_state",
+    "boot_transition",
+    "boot_guard_action",
     # errors
     "PolarisError",
     "InsecureBaseUrlError",

@@ -70,3 +70,30 @@ export { effectiveNow, highWaterMark, type DatedArtifact } from "./clock.js";
 export { PolarisError } from "./errors.js";
 
 export { CACHE_VERSION, type CacheRecordV3, type Store } from "./store.js";
+
+export {
+  BOOT_EMIT_TYPES,
+  BOOT_EVENT_TYPES,
+  BOOT_GUARD_ACTIONS,
+  BOOT_OUTCOMES,
+  BOOT_STAGES,
+  MAX_FAILED_BOOTS,
+  bootGuardAction,
+  bootTransition,
+  initialBootState,
+  type BootBlockedReason,
+  type BootDecision,
+  type BootEmit,
+  type BootEmitType,
+  type BootEvent,
+  type BootEventType,
+  type BootFetchResult,
+  type BootGuardAction,
+  type BootGuardResult,
+  type BootOptions,
+  type BootOutcome,
+  type BootStage,
+  type BootState,
+  type BootSyncResult,
+  type BootTransition,
+} from "./stages.js";

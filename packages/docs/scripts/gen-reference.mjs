@@ -383,6 +383,9 @@ function corpusInventory() {
   const fp = JSON.parse(
     read("conformance", "corpus", "v2", "fingerprint.json"),
   );
+  const stages = JSON.parse(
+    read("conformance", "corpus", "v2", "stage-matrix.json"),
+  );
   const families = Object.entries(cases)
     .filter(([, v]) => Array.isArray(v))
     .map(([k, v]) => [`\`${k}\``, String(v.length)]);
@@ -395,7 +398,8 @@ editor and an exported release template). \`pnpm gen:corpus -- --check\` is the 
 over the source and both generator-owned mirrors (the Swift test resources and the Godot
 \`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`). Corpus v1 is deleted — v2 is the
 only corpus. \`corpusVersion ${cases.corpusVersion}\`,
-\`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`.`,
+\`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`,
+\`stageMatrixVersion ${stages.stageMatrixVersion}\`.`,
     [
       "## Case families (`cases.json`)",
       "",
@@ -404,6 +408,10 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
       `## Gate matrix (\`gate-matrix.json\`): ${gate.rows?.length ?? gate.cases?.length ?? "?"} rows`,
       "",
       `## Fingerprint corpus (\`fingerprint.json\`): ${fp.vectors?.length ?? "?"} vectors, ${fp.deviceIds?.length ?? "?"} device-id derivations, component order ${fp.componentOrder?.map((c) => `\`${c}\``).join(" → ")}`,
+      "",
+      `## Stage matrix (\`stage-matrix.json\`): ${stages.rows?.length ?? "?"} rows, ${stages.guardCases?.length ?? "?"} guard cases`,
+      "",
+      "Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach.",
     ].join("\n"),
   );
 }
