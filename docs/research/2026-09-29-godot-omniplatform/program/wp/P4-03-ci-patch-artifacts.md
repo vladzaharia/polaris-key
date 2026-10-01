@@ -121,14 +121,22 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   record's `files` reference (raw, or a zstd frame with `codec` and `size`); see
   [notes/S-03 §4.5](../../notes/S-03-chunk-size-real-history.md#45-reading-the-tables) for the
   sizes. The encoding is a signed-shape decision, so do not change it here.
-- **Nondeterminism report (S-03, warn only).** Every real Diceroll release rewrote Godot's
-  order-insensitive caches (`.godot/uid_cache.bin`, `.godot/global_script_class_cache.cfg`) in a
-  new order, and gave a scene without a `uid=` a new random UID. That cost 0–5% of an N−1 chunk
-  sync ([notes/S-03 §4.6](../../notes/S-03-chunk-size-real-history.md#46-change-classification-and-re-import-noise)).
+- **Nondeterminism report (S-03, warn only).** In three of the four real Diceroll N−1 updates, CI rewrote
+  Godot's order-insensitive caches (`.godot/uid_cache.bin`, `.godot/global_script_class_cache.cfg`):
+  once in a new order only, twice grown as well as reordered. Every release gave a scene without a
+  `uid=` a new random UID. That cost 0–5% of an N−1 chunk sync
+  ([notes/S-03 §4.6](../../notes/S-03-chunk-size-real-history.md#46-change-classification-and-re-import-noise)).
   In `--dry-run` and publish output, list the entries whose bytes changed against the stored base
-  but whose byte multiset is equal (order-only), or which differ in at most 8 bytes at equal
-  length. Allow-list the CI version stamp (`project.binary`, a build-info file). Never fail the
-  publish on it.
+  and match one of these:
+  - one of the two caches whose entries present in both versions appear in a different relative
+    order. Parse the entries first: `uid_cache.bin` is a u32 count, then per entry an i64 uid, a
+    u32 length and the path; the class cache is one `{…}` dictionary per class (S-03's
+    `prototype/chunk-history/noise.py`, `cache_items`). This catches the order-only rewrite and
+    both grown-and-reordered rewrites, and stays quiet for an append that keeps the old order;
+  - any other entry that differs in at most 8 bytes at equal length.
+
+  Allow-list the CI version stamp (`project.binary`, a build-info file). Never fail the publish on
+  it.
 
 ## Steps
 

@@ -43,15 +43,26 @@ history, for both the previous version (N−1) and older versions (N−2 and bey
    - **Index sent raw or as one zstd frame: average 64 KiB** (minimum 16, maximum 256 KiB; the
      sketch's value). 32 KiB is 3.7–4.4% cheaper at N−1, even at N−2 (0.2–0.5%), and 2.2–2.5%
      dearer from N−3 on. [M]
-   - **Index sent as a delta of the seed index: average 32 KiB** (minimum 8, maximum 128 KiB). The
-     index term then shrinks to 1.4–9 KB at any average, which leaves only missing bytes and
-     requests. 32 KiB is **9.7% cheaper at N−1** (741 KB against 821 KB) and 2.2% cheaper at N−2.
-     It is 1.4–1.5% dearer at N−3 and oldest. At a 64 KiB weight the N−1 gain is the same 80 KB
-     (8.7%), but from N−2 on 32 KiB is 1.7–5.5% dearer (58–335 KB), because it needs more request
-     runs. 16 KiB is cheaper still at N−1 (708 KB), but 2.4–2.6% dearer from N−3 on, and its seed
-     index is larger (fa16 with the padding rule was not measured). N−1 is the update that mobile
-     clients run as chunk sync (item 4), so 32 KiB is the better default unless installs two or
-     more releases behind are common on high-latency links. [M]/[I]
+   - **Index sent as a delta of the seed index: still 64 KiB, except where chunk sync serves N−1.**
+     The index term then shrinks to 1.4–9 KB at any average, which leaves only missing bytes and
+     requests. On the monolithic 85 MB PCK, 32 KiB (minimum 8, maximum 128 KiB) is **9.7% cheaper
+     at N−1** (741 KB against 821 KB) and 2.2% cheaper at N−2. It is 1.4–1.5% dearer at N−3 and
+     oldest. At a 64 KiB weight the N−1 gain is the same 80 KB (8.7%), but from N−2 on 32 KiB is
+     1.7–5.5% dearer (58–335 KB), because it needs more request runs. 16 KiB is cheaper still at
+     N−1 (708 KB), but 2.4–2.6% dearer from N−3 on, and its seed index is larger (fa16 with the
+     padding rule was not measured). [M]
+   - **That N−1 gain counts only where chunk sync serves N−1.** That means a payload whose
+     whole-file delta does not fit the device's `memBudget`, or an SDK without delta support. The
+     delta needs about 2 × the payload's size, so the first case is a payload above about
+     `memBudget`/2: here the 85 MB PCK at 64 MiB (item 4). A payload whose N−1 delta fits memory
+     takes the delta at N−1, and every Diceroll pack slice does (at most about 42 MB of decoder
+     memory, §4.10). Chunk sync then serves N−2 and older. On the whole PCK, 32 KiB's edge there
+     is 2.2% at N−2 (w = 16 KiB), and it turns into a 1.4–5.5% loss from N−3 on (from N−2 at
+     w = 64 KiB). Per pack, 32 and 64 KiB differ little in any class. The main-PCK slice is 0.2–1.2% cheaper at
+     32 KiB. extra is 2.9–5.3% dearer with a raw index and even with no index term (§4.10, last
+     table). **So for per-pack delivery keep 64 KiB even with an index delta. Take 32 KiB only with
+     an index delta, and only for a payload above about `memBudget`/2 or for SDKs without delta
+     support.** [M]/[I]
 3. **Bundles:** share them across one deliverable's history, with new chunks only in each release's
    new bundles, and target **4 MiB**. With shared bundles an N−1 sync is **2 requests** (index plus
    one run); fresh-per-release bundles need 42. The 4, 8 and 16 MiB targets give identical request
@@ -85,9 +96,10 @@ history, for both the previous version (N−1) and older versions (N−2 and bey
    only on the main-PCK proxy. It is an inference until a real small pack that changes is
    measured. [M]/[I]
 
-6. **Re-import noise exists but is small.** Three of four releases rewrote Godot's order-insensitive
-   caches in a new order (`.godot/uid_cache.bin` and `.godot/global_script_class_cache.cfg`, 232–238
-   KB raw). Every release gave one hand-written scene a fresh random UID (4 bytes). In chunk-sync
+6. **Re-import noise exists but is small.** Three of the four N−1 updates rewrote Godot's
+   order-insensitive caches in a new order (`.godot/uid_cache.bin` and
+   `.godot/global_script_class_cache.cfg`, 232–238 KB raw): once in a new order only, twice grown
+   as well as reordered. Every release gave one hand-written scene a fresh random UID (4 bytes). In chunk-sync
    bytes that is **0–5% of an N−1 update** (0–46 KB). It is worth a warn-only publish lint in P4-03,
    not a gate. [M]
 7. **Two cheap wins outside the chunk parameters.** First, store the `pkey-files/1` index as a zstd
@@ -96,8 +108,8 @@ history, for both the previous version (N−1) and older versions (N−2 and bey
    Second, and larger, send the target chunk index as a `--patch-from` delta against the seed index
    the client already holds: **350 KB → 1.4–9 KB** (both [M]). That would make N−1 chunk sync about
    0.79 MB at 64 KiB (0.71 MB at 32 KiB), near the whole-file delta and without its memory cost.
-   It is a wire addition, proposed for P4-10's plan (§5, §7). If it is adopted, the default average
-   moves to 32 KiB (item 2).
+   It is a wire addition, proposed for P4-10's plan (§5, §7). If it is adopted, the average moves
+   to 32 KiB only for payloads whose N−1 is served by chunk sync (item 2); per pack, 64 KiB stays.
 
 ## 3. Method
 
@@ -285,7 +297,9 @@ plus request runs. Bundles are shared unless a column says fresh. All rows [M].
     fa64m costs 1,971,841 + 79 × 16,384 = 3.27 M, and fa32m costs 1,950,175 + 85 × 16,384 =
     3.34 M. [M]
   - All of this assumes the client downloads the raw index. Sent as a delta of the seed index, the
-    index term almost vanishes and 32 KiB wins at N−1 by ~10% (§4.7, cost table). [M]
+    index term almost vanishes and 32 KiB wins at N−1 by ~10% (§4.7, cost table). That N−1 gain
+    applies only where chunk sync serves N−1; per pack the N−1 delta fits memory, and 32 KiB gains
+    at most 1.2% (§4.10, last table). [M]
 
 - **Where the index goes.** Records per release at fa64 are 13,628 for 7,196 unique chunks. 6,366
   records are the 1–15-byte alignment gaps after entries: 15 distinct ids repeated thousands of
@@ -417,9 +431,14 @@ no padding rule, which only affects their raw and zstd columns. [M] (`report.py`
   at N−2 with w = 64 KiB, it follows request runs: fa128 < fa64m < fa32m < fa16. At w = 16 KiB, fa32m saves 80 KB at N−1 and
   41 KB at N−2, and costs 40–41 KB at N−3 and oldest. At w = 64 KiB it saves the same 80 KB at N−1
   and costs 58 KB at N−2 and 335 KB at N−3 and oldest. [M]
-- So the default average is a function of the index encoding, the request weight and how far
-  behind installs usually are. P4-10's plan must settle the index-on-wire question first, because
-  `chunks.params` is frozen for each release's history. [I]
+- This table is the monolithic 85 MB PCK. Its N−1 rows matter only where chunk sync serves N−1:
+  at a 64 MiB `memBudget`, or for an SDK without delta support (§4.9). Where the N−1 delta fits
+  memory, as it does for every pack slice (§4.10), chunk sync serves N−2 and older, and the
+  per-pack comparison in §4.10's last table applies. [M]/[I]
+- So the default average is a function of four things: the index encoding, the request weight, the
+  payload's size against the device memory budget, and how far behind installs usually are. P4-10's
+  plan must settle the index-on-wire question first, because `chunks.params` is frozen for each
+  release's history. [I]
 
 ### 4.8 Second texture family: Android `assets/` tree (ETC2/ASTC)
 
@@ -543,6 +562,30 @@ plan at request weights 16 and 64 KiB. [M]
 - A slice's whole-file delta needs only `memBytes` ≈ 2 × slice (9.4 MB for base), so **per-pack
   deltas fit mobile memory budgets** where the 85 MB PCK's 170 MB does not. [M]/[I]
 
+**32 against 64 KiB per pack.** Under per-pack delivery the N−1 delta fits memory, so chunk sync
+serves N−2 and older, plus SDKs without delta support at N−1. Means over the pairs in which the
+slice changed (an unchanged pack is a no-op). The index per pack was measured raw only. "No index"
+drops the index term, which is the floor an index delta approaches. Cost is missing stored bytes
+plus the index term plus _w_ × requests; the percentages are fa32m against fa64m. [M]
+(`report.py`, "Per-pack chunk cost" table)
+
+| Pack            | Class | Pairs | Missing fa32m / fa64m B | Requests | Raw index, w=16K | Raw index, w=64K | No index, w=16K | No index, w=64K |
+| --------------- | ----- | ----: | ----------------------: | -------: | ---------------: | ---------------: | --------------: | --------------: |
+| base (main PCK) | N−1   |     4 |       578,838 / 586,417 |        2 |            −0.9% |            −0.8% |           −1.2% |           −1.1% |
+| base (main PCK) | N−2   |     3 |   1,036,428 / 1,052,244 |       31 |            −0.9% |            −0.4% |           −1.0% |           −0.5% |
+| base (main PCK) | N−3   |     2 |   1,297,634 / 1,314,634 |       65 |            −0.6% |            −0.3% |           −0.7% |           −0.3% |
+| base (main PCK) | N−4   |     1 |   1,360,480 / 1,377,363 |       75 |            −0.6% |            −0.2% |           −0.6% |           −0.3% |
+| extra           | N−1   |     1 |         29,292 / 29,292 |        2 |            +5.3% |            +2.9% |            0.0% |            0.0% |
+| extra           | N−2–4 |     5 |         29,292 / 29,292 |        2 |            +5.3% |            +2.9% |            0.0% |            0.0% |
+
+- On the pack slices the two averages need the same requests in every class, unlike the whole
+  PCK. The main-PCK slice saves 1.2–1.5% of missing bytes at 32 KiB. extra's missing bytes are
+  identical, so its raw 32 KiB index (larger) is the whole difference. None of these gaps is near
+  the whole PCK's 9.7% at N−1. For per-pack delivery the average barely matters, and the sketch's
+  64 KiB stands with any index encoding. [M]
+- Per-pack index deltas were not measured. With one, a pack's cost lies between the "raw" and "no
+  index" columns. [I]
+
 ### 4.11 First install
 
 [M] Full blob (63,193,886 B) plus the seed index: +0.55% (fa64m) or +1.0% (fa64). The same bytes
@@ -554,8 +597,10 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 ## 5. Recommendation
 
 1. **Default `chunks.params` for P4-10.** It depends on the index-on-wire decision (item 5), which
-   P4-10's plan must take first, because the params are frozen per release. With the index sent
-   raw or as one zstd frame (row: fa64m in §4.1–§4.4 and §4.7):
+   P4-10's plan must take first, because the params are frozen per release. Use these params for
+   every payload when the index is sent raw or as one zstd frame. Whatever the index encoding, use
+   them for any payload whose N−1 delta fits the device memory budget, which is every pack slice
+   (§4.10). Rows: fa64m in §4.1–§4.4, §4.7 and §4.10.
 
    ```json
    {
@@ -571,12 +616,22 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
    }
    ```
 
-   With the index sent as a delta of the seed index, use `avgSize: 32768`, `minSize: 8192`,
-   `maxSize: 131072` and the same other fields (row: fa32m in §4.7's cost table). At the 16 KiB
-   request weight it is 9.7% cheaper than 64 KiB at N−1 and 2.2% cheaper at N−2, and 1.4–1.5%
-   dearer at N−3 and oldest. At a 64 KiB weight it is still 8.7% cheaper at N−1 but 1.7–5.5% dearer
-   from N−2 on. If the plan expects many installs two or more releases behind on high-latency links,
-   keep 64 KiB. [M]/[I]
+   Use `avgSize: 32768`, `minSize: 8192`, `maxSize: 131072` and the same other fields (row: fa32m
+   in §4.7's cost table) only when **both** hold:
+   - the index is sent as a delta of the seed index; and
+   - chunk sync serves N−1, because the payload is above about `memBudget`/2 (its whole-file delta
+     needs about 2 × its size, as for the monolithic 85 MB PCK) or because the SDK has no delta
+     support.
+
+   There, at the 16 KiB request weight, 32 KiB is 9.7% cheaper than 64 KiB at N−1 and 2.2% cheaper
+   at N−2, and 1.4–1.5% dearer at N−3 and oldest. At a 64 KiB weight it is still 8.7% cheaper at N−1
+   but 1.7–5.5% dearer from N−2 on. Where the N−1 delta fits memory, N−1 is delta-served and chunk
+   sync runs from N−2 on. Per pack the two averages are then within −1.2% to +5.3% of each other
+   (§4.10, last table), so 64 KiB stays. Each pack release record carries its own
+   `chunks {format, sha256, params}` (CONTENT's pack release record), so the plan may choose per
+   payload. If it wants one default, 64 KiB is the one the per-pack rows support. If the
+   plan expects many installs two or more releases behind on high-latency links, keep 64 KiB
+   everywhere. [M]/[I]
 
    `padMerge`: a gap segment shorter than 64 bytes that directly follows an entry is chunked
    together with that entry. The header, the directory and longer gaps stay separate segments, and
@@ -609,11 +664,20 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
      overhead arithmetic: chunk sync pays at least the index and two request weights (~130 KB at
      64 KiB), which is a large share of any likely saving below about 1 MiB of full. Measure a real
      small pack that changes (a future `l10n` or `events` pack) before adopting it.
-4. **Re-import noise** is quantified (§4.6) and small: 0–5% of N−1 chunk bytes. Proposed P4-03 rule
-   (warn, never fail):
-   - `--dry-run` and publish list the entries whose bytes changed against the stored base but whose
-     byte multiset is identical (order-only rewrite), or which differ in at most 8 bytes at equal
-     length;
+4. **Re-import noise** is quantified (§4.6) and small: 0–5% of N−1 chunk bytes. Three of the four
+   N−1 releases rewrote the two caches: rc.1→rc.2 in a new order only, and rc.2→rc.3 and rc.3→rc.4
+   grown as well as reordered. rc.4→rc.5 left them untouched. Proposed P4-03 rule (warn, never
+   fail). `--dry-run` and publish list the entries whose bytes changed against the stored base and
+   match one of these:
+   - **the two order-insensitive caches** (`.godot/uid_cache.bin`,
+     `.godot/global_script_class_cache.cfg`): parse both versions into entries (`uid_cache.bin`:
+     u32 count, then i64 uid, u32 length and path per entry; the class cache: one `{…}` dictionary
+     per class, as `noise.py`'s `cache_items` does). Flag when the entries present in both
+     versions appear in a different relative order. That catches the order-only rewrite and the
+     grown-and-reordered rewrites, so all 3 measured cache events; it stays quiet for an append
+     that keeps the old order;
+   - **any other entry** that differs in at most 8 bytes at equal length (the scene without a
+     `uid=`, 4 bytes in every release);
    - allow-list the CI version stamp (`project.binary`, a build-info file);
    - the Diceroll-side fixes (a `uid=` in hand-written scenes) belong to D-04 and are not needed
      for delivery.
@@ -630,8 +694,9 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 
 - **README §3.12** sketch `patch.chunking: {alg: fastcdc, avg: 65536, fileAware: true}`: add the
   padding rule (`padMerge: 64` or an equivalent name) and
-  `bundles: {target: 4 MiB, layout: shared}`. Keep `avg: 65536` if the index ships raw or
-  compressed; change it to `avg: 32768` if P4-10 adopts the index delta (§5 item 1).
+  `bundles: {target: 4 MiB, layout: shared}`. Keep `avg: 65536`. Use `avg: 32768` only for a
+  payload whose N−1 is served by chunk sync (above about `memBudget`/2, such as a monolithic PCK),
+  and only if P4-10 adopts the index delta (§5 item 1).
 - **CONTENT §8.2** rule of thumb, in two steps:
   - **Measured (extra):** replace "chunk sync from about 16 MiB up" with "every container pack of
     4 MiB or more gets a chunk index beside its N−1 delta, and the planner chooses per device". The
@@ -650,16 +715,18 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 
 - **P4-10:** default parameters now include the padding-merge rule, with a pointer to this note;
   the bundle choice is now "shared, 4 MiB target (measured)"; the index delta against the seed is
-  added as a plan question; the default average is conditional on that question (64 KiB with a
-  raw or zstd index, 32 KiB with an index delta), and the plan must settle it before freezing
-  `avgSize`.
+  added as a plan question; the default average is 64 KiB, and 32 KiB only with an index delta
+  and only for a payload whose N−1 is served by chunk sync (above about `memBudget`/2, or SDKs
+  without delta support). The plan must settle the index question before freezing `avgSize`.
 - **P4-01:** a plan question under item 2: should the `files` reference gain `codec` and `size`, so
   the index ships as a zstd frame (§4.5)?
 - **P4-03:** the files index is stored as P4-01 froze it (no shape change in P4-03); a warn-only
-  nondeterminism report is added to the dry run.
+  nondeterminism report is added to the dry run. It parses the two caches and flags a change in
+  the relative order of their shared entries, which catches all 3 measured cache rewrites.
 - **P4-11:** request-weight observations. With shared bundles an N−1 chunk sync is 2 requests; old
   installs need 33–85 runs, which 64 KiB weights price correctly (shown on the 3.8 MB main-PCK
-  slice, a proxy). Chunk sync is the path at mobile memory budgets.
+  slice, a proxy). Chunk sync is the N−1 path at mobile memory budgets only for a payload above
+  about `memBudget`/2, such as the 85 MB PCK; a pack's N−1 delta fits.
 
 ## 8. Measured, emulated, unmeasured
 
@@ -674,6 +741,7 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 | Per-pack results                                                        | **emulated**: slices of the desktop PCK, not per-pack exports                          |
 | Index as zstd and as a delta of the seed index                          | measured (bundle ids stood in)                                                         |
 | Chunk-sync cost per index encoding (§4.7 cost table)                    | measured: matrix rows plus index-delta sizes, combined by `report.py`                  |
+| Per-pack 32 vs 64 KiB cost (§4.10, last table)                          | emulated on slices, raw index only; a per-pack index delta is unmeasured               |
 | Small content pack (under 4 MiB) that changes every release             | unmeasured: ui never changed; the base main-PCK slice stands in as an [I] proxy        |
 | Web PCK family                                                          | unmeasured: same size and entries as desktop; not run through the matrix               |
 | Wall-clock times (CI chunking, deltas, client apply)                    | unmeasured: host load 500–1,000; A6/A7 have clean timings                              |

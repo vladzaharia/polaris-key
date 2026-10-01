@@ -138,12 +138,18 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
   - **Index sent raw or as one zstd frame: 64 KiB.** The averages 16–128 KiB land within 5% of each
     other in every pair class. 32 KiB's 3.7–4.4% N−1 gain is roughly even at N−2 and is lost from
     N−3 on (2.2–2.5% dearer), because it needs more request runs.
-  - **Index sent as a delta of the seed index: 32 KiB.** The index term then drops to 1.4–9 KB at
-    any average. 32 KiB is 9.7% cheaper at N−1 (741 KB against 821 KB) and 2.2% cheaper at N−2,
-    and 1.4–1.5% dearer at N−3 and older. At a 64 KiB weight it is 8.7% cheaper at N−1 and
-    1.7–5.5% dearer from N−2 on. N−1 is what mobile clients run as chunk sync (the whole-file delta
-    does not fit a 64 MiB budget), so take 32 KiB unless the plan expects many installs two or more
-    releases behind on high-latency links.
+  - **Index sent as a delta of the seed index: 64 KiB for a payload whose N−1 delta fits the
+    device memory budget; 32 KiB only where chunk sync serves N−1.** The index term then drops to
+    1.4–9 KB at any average. On the monolithic 85 MB PCK, 32 KiB is 9.7% cheaper at N−1 (741 KB
+    against 821 KB) and 2.2% cheaper at N−2, and 1.4–1.5% dearer at N−3 and older. At a 64 KiB
+    weight it is 8.7% cheaper at N−1 and 1.7–5.5% dearer from N−2 on. That N−1 gain counts only
+    where chunk sync serves N−1: a payload above about `memBudget`/2 (the whole-file delta needs
+    about 2 × its size, so the 85 MB PCK needs ~170 MB), or an SDK without delta support. Every
+    Diceroll pack slice's N−1 delta fits a 64 MiB budget (at most about 42 MB), so under per-pack
+    delivery N−1 is delta-served and chunk sync runs from N−2 on. There 32 and 64 KiB are within
+    −1.2% to +5.3% per pack ([notes/S-03 §4.10](../../notes/S-03-chunk-size-real-history.md#410-per-pack-estimate-desktop-pck-sliced-by-the-proposed-packs-an-estimate),
+    last table), so keep 64 KiB. `chunks.params` is per payload record, so the plan may set 32 KiB
+    for oversized payloads only; if it wants one default, take 64 KiB.
 
   See [notes/S-03 §5](../../notes/S-03-chunk-size-real-history.md#5-recommendation). A7's generator records
   `{chunker: "fastcdc-2016-nc1", fileAware, avgSize, minSize, maxSize, bundleTarget, zstdLevel}`;
@@ -175,7 +181,8 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
   The plan decides whether v2 ships the index compressed, adds an index-delta artifact (a
   `pkey-patch/1` over the index blob, planner-visible), or defers both. Either is a record or
   artifact-role change, so name it in the wire section. Decide it before the default average
-  (Parameters above): with an index delta, 32 KiB beats 64 KiB at N−1 by about 10%.
+  (Parameters above): with an index delta, 32 KiB beats 64 KiB at N−1 by about 10% on a payload
+  whose N−1 is served by chunk sync (the 85 MB PCK), and by at most 1.2% on a pack.
 
 - **Storage.** R2 keys from P2-01's `bundleKey(sha256, {gated})` (`bundles/sha256/<h>`, or under
   `gated/` for gated deliverables); `release_artifacts` roles `chunk-index` and `chunk-bundle`

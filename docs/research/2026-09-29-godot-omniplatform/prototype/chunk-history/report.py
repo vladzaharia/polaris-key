@@ -152,6 +152,25 @@ if os.path.exists(ppath):
             print(f"| {lab(pk)} | {r['from'].split('-')[-1]}→{r['to'].split('-')[-1]} | {r['class']} | {n(r['full'])} | "
                   f"{n(r['wholeDelta']) if n1 else '—'} | {n(c['bytes'])} ({c['requests']}) | {n(rule)} | {pl(16384)} | {pl(65536)} |")
 
+    # 32 vs 64 KiB average per pack, over the pairs that changed (an unchanged pack is a no-op). With a
+    # per-pack N-1 delta that fits memory, chunk sync serves N-2 and older, and no-delta SDKs at N-1.
+    # Index per pack was measured raw only; "no index" is the floor an index delta approaches.
+    print("\n## Per-pack chunk cost, fa32m vs fa64m (changed pairs only), mean per class\n")
+    print("Cost = missing stored B + index term + w × requests. Index term: raw, or none (the floor of an index delta).\n")
+    print("| Pack | Class | pairs | missing fa32m / fa64m B | req fa32m / fa64m | raw, w=16K: 32 vs 64 | raw, w=64K: 32 vs 64 | no index, w=16K: 32 vs 64 | no index, w=64K: 32 vs 64 |")
+    print("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+    for pk in dict.fromkeys(r["pack"] for r in rows):
+        for cl in ["N-1", "N-2", "N-3", "N-4"]:
+            rs = [r for r in rows if r["pack"] == pk and r["class"] == cl and not r["unchanged"]]
+            if not rs:
+                continue
+            miss = lambda c: statistics.mean(r["chunk"][c]["bytes"] - r["chunk"][c]["indexBytes"] for r in rs)  # noqa: E731
+            req = lambda c: statistics.mean(r["chunk"][c]["requests"] for r in rs)  # noqa: E731
+            cost = lambda c, w, ix: statistics.mean(r["chunk"][c]["bytes"] - (0 if ix else r["chunk"][c]["indexBytes"]) + w * r["chunk"][c]["requests"] for r in rs)  # noqa: E731
+            pct = lambda w, ix: f"{100 * (cost('fa32m', w, ix) / cost('fa64m', w, ix) - 1):+.1f}%"  # noqa: E731
+            print(f"| {lab(pk)} | {cl} | {len(rs)} | {n(miss('fa32m'))} / {n(miss('fa64m'))} | {req('fa32m'):.1f} / {req('fa64m'):.1f} | "
+                  f"{pct(16384, True)} | {pct(65536, True)} | {pct(16384, False)} | {pct(65536, False)} |")
+
 # Chunk-sync cost by index encoding on the wire: missing stored bytes + index term + w × requests, for
 # the index sent raw, as one zstd frame, or as a --patch-from delta of the seed index (indexdelta.py).
 for fam in fams:
