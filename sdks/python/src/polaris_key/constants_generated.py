@@ -31,6 +31,14 @@ __all__ = [
     "CORPUS_VERSION",
     "GATE_MATRIX_VERSION",
     "FINGERPRINT_VERSION",
+    "CHANNEL_ALIASES",
+    "CHANNEL_BETA",
+    "CHANNEL_DEV",
+    "CHANNEL_NAME_PATTERN",
+    "CHANNEL_PR",
+    "CHANNEL_STABLE",
+    "PR_CHANNEL_PATTERN",
+    "PR_NUMBER_MAX_DIGITS",
 ]
 
 
@@ -450,3 +458,40 @@ GATE_MATRIX_VERSION: Final[int] = 2
 
 #: `fingerprintVersion` of conformance/corpus/v2/fingerprint.json.
 FINGERPRINT_VERSION: Final[int] = 1
+
+
+#: Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
+CHANNEL_ALIASES: Mapping[str, str] = MappingProxyType(
+    {
+        "staging": "beta",
+        "latest": "stable",
+    }
+)
+
+
+#: Channel constant `CHANNEL_BETA` (`@polaris-key/protocol/core`).
+CHANNEL_BETA: Final[str] = "beta"
+
+
+#: Channel constant `CHANNEL_DEV` (`@polaris-key/protocol/core`).
+CHANNEL_DEV: Final[str] = "dev"
+
+
+#: Channel constant `CHANNEL_NAME_PATTERN` (`@polaris-key/protocol/core`).
+CHANNEL_NAME_PATTERN: Final[str] = "^[a-z0-9][a-z0-9-]{0,63}$"
+
+
+#: Channel constant `CHANNEL_PR` (`@polaris-key/protocol/core`).
+CHANNEL_PR: Final[str] = "pr"
+
+
+#: Channel constant `CHANNEL_STABLE` (`@polaris-key/protocol/core`).
+CHANNEL_STABLE: Final[str] = "stable"
+
+
+#: Channel constant `PR_CHANNEL_PATTERN` (`@polaris-key/protocol/core`).
+PR_CHANNEL_PATTERN: Final[str] = "^pr-?([0-9]+)$"
+
+
+#: Channel constant `PR_NUMBER_MAX_DIGITS` (`@polaris-key/protocol/core`).
+PR_NUMBER_MAX_DIGITS: Final[int] = 7

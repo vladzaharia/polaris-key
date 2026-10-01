@@ -385,3 +385,30 @@ public let GATE_MATRIX_VERSION = 2
 
 /// `fingerprintVersion` of conformance/corpus/v2/fingerprint.json.
 public let FINGERPRINT_VERSION = 1
+
+/// Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
+public let CHANNEL_ALIASES: [String: String] = [
+    "staging": "beta",
+    "latest": "stable",
+]
+
+/// Channel constant `CHANNEL_BETA` (`@polaris-key/protocol/core`).
+public let CHANNEL_BETA = "beta"
+
+/// Channel constant `CHANNEL_DEV` (`@polaris-key/protocol/core`).
+public let CHANNEL_DEV = "dev"
+
+/// Channel constant `CHANNEL_NAME_PATTERN` (`@polaris-key/protocol/core`).
+public let CHANNEL_NAME_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$"
+
+/// Channel constant `CHANNEL_PR` (`@polaris-key/protocol/core`).
+public let CHANNEL_PR = "pr"
+
+/// Channel constant `CHANNEL_STABLE` (`@polaris-key/protocol/core`).
+public let CHANNEL_STABLE = "stable"
+
+/// Channel constant `PR_CHANNEL_PATTERN` (`@polaris-key/protocol/core`).
+public let PR_CHANNEL_PATTERN = "^pr-?([0-9]+)$"
+
+/// Channel constant `PR_NUMBER_MAX_DIGITS` (`@polaris-key/protocol/core`).
+public let PR_NUMBER_MAX_DIGITS = 7
