@@ -127,6 +127,12 @@ Today the feed can offer what the download refuses, because the two read access 
   cache key has no hostname and no `Origin`, so CORS headers and the host-dependent
   `Content-Type`/`Content-Disposition` must stay outside it, and every response from it needs an
   explicit `Cache-Control` (a 404 from `notFound()` has none and would be cached for 3 minutes).
+  The default entrypoint must strip `Authorization` and `Cookie` before calling the cached one:
+  Workers Caching stores a response to an `Authorization` request when its `Cache-Control`
+  includes `public`, and the cached entrypoint's 200s do, so routing is the only guard. The
+  `ctx.exports` call is billed as a second Workers request once caching is on; the gain that pays
+  for it is the tiered cache, request collapsing, no `miss-fill` second R2 read and no R2
+  Class B reads on hits (S-02 §5.2).
   Gated responses should read `private, no-store, no-transform`; `blobResponse` sends
   `private, no-store` today, so a compressible gated type could get a weak ETag.
 - **Access CHECKs.** `dist_access.mode` includes `entitled`. Stop reading
