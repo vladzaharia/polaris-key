@@ -20,6 +20,7 @@ Every subpackage is importable on its own, so a config-only daemon can
     ``polaris_key.license``  activation + the gate
     ``polaris_key.config``   the signed config document + layered resolution
     ``polaris_key.devices``  registration, the roster, fingerprint/facts/device-id, the stores
+    ``polaris_key.identity`` device-code sign-in (RFC 8628)
     ``polaris_key.release``  changelog / install script / artifact URLs
     ``polaris_key.update``   version check + the Sparkle appcast URL
     ``polaris_key.local``    the transportless profile
@@ -34,6 +35,12 @@ from __future__ import annotations
 from ._version import DIST_NAME, SDK_NAME, SDK_VERSION, __version__
 from .client import DeviceInfo, PolarisKeyClient, SyncState
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
+from .config.mint import MintedToken
+from .identity.client import IdentityClient, SignInPoll, SignInPrompt, SignInResult
+# Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts), imported wholesale through
+# the generated ``__all__`` so a constant the generator gains reaches the package root unedited.
+from . import constants_generated as _constants_generated
+from .constants_generated import *  # noqa: F401,F403
 from .core.bundle import (
     BUNDLE_CLAIMS_REJECTED,
     BUNDLE_JWS_REJECTED,
@@ -162,6 +169,11 @@ __all__ = [
     "LicenseClient",
     "ConfigClient",
     "DevicesClient",
+    "IdentityClient",
+    "SignInPrompt",
+    "SignInPoll",
+    "SignInResult",
+    "MintedToken",
     "ReleaseClient",
     "UpdateClient",
     "CoreContext",
@@ -290,4 +302,6 @@ __all__ = [
     "DEFAULT_BASE",
     "DEFAULT_REQUEST_TIMEOUT_SECONDS",
     "normalize_base_url",
+    # generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts)
+    *_constants_generated.__all__,
 ]

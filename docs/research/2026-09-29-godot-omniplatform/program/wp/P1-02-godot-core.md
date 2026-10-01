@@ -150,6 +150,10 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
     - At 4 ms the worst frame stayed within 4 ms of idle and the wall time was ×4–5; at 8 ms it was
       ×2.0–2.3.
     - On an A53-class phone a sliced bundle verify takes 6–12 s, so report it as progress.
+      **Deferred to [P1-10](P1-10-godot-ui-kit.md)**, which owns the boot progress bar: P1-02
+      ships the slicing (`PKeyEd25519Job.step`, phases 0–3) but no progress signal. The verify
+      runs through static `PKeyJws` helpers with no `PolarisKey` instance in reach, so P1-10
+      adds the signal where its stage reporter lives.
 - **Verdicts come from the corpus, not from Godot.** Validate before `JSON` sees a byte. Two
   divergences are known and must be recorded, not tolerated: Godot rejects a lone surrogate
   that JS accepts, and U+0000 follows the P1-01 plan's decision. No corpus vector covers the

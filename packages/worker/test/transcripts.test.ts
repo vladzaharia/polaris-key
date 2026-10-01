@@ -13,11 +13,21 @@
 // they record. And each is recorded twice, because a transcript that differs between two runs
 // would make every regeneration a diff.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SCENARIOS } from "./transcripts/scenarios/index.js";
 import { reconcile, serialize, WRITE_FLAG } from "./transcripts/io.js";
 
 const write = process.env[WRITE_FLAG] === "1";
+
+// The device-code scenarios sign in through a mocked IdP (`./transcripts/idp.ts`). jose's remote
+// JWKS getter does not go through `globalThis.fetch`, so — exactly as `oidcEdge.test.ts` does —
+// only that getter is swapped; the real `jwtVerify` still checks issuer, audience, signature,
+// freshness and nonce.
+vi.mock("jose", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("jose")>();
+  const { idpKeyResolver } = await import("./transcripts/idp.js");
+  return { ...actual, createRemoteJWKSet: () => idpKeyResolver };
+});
 
 describe("HTTP transcripts", () => {
   const rendered = new Map<string, string>();

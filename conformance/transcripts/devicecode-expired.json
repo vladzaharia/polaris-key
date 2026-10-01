@@ -1,0 +1,181 @@
+{
+  "transcriptVersion": 1,
+  "id": "devicecode-expired",
+  "description": "A device-code flow nobody completes. beginSignIn() with no device name posts the device id alone; one poll is pending. Ten minutes later the flow's records have lapsed and the Worker answers the next poll with timeout, which the client reports as expired, holding no token. waitForSignIn() on the same prompt then makes no request at all: the prompt's expiresIn has passed, and a client stops polling at expiry rather than asking a server that can only say timeout.",
+  "features": ["identity.devicecode"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["license", "config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "beginSignIn",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "deviceId": "TRANSCRIPTDEVICE0000000000000001" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "pending",
+                "deviceCode": "FElL1HvzUVCOilSj-VN_ng",
+                "userCode": "MWBX-TMQB",
+                "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+                "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=MWBX-TMQB",
+                "expiresIn": 600,
+                "interval": 2,
+                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "prompt": {
+          "userCode": "MWBX-TMQB",
+          "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+          "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=MWBX-TMQB",
+          "expiresIn": 600,
+          "interval": 2
+        },
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "pollSignIn",
+      "args": {},
+      "now": 1700000002,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "FElL1HvzUVCOilSj-VN_ng",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "pending" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "pending", "tokenHeld": false }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "The flow has lapsed: the Worker says timeout.",
+      "args": {},
+      "now": 1700000601,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "FElL1HvzUVCOilSj-VN_ng",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "timeout" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "expired", "tokenHeld": false }
+    },
+    {
+      "action": "waitForSignIn",
+      "note": "Past expiresIn: no request.",
+      "args": {},
+      "now": 1700000601,
+      "exchanges": { "ordered": false, "items": [] },
+      "expect": { "result": "expired", "tokenHeld": false }
+    }
+  ]
+}

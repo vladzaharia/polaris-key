@@ -6,7 +6,9 @@
 import type { ManagedEntry } from "@polaris-key/protocol";
 import { dispatchWith } from "../../src/dispatch.js";
 import {
+  SERVICE_SLUGS,
   serializeServices,
+  type ServiceSlug,
   type ServicesMap,
 } from "../../src/core/services.js";
 import { setServices } from "../../src/repo.js";
@@ -20,22 +22,19 @@ import { DEVICE, T0, VERSION } from "./client.js";
 
 export const PRODUCT = "djdl";
 
-export const LICENSED: ServicesMap = {
-  license: { enabled: true },
-  config: { enabled: true },
-  release: { enabled: false },
-  update: { enabled: false },
-  identity: { enabled: false },
-};
+/** A full services map with exactly `enabled` on, built from the generated service table so a
+ *  new slug (P2b-01's `distribution`) is declared off here without anyone editing a scenario. */
+export function servicesOn(...enabled: ServiceSlug[]): ServicesMap {
+  const out = {} as ServicesMap;
+  for (const slug of SERVICE_SLUGS)
+    out[slug] = { enabled: enabled.includes(slug) };
+  return out;
+}
+
+export const LICENSED: ServicesMap = servicesOn("license", "config");
 
 /** D-08: Config alone, so the derived registration policy is `open`. */
-export const CONFIG_ONLY: ServicesMap = {
-  license: { enabled: false },
-  config: { enabled: true },
-  release: { enabled: false },
-  update: { enabled: false },
-  identity: { enabled: false },
-};
+export const CONFIG_ONLY: ServicesMap = servicesOn("config");
 
 export const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({
   state: "enforced",
@@ -140,6 +139,7 @@ export async function setup(
   method: string,
   path: string,
   headers: Record<string, string>,
+  now: number = T0,
 ): Promise<Response> {
   return dispatchWith(
     new Request(`${BASE_URL}${path}`, {
@@ -152,7 +152,7 @@ export async function setup(
     }) as unknown as Request,
     w.env,
     w.db,
-    T0,
+    now,
   );
 }
 

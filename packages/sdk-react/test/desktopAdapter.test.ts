@@ -231,6 +231,7 @@ function emptyCaps() {
     license: { enabled: false },
     config: { enabled: false },
     release: { enabled: false },
+    distribution: { enabled: false },
     update: { enabled: false },
     identity: { enabled: false },
   };

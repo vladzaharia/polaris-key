@@ -23,7 +23,7 @@
       "wp": "P1b-04",
       "note": "Sends win32/x64 where other SDKs send other spellings."
     },
-    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
       "status": "planned",
@@ -36,12 +36,12 @@
     "license.deactivate": { "status": "implemented" },
     "license.entitlements": { "status": "implemented" },
     "license.channels": { "status": "planned", "wp": "P1b-07" },
-    "license.reregister": { "status": "planned", "wp": "P1b-06" },
+    "license.reregister": { "status": "implemented" },
     "config.resolve": { "status": "implemented" },
     "config.list": { "status": "implemented" },
     "config.secret": { "status": "implemented" },
     "config.schema": { "status": "planned", "wp": "P1b-07" },
-    "config.mint": { "status": "planned", "wp": "P1b-08" },
+    "config.mint": { "status": "implemented" },
     "config.mirror": {
       "status": "implemented",
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
@@ -60,11 +60,7 @@
       "unowned": true,
       "note": "No browser sign-in in the Node SDK, and no work package ports it."
     },
-    "identity.devicecode": {
-      "status": "planned",
-      "wp": "P1b-08",
-      "note": "The Electron desktop host bridge implements it; the Node SDK does not."
-    },
+    "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
     "release.record": { "status": "planned", "wp": "P3-04" },

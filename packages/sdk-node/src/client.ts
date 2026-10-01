@@ -8,7 +8,8 @@
 //
 //   * `onLicenseAcquired` → `sync()`. Activation used to call refresh inline, so every mint
 //     path had to remember to, and a config-only product had no way to say "there is no licence
-//     here, sync anyway". Now the license client raises an EVENT and the facade decides.
+//     here, sync anyway". Now the license client — and the identity client, when a device-code
+//     sign-in completes — raises an EVENT and the facade decides.
 //   * `getSyncState()`, the React bridge contract — one snapshot of everything the UI layer
 //     needs, assembled from the managers that own each piece.
 //
@@ -29,7 +30,12 @@ import { CacheManager } from "./core/cache.js";
 import { CoreContext, nowSec, type CoreOptions } from "./core/context.js";
 import { importBundle, type ImportBundleResult } from "./core/bundle.js";
 import { sync, type SyncOptions, type SyncResult } from "./core/sync.js";
-import { TokenManager } from "./core/token.js";
+import {
+  chooseReacquireRoute,
+  TokenManager,
+  type Reacquired,
+  type TokenSource,
+} from "./core/token.js";
 import { TrustManager } from "./core/trust.js";
 import { buildSnapshot, reportSnapshot } from "./core/telemetry.js";
 import { ConfigClient, type ConfigClientOptions } from "./config/client.js";
@@ -40,6 +46,7 @@ import {
   DeviceManagementUnsupportedError,
   type DevicesClientOptions,
 } from "./devices/client.js";
+import { IdentityClient } from "./identity/client.js";
 import { ReleaseClient } from "./release/client.js";
 import { UpdateClient } from "./update/client.js";
 import {
@@ -108,6 +115,7 @@ export class PolarisKeyClient {
   readonly license: LicenseClient;
   readonly config: ConfigClient;
   readonly devices: DevicesClient;
+  readonly identity: IdentityClient;
   readonly release: ReleaseClient;
   readonly update: UpdateClient;
 
@@ -125,15 +133,13 @@ export class PolarisKeyClient {
     this.core = new CoreContext(opts);
     this.trust = new TrustManager(this.core);
     this.cache = new CacheManager(this.core, this.trust);
-    // The re-acquire path is injected so Core does not depend on the license module; §5's
-    // single-attempt rule lives in `TokenManager` and the ROUTE lives in license/endpoints.
+    // The re-acquire path is injected so Core does not depend on the license or devices
+    // modules; §5's single-attempt rule lives in `TokenManager`, the route CHOICE in
+    // `chooseReacquireRoute`, and the two routes in license/endpoints and devices/client.
     this.tokens = new TokenManager(
       this.core,
       this.core.store,
-      async (ctx, current) => {
-        const r = await reacquireToken(ctx, current);
-        return r.kind === "ok" ? r.token : null;
-      },
+      (ctx, current, source) => this.reacquire(ctx, current, source),
     );
     this.probes = opts.devices?.probes;
 
@@ -156,7 +162,17 @@ export class PolarisKeyClient {
       () => this.onLicenseAcquired(),
       opts.license ?? {},
     );
-    this.config = new ConfigClient(this.core, this.cache, opts.config ?? {});
+    this.config = new ConfigClient(
+      this.core,
+      this.cache,
+      opts.config ?? {},
+      this.tokens,
+    );
+    // Device-code sign-in raises the same acquisition event activation does: a signed-in
+    // device holds a licensed token exactly as an activated one does, and syncs the same way.
+    this.identity = new IdentityClient(this.core, this.tokens, () =>
+      this.onLicenseAcquired(),
+    );
     this.release = new ReleaseClient(this.core, this.tokens);
     this.update = new UpdateClient(
       this.core,
@@ -245,6 +261,29 @@ export class PolarisKeyClient {
       this.onChange(this.license.status());
     }
     return result;
+  }
+
+  /**
+   * The §5 single re-acquire: `POST /<p>/license/token` for a licensed device, or
+   * `POST /<p>/devices/register` (keyless, no bearer) for a registered-without-licence device
+   * or a product with License off. Null means the one attempt failed (403
+   * `registration_closed`, 401, 404, 429 or transport) and the hard-401 path applies.
+   */
+  private async reacquire(
+    ctx: CoreContext,
+    current: string,
+    source: TokenSource | null,
+  ): Promise<Reacquired | null> {
+    const route = chooseReacquireRoute({
+      licenseEnabled: ctx.enabled("license"),
+      source,
+    });
+    if (route === "devices-register") {
+      const r = await this.devices.requestRegistration();
+      return r.kind === "ok" ? { token: r.token, source: "register" } : null;
+    }
+    const r = await reacquireToken(ctx, current);
+    return r.kind === "ok" ? { token: r.token, source: "reacquire" } : null;
   }
 
   private async reportOnce(): Promise<void> {

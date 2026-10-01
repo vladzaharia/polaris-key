@@ -31,29 +31,37 @@ it is not a smaller feed, it is a lie: an appcast that can't ask Release what ac
 exists would have to either fabricate an answer or omit checks entirely, and both are worse
 than the coupling. Nothing points back the other way — Release has never heard of Update.
 
-## Off by default, and it needs Release
+## Off by default, and it needs Distribution
 
 Update is opt-in per product, like every service beyond Core. It also carries a coherence
-rule the platform enforces at the same layer as enablement itself: a product **cannot**
-enable Update while Release stays off — a feed with no truth behind it would answer every
-caller with an empty document and call that success, and the admin API refuses to ship
-that silent failure. Turning Update on is a manifest concern, alongside every other
+rule the platform enforces at the same layer as enablement itself. The chain is
+**Release ← Distribution ← Update**: truth, then delivery, then decision. A product
+**cannot** enable Update while [Distribution](/docs/services/distribution/) is off
+(`update_requires_distribution`), and Distribution in turn needs Release
+(`distribution_requires_release`) — a feed with no delivery and no truth behind it would
+answer every caller with an empty document and call that success, and the admin API refuses
+to ship that silent failure. (The older `update_requires_release` is retired: the two new
+rules together imply it.) Turning Update on is a manifest concern, alongside every other
 service:
 
 ```json
 {
   "modules": {
     "release": { "enabled": true },
+    "distribution": { "enabled": true },
     "update": { "enabled": true }
   }
 }
 ```
 
-Both together, always — the parser also accepts the single pre-split `releases` module
-name and expands it into both slugs, so a manifest written before the two services existed
+All three together — the parser also accepts the single pre-split `releases` module name
+and expands it into all three slugs, so a manifest written before the services existed
 separately keeps working unchanged. See
 [Release](/docs/services/release/#off-by-default-and-config-only-until-linked) for the
 `enabled`/`configured` distinction discovery reports for each service independently.
+
+What Distribution knows — transports, availability, and later per-outlet rollouts — reaches
+Update through Core's descriptor hooks, never by import, and only while Distribution is on.
 
 ## The three pages
 

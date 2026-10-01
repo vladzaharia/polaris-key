@@ -9,6 +9,7 @@ export type ServiceSlug =
   | "license"
   | "config"
   | "release"
+  | "distribution"
   | "update"
   | "identity";
 
@@ -17,6 +18,7 @@ export const SERVICE_SLUGS: readonly ServiceSlug[] = [
   "license",
   "config",
   "release",
+  "distribution",
   "update",
   "identity",
 ];
@@ -41,13 +43,20 @@ export const SERVICE_REQUIRES: Readonly<
   license: [],
   config: [],
   release: [],
-  update: ["release"],
+  distribution: ["release"],
+  update: ["distribution"],
   identity: [],
 };
 
 /** A service section's `data-service` accent token (D-17). The platform section's `core` is
  *  not a service and is added by the nav model, not here. */
-export type ServiceAccentToken = "key" | "config" | "release" | "update" | "id";
+export type ServiceAccentToken =
+  | "key"
+  | "config"
+  | "release"
+  | "distribution"
+  | "update"
+  | "id";
 
 /** The lucide-react icon each service's row uses. `ServicesCard` maps every name to a
  *  component, so a new icon here is a type error until it is imported there. */
@@ -55,6 +64,7 @@ export type ServiceIconName =
   | "KeyRound"
   | "Settings2"
   | "Package"
+  | "Truck"
   | "RefreshCw"
   | "UserRound";
 
@@ -107,6 +117,17 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     requires: [],
   },
   {
+    slug: "distribution",
+    label: "Distribution",
+    summary:
+      "How releases reach devices and outlets — transports, availability, and rollouts.",
+    accent: "distribution",
+    icon: "Truck",
+    docs: "/docs/services/distribution/",
+    defaultEnabled: false,
+    requires: ["release"],
+  },
+  {
     slug: "update",
     label: "Update",
     summary:
@@ -115,7 +136,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     icon: "RefreshCw",
     docs: "/docs/services/update/",
     defaultEnabled: false,
-    requires: ["release"],
+    requires: ["distribution"],
   },
   {
     slug: "identity",

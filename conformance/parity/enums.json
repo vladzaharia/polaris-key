@@ -1,0 +1,16 @@
+{
+  "$schema": "./enums.schema.json",
+  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen:constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values; the values each SDK sends today are aligned to them by P1b-04, not here. Outlets, transports, pack types, patch strategies and bindings are added when their owners define them (P2b-02, P4-01).",
+  "enums": [
+    {
+      "name": "platform",
+      "description": "OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`.",
+      "values": ["macos", "ios", "android", "windows", "linux", "web"]
+    },
+    {
+      "name": "arch",
+      "description": "CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed.",
+      "values": ["arm64", "x86_64", "armv7", "wasm32"]
+    }
+  ]
+}

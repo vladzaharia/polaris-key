@@ -53,16 +53,17 @@ await client.sync();
 
 ## Shape
 
-| Surface          | Subpath                     | What it owns                                                                                                        |
-| ---------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `client.core`    | `@polaris-key/node/core`    | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import           |
-| `client.license` | `@polaris-key/node/license` | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile                                     |
-| `client.config`  | `@polaris-key/node/config`  | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret`                                                    |
-| `client.devices` | `@polaris-key/node/devices` | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas |
-| `client.release` | `@polaris-key/node/release` | `changelog` / `installUrl` / `downloadUrl`                                                                          |
-| `client.update`  | `@polaris-key/node/update`  | `check` (version) / `appcastUrl` (from discovery)                                                                   |
-| —                | `@polaris-key/node/local`   | The transportless profile: every network-requiring call refuses                                                     |
-| —                | `@polaris-key/node/cli`     | Framework-agnostic commands + commander/yargs adapters                                                              |
+| Surface           | Subpath                      | What it owns                                                                                                        |
+| ----------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `client.core`     | `@polaris-key/node/core`     | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import           |
+| `client.license`  | `@polaris-key/node/license`  | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile                                     |
+| `client.config`   | `@polaris-key/node/config`   | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `mintToken` (edge-mint)                          |
+| `client.devices`  | `@polaris-key/node/devices`  | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas |
+| `client.identity` | `@polaris-key/node/identity` | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                     |
+| `client.release`  | `@polaris-key/node/release`  | `changelog` / `installUrl` / `downloadUrl`                                                                          |
+| `client.update`   | `@polaris-key/node/update`   | `check` (version) / `appcastUrl` (from discovery)                                                                   |
+| —                 | `@polaris-key/node/local`    | The transportless profile: every network-requiring call refuses                                                     |
+| —                 | `@polaris-key/node/cli`      | Framework-agnostic commands + commander/yargs adapters                                                              |
 
 Pure verification logic is **not** re-exported here. `verifyLicenseDoc`, `licenseState`,
 `mergeTrust`, `verifyBundle`, `compareSemver` and friends live in `@polaris-key/client-core`; there is
@@ -107,8 +108,73 @@ read-modify-write of the cache record → the clock floor → best-effort teleme
 `POST /<product>/devices/report`. A 401 gets exactly **one** `POST /<product>/license/token`
 re-acquire for the whole pass, then one retry of the failed fetch.
 
+A registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `devices.register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
+`Authorization` header). It shares the single-attempt budget, so two parallel 401s still make one
+call. A refusal (403 `registration_closed`, 404, 429) spends the attempt and the hard 401 is
+recorded. After a restart the token's origin is not persisted, so a product with License on uses
+`license/token`. Under the `requires-identity` policy a native device cannot re-register (that
+needs a browser session) and lands on the hard 401.
+
 `client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
 lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
+
+## Device-code sign-in
+
+For a host that cannot complete a browser redirect — a CLI over SSH, a daemon, a game on a TV —
+`client.identity` signs in with a device code (RFC 8628). It needs the Identity service
+(`expectedServices` or discovery); with it off, every call throws `service-unavailable` before
+any request.
+
+```ts
+const prompt = await client.identity.beginSignIn({
+  deviceName: "Living-room PC",
+});
+// Show prompt.userCode large; render prompt.verificationUriComplete as a QR code (it is the
+// verification page with the code filled in); show prompt.verificationUri as the short URL.
+const abort = new AbortController(); // e.g. the player backs out of the sign-in screen
+const result = await client.identity.waitForSignIn(prompt, {
+  signal: abort.signal,
+});
+if (result.status === "ready") {
+  // The device token is stored and the post-activation sync has already run.
+}
+```
+
+`waitForSignIn` waits at least `prompt.interval` seconds before each poll; a `slow_down`
+lengthens the interval for every later poll (to the server's value, or by five seconds), and a
+poll that fails on the network or with a 5xx is retried at the same interval, never faster. It
+resolves `expired` once `prompt.expiresAt` has passed without asking the server again, and
+rejects with the signal's reason when the signal aborts. `pollSignIn(prompt)` makes exactly one
+poll (`pending`, `slow-down` with an `interval`, `ready`, `expired` or `error`) for a host that
+paces itself — an Electron bridge, say.
+
+`prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
+identity's **own** licence; it does not attach a licence this device already held.
+
+**After `ready`, show on the device which account signed in.** Anyone holding the user code can
+complete the sign-in on the verification page, so the player must be able to see a mis-binding:
+`ready` carries no identity itself, but the post-acquisition sync has already run, so
+`client.license.getProfile()` returns the signed licence profile (`name`, `email`) to show — for
+example "Signed in as Ada Lovelace <ada@example.com>" with a way to sign out.
+
+A prompt from `beginSignIn` and a `MintedToken` print with the credential redacted:
+`console.log` and `JSON.stringify` show `deviceCode` / `token` as `[redacted]`, while the
+properties themselves read normally.
+
+## Edge-mint
+
+`client.config.mintToken(recipeId)` asks the Worker to sign a short-lived third-party token
+through an operator-approved recipe (`GET /<product>/config/mint/<recipeId>/token`, with the
+device token) and resolves `{ token, expiresAt }`. The result is cached **in memory only** — never
+in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, so asking on
+every API call costs one mint per lifetime. A cached token counts only while the client still
+holds the device token it was minted with: `deactivate()`, a cleared token or a different sign-in
+drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry.
+Failures throw `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id
+outside `[a-z0-9-]`) before any request, `unauthorized` (no token, or still 401), or the Worker's
+`not_found` / `rate_limited` / `misconfigured`.
 
 ## Layered config precedence
 

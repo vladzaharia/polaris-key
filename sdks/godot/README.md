@@ -107,8 +107,9 @@ guarded by `pnpm gen:corpus -- --check`, exactly like the Swift mirror. **Never 
 the generator and regenerate. A JSON file there that the generator does not write fails the gate.
 An exported pack can read only `res://`, which is why the mirror exists.
 
-`PKeyJws` decodes the escape `\u0000` as U+FFFD on every engine (WIRE-CONTRACT-V3 §10), and the
-conformance suite compares those strings against the generator's `expect.docNulReplaced`.
+`PKeyJson` (the strict pre-validation every signed payload passes through) decodes the escape
+`\u0000` as U+FFFD on every engine (WIRE-CONTRACT-V3 §10), and the conformance suite compares
+those strings against the generator's `expect.docNulReplaced`.
 
 ## Writing GDScript here
 
@@ -127,16 +128,17 @@ conformance suite compares those strings against the generator's `expect.docNulR
 
 ## Measured pitfalls
 
-| Behaviour                         | 4.7.2                                                                 | 4.4.1                                                        | Consequence                         |
-| --------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------- |
-| `--import` with a parse error     | exit 0, prints nothing                                                | exit 0, prints the error                                     | watch the log; never `\|\| true`    |
-| runner fails to load              | macOS: modal alert, the run hangs; Linux: exit 1 (`Invalid MainLoop`) | macOS: SIGABRT, exit 134; Linux: exit 1 (`Invalid MainLoop`) | watchdog and timeout                |
-| runtime error in a suite          | editor aborts it; template continues silently                         | editor aborts it                                             | explicit and coverage checks        |
-| `\u0000` in JSON                  | U+FFFD, plus a "Unicode parsing error" line                           | dropped                                                      | the §10 rule in `PKeyJws`           |
-| `--export-pack`                   | works with no templates installed                                     | same                                                         | CI needs only the template binary   |
-| redirect with `max_redirects = 0` | `RESULT_REDIRECT_LIMIT_REACHED`                                       | 303 and 307 come back as `RESULT_SUCCESS`                    | follow any 3xx with a `Location`    |
-| lone surrogate `\ud800` in JSON   | rejected                                                              | rejected                                                     | JS accepts it: divergence for P3-02 |
-| slim container without fontconfig | `ERROR: Unable to load fontconfig` on every run                       | same                                                         | the watchdog ignores generic errors |
+| Behaviour                         | 4.7.2                                                                 | 4.4.1                                                        | Consequence                                                         |
+| --------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `--import` with a parse error     | exit 0, prints nothing                                                | exit 0, prints the error                                     | watch the log; never `\|\| true`                                    |
+| runner fails to load              | macOS: modal alert, the run hangs; Linux: exit 1 (`Invalid MainLoop`) | macOS: SIGABRT, exit 134; Linux: exit 1 (`Invalid MainLoop`) | watchdog and timeout                                                |
+| runtime error in a suite          | editor aborts it; template continues silently                         | editor aborts it                                             | explicit and coverage checks                                        |
+| `\u0000` in JSON                  | U+FFFD, plus a "Unicode parsing error" line                           | dropped                                                      | the §10 rule in `PKeyJson`                                          |
+| `--export-pack`                   | works with no templates installed                                     | same                                                         | CI needs only the template binary                                   |
+| redirect with `max_redirects = 0` | `RESULT_REDIRECT_LIMIT_REACHED`                                       | 303 and 307 come back as `RESULT_SUCCESS`                    | follow any 3xx with a `Location`                                    |
+| lone surrogate `\ud800` in JSON   | rejected                                                              | rejected                                                     | JS accepts it: divergence for P3-02                                 |
+| slim container without fontconfig | `ERROR: Unable to load fontconfig` on every run                       | same                                                         | the watchdog ignores generic errors                                 |
+| `HTTPRequest.timeout`             | a Timer on process delta: a long frame before the request spends it   | same                                                         | `PKeyTransport` times out on the wall clock, one budget per request |
 
 So every `run_tests.sh` step fails on `SCRIPT ERROR`, `Parse Error`, `Failed to load script`,
 `Cannot get class` or `Invalid MainLoop` in its log, on its timeout, on a non-zero exit, and (for

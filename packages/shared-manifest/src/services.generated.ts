@@ -9,6 +9,7 @@ export type ServiceSlug =
   | "license"
   | "config"
   | "release"
+  | "distribution"
   | "update"
   | "identity";
 
@@ -17,6 +18,7 @@ export const SERVICE_SLUGS: readonly ServiceSlug[] = [
   "license",
   "config",
   "release",
+  "distribution",
   "update",
   "identity",
 ];
@@ -41,7 +43,8 @@ export const SERVICE_REQUIRES: Readonly<
   license: [],
   config: [],
   release: [],
-  update: ["release"],
+  distribution: ["release"],
+  update: ["distribution"],
   identity: [],
 };
 
@@ -60,11 +63,12 @@ export const MODULE_SERVICES: Readonly<
 > = {
   licensing: ["license"],
   edgeMint: ["config"],
-  releases: ["release", "update"],
+  releases: ["release", "distribution", "update"],
   oidc: ["identity"],
   license: ["license"],
   config: ["config"],
   release: ["release"],
+  distribution: ["distribution"],
   update: ["update"],
   identity: ["identity"],
 };

@@ -23,6 +23,7 @@ import type { ByteRoute } from "./core/bytesHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
 import { releaseService } from "./services/release/index.js";
+import { distributionService } from "./services/distribution/index.js";
 import { updateService } from "./services/update/index.js";
 import { identityService } from "./services/identity/index.js";
 
@@ -30,6 +31,7 @@ export const SERVICES: ServiceRegistry = new Map([
   [licenseService.slug, licenseService],
   [configService.slug, configService],
   [releaseService.slug, releaseService],
+  [distributionService.slug, distributionService],
   [updateService.slug, updateService],
   [identityService.slug, identityService],
 ]);

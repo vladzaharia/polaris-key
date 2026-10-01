@@ -157,7 +157,7 @@ keeps, not a reason to fail the sync.
 There are two reasons this scheduling is Core's, and both are structural.
 
 **Any service mix must advance the clock.** The v2 design rode trust refresh on the `/config`
-fetch, so a product that fetched no config advanced no signed clock. With five opt-in services
+fetch, so a product that fetched no config advanced no signed clock. With six opt-in services
 and products that legitimately run only one, coupling the independent clock to one service's
 document makes the clock a function of which services a customer happened to buy.
 

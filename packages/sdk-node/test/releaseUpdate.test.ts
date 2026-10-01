@@ -290,6 +290,7 @@ describe("UpdateClient — the feed over Release's store (§R1)", () => {
             license: { enabled: false },
             config: { enabled: false },
             release: { enabled: true },
+            distribution: { enabled: true },
             update: {
               enabled: true,
               endpoints: {
@@ -324,7 +325,7 @@ describe("Release/Update — the D-21 gate fires before the dial", () => {
       "/release/changelog": () => json(CHANGELOG),
       "/update/version": () => json({ version: "9.9.9", tag: "v9", url: "u" }),
     });
-    // The suite default: license + config on, release/update/identity OFF.
+    // The suite default: license + config on, release/distribution/update/identity OFF.
     const c = await client(mock, { services: ["license", "config"] });
     await expect(c.release.changelog()).rejects.toMatchObject({
       code: "service-unavailable",
@@ -349,6 +350,7 @@ describe("Release/Update — the D-21 gate fires before the dial", () => {
             license: { enabled: false },
             config: { enabled: false },
             release: { enabled: true },
+            distribution: { enabled: true },
             update: { enabled: false },
             identity: { enabled: false },
           },

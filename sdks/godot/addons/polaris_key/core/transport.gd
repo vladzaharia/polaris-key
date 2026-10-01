@@ -8,7 +8,7 @@ extends RefCounted
 ##     dropped as soon as the origin changes and never comes back; a redirect to plain http on
 ##     a non-loopback host is refused. 303 (and 301/302 after a POST) become a GET without body.
 ##   - `timeout` 15 s per request (PKeyOptions.request_timeout_seconds), on the WALL clock from
-##     the moment the request starts. `HTTPRequest.timeout` is a Timer that counts process delta,
+##     the moment the request starts; every redirect hop spends the same budget. `HTTPRequest.timeout` is a Timer that counts process delta,
 ##     so a request started at the end of a long frame (a scene load, a bundle verify) loses that
 ##     whole frame on its first tick and times out before a byte moves; it is left at 0 here.
 ##   - `body_size_limit` 512 KiB for API responses (also a zip-bomb guard).
@@ -131,7 +131,12 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 	var b := body
 	var current := url
 	var credentials := true
+	# One wall-clock budget for the whole request: every redirect hop spends the same deadline,
+	# so a chain of slow hops cannot take `timeout` seconds each.
+	var deadline := Time.get_ticks_msec() + int(timeout * 1000.0) if timeout > 0.0 else 0
 	for hop in MAX_REDIRECTS + 1:
+		if deadline > 0 and Time.get_ticks_msec() >= deadline:
+			return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": HTTPRequest.RESULT_TIMEOUT})
 		var target := parse_url(current)
 		if target.is_empty() or not _secure_target(target):
 			return PKeyResult.failure(PKeyErrors.INSECURE_REDIRECT, "Refusing a redirect to %s." % current)
@@ -141,7 +146,7 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 			for k in h.keys():
 				if String(k).to_lower() == "authorization":
 					h.erase(k)
-		var r := await _once(m, current, h, b, PKeyClaims.is_true(opts.get("range", false)))
+		var r := await _once(m, current, h, b, PKeyClaims.is_true(opts.get("range", false)), deadline)
 		if not r.ok or r.detail.get("redirect", "") == "":
 			return r
 		var status: int = r.detail["status"]
@@ -155,7 +160,8 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 	return PKeyResult.failure(PKeyErrors.TOO_MANY_REDIRECTS, "More than %d redirects." % MAX_REDIRECTS)
 
 
-func _once(method: String, url: String, headers: Dictionary, body: PackedByteArray, ranged: bool) -> PKeyResult:
+## `deadline` is the request's `Time.get_ticks_msec()` deadline (0: none), shared by every hop.
+func _once(method: String, url: String, headers: Dictionary, body: PackedByteArray, ranged: bool, deadline: int) -> PKeyResult:
 	var lines := PackedStringArray()
 	var logged := {}
 	for k in headers:
@@ -175,7 +181,7 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 	if err != OK:
 		req.queue_free()
 		return PKeyResult.failure(PKeyErrors.NETWORK, "The request could not start (error %d)." % err, {"error": err})
-	var res := await _await_completed(req)
+	var res := await _await_completed(req, deadline)
 	req.queue_free()
 	if res.is_empty():
 		return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": HTTPRequest.RESULT_TIMEOUT})
@@ -197,19 +203,18 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 	return PKeyResult.failure(PKeyErrors.NETWORK, "The request failed (HTTPRequest result %d)." % result, {"result": result})
 
 
-## The request_completed arguments, or [] once `timeout` seconds of wall time have passed since
-## the call (the request is then cancelled). Checked once per frame, as HTTPRequest polls; the
+## The request_completed arguments, or [] once the wall-clock `deadline` (computed once in
+## `request()`; 0 means none) has passed (the request is then cancelled). Checked once per frame, as HTTPRequest polls; the
 ## deadline must be seen on two checks, so HTTPRequest always gets a poll after it passes (one
 ## hitch frame cannot expire a request it never let run).
-func _await_completed(req: HTTPRequest) -> Array:
+func _await_completed(req: HTTPRequest, deadline: int) -> Array:
 	var box := []
 	req.request_completed.connect(func(result: int, status: int, hdrs: PackedStringArray, body: PackedByteArray) -> void:
 		box.append_array([result, status, hdrs, body]), CONNECT_ONE_SHOT)
-	var deadline := Time.get_ticks_msec() + int(timeout * 1000.0)
 	var expired := false
 	var tree := req.get_tree()
 	while box.is_empty():
-		if timeout > 0.0 and Time.get_ticks_msec() >= deadline:
+		if deadline > 0 and Time.get_ticks_msec() >= deadline:
 			if expired:
 				req.cancel_request()
 				return []

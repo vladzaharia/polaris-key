@@ -1,5 +1,6 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
-// @pkey-feature license.deactivate devices.register
+// @pkey-feature license.deactivate license.reregister devices.register
+// @pkey-feature identity.devicecode config.mint
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -8,7 +9,7 @@
 // asserts every request.
 //
 // Which transcripts run is DATA: a transcript for a feature this SDK has not implemented is
-// skipped — register-reregister-401 until P1b-06, telemetry-report until P1b-07 exposes
+// skipped — telemetry-report until P1b-07 exposes
 // `report()` — and starts running the moment the manifest claims it (the `report` verb then
 // needs its mapping below). The SDK clock is `CoreOptions.clock`, pinned to each step's `now`:
 // the recorded documents were signed at a fixed instant and expire an hour later.
@@ -16,6 +17,7 @@
 import Foundation
 import PolarisKey
 import PolarisKeyCore
+import PolarisKeyIdentity
 import PolarisKeyLicense
 import XCTest
 
@@ -37,13 +39,58 @@ private let registerFingerprint = HardwareFingerprint(
     components: ["machineUuid": "REPLAYmachineUuid00000"],
     hwid: "REPLAYhwid0000000000000000000000")
 
+/// The replay's memory between steps: the prompt the last `beginSignIn` returned.
+final class ReplaySession: @unchecked Sendable {
+    var prompt: SignInPrompt?
+}
+
 enum SwiftReplay {
     /// THE mapping from transcript verbs and `expect` keys onto the Swift SDK. Kept in one place.
     static func act(
-        _ client: PolarisKeyClient, store: InMemoryStore, step: Transcript.Step
+        _ client: PolarisKeyClient, store: InMemoryStore, step: Transcript.Step,
+        session: ReplaySession
     ) async throws -> [String: JSONValue] {
         var out: [String: JSONValue] = [:]
         switch step.action {
+        case "beginSignIn":
+            let p = try await client.identity.beginSignIn(
+                deviceName: step.args["deviceName"]?.stringValue)
+            session.prompt = p
+            out["prompt"] = .object([
+                "userCode": .string(p.userCode),
+                "verificationUri": .string(p.verificationUri),
+                "verificationUriComplete": .string(p.verificationUriComplete),
+                "expiresIn": .int(p.expiresIn),
+                "interval": .int(p.interval),
+            ])
+        case "pollSignIn":
+            guard let prompt = session.prompt else { throw ReplayError("pollSignIn before beginSignIn") }
+            switch try await client.identity.pollSignIn(prompt) {
+            case .pending: out["result"] = .string("pending")
+            case .slowDown(let interval):
+                out["result"] = .string("slow-down")
+                out["interval"] = .int(interval)
+            case .ready: out["result"] = .string("ready")
+            case .expired: out["result"] = .string("expired")
+            case .error: out["result"] = .string("error")
+            }
+        case "waitForSignIn":
+            guard let prompt = session.prompt else { throw ReplayError("waitForSignIn before beginSignIn") }
+            switch try await client.identity.waitForSignIn(prompt) {
+            case .ready: out["result"] = .string("ready")
+            case .expired: out["result"] = .string("expired")
+            case .error: out["result"] = .string("error")
+            }
+        case "mintToken":
+            do {
+                let minted = try await client.config.mintToken(
+                    step.args["recipeId"]?.stringValue ?? "")
+                out["result"] = .string("ok")
+                out["token"] = .string(minted.token)
+                out["expiresAt"] = .int(minted.expiresAt)
+            } catch let error as PolarisError {
+                out["result"] = .string(error.code)
+            }
         case "discover":
             switch await client.discover() {
             case .ok: out["result"] = .string("ok")
@@ -120,10 +167,11 @@ enum SwiftReplay {
             expectedServices: t.initial.services?.compactMap(ServiceSlug.init(rawValue:)),
             clock: { clock.now })
         let client = try await PolarisKeyClient.create(options: PolarisKeyClientOptions(core: core))
+        let session = ReplaySession()
         for i in t.steps.indices {
             let step = await server.beginStep(i)
             clock.now = step.now ?? t.now
-            let observed = try await act(client, store: store, step: step)
+            let observed = try await act(client, store: store, step: step, session: session)
             try await server.endStep()
             for (key, want) in step.expect.sorted(by: { $0.key < $1.key }) {
                 guard let got = observed[key], got == want else {

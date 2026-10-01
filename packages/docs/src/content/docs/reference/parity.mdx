@@ -19,10 +19,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 23 | 3 | 23 | 7 |
-| React | `web`, `desktop-bridge` | 16 | 12 | 22 | 6 |
-| Python | `python` | 23 | 3 | 23 | 7 |
-| Swift | `macos`, `ios` | 23 | 3 | 24 | 6 |
+| Node | `node` | 27 | 3 | 19 | 7 |
+| React | `web`, `desktop-bridge` | 17 | 12 | 21 | 6 |
+| Python | `python` | 27 | 3 | 19 | 7 |
+| Swift | `macos`, `ios` | 27 | 3 | 20 | 6 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 6 | 0 | 47 | 3 |
 
 ## Core
@@ -36,7 +36,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | — |
 | `core.headers` | Canonical platform/arch/SDK/engine header values | `headers.json` (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | — |
-| `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | — |
+| `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | planned (P1b-02) | — |
 | `core.caps` | supports() and capability telemetry | unit | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | — |
 | `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | planned (P1b-09) | planned (P5-05) | web, desktop-bridge: runtime |
 
@@ -50,7 +50,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
 | `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
 | `license.channels` | entitledChannels() | unit | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1-03) | — |
-| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | planned (P1b-06) | N/A (web, desktop-bridge: runtime) | planned (P1b-06) | planned (P1b-06) | planned (P1-03) | web, desktop-bridge: runtime |
+| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-03) | web, desktop-bridge: runtime |
 
 ## Config
 
@@ -60,7 +60,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
 | `config.secret` | getSecret | transcripts (not recorded) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-04) | web, desktop-bridge: runtime |
 | `config.schema` | Catalog fetch (/config/schema) | transcripts (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | ✓ | planned (P1-04) | — |
-| `config.mint` | Edge-mint of third-party tokens | transcripts (P1b-08) | planned (P1b-08) | planned (unowned) | planned (P1b-08) | planned (P1b-08) | planned (P1-04) | — |
+| `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | planned (unowned) | ✓ | ✓ | planned (P1-04) | — |
 | `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
 
 ## Devices and identity
@@ -73,7 +73,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-05) | web: runtime |
 | `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | planned (P1b-07); N/A (web: runtime) | ✓ | planned (P1b-07) | planned (P1-05) | web: runtime |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | — |
-| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts (P1b-08) | planned (P1b-08) | ✓; N/A (web: runtime) | planned (P1b-08) | planned (P1b-08) | planned (P1-07) | web: runtime |
+| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-07) | web: runtime |
 
 ## Release and update
 

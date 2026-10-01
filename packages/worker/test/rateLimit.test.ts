@@ -118,6 +118,7 @@ describe("register rate limiting", () => {
           license: { enabled: false },
           config: { enabled: true },
           release: { enabled: false },
+          distribution: { enabled: false },
           update: { enabled: false },
           identity: { enabled: false },
         },

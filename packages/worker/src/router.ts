@@ -172,8 +172,10 @@ export function matchRoute(pathname: string): Route {
   }
 
   // `/<p>/<channel>/appcast.xml` — the fourth permanent alias. Below the service-namespace
-  // check above, so a product cannot have a release channel named `release` or `update` that
-  // shadows the service it belongs to.
+  // check above, so a product cannot have a release channel named after a service (`release`,
+  // `update`, `distribution`, …) that shadows the service it belongs to. A manual channel that
+  // shares a service's name keeps its canonical `/<p>/update/<channel>/appcast.xml`; only this
+  // alias spelling is lost (`distribution` joined the namespaces in P2b-01).
   const appcast = rest.match(/^\/([a-z0-9-]+)\/appcast\.xml$/);
   if (appcast && appcast[1])
     return alias("update", product, [appcast[1], "appcast.xml"]);

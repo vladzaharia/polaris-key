@@ -1,8 +1,8 @@
 // `@polaris-key/node` — the Polaris Key Node SDK.
 //
 // The barrel is the convenience surface: `PolarisKeyClient` plus the types a host touches. Every
-// module also has a subpath (`@polaris-key/node/core`, `/license`, `/config`, `/devices`, `/release`,
-// `/update`, `/local`, `/cli`) so a config-only daemon can import the Config client without
+// module also has a subpath (`@polaris-key/node/core`, `/license`, `/config`, `/devices`, `/identity`,
+// `/release`, `/update`, `/local`, `/cli`) so a config-only daemon can import the Config client without
 // pulling the license module, and a bundler can drop what nobody imported.
 //
 // Pure verification logic is NOT re-exported here. `verifyLicenseDoc`, `licenseState`,
@@ -49,8 +49,16 @@ export {
   ConfigClient,
   type ConfigClientOptions,
   type ConfigSource,
+  type MintedToken,
   type UserConfigEntry,
 } from "./config/client.js";
+export {
+  IdentityClient,
+  type SignInPoll,
+  type SignInPrompt,
+  type SignInResult,
+  type WaitForSignInOptions,
+} from "./identity/client.js";
 export {
   DevicesClient,
   type AccountDevice,
@@ -82,9 +90,16 @@ export {
   type ProductDiscoveryDocument,
   type ProductDiscoveryTrust,
   type ServiceFragment,
-  type ServiceSlug,
   type ServicesMap,
 } from "./discovery.js";
+
+// ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──
+// Error codes, header names, enums, feature ids, versions and the channel vocabulary, spelled
+// identically (up to casing) in every SDK. Re-exported wholesale so a constant the generator gains
+// (a new enum, P0-04's channel constants) reaches the package root without editing this file;
+// test/errorCodes.test.ts checks every generated export is reachable from here. `ServiceSlug` is
+// exported as a value and a type; it is the same union the discovery module uses.
+export * from "./constants.generated.js";
 
 export { SDK_NAME, SDK_VERSION } from "./version.js";
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Tuple
 
 #: The opt-in services, in canonical order. Core is not a service — it is always on.
-SERVICE_SLUGS: Tuple[str, ...] = ("license", "config", "release", "update", "identity")
+SERVICE_SLUGS: Tuple[str, ...] = ("license", "config", "release", "distribution", "update", "identity")
 
 #: What a product runs when it has never said otherwise, in canonical order.
 DEFAULT_ENABLED_SERVICES: Tuple[str, ...] = ("license", "config")

@@ -56,7 +56,12 @@ func _configure(t: PKeyTestContext) -> void:
 
 func _capabilities(t: PKeyTestContext) -> void:
 	var sdk := PKeyTestFixtures.new_sdk()
-	var def := {"license": {"enabled": true}, "config": {"enabled": true}, "release": {"enabled": false}, "update": {"enabled": false}, "identity": {"enabled": false}}
+	# Derived from the generated service table, so a new slug cannot break this test.
+	var def := {}
+	for slug in PKeyServices.SLUGS:
+		def[slug] = {"enabled": slug in PKeyServices.DEFAULT_ENABLED}
+	t.check("autoload: the generated table includes distribution", "distribution" in PKeyServices.SLUGS)
+	t.check("autoload: the default map is licence and config", PKeyServices.DEFAULT_ENABLED == ["license", "config"])
 	t.check("autoload: capabilities before configure are licence and config only", sdk.capabilities() == def, str(sdk.capabilities()))
 	t.check("autoload: the service order is the generated table's", sdk.capabilities().keys() == PKeyServices.SLUGS)
 	var o := _opts()

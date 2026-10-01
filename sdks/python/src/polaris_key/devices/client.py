@@ -163,6 +163,18 @@ class DevicesClient:
         re-registering is asking for a FRESH credential, not authenticating with the old
         one. On success the new token replaces whatever was stored.
         """
+        r = self.request_registration()
+        if isinstance(r, RegisterOk):
+            self._tokens.set(r.token, "register")
+        return r
+
+    def request_registration(self) -> RegisterResult:
+        """The registration request alone, without storing the token.
+
+        :meth:`register` stores it; the §5 re-register on 401 (P1b-06) lets
+        ``TokenManager.reacquire_once`` store it instead, so the one request is identical on
+        both paths: the fingerprint when enabled, never a bearer. Internal.
+        """
         fingerprint = self.fingerprint()
         # Outside the try — a local-only refusal is a configuration error the host can
         # fix, not a transport outcome to be reported as one.
@@ -190,7 +202,6 @@ class DevicesClient:
             device_id = body.get("deviceId")
             if not isinstance(token, str) or not isinstance(device_id, str):
                 return RegisterError(message="registration response was malformed")
-            self._tokens.set(token)
             return RegisterOk(token=token, deviceId=device_id)
         if res.status_code == 403:
             return RegisterClosed()

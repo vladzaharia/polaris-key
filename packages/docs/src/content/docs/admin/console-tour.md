@@ -31,7 +31,7 @@ an operator has to be able to reach **Services** even for a product that runs no
 | Tab          | What it's for                                                                                                                                                                                                                                                                                                     |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Overview** | The product's setup health at a glance — a "needs attention" strip when something required is missing, a guided checklist (trust key, required secrets, license defaults, "issue a test license"), the SDK trust key + trust set JSON, and a starter snippet. See [Products](/docs/admin/products/#setup-health). |
-| **Services** | Which of the five services this product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                                                                                                                                  |
+| **Services** | Which of the six services this product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                                                                                                                                   |
 | **Devices**  | Every device of the product, including those that hold no license: filters, summary chips, a detail drawer, deauthorize and reset-binding. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                                                                      |
 | **Secrets**  | Write-only product secrets, plus the required-secrets checklist the setup health strip is drawn from. See [Secrets & keys](/docs/admin/secrets-and-keys/).                                                                                                                                                        |
 | **Activity** | The product's audit log, keyset-paginated. See [Activity](/docs/admin/activity/).                                                                                                                                                                                                                                 |
@@ -67,9 +67,18 @@ material), and the last manifest-sync attempt. Release config itself — GitHub 
 binary name, channel workflow, edge-mint recipes — is authored in the repo's `.pkey/release`
 file and applied by **Resync from repo**, not edited here.
 
+## Distribution
+
+Accent `distribution`. Shown only when **Distribution** is on (which requires Release — see
+[Services & enablement](/docs/admin/services-enablement/#coherence-errors)). One tab:
+**Overview** — the Release ← Distribution ← Update chain as this product runs it, and which of
+Core's descriptor hooks answer for it (`releaseCatalog` from Release; `delivery` and
+`outletCapabilities` from Distribution). It is read-only: outlets, transports, availability and
+rollouts are not configurable yet. See [Distribution](/docs/services/distribution/).
+
 ## Update
 
-Accent `update`. Shown only when **Update** is on (which requires Release — see
+Accent `update`. Shown only when **Update** is on (which requires Distribution — see
 [Services & enablement](/docs/admin/services-enablement/#coherence-errors)). One tab: **Update
 settings** — who may read the appcast/version feed (`metadataAccess`) and who may download the
 binaries it points at (`artifactsAccess`), each one of `public` / `authenticated` / `licensed` /

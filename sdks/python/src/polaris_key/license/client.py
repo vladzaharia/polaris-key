@@ -25,7 +25,7 @@ had no way to say "there is no licence here, sync anyway".
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Literal, Optional
 
 from ..core.cache import CacheManager
 from ..core.context import CoreContext, now_sec
@@ -134,17 +134,17 @@ class LicenseClient:
         tier."""
         r = enroll(self._ctx, self._fingerprint())
         if isinstance(r, ActivationOk):
-            self._acquire(r.token)
+            self._acquire(r.token, "enroll")
         return r
 
     def activate_with_key(self, key: str) -> ActivationResult:
         r = activate_with_key(self._ctx, key, self._fingerprint())
         if isinstance(r, ActivationOk):
-            self._acquire(r.token)
+            self._acquire(r.token, "activate")
         return r
 
-    def _acquire(self, token: str) -> None:
-        self._tokens.set(token)
+    def _acquire(self, token: str, source: Literal["activate", "enroll"]) -> None:
+        self._tokens.set(token, source)
         self._on_acquired("token")
 
     def deactivate(self) -> None:

@@ -32,6 +32,12 @@ func run(t: PKeyTestContext) -> void:
 				return {"status": 200, "body": "A".repeat(600 * 1024)}
 			"/hang":
 				return {"hang": true}
+			"/slow/1":
+				OS.delay_msec(650)
+				return {"status": 302, "headers": {"Location": "/slow/2"}}
+			"/slow/2":
+				OS.delay_msec(650)
+				return {"status": 302, "headers": {"Location": "/echo"}}
 		return {"status": 404}
 	var server := PKeyTestFixtures.new_server(main_handler)
 	other.handler = func(req: Dictionary) -> Dictionary:
@@ -83,6 +89,11 @@ func run(t: PKeyTestContext) -> void:
 	OS.delay_msec(1500)
 	r = await tr.request("GET", server.base_url() + "/echo")
 	t.check("transport: a long frame before the request does not spend its timeout", r.ok and r.detail["status"] == 200, str(r))
+
+	# Two 650 ms hops: each fits in 1 s, together they do not. The deadline is computed once per
+	# request, so the redirect chain shares one budget instead of getting 1 s per hop.
+	r = await tr.request("GET", server.base_url() + "/slow/1")
+	t.check("transport: redirect hops share one timeout budget", not r.ok and r.code == PKeyErrors.TIMEOUT, str(r))
 
 	var t0 := Time.get_ticks_msec()
 	r = await tr.request("GET", server.base_url() + "/hang")
