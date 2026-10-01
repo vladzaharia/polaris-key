@@ -84,6 +84,9 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
     (pointer, pin, floor, critical), `POST …/release/channels/{channel}/revert`,
     `POST`/`DELETE …/release/releases/{releaseId}/yank`.
     Every change is audited with its actor (`admin:<sub>` or `ci:<subject>`).
+  - Channel policy rows and operations use canonical names only (P0-04 plan §10). A `staging` route
+    segment resolves through `CHANNEL_ALIASES` to `beta` unless the product declares a manual
+    `staging` channel, and `staging` is never stored.
 - **Admin read model:** `GET …/release/releases` adds builds (platform, arch, format, build number,
   min OS), artifact role, SHA-256, locations and the yank; `GET …/release/channels` returns the
   policy per deliverable with `source`. P2-07 renders these.
