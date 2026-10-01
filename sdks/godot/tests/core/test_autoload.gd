@@ -41,9 +41,12 @@ func _configure(t: PKeyTestContext) -> void:
 	var good := _opts("djdl", "0.0.0-dev.4")
 	t.check("autoload: configure accepts valid options", sdk.configure(good).ok)
 	t.check("autoload: the channel derives from a dev version", sdk.core.channel == "dev")
-	good.default_channel = "staging"
+	var beta := _opts("djdl", "0.0.0-beta.2")
+	sdk.configure(beta)
+	t.check("autoload: the channel derives beta from a beta version", sdk.core.channel == "beta")
+	good.default_channel = "beta"
 	sdk.configure(good)
-	t.check("autoload: default_channel wins until the build stamp supplies one", sdk.core.channel == "staging")
+	t.check("autoload: default_channel wins until the build stamp supplies one", sdk.core.channel == "beta")
 	var started: PKeyResult = await sdk.start()
 	t.check("autoload: start", started.ok)
 	t.check("autoload: get_sync_state has the bridge keys", sdk.get_sync_state().keys() == ["activation", "doc", "last_sync_unauthorized", "blocked", "last_verified_at", "high_water_mark"], str(sdk.get_sync_state().keys()))

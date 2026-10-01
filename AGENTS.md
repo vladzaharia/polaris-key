@@ -136,11 +136,11 @@ corpus → SDKs, in that order, and a feature is not done until all five impleme
 
 **3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Three families:
 
-| File(s)                                                                 | Written by                                        |
-| ----------------------------------------------------------------------- | ------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`                              | the docs build (`scripts/collect-csp-hashes.mjs`) |
-| `packages/docs/src/content/docs/reference/*.mdx`                        | `pnpm --filter @polaris-key/docs gen`             |
-| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift` | `pnpm gen:services` from `tools/services.json`    |
+| File(s)                                                                                          | Written by                                        |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| `packages/worker/src/docsCsp.generated.ts`                                                       | the docs build (`scripts/collect-csp-hashes.mjs`) |
+| `packages/docs/src/content/docs/reference/*.mdx`                                                 | `pnpm --filter @polaris-key/docs gen`             |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd` | `pnpm gen:services` from `tools/services.json`    |
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service

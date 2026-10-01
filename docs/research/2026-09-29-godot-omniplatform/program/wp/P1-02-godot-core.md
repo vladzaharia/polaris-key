@@ -67,8 +67,14 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 - `jws.gd` (`PKeyJws`): the 13-step order over `PKeyJson`; a per-`kid` cache of the decompressed
   key and its precomputed table; an incremental `PKeySha512` API so a bundle-sized verify runs on
   `WorkerThreadPool` where `OS.has_feature("threads")`, and spreads across frames otherwise.
-- `semver.gd` (`PKeySemver.parse`, `compare`: a port of `client-core/src/semver.ts`, used to
-  refuse a non-semver version here and by P1-03 and P1-08).
+- `semver.gd` (`PKeySemver.parse`, `compare`, `channel_for_version`: a port of
+  `client-core/src/semver.ts`, used to refuse a non-semver version here and by P1-03 and P1-08;
+  `channel_for_version` follows P0-04's vocabulary, so `0.0.0-beta*` and `0.0.0-staging*` are
+  `beta`).
+- `core/services_generated.gd` (`PKeyServices`): a GDScript target added to `tools/gen-services.ts`
+  so the service slugs and their order come from `tools/services.json`, not a hand copy. It joins
+  the generated-file lists in AGENTS.md rule 3, `contribute/layout.md` and the Service-table row
+  of `contribute/waves.md`.
 - `verify.gd` (envelope, licence and config claims), `trust.gd` (verify against pins only, merge
   with pins terminal, anti-rollback in memory), `clock.gd`, `gate.gd` (`license_state`,
   `is_usable`: the nine-step order, needed by `clockFloorCases`), `bundle.gd` (inspect with the

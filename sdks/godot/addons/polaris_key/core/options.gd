@@ -12,7 +12,7 @@ extends Resource
 ## `application/config/version`. Must be semver; `configure` refuses anything else.
 @export var version := ""
 ## X-PKey-Channel until the build stamp (P1-11) supplies one. Empty: derived from the version
-## (`stable`, or `dev`/`staging`/`pr` for 0.0.0-* versions).
+## (`stable`, or `dev`/`beta`/`pr` for 0.0.0-* versions).
 @export var default_channel := ""
 ## kid -> raw Ed25519 public key (base64url). The ONLY trust root; never taken from discovery.
 @export var pinned_trust_keys: Dictionary = {}

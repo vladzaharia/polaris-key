@@ -66,12 +66,14 @@ static func compare(a: String, b: String) -> int:
 	return 0
 
 
-## "stable" | "staging" | "pr" | "dev", from a version string.
+## "stable" | "beta" | "pr" | "dev", from a version string. Mirrors client-core
+## `channelForVersion` (WIRE-CONTRACT-V3 §5.1 rule 2): `0.0.0-beta*` and the legacy
+## `0.0.0-staging*` are both `beta`; only the Worker narrows a PR build to `pr-<n>`.
 static func channel_for_version(version: String) -> String:
 	if version.begins_with("0.0.0-dev"):
 		return "dev"
-	if version.begins_with("0.0.0-staging"):
-		return "staging"
+	if version.begins_with("0.0.0-beta") or version.begins_with("0.0.0-staging"):
+		return "beta"
 	if _pr.search(version) != null:
 		return "pr"
 	return "stable"
