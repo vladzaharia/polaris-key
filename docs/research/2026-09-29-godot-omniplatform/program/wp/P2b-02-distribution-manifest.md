@@ -112,7 +112,13 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
 - **Identities for runtime outlet detection**
   ([notes/S-06](../../notes/S-06-outlet-signals.md) precedence rule 4). Runtime detection
   (P3-11) accepts a launcher signal only when it names this product, and P1-11's export plugin
-  copies the ids it matches from this file into the build stamp's `outletIds`. The mapping is
+  puts the ids it matches into the build stamp's `outletIds`. The plugin cannot read this file
+  (Godot has no YAML parser, and `.pkey/` need not be inside the Godot project), so this package
+  owns the bridge: **`pkey distribution outlet-ids --outlet <id>`** loads the file through
+  `loadManifest` (any of `.json`, `.yaml`, `.yml`), validates it, and prints one compact JSON
+  object on stdout, keys sorted, absent ids left out (`{}` when the file is absent), for CI to pass
+  as `PKEY_OUTLET_IDS`. `--outlet` names the build's outlet entry and is required; an unknown id
+  exits non-zero. The mapping is
   `steam.appId` → `steamAppId`, `itch.gameId` → `itchGameId`, `flathub.appId` → `flatpakId`,
   `snap.name` → `snapName`, `direct.homebrewCask` → `caskToken`, and the `packageFamilyName` of
   the `ms-store` or `app-installer` entry matching the build's outlet → `msixFamilyName`. Three of these fields are here only
@@ -177,6 +183,10 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
       refused; an operator narrowing survives a resync; revert restores the default.
 - [ ] With distribution disabled, its `manifestIngest` does not run (spy) and the hook returns `null`.
 - [ ] `pkey validate` reports errors in `distribution.yaml` with the file name.
+- [ ] `pkey distribution outlet-ids --outlet ms-store` on a fixture `.pkey/distribution.yaml`
+      prints the mapped object (with that entry's `packageFamilyName` as `msixFamilyName`), the
+      same bytes for the equivalent `.json` file, `{}` with no file, and exits non-zero for an
+      undeclared outlet id (`packages/cli` test).
 - [ ] `docs gen:check` is clean; the green gate passes (`AGENTS.md`).
 
 ## Verify
@@ -193,9 +203,9 @@ mise exec node@22 -- pnpm typecheck
 
 - `dist_outlets`, `dist_transports`, the outlet id and kind vocabulary, the identity fields and
   `capabilities.ts` are what P2b-03 to P2b-06, P3-01 (outlet matrix), P4-05 and P5-02 to P5-04 read.
-- P1-11's export plugin reads the detection identities (mapping under "Identities for runtime
-  outlet detection") from the parsed file into the stamp's `outletIds`. Until this package
-  lands, P1-11 takes `itchGameId`, `msixFamilyName` and `caskToken` from its
-  `polaris_key/outlet_ids` export option.
+- `pkey distribution outlet-ids` is the only path from this file into P1-11's stamp: CI sets
+  `PKEY_OUTLET_IDS` from it before a Godot export (D-03 for Diceroll). P1-11 never reads the
+  file itself; until this package lands, the ids go into P1-11's `polaris_key/outlet_ids`
+  export option by hand.
 - The Core `manifestIngest` helper is available to any later service.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P2b-02 done`.

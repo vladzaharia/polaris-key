@@ -58,7 +58,8 @@ Godot form of the build identity that `pkey build-info` writes for other build s
     per-platform default: `direct` on desktop, `play` on Android, `app-store` on iOS, `web` on
     web), `polaris_key/channel` (default `stable`), `polaris_key/build_number` (integer);
   - CI overrides through `get_export_preset().get_or_env(option, env)` with `PKEY_BUILD_OUTLET`,
-    `PKEY_BUILD_CHANNEL`, `PKEY_BUILD_NUMBER`;
+    `PKEY_BUILD_CHANNEL`, `PKEY_BUILD_NUMBER`, and `PKEY_OUTLET_IDS` for `polaris_key/outlet_ids`
+    (below);
   - `_get_export_option_warning` for an unknown outlet id, a channel outside P0-04's
     vocabulary, or a non-semver `application/config/version`;
   - `_export_begin`: build the stamp and add it with
@@ -75,16 +76,18 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   Microsoft Store or App Installer package family name, which the `windows.*` rows must match
   because package identity can be inherited from an MSIX parent process), and `bundleId` (from the
   preset's `application/bundle_identifier` or `package/unique_name` where the platform has one).
-  The export plugin copies the others from the `.pkey/distribution` outlet entries when that file
-  exists ([P2b-02](P2b-02-distribution-manifest.md)): `steam.appId` → `steamAppId`,
-  `itch.gameId` → `itchGameId`, `flathub.appId` → `flatpakId`, `snap.name` → `snapName`,
-  `direct.homebrewCask` → `caskToken`, and the `packageFamilyName` of the `ms-store` or
-  `app-installer` entry matching the preset's outlet → `msixFamilyName`. Otherwise, or for a key the file does not supply, they come from an optional
-  `polaris_key/outlet_ids` export option (a JSON object). `itch.gameId`, `packageFamilyName` and
-  `direct.homebrewCask` are new in P2b-02's brief, so until P2b-02 lands them, `itchGameId`,
-  `msixFamilyName` and `caskToken` come only from the export option. A key present in both with
-  different values is an `_get_export_option_warning`, and the file's value wins. An absent id is
-  simply left out, so the object is `{}` at minimum.
+  The others come from one source only: the `polaris_key/outlet_ids` export option, a JSON
+  object, read with `get_or_env("polaris_key/outlet_ids", "PKEY_OUTLET_IDS")` and parsed with
+  `JSON.parse_string`. The plugin does **not** read `.pkey/distribution`: that file may be YAML
+  (`.pkey/distribution.{json,yaml,yml}`, [P2b-02](P2b-02-distribution-manifest.md)), Godot 4.7
+  has no YAML parser, and `.pkey/` sits at the product repo root, which need not be the Godot
+  project root. Turning the manifest into this JSON is P2b-02's job: its
+  `pkey distribution outlet-ids --outlet <id>` prints exactly this object, so CI runs
+  `PKEY_OUTLET_IDS="$(pkey distribution outlet-ids --outlet steam)"` before the export. An
+  `_get_export_option_warning` fires when the value is not a JSON object, has a key outside the
+  seven above, or has a non-string value (the export still runs, without the bad keys). A
+  `bundleId` given in the option and different from the preset's is a warning too, and the
+  preset's value wins. An absent id is simply left out, so the object is `{}` at minimum.
 - `core/build_stamp.gd` (`PKeyBuildStamp`) and `PolarisKey.build_info()`: read the stamp with
   `FileAccess` (data added by `add_file` is not imported); when absent, fall back to
   `application/config/version`, no outlet, the dock's editor channel, and the runtime
@@ -152,8 +155,12 @@ Godot form of the build identity that `pkey build-info` writes for other build s
       `res://.polaris_key/build.json` has those values, `pkeyBuild: 1`, the version from
       `application/config/version`, an `outletIds` object and no timestamp; the stamp is
       byte-identical across two exports. With `polaris_key/outlet_ids` set to
-      `{"itchGameId": "…", "msixFamilyName": "…", "caskToken": "…"}` and no `.pkey/distribution`,
-      those three keys appear in `outletIds` unchanged.
+      `{"steamAppId": "…", "itchGameId": "…", "msixFamilyName": "…", "caskToken": "…"}`, those
+      keys appear in `outletIds` unchanged; with `PKEY_OUTLET_IDS` set to a different object, the
+      environment's keys appear instead; a `.pkey/distribution.yaml` beside the project changes
+      nothing.
+- [ ] The export dialog warns when `polaris_key/outlet_ids` is not a JSON object or has an unknown
+      key.
 - [ ] On the release template, `OS.has_feature("pkey_outlet_steam")` and
       `OS.has_feature("pkey_channel_beta")` are true, and `PolarisKey.build_info()` returns the
       stamp.
@@ -183,6 +190,8 @@ mise exec node@22 -- pnpm --filter @polaris-key/cli test
   decision, P4-08 fills `packSources` and `embeddedPacks`, and a future `pkey build-info` writes
   the same shape for other build systems.
 - `PKeyExportPlugin`'s option names and env vars (`PKEY_BUILD_OUTLET`, `PKEY_BUILD_CHANNEL`,
-  `PKEY_BUILD_NUMBER`), which D-02 sets in Diceroll's CI.
+  `PKEY_BUILD_NUMBER`), which D-02 sets in Diceroll's CI, and `PKEY_OUTLET_IDS`, which CI fills
+  from P2b-02's `pkey distribution outlet-ids` once that lands (until then, by hand or from the
+  export option).
 - Set the status with
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1-11 done`.

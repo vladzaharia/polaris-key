@@ -107,10 +107,15 @@ per artifact, and so mislabels Steam, itch and sideload builds
   app id, snap name, Steam app id in the env or the library ACF, itch receipt `game.id`, `APPDIR`
   containing the executable, Android installer equal to the initiator, and the MSIX package
   family name equal to the product's before any `windows.*` row counts, because identity can be
-  inherited from an MSIX parent process). The ids come from the
-  stamp: [P1-11](P1-11-godot-export-plugin.md)'s export plugin copies the product's outlet
+  inherited from an MSIX parent process). A signal with no identity condition in the note's
+  table is diagnostic only and never counts: `ITCHIO_APP=1` names no product (any child of an
+  itch-launched process inherits it), so `itch.appEnv` is recorded but never moves or keeps an
+  outlet, and `itch.receipt` is the only itch signal that counts. The ids come from the
+  stamp: [P1-11](P1-11-godot-export-plugin.md)'s export plugin writes the product's outlet
   identities (Steam app id, itch game id, Flatpak app id, snap name, cask token, MSIX package
-  family name, bundle or application id) from `.pkey/distribution` into `build.json`, so detection works offline at first
+  family name, bundle or application id) into `build.json` (from its `polaris_key/outlet_ids`
+  option, which CI fills from [P2b-02](P2b-02-distribution-manifest.md)'s
+  `pkey distribution outlet-ids`), so detection works offline at first
   launch, and the pure function receives them with the stamp. Non-attested evidence may
   move the stamp only to an outlet with no wider `binaryUpdates`. Attested evidence overrides the
   stamp only when it names a README §3.1 outlet. On macOS only two signing leaves select:
@@ -131,7 +136,8 @@ per artifact, and so mislabels Steam, itch and sideload builds
   these rules, follow the plan and report the gap.
 - **Verification status** comes from [notes/S-06](../../notes/S-06-outlet-signals.md) (its
   signal-to-outlet table). `steam_appid.txt` is refuted as a dev-mode signal and the macOS
-  provisioning profile as a development-build signal: do not read either for detection. Each
+  provisioning profile as a development-build signal: do not read either for detection;
+  `itch.appEnv` is diagnostic only (previous bullet). Each
   signal takes the confidence in the note's table, including rows S-06 could not measure on a
   device (Play tracks, iOS devices, Windows, Steam on Windows, Linux and Proton, real itch and
   Snap launches). The attested rows backed only by documentation (`ios.appDistributor`,
