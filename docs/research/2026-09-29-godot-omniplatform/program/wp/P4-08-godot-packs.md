@@ -167,7 +167,9 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   (0.4–0.5 s) but loads every file there, mounted or not, into memory at each boot, which is why it
   is not the path. Do not use `HTTPRequest.download_file` on web: in 4.7.2 the file is deleted
   after a "successful" download. Cap the total mounted pack bytes on web (default 150 MB on mobile
-  browsers, 300 MB on desktop) until device numbers exist.
+  browsers, 300 MB on desktop) until device numbers exist, and mount packs one at a time: on the
+  iOS Simulator a single load's footprint rose by up to about twice the mounted bytes at 1 and 3
+  packs (transient copy), against 46–95% at the 150 MB cap, so leave headroom for that transient.
 
 ## Steps
 

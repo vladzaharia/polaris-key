@@ -278,9 +278,17 @@ website data and caches erased. `tools/summarize_c.py` prints this table [M]:
   rise is almost all in the wasm heap (WebAssembly Memory grew from 38–39 MB to 126–144 MB at 6
   packs) while WebKit Malloc stayed at its baseline (269–293 MB against 280–293 MB); on the idb
   path WebKit Malloc also rose, to 289–368 MB, and idb cost the most at 3 and 6 packs, consistent
-  with IDBFS holding all of `user://` in memory as well [I]. Per load the rise was between about 10% and 160% of the
-  mounted bytes (n = 1, and the reclaimable pages move between loads), so treat these as an
-  indication that a mounted pack costs up to its size, not as a per-byte figure. The 350–363 MB
+  with IDBFS holding all of `user://` in memory as well [I]. Per load the rise, as a share of the mounted bytes
+  (footprint minus the path's 0-pack median, divided by 50, 100 or 150 MB; recomputed from
+  `out/c/ios_mem.jsonl`), was 12–198% over all 27 loads: 12–198% at 1 pack, 37–162% at 3 packs
+  and 46–95% at 6 packs. Four loads at 1 and 3 packs exceeded 150% (mem 1 pack reload +99 MB on
+  50 MB, 198%; idb 1 pack first +85 MB, 170%; idb 3 packs reload +162 MB on 100 MB, 162%; idb 3
+  packs restart +152 MB, 152%), probably the transient ArrayBuffer copy during `copyToFS` or a
+  wasm-heap growth step that is not given back [I]. Against the same run's 0-pack footprint instead
+  of the median the peak is 190% and the 6-pack range 53–95%. With n = 1 per load and reclaimable
+  pages moving between loads, treat these as an indication, not a per-byte figure: a mounted pack
+  can transiently cost up to about twice its size at small counts, and cost at most its size at
+  the 150 MB cap. The 350–363 MB
   baseline is a WebContent process on a macOS-hosted simulator, not an iPhone figure; the absolute
   numbers do not transfer, only the per-pack rise is indicative [I]. The real-iPhone ceiling (the
   footprint at which Safari reloads the tab) is still unmeasured (§7).
@@ -417,9 +425,11 @@ into the APK's assets and mount as `res://<path>.pck`. Treat
 each pack by its content-addressed URL through the Cache Storage API, copies the bytes into a MEMFS
 path outside `user://` (`/pkey/packs/<sha256>.pck`) with the engine's `copyToFS`, and GDScript mounts
 that path. `user://` holds only small state. Do not use `HTTPRequest.download_file` on web. Every
-mounted pack costs its full size in JS memory, so the web build caps the total mounted pack bytes
-(default 150 MB on mobile browsers and 300 MB on desktop, until device numbers exist) and treats a
-Cache Storage miss as a normal re-download."
+mounted pack costs about its full size in memory (and up to about twice its size transiently while
+it is copied in), so the web build caps the total mounted pack bytes (default 150 MB on mobile
+browsers and 300 MB on desktop, until device numbers exist), leaves headroom under the tab's limit
+for that transient copy (mount packs one at a time, not concurrently) and treats a Cache Storage
+miss as a normal re-download."
 
 **(d) → P3-10, P5-07, S-06 / P3-11.** "Under MSIX (the executable path contains a `WindowsApps` path
 segment - Godot returns `/` on Windows, so compare case-insensitively on either separator - or the
