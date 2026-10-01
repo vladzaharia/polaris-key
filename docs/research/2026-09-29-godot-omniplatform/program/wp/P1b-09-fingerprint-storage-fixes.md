@@ -138,6 +138,10 @@ Packs (P4) need proper data and cache directories
 - The migration: a device that ran as root changes two components once. `normal` tolerates two;
   `strict` mismatches once and rebinds through the normal seat check. The plan states this, and the
   SDK changelogs repeat it.
+  (Correction, P1b-09 plan §7 and D3: on a host with no usable machine-id, which includes most
+  container images, a root process loses the anchor rather than changing it. Keyless enrolment
+  there then answers 403 `fingerprint_required`, because `computeEnrollHwid` returns `null`
+  without an anchor (`packages/worker/src/services/license/enroll.ts:207-214`).)
 - Pin the source-selection rule in a `linuxAnchor` section: which readable files give which anchor.
 
 **3. Directories.** `defaultConfigDir()` is `XDG_CONFIG_HOME` or `~/.config` on every OS in Node
