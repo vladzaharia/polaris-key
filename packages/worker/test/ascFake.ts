@@ -12,6 +12,11 @@
  *   POST  /v1/appStoreVersionReleaseRequests      the version → READY_FOR_DISTRIBUTION
  *   POST  /v1/webhooks, POST /v1/webhookPings
  *
+ * Relationships are answered as the real API answers them: a relationship of the primary data
+ * carries `data` only when it is named in `include` (otherwise only `links`), and an included
+ * resource carries no relationship `data` at all. A test that stores a relationship therefore
+ * cannot make the connector see it without asking for it.
+ *
  * Every answer carries `X-Rate-Limit: user-hour-lim:<lim>;user-hour-rem:<rem>;` (the remainder
  * drops by one per request). `fail429(n)` makes the next `n` requests answer 429
  * `RATE_LIMIT_EXCEEDED` with `Retry-After: 0`. Anything else is a 404, and a request to any host
@@ -140,6 +145,19 @@ export class AscFake {
     return [...out.values()];
   }
 
+  /** A resource as the API shows it: relationship `data` only for the `included` names. */
+  private view(r: AscResource, included: ReadonlySet<string>): AscResource {
+    if (!r.relationships) return r;
+    const relationships: NonNullable<AscResource["relationships"]> = {};
+    for (const [name, rel] of Object.entries(r.relationships)) {
+      const links = {
+        self: `https://api.appstoreconnect.apple.com/v1/${r.type}/${r.id}/relationships/${name}`,
+      };
+      relationships[name] = included.has(name) ? { ...rel, links } : { links };
+    }
+    return { ...r, relationships };
+  }
+
   private list(type: string, pred: (r: AscResource) => boolean): AscResource[] {
     return [...this.store.values()]
       .filter((r) => r.type === type && pred(r))
@@ -165,9 +183,14 @@ export class AscFake {
     const parts = url.pathname.split("/").filter(Boolean); // ["v1", ...]
     const include = url.searchParams.get("include");
     const limit = Number(url.searchParams.get("limit") ?? "50");
+    const names = new Set(include ? include.split(",") : []);
     const doc = (data: AscResource[] | AscResource) => ({
-      data,
-      included: this.include(Array.isArray(data) ? data : [data], include),
+      data: Array.isArray(data)
+        ? data.map((r) => this.view(r, names))
+        : this.view(data, names),
+      included: this.include(Array.isArray(data) ? data : [data], include).map(
+        (r) => this.view(r, new Set()),
+      ),
       links: { self: url.toString() },
     });
     const notFound = {

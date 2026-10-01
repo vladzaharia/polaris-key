@@ -213,6 +213,29 @@ describe("the poll", () => {
     );
   });
 
+  it("retires a Background Asset object that is no longer provably this app's, writing nothing", async () => {
+    const w = await ascWorld();
+    w.fake.set("backgroundAssetVersions", "bav-1", { state: "PROCESSING" });
+    await deliver(w, webhookFixture("BACKGROUND_ASSET_VERSION_STATE_UPDATED"));
+    const asset = w.fake.get("backgroundAssets", "ba-levels");
+    w.fake.put({
+      ...asset,
+      relationships: { app: { data: { type: "apps", id: "9999999999" } } },
+    });
+    w.fake.set("backgroundAssetVersions", "bav-1", { state: "COMPLETE" });
+    await poll(w);
+    const obj = await w.db.first<{ store_state: string; terminal: number }>(
+      "SELECT store_state, terminal FROM dist_connector_objects WHERE object_id = 'bav-1'",
+    );
+    // Not updated from the foreign read, and no longer re-read.
+    expect(obj).toEqual({ store_state: "PROCESSING", terminal: 1 });
+    w.fake.requests.length = 0;
+    await poll(w);
+    expect(w.fake.requests.map((r) => r.path)).not.toContain(
+      "/v1/backgroundAssetVersions/bav-1",
+    );
+  });
+
   it("a 429 backs off and the tick still completes", async () => {
     const w = await ascWorld();
     w.fake.fail429(1);

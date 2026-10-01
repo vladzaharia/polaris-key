@@ -99,6 +99,11 @@ The connector uses Distribution's own vocabulary and keeps Apple's state beside 
 | `REJECTED`, `METADATA_REJECTED`, `INVALID_BINARY`    | `rejected`   | `rejected`                  |
 | `REPLACED_WITH_NEW_VERSION`, `REMOVED_FROM_SALE`     | `removed`    | unchanged                   |
 
+Only objects of the outlet's own app are read into Distribution. The API key can usually see
+every app in the team, so before anything is written the connector asks Apple which app the
+object belongs to, and drops it when the answer is another app or none (the event shows as
+`ignored`). For a Background Asset that means one extra read each of its version and asset.
+
 An App Store version belongs to the release whose version equals its version string (a leading
 `v` is ignored). A TestFlight build belongs to the release build whose `buildNumber` equals
 Apple's build number (`CFBundleVersion`), or to the whole release when none does. On the

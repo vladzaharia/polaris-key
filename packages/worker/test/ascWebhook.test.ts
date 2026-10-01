@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listAudit, setServices } from "../src/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { ASC_WEBHOOK_EVENT_TYPES } from "../src/services/distribution/connectors/asc/map.js";
+import type { AscResource } from "../src/services/distribution/connectors/asc/client.js";
 import { webhookFixture } from "./ascFake.js";
 import {
   ascWorld,
@@ -388,8 +389,14 @@ describe("the 12 event types", () => {
       data: { type: "backgroundAssetVersionAppStoreReleases", id: "bavas-1" },
     };
     await deliver(w, JSON.stringify(wrapped));
-    expect(w.fake.requests.map((r) => r.path)).toEqual([
-      "/v1/backgroundAssetVersionAppStoreReleases/bavas-1",
+    // The instance first, then the chain that proves it is this app's: version → asset → app.
+    expect(w.fake.requests.map((r) => [r.path, r.query.include])).toEqual([
+      [
+        "/v1/backgroundAssetVersionAppStoreReleases/bavas-1",
+        "backgroundAssetVersion",
+      ],
+      ["/v1/backgroundAssetVersions/bav-1", "backgroundAsset"],
+      ["/v1/backgroundAssets/ba-levels", "app"],
     ]);
   });
 
@@ -430,6 +437,151 @@ describe("the 12 event types", () => {
     await deliver(w, ASV_UPDATED());
     expect(await availability(w.db)).toEqual([]);
     expect((await events(w))[0]!.outcome).toBe("ignored");
+  });
+
+  it("the fake answers relationships as the API does: data only when included", async () => {
+    const w = await ascWorld();
+    const read = async (include?: string) =>
+      (await (
+        await w.fake.fetchImpl(
+          `https://api.appstoreconnect.apple.com/v1/buildUploads/bup-110-42${include ? `?include=${include}` : ""}`,
+        )
+      ).json()) as {
+        data: AscResource;
+        included: AscResource[];
+      };
+    const bare = await read();
+    expect(bare.data.relationships?.app?.data).toBeUndefined();
+    expect(bare.data.relationships?.build?.data).toBeUndefined();
+    const withBuild = await read("build");
+    expect(withBuild.data.relationships?.app?.data).toBeUndefined();
+    expect(withBuild.data.relationships?.build?.data).toEqual({
+      type: "builds",
+      id: "bld-110-42",
+    });
+    // An included resource carries no relationship data.
+    expect(withBuild.included[0]!.relationships?.app?.data).toBeUndefined();
+  });
+
+  describe("ownership fails closed on every write path", () => {
+    const OTHER_APP = { data: { type: "apps", id: "9999999999" } };
+
+    async function objects(w: AscWorld) {
+      return w.db.all<{ object_type: string; object_id: string }>(
+        "SELECT object_type, object_id FROM dist_connector_objects WHERE product = ?",
+        SLUG,
+      );
+    }
+
+    function withApp(
+      w: AscWorld,
+      type: string,
+      id: string,
+      app: typeof OTHER_APP | null,
+    ) {
+      const r = w.fake.get(type, id);
+      const { app: _drop, ...rest } = r.relationships ?? {};
+      w.fake.put({
+        ...r,
+        relationships: app ? { ...rest, app } : rest,
+      });
+    }
+
+    it("an own pre-COMPLETE build upload writes testflight processing", async () => {
+      const w = await ascWorld();
+      w.fake.set("buildUploads", "bup-110-42", { state: "PROCESSING" });
+      await deliver(w, webhookFixture("BUILD_UPLOAD_STATE_UPDATED"));
+      expect(w.fake.requests[0]!.query.include).toBe("app,build");
+      expect(
+        (await availability(w.db)).map((r) => [
+          r.release_id,
+          r.outlet_id,
+          r.state,
+        ]),
+      ).toEqual([["v1.1.0", "testflight", "processing"]]);
+    });
+
+    for (const [label, app] of [
+      ["another app's", OTHER_APP],
+      ["an app-less", null],
+    ] as const) {
+      for (const state of [
+        "AWAITING_UPLOAD",
+        "PROCESSING",
+        "FAILED",
+        "COMPLETE",
+      ]) {
+        it(`${label} build upload (${state}) with this release's version stores and writes nothing`, async () => {
+          const w = await ascWorld();
+          w.fake.set("buildUploads", "bup-110-42", { state });
+          withApp(w, "buildUploads", "bup-110-42", app);
+          await deliver(w, webhookFixture("BUILD_UPLOAD_STATE_UPDATED"));
+          expect(await availability(w.db)).toEqual([]);
+          expect(await objects(w)).toEqual([]);
+          expect((await events(w))[0]!.outcome).toBe("ignored");
+          // Never followed into the build it names.
+          expect(w.fake.requests.map((r) => r.path)).toEqual([
+            "/v1/buildUploads/bup-110-42",
+          ]);
+        });
+      }
+    }
+
+    it("another app's build reached through a beta detail writes nothing", async () => {
+      const w = await ascWorld();
+      withApp(w, "builds", "bld-110-42", OTHER_APP);
+      await deliver(
+        w,
+        webhookFixture("BUILD_BETA_DETAIL_EXTERNAL_BUILD_STATE_UPDATED"),
+      );
+      expect(await availability(w.db)).toEqual([]);
+      expect(await objects(w)).toEqual([]);
+      expect((await events(w))[0]!.outcome).toBe("ignored");
+    });
+
+    const BA_EVENTS = [
+      "BACKGROUND_ASSET_VERSION_STATE_UPDATED",
+      "BACKGROUND_ASSET_VERSION_INTERNAL_BETA_RELEASE_CREATED",
+      "BACKGROUND_ASSET_VERSION_EXTERNAL_BETA_RELEASE_STATE_UPDATED",
+      "BACKGROUND_ASSET_VERSION_APP_STORE_RELEASE_STATE_UPDATED",
+    ] as const;
+
+    for (const [label, app] of [
+      ["another app's", OTHER_APP],
+      ["an app-less", null],
+    ] as const) {
+      for (const event of BA_EVENTS) {
+        it(`${event}: ${label} asset pack stores and writes nothing`, async () => {
+          const w = await ascWorld();
+          withApp(w, "backgroundAssets", "ba-levels", app);
+          await deliver(w, webhookFixture(event));
+          expect(await objects(w)).toEqual([]);
+          expect(await availability(w.db)).toEqual([]);
+          expect((await events(w))[0]!.outcome).toBe("ignored");
+          // The ownership check was asked of the asset itself.
+          expect(w.fake.requests.at(-1)).toMatchObject({
+            path: "/v1/backgroundAssets/ba-levels",
+            query: { include: "app" },
+          });
+        });
+      }
+    }
+
+    it("a Background Asset release whose version names no asset stores nothing", async () => {
+      const w = await ascWorld();
+      w.fake.put({
+        ...w.fake.get("backgroundAssetVersions", "bav-1"),
+        relationships: {},
+      });
+      await deliver(
+        w,
+        webhookFixture(
+          "BACKGROUND_ASSET_VERSION_APP_STORE_RELEASE_STATE_UPDATED",
+        ),
+      );
+      expect(await objects(w)).toEqual([]);
+      expect((await events(w))[0]!.outcome).toBe("ignored");
+    });
   });
 
   it("an app-version event mirrors an ACTIVE phased release", async () => {

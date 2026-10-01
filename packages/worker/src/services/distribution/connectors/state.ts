@@ -259,6 +259,28 @@ export async function upsertObject(
   return { changed, row };
 }
 
+/**
+ * Stop re-reading an object the store no longer answers for (404), or that a re-read could not
+ * prove is the connector's app: `terminal = 1`, so it cannot hold the head of the reconcile
+ * queue. Nothing else on the row changes, and nothing is written from it.
+ */
+export async function retireObject(
+  ctx: ConnectorWriteContext,
+  connector: string,
+  type: string,
+  id: string,
+): Promise<void> {
+  await ctx.db.run(
+    `UPDATE dist_connector_objects SET terminal = 1, polled_at = ?
+      WHERE product = ? AND connector = ? AND object_type = ? AND object_id = ?`,
+    ctx.now,
+    ctx.product,
+    connector,
+    type,
+    id,
+  );
+}
+
 // ── Events ───────────────────────────────────────────────────────────────────────────────────
 
 export type ConnectorEventOutcome =

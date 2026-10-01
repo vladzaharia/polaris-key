@@ -35,7 +35,12 @@ export interface AscResource {
   attributes?: Record<string, unknown>;
   relationships?: Record<
     string,
-    { data?: AscIdentifier | AscIdentifier[] | null } | undefined
+    | {
+        /** Present only when the relationship was named in `include`. */
+        data?: AscIdentifier | AscIdentifier[] | null;
+        links?: Record<string, string>;
+      }
+    | undefined
   >;
 }
 

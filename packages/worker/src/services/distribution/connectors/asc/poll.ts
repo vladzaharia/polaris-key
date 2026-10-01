@@ -23,7 +23,7 @@
  */
 
 import type { ConnectorContext, PollOutcome } from "../index.js";
-import { objectsToReconcile } from "../state.js";
+import { objectsToReconcile, retireObject } from "../state.js";
 import {
   syncAppStoreVersion,
   syncBackgroundAsset,
@@ -194,11 +194,20 @@ async function reconcile(run: AscRun): Promise<number> {
   let applied = 0;
   for (const row of rows) {
     if (!isBackgroundAssetInstanceType(row.object_type)) continue;
-    if (
-      (await syncBackgroundAsset(run, row.object_type, row.object_id)) ===
-      "applied"
-    )
-      applied++;
+    const outcome = await syncBackgroundAsset(
+      run,
+      row.object_type,
+      row.object_id,
+    );
+    if (outcome === "applied") applied++;
+    // Gone from the store, or no longer provably this app's: stop re-reading it.
+    else if (outcome === "gone" || outcome === "foreign")
+      await retireObject(
+        { db: run.db, product: run.product, now: run.now },
+        ASC_CONNECTOR,
+        row.object_type,
+        row.object_id,
+      );
   }
   return applied;
 }

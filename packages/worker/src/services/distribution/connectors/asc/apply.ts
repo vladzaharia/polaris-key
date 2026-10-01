@@ -16,8 +16,17 @@
  *     availability on that release with transport `apple-ba`.
  *
  * Store ids go into `platform_ref_json` and the connector object, never into a release record
- * (README §3.3). An object belonging to another app (`relationships.app` ≠ the outlet's
- * `appleId`) writes nothing.
+ * (README §3.3).
+ *
+ * **Ownership fails closed.** The App Store Connect key is team-scoped, so it can read every app
+ * in the team, and a webhook names any instance its signer likes. Before anything is written,
+ * each path proves the object is the outlet's app (`ownApp`): the GET asks for
+ * `include=app`, because the real API puts `data` in a relationship only when that relationship
+ * is included, and an absent or different app is "foreign" — nothing stored, nothing written.
+ * Objects with no `app` relationship of their own prove it through the object that has one: a
+ * beta detail through its build, a Background Asset release through its version and asset
+ * (`backgroundAssets/{id}?include=app`). A list the poller reads through an app-scoped endpoint
+ * (`/v1/apps/{appleId}/…`, `/v1/builds?filter[app]=…`) is proven by the endpoint.
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
@@ -80,7 +89,7 @@ export type ApplyOutcome =
   | "applied"
   /** object stored, but no release claims it yet */
   | "unresolved"
-  /** the object belongs to another app; nothing written */
+  /** the object is not proven to be the outlet's app; nothing stored or written */
   | "foreign"
   /** the store no longer has it (404); nothing written */
   | "gone";
@@ -124,10 +133,13 @@ async function releaseById(
   return null;
 }
 
-/** Is this resource the outlet's app (or silent about which app it is)? */
-function ownApp(run: AscRun, r: AscResource): boolean {
-  const app = relId(r, "app");
-  return app === null || app === run.setup.appleId;
+/**
+ * Is this resource proven to be the outlet's app? Fails closed: a resource that does not name
+ * its app (the GET did not include `app`, or the type has no such relationship) is not.
+ */
+export function ownApp(run: AscRun, r: AscResource | null): boolean {
+  if (!r) return false;
+  return relId(r, "app") === run.setup.appleId;
 }
 
 function stripNulls(o: Record<string, unknown>): Record<string, unknown> {
@@ -401,7 +413,7 @@ export async function syncBuildUpload(
   uploadId: string,
 ): Promise<ApplyOutcome> {
   const doc = await run.client.getOrNull(ascPath("buildUploads", uploadId), {
-    include: "build",
+    include: "app,build",
   });
   const upload = single(doc);
   if (!upload) return "gone";
@@ -489,15 +501,30 @@ export async function syncBackgroundAsset(
   });
   const r = single(doc);
   if (!r) return "gone";
-  const included = doc?.included ?? [];
-  const versionId = isVersion ? r.id : relId(r, "backgroundAssetVersion");
-  const version = isVersion
-    ? r
-    : findIncluded(included, "backgroundAssetVersions", versionId);
-  const assetId = isVersion
-    ? relId(r, "backgroundAsset")
-    : relId(version, "backgroundAsset");
-  const asset = findIncluded(included, "backgroundAssets", assetId);
+  // A release names its version; the version names its asset; the asset names its app. Each
+  // link is read from the primary data of its own GET (an included resource carries no
+  // relationship data on the real API), and a missing link is unproven: nothing is stored.
+  let version: AscResource | null = r;
+  if (!isVersion) {
+    const linked = relId(r, "backgroundAssetVersion");
+    if (!linked) return "foreign";
+    version = single(
+      await run.client.getOrNull(ascPath("backgroundAssetVersions", linked), {
+        include: "backgroundAsset",
+      }),
+    );
+    if (!version) return "gone";
+  }
+  const versionId = version.id;
+  const assetId = relId(version, "backgroundAsset");
+  if (!assetId) return "foreign";
+  const asset = single(
+    await run.client.getOrNull(ascPath("backgroundAssets", assetId), {
+      include: "app",
+    }),
+  );
+  if (!ownApp(run, asset)) return "foreign";
+
   const storeState = attr(r, "state");
   const state = storeState ? (spec.states[storeState] ?? null) : null;
   const outlet = outletFor(run.setup, spec.outletKind);
@@ -520,7 +547,7 @@ export async function syncBackgroundAsset(
     }),
     detail: stripNulls({
       version: attr(version, "version") ?? numAttr(version, "version"),
-      platforms: version?.attributes?.platforms ?? null,
+      platforms: version.attributes?.platforms ?? null,
       stateDetails:
         stateDetails && typeof stateDetails === "object" ? stateDetails : null,
     }),

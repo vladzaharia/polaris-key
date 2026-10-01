@@ -740,8 +740,23 @@ scheme (`sha256=`, `hmacsha1=`, upper case) or a short MAC is refused 401 before
 opened or counted; a body over 64 KiB is 413. The secret is per product, so a secret leaked from
 one product forges nothing for another. Even a valid signature is only a HINT: the handler never
 writes what the payload says. It re-reads the instance from the App Store Connect API with the
-product's own key, checks the object belongs to the outlet's `appleId`, and writes only that — a
-forged or replayed payload can at worst make the Worker re-read a real object.
+product's own key and writes only what that GET says — a forged or replayed payload can at worst
+make the Worker re-read a real object.
+
+**Cross-app writes (ownership fails closed).** The `asc-api-key` the brief asks for is a team key,
+so it can read every app in the team, and the instance a signed payload names can be any of them.
+Before storing or writing anything, every path proves the object is the outlet's app: the GET asks
+for `include=app` (the real API puts relationship `data` in a response only when the relationship
+is included) and an absent or different `app` is treated as foreign — no connector object, no
+availability, outcome `ignored`. App Store versions, builds and build uploads carry `app`
+themselves; a beta detail is proven through its build; a Background Asset version or release
+through the chain release → version → asset, with `backgroundAssets/{id}?include=app` as the
+check, each link read from the primary data of its own GET. A build upload that cannot be proven
+writes nothing, whatever its state, and is never followed into the build it names. The poller's
+lists are app-scoped by their endpoint (`/v1/apps/{appleId}/…`, `/v1/builds?filter[app]=…`); a
+reconciled object that is gone or no longer provable is retired (`terminal = 1`), never updated.
+The test fake (`test/ascFake.ts`) answers relationships the same way, so a test cannot pass on
+data the real API would not send.
 
 **Replay.** Deliveries are deduplicated on `data.id`: a KV marker (7 days, like the GitHub
 webhook) and the `dist_connector_events` primary key. A redelivery answers 200 `{duplicate: true}`
@@ -1169,7 +1184,7 @@ descriptor hook gains a method that writes or a new provider, or a method that r
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
 offered (P3-03), or a reader of `dist_availability` does, a store connector is added, gains a
-control, calls a host other than its store's API, or starts uploading or submitting (P5-02), or anything but the console's key
+control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, or starts uploading or submitting (P5-02), or anything but the console's key
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
