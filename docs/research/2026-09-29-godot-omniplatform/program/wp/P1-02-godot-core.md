@@ -164,7 +164,9 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 - **Never pin from discovery** (`trust.pinnedKeys`): pins come only from
   `PKeyOptions.pinned_trust_keys`.
 - **Transport rules** (notes/A5 §4): `max_redirects = 0` and follow redirects manually, dropping
-  `Authorization` whenever the origin changes; `timeout = 15.0`; `body_size_limit` 512 KiB for API
+  `Authorization` whenever the origin changes; a 15 s timeout on the wall clock from the request's
+  start (`HTTPRequest.timeout` counts process delta, so a long frame before the call spends it;
+  leave it at 0); `body_size_limit` 512 KiB for API
   responses; `accept_gzip = false` for any `Range` request; https only, except
   `http://localhost|127.0.0.1|[::1]`. `HTTPRequest` nodes live under the autoload. On web the
   browser follows redirects and strips credentials itself; cross-origin calls need P0-05.

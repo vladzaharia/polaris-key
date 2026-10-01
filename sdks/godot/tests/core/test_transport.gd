@@ -41,7 +41,9 @@ func run(t: PKeyTestContext) -> void:
 	var host := Node.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(host)
 	var tr := PKeyTransport.new(host)
-	tr.timeout = 1.0
+	# The success paths get a generous budget; only the /hang check below runs on 1 s.
+	tr.timeout = 10.0
+	await PKeyTestFixtures.frames(2)
 
 	var r := await tr.request("GET", server.base_url() + "/same", {"Authorization": BEARER})
 	var last: Dictionary = server.requests.back() if not server.requests.is_empty() else {"path": "", "headers": {}}
@@ -74,6 +76,13 @@ func run(t: PKeyTestContext) -> void:
 
 	r = await tr.request("GET", server.base_url() + "/big")
 	t.check("transport: a body over the 512 KiB cap is a PKeyResult error", not r.ok and r.code == PKeyErrors.BODY_TOO_LARGE, str(r))
+
+	# The budget is wall time from the request's start: a long frame just before the call (here a
+	# 1.5 s block) does not spend it. HTTPRequest.timeout counts process delta and would fire here.
+	tr.timeout = 1.0
+	OS.delay_msec(1500)
+	r = await tr.request("GET", server.base_url() + "/echo")
+	t.check("transport: a long frame before the request does not spend its timeout", r.ok and r.detail["status"] == 200, str(r))
 
 	var t0 := Time.get_ticks_msec()
 	r = await tr.request("GET", server.base_url() + "/hang")

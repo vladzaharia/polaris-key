@@ -7,7 +7,10 @@ extends RefCounted
 ##     `Authorization` to a redirect target on another host (measured on 4.7.2). The bearer is
 ##     dropped as soon as the origin changes and never comes back; a redirect to plain http on
 ##     a non-loopback host is refused. 303 (and 301/302 after a POST) become a GET without body.
-##   - `timeout` 15 s per request (PKeyOptions.request_timeout_seconds).
+##   - `timeout` 15 s per request (PKeyOptions.request_timeout_seconds), on the WALL clock from
+##     the moment the request starts. `HTTPRequest.timeout` is a Timer that counts process delta,
+##     so a request started at the end of a long frame (a scene load, a bundle verify) loses that
+##     whole frame on its first tick and times out before a byte moves; it is left at 0 here.
 ##   - `body_size_limit` 512 KiB for API responses (also a zip-bomb guard).
 ##   - `accept_gzip = false` for any `Range` request (gzip breaks ranges).
 ##   - https only, except http://localhost, 127.0.0.1 and [::1] (`check_base_url`).
@@ -163,7 +166,7 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 		sent.pop_front()
 	var req := HTTPRequest.new()
 	req.max_redirects = 0
-	req.timeout = timeout
+	req.timeout = 0.0
 	req.body_size_limit = body_limit
 	req.accept_gzip = not ranged
 	req.use_threads = false
@@ -172,8 +175,10 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 	if err != OK:
 		req.queue_free()
 		return PKeyResult.failure(PKeyErrors.NETWORK, "The request could not start (error %d)." % err, {"error": err})
-	var res: Array = await req.request_completed
+	var res := await _await_completed(req)
 	req.queue_free()
+	if res.is_empty():
+		return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": HTTPRequest.RESULT_TIMEOUT})
 	var result: int = res[0]
 	var status: int = res[1]
 	var response_headers := _headers(res[2])
@@ -190,6 +195,27 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 		HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
 			return PKeyResult.failure(PKeyErrors.BODY_TOO_LARGE, "The response is larger than %d bytes." % body_limit, {"result": result})
 	return PKeyResult.failure(PKeyErrors.NETWORK, "The request failed (HTTPRequest result %d)." % result, {"result": result})
+
+
+## The request_completed arguments, or [] once `timeout` seconds of wall time have passed since
+## the call (the request is then cancelled). Checked once per frame, as HTTPRequest polls; the
+## deadline must be seen on two checks, so HTTPRequest always gets a poll after it passes (one
+## hitch frame cannot expire a request it never let run).
+func _await_completed(req: HTTPRequest) -> Array:
+	var box := []
+	req.request_completed.connect(func(result: int, status: int, hdrs: PackedStringArray, body: PackedByteArray) -> void:
+		box.append_array([result, status, hdrs, body]), CONNECT_ONE_SHOT)
+	var deadline := Time.get_ticks_msec() + int(timeout * 1000.0)
+	var expired := false
+	var tree := req.get_tree()
+	while box.is_empty():
+		if timeout > 0.0 and Time.get_ticks_msec() >= deadline:
+			if expired:
+				req.cancel_request()
+				return []
+			expired = true
+		await tree.process_frame
+	return box
 
 
 static func _headers(lines: PackedStringArray) -> Dictionary:
