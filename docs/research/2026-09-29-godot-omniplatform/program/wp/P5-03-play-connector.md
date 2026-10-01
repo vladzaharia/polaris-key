@@ -148,17 +148,17 @@ text above.
 
 ## Acceptance criteria
 
-- [ ] `pnpm --filter @polaris-key/worker test -- play` covers: mapping of all four `status` values;
+- [x] `pnpm --filter @polaris-key/worker test -- play` covers: mapping of all four `status` values;
       `userFraction` 0.05 → 500 bp; a track release naming two version codes; an unknown internal
       track id read from `tracks.list`; an edit invalidated mid-poll (the poll retries next tick,
       writes nothing partial); 429 backoff.
-- [ ] Each control sends the documented PATCH and commit to the fake server, writes one audit row
+- [x] Each control sends the documented PATCH and commit to the fake server, writes one audit row
       and re-reads state; setting priority on a release already rolling out is refused.
-- [ ] With the vitals setting off, no Reporting API call is made; with it on, a rate over the
+- [x] With the vitals setting off, no Reporting API call is made; with it on, a rate over the
       threshold with enough sample halts once and audits once.
-- [ ] The credential is reached only through `openOutletCredential`.
-- [ ] The threat model covers the key; operator docs describe the least-privilege setup.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd`.
+- [x] The credential is reached only through `openOutletCredential`.
+- [x] The threat model covers the key; operator docs describe the least-privilege setup.
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
 
 ## Verify
 
