@@ -138,7 +138,9 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
   machine-readable `reason`. A new `PolarisErrorCode` would be a `shared-protocol` change (plan
   mode) and nothing but the CLI reads these routes.
 - **Enablement.** The routes live in the release namespace, so a product with Release off does not
-  expose them. Per-IP and per-product rate limits on `publish/token`.
+  expose them. Per-IP and per-product rate limits on `publish/token`. (As built: the per-product
+  budget is charged only after the token passes signature, audience and policy, so no outsider
+  can exhaust it; THREAT-MODEL §3.)
 - **Ordering with P2-04.** Everything up to and including promotion is independent of P2-04. If
   P2-04 is not `done`, land token, policy, uploads and ticket redemption first, and `submit` in a
   second PR after P2-04.

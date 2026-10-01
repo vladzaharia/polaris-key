@@ -292,6 +292,20 @@ single-use: the token's `jti` goes into `ci_tokens` under a UNIQUE index (in the
 assertion), so a replay inserts nothing, atomically. The policy is then applied (§5, "CI OIDC
 claims").
 
+**Nobody else can rate-limit a product's CI out.** The exchange has two fail-closed budgets. The
+per-IP one (30/min) is charged first, on every request. The per-product one (120/min) is
+charged only after the signature, the product-bound audience and the publisher policy have all
+passed, just before the token is minted (`exchangeOidcToken`'s `admit` hook). Junk, a token for
+another product's audience, or a validly signed GitHub token from someone else's repository
+costs the sender only its own per-IP budget, so a flood from any number of addresses cannot
+exhaust the product's budget. This keeps the rule the RFC 8628 paragraph below states: no
+product-wide bucket an outsider can spend. `test/publishRoutes.test.ts` floods from ten
+addresses and then exchanges successfully. Residual: besides the product's own declared
+workflow, a replay of one of its still-valid OIDC tokens also spends the product budget, because
+the single-use insert comes after the charge. That needs a token leaked from the product's own
+runs, within its few-minute lifetime, and 120 replays in a minute deny only the rest of that
+minute.
+
 **The repo cannot weaken its own control** (the R6-03 precedent). `.pkey/release` may name only
 `publishing.trustedPublisher.workflow` and `.environment`. The repository's numeric id and owner
 id are resolved from GitHub at link/resync with the installation token, never read from the

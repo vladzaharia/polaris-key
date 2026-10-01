@@ -2188,7 +2188,9 @@ paths:
         `workflow_dispatch`. The exchange is single-use per OIDC `jti`. On success it returns a
         `pkeyci_` token valid for 30 minutes with the policy's scopes (default
         `release:publish`, `release:promote`, `distribution:report`; `release:yank` is opt-in).
-        Rate-limited per IP and per product (fail closed). No CORS. Errors are LEGACY FLAT with
+        Rate-limited per IP on every request, and per product only once a token has passed
+        the signature, audience and policy checks, so no outsider can spend the product's
+        budget (both fail closed). No CORS. Errors are LEGACY FLAT with
         a `reason`: `invalid_oidc_token`, `oidc_token_replayed` (401);
         `publisher_not_configured`, `policy_mismatch` with the failing `claim` (403);
         `bad_body` (400); `rate_limited` (429).

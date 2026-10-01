@@ -78,7 +78,11 @@ const MAX_UPLOADS_BODY_BYTES = 64 * 1024;
 /** A submit: the descriptor plus the ticket and a flag. */
 const MAX_SUBMIT_BODY_BYTES = MAX_DESCRIPTOR_BYTES + 4 * 1024;
 
-/** Per-IP and per-product budgets on the token exchange (fail closed: it mints credentials). */
+/**
+ * Budgets on the token exchange (both fail closed: it mints credentials). The per-IP one is
+ * charged first, on every request; the per-product one only once a token has passed the
+ * signature, audience and publisher-policy checks (see `handleToken`).
+ */
 const TOKEN_RL_PER_IP = { limit: 30, windowSec: 60 };
 const TOKEN_RL_PER_PRODUCT = { limit: 120, windowSec: 60 };
 
@@ -151,21 +155,15 @@ async function requirePublisher(
 
 async function handleToken(ctx: ServiceContext): Promise<Response> {
   const { req, env, db, product, now } = ctx;
-  const ip = clientIp(req);
+  // Per IP, before anything: an anonymous flood only ever spends the flooder's own budget.
   if (
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "ciPublishToken", id: `ip:${ip}`, ...TOKEN_RL_PER_IP },
-      now,
-    )) ||
-    !(await rateLimitOk(
-      env,
-      product.slug,
       {
-        bucket: "ciPublishTokenProduct",
-        id: "product",
-        ...TOKEN_RL_PER_PRODUCT,
+        bucket: "ciPublishToken",
+        id: `ip:${clientIp(req)}`,
+        ...TOKEN_RL_PER_IP,
       },
       now,
     ))
@@ -192,11 +190,25 @@ async function handleToken(ctx: ServiceContext): Promise<Response> {
     audience: publishAudience(new URL(req.url).origin, product.slug),
     now,
     ...(jwksFetcherOverride ? { fetchJwks: jwksFetcherOverride } : {}),
+    // Per product, charged only AFTER the signature, audience and publisher policy pass: only
+    // the product's own declared workflow can spend it, so nobody else can exhaust it and lock
+    // the product's CI out (the rule the RFC 8628 paragraph of THREAT-MODEL states).
+    admit: () =>
+      rateLimitOk(
+        env,
+        product.slug,
+        {
+          bucket: "ciPublishTokenProduct",
+          id: "product",
+          ...TOKEN_RL_PER_PRODUCT,
+        },
+        now,
+      ),
   });
   if (!result.ok)
     return refusal(
       result.status,
-      codeFor(result.status),
+      result.status === 429 ? "rate_limited" : codeFor(result.status),
       result.reason,
       result.message,
       result.claim ? { claim: result.claim } : {},

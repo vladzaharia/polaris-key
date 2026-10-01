@@ -373,6 +373,60 @@ describe("POST /release/publish/token", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  function tokenFrom(ip: string, token: string) {
+    return call(env, db, noFetch, `${CONSOLE}/${SLUG}/release/publish/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "cf-connecting-ip": ip },
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  it("junk and foreign-repository tokens never spend the product budget: a flood cannot lock CI out", async () => {
+    // 10 addresses x 30 requests = 300, well past the 120/min product budget. Junk, a token for
+    // another product's audience, and a validly signed token from someone else's repository —
+    // every one charged only to its sender's per-IP budget.
+    const foreign = await oidc({
+      repository: "mallory/evil",
+      repository_id: "999",
+      repository_owner_id: "998",
+      job_workflow_ref:
+        "mallory/evil/.github/workflows/release.yml@refs/tags/v1",
+    });
+    const otherAud = await oidc({}, publishAudience(CONSOLE, "other"));
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 30; j++) {
+        const t = j % 3 === 0 ? "not.a.jwt" : j % 3 === 1 ? otherAud : foreign;
+        const res = await tokenFrom(`203.0.113.${i}`, t);
+        expect([401, 403]).toContain(res.status);
+      }
+      // The flooder's own address is out of budget...
+      expect((await tokenFrom(`203.0.113.${i}`, "not.a.jwt")).status).toBe(429);
+    }
+    // ...but the product's real workflow, from its own runner, still exchanges.
+    const res = await tokenFrom("198.51.100.7", await oidc());
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { token: string }).token).toMatch(/^pkeyci_/);
+  });
+
+  it("the product budget still caps the declared workflow's own exchanges", async () => {
+    // 120 policy-passing exchanges spread over addresses (each under its per-IP 30)...
+    for (let i = 0; i < 120; i++) {
+      const res = await tokenFrom(
+        `198.51.100.${Math.floor(i / 25)}`,
+        await oidc(),
+      );
+      expect(res.status).toBe(200);
+    }
+    // ...and the 121st, from a fresh address, is refused — without minting a token.
+    const count = async () =>
+      (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM ci_tokens"))!.n;
+    const before = await count();
+    const res = await tokenFrom("192.0.2.1", await oidc());
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ reason: "rate_limited" });
+    expect(await count()).toBe(before);
+  });
 });
 
 // ── /uploads ───────────────────────────────────────────────────────────────────────────────

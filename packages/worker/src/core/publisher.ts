@@ -657,19 +657,26 @@ export type ExchangeResult =
   | ({ ok: true } & IssuedCiToken)
   | {
       ok: false;
-      status: 401 | 403;
+      status: 401 | 403 | 429;
       reason:
         | "invalid_oidc_token"
         | "oidc_token_replayed"
         | "publisher_not_configured"
-        | "policy_mismatch";
+        | "policy_mismatch"
+        | "rate_limited";
       message: string;
       claim?: string;
     };
 
 /**
  * The trusted-publisher exchange: a GitHub OIDC token in, a 30-minute `pkeyci_` token out.
- * Verification, then the policy, then the single-use insert keyed on the token's `jti`.
+ * Verification, then the policy, then `admit` (if given), then the single-use insert keyed on
+ * the token's `jti`.
+ *
+ * `admit` is where the caller charges a product-wide budget. It runs only once the token is
+ * GitHub-signed for this product's audience AND came from the product's own declared workflow,
+ * so junk, unsigned or foreign-repository tokens can never spend that budget — they cost an
+ * attacker only their per-IP allowance (THREAT-MODEL §3, "Trusted publishing").
  */
 export async function exchangeOidcToken(
   env: Env,
@@ -680,6 +687,7 @@ export async function exchangeOidcToken(
     audience: string;
     now: number;
     fetchJwks?: JwksFetcher;
+    admit?: () => Promise<boolean>;
   },
 ): Promise<ExchangeResult> {
   const v = await verifyGithubOidcToken(env, input.oidcToken, {
@@ -705,6 +713,13 @@ export async function exchangeOidcToken(
       reason: "policy_mismatch",
       message: check.message,
       claim: check.claim,
+    };
+  if (input.admit && !(await input.admit()))
+    return {
+      ok: false,
+      status: 429,
+      reason: "rate_limited",
+      message: "too many token requests",
     };
 
   const token = mintCiToken();
