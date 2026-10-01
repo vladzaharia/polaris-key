@@ -494,7 +494,9 @@ packs are ingested (P4-02), the pack count must be bounded before they are route
 patterns, https-only URLs, no control characters); a repo writer can point a listing's `iconUrl`
 at any https host. Nothing serves listings yet — when storefront feeds do (P2b-05), they are
 untrusted display data and must be escaped by the feed, not trusted. The default capability table
-is the proposed one; P3-01's outlet matrix supersedes it.
+is wire contract v4's `OUTLET_CAPABILITY_DEFAULTS`, which the Worker imports (P3-12) and the
+corpus's `outlet-matrix.json` pins; it narrowed seven kinds from P2b-02's proposal, and a stored
+override wider than a narrowed default reads back narrowed.
 
 ### Byte delivery, delivery access and rollouts (P2b-04)
 
@@ -1102,6 +1104,36 @@ guard with P3-12, each of which extends this section.
   pointer per number grows with the square of the payload (a 64 KiB document of long member
   names over fractional numbers cost 0.25 to 1.5 GB). Each of shared-jws, Swift and Godot has a
   regression test on that document.
+- **The signer is total, and stored data cannot trip it (P3-12).** Two guards make the Worker
+  unable to sign what the strict verifier refuses: `signJws` throws `StrictJsonError` on a
+  serialized header or payload that breaks a strict-JSON rule (a lone surrogate, U+0000 in a
+  member name, a number out of range, more than 64 levels, a payload that is not an object), and
+  `signDoc` throws it first when an integer claim of a v3 `typ` is not a safe integer of at
+  least its minimum. The trust manifest signs through `signDoc` too, and the builders compute
+  `graceUntil` with integer arithmetic. Every signing route (the licence and config documents,
+  the trust manifest, the offline bundle mint, the EdDSA edge mint) answers a refusal as
+  `500 document_not_representable` in its own body shape, never as an unhandled throw and never
+  as a signed document some SDKs reject: a divergent document is a denial of service against
+  the stricter installs, and could become a forgery if verifiers ever disagreed about it. The
+  refusal is not logged, because the Worker logs nothing (R12) and the value may be a secret.
+  Write checks keep stored operator data from turning into such refusals. One function,
+  `representabilityIssue` in `shared-catalog` (lone surrogate, U+0000 in a member name, two
+  sibling names equal after NFC, a number out of range, more than 32 levels inside the value),
+  runs first in `validateEntryValue`, so licence overrides and profile payloads refuse such a
+  value with `422 value_not_representable` before a secret is sealed, and the catalog prune drops
+  a stored one from the config document. The manifest validator refuses it anywhere in a
+  `.pkey/` document (`value_not_representable`), which covers the values only the sync writes:
+  catalog defaults, provisioning entitlement values and edge-mint claims templates. The admin
+  product, tier and licence handlers take the manifest's own patterns (`KID_RE`, `ID_RE`,
+  `CHANNEL_RE`, `SEMVER_RE`), `MAX_WIRE_INTEGER` and the 1–365 offline-day rule, and refuse
+  unsignable free text (a licence name or email, a tier label). OIDC sign-in stores a
+  provider's unsignable name or email as null and skips an unsignable provisioning hook, rather
+  than letting a third party's claim deny the user their documents. **Residual:** values stored
+  before P3-12 are caught only by `pnpm check:representable`, which an operator runs against
+  production D1 before the first deploy (RUNBOOK, "Representability check"); skipped, a flagged
+  entitlement makes that licence's documents answer 500, and the check cannot open a sealed
+  secret, which the prune drops at signing instead. A stored value that only fails a pattern
+  (a channel `Beta Channel`) still signs and is refused the next time a write touches it.
 - **The canonical channel and its residual.** A feed's `channel` claim is the canonical channel
   the Worker resolved, which keys the client's `seq` floor; a `latest` claim is refused, and no
   SDK resolves an alias itself. One residual is accepted (plan decision 4): a request for

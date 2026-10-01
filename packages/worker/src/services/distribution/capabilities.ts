@@ -21,12 +21,16 @@
  * console — answers with the narrower of the two, so the server never widens past the compiled
  * table (the rule P3-01's client applies too).
  *
- * The table is PROPOSED (P2b-02 brief). Once P3-01's `outlet-matrix.json` is approved it is the
- * source of truth, and this table must then match it.
+ * The table is wire contract v4's (`OUTLET_CAPABILITY_DEFAULTS`, below); `outlet-matrix.json` is
+ * its corpus form, and `test/distributionOutlets.test.ts` proves the three equal.
  */
 
 import type { OutletCapabilities } from "../../core/hooks.js";
-import type { OutletKind } from "@polaris-key/manifest";
+import {
+  OUTLET_CAPABILITY_DEFAULTS,
+  OUTLET_KINDS,
+  type OutletKind,
+} from "@polaris-key/protocol/distribution";
 
 /** One outlet's capabilities, without the outlet id the hook adds. */
 export type CapabilitySet = Omit<OutletCapabilities, "outletId">;
@@ -42,50 +46,26 @@ export const CAPABILITY_KEYS: readonly CapabilityKey[] = [
   "downloadedScripts",
 ];
 
-/** Self-hosted outlets: the product updates itself, sells directly, and may hot-load code. */
-const SELF_HOSTED: CapabilitySet = {
-  binaryUpdates: "self",
-  codeUpdates: true,
-  dataUpdates: true,
-  channelSwitch: true,
-  commerce: "own",
-  downloadedScripts: true,
-};
-
-/** Store outlets: the store owns binary updates; data only, no code, no channel switching. */
-const STORE: CapabilitySet = {
-  binaryUpdates: "store",
-  codeUpdates: false,
-  dataUpdates: true,
-  channelSwitch: false,
-  commerce: "store-iap",
-  downloadedScripts: false,
-};
-
-/** Store-shaped outlets that leave commerce to the product. */
-const STORE_OWN_COMMERCE: CapabilitySet = { ...STORE, commerce: "own" };
-
-/** The default capabilities per outlet kind (README §3.1; P2b-02's proposed table). */
+/**
+ * The default capabilities per outlet kind: WIRE-CONTRACT-V4 §8's table,
+ * `OUTLET_CAPABILITY_DEFAULTS` from `@polaris-key/protocol/distribution` (plans/P3-01.md §2.9),
+ * which every SDK holds too and `outlet-matrix.json#/kinds` pins. P2b-02's proposed table
+ * (`SELF_HOSTED`/`STORE`/`STORE_OWN_COMMERCE`) was replaced by this import in P3-12; it differed
+ * in seven kinds (`web` updated itself and loaded code, and `steam`, `app-installer`, `itch`,
+ * `flathub`, `snap` and `winget` had `binaryUpdates: store`). A stored override wider than a
+ * narrowed default reads back narrowed (`effectiveCapabilities`), so no row needed rewriting.
+ *
+ * `unknown` is a detection result, never a declarable kind, so it has no row here.
+ */
 export const DEFAULT_CAPABILITIES: Readonly<Record<OutletKind, CapabilitySet>> =
-  {
-    direct: SELF_HOSTED,
-    web: SELF_HOSTED,
-    "app-store": STORE,
-    testflight: STORE,
-    play: STORE,
-    "play-testing": STORE,
-    "ms-store": STORE,
-    steam: { ...STORE, commerce: "steam" },
-    altstore: STORE_OWN_COMMERCE,
-    "altstore-pal": STORE_OWN_COMMERCE,
-    obtainium: STORE_OWN_COMMERCE,
-    "fdroid-repo": STORE_OWN_COMMERCE,
-    "app-installer": STORE_OWN_COMMERCE,
-    itch: STORE_OWN_COMMERCE,
-    flathub: STORE_OWN_COMMERCE,
-    snap: STORE_OWN_COMMERCE,
-    winget: STORE_OWN_COMMERCE,
-  };
+  Object.freeze(
+    Object.fromEntries(
+      OUTLET_KINDS.map((kind) => [
+        kind,
+        Object.freeze({ ...OUTLET_CAPABILITY_DEFAULTS[kind] }),
+      ]),
+    ) as Record<OutletKind, CapabilitySet>,
+  );
 
 /** The default for a kind, or `null` for a kind this build does not know (fail closed). */
 export function defaultCapabilities(kind: string): CapabilitySet | null {
