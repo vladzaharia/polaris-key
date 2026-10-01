@@ -86,31 +86,12 @@ export {
 } from "./discovery.js";
 
 // ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──
-// Error codes, header names, enums, feature ids and versions, spelled identically (up to
-// casing) in every SDK. `ServiceSlug` is exported from here as a value and a type; it is the same
-// union the discovery module uses.
-export {
-  ErrorCode,
-  ERROR_CODE_VALUES,
-  ERROR_CODE_KINDS,
-  type ErrorCodeKind,
-  Feature,
-  FEATURE_VALUES,
-  UnsupportedReason,
-  UNSUPPORTED_REASON_VALUES,
-  Platform,
-  PLATFORM_VALUES,
-  Arch,
-  ARCH_VALUES,
-  HeaderName,
-  HEADER_NAME_VALUES,
-  ServiceSlug,
-  SERVICE_SLUG_VALUES,
-  PROTOCOL_VERSION,
-  CORPUS_VERSION,
-  GATE_MATRIX_VERSION,
-  FINGERPRINT_VERSION,
-} from "./constants.generated.js";
+// Error codes, header names, enums, feature ids, versions and the channel vocabulary, spelled
+// identically (up to casing) in every SDK. Re-exported wholesale so a constant the generator gains
+// (a new enum, P0-04's channel constants) reaches the package root without editing this file;
+// test/errorCodes.test.ts checks every generated export is reachable from here. `ServiceSlug` is
+// exported as a value and a type; it is the same union the discovery module uses.
+export * from "./constants.generated.js";
 
 export { SDK_NAME, SDK_VERSION } from "./version.js";
 

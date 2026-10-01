@@ -99,3 +99,18 @@ def test_the_generated_module_is_the_registry() -> None:
     assert tuple(constants.ERROR_CODE_KINDS) == constants.ERROR_CODE_VALUES
     assert polaris_key.ErrorCode is constants.ErrorCode
     assert polaris_key.PROTOCOL_VERSION == 3
+
+
+def test_the_package_root_reexports_every_generated_constant() -> None:
+    # A constant the generator gains (the channel vocabulary, a new enum) reaches the root through
+    # the generated ``__all__``, unedited.
+    missing = [
+        name
+        for name in constants.__all__
+        if getattr(polaris_key, name, None) is not getattr(constants, name)
+        or name not in polaris_key.__all__
+    ]
+    assert missing == []
+    assert polaris_key.CHANNEL_STABLE == "stable"
+    assert dict(polaris_key.CHANNEL_ALIASES) == {"staging": "beta", "latest": "stable"}
+    assert polaris_key.PR_NUMBER_MAX_DIGITS == 7

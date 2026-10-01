@@ -74,9 +74,11 @@ Today:
     P0-09's table; header names, `PROTOCOL_VERSION` and P0-04's channel constants (`CHANNEL_STABLE`,
     `CHANNEL_BETA`, `CHANNEL_PR`, `CHANNEL_DEV`, `CHANNEL_ALIASES`, `CHANNEL_NAME_PATTERN`,
     `PR_CHANNEL_PATTERN`, `PR_NUMBER_MAX_DIGITS`, plan §2.2) imported from `@polaris-key/protocol/core`
-    (P0-04 had not landed when this package was implemented, so the generator emits every
-    `CHANNEL_*`/`PR_*` export the module has, which today is none; P0-04's additions flow through
-    on its next `pnpm gen:constants`);
+    (the generator emits every `CHANNEL_*`/`PR_*` export the module has; P0-04 landed while this
+    package was in review and all eight are now emitted in every output and re-exported from each
+    package root — Node and React `export * from "./constants.generated.js"`, Python
+    `from .constants_generated import *` plus the generated `__all__` — so a future addition needs
+    only `pnpm gen:constants`);
     `corpusVersion`, `gateMatrixVersion` and `fingerprintVersion` from the corpus files.
 - **Outputs**, each with a GENERATED banner (TypeScript formatted with prettier, as `sign-corpus.ts`
   does):

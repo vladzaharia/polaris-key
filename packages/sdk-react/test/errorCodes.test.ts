@@ -11,12 +11,14 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import * as generated from "../src/constants.generated.js";
 import {
   ERROR_CODE_KINDS,
   ERROR_CODE_VALUES,
   ErrorCode,
 } from "../src/constants.generated.js";
 import type { PolarisErrorCode } from "../src/core/types.js";
+import * as barrel from "../src/index.js";
 import {
   ErrorCode as BarrelErrorCode,
   PROTOCOL_VERSION,
@@ -89,5 +91,21 @@ describe("error-code registry (core.errors)", () => {
     expect(Object.keys(ERROR_CODE_KINDS)).toEqual([...ERROR_CODE_VALUES]);
     expect(BarrelErrorCode).toBe(ErrorCode);
     expect(PROTOCOL_VERSION).toBe(3);
+  });
+
+  it("the package root re-exports every generated constant", () => {
+    // `export *` silently drops a name two star-exports both provide, so pin it: a constant the
+    // generator gains (the channel vocabulary, a new enum) must be reachable from the root.
+    const root = barrel as Record<string, unknown>;
+    const missing = Object.keys(generated).filter(
+      (name) => root[name] !== (generated as Record<string, unknown>)[name],
+    );
+    expect(missing).toEqual([]);
+    expect(barrel.CHANNEL_STABLE).toBe("stable");
+    expect(barrel.CHANNEL_ALIASES).toEqual({
+      staging: "beta",
+      latest: "stable",
+    });
+    expect(barrel.PR_NUMBER_MAX_DIGITS).toBe(7);
   });
 });
