@@ -94,6 +94,12 @@ public actor ConfigClient {
         await core.enabled(.config)
     }
 
+    /// `GET /<p>/config/schema` — the product's active catalog, as served. `nil` on any failure,
+    /// never a throw; see `ConfigEndpoints.fetchSchema`.
+    public func fetchSchema() async -> Data? {
+        await ConfigEndpoints.fetchSchema(core)
+    }
+
     /// The product's active catalog version, as the last verified document stated it.
     public func schemaVersion() async -> Int? {
         await doc()?.schemaVersion

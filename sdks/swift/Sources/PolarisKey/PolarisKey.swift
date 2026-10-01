@@ -1,8 +1,9 @@
 // `import PolarisKey` — the one-import surface (D-11).
 //
-// Polaris Key's shape is `client.<service>.<verb>`, and the three modules below are the ones every
-// product touches: Core (device principal, trust, cache, clock), License (the gate), Config
-// (settings). Re-exporting them means an adopter writes ONE import and still gets
+// Polaris Key's shape is `client.<service>.<verb>`, and the modules below are the cross-platform
+// ones: Core (device principal, trust, cache, clock), License (the gate), Config (settings) and
+// Release (the changelog and artifact URLs, P1b-07 — Release, unlike Update, links nothing
+// platform-bound, so re-exporting it costs a one-import adopter nothing). Re-exporting them means an adopter writes ONE import and still gets
 // `LicenseStatus`, `JSONValue`, `TrustSet` and the rest by their plain names.
 //
 // PolarisKeyUpdate is deliberately NOT re-exported: it is macOS-only, and §7.3 makes "the update
@@ -16,3 +17,4 @@
 @_exported import PolarisKeyConfig
 @_exported import PolarisKeyCore
 @_exported import PolarisKeyLicense
+@_exported import PolarisKeyRelease

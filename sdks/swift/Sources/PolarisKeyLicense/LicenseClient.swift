@@ -108,12 +108,20 @@ public actor LicenseClient {
         await doc()?.licenseId
     }
 
-    /// The channels this licence grants, from the `channels` entitlement. The source of truth
-    /// `PolarisKeyUpdate` derives `allowedChannels` from.
+    /// The channels this licence grants: the `channels` entitlement's string values, in order,
+    /// as granted — or `["stable"]` when the entitlement is absent or not an array. This is the
+    /// Worker's own answer (`entitledChannels` in core/entitlements.ts) and the same list every
+    /// SDK returns for the same document; before P1b-07 this SDK answered `[]` for an absent
+    /// entitlement, which disagreed with the Worker it gates against.
+    ///
+    /// The grants are RAW: `staging` is not rewritten to `beta` here. Whether a grant covers a
+    /// channel is the entitlement rule's question (WIRE-CONTRACT-V3 §5.1 rule 4), not this
+    /// list's. `PolarisKeyUpdate`'s `allowedChannels(from:)` derives Sparkle's channel set from
+    /// the same entitlement and already treats an absent one as stable only.
     public func entitledChannels() async -> [String] {
         guard let value = await doc()?.entitlements["channels"]?.value,
             let array = value.arrayValue
-        else { return [] }
+        else { return ["stable"] }
         return array.compactMap(\.stringValue)
     }
 

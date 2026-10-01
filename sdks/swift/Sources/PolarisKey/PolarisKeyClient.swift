@@ -26,6 +26,7 @@ import Foundation
 import PolarisKeyConfig
 import PolarisKeyCore
 import PolarisKeyLicense
+import PolarisKeyRelease
 
 public struct PolarisKeyClientOptions: Sendable {
     public let core: CoreOptions
@@ -130,6 +131,7 @@ public actor PolarisKeyClient {
     public nonisolated let core: CoreContext
     public nonisolated let license: LicenseClient
     public nonisolated let config: ConfigClient
+    public nonisolated let release: ReleaseClient
 
     private let probes: [ProbeDeclaration]
     private let refreshIntervalSeconds: Double?
@@ -141,6 +143,7 @@ public actor PolarisKeyClient {
         let core = try CoreContext(options: options.core)
         self.core = core
         self.config = ConfigClient(core: core, options: options.config)
+        self.release = ReleaseClient(core: core)
         self.probes = options.probes
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
@@ -205,7 +208,7 @@ public actor PolarisKeyClient {
                 else { return nil }
                 return next
             },
-            report: { await PolarisKeyClient.report(core: core, probes: probes) })
+            report: { _ = await PolarisKeyClient.report(core: core, probes: probes) })
         // The ETags are the change signal: they exclude the per-request timestamps, so a
         // differing tag means the CONTENT changed rather than that the document was re-signed.
         let afterLicense = await core.etag(.license)
@@ -227,7 +230,7 @@ public actor PolarisKeyClient {
                 else { return nil }
                 return next
             },
-            report: { await PolarisKeyClient.report(core: core, probes: probes) })
+            report: { _ = await PolarisKeyClient.report(core: core, probes: probes) })
     }
 
     /// Assemble the telemetry snapshot from RE-VERIFIED documents and post it (§6).
@@ -236,7 +239,8 @@ public actor PolarisKeyClient {
     /// file authored the one signal that would have revealed the forgery. Everything below is
     /// read from the documents Core re-verified; if nothing verified, the maps are empty, and an
     /// empty report is a truthful one.
-    private static func report(core: CoreContext, probes: [ProbeDeclaration]) async {
+    @discardableResult
+    private static func report(core: CoreContext, probes: [ProbeDeclaration]) async -> Bool {
         let cache = await core.cache()
         var config: [String: JSONValue] = [:]
         var entitlements: [String: JSONValue] = [:]
@@ -249,7 +253,20 @@ public actor PolarisKeyClient {
             os: facts.os, hardware: facts.hardware, runtime: facts.runtime,
             locale: facts.locale, timezone: facts.timezone, probes: facts.probes,
             config: config, entitlements: entitlements)
-        await core.reportSnapshot((try? JSONEncoder().encode(body)) ?? Data("{}".utf8))
+        return await core.reportSnapshot((try? JSONEncoder().encode(body)) ?? Data("{}".utf8))
+    }
+
+    // ── Telemetry (§6) ───────────────────────────────────────────────────────────────────
+    /// Post the device telemetry snapshot now: the values of the documents this client VERIFIED
+    /// (R4-05) plus this host's software facts, allowlisted keys only (`POST /devices/report`).
+    ///
+    /// `sync()` already reports after every pass that warrants it; this is the explicit call a
+    /// host makes when it wants the console to see a fresh snapshot without a sync (the
+    /// telemetry-report transcript). Best-effort: `false` when no credential is held, the server
+    /// refused, or the network failed — telemetry never throws at the host.
+    @discardableResult
+    public func report() async -> Bool {
+        await PolarisKeyClient.report(core: core, probes: probes)
     }
 
     /// The React-bridge contract, assembled from the managers that own each piece.

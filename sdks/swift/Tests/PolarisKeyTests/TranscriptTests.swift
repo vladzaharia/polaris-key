@@ -1,5 +1,6 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
-// @pkey-feature license.deactivate devices.register
+// @pkey-feature license.deactivate devices.register devices.report
+// @pkey-feature config.schema release.changelog release.download
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -8,15 +9,15 @@
 // asserts every request.
 //
 // Which transcripts run is DATA: a transcript for a feature this SDK has not implemented is
-// skipped — register-reregister-401 until P1b-06, telemetry-report until P1b-07 exposes
-// `report()` — and starts running the moment the manifest claims it (the `report` verb then
-// needs its mapping below). The SDK clock is `CoreOptions.clock`, pinned to each step's `now`:
+// skipped — register-reregister-401 until P1b-06 — and starts running the moment the manifest
+// claims it. The SDK clock is `CoreOptions.clock`, pinned to each step's `now`:
 // the recorded documents were signed at a fixed instant and expire an hour later.
 
 import Foundation
 import PolarisKey
 import PolarisKeyCore
 import PolarisKeyLicense
+import PolarisKeyRelease
 import XCTest
 
 /// A settable clock the client reads through `CoreOptions.clock`.
@@ -84,6 +85,34 @@ enum SwiftReplay {
             }
         case "deactivate":
             try await client.deactivate()
+        case "report":
+            out["result"] = .bool(await client.report())
+        case "fetchSchema":
+            if let data = await client.config.fetchSchema() {
+                out["catalog"] = try JSONDecoder().decode(JSONValue.self, from: data)
+            } else {
+                out["catalog"] = .null
+            }
+        case "changelog":
+            do {
+                let entries = try await client.release.changelog()
+                out["entries"] = .array(entries.map(entryValue))
+                out["result"] = .string("ok")
+            } catch let e as PolarisError {
+                out["result"] = .string("error")
+                out["code"] = .string(e.code)
+            }
+        case "installUrl":
+            out["url"] = .string(try await client.release.installURL().absoluteString)
+        case "downloadUrl":
+            out["url"] = .string(
+                try await client.release.downloadURL(
+                    version: step.args["version"]?.stringValue ?? "",
+                    binary: step.args["binary"]?.stringValue ?? "",
+                    arch: step.args["arch"]?.stringValue ?? "",
+                    checksum: step.args["checksum"] == .bool(true),
+                    dmg: step.args["dmg"] == .bool(true)
+                ).absoluteString)
         default:
             throw ReplayError("the Swift replayer has no mapping for \"\(step.action)\"")
         }
@@ -93,6 +122,16 @@ enum SwiftReplay {
         out["licenseStatus"] = .string(await client.status().status.rawValue)
         out["tokenHeld"] = .bool(await store.getToken() != nil)
         return out
+    }
+
+    /// A changelog entry in the transcript's JSON vocabulary (nil ⇒ `null`).
+    static func entryValue(_ e: ChangelogEntry) -> JSONValue {
+        .object([
+            "version": .string(e.version), "tag": .string(e.tag),
+            "date": e.date.map(JSONValue.string) ?? .null,
+            "summary": e.summary.map(JSONValue.string) ?? .null,
+            "url": .string(e.url),
+        ])
     }
 
     static func activationKind(_ r: ActivationResult) -> String {
