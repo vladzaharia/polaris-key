@@ -74,6 +74,7 @@ export const identityService: ServiceDescriptor = {
         authPoll: `${base}/identity/auth/poll`,
         authLogout: `${base}/identity/auth/logout`,
         authDeviceStart: `${base}/identity/auth/device/start`,
+        authDeviceEntry: `${base}/identity/auth/device`,
         authDeviceVerify: `${base}/identity/auth/device/verify`,
         authDevicePoll: `${base}/identity/auth/device/poll`,
       },

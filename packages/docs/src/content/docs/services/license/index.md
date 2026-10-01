@@ -107,8 +107,10 @@ one operator action:
 
 The three converge: whatever minted it, the license is an ordinary row, and every downstream
 behaviour — seat limits, fingerprint drift, re-licensing, the build gate — applies identically.
-An enrolled license that a user later signs in against is _merged_ into their identity rather
-than abandoned, so their devices and local state survive.
+Identity can _merge_ an enrolled license into a signed-in identity rather than abandon it (see
+[claim and migrate](/docs/services/license/enrollment/#claim-and-migrate)). No sign-in route
+triggers that merge today: a device-code sign-in is confirmed with a public user code, so it
+leaves the device's enrolled license untouched.
 
 ## How a client uses it
 

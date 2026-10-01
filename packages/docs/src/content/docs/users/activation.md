@@ -31,9 +31,10 @@ they've connected — instead of typing a key. Depending on the app, this either
 window to sign in, or shows you a short code to enter on a second device or browser tab. Either
 way, once you approve it, the app finishes activating on its own — no key ever changes hands.
 
-If this exact machine already had a free license from enrollment (below), signing in attaches
-that license to your account rather than creating a second one — you keep the devices and
-settings you already had.
+Signing in puts this device on your account's own license. If this machine already had a free
+license from enrollment (below), signing in does not attach it to your account. The free license
+stays where it is, unchanged. Anyone who can see the short code could finish that sign-in, so
+signing in is never allowed to hand over a license the machine already had.
 
 See [Identity](/docs/services/identity/) for how sign-in works underneath.
 
