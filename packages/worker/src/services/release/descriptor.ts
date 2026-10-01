@@ -90,6 +90,10 @@ import {
   type ReleaseMetadataRow,
 } from "./store.js";
 
+/** `roleOfKind(kind)` as SQL over `release_artifacts.kind` (kept in step by a worker test). */
+export const ROLE_OF_KIND_SQL =
+  "CASE kind WHEN 'signature' THEN 'signature' WHEN 'checksum' THEN 'checksum' ELSE 'payload' END";
+
 // ── Result shapes ────────────────────────────────────────────────────────────
 
 export type DescriptorSource = "github" | "ci";
@@ -104,12 +108,44 @@ export type DescriptorMarker =
       at: number;
     }
   | {
-      /** A `pkey-release.json` the sync refused; not fetched again while the asset is unchanged. */
+      /**
+       * A `pkey-release.json` the sync refused. It is not fetched again while both the asset and
+       * the declaration it was judged against (`basis`) are unchanged — except a refusal that
+       * hangs on the store's other rows (`REFUSALS_RETRIED_EVERY_SYNC`), which is retried.
+       */
       status: "refused";
       reason: string;
       assetId: number;
+      /** `declarationBasis` at the time: SHA-256 of the app declaration and the manual channels. */
+      basis?: string;
       at: number;
     };
+
+/**
+ * Refusals that depend on rows other than the descriptor's asset and the product's declaration —
+ * another release holding the version, a blob-store object or reference — and so may clear
+ * without either changing. These are fetched again on every sync (within the budget).
+ */
+const REFUSALS_RETRIED_EVERY_SYNC: ReadonlySet<string> =
+  new Set<IngestRefusalReason>([
+    "release_exists",
+    "r2_object_missing",
+    "r2_ref_not_owned",
+  ]);
+
+/**
+ * What a descriptor is judged against besides itself and the store's rows: the persisted app
+ * declaration (builds, channels) and the manual channels. A resync that changes either makes
+ * every remembered refusal stale.
+ */
+async function declarationBasis(
+  app: ManifestAppDeliverable | null,
+  manualChannelsJson: string | null | undefined,
+): Promise<string> {
+  return sha256Hex(
+    JSON.stringify({ app, manualChannels: manualChannelsJson ?? null }),
+  );
+}
 
 /** Why an ingest was refused. Every refusal writes nothing (the sync's health row aside). */
 export type IngestRefusalReason =
@@ -598,6 +634,22 @@ export async function planDescriptorIngest(
   ];
   const tail: DbStatement[] = [
     ...planned.builds.map((b) => stmtUpsertBuild(b, now)),
+    // A file the descriptor does not name belongs to no build of it: whatever build the map
+    // gave it goes (below), so it leaves that build and its role falls back to the one its kind
+    // implies (`roleOfKind`). The descriptor owns the release from here, and `described` syncs
+    // never touch `build_id` or `role`, so no file is left pointing at a deleted build.
+    {
+      sql: `UPDATE release_artifacts
+               SET build_id = NULL,
+                   role = ${ROLE_OF_KIND_SQL}
+             WHERE product = ? AND release_id = ? AND build_id IS NOT NULL
+               AND name NOT IN (SELECT value FROM json_each(?))`,
+      params: [
+        product,
+        releaseId,
+        JSON.stringify(planned.artifacts.map((a) => a.name)),
+      ],
+    },
     // A build the descriptor does not list is not part of this release (a map-made one, say).
     {
       sql: `DELETE FROM release_builds
@@ -829,7 +881,9 @@ export interface GithubDescriptorOutcome {
 /**
  * Find and ingest the `pkey-release.json` of GitHub releases that have no ingested descriptor
  * yet, newest first, at most `MAX_DESCRIPTOR_FETCHES_PER_SYNC` per sync. A refused descriptor is
- * remembered by asset id, so the same refusal is not fetched again until the asset changes.
+ * remembered by asset id and declaration (`basis`), so the same refusal is not fetched again
+ * until the asset or the product's declaration changes; a refusal that hangs on other rows
+ * (`REFUSALS_RETRIED_EVERY_SYNC`) is fetched again every sync.
  * A fetch that fails (quota, a 404) is skipped silently and retried by the next sync — the
  * truth store is a cache, and this pass must never fail the resync carrying it.
  *
@@ -875,13 +929,23 @@ export async function ingestGithubDescriptors(
     .filter(
       (c): c is { r: Release; asset: ReleaseAsset } => c.asset !== undefined,
     );
-  // A refusal for this exact asset is remembered, not re-fetched.
+  // A refusal of this exact asset under this exact declaration is remembered, not re-fetched.
+  const basis = await declarationBasis(app, cfg.manual_channels_json);
   const toFetch: { r: Release; asset: ReleaseAsset }[] = [];
   for (const c of candidates) {
     const m = markers.get(c.r.tag_name);
-    if (m?.status === "refused" && m.assetId === c.asset.id)
+    if (
+      m?.status === "refused" &&
+      m.assetId === c.asset.id &&
+      m.basis === basis &&
+      !REFUSALS_RETRIED_EVERY_SYNC.has(m.reason)
+    )
       refused.set(c.r.tag_name, m.reason);
-    else toFetch.push(c);
+    else {
+      // Stale or retried: fetched again (budget permitting), and degraded until it is accepted.
+      if (m?.status === "refused") refused.set(c.r.tag_name, m.reason);
+      toFetch.push(c);
+    }
   }
   // The newest ones, for the budget.
   const budget = toFetch
@@ -941,6 +1005,7 @@ export async function ingestGithubDescriptors(
         out.rows.set(r.tag_name, plan.head);
         out.tail.push(...plan.tail);
         described.add(r.tag_name);
+        refused.delete(r.tag_name);
       } else {
         refused.set(r.tag_name, plan.reason);
         out.tail.push({
@@ -955,6 +1020,7 @@ export async function ingestGithubDescriptors(
               status: "refused",
               reason: plan.reason,
               assetId: asset.id,
+              basis,
               at: now,
             } satisfies DescriptorMarker),
             product,

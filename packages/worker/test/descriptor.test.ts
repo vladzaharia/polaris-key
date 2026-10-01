@@ -29,12 +29,14 @@ import { syncReleaseStore } from "../src/services/release/sync.js";
 import {
   ingestReleaseDescriptor,
   MAX_DESCRIPTOR_FETCHES_PER_SYNC,
+  ROLE_OF_KIND_SQL,
 } from "../src/services/release/descriptor.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import {
   getChannelPolicy,
   getDeliverable,
   listBuilds,
+  roleOfKind,
 } from "../src/services/release/model.js";
 import {
   listReleaseArtifacts,
@@ -862,7 +864,7 @@ describe("ingestReleaseDescriptor (CI)", () => {
     const rowsBefore = (await listReleaseArtifacts(db, SLUG, "v1.2.3")).length;
     const seqBefore = (await listReleaseMetadata(db, SLUG))[0]!.seq;
 
-    // The sync recorded every file, so the descriptor must name every one of them.
+    // This descriptor names every file the sync recorded (a partial one is tested below).
     const d = descriptor();
     for (const [i, name] of FILES.entries()) {
       const known = d.builds.flatMap((b: any) =>
@@ -935,6 +937,67 @@ describe("ingestReleaseDescriptor (CI)", () => {
     const res = await ingest(d);
     expect(res).toMatchObject({ ok: false, reason: "release_exists" });
     expect(await dump(db)).toEqual(before);
+  });
+
+  it("partial enrichment: a file the descriptor does not name leaves its map-made build, and no file points at a deleted build", async () => {
+    const { db, ingest, fetchImpl } = await ciSetup();
+    await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl);
+    expect(await listBuilds(db, SLUG, "v1.2.3")).toHaveLength(6);
+
+    // descriptor() names only the macOS build (on GitHub) and the web build (in R2).
+    const res = await ingest(descriptor());
+    expect(res).toMatchObject({ ok: true, outcome: "enriched" });
+
+    const check = async () => {
+      const builds = new Set(
+        (await listBuilds(db, SLUG, "v1.2.3")).map((b) => b.build_id),
+      );
+      expect(builds).toEqual(new Set(["macos", "web"]));
+      const artifacts = await listReleaseArtifacts(db, SLUG, "v1.2.3");
+      for (const a of artifacts)
+        if (a.build_id !== null) expect(builds.has(a.build_id)).toBe(true);
+      const byName = new Map(artifacts.map((a) => [a.name, a]));
+      for (const name of [
+        "Diceroll-1.2.3-windows-x86_64.zip",
+        "Diceroll-1.2.3-linux-x86_64.tar.gz",
+        "Diceroll-1.2.3-android.apk",
+        "Diceroll-1.2.3-ios-sideload.ipa",
+      ]) {
+        const a = byName.get(name)!;
+        expect(a).toMatchObject({ build_id: null, role: roleOfKind(a.kind) });
+      }
+      expect(byName.get("Diceroll-1.2.3-macos.dmg.sig")).toMatchObject({
+        build_id: "macos",
+        role: "signature",
+      });
+      expect(byName.get("Diceroll-1.2.3-web.zip")).toMatchObject({
+        build_id: "web",
+      });
+    };
+    await check();
+    // A later sync (described mode) leaves it that way.
+    await syncReleaseStore(envFor(), db, SLUG, NOW + 200, fetchImpl);
+    await check();
+  });
+
+  it("ROLE_OF_KIND_SQL is roleOfKind", async () => {
+    const db = makeTestDb();
+    for (const kind of [
+      "signature",
+      "checksum",
+      "dmg",
+      "pkg",
+      "archive",
+      "other",
+      "cli",
+      null,
+    ]) {
+      const row = await db.first<{ role: string }>(
+        `SELECT ${ROLE_OF_KIND_SQL} AS role FROM (SELECT ? AS kind)`,
+        kind,
+      );
+      expect(row!.role).toBe(roleOfKind(kind));
+    }
   });
 });
 
@@ -1305,5 +1368,85 @@ describe("the GitHub path: pkey-release.json during the truth-store sync", () =>
     const { fetchImpl, assetFetches } = github(releases, { assets: {} });
     await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl);
     expect(assetFetches()).toBe(MAX_DESCRIPTOR_FETCHES_PER_SYNC);
+  });
+
+  it("a refusal is remembered only under the declaration it was judged against: declaring the map fetches it again and ingests it", async () => {
+    const db = makeTestDb();
+    await seedLinked(db, false);
+    const assets = { 200: JSON.stringify(attachedDescriptor()) };
+    const noMap = github([withDescriptorAsset()], { withMap: false, assets });
+    await resyncRepo(envFor(), db, SLUG, NOW, noMap.fetchImpl);
+    expect(noMap.assetFetches()).toBe(1);
+    const marker = async () =>
+      JSON.parse((await listReleaseMetadata(db, SLUG))[0]!.metadata_json!)
+        .descriptor;
+    expect(await marker()).toMatchObject({
+      status: "refused",
+      reason: "invalid_descriptor",
+      assetId: 200,
+    });
+    // Same asset, same declaration: not fetched again, still degraded.
+    await resyncRepo(envFor(), db, SLUG, NOW + 60, noMap.fetchImpl);
+    expect(noMap.assetFetches()).toBe(1);
+    expect(
+      (await listReleaseHealth(db, SLUG)).find(
+        (h) => h.subject_id === "v1.2.3",
+      )!.status,
+    ).toBe("degraded");
+
+    // The manifest now declares the map the descriptor was written against.
+    const withMap = github([withDescriptorAsset()], { withMap: true, assets });
+    await resyncRepo(envFor(), db, SLUG, NOW + 120, withMap.fetchImpl);
+    expect(withMap.assetFetches()).toBe(1);
+    expect(await marker()).toMatchObject({
+      status: "ingested",
+      source: "github",
+    });
+    expect(
+      (await listReleaseHealth(db, SLUG)).find(
+        (h) => h.subject_id === "v1.2.3",
+      )!.status,
+    ).toBe("healthy");
+    expect(await listBuilds(db, SLUG, "v1.2.3")).toHaveLength(6);
+  });
+
+  it("a refusal that hangs on other rows (an r2 key not yet referenced) is fetched again each sync", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const d = attachedDescriptor();
+    const web = d.builds.find((b: any) => b.id === "web")!;
+    web.artifacts[0].locations.push({
+      provider: "r2",
+      key: `blobs/sha256/${web.artifacts[0].sha256}`,
+    });
+    await storeBlob(db, web.artifacts[0].sha256, web.artifacts[0].size);
+    const { fetchImpl, assetFetches } = github([withDescriptorAsset()], {
+      assets: { 200: JSON.stringify(d) },
+    });
+    await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl);
+    const meta = async () =>
+      JSON.parse((await listReleaseMetadata(db, SLUG))[0]!.metadata_json!)
+        .descriptor;
+    expect(await meta()).toMatchObject({
+      status: "refused",
+      reason: "r2_ref_not_owned",
+    });
+    await syncReleaseStore(envFor(), db, SLUG, NOW + 60, fetchImpl);
+    expect(assetFetches()).toBe(2);
+
+    // Once the product references the object, the next sync ingests it.
+    await recordRef(
+      db,
+      {
+        product: SLUG,
+        storageKey: `blobs/sha256/${web.artifacts[0].sha256}`,
+        refKind: "artifact",
+        refId: "elsewhere",
+      },
+      NOW,
+    );
+    await syncReleaseStore(envFor(), db, SLUG, NOW + 120, fetchImpl);
+    expect(assetFetches()).toBe(3);
+    expect(await meta()).toMatchObject({ status: "ingested" });
   });
 });

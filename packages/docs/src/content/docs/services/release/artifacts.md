@@ -174,7 +174,9 @@ nothing — when:
   ([descriptor codes](/docs/reference/validation-codes/#release-descriptor-codes));
 - the release already exists from a different descriptor (`release_exists`). The same
   descriptor again is a no-op, and a descriptor may **enrich** the row the GitHub sync created
-  for the same tag when it names every file of that release;
+  for the same tag when every file it places on GitHub is one of that release's files. A file
+  of the release the descriptor does not name belongs to none of its builds, and takes the
+  role its name implies;
 - its `seq` is not above the deliverable's current maximum (new release) or not the stored one
   (existing release). In a sync that also records other new releases, the maximum counts every
   new release published before this one, since each takes the next `seq` in publication order;
@@ -184,7 +186,10 @@ nothing — when:
   uploaded it nor already references it.
 
 A refused `pkey-release.json` marks its release `degraded` in release health, with the
-reason, and is not fetched again until the asset changes. Once a release has a descriptor, the
+reason, and is not fetched again until the asset or the product's declaration (its
+`deliverables.app` and manual channels) changes. A refusal that depends on other rows
+(`release_exists`, `r2_object_missing`, `r2_ref_not_owned`) is retried on every sync, within
+the per-sync fetch limit. Once a release has a descriptor, the
 descriptor owns its builds and classification; later syncs refresh only the serving columns
 (name, size, GitHub URL, access).
 

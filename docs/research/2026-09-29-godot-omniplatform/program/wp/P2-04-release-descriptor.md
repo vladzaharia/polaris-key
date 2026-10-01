@@ -160,6 +160,19 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
     value the batch will have reached at that slot (stored maximum plus one per new release
     published before it), refusing `seq_not_increasing` otherwise, so an explicit seq can never
     collide with a computed one in the same batch.
+  - Channel `includes` entries must be canonical names too (`invalid_channel_includes`, and the
+    schema's `includes` items carry the canonical pattern): they are stored as written in
+    `release_channel_policy.includes_json`, so a manual channel P0-04 tolerates with a warning
+    (`Nightly.2`) or an alias (`staging`) cannot be included.
+  - Enrichment checks only that every file the descriptor places on GitHub is one the row holds.
+    A held file the descriptor does not name leaves whatever build the map gave it (`build_id`
+    NULL, `role` back to `roleOfKind(kind)`) in the same batch that deletes the builds the
+    descriptor does not list, so no file points at a deleted build.
+  - "Bounded GitHub cost": a refused `pkey-release.json` is remembered in its marker with the
+    asset id and `basis`, the SHA-256 of the persisted app declaration and the manual channels it
+    was judged against. It is fetched again when either changes. Refusals that hang on other rows
+    (`release_exists`, `r2_object_missing`, `r2_ref_not_owned`) are fetched again on every sync,
+    within the per-sync cap.
 
 ## Steps
 
