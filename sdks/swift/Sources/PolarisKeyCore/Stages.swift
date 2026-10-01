@@ -37,6 +37,28 @@ public let BOOT_GUARD_ACTIONS: [String] = BootGuardAction.allCases.map(\.rawValu
 /// Unconfirmed launches of the active slot that trigger a rollback on the next launch.
 public let MAX_FAILED_BOOTS = 2
 
+/// How long the outcome must stay `ready`, with the process alive, before the launch counts as
+/// confirmed (plans/P3-01.md §2.10; `stage-matrix.json#/bootOkSeconds`).
+public let BOOT_OK_SECONDS = 10
+
+/// When a launch is confirmed, by outcome (stage matrix v2).
+public enum BootConfirmation: String, Sendable, Equatable, CaseIterable {
+    case now
+    case afterOkSeconds = "after-ok-seconds"
+    case never
+}
+
+/// Stage matrix v2 (plans/P3-01.md §2.10): `waiting`, `blocked` and `offline` confirm at once;
+/// `ready` after `BOOT_OK_SECONDS` with the process alive (or the game's `confirmBoot()`,
+/// host-side); `running` and `error` never confirm. A confirmed launch resets `failedBoots`.
+public func bootConfirmation(_ outcome: BootOutcome) -> BootConfirmation {
+    switch outcome {
+    case .waiting, .blocked, .offline: return .now
+    case .ready: return .afterOkSeconds
+    case .running, .error: return .never
+    }
+}
+
 public enum BootStage: String, Sendable, Equatable, CaseIterable {
     case idle, shell, `guard`, sync, gate, decide, fetch, mount, ready, background
     case offline, blocked, error

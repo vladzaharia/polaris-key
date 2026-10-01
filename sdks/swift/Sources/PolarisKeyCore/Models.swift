@@ -43,6 +43,25 @@ public struct ManagedEntry: Sendable, Codable, Equatable {
         self.value = value
         self.updatedAt = updatedAt
     }
+
+    private enum CodingKeys: String, CodingKey { case state, value, updatedAt }
+
+    /// TOTAL — never throws (WIRE-CONTRACT-V4 §3 "Members outside the claims"). An entry decides
+    /// no verdict, so it decodes the way Python's `ManagedEntry.from_any` does: a non-object
+    /// reads `{default, null, 0}`, an unknown or non-string `state` reads `default`, a missing
+    /// `value` reads null, and a non-integer `updatedAt` reads 0.
+    public init(from decoder: Decoder) throws {
+        guard let c = try? decoder.container(keyedBy: CodingKeys.self) else {
+            self.init(state: .default, value: .null, updatedAt: 0)
+            return
+        }
+        let state = (try? c.decode(String.self, forKey: .state)).flatMap(ManagementState.init)
+        let value = (try? c.decodeIfPresent(JSONValue.self, forKey: .value)) ?? nil
+        self.init(
+            state: state ?? .default,
+            value: value ?? .null,
+            updatedAt: (try? c.decode(Int.self, forKey: .updatedAt)) ?? 0)
+    }
 }
 
 // ── The shared envelope (§2) ────────────────────────────────────────────────────────────────
@@ -79,6 +98,20 @@ public struct DocProfile: Sendable, Codable, Equatable {
         self.firstName = firstName
         self.email = email
         self.activatedAt = activatedAt
+    }
+
+    private enum CodingKeys: String, CodingKey { case name, firstName, email, activatedAt }
+
+    /// Total over the members (V4 §3): a non-string member reads "", a non-integer
+    /// `activatedAt` reads 0. Only a profile that is not an object throws, which refuses the
+    /// licence, as every SDK does.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            name: (try? c.decode(String.self, forKey: .name)) ?? "",
+            firstName: (try? c.decode(String.self, forKey: .firstName)) ?? "",
+            email: (try? c.decode(String.self, forKey: .email)) ?? "",
+            activatedAt: (try? c.decode(Int.self, forKey: .activatedAt)) ?? 0)
     }
 }
 
@@ -119,6 +152,35 @@ public struct LicenseDoc: DocClaims {
         self.licenseId = licenseId
         self.profile = profile
         self.entitlements = entitlements
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case iss, aud, deviceId, issuedAt, expiresAt, graceUntil, licenseId, profile, entitlements
+    }
+
+    /// V4 §3 presence: `profile` is absent or an object. A present `null` throws (refusing the
+    /// licence, as Node and Godot always did) instead of reading as absent.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        var profile: DocProfile?
+        if c.contains(.profile) {
+            if try c.decodeNil(forKey: .profile) {
+                throw DecodingError.valueNotFound(
+                    DocProfile.self,
+                    .init(codingPath: [CodingKeys.profile], debugDescription: "profile: null"))
+            }
+            profile = try c.decode(DocProfile.self, forKey: .profile)
+        }
+        self.init(
+            iss: try c.decode(String.self, forKey: .iss),
+            aud: try c.decode(String.self, forKey: .aud),
+            deviceId: try c.decode(String.self, forKey: .deviceId),
+            issuedAt: try c.decode(Int.self, forKey: .issuedAt),
+            expiresAt: try c.decode(Int.self, forKey: .expiresAt),
+            graceUntil: try c.decode(Int.self, forKey: .graceUntil),
+            licenseId: try c.decode(String.self, forKey: .licenseId),
+            profile: profile,
+            entitlements: try c.decode([String: ManagedEntry].self, forKey: .entitlements))
     }
 }
 
@@ -195,6 +257,24 @@ public struct BundleDoc: Sendable, Codable, Equatable {
         self.docs = docs
         self.trust = trust
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case bundleId, aud, deviceId, issuedAt, expiresAt, docs, trust
+    }
+
+    /// Refuses instead of coercing (V4 §3): a missing or mistyped member throws, and
+    /// `inspectBundle` reports that at the claims step, never at the signature step.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            bundleId: try c.decode(String.self, forKey: .bundleId),
+            aud: try c.decode(String.self, forKey: .aud),
+            deviceId: try c.decode(String.self, forKey: .deviceId),
+            issuedAt: try c.decode(Int.self, forKey: .issuedAt),
+            expiresAt: try c.decode(Int.self, forKey: .expiresAt),
+            docs: try c.decode(BundleDocs.self, forKey: .docs),
+            trust: try c.decode(String.self, forKey: .trust))
+    }
 }
 
 /// The inner-document slice of a bundle. Both members optional; a bundle carrying NEITHER is
@@ -206,6 +286,19 @@ public struct BundleDocs: Sendable, Codable, Equatable {
     public init(license: String? = nil, config: String? = nil) {
         self.license = license
         self.config = config
+    }
+
+    private enum CodingKeys: String, CodingKey { case license, config }
+
+    /// Each member is absent or a string; a present `null` throws (V4 §3 presence), so it is
+    /// never read as absent and the other document imported.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func member(_ key: CodingKeys) throws -> String? {
+            guard c.contains(key) else { return nil }
+            return try c.decode(String.self, forKey: key)
+        }
+        self.init(license: try member(.license), config: try member(.config))
     }
 }
 
@@ -228,6 +321,21 @@ public struct TrustManifestKey: Sendable, Codable, Equatable {
         self.crv = crv
         self.publicKey = publicKey
         self.status = status
+    }
+
+    private enum CodingKeys: String, CodingKey { case kid, alg, kty, crv, publicKey, status }
+
+    /// `kid` and `publicKey` must be strings (anything else refuses the manifest); a missing or
+    /// mistyped `alg`, `kty`, `crv` or `status` reads "", so the key is skipped (not Ed25519) or
+    /// kept (only `revoked` drops one), as in every SDK (V4 §3).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func text(_ key: CodingKeys) -> String { (try? c.decode(String.self, forKey: key)) ?? "" }
+        self.init(
+            kid: try c.decode(String.self, forKey: .kid),
+            alg: text(.alg), kty: text(.kty), crv: text(.crv),
+            publicKey: try c.decode(String.self, forKey: .publicKey),
+            status: text(.status))
     }
 }
 
@@ -253,6 +361,25 @@ public struct TrustManifestDoc: Sendable, Codable, Equatable {
         self.jwksUrl = jwksUrl
         self.cacheSeconds = cacheSeconds
         self.keys = keys
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, aud, iss, issuedAt, expiresAt, jwksUrl, cacheSeconds, keys
+    }
+
+    /// The claims must decode (`schemaVersion`, `aud`, `iss`, `issuedAt`, `expiresAt`, `keys`);
+    /// `jwksUrl` and `cacheSeconds` decide nothing and read "" and 0 when missing or mistyped.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            schemaVersion: try c.decode(Int.self, forKey: .schemaVersion),
+            aud: try c.decode(String.self, forKey: .aud),
+            iss: try c.decode(String.self, forKey: .iss),
+            issuedAt: try c.decode(Int.self, forKey: .issuedAt),
+            expiresAt: try c.decode(Int.self, forKey: .expiresAt),
+            jwksUrl: (try? c.decode(String.self, forKey: .jwksUrl)) ?? "",
+            cacheSeconds: (try? c.decode(Int.self, forKey: .cacheSeconds)) ?? 0,
+            keys: try c.decode([TrustManifestKey].self, forKey: .keys))
     }
 }
 

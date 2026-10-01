@@ -28,23 +28,15 @@ public enum Channel: String, Sendable, Equatable {
 public enum Semver {
     /// Parse `MAJOR.MINOR.PATCH[-prerelease][+build]`. Returns nil if it doesn't match.
     public static func parse(_ v: String) -> ParsedSemver? {
-        // ^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-.]+))?(?:\+[0-9A-Za-z-.]+)?$
-        let pattern = #"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-.]+))?(?:\+[0-9A-Za-z-.]+)?$"#
-        guard let re = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let range = NSRange(v.startIndex..<v.endIndex, in: v)
-        guard let m = re.firstMatch(in: v, range: range) else { return nil }
-
-        func group(_ i: Int) -> String? {
-            let r = m.range(at: i)
-            guard r.location != NSNotFound, let rr = Range(r, in: v) else { return nil }
-            return String(v[rr])
-        }
+        // Whole-string, ASCII classes (WIRE-CONTRACT-V4 §3): `1.2.3\n` and `١.٢.٣` do not parse.
+        let pattern = #"([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-.]+))?(?:\+[0-9A-Za-z-.]+)?"#
+        guard let groups = wholeMatches(pattern, v) else { return nil }
         guard
-            let majS = group(1), let maj = Int(majS),
-            let minS = group(2), let min = Int(minS),
-            let patS = group(3), let pat = Int(patS)
+            let majS = groups[1], let maj = Int(majS),
+            let minS = groups[2], let min = Int(minS),
+            let patS = groups[3], let pat = Int(patS)
         else { return nil }
-        let pre = group(4).map { $0.split(separator: ".").map(String.init) } ?? []
+        let pre = groups[4].map { $0.split(separator: ".").map(String.init) } ?? []
         return ParsedSemver(major: maj, minor: min, patch: pat, prerelease: pre)
     }
 
@@ -85,7 +77,8 @@ public enum Semver {
     public static func channelForVersion(_ version: String) -> Channel {
         if version.hasPrefix("0.0.0-dev") { return .dev }
         if version.hasPrefix("0.0.0-beta") || version.hasPrefix("0.0.0-staging") { return .beta }
-        if version.range(of: #"^0\.0\.0-pr-?\d+"#, options: .regularExpression) != nil { return .pr }
+        // A prefix match on purpose (`0.0.0-pr-42.1` is still the `pr` family), ASCII digits.
+        if version.range(of: #"^0\.0\.0-pr-?[0-9]+"#, options: .regularExpression) != nil { return .pr }
         return .stable
     }
 
