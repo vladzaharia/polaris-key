@@ -62,6 +62,13 @@ this page or fails the freshness gate.
 | `release_channel_policy` | 0027_a_release_model.sql | `product`, `deliverable_id`, `channel`, `pointer_release_id`, `pinned`, `includes_json`, `min_supported`, `critical`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `release_yanks` | 0027_a_release_model.sql | `product`, `release_id`, `reason`, `at`, `by` |
 
+## distribution
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `dist_outlets` | 0036_distribution_outlets.sql | `product`, `outlet_id`, `kind`, `identity_json`, `capabilities_json`, `listing_json`, `capabilities_source`, `removed_at`, `created_at`, `modified_at` |
+| `dist_transports` | 0036_distribution_outlets.sql | `product`, `deliverable_id`, `outlet_id`, `transport`, `config_json` |
+
 ## identity
 
 | Table | Since | Columns (ALTERs annotated with their migration) |

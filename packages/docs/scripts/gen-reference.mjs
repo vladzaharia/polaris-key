@@ -56,11 +56,14 @@ const table = (headers, rows) =>
 
 // ── 1. Manifest validation codes ───────────────────────────────────────────────
 function manifestValidationCodes() {
-  const source = read("packages", "shared-manifest", "src", "index.ts");
+  // `.pkey/distribution`'s rules (P2b-02) live in their own module of the same validator.
+  const source = ["index.ts", "distribution.ts"]
+    .map((f) => read("packages", "shared-manifest", "src", f))
+    .join("\n");
   const rows = [];
   // add(errors|warnings, "<file>", <path>, "<code>", <message>)
   const addRe =
-    /add\(\s*(errors|warnings),\s*"(product|schema|release)",\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*(`[^`]*`|"(?:[^"\\]|\\.)*")/g;
+    /add\(\s*(errors|warnings),\s*"(product|schema|release|distribution)",\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*(`[^`]*`|"(?:[^"\\]|\\.)*")/g;
   for (const m of source.matchAll(addRe)) {
     rows.push([
       `\`${m[4]}\``,
@@ -338,6 +341,7 @@ const TABLE_OWNERS = {
     "release_channel_policy",
     "release_yanks",
   ],
+  distribution: ["dist_outlets", "dist_transports"],
   identity: [
     "oidc_config",
     "provisioning_config",
