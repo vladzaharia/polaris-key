@@ -200,9 +200,12 @@ code:
 
    Nothing has been minted or merged. `attachable` says whether the bearer is a live token of the
    device the flow was started for, on an anonymous (`origin = enroll`, no subject), usable
-   enrolled license. When the identity already has a license, it is also `false` if moving the
-   anonymous license's devices (every authorized one, including devices not seen for months,
-   which move too) would take that license past its device limit. It is always
+   enrolled license. It is also `false` if the attach would take the identity's license past its
+   device limit, counting every authorized device on the anonymous license (including devices
+   not seen for months, which come along too) plus, when the identity already has a license, that
+   license's seat-holding devices. The limit is the one the license will have after sign-in
+   rewrites it onto the identity's mapped tier and provisioned overrides, not the tier it is on
+   now. It is always
    `false` when the identity's tier has fingerprint mode `strict`: a device-code poll presents no
    fingerprint, so the mint would be refused, and the attach is never committed for a mint that
    cannot succeed.

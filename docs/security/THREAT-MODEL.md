@@ -854,18 +854,29 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
 `authorizeDevice` and its seat check:
 
 - **Claim** (the victim has no license yet): the victim's identity takes over the starter's
-  anonymous row in place, with every device already on it. Those devices were admitted by that
-  row's own seat check, and they now hold the victim's entitlements.
+  anonymous row in place, with every device already on it, and the row is rewritten onto the
+  victim's tier and provisioned overrides. Those devices now hold the victim's entitlements.
+  The row's own seat check does not bound them: the enroll tier may allow more seats than the
+  victim's, and a dormant device has given up its ordinal (`releaseDormantSeats`), so the
+  starter can refill that seat with a new device and the dormant one comes back through
+  `validateDeviceToken` without claiming a seat. Bounded since the P1-07 security review: a
+  claim is offered (`attachable`) only while every authorized device on the starter's row,
+  dormant ones included, fits the device limit the row will carry after the claim (the victim's
+  mapped tier and provisioned overrides).
 - **Migrate** (the victim already has a license): `moveDevices` re-points _every_ device on the
   starter's anonymous license at the victim's license, with `seat_no = NULL` and without
   `authorizeDevice`. Bounded since P1-07 review: the attach is offered (`attachable`) only while
   every authorized device on the starter's license (dormant ones too, since `moveDevices` moves
   them and a moved dormant device comes back without claiming a seat) plus the seat-holding
-  devices on the victim's license fit the victim's license's device limit. So the migrate
-  cannot take the victim past that limit. It can still fill the victim's free
-  seats with the starter's devices, so the victim's own next device then gets `device_limit`
-  until the owner removes them. This is a read before the move, like `authorizeDevice`'s
-  pre-count, not a seat claim; a concurrent activation can race it.
+  devices on the victim's license fit the device limit the victim's license will carry after the
+  activation. The activation rewrites that license's tier and overrides to the victim's current
+  group-mapped tier and provisioning before the mint, so the bound is measured on that, not on
+  a larger tier the license still stores from an earlier sign-in or an admin `deviceLimit`
+  override the same write discards.
+- **On both arms**, then, the attach cannot take the victim past their device limit. It can
+  still fill the victim's free seats with the starter's devices, so the victim's own next device
+  then gets `device_limit` until the owner removes them. The bound is a read before the merge,
+  like `authorizeDevice`'s pre-count, not a seat claim; a concurrent activation can race it.
 - **Never on a refused mint** (P1-07 review): the merge is committed before the token is minted
   and nothing undoes it, so the attach is offered only when the mint can succeed. A device-code
   poll presents no fingerprint, so when the victim's tier has fingerprint mode `strict` (whose
@@ -875,7 +886,10 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   licence.
 
 PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
-migrate)` assert the gap; `P1-07 (R1-07 bound)` and `P1-07 (R1-07 bound, dormant devices)` assert the seat-limit refusal, and `P1-07
+migrate)` assert the gap; `P1-07 (R1-07 bound)`, `P1-07 (R1-07 bound, dormant devices)` and the three `P1-07 (R1-07 bound,
+claim)` / `P1-07 (R1-07 bound, migrate)` tests (dormant devices on a claim, the identity's tier
+rather than the enroll tier, the mapped tier rather than a stale stored one) assert the
+seat-limit refusal, and `P1-07
 (R1-07, claim on a strict tier)` and `P1-07 (R1-07, migrate on a strict tier)` assert that nothing
 merges when the mint would be refused. Binding the
 callback to the confirming browser (below) closes all of it, because the device-code holder is

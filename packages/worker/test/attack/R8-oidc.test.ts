@@ -1603,7 +1603,9 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
       starterLicence,
     );
     // What it adds over the plain R1-07 poll: every device already on the starter's row now
-    // holds the victim's entitlements. Those devices were admitted by that row's own seat check.
+    // holds the victim's entitlements. The attach was offered only because they all (dormant
+    // ones included) fit the limit the row carries on the victim's tier; see the claim bounds
+    // below.
     expect(await countActiveDevices(ctx.db, "djdl", starterLicence)).toBe(1);
   });
 
@@ -1854,6 +1856,136 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     await expectNoMerge(starterLicence);
     await expectStarterOnOwnLicence(starterToken, starterLicence);
     expect(await countActiveDevices(ctx.db, "djdl", victimLicence)).toBe(1);
+  });
+
+  // ── P1-07: the seat bound is measured on the licence as the attach will leave it ────────
+  //
+  // `activateFromIdentity` rewrites the claimed or destination row's `tier_id` and
+  // `overrides_json` to the identity's mapped tier and provisioning before the mint, so the
+  // bound uses that post-activation limit, on both arms, and counts dormant devices too.
+
+  /** Confirm, then force the attach: neither offered nor applied, and no token minted. */
+  async function attachRefusedOverSeatLimit(
+    deviceCode: string,
+    starterToken: string,
+  ): Promise<void> {
+    const shown = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      starterToken,
+    );
+    expect(shown.body).toMatchObject({ status: "confirm", attachable: false });
+    const forced = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      starterToken,
+    );
+    expect(forced.body).toMatchObject({
+      status: "confirm",
+      attachable: false,
+    });
+    expect(forced.body.token).toBeUndefined();
+  }
+
+  it("P1-07 (R1-07 bound, claim): a dormant device on the starter's licence counts against the victim tier's limit, so a victim with no licence is not handed more devices than seats", async () => {
+    // One seat. The starter's anonymous licence holds the flow's device (which fits) plus a
+    // device unseen for longer than SEAT_DORMANCY_SECONDS, whose ordinal the starter could
+    // have refilled. The claim keeps both on the row, so 2 devices would land on 1 seat.
+    await ctx.db.run(
+      "UPDATE tiers SET policy_device_limit = 1 WHERE product = 'djdl' AND id = 'pro'",
+    );
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(PHISHED);
+    const dormantSince = NOW - SEAT_DORMANCY_SECONDS - 86400;
+    await ctx.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen)
+       VALUES ('djdl', 'starter-dormant', ?, 'authorized', ?, ?)`,
+      starterLicence,
+      dormantSince,
+      dormantSince,
+    );
+    await attachRefusedOverSeatLimit(deviceCode, starterToken);
+    await expectNoMerge(starterLicence);
+    expect(await getLicenseBySub(ctx.db, "djdl", PHISHED.sub)).toBeNull();
+    expect(await countActiveDevices(ctx.db, "djdl", starterLicence)).toBe(2);
+  });
+
+  it("P1-07 (R1-07 bound, claim): the limit is the identity's tier, not the enroll tier the anonymous licence is on now", async () => {
+    // The starter's licence is on the 50-seat enroll tier `pro` with two live devices; the
+    // victim's groups map to a 1-seat `solo` tier, which the claim rewrites the row onto.
+    await ctx.db.run(
+      `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days,
+         policy_device_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)`,
+      "djdl",
+      "solo",
+      "Solo",
+      null,
+      365,
+      1,
+      null,
+      NOW,
+    );
+    await ctx.db.run(
+      "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
+      JSON.stringify({ family: { role: "user", tier: "solo" } }),
+    );
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(PHISHED);
+    await ctx.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen)
+       VALUES ('djdl', 'starter-second', ?, 'authorized', ?, ?)`,
+      starterLicence,
+      NOW,
+      NOW,
+    );
+    expect(await countActiveDevices(ctx.db, "djdl", starterLicence)).toBe(2);
+    await attachRefusedOverSeatLimit(deviceCode, starterToken);
+    await expectNoMerge(starterLicence);
+    expect(await getLicenseBySub(ctx.db, "djdl", PHISHED.sub)).toBeNull();
+    expect((await getLicense(ctx.db, "djdl", starterLicence))?.tier_id).toBe(
+      "pro",
+    );
+  });
+
+  it("P1-07 (R1-07 bound, migrate): the limit is the identity's mapped tier, not a larger tier the destination licence still stores from an earlier sign-in", async () => {
+    // The victim signed in earlier as a `vip` (50-seat `gold`) and holds one device. Their
+    // groups now map only to `pro`, cut to one seat; the migrate's activation rewrites the
+    // licence onto it, so the starter's device would make 2 devices on 1 seat.
+    await goldTier();
+    await ctx.db.run(
+      "UPDATE tiers SET policy_device_limit = 1 WHERE product = 'djdl' AND id = 'pro'",
+    );
+    const pre = await activateFromIdentity(ctx.db, ctx.product, VIP, NOW);
+    const victimLicence = (pre as { licenseId: string }).licenseId;
+    const authorized = await authorizeDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      (await getLicense(ctx.db, "djdl", victimLicence))!,
+      "victim-own-device",
+      NOW,
+    );
+    expect("error" in authorized).toBe(false);
+    expect((await getLicense(ctx.db, "djdl", victimLicence))?.tier_id).toBe(
+      "gold",
+    );
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(PHISHED);
+    await attachRefusedOverSeatLimit(deviceCode, starterToken);
+    await expectNoMerge(starterLicence);
+    expect(await countActiveDevices(ctx.db, "djdl", victimLicence)).toBe(1);
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      starterLicence,
+    );
   });
 });
 

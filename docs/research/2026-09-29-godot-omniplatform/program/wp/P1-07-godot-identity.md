@@ -101,8 +101,10 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
   `attached`. Every device-code `ready` also carries `identity` (name, verified e-mail), which is
   what "show the signed-in identity after ready" reads. Godot: `begin_sign_in(name, true)`,
   `sign_in_confirm`, `accept_sign_in(attach)`. _P1-07 review:_ `attachable` is false when a
-  migrate would take the identity's licence past its device limit (counting every authorized
-  device on the anonymous licence, dormant ones too, because they all move), and when the identity's tier
+  claim or migrate would take the identity's licence past its device limit (counting every
+  authorized device on the anonymous licence, dormant ones too, because they all come along, and
+  measuring the limit on the licence as activation leaves it: the identity's mapped tier and
+  provisioned overrides), and when the identity's tier
   has fingerprint mode `strict` (a device-code mint presents no fingerprint, so it would be
   refused after the merge had already been committed).
 

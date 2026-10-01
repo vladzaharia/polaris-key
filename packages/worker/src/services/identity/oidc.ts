@@ -63,6 +63,7 @@ import {
   insertLicense,
   moveDevices,
   seatActiveSince,
+  type LicenseRow,
 } from "../../core/data.js";
 import { allowsOidcDefault } from "../../core/fingerprint.js";
 import {
@@ -635,6 +636,51 @@ async function identityRefusal(
   return null;
 }
 
+/** The licence overrides `activateFromIdentity` writes for `identity`: its provisioning hooks
+ *  applied to an empty payload. Read-only. */
+async function provisionedOverrides(
+  db: Db,
+  product: Product,
+  identity: OidcIdentity,
+  now: number,
+): Promise<ManagedPayload> {
+  const overrides: ManagedPayload = {
+    config: {},
+    secrets: {},
+    entitlements: {},
+  };
+  await applyProvisioning(db, product.slug, identity, overrides, now);
+  return overrides;
+}
+
+/** The device limit `row` will carry once `activateFromIdentity` has activated `identity` onto
+ *  it. A claim (`claimEnrolledLicense`) and the existing-licence update both rewrite `tier_id`,
+ *  `expires_at` and `overrides_json` to the identity's mapped tier and provisioned overrides,
+ *  so the limit the row holds NOW (an enroll tier, a stale tier from an earlier sign-in, an
+ *  admin `deviceLimit` override) is not the one it will have after the attach. Read-only: the
+ *  P1-07 attach measures its seat bound with this (R1-07). */
+async function postActivationDeviceLimit(
+  db: Db,
+  product: Product,
+  identity: OidcIdentity,
+  row: LicenseRow,
+  tier: { tierId: string | null; expiresAt: number | null },
+  now: number,
+): Promise<number> {
+  const overrides = await provisionedOverrides(db, product, identity, now);
+  return licenseDeviceLimit(
+    db,
+    product,
+    {
+      ...row,
+      tier_id: tier.tierId,
+      expires_at: tier.expiresAt,
+      overrides_json: JSON.stringify(overrides),
+    },
+    now,
+  );
+}
+
 /** Find or mint a license for an identity. Returns the licenseId, or an error if the
  *  identity's groups don't grant entitlement. Idempotent on the OIDC subject. */
 export async function activateFromIdentity(
@@ -656,12 +702,7 @@ export async function activateFromIdentity(
   if ("error" in tier) return tier;
   const { tierId, expiresAt } = tier;
 
-  const overrides: ManagedPayload = {
-    config: {},
-    secrets: {},
-    entitlements: {},
-  };
-  await applyProvisioning(db, product.slug, identity, overrides, now);
+  const overrides = await provisionedOverrides(db, product, identity, now);
 
   // The enrolled license this device is currently on, if it is genuinely a claimable
   // anonymous one. Anything else (an admin or OIDC license) is left alone.
@@ -1616,13 +1657,20 @@ function shownIdentity(identity: OidcIdentity): {
  *  OF THAT DEVICE (`validateDeviceToken` with the device id), on an anonymous enrolled licence
  *  (`origin = 'enroll'`, no subject) that is usable now. Anything else attaches nothing.
  *
- *  When `identity` already has a usable licence, the attach is a migrate, and `moveDevices`
- *  re-points EVERY device on the anonymous licence at it without `authorizeDevice`'s seat
- *  check. Under R1-07 (the flow's starter phishes the authorize URL) the starter makes this
- *  decision, not the identity's owner, so it is offered only while every authorized device
- *  the migrate moves (dormant or not) plus the destination's seat-holding devices still fit
- *  the destination's limit: the migrate can never push the victim's licence past it. It can
- *  still fill the victim's free seats (see THREAT-MODEL, R1-07).
+ *  Under R1-07 (the flow's starter phishes the authorize URL) the starter makes this decision,
+ *  not the identity's owner, so the attach must never take the victim's licence past its
+ *  device limit, on either arm:
+ *  - claim (the identity has no licence yet): `claimEnrolledLicense` re-subjects the anonymous
+ *    row with every authorized device still on it. It is offered only while those devices
+ *    (dormant or not) fit the limit the row will carry AFTER the claim rewrites its tier and
+ *    overrides to the identity's.
+ *  - migrate (the identity has a usable licence): `moveDevices` re-points EVERY device on the
+ *    anonymous licence at it without `authorizeDevice`'s seat check. It is offered only while
+ *    the moved devices (dormant or not) plus the destination's seat-holding devices fit the
+ *    limit the destination will carry AFTER `activateFromIdentity` rewrites its tier and
+ *    overrides to the identity's mapped tier and provisioning.
+ *  Both limits come from `postActivationDeviceLimit`. The attach can still fill the victim's
+ *  free seats (see THREAT-MODEL, R1-07).
  *  Like the pre-count in `authorizeDevice`, this is a read, not a claim. Nothing is attachable
  *  onto a tier whose mint would refuse this device (fingerprint mode `strict`). */
 async function attachableLicense(
@@ -1654,26 +1702,47 @@ async function attachableLicense(
   if ("error" in tier) return null;
   if ((await tierFingerprintMode(db, product, tier.tierId)) === "strict")
     return null;
+  // `moving` has NO dormancy floor. A claim keeps every row on the licence and a migrate
+  // (`moveDevices`) re-points every row, dormant ones included, the latter with
+  // `seat_no = NULL`. A dormant device has given up its ordinal (`releaseDormantSeats`), so the
+  // starter can fill that seat again with a new device; the dormant one then comes back without
+  // claiming a seat (`validateDeviceToken` rebuilds its token record from the device row, and
+  // nothing on that path calls `claimDeviceSeat`). Counting only recently seen devices would let
+  // a starter stockpile dormant devices on its own anonymous licence and land all of them on the
+  // victim's.
+  const moving = await countActiveDevices(db, product.slug, license.id);
   const destination = await getLicenseBySub(db, product.slug, identity.sub);
-  if (destination && licenseUsable(destination, now)) {
-    const since = seatActiveSince(now);
-    const limit = await licenseDeviceLimit(db, product, destination, now);
-    // `moving` has NO dormancy floor. `moveDevices` re-points every row on the anonymous
-    // licence, dormant ones included, with `seat_no = NULL`. A moved dormant device then comes
-    // back on the destination without claiming a seat (`validateDeviceToken` rebuilds its token
-    // record from the device row, and nothing on that path calls `claimDeviceSeat`). Counting
-    // only recently seen devices would let a starter stockpile dormant devices on its own
-    // anonymous licence and move all of them onto the victim's. `held` keeps the floor: the
-    // destination's own dormant devices have given up their seats under R3.
-    const moving = await countActiveDevices(db, product.slug, license.id);
-    const held = await countActiveDevices(
+  if (!destination) {
+    const limit = await postActivationDeviceLimit(
       db,
-      product.slug,
-      destination.id,
-      since,
+      product,
+      identity,
+      license,
+      tier,
+      now,
     );
-    if (limit <= 0 || moving + held > limit) return null;
+    if (limit <= 0 || moving > limit) return null;
+    return license.id;
   }
+  // An unusable destination makes `activateFromIdentity` refuse before it moves anything.
+  if (!licenseUsable(destination, now)) return null;
+  const limit = await postActivationDeviceLimit(
+    db,
+    product,
+    identity,
+    destination,
+    tier,
+    now,
+  );
+  // `held` keeps the floor: the destination's own dormant devices have given up their seats
+  // under R3.
+  const held = await countActiveDevices(
+    db,
+    product.slug,
+    destination.id,
+    seatActiveSince(now),
+  );
+  if (limit <= 0 || moving + held > limit) return null;
   return license.id;
 }
 

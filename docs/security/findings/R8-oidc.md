@@ -700,16 +700,21 @@ holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). F
   check, where the plain R1-07 poll authorizes one device through it. Bounded in the same review:
   a migrate is `attachable` only while every authorized device on the starter's license (dormant
   ones included: `moveDevices` moves them, and a moved dormant device returns without claiming a
-  seat) plus the victim's seat-holding devices fit the victim license's device limit, so it
-  cannot push the victim past the limit. It can still fill the
+  seat) plus the victim's seat-holding devices fit the device limit the victim's license will
+  carry after the activation rewrites its tier and overrides to the victim's mapped tier and
+  provisioning (not a larger tier it still stores). The security review bounded the claim the
+  same way: a claim is `attachable` only while every authorized device on the starter's row
+  (dormant ones too, whose seats the starter can refill) fits the limit the row will carry on
+  the victim's tier, which may be smaller than the enroll tier it is on. So neither arm can push
+  the victim past the limit. It can still fill the
   victim's free seats, so the victim's next device gets `device_limit` until they remove the
   starter's. The attach also never commits when the mint would be refused: the merge runs before
   the mint and nothing undoes it, so on a tier with fingerprint mode `strict` (a device-code poll
   presents no fingerprint, so its mint always answers `fingerprint_required`) nothing is
   `attachable`. Without that check a starter turned a flow the Worker refuses into a claim or
   migrate onto the victim's strict licence. PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07
-claim)`, `OPEN (R1-07 / R8-03, P1-07 migrate)` (the gap), `P1-07 (R1-07 bound)` and `… bound, dormant devices` (the seat
-  refusal) and `P1-07 (R1-07, claim on a strict tier)` / `… migrate on a strict tier` (the mint
+claim)`, `OPEN (R1-07 / R8-03, P1-07 migrate)` (the gap), `P1-07 (R1-07 bound)`, `… bound, dormant devices`, `… bound, claim` (two) and `… bound,
+  migrate` (the seat refusal) and `P1-07 (R1-07, claim on a strict tier)` / `… migrate on a strict tier` (the mint
   refusal). The browser binding above closes it.
 
 The two R8-02 PoCs that asserted the residual now assert the fix
