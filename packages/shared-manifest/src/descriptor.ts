@@ -382,35 +382,42 @@ export function validateReleaseDescriptor(
   const buildIds = new Set<string>();
   const names = new Set<string>();
   for (const [bi, b] of builds.entries()) {
-    const bat = `/builds/${bi}`;
     if (!isRecord(b)) {
-      err(bat, "invalid_descriptor_build", "each build must be an object.");
+      err(
+        `/builds/${bi}`,
+        "invalid_descriptor_build",
+        "each build must be an object.",
+      );
       continue;
     }
     if (typeof b.id !== "string" || !BUILD_ID_RE.test(b.id))
       err(
-        `${bat}/id`,
+        `/builds/${bi}/id`,
         "invalid_descriptor_build",
         `build id must match ${BUILD_ID_RE.source}.`,
       );
     else if (buildIds.has(b.id))
-      err(`${bat}/id`, "duplicate_build_id", `build ${b.id} appears twice.`);
+      err(
+        `/builds/${bi}/id`,
+        "duplicate_build_id",
+        `build ${b.id} appears twice.`,
+      );
     else buildIds.add(b.id);
     if (!oneOf(RELEASE_PLATFORMS, b.platform))
       err(
-        `${bat}/platform`,
+        `/builds/${bi}/platform`,
         "invalid_descriptor_build",
         `platform must be one of ${RELEASE_PLATFORMS.join(", ")}.`,
       );
     if (!oneOf(RELEASE_ARCHES, b.arch))
       err(
-        `${bat}/arch`,
+        `/builds/${bi}/arch`,
         "invalid_descriptor_build",
         `arch must be one of ${RELEASE_ARCHES.join(", ")}.`,
       );
     if (typeof b.format !== "string" || !FORMAT_RE.test(b.format))
       err(
-        `${bat}/format`,
+        `/builds/${bi}/format`,
         "invalid_descriptor_build",
         `format must match ${FORMAT_RE.source}.`,
       );
@@ -420,7 +427,7 @@ export function validateReleaseDescriptor(
         !BUILD_NUMBER_RE.test(b.buildNumber))
     )
       err(
-        `${bat}/buildNumber`,
+        `/builds/${bi}/buildNumber`,
         "invalid_descriptor_build",
         "buildNumber must be a string of at most 64 version characters.",
       );
@@ -429,13 +436,13 @@ export function validateReleaseDescriptor(
       (typeof b.minOS !== "string" || !MIN_OS_RE.test(b.minOS))
     )
       err(
-        `${bat}/minOS`,
+        `/builds/${bi}/minOS`,
         "invalid_descriptor_build",
         "minOS must be a string of at most 32 version characters.",
       );
     if (b.requires !== undefined && !isRecord(b.requires))
       err(
-        `${bat}/requires`,
+        `/builds/${bi}/requires`,
         "invalid_descriptor_build",
         "requires must be an object.",
       );
@@ -444,17 +451,16 @@ export function validateReleaseDescriptor(
       b.artifacts.length > MAX_BUILD_ARTIFACTS
     ) {
       err(
-        `${bat}/artifacts`,
+        `/builds/${bi}/artifacts`,
         "invalid_descriptor_build",
         `artifacts must be an array of at most ${MAX_BUILD_ARTIFACTS} files (empty for a store-only build).`,
       );
       continue;
     }
     for (const [ai, a] of b.artifacts.entries()) {
-      const aat = `${bat}/artifacts/${ai}`;
       if (!isRecord(a)) {
         err(
-          aat,
+          `/builds/${bi}/artifacts/${ai}`,
           "invalid_descriptor_artifact",
           "each artifact must be an object.",
         );
@@ -462,20 +468,20 @@ export function validateReleaseDescriptor(
       }
       if (typeof a.name !== "string" || !NAME_RE.test(a.name))
         err(
-          `${aat}/name`,
+          `/builds/${bi}/artifacts/${ai}/name`,
           "invalid_descriptor_artifact",
           "name must be a file name of 1-255 characters with no '/', '\\' or control characters.",
         );
       else if (names.has(a.name))
         err(
-          `${aat}/name`,
+          `/builds/${bi}/artifacts/${ai}/name`,
           "duplicate_artifact_name",
           `${a.name} appears twice; names are unique within a release.`,
         );
       else names.add(a.name);
       if (!oneOf(ARTIFACT_ROLES, a.role))
         err(
-          `${aat}/role`,
+          `/builds/${bi}/artifacts/${ai}/role`,
           "invalid_descriptor_artifact",
           `role must be one of ${ARTIFACT_ROLES.join(", ")}.`,
         );
@@ -485,13 +491,13 @@ export function validateReleaseDescriptor(
           : null;
       if (!sha)
         err(
-          `${aat}/sha256`,
+          `/builds/${bi}/artifacts/${ai}/sha256`,
           "invalid_descriptor_artifact",
           "sha256 must be 64 lower-case hex characters.",
         );
       if (!(Number.isSafeInteger(a.size) && (a.size as number) >= 0))
         err(
-          `${aat}/size`,
+          `/builds/${bi}/artifacts/${ai}/size`,
           "invalid_descriptor_artifact",
           "size must be a non-negative integer.",
         );
@@ -502,7 +508,7 @@ export function validateReleaseDescriptor(
           !CONTENT_TYPE_RE.test(a.contentType))
       )
         err(
-          `${aat}/contentType`,
+          `/builds/${bi}/artifacts/${ai}/contentType`,
           "invalid_descriptor_artifact",
           "contentType must be a lower-case type/subtype.",
         );
@@ -512,17 +518,16 @@ export function validateReleaseDescriptor(
         a.locations.length > MAX_ARTIFACT_LOCATIONS
       ) {
         err(
-          `${aat}/locations`,
+          `/builds/${bi}/artifacts/${ai}/locations`,
           "invalid_descriptor_artifact",
           `locations must be an array of 1 to ${MAX_ARTIFACT_LOCATIONS} locations.`,
         );
         continue;
       }
       for (const [li, loc] of a.locations.entries()) {
-        const lat = `${aat}/locations/${li}`;
         if (!isRecord(loc) || !oneOf(LOCATION_PROVIDERS, loc.provider)) {
           err(
-            lat,
+            `/builds/${bi}/artifacts/${ai}/locations/${li}`,
             "invalid_artifact_location",
             `a location's provider must be one of ${LOCATION_PROVIDERS.join(", ")}.`,
           );
@@ -532,13 +537,13 @@ export function validateReleaseDescriptor(
           case "r2":
             if (typeof loc.key !== "string" || !KEY_SHAPE_RE.test(loc.key))
               err(
-                `${lat}/key`,
+                `/builds/${bi}/artifacts/${ai}/locations/${li}/key`,
                 "r2_key_not_content_addressed",
                 "an r2 key must be blobs/sha256/<sha256> (or gated/blobs/sha256/<sha256>).",
               );
             else if (sha && !isContentAddressedKey(loc.key, sha))
               err(
-                `${lat}/key`,
+                `/builds/${bi}/artifacts/${ai}/locations/${li}/key`,
                 "r2_key_not_content_addressed",
                 "an r2 key must be named by this artifact's own sha256.",
               );
@@ -546,13 +551,13 @@ export function validateReleaseDescriptor(
           case "github":
             if (typeof loc.asset !== "string" || !NAME_RE.test(loc.asset))
               err(
-                `${lat}/asset`,
+                `/builds/${bi}/artifacts/${ai}/locations/${li}/asset`,
                 "invalid_artifact_location",
                 "a github location names a release asset.",
               );
             else if (loc.asset !== a.name)
               err(
-                `${lat}/asset`,
+                `/builds/${bi}/artifacts/${ai}/locations/${li}/asset`,
                 "invalid_artifact_location",
                 "a github location names the artifact itself (asset equals name).",
               );
@@ -564,7 +569,7 @@ export function validateReleaseDescriptor(
               loc.url !== undefined
             )
               err(
-                lat,
+                `/builds/${bi}/artifacts/${ai}/locations/${li}`,
                 "invalid_artifact_location",
                 "a store location carries no bytes: no key, asset or url.",
               );
@@ -572,7 +577,7 @@ export function validateReleaseDescriptor(
           case "external":
             if (!isHttpsUrl(loc.url))
               err(
-                `${lat}/url`,
+                `/builds/${bi}/artifacts/${ai}/locations/${li}/url`,
                 "invalid_artifact_location",
                 "an external location's url must be https:// without credentials.",
               );
@@ -593,13 +598,19 @@ export function validateReleaseDescriptor(
       `this descriptor is for ${desc.product}, not ${slug}.`,
     );
   const app = manifest.release?.app ?? null;
-  if (desc.deliverable !== APP_DELIVERABLE_ID || !app) {
+  if (!app) {
     err(
       "/deliverable",
       "unknown_deliverable",
-      app
-        ? `${desc.deliverable} is not a deliverable this product declares.`
-        : "the product declares no deliverables.app with an artifacts map in .pkey/release.",
+      "the product declares no deliverables.app with an artifacts map in .pkey/release.",
+    );
+    return { ok: false, errors };
+  }
+  if (desc.deliverable !== APP_DELIVERABLE_ID) {
+    err(
+      "/deliverable",
+      "unknown_deliverable",
+      `${desc.deliverable} is not a deliverable this product declares.`,
     );
     return { ok: false, errors };
   }
@@ -630,11 +641,10 @@ export function validateReleaseDescriptor(
   }
   const entries = new Map(app.artifacts.map((e) => [e.id, e]));
   for (const [bi, b] of desc.builds.entries()) {
-    const bat = `/builds/${bi}`;
     const entry = entries.get(b.id);
     if (!entry) {
       err(
-        `${bat}/id`,
+        `/builds/${bi}/id`,
         "undeclared_build",
         `build ${b.id} is not an entry of deliverables.app.artifacts.`,
       );
@@ -643,7 +653,7 @@ export function validateReleaseDescriptor(
     for (const field of ["platform", "arch", "format"] as const) {
       if (b[field] !== entry[field])
         err(
-          `${bat}/${field}`,
+          `/builds/${bi}/${field}`,
           "build_mismatch",
           `build ${b.id} declares ${field} ${entry[field]}, not ${b[field]}.`,
         );
@@ -652,14 +662,14 @@ export function validateReleaseDescriptor(
     const declared = b.artifacts.filter((a) => a.role === entry.role);
     if (declared.length !== 1)
       err(
-        `${bat}/artifacts`,
+        `/builds/${bi}/artifacts`,
         "invalid_build_payload",
         `build ${b.id} must carry exactly one ${entry.role} file (it has ${declared.length}).`,
       );
     for (const [ai, a] of b.artifacts.entries()) {
       if (a.role === entry.role && !matchesArtifactGlob(entry.match, a.name))
         err(
-          `${bat}/artifacts/${ai}/name`,
+          `/builds/${bi}/artifacts/${ai}/name`,
           "artifact_name_mismatch",
           `${a.name} does not match ${entry.match}, the declared name of build ${b.id}.`,
         );

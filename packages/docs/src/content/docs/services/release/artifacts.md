@@ -138,6 +138,53 @@ document's own build gate answers with:
 A client that already handles the nested shape for license documents needs nothing new to
 handle an `entitled` refusal on a download.
 
+## Declared artifacts and release descriptors
+
+The download route above is the macOS-and-CLI shape: one binary per architecture, found by
+name. A product that ships more — a universal DMG, a Windows zip, a Linux tarball, an APK, a
+sideloaded IPA, a web build — declares an **artifact map** in `.pkey/release`
+(`deliverables.app.artifacts`, see
+[Authoring](/docs/build/manifest/authoring/#release-deliverables-deliverablesapp-and-the-artifact-map)).
+Each map entry is one **build** with a platform, an arch and a format, and a `match` glob names
+its file. The truth-store sync then classifies every file of a GitHub release by the map
+instead of by its extension: the matched file is the build's payload, `<payload>.sig` and
+`<payload>.sha256` are its signature and checksum, and GitHub's own digest of the bytes is
+recorded as the file's SHA-256. Without a map, filenames are sniffed exactly as before.
+
+### The release descriptor
+
+A **release descriptor** is the unsigned body of one release of one deliverable: its version,
+an optional `seq` (publication order), tag and channel, provenance, and its builds — each with
+its build number, minimum OS and files, every file with its role, SHA-256, size and
+**locations** (`r2` — a content-addressed blob-store key; `github` — an asset of the tagged
+release; `store` — published to a store, no bytes here; `external` — an https URL). CI produces
+it, and it reaches Polaris Key either attached to the GitHub release as `pkey-release.json`
+(read during the sync, at most five new ones per sync, each at most 64 KiB) or through the
+publishing route. Its schema is `release-descriptor.schema.json` in `@polaris-key/manifest`.
+
+Ingest writes the release, its builds and its files in one batch, and refuses — writing
+nothing — when:
+
+- the descriptor does not fit its schema or the map: an undeclared build id, a platform, arch
+  or format other than the declaration's, a payload name that does not match `match`, a role
+  outside the role list, a file name used twice, a channel the product does not declare, or a
+  tag that does not spell the version
+  ([descriptor codes](/docs/reference/validation-codes/#release-descriptor-codes));
+- the release already exists from a different descriptor (`release_exists`). The same
+  descriptor again is a no-op, and a descriptor may **enrich** the row the GitHub sync created
+  for the same tag when it names every file of that release;
+- its `seq` is not above the deliverable's current maximum (new release) or not the stored one
+  (existing release);
+- GitHub holds bytes and the tagged release is not an **immutable release**, or a file's
+  GitHub digest or size differs from the descriptor's;
+- an `r2` key is not stored with that file's hash and size, or the product neither just
+  uploaded it nor already references it.
+
+A refused `pkey-release.json` marks its release `degraded` in release health, with the
+reason, and is not fetched again until the asset changes. Once a release has a descriptor, the
+descriptor owns its builds and classification; later syncs refresh only the serving columns
+(name, size, GitHub URL, access).
+
 ## Changelog
 
 ```

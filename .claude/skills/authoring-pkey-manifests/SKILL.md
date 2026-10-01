@@ -54,14 +54,28 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
       `web_origins_json`) plus
       `oidc_config`, `profiles`, `tiers`, `provisioning_config`.
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
-      channels, install/appcast settings, edge-mint recipes. Maps to `release_config` and
-      `edge_mint_config`.
+      channels, install/appcast settings, edge-mint recipes, and the app deliverable with its
+      artifact map. Maps to `release_config`, `release_deliverables` and `edge_mint_config`.
 - [ ] If the repo publishes tags that are not app releases (rolling `channels`, content `packs`,
       …), say so in `release`: `stableTagPattern` (an anchored regex, ≤ 80 characters, same
       safety rule as `manualChannels[].regex`) narrows which tags may become stable/latest, and
       `ignoreTags` lists exact tag names that never resolve on a moving channel. Undeclared, any
       semver tag with an optional leading `v` is a candidate, and the highest semver wins — not
-      the newest by creation order.
+      the newest by creation order. The same two fields may instead sit under
+      `deliverables.app.versioning`; never in both places (`conflicting_versioning`).
+- [ ] If the product ships more than a CLI and a DMG (Windows, Linux, Android, iOS, web, a
+      universal binary…), declare the files instead of relying on name sniffing:
+      `deliverables.app` with `kind: app`, optional `versioning` (`scheme`: `semver` |
+      `semver+build` | `4part`; `buildNumber`: `descriptor` | `none`), `channels`
+      (`beta: { includes: [stable] }`; canonical names only, no `staging`/`latest`, no cycles),
+      and `artifacts[]`, one entry per build: `{ id, platform, arch, format, role?, match }`.
+      `platform` ∈ macos/ios/android/windows/linux/web, `arch` ∈
+      arm64/x86_64/universal/armv7/wasm32/any, `role` defaults to `payload` (installer versus
+      portable is a `format`, never a role), `match` is an anchored case-sensitive glob (`*`,
+      `?`, ≤ 128 chars). `<payload>.sig`/`.sha256` join their build automatically. A
+      `kind: pack` entry only warns (`pack_deliverables_not_supported`) until packs land. CI may
+      then attach a release descriptor (`pkey-release.json`, `release-descriptor.schema.json`)
+      whose builds must match this map.
 - [ ] The base name selects the role; the extension is a pure format preference, tried
       `.json` → `.yaml` → `.yml` and resolved **per document**, so `product.yaml` may sit next to
       `schema.json`.

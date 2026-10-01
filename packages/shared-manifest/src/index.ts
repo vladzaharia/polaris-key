@@ -1377,7 +1377,41 @@ function validateDocuments(
       // (anchored, capped, must compile) so a pattern the validator accepts is one the
       // worker's resolver keeps rather than silently falling back to the default. The same
       // two fields may instead be spelled under `deliverables.app.versioning` (P2-04).
-      validateTagFilters(errors, relRoot, "/release", "release");
+      if (
+        relRoot.stableTagPattern !== undefined &&
+        !isTagPattern(relRoot.stableTagPattern)
+      ) {
+        add(
+          errors,
+          "release",
+          "/release/stableTagPattern",
+          "invalid_stable_tag_pattern",
+          `release.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+        );
+      }
+      if (relRoot.ignoreTags !== undefined) {
+        if (!isIgnoreTagList(relRoot.ignoreTags)) {
+          add(
+            errors,
+            "release",
+            "/release/ignoreTags",
+            "invalid_ignore_tags",
+            `release.ignoreTags must be an array of at most ${MAX_IGNORE_TAGS} exact tag names.`,
+          );
+        } else {
+          for (const [i, tag] of relRoot.ignoreTags.entries()) {
+            if (!isIgnoreTag(tag)) {
+              add(
+                errors,
+                "release",
+                `/release/ignoreTags/${i}`,
+                "invalid_ignore_tags",
+                `release.ignoreTags entries must be non-empty tag names of at most ${MAX_IGNORE_TAG_LENGTH} characters with no spaces or control characters.`,
+              );
+            }
+          }
+        }
+      }
       validateDeliverables(errors, warnings, relRoot);
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
         add(
@@ -1851,55 +1885,15 @@ function validateDocuments(
   };
 }
 
-/**
- * `stableTagPattern` and `ignoreTags`, wherever they are spelled: at the release root (P0-02,
- * the legacy spelling) or under `deliverables.app.versioning` (P2-04). One rule for both, so
- * the two spellings can never accept different values.
- */
-function validateTagFilters(
-  errors: ValidationMessage[],
-  node: Record<string, unknown>,
-  at: string,
-  label: string,
-): void {
-  if (
-    node.stableTagPattern !== undefined &&
-    (typeof node.stableTagPattern !== "string" ||
-      compileManualChannelRegex(node.stableTagPattern) === null)
-  ) {
-    add(
-      errors,
-      "release",
-      `${at}/stableTagPattern`,
-      "invalid_stable_tag_pattern",
-      `${label}.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
-    );
-  }
-  if (node.ignoreTags === undefined) return;
-  if (
-    !Array.isArray(node.ignoreTags) ||
-    node.ignoreTags.length > MAX_IGNORE_TAGS
-  ) {
-    add(
-      errors,
-      "release",
-      `${at}/ignoreTags`,
-      "invalid_ignore_tags",
-      `${label}.ignoreTags must be an array of at most ${MAX_IGNORE_TAGS} exact tag names.`,
-    );
-    return;
-  }
-  for (const [i, tag] of node.ignoreTags.entries()) {
-    if (!isIgnoreTag(tag)) {
-      add(
-        errors,
-        "release",
-        `${at}/ignoreTags/${i}`,
-        "invalid_ignore_tags",
-        `${label}.ignoreTags entries must be non-empty tag names of at most ${MAX_IGNORE_TAG_LENGTH} characters with no spaces or control characters.`,
-      );
-    }
-  }
+/** A `stableTagPattern` value: a string the manual-channel safety rule compiles. One rule for
+ *  both spellings (the release root, P0-02, and `deliverables.app.versioning`, P2-04). */
+function isTagPattern(value: unknown): boolean {
+  return typeof value === "string" && compileManualChannelRegex(value) !== null;
+}
+
+/** An `ignoreTags` value's shape (each entry is then checked with `isIgnoreTag`). */
+function isIgnoreTagList(value: unknown): value is unknown[] {
+  return Array.isArray(value) && value.length <= MAX_IGNORE_TAGS;
 }
 
 /** The names a deliverable's `includes` may refer to: the built-ins, the manual channels and the
@@ -1930,24 +1924,22 @@ function validateDeliverables(
 ): void {
   const raw = relRoot.deliverables;
   if (raw === undefined) return;
-  const base = "/release/deliverables";
   if (!isRecord(raw)) {
     add(
       errors,
       "release",
-      base,
+      "/release/deliverables",
       "invalid_deliverable_id",
       "release.deliverables must be an object keyed by deliverable id.",
     );
     return;
   }
   for (const [id, def] of Object.entries(raw)) {
-    const at = `${base}/${id}`;
     if (!isDeliverableId(id)) {
       add(
         errors,
         "release",
-        at,
+        `/release/deliverables/${id}`,
         "invalid_deliverable_id",
         `deliverable ids must match ${DELIVERABLE_ID_PATTERN.source} and be at most ${MAX_DELIVERABLE_ID_LENGTH} characters.`,
       );
@@ -1958,7 +1950,7 @@ function validateDeliverables(
       add(
         errors,
         "release",
-        `${at}/kind`,
+        `/release/deliverables/${id}/kind`,
         "invalid_deliverable_kind",
         `each deliverable must be an object whose kind is one of ${DELIVERABLE_KINDS.join(", ")}.`,
       );
@@ -1968,7 +1960,7 @@ function validateDeliverables(
       add(
         errors,
         "release",
-        `${at}/kind`,
+        `/release/deliverables/${id}/kind`,
         "invalid_deliverable_kind",
         `the deliverable named ${APP_DELIVERABLE_ID} is the product's application (kind: app), and no other deliverable may be kind app.`,
       );
@@ -1978,13 +1970,13 @@ function validateDeliverables(
       add(
         warnings,
         "release",
-        at,
+        `/release/deliverables/${id}`,
         "pack_deliverables_not_supported",
         `pack deliverables are not supported yet; ${id} is ignored.`,
       );
       continue;
     }
-    validateAppDeliverable(errors, relRoot, def, at);
+    validateAppDeliverable(errors, relRoot, def);
   }
 }
 
@@ -1992,7 +1984,6 @@ function validateAppDeliverable(
   errors: ValidationMessage[],
   relRoot: Record<string, unknown>,
   def: Record<string, unknown>,
-  at: string,
 ): void {
   // ── versioning ──
   const versioning = def.versioning;
@@ -2000,7 +1991,7 @@ function validateAppDeliverable(
     add(
       errors,
       "release",
-      `${at}/versioning`,
+      `/release/deliverables/app/versioning`,
       "invalid_version_scheme",
       "deliverables.app.versioning must be an object.",
     );
@@ -2012,7 +2003,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${at}/versioning/scheme`,
+        `/release/deliverables/app/versioning/scheme`,
         "invalid_version_scheme",
         `versioning.scheme must be one of ${VERSION_SCHEMES.join(", ")}.`,
       );
@@ -2024,17 +2015,46 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${at}/versioning/buildNumber`,
+        `/release/deliverables/app/versioning/buildNumber`,
         "invalid_version_scheme",
         `versioning.buildNumber must be one of ${BUILD_NUMBER_SOURCES.join(", ")}.`,
       );
     }
-    validateTagFilters(
-      errors,
-      versioning,
-      `${at}/versioning`,
-      "deliverables.app.versioning",
-    );
+    if (
+      versioning.stableTagPattern !== undefined &&
+      !isTagPattern(versioning.stableTagPattern)
+    ) {
+      add(
+        errors,
+        "release",
+        "/release/deliverables/app/versioning/stableTagPattern",
+        "invalid_stable_tag_pattern",
+        `deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+      );
+    }
+    if (versioning.ignoreTags !== undefined) {
+      if (!isIgnoreTagList(versioning.ignoreTags)) {
+        add(
+          errors,
+          "release",
+          "/release/deliverables/app/versioning/ignoreTags",
+          "invalid_ignore_tags",
+          `deliverables.app.versioning.ignoreTags must be an array of at most ${MAX_IGNORE_TAGS} exact tag names.`,
+        );
+      } else {
+        for (const [i, tag] of versioning.ignoreTags.entries()) {
+          if (!isIgnoreTag(tag)) {
+            add(
+              errors,
+              "release",
+              `/release/deliverables/app/versioning/ignoreTags/${i}`,
+              "invalid_ignore_tags",
+              `deliverables.app.versioning.ignoreTags entries must be non-empty tag names of at most ${MAX_IGNORE_TAG_LENGTH} characters with no spaces or control characters.`,
+            );
+          }
+        }
+      }
+    }
     // P0-02 spelled these two at the release root; that spelling stays valid, but a document
     // must pick one. Both at once would make one of them silently win.
     const nested =
@@ -2047,7 +2067,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${at}/versioning`,
+        `/release/deliverables/app/versioning`,
         "conflicting_versioning",
         "stableTagPattern and ignoreTags are declared both at the release root and under deliverables.app.versioning; keep one spelling.",
       );
@@ -2064,7 +2084,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${at}/channels`,
+        `/release/deliverables/app/channels`,
         "invalid_channel_includes",
         `deliverables.app.channels must be an object of at most ${MAX_DELIVERABLE_CHANNELS} channels.`,
       );
@@ -2072,12 +2092,11 @@ function validateAppDeliverable(
       const known = knownChannelNames(relRoot, Object.keys(channels));
       const graph = new Map<string, string[]>();
       for (const [name, decl] of Object.entries(channels)) {
-        const cat = `${at}/channels/${name}`;
         if (!isCanonicalChannelName(name)) {
           add(
             errors,
             "release",
-            cat,
+            `/release/deliverables/app/channels/${name}`,
             "invalid_channel",
             `deliverables.app.channels names must be canonical (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`,
           );
@@ -2086,7 +2105,7 @@ function validateAppDeliverable(
           add(
             errors,
             "release",
-            cat,
+            `/release/deliverables/app/channels/${name}`,
             "invalid_channel_includes",
             "each channel must be an object such as { includes: [stable] }.",
           );
@@ -2097,7 +2116,7 @@ function validateAppDeliverable(
           add(
             errors,
             "release",
-            `${cat}/includes`,
+            `/release/deliverables/app/channels/${name}/includes`,
             "invalid_channel_includes",
             "includes must be an array of channel names.",
           );
@@ -2109,7 +2128,7 @@ function validateAppDeliverable(
             add(
               errors,
               "release",
-              `${cat}/includes/${i}`,
+              `/release/deliverables/app/channels/${name}/includes/${i}`,
               "invalid_channel_includes",
               "includes may only name stable, beta, a manual channel or another declared channel.",
             );
@@ -2122,7 +2141,7 @@ function validateAppDeliverable(
         add(
           errors,
           "release",
-          `${at}/channels/${cycle}`,
+          `/release/deliverables/app/channels/${cycle}`,
           "invalid_channel_includes",
           `channel ${cycle} includes itself through its includes chain.`,
         );
@@ -2137,7 +2156,7 @@ function validateAppDeliverable(
     add(
       errors,
       "release",
-      `${at}/artifacts`,
+      `/release/deliverables/app/artifacts`,
       "invalid_artifact_entry",
       `deliverables.app.artifacts must be an array of at most ${MAX_ARTIFACT_ENTRIES} entries.`,
     );
@@ -2145,12 +2164,11 @@ function validateAppDeliverable(
   }
   const seen = new Set<string>();
   for (const [i, entry] of artifacts.entries()) {
-    const eat = `${at}/artifacts/${i}`;
     if (!isRecord(entry)) {
       add(
         errors,
         "release",
-        eat,
+        `/release/deliverables/app/artifacts/${i}`,
         "invalid_artifact_entry",
         "each artifact entry must be an object { id, platform, arch, format, role?, match }.",
       );
@@ -2163,7 +2181,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${eat}/id`,
+        `/release/deliverables/app/artifacts/${i}/id`,
         "invalid_artifact_entry",
         `artifacts[].id must match ${ARTIFACT_ENTRY_ID_PATTERN.source}.`,
       );
@@ -2171,7 +2189,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${eat}/id`,
+        `/release/deliverables/app/artifacts/${i}/id`,
         "duplicate_artifact_id",
         `artifact id ${entry.id} is declared twice; each entry declares one build.`,
       );
@@ -2180,7 +2198,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${eat}/platform`,
+        `/release/deliverables/app/artifacts/${i}/platform`,
         "invalid_artifact_platform",
         `artifacts[].platform must be one of ${RELEASE_PLATFORMS.join(", ")}.`,
       );
@@ -2189,7 +2207,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${eat}/arch`,
+        `/release/deliverables/app/artifacts/${i}/arch`,
         "invalid_artifact_arch",
         `artifacts[].arch must be one of ${RELEASE_ARCHES.join(", ")}.`,
       );
@@ -2201,7 +2219,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${eat}/format`,
+        `/release/deliverables/app/artifacts/${i}/format`,
         "invalid_artifact_entry",
         `artifacts[].format must match ${ARTIFACT_FORMAT_PATTERN.source} (installer versus portable is a format: zip, exe, msi, …).`,
       );
@@ -2210,7 +2228,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${eat}/role`,
+        `/release/deliverables/app/artifacts/${i}/role`,
         "invalid_artifact_role",
         `artifacts[].role must be one of ${ARTIFACT_ROLES.join(", ")}.`,
       );
@@ -2219,7 +2237,7 @@ function validateAppDeliverable(
       add(
         errors,
         "release",
-        `${eat}/match`,
+        `/release/deliverables/app/artifacts/${i}/match`,
         "invalid_artifact_match",
         `artifacts[].match must be a file-name glob (* and ?) of 1 to ${MAX_ARTIFACT_MATCH_LENGTH} characters with no control characters.`,
       );

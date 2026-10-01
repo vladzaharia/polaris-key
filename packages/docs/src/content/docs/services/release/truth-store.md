@@ -65,9 +65,22 @@ content-sniffing risk on that origin, not just a cosmetic one.
 
 Each artifact also carries a **role** (`payload`, `signature`, `checksum`, and the chunked and
 delta roles later packages use), filled from the kind on ingest: a `.sig` is a `signature`, a
-`.sha256` a `checksum`, anything else a `payload`. `build_id`, `sha256`, `storage_key` and
-`locations_json` (hash-pinned places the bytes can be fetched from) belong to the release
-descriptor, not to the sync, and stay `NULL` for a release without one.
+`.sha256` a `checksum`, anything else a `payload`.
+
+That is the classification for a product that declares no **artifact map**. A product that
+declares one (`deliverables.app.artifacts` in `.pkey/release`) has every file classified by the
+map instead: the file an entry matches is that build's payload, with the entry's platform and
+arch, its `.sig` and `.sha256` sidecars join the same build, `build_id` names the build, and
+`sha256` is GitHub's own digest of the bytes. A file no entry matches has no build, platform or
+arch — under a map nothing is sniffed. See
+[Artifacts](/docs/services/release/artifacts/#declared-artifacts-and-release-descriptors).
+
+A release with an ingested **release descriptor** belongs to the descriptor: its `build_id`,
+`role`, `sha256`, `storage_key` and `locations_json` (hash-pinned places the bytes can be
+fetched from), its builds, and its classification are the descriptor's, and the sync refreshes
+only the GitHub-derived serving columns. `release_metadata.metadata_json.descriptor` records
+the ingested descriptor's hash (or why a `pkey-release.json` was refused), and survives every
+resync.
 
 ### `release_channels`
 
