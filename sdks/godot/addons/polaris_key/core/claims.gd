@@ -48,10 +48,23 @@ static func is_wire_integer(v: Variant, pointer: String, minimum: int, non_wire_
 ## the match (a line terminator included). The pattern is wrapped in `\A(?:…)\z`; every class
 ## in it must be ASCII. Python (`_full_match`) and Swift (`wholeMatches`) apply the same rule.
 static func matches_whole(pattern: String, value: Variant) -> bool:
-	if not (value is String):
-		return false
-	var re := RegEx.create_from_string("\\A(?:" + pattern + ")\\z")
-	if re == null or not re.is_valid():
+	return matches_whole_re(whole(pattern), value)
+
+
+## `pattern` compiled for `matches_whole_re`: wrapped in `\A(?:…)\z`. A caller that matches one
+## pattern often compiles it once (a static var) and keeps every match on the same helper. A JS
+## pattern written `^…$` (the generated CHANNEL_NAME_PATTERN) loses those anchors first: PCRE's
+## `$` also matches before a trailing newline.
+static func whole(pattern: String) -> RegEx:
+	var p := pattern
+	if p.begins_with("^") and p.ends_with("$") and not p.ends_with("\\$"):
+		p = p.substr(1, p.length() - 2)
+	return RegEx.create_from_string("\\A(?:" + p + ")\\z")
+
+
+## `matches_whole` over a pattern `whole` compiled: true when `re` matches ALL of `value`.
+static func matches_whole_re(re: RegEx, value: Variant) -> bool:
+	if not (value is String) or re == null or not re.is_valid():
 		return false
 	var m := re.search(value)
 	return m != null and m.get_start() == 0 and m.get_end() == (value as String).length()

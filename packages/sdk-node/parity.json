@@ -51,10 +51,19 @@
     "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
-    "release.record": { "status": "planned", "wp": "P3-04" },
+    "release.record": {
+      "status": "implemented",
+      "note": "client.update.releaseRecord(hash) and decide() over client-core's verifyReleaseRecord: hash before signature, pinned release keys only; persisted in the releaseRecords cache slice while a committed feed pins it."
+    },
     "update.check": { "status": "implemented" },
-    "update.feed": { "status": "planned", "wp": "P3-04" },
-    "update.decide": { "status": "planned", "wp": "P3-04" },
+    "update.feed": {
+      "status": "implemented",
+      "note": "client.update.feed() and decide() over client-core's verifyFeed; the feeds cache slice is keyed by the canonical channel and re-verified on load, so each seq floor survives a restart."
+    },
+    "update.decide": {
+      "status": "implemented",
+      "note": "client.update.decide() over client-core's runUpdateCheck; the outlet is the host's update.outlet (or stamp / detected) until P3-11 detects it, and is unknown, never offered an update, without one."
+    },
     "update.driver": {
       "status": "planned",
       "unowned": true,

@@ -52,7 +52,7 @@ import {
 } from "./devices/client.js";
 import { IdentityClient } from "./identity/client.js";
 import { ReleaseClient } from "./release/client.js";
-import { UpdateClient } from "./update/client.js";
+import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
   discoverProduct,
   type DiscoverProductResult,
@@ -69,6 +69,11 @@ export interface PolarisKeyClientOptions extends CoreOptions {
   license?: LicenseClientOptions;
   /** Devices inputs (probes, fingerprint opt-out). */
   devices?: DevicesClientOptions;
+  /** Update inputs for wire v4's signed decision (`client.update.decide()`): the pinned release
+   *  keys, the outlet, the installed build's format and build number, the host's methods.
+   *  Validated here: a bad value, or a release key that is also a trust pin, throws
+   *  `invalid-options` from the constructor. */
+  update?: UpdateClientOptions;
   /**
    * Poll on this interval (seconds). OFF by default — enabling it would silently add network
    * traffic and background wakeups to every already-shipped integration. Call `close()` to
@@ -182,6 +187,12 @@ export class PolarisKeyClient {
       this.core,
       this.tokens,
       () => this.discoveryDoc,
+      {
+        cache: this.cache,
+        trust: this.trust,
+        discover: () => this.discover(),
+        ...(opts.update !== undefined ? { options: opts.update } : {}),
+      },
     );
 
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
@@ -202,6 +213,10 @@ export class PolarisKeyClient {
     await this.core.init();
     await this.tokens.load();
     await this.cache.load();
+    // Wire v4's update slices go through the same reload path: every committed feed and record
+    // is re-verified against what this load trusts, and each channel's `seq` floor comes from
+    // the feed that survives.
+    await this.update.reload();
     this.startTimer();
   }
 

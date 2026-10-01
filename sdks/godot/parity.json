@@ -103,19 +103,10 @@
     },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
-    "release.record": {
-      "status": "planned",
-      "wp": "P3-08"
-    },
+    "release.record": { "status": "implemented" },
     "update.check": { "status": "implemented" },
-    "update.feed": {
-      "status": "planned",
-      "wp": "P3-08"
-    },
-    "update.decide": {
-      "status": "planned",
-      "wp": "P3-08"
-    },
+    "update.feed": { "status": "implemented" },
+    "update.decide": { "status": "implemented" },
     "update.driver": {
       "status": "planned",
       "wp": "P3-10"

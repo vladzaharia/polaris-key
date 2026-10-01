@@ -28,8 +28,31 @@ const CONFIG_ENV_NEVER := 2
 @export var default_channel := ""
 ## kid -> raw Ed25519 public key (base64url). The ONLY trust root; never taken from discovery.
 @export var pinned_trust_keys: Dictionary = {}
-## Release-signing pins (unused until P3-08).
+## kid -> raw Ed25519 release key (base64url): the ONLY keys a release record
+## (`pkey-release+jws`) verifies against (WIRE-CONTRACT-V4 §2.6). CI holds the private half;
+## never a product key, never merged with pinned_trust_keys, never extended from the network.
+## Empty: PolarisKey.update.decide() answers `not-configured`. A key that is also a trust pin
+## makes `configure` refuse (`invalid-options`). Two keys are valid at once during a rotation.
 @export var pinned_release_keys: Dictionary = {}
+
+@export_group("Update")
+## The outlet this build was published through, as the HOST knows it: one of the 17 outlet
+## kinds (`steam`, `direct`, `app-store`, …). Empty: the build stamp's outlet (P1-11), else
+## `unknown`, which is never offered an update. A host value always wins (plans/P3-01.md §2.8).
+@export var update_outlet := ""
+## The product's outlet id when it differs from the kind (`altstore-beta` of kind `altstore`).
+## Empty: the id is the kind.
+@export var update_outlet_id := ""
+## How a `direct` install was put on the device (`homebrew`, `scoop`, `flatpak`, `appimage`, …);
+## a package-managed install is never self-updated. Empty: none.
+@export var update_outlet_subkind := ""
+## What this host can do with a new binary: any of `native`, `download`, `sidecar-pck`
+## (P3-10's adapters narrow it per install type). Default: download.
+@export var update_methods := PackedStringArray(["download"])
+## The installed build's format (`dmg`, `zip`, `exe`, …) when it is known, so a binary update
+## picks the same kind of build. Empty: the stamp's `format`, else any format.
+@export var update_format := ""
+@export_group("")
 ## The services this build expects when discovery has not been loaded this session (D-21).
 ## Empty: licence and config only.
 @export var expected_services: PackedStringArray = PackedStringArray()
@@ -71,6 +94,20 @@ var now_source: Callable = Callable()
 ## Where the build stamp is read (PKeyBuildStamp). "" means no stamp (tests that must not see
 ## the exported one). Not exported.
 var build_stamp_path := PKeyBuildStamp.PATH
+
+
+## The host outlet option for PKeyDecision.resolve_update_outlet: null when `update_outlet` is
+## empty, the kind alone when no id or subkind is set, else {id, kind, subkind}.
+func host_outlet() -> Variant:
+	if update_outlet == "":
+		return null
+	if update_outlet_id == "" and update_outlet_subkind == "":
+		return update_outlet
+	return {
+		"id": update_outlet_id if update_outlet_id != "" else update_outlet,
+		"kind": update_outlet,
+		"subkind": update_outlet_subkind if update_outlet_subkind != "" else null,
+	}
 
 
 ## The version to send: `version`, else the project's `application/config/version`.
