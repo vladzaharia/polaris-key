@@ -1434,6 +1434,104 @@ describe("R6-10 downgrade: deleting the newest release silently makes an older o
       "1.0.0",
     );
   });
+
+  // P2-05. The channel policy closes the remaining downgrade paths deliberately rather than by
+  // accident: a YANKED release is never offered on a moving selector (and a yanked floor does
+  // not 404 the channel — the yank is the audited withdrawal), and only an explicit, audited PIN
+  // can serve an older or a yanked release.
+  it("FIXED (P2-05): a yank withdraws latest to the next release; only an explicit pin serves a yanked one", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const env = envFor();
+    env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
+    env.PLATFORM_ADMIN_GROUP = "platform-admins";
+    const releases = [
+      release({ tag_name: "v2.0.0" }),
+      release({ tag_name: "v1.0.0" }),
+    ];
+    const fetchImpl: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens"))
+        return new Response(JSON.stringify({ token: "t" }), { status: 200 });
+      if (url.includes("/releases?per_page"))
+        return new Response(JSON.stringify(releases), { status: 200 });
+      const tag = url.match(/\/releases\/tags\/([^/?]+)$/)?.[1];
+      const hit = releases.find((r) => r.tag_name === tag);
+      if (hit) return new Response(JSON.stringify(hit), { status: 200 });
+      return new Response("nf", { status: 404 });
+    };
+    const latest = async () => {
+      const res = await handleRelease(
+        req(),
+        env,
+        db,
+        makeProduct(),
+        "version",
+        { version: "latest" },
+        fetchImpl,
+      );
+      return res.status === 200
+        ? ((await res.json()) as { version: string }).version
+        : res.status;
+    };
+    // The sync floors stable at 2.0.0 and records both releases.
+    await syncReleaseStore(env, db, SLUG, NOW, fetchImpl);
+    expect(await latest()).toBe("2.0.0");
+
+    const { token, session } = await issueSession(
+      env,
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: ["platform-admins"],
+      },
+      NOW,
+    );
+    const adminCall = (method: string, path: string, body: unknown) =>
+      handleAdmin(
+        new Request(`https://key.plrs.im/manage${path}`, {
+          method,
+          headers: {
+            cookie: `${ADMIN_COOKIE}=${token}`,
+            [CSRF_HEADER]: session.csrf,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }) as unknown as Request,
+        env,
+        db,
+        path,
+        { now: NOW },
+      );
+
+    const yanked = await adminCall(
+      "POST",
+      `/api/products/${SLUG}/release/releases/v2.0.0/yank`,
+      { reason: "data loss on upgrade" },
+    );
+    expect(yanked.status).toBe(200);
+    // Withdrawn, not regressed: latest falls back to v1.0.0 instead of serving the yanked
+    // release or 404ing on the floor it set.
+    expect(await latest()).toBe("1.0.0");
+
+    // Only an explicit, audited pin brings the yanked release back.
+    const pinned = await adminCall(
+      "PUT",
+      `/api/products/${SLUG}/release/channels/stable`,
+      { pointer: "v2.0.0", pinned: true },
+    );
+    expect(pinned.status).toBe(200);
+    expect(await latest()).toBe("2.0.0");
+    const actions = await db.all<{ action: string }>(
+      "SELECT action FROM audit WHERE product = ? ORDER BY rowid",
+      SLUG,
+    );
+    expect(actions.map((a) => a.action)).toEqual([
+      "release.yank",
+      "release.channel.update",
+    ]);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

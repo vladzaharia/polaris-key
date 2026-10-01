@@ -113,8 +113,7 @@ export function byteTargetOf(rest: readonly string[]): ByteTarget | null {
   if (!first || !second) return null;
   if (area === "builds")
     return { kind: "build", selector: first, buildId: second };
-  if (area === "files")
-    return { kind: "file", releaseId: first, name: second };
+  if (area === "files") return { kind: "file", releaseId: first, name: second };
   return null;
 }
 
@@ -215,7 +214,9 @@ async function githubAssetId(
       a.release_id,
       loc.asset,
     );
-    return row && /^\d+$/.test(row.artifact_id) ? Number(row.artifact_id) : null;
+    return row && /^\d+$/.test(row.artifact_id)
+      ? Number(row.artifact_id)
+      : null;
   }
   return /^\d+$/.test(a.artifact_id) ? Number(a.artifact_id) : null;
 }
@@ -223,12 +224,10 @@ async function githubAssetId(
 /** The type a GitHub-streamed artifact is served as: the gateway's own choice (R6-04). On the
  *  console host only the two types the legacy route ever served; on the bytes host anything on
  *  the inert allowlist. */
-function streamedType(
-  a: ReleaseArtifactRow,
-  onBytesHost: boolean,
-): string {
+function streamedType(a: ReleaseArtifactRow, onBytesHost: boolean): string {
   const t = (a.content_type ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
-  if (onBytesHost) return BYTES_HOST_TYPES.has(t) ? t : "application/octet-stream";
+  if (onBytesHost)
+    return BYTES_HOST_TYPES.has(t) ? t : "application/octet-stream";
   return t === "application/x-apple-diskimage" ? t : "application/octet-stream";
 }
 
@@ -253,8 +252,7 @@ async function serveArtifact(
   cache: string,
 ): Promise<Response> {
   const { req, env, db, cfg, product, now, fetchImpl } = ctx;
-  const publicMode =
-    accessModeFor(artifactPolicy(cfg), "file") === "public";
+  const publicMode = accessModeFor(artifactPolicy(cfg), "file") === "public";
   const effectiveCache = publicMode ? cache : PRIVATE_BYTES_CACHE;
   const url = new URL(req.url);
   const onBytesHost = isBytesHost(url, env);
@@ -277,14 +275,19 @@ async function serveArtifact(
         sha256: artifact.sha256,
         gated: !publicMode || parsed.gated,
         env,
-        ...(artifact.content_type ? { contentType: artifact.content_type } : {}),
+        ...(artifact.content_type
+          ? { contentType: artifact.content_type }
+          : {}),
         filename: artifact.name,
       });
       if (res.status === 404) {
         await res.body?.cancel().catch(() => undefined);
         continue;
       }
-      return withCache(res, parsed.gated ? PRIVATE_BYTES_CACHE : effectiveCache);
+      return withCache(
+        res,
+        parsed.gated ? PRIVATE_BYTES_CACHE : effectiveCache,
+      );
     }
 
     if (loc.provider === "github") {
@@ -355,7 +358,10 @@ async function serveArtifact(
       if (target.protocol !== "https:") continue;
       return new Response(null, {
         status: 302,
-        headers: { location: target.toString(), "cache-control": effectiveCache },
+        headers: {
+          location: target.toString(),
+          "cache-control": effectiveCache,
+        },
       });
     }
   }
@@ -365,7 +371,11 @@ async function serveArtifact(
 // ── The three routes ─────────────────────────────────────────────────────────────────────────
 
 /** The digest line `?checksum=sha256` answers with (the legacy route's format). */
-function checksumResponse(sha256: string, onBytesHost: boolean, cache: string): Response {
+function checksumResponse(
+  sha256: string,
+  onBytesHost: boolean,
+  cache: string,
+): Response {
   return new Response(`${sha256}\n`, {
     status: 200,
     headers: {
@@ -408,8 +418,7 @@ async function computeBuild(
 
   if (url.searchParams.get("checksum") === "sha256") {
     if (!payload.sha256 || !SHA256_HEX.test(payload.sha256)) return notFound();
-    const publicMode =
-      accessModeFor(artifactPolicy(cfg), "build") === "public";
+    const publicMode = accessModeFor(artifactPolicy(cfg), "build") === "public";
     return checksumResponse(
       payload.sha256,
       isBytesHost(url, env),
@@ -509,7 +518,8 @@ export async function serveReleaseBytes(
 
 // ── The bytes-host registration ──────────────────────────────────────────────────────────────
 
-const BYTE_PATH = /^\/([a-z0-9-]{1,64})\/release\/(builds|files|blobs)\/([^/]+)\/([^/]+)$/;
+const BYTE_PATH =
+  /^\/([a-z0-9-]{1,64})\/release\/(builds|files|blobs)\/([^/]+)\/([^/]+)$/;
 
 function matchArea(
   area: ByteTarget["kind"],

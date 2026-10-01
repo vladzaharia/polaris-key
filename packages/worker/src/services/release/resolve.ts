@@ -266,12 +266,17 @@ export function buildMatches(b: CandidateBuild, t: Target): boolean {
 function hasTarget(t: Target | undefined): t is Target {
   return (
     !!t &&
-    (t.platform !== undefined || t.arch !== undefined || t.buildId !== undefined)
+    (t.platform !== undefined ||
+      t.arch !== undefined ||
+      t.buildId !== undefined)
   );
 }
 
 /** The build of `c` the target asks for: the first match (by build id), or null. */
-function targetBuild(c: Candidate, t: Target | undefined): CandidateBuild | null {
+function targetBuild(
+  c: Candidate,
+  t: Target | undefined,
+): CandidateBuild | null {
   const sorted = [...c.builds].sort((a, b) =>
     a.buildId < b.buildId ? -1 : a.buildId > b.buildId ? 1 : 0,
   );
@@ -340,11 +345,19 @@ export function resolveCandidates(input: ResolveInput): Resolved | null {
       const viaBuiltin = closure.has(builtin);
       const viaManual =
         r.tag !== null &&
-        manualRes.some((m) => closure.has(m.name) && m.re.test(r.tag as string));
+        manualRes.some(
+          (m) => closure.has(m.name) && m.re.test(r.tag as string),
+        );
       if (!viaBuiltin && !viaManual) return false;
       // The tag filter (rule 3) guards the built-in channels; a manual channel keeps its own
       // regex. A tagless release (descriptor, `<deliverable>@<version>`) has no tag to filter.
-      if (!viaManual && isApp && r.tag !== null && stableRe && !stableRe.test(r.tag))
+      if (
+        !viaManual &&
+        isApp &&
+        r.tag !== null &&
+        stableRe &&
+        !stableRe.test(r.tag)
+      )
         return false;
     }
     return true;
@@ -409,7 +422,9 @@ function prereleaseOf(row: Pick<ReleaseMetadataRow, "metadata_json">): boolean {
 }
 
 /** A release id that is a GitHub tag rather than the tagless `<deliverable>@<version>` form. */
-function tagOf(row: Pick<ReleaseMetadataRow, "release_id" | "deliverable_id">): string | null {
+function tagOf(
+  row: Pick<ReleaseMetadataRow, "release_id" | "deliverable_id">,
+): string | null {
   return row.release_id.startsWith(`${row.deliverable_id}@`)
     ? null
     : row.release_id;

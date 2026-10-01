@@ -341,7 +341,11 @@ export async function applyPointerOp(
   await bumpReleaseGeneration(env, product, now);
   return {
     ok: true,
-    policy: policyView(await getChannelPolicy(db, key), deliverable, ch.channel),
+    policy: policyView(
+      await getChannelPolicy(db, key),
+      deliverable,
+      ch.channel,
+    ),
   };
 }
 
@@ -371,7 +375,12 @@ export async function updateChannelPolicy(
   ]);
   const unknown = Object.keys(body).filter((k) => !allowed.has(k));
   if (unknown.length > 0)
-    return refuse(422, "unknown_field", `unknown field: ${unknown.join(", ")}`, unknown);
+    return refuse(
+      422,
+      "unknown_field",
+      `unknown field: ${unknown.join(", ")}`,
+      unknown,
+    );
 
   const ch = await resolvePolicyChannel(db, product, cfg, rawChannel);
   if (!ch.ok) return ch;
@@ -436,10 +445,12 @@ export async function updateChannelPolicy(
   const pinnedAfter =
     patch.pinned !== undefined ? patch.pinned : existing?.pinned === 1;
   if (pinnedAfter && pointerAfter === null)
-    return refuse(422, "pin_without_pointer", "a pinned channel needs a pointer", [
-      "pointer",
-      "pinned",
-    ]);
+    return refuse(
+      422,
+      "pin_without_pointer",
+      "a pinned channel needs a pointer",
+      ["pointer", "pinned"],
+    );
 
   await setChannelPolicy(db, key, patch, {
     source: "admin",
@@ -458,7 +469,11 @@ export async function updateChannelPolicy(
   await bumpReleaseGeneration(env, product, now);
   return {
     ok: true,
-    policy: policyView(await getChannelPolicy(db, key), deliverable, ch.channel),
+    policy: policyView(
+      await getChannelPolicy(db, key),
+      deliverable,
+      ch.channel,
+    ),
   };
 }
 
@@ -493,7 +508,11 @@ export async function revertChannelPolicy(
   await bumpReleaseGeneration(env, product, now);
   return {
     ok: true,
-    policy: policyView(await getChannelPolicy(db, key), deliverable, ch.channel),
+    policy: policyView(
+      await getChannelPolicy(db, key),
+      deliverable,
+      ch.channel,
+    ),
   };
 }
 

@@ -210,8 +210,7 @@ export async function putCachedSignedUrl(
 ): Promise<void> {
   try {
     if (!isAllowedStorageHost(new URL(url).hostname)) return;
-    const expires =
-      signedUrlExpiry(url) ?? now + SIGNED_URL_ASSUMED_LIFETIME;
+    const expires = signedUrlExpiry(url) ?? now + SIGNED_URL_ASSUMED_LIFETIME;
     const usableUntil = expires - SIGNED_URL_MARGIN;
     if (usableUntil - now < KV_MIN_TTL) return;
     const { key, ctx } = signedUrlSlot(product, repo, assetId);

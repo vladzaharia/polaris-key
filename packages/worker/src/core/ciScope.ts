@@ -54,21 +54,36 @@ export async function requireCiScope(
 ): Promise<CiPrincipal | Response> {
   const token = bearer(req);
   if (!token || !token.startsWith(CI_TOKEN_PREFIX)) {
-    return errorResponse(401, ErrorCode.Unauthorized, "a pkeyci_ token is required", {
-      reason: "ci_token_required",
-    });
+    return errorResponse(
+      401,
+      ErrorCode.Unauthorized,
+      "a pkeyci_ token is required",
+      {
+        reason: "ci_token_required",
+      },
+    );
   }
   const principal = await lookupCiToken(env, db, token, now);
   if (!principal || principal.product !== product) {
-    return errorResponse(401, ErrorCode.Unauthorized, "unknown, expired or revoked CI token", {
-      reason: "invalid_ci_token",
-    });
+    return errorResponse(
+      401,
+      ErrorCode.Unauthorized,
+      "unknown, expired or revoked CI token",
+      {
+        reason: "invalid_ci_token",
+      },
+    );
   }
   if (!principal.scopes.includes(scope)) {
-    return errorResponse(403, ErrorCode.Forbidden, `this token lacks the ${scope} scope`, {
-      reason: "missing_scope",
-      scope,
-    });
+    return errorResponse(
+      403,
+      ErrorCode.Forbidden,
+      `this token lacks the ${scope} scope`,
+      {
+        reason: "missing_scope",
+        scope,
+      },
+    );
   }
   return principal;
 }

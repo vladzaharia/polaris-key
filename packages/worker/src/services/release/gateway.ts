@@ -393,7 +393,9 @@ export async function resolveSelector(
   const release = await cachedResolution(
     env,
     cfg.product,
-    `selector:${sel.kind}:${sel.raw}`,
+    // Keyed by what the selector MEANS, not how it was spelled: `latest`, `stable` and an
+    // omitted selector are one resolution, and so are `beta` and its legacy spellings.
+    `selector:${policyChannelOf(sel) ?? `version:${sel.raw}`}`,
     () => resolveSelectorLive(env, db, cfg, sel, now, fetchImpl),
   );
   if (!release) throw new NotFoundError(`no release for selector: ${selector}`);

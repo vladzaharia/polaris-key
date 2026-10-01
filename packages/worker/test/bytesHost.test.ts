@@ -191,12 +191,14 @@ describe("bytes host: configuration", () => {
       if (origin !== undefined) {
         const host = bytesHostname({ BLOB_ORIGIN: origin });
         expect(host, `${name}: BLOB_ORIGIN must parse`).not.toBeNull();
-        expect(consoleHosts, `${name}: BLOB_ORIGIN is a console host`).not.toContain(
-          host,
-        );
-        expect(dlHosts, `${name}: BLOB_ORIGIN names its own dl route`).toContain(
-          host,
-        );
+        expect(
+          consoleHosts,
+          `${name}: BLOB_ORIGIN is a console host`,
+        ).not.toContain(host);
+        expect(
+          dlHosts,
+          `${name}: BLOB_ORIGIN names its own dl route`,
+        ).toContain(host);
       }
     }
   });

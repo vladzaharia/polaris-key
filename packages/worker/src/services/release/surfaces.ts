@@ -12,7 +12,7 @@
  */
 
 import type { Env, Db } from "../../core/platform.js";
-import type { Product } from "../../core/products.js";
+import type { ProductPublic } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";
 import type { FetchImpl } from "./githubApp.js";
 import {
@@ -41,6 +41,11 @@ import {
   type ReleaseParams,
   type SurfaceContext,
 } from "./gateway.js";
+import {
+  dropCachedSignedUrl,
+  getCachedSignedUrl,
+  putCachedSignedUrl,
+} from "./ghCache.js";
 
 /** The surfaces this service serves. Update owns the other three. */
 export type ReleaseSurfaceKind = "install" | "changelog" | "cli" | "dmg";
@@ -53,7 +58,7 @@ export function handleRelease(
   req: Request,
   env: Env,
   db: Db,
-  product: Product,
+  product: ProductPublic,
   kind: ReleaseSurfaceKind,
   params: ReleaseParams,
   fetchImpl: FetchImpl = fetch,
@@ -171,17 +176,19 @@ async function handleBinary(
         });
   if (!asset) return notFound();
 
-  const tok = await installationToken(env, cfg, now, fetchImpl);
-
   // `?checksum=sha256` serves the artifact's published `<asset>.sha256` sidecar so the
   // installer can verify what it downloaded (R6-02). No sidecar -> 404, and the script
   // refuses to install rather than proceeding unverified.
   if (new URL(req.url).searchParams.get("checksum") === "sha256") {
+    const tok = await installationToken(env, cfg, now, fetchImpl);
     return handleChecksum(tok, cfg, release, asset.name, sel, fetchImpl);
   }
 
+  // The token is minted lazily and the signed storage URL is cached (P2-05, `ghCache.ts`), so
+  // a `Range` chunk after the first request costs no GitHub API call.
+  const repo = `${cfg.gh_owner}/${cfg.gh_repo}`;
   const res = await streamAsset(
-    tok,
+    () => installationToken(env, cfg, now, fetchImpl),
     cfg.gh_owner,
     cfg.gh_repo,
     asset.id,
@@ -195,6 +202,11 @@ async function handleBinary(
           : ARTIFACT_CONTENT_TYPE,
     },
     fetchImpl,
+    {
+      get: () => getCachedSignedUrl(env, product.slug, repo, asset.id, now),
+      put: (u) => putCachedSignedUrl(env, product.slug, repo, asset.id, u, now),
+      drop: () => dropCachedSignedUrl(env, product.slug, repo, asset.id),
+    },
   );
   // Preserve streamed headers; add our cache policy.
   const headers = new Headers(res.headers);

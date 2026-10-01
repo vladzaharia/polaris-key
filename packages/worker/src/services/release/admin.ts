@@ -112,7 +112,9 @@ export async function handleReleaseAdmin(
         .filter((h) => h.subject_kind === "release")
         .map((h) => [h.subject_id, h.status]),
     );
-    const yanks = new Map((await listYanks(db, slug)).map((y) => [y.release_id, y]));
+    const yanks = new Map(
+      (await listYanks(db, slug)).map((y) => [y.release_id, y]),
+    );
     return adminJson({
       releases: await Promise.all(
         releases.map(async (row) => {
@@ -398,7 +400,11 @@ async function handlePolicyRoutes(
           resolved: resolved ? resolved.release.release_id : null,
         });
       }
-      out.push({ deliverable: d.deliverable_id, kind: d.kind, channels: views });
+      out.push({
+        deliverable: d.deliverable_id,
+        kind: d.kind,
+        channels: views,
+      });
     }
     return adminJson({ deliverables: out });
   }
@@ -450,7 +456,15 @@ async function handlePolicyRoutes(
     if (releaseId === null) return adminNotFound();
     if (req.method === "POST") {
       const body = await readBody(req);
-      const result = await yank(env, db, slug, releaseId, body.reason, actor, now);
+      const result = await yank(
+        env,
+        db,
+        slug,
+        releaseId,
+        body.reason,
+        actor,
+        now,
+      );
       return result.ok
         ? adminJson({ ok: true, yank: result.yank })
         : policyRefusal(result);
