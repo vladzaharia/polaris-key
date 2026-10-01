@@ -69,6 +69,21 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
   scored per the standard) returning a module matrix, and `PKeyQrRect extends TextureRect`
   (nearest filtering, a four-module quiet zone, theme colours).
 - An `identity` suite against the fake server, and QR fixture tests, in the `ci` set.
+- **Opt-in "attach this device's anonymous licence to my account"** (follow-up from P1-06's
+  security review). Since P1-06, the sign-in callback never claims, migrates or disables the
+  licence the polling device is already on. A device-code flow is confirmed with the public user
+  code, so merging at the callback let a user-code holder take the device's anonymous enrolled
+  licence over (`docs/security/findings/R8-oidc.md`, R8-02 "The callback merges nothing"). The
+  merge now becomes an explicit opt-in that only the device-code holder can make, at
+  `/identity/auth/device/poll`. First the device shows the signed-in identity (for example the
+  e-mail or name returned with `ready`, or a prior `pending`-with-identity status) and the player
+  accepts it on the device. Only then does the device send a poll that asks for its current
+  enrolled licence to be attached; the Worker applies `activateFromIdentity`'s claim/migrate
+  only for that poll and only for the device id the flow was started with. This needs a server
+  half: the poll request and response shape, OpenAPI and `routeCoverage` (rule 10), and attack
+  tests extending `R8-oidc.test.ts` › `R8-02 / P1-06 a user-code holder cannot claim…`. It also
+  needs a Godot half: a confirmation step in `PolarisKey.identity`, which P1-10's dialog
+  renders. The lead decides whether the server half stays here or moves to its own package.
 
 **Out** (and where it belongs instead):
 
@@ -135,6 +150,12 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
 - [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
 - [ ] `sdks/godot/parity.json` marks `identity.devicecode` implemented, with test tags (once
       P1b-01 has landed).
+- [ ] The anonymous-licence attach is opt-in and holder-only. With no opt-in, a device-code
+      sign-in leaves the device's anonymous enrolled licence anonymous, active and re-enrollable.
+      With the opt-in, the attach happens only on a `/device/poll` carrying the device code and
+      the flow's own device id, after the player has accepted the shown identity on the device.
+      A user-code holder who confirmed and signed in as themselves can never trigger it. Attack
+      tests cover both the claim case and the migrate case.
 
 ## Verify
 

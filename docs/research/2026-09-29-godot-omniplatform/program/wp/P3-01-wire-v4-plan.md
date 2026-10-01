@@ -173,8 +173,9 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
     GDScript verifier). [Record each backend's verdict with a throwaway script before fixing
     expectations; choose the strict verdict and add pre-checks where a backend is lenient.
     Decide explicitly on small-order public keys.] JSON edge vectors: lone surrogates [reject
-    everywhere, per I-JSON], raw control characters [reject], `valid-nul-byte-in-string` [keep;
-    record Godot's `String` limitation in the divergence ledger, or reject].
+    everywhere, per I-JSON], raw control characters [reject], `valid-nul-byte-in-string` [settled
+    by P1-01: kept, with WIRE-CONTRACT-V3 §10's declared representation limit; this plan still
+    decides U+0000 in object keys].
 15. Routes for P3-03, with content types, caching and access mode: proposed
     `GET /{product}/update/feed/{channel}` and `GET /{product}/release/records/{sha256}`, both
     `application/jose`; discovery fields `update.endpoints.feed` and `release.endpoints.record`;

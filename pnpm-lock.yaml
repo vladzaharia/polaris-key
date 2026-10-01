@@ -351,6 +351,10 @@ importers:
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
+    devDependencies:
+      prettier:
+        specifier: ^3.5.0
+        version: 3.8.4
 
 packages:
 

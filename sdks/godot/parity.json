@@ -1,0 +1,337 @@
+{
+  "$schema": "../../conformance/parity/manifest.schema.json",
+  "sdk": "godot",
+  "runtimes": ["linux", "macos", "windows", "android", "ios", "web"],
+  "testRoots": ["sdks/godot/tests"],
+  "features": {
+    "core.verify": {
+      "status": "planned",
+      "wp": "P1-02"
+    },
+    "core.cache": {
+      "status": "planned",
+      "wp": "P1-02"
+    },
+    "core.bundle": {
+      "status": "planned",
+      "wp": "P1-02"
+    },
+    "core.discover": {
+      "status": "planned",
+      "wp": "P1-02"
+    },
+    "core.sync": {
+      "status": "planned",
+      "wp": "P1-02"
+    },
+    "core.local": {
+      "status": "planned",
+      "wp": "P1-02"
+    },
+    "core.headers": {
+      "status": "planned",
+      "wp": "P1-02",
+      "note": "headers.json comes from P1b-04; P1-02 wires it in."
+    },
+    "core.errors": {
+      "status": "planned",
+      "wp": "P1-02",
+      "note": "The GDScript error constants come from P1b-02; P1-02 wires them in."
+    },
+    "core.caps": {
+      "status": "planned",
+      "wp": "P1b-10"
+    },
+    "core.store": {
+      "status": "planned",
+      "wp": "P1-02",
+      "note": "The Keychain binding is P5-05's and the Keystore binding P5-06's; no work package owns a desktop keyring."
+    },
+    "license.gate": {
+      "status": "planned",
+      "wp": "P1-03"
+    },
+    "license.activate": {
+      "status": "planned",
+      "wp": "P1-03"
+    },
+    "license.enroll": {
+      "status": "planned",
+      "wp": "P1-03"
+    },
+    "license.deactivate": {
+      "status": "planned",
+      "wp": "P1-03"
+    },
+    "license.entitlements": {
+      "status": "planned",
+      "wp": "P1-03"
+    },
+    "license.channels": {
+      "status": "planned",
+      "wp": "P1-03"
+    },
+    "license.reregister": {
+      "status": "planned",
+      "wp": "P1-03"
+    },
+    "config.resolve": {
+      "status": "planned",
+      "wp": "P1-04"
+    },
+    "config.list": {
+      "status": "planned",
+      "wp": "P1-04"
+    },
+    "config.secret": {
+      "status": "planned",
+      "wp": "P1-04"
+    },
+    "config.schema": {
+      "status": "planned",
+      "wp": "P1-04"
+    },
+    "config.mint": {
+      "status": "planned",
+      "wp": "P1-04"
+    },
+    "config.mirror": {
+      "status": "planned",
+      "wp": "P1-04"
+    },
+    "devices.fingerprint": {
+      "status": "planned",
+      "wp": "P1-05"
+    },
+    "devices.facts": {
+      "status": "planned",
+      "wp": "P1-05"
+    },
+    "devices.register": {
+      "status": "planned",
+      "wp": "P1-05"
+    },
+    "devices.manage": {
+      "status": "planned",
+      "wp": "P1-05"
+    },
+    "devices.report": {
+      "status": "planned",
+      "wp": "P1-05"
+    },
+    "identity.oidc": {
+      "status": "planned",
+      "unowned": true,
+      "note": "Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead."
+    },
+    "identity.devicecode": {
+      "status": "planned",
+      "wp": "P1-07"
+    },
+    "release.changelog": {
+      "status": "planned",
+      "wp": "P1-08"
+    },
+    "release.download": {
+      "status": "planned",
+      "wp": "P1-08"
+    },
+    "release.record": {
+      "status": "planned",
+      "wp": "P3-08"
+    },
+    "update.check": {
+      "status": "planned",
+      "wp": "P1-08"
+    },
+    "update.feed": {
+      "status": "planned",
+      "wp": "P3-08"
+    },
+    "update.decide": {
+      "status": "planned",
+      "wp": "P3-08"
+    },
+    "update.driver": {
+      "status": "planned",
+      "wp": "P3-10"
+    },
+    "update.bootguard": {
+      "status": "planned",
+      "wp": "P3-10"
+    },
+    "outlet.detect": {
+      "status": "planned",
+      "wp": "P3-11"
+    },
+    "packs.plan": {
+      "status": "planned",
+      "wp": "P4-08"
+    },
+    "packs.index": {
+      "status": "planned",
+      "wp": "P4-08"
+    },
+    "packs.apply.full": {
+      "status": "planned",
+      "wp": "P4-08"
+    },
+    "packs.apply.file": {
+      "status": "planned",
+      "wp": "P4-08"
+    },
+    "packs.apply.chunk": {
+      "status": "planned",
+      "wp": "P4-11"
+    },
+    "packs.apply.delta": {
+      "status": "planned",
+      "wp": "P4-08"
+    },
+    "packs.state": {
+      "status": "planned",
+      "wp": "P4-08"
+    },
+    "packs.handlers": {
+      "status": "planned",
+      "wp": "P4-08"
+    },
+    "packs.provides": {
+      "status": "planned",
+      "wp": "P4-20"
+    },
+    "packs.transport.apple": {
+      "status": "planned",
+      "wp": "P5-08",
+      "note": "iOS goes through P5-05's plugin; no work package owns a macOS binding (program README §9).",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
+    },
+    "packs.transport.play": {
+      "status": "planned",
+      "wp": "P5-08",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
+    },
+    "packs.transport.steam": {
+      "status": "planned",
+      "wp": "P5-08",
+      "except": [
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
+    },
+    "packs.transport.msix": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No work package owns an MSIX transport for Godot (program README §9).",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
+    },
+    "packs.transport.flatpak": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No work package owns a Flatpak transport for Godot (program README §9).",
+      "except": [
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
+    },
+    "ui.stages": {
+      "status": "planned",
+      "wp": "P1-10"
+    },
+    "ui.kit": {
+      "status": "planned",
+      "wp": "P1-10"
+    },
+    "commerce.receipt": {
+      "status": "planned",
+      "wp": "P6-01"
+    }
+  }
+}

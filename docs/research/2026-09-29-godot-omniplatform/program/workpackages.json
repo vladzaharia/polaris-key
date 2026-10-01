@@ -130,7 +130,7 @@
       "optional": false,
       "refs": ["README §9.1 #7", "notes/A1"],
       "brief": "wp/P0-03-release-webhook.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-04",
@@ -240,7 +240,7 @@
       "optional": false,
       "refs": ["README §3.2", "README §11 decision 17", "notes/A3 §5.3"],
       "brief": "wp/P0-09-service-table.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-10",
@@ -338,7 +338,7 @@
         "notes/A5"
       ],
       "brief": "wp/P1-01-godot-scaffold.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P1-02",
@@ -476,7 +476,7 @@
       "optional": false,
       "refs": ["README §5.8", "README §8 item 6", "PARITY §4.1 §5.7"],
       "brief": "wp/P1-09-boot-stage-machine.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P1-10",
@@ -583,7 +583,7 @@
       "optional": false,
       "refs": ["PARITY §4.2"],
       "brief": "wp/P1b-03-http-transcripts.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-04",

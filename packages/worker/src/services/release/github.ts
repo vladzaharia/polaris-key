@@ -242,6 +242,30 @@ export async function listReleases(
   fetchImpl: FetchImpl = fetch,
   opts: ListReleasesOptions = {},
 ): Promise<Release[]> {
+  return (await listReleasePages(token, owner, repo, perPage, fetchImpl, opts))
+    .releases;
+}
+
+/** What `listReleasePages` read, and whether that was the whole list. */
+export interface ReleaseListing {
+  releases: Release[];
+  /**
+   * True only when the last page read carried no `rel="next"` link: the list was read to its
+   * end, so a release missing from it is missing upstream. False when the page cap or a
+   * `stopWhen` cut the read short — absence then proves nothing (P0-03).
+   */
+  complete: boolean;
+}
+
+/** `listReleases`, also reporting whether the list was read to the end. */
+export async function listReleasePages(
+  token: string,
+  owner: string,
+  repo: string,
+  perPage = 100,
+  fetchImpl: FetchImpl = fetch,
+  opts: ListReleasesOptions = {},
+): Promise<ReleaseListing> {
   const maxPages = Math.max(1, opts.maxPages ?? 1);
   let url: string | null =
     `${GITHUB_API}/repos/${owner}/${repo}/releases?per_page=${perPage}`;
@@ -259,10 +283,16 @@ export async function listReleases(
       throw new NotFoundError("releases list: unexpected shape");
     const pageReleases = body as Release[];
     out.push(...pageReleases);
-    if (opts.stopWhen?.(out, pageReleases)) break;
-    url = nextPageUrl(res.headers.get("Link"));
+    if (opts.stopWhen?.(out, pageReleases))
+      return { releases: out, complete: false };
+    const link = res.headers.get("Link");
+    url = nextPageUrl(link);
+    // A `next` link this client refused to follow (off-origin, unparseable) still means the
+    // list goes on: stop reading, but never call what was read the whole list.
+    if (url === null && link !== null && /rel="?next"?/.test(link))
+      return { releases: out, complete: false };
   }
-  return out;
+  return { releases: out, complete: url === null };
 }
 
 /** Strip an upstream asset name down to something safe inside a `filename="…"` parameter. */

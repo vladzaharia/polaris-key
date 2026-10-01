@@ -109,6 +109,7 @@ cookie, or they are top-level navigations:
 - `/{product}/identity/auth/start`
 - `/{product}/identity/auth/callback`
 - `/{product}/identity/auth/logout`
+- `/{product}/identity/auth/device`
 - `/{product}/identity/auth/device/verify`
 - `/{product}/config/mint/{mintId}/auth`
 

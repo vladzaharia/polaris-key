@@ -1,0 +1,16 @@
+; Engine configuration file.
+; The Polaris Key Godot SDK project: the addon under addons/polaris_key/ plus the headless
+; test runner (tests/runner.gd). See README.md.
+
+config_version=5
+
+[application]
+
+config/name="Polaris Key SDK"
+run/main_scene="res://tests/main.tscn"
+run/main_loop_type="PKeyTestRunner"
+run/flush_stdout_on_print=true
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/polaris_key/plugin.cfg")

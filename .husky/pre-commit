@@ -1,12 +1,14 @@
 # Polaris Key pre-commit gate (husky v9).
-# Kept deliberately lightweight: only the two fast-failing, cheap guards that catch the
+# Kept deliberately lightweight: only the fast-failing, cheap guards that catch the
 # most common "broke the contract" mistakes locally before a commit lands. The full
 # five-language matrix (Python/Swift suites, admin build, format) runs in CI, not here.
 #
 #   1. conformance drift — the signed corpus must regenerate in place (no wire drift).
-#   2. typecheck         — every TS package still type-checks.
+#   2. service drift     — every language's service constants match tools/services.json.
+#   3. typecheck         — every TS package still type-checks.
 #
 # Escape hatch: `git commit --no-verify` skips this for trivial/docs-only commits.
 
 pnpm gen:corpus -- --check
+pnpm gen:services -- --check
 pnpm typecheck

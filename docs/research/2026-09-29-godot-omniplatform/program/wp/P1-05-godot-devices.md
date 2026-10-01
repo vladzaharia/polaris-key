@@ -80,7 +80,9 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   available (web via `JavaScriptBridge`; omit elsewhere unless IANA is readable), and desktop
   probes for product-declared paths only.
 - `services/devices.gd` (`PolarisKey.devices`): `await register()` (keyless, optional
-  fingerprint, token source `register`), `get_current_device()`, `await list()`,
+  fingerprint, token source `register`; its result keeps a request that got no answer (status 0, as
+  P1-02's transport reports it) apart from a refusal or an unusable answer, so that PKeyBoot
+  classifies a keyless registration as [P1-09 plan §2.2](../plans/P1-09.md) says), `get_current_device()`, `await list()`,
   `await rename(label)`, `await deauthorize()`, `await report()`; automatic report after each
   sync through P1-02's post-sync hook.
 - **Report payload:** facts plus `sdk`, `sdkVersion`, `appVersion`, `platform`, `arch`, `gate`,
@@ -172,9 +174,10 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
       long strings truncated; `routeCoverage` and the OpenAPI schema stay green.
 - [ ] No raw component value appears in any request body (a test asserts it on the fake server).
 - [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job and `pnpm format`.
-- [ ] `sdks/godot/parity.json` marks `devices.fingerprint` (`na` on web), `devices.facts`,
-      `devices.register`, `devices.manage` and `devices.report` implemented, with test tags (once
-      P1b-01 has landed).
+- [ ] `sdks/godot/parity.json` marks `devices.fingerprint` (with an `except` entry for `web`,
+      reason `runtime`), `devices.facts`, `devices.register`, `devices.manage` and
+      `devices.report` implemented, with test tags. Marking `devices.facts` implemented ships a
+      probe-level test tagged `@pkey-feature devices.facts` (the wave-1 line P1-01 handed on).
 
 ## Verify
 

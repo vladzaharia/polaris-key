@@ -11,5 +11,8 @@
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "ajv": "^8.20.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.0"
   }
 }

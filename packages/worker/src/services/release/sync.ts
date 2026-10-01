@@ -26,7 +26,7 @@
 
 import type { Db, DbStatement, Env } from "../../core/platform.js";
 import type { FetchImpl } from "./githubApp.js";
-import { listReleases, RELEASE_PAGE_CAP, type Release } from "./github.js";
+import { listReleasePages, RELEASE_PAGE_CAP, type Release } from "./github.js";
 import {
   getReleaseConfig,
   isResolved,
@@ -35,6 +35,7 @@ import {
 import { floorRelease, installationToken } from "./gateway.js";
 import {
   listChannelFloors,
+  listStoredReleaseIds,
   releaseStoreStatements,
   type ReleaseChannelFloorRow,
 } from "./store.js";
@@ -74,7 +75,9 @@ export { getReleaseConfig } from "./config.js";
  * 5,000/hour for every product on the installation (R10-05).
  *
  * The channel floors (R6-10) are read here, before the fetch, and handed to the pure statement
- * builder, which raises them conditionally on what it read.
+ * builder, which raises them conditionally on what it read. So are the release ids the store
+ * already holds: when the list was read to its end, the builder marks any of them that GitHub no
+ * longer publishes as `absentUpstream` (P0-03). A capped read hands it `null` instead.
  *
  * Release descriptors (P2-04): a release carrying a `pkey-release.json` with no ingested
  * descriptor yet is ingested in the same pass (`ingestGithubDescriptors`, a bounded number per
@@ -100,12 +103,13 @@ export async function releaseStoreSyncStatements(
   if (!isResolved(cfg)) return [];
   try {
     const floors = await listChannelFloors(db, cfg.product);
+    const stored = await listStoredReleaseIds(db, cfg.product);
     const app =
       opts.app !== undefined
         ? opts.app
         : await readAppDeliverable(db, cfg.product);
     const token = await installationToken(env, cfg, now, fetchImpl);
-    const releases = await listReleases(
+    const listing = await listReleasePages(
       token,
       cfg.gh_owner,
       cfg.gh_repo,
@@ -117,25 +121,34 @@ export async function releaseStoreSyncStatements(
       token,
       cfg,
       floors,
-      releases,
+      listing.releases,
       fetchImpl,
     );
     const descriptors = await ingestGithubDescriptors(
       db,
       cfg,
       token,
-      releases,
+      listing.releases,
       app,
       now,
       fetchImpl,
     );
     return [
       ...descriptors.head,
-      ...releaseStoreStatements(cfg.product, cfg, releases, now, floors, held, {
-        app,
-        described: descriptors.described,
-        refused: descriptors.refused,
-      }),
+      ...releaseStoreStatements(
+        cfg.product,
+        cfg,
+        listing.releases,
+        now,
+        floors,
+        held,
+        listing.complete ? stored : null,
+        {
+          app,
+          described: descriptors.described,
+          refused: descriptors.refused,
+        },
+      ),
       ...descriptors.tail,
     ];
   } catch {
@@ -181,8 +194,9 @@ async function heldFloorReleases(
  * Refresh one product's truth store from GitHub, standalone.
  *
  * Used by `linkRepo` (whose own batch has to create the `products` row before anything can
- * reference it) and by the release admin surface. Returns how many statements were applied, so
- * a caller can tell "synced nothing" from "did not run".
+ * reference it), by the release admin surface, and by the GitHub `release` webhook (P0-03), which
+ * refreshes only these four tables and never re-reads `.pkey/`. Returns how many statements were
+ * applied, so a caller can tell "synced nothing" from "did not run".
  */
 export async function syncReleaseStore(
   env: Env,

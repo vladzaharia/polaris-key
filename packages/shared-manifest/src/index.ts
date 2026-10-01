@@ -2,48 +2,37 @@ import { type ProductCatalog } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import { parse as parseYaml } from "yaml";
 
+import {
+  DEFAULT_ENABLED_SERVICES,
+  MODULE_SERVICES,
+  SERVICE_SLUGS,
+  type ProductModule,
+  type ServiceSlug,
+} from "./services.generated.js";
+
 /**
- * What a `.pkey/product` `modules:` block may name.
+ * The opt-in services and the `modules:` vocabulary come from the GENERATED service table
+ * (`./services.generated.ts`, written by `pnpm gen:services` from `tools/services.json`).
  *
- * Two vocabularies, both accepted. The first five are the original module names; the last five
- * are the Polaris Key service slugs they became (design spec §2.1). Old manifests keep validating
+ * They originate in this package, not in the worker: this package is a *dependency* of the
+ * worker and of the CLI, so the types have to live on this side of the arrow, and both import
+ * them from here.
+ *
+ * `ProductModule` is what a `.pkey/product` `modules:` block may name. Two vocabularies, both
+ * accepted: the legacy module names (`licensing`, `releases`, `oidc`, `edgeMint`) and the
+ * Polaris Key service slugs they became (design spec §2.1). Old manifests keep validating
  * unchanged — `normalizeModules` translates them — so nothing in the field has to be rewritten
  * on the same day the server learns the new words.
  */
-export type ProductModule =
-  // legacy module vocabulary
-  | "licensing"
-  | "releases"
-  | "oidc"
-  | "edgeMint"
-  // Polaris Key service slugs
-  | "license"
-  | "config"
-  | "release"
-  | "update"
-  | "identity";
-
-/**
- * The five opt-in Polaris Key services (design spec §2.4/D-04). Declared here rather than imported
- * from the worker: this package is a *dependency* of the worker (and of the CLI), so the type
- * has to originate on this side of the arrow. The worker's `core/services.ts` declares the
- * structurally-identical pair for its own D1-facing use.
- */
-export type ServiceSlug =
-  | "license"
-  | "config"
-  | "release"
-  | "update"
-  | "identity";
-
-/** Canonical order — iterate this rather than `Object.keys` so output is stable. */
-export const SERVICE_SLUGS: readonly ServiceSlug[] = [
-  "license",
-  "config",
-  "release",
-  "update",
-  "identity",
-];
+export {
+  DEFAULT_ENABLED_SERVICES,
+  MODULE_SERVICES,
+  SERVICE_REQUIRES,
+  SERVICE_SLUGS,
+  type LegacyModule,
+  type ProductModule,
+  type ServiceSlug,
+} from "./services.generated.js";
 
 /** The enablement set a manifest declares, in the shape `products.services_json` stores. */
 export type ManifestServices = Record<ServiceSlug, { enabled: boolean }>;
@@ -305,9 +294,10 @@ export type ParseManifestResult =
   | { ok: false; errors: string[] };
 
 /**
- * Every module name a `modules:` block may use, mapped to the service slug(s) it enables.
+ * Every module name a `modules:` block may use, mapped to the service slug(s) it enables
+ * (`MODULE_SERVICES`, generated from each table row's `legacyModules`).
  *
- * The three interesting rows:
+ * The three interesting legacy rows:
  *
  *   `releases` -> release + update. The old module meant "this product distributes software",
  *   which the suite splits into the truth store (Release) and the feed (Update, D-05). Mapping
@@ -321,23 +311,11 @@ export type ParseManifestResult =
  *   `edgeMint` -> config. Edge-minting is a secret-DELIVERY capability of Config, not a
  *   service of its own (D-19); declaring it therefore turns Config on.
  */
-const MODULE_SERVICES: Record<ProductModule, readonly ServiceSlug[]> = {
-  licensing: ["license"],
-  releases: ["release", "update"],
-  oidc: ["identity"],
-  edgeMint: ["config"],
-  license: ["license"],
-  config: ["config"],
-  release: ["release"],
-  update: ["update"],
-  identity: ["identity"],
-};
-
 const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
 
 /** What a manifest that declares nothing runs: licensing + settings distribution, which is
- *  today's behaviour for every product (design spec §2.2). */
-const DEFAULT_ENABLED: readonly ServiceSlug[] = ["license", "config"];
+ *  today's behaviour for every product (design spec §2.2). The table's `defaultEnabled`. */
+const DEFAULT_ENABLED: readonly ServiceSlug[] = DEFAULT_ENABLED_SERVICES;
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
 const SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;

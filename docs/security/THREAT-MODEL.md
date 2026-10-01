@@ -199,6 +199,143 @@ that publish deltas (P4-03, P4-17) own the fix: product-scoped or content-named 
 granting a delta ref only under the earn-a-ref rule above, so a squatted key is never served
 under the victim product.
 
+### The device-code user-code page (P1-06)
+
+**What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
+console, a game or a CLI sends the player to. The player types (or scans) an eight-character
+user code; the page looks it up server-side and shows a confirmation page naming the product and
+the device; one button press sends the browser to the IdP. The secret `deviceCode` — which,
+with the device id, is what a poller redeems for a device token — never appears in a URL, a page
+or a form on this path, and the user code is drawn independently of it. Its KV index is keyed by
+a peppered hash (R12-04), lives at most for the flow's 600 s, and is deleted the moment the flow
+is confirmed.
+
+**What a user-code holder can do** — to a flow someone _else_ started (the flow's own starter
+is the remote-phishing case below, and is not bounded by anything here). The user code is public
+by design: clients show it large
+and render it as a QR code, so assume it is read over a shoulder, off a stream or from a photo.
+Before the real user confirms, its holder can:
+
+- **(a)** open the confirmation page, which re-mints the single-use CSRF token and so makes the
+  real user's pending click 403 until they reload;
+- **(b)** confirm the flow themselves and complete the IdP sign-in under their OWN identity. The
+  callback then does exactly what an ordinary sign-in for that identity does: it finds the
+  holder's own license (`getLicenseBySub`), or mints one under the product's existing group-map
+  or `oidcDefault` policy. It touches no other license. When the victim's device next polls with
+  the device code, which only it holds, it is signed in to the holder's account: that one device
+  row moves onto the holder's license and takes a seat there. The player sees this on the device.
+  The holder sees the device (its label, platform and version) in their own device list and can
+  revoke it. This is a visible mis-binding, not a takeover.
+
+The holder cannot obtain the device code, the victim's device token, or any token on the
+victim's license. They cannot change the victim's license in any way, and they cannot learn the
+victim's identity. The license the device was already on keeps its `sub`, origin and status, and
+the machine can enroll straight back onto it. The holder also cannot act at all once the victim
+has confirmed.
+
+Before P1-06's security fix, (b) was a takeover. The callback took the license the flow's device
+was on (`flow.deviceId`) and merged it into the signing-in identity. If the holder had no license,
+it re-subjected the victim's anonymous enrolled license to them (claim). If they had one, it
+moved the victim's devices onto it and disabled the victim's license, keeping `enroll_hwid`, so
+that machine could never enroll again (migrate). The holder could then mint tokens on the
+captured license from their own devices with an ordinary sign-in. The callback now applies no
+enrolled license at all (PoC, asserting the fix: `R8-oidc.test.ts` › `R8-02 / P1-06 a user-code
+holder cannot claim…`). Attaching a device's anonymous license to an account becomes P1-07's
+explicit opt-in. It will be applied at `/device/poll` by the device-code holder, and only after
+the player has seen the signed-in identity on the device and accepted it.
+
+Four controls make that true. The first and the fourth are the ones that matter:
+
+1. **Only the device code redeems a device-code flow.** Confirming 303s the browser to the IdP
+   authorize URL, and that URL carries `state`. `/identity/auth/poll` redeems `state` plus a
+   device id, so a user-code holder who confirmed would hold one half of that pair for free.
+   A flow `/device/start` began is therefore marked (`viaDeviceCode`) and `/identity/auth/poll`
+   answers it with the generic `error`; it completes only on `/identity/auth/device/poll`, with
+   the device code. (Found in P1-06 review: without this, a user code was enough to race the
+   real device for its token — an R8-01-class theft.)
+2. **The page never shows the device id.** It shows `deviceName`, or "Unnamed device".
+3. **Confirmation retires the user code.** The index is deleted, and a flow already confirmed
+   does not resolve even if a KV read still sees it: nobody can re-render, re-mint the CSRF token
+   or be 303'd to the authorize URL after the real user has pressed the button.
+4. **The callback merges nothing.** `handleAuthCallback` calls `activateFromIdentity` with no
+   enrolled license. The only flows that carry a device id are device-code flows, and those are
+   confirmed with the public user code, so the device's current license must not be an input to
+   whoever signs in. The browser-redirect flow carries no device id and never merged.
+
+**Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
+policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
+decides on Fetch Metadata when the browser sends it (only `Sec-Fetch-Site: same-origin` passes)
+and otherwise accepts an absent Origin, this origin, or `null`; a foreign Origin is refused. The
+single-use CSRF token minted on the render then guards a confirmation against cross-site forgery
+of _someone else's_ flow. Neither control stops a flow's _starter_: anyone can GET the page for
+their own user code, read the token and POST it back with no `Origin` at all (curl), so the
+starter can always confirm their own flow and receive the IdP authorize URL — see "Remote
+phishing" below. The `Origin: null` allowance adds only a legacy-browser variant of that same
+attack (a browser without Fetch Metadata, or a sandboxed or no-referrer attacker page).
+
+**Brute force (RFC 8628 §5.1).** The code space is 20⁸ ≈ 2.56 × 10¹⁰ (RFC 8628 §6.1's
+consonant alphabet). The page allows 30 requests per minute per _client network_, fail-closed:
+an IPv4 address, or an IPv6 **/64** (`clientNetwork` in `core/rateLimit.ts`). The /64 matters
+because one ordinary IPv6 host is routed a whole /64 — 2⁶⁴ source addresses at no cost
+(R10-04b) — so a per-address key, which every other bucket still uses (`clientIp`), would give a
+single host an unlimited supply of fresh budgets. One network therefore gets at most 300 guesses
+in a code's 600-second life: with N codes live at once it hits one with probability about
+300·N / 2.56 × 10¹⁰ — 1.2 × 10⁻⁵ even with 1,000 live flows.
+
+That per-network figure is not the whole bound. An attacker holding an IPv6 /48 (65,536 /64s,
+a common end-site assignment) or a botnet multiplies it by the networks it controls, and the
+ceiling is then the product's single `RateLimitDO` (R10-04a), of the order of 1,000 checks a
+second shared with every other bucket of that product. At that ceiling — which also degrades
+the product's other rate-limited routes, a visible attack in its own right — 1,000 live flows
+give about 6 × 10⁵ guesses per 600 s and one hit roughly every 7 hours; at a more sustainable
+200 guesses a second, one every day and a half; with 10 live flows, a hundred times rarer. What
+actually bounds guessing is the code space, the 600-second lifetime and the limited value of a
+hit. A blind hit gets exactly what any user-code holder gets (above), against a flow the guesser
+did not choose: a stale CSRF token on the page, or a stranger's device pulled onto the guesser's
+own account, where it is visible to both sides. It gets nothing after the victim confirms. Only
+the device code redeems a device-code flow, so a hit is not a path to a device token. The
+callback claims, migrates and disables nothing, so a hit is not a path to the victim's license
+either. Before that fix, one hit every 7 hours at the ceiling was one captured anonymous license
+every 7 hours. There is
+deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
+product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
+`clientIp`, and sharding the rate-limit Durable Object (R10-04a).
+
+**Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** Whoever starts a flow can
+confirm it themselves, with no browser: `/device/start` with their own device id, GET the page
+for their own user code, read the CSRF token, POST it with no `Origin` (it passes, as above), and
+read the IdP authorize URL — `state`, `nonce` and PKCE challenge — out of the `303`. They then
+forward that URL to a victim, or redirect the victim to it from any page. The victim signs in at
+the IdP — or, with silent SSO, does nothing at all — and never sees the Polaris confirmation
+page. The callback binds the victim's license to the flow, whose device id is the attacker's,
+and the attacker's own `/device/poll`, with their own device code, returns a device token on the
+victim's license (PoC: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own
+flow…`, which asserts the gap).
+
+So the confirmation page and its CSRF token protect only flows the attacker did _not_ start
+(cross-site forgery against someone else's flow, above). Typing the user code does not close
+this either: the starter types their own. The variant where the victim is sent the
+`verificationUriComplete` link instead lands them on the confirmation page, which names the
+product and shows the device label and user code — but the label is `deviceName` from
+`/device/start`, client-supplied display text a phisher sets to anything — so it is a speed bump,
+not a control.
+
+This is **not** inherent to the device-authorization grant. In RFC 8628 the user authenticates in
+the same browser session that entered the code; Polaris does not yet bind the IdP callback to
+the browser that confirmed, which is R8-03 (no flow on any surface is bound to the visitor's
+browser). R1-07 therefore stays **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
+GET self-confirm, the framable page and the device code in the URL, not the starter's ability to
+confirm. Fix direction, unowned: bind a `viaDeviceCode` flow's callback to the browser that
+confirmed it — e.g. a `__Host-` `SameSite=Lax` cookie set on the confirmation `303` and required
+by `handleAuthCallback` — which closes R1-07 for device-code flows and makes the `Origin: null`
+question moot.
+
+**Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
+flight across the deploy. Confirmation on both routes is one function: the Fetch Metadata /
+`Origin` check above, a single-use CSRF token, and a `303` to the IdP with `no-referrer` and
+`no-store`. The confirmation
+page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The

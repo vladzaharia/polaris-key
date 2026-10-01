@@ -409,6 +409,74 @@ describe("resync populates the release truth store", () => {
     expect(lastMetadata).toBeGreaterThanOrEqual(0);
     expect(firstReferencing).toBeGreaterThan(lastMetadata);
   });
+
+  // P0-03 — a release the store holds but a COMPLETE upstream list no longer carries.
+  const absentHealth = (stmts: DbStatement[]) =>
+    stmts
+      .filter(
+        (s) =>
+          s.sql.includes("INSERT INTO release_health") &&
+          s.params.includes(JSON.stringify({ absentUpstream: true })),
+      )
+      .map((s) => ({ subjectId: s.params[2], status: s.params[3] }));
+
+  it("marks a stored release missing from a complete list as absentUpstream, never deleting it", () => {
+    const stmts = releaseStoreStatements(
+      SLUG,
+      CFG,
+      [
+        release({ tag_name: "v1.3.0" }),
+        // A release unpublished back to a draft is gone from what the portal serves.
+        release({ tag_name: "v1.2.9", draft: true }),
+      ],
+      NOW,
+      [],
+      [],
+      ["v1.2.3", "v1.2.9", "v1.3.0"],
+    );
+    expect(absentHealth(stmts)).toEqual([
+      { subjectId: "v1.2.3", status: "degraded" },
+      { subjectId: "v1.2.9", status: "degraded" },
+    ]);
+    // Nothing the release is made of is deleted. The one DELETE a sync emits is P2-04's prune of
+    // map-made BUILDS (no foreign key points at `release_builds`), and it is scoped to the
+    // releases GitHub still lists — never to an absent one.
+    const deletes = stmts.filter((s) => /\bDELETE\b/i.test(s.sql));
+    expect(deletes.map((s) => /DELETE FROM (\w+)/.exec(s.sql)?.[1])).toEqual([
+      "release_builds",
+    ]);
+    expect(JSON.parse(deletes[0]!.params[1] as string)).toEqual(["v1.3.0"]);
+  });
+
+  it("does not mark a held floor release absent: a tag lookup found it upstream", () => {
+    const stmts = releaseStoreStatements(
+      SLUG,
+      CFG,
+      [release({ tag_name: "v1.3.0" })],
+      NOW,
+      [],
+      [release({ tag_name: "v1.0.0" })],
+      ["v1.0.0", "v1.2.3", "v1.3.0"],
+    );
+    expect(absentHealth(stmts)).toEqual([
+      { subjectId: "v1.2.3", status: "degraded" },
+    ]);
+  });
+
+  it("marks nothing when the caller could not read the list to its end", () => {
+    // `null` is what the sync passes for a capped read: absence from a partial list proves
+    // nothing about upstream.
+    const stmts = releaseStoreStatements(
+      SLUG,
+      CFG,
+      [release({ tag_name: "v1.3.0" })],
+      NOW,
+      [],
+      [],
+      null,
+    );
+    expect(absentHealth(stmts)).toEqual([]);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════

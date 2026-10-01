@@ -1,4 +1,5 @@
 import path from "node:path";
+import { SERVICE_SLUGS } from "@polaris-key/manifest";
 import {
   ADMIN_COOKIE_ENV,
   ADMIN_COOKIE_NAME,
@@ -313,7 +314,7 @@ function helpText(): string {
   return `pkey - Polaris Key platform CLI
 
 Commands:
-  pkey init [--product slug] [--name name] [--modules licensing,config,releases,oidc,edgeMint]
+  pkey init [--product slug] [--name name] [--modules ${SERVICE_SLUGS.join(",")}]
   pkey validate
   pkey doctor [--base-url url --product slug]
   pkey trust --kid kid --public-key key

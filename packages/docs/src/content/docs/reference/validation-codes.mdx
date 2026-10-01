@@ -176,7 +176,7 @@ problem is an error; the Worker reports them under the ingest refusal reason
 | `invalid_descriptor` | `/version` | version must be 1-64 characters of letters, digits, '.', '+' and '-'. |
 | `invalid_version_for_scheme` | `/version` | version $\{desc.version\} does not parse under the $\{app.versioning.scheme\} scheme. |
 | `product_mismatch` | `/product` | this descriptor is for $\{desc.product\}, not $\{slug\}. |
-| `r2_key_not_content_addressed` | `/builds/${bi}/artifacts/${ai}/locations/${li}/key` | an r2 key must be blobs/sha256/<sha256> (or gated/blobs/sha256/<sha256>). |
+| `r2_key_not_content_addressed` | `/builds/${bi}/artifacts/${ai}/locations/${li}/key` | an r2 key must be blobs/sha256/\<sha256> (or gated/blobs/sha256/\<sha256>). |
 | `r2_key_not_content_addressed` | `/builds/${bi}/artifacts/${ai}/locations/${li}/key` | an r2 key must be named by this artifact's own sha256. |
 | `tag_version_mismatch` | `/tag` | tag $\{desc.tag\} does not spell version $\{desc.version\} (the tag minus a leading v must equal it). |
 | `undeclared_build` | `/builds/${bi}/id` | build $\{b.id\} is not an entry of deliverables.app.artifacts. |

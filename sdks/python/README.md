@@ -306,5 +306,6 @@ pytest
 
 The conformance suite reads `../../conformance/corpus/v2/` from the monorepo and asserts
 byte-identical verify outcomes alongside the Node / Swift / React runners — JWS cases,
-per-document claim cases, trust cases, the clock floor, the gate matrix, and the offline
-bundle order.
+per-document claim cases, trust cases, the clock floor, the gate matrix, the offline
+bundle order, and the stage matrix: every row and every probe of the boot stage machine in
+`polaris_key.core.stages` (`initial_boot_state`, `boot_transition`, `boot_guard_action`).

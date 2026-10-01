@@ -49,6 +49,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { SERVICE_SLUGS } from "../src/core/services.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER_ROOT = join(HERE, "..");
@@ -176,12 +177,19 @@ describe("service boundaries", () => {
     expect(() => collectImportSites()).not.toThrow();
   });
 
-  it("is actually policing all five services", () => {
+  it("is actually policing every service in the table", () => {
     // The guard against this file quietly becoming a no-op: if a service directory stopped being
     // scanned — a rename, a move, a broken walk — the last case below would pass on an empty
-    // set and nobody would notice. Naming the expected services makes that failure loud.
+    // set and nobody would notice. Naming the expected services makes that failure loud. The
+    // expected set is the generated service table (`tools/services.json`), so a new row fails
+    // here until its `src/services/<slug>/` directory exists.
+    const dirs = new Set(listDirs(SERVICES_ROOT));
     const services = new Set(collectImportSites().map((s) => s.service));
-    for (const slug of ["license", "config", "release", "update", "identity"]) {
+    for (const slug of SERVICE_SLUGS) {
+      expect(
+        dirs.has(slug),
+        `src/services/${slug}/ is missing — tools/services.json has a "${slug}" row, so the service needs its own directory`,
+      ).toBe(true);
       expect(services, `${slug} should be scanned`).toContain(slug);
     }
   });

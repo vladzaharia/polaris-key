@@ -1,8 +1,9 @@
 // The Node conformance runner for corpus v2 / wire contract v3. It drives EVERY vector in
 // `conformance/corpus/v2/` through `@polaris-key/client-core` — the single isomorphic implementation
-// every JS SDK will consume — and asserts the expected outcome. The Python and Swift runners
-// mirror THIS file against the SAME corpus in P5; that is how four SDKs prove byte-identical
-// verification. `corpus.test.ts` keeps driving v1 through `@polaris-key/node` until they land.
+// every JS SDK will consume — and asserts the expected outcome. The Python, Swift and Godot
+// runners mirror THIS file against the SAME corpus (Swift and Godot read generator-owned
+// mirrors); that is how every SDK proves byte-identical verification. Godot runs `jwsCases`
+// so far, and reads `expect.docNulReplaced` (WIRE-CONTRACT-V3 §10), which this runner ignores.
 //
 // Seven sections, seven layers of the contract:
 //
@@ -13,6 +14,10 @@
 //   clockFloorCases  §4.2 monotonic floor over 3 artifacts → the reload path + licenseState
 //   gate-matrix      §5 the gate decision table            → licenseState
 //   bundleCases      §7 offline bundle import              → inspectBundle
+//
+// The fourth file in `corpus/v2/`, `stage-matrix.json` (the boot stage machine, client boot
+// behaviour outside the wire contract), has its own runner: `stageMatrix.test.ts`, through
+// `@polaris-key/client-core/stages`. `fingerprint.json` likewise runs in `fingerprint.test.ts`.
 //
 // The bundle section used to carry an inline reference implementation of §7's numbered order,
 // because no shipped verifier existed. P4 shipped one — `@polaris-key/client-core`'s `inspectBundle`

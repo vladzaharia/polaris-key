@@ -504,6 +504,7 @@ describe("a Diceroll-shaped release is classified by the declared map", () => {
       NOW,
       [],
       [],
+      null,
       {
         app: null,
       },
@@ -660,6 +661,15 @@ describe("ingestReleaseDescriptor (CI)", () => {
       storage_key: webKey,
       source_url: null,
     });
+  });
+
+  it("a CI-only release is not flagged absent upstream by a later GitHub sync", async () => {
+    const { db, ingest, fetchImpl } = await ciSetup([]);
+    expect(await ingest(r2Descriptor())).toMatchObject({ ok: true });
+    await syncReleaseStore(envFor(), db, SLUG, NOW + 200, fetchImpl);
+    const health = await listReleaseHealth(db, SLUG);
+    expect(health.find((h) => h.subject_id === "app@1.3.0")).toBeUndefined();
+    expect(await listReleaseMetadata(db, SLUG)).toHaveLength(1);
   });
 
   it("re-ingesting the same descriptor changes no row", async () => {

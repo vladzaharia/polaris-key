@@ -57,7 +57,11 @@ and portal lag behind what the device routes (which call GitHub live) already se
   to the end (no unread `next` page under P0-02's cap), write `release_health` for each missing
   release as `degraded` with `details_json: {"absentUpstream": true}`. A capped, incomplete list
   marks nothing. Rows are never deleted (`store.ts:23-31`: download tokens reference them).
-- Response body: `{ ok: true, event: "release", action, results: [{ product, ok, statements }] }`.
+- Response body: `{ ok, event: "release", action, results: [{ product, ok, statements }] }`.
+  _Implementation note:_ the top-level `ok` is every result's `ok`, as on the `push` path, so an
+  installation mismatch or a sync that could not reach GitHub (`statements: 0`, with an `error`
+  string) surfaces at the top level too. Completeness of the paginated read comes from a new
+  `listReleasePages` (`{ releases, complete }`) in `github.ts`; `listReleases` delegates to it.
 - Docs: `docs/DEPLOYMENT.md` App settings table (Events: Push, Release);
   `services/release/github-sync.md` describes both events.
 - **Wave-1 sync:** **Safe on every event (from P0-02).** The store sync now resolves through P0-02's paginated, capped, floor-aware path and is idempotent, so it is safe to run on every release event; the existing tests must keep passing with no further debouncing.
