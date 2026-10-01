@@ -1,7 +1,8 @@
 extends RefCounted
-# @pkey-feature core.verify core.bundle devices.fingerprint
+# @pkey-feature core.verify core.bundle devices.fingerprint license.gate
 # The Godot conformance runner: every section of the generator-owned corpus mirror
-# (res://tests/corpus/v2/cases.json and fingerprint.json, written by `pnpm gen:corpus`; never
+# (res://tests/corpus/v2/cases.json, gate-matrix.json and fingerprint.json, written by
+# `pnpm gen:corpus`; never
 # edit them) through the shipped addon, mirroring conformance/runners/node/corpusV2.test.ts and
 # fingerprint.test.ts vector for vector. No case id appears here: the corpus decides what is
 # tested, and each section ends with a coverage check against its floor.
@@ -12,6 +13,7 @@ extends RefCounted
 #   trustCases       PKeyTrust                   accepted, the merged set, issuedAt
 #   clockFloorCases  the reload path + PKeyGate  highWaterMark, effectiveNow, status
 #   bundleCases      PKeyBundle.inspect          imports + docs, or the refusing step
+#   gate-matrix rows the build-gate port + PKeyGate status, usable, reason, allowedRange
 #   deviceIds        PKeyDeviceId.from_raw       the derived id (fingerprint.json)
 #   vectors          PKeyFingerprint             components and hwid (fingerprint.json)
 #   windowsCimCommand / windowsCim / linuxAnchor / ramBuckets
@@ -22,6 +24,7 @@ extends RefCounted
 
 const CASES := "res://tests/corpus/v2/cases.json"
 const FINGERPRINT := "res://tests/corpus/v2/fingerprint.json"
+const GATE_MATRIX := "res://tests/corpus/v2/gate-matrix.json"
 const CORPUS_VERSION := 2
 const FLOORS := {
 	"jwsCases": 36,
@@ -30,6 +33,7 @@ const FLOORS := {
 	"trustCases": 11,
 	"clockFloorCases": 7,
 	"bundleCases": 9,
+	"gate-matrix": 38,
 	"deviceIds": 4,
 	"vectors": 6,
 	"windowsCim": 17,
@@ -49,6 +53,9 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _trust_cases(t, _section(t, corpus, "trustCases"))
 	await _clock_floor_cases(t, _section(t, corpus, "clockFloorCases"))
 	await _bundle_cases(t, _section(t, corpus, "bundleCases"))
+	var matrix = _load(t, GATE_MATRIX)
+	if matrix != null:
+		_gate_matrix(t, matrix)
 	var fp = _load(t, FINGERPRINT)
 	if fp != null:
 		_device_ids(t, _section(t, fp, "deviceIds"))
@@ -430,3 +437,172 @@ func _source_rules(t: PKeyTestContext, fp: Dictionary) -> void:
 		var want: String = c["bucket"] if c["bucket"] != null else ""
 		t.check("ramBuckets %s" % c["id"], got == want, "expect=%s got=%s" % [want, got])
 	_coverage(t, "ramBuckets", evaluated, buckets.size(), _ms_since(t0))
+
+
+# ── gate-matrix (§5, §5.1): the build-gate port and the licence gate ─────────────────────
+#
+# Each row pairs build-gate inputs (`gate`) with licence inputs (`license`). The build gate is
+# the SERVER's (packages/worker/src/core/gate.ts `checkBuildGate`, replayed against these same
+# rows by packages/worker/test/gateMatrixCorpus.test.ts), ported here from the SDK's own
+# PKeySemver and PKeyChannel; clients never compute it, they record the Worker's 403. Its
+# verdict feeds PKeyGate.license_state as the `blocked` hint. `expect.reason` describes the
+# derived hint, which on the activation-precedes-blocked row is deliberately not the status.
+
+## The rows P0-04 appended to gate-matrix v2 (WIRE-CONTRACT-V3 §5.1), and the carried row it
+## retired (the pre-R3-01 dev bypass).
+const P0_04_CHANNEL_ROWS := [
+	"ok — beta header, channels [stable, beta]",
+	"ok — beta header, channels [stable, staging] (alias)",
+	"ok — staging header, channels [stable, beta] (alias)",
+	"channel-not-entitled — beta header, channels [stable]",
+	"ok — manual channel header, entitled by name",
+	"channel-not-entitled — manual channel header, not entitled",
+	"channel-not-entitled — malformed channel header",
+	"ok — 0.0.0-beta build with beta entitlement",
+	"channel-not-entitled — 0.0.0-beta build without a beta entitlement",
+	"ok — 0.0.0-staging build is the beta channel, channels [stable, beta]",
+	"ok — latest header is the stable channel",
+	"ok — pr-42 header, channels grant the pr family",
+	"ok — pr header on a 0.0.0-pr-42 build, channels [stable, pr-42]",
+	"channel-not-entitled — pr-7 header, channels grant only pr-42",
+	"channel-not-entitled — stable header cannot loosen a 0.0.0-pr-42 build",
+	"channel-not-entitled — dev header without the dev entitlement",
+	"version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+	"ok — dev build with the dev entitlement bypasses the window (R3-01)",
+]
+const RETIRED_ROW := "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel"
+
+
+func _gate_matrix(t: PKeyTestContext, matrix: Dictionary) -> void:
+	t.check("gateMatrixVersion", PKeyClaims.is_number(matrix.get("gateMatrixVersion")) and int(matrix["gateMatrixVersion"]) == PKeyConstants.GATE_MATRIX_VERSION, str(matrix.get("gateMatrixVersion")))
+	var rows: Array = _section(t, matrix, "rows")
+	var names: Array = []
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	for i in rows.size():
+		var row = rows[i]
+		if not t.check("gate-matrix %d well-formed" % i, _matrix_row_ok(row)):
+			continue
+		var name: String = row["name"]
+		names.append(name)
+		var g: Dictionary = row["gate"]
+		var l: Dictionary = row["license"]
+		var expect: Dictionary = row["expect"]
+		var blocked = check_build_gate(g)
+		var doc = null
+		if l.has("issuedAt") and l.has("expiresAt") and l.has("graceUntil"):
+			doc = {
+				"aud": "djdl", "iss": "key.plrs.im", "licenseId": "lic_matrix", "deviceId": "dev_matrix",
+				"issuedAt": l["issuedAt"], "expiresAt": l["expiresAt"], "graceUntil": l["graceUntil"], "entitlements": {},
+			}
+		var state := PKeyGate.license_state({
+			"license_service_enabled": l["licenseServiceEnabled"],
+			"activation": l.get("activation"),
+			"doc": doc,
+			"now": l["now"],
+			"last_sync_unauthorized": l.get("lastSyncUnauthorized", false),
+			"last_verified_at": l.get("lastVerifiedAt"),
+			"blocked": blocked,
+		})
+		evaluated += 1
+		t.check("%s status" % name, state["status"] == expect["status"], "expect=%s got=%s" % [expect["status"], state["status"]])
+		t.check("%s ok" % name, PKeyGate.is_usable(state) == expect["ok"], "usable=%s" % PKeyGate.is_usable(state))
+		if expect.has("reason"):
+			var got = blocked["reason"] if blocked is Dictionary else null
+			t.check("%s reason" % name, got is String and got == expect["reason"], "expect=%s got=%s" % [expect["reason"], str(got)])
+		t.check("%s allowedRange" % name, _same(state.get("allowed_range"), expect.get("allowedRange")), "expect=%s got=%s" % [JSON.stringify(expect.get("allowedRange")), JSON.stringify(state.get("allowed_range"))])
+	_coverage(t, "gate-matrix", evaluated, rows.size(), _ms_since(t0))
+	var missing := P0_04_CHANNEL_ROWS.filter(func(n): return not names.has(n))
+	t.check("gate-matrix carries every P0-04 channel row", missing.is_empty(), JSON.stringify(missing))
+	t.check("gate-matrix no longer carries the retired dev-bypass row", not names.has(RETIRED_ROW))
+	# The port is not vacuous: a malformed header and an unentitled channel are refused, the
+	# window still applies to a dev build without the dev grant, and the grant reopens it.
+	var base := {"version": "2.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {}}
+	t.check("gate port: a well-formed stable build passes", not (check_build_gate(base) is Dictionary))
+	t.check("gate port: the dev grant reopens the window for a dev build", not (check_build_gate(dev_base().merged({"entitlements": _grant(["dev"])}, true)) is Dictionary))
+	t.check("gate port: a malformed header is refused", _reason(check_build_gate(base.merged({"channel": "Beta"}, true))) == "channel-not-entitled")
+	t.check("gate port: a header with a trailing newline is refused", _reason(check_build_gate(base.merged({"channel": "beta\n"}, true))) == "channel-not-entitled")
+	t.check("gate port: an unknown name is not stable", _reason(check_build_gate(base.merged({"channel": "nightly"}, true))) == "channel-not-entitled")
+	var dev := dev_base()
+	t.check("gate port: a dev build without the dev grant meets the window", _reason(check_build_gate(dev)) == "version-too-old")
+	t.check("gate port: allowDevBuilds opens the bypass (server override)", not (check_build_gate(dev.merged({"allowDevBuilds": true}, true)) is Dictionary))
+	t.check("gate port: allowDevBuilds false closes it even with the grant", _reason(check_build_gate(dev.merged({"allowDevBuilds": false, "entitlements": _grant(["dev"])}, true))) == "version-too-old")
+
+
+static func _matrix_row_ok(row) -> bool:
+	if not (row is Dictionary and row.get("name") is String and row.get("gate") is Dictionary \
+			and row.get("license") is Dictionary and row.get("expect") is Dictionary):
+		return false
+	var g: Dictionary = row["gate"]
+	var l: Dictionary = row["license"]
+	var e: Dictionary = row["expect"]
+	return g.get("version") is String and g.get("compatMin") is String and g.get("compatMax") is String \
+			and g.get("entitlements") is Dictionary and (not g.has("channel") or g["channel"] is String) \
+			and l.get("licenseServiceEnabled") is bool and PKeyClaims.is_number(l.get("now")) \
+			and e.get("status") is String and e.get("ok") is bool
+
+
+static func dev_base() -> Dictionary:
+	return {"version": "0.0.0-dev.1", "compatMin": "5.0.0", "compatMax": "6.0.0", "entitlements": {}}
+
+
+## Equal JSON values, without GDScript's cross-type `==` errors (a Dictionary against null).
+static func _same(a: Variant, b: Variant) -> bool:
+	return typeof(a) == typeof(b) and (a == null or a == b)
+
+
+static func _reason(blocked: Variant) -> Variant:
+	return blocked["reason"] if blocked is Dictionary else null
+
+
+static func _grant(names: Array) -> Dictionary:
+	return {"channels": {"state": "default", "value": names, "updatedAt": 1699990000}}
+
+
+## The server's `checkBuildGate` over a row's `gate` block: null when the build passes, else
+## {reason, allowedRange?}. WIRE-CONTRACT-V3 §5.1 rule 5, in order: the dev bypass
+## (`allowDevBuilds ?? granted includes "dev"`), the version window (product compat range
+## intersected with the grant's app.min/maxVersion, tighter wins), a malformed header, then
+## every channel in {build-implied, header} against the grant.
+static func check_build_gate(g: Dictionary) -> Variant:
+	var version: String = g["version"]
+	var ents: Dictionary = g["entitlements"]
+	var granted := PKeyChannel.granted(ents)
+	var dev_allowed: bool = g["allowDevBuilds"] if g.get("allowDevBuilds") is bool else granted.has(PKeyConstants.CHANNEL_DEV)
+	if PKeySemver.is_dev_build(version) and dev_allowed:
+		return null
+	var lo := _tighter(g["compatMin"], _str_ent(ents, "app.minVersion"), 1)
+	var hi := _tighter(g["compatMax"], _str_ent(ents, "app.maxVersion"), -1)
+	var allowed := {}
+	if lo != "":
+		allowed["min"] = lo
+	if hi != "":
+		allowed["max"] = hi
+	var below := lo != "" and PKeySemver.compare(version, lo) < 0
+	var above := hi != "" and PKeySemver.compare(version, hi) > 0
+	if below or above:
+		return {"reason": "version-too-old" if below else "version-too-new", "allowedRange": allowed}
+	var declared = null
+	if g.has("channel"):
+		declared = PKeyChannel.normalize_header(g["channel"], version)
+		if declared == null:
+			return {"reason": "channel-not-entitled"}
+	for channel in [PKeyChannel.implied(version), declared]:
+		if channel != null and not PKeyChannel.entitled(granted, channel):
+			return {"reason": "channel-not-entitled"}
+	return null
+
+
+static func _str_ent(ents: Dictionary, key: String) -> String:
+	var e = ents.get(key)
+	return e["value"] if e is Dictionary and e.get("value") is String else ""
+
+
+## The tighter bound of `a` and `b` ("" is absent): the higher minimum (`sign` 1) or the lower
+## maximum (`sign` -1), the first argument winning a tie, as the Worker's tighterMin/tighterMax.
+static func _tighter(a: String, b: String, sign: int) -> String:
+	if a == "":
+		return b
+	if b == "":
+		return a
+	return a if PKeySemver.compare(a, b) * sign >= 0 else b

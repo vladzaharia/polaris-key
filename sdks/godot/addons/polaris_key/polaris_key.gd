@@ -14,8 +14,10 @@ extends Node
 ## `core` is the PKeyCore every service client builds on.
 ##
 ## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
-## `config_changed(keys)` fires after start, each sync and each bundle import) and `devices`
-## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync).
+## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
+## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync) and
+## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitlements, entitled
+## channels, and the 401 re-acquire it installs into Core).
 
 const SDK_VERSION := "0.1.0"
 
@@ -29,6 +31,8 @@ signal store_error(err: Dictionary)
 var core: PKeyCore = null
 ## The device principal's surface (services/devices.gd); null until configure().
 var devices: PKeyDevices = null
+## The licence surface (services/license.gd); null until configure().
+var license: PKeyLicense = null
 var last_store_error: Dictionary = {}
 ## Managed config. Usable before `configure()` (every key falls back).
 var config := PKeyConfig.new()
@@ -52,6 +56,10 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state
+	license = PKeyLicense.new(core, devices)
+	license.install(core)
+	license.on_acquired = _on_license_acquired
+	license.on_changed = _on_license_wiped
 	return PKeyResult.success()
 
 
@@ -126,6 +134,19 @@ func is_licensed() -> bool:
 ## Where the token lives: {backend, degraded?: {reason, detail?}}.
 func store_status() -> Dictionary:
 	return core.store_status() if core != null else {}
+
+
+## A token was minted (activate, enroll): sync at once, unconditionally, so the caller returns
+## with the licence document (sdk-node `onLicenseAcquired`).
+func _on_license_acquired() -> void:
+	await sync(true)
+	_emit_state()
+
+
+## deactivate() wiped the token and the cache: the gate and the config both read from them.
+func _on_license_wiped() -> void:
+	_emit_state()
+	config.refresh()
 
 
 func _on_store_error(err: Dictionary) -> void:
