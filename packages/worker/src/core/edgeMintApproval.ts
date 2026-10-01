@@ -270,8 +270,16 @@ const WIDENING_TEXT: Record<MintWidening, string> = {
  * enrolment, a sign-in through the pusher's issuer, a device whose disabled licence stopped
  * being checked) keep working. Deleting the approval makes the widening permanent: after the
  * revert the recipe is `pending`, and only an operator's re-approval makes it mint again.
- * The call before the first write catches a widening the previous ingest's sweep missed (it
- * failed after that ingest's writes), so a revert can never be the first thing to look.
+ * The call before the first write catches a widening the previous ingest's sweep missed.
+ *
+ * The console calls it too, before every write of an approval input (`core/servicesAdmin.ts`
+ * for `services_json`, `services/license/admin/policy.ts` for `auto_issue_json`; `oidc_config`
+ * is written only by the ingest). The guarantee rests on THAT pre-write sweep, not on the
+ * ingest's `finally`: a `finally` covers a throw, not a Worker killed after the push's
+ * un-batched widening writes (CPU limit, a cancelled request), and an approve can race a push's
+ * post-write sweep. Because every writer of an approval input — ingest and console — sweeps
+ * before it writes, no revert can be the first thing to look at a widened approval. An
+ * operator's own console widening is therefore dropped at their next console edit or push.
  *
  * Recipe-field changes are NOT swept: while a recipe differs from its approval it signs nothing,
  * so there is nothing issued in between that a revert could launder.

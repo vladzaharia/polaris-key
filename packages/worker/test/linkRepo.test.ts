@@ -37,6 +37,12 @@ import {
   setServices,
 } from "../src/repo.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
+import { handleAdmin } from "../src/admin/index.js";
+import {
+  ADMIN_COOKIE,
+  CSRF_HEADER,
+  issueSession,
+} from "../src/admin/session.js";
 
 // A throwaway 2048-bit RSA private key (PKCS#8 PEM) so the App-JWT signer actually runs; the
 // fetch stub then shortcuts the installation-token exchange. Never a prod key.
@@ -1560,6 +1566,200 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     expect(await strangerMint()).toBe(404);
     expect(await w.mint()).toBe(404);
     expect(await approvalCount(w.db)).toBe(0);
+  });
+
+  // A `finally` covers a throw, not a Worker that is KILLED after the push's un-batched widening
+  // writes (`setAutoIssuePolicy`/`setServices` commit before the final batch; a manual-channel
+  // regex over a hostile tag, or GitHub cancelling a slow webhook, can end the isolate before the
+  // sweep). The guarantee therefore rests on every console write of an approval input sweeping
+  // FIRST. These cases stand in for the killed ingest by writing the widening directly, with the
+  // source left at `manifest` and no sweep, then drive the real console endpoints.
+  async function consoleCall(
+    env: Env,
+    db: Db,
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<Response> {
+    env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
+    env.PLATFORM_ADMIN_GROUP = "admins";
+    const { token, session } = await issueSession(
+      env,
+      { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
+      NOW,
+    );
+    const headers: Record<string, string> = {
+      cookie: `${ADMIN_COOKIE}=${token}`,
+      [CSRF_HEADER]: session.csrf,
+    };
+    if (body !== undefined) headers["content-type"] = "application/json";
+    return handleAdmin(mkReq(method, headers, body), env, db, path, {
+      now: NOW + 300,
+    });
+  }
+
+  const KILLED_WIDENINGS: Array<
+    [string, string, string, Record<string, unknown> | undefined]
+  > = [
+    [
+      "turning anonymous enrolment off",
+      "PATCH",
+      "/api/products/acme/license/policy",
+      { autoIssue: { enabled: false } },
+    ],
+    [
+      "handing the device policy back to the manifest",
+      "POST",
+      "/api/products/acme/license/policy/revert",
+      undefined,
+    ],
+  ];
+  for (const [label, method, path, body] of KILLED_WIDENINGS) {
+    it(`a killed ingest's anonymous enrolment: ${label} in the console drops the approval first`, async () => {
+      const w = await linked();
+      await w.resync([BASE_RECIPE]);
+      await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+      expect(await w.mint()).toBe(200);
+
+      // The push's `setAutoIssuePolicy` committed; the isolate died before the batch and the sweep.
+      await w.db.run(
+        "UPDATE products SET auto_issue_json = ? WHERE slug = 'acme'",
+        JSON.stringify({ enabled: true, tierId: "pro", mode: "anonymous" }),
+      );
+      const anon = (await loadProduct(w.env, w.db, "acme"))!;
+      expect(mintIsPublic(anon)).toBe(true);
+      expect(await approvalCount(w.db)).toBe(1);
+      expect(await w.mint()).toBe(404); // the per-mint check refuses meanwhile
+
+      const enrolled = await handleEnroll(
+        mkReq(
+          "POST",
+          { "x-pkey-device": "stranger" },
+          {
+            fingerprint: {
+              components: {
+                machineUuid: "u".repeat(FINGERPRINT_COMPONENT_LENGTH),
+                boardSerial: "b".repeat(FINGERPRINT_COMPONENT_LENGTH),
+                cpuModel: "c".repeat(FINGERPRINT_COMPONENT_LENGTH),
+              },
+              hwid: "ignored",
+            },
+          },
+        ),
+        w.env,
+        w.db,
+        anon,
+        NOW,
+      );
+      expect(enrolled.status).toBe(200);
+      const { token: stranger } = (await enrolled.json()) as {
+        token: string;
+      };
+
+      const res = await consoleCall(w.env, w.db, method, path, body);
+      expect(res.status).toBe(200);
+      expect(await approvalCount(w.db)).toBe(0);
+      const audited = await invalidations(w.db);
+      expect(audited).toHaveLength(1);
+      expect(audited[0]).toMatchObject({
+        target_id: "applemusic",
+        actor_sub: null,
+      });
+      expect(audited[0]!.summary).toContain(
+        "found widened before a console edit",
+      );
+
+      // Close the mint in the console (the revert above only hands the row back), then check
+      // the stranger is refused and stays refused across a clean push.
+      if (path.endsWith("/revert"))
+        await consoleCall(
+          w.env,
+          w.db,
+          "PATCH",
+          "/api/products/acme/license/policy",
+          {
+            autoIssue: { enabled: false },
+          },
+        );
+      const closed = (await loadProduct(w.env, w.db, "acme"))!;
+      expect(mintIsPublic(closed)).toBe(false);
+      const strangerMint = async () =>
+        (
+          await handleMintToken(
+            mkReq("POST", { authorization: `Bearer ${stranger}` }),
+            w.env,
+            w.db,
+            (await loadProduct(w.env, w.db, "acme"))!,
+            "applemusic",
+            NOW,
+          )
+        ).status;
+      expect(await strangerMint()).toBe(404);
+      await w.resync([BASE_RECIPE]);
+      expect(await strangerMint()).toBe(404);
+      expect(await approvalCount(w.db)).toBe(0);
+    });
+  }
+
+  const KILLED_SERVICES: Array<
+    [string, string, string, Record<string, unknown> | undefined]
+  > = [
+    [
+      "closing registration",
+      "PATCH",
+      "/api/products/acme/services",
+      { registration: "requires-license" },
+    ],
+    [
+      "handing services back to the manifest",
+      "POST",
+      "/api/products/acme/services/revert",
+      undefined,
+    ],
+  ];
+  for (const [label, method, path, body] of KILLED_SERVICES) {
+    it(`a killed ingest's open registration: ${label} in the console drops the approval first`, async () => {
+      const w = await linked();
+      await w.resync([BASE_RECIPE]);
+      await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+      // The push's `setServices` committed; the isolate died before the batch and the sweep.
+      await w.db.run(
+        "UPDATE products SET services_json = ? WHERE slug = 'acme'",
+        JSON.stringify({ registration: "open" }),
+      );
+      expect(await approvalCount(w.db)).toBe(1);
+      const res = await consoleCall(w.env, w.db, method, path, body);
+      expect(res.status).toBe(200);
+      expect(await approvalCount(w.db)).toBe(0);
+      expect(await invalidations(w.db)).toHaveLength(1);
+      expect(await w.mint()).toBe(404);
+    });
+  }
+
+  it("a console edit that widens nothing keeps the approval", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    for (const [method, path, body] of [
+      [
+        "PATCH",
+        "/api/products/acme/license/policy",
+        { autoIssue: { enabled: false } },
+      ],
+      ["POST", "/api/products/acme/license/policy/revert", undefined],
+      [
+        "PATCH",
+        "/api/products/acme/services",
+        { registration: "requires-license" },
+      ],
+      ["POST", "/api/products/acme/services/revert", undefined],
+    ] as const) {
+      const res = await consoleCall(w.env, w.db, method, path, body);
+      expect(res.status).toBe(200);
+    }
+    expect(await approvalCount(w.db)).toBe(1);
+    expect(await invalidations(w.db)).toHaveLength(0);
+    expect(await w.mint()).toBe(200);
   });
 
   it("an unchanged or narrowing resync never drops an approval", async () => {
