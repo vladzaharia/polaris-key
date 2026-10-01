@@ -151,17 +151,17 @@ buildVersion, minOSVersion, appPermissions: {entitlements, privacy}}` from the I
 
 ## Acceptance criteria
 
-- [ ] Golden-file tests for each feed from a Diceroll-shaped fixture (stable and beta, beta
+- [x] Golden-file tests for each feed from a Diceroll-shaped fixture (stable and beta, beta
       including stable, one yanked release, one release halted on the outlet).
-- [ ] The Classic source has no `marketplaceID` and has the legacy top-level fields; the PAL
+- [x] The Classic source has no `marketplaceID` and has the legacy top-level fields; the PAL
       source has `marketplaceID`; versions are newest first and unique by (`version`, `buildVersion`).
-- [ ] A release not `live` on the outlet, yanked, or with a paused, halted or partial rollout is
+- [x] A release not `live` on the outlet, yanked, or with a paused, halted or partial rollout is
       absent; the previous release is listed instead.
-- [ ] The F-Droid relay serves only registered files with correct content types and refuses
+- [x] The F-Droid relay serves only registered files with correct content types and refuses
       traversal; `pkey feeds fdroid` produces an index that validates against index-v2's shape and
       an `entry.json` whose index hash matches.
-- [ ] A non-public deliverable yields not-found on every feed route.
-- [ ] `routeCoverage` passes; `docs gen:check` is clean; the green gate passes (`AGENTS.md`).
+- [x] A non-public deliverable yields not-found on every feed route.
+- [x] `routeCoverage` passes; `docs gen:check` is clean; the green gate passes (`AGENTS.md`).
 
 ## Verify
 
