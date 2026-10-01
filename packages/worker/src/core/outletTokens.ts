@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Short-lived outlet tokens minted from an opened outlet credential (P5-01).
+ * Short-lived outlet tokens minted from an outlet credential (P5-01).
  *
  *   - `ascToken` — the App Store Connect API JWT: ES256, header `kid` = the key id, claims
  *     `iss` (issuer id), `iat`, `exp` (`exp - iat` = 1200 s, Apple's ceiling) and
@@ -10,23 +10,36 @@
  *     JWT-bearer grant (RFC 7523): an RS256 assertion posted to Google's token endpoint. Cached in
  *     KV, SEALED under the `outlet-credential` AAD kind (a KV dump yields ciphertext), until
  *     300 s before Google's `expires_in`.
- *   - `readSealedToken` / `writeSealedToken` / `outletTokenSlot` — that sealed cache, exported
- *     so P5-04 caches Microsoft Entra client-credentials tokens the same way.
+ *   - `readSealedToken` / `writeSealedToken` / `outletTokenSlot` / `outletTokenSlotHash` — that
+ *     sealed cache, exported so P5-04 caches Microsoft Entra client-credentials tokens the same
+ *     way (check by `outletCredentialVersion`, open only on a miss).
  *
- * Caching is also what keeps the audit trail small: a connector opens its credential (one
- * `outlet_credential.use` row) only when it has no usable token.
+ * **Cache first, open on a miss.** Both token functions take a credential id, not an opened
+ * credential. They key their cache by the credential's non-secret version marker
+ * (`outletCredentialVersion`: a hash of the sealed blob, read without decrypting), so a hit
+ * returns the token with no `openOutletCredential` call — no decryption, no
+ * `outlet_credential.use` audit row, no `last_used_at` write. Only a miss opens (and audits) the
+ * credential. That is what keeps the audit trail to tens of rows a day per credential. A rotated
+ * value has a new marker, so it never serves its predecessor's token.
+ *
+ * Because a hit hands out a store bearer token without an audited open, this module is itself a
+ * custody boundary: `test/outletCredentialReach.test.ts` lets only the Distribution service
+ * import it.
  *
  * Every function is pure given an injected `fetchImpl` and `now`, so the flow is tested against
  * a fake token endpoint with keys generated in the test — no network, no real credential.
  */
 
 import type { Env } from "../env.js";
+import type { Db } from "../db/types.js";
+import { sha256Hex } from "../crypto.js";
 import { open, seal, type SealContext } from "../keyvault.js";
 import { pk } from "../kv.js";
 import { signJwtEs256, signJwtRs256 } from "./jwt.js";
 import {
   GOOGLE_TOKEN_URI,
-  type OpenedOutletCredential,
+  openOutletCredential,
+  outletCredentialVersion,
 } from "./outletCredentials.js";
 
 /** A fetch with the platform `fetch` shape, injectable for tests. */
@@ -34,17 +47,6 @@ export type FetchImpl = (
   input: string,
   init?: RequestInit,
 ) => Promise<Response>;
-
-async function sha256Hex(s: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(s),
-  );
-  let hex = "";
-  for (const b of new Uint8Array(digest))
-    hex += b.toString(16).padStart(2, "0");
-  return hex;
-}
 
 // ── the sealed token cache ───────────────────────────────────────────────────────────────────
 
@@ -65,8 +67,9 @@ export interface CachedOutletToken {
  * The slot for one credential's token at one scope. The AAD is
  * `pkey:v2:<product>:outlet-credential:token:<credential_id>:<scope hash>` — the `token:` prefix
  * cannot collide with a credential id (ids have no `:`), so a cached token can never be opened
- * as a credential or the reverse. `scopeHash` must change whenever the token would (scopes, and
- * the key it was minted with), so a rotated key never serves its predecessor's token.
+ * as a credential or the reverse. `scopeHash` must change whenever the token would — use
+ * `outletTokenSlotHash(scope, version)` so a rotated credential never serves its predecessor's
+ * token, and so the slot can be computed WITHOUT opening the credential.
  */
 export function outletTokenSlot(
   product: string,
@@ -78,6 +81,16 @@ export function outletTokenSlot(
     key: pk(product, "outlet-token", `${credentialId}:${scopeHash}`),
     ctx: { product, kind: "outlet-credential", id },
   };
+}
+
+/** The `scopeHash` for `outletTokenSlot`: the requested scope string and the credential's
+ *  non-secret version marker (`outletCredentialVersion`), hashed. Never the key material — the
+ *  slot must be computable before (and without) an open. */
+export async function outletTokenSlotHash(
+  scope: string,
+  version: string,
+): Promise<string> {
+  return (await sha256Hex(`${scope}\n${version}`)).slice(0, 32);
 }
 
 /** A cached token that is still good at `now`, or null. A blob that will not open (rotated KEK,
@@ -141,24 +154,41 @@ export const ASC_AUDIENCE = "appstoreconnect-v1";
 const ASC_REUSE_MARGIN = 60;
 const ASC_MEMO_MAX = 256;
 
-/** Per-isolate memo. An ASC JWT is a self-contained bearer token with no server-side state, so
- *  memory is the right cache: nothing persists it, and an isolate restart only costs a sign. */
+/** Per-isolate memo, keyed by product, credential id and version marker. An ASC JWT is a
+ *  self-contained bearer token with no server-side state, so memory is the right cache: nothing
+ *  persists it, and an isolate restart only costs one open and a sign. */
 const ascMemo = new Map<string, { token: string; exp: number }>();
 
 /**
- * The App Store Connect API token for an `asc-api-key` credential, minted at `now` or reused
- * until 60 s before its expiry. The memo key covers the key material, so rotating the `.p8`
- * (same credential id) never serves a token signed by the old key.
+ * The App Store Connect API token for the `asc-api-key` credential `credentialId`, reused from
+ * the memo until 60 s before its expiry, otherwise minted at `now` from a fresh open (audited
+ * under `use`, e.g. `asc:poll`). `null` — "unusable credential" — when the credential is
+ * unknown, disabled, of another kind, or will not open. A memo hit never opens the credential.
  */
 export async function ascToken(
-  cred: OpenedOutletCredential<"asc-api-key">,
+  env: Env,
+  db: Db,
+  product: string,
+  credentialId: string,
+  use: string,
   now: number,
-): Promise<string> {
-  const { keyId, issuerId, p8 } = cred.value;
-  const memoKey = `${cred.product}:${cred.credentialId}:${await sha256Hex(`${keyId}\n${issuerId}\n${p8}`)}`;
-  const hit = ascMemo.get(memoKey);
+): Promise<string | null> {
+  const version = await outletCredentialVersion(
+    db,
+    product,
+    credentialId,
+    "asc-api-key",
+  );
+  if (version === null) return null;
+  const hit = ascMemo.get(`${product}:${credentialId}:${version}`);
   if (hit && hit.exp - ASC_REUSE_MARGIN > now) return hit.token;
 
+  const cred = await openOutletCredential(env, db, product, credentialId, use, {
+    kind: "asc-api-key",
+    now,
+  });
+  if (!cred) return null;
+  const { keyId, issuerId, p8 } = cred.value;
   const exp = now + ASC_TOKEN_LIFETIME;
   const token = await signJwtEs256(
     { iss: issuerId, iat: now, exp, aud: ASC_AUDIENCE },
@@ -166,7 +196,9 @@ export async function ascToken(
     keyId,
   );
   if (ascMemo.size >= ASC_MEMO_MAX) ascMemo.clear();
-  ascMemo.set(memoKey, { token, exp });
+  // Keyed by the version of the blob actually opened: a rotation between the version read and
+  // the open caches under the new marker, never the old.
+  ascMemo.set(`${product}:${credentialId}:${cred.version}`, { token, exp });
   return token;
 }
 
@@ -180,28 +212,50 @@ const GOOGLE_ASSERTION_LIFETIME = 60 * 60;
 const GOOGLE_CACHE_MARGIN = 300;
 
 /**
- * An OAuth access token for a `google-service-account` credential at `scopes`, from the sealed
- * KV cache or a fresh JWT-bearer exchange. THROWS when the exchange fails; the message carries
- * the HTTP status only, never the response body or anything from the key.
+ * An OAuth access token for the `google-service-account` credential `credentialId` at `scopes`:
+ * from the sealed KV cache when it holds one for this credential version and scope, otherwise
+ * from a fresh open (audited under `use`, e.g. `play:token`) and JWT-bearer exchange.
+ *
+ * `null` — "unusable credential" — when the credential is unknown, disabled, of another kind or
+ * will not open. THROWS when the exchange fails; the message carries the HTTP status only, never
+ * the response body or anything from the key. A cache hit never opens the credential.
  */
 export async function googleAccessToken(
   env: Env,
-  cred: OpenedOutletCredential<"google-service-account">,
+  db: Db,
+  product: string,
+  credentialId: string,
   scopes: readonly string[],
+  use: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-): Promise<string> {
+): Promise<string | null> {
   const scope = [...new Set(scopes)].sort().join(" ");
   if (scope.length === 0) throw new Error("google token: no scopes requested");
-  const { client_email, private_key } = cred.value;
-  const scopeHash = (
-    await sha256Hex(`${scope}\n${client_email}\n${private_key}`)
-  ).slice(0, 32);
-  const slot = outletTokenSlot(cred.product, cred.credentialId, scopeHash);
-
-  const cached = await readSealedToken(env, slot, now);
+  const version = await outletCredentialVersion(
+    db,
+    product,
+    credentialId,
+    "google-service-account",
+  );
+  if (version === null) return null;
+  const cached = await readSealedToken(
+    env,
+    outletTokenSlot(
+      product,
+      credentialId,
+      await outletTokenSlotHash(scope, version),
+    ),
+    now,
+  );
   if (cached) return cached.token;
 
+  const cred = await openOutletCredential(env, db, product, credentialId, use, {
+    kind: "google-service-account",
+    now,
+  });
+  if (!cred) return null;
+  const { client_email, private_key } = cred.value;
   const assertion = await signJwtRs256(
     {
       iss: client_email,
@@ -237,7 +291,11 @@ export async function googleAccessToken(
 
   await writeSealedToken(
     env,
-    slot,
+    outletTokenSlot(
+      product,
+      credentialId,
+      await outletTokenSlotHash(scope, cred.version),
+    ),
     body.access_token,
     body.expires_in - GOOGLE_CACHE_MARGIN,
     now,

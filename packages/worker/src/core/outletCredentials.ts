@@ -15,12 +15,16 @@
  *   - **Own AAD kind.** Every value is sealed under `pkey:v2:<product>:outlet-credential:<id>`.
  *     A blob copied into `product_secrets` fails to open there — the separation is
  *     cryptographic, not only a table boundary (`test/attack/R12-outlet-credentials.test.ts`).
- *   - **Platform-admin writes only.** `putOutletCredential` is called from the Core admin
- *     handler and nowhere else; no manifest ingest, resync or service hook can write the table
- *     (`test/outletCredentialReach.test.ts` refuses any other file naming it).
+ *   - **Platform-admin writes only.** `putOutletCredential` and `deleteOutletCredential` are
+ *     called from the Core admin handler and nowhere else — `test/outletCredentialReach.test.ts`
+ *     refuses any other file that names either function or the table, so no manifest ingest,
+ *     resync, service hook or Distribution connector can write it.
  *   - **One reader, audited.** `openOutletCredential` is reachable only from the Distribution
  *     service and `core/outletTokens.ts` (the reach test again), and every call — success or
  *     not — appends an `outlet_credential.use` audit row with actor `system:distribution`.
+ *   - **Caches checkable without an open.** `outletCredentialVersion` answers a non-secret
+ *     version marker (a hash of the sealed blob) without opening anything, so the token caches
+ *     in `core/outletTokens.ts` are keyed by it and a cache hit costs no open and no audit row.
  *   - **Never a value out.** Listing reads metadata columns only (the sealed column is never
  *     selected); open failures collapse to `null` ("unusable credential"), never an error
  *     message that could carry bytes; the admin write echoes the id only.
@@ -33,7 +37,7 @@ import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { open, seal, type SealContext } from "../keyvault.js";
 import { appendAudit } from "../repo.js";
-import { randomId } from "../crypto.js";
+import { randomId, sha256Hex } from "../crypto.js";
 import { importEs256PrivateKey, importRs256PrivateKey } from "./jwt.js";
 
 // ── kinds ────────────────────────────────────────────────────────────────────────────────────
@@ -449,6 +453,48 @@ export interface OpenedOutletCredential<
   kind: K;
   outletId: string | null;
   value: OutletCredentialValues[K];
+  /** The non-secret version marker of the blob this value was opened from — the same string
+   *  `outletCredentialVersion` answers for it. Caches key by it. */
+  version: string;
+}
+
+/** A non-secret version marker for a sealed value: the first 128 bits of the SHA-256 of the
+ *  ciphertext. It changes whenever the stored value does (a rotation, a delete and re-create,
+ *  and also a KEK re-seal, which only costs a cache miss) and says nothing about the plaintext. */
+async function versionOf(encValueJson: string): Promise<string> {
+  return (await sha256Hex(encValueJson)).slice(0, 32);
+}
+
+/**
+ * The version marker of one usable credential, WITHOUT opening it: `null` for an unknown id, a
+ * disabled row or (with `kind`) a row of another kind — the cases where `openOutletCredential`
+ * would also answer null before decrypting. Not audited: nothing secret leaves the table, and
+ * nothing is decrypted. A token cache keyed by this marker can be checked before any open, so
+ * a connector opens (and audits) its credential only on a cache miss.
+ */
+export async function outletCredentialVersion(
+  db: Db,
+  product: string,
+  credentialId: string,
+  kind?: OutletCredentialKind,
+): Promise<string | null> {
+  const row = await db.first<{
+    kind: string;
+    enc_value_json: string;
+    status: string;
+  }>(
+    "SELECT kind, enc_value_json, status FROM outlet_credentials WHERE product = ? AND credential_id = ?",
+    product,
+    credentialId,
+  );
+  if (
+    !row ||
+    row.status !== "active" ||
+    !isOutletCredentialKind(row.kind) ||
+    (kind !== undefined && row.kind !== kind)
+  )
+    return null;
+  return versionOf(row.enc_value_json);
 }
 
 /** Every open is attributed to the Distribution service: it is the only caller. */
@@ -465,7 +511,12 @@ export const OUTLET_CREDENTIAL_ACTOR = "system:distribution";
  *
  * Every call, usable or not, appends one `outlet_credential.use` audit row (actor
  * `system:distribution`, the `use`, and the outcome) and stamps `last_used_at` on an existing
- * row. Token caching (`core/outletTokens.ts`) keeps this to tens of rows a day per credential.
+ * row. Callers that only need a token go through `core/outletTokens.ts`, which checks its
+ * cache by `outletCredentialVersion` first and calls this only on a miss — that is what keeps
+ * the audit trail to tens of rows a day per credential. A caller that needs the raw value on
+ * every request (verifying an inbound webhook against `asc-webhook-secret`, say) opens it every
+ * time; such a path must authenticate or rate-limit the request BEFORE the open, or every
+ * unauthenticated request becomes two D1 writes.
  */
 export async function openOutletCredential<
   K extends OutletCredentialKind = OutletCredentialKind,
@@ -517,6 +568,7 @@ export async function openOutletCredential<
           kind: row.kind as K,
           outletId: row.outlet_id,
           value: checked.value as OutletCredentialValues[K],
+          version: await versionOf(row.enc_value_json),
         };
       }
     } catch {

@@ -8,7 +8,9 @@
  * Writes are audited as `outlet_credential.set` / `outlet_credential.delete` with the session's
  * actor, exactly as `secret.set` is. This file, the Distribution service and
  * `core/outletTokens.ts` are the only importers of `core/outletCredentials` the reach test
- * allows — and this one never opens a value: it seals, lists metadata and deletes.
+ * allows, and this is the only file outside the owner it lets name `putOutletCredential` or
+ * `deleteOutletCredential` — and this one never opens a value: it seals, lists metadata and
+ * deletes.
  *
  * The dispatcher has already required a platform-admin session (`canAdminProduct`). The check is
  * repeated here on purpose: "written only by a platform admin" is the custody rule, and it must

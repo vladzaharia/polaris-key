@@ -3,7 +3,7 @@
  *
  * `core/outletCredentials.ts` is the one accessor for `outlet_credentials`, and it is Core so
  * that the Distribution service may import it — which means `boundaries.test.ts` would let EVERY
- * service import it too. This suite narrows that for this one module, in three directions:
+ * service import it too. This suite narrows that for this one module, in five directions:
  *
  *   1. **Importers.** Only the Distribution service (`src/services/distribution/**`), the token
  *      helpers (`src/core/outletTokens.ts`) and the Core admin handler
@@ -17,6 +17,13 @@
  *   3. **The AAD kind.** No file outside the vault, the owner, the token helpers and the sweep
  *      spells the `"outlet-credential"` seal kind — so no other code can open a value with
  *      `keyvault.open` directly.
+ *   4. **The writers.** No file outside the owner and the Core admin handler names
+ *      `putOutletCredential` or `deleteOutletCredential` — so although the Distribution service
+ *      may import the module (to open), no connector, webhook handler or public route in it can
+ *      write or delete a credential. "Written only by a platform admin" is enforced here.
+ *   5. **The token helpers.** `core/outletTokens.ts` hands out a cached store bearer token on a
+ *      cache hit WITHOUT an audited open, so it is a custody boundary of its own: only the
+ *      Distribution service (`src/services/distribution/**`) may import it.
  *
  * Adding an entry to any allowlist is a custody decision: it needs a review that says why, and
  * the threat model's review trigger (§9) applies. P6-02 is expected to add one reviewed entry.
@@ -35,6 +42,7 @@ const WORKER_ROOT = join(HERE, "..");
 const SRC = join(WORKER_ROOT, "src");
 
 const TARGET = "src/core/outletCredentials";
+const TOKENS_TARGET = "src/core/outletTokens";
 
 const IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
 const IMPORT_ALLOW_FILES = [
@@ -46,6 +54,11 @@ const TABLE_ALLOW_FILES = [
   "src/admin/handlers/products.ts",
   "src/admin/repo.ts",
 ];
+const WRITER_ALLOW_FILES = [
+  "src/core/outletCredentials.ts",
+  "src/admin/handlers/outletCredentials.ts",
+];
+const TOKENS_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
 const KIND_ALLOW_FILES = [
   "src/keyvault.ts",
   "src/core/outletCredentials.ts",
@@ -122,12 +135,22 @@ function reachViolations(sources: Source[]): string[] {
       /["'`]outlet-credential["'`]/.test(body)
     )
       out.push(`${src.file} spells the "outlet-credential" seal kind`);
+    if (
+      !WRITER_ALLOW_FILES.includes(src.file) &&
+      /\b(?:putOutletCredential|deleteOutletCredential)\b/.test(body)
+    )
+      out.push(`${src.file} names an outlet-credential writer`);
+    const tokensOk =
+      TOKENS_IMPORT_ALLOW_PREFIXES.some((p) => src.file.startsWith(p)) ||
+      src.file === `${TOKENS_TARGET}.ts`;
+    if (!tokensOk && resolvedImports(src).includes(TOKENS_TARGET))
+      out.push(`${src.file} imports core/outletTokens`);
   }
   return out;
 }
 
 describe("outlet-credential reach", () => {
-  it("only the allowlisted files import core/outletCredentials, name its table or its AAD kind", () => {
+  it("only the allowlisted files import core/outletCredentials or core/outletTokens, name its table, its writers or its AAD kind", () => {
     expect(reachViolations(loadSources())).toEqual([]);
   });
 
@@ -136,6 +159,7 @@ describe("outlet-credential reach", () => {
       ...IMPORT_ALLOW_FILES,
       ...TABLE_ALLOW_FILES,
       ...KIND_ALLOW_FILES,
+      ...WRITER_ALLOW_FILES,
     ])
       expect(existsSync(join(WORKER_ROOT, f)), f).toBe(true);
   });
@@ -178,6 +202,46 @@ describe("outlet-credential reach", () => {
     ).toEqual([
       "src/services/release/sync.ts names the outlet_credentials table",
       'src/core/ingest.ts spells the "outlet-credential" seal kind',
+    ]);
+  });
+
+  it("the guard fires on a Distribution connector that writes or deletes a credential", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/services/distribution/connectors/x.ts",
+          text: 'import { putOutletCredential } from "../../../core/outletCredentials.js";\nawait putOutletCredential(env, db, input);',
+        },
+        {
+          file: "src/services/distribution/routes.ts",
+          text: 'import * as oc from "../../core/outletCredentials.js";\nawait oc.deleteOutletCredential(db, p, id);',
+        },
+      ]),
+    ).toEqual([
+      "src/services/distribution/connectors/x.ts names an outlet-credential writer",
+      "src/services/distribution/routes.ts names an outlet-credential writer",
+    ]);
+  });
+
+  it("the guard fires on anything outside Distribution importing core/outletTokens", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/services/config/mint.ts",
+          text: 'import { googleAccessToken } from "../../core/outletTokens.js";',
+        },
+        {
+          file: "src/admin/handlers/outletCredentials.ts",
+          text: 'import { ascToken } from "../../core/outletTokens.js";',
+        },
+        {
+          file: "src/services/distribution/connectors/play.ts",
+          text: 'import { googleAccessToken } from "../../../core/outletTokens.js";',
+        },
+      ]),
+    ).toEqual([
+      "src/services/config/mint.ts imports core/outletTokens",
+      "src/admin/handlers/outletCredentials.ts imports core/outletTokens",
     ]);
   });
 

@@ -461,6 +461,7 @@ describe("outlet credentials: openOutletCredential", () => {
       kind: "asc-api-key",
       outletId: null,
       value: VALUES["asc-api-key"],
+      version: expect.stringMatching(/^[0-9a-f]{32}$/) as unknown as string,
     });
     const rows = await useRows();
     expect(rows).toHaveLength(1);
