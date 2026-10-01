@@ -204,7 +204,9 @@ browserAdapter({
   `invoke("update", "decide", …)`; an Electron host answers with `client.update.decide()`.
 - **No v4 answer stops play.** `binary`, `store` and `platform` with `mandatory: true`, and
   every `blocked {app-floor}`, are prompts the player cannot dismiss (`undismissable`), shown
-  over an app that keeps running; `boot` is never `required`. A non-mandatory `platform` answer
+  over an app that keeps running: `<UpdatePrompt>` renders them as a persistent
+  `role="alert"` banner with no dismiss control, whatever the `variant`, never as a full-window
+  dialog; `boot` is never `required`. A non-mandatory `platform` answer
   boots as `none`.
 - **Outlet.** A host's `update.outlet` (a kind, or `{id, kind, subkind?}`) wins; otherwise the
   stamp (`WEB_OUTLET_STAMP` by default) goes through `resolveUpdateOutlet`. Detection is P3-11's.

@@ -485,22 +485,51 @@ describe('UpdatePrompt source="decision" — every v4 action', () => {
     "platform mandatory",
     "blocked",
   ]) {
-    it(`${name} is a prompt the player cannot dismiss`, async () => {
-      const decision = DECISIONS[name]!;
-      const { container, adapter } = renderDecision(decision);
-      const dialog = await findEl<HTMLElement>(
-        container,
-        `[data-polaris-update="${decision.action}"]`,
-      );
-      expect(dialog.hasAttribute("data-polaris-update-mandatory")).toBe(true);
-      const alert = within(container).getByRole("alertdialog");
-      expect(alert.getAttribute("aria-modal")).toBe("true");
-      expect(
-        container.querySelector("[data-polaris-update-dismiss]"),
-      ).toBeNull();
-      adapter.dispose();
-    });
+    for (const variant of ["banner", "dialog"] as const) {
+      it(`${name} (${variant}) is a prompt the player cannot dismiss, over a running app`, async () => {
+        const decision = DECISIONS[name]!;
+        const { container, adapter } = renderDecision(decision, { variant });
+        const prompt = await findEl<HTMLElement>(
+          container,
+          `[data-polaris-update="${decision.action}"]`,
+        );
+        expect(prompt.hasAttribute("data-polaris-update-mandatory")).toBe(true);
+        // No dismiss control.
+        expect(
+          container.querySelector("[data-polaris-update-dismiss]"),
+        ).toBeNull();
+        // Not a full-window modal: no v4 answer stops play (plans/P3-01.md §2.8).
+        expect(prompt.getAttribute("role")).toBe("alert");
+        expect(container.querySelector('[role="alertdialog"]')).toBeNull();
+        expect(container.querySelector('[aria-modal="true"]')).toBeNull();
+        expect(prompt.style.position).not.toBe("fixed");
+        for (const el of Array.from(container.querySelectorAll("*")))
+          expect((el as HTMLElement).style.position).not.toBe("fixed");
+        adapter.dispose();
+      });
+    }
   }
+
+  it("a dismissable decision with variant=dialog is the dialog, with a dismiss control", async () => {
+    const { container, adapter } = renderDecision(DECISIONS.binary!, {
+      variant: "dialog",
+      onAction: vi.fn(),
+    });
+    const dialog = await waitFor(() =>
+      within(container).getByRole("alertdialog"),
+    );
+    expect(dialog).toBeTruthy();
+    expect(
+      container.querySelector("[data-polaris-update-mandatory]"),
+    ).toBeNull();
+    fireEvent.click(
+      container.querySelector("[data-polaris-update-dismiss]") as Element,
+    );
+    await waitFor(() =>
+      expect(container.querySelector("[data-polaris-update]")).toBeNull(),
+    );
+    adapter.dispose();
+  });
 
   it("store opens its listing URL by default", async () => {
     const open = vi.spyOn(window, "open").mockImplementation(() => null);
@@ -527,7 +556,16 @@ describe('UpdatePrompt source="decision" — every v4 action', () => {
       expect(
         container.querySelector("[data-polaris-update-action]"),
       ).toBeNull();
-      expect(container.querySelector('[role="alertdialog"] button')).toBeNull();
+      // Only the dismiss control remains, and `blocked` has not even that.
+      expect(
+        container.querySelector(
+          "[data-polaris-update] button:not([data-polaris-update-dismiss])",
+        ),
+      ).toBeNull();
+      if (name === "blocked")
+        expect(
+          container.querySelector("[data-polaris-update] button"),
+        ).toBeNull();
       adapter.dispose();
       cleanup();
     }

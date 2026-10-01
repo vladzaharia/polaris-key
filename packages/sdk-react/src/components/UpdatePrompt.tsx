@@ -22,9 +22,11 @@
 //                                (download), `store` (open the listing), `platform` (the store
 //                                or platform installs it) and `blocked {app-floor}`. A
 //                                mandatory offer and every `blocked` answer are prompts the
-//                                player CANNOT dismiss (plans/P3-01.md §2.8): the blocking
-//                                dialog with no dismiss control, over an app that keeps
-//                                running — no v4 answer stops play. `none` renders nothing.
+//                                player CANNOT dismiss (plans/P3-01.md §2.8): a persistent
+//                                `role="alert"` banner with no dismiss control, whatever the
+//                                variant. It never covers the app — no v4 answer stops play,
+//                                so the full-window dialog is only for a dismissable
+//                                decision with `variant="dialog"`. `none` renders nothing.
 
 import { useState, type ReactNode } from "react";
 import { useCtx, usePolarisTheme } from "../react/hooks.js";
@@ -58,7 +60,8 @@ export interface UpdatePromptProps
    *  update decision. */
   source?: "version" | "decision";
   /** `banner` (default, non-blocking) or `dialog` (blocking, focus-managed). A decision the
-   *  player cannot dismiss is always the dialog. */
+   *  player cannot dismiss is always a persistent banner with no dismiss control: it must
+   *  never cover a game that keeps running. */
   variant?: "banner" | "dialog";
   slots?: UpdatePromptSlots;
   className?: string;
@@ -315,7 +318,7 @@ function DecisionPrompt(
   if (mandatory) body = withVersion(c.updateMandatoryBody);
   const act = onAction ? () => onAction(ctx) : fallback;
 
-  if (locked || variant === "dialog") {
+  if (!locked && variant === "dialog") {
     return (
       <MessageScreen
         className={className}
@@ -324,30 +327,30 @@ function DecisionPrompt(
         logo={theme.logo}
         {...(act ? { onRetry: act, retryLabel: label } : {})}
         extra={
-          locked ? undefined : (
-            <div style={{ marginTop: "8px" }}>
-              <Button
-                variant="ghost"
-                style={{ fontSize: "13px" }}
-                onClick={dismiss}
-                data-polaris-update-dismiss=""
-              >
-                {c.updateDismissLabel}
-              </Button>
-            </div>
-          )
+          <div style={{ marginTop: "8px" }}>
+            <Button
+              variant="ghost"
+              style={{ fontSize: "13px" }}
+              onClick={dismiss}
+              data-polaris-update-dismiss=""
+            >
+              {c.updateDismissLabel}
+            </Button>
+          </div>
         }
         data-polaris-update={decision.action}
-        {...(locked ? { "data-polaris-update-mandatory": "" } : {})}
       />
     );
   }
 
+  // The banner. A decision the player cannot dismiss stays here too, as a persistent alert
+  // with no dismiss control: it sits in the layout and never covers the running app.
   return (
     <div
       className={className}
-      role="status"
-      aria-live="polite"
+      {...(locked
+        ? { role: "alert", "data-polaris-update-mandatory": "" }
+        : { role: "status", "aria-live": "polite" as const })}
       aria-label={title}
       style={{
         display: "flex",
@@ -375,14 +378,16 @@ function DecisionPrompt(
           {label}
         </Button>
       ) : null}
-      <Button
-        variant="ghost"
-        style={{ padding: "6px 12px", fontSize: "13px" }}
-        onClick={dismiss}
-        data-polaris-update-dismiss=""
-      >
-        {c.updateDismissLabel}
-      </Button>
+      {locked ? null : (
+        <Button
+          variant="ghost"
+          style={{ padding: "6px 12px", fontSize: "13px" }}
+          onClick={dismiss}
+          data-polaris-update-dismiss=""
+        >
+          {c.updateDismissLabel}
+        </Button>
+      )}
     </div>
   );
 }
