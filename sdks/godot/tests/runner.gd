@@ -26,7 +26,7 @@ const Context := preload("res://tests/support/test_context.gd")
 
 ## Named suite sets. Later work packages append their suites to `ci`; `profile` stays outside.
 const SETS := {
-	"ci": ["sha512", "ed25519", "conformance", "core", "config", "license", "transcripts", "devices", "platform", "build_stamp"],
+	"ci": ["sha512", "ed25519", "conformance", "core", "config", "license", "transcripts", "devices", "platform", "build_stamp", "update"],
 }
 
 
