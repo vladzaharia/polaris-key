@@ -842,10 +842,13 @@ export class BrowserAdapter implements PolarisAdapter {
       const record = this.offline
         ? await ensureRecord(this.offline, this.product)
         : null;
+      // §4.1: a cache of another version is discarded, never read.
+      const cache =
+        record?.cache?.v === CACHE_VERSION ? record.cache : undefined;
       const slices: UpdateSlices = record
         ? {
-            feeds: record.cache?.feeds ?? {},
-            releaseRecords: record.cache?.releaseRecords ?? {},
+            feeds: cache?.feeds ?? {},
+            releaseRecords: cache?.releaseRecords ?? {},
           }
         : this.memorySlices;
       const result = await decideBrowserUpdate({
@@ -895,10 +898,13 @@ export class BrowserAdapter implements PolarisAdapter {
       return;
     }
     const record = await ensureRecord(this.offline, this.product);
+    // A cache of another version is replaced, never relabelled (§4.1).
+    const prior =
+      record.cache?.v === CACHE_VERSION ? record.cache : { v: CACHE_VERSION };
     await this.offline.write(this.product, {
       ...record,
       cache: {
-        ...(record.cache ?? { v: CACHE_VERSION }),
+        ...prior,
         v: CACHE_VERSION,
         feeds: slices.feeds,
         releaseRecords: slices.releaseRecords,
