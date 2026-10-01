@@ -38,7 +38,7 @@ export default defineConfig({
     starlight({
       title: "Polaris Key",
       description:
-        "Licensing, managed config, releases, updates, and identity for multi-product apps — one worker, five services, four SDKs.",
+        "Licensing, managed config, releases, distribution, updates, and identity for multi-product apps — one worker, six services, four SDKs.",
       customCss: ["./src/styles/global.css"],
       sidebar: [
         {

@@ -6,7 +6,7 @@
 // This document is the ONE authority a product publishes about itself. v2's `modules` object
 // let four surfaces each re-infer enablement from row presence, so the document could claim a
 // capability whose routes 404ed — or deny one that answered. v3 replaces it with a top-level
-// `services` map keyed by the five slugs, and the SDK gates its sub-clients on the parse of
+// `services` map keyed by the service slugs, and the SDK gates its sub-clients on the parse of
 // that map (D-21). Everything below therefore protects one of two properties:
 //
 //   * the FIXTURES ARE THE WORKER'S REAL EMISSION. `packages/worker/src/core/discovery.ts`
@@ -50,7 +50,7 @@ const NONE = {
 /**
  * The Worker's emission, verbatim in shape: `handleDiscovery` builds exactly these top-level
  * keys, and each service fragment is that service's own `discoveryFragment` (license/config
- * shown; release/update/identity default to the `DISABLED` singleton `{enabled:false}`).
+ * shown; release/distribution/update/identity default to the `DISABLED` singleton `{enabled:false}`).
  */
 function workerDoc(
   overrides: Record<string, unknown> = {},

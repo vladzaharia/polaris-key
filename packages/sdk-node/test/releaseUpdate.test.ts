@@ -325,7 +325,7 @@ describe("Release/Update — the D-21 gate fires before the dial", () => {
       "/release/changelog": () => json(CHANGELOG),
       "/update/version": () => json({ version: "9.9.9", tag: "v9", url: "u" }),
     });
-    // The suite default: license + config on, release/update/identity OFF.
+    // The suite default: license + config on, release/distribution/update/identity OFF.
     const c = await client(mock, { services: ["license", "config"] });
     await expect(c.release.changelog()).rejects.toMatchObject({
       code: "service-unavailable",

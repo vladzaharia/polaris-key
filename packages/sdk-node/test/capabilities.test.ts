@@ -9,7 +9,7 @@
 //
 //   1. a discovery document loaded THIS SESSION (`client.discover()`) — always wins;
 //   2. `CoreOptions.expectedServices` — what this build was compiled expecting;
-//   3. `DEFAULT_SERVICES` — license ON, config ON, release/update/identity OFF.
+//   3. `DEFAULT_SERVICES` — license ON, config ON, release/distribution/update/identity OFF.
 //
 // Both halves matter and both are here. The FAIL-CLOSED half: release, update and identity are
 // off until something says otherwise, and `ctx.requireService(slug)` makes a sub-client of a
@@ -221,7 +221,7 @@ function discoveryDoc(
 // D-21's fail-closed half. License and Config are on because every product has run them since
 // before the suite existed; the three genuinely new services are off until advertised.
 describe("capabilities — the suite default (D-21)", () => {
-  it("resolves license+config ON and release/update/identity OFF with no document and no expectation", async () => {
+  it("resolves license+config ON and release/distribution/update/identity OFF with no document and no expectation", async () => {
     const client = await makeClient(mockFetch({}).impl);
 
     expect(client.capabilities()).toEqual({

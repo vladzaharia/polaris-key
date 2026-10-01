@@ -3,7 +3,8 @@
  *
  * `/manage/api/products/<slug>/<service>/…` is dispatched through the same descriptor the public
  * router uses (`ServiceDescriptor.adminHandle`), so a service owns its own console API instead of
- * having a branch in `admin/handlers/products.ts`. All five services have one:
+ * having a branch in `admin/handlers/products.ts`. Five of the six services have one
+ * (distribution has no `adminHandle` yet — its console view is read-only, P2b-01):
  *
  *   license/{licenses…,tiers…,policy}  MOVED in P7 off the dispatcher's own destructure; the
  *                                      pre-suite spellings are GONE, not aliased

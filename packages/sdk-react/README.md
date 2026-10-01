@@ -51,8 +51,8 @@ render-prop.
 
 ## Capabilities (D-21)
 
-`PolarisState.capabilities` is a `Record<ServiceSlug, { enabled: boolean }>` over the five
-services (`license`, `config`, `release`, `update`, `identity`). It is **fail-closed**:
+`PolarisState.capabilities` is a `Record<ServiceSlug, { enabled: boolean }>` over the six
+services (`license`, `config`, `release`, `distribution`, `update`, `identity`). It is **fail-closed**:
 
 | situation                       | what the client believes                         |
 | ------------------------------- | ------------------------------------------------ |

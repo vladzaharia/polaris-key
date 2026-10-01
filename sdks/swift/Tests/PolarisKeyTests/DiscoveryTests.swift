@@ -155,7 +155,7 @@ final class DiscoveryTests: XCTestCase {
     }
 
     /// The precedence: a discovery document loaded this session > `expectedServices` > the suite
-    /// default (license + config; release/update/identity OFF).
+    /// default (license + config; release/distribution/update/identity OFF).
     func testCapabilityPrecedence() async throws {
         let suiteDefault = try core(transport: ExplodingTransport())
         let defaultMap = await suiteDefault.services()

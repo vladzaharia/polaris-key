@@ -16,8 +16,8 @@ fallback, so there is never a question of which copy of a document won.
 
 `product.{json,yaml,yml}` also carries the two suite-level switches:
 
-- `modules.<service>.enabled` — which of `license`, `config`, `release`, `update`, `identity`
-  this product runs. Undeclared means license + config, which is the pre-suite behaviour. The
+- `modules.<service>.enabled` — which of `license`, `config`, `release`, `distribution`, `update`,
+  `identity` this product runs. `update` requires `distribution`, which requires `release`. Undeclared means license + config, which is the pre-suite behaviour. The
   legacy names (`licensing`, `releases`, `oidc`, `edgeMint`) still work.
 - `devices.registration` — `open` | `requires-identity` | `requires-license`, who may mint a
   device token at `POST /<product>/devices/register`. Undeclared derives it from the enabled
