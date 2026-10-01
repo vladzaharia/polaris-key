@@ -438,7 +438,14 @@ describe("resync populates the release truth store", () => {
       { subjectId: "v1.2.3", status: "degraded" },
       { subjectId: "v1.2.9", status: "degraded" },
     ]);
-    expect(stmts.some((s) => /\bDELETE\b/i.test(s.sql))).toBe(false);
+    // Nothing the release is made of is deleted. The one DELETE a sync emits is P2-04's prune of
+    // map-made BUILDS (no foreign key points at `release_builds`), and it is scoped to the
+    // releases GitHub still lists — never to an absent one.
+    const deletes = stmts.filter((s) => /\bDELETE\b/i.test(s.sql));
+    expect(deletes.map((s) => /DELETE FROM (\w+)/.exec(s.sql)?.[1])).toEqual([
+      "release_builds",
+    ]);
+    expect(JSON.parse(deletes[0]!.params[1] as string)).toEqual(["v1.3.0"]);
   });
 
   it("does not mark a held floor release absent: a tag lookup found it upstream", () => {
@@ -582,6 +589,16 @@ describe("resync and the release model v2 columns (P2-03)", () => {
       }),
     ])
       await db.run(s.sql, ...s.params);
+    // ...and the marker the ingest leaves on the release (P2-04): the descriptor owns this
+    // release's builds and classification from now on.
+    const marker = { status: "ingested", sha256: hash, source: "ci", at: NOW };
+    await db.run(
+      `UPDATE release_metadata SET metadata_json = json_set(metadata_json, '$.descriptor', json(?))
+        WHERE product = ? AND release_id = ?`,
+      JSON.stringify(marker),
+      SLUG,
+      "v1.0.0",
+    );
     const seqBefore = (await listReleaseMetadata(db, SLUG))[0]!.seq;
 
     await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
@@ -600,7 +617,13 @@ describe("resync and the release model v2 columns (P2-03)", () => {
       name: "djdl-1.0.0-arm64.dmg",
       kind: "dmg",
     });
-    expect((await listReleaseMetadata(db, SLUG))[0]!.seq).toBe(seqBefore);
+    const meta = (await listReleaseMetadata(db, SLUG))[0]!;
+    expect(meta.seq).toBe(seqBefore);
+    // The sync rewrote metadata_json from GitHub, and carried the descriptor marker over.
+    expect(JSON.parse(meta.metadata_json!)).toMatchObject({
+      tag: "v1.0.0",
+      descriptor: marker,
+    });
     expect(await listBuilds(db, SLUG, "v1.0.0")).toHaveLength(1);
   });
 

@@ -305,6 +305,50 @@ describe("channels", () => {
     });
   });
 
+  it("entitledSelectorFor pins a fixed release's stored version, whatever it spells (P2-05)", () => {
+    const nightly: ReleaseConfigRow = {
+      product: SLUG,
+      gh_owner: null,
+      gh_repo: null,
+      gh_installation_id: null,
+      channel_workflow: null,
+      beta_branch: "main",
+      manual_channels_json: JSON.stringify([
+        { name: "nightly", regex: "nightly" },
+      ]),
+      binary_name: null,
+      install_template: null,
+      sparkle_ed25519_pub: null,
+      summary_marker: "",
+      artifact_policy_json: null,
+    };
+    // A stored version that spells a moving selector is still one fixed release: pinned, so the
+    // window applies (and refuses it when bounded, since it is not semver).
+    for (const stored of [
+      "latest",
+      "stable",
+      "beta",
+      "staging",
+      "pr-5",
+      "nightly",
+      "",
+    ]) {
+      for (const kind of ["file", "blob"] as const) {
+        expect(
+          entitledSelectorFor(nightly, kind, { fixedVersion: stored }),
+          `${kind} ${stored}`,
+        ).toEqual({ channel: "stable", version: stored });
+      }
+    }
+    expect(
+      entitledSelectorFor(nightly, "file", {
+        fixedVersion: "v1.2.0",
+        version: "latest",
+        channel: "beta",
+      }),
+    ).toEqual({ channel: "stable", version: "1.2.0" });
+  });
+
   it("rejects an over-long / unsafe manual regex", () => {
     const bad = parseManualChannels(
       JSON.stringify([{ name: "x", regex: "a".repeat(200) }]),

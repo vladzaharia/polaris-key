@@ -22,7 +22,10 @@ import type { ServiceRegistry } from "./core/registry.js";
 import type { ByteRoute } from "./core/bytesHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
-import { releaseService } from "./services/release/index.js";
+import {
+  RELEASE_BYTE_ROUTES,
+  releaseService,
+} from "./services/release/index.js";
 import { distributionService } from "./services/distribution/index.js";
 import { updateService } from "./services/update/index.js";
 import { identityService } from "./services/identity/index.js";
@@ -43,6 +46,8 @@ export const SERVICES: ServiceRegistry = new Map([
  * It lives here, beside `SERVICES`, for the same reason: byte routes are service code (P2-05's
  * release byte routes, P2b-04's distribution routes), and Core must not import services. Each
  * entry names its `service`, and the bytes-host dispatcher runs it only while that service is
- * enabled for the product. EMPTY in P2-01 by design.
+ * enabled for the product. P2-01 registered none; P2-05 adds Release's three
+ * (`/<p>/release/builds/…`, `/<p>/release/files/…`, `/<p>/release/blobs/sha256/…`), the first
+ * real responses the bytes host serves.
  */
-export const BYTE_ROUTES: readonly ByteRoute[] = [];
+export const BYTE_ROUTES: readonly ByteRoute[] = [...RELEASE_BYTE_ROUTES];

@@ -244,6 +244,8 @@ describe("worker surfaces", () => {
         changelog: "https://key.plrs.im/djdl/release/changelog",
         install: "https://key.plrs.im/djdl/release/install.sh",
         download: "https://key.plrs.im/djdl/release/dl",
+        builds: "https://key.plrs.im/djdl/release/builds/{selector}/{buildId}",
+        blobs: "https://key.plrs.im/djdl/release/blobs/sha256/{sha256}",
       },
     });
     expect(body.services.update).toEqual({

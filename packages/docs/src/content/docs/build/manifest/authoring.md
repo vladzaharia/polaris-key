@@ -29,11 +29,11 @@ next to `schema.json`. The files are the **manifest baseline**: they describe in
 defaults. Runtime admin changes such as secrets, license/device overrides, live service toggles,
 and operator policy overrides live separately in Polaris Key and are preserved across resync.
 
-| File        | Base name                 | Maps to                                                                                                                    | What it carries                                                                                                          |
-| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                        |
-| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**) |
-| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `edge_mint_config` rows                                                                 | release provider coordinates + channel/install/appcast/edge-mint settings (required only when releases are enabled)      |
+| File        | Base name                 | Maps to                                                                                                                    | What it carries                                                                                                                                                |
+| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                                                              |
+| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**)                                       |
+| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `release_deliverables` + `edge_mint_config` rows                                        | release provider coordinates + channel/install/appcast/edge-mint settings + the app deliverable and its artifact map (required only when releases are enabled) |
 
 In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
 (the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
@@ -245,6 +245,87 @@ A tier can tighten fingerprint enforcement for itself:
 ```
 
 See [Privacy](/docs/users/privacy/) for exactly what a fingerprint contains and how long it is kept.
+
+## Release deliverables: `deliverables.app` and the artifact map
+
+A `.pkey/release` document may declare the product's **app deliverable** and an **artifact
+map** that says what every file of a release is. Without the block the product keeps the
+implicit `app` deliverable and its release files are classified by filename, as before (a
+`.dmg` is macOS, `-arm64` is arm64, and an `.apk`, `.ipa`, `.exe` or `.pck` is just `other`).
+With it, files are classified **by declaration, not by sniffing**:
+
+```yaml
+# .pkey/release.yaml
+release:
+  provider: { type: github, owner: vladzaharia, repo: diceroll }
+  deliverables:
+    app:
+      kind: app
+      versioning:
+        scheme: semver # or semver+build, 4part
+        stableTagPattern: "v\\d+\\.\\d+\\.\\d+"
+        ignoreTags: [channels, packs]
+        buildNumber: descriptor # or none
+      channels:
+        beta: { includes: [stable] } # beta also offers every stable release
+      artifacts:
+        - {
+            id: macos,
+            platform: macos,
+            arch: universal,
+            format: dmg,
+            match: "Diceroll-*-macos.dmg",
+          }
+        - {
+            id: win-zip,
+            platform: windows,
+            arch: x86_64,
+            format: zip,
+            match: "Diceroll-*-windows-x86_64.zip",
+          }
+        - {
+            id: apk,
+            platform: android,
+            arch: any,
+            format: apk,
+            match: "Diceroll-*-android.apk",
+          }
+        - {
+            id: web,
+            platform: web,
+            arch: wasm32,
+            format: zip,
+            match: "Diceroll-*-web.zip",
+          }
+```
+
+- **`kind`** is required. `app` is the only deliverable implemented; any other id must be
+  `kind: pack`, which is accepted with the warning `pack_deliverables_not_supported` and
+  ignored until pack deliverables land.
+- **`versioning.stableTagPattern`** and **`versioning.ignoreTags`** are the same two fields
+  the release root already accepts (same rules, same `release_config` columns). Spell them in
+  one place: declaring them both at the root and here is `conflicting_versioning`.
+- **`channels`** keys are canonical channel names (lower-case letters, digits, `-`; not the
+  aliases `staging` or `latest`). `includes` may name `stable`, `beta`, a manual channel or
+  another declared channel, by its canonical name, and may not loop
+  (`invalid_channel_includes`). A manual channel whose name is not canonical (`Nightly.2`)
+  cannot be included.
+- **`artifacts`**: each entry is one **build**. `id` is the build id; `platform` is one of
+  `macos`, `ios`, `android`, `windows`, `linux`, `web`; `arch` one of `arm64`, `x86_64`,
+  `universal`, `armv7`, `wasm32`, `any`; `format` is the file type. `role` defaults to
+  `payload`. Installer versus portable is a **format** (`zip` versus `exe`/`msi`), not a role.
+  `match` is an anchored, case-sensitive glob: `*` is any run of characters, `?` exactly one,
+  everything else literal, at most 128 characters.
+- A file named `<payload>.sig` or `<payload>.sha256` is that build's signature or checksum.
+  An entry that matches two files of one release classifies neither (it is ambiguous), and a
+  file no entry matches has no build.
+
+Resync writes the declaration to `release_deliverables.def_json` (and each channel's
+`includes` to its channel policy, unless an operator owns that channel). The map also defines
+what a **release descriptor** may say about a release: see
+[Artifacts](/docs/services/release/artifacts/#declared-artifacts-and-release-descriptors).
+Every rule above has a code on
+[Manifest validation codes](/docs/reference/validation-codes/).
 
 ## Registering + re-syncing a product
 
