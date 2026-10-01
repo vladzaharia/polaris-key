@@ -145,6 +145,33 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
 - **Enablement.** All routes are in the release namespace, so a product with Release off exposes
   none of them. CI routes refuse a token without the scope with `forbidden` and a `reason`.
 
+## Corrections from the code (recorded during implementation)
+
+- **No CI credential store yet.** P2-02 (`requireCiScope`, `ci_tokens`) is not done; it depends
+  on P2-04. P2-05 adds `core/ciScope.ts` `requireCiScope(req, env, db, product, scope, now)` over a
+  one-function seam, `core/ciTokens.ts` `lookupCiToken`, which knows no token until P2-02 fills
+  it. Until then the CI routes answer 401 to every request (fail closed); the suites mock only
+  that seam. P2-02 should implement `lookupCiToken` (or re-export its own) and keep the shape.
+- **`CHANNEL_ALIASES` has not landed** (P0-04 is in progress). `services/release/resolve.ts`
+  carries `LEGACY_CHANNEL_ALIASES` with the plan's values (`staging → beta`, `latest → stable`)
+  and `canonicalChannel`; swap in the shared constant when P0-04 merges. `classifyChannel` is
+  left to P0-04.
+- **No version scheme is declared anywhere yet.** Resolution reads `versionScheme` from the
+  deliverable's `def_json` (`semver` | `semver+build` | `4part`), default `semver`; P2-04's
+  manifest work can declare it.
+- **`blobResponse` takes `env`.** Deriving the host needs `BLOB_ORIGIN`, so the options gain
+  `env`; `host` stays optional and can only force the console treatment, never widen it.
+- **Least privilege done, not optional:** `loadProductPublic` / `ProductPublic` (no signing key)
+  is what byte routes receive; the Core download checks take `ProductPublic`.
+- **The resolution cache covers health.** `resolveMovingSelector` is cached per channel and
+  release generation and always applies yanks; `test/releaseResolution.test.ts`'s regression
+  case now bumps the generation to see a deletion nobody reported, and the R10-05 CONTRAST test
+  uses a fresh KV per request so it still measures only the edge cache.
+- **`?checksum=sha256` on the bytes host** answers `application/octet-stream` (the host serves
+  no `text/*`); the console keeps `text/plain`.
+- **`BLOB_ORIGIN` guard** is a test over the committed `wrangler.toml` (no `dl*` route without the
+  var; the var never names a console host) plus a `docs/DEPLOYMENT.md` line.
+
 ## Steps
 
 1. `resolve.ts` with a table-driven test over fixtures: includes, pointer, pin, yank, a release

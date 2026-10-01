@@ -116,11 +116,12 @@ request sees it.
 
 ## Caching
 
-The download route, the appcast and the version check resolve a selector against GitHub at
-most once per 90 seconds per selector. A sync, a resync, any policy change and any floor change
-drop those cached resolutions immediately, so a yank or a pin takes effect on the next request
-(within KV's propagation delay across locations). What the 90 seconds alone bounds is a
-change nobody told the worker about, such as a release deleted on GitHub with no webhook.
+The download route, the appcast, the version check and the console's release health check
+resolve a channel against GitHub at most once per 90 seconds. A sync, a resync, any policy
+change and any floor change drop those cached resolutions immediately, so a yank or a pin
+takes effect on the next request (within KV's propagation delay across locations). What the
+90 seconds alone bounds is a change nobody told the worker about, such as a release deleted on
+GitHub with no webhook. A channel that resolves to nothing is never cached.
 
 ## See also
 
