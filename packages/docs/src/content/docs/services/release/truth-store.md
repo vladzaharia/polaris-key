@@ -87,6 +87,13 @@ implies. `release_metadata.metadata_json.descriptor` records
 the ingested descriptor's hash (or why a `pkey-release.json` was refused), and survives every
 resync.
 
+A sync is planned from a read and applied later, in one batch, so a descriptor can be ingested
+in between — CI publishing while a release webhook's sync is in flight. Every statement the
+sync planned for an undescribed release re-checks, when it runs, whether the release has an
+ingested descriptor by then, and if so writes what it would have written for a described
+release: the map's builds are not written and no file's classification is touched. A stale
+plan never overwrites a described release.
+
 ### `release_channels`
 
 One row per channel name a product declares — the two built-ins, `stable` and `beta`, plus

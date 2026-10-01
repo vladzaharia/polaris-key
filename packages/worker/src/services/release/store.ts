@@ -70,6 +70,16 @@ export async function latestReleaseHasDmg(
  *
  * The product's implicit `app` deliverable is created (never modified) first in the batch, so
  * every release the sync writes belongs to a deliverable that exists.
+ *
+ * ── PLANNED FROM A READ, APPLIED LATER (P2-04) ──────────────────────────────────────────────
+ *
+ * The statements are built from what the sync read and run later, in the caller's batch. A
+ * release descriptor ingested in between (P2-02's CI submit racing a webhook's sync) owns its
+ * release by the time they run, so no statement may trust the plan's "undescribed": the
+ * metadata upsert carries `metadata_json.descriptor` over as it is at write time, the map's
+ * build upserts are guarded on the release still being undescribed (`guard.ts`), the stale-build
+ * DELETE skips described releases, and the `sniffed`/`mapped` artifact upserts fall back to
+ * exactly what `described` would write (`ArtifactSyncMode`).
  */
 
 import {
@@ -103,6 +113,7 @@ import {
   stmtEnsureAppDeliverable,
   stmtUpsertBuild,
 } from "./model.js";
+import { guardStatement, RELEASE_DESCRIBED_SQL } from "./guard.js";
 
 /** What the truth-store sync needs to know about classification (P2-04). */
 export interface StoreClassificationOptions {
@@ -503,89 +514,151 @@ function stmtUpsertMetadata(
  *                `sha256` is filled from GitHub's digest when it is still NULL.
  *   `described`  the release has an ingested descriptor, which owns its classification: only
  *                the GitHub-derived serving columns (name, size, URL, access) are refreshed.
+ *
+ * THE MODE IS RE-CHECKED WHEN THE STATEMENT RUNS. The sync picks `sniffed` or `mapped` from what
+ * it read, and its batch lands later; a descriptor ingested in between (P2-02's CI submit, racing
+ * the webhook's sync) owns the release by then. So every `sniffed`/`mapped` statement asks the
+ * store, at write time, whether the release is described — and if it is, it writes exactly what
+ * the `described` statement would have: a new file goes in with no build and its kind's role
+ * (and not at all when the descriptor already holds a file of that name), and an existing row
+ * keeps every column the descriptor owns. A stale plan can never overwrite a described release.
  */
 export type ArtifactSyncMode = "sniffed" | "mapped" | "described";
 
-const ARTIFACT_CONFLICT_SET: Record<ArtifactSyncMode, string> = {
-  sniffed: `name = excluded.name,
-            kind = excluded.kind,
-            platform = excluded.platform,
-            arch = excluded.arch,
-            content_type = excluded.content_type,
+/** Refreshed in every mode: the GitHub-derived serving columns. */
+const ARTIFACT_SERVING_SET = `name = excluded.name,
             size_bytes = excluded.size_bytes,
             source_url = excluded.source_url,
-            access = excluded.access,
-            role = CASE WHEN release_artifacts.build_id IS NULL
+            access = excluded.access`;
+
+/** The columns `sniffed`/`mapped` also assign, and what to; a described release keeps its own. */
+const ARTIFACT_CLASSIFYING_SET: Record<
+  Exclude<ArtifactSyncMode, "described">,
+  readonly (readonly [column: string, value: string])[]
+> = {
+  sniffed: [
+    ["kind", "excluded.kind"],
+    ["platform", "excluded.platform"],
+    ["arch", "excluded.arch"],
+    ["content_type", "excluded.content_type"],
+    [
+      "role",
+      `CASE WHEN release_artifacts.build_id IS NULL
                         THEN COALESCE(release_artifacts.role, excluded.role)
-                        ELSE excluded.role END,
-            build_id = NULL`,
-  mapped: `name = excluded.name,
-            kind = excluded.kind,
-            platform = excluded.platform,
-            arch = excluded.arch,
-            content_type = excluded.content_type,
-            size_bytes = excluded.size_bytes,
-            source_url = excluded.source_url,
-            access = excluded.access,
-            build_id = excluded.build_id,
-            role = excluded.role,
-            sha256 = COALESCE(release_artifacts.sha256, excluded.sha256)`,
-  described: `name = excluded.name,
-            size_bytes = excluded.size_bytes,
-            source_url = excluded.source_url,
-            access = excluded.access`,
+                        ELSE excluded.role END`,
+    ],
+    ["build_id", "NULL"],
+  ],
+  mapped: [
+    ["kind", "excluded.kind"],
+    ["platform", "excluded.platform"],
+    ["arch", "excluded.arch"],
+    ["content_type", "excluded.content_type"],
+    ["build_id", "excluded.build_id"],
+    ["role", "excluded.role"],
+    ["sha256", "COALESCE(release_artifacts.sha256, excluded.sha256)"],
+  ],
 };
+
+/** The conflicting row's release has an ingested descriptor (correlated; no params). */
+const CONFLICT_ROW_DESCRIBED_SQL = `EXISTS (
+                 SELECT 1 FROM release_metadata d
+                  WHERE d.product = release_artifacts.product
+                    AND d.release_id = release_artifacts.release_id
+                    AND json_extract(d.metadata_json, '$.descriptor.status') = 'ingested')`;
+
+function artifactConflictSet(mode: ArtifactSyncMode): string {
+  if (mode === "described") return ARTIFACT_SERVING_SET;
+  const classifying = ARTIFACT_CLASSIFYING_SET[mode].map(
+    ([column, value]) =>
+      `${column} = CASE WHEN ${CONFLICT_ROW_DESCRIBED_SQL}
+              THEN release_artifacts.${column}
+              ELSE ${value} END`,
+  );
+  return [ARTIFACT_SERVING_SET, ...classifying].join(",\n            ");
+}
+
+/** The columns whose inserted value differs between a described release and the others. */
+const MODE_DEPENDENT_COLUMNS = new Set<keyof ReleaseArtifactRow>([
+  "platform",
+  "arch",
+  "sha256",
+  "build_id",
+  "role",
+]);
+
+const ARTIFACT_COLUMNS = [
+  "product",
+  "release_id",
+  "artifact_id",
+  "name",
+  "kind",
+  "platform",
+  "arch",
+  "content_type",
+  "size_bytes",
+  "sha256",
+  "source_url",
+  "storage_key",
+  "sparkle_signature",
+  "access",
+  "metadata_json",
+  "created_at",
+  "build_id",
+  "role",
+  "locations_json",
+] as const satisfies readonly (keyof ReleaseArtifactRow)[];
 
 /**
  * In `described` mode a file is not inserted when the release already has a row of that NAME
  * under another id: the descriptor recorded it (an `r2`-only file is keyed by its name, not by
  * a GitHub asset id), and a second row would list it twice.
+ *
+ * In `sniffed`/`mapped` mode `asDescribed` is the row `described` mode would insert for the same
+ * file, and the statement inserts it — under the same name rule — instead of `row` when the
+ * release turns out to be described by the time it runs (see `ArtifactSyncMode`).
  */
 function stmtUpsertArtifact(
   row: ReleaseArtifactRow,
   mode: ArtifactSyncMode = "sniffed",
+  asDescribed: ReleaseArtifactRow | null = null,
 ): DbStatement {
-  const values =
-    mode === "described"
-      ? `SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
-          WHERE NOT EXISTS (
-            SELECT 1 FROM release_artifacts
-             WHERE product = ? AND release_id = ? AND name = ? AND artifact_id <> ?)`
-      : "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-  const guard =
-    mode === "described"
-      ? [row.product, row.release_id, row.name, row.artifact_id]
-      : [];
+  const nameTaken = `EXISTS (
+              SELECT 1 FROM release_artifacts
+               WHERE product = ? AND release_id = ? AND name = ? AND artifact_id <> ?)`;
+  const nameParams = [row.product, row.release_id, row.name, row.artifact_id];
+  let values: string;
+  let params: unknown[];
+  if (mode === "described") {
+    values = `SELECT ${ARTIFACT_COLUMNS.map(() => "?").join(",")}
+          WHERE NOT ${nameTaken}`;
+    params = [...ARTIFACT_COLUMNS.map((c) => row[c]), ...nameParams];
+  } else {
+    if (!asDescribed)
+      throw new Error("stmtUpsertArtifact: sniffed/mapped need asDescribed");
+    const select: string[] = [];
+    params = [];
+    for (const c of ARTIFACT_COLUMNS) {
+      if (MODE_DEPENDENT_COLUMNS.has(c)) {
+        select.push("CASE WHEN g.described THEN ? ELSE ? END");
+        params.push(asDescribed[c], row[c]);
+      } else {
+        select.push("?");
+        params.push(row[c]);
+      }
+    }
+    values = `SELECT ${select.join(",\n                 ")}
+            FROM (SELECT ${RELEASE_DESCRIBED_SQL} AS described) AS g
+           WHERE NOT (g.described AND ${nameTaken})`;
+    params.push(row.product, row.release_id, ...nameParams);
+  }
   return {
     sql: `INSERT INTO release_artifacts
-            (product, release_id, artifact_id, name, kind, platform, arch, content_type,
-             size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
-             metadata_json, created_at, build_id, role, locations_json)
+            (${ARTIFACT_COLUMNS.join(", ")})
           ${values}
           ON CONFLICT(product, release_id, artifact_id) DO UPDATE SET
-            ${ARTIFACT_CONFLICT_SET[mode]}`,
-    params: [
-      row.product,
-      row.release_id,
-      row.artifact_id,
-      row.name,
-      row.kind,
-      row.platform,
-      row.arch,
-      row.content_type,
-      row.size_bytes,
-      row.sha256,
-      row.source_url,
-      row.storage_key,
-      row.sparkle_signature,
-      row.access,
-      row.metadata_json,
-      row.created_at,
-      row.build_id,
-      row.role,
-      row.locations_json,
-      ...guard,
-    ],
+            ${artifactConflictSet(mode)}`,
+    params: params as DbStatement["params"],
   };
 }
 
@@ -810,38 +883,49 @@ export function releaseStoreStatements(
           )
         : null;
     for (const asset of release.assets) {
+      const row = (m: ArtifactSyncMode) =>
+        artifactRow(
+          product,
+          releaseId,
+          asset,
+          artifactsAccess,
+          now,
+          m === "described"
+            ? null
+            : (classified?.files.get(asset.name) ?? null),
+          m,
+        );
       artifacts.push(
         stmtUpsertArtifact(
-          artifactRow(
-            product,
-            releaseId,
-            asset,
-            artifactsAccess,
-            now,
-            classified?.files.get(asset.name) ?? null,
-            mode,
-          ),
+          row(mode),
           mode,
+          mode === "described" ? null : row("described"),
         ),
       );
     }
     // The map's builds, for a release the descriptor does not own. They follow the map: a build
-    // the map no longer yields is deleted below (nothing references `release_builds`).
+    // the map no longer yields is deleted below (nothing references `release_builds`). Each is
+    // written only if the release is still undescribed when the batch runs: a descriptor
+    // ingested after this sync read the store owns the builds (and their build numbers) by then.
     if (!described) undescribedReleaseIds.push(releaseId);
     if (classified) {
       for (const entry of classified.builds) {
         mappedBuildKeys.push(`${releaseId}\u0000${entry.id}`);
         builds.push(
-          stmtUpsertBuild(
-            {
-              product,
-              releaseId,
-              buildId: entry.id,
-              platform: entry.platform,
-              arch: entry.arch,
-              format: entry.format,
-            },
-            now,
+          guardStatement(
+            stmtUpsertBuild(
+              {
+                product,
+                releaseId,
+                buildId: entry.id,
+                platform: entry.platform,
+                arch: entry.arch,
+                format: entry.format,
+              },
+              now,
+            ),
+            `NOT ${RELEASE_DESCRIBED_SQL}`,
+            [product, releaseId],
           ),
         );
       }
