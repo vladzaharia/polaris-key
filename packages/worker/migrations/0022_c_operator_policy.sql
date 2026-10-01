@@ -1,0 +1,12 @@
+-- P0-01 — the operator-only half of the artifact policy, in a column no manifest path writes.
+--
+-- `{ requireSparkleSignature?: boolean, minimumSystemVersion?: string }`. It used to share
+-- `artifact_policy_json` with the manifest-owned fields (channels, architectures, requireDmg,
+-- requireCli, allowAmbiguousAssets), and a resync rewrote that whole blob — dropping the
+-- operator's keys on every push. `artifact_policy_json` now carries only the manifest fields.
+--
+-- NULL means "never set": signature required, no minimum system version (the fail-safe
+-- defaults the readers in `services/release/config.ts` apply).
+--
+-- ONE statement per file (see 0013/0020); the backfill is 0022_d, after it.
+ALTER TABLE release_config ADD COLUMN operator_policy_json TEXT;

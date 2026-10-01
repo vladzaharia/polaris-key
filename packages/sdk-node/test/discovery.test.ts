@@ -1,3 +1,4 @@
+// @pkey-feature core.discover
 // Product discovery — `GET /<product>/.well-known/polaris.json`, wire contract v3 §2.2/§5.
 //
 // ── WHAT THIS FILE PINS, AND WHY ────────────────────────────────────────────────────────────

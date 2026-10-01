@@ -20,8 +20,9 @@ canonical glossary).
 ### 1. Scaffold
 
 - [ ] Run `pkey init` in the product repo root. It creates `.pkey/` and writes YAML:
-      `product.yaml` always; `schema.yaml` when the `config` module is selected; `release.yaml`
-      when `releases` is selected.
+      `product.yaml` and `schema.yaml` always (ingest requires both, even with Config off; without
+      `config` the schema is an empty catalog, `schemaVersion: 1` and `catalog: []`); `release.yaml`
+      when `releases` is selected. The scaffolded tier is `policyDeviceLimit: 5` with no expiry.
 - [ ] Other flags: `--admin-group`, `--release-owner`, `--release-repo`, `--force` (overwrite).
       With no `--modules`, the default is `licensing,config`.
 - [ ] Do **not** hand-create the directory if `pkey init` will do it — the scaffold writes the
@@ -48,12 +49,19 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 - [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`. Maps to the
       `product_schema` row. For an entry's fields, use the `adding-a-catalog-entry` skill.
 - [ ] **`product`** (required) — product metadata, the `modules` block (enabled services),
-      `devices.registration`, OIDC, profiles, tiers, provisioning hooks, `fingerprint`,
-      `autoIssue`, `secrets.required`. Maps to `products` (incl. `services_json`) plus
+      `devices.registration`, `web.origins`, OIDC, profiles, tiers, provisioning hooks,
+      `fingerprint`, `autoIssue`, `secrets.required`. Maps to `products` (incl. `services_json`,
+      `web_origins_json`) plus
       `oidc_config`, `profiles`, `tiers`, `provisioning_config`.
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
       channels, install/appcast settings, edge-mint recipes. Maps to `release_config` and
       `edge_mint_config`.
+- [ ] If the repo publishes tags that are not app releases (rolling `channels`, content `packs`,
+      …), say so in `release`: `stableTagPattern` (an anchored regex, ≤ 80 characters, same
+      safety rule as `manualChannels[].regex`) narrows which tags may become stable/latest, and
+      `ignoreTags` lists exact tag names that never resolve on a moving channel. Undeclared, any
+      semver tag with an optional leading `v` is a candidate, and the highest semver wins — not
+      the newest by creation order.
 - [ ] The base name selects the role; the extension is a pure format preference, tried
       `.json` → `.yaml` → `.yml` and resolved **per document**, so `product.yaml` may sit next to
       `schema.json`.
@@ -81,6 +89,14 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 | `edgeMint`  | `config`             | edge-minting is a secret-**delivery** capability of Config, not a unit of its own    |
 
 `pkey init --modules` takes the **old** names: `licensing,config,releases,oidc,edgeMint`.
+
+- [ ] `web.origins` is optional: up to 16 exact browser origins that may read this product's
+      device-facing routes with `fetch` (CORS, no credentials). Spell each one the way a browser
+      sends `Origin`: `https://<host>[:port]`, lower-case, no default port, no path, trailing
+      slash, query, credentials or wildcard. Plain `http` only for `http://localhost[:port]` and
+      `http://127.0.0.1[:port]`. Bad entries are refused, never coerced (`invalid_web_origins`,
+      `invalid_web_origin`). Manifest-owned: resync rewrites it and dropping the block clears it.
+      Details: `packages/docs/src/content/docs/build/web-cors.md`.
 
 ### 5. Validate until clean
 
@@ -120,15 +136,22 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 ### 8. Understand resync and ownership before you promise a behavior
 
 - [ ] A resync updates the **manifest baseline**: product metadata, service enablement +
-      registration policy, fingerprint and auto-issue policy, catalog shape, OIDC baseline,
+      registration policy, `web.origins`, fingerprint and auto-issue policy, catalog shape, OIDC baseline,
       release baseline, profiles, tiers, provisioning, edge-mint recipes.
 - [ ] Admin-set **values and management states** (per profile/tier/license/device) live in D1 and
       are **not** overwritten by a resync.
-- [ ] Three blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
-      `auto_issue_source`. A live console edit flips the source `manifest` → `admin`, and a
-      resync then **skips** that block — a push cannot silently undo a 3am toggle. "Revert to
-      manifest" hands ownership back and changes nothing else; the manifest re-applies on the
-      **next** resync, not immediately.
+- [ ] Five blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
+      `auto_issue_source` (on the product), `compat_source` (the compat window, claimed from
+      Update settings) and `access_source` (both release access modes together, on
+      `release_config`). A live console edit flips the source `manifest` → `admin`, and a
+      resync then **skips** that block — a push cannot silently undo a 3am toggle, nor
+      downgrade an `entitled` product to the manifest's `public`. "Revert to manifest" hands
+      ownership back and changes nothing else; the manifest re-applies on the **next** resync,
+      not immediately.
+- [ ] The operator-only artifact policy (`requireSparkleSignature`, `minimumSystemVersion`)
+      has **no manifest spelling at all** — it lives in `release_config.operator_policy_json`,
+      which no manifest path writes. Do not try to declare either key (or the `entitled` access
+      mode) in `.pkey/release`; set them in the console's Update settings.
 
 ## Verification
 

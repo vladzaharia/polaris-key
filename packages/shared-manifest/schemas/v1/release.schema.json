@@ -35,6 +35,12 @@
     "manualChannels": {
       "$ref": "#/$defs/manualChannels"
     },
+    "stableTagPattern": {
+      "$ref": "#/$defs/stableTagPattern"
+    },
+    "ignoreTags": {
+      "$ref": "#/$defs/ignoreTags"
+    },
     "artifactPolicy": {
       "$ref": "#/$defs/artifactPolicy"
     },
@@ -79,6 +85,12 @@
         },
         "manualChannels": {
           "$ref": "#/$defs/manualChannels"
+        },
+        "stableTagPattern": {
+          "$ref": "#/$defs/stableTagPattern"
+        },
+        "ignoreTags": {
+          "$ref": "#/$defs/ignoreTags"
         },
         "artifactPolicy": {
           "$ref": "#/$defs/artifactPolicy"
@@ -150,7 +162,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
           }
         },
         "requireDmg": {
@@ -238,6 +250,22 @@
           }
         },
         "required": ["name", "regex"]
+      }
+    },
+    "stableTagPattern": {
+      "description": "Which release tags are real app releases: only a non-draft tag this regex matches (anchored, ^(?:...)$) and whose version (the tag minus a leading v) parses as semver is a candidate for stable/latest and the beta prerelease fallback. Undeclared means a semver tag with an optional leading v. Persisted to release_config.stable_tag_pattern. The validator additionally requires the regex to COMPILE, which JSON Schema cannot express.",
+      "type": "string",
+      "maxLength": 80
+    },
+    "ignoreTags": {
+      "description": "Exact tag names that never resolve on stable, beta or a manual channel (a pinned X.Y.Z still reaches them). Persisted to release_config.ignore_tags_json.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255,
+        "pattern": "^[^\\u0000-\\u0020\\u007f]+$"
       }
     }
   }

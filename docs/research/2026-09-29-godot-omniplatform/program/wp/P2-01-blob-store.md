@@ -1,16 +1,75 @@
-# P2-01 Core blob store on R2: content-addressed, bucket-locked, on a separate domain
+# P2-01 Core blob store on R2: content-addressed, bucket-locked, on a bytes host (dl.plrs.im)
 
-| Field       | Value                                                                                                                                                                                                                |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                                                                                                     |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                 |
-| Depends on  | none                                                                                                                                                                                                                 |
-| Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-05](P2-05-release-routes.md), [P6-04](P6-04-hosted-web.md)                                                                                                                  |
-| Role        | `pkey-implementer`                                                                                                                                                                                                   |
-| Plan mode   | no                                                                                                                                                                                                                   |
-| Gates       | threat model (`docs/security/THREAT-MODEL.md`); `wrangler.toml` bindings and routes; D1 migration + `TABLE_OWNERS` (two Core tables; not in the graph's gates); `test:workerd` (new R2 lane); `docs/DEPLOYMENT.md`   |
-| Human input | ✋ Cloudflare R2 buckets per environment (prod, staging, dev) with the lock and lifecycle rules below; a **separate registrable domain** for bytes with a custom-domain route; `wrangler deploy` of the new bindings |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth and publishing                                                                                                                                                                                                                                                                           |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                                       |
+| Depends on  | none                                                                                                                                                                                                                                                                                                       |
+| Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-05](P2-05-release-routes.md), [P6-04](P6-04-hosted-web.md)                                                                                                                                                                                                        |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                         |
+| Gates       | threat model (`docs/security/THREAT-MODEL.md`); `wrangler.toml` bindings and routes; D1 migration + `TABLE_OWNERS` (two Core tables; not in the graph's gates); `test:workerd` (new R2 lane); `docs/DEPLOYMENT.md`                                                                                         |
+| Human input | ✋ Cloudflare R2 buckets per environment (prod, staging, dev) with the lock and lifecycle rules below; the bytes host `dl.plrs.im` (owner decision: same-site with the console, compensating controls; not a separate registrable domain) with custom-domain routes; `wrangler deploy` of the new bindings |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                  |
+
+> **Corrections from implementation (2026-09-30).** The code is the fact; where this brief and
+> the branch disagree, the branch wins.
+>
+> - **The bytes host is `dl.plrs.im`, same-site with the console (owner decision).** It is a
+>   `plrs.im` sibling, not a separate registrable domain, which deviates from "Why" and from
+>   README §3.5. It is a Worker custom-domain route (`dl.plrs.im`, `dl-staging.plrs.im`,
+>   `dl-dev.plrs.im`), never an R2 domain. Compensations, recorded in
+>   `docs/security/THREAT-MODEL.md` §3 and pinned in `test/bytesHost.test.ts`: every
+>   bytes-host response sets `X-Content-Type-Options: nosniff` and `Content-Security-Policy:
+sandbox; …`; no HTML, XHTML, SVG, XML, JS or `text/*` type is ever served there, and JSON only as the platform error body at status >= 400;
+>   `Content-Disposition: attachment` unless the type is allowlisted and the route asks for
+>   `inline`; no cookie is read or set on the host; console session cookies are host-only.
+> - **Real resources exist.** Buckets `polaris-key-blobs-prod|-staging|-dev` were created with
+>   the 180-day age locks and the 1-day `staging/` expiry, `r2.dev` disabled; `wrangler.toml`
+>   binds them by name (no `REPLACE_ME`). `BLOB_ORIGIN` is set per environment.
+> - **`blobResponse(req, bucket, key, opts)`**, not `(req, object, opts)`. R2's native
+>   `onlyIf`/`range` handling compares R2's own etag, while this response's ETag is the
+>   SHA-256, so the builder evaluates `If-None-Match`/`If-Range`/`Range` itself and asks R2
+>   only for the resulting byte range. `opts.host` is `"console" | "bytes"`.
+> - **`promote(bucket, stagingKey, targetKey, {sha256, size}, {db, now})`** takes the D1 handle,
+>   because it records the `blob_objects` row. The binding has no server-side copy, so promote
+>   streams `get` (pinned to the verified etag) into `putVerified`.
+> - `deltaKey` takes an optional `{gated}` like the other builders; `storedKeys(db, keys)` is
+>   added beside `isStored` for P2-02's bulk question; `recordObject` is exported.
+> - The migration is `0026_blob_store.sql` (number pre-assigned). `blob_refs.storage_key` is a
+>   foreign key into `blob_objects`; `blob_refs.product` references `products` without
+>   `ON DELETE`, as every non-portal table does (R11-01). `blob_objects` is exempt from the
+>   product-first-PK rule (R11-05) because objects are shared across products; tenancy is in
+>   `blob_refs`.
+> - P0-05 landed first, so the bytes host applies CORS through `core/cors.ts` directly (no
+>   TODO): a byte route's `match` returns `{product, params}`, `dispatchBytesHost(req, env, db)`
+>   loads that product, answers `OPTIONS` with `corsPreflight` before the route runs and wraps
+>   the route's answer in `withCors`, then hardens it. Unknown products answer not-found.
+> - Host isolation lives in `core/bytesHost.ts`, called from `dispatch.ts` (main moved dispatch
+>   out of `index.ts`), which passes the allowlist `BYTE_ROUTES` from `mount.ts` (empty). It
+>   sits beside `SERVICES` in the composition root because byte routes are service code and
+>   Core must not import services. The host match ignores case and trailing dots
+>   (`dl.plrs.im.` is the same host, and the edge keeps the dot in `req.url`).
+> - **The bytes host gates on service enablement itself.** It does not go through
+>   `dispatchService`, so it repeats that function's check: every `ByteRoute` names its
+>   `service`, and after the `OPTIONS` preflight (which cannot probe enablement, as on the
+>   console) a route whose service is off for the product never runs and answers the same
+>   not-found as an unknown product. A product that turns Release or Distribution off stops
+>   serving bytes on `dl.plrs.im` at once, as P2-05 and P2b-04 assume.
+> - The same-site compensations are enforced by the **dispatcher** for every route answer, not
+>   only by `blobResponse`: a non-error answer needs a `BYTES_HOST_TYPES` type (a body with no
+>   type is refused), `Content-Disposition` is forced to `attachment` unless the route asked for
+>   `inline` on an allowlisted type, an error body may be only the platform JSON or an
+>   allowlisted type, and a route's own `Access-Control-*` headers are dropped.
+> - **Refs are earned, not looked up.** `referencedKeys(db, product, keys)` is added beside
+>   `storedKeys`: P2-02's `present` must come from it (the keys this product already
+>   references), never from `blob_objects` alone, and a product gets a ref only by promoting a
+>   verified upload from its own `staging/<product>/…` prefix or for a key it already
+>   references (THREAT-MODEL §3). Delta-key squatting is recorded there as a residual risk.
+> - **No hosted web builds on the bytes host.** This package did not set up a separate
+>   registrable domain, so P6-04 cannot build on one "P2-01 set up". Web builds need HTML and
+>   script, which `dl.plrs.im` refuses by design; P6-04 must obtain its own separate registrable
+>   domain (a human input, THREAT-MODEL §3) and may reuse `core/blobs.ts`, never the bytes host.
 
 ## Goal
 
@@ -166,21 +225,21 @@ console's cookies ([notes/A3 §7.2](../../notes/A3-admin-dx.md#72-web-builds-and
 
 ## Acceptance criteria
 
-- [ ] `test/blobs.test.ts` covers: a put whose bytes do not match the key's hash is refused; a
+- [x] `test/blobs.test.ts` covers: a put whose bytes do not match the key's hash is refused; a
       second put to an existing key is refused; `verifyStaged` accepts R2's stored checksum and
       falls back to a streamed hash; `promote` never writes the target when verification fails.
-- [ ] Header tests: 200 with `ETag`, `Repr-Digest`, `Accept-Ranges`, immutable caching; 206 with
+- [x] Header tests: 200 with `ETag`, `Repr-Digest`, `Accept-Ranges`, immutable caching; 206 with
       `Content-Range`; 416; `If-Range` mismatch returns 200; `If-None-Match` returns 304; gated
       responses are `private, no-store`; console-host responses are always octet-stream attachments.
-- [ ] `test-workerd/blobs.test.ts` passes on miniflare R2, including a streamed hash of an object
+- [x] `test-workerd/blobs.test.ts` passes on miniflare R2, including a streamed hash of an object
       larger than 16 MiB.
-- [ ] `promote` records a `blob_objects` row only after verification; `hasRef(db, product, key)`
+- [x] `promote` records a `blob_objects` row only after verification; `hasRef(db, product, key)`
       is false for another product's ref; `docs gen:check` lists both tables under Core.
-- [ ] Host isolation test passes; with `BLOB_ORIGIN` unset, routing is byte-identical to today.
-- [ ] `wrangler deploy --dry-run` (`pnpm --filter @polaris-key/worker dryrun`) parses the config.
-- [ ] `docs/DEPLOYMENT.md` and `docs/security/THREAT-MODEL.md` are updated; the lock duration and
+- [x] Host isolation test passes; with `BLOB_ORIGIN` unset, routing is byte-identical to today.
+- [x] `wrangler deploy --dry-run` (`pnpm --filter @polaris-key/worker dryrun`) parses the config.
+- [x] `docs/DEPLOYMENT.md` and `docs/security/THREAT-MODEL.md` are updated; the lock duration and
       the GC trade-off are recorded.
-- [ ] The green gate passes (`AGENTS.md`), including `typecheck:workerd` and `test:workerd`.
+- [x] The green gate passes (`AGENTS.md`), including `typecheck:workerd` and `test:workerd`.
 
 ## Verify
 
@@ -195,11 +254,19 @@ mise exec node@22 -- pnpm typecheck
 
 ## Hand-off
 
-- P2-02 uses `stagingKey`, `verifyStaged`, `promote` and `isStored`; it adds the R2 parent
-  credentials that mint CI's temporary credentials. P2-04 writes `blob_refs` for artifacts, P4-02
-  for pack objects; P4-14 collects unreferenced objects. P2-05 and P2b-04 use `blobResponse` and
-  `hasRef`, and register their byte routes on the host allowlist. P6-04 uses the bytes host for
-  hosted web builds.
+- P2-02 uses `stagingKey`, `verifyStaged`, `promote` and `referencedKeys` (for `present`, which
+  must be per product, never `isStored`/`storedKeys`); it adds the R2 parent credentials that
+  mint CI's temporary credentials. P2-04 writes `blob_refs` for artifacts, P4-02 for pack
+  objects, and both grant a ref only under the THREAT-MODEL §3 rule: a verified promote from
+  the product's own `staging/<product>/…` prefix, or a key the product already references.
+  P4-14 collects unreferenced objects. P2-05 and P2b-04 use `blobResponse` and
+  `hasRef`, and register their byte routes in `mount.ts` `BYTE_ROUTES`, each naming its
+  `service` (`release` for P2-05; P2b-04's distribution service slug). The bytes host bypasses
+  `dispatchService`, so that `service` field is what keeps a disabled service's bytes from
+  answering; a route must name the service that owns it, never a default-on one. P6-04 must **not** host web
+  builds on `dl.plrs.im`: web builds serve HTML and script, which the bytes host refuses, so
+  they need their own separate registrable domain (a human input), per THREAT-MODEL §3. P6-04
+  may reuse `core/blobs.ts` for storage, but not the bytes host.
 - The key layout, the `gated/` prefix and the lock duration are fixed here; P4-05 and P4-14 rely
   on them.
 - Record in the PR which human inputs arrived (bucket names, domain, deploy). Then set the status:

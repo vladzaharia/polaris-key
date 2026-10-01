@@ -25,7 +25,11 @@ import { matchAsset, normalizeArch, sigAssetName } from "../release/assets.js";
 import { extractSummary } from "../release/changelog.js";
 import { versionFromTag } from "../release/channels.js";
 import { verifySparkleSignature } from "../release/sparkle.js";
-import { artifactPolicy, isResolved } from "../release/config.js";
+import {
+  artifactPolicy,
+  isResolved,
+  operatorPolicy,
+} from "../release/config.js";
 import {
   APPCAST_CACHE,
   cacheHeader,
@@ -92,6 +96,7 @@ export function handleUpdate(
 
 async function handleVersion({
   env,
+  db,
   cfg,
   params,
   now,
@@ -100,6 +105,7 @@ async function handleVersion({
   if (!isResolved(cfg)) return notFound();
   const { release, sel } = await resolveSelector(
     env,
+    db,
     cfg,
     params.version ?? params.channel,
     now,
@@ -115,32 +121,9 @@ async function handleVersion({
   );
 }
 
-/**
- * The operator-declared minimum macOS version for this product's builds.
- *
- * Read from `artifact_policy_json`, which is OPERATOR-owned (R6-03: `parseManifest` does not
- * carry that object, so a repo push cannot write it). It is shape-checked before it is rendered
- * — `sparkle:minimumSystemVersion` is compared by Sparkle, not displayed, and a value it cannot
- * parse silently makes every update ineligible.
- */
-function minimumSystemVersion(policyJson: string | null): string | undefined {
-  if (!policyJson) return undefined;
-  try {
-    const parsed = JSON.parse(policyJson) as {
-      minimumSystemVersion?: unknown;
-    };
-    const value = parsed.minimumSystemVersion;
-    return typeof value === "string" && /^\d+(?:\.\d+){0,2}$/.test(value)
-      ? value
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 async function handleAppcast(
   params: ReleaseParams,
-  { env, cfg, product, origin, now, fetchImpl }: SurfaceContext,
+  { env, db, cfg, product, origin, now, fetchImpl }: SurfaceContext,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
@@ -148,6 +131,7 @@ async function handleAppcast(
   const selectorStr = params.channel ?? params.version ?? "stable";
   const { release, sel } = await resolveSelector(
     env,
+    db,
     cfg,
     selectorStr,
     now,
@@ -211,7 +195,12 @@ async function handleAppcast(
   // Release notes, finally wired (P2.T4) — the curated summary the `/release/changelog` surface
   // already extracts, escaped into HTML and CDATA-neutralised on the way out (`appcast.ts`).
   const summary = extractSummary(release.body, cfg.summary_marker);
-  const minSys = minimumSystemVersion(cfg.artifact_policy_json);
+  // The operator-declared minimum macOS version. Read from `operator_policy_json`, which is
+  // genuinely OPERATOR-owned: no manifest shape carries the key (R6-03) and resync never names the
+  // column, so a push can neither write it nor erase it. `operatorPolicy` shape-checks it first —
+  // `sparkle:minimumSystemVersion` is compared by Sparkle, not displayed, and a value it cannot
+  // parse silently makes every update ineligible.
+  const minSys = operatorPolicy(cfg).minimumSystemVersion;
   const item = buildAppcastItem(release, dmg, edSignature, enclosureUrl, {
     title: `${binaryName} ${versionFromTag(release.tag_name)}`,
     ...(summary ? { descriptionHtml: proseToHtml(summary) } : {}),

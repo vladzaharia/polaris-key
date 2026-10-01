@@ -29,7 +29,8 @@ sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
-tools/               sign-corpus.ts · gen-mirrors.ts
+                     + parity/ (features.json registry; each SDK keeps its own parity.json)
+tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
                      security/ (threat model, wire contract v3, audit + findings)
@@ -77,6 +78,7 @@ already covers the source files.
 ```sh
 pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
+pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
 pnpm lint                        # per-package prettier check

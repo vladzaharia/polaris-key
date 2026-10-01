@@ -85,7 +85,7 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
 
 **Out** (and where it belongs instead):
 
-- A separate registrable domain for bytes, R2 and immutable blob paths (→ P2-01).
+- The bytes host for R2 and immutable blob paths (→ P2-01, landed as `dl.plrs.im`, same-site with the console, with compensating controls; not a separate registrable domain).
 - Hosting web builds, COOP/COEP/CORP for threaded builds (→ [P6-04](P6-04-hosted-web.md)).
 - Credentialed (cookie) CORS for the React SDK's browser session: the browser adapter is
   first-party only and stays so.
@@ -98,6 +98,9 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
   stores handler responses in `caches.default` keyed without the origin, so an allow-origin header
   added inside would be replayed to every other origin. Adding it after the handler returns keeps
   cached objects origin-free.
+  _Correction (implementation):_ `dispatch` and `PRODUCT_ROUTES` moved out of `index.ts` into
+  `src/dispatch.ts`, so the whole pipeline (CORS included) runs in the Node test lane with an
+  in-memory `Db`. `index.ts` keeps the entry points and wraps `secureResponse` around it.
 - **Why a manifest field is enough.** Without credentials, CORS only decides which pages may
   _read_ responses; any non-browser client can already call these routes, and bearer tokens are
   never ambient. So a repo-authored list cannot widen access to anything a script outside a
@@ -108,7 +111,7 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
   Those share the origin with the admin cookie (R1-09).
 - `Repr-Digest` is not sent today; exposing it now saves a change when P2-05/P2b-04 add it.
 - Migration: one `ALTER TABLE products ADD COLUMN web_origins_json TEXT;` in its own file,
-  numbered on rebase. Regenerate `reference/data-model.mdx` and `reference/validation-codes.mdx`.
+  numbered on rebase (_correction:_ pre-assigned as `0024_product_web_origins.sql`). Regenerate `reference/data-model.mdx` and `reference/validation-codes.mdx`.
 - `routes.mdx` is generated from `get|post|put|patch|delete` only (`gen-reference.mjs:215-239`),
   so `OPTIONS` operations do not change it. Say so in the PR.
 
@@ -139,7 +142,7 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm --filter @polaris-key/worker test -- routeCoverage router release updateFeed portal
+mise exec node@22 -- pnpm --filter @polaris-key/worker test -- routeCoverage router release updateFeed portal cors linkRepo
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
@@ -149,6 +152,6 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 
 P1-02 (Godot web transport), P1b-05 (Chromium runner) and P6-04 (hosted web builds) rely on:
 the `web.origins` field and its validation rules, `Product.webOrigins`, the covered-path list,
-the exact allow/expose header sets and `core/cors.ts`. P2-01 moves bytes to a separate domain and
-must apply the same allowlist there. When done:
+the exact allow/expose header sets and `core/cors.ts`. P2-01 moved bytes to `dl.plrs.im` (a same-site sibling; `dispatchBytesHost` applies `core/cors.ts` itself) and
+applies the same allowlist there. When done:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-05 done`.

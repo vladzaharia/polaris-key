@@ -2,9 +2,22 @@
 
 import type { Db, Env } from "../../core/platform.js";
 import { findBinaryAsset, matchAsset, sigAssetName } from "./assets.js";
-import { getReleaseConfig } from "./config.js";
-import { type Release, listReleases, NotFoundError } from "./github.js";
+import {
+  classifyChannel,
+  parseManualChannels,
+  resolutionPolicy,
+  resolveChannel,
+} from "./channels.js";
+import {
+  getReleaseConfig,
+  operatorPolicy,
+  type ReleaseConfigRow,
+  type ResolvedConfig,
+} from "./config.js";
+import { resolveMovingSelector, type MovingResolution } from "./gateway.js";
+import { NotFoundError, UpstreamRateLimitedError } from "./github.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
+import { isBelowFloor, listChannelFloors } from "./store.js";
 
 export type ReleaseHealthStatus =
   | "healthy"
@@ -58,39 +71,34 @@ function summarize(checks: ReleaseHealthCheck[]): ReleaseHealthStatus {
   return "healthy";
 }
 
-function newestPublished(releases: Release[]): Release | null {
-  return releases.find((r) => !r.draft) ?? null;
-}
-
-function artifactPolicy(raw: string | null): {
+/**
+ * What the health check expects of a release. `requireDmg`/`requireCli` are MANIFEST-owned and
+ * come from `artifact_policy_json`; `requireSparkleSignature` is OPERATOR-owned and comes from
+ * `operator_policy_json` (P0-01) through the same reader the feed uses. Unreadable JSON falls
+ * back to the fail-safe defaults: a DMG and a signature required, no CLI.
+ */
+function artifactPolicy(cfg: ReleaseConfigRow): {
   requireDmg: boolean;
   requireCli: boolean;
   requireSparkleSignature: boolean;
 } {
+  const { requireSparkleSignature } = operatorPolicy(cfg);
+  const raw = cfg.artifact_policy_json;
   if (!raw) {
-    return {
-      requireDmg: true,
-      requireCli: false,
-      requireSparkleSignature: true,
-    };
+    return { requireDmg: true, requireCli: false, requireSparkleSignature };
   }
   try {
     const parsed = JSON.parse(raw) as {
       requireDmg?: unknown;
       requireCli?: unknown;
-      requireSparkleSignature?: unknown;
     };
     return {
       requireDmg: parsed.requireDmg !== false,
       requireCli: parsed.requireCli === true,
-      requireSparkleSignature: parsed.requireSparkleSignature !== false,
+      requireSparkleSignature,
     };
   } catch {
-    return {
-      requireDmg: true,
-      requireCli: false,
-      requireSparkleSignature: true,
-    };
+    return { requireDmg: true, requireCli: false, requireSparkleSignature };
   }
 }
 
@@ -159,27 +167,36 @@ export async function checkReleaseHealth(
     ),
   );
 
-  let releases: Release[];
+  // The SAME resolution the live routes run (P0-02): candidate filter, semver order, live page
+  // cap, channel floor. Health used to take the first non-draft entry of a 25-release page,
+  // which is how a rolling `channels` tag or a prerelease could read as "latest" here while the
+  // appcast served something else.
+  const resolved = cfg as ResolvedConfig;
+  let stable: MovingResolution;
+  let token: string;
   try {
     // Pass the structured {owner, repo} scope, NOT the product slug. A bare string is the
     // legacy shape: `normalizeScope` cannot recover repo coordinates from it, so it falls
     // back to a permission-minimised but **installation-wide** token. On an org-wide App
     // install that is a token valid for every repo in the org — exactly what R5-03 set out
     // to remove. The slug happening to equal the repo name is a coincidence, not a contract.
-    const token = await getInstallationToken(
+    token = await getInstallationToken(
       env,
       { owner: cfg.gh_owner, repo: cfg.gh_repo },
       cfg.gh_installation_id,
       now,
       fetchImpl,
     );
-    releases = await listReleases(
+    stable = await resolveMovingSelector(
+      env,
+      db,
+      resolved,
       token,
-      cfg.gh_owner,
-      cfg.gh_repo,
-      25,
+      { kind: "stable", raw: "stable" },
+      now,
       fetchImpl,
     );
+    const releases = stable.listed;
     checks.push(
       check(
         "github",
@@ -208,14 +225,31 @@ export async function checkReleaseHealth(
     };
   }
 
-  const latest = newestPublished(releases);
+  // R6-10: every floored channel whose floor release has disappeared. Stable comes from the
+  // resolution above; the other floored channels are checked over the pages already read, with
+  // one tag lookup each only when they sit below their floor.
+  checks.push(
+    ...(await regressionChecks(
+      env,
+      db,
+      resolved,
+      token,
+      stable,
+      now,
+      fetchImpl,
+    )),
+  );
+
+  const latest = stable.release;
   if (!latest) {
     checks.push(
       check(
         "latest-release",
         "Latest release",
         "missing",
-        "No published GitHub release is available.",
+        stable.regressed
+          ? "The stable channel resolves to nothing: its floor release is gone (see channel-regressed)."
+          : "No published GitHub release matches the stable candidate filter.",
         ["published GitHub release"],
       ),
     );
@@ -238,7 +272,7 @@ export async function checkReleaseHealth(
   );
 
   const binaryName = cfg.binary_name ?? product;
-  const policy = artifactPolicy(cfg.artifact_policy_json);
+  const policy = artifactPolicy(cfg);
   const armDmg = matchAsset(latest.assets, {
     arch: "arm64",
     ext: "dmg",
@@ -335,4 +369,86 @@ export async function checkReleaseHealth(
       htmlUrl: latest.html_url,
     },
   };
+}
+
+/** A regression check for a floor that no longer holds, naming both sides. */
+function regressedCheck(
+  res: MovingResolution,
+  channel: string,
+): ReleaseHealthCheck {
+  const floor = res.floor;
+  const floorName = floor
+    ? `${floor.version}${floor.release_id ? ` (${floor.release_id})` : ""}`
+    : "?";
+  const offered = res.offered ? res.offered.tag_name : "nothing";
+  return check(
+    channel === "stable" ? "channel-regressed" : `channel-regressed-${channel}`,
+    `Channel floor (${channel})`,
+    "error",
+    `${channel} is floored at ${floorName}, but that release is gone and the release list now offers ${offered}. ` +
+      `The channel answers 404 until the release is restored or an operator lowers or clears the floor ` +
+      `(POST …/release/channels/${channel}/floor).`,
+  );
+}
+
+async function regressionChecks(
+  env: Env,
+  db: Db,
+  cfg: ResolvedConfig,
+  token: string,
+  stable: MovingResolution,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<ReleaseHealthCheck[]> {
+  const out: ReleaseHealthCheck[] = [];
+  if (stable.regressed) out.push(regressedCheck(stable, "stable"));
+  const manual = parseManualChannels(cfg.manual_channels_json);
+  const policy = resolutionPolicy(cfg);
+  for (const floor of await listChannelFloors(db, cfg.product)) {
+    if (floor.channel === "stable") continue;
+    const sel = classifyChannel(floor.channel, manual);
+    if (!sel) continue;
+    // Cheap pre-check over the pages already read; only a channel that LOOKS regressed pays for
+    // the full resolution (whose floor lookup is the one extra GitHub call).
+    if (
+      !isBelowFloor(
+        resolveChannel(sel, stable.listed, undefined, policy),
+        floor,
+      )
+    )
+      continue;
+    // These calls run after the guarded GitHub block above, so they need their own guard: a
+    // quota refusal or an upstream failure here must degrade to a warning on this one channel,
+    // never throw away the whole report (and the stable result an operator came here for).
+    let res: MovingResolution;
+    try {
+      res = await resolveMovingSelector(
+        env,
+        db,
+        cfg,
+        token,
+        sel,
+        now,
+        fetchImpl,
+      );
+    } catch (err) {
+      if (
+        !(err instanceof NotFoundError) &&
+        !(err instanceof UpstreamRateLimitedError)
+      )
+        throw err;
+      out.push(
+        check(
+          `channel-floor-unverified-${floor.channel}`,
+          `Channel floor (${floor.channel})`,
+          "warning",
+          `${floor.channel} is floored at ${floor.version}, but the releases read so far do not reach it ` +
+            `and the follow-up GitHub lookup failed (${err.message}), so whether the floor release still exists is unknown.`,
+        ),
+      );
+      continue;
+    }
+    if (res.regressed) out.push(regressedCheck(res, floor.channel));
+  }
+  return out;
 }

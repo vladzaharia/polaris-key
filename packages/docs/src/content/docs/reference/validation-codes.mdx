@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments can emit, extrac
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 71 distinct emit sites.
+codes with their JSON-pointer paths. 80 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -40,6 +40,8 @@ the offending value, or the allowed set.
 | `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_fingerprint` | error | product | `/fingerprint` | fingerprint must be an object. |
 | `invalid_group_name` | error | product | `/oidc/groupRoleMap/${group}` | oidc.groupRoleMap keys must be plain group names (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
+| `invalid_ignore_tags` | error | release | `/release/ignoreTags/${i}` | release.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
+| `invalid_ignore_tags` | error | release | `/release/ignoreTags` | release.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
 | `invalid_manual_channel` | error | release | `/release/manualChannels` | release.manualChannels must be an array of \{ name, regex \} entries. |
 | `invalid_manual_channel` | error | release | `${at}/name` | manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
@@ -69,18 +71,25 @@ the offending value, or the allowed set.
 | `invalid_secret_url_template` | error | product | `/provisioning/${i}/secretUrlTemplate` | provisioning.secretUrlTemplate $\{problem\}. |
 | `invalid_semver` | error | product | `/licensing/tiers/${i}/${bound}` | Tier $\{bound\} must be a semver string. |
 | `invalid_slug` | error | product | `/product/slug` | product.slug must match ^[a-z0-9-]\{1,64\}$. |
+| `invalid_stable_tag_pattern` | error | release | `/release/stableTagPattern` | release.stableTagPattern must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
 | `invalid_tier_fingerprint_mode` | error | product | `/licensing/tiers/${i}/policyFingerprint` | Tier policyFingerprint must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be non-empty simple identifiers. |
 | `invalid_tier_label` | error | product | `/licensing/tiers/${i}/label` | Tier label |
 | `invalid_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId must be a tier identifier. |
 | `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer. |
+| `invalid_web_origin` | error | product | `/web/origins/${i}` | web.origins entries $\{problem\}. |
+| `invalid_web_origins` | error | product | `/web/origins` | web.origins must be an array of at most $\{MAX_WEB_ORIGINS\} origins. |
+| `invalid_web_origins` | error | product | `/web` | web must be an object. |
 | `missing_auto_issue_tier` | error | product | `/autoIssue/tierId` | autoIssue.tierId is required when autoIssue is enabled — a policy naming no tier cannot issue anything. |
 | `missing_github_repo` | error | release | `/release/provider` | GitHub releases require owner and repo. |
 | `missing_name` | error | product | `/product/name` | Add product.name. |
 | `missing_oidc_client_id` | error | product | `/oidc/clientId` | OIDC clientId is required for custom OIDC. |
+| `missing_product` | error | product | `/` | .pkey/product is required at ingest. |
 | `missing_release` | error | release | `/` | Releases are enabled, so .pkey/release.yaml or release.json is required. |
-| `missing_schema` | error | schema | `/` | Config is enabled, so .pkey/schema.yaml or schema.json is required. |
+| `missing_schema` | error | schema | `/` | .pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries. |
 | `reserved_slug` | error | product | `/product/slug` | product.slug "$\{productSlug\}" collides with a reserved platform route. |
+| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/deviceLimit` | deviceLimit on a tier is ignored; use policyDeviceLimit. |
+| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace. |
 | `too_many_redirect_uris` | error | product | `/oidc/redirectUris` | At most $\{MAX_REDIRECT_URIS\} redirect URIs are allowed. |
 | `unknown_auto_issue_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId references unknown tier $\{autoIssue.tierId\}. |
 | `unknown_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier references unknown profile $\{profile\}. |

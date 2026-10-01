@@ -1,3 +1,4 @@
+# @pkey-feature core.bundle core.local
 """Offline activation bundles (§7) and the transportless profile.
 
 The corpus's ``bundleCases`` pin the VERIFIER's numbered order across four SDKs; this suite

@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { parseManifest } from "@polaris-key/manifest";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   initManifest,
@@ -139,6 +140,97 @@ describe("@polaris-key/cli", () => {
       0,
     );
     expect(validation.out()).toContain("Manifest: valid");
+  });
+
+  it("scaffolds a release-only product that validates and parses", async () => {
+    const cwd = await tempDir();
+    const io = capture();
+    await expect(
+      runPkey(
+        [
+          "init",
+          "--product",
+          "acme",
+          "--name",
+          "Acme",
+          "--modules",
+          "releases",
+        ],
+        { cwd, ...io },
+      ),
+    ).resolves.toBe(0);
+    expect(io.out()).toContain("Created 3 manifest files");
+    for (const file of ["product", "schema", "release"])
+      await readFile(path.join(cwd, `.pkey/${file}.yaml`), "utf8");
+    expect(
+      await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8"),
+    ).toContain("catalog: []");
+
+    const validation = capture();
+    await expect(runPkey(["validate"], { cwd, ...validation })).resolves.toBe(
+      0,
+    );
+    expect(validation.out()).toContain("Manifest: valid");
+  });
+
+  it("refuses a missing schema exactly as parseManifest (link/resync) does", async () => {
+    const cwd = await tempDir();
+    await initManifest({
+      cwd,
+      slug: "acme",
+      name: "Acme",
+      modules: ["releases"],
+    });
+    await rm(path.join(cwd, ".pkey/schema.yaml"));
+
+    const validation = capture();
+    await expect(runPkey(["validate"], { cwd, ...validation })).resolves.toBe(
+      1,
+    );
+
+    const result = validateLoadedManifest(await loadManifest(cwd));
+    expect(result.errors.map((e) => e.code)).toEqual(["missing_schema"]);
+
+    const parsed = parseManifest({
+      product: await readFile(path.join(cwd, ".pkey/product.yaml"), "utf8"),
+      release: await readFile(path.join(cwd, ".pkey/release.yaml"), "utf8"),
+    });
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    const [error] = result.errors;
+    expect(parsed.errors).toEqual([`${error!.file}: ${error!.message}`]);
+    expect(validation.out()).toContain(`error schema/: ${error!.message}`);
+  });
+
+  it("scaffolds a tier that means five devices and no expiry", async () => {
+    const cwd = await tempDir();
+    await initManifest({
+      cwd,
+      slug: "acme",
+      name: "Acme",
+      modules: ["licensing", "config"],
+    });
+    const product = await readFile(
+      path.join(cwd, ".pkey/product.yaml"),
+      "utf8",
+    );
+    const schema = await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8");
+    expect(product).not.toContain("keyActivation");
+
+    const parsed = parseManifest({ product, schema });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.manifest.product.defaultMaxOfflineDays).toBe(14);
+    expect(parsed.manifest.tiers).toHaveLength(1);
+    expect(parsed.manifest.tiers[0]).toMatchObject({
+      policyDeviceLimit: 5,
+      policyExpiryDays: null,
+    });
+
+    const result = validateLoadedManifest(await loadManifest(cwd));
+    expect(result.warnings.map((w) => w.code)).not.toContain(
+      "tier_ignored_field",
+    );
   });
 
   it("prints trust and SDK snippets", async () => {

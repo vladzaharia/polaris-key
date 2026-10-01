@@ -1,3 +1,4 @@
+// @pkey-feature license.gate
 // Cross-SDK gate-parity conformance, re-baselined onto `conformance/corpus/v2/gate-matrix.json`
 // (wire contract v3 §5). Every row runs through the SAME `@polaris-key/client-core` `licenseState` the
 // Node runner drives — this package no longer carries a port of it to diverge from — and then

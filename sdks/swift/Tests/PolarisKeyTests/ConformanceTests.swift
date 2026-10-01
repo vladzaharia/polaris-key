@@ -1,3 +1,4 @@
+// @pkey-feature core.verify core.bundle
 // The Swift conformance runner for wire contract v3. It drives EVERY case in
 // `conformance/corpus/v2` through the native CryptoKit verifier and asserts the expected
 // outcome — the Node runner (`conformance/runners/node/corpusV2.test.ts`) mirrors this file
