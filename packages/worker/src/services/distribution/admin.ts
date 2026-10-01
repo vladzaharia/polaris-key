@@ -245,7 +245,7 @@ async function accessView(
   const rows = await listAccess(ctx.db, slug);
   return {
     modes: ACCESS_MODES,
-    /** The `app` deliverable's mode in force, row or not (`public` with none). */
+    /** The `app` deliverable's mode in force, row or not (`entitled`, fail-closed, with none). */
     app: {
       deliverableId: APP_DELIVERABLE_ID,
       mode: await accessModeOf(ctx.db, slug, APP_DELIVERABLE_ID),

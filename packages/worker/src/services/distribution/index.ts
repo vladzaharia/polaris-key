@@ -73,16 +73,13 @@ async function outletCapabilities(
   return { outletId, ...effectiveCapabilities(defaults, override) };
 }
 
-/** Distribution's `manifestIngest`: outlets and transports, then the `app` delivery access. */
+/** Distribution's `manifestIngest` (enabled only): outlets and transports. */
 function manifestIngest(
   parsed: ParsedManifest,
   product: string,
   now: number,
 ): DbStatement[] {
-  return [
-    ...outletIngestStatements(parsed, product, now),
-    ...accessIngestStatements(parsed, product, now),
-  ];
+  return outletIngestStatements(parsed, product, now);
 }
 
 export const distributionService: ServiceDescriptor = {
@@ -127,9 +124,16 @@ export const distributionService: ServiceDescriptor = {
   delivery,
   /** `core/hooks.ts` `OutletCapabilities` (P2b-02). */
   outletCapabilities,
-  /** `.pkey/distribution` + `release.access.artifacts` → `dist_outlets` / `dist_transports` /
-   *  `dist_access`. */
+  /** `.pkey/distribution` → `dist_outlets` / `dist_transports`, while Distribution is on. */
   manifestIngest,
+  /**
+   * `release.access.artifacts` → the `app` row of `dist_access`, on every link and resync
+   * WHATEVER Distribution's enablement (`core/registry.ts` `manifestIngestAlways`): turning
+   * Distribution on runs no ingest, so the row must already hold the manifest's answer then, or
+   * a Release-only product's `licensed` downloads would open (or, with no row, close) the moment
+   * an operator enables Distribution.
+   */
+  manifestIngestAlways: accessIngestStatements,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
 };

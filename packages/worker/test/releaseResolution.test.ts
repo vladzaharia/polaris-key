@@ -49,6 +49,7 @@ import {
   issueSession,
 } from "../src/admin/session.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
+import { seedDeliveryAccess } from "./releaseSurface.js";
 
 const SLUG = "djdl";
 const API = "https://api.github.com/repos/acme/djdl";
@@ -107,6 +108,9 @@ async function seed(db: Db, over: Record<string, unknown> = {}) {
     `INSERT INTO release_config (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`,
     ...(Object.values(row) as never[]),
   );
+  // The `dist_access` row migration 0038 (or any link/resync) writes for this configuration: no
+  // row reads fail-closed as `entitled` (P2b-04).
+  await seedDeliveryAccess(db, SLUG, String(row.artifacts_access));
 }
 
 function product(): Product {

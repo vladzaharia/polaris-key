@@ -506,7 +506,43 @@ describe("enablement gates the ingest and the hook", () => {
     );
     expect(calls).toEqual(["license", "distribution"]);
     expect(out.slugs).toEqual(["license", "distribution"]);
-    expect(out.statements).toHaveLength(2);
+    // Two `manifestIngest` statements, plus Distribution's `manifestIngestAlways` delivery-access
+    // row (P2b-04), which is not behind enablement.
+    expect(out.statements).toHaveLength(3);
+  });
+
+  it("manifestIngestAlways runs whatever the enablement; manifestIngest does not", () => {
+    const calls: string[] = [];
+    const registry: ServiceRegistry = new Map(SERVICES);
+    registry.set("distribution", {
+      ...distributionService,
+      manifestIngest: () => {
+        calls.push("ingest");
+        return [{ sql: "SELECT 1", params: [] }];
+      },
+      manifestIngestAlways: () => {
+        calls.push("always");
+        return [{ sql: "SELECT 2", params: [] }];
+      },
+    });
+    const services = {
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: true },
+      distribution: { enabled: false },
+      update: { enabled: false },
+      identity: { enabled: false },
+    };
+    const out = manifestIngestStatements(
+      registry,
+      {} as never,
+      SLUG,
+      services,
+      NOW,
+    );
+    expect(calls).toEqual(["always"]);
+    expect(out.slugs).toEqual(["distribution"]);
+    expect(out.statements).toEqual([{ sql: "SELECT 2", params: [] }]);
   });
 });
 

@@ -26,6 +26,7 @@ import {
 } from "../src/core/cors.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
+import { seedDeliveryAccess } from "./releaseSurface.js";
 
 const SLUG = "djdl";
 const LISTED = "https://play.djdl.example";
@@ -104,6 +105,9 @@ async function seed(
     // The signature opt-out is operator policy, stored in `operator_policy_json` since P0-01.
     JSON.stringify({ requireSparkleSignature: false }),
   );
+  // The `dist_access` row migration 0038 (or any link/resync) writes for this configuration: no
+  // row reads fail-closed as `entitled` (P2b-04).
+  await seedDeliveryAccess(db, SLUG, "public");
 }
 
 function envFor(): Env {

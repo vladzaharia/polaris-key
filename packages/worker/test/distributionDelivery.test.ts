@@ -35,6 +35,7 @@ import {
   recordRef,
 } from "../src/core/blobs.js";
 import { buildHooks } from "../src/core/hooks.js";
+import { manifestIngestFor } from "../src/core/registry.js";
 import { loadProduct } from "../src/core/products.js";
 import { serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
@@ -454,14 +455,136 @@ describe("an operator's `entitled` in dist_access gates every surface the same w
   });
 });
 
+// ── 3b. Turning Distribution on never opens downloads ──────────────────────────────────────────
+
+/** The services PATCH the console sends: Distribution (and Update) switched on live, no ingest. */
+async function enableDistributionInConsole(w: World): Promise<void> {
+  const { token, session } = await issueSession(
+    w.env,
+    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    NOW,
+  );
+  const path = `/api/products/${SLUG}/services`;
+  const res = await handleAdmin(
+    new Request(`${CONSOLE}/manage${path}`, {
+      method: "PATCH",
+      headers: {
+        cookie: `${ADMIN_COOKIE}=${token}`,
+        [CSRF_HEADER]: session.csrf,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        services: {
+          distribution: { enabled: true },
+          update: { enabled: true },
+        },
+      }),
+    }),
+    w.env,
+    w.db,
+    path,
+    { now: NOW },
+  );
+  expect(res.status).toBe(200);
+}
+
+/** A parsed manifest whose `.pkey/release` says `access.artifacts: <mode>`. */
+function manifestWithArtifacts(mode: string) {
+  const p = parseManifest({
+    schema: JSON.stringify({ schemaVersion: 1, entries: [] }),
+    product: JSON.stringify({ slug: SLUG, name: "D" }),
+    release: JSON.stringify({
+      release: {
+        ghOwner: "acme",
+        ghRepo: "djdl",
+        access: { metadata: "public", artifacts: mode },
+      },
+    }),
+  });
+  if (!p.ok) throw new Error(JSON.stringify(p));
+  return p.manifest;
+}
+
+/** Run Core's ingest pipeline exactly as a link or resync does, with Distribution OFF. */
+async function ingestWithDistributionOff(w: World, mode: string) {
+  const out = manifestIngestFor(SERVICES)(
+    manifestWithArtifacts(mode),
+    SLUG,
+    {
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: true },
+      distribution: { enabled: false },
+      update: { enabled: false },
+      identity: { enabled: false },
+    },
+    NOW,
+  );
+  for (const st of out.statements) await w.db.run(st.sql, ...st.params);
+}
+
+/** Every anonymous download surface a licensed product must refuse. */
+async function expectAnonymousRefused(w: World): Promise<void> {
+  for (const url of [
+    `${CONSOLE}/${SLUG}/release/dl/latest/djdl-arm64`,
+    `${CONSOLE}/${SLUG}/distribution/dl/latest/djdl-arm64`,
+    `${CONSOLE}/${SLUG}/distribution/builds/stable/cli-arm64`,
+    `${BYTES}/${SLUG}/distribution/builds/stable/cli-arm64`,
+    `${BYTES}/${SLUG}/release/builds/stable/cli-arm64`,
+    `${BYTES}/${SLUG}/distribution/files/v1.1.0/djdl-arm64`,
+    `${CONSOLE}/${SLUG}/update/appcast.xml`,
+  ]) {
+    const res = await get(w, url);
+    expect(res.status, url).toBe(401);
+  }
+}
+
+describe("turning Distribution on in the console never opens a licensed product's downloads", () => {
+  it("a Release-only product's licensed manifest is in force the moment Distribution is enabled", async () => {
+    // Linked after 0038 with Release on and Distribution off: the ingest still writes the
+    // `app` row (`manifestIngestAlways`), so enabling Distribution live — which runs no
+    // ingest — finds `licensed`, not a missing row.
+    const w = await setup();
+    await services(w, { release: true, distribution: false });
+    await w.db.run("DELETE FROM dist_access WHERE product = ?", SLUG);
+    await w.db.run(
+      "UPDATE release_config SET artifacts_access = 'licensed' WHERE product = ?",
+      SLUG,
+    );
+    await ingestWithDistributionOff(w, "licensed");
+    expect(await accessModeOf(w.db, SLUG, "app")).toBe("licensed");
+    await enableDistributionInConsole(w);
+    await expectAnonymousRefused(w);
+  });
+
+  it("a mode tightened while Distribution was off is the one in force when it comes back", async () => {
+    const w = await setup();
+    expect(await accessModeOf(w.db, SLUG, "app")).toBe("public");
+    await services(w, { release: true, distribution: false });
+    await ingestWithDistributionOff(w, "licensed");
+    await enableDistributionInConsole(w);
+    await expectAnonymousRefused(w);
+  });
+
+  it("a product no ingest has written a row for reads fail-closed, never public", async () => {
+    const w = await setup();
+    await services(w, { release: true, distribution: false });
+    await w.db.run("DELETE FROM dist_access WHERE product = ?", SLUG);
+    await enableDistributionInConsole(w);
+    expect(await accessModeOf(w.db, SLUG, "app")).toBe("entitled");
+    await expectAnonymousRefused(w);
+  });
+});
+
 // ── 4. dist_access mechanics ──────────────────────────────────────────────────────────────────
 
 describe("dist_access", () => {
-  it("a deliverable with no row inherits the app's; no app row is public", async () => {
+  it("a deliverable with no row inherits the app's; no app row reads fail-closed as entitled", async () => {
     const db = makeTestDb();
     await seedProduct(db, SLUG);
-    expect(await accessModeOf(db, SLUG, "app")).toBe("public");
-    expect(await accessModeOf(db, SLUG, "foes")).toBe("public");
+    // No row at all must never read as open.
+    expect(await accessModeOf(db, SLUG, "app")).toBe("entitled");
+    expect(await accessModeOf(db, SLUG, "foes")).toBe("entitled");
     await db.run(
       "INSERT INTO dist_access (product, deliverable_id, mode, source, modified_at) VALUES (?, 'app', 'licensed', 'manifest', 0)",
       SLUG,
@@ -517,6 +640,20 @@ describe("dist_access", () => {
     );
     await apply("public", 30);
     expect(await row()).toMatchObject({ mode: "entitled", source: "admin" });
+  });
+
+  it("a manifest with no release block writes the app row as public, the release_config default", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, SLUG);
+    const p = parseManifest({
+      schema: JSON.stringify({ schemaVersion: 1, entries: [] }),
+      product: JSON.stringify({ slug: SLUG, name: "D" }),
+    });
+    if (!p.ok) throw new Error(JSON.stringify(p));
+    expect(p.manifest.release).toBeFalsy();
+    for (const s of accessIngestStatements(p.manifest, SLUG, 10))
+      await db.run(s.sql, ...s.params);
+    expect(await accessModeOf(db, SLUG, "app")).toBe("public");
   });
 
   it("admin: GET shows the app mode, PUT validates and audits, revert only for the app", async () => {

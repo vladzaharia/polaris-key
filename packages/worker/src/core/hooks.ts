@@ -336,7 +336,8 @@ export interface Delivery {
   }): Promise<RolloutRecord | null>;
   /**
    * Who may download a deliverable (`dist_access`): its own row, else the `app` row, else
-   * `public`. The ONE answer the byte routes, the appcast and the portal all read (README §3.5).
+   * `entitled` (fail-closed: no row never reads as open). The ONE answer the byte routes, the
+   * appcast and the portal all read (README §3.5).
    */
   accessMode(deliverable: string): Promise<ReleaseAccess>;
   /**

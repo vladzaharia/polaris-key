@@ -210,6 +210,16 @@ Recorded where the code (or a dependency's state) disagreed with the text above.
   download, since its access answer is Distribution's.
 - **No new error codes.** Rollout refusals use the existing flat `not_found` / `bad_request`
   codes with a machine-readable `reason`, like P2-05's CI routes, so `errors.json` is unchanged.
+- **Delivery access cannot open on enablement.** Turning a service on in the console runs no
+  ingest, so Distribution's `app` row is written through a new Core registry hook,
+  `manifestIngestAlways`, that runs on every link and resync whatever the service's enablement
+  (`public` when the manifest has no release block, the default `release_config` took). With
+  no row at all, `accessModeOf` reads `entitled`, never `public`. Without both, a Release-only
+  product whose manifest said `licensed` served its bytes to anyone the moment an operator
+  enabled Distribution.
+- **`deliveryUrl` for a build** is the build payload's `files/<releaseId>/<name>` URL, not
+  `builds/<version>/<buildId>`: a GitHub-synced release stores its tag as its version, and a
+  tag such as `latest` would be re-read as a moving selector (P2-05's fixedVersion rule).
 - **`dist_access.entitlement`** is stored and shown but not enforced; its meaning (a named
   entitlement for gated packs) belongs to P4-05 / commerce.
 

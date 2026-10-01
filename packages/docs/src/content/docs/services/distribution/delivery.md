@@ -88,8 +88,8 @@ Who may download a deliverable is stored per deliverable in `dist_access`:
 | `licensed`      | a device whose licence is usable (identical to `authenticated` today) |
 | `entitled`      | a device whose own licence covers the requested channel and version   |
 
-A deliverable with no row of its own inherits the `app` row; a product with no `app` row is
-`public`. The refusals are exactly the ones Release answered with: the flat
+A deliverable with no row of its own inherits the `app` row; a product with no `app` row reads
+as `entitled` (fail-closed). The refusals are exactly the ones Release answered with: the flat
 `download_auth_required` under `authenticated`/`licensed`, the nested `unauthorized`,
 `channel_not_allowed` and `version_blocked` under `entitled`
 ([Eligibility](/docs/services/update/eligibility/) has the full decision).
@@ -116,8 +116,10 @@ migration copied every product's value into its `app` row.
 
 ### Who owns it
 
-The `app` row follows `.pkey/release` `access.artifacts`: Distribution's ingest writes it on
-every link and resync. An operator who sets a mode claims the row, and resyncs skip it until
+The `app` row follows `.pkey/release` `access.artifacts` (`public` when the manifest has no
+release block, the default the old column took): Distribution's ingest writes it on every link
+and resync, even while Distribution is off, so the row is already right when an operator turns
+Distribution on. An operator who sets a mode claims the row, and resyncs skip it until
 it is handed back — the same rule as every other operator-owned setting, and the reason an
 `entitled` mode, which no manifest can express, survives a push. A pack's row has no manifest
 spelling; it is operator-owned from the start.
@@ -135,8 +137,11 @@ Writes are audited as `distribution.access.update` and `distribution.access.reve
 `entitlement` is stored and shown for a future named entitlement (paid packs); nothing
 enforces it yet. `update/settings` no longer accepts `artifactsAccess` and refuses it by name.
 
-A product that turns Distribution on after a manifest change made while it was off keeps the
-delivery access it had until its next resync, which re-applies the manifest's mode.
+Turning Distribution on in the console runs no ingest, which is why the row is kept current
+while Distribution is off: a product whose manifest says `licensed` is `licensed` the moment
+Distribution answers, including when the manifest tightened the mode while Distribution was
+off. A product with no row at all (no ingest has run since the migration) reads as `entitled`,
+never `public`: a missing answer refuses rather than opens.
 
 ## Delivery URLs
 

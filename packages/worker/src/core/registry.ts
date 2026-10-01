@@ -155,6 +155,28 @@ export interface ServiceDescriptor extends DescriptorHooks {
     now: number,
   ): DbStatement[];
   /**
+   * Rows this service keeps current on every link and resync WHATEVER its enablement (P2b-04).
+   *
+   * The narrow exception to "enabled services only", for a record that must already be right
+   * the moment an operator turns the service on — because turning a service on runs no ingest
+   * (`core/servicesAdmin.ts`), and the record governs access the instant the service answers. A
+   * missing record would have to read fail-closed (refusing every caller until the next push) and
+   * a stale one would govern with the manifest's old answer. Distribution's `app` delivery-access
+   * row (`dist_access`) is the one user: the manifest's `release.access.artifacts` reaches it
+   * even while Distribution is off, so a Release-only product whose manifest says `licensed`
+   * stays `licensed` when Distribution is switched on.
+   *
+   * The same contract as `manifestIngest` otherwise — statements only, idempotent, never an
+   * operator-owned column — and it must write only records that do nothing on their own: no
+   * request reaches a disabled service, so a row it keeps is read only once the service is on.
+   * Keep it to that; anything else belongs in `manifestIngest`, behind enablement.
+   */
+  manifestIngestAlways?(
+    parsed: ParsedManifest,
+    product: string,
+    now: number,
+  ): DbStatement[];
+  /**
    * May this caller be given a device credential? (wire v3 §6, spec §2.3.)
    *
    * The one place Core delegates an AUTHORIZATION decision to a service, and it exists because
@@ -274,6 +296,10 @@ export interface ManifestIngestResult {
  * that implements none contributes nothing. Statements only: the caller puts them in its own
  * batch, so the service rows land atomically with the rest of the ingest.
  *
+ * The one exception is `manifestIngestAlways` (P2b-04), which runs for every registered service
+ * whatever its enablement, after that service's `manifestIngest`: records that must already be
+ * right when the service is turned on (see the descriptor's comment).
+ *
  * This is the registry comment's promised pattern, made real. Release keeps its own ingest
  * (`services/release/{linkRepo,resync}.ts`) as it is; it runs this beside it, and so never
  * imports the services that answer (AGENTS rule 6).
@@ -287,10 +313,13 @@ export function manifestIngestStatements(
 ): ManifestIngestResult {
   const out: ManifestIngestResult = { slugs: [], statements: [] };
   for (const slug of SERVICE_SLUGS) {
-    if (!services[slug]?.enabled) continue;
-    const ingest = registry.get(slug)?.manifestIngest;
-    if (!ingest) continue;
-    const statements = ingest(parsed, product, now);
+    const descriptor = registry.get(slug);
+    if (!descriptor) continue;
+    const statements: DbStatement[] = [];
+    if (services[slug]?.enabled && descriptor.manifestIngest)
+      statements.push(...descriptor.manifestIngest(parsed, product, now));
+    if (descriptor.manifestIngestAlways)
+      statements.push(...descriptor.manifestIngestAlways(parsed, product, now));
     if (statements.length === 0) continue;
     out.slugs.push(slug);
     out.statements.push(...statements);

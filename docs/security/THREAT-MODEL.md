@@ -454,7 +454,11 @@ receives it from the composition root (the webhook, the console's link route, `S
 for its resync route) and never imports Distribution (rule 6). Resync gates on the product's
 **stored** enablement after the manifest's write, so a service an operator turned off live keeps
 its rows. A `manifestIngest` returns statements only, so it cannot read — it must be idempotent
-SQL and must not name an operator-owned column; reviewers check both.
+SQL and must not name an operator-owned column; reviewers check both. The one exception to
+"enabled only" is `manifestIngestAlways` (P2b-04), which Core runs for every registered service
+on every ingest; Distribution's `app` delivery-access row is its only user (see "Byte delivery,
+delivery access and rollouts" below). It carries the same two rules, plus a third: it may write
+only a record that does nothing until its service is turned on.
 
 **The ingest's cost is bounded for untrusted input (the R10 class).** Every row Distribution
 writes comes from one push to a third party's repo and lands in the shared D1 batch, so its count
@@ -515,16 +519,25 @@ the `0038` migration copied it into each product's `app` row with its owner, and
 `artifactPolicy` fails closed to `entitled` when no delivery access is supplied, never back to
 the old column.
 
-- **Ownership.** The `app` row is manifest-owned (`.pkey/release` `access.artifacts`, applied by
-  Distribution's ingest) until an operator sets it, which claims it; the ingest skips a claimed
-  row, so `entitled` (no manifest spelling) survives a push. A pack row is operator-only.
-  `update/settings` refuses `artifactsAccess` by name. Residual: a product that turns
-  Distribution on live after a manifest changed its mode while Distribution was off keeps the old
-  mode until its next resync (the ingest runs only for enabled services).
-- **Inheritance fails toward the app.** A deliverable with no row inherits the `app` row; no row
-  at all is `public`, the default the old column had. A stored mode outside the CHECK reads as
-  `entitled`. The blob route uses the strictest mode of the deliverables whose releases carry the
-  digest.
+- **Ownership.** The `app` row is manifest-owned (`.pkey/release` `access.artifacts`, or `public`
+  when the manifest has no release block — the default `release_config` took) until an operator
+  sets it, which claims it; the ingest skips a claimed row, so `entitled` (no manifest spelling)
+  survives a push. A pack row is operator-only. `update/settings` refuses `artifactsAccess` by
+  name.
+- **Turning Distribution on cannot loosen access.** Enabling a service in the console
+  (`core/servicesAdmin.ts`) runs no ingest, so the `app` row must already be right at that
+  moment. Distribution writes it through `manifestIngestAlways` (`core/registry.ts`), the one
+  ingest hook Core runs WHATEVER the service's enablement: every link and resync of a
+  Release-only product keeps the row equal to its manifest, so a `licensed` manifest is
+  `licensed` the instant Distribution answers, and a mode tightened while Distribution was off
+  is the one in force when it comes back (`test/distributionDelivery.test.ts`, "turning
+  Distribution on…"). The hook may write only records that do nothing on their own; no request
+  reaches a disabled service.
+- **Inheritance fails toward the app, then closed.** A deliverable with no row inherits the `app`
+  row; no row at all reads as `entitled`, never `public` — reached only by a product no ingest
+  has touched since 0038 backfilled every configured product. A stored mode outside the CHECK
+  reads as `entitled` too. The blob route uses the strictest mode of the deliverables whose
+  releases carry the digest.
 - **The portal asks the same question of licences.** A portal account has no device token, so
   `licensed` needs a usable linked licence and `entitled` one whose own grant
   (`core/entitledAccess.ts` `licenseEntitled`, the device decision without the device layer)
@@ -1001,7 +1014,9 @@ release channel or artifact type is added; a service gains a route, a table or a
 descriptor hook gains a method that writes or a new provider, or a method that returns bytes
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
-offered (P3-03); a byte route is added to `BYTE_ROUTES`, a type to
+offered (P3-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
+than the `app` delivery-access row (it runs whatever the service's enablement); turning a
+service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the

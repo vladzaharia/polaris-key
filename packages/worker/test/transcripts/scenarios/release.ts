@@ -39,6 +39,7 @@ import {
 import type { World } from "../recorder.js";
 import type { ServicesMap } from "../../../src/core/services.js";
 import { TEST_RSA_PKCS8 } from "../../releaseFixtures.js";
+import { seedDeliveryAccess } from "../../releaseSurface.js";
 
 /**
  * License + Config + Release, and Distribution: since P2b-04 the installer and the download the
@@ -155,6 +156,9 @@ async function releaseWorld(metadataAccess: string): Promise<World> {
     "public",
     null,
   );
+  // The `dist_access` row migration 0038 (or any link/resync) writes for this configuration: no
+  // row reads fail-closed as `entitled` (P2b-04).
+  await seedDeliveryAccess(world.db, PRODUCT, "public");
   return world;
 }
 

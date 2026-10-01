@@ -10,15 +10,20 @@
  * could offer what the download refused (notes/A1 §1.6–§1.7).
  *
  * Ownership follows P0-01's rule. The `app` row is MANIFEST-owned by default: `.pkey/release`
- * `access.artifacts` reaches it through Distribution's `manifestIngest` on every link and
- * resync. An operator who sets a mode (`PUT …/distribution/access`) claims the row
+ * `access.artifacts` (or `public`, its default, when the manifest has no release block — the
+ * value `release_config` always took) reaches it through Distribution's `manifestIngestAlways`
+ * on every link and resync, WHATEVER Distribution's enablement: switching Distribution on runs
+ * no ingest, so the row must already be the manifest's answer by then. An operator who sets a mode (`PUT …/distribution/access`) claims the row
  * (`source = 'admin'`) and the ingest skips it until `POST …/distribution/access/revert` hands it
  * back. `entitled` has no manifest spelling, so without the claim the next push would downgrade
  * it. A pack row has no manifest spelling at all; it is operator-owned from the start.
  *
- * Resolution: the deliverable's own row, else the `app` row, else `public` — the default the
- * column it replaces always had. So a pack inherits the product's posture until an operator says
- * otherwise, exactly as it shared the product-wide mode before.
+ * Resolution: the deliverable's own row, else the `app` row, else `entitled` — FAIL-CLOSED. So a
+ * pack inherits the product's posture until an operator says otherwise, exactly as it shared the
+ * product-wide mode before. Every product with a release configuration has an `app` row (0038
+ * backfilled them, and every link or resync writes it), so the fallback is reached only by a
+ * product no ingest has touched since; it refuses rather than serving a `licensed` product's
+ * bytes to anyone.
  */
 
 import { APP_DELIVERABLE_ID, type ParsedManifest } from "@polaris-key/manifest";
@@ -79,7 +84,7 @@ function readMode(value: string): ReleaseAccess {
   return isAccessMode(value) ? value : "entitled";
 }
 
-/** The mode in force for one deliverable (its row, else the `app` row, else `public`). */
+/** The mode in force for one deliverable (its row, else the `app` row, else `entitled`). */
 export async function accessModeOf(
   db: Db,
   product: string,
@@ -95,7 +100,8 @@ export async function accessModeOf(
   const own = rows.find((r) => r.deliverable_id === deliverable);
   if (own) return readMode(own.mode);
   const app = rows.find((r) => r.deliverable_id === APP_DELIVERABLE_ID);
-  return app ? readMode(app.mode) : "public";
+  // No row at all: fail closed, never `public` (see the file comment).
+  return app ? readMode(app.mode) : "entitled";
 }
 
 /** Set (and claim for the operator) one deliverable's mode. `entitlement` undefined = keep. */
@@ -149,16 +155,19 @@ export async function revertAccess(
 
 /**
  * The ingest statement for the `app` row: the manifest's `release.access.artifacts`, upserted
- * unless an operator owns the row. A manifest with no release block says nothing about access
- * and writes nothing. Idempotent: the row moves only when the mode actually changes.
+ * unless an operator owns the row. A manifest with no release block gets `public` — the default
+ * `release_config.artifacts_access` takes on link (`linkRepo`), so the row always matches what
+ * the column it replaces would have said. Idempotent: the row moves only when the mode actually
+ * changes. A value outside the four modes cannot pass the manifest validator; if one ever did,
+ * it is written as `entitled`, never skipped (a skipped write would leave a looser row in force).
  */
 export function accessIngestStatements(
   parsed: ParsedManifest,
   product: string,
   now: number,
 ): DbStatement[] {
-  const mode = parsed.release?.access.artifacts;
-  if (!mode || !isAccessMode(mode)) return [];
+  const declared: unknown = parsed.release?.access.artifacts ?? "public";
+  const mode: ReleaseAccess = isAccessMode(declared) ? declared : "entitled";
   return [
     {
       sql: `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
