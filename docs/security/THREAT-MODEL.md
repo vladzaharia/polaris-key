@@ -853,6 +853,87 @@ per-key hourly limit, which the poller reads from `X-Rate-Limit` and backs off f
 at 16 KiB each; beta-feedback events can name testers, so `dist_connector_events` is personal data
 under the same retention reasoning as `audit`.
 
+### Store connectors: Google Play (P5-03)
+
+**What it is.** `services/distribution/connectors/play/` keeps a product's Google Play state in
+Distribution: availability of each release's Android builds on its `play` / `play-testing`
+outlets (`source = play`, matched by version code = `release_builds.build_number`), each mapped
+track's staged rollout mirrored into `dist_rollouts` (`mirrored = 1`), and every track as a
+connector object. Two entry points, no public route: the 15-minute connector cron
+(`CONNECTOR_POLL_CRON`), which reads a throwaway edit (`edits.insert` → `edits.tracks.list` →
+`edits.delete`), and operator controls in the console (`…/distribution/connectors/play/…`:
+rollout fraction, halt, resume, complete, the in-app update priority, settings). An opt-in
+vitals auto-halt reads the Play Developer Reporting API on the same tick. It authenticates with
+the `google-service-account` outlet credential (P5-01) through `googleAccessToken` only — one
+token per scope (`androidpublisher`, `playdeveloperreporting`), sealed in KV, the credential
+opened (audited `play:poll` / `play:control` / `play:vitals`) on a cache miss — and never writes
+a credential.
+
+**Blast radius of a stolen service-account key.** The key acts on every app its account is invited
+to, with that invitation's permissions. With the least privilege the operator docs prescribe
+(`services/distribution/google-play.md`: a dedicated account, invited to this ONE app, release
+permissions plus read-only app information, no Cloud roles, nothing financial), a thief can
+start, ramp, halt, resume or complete a release already uploaded to that app, set the priority of
+a draft, read crash and ANR rates, and — with the release permission — upload and roll out a
+bundle signed with an upload key they hold; Play App Signing still re-signs it, but Play does not
+otherwise stop it. They cannot touch the product's other stores or apps, or Polaris Key itself.
+Mitigations: P5-01 custody (sealed, platform-admin writes only, every open audited, the version
+marker drops cached tokens on rotation); the connector itself never uploads; Play Console's own
+activity log is the second record; rotate by deleting the key in Google Cloud and PUTting a new
+one. Whether the account is really scoped to one app cannot be verified by the Worker; an
+account invited account-wide turns this paragraph's "one app" into "every app".
+
+**Cross-app writes.** Every request names the one package the setup resolved — the `play` outlet's
+`packageName`, re-checked against the Android package rule before it becomes a URL segment — and
+a Play outlet naming another package is not part of the setup, so neither the poller nor a control
+can be pointed at a second app through the manifest. (The manifest is repo-controlled: a push that
+changes the package name points the connector at that package, which the service account can only
+act on if it is invited there — the scoping above is what bounds it.)
+
+**SSRF and paths.** Requests go only to `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/<package>/…`
+and `https://playdeveloperreporting.googleapis.com/v1beta1/apps/<package>/…`; the client refuses
+any other origin at construction. Every segment (a track id may contain spaces and `:`) is
+percent-encoded, `.` / `..` are refused, an edit id must match `^[A-Za-z0-9_-]{1,128}$`, and a
+custom method (`:commit`, `:query`) is appended only by the code that means it — a track named
+`x:commit` cannot become a commit. Nothing in a response is followed as a URL.
+
+**Edits are fragile; reads are all-or-nothing.** One open edit per user, invalidated by a new
+edit, a Console change or another commit. The poller reads and maps the whole track list before
+writing anything, deletes its edit whatever happened, and a failed read (an invalidated edit, a
+429 after two backed-off retries) writes nothing — no availability, no rollout, no object — and
+records a status line on the credential. A control that is refused before its PATCH, or whose
+commit fails, deletes its edit. A poll and a control racing for the one edit fail one another; the
+loser is retried next tick or reported to the operator as `store_refused`.
+
+**Controls.** Each is a platform-admin console action (session, CSRF, rate limit), ONE edit: read
+the track, PATCH its releases back with only the target's `status` / `userFraction` /
+`inAppUpdatePriority` changed, commit with `changesInReviewBehavior=ERROR_IF_IN_REVIEW` (a
+change that would cancel a review in flight is refused, never forced). One audit row with the
+session's subject, then a re-read whose answer is what the mirror shows (a commit can take hours
+to propagate; nothing assumes it is live). Halting a `completed` release rolls the track back to
+the previous release, so it needs `confirmRollback: true`; the priority cannot change once a
+rollout starts, so `priority` is refused on anything but a draft. Google's refusals are relayed as
+`store_refused` with the HTTP status only (`PlayError`), never a body.
+
+**The vitals auto-halt.** Off by default; its settings live in `dist_connector_settings`
+(migration 0042), written only by the connector's `settings` control (platform admin, audited) —
+no manifest, ingest or resync reaches them, so a repo push cannot turn on an automatic halt. With
+it off, no Reporting API call is made and no Reporting token minted. With it on, a staged release
+whose user-weighted crash or ANR rate over the window exceeds the threshold on at least the
+minimum sample is halted through the same control path (actor `connector:play-vitals`, one
+`distribution.play.halt` audit row naming the reading) and marked with a `vitals-trip` object,
+so it trips once: a halt Play has not propagated yet cannot cause a second one, and an
+operator's resume is not fought. Residual: the Reporting data is Google's; a wrong reading (or a
+key holder who can make the app crash for enough users) can halt a rollout — the safe direction —
+but never start, ramp or complete one.
+
+**The mirror is not an access control.** Users who already installed a halted release keep it,
+and Play applies the staged rollout, not Polaris Key; `dist_rollouts` rows with `source = play`
+inform the feed (P3-03), the Android plugin (P5-06) and the console. A mirrored row refuses direct
+edits (`rollout_mirrored`); the connector overwrites any operator rollout on the same
+(deliverable, outlet, channel) and audits that it did. A tick over unchanged Play state writes no
+audit row.
+
 ### The device-code user-code page (P1-06)
 
 **What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
@@ -1226,7 +1307,7 @@ descriptor hook gains a method that writes or a new provider, or a method that r
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
 offered (P3-03), or a reader of `dist_availability` does, a store connector is added, gains a
-control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, or starts uploading or submitting (P5-02), or anything but the console's key
+control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, or starts uploading or submitting (P5-02), an automatic action (the Play vitals auto-halt, P5-03) gains a verb other than halt or a setting any path but the console's audited control can write, or anything but the console's key
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
