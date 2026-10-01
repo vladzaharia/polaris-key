@@ -37,6 +37,8 @@ const HTTP_ERROR := &"http-error"
 const INVALID_RESPONSE := &"invalid-response"
 const STORE_FAILED := &"store-failed"
 const NO_TOKEN := &"no-token"
+## Edge-mint: discovery says the product has no approved recipe, so nothing was sent.
+const MINT_UNAVAILABLE := &"mint-unavailable"
 ## The four §7 bundle steps (PKeyBundle).
 const BUNDLE_JWS_REJECTED := &"bundle-jws-rejected"
 const BUNDLE_CLAIMS_REJECTED := &"bundle-claims-rejected"

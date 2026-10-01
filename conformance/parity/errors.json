@@ -440,6 +440,12 @@
       "kind": "client",
       "service": "core",
       "description": "Godot: An authenticated call ran with no device token in hand."
+    },
+    {
+      "code": "mint-unavailable",
+      "kind": "client",
+      "service": "config",
+      "description": "Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent."
     }
   ]
 }
