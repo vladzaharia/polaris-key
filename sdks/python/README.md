@@ -259,10 +259,22 @@ client.config.get_config_source("run.concurrency")  # "local" | "env" | "remote-
 
 An override env var is `env_prefix + key.replace(".", "__")` (dots → double underscores):
 `run.concurrency` → `PKEY_CONFIG_run__concurrency`, `quality.floor` →
-`PKEY_CONFIG_quality__floor`. The value is JSON-parsed when it parses (`"4"` → int,
-`"true"` → bool, `"[…]"` → list); otherwise it is taken as the raw string.
+`PKEY_CONFIG_quality__floor`. The value is the parsed JSON value when the raw string is one
+strict JSON text (`"4"` → int, `"true"` → bool, `"[…]"` → list), and otherwise the raw string,
+unchanged (WIRE-CONTRACT-V3 §2.2.1 rule 2, pinned by `conformance/corpus/v2/config-matrix.json`).
+Strict means: no `NaN`, `Infinity` or duplicate member names; no member name holding U+0000; no
+lone surrogate (which `os.environ` holds for a byte it cannot decode); every number zero or of
+magnitude 10^−307 up to below 10^308; and at most 64 levels of nesting. Reading a variable never
+raises. A set but empty variable counts (its value is `""`).
 
-The pre-suite `PKEY_CONFIG_*` prefix is **not** read as a fallback.
+The withdrawn interim `PLRS_CONFIG_*` prefix is **not** read as a fallback.
+
+### What the SDK sends
+
+`X-PKey-Platform` and `X-PKey-Arch` carry the canonical values of WIRE-CONTRACT-V3 §5.2, mapped
+from `platform.system()` and `platform.machine()` by `canonical_platform` and `canonical_arch`
+(`Darwin` → `macos`, `AMD64` → `x86_64`); a spelling with no value omits its header.
+`X-PKey-SDK` is `python` (`SDK_NAME`, the generated `SdkId.PYTHON`).
 
 ## Offline
 

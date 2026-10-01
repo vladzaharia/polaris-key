@@ -7,10 +7,12 @@ import {
   STORE_BACKENDS,
   STORE_DEGRADED_REASONS,
 } from "@polaris-key/client-core/store";
+import { ARCH_SPELLINGS, PLATFORM_SPELLINGS } from "@polaris-key/protocol/core";
 import {
   buildModel,
   camelName,
   CHANNEL_EXPORT,
+  SPELLINGS_EXPORT,
   checkCoverage,
   checkStageCoverage,
   compileSchema,
@@ -104,6 +106,21 @@ describe("the sources", () => {
       "web",
     ]);
     expect(byName.arch).toEqual(["arm64", "x86_64", "armv7", "wasm32"]);
+  });
+
+  it("platform and arch equal the values of PLATFORM_SPELLINGS and ARCH_SPELLINGS, each mapping to itself (§5.2)", () => {
+    const byName = Object.fromEntries(
+      SOURCES.enums.map((e) => [e.name, e.values]),
+    );
+    for (const [name, table] of [
+      ["platform", PLATFORM_SPELLINGS],
+      ["arch", ARCH_SPELLINGS],
+    ] as const) {
+      const values: Record<string, string> = table;
+      expect(new Set(Object.values(values))).toEqual(new Set(byName[name]));
+      for (const v of byName[name]!) expect(values[v]).toBe(v);
+    }
+    expect(byName.sdkId).toEqual(["node", "react", "python", "swift", "godot"]);
   });
 
   it("storeBackend and storeDegradedReason equal client-core's STORE_BACKENDS and STORE_DEGRADED_REASONS", () => {
@@ -423,6 +440,37 @@ describe("renderers", () => {
         withSources({ protocol: { ...protocol, CHANNEL_FN: () => "x" } }),
       ),
     ).toThrow(/cannot render/);
+  });
+});
+
+describe("the header-value tables and SdkId", () => {
+  it("reach every renderer", () => {
+    expect(SPELLINGS_EXPORT.test("PLATFORM_SPELLINGS")).toBe(true);
+    expect(SPELLINGS_EXPORT.test("ARCH_SPELLINGS")).toBe(true);
+    expect(SPELLINGS_EXPORT.test("CHANNEL_ALIASES")).toBe(false);
+    const ts = renderTs(MODEL);
+    expect(ts).toContain("export const PLATFORM_SPELLINGS = {");
+    expect(ts).toContain('"darwin": "macos",');
+    expect(ts).toContain("export const ARCH_SPELLINGS = {");
+    expect(ts).toContain('"x64": "x86_64",');
+    expect(ts).toContain("export const SdkId = {");
+    expect(ts).toContain('  node: "node",');
+    const py = renderPython(MODEL);
+    expect(py).toContain(
+      "PLATFORM_SPELLINGS: Mapping[str, str] = MappingProxyType(",
+    );
+    expect(py).toContain(
+      "ARCH_SPELLINGS: Mapping[str, str] = MappingProxyType(",
+    );
+    expect(py).toContain("class SdkId");
+    const swift = renderSwift(MODEL);
+    expect(swift).toContain("public let PLATFORM_SPELLINGS");
+    expect(swift).toContain("public let ARCH_SPELLINGS");
+    expect(swift).toContain("SdkId");
+    const gd = renderGdscript(MODEL);
+    expect(gd).toContain("const PLATFORM_SPELLINGS");
+    expect(gd).toContain("const ARCH_SPELLINGS");
+    expect(gd).toContain("SdkId");
   });
 });
 

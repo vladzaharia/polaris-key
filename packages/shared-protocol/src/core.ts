@@ -258,3 +258,42 @@ export const PR_NUMBER_MAX_DIGITS = 7;
 /** The coarse channel family a build's version implies, as an SDK sends it. Only the Worker's
  *  `impliedChannel` narrows `pr` to `pr-<n>`. */
 export type BuildChannel = "stable" | "beta" | "pr" | "dev";
+
+/** WIRE-CONTRACT-V3 §5.2. Every spelling an OS or runtime reports, ASCII-lowercased, mapped to
+ *  its canonical value; each canonical value maps to itself. Anything else has no value, and an
+ *  SDK omits `X-PKey-Platform` rather than inventing one. `headers.json` pins the table. */
+export const PLATFORM_SPELLINGS = {
+  macos: "macos",
+  darwin: "macos",
+  maccatalyst: "macos",
+  ios: "ios",
+  ipados: "ios",
+  android: "android",
+  windows: "windows",
+  win32: "windows",
+  linux: "linux",
+  web: "web",
+  browser: "web",
+} as const;
+export type ClientPlatform =
+  (typeof PLATFORM_SPELLINGS)[keyof typeof PLATFORM_SPELLINGS];
+
+/** WIRE-CONTRACT-V3 §5.2. Every CPU-architecture spelling a runtime reports, ASCII-lowercased,
+ *  mapped to its canonical `X-PKey-Arch` value. Anything else has no value (the header is
+ *  omitted). `headers.json` pins the table. */
+export const ARCH_SPELLINGS = {
+  arm64: "arm64",
+  aarch64: "arm64",
+  "arm64-v8a": "arm64",
+  x86_64: "x86_64",
+  x64: "x86_64",
+  amd64: "x86_64",
+  armv7: "armv7",
+  armv7l: "armv7",
+  armv8l: "armv7",
+  arm: "armv7",
+  arm32: "armv7",
+  "armeabi-v7a": "armv7",
+  wasm32: "wasm32",
+} as const;
+export type ClientArch = (typeof ARCH_SPELLINGS)[keyof typeof ARCH_SPELLINGS];

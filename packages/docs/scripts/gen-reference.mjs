@@ -468,18 +468,26 @@ function corpusInventory() {
   const families = Object.entries(cases)
     .filter(([, v]) => Array.isArray(v))
     .map(([k, v]) => [`\`${k}\``, String(v.length)]);
+  const headers = JSON.parse(
+    read("conformance", "corpus", "v2", "headers.json"),
+  );
+  const configMatrix = JSON.parse(
+    read("conformance", "corpus", "v2", "config-matrix.json"),
+  );
   return page(
     "Conformance corpus v2",
     "The case families every SDK verifies identically, generated from the corpus files themselves.",
     `One generator (\`tools/sign-corpus.ts\`) signs every vector, and every language runner
-verifies them: Node, Python, Swift, React (the gate matrix) and Godot (every \`cases.json\`
-family and the \`fingerprint.json\` device ids, from an editor and an exported release
-template). \`pnpm gen:corpus -- --check\` is the CI drift gate,
+verifies them: Node, Python, Swift, React (the gate matrix, the \`web\` rows of
+\`headers.json\` and the no-environment answers of \`config-matrix.json\`) and Godot (every
+\`cases.json\` family and the \`fingerprint.json\` device ids, from an editor and an exported
+release template). \`pnpm gen:corpus -- --check\` is the CI drift gate,
 over the source and both generator-owned mirrors (the Swift test resources and the Godot
 \`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`). Corpus v1 is deleted — v2 is the
 only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`,
-\`stageMatrixVersion ${stages.stageMatrixVersion}\`.`,
+\`stageMatrixVersion ${stages.stageMatrixVersion}\`, \`headersVersion ${headers.headersVersion}\`,
+\`configMatrixVersion ${configMatrix.configMatrixVersion}\`.`,
     [
       "## Case families (`cases.json`)",
       "",
@@ -494,6 +502,14 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
       `## Stage matrix (\`stage-matrix.json\`): ${stages.rows?.length ?? "?"} rows, ${stages.guardCases?.length ?? "?"} guard cases`,
       "",
       "Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach.",
+      "",
+      `## Header values (\`headers.json\`): ${headers.platformCases?.length ?? "?"} platform and ${headers.archCases?.length ?? "?"} arch spellings`,
+      "",
+      "WIRE-CONTRACT-V3 §5.2: each runtime spelling and its canonical `X-PKey-Platform` or `X-PKey-Arch` value, or none. Every SDK and the Worker run both sections.",
+      "",
+      `## Config resolution (\`config-matrix.json\`): ${configMatrix.resolveCases?.length ?? "?"} resolve, ${configMatrix.envValueCases?.length ?? "?"} environment-value and ${configMatrix.listCases?.length ?? "?"} list cases`,
+      "",
+      "WIRE-CONTRACT-V3 §2.2.1: the precedence, the variable name, the strict environment value and the user-visible list. React runs the no-environment answers.",
     ].join("\n"),
   );
 }
@@ -537,12 +553,25 @@ function parityMatrix() {
     const owner = entry.wp ?? "unowned";
     return `planned (${owner})${exceptText(entry.except)}`;
   };
+  // A corpus proof EXISTS once its file (and, for a family proof, its family) is in
+  // conformance/corpus/v2/; until then it shows the work package that adds it. Once it exists the
+  // `wp` is provenance only, as `pnpm parity:check` treats it.
+  const corpusProofExists = (p) => {
+    const file = join(repo, "conformance", "corpus", "v2", p.file);
+    if (!existsSync(file)) return false;
+    if (!p.family) return true;
+    try {
+      return p.family in JSON.parse(readFileSync(file, "utf8"));
+    } catch {
+      return false;
+    }
+  };
   const proofText = (id, proof) =>
     proof
       .map((p) => {
         const owner = p.wp ? ` (${p.wp})` : "";
         if (p.kind === "corpus")
-          return `\`${p.file}\`${p.family ? ` \`${p.family}\`` : ""}${owner}`;
+          return `\`${p.file}\`${p.family ? ` \`${p.family}\`` : ""}${corpusProofExists(p) ? "" : owner}`;
         if (p.kind === "generated") return `\`${p.command}\`${owner}`;
         if (p.kind === "transcript")
           return recorded.has(id)

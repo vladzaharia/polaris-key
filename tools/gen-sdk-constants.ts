@@ -10,9 +10,11 @@
 //   conformance/parity/enums.json       platform, arch, … (+ enums.schema.json)
 //   conformance/parity/features.json    feature ids and the supports() reason enum (P1b-01)
 //   tools/services.json                 the service slugs (P0-09)
-//   @polaris-key/protocol/core          PROTOCOL_VERSION, the HEADER_* names, and every
-//                                       CHANNEL_* / PR_* channel constant (P0-04) — read as
-//                                       exports, so a constant added there flows through here
+//   @polaris-key/protocol/core          PROTOCOL_VERSION, the HEADER_* names, every
+//                                       CHANNEL_* / PR_* channel constant (P0-04) and the
+//                                       PLATFORM_SPELLINGS / ARCH_SPELLINGS header-value tables
+//                                       (WIRE-CONTRACT-V3 §5.2, P1b-04) — read as exports, so a
+//                                       constant added there flows through here
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion
 //
 // Outputs, each with a GENERATED banner (TypeScript is prettier-formatted, as sign-corpus.ts
@@ -524,6 +526,9 @@ const fromValues = (values: readonly string[]): Member[] =>
 
 /** The `@polaris-key/protocol/core` exports this generator mirrors as channel constants. */
 export const CHANNEL_EXPORT = /^(?:CHANNEL|PR)_[A-Z0-9_]+$/;
+/** The `@polaris-key/protocol/core` exports this generator mirrors as the client-metadata
+ *  header-value tables (WIRE-CONTRACT-V3 §5.2). */
+export const SPELLINGS_EXPORT = /^(?:PLATFORM|ARCH)_SPELLINGS$/;
 const HEADER_EXPORT = /^HEADER_([A-Z0-9_]+)$/;
 
 function scalarValue(name: string, value: unknown): ScalarValue {
@@ -631,6 +636,13 @@ export function buildModel(sources: Sources): Model {
       .map((name) => ({
         name,
         doc: `Channel constant \`${name}\` (\`@polaris-key/protocol/core\`).`,
+        value: scalarValue(name, protocol[name]),
+      })),
+    ...exportNames
+      .filter((name) => SPELLINGS_EXPORT.test(name))
+      .map((name) => ({
+        name,
+        doc: `Header-value table \`${name}\`: a runtime's spelling, ASCII-lowercased, to its canonical value (WIRE-CONTRACT-V3 §5.2, \`@polaris-key/protocol/core\`).`,
         value: scalarValue(name, protocol[name]),
       })),
   ];

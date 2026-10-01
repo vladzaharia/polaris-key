@@ -34,11 +34,14 @@ import {
 import type { AllowedRange, BlockReason } from "@polaris-key/protocol/license";
 import {
   PolarisError,
+  canonicalArch,
+  canonicalPlatform,
   channelForVersion,
   effectiveNow,
   type Store,
 } from "@polaris-key/client-core";
-import { SDK_NAME, SDK_VERSION } from "../version.js";
+import { SdkId } from "../constants.generated.js";
+import { SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
 import { defaultDirBases, resolveDirs, type ProductDirs } from "./dirs.js";
 import {
@@ -298,15 +301,19 @@ export class CoreContext {
       : undefined;
   }
 
-  /** The `X-PKey-*` client metadata every product-scoped call carries (§5). */
+  /** The `X-PKey-*` client metadata every product-scoped call carries (§5). Platform and arch
+   *  are the canonical values of WIRE-CONTRACT-V3 §5.2, mapped from `os.platform()` and
+   *  `os.arch()`; a spelling with no value omits its header rather than inventing one. */
   headers(extra: Record<string, string> = {}): Record<string, string> {
+    const platformValue = canonicalPlatform(platform());
+    const archValue = canonicalArch(arch());
     return {
       [HEADER_DEVICE]: this.deviceIdValue,
       [HEADER_VERSION]: this.version,
       [HEADER_CHANNEL]: this.channel,
-      [HEADER_PLATFORM]: platform(),
-      [HEADER_ARCH]: arch(),
-      [HEADER_SDK_NAME]: SDK_NAME,
+      ...(platformValue !== null ? { [HEADER_PLATFORM]: platformValue } : {}),
+      ...(archValue !== null ? { [HEADER_ARCH]: archValue } : {}),
+      [HEADER_SDK_NAME]: SdkId.node,
       [HEADER_SDK_VERSION]: SDK_VERSION,
       ...extra,
     };

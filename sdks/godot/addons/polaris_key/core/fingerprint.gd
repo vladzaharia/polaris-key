@@ -161,7 +161,9 @@ static func parse_windows_cim(stdout: Variant) -> Dictionary:
 ## systemd's `uninitialized`: {source, value}, or null. `files` maps each READABLE path to its
 ## content; an absent or null entry is unreadable. Also the Linux device id's raw input.
 static func linux_anchor_source(files: Dictionary) -> Variant:
-	for source in LINUX_ANCHOR_PATHS:
+	# A packed copy: on 4.4 two threads iterating one const Array race (the capture and the
+	# device id run on worker tasks), so thread-reachable code converts it first.
+	for source in PackedStringArray(LINUX_ANCHOR_PATHS):
 		var content = files.get(source)
 		if not (content is String):
 			continue
@@ -322,7 +324,7 @@ static func capture(host: PKeyHostIo = null) -> Dictionary:
 			cap["out"]["diskutil"] = h.run("/usr/sbin/diskutil", PackedStringArray(["info", "-plist", "/"]))
 			cap["out"]["ifconfig"] = h.run("/sbin/ifconfig", PackedStringArray())
 		"linux":
-			for p in LINUX_ANCHOR_PATHS:
+			for p in PackedStringArray(LINUX_ANCHOR_PATHS):
 				cap["files"][p] = h.read(p)
 			cap["files"][LINUX_MODEL_PATH] = h.read(LINUX_MODEL_PATH)
 			for iface in h.list_dir(LINUX_NET_DIR):
@@ -476,7 +478,7 @@ static func device_id_raw(host: PKeyHostIo = null) -> String:
 			raw = parse_ioreg(h.run("/usr/sbin/ioreg", PackedStringArray(["-rd1", "-c", "IOPlatformExpertDevice"]))).get("uuid", "")
 		"linux":
 			var files := {}
-			for p in LINUX_ANCHOR_PATHS:
+			for p in PackedStringArray(LINUX_ANCHOR_PATHS):
 				files[p] = h.read(p)
 			var anchor = linux_anchor_source(files)
 			raw = anchor["value"] if anchor != null else ""

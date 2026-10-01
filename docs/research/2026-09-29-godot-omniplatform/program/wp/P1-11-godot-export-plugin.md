@@ -45,7 +45,7 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   `add_control_to_dock` vs `add_dock`).
 - [notes/A4](../../notes/A4-diceroll-mapping.md) §1.8 (Diceroll's `build_info.json` and
   distributions) and §1.13 (its export presets).
-- `packages/cli/src/manifest.ts:161-178` (`trustSnippet`), `packages/cli/README.md:102-110`,
+- `packages/cli/src/manifest.ts` (`trustSnippet`), `packages/cli/README.md` (`### pkey trust`),
   `packages/cli/test/cli.test.ts`.
 
 ## Scope
@@ -78,7 +78,7 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   preset's `application/bundle_identifier` or `package/unique_name` where the platform has one).
   The others come from one source only: the `polaris_key/outlet_ids` export option, a JSON
   object, read with `get_or_env("polaris_key/outlet_ids", "PKEY_OUTLET_IDS")` and parsed with
-  `JSON.parse_string`. The plugin does **not** read `.pkey/distribution`: that file may be YAML
+  the SDK's strict `PKeyJson` (which also refuses duplicate keys and trailing commas). The plugin does **not** read `.pkey/distribution`: that file may be YAML
   (`.pkey/distribution.{json,yaml,yml}`, [P2b-02](P2b-02-distribution-manifest.md)), Godot 4.7
   has no YAML parser, and `.pkey/` sits at the product repo root, which need not be the Godot
   project root. Turning the manifest into this JSON is P2b-02's job: its
@@ -154,7 +154,7 @@ Godot form of the build identity that `pkey build-info` writes for other build s
 
 ## Acceptance criteria
 
-- [ ] A headless `--export-release` of the harness preset with `PKEY_BUILD_OUTLET=steam`,
+- [x] A headless `--export-release` of the harness preset with `PKEY_BUILD_OUTLET=steam`,
       `PKEY_BUILD_CHANNEL=beta`, `PKEY_BUILD_NUMBER=42` produces a pack whose
       `res://.polaris_key/build.json` has those values, `pkeyBuild: 1`, the version from
       `application/config/version`, an `outletIds` object and no timestamp; the stamp is
@@ -163,22 +163,64 @@ Godot form of the build identity that `pkey build-info` writes for other build s
       keys appear in `outletIds` unchanged; with `PKEY_OUTLET_IDS` set to a different object, the
       environment's keys appear instead; a `.pkey/distribution.yaml` beside the project changes
       nothing.
-- [ ] The export dialog warns when `polaris_key/outlet_ids` is not a JSON object, has an unknown
+- [x] The export dialog warns when `polaris_key/outlet_ids` is not a JSON object, has an unknown
       key or has a non-string value; a headless export with
       `PKEY_OUTLET_IDS='{"itchGameId":1001}'` prints a `push_warning` naming `PKEY_OUTLET_IDS`
       and leaves `itchGameId` out of the stamp.
-- [ ] On the release template, `OS.has_feature("pkey_outlet_steam")` and
+- [x] On the release template, `OS.has_feature("pkey_outlet_steam")` and
       `OS.has_feature("pkey_channel_beta")` are true, and `PolarisKey.build_info()` returns the
       stamp.
-- [ ] In the editor (no stamp), `build_info()` returns the fallback with the dock's channel and no
+- [x] In the editor (no stamp), `build_info()` returns the fallback with the dock's channel and no
       outlet.
-- [ ] The export dialog warns for an unknown outlet, a channel outside the vocabulary and a
+- [x] The export dialog warns for an unknown outlet, a channel outside the vocabulary and a
       non-semver version.
-- [ ] The dock's "Check" accepts a manifest signed by the pasted key and rejects one signed by
+- [x] The dock's "Check" accepts a manifest signed by the pasted key and rejects one signed by
       another key or for another product.
-- [ ] `mise exec node@22 -- pnpm --filter @polaris-key/cli test` covers the Godot snippet.
-- [ ] The plugin loads on the 4.4 and 4.7.2 editors (the dock appears; no errors in the log).
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
+- [x] `mise exec node@22 -- pnpm --filter @polaris-key/cli test` covers the Godot snippet.
+- [x] The plugin loads on the 4.4 and 4.7.2 editors (the dock appears; no errors in the log).
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job.
+
+## Implementation notes (recorded by P1-11 where the code disagreed with this brief)
+
+- **The editor skips a non-tool script's static state.** In the editor (export plugin, dock), a
+  non-tool script's `static var` initialisers and `_static_init` never run and a loaded non-tool
+  Resource is a placeholder whose methods fail (measured on 4.7.2). `PKeyChannel`, `PKeySemver`,
+  `PKeyJson`, `PKeyB64Url`, `PKeyTransport`, `PKeyJws`, `PKeyEd25519` and `PKeyOptions` gained
+  `@tool` (one line each; nothing else in the crypto file changed). The README's pitfall table
+  records it.
+- **A 4.4.1 const-Array race, found by review.** With this package the 4.4.1 `ci` set flaked
+  (licence or config `error`/`needs-activation`, about one run in three). The cause was not
+  `@tool`: on 4.4.1 two threads reading one `const` Array get each other's values, and the
+  scalar reduction (`sc_reduce`, constant `L`) runs on both document-verify workers at once.
+  main has the same race (a two-thread verify loop gets about 1.5% wrong on main, 0 on 4.7.2);
+  this package's timing only made it show in `ci`. `ed25519.gd`, `ed25519_ref.gd` and
+  `sha512.gd` now copy their constants into local packed arrays, and `fingerprint.gd` converts
+  `LINUX_ANCHOR_PATHS` before its worker-side loops. The `ed25519` suite checks the scalar code,
+  SHA-512 and whole verify jobs on two threads. The README records the rule and the pitfall.
+- **The logic lives outside the editor classes.** `core/build_stamp.gd` (PKeyBuildStamp) holds
+  the stamp format, the reader, the fallback and every export-side check;
+  `editor/setup_check.gd` (PKeySetupCheck) holds the dock's pin parsing, Check and Save. The
+  export plugin and the dock are thin shells, so the `build_stamp` suite tests the logic on the
+  editor binary and on the release template.
+- **The editor channel is `PKeyOptions.default_channel`.** The dock's "editor channel" writes it;
+  the core sends it until a stamp supplies one, and a stamp's channel wins over it. A malformed
+  stamped channel fails `configure()` with `invalid-options` (the export only warns).
+  `PKeyOptions.build_stamp_path` (not exported; `""` = no stamp) is the seam the tests use, since
+  the template pack carries the CI stamp. No new error code.
+- **The non-semver warning sits on `polaris_key/build_number`**, because
+  `application/config/version` is a project setting, not a preset option.
+- **How the export acceptance rows are exercised.** `run_tests.sh` makes four headless ZIP exports
+  of the harness preset (`--export-pack` needs no templates; `ZIPReader` reads the stamp, whose
+  bytes are the same in a `.pck`): the CI env, the same again with a `.pkey/distribution.yaml`
+  beside the project (byte-identical), with `PKEY_OUTLET_IDS` set, and with
+  `PKEY_OUTLET_IDS='{"itchGameId":1001}'` (its log must carry the push_warning). The
+  `export_stamps` suite checks them in the editor; the template pack is exported with the CI env
+  and the `build_stamp` suite asserts the stamp and the feature tags there. The harness gained
+  `application/config/version="0.1.0"` and a `res://polaris_key.tres` (product `pkey-harness`,
+  editor channel `dev`).
+- **No parity feature id.** The registry has no build-stamp feature; adding one is an
+  all-SDK registry change, so it is a follow-up. The suite is tagged `devices.report` (the
+  stamped outlet in the report).
 
 ## Verify
 

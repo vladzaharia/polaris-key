@@ -3,10 +3,10 @@
 // adapters disagree on transport, never on how a document becomes state.
 //
 // Neither the gate nor the config precedence lives here any more — both are `@polaris-key/client-core`
-// (wire contract v3 §4.2/§5 and the layered-config rules), which is the single implementation
-// Node, React, and the conformance runners all execute. What IS here is the React-shaped
-// enumeration a settings UI needs on top of it: override-only keys included, `hidden` excluded,
-// effective values resolved.
+// (wire contract v3 §4.2/§5 and §2.2.1), which is the single implementation Node, React, and
+// the conformance runners all execute, the user-visible list (§2.2.1 rule 4) included. What IS
+// here is the React-shaped projection on top of it: the flat effective `config` map (which also
+// carries override-only keys) and the snapshot readers.
 
 import {
   CHANNEL_STABLE,
@@ -15,6 +15,7 @@ import {
 } from "@polaris-key/protocol/core";
 import {
   licenseState,
+  listUserEntries,
   resolveSource,
   resolveValue,
   type ConfigSource,
@@ -39,8 +40,10 @@ import {
 /**
  * The React resolve context. `env` is deliberately EMPTY: environment-variable layering is a
  * Node/Python/Swift concern (a browser has no environment, and a renderer must not inherit the
- * privileged process's), so `resolveSource` can never answer `"env"` here. Keeping the shared
- * function and starving its env layer is safer than forking the precedence.
+ * privileged process's), so `resolveSource` can never answer `"env"` here — WIRE-CONTRACT-V3
+ * §2.2.1 rule 3, pinned as each `config-matrix.json` case's `expectNoEnv`. Keeping the shared
+ * function and starving its env layer is safer than forking the precedence. Every layer reads
+ * own properties only, so a key named `constructor` is an ordinary key.
  */
 function ctxFor(
   entries: Record<string, ManagedEntry>,
@@ -165,21 +168,12 @@ export function configSource(state: PolarisState, key: string): ConfigSource {
   return resolveSource(ctxFor(state.configEntries, state.localOverrides), key);
 }
 
-/** Enumerate config for a settings UI: every key EXCEPT `hidden`, resolved to its effective
- *  value with an `enforced` flag (true ⇒ the server value wins and the row is read-only).
- *  Override-only keys (no server entry) are included as un-enforced rows — which is why this
- *  is not `client-core`'s `listUserEntries`, which enumerates the REMOTE catalog only. */
+/** Enumerate config for a settings UI (WIRE-CONTRACT-V3 §2.2.1 rule 4): every DOCUMENT entry
+ *  except `hidden` ones, resolved to its effective value with an `enforced` flag (true ⇒ the
+ *  server value wins and the row is read-only). A key only a local override supplies has no
+ *  catalog entry to render and is not listed; it stays in `state.config` and `getConfig`. */
 export function listUserConfig(state: PolarisState): UserConfigEntry[] {
-  const ctx = ctxFor(state.configEntries, state.localOverrides);
-  const out: UserConfigEntry[] = [];
-  for (const key of allKeys(state.configEntries, state.localOverrides)) {
-    const entry = state.configEntries[key];
-    if (entry?.state === "hidden") continue; // withheld from user-facing enumeration.
-    const value = resolveValue(ctx, key);
-    if (value === undefined) continue;
-    out.push({ key, value, enforced: entry?.state === "enforced" });
-  }
-  return out;
+  return listUserEntries(ctxFor(state.configEntries, state.localOverrides));
 }
 
 /** Read an entitlement boolean off a snapshot. */

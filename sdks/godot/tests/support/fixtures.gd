@@ -124,6 +124,8 @@ static func options(base_url: String, store: PKeyStore, clock: Array, product :=
 	o.store = store
 	o.request_timeout_seconds = 5.0
 	o.now_source = func(): return clock[0]
+	# The exported template carries the CI build stamp; these tests must not see it.
+	o.build_stamp_path = ""
 	return o
 
 

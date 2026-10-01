@@ -502,17 +502,19 @@ public actor CoreContext {
     }
 
     // ── Transport (§5) ───────────────────────────────────────────────────────────────────
-    /// The `X-PKey-*` client metadata every product-scoped call carries.
+    /// The `X-PKey-*` client metadata every product-scoped call carries. Platform and arch are
+    /// the canonical WIRE-CONTRACT-V3 §5.2 values of this binary's compilation conditions; one
+    /// with no value omits its header.
     public func headers(_ extra: [String: String] = [:]) -> [String: String] {
         var out: [String: String] = [
             HEADER_DEVICE: deviceIdValue,
             HEADER_VERSION: version,
             HEADER_CHANNEL: channel,
-            HEADER_PLATFORM: PlatformFamily.current,
-            HEADER_ARCH: ArchFamily.current,
             HEADER_SDK_NAME: POLARIS_SDK_NAME,
             HEADER_SDK_VERSION: POLARIS_SDK_VERSION,
         ]
+        if let platform = PlatformFamily.headerValue { out[HEADER_PLATFORM] = platform }
+        if let arch = ArchFamily.headerValue { out[HEADER_ARCH] = arch }
         for (key, value) in extra { out[key] = value }
         return out
     }

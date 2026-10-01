@@ -10313,7 +10313,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-3GN7FVLA.js
+// ../shared-protocol/dist/chunk-HRUAEMNZ.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var FINGERPRINT_TOLERANCE = {
   off: Number.POSITIVE_INFINITY,
@@ -14084,7 +14084,10 @@ function trustSnippet(kid, publicKey) {
     "Swift:",
     // Swift dictionary literals use square brackets — emitting the JSON `{…}` form here
     // produced a snippet that did not compile.
-    `let trustedKeys = [${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}]`
+    `let trustedKeys = [${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}]`,
+    "",
+    "Godot (GDScript; assign to PKeyOptions.pinned_trust_keys):",
+    `const PINNED_TRUST_KEYS := {${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}}`
   ].join("\n");
 }
 function sdkSnippet(opts) {

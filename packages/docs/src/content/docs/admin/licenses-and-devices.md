@@ -132,6 +132,10 @@ exist server-side).
 - **Summary chips** count devices by status and by licensed versus license-free. The platform
   chips (click one to filter by it) count **authorized** devices only, as does every other
   breakdown the summary endpoint returns: architecture, SDK name, and the top 20 app versions.
+  Platform, architecture and SDK are stored canonically (WIRE-CONTRACT-V3 §5.2), so one kind of
+  machine is one chip: an older SDK's `darwin`, `win32`, `x64` or package name is mapped to
+  `macos`, `windows`, `x86_64` or the SDK id when it is written, and rows stored before that were
+  converged by a migration.
 - **Actions** in the drawer are the same two as on the license panel, with the same effects and
   the same audit events (`device.deauthorize`, `device.fingerprint.reset`):
   **Deauthorize** and **Reset binding**. Deauthorizing a license-free device marks it

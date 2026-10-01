@@ -183,17 +183,17 @@ Godot; the docs pages; and the deploy order (Worker normaliser first, then SDK r
 
 ## Acceptance criteria
 
-- [ ] `program/plans/P1b-04.md` is merged (approved) before any code change.
-- [ ] `conformance/corpus/v2/headers.json` and `config-matrix.json` exist, with the mirrors (Swift, Godot), and
+- [x] `program/plans/P1b-04.md` is merged (approved) before any code change.
+- [x] `conformance/corpus/v2/headers.json` and `config-matrix.json` exist, with the mirrors (Swift, Godot), and
       `mise exec node@22 -- pnpm gen:corpus -- --check` passes.
-- [ ] The Node, React, Python and Swift runners pass every row that applies to them; a doctored row
+- [x] The Node, React, Python and Swift runners pass every row that applies to them; a doctored row
       fails each one.
-- [ ] A captured request from each SDK carries the canonical values (unit test per SDK).
-- [ ] `reference/corpus.mdx` lists both files; `pnpm --filter @polaris-key/docs gen:check` passes.
-- [ ] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
+- [x] A captured request from each SDK carries the canonical values (unit test per SDK).
+- [x] `reference/corpus.mdx` lists both files; `pnpm --filter @polaris-key/docs gen:check` passes.
+- [x] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
       passes.
-- [ ] The green gate passes (`AGENTS.md`).
-- [ ] `core.headers` has an enforced corpus proof; `pnpm parity:check` fails if a `done` package's proof file is missing.
+- [x] The green gate passes (`AGENTS.md`).
+- [x] `core.headers` has an enforced corpus proof; `pnpm parity:check` fails if a `done` package's proof file is missing.
 
 ## Verify
 

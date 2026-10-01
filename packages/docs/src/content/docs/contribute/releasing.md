@@ -26,8 +26,8 @@ All packages are currently at **`0.0.0`** — nothing has published yet.
    `.changeset/config.json` sets `access: "restricted"` and `baseBranch: "main"`; internal
    `@polaris-key/*` cross-dependencies bump by `patch` automatically.
 
-Keep changesets focused — one logical change each. As of this writing there are fourteen pending:
-`boot-stage-machine`, `channel-vocabulary`, `ci-publishing`, `device-code-edge-mint`,
+Keep changesets focused — one logical change each. As of this writing there are fifteen pending:
+`boot-stage-machine`, `canonical-headers-config-matrix`, `channel-vocabulary`, `ci-publishing`, `device-code-edge-mint`,
 `distribution-service`, `edge-mint-hardening`, `fingerprint-storage-fixes`,
 `free-tier-and-relicensing`, `hardware-fingerprinting`, `initial-release`,
 `p1b07-license-config-release-gaps`, `pkey-init-validate`, `sdk-constants` and `service-table`,

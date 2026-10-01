@@ -10,7 +10,7 @@ extends RefCounted
 # Suite arguments: a comma list of groups, and `--pkey-config key=value` pairs, which the env
 # group then checks are read from the real command line.
 
-const GROUPS := ["resolve", "client", "store", "env", "fetch", "mint", "changed", "mirror"]
+const GROUPS := ["resolve", "matrix", "client", "store", "env", "fetch", "mint", "changed", "mirror"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

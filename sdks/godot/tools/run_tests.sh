@@ -3,14 +3,19 @@
 #
 #   GODOT_BIN         the editor binary (default: `godot` on PATH; missing => exit 2, never a skip)
 #   GODOT_TEMPLATE    optional: an export-template binary. When set, the project is exported as a
-#                     pack with the "Conformance (Linux)" preset, the template is copied beside it
-#                     as build/pkey_conformance.x86_64, and the same suites run from the pack.
+#                     pack with the "Conformance (Linux)" preset (stamped PKEY_BUILD_OUTLET=steam,
+#                     PKEY_BUILD_CHANNEL=beta, PKEY_BUILD_NUMBER=42), the template is copied beside
+#                     it as build/pkey_conformance.x86_64, and the same suites run from the pack.
 #   PKEY_TEST_SUITES  the --pkey-test selection (default: ci)
+#   PKEY_TEST_STAMPS  1 runs the build-stamp exports (step 4) whatever the selection; they run
+#                     by default only with the `ci` selection
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
 #   Extra arguments are passed to every suite after the selection.
 #
-# Steps: import (retried once on a signal exit), the untracked-.uid check, the editor run, then
-# export + template run. Every step runs under a log watchdog: a fatal line (below) kills and
+# Steps: import (retried once on a signal exit), the untracked-.uid check, the editor run, the
+# build-stamp exports (four ZIP exports with the P1-11 env overrides, checked by the
+# export_stamps suite in the editor; --export-pack needs no templates), then export + template
+# run. Every step runs under a log watchdog: a fatal line (below) kills and
 # fails it at once, as do the timeout and a non-zero exit, and a run without a final
 # `PKEY-TEST SUMMARY … failed=0` fails. A script parse error is not reliably reported by exit
 # code (`--import` exits 0, and on macOS 4.7 a main loop that fails to load hangs on a modal
@@ -123,9 +128,41 @@ fi
 # 3. The editor run.
 step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "$@" || exit 1
 
-# 4. The exported pack on a release template.
+# 4. The build stamp (P1-11): the export plugin end to end, headless, as CI exports a game.
+STAMP_ENV="PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42"
+STAMPS="$BUILD/stamps"
+if [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; then
+  DIST_DIR="$PROJECT/.pkey"
+  mkdir -p "$STAMPS"
+  # export_stamp <name> [VAR=value…]: one ZIP export with the stamp env plus the extra variables.
+  export_stamp() {
+    local name="$1"
+    shift
+    # shellcheck disable=SC2086
+    step "export-stamp-$name" plain env -u PKEY_OUTLET_IDS $STAMP_ENV "$@" "$GODOT" --headless \
+      --path "$PROJECT" --export-pack "Conformance (Linux)" "$STAMPS/$name.zip"
+  }
+  export_stamp steam || exit 1
+  # The plugin never reads .pkey/distribution: a YAML one beside the project changes nothing.
+  if [ -e "$DIST_DIR" ]; then
+    echo "run_tests: $DIST_DIR exists; refusing to overwrite it" >&2
+    exit 1
+  fi
+  trap 'rm -rf "$DIST_DIR"' EXIT
+  mkdir -p "$DIST_DIR"
+  printf 'apiVersion: pkey.dev/v1\noutlets:\n  steam:\n    identity:\n      appId: "999999"\n' >"$DIST_DIR/distribution.yaml"
+  export_stamp steam2 || exit 1
+  rm -rf "$DIST_DIR"
+  trap - EXIT
+  export_stamp env 'PKEY_OUTLET_IDS={"itchGameId":"2002","steamAppId":"999"}' || exit 1
+  export_stamp bad 'PKEY_OUTLET_IDS={"itchGameId":1001}' || exit 1
+  step stamps run "$GODOT" --headless --path "$PROJECT" -- --pkey-test export_stamps "$STAMPS" "$LOGS" || exit 1
+fi
+
+# 5. The exported pack on a release template, stamped as CI stamps a Steam beta build.
 if [ -n "${GODOT_TEMPLATE:-}" ]; then
-  step export plain "$GODOT" --headless --path "$PROJECT" \
+  # shellcheck disable=SC2086
+  step export plain env -u PKEY_OUTLET_IDS $STAMP_ENV "$GODOT" --headless --path "$PROJECT" \
     --export-pack "Conformance (Linux)" "$BUILD/pkey_conformance.pck" || exit 1
   cp "$GODOT_TEMPLATE" "$BUILD/pkey_conformance.x86_64"
   chmod +x "$BUILD/pkey_conformance.x86_64"
