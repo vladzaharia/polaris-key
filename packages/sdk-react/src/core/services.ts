@@ -15,64 +15,53 @@
 // never does is assume all-true: a UI that offers a sign-in button for an identity service the
 // product does not run is a dead end presented as an affordance.
 
+import {
+  DEFAULT_ENABLED_SERVICES,
+  SERVICE_SLUGS,
+  type ServiceSlug,
+} from "./services.generated.js";
 import type { PolarisError } from "./types.js";
 
-/** The five opt-in services. Core is not a service — it is always on. */
-export type ServiceSlug =
-  | "license"
-  | "config"
-  | "release"
-  | "update"
-  | "identity";
-
-/** Canonical order. Iterate this rather than `Object.keys` so output is stable. */
-export const SERVICE_SLUGS: readonly ServiceSlug[] = [
-  "license",
-  "config",
-  "release",
-  "update",
-  "identity",
-];
+/**
+ * The opt-in services and their canonical order are GENERATED from the service table
+ * (`tools/services.json`, via `pnpm gen:services`) into `./services.generated.ts`. Core is not a
+ * service — it is always on. Iterate `SERVICE_SLUGS` rather than `Object.keys` so output is
+ * stable.
+ */
+export { SERVICE_SLUGS, type ServiceSlug };
 
 /** Per-service state as the SDK consumes it. The slice on `PolarisState.capabilities`. */
 export type ServicesMap = Record<ServiceSlug, { enabled: boolean }>;
 
+/** A record with every slug in canonical order, each value from `value`. */
+function perService<T>(
+  value: (slug: ServiceSlug) => T,
+): Record<ServiceSlug, T> {
+  const out = {} as Record<ServiceSlug, T>;
+  for (const slug of SERVICE_SLUGS) out[slug] = value(slug);
+  return out;
+}
+
 /** Every service off — the seed a parse builds up from, and the honest answer for a client
  *  that has been told a product runs nothing. */
 export function noServices(): ServicesMap {
-  return {
-    license: { enabled: false },
-    config: { enabled: false },
-    release: { enabled: false },
-    update: { enabled: false },
-    identity: { enabled: false },
-  };
+  return perService(() => ({ enabled: false }));
 }
 
 /**
  * What a client believes when it has neither a discovery document nor a stated expectation:
- * licensing + settings distribution. Distribution, updates and identity are OFF, so their
- * hooks/components refuse until something says otherwise.
+ * licensing + settings distribution (the table's `defaultEnabled` rows). Distribution, updates
+ * and identity are OFF, so their hooks/components refuse until something says otherwise.
  */
 export function defaultServices(): ServicesMap {
-  return {
-    license: { enabled: true },
-    config: { enabled: true },
-    release: { enabled: false },
-    update: { enabled: false },
-    identity: { enabled: false },
-  };
+  return perService((slug) => ({
+    enabled: DEFAULT_ENABLED_SERVICES.includes(slug),
+  }));
 }
 
 /** A deep copy, so a caller holding a capability map cannot mutate the adapter's own state. */
 export function copyServices(services: ServicesMap): ServicesMap {
-  return {
-    license: { ...services.license },
-    config: { ...services.config },
-    release: { ...services.release },
-    update: { ...services.update },
-    identity: { ...services.identity },
-  };
+  return perService((slug) => ({ enabled: services[slug]?.enabled === true }));
 }
 
 /** Turn a host's `expectServices` list into a full map — everything unlisted is off. */
@@ -99,23 +88,11 @@ export type ServiceBusyMap = Record<ServiceSlug, boolean>;
 export type ServiceErrorMap = Record<ServiceSlug, PolarisError | null>;
 
 export function noBusy(): ServiceBusyMap {
-  return {
-    license: false,
-    config: false,
-    release: false,
-    update: false,
-    identity: false,
-  };
+  return perService(() => false);
 }
 
 export function noErrors(): ServiceErrorMap {
-  return {
-    license: null,
-    config: null,
-    release: null,
-    update: null,
-    identity: null,
-  };
+  return perService(() => null);
 }
 
 /** A new busy map with one slug flipped. Returns the SAME reference when nothing changes, so

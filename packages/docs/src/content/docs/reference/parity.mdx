@@ -7,15 +7,15 @@ description: "Every feature in the registry against every SDK's parity manifest:
     Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
 
 One row per feature id in `conformance/parity/features.json`, one column per SDK manifest
-(`packages/sdk-node/parity.json`, `packages/sdk-react/parity.json`, `sdks/python/parity.json`,
-`sdks/swift/parity.json`). `pnpm parity:check` gates the manifests: an implemented entry
+(`packages/sdk-node/parity.json`, `packages/sdk-react/parity.json`, `sdks/python/parity.json`, `sdks/swift/parity.json`, `sdks/godot/parity.json`). `pnpm parity:check` gates the manifests: an implemented entry
 needs a test tagged `@pkey-feature <id>`, an N/A must be one the registry allows for that
 runtime, and a planned entry names an open work package or is marked unowned. A new feature
 starts with its registry entry; a new SDK starts with a manifest in which everything is planned.
 
 Cells: **✓** implemented; **N/A (runtime: reason)** a typed "unsupported here" result;
 **planned (P1b-07)** the work package that closes the gap; **planned (unowned)** a gap with no
-owner yet (listed below). A proof marked with a work package does not exist yet.
+owner yet (listed below). A proof marked with a work package does not exist yet; "transcripts
+(not recorded)" is a transcript proof no work package has taken on.
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
@@ -23,97 +23,98 @@ owner yet (listed below). A proof marked with a work package does not exist yet.
 | React | `web`, `desktop-bridge` | 16 | 12 | 22 | 6 |
 | Python | `python` | 23 | 3 | 23 | 7 |
 | Swift | `macos`, `ios` | 23 | 3 | 24 | 6 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 0 | 0 | 53 | 3 |
 
 ## Core
 
-| Id | Capability | Proven by | Node | React | Python | Swift | Allowed N/A |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `core.verify` | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json` | ✓ | ✓ | ✓ | ✓ | — |
-| `core.cache` | Verified cache; construct and load offline | transcripts (P1b-03) + unit | ✓ | planned (unowned) | ✓ | ✓ | — |
-| `core.bundle` | Offline bundle import | `cases.json` `bundleCases` | ✓ | planned (P1b-07) | ✓ | ✓ | — |
-| `core.discover` | Discovery and capabilities, fail-closed | transcripts (P1b-03) | ✓ | ✓ | ✓ | ✓ | — |
-| `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts (P1b-03) | ✓ | ✓ | ✓ | ✓ | — |
-| `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | — |
-| `core.headers` | Canonical platform/arch/SDK/engine header values | `headers.json` (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | — |
-| `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | — |
-| `core.caps` | supports() and capability telemetry | unit | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | — |
-| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | planned (P1b-09) | web, desktop-bridge: runtime |
+| Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `core.verify` | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json` | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
+| `core.cache` | Verified cache; construct and load offline | transcripts + unit | ✓ | planned (unowned) | ✓ | ✓ | planned (P1-02) | — |
+| `core.bundle` | Offline bundle import | `cases.json` `bundleCases` | ✓ | planned (P1b-07) | ✓ | ✓ | planned (P1-02) | — |
+| `core.discover` | Discovery and capabilities, fail-closed | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
+| `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
+| `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | planned (P1-02) | — |
+| `core.headers` | Canonical platform/arch/SDK/engine header values | `headers.json` (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1-02) | — |
+| `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1-02) | — |
+| `core.caps` | supports() and capability telemetry | unit | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | — |
+| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | planned (P1b-09) | planned (P1-02) | web, desktop-bridge: runtime |
 
 ## License
 
-| Id | Capability | Proven by | Node | React | Python | Swift | Allowed N/A |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `license.gate` | Gate evaluation, every status | `gate-matrix.json` | ✓ | ✓ | ✓ | ✓ | — |
-| `license.activate` | Activate with a key (+ fingerprint) | transcripts (P1b-03) | ✓ | ✓ | ✓ | ✓ | — |
-| `license.enroll` | Keyless enrolment | transcripts (P1b-03) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | web, desktop-bridge: runtime |
-| `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts (P1b-03) | ✓ | ✓ | ✓ | ✓ | — |
-| `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | — |
-| `license.channels` | entitledChannels() | unit | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | — |
-| `license.reregister` | Re-register on 401 for licence-less devices | transcripts (P1b-03) | planned (P1b-06) | N/A (web, desktop-bridge: runtime) | planned (P1b-06) | planned (P1b-06) | web, desktop-bridge: runtime |
+| Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `license.gate` | Gate evaluation, every status | `gate-matrix.json` | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
+| `license.activate` | Activate with a key (+ fingerprint) | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
+| `license.enroll` | Keyless enrolment | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-03) | web, desktop-bridge: runtime |
+| `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
+| `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
+| `license.channels` | entitledChannels() | unit | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1-03) | — |
+| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | planned (P1b-06) | N/A (web, desktop-bridge: runtime) | planned (P1b-06) | planned (P1b-06) | planned (P1-03) | web, desktop-bridge: runtime |
 
 ## Config
 
-| Id | Capability | Proven by | Node | React | Python | Swift | Allowed N/A |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `config.resolve` | Precedence (enforced, default, local, environment) | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | — |
-| `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | — |
-| `config.secret` | getSecret | transcripts (P1b-03) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | web, desktop-bridge: runtime |
-| `config.schema` | Catalog fetch (/config/schema) | transcripts (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | ✓ | — |
-| `config.mint` | Edge-mint of third-party tokens | transcripts (P1b-08) | planned (P1b-08) | planned (unowned) | planned (P1b-08) | planned (P1b-08) | — |
-| `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | — |
+| Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `config.resolve` | Precedence (enforced, default, local, environment) | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
+| `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
+| `config.secret` | getSecret | transcripts (not recorded) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-04) | web, desktop-bridge: runtime |
+| `config.schema` | Catalog fetch (/config/schema) | transcripts (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | ✓ | planned (P1-04) | — |
+| `config.mint` | Edge-mint of third-party tokens | transcripts (P1b-08) | planned (P1b-08) | planned (unowned) | planned (P1b-08) | planned (P1b-08) | planned (P1-04) | — |
+| `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
 
 ## Devices and identity
 
-| Id | Capability | Proven by | Node | React | Python | Swift | Allowed N/A |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `devices.fingerprint` | Components, hashing, device id | `fingerprint.json` | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | ✓ | web, desktop-bridge: runtime |
-| `devices.facts` | Device facts and probes | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | web, desktop-bridge: runtime |
-| `devices.register` | Keyless registration | transcripts (P1b-03) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | web, desktop-bridge: runtime |
-| `devices.manage` | List, rename, deauthorise | transcripts (P1b-03) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | web: runtime |
-| `devices.report` | Telemetry (allowlisted keys) | transcripts (P1b-03) | ✓ | planned (P1b-07); N/A (web: runtime) | ✓ | planned (P1b-07) | web: runtime |
-| `identity.oidc` | Browser sign-in | transcripts | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | — |
-| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts (P1b-08) | planned (P1b-08) | ✓; N/A (web: runtime) | planned (P1b-08) | planned (P1b-08) | web: runtime |
+| Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `devices.fingerprint` | Components, hashing, device id | `fingerprint.json` | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | ✓ | planned (P1-05) | web, desktop-bridge: runtime |
+| `devices.facts` | Device facts and probes | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-05) | web, desktop-bridge: runtime |
+| `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-05) | web, desktop-bridge: runtime |
+| `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-05) | web: runtime |
+| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | planned (P1b-07); N/A (web: runtime) | ✓ | planned (P1b-07) | planned (P1-05) | web: runtime |
+| `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | — |
+| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts (P1b-08) | planned (P1b-08) | ✓; N/A (web: runtime) | planned (P1b-08) | planned (P1b-08) | planned (P1-07) | web: runtime |
 
 ## Release and update
 
-| Id | Capability | Proven by | Node | React | Python | Swift | Allowed N/A |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `release.changelog` | Changelog | transcripts (P1b-07) | ✓ | planned (P1b-07) | ✓ | planned (P1b-07) | — |
-| `release.download` | Download and install URLs | transcripts (P1b-07) | ✓ | planned (P1b-07) | ✓ | planned (P1b-07) | — |
-| `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | — |
-| `update.check` | Today's version check | transcripts (P1b-03) | ✓ | ✓ | ✓ | ✓ | — |
-| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | — |
-| `update.decide` | The update decision | `update-matrix.json` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | — |
-| `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ios: outlet |
-| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` (P1-09) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
-| `outlet.detect` | Outlet detection | `outlet-matrix.json` (P3-02) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | — |
+| Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `release.changelog` | Changelog | transcripts (P1b-07) | ✓ | planned (P1b-07) | ✓ | planned (P1b-07) | planned (P1-08) | — |
+| `release.download` | Download and install URLs | transcripts (P1b-07) | ✓ | planned (P1b-07) | ✓ | planned (P1b-07) | planned (P1-08) | — |
+| `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
+| `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | planned (P1-08) | — |
+| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
+| `update.decide` | The update decision | `update-matrix.json` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
+| `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | planned (P3-10) | ios: outlet |
+| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` (P1-09) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P3-10) | — |
+| `outlet.detect` | Outlet detection | `outlet-matrix.json` (P3-02) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | — |
 
 ## Packs
 
-| Id | Capability | Proven by | Node | React | Python | Swift | Allowed N/A |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `packs.plan` | The install planner | `plan-matrix.json` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | — |
-| `packs.index` | Chunk and files index parsing, path rules | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | — |
-| `packs.apply.full` | Full apply | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | — |
-| `packs.apply.file` | File apply with type-neutral container rebuild | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | — |
-| `packs.apply.chunk` | Chunk sync from seeds, request runs | `content/` (P4-10) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |
-| `packs.apply.delta` | Raw-prefix delta | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | any: dependency; any: version |
-| `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` (P1-09) + unit | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | — |
-| `packs.handlers` | Handler contract; registerHandler for custom types | unit | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | — |
-| `packs.provides` | isAvailable(contentId) from provides | unit | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | — |
-| `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
-| `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
-| `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | web, desktop-bridge, ios, android: runtime |
-| `packs.transport.msix` | MSIX optional packages | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | web, desktop-bridge, macos, ios, android, linux: runtime; any: outlet |
-| `packs.transport.flatpak` | Flatpak extensions | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | web, desktop-bridge, macos, ios, android, windows: runtime |
+| Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `packs.plan` | The install planner | `plan-matrix.json` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
+| `packs.index` | Chunk and files index parsing, path rules | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
+| `packs.apply.full` | Full apply | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
+| `packs.apply.file` | File apply with type-neutral container rebuild | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
+| `packs.apply.chunk` | Chunk sync from seeds, request runs | `content/` (P4-10) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |
+| `packs.apply.delta` | Raw-prefix delta | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | any: dependency; any: version |
+| `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` (P1-09) + unit | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
+| `packs.handlers` | Handler contract; registerHandler for custom types | unit | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
+| `packs.provides` | isAvailable(contentId) from provides | unit | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | — |
+| `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | planned (P5-08); N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
+| `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | planned (P5-08); N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
+| `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | planned (P5-08); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | web, desktop-bridge, ios, android: runtime |
+| `packs.transport.msix` | MSIX optional packages | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | planned (unowned); N/A (linux: runtime); N/A (macos: runtime); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | web, desktop-bridge, macos, ios, android, linux: runtime; any: outlet |
+| `packs.transport.flatpak` | Flatpak extensions | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | planned (unowned); N/A (macos: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | web, desktop-bridge, macos, ios, android, windows: runtime |
 
 ## UI and commerce
 
-| Id | Capability | Proven by | Node | React | Python | Swift | Allowed N/A |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` (P1-09) | ✓ | ✓ | ✓ | ✓ | — |
-| `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | headless: runtime |
-| `commerce.receipt` | Store purchase to licence entitlement | transcripts (P6-01) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
+| Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` (P1-09) | ✓ | ✓ | ✓ | ✓ | planned (P1-10) | — |
+| `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | planned (P1-10) | headless: runtime |
+| `commerce.receipt` | Store purchase to licence entitlement | transcripts (P6-01) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P6-01) | — |
 
 ## Unowned gaps
 
@@ -147,3 +148,6 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Swift | `packs.transport.steam` | P5-08 covers Godot only; macOS Swift apps have no Steam-depot transport owner. |
 | Swift | `ui.kit` | PolarisLoginView only; no work package builds the rest of the Swift kit. |
 | Swift | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
+| Godot | `identity.oidc` | Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead. |
+| Godot | `packs.transport.msix` | No work package owns an MSIX transport for Godot (program README §9). |
+| Godot | `packs.transport.flatpak` | No work package owns a Flatpak transport for Godot (program README §9). |

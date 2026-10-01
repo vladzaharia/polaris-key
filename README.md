@@ -29,7 +29,7 @@ sdks/
   python/            polaris-key (PyPI)        — full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      — native CryptoKit + SwiftUI login
 conformance/         corpus/v2 (one signer's golden vectors) + the Node runner
-tools/               sign-corpus.ts · gen-mirrors.ts
+tools/               sign-corpus.ts · gen-mirrors.ts · gen-services.ts + services.json (the service table)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                CONCEPTS · ADOPTER-GUIDE · CONFIG-AUTHORING · RUNBOOK · DEPLOYMENT
                      security/ (threat model, wire contract v3, audit + findings)

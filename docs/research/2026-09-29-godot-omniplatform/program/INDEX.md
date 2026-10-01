@@ -15,13 +15,13 @@ keys, devices). _Optional_ work packages are off the required path.
 | --------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------ | ----------- | -------- | ----------- |
 | [P0-01](wp/P0-01-operator-ownership.md)       | Make operator-owned release settings survive a manifest resync                           | —            | implementer | 0.5–0.75 | done        |
 | [P0-02](wp/P0-02-release-resolution.md)       | Fix release resolution: tag filter, version ordering, pagination, upsert conflict, R6-10 | —            | implementer | 1–1.25   | done        |
-| [P0-03](wp/P0-03-release-webhook.md) ✋       | Refresh the release truth store on GitHub `release` webhook events                       | P0-02        | implementer | 0.25     | todo        |
+| [P0-03](wp/P0-03-release-webhook.md) ✋       | Refresh the release truth store on GitHub `release` webhook events                       | P0-02        | implementer | 0.25     | done        |
 | [P0-04](wp/P0-04-channel-unification.md) ⚑    | Unify the licence-gate and Release channel vocabularies                                  | —            | sdk-porter  | 1–1.25   | in-progress |
 | [P0-05](wp/P0-05-cors.md)                     | Add a per-product CORS allowlist to the Worker                                           | —            | implementer | 0.5–0.75 | done        |
 | [P0-06](wp/P0-06-product-devices.md)          | List and manage devices product-wide, not only per licence                               | —            | implementer | 0.25–0.5 | done        |
 | [P0-07](wp/P0-07-cli-init-validate.md)        | Fix the `pkey init` scaffold and the validate/link disagreement                          | —            | implementer | 0.25     | done        |
 | [P0-08](wp/P0-08-unknown-slug-tolerance.md)   | Tolerate unknown service slugs in `parseServices` (ship one deploy ahead)                | —            | implementer | 0.1–0.25 | done        |
-| [P0-09](wp/P0-09-service-table.md) ✋         | Make the service list data-driven, with a drift gate                                     | P0-08, P0-07 | implementer | 1–1.5    | todo        |
+| [P0-09](wp/P0-09-service-table.md) ✋         | Make the service list data-driven, with a drift gate                                     | P0-08, P0-07 | implementer | 1–1.5    | done        |
 | [P0-10](wp/P0-10-sparkle-hardening.md) ✋     | Raise Swift's Sparkle floor to 2.9.6 and stream Sparkle verification                     | —            | implementer | 0.25–0.5 | done        |
 | [P0-11](wp/P0-11-docs-drift.md)               | Fix documentation drift and macOS-only assumptions in health and setup                   | —            | implementer | 0.25–0.5 | done        |
 | [P0-12](wp/P0-12-edge-mint-hardening.md) ✋   | Harden edge-mint: scope signing secrets and authorise minting                            | —            | implementer | 0.5–0.75 | done        |
@@ -50,18 +50,18 @@ keys, devices). _Optional_ work packages are off the required path.
 
 10 work packages, 10–14.25 weeks.
 
-| Id                                                 | Title                                                                                                                        | Depends on           | Role        | Weeks    | Status |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------- | -------- | ------ |
-| [P1b-01](wp/P1b-01-parity-registry.md)             | Feature registry, per-SDK parity manifests and the `parity:check` gate                                                       | —                    | implementer | 1–1.5    | done   |
-| [P1b-02](wp/P1b-02-sdk-constants.md)               | Generate SDK constants: error codes, header values, enums, feature ids                                                       | P1b-01, P0-09        | implementer | 1        | todo   |
-| [P1b-03](wp/P1b-03-http-transcripts.md)            | Capture HTTP transcripts from Worker tests and replay them in every SDK                                                      | P1b-01               | implementer | 2–3      | todo   |
-| [P1b-04](wp/P1b-04-headers-config-corpora.md) ⚑    | Add `headers.json` and `config-matrix.json` to the corpus                                                                    | P1b-02               | sdk-porter  | 0.75–1   | todo   |
-| [P1b-05](wp/P1b-05-runners.md)                     | Add Chromium and minimum-version runners                                                                                     | P0-04                | implementer | 0.5–0.75 | todo   |
-| [P1b-06](wp/P1b-06-reregister-401.md)              | Re-register on 401 for licence-less devices, in every SDK                                                                    | P1b-03               | sdk-porter  | 0.75–1   | todo   |
-| [P1b-07](wp/P1b-07-license-config-release-gaps.md) | Close licence, config and release gaps: `entitledChannels`, catalog fetch, release client, React bundle import and telemetry | P1b-03               | sdk-porter  | 1.5–2    | todo   |
-| [P1b-08](wp/P1b-08-devicecode-edgemint-ports.md)   | Port device-code sign-in and edge-mint to Node, Python and Swift                                                             | P1b-03, P1-06, P0-12 | sdk-porter  | 1–1.5    | todo   |
-| [P1b-09](wp/P1b-09-fingerprint-storage-fixes.md) ⚑ | Fix fingerprint and storage issues: `wmic`, Linux anchor, config directories, keyring downgrade, macOS keychain              | P1b-01               | sdk-porter  | 1–1.5    | todo   |
-| [P1b-10](wp/P1b-10-core-caps.md)                   | Typed "unsupported here" results and `supports()` in every SDK                                                               | P1b-01, P1b-02       | sdk-porter  | 0.5–1    | todo   |
+| Id                                                 | Title                                                                                                                        | Depends on           | Role        | Weeks    | Status      |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------- | -------- | ----------- |
+| [P1b-01](wp/P1b-01-parity-registry.md)             | Feature registry, per-SDK parity manifests and the `parity:check` gate                                                       | —                    | implementer | 1–1.5    | done        |
+| [P1b-02](wp/P1b-02-sdk-constants.md)               | Generate SDK constants: error codes, header values, enums, feature ids                                                       | P1b-01, P0-09        | implementer | 1        | todo        |
+| [P1b-03](wp/P1b-03-http-transcripts.md)            | Capture HTTP transcripts from Worker tests and replay them in every SDK                                                      | P1b-01               | implementer | 2–3      | done        |
+| [P1b-04](wp/P1b-04-headers-config-corpora.md) ⚑    | Add `headers.json` and `config-matrix.json` to the corpus                                                                    | P1b-02               | sdk-porter  | 0.75–1   | todo        |
+| [P1b-05](wp/P1b-05-runners.md)                     | Add Chromium and minimum-version runners                                                                                     | P0-04                | implementer | 0.5–0.75 | todo        |
+| [P1b-06](wp/P1b-06-reregister-401.md)              | Re-register on 401 for licence-less devices, in every SDK                                                                    | P1b-03               | sdk-porter  | 0.75–1   | todo        |
+| [P1b-07](wp/P1b-07-license-config-release-gaps.md) | Close licence, config and release gaps: `entitledChannels`, catalog fetch, release client, React bundle import and telemetry | P1b-03               | sdk-porter  | 1.5–2    | todo        |
+| [P1b-08](wp/P1b-08-devicecode-edgemint-ports.md)   | Port device-code sign-in and edge-mint to Node, Python and Swift                                                             | P1b-03, P1-06, P0-12 | sdk-porter  | 1–1.5    | todo        |
+| [P1b-09](wp/P1b-09-fingerprint-storage-fixes.md) ⚑ | Fix fingerprint and storage issues: `wmic`, Linux anchor, config directories, keyring downgrade, macOS keychain              | P1b-01               | sdk-porter  | 1–1.5    | in-progress |
+| [P1b-10](wp/P1b-10-core-caps.md)                   | Typed "unsupported here" results and `supports()` in every SDK                                                               | P1b-01, P1b-02       | sdk-porter  | 0.5–1    | todo        |
 
 ## P2: Release truth and publishing
 
@@ -71,7 +71,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | ------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------- | ----------- | ----- | ------ |
 | [P2-01](wp/P2-01-blob-store.md) ✋         | Core blob store on R2: content-addressed, bucket-locked, on a separate domain               | —                   | implementer | 1–1.5 | done   |
 | [P2-02](wp/P2-02-trusted-publisher.md) ✋  | Trusted publishing: GitHub OIDC verification, publisher policy, scoped upload tickets       | P2-01, P2-04        | implementer | 1–1.5 | todo   |
-| [P2-03](wp/P2-03-release-data-model.md)    | Release data model v2: deliverables, builds, artifact roles, channel policy, yanks          | P0-01, P0-02        | implementer | 1–1.5 | todo   |
+| [P2-03](wp/P2-03-release-data-model.md)    | Release data model v2: deliverables, builds, artifact roles, channel policy, yanks          | P0-01, P0-02        | implementer | 1–1.5 | done   |
 | [P2-04](wp/P2-04-release-descriptor.md)    | Release descriptor ingest and the declared artifact map in `.pkey/release`                  | P2-03               | implementer | 1–1.5 | todo   |
 | [P2-05](wp/P2-05-release-routes.md)        | Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching | P2-01, P2-03        | implementer | 1–1.5 | todo   |
 | [P2-06](wp/P2-06-publish-cli-action.md) ✋ | `pkey release` publishing commands and the `polaris-key/publish` Action                     | P2-02, P2-04, P2-05 | implementer | 1–1.5 | todo   |

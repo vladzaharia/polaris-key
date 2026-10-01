@@ -1,16 +1,16 @@
 # P1b-04 Add `headers.json` and `config-matrix.json` to the corpus
 
-| Field       | Value                                                                                                                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P1b: SDK parity                                                                                                                                                                                              |
-| Size        | 0.75–1 engineer-weeks                                                                                                                                                                                        |
-| Depends on  | [P1b-02](P1b-02-sdk-constants.md)                                                                                                                                                                            |
-| Unblocks    | [X-01](X-01-dotnet-sdk.md), [X-02](X-02-tauri-plugin.md)                                                                                                                                                     |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                         |
-| Plan mode   | **yes**: `program/plans/P1b-04.md` needs human approval before any code                                                                                                                                      |
-| Gates       | plan mode; the corpus drift gate (`pnpm gen:corpus -- --check`, Swift mirror included); all SDKs; the generated `reference/corpus.mdx` page (AGENTS rule 3); one corpus-touching package in flight at a time |
-| Human input | approval of the plan, including the header vocabulary and the compatibility choice in Design notes                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                                                                                                            |
+| Size        | 0.75–1 engineer-weeks                                                                                                                                                                                                      |
+| Depends on  | [P1b-02](P1b-02-sdk-constants.md)                                                                                                                                                                                          |
+| Unblocks    | [X-01](X-01-dotnet-sdk.md), [X-02](X-02-tauri-plugin.md)                                                                                                                                                                   |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                       |
+| Plan mode   | **yes**: `program/plans/P1b-04.md` needs human approval before any code                                                                                                                                                    |
+| Gates       | plan mode; the corpus drift gate (`pnpm gen:corpus -- --check`, the mirrors (Swift, Godot) included); all SDKs; the generated `reference/corpus.mdx` page (AGENTS rule 3); one corpus-touching package in flight at a time |
+| Human input | approval of the plan, including the header vocabulary and the compatibility choice in Design notes                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                  |
 
 ## Goal
 
@@ -162,12 +162,12 @@ Integers stay below 2^53, and runners compare with canonical JSON equality, trea
 as integers ([notes/A7 §5](../../notes/A7-xlang-content.md#5-corpus-encoding-and-runner-expectations)).
 
 **What the plan must name** (the `plans/README.md` sections): the generator functions and version
-constants; the Swift mirror; each runner file above; the SDK order Node → React → Python → Swift, then
+constants; the mirrors (Swift, Godot); each runner file above; the SDK order Node → React → Python → Swift, then
 Godot; the docs pages; and the deploy order (Worker normaliser first, then SDK releases).
 
-**Godot.** [README §5.11](../../README.md#511-conformance-and-ci) says the Godot runner reads
-`conformance/corpus/v2` directly with no mirror, while PARITY §4.1 expects a `res://` mirror. Follow
-whatever P1-01 settled.
+**Godot.** Settled by P1-01: the Godot runner reads a generator-owned `res://` mirror at
+`sdks/godot/tests/corpus/v2/`. `CORPUS_TARGETS` in `tools/sign-corpus.ts` writes `headers.json` and
+`config-matrix.json` there by construction.
 
 ## Steps
 
@@ -182,7 +182,7 @@ whatever P1-01 settled.
 ## Acceptance criteria
 
 - [ ] `program/plans/P1b-04.md` is merged (approved) before any code change.
-- [ ] `conformance/corpus/v2/headers.json` and `config-matrix.json` exist, with Swift mirrors, and
+- [ ] `conformance/corpus/v2/headers.json` and `config-matrix.json` exist, with the mirrors (Swift, Godot), and
       `mise exec node@22 -- pnpm gen:corpus -- --check` passes.
 - [ ] The Node, React, Python and Swift runners pass every row that applies to them; a doctored row
       fails each one.

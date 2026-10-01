@@ -4,7 +4,7 @@
 //
 // The v2 document had a `modules` object each surface re-derived its own way, so it could say
 // a capability was on while its routes 404ed. v3 replaces it with a top-level `services` map
-// keyed by the five service slugs, every entry a projection of one authority (the product's
+// keyed by the service slugs, every entry a projection of one authority (the product's
 // `services_json`), and a disabled service is `{"enabled": false}` and NOTHING ELSE — no
 // endpoint list to read a disabled service's shape out of. See the Worker's
 // `src/core/discovery.ts` for the emitting side.
@@ -21,73 +21,52 @@
 // it has ever seen a document — is `CoreOptions.expectedServices`, resolved in
 // `CoreContext.services()`; discovery, once loaded, always wins over it.
 
-/** The five opt-in services. Core is not a service — it is always on. */
-export type ServiceSlug =
-  | "license"
-  | "config"
-  | "release"
-  | "update"
-  | "identity";
+import {
+  DEFAULT_ENABLED_SERVICES,
+  SERVICE_SLUGS,
+  type ServiceSlug,
+} from "./services.generated.js";
 
-/** Canonical order. Iterate this rather than `Object.keys` so output is stable. */
-export const SERVICE_SLUGS: readonly ServiceSlug[] = [
-  "license",
-  "config",
-  "release",
-  "update",
-  "identity",
-];
+/**
+ * The opt-in services and their canonical order are GENERATED from the service table
+ * (`tools/services.json`, via `pnpm gen:services`) into `./services.generated.ts`. Core is not a
+ * service — it is always on. Iterate `SERVICE_SLUGS` rather than `Object.keys` so output is
+ * stable.
+ */
+export { SERVICE_SLUGS, type ServiceSlug };
 
 /** Per-service state as the SDK consumes it. */
 export type ServicesMap = Record<ServiceSlug, { enabled: boolean }>;
 
+/** A full map, every slug in canonical order, each set by `enabled`. */
+function servicesWhere(enabled: (slug: ServiceSlug) => boolean): ServicesMap {
+  const out = {} as ServicesMap;
+  for (const slug of SERVICE_SLUGS) out[slug] = { enabled: enabled(slug) };
+  return out;
+}
+
 /**
  * What a client believes when it has neither a discovery document nor a stated expectation:
- * licensing + settings distribution, which is what every product ran before the suite existed.
- * Distribution and identity are OFF, so their sub-clients refuse until something says
- * otherwise — the fail-closed half of D-21 applied to the genuinely new surfaces.
+ * licensing + settings distribution, which is what every product ran before the suite existed
+ * (the table's `defaultEnabled` rows). Distribution and identity are OFF, so their sub-clients
+ * refuse until something says otherwise — the fail-closed half of D-21 applied to the genuinely
+ * new surfaces.
  */
-export const DEFAULT_SERVICES: ServicesMap = {
-  license: { enabled: true },
-  config: { enabled: true },
-  release: { enabled: false },
-  update: { enabled: false },
-  identity: { enabled: false },
-};
+export const DEFAULT_SERVICES: ServicesMap = servicesWhere((slug) =>
+  DEFAULT_ENABLED_SERVICES.includes(slug),
+);
 
-const NONE: ServicesMap = {
-  license: { enabled: false },
-  config: { enabled: false },
-  release: { enabled: false },
-  update: { enabled: false },
-  identity: { enabled: false },
-};
+const NONE: ServicesMap = servicesWhere(() => false);
 
 /** A deep copy, so a caller holding a capability map cannot mutate a shared constant or the
  *  client's own resolved state. */
 export function copyServices(services: ServicesMap): ServicesMap {
-  return {
-    license: { ...services.license },
-    config: { ...services.config },
-    release: { ...services.release },
-    update: { ...services.update },
-    identity: { ...services.identity },
-  };
+  return servicesWhere((slug) => services[slug]?.enabled === true);
 }
 
 /** Turn a host's `expectedServices` list into a full map — everything unlisted is off. */
 export function servicesFromList(slugs: readonly ServiceSlug[]): ServicesMap {
-  const out: ServicesMap = {
-    license: { enabled: false },
-    config: { enabled: false },
-    release: { enabled: false },
-    update: { enabled: false },
-    identity: { enabled: false },
-  };
-  for (const slug of slugs) {
-    if (slug in out) out[slug] = { enabled: true };
-  }
-  return out;
+  return servicesWhere((slug) => slugs.includes(slug));
 }
 
 /** One service's published fragment. `enabled` is the only field Core reads; the rest is the

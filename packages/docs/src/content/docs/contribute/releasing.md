@@ -59,8 +59,11 @@ that serializes deploys so two tags can never race.
    (`git merge-base --is-ancestor "$GITHUB_SHA" origin/main`). A tag name alone was once the
    only gate, which meant a tag pointing at any commit, reviewed or not, would deploy to
    production; this closes that hole.
-2. **Apply D1 migrations** (`wrangler d1 migrations apply --remote`), then re-run
-   `migrations/0018_index_assertion.sql` unconditionally on every deploy. Migration bookkeeping
+2. **Apply D1 migrations** (`wrangler d1 migrations apply --remote`), then re-run the newest
+   `migrations/*_index_assertion.sql` (`0018_index_assertion.sql`, succeeded by
+   `0027_i_index_assertion.sql`) unconditionally on every deploy. Each successor carries the
+   full required-index list, so re-running an older one would stop checking the indexes added
+   since. Migration bookkeeping
    means a migration's SQL runs exactly once per database, which is the wrong cadence for an
    invariant a route silently depends on — re-asserting it on every deploy turns "a required
    index vanished" into a failed deploy instead of a latent correctness bug.

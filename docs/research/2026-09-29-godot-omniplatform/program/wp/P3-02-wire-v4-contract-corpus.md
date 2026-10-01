@@ -42,13 +42,15 @@ vectors today, so backends can diverge silently
 - `packages/docs/src/content/docs/contribute/corpus.md` (how to add a case) and `waves.md`.
 - `tools/sign-corpus.ts`: `KEYS` (`:58-71`), the v3 fixed clocks (`:145-165`), `buildJwsCases`
   (`:293`), `buildV2` (`:1619-1630`), the hand-authored gate matrix with its frozen carried rows
-  (`:1646`, `:2034`), `reconcile` and `main` with the Swift mirror (`:2313-2379`).
+  (`:1646`, `:2034`), `reconcile` and `main` with `CORPUS_TARGETS` (the source and both mirrors).
+  `annotateNul` writes `expect.docNulReplaced` for any new `jwsCases` string holding U+0000
+  automatically (WIRE-CONTRACT-V3 §10).
 - The runners that read `jwsCases` today: `conformance/runners/node/corpusV2.test.ts:177`,
   `sdks/python/tests/test_conformance.py:48-110`, `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift:186-230`,
   and the Godot runner P1-01 created, if `sdks/godot` exists.
 - The verifiers they drive: `packages/shared-jws/src/index.ts:308-379`,
   `sdks/python/src/polaris_key/core/jws.py`, `sdks/swift/Sources/PolarisKeyCore/JWSVerifier.swift`.
-- `prototype/vectors/` (the Node-oracle Ed25519 negatives: S+L, S=L, non-canonical y, off-curve y).
+- `sdks/godot/tests/vectors/` (moved from `prototype/vectors/` by P1-01; the Node-oracle Ed25519 negatives: S+L, S=L, non-canonical y, off-curve y).
 - [README §3.3](../../README.md#33-trust-model-two-signers-two-documents),
   [§3.6](../../README.md#36-update-what-an-installed-app-should-do-next),
   [PARITY §4.1](../../PARITY.md#41-corpora-behaviour-as-data).

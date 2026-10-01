@@ -1,22 +1,24 @@
 // Generate the cross-language conformance corpus. ONE signer produces the canonical signed
-// vectors; every SDK's runner (Node, Python, Swift, React) verifies the SAME files, proving
-// byte-identical JWS verification + identical gate transitions. Ed25519 is deterministic, so
-// re-signing is reproducible — `--check` re-emits in memory and fails if a committed file
-// drifted.
+// vectors; every SDK's runner (Node, Python, Swift, React, Godot) verifies the SAME files,
+// proving byte-identical JWS verification + identical gate transitions. Ed25519 is
+// deterministic, so re-signing is reproducible — `--check` re-emits in memory and fails if a
+// committed file drifted.
 //
 // ONE corpus, from two committed test keys and fixed clocks:
 //
 //   conformance/corpus/v2/  wire contract v3 (docs/security/WIRE-CONTRACT-V3.md). Consumed by
 //                           conformance/runners/node/corpusV2.test.ts via
-//                           @polaris-key/client-core, by the Python runner, and — mirrored
-//                           into the Swift test bundle's `Resources/v2/`, which keeps the
-//                           mirror path identical to the source path — by the Swift suite.
+//                           @polaris-key/client-core and by the Python runner. Two
+//                           generator-owned mirrors keep the path `…/v2/` one-for-one:
+//                           the Swift test bundle's `Resources/v2/` (the Swift suite) and
+//                           `sdks/godot/tests/corpus/v2/` (the Godot runner, which reads it
+//                           from `res://` in the editor and in an exported pack). Every file
+//                           is written into every target in `CORPUS_TARGETS`.
 //
 // Four files: `cases.json` (signed vectors), `gate-matrix.json` (§5), `fingerprint.json` (the
 // hardware-hash formulas) and `stage-matrix.json` (the boot stage machine of
 // `@polaris-key/client-core/stages`, client boot behaviour outside the wire contract, read by
-// conformance/runners/node/stageMatrix.test.ts and the Python and Swift runners). `main()`
-// writes every file into every directory of `CORPUS_TARGETS`, so each mirror holds them all.
+// conformance/runners/node/stageMatrix.test.ts and the Python and Swift runners).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
 // `CARRIED_MATRIX_ROWS` below before deletion, so nothing it pinned was dropped.
@@ -25,7 +27,14 @@
 //   pnpm gen:corpus -- --check # CI drift guard (exit 1 if any file is stale)
 
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -49,6 +58,19 @@ const SWIFT_V2_RESOURCES = join(
   "Tests",
   "PolarisKeyTests",
   "Resources",
+  "v2",
+);
+
+/** The Godot project's generator-owned mirror. An exported Godot pack can read only `res://`
+ *  (the project directory), never `../../conformance/`, so the editor and release-template
+ *  runs both load the corpus from here. Guarded by `--check` exactly like the Swift mirror. */
+const GODOT_V2_RESOURCES = join(
+  HERE,
+  "..",
+  "sdks",
+  "godot",
+  "tests",
+  "corpus",
   "v2",
 );
 
@@ -91,6 +113,63 @@ interface VerifyExpect {
   verify: "ok" | "fail";
   kid?: string;
   doc?: unknown;
+  /** WIRE-CONTRACT-V3 §10: RFC 6901 pointer -> the string at that pointer under `doc` with
+   *  every U+0000 replaced by U+FFFD. Written by `annotateNul`, never by hand. Only a runner
+   *  whose platform string type cannot hold U+0000 (Godot) reads it; every other runner
+   *  ignores it. */
+  docNulReplaced?: Record<string, string>;
+}
+
+/** RFC 6901 reference token: `~` -> `~0`, then `/` -> `~1`. */
+const pointerToken = (key: string): string =>
+  key.replaceAll("~", "~0").replaceAll("/", "~1");
+
+/** WIRE-CONTRACT-V3 §10 (the U+0000 representation limit). Walks `expect.doc` depth-first in
+ *  insertion order and, for each string that contains U+0000, records its pointer and its
+ *  U+FFFD form under `docNulReplaced`, written right after `doc` and only when the map is not
+ *  empty — so every case without a NUL stays byte-identical. A NUL in an object KEY is outside
+ *  the §10 entry (P3-01 decides it), so the generator refuses to emit one. Reuse this for any
+ *  later section that pins a decoded document; never apply it to `bundleCases`, whose whole
+ *  `expect` object the Node and Python runners compare. */
+function annotateNul(expect: VerifyExpect): VerifyExpect {
+  if (!("doc" in expect)) {
+    if ("docNulReplaced" in expect)
+      throw new Error("annotateNul: docNulReplaced without doc");
+    return expect;
+  }
+  const replaced: Record<string, string> = {};
+  const walk = (value: unknown, pointer: string): void => {
+    if (typeof value === "string") {
+      if (!value.includes("\u0000")) return;
+      const out = value.replaceAll("\u0000", "\ufffd");
+      if (out.includes("\u0000") || out === value)
+        throw new Error(`annotateNul: bad replacement at ${pointer}`);
+      replaced[pointer] = out;
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item, i) => walk(item, `${pointer}/${i}`));
+      return;
+    }
+    if (value !== null && typeof value === "object") {
+      for (const [key, item] of Object.entries(value)) {
+        if (key.includes("\u0000"))
+          throw new Error(
+            `annotateNul: U+0000 in an object key under ${pointer || "/"}`,
+          );
+        walk(item, `${pointer}/${pointerToken(key)}`);
+      }
+    }
+  };
+  walk(expect.doc, "");
+  if (Object.keys(replaced).length === 0) return expect;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(expect)) {
+    if (key === "docNulReplaced") continue;
+    out[key] = value;
+    if (key === "doc") out.docNulReplaced = replaced;
+  }
+  return out as unknown as VerifyExpect;
 }
 
 /** A syntactically valid Ed25519 public key that belongs to nobody — the "attacker" bytes in
@@ -139,8 +218,8 @@ const V2_OUT = join(V2_DIR, "cases.json");
 const V2_GATE_MATRIX_OUT = join(V2_DIR, "gate-matrix.json");
 const V2_FINGERPRINT_OUT = join(V2_DIR, "fingerprint.json");
 const V2_STAGE_MATRIX_OUT = join(V2_DIR, "stage-matrix.json");
-/** Every directory that receives every `corpus/v2/` file: the source, then each SDK mirror. */
-const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES];
+/** Every directory that receives the corpus: the source, then each generator-owned mirror. */
+const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
 
 /** Document-type domain separators, wire contract v3 §2. */
 type TypV3 =
@@ -799,7 +878,8 @@ async function buildJwsCases(): Promise<JwsCaseV2[]> {
     expect: { verify: "fail" },
   });
 
-  return cases;
+  // §10: annotate every U+0000 string in each pinned document (one case today).
+  return cases.map((c) => ({ ...c, expect: annotateNul(c.expect) }));
 }
 
 // ── §3 per-document claim vectors ────────────────────────────────────────────
@@ -3542,7 +3622,7 @@ async function main(): Promise<void> {
   const check = process.argv.includes("--check");
 
   // The fingerprint + device-id vectors. Unsigned (they pin hash formulas, not signatures),
-  // but guarded by the same drift gate and mirrored into the Swift bundle alongside the rest.
+  // but guarded by the same drift gate and mirrored alongside the rest.
   const fingerprint = await format(JSON.stringify(buildFingerprintCorpus()), {
     parser: "json",
   });
@@ -3563,21 +3643,32 @@ async function main(): Promise<void> {
   const v2StageMatrix = await format(JSON.stringify(buildStageMatrixV1()), {
     parser: "json",
   });
-  const outputs: Array<[string, string]> = [
+
+  // One map from file name to content, reconciled into the source directory and into every
+  // generator-owned mirror, so a file added here reaches each mirror by construction.
+  const files = new Map<string, string>([
     [basename(V2_OUT), v2Content],
     [basename(V2_GATE_MATRIX_OUT), v2GateMatrix],
     [basename(V2_FINGERPRINT_OUT), fingerprint],
     [basename(V2_STAGE_MATRIX_OUT), v2StageMatrix],
-  ];
-
-  // Every file into every target: the source directory, then each SDK's mirror. A new corpus
-  // file therefore reaches every mirror by construction.
+  ]);
   let stale = false;
-  for (const dir of CORPUS_TARGETS)
-    for (const [name, content] of outputs)
+  for (const dir of CORPUS_TARGETS) {
+    for (const [name, content] of files)
       stale = reconcile(join(dir, name), content, check) || stale;
+    // Stray-file guard: a top-level JSON file the generator does not write fails both modes
+    // and is never deleted automatically, so a dropped or renamed file cannot linger in a
+    // mirror. Subdirectories belong to their owners.
+    for (const entry of existsSync(dir) ? readdirSync(dir) : []) {
+      if (!entry.endsWith(".json") || files.has(entry)) continue;
+      const path = join(dir, entry);
+      if (!statSync(path).isFile()) continue;
+      console.error(`stray: ${path} is not written by the generator`);
+      stale = true;
+    }
+  }
 
-  if (check && stale) process.exit(1);
+  if (stale) process.exit(1);
 }
 
 await main();

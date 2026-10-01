@@ -1,6 +1,3 @@
-# Generated locally by `node vectors/gen_corpus.mjs` (derived from conformance/corpus/v2).
-vectors/corpus_jws.json
-vectors/corpus_sigs.json
 # Godot caches and exports.
 .godot/
 build/

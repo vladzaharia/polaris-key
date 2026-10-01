@@ -557,6 +557,10 @@
               "updatedAt": 1699990000
             }
           }
+        },
+        "docNulReplaced": {
+          "/profile/name": "before�after",
+          "/profile/firstName": "Gr�ace"
         }
       }
     },

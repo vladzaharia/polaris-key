@@ -26,14 +26,20 @@
 
 import type { Db, DbStatement, Env } from "../../core/platform.js";
 import type { FetchImpl } from "./githubApp.js";
-import { listReleases, RELEASE_PAGE_CAP } from "./github.js";
+import { listReleasePages, RELEASE_PAGE_CAP, type Release } from "./github.js";
 import {
   getReleaseConfig,
   isResolved,
   type ReleaseConfigRow,
 } from "./config.js";
-import { installationToken } from "./gateway.js";
-import { listChannelFloors, releaseStoreStatements } from "./store.js";
+import { floorRelease, installationToken } from "./gateway.js";
+import {
+  listChannelFloors,
+  listStoredReleaseIds,
+  releaseStoreStatements,
+  type ReleaseChannelFloorRow,
+} from "./store.js";
+import { semverOfTag } from "./channels.js";
 
 // ── The platform-facing façade ───────────────────────────────────────────────
 
@@ -67,7 +73,9 @@ export { getReleaseConfig } from "./config.js";
  * 5,000/hour for every product on the installation (R10-05).
  *
  * The channel floors (R6-10) are read here, before the fetch, and handed to the pure statement
- * builder, which raises them conditionally on what it read.
+ * builder, which raises them conditionally on what it read. So are the release ids the store
+ * already holds: when the list was read to its end, the builder marks any of them that GitHub no
+ * longer publishes as `absentUpstream` (P0-03). A capped read hands it `null` instead.
  *
  * Returns `[]` — never throws, never partially applies — when the product has no GitHub
  * coordinates or GitHub is unavailable. The truth store is a CACHE of upstream state; failing a
@@ -85,8 +93,9 @@ export async function releaseStoreSyncStatements(
   if (!isResolved(cfg)) return [];
   try {
     const floors = await listChannelFloors(db, cfg.product);
+    const stored = await listStoredReleaseIds(db, cfg.product);
     const token = await installationToken(env, cfg, now, fetchImpl);
-    const releases = await listReleases(
+    const listing = await listReleasePages(
       token,
       cfg.gh_owner,
       cfg.gh_repo,
@@ -94,7 +103,22 @@ export async function releaseStoreSyncStatements(
       fetchImpl,
       { maxPages: RELEASE_PAGE_CAP.sync },
     );
-    return releaseStoreStatements(cfg.product, cfg, releases, now, floors);
+    const held = await heldFloorReleases(
+      token,
+      cfg,
+      floors,
+      listing.releases,
+      fetchImpl,
+    );
+    return releaseStoreStatements(
+      cfg.product,
+      cfg,
+      listing.releases,
+      now,
+      floors,
+      held,
+      listing.complete ? stored : null,
+    );
   } catch {
     // No log line: the worker carries no logging sink by design. The absence of a `releases`
     // entry in the sync result — and `release_health`'s unchanged `checked_at` — is the signal.
@@ -103,11 +127,44 @@ export async function releaseStoreSyncStatements(
 }
 
 /**
+ * The floor releases a CAPPED release list did not reach, looked up by tag exactly as the live
+ * route does (`floorRelease`). A list shorter than the cap is the whole repository, so a floor
+ * release missing from it is gone and costs nothing more; only a repo above
+ * `RELEASE_PAGE_CAP.sync` pages pays one tag lookup per floor it did not see. Without this the
+ * store said `blocked` for a channel the live route still served through that same lookup
+ * (P2-03, wave-1 sync). A lookup that fails is treated as "not found" — the store keeps its
+ * conservative answer rather than failing the whole sync.
+ */
+async function heldFloorReleases(
+  token: string,
+  cfg: Parameters<typeof floorRelease>[1],
+  floors: ReleaseChannelFloorRow[],
+  listed: Release[],
+  fetchImpl: FetchImpl,
+): Promise<Release[]> {
+  if (floors.length === 0 || listed.length < 100 * RELEASE_PAGE_CAP.sync)
+    return [];
+  const held: Release[] = [];
+  for (const floor of floors) {
+    const seen = floor.release_id
+      ? listed.some((r) => r.tag_name === floor.release_id)
+      : listed.some((r) => semverOfTag(r.tag_name) === floor.version);
+    if (seen) continue;
+    const found = await floorRelease(token, cfg, floor, fetchImpl).catch(
+      () => null,
+    );
+    if (found && !found.draft) held.push(found);
+  }
+  return held;
+}
+
+/**
  * Refresh one product's truth store from GitHub, standalone.
  *
  * Used by `linkRepo` (whose own batch has to create the `products` row before anything can
- * reference it) and by the release admin surface. Returns how many statements were applied, so
- * a caller can tell "synced nothing" from "did not run".
+ * reference it), by the release admin surface, and by the GitHub `release` webhook (P0-03), which
+ * refreshes only these four tables and never re-reads `.pkey/`. Returns how many statements were
+ * applied, so a caller can tell "synced nothing" from "did not run".
  */
 export async function syncReleaseStore(
   env: Env,

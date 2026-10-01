@@ -75,7 +75,7 @@ The full route table, including every non-document surface, is at
 | [Trust](/docs/build/wire/trust/)                     | Pinned keys, the signed trust manifest, revocation by absence, and why the cache is never a key source                                      | §1, §2.3      |
 | [Cache and clock](/docs/build/wire/cache-and-clock/) | The v3 cache record, the re-verify-everything load, and the monotonic clock floor                                                           | §4            |
 | [Offline bundles](/docs/build/wire/bundles/)         | `pkey-bundle+jws`, its three time bounds, and the four ordered refusal steps                                                                | §7            |
-| [The conformance corpus](/docs/build/wire/corpus/)   | One generator, four runners, and the CI drift gate that keeps them honest                                                                   | §6, §10       |
+| [The conformance corpus](/docs/build/wire/corpus/)   | One generator, the language runners, and the CI drift gate that keeps them honest                                                           | §6, §10       |
 
 ## One client, end to end
 

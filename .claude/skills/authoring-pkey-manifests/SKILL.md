@@ -22,14 +22,14 @@ canonical glossary).
 - [ ] Run `pkey init` in the product repo root. It creates `.pkey/` and writes YAML:
       `product.yaml` and `schema.yaml` always (ingest requires both, even with Config off; without
       `config` the schema is an empty catalog, `schemaVersion: 1` and `catalog: []`); `release.yaml`
-      when `releases` is selected. The scaffolded tier is `policyDeviceLimit: 5` with no expiry.
+      when Release is selected. The scaffolded tier is `policyDeviceLimit: 5` with no expiry.
 - [ ] Other flags: `--admin-group`, `--release-owner`, `--release-repo`, `--force` (overwrite).
-      With no `--modules`, the default is `licensing,config`.
+      With no `--modules`, the default is `license,config`.
 - [ ] Do **not** hand-create the directory if `pkey init` will do it — the scaffold writes the
       `# yaml-language-server: $schema=…` header that gives you completion in the editor.
 
 ```sh
-pkey init --product <slug> --name "<Name>" --modules licensing,config
+pkey init --product <slug> --name "<Name>" --modules license,config
 ```
 
 ### 2. Get editor validation working
@@ -88,7 +88,9 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 | `oidc`      | `identity`           | rename                                                                               |
 | `edgeMint`  | `config`             | edge-minting is a secret-**delivery** capability of Config, not a unit of its own    |
 
-`pkey init --modules` takes the **old** names: `licensing,config,releases,oidc,edgeMint`.
+`pkey init --modules` takes either vocabulary (service slugs or the old names above) and always
+scaffolds the `modules` block in service slugs. The slugs and the legacy mapping are the service
+table, `tools/services.json`.
 
 - [ ] `web.origins` is optional: up to 16 exact browser origins that may read this product's
       device-facing routes with `fetch` (CORS, no credentials). Spell each one the way a browser

@@ -32,6 +32,17 @@ import {
   releaseStoreStatements,
 } from "../src/services/release/store.js";
 import {
+  getChannelPolicy,
+  isYanked,
+  listBuilds,
+  listDeliverables,
+  revertChannelPolicyToManifest,
+  setChannelPolicy,
+  stmtSetArtifactModel,
+  upsertBuild,
+  yankRelease,
+} from "../src/services/release/model.js";
+import {
   createPortalDownloadToken,
   markPortalDownloadUsed,
 } from "../src/services/identity/portal/repo.js";
@@ -397,6 +408,273 @@ describe("resync populates the release truth store", () => {
     );
     expect(lastMetadata).toBeGreaterThanOrEqual(0);
     expect(firstReferencing).toBeGreaterThan(lastMetadata);
+  });
+
+  // P0-03 — a release the store holds but a COMPLETE upstream list no longer carries.
+  const absentHealth = (stmts: DbStatement[]) =>
+    stmts
+      .filter(
+        (s) =>
+          s.sql.includes("INSERT INTO release_health") &&
+          s.params.includes(JSON.stringify({ absentUpstream: true })),
+      )
+      .map((s) => ({ subjectId: s.params[2], status: s.params[3] }));
+
+  it("marks a stored release missing from a complete list as absentUpstream, never deleting it", () => {
+    const stmts = releaseStoreStatements(
+      SLUG,
+      CFG,
+      [
+        release({ tag_name: "v1.3.0" }),
+        // A release unpublished back to a draft is gone from what the portal serves.
+        release({ tag_name: "v1.2.9", draft: true }),
+      ],
+      NOW,
+      [],
+      [],
+      ["v1.2.3", "v1.2.9", "v1.3.0"],
+    );
+    expect(absentHealth(stmts)).toEqual([
+      { subjectId: "v1.2.3", status: "degraded" },
+      { subjectId: "v1.2.9", status: "degraded" },
+    ]);
+    expect(stmts.some((s) => /\bDELETE\b/i.test(s.sql))).toBe(false);
+  });
+
+  it("does not mark a held floor release absent: a tag lookup found it upstream", () => {
+    const stmts = releaseStoreStatements(
+      SLUG,
+      CFG,
+      [release({ tag_name: "v1.3.0" })],
+      NOW,
+      [],
+      [release({ tag_name: "v1.0.0" })],
+      ["v1.0.0", "v1.2.3", "v1.3.0"],
+    );
+    expect(absentHealth(stmts)).toEqual([
+      { subjectId: "v1.2.3", status: "degraded" },
+    ]);
+  });
+
+  it("marks nothing when the caller could not read the list to its end", () => {
+    // `null` is what the sync passes for a capped read: absence from a partial list proves
+    // nothing about upstream.
+    const stmts = releaseStoreStatements(
+      SLUG,
+      CFG,
+      [release({ tag_name: "v1.3.0" })],
+      NOW,
+      [],
+      [],
+      null,
+    );
+    expect(absentHealth(stmts)).toEqual([]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// P2-03: what a resync owns, and what it does not
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+describe("resync and the release model v2 columns (P2-03)", () => {
+  const V100 = release({
+    tag_name: "v1.0.0",
+    published_at: "2026-01-01T00:00:00Z",
+    assets: [
+      asset("djdl-1.0.0-arm64.dmg", 41),
+      asset("djdl-1.0.0-arm64.dmg.sig", 42),
+    ],
+  });
+  const V110 = release({
+    tag_name: "v1.1.0",
+    published_at: "2026-01-05T00:00:00Z",
+    assets: [asset("djdl-1.1.0-arm64.dmg.sha256", 51)],
+  });
+
+  it("creates the app deliverable and numbers new releases in publish order", async () => {
+    const db = makeTestDb();
+    await seedLinkedProduct(db);
+    // API order is newest first; seq must follow publication, not the list.
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW,
+      stubFetch([V110, V100]).fetchImpl,
+    );
+    expect(await listDeliverables(db, SLUG)).toEqual([
+      expect.objectContaining({ deliverable_id: "app", kind: "app" }),
+    ]);
+    const seqOf = async () =>
+      Object.fromEntries(
+        (await listReleaseMetadata(db, SLUG)).map((r) => [r.release_id, r.seq]),
+      );
+    expect(await seqOf()).toEqual({ "v1.0.0": 1, "v1.1.0": 2 });
+
+    // A backport published later gets the next seq, although its version is lower.
+    const backport = release({
+      tag_name: "v1.0.1",
+      published_at: "2026-02-01T00:00:00Z",
+    });
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW + 60,
+      stubFetch([backport, V110, V100]).fetchImpl,
+    );
+    expect(await seqOf()).toEqual({ "v1.0.0": 1, "v1.1.0": 2, "v1.0.1": 3 });
+    expect(
+      (await listReleaseMetadata(db, SLUG)).every(
+        (r) => r.deliverable_id === "app" && r.channel === null,
+      ),
+    ).toBe(true);
+
+    const roles = Object.fromEntries(
+      [
+        ...(await listReleaseArtifacts(db, SLUG, "v1.0.0")),
+        ...(await listReleaseArtifacts(db, SLUG, "v1.1.0")),
+      ].map((a) => [a.name, a.role]),
+    );
+    expect(roles).toEqual({
+      "djdl-1.0.0-arm64.dmg": "payload",
+      "djdl-1.0.0-arm64.dmg.sig": "signature",
+      "djdl-1.1.0-arm64.dmg.sha256": "checksum",
+    });
+  });
+
+  it("a resync after a descriptor-style write keeps sha256, build_id, role, locations_json and storage_key", async () => {
+    const db = makeTestDb();
+    await seedLinkedProduct(db);
+    const { fetchImpl } = stubFetch([V100]);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+
+    // What P2-04's descriptor ingest writes through model.ts.
+    const hash = "b".repeat(64);
+    await upsertBuild(
+      db,
+      {
+        product: SLUG,
+        releaseId: "v1.0.0",
+        buildId: "macos",
+        platform: "macos",
+        arch: "arm64",
+        format: "dmg",
+        buildNumber: "100",
+      },
+      NOW,
+    );
+    const locations = JSON.stringify([
+      { kind: "r2", key: `blobs/sha256/${hash}` },
+    ]);
+    for (const s of [
+      stmtSetArtifactModel({
+        product: SLUG,
+        releaseId: "v1.0.0",
+        artifactId: "41",
+        buildId: "macos",
+        // Deliberately not what the name-sniffed kind would give, so an overwrite would show.
+        role: "delta",
+        sha256: hash,
+        storageKey: `blobs/sha256/${hash}`,
+        locationsJson: locations,
+        metadataJson: '{"descriptor":true}',
+      }),
+    ])
+      await db.run(s.sql, ...s.params);
+    const seqBefore = (await listReleaseMetadata(db, SLUG))[0]!.seq;
+
+    await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
+
+    const dmg = (await listReleaseArtifacts(db, SLUG, "v1.0.0")).find(
+      (a) => a.artifact_id === "41",
+    )!;
+    expect(dmg).toMatchObject({
+      sha256: hash,
+      build_id: "macos",
+      role: "delta",
+      locations_json: locations,
+      storage_key: `blobs/sha256/${hash}`,
+      metadata_json: '{"descriptor":true}',
+      // ...while the GitHub-derived columns still follow GitHub.
+      name: "djdl-1.0.0-arm64.dmg",
+      kind: "dmg",
+    });
+    expect((await listReleaseMetadata(db, SLUG))[0]!.seq).toBe(seqBefore);
+    expect(await listBuilds(db, SLUG, "v1.0.0")).toHaveLength(1);
+  });
+
+  it("an operator-owned channel policy survives a resync; revert hands it back to the manifest", async () => {
+    const db = makeTestDb();
+    await seedLinkedProduct(db);
+    const { fetchImpl } = stubFetch([V110, V100]);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+
+    const STABLE = { product: SLUG, deliverableId: "app", channel: "stable" };
+    await setChannelPolicy(
+      db,
+      STABLE,
+      { includes: [] },
+      { source: "manifest", by: "manifest", now: NOW },
+    );
+    await setChannelPolicy(
+      db,
+      STABLE,
+      { pointerReleaseId: "v1.0.0", pinned: true, minSupported: "1.0.0" },
+      { source: "admin", by: "admin:ops@example.com", now: NOW + 1 },
+    );
+    const claimed = await getChannelPolicy(db, STABLE);
+    expect(claimed).toMatchObject({ source: "admin", pinned: 1 });
+
+    await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
+    expect(await getChannelPolicy(db, STABLE)).toEqual(claimed);
+    // A manifest-sourced write (what a resync of `deliverables.app.channels` will do) is refused.
+    expect(
+      await setChannelPolicy(
+        db,
+        STABLE,
+        { pinned: false, pointerReleaseId: null },
+        { source: "manifest", by: "manifest", now: NOW + 61 },
+      ),
+    ).toBe(false);
+    expect(await getChannelPolicy(db, STABLE)).toEqual(claimed);
+
+    expect(
+      await revertChannelPolicyToManifest(
+        db,
+        STABLE,
+        "admin:ops@example.com",
+        NOW + 62,
+      ),
+    ).toBe(true);
+    expect(
+      await setChannelPolicy(
+        db,
+        STABLE,
+        { pinned: false, pointerReleaseId: null },
+        { source: "manifest", by: "manifest", now: NOW + 63 },
+      ),
+    ).toBe(true);
+    expect(await getChannelPolicy(db, STABLE)).toMatchObject({
+      source: "manifest",
+      pinned: 0,
+      pointer_release_id: null,
+      // The floor the operator set is untouched by a patch that does not name it.
+      min_supported: "1.0.0",
+    });
+  });
+
+  it("a yanked release is still recorded by the next resync (a yank never deletes)", async () => {
+    const db = makeTestDb();
+    await seedLinkedProduct(db);
+    const { fetchImpl } = stubFetch([V100]);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    await yankRelease(db, SLUG, "v1.0.0", "bad build", "admin:ops", NOW);
+    await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
+    expect(await isYanked(db, SLUG, "v1.0.0")).toBe(true);
+    expect(
+      (await listReleaseMetadata(db, SLUG)).map((r) => r.release_id),
+    ).toEqual(["v1.0.0"]);
   });
 });
 

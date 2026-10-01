@@ -14,6 +14,7 @@ pnpm install                                   # JS workspace (Node 22 — see b
 ( cd sdks/python && python3 -m venv .venv && \
   .venv/bin/pip install -e ".[dev]" )          # Python SDK (add ",keyring" for the extra)
 # Swift uses the system toolchain (macOS 14+, Swift 6); no install step.
+# Godot: Godot 4.4+ on PATH, or set GODOT_BIN (sdks/godot/README.md); no install step.
 ```
 
 **Use Node 22.** `engines` pins `>=22` and CI runs 22, but the constraint is sharper than that:
@@ -29,6 +30,8 @@ Run these before opening a PR — they are what CI runs (`.github/workflows/ci.y
 ```sh
 pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
+pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
+pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -42,6 +45,7 @@ pnpm --filter @polaris-key/worker test:workerd
 
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
+sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```
@@ -49,17 +53,18 @@ pnpm format                      # prettier check over md/json too (format:fix t
 Or run the whole cross-language suite in one shot:
 
 ```sh
-pnpm test:all                    # turbo test + Python pytest + Swift swift test
+pnpm test:all                    # turbo test + Python pytest + Swift swift test + Godot runner
 ```
 
 ## Pre-commit hooks
 
 `pnpm install` runs the `prepare` script, which sets up [husky](https://typicode.github.io/husky/)
-git hooks automatically — no manual step. The committed `.husky/pre-commit` hook runs two
+git hooks automatically — no manual step. The committed `.husky/pre-commit` hook runs three
 fast, fail-early guards before every commit:
 
 ```sh
 pnpm gen:corpus -- --check       # conformance drift gate
+pnpm gen:services -- --check     # service-table drift gate
 pnpm typecheck
 ```
 
@@ -82,7 +87,7 @@ section, gated to platform admins (sign in at `/manage`; see the [README](README
   catalog → corpus → SDKs, the five-language walkthrough for a wire-visible field, and the full
   drift-gate inventory.
 - [The conformance corpus](https://key.plrs.im/docs/contribute/corpus/) — the generator, the
-  four runners, the Swift mirror, and how to add a case.
+  language runners, the generator-owned mirrors (Swift, Godot), and how to add a case.
 - [Releasing](https://key.plrs.im/docs/contribute/releasing/) — the Changesets flow, the
   Python/Swift tag releases, and how the worker deploys.
 

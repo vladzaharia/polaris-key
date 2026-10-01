@@ -3297,9 +3297,10 @@ components:
         services:
           type: object
           description: >
-            All five slugs, always, in the canonical order license, config, release, update,
-            identity. Core knows the shape of no service: an enabled one contributes its own
-            fragment verbatim, a disabled one is exactly `{"enabled": false}` and nothing else.
+            Every service slug, always, in canonical service-table order (the `required` list
+            below; test/serviceTable.test.ts pins it to tools/services.json). Core knows the
+            shape of no service: an enabled one contributes its own fragment verbatim, a
+            disabled one is exactly `{"enabled": false}` and nothing else.
           required: [license, config, release, update, identity]
           additionalProperties: { $ref: "#/components/schemas/ServiceFragment" }
     ServiceFragment:

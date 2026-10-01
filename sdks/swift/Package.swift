@@ -107,9 +107,11 @@ let package = Package(
             // importer and boot stage machine are held to byte-for-byte conformance. The `v2` segment is kept so this path
             // matches `conformance/corpus/v2/` one-for-one — the mirror is findable from the
             // source without a translation step. Written by `pnpm gen:corpus`, guarded by
-            // `--check`.
+            // `--check`. `Resources/transcripts` is the same arrangement for the HTTP transcripts
+            // (`conformance/transcripts/`), written and guarded by `pnpm gen:transcripts`.
             resources: [
                 .copy("Resources/v2"),
+                .copy("Resources/transcripts"),
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

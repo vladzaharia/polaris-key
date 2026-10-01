@@ -2,48 +2,37 @@ import { type ProductCatalog } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import { parse as parseYaml } from "yaml";
 
+import {
+  DEFAULT_ENABLED_SERVICES,
+  MODULE_SERVICES,
+  SERVICE_SLUGS,
+  type ProductModule,
+  type ServiceSlug,
+} from "./services.generated.js";
+
 /**
- * What a `.pkey/product` `modules:` block may name.
+ * The opt-in services and the `modules:` vocabulary come from the GENERATED service table
+ * (`./services.generated.ts`, written by `pnpm gen:services` from `tools/services.json`).
  *
- * Two vocabularies, both accepted. The first five are the original module names; the last five
- * are the Polaris Key service slugs they became (design spec §2.1). Old manifests keep validating
+ * They originate in this package, not in the worker: this package is a *dependency* of the
+ * worker and of the CLI, so the types have to live on this side of the arrow, and both import
+ * them from here.
+ *
+ * `ProductModule` is what a `.pkey/product` `modules:` block may name. Two vocabularies, both
+ * accepted: the legacy module names (`licensing`, `releases`, `oidc`, `edgeMint`) and the
+ * Polaris Key service slugs they became (design spec §2.1). Old manifests keep validating
  * unchanged — `normalizeModules` translates them — so nothing in the field has to be rewritten
  * on the same day the server learns the new words.
  */
-export type ProductModule =
-  // legacy module vocabulary
-  | "licensing"
-  | "releases"
-  | "oidc"
-  | "edgeMint"
-  // Polaris Key service slugs
-  | "license"
-  | "config"
-  | "release"
-  | "update"
-  | "identity";
-
-/**
- * The five opt-in Polaris Key services (design spec §2.4/D-04). Declared here rather than imported
- * from the worker: this package is a *dependency* of the worker (and of the CLI), so the type
- * has to originate on this side of the arrow. The worker's `core/services.ts` declares the
- * structurally-identical pair for its own D1-facing use.
- */
-export type ServiceSlug =
-  | "license"
-  | "config"
-  | "release"
-  | "update"
-  | "identity";
-
-/** Canonical order — iterate this rather than `Object.keys` so output is stable. */
-export const SERVICE_SLUGS: readonly ServiceSlug[] = [
-  "license",
-  "config",
-  "release",
-  "update",
-  "identity",
-];
+export {
+  DEFAULT_ENABLED_SERVICES,
+  MODULE_SERVICES,
+  SERVICE_REQUIRES,
+  SERVICE_SLUGS,
+  type LegacyModule,
+  type ProductModule,
+  type ServiceSlug,
+} from "./services.generated.js";
 
 /** The enablement set a manifest declares, in the shape `products.services_json` stores. */
 export type ManifestServices = Record<ServiceSlug, { enabled: boolean }>;
@@ -269,9 +258,10 @@ export type ParseManifestResult =
   | { ok: false; errors: string[] };
 
 /**
- * Every module name a `modules:` block may use, mapped to the service slug(s) it enables.
+ * Every module name a `modules:` block may use, mapped to the service slug(s) it enables
+ * (`MODULE_SERVICES`, generated from each table row's `legacyModules`).
  *
- * The three interesting rows:
+ * The three interesting legacy rows:
  *
  *   `releases` -> release + update. The old module meant "this product distributes software",
  *   which the suite splits into the truth store (Release) and the feed (Update, D-05). Mapping
@@ -285,23 +275,11 @@ export type ParseManifestResult =
  *   `edgeMint` -> config. Edge-minting is a secret-DELIVERY capability of Config, not a
  *   service of its own (D-19); declaring it therefore turns Config on.
  */
-const MODULE_SERVICES: Record<ProductModule, readonly ServiceSlug[]> = {
-  licensing: ["license"],
-  releases: ["release", "update"],
-  oidc: ["identity"],
-  edgeMint: ["config"],
-  license: ["license"],
-  config: ["config"],
-  release: ["release"],
-  update: ["update"],
-  identity: ["identity"],
-};
-
 const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
 
 /** What a manifest that declares nothing runs: licensing + settings distribution, which is
- *  today's behaviour for every product (design spec §2.2). */
-const DEFAULT_ENABLED: readonly ServiceSlug[] = ["license", "config"];
+ *  today's behaviour for every product (design spec §2.2). The table's `defaultEnabled`. */
+const DEFAULT_ENABLED: readonly ServiceSlug[] = DEFAULT_ENABLED_SERVICES;
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
 const SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;
@@ -385,15 +363,78 @@ export function compileManualChannelRegex(source: string): RegExp | null {
  */
 export const DEFAULT_STABLE_TAG_PATTERN =
   "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?";
+// ── Release model vocabulary (P2-03) ───────────────────────────────────────────
+//
+// The release truth store keeps these as free TEXT with no CHECK (a CHECK change is a table
+// rebuild, and the lists grow: P4 adds roles), so they are validated in code, against these
+// lists — by the release-descriptor validator (P2-04) and the worker's `release/model.ts`.
+
+/** OS families a build targets (README §3.1 "platform"). iPadOS is `ios`. */
+export const RELEASE_PLATFORMS = [
+  "macos",
+  "ios",
+  "android",
+  "windows",
+  "linux",
+  "web",
+] as const;
+export type ReleasePlatform = (typeof RELEASE_PLATFORMS)[number];
+
+/** CPU architectures a build targets. `universal` and `any` match every arch. */
+export const RELEASE_ARCHES = [
+  "arm64",
+  "x86_64",
+  "universal",
+  "armv7",
+  "wasm32",
+  "any",
+] as const;
+export type ReleaseArch = (typeof RELEASE_ARCHES)[number];
+
+/** What an artifact is FOR within its build (`release_artifacts.role`). */
+export const ARTIFACT_ROLES = [
+  "payload",
+  "files-index",
+  "chunk-index",
+  "chunk-bundle",
+  "delta",
+  "signature",
+  "checksum",
+] as const;
+export type ArtifactRole = (typeof ARTIFACT_ROLES)[number];
+
+/** Something a product releases: its `app`, or a pack. */
+export const DELIVERABLE_KINDS = ["app", "pack"] as const;
+export type DeliverableKind = (typeof DELIVERABLE_KINDS)[number];
+
+/** The id of the product's own application deliverable (README §3.12 `deliverables.app`). */
+export const APP_DELIVERABLE_ID = "app";
+/** Deliverable ids: lower-case, dot-separated segments (`app`, `diceroll.core3d`). */
+export const DELIVERABLE_ID_PATTERN = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
+export const MAX_DELIVERABLE_ID_LENGTH = 64;
+/** A well-formed deliverable id: matches `DELIVERABLE_ID_PATTERN`, at most 64 characters. */
+export function isDeliverableId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= MAX_DELIVERABLE_ID_LENGTH &&
+    DELIVERABLE_ID_PATTERN.test(value)
+  );
+}
+
 /** `release.ignoreTags` bounds: how many exact tag names, and how long each may be. */
 export const MAX_IGNORE_TAGS = 200;
 export const MAX_IGNORE_TAG_LENGTH = 255;
-/** One `release.ignoreTags` entry: a non-empty tag name with no control characters or spaces. */
+/**
+ * One `release.ignoreTags` entry: a non-empty tag name with no control characters or spaces.
+ * Its length is counted in code points, as the schema's `maxLength` counts it, not in UTF-16
+ * units (`value.length`), so the validator and `release.schema.json` agree on an astral tag.
+ */
 export function isIgnoreTag(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const codePoints = [...value].length;
   return (
-    typeof value === "string" &&
-    value.length > 0 &&
-    value.length <= MAX_IGNORE_TAG_LENGTH &&
+    codePoints > 0 &&
+    codePoints <= MAX_IGNORE_TAG_LENGTH &&
     !/[\u0000-\u0020\u007f]/.test(value)
   );
 }
