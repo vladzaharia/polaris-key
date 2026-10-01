@@ -367,6 +367,8 @@ describe("resolution helpers", () => {
     ).toBe("staging");
     expect(canonicalChannel("Beta")).toBeNull();
     expect(canonicalChannel("a/b")).toBeNull();
+    // An own-key lookup: a prototype key is a plain (unknown) channel name, never `Object`.
+    expect(canonicalChannel("constructor")).toBe("constructor");
   });
 
   it("channelClosure follows includes transitively and survives cycles", () => {

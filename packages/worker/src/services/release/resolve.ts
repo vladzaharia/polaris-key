@@ -39,6 +39,7 @@ import {
   compileManualChannelRegex,
   DEFAULT_STABLE_TAG_PATTERN,
 } from "@polaris-key/manifest";
+import { CHANNEL_ALIASES, CHANNEL_NAME_PATTERN } from "@polaris-key/protocol";
 import type { Db } from "../../core/platform.js";
 import { compareSemver, parseSemver } from "../../core/entitlements.js";
 import {
@@ -56,19 +57,8 @@ import type { ReleaseMetadataRow } from "./store.js";
 
 // ── Channel names ────────────────────────────────────────────────────────────────────────────
 
-/**
- * The legacy channel spellings and the canonical names they resolve to (P0-04 plan §2.2,
- * `CHANNEL_ALIASES`). Kept here until P0-04 lands the shared constant in
- * `@polaris-key/protocol/core`; the values are the plan's, so swapping the import is the whole
- * migration.
- */
-export const LEGACY_CHANNEL_ALIASES: Readonly<Record<string, string>> = {
-  staging: "beta",
-  latest: "stable",
-};
-
-/** The channel-name shape (P0-04 plan §2.2, `CHANNEL_NAME_PATTERN`). */
-export const CHANNEL_NAME_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+/** The channel-name shape (WIRE-CONTRACT-V3 §5.1 rule 1, `CHANNEL_NAME_PATTERN`). */
+const CHANNEL_NAME_RE = new RegExp(CHANNEL_NAME_PATTERN);
 
 /**
  * The canonical name a channel route segment or selector stands for, or null when it is not a
@@ -82,7 +72,10 @@ export function canonicalChannel(
 ): string | null {
   if (!CHANNEL_NAME_RE.test(raw)) return null;
   if (manual.some((c) => c.name === raw)) return raw;
-  return LEGACY_CHANNEL_ALIASES[raw] ?? raw;
+  // `Object.hasOwn`, not a bare index: `constructor` is a well-formed channel name (P0-04).
+  return Object.hasOwn(CHANNEL_ALIASES, raw)
+    ? CHANNEL_ALIASES[raw as keyof typeof CHANNEL_ALIASES]
+    : raw;
 }
 
 /** A selector is a VERSION when it starts with a digit and has a dot (`1.2.3`, `1.2.3.4`). */
