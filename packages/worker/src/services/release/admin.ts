@@ -2,7 +2,17 @@
 
 /**
  * Release's admin surface — `/manage/api/products/<slug>/release/{health,resync,releases}` and
- * `…/release/channels/<channel>/floor` (P0-02, R6-10).
+ * `…/release/channels/<channel>/floor` (P0-02, R6-10), plus the channel policy operations
+ * (P2-05, `policy.ts`):
+ *
+ *     GET    …/release/channels                         the policy per deliverable, with source
+ *     PUT    …/release/channels/<channel>               pointer, pinned, minSupported, critical
+ *     POST   …/release/channels/<channel>/revert        hand the row back to the manifest
+ *     POST   …/release/releases/<releaseId>/yank        { "reason": "…" }
+ *     DELETE …/release/releases/<releaseId>/yank
+ *
+ * All of them are narrative-only (the console's API is not in the wire spec), audited with the
+ * session's subject, and invalidate the product's cached resolutions.
  *
  * `health` and `resync` were already service-shaped under the old admin handler; they move here
  * verbatim (§R1) so the service owns its own console API. `releases` is new: the truth store now
@@ -32,6 +42,24 @@ import {
 } from "./channels.js";
 import { getReleaseConfig } from "./config.js";
 import { checkReleaseHealth } from "./health.js";
+import { bumpReleaseGeneration } from "./ghCache.js";
+import {
+  listBuilds,
+  listChannelPolicies,
+  listDeliverables,
+  listYanks,
+} from "./model.js";
+import {
+  knownChannels,
+  policyView,
+  revertChannelPolicy,
+  unyank,
+  updateChannelPolicy,
+  yank,
+  type PolicyActor,
+  type PolicyRefusal,
+} from "./policy.js";
+import { resolveBuild } from "./resolve.js";
 import { resyncRepo } from "./resync.js";
 import {
   channelNames,
@@ -64,6 +92,8 @@ export async function handleReleaseAdmin(
   const { req, env, db, product, rest, session, now } = ctx;
   if (rest.length === 3 && rest[0] === "channels" && rest[2] === "floor")
     return handleChannelFloor(ctx, rest[1] as string);
+  const policyRoute = await handlePolicyRoutes(ctx);
+  if (policyRoute) return policyRoute;
   if (rest.length !== 1) return null;
   const slug = product.slug;
 
@@ -82,17 +112,38 @@ export async function handleReleaseAdmin(
         .filter((h) => h.subject_kind === "release")
         .map((h) => [h.subject_id, h.status]),
     );
+    const yanks = new Map(
+      (await listYanks(db, slug)).map((y) => [y.release_id, y]),
+    );
     return adminJson({
       releases: await Promise.all(
-        releases.map(async (row) => ({
-          releaseId: row.release_id,
-          version: row.version,
-          title: row.title,
-          publishedAt: row.published_at,
-          sourceUrl: row.source_url,
-          status: health.get(row.release_id) ?? "unknown",
-          artifacts: (await listReleaseArtifacts(db, slug, row.release_id)).map(
-            (a) => ({
+        releases.map(async (row) => {
+          const yanked = yanks.get(row.release_id);
+          return {
+            releaseId: row.release_id,
+            deliverable: row.deliverable_id,
+            version: row.version,
+            seq: row.seq,
+            channel: row.channel,
+            title: row.title,
+            publishedAt: row.published_at,
+            sourceUrl: row.source_url,
+            status: health.get(row.release_id) ?? "unknown",
+            yank: yanked
+              ? { reason: yanked.reason, at: yanked.at, by: yanked.by }
+              : null,
+            // P2-05: the builds a descriptor declared (P2-04); empty for a legacy release.
+            builds: (await listBuilds(db, slug, row.release_id)).map((b) => ({
+              buildId: b.build_id,
+              platform: b.platform,
+              arch: b.arch,
+              format: b.format,
+              buildNumber: b.build_number,
+              minOs: b.min_os,
+            })),
+            artifacts: (
+              await listReleaseArtifacts(db, slug, row.release_id)
+            ).map((a) => ({
               artifactId: a.artifact_id,
               name: a.name,
               kind: a.kind,
@@ -100,9 +151,13 @@ export async function handleReleaseAdmin(
               arch: a.arch,
               sizeBytes: a.size_bytes,
               access: a.access,
-            }),
-          ),
-        })),
+              buildId: a.build_id,
+              role: a.role,
+              sha256: a.sha256,
+              locations: parseLocationsView(a.locations_json),
+            })),
+          };
+        }),
       ),
       channels: (await listReleaseChannels(db, slug)).map((c) => ({
         channel: c.channel,
@@ -216,6 +271,7 @@ async function handleChannelFloor(
 
   if (clear) {
     await clearChannelFloor(db, slug, channel);
+    await bumpReleaseGeneration(ctx.env, slug, now);
     await audit(
       db,
       slug,
@@ -260,6 +316,7 @@ async function handleChannelFloor(
     session.email || session.sub,
     now,
   );
+  await bumpReleaseGeneration(ctx.env, slug, now);
   await audit(
     db,
     slug,
@@ -275,4 +332,151 @@ async function handleChannelFloor(
     channel,
     floor: floor ? floorView(floor) : null,
   });
+}
+
+// ── Channel policy (P2-05) ───────────────────────────────────────────────────────────────────
+
+/** `locations_json` for the console, as stored (an array) or `null`. */
+function parseLocationsView(json: string | null): unknown[] | null {
+  if (!json) return null;
+  try {
+    const v: unknown = JSON.parse(json);
+    return Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function policyRefusal(r: PolicyRefusal): Response {
+  return err(
+    r.status,
+    r.code,
+    r.message,
+    r.fields ? { reason: r.reason, fields: r.fields } : { reason: r.reason },
+  );
+}
+
+function segment(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The policy routes, or `null` when the path is not one of them. GET `channels` returns, per
+ * deliverable, every channel the product can serve with its policy (defaults where no row
+ * exists), its `source`, and what it resolves to right now with no platform filter.
+ */
+async function handlePolicyRoutes(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response | null> {
+  const { req, env, db, product, rest, session, now } = ctx;
+  const slug = product.slug;
+  const actor: PolicyActor = { kind: "admin", session };
+
+  if (rest.length === 1 && rest[0] === "channels") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const cfg = await getReleaseConfig(db, slug);
+    const channels = await knownChannels(db, slug, cfg);
+    const deliverables = await listDeliverables(db, slug);
+    const out = [];
+    for (const d of deliverables) {
+      const rows = await listChannelPolicies(db, slug, d.deliverable_id);
+      const names = [...new Set([...channels, ...rows.map((r) => r.channel)])];
+      const views = [];
+      for (const channel of names) {
+        const row = rows.find((r) => r.channel === channel) ?? null;
+        const resolved = await resolveBuild(
+          db,
+          slug,
+          { deliverable: d.deliverable_id, selector: channel },
+          cfg,
+        );
+        views.push({
+          ...policyView(row, d.deliverable_id, channel),
+          resolved: resolved ? resolved.release.release_id : null,
+        });
+      }
+      out.push({
+        deliverable: d.deliverable_id,
+        kind: d.kind,
+        channels: views,
+      });
+    }
+    return adminJson({ deliverables: out });
+  }
+
+  if (rest.length === 2 && rest[0] === "channels") {
+    if (req.method !== "PUT")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const channel = segment(rest[1] as string);
+    if (channel === null) return adminNotFound();
+    const body = await readBody(req);
+    const result = await updateChannelPolicy(
+      env,
+      db,
+      slug,
+      await getReleaseConfig(db, slug),
+      channel,
+      body,
+      actor,
+      now,
+    );
+    return result.ok
+      ? adminJson({ ok: true, policy: result.policy })
+      : policyRefusal(result);
+  }
+
+  if (rest.length === 3 && rest[0] === "channels" && rest[2] === "revert") {
+    if (req.method !== "POST")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const channel = segment(rest[1] as string);
+    if (channel === null) return adminNotFound();
+    const body = await readBody(req);
+    const result = await revertChannelPolicy(
+      env,
+      db,
+      slug,
+      await getReleaseConfig(db, slug),
+      channel,
+      body,
+      actor,
+      now,
+    );
+    return result.ok
+      ? adminJson({ ok: true, policy: result.policy })
+      : policyRefusal(result);
+  }
+
+  if (rest.length === 3 && rest[0] === "releases" && rest[2] === "yank") {
+    const releaseId = segment(rest[1] as string);
+    if (releaseId === null) return adminNotFound();
+    if (req.method === "POST") {
+      const body = await readBody(req);
+      const result = await yank(
+        env,
+        db,
+        slug,
+        releaseId,
+        body.reason,
+        actor,
+        now,
+      );
+      return result.ok
+        ? adminJson({ ok: true, yank: result.yank })
+        : policyRefusal(result);
+    }
+    if (req.method === "DELETE") {
+      const result = await unyank(env, db, slug, releaseId, actor, now);
+      return result.ok
+        ? adminJson({ ok: true, yank: result.yank })
+        : policyRefusal(result);
+    }
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  }
+
+  return null;
 }

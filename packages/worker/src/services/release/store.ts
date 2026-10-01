@@ -352,6 +352,56 @@ export async function releaseIdForVersion(
   return row?.release_id ?? null;
 }
 
+/**
+ * The app deliverable's releases as the STORE remembers them, shaped as GitHub releases (no
+ * notes, no assets) so `resolveChannel` can judge channel membership over them. Includes a
+ * release since deleted upstream: the store keeps its row (P0-03), and that is the point — the
+ * yanked-floor fallback (`gateway.ts` `yankedFloorFallback`) must not let a deletion that
+ * happened AFTER the yank lower the channel any further than the yank itself did.
+ */
+export async function storedAppReleases(
+  db: Db,
+  product: string,
+): Promise<Release[]> {
+  const rows = await db.all<
+    Pick<
+      ReleaseMetadataRow,
+      "release_id" | "title" | "source_url" | "published_at" | "metadata_json"
+    >
+  >(
+    `SELECT release_id, title, source_url, published_at, metadata_json
+       FROM release_metadata WHERE product = ? AND deliverable_id = ?
+      ORDER BY COALESCE(seq, 0) DESC, release_id ASC
+      LIMIT 1000`,
+    product,
+    APP_DELIVERABLE_ID,
+  );
+  return rows.map((r) => {
+    let prerelease = false;
+    try {
+      const meta = r.metadata_json
+        ? (JSON.parse(r.metadata_json) as { prerelease?: unknown })
+        : null;
+      prerelease = meta?.prerelease === true;
+    } catch {
+      // An unreadable metadata blob reads as a full release, the sync's own default.
+    }
+    return {
+      tag_name: r.release_id,
+      name: r.title,
+      body: null,
+      published_at:
+        r.published_at === null
+          ? null
+          : new Date(r.published_at * 1000).toISOString(),
+      html_url: r.source_url ?? "",
+      prerelease,
+      draft: false,
+      assets: [],
+    };
+  });
+}
+
 /** An operator lowers a floor (R6-10). The caller has checked it is not a raise. */
 export async function lowerChannelFloor(
   db: Db,

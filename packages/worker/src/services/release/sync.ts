@@ -40,6 +40,7 @@ import {
   type ReleaseChannelFloorRow,
 } from "./store.js";
 import { semverOfTag } from "./channels.js";
+import { bumpReleaseGeneration } from "./ghCache.js";
 import type { ManifestAppDeliverable } from "@polaris-key/manifest";
 import { ingestGithubDescriptors, readAppDeliverable } from "./descriptor.js";
 
@@ -211,6 +212,10 @@ export async function syncReleaseStore(
   const cfg = await getReleaseConfig(db, product);
   if (!cfg) return 0;
   const stmts = await releaseStoreSyncStatements(env, db, cfg, now, fetchImpl);
-  if (stmts.length > 0) await db.batch(stmts);
+  if (stmts.length > 0) {
+    await db.batch(stmts);
+    // What GitHub publishes may have changed: no cached resolution survives a sync (P2-05).
+    await bumpReleaseGeneration(env, product, now);
+  }
   return stmts.length;
 }

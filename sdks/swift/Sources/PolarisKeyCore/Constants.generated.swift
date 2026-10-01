@@ -41,6 +41,7 @@ public enum ErrorCode {
     public static let downloadAuthRequired = "download_auth_required"
     public static let upstreamRateLimited = "upstream_rate_limited"
     public static let serverMisconfigured = "server_misconfigured"
+    public static let internalError = "internal_error"
     public static let serviceUnavailable = "service-unavailable"
     public static let serviceDisabled = "service-disabled"
     public static let localOnly = "local-only"
@@ -118,6 +119,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "download_auth_required",
     "upstream_rate_limited",
     "server_misconfigured",
+    "internal_error",
     "service-unavailable",
     "service-disabled",
     "local-only",
@@ -195,6 +197,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "download_auth_required": "wire",
     "upstream_rate_limited": "wire",
     "server_misconfigured": "wire",
+    "internal_error": "wire",
     "service-unavailable": "client",
     "service-disabled": "client",
     "local-only": "client",

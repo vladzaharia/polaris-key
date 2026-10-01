@@ -79,6 +79,14 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/release/changelog", ["get"]],
   ["/{product}/release/install.sh", ["get"]],
   ["/{product}/release/dl/{version}/{asset}", ["get"]],
+  // P2-05: the three byte routes (also on the bytes host) and the CI policy routes.
+  ["/{product}/release/builds/{selector}/{buildId}", ["get"]],
+  ["/{product}/release/files/{releaseId}/{name}", ["get"]],
+  ["/{product}/release/blobs/sha256/{sha256}", ["get"]],
+  ["/{product}/release/channels/{channel}/promote", ["post"]],
+  ["/{product}/release/channels/{channel}/pin", ["post"]],
+  ["/{product}/release/channels/{channel}/unpin", ["post"]],
+  ["/{product}/release/releases/{releaseId}/yank", ["post"]],
   ["/{product}/update/appcast.xml", ["get"]],
   ["/{product}/update/{channel}/appcast.xml", ["get"]],
   ["/{product}/update/version", ["get"]],
@@ -200,6 +208,11 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
   "/{product}/config/mint/{mintId}/auth",
+  // P2-05: CI routes, authenticated by a `pkeyci_` bearer — never called from a browser page.
+  "/{product}/release/channels/{channel}/promote",
+  "/{product}/release/channels/{channel}/pin",
+  "/{product}/release/channels/{channel}/unpin",
+  "/{product}/release/releases/{releaseId}/yank",
 ]);
 
 /** Every product path the router serves, from the three tables above. */
@@ -218,6 +231,11 @@ function concrete(template: string): string {
     version: "1.2.3",
     asset: "acme-arm64",
     channel: "beta",
+    selector: "stable",
+    buildId: "macos",
+    releaseId: "v1.2.3",
+    name: "acme.dmg",
+    sha256: "a".repeat(64),
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

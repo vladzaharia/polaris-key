@@ -38,10 +38,10 @@
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { ServiceSlug } from "./services.js";
-import { notFound } from "./errors.js";
+import { errorResponse, notFound } from "./errors.js";
 import { BLOB_CSP, BYTES_HOST_TYPES } from "./blobs.js";
 import { corsPreflight, withCors } from "./cors.js";
-import { loadProduct, type Product } from "./products.js";
+import { loadProductPublic, type ProductPublic } from "./products.js";
 
 /**
  * What a byte route's `match` returns: the product that owns the path, plus its parameters.
@@ -53,11 +53,17 @@ export interface ByteRouteMatch {
   readonly params: Record<string, string>;
 }
 
-/** What a byte route's handler receives once its product has loaded. */
+/**
+ * What a byte route's handler receives once its product has loaded.
+ *
+ * `product` is a `ProductPublic`: the product WITHOUT its signing key (P2-05, least
+ * privilege). No byte route signs anything, so the dispatcher never unseals the key under
+ * `PLATFORM_KEK` on a download, and no route here can be handed it.
+ */
 export interface ByteRouteContext {
   readonly env: Env;
   readonly db: Db;
-  readonly product: Product;
+  readonly product: ProductPublic;
   readonly params: Record<string, string>;
   readonly now: number;
 }
@@ -77,36 +83,7 @@ export interface ByteRoute {
   handle(req: Request, ctx: ByteRouteContext): Promise<Response>;
 }
 
-/**
- * A hostname in the form hosts are compared in: lowercase, with any trailing dots removed.
- * `dl.plrs.im.` (the fully-qualified form) is the same DNS name as `dl.plrs.im`, and the edge
- * routes it to this Worker with the dot still in `req.url` — so an exact comparison would let
- * `https://dl.plrs.im./manage` skip host isolation and reach the console routes.
- */
-function normalizeHostname(hostname: string): string {
-  return hostname.toLowerCase().replace(/\.+$/, "");
-}
-
-/** The bytes host's hostname (lowercase, no trailing dot), or `null` when `BLOB_ORIGIN` is
- *  unset or unusable. */
-export function bytesHostname(env: Pick<Env, "BLOB_ORIGIN">): string | null {
-  const origin = env.BLOB_ORIGIN;
-  if (typeof origin !== "string" || origin.trim() === "") return null;
-  try {
-    const u = new URL(origin);
-    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-    return normalizeHostname(u.hostname) || null;
-  } catch {
-    return null;
-  }
-}
-
-/** True when `url` is on the bytes host, in any case and with or without the trailing dot.
- *  Always false with `BLOB_ORIGIN` unset. */
-export function isBytesHost(url: URL, env: Pick<Env, "BLOB_ORIGIN">): boolean {
-  const host = bytesHostname(env);
-  return host !== null && normalizeHostname(url.hostname) === host;
-}
+export { bytesHostname, isBytesHost } from "./bytesHostname.js";
 
 /** Refused on the bytes host whatever the status or the allowlist says: anything a browser may
  *  execute or render as an active document. */
@@ -222,7 +199,17 @@ export async function dispatchBytesHost(
   db: Db,
   routes: readonly ByteRoute[],
 ): Promise<Response> {
-  return hardenBytesHostResponse(await answer(req, env, db, routes));
+  let res: Response;
+  try {
+    res = await answer(req, env, db, routes);
+  } catch {
+    // P2-05. A throw from a route, from the product load or from D1 would otherwise escape the
+    // Worker and become Cloudflare's own HTML error page — on this host, without `nosniff` or
+    // the sandbox CSP. Answer the platform's flat JSON 500 instead, hardened like everything
+    // else here. Nothing about the failure is disclosed (R12: the worker logs no request data).
+    res = errorResponse(500, "internal_error");
+  }
+  return hardenBytesHostResponse(res);
 }
 
 async function answer(
@@ -235,7 +222,8 @@ async function answer(
   for (const route of routes) {
     const matched = route.match(pathname);
     if (!matched) continue;
-    const product = await loadProduct(env, db, matched.product);
+    // The key-free loader: a download never needs the product's signing key (P2-05).
+    const product = await loadProductPublic(db, matched.product);
     if (!product) return notFound();
     // Preflight first, as `dispatch.ts` does for the console: its answer depends only on the
     // path shape and the product's `web.origins`, so it cannot probe enablement.

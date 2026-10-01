@@ -145,6 +145,74 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
 - **Enablement.** All routes are in the release namespace, so a product with Release off exposes
   none of them. CI routes refuse a token without the scope with `forbidden` and a `reason`.
 
+## Corrections from the code (recorded during implementation)
+
+- **No CI credential store yet.** P2-02 (`requireCiScope`, `ci_tokens`) is not done; it depends
+  on P2-04. P2-05 adds `core/ciScope.ts` `requireCiScope(req, env, db, product, scope, now)` over a
+  one-function seam, `core/ciTokens.ts` `lookupCiToken`, which knows no token until P2-02 fills
+  it. Until then the CI routes answer 401 to every request (fail closed); the suites mock only
+  that seam. P2-02 should implement `lookupCiToken` (or re-export its own) and keep the shape.
+- **Channel aliases come from `@polaris-key/protocol`.** While P0-04 was in progress,
+  `services/release/resolve.ts` carried a local `LEGACY_CHANNEL_ALIASES`. Since P0-04 merged,
+  `canonicalChannel` uses the shared `CHANNEL_ALIASES` and `CHANNEL_NAME_PATTERN`, with an
+  own-key lookup (`Object.hasOwn`), so a prototype key such as `constructor` is a plain channel
+  name. `classifyChannel` (P0-04's) and `canonicalChannel` now agree that `staging` is `beta`.
+- **No version scheme is declared anywhere yet.** Resolution reads `versionScheme` from the
+  deliverable's `def_json` (`semver` | `semver+build` | `4part`), default `semver`; P2-04's
+  manifest work can declare it.
+- **`blobResponse` takes `env`.** Deriving the host needs `BLOB_ORIGIN`, so the options gain
+  `env`; `host` stays optional and can only force the console treatment, never widen it.
+- **Least privilege done, not optional:** `loadProductPublic` / `ProductPublic` (no signing key)
+  is what byte routes receive; the Core download checks take `ProductPublic`.
+- **The resolution cache covers health.** `resolveMovingSelector` is cached per channel and
+  release generation and always applies yanks; `test/releaseResolution.test.ts`'s regression
+  case now bumps the generation to see a deletion nobody reported, and the R10-05 CONTRAST test
+  uses a fresh KV per request so it still measures only the edge cache.
+- **`?checksum=sha256` on the bytes host** answers `application/octet-stream` (the host serves
+  no `text/*`); the console keeps `text/plain`.
+- **`BLOB_ORIGIN` guard** is a test over the committed `wrangler.toml` (no `dl*` route without the
+  var; the var never names a console host) plus a `docs/DEPLOYMENT.md` line.
+- **Review fixes.** (1) The edge Cache API in front of a public product's version check and
+  appcasts is keyed without the release generation and is not purged, so a yank or pin reaches
+  those two surfaces only after 120 s / 300 s per colo; the channels page says so (the key was
+  left alone to keep R10-05's zero-binding hit). (2) Gated R2 locations are refused by the build
+  and file routes until P2b-04/P4-05 add per-request authorisation. (3) A yanked floor is
+  lowered to the newest unyanked stored release below it, never removed (`yankedFloorFallback`);
+  computed per resolution because the sync does not read yanks. (4) The threat model and R6-10's
+  remediation cover the CI write routes, pin's floor bypass and external-location redirects.
+- **Second review round.** (1) After merging P0-04, P0-04's staging-floor test bumps the
+  release generation before its upstream change, as the sibling regression case does, since the
+  90 s resolution cache is keyed per generation. (2) `canonicalChannel` uses the shared alias
+  table (above). (3) Under `entitled`, a pinned version that does not parse as semver
+  (`1.2.3.4`, `2.0.0.1`) is refused with `version_blocked` whenever the window is bounded
+  (`access.ts` `enforceReleaseAccess`, so `/release/dl` is covered too): `compareSemver` calls
+  an unparseable version equal to both bounds, which let it pass any window.
+- **Third review round.** Under `entitled`, the blob route's gateway decision names no version
+  (`params = {}` classifies as `stable`, which every grant holds), so it proved only a usable
+  licence and any R2-held payload outside the window was one hash away. `bytes.ts`
+  `entitledBlobRefusal` now serves a blob only if a release of this product whose artifact has
+  that `sha256` (index `idx_release_artifacts_sha256`) passes `enforceReleaseAccess` for its
+  version; otherwise it answers the first refusal, or the flat not-found when no release
+  artifact carries the hash (a pack-object-only ref, until P2b-04 / P4-05).
+- **Security round.** The file and blob routes passed a release's STORED version to
+  `enforceReleaseAccess` as a route selector. The sync stores `versionFromTag(tag)`, so a release
+  tagged `latest` or `stable` classified as the moving stable channel (no window check), and
+  `beta`, `pr-N` or a manual channel's name as that moving channel: a capped, stable-only licence
+  downloaded a rolling prerelease by file and by hash. `ReleaseParams.fixedVersion` now carries a
+  fixed release's stored version; `entitledSelectorFor` always pins it (stable channel, version
+  window-checked) and `enforceReleaseAccess` refuses it under a bounded window when it is not
+  semver, an empty one included. `computeFile` joins the release row, so an artifact whose row
+  is missing is never served on a check that saw no version. The audit found no other call site
+  that passes a stored version (`/release/dl`, `/release/builds`, appcasts and the version
+  check all pass the request's own selector).
+- **Security round, docs follow-up.** THREAT-MODEL §5 understated the residual. It said only an
+  unbounded window lets a stable-only licence fetch a prerelease by exact file, but no product
+  has an unbounded window: `compat_min` and `compat_max` are `NOT NULL` with defaults `0.0.0` and
+  `99.0.0`. The real residual is that a fixed or pinned release is checked as the stable channel,
+  so any release whose stored version is semver and inside the window (for example
+  `v1.2.0-beta.1`) is served by file, by hash and by pinned version. §5 and the artifacts page
+  now state this. No code changed.
+
 ## Steps
 
 1. `resolve.ts` with a table-driven test over fixtures: includes, pointer, pin, yank, a release
@@ -158,21 +226,21 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
 
 ## Acceptance criteria
 
-- [ ] The resolution table test passes, including "iOS falls back to the newest release with an iOS
+- [x] The resolution table test passes, including "iOS falls back to the newest release with an iOS
       build" and "beta includes stable".
-- [ ] After a yank, `/update/version`, the appcast and `/release/dl/latest/…` stop offering the
+- [x] After a yank, `/update/version`, the appcast and `/release/dl/latest/…` stop offering the
       release; after a pin, all three and `/release/builds/stable/…` serve the pinned release.
-- [ ] CI routes refuse a token without `release:promote` or `release:yank`; admin and CI changes
+- [x] CI routes refuse a token without `release:promote` or `release:yank`; admin and CI changes
       write audit rows; an operator change survives a resync.
-- [ ] The blob route refuses a hash no artifact of this product references, and serves 206, 304 and
+- [x] The blob route refuses a hash no artifact of this product references, and serves 206, 304 and
       416 correctly from the R2 fake.
-- [ ] With caching, a download miss makes at most one GitHub API call, and a following Range
+- [x] With caching, a download miss makes at most one GitHub API call, and a following Range
       request makes none (fetch-counting test).
-- [ ] `routeCoverage` passes with the new paths; `docs gen:check` is clean.
-- [ ] The green gate passes (`AGENTS.md`), including `test/attack/R6-release.test.ts`.
-- [ ] A throw inside a registered byte route or `loadProduct` answers a JSON 500 with `X-Content-Type-Options: nosniff` and the sandbox CSP on the bytes host (test).
-- [ ] `blobResponse` ignores a caller-supplied `host: "bytes"` on a console-host request; a locked key with no stored checksum answers not-found; a gated response carries `no-transform`.
-- [ ] With Release off for a product, the three release byte routes answer the bytes host's flat not-found (test).
+- [x] `routeCoverage` passes with the new paths; `docs gen:check` is clean.
+- [x] The green gate passes (`AGENTS.md`), including `test/attack/R6-release.test.ts`.
+- [x] A throw inside a registered byte route or `loadProduct` answers a JSON 500 with `X-Content-Type-Options: nosniff` and the sandbox CSP on the bytes host (test).
+- [x] `blobResponse` ignores a caller-supplied `host: "bytes"` on a console-host request; a locked key with no stored checksum answers not-found; a gated response carries `no-transform`.
+- [x] With Release off for a product, the three release byte routes answer the bytes host's flat not-found (test).
 
 ## Verify
 
