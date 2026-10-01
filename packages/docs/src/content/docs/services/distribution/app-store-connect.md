@@ -74,7 +74,9 @@ what the API says — the notification itself is only a hint.
 | `BACKGROUND_ASSET_VERSION_STATE_UPDATED` and the three `BACKGROUND_ASSET_VERSION_*_RELEASE_*` events | the asset-pack version's state (unresolved until a pack release claims it) |
 | `BETA_FEEDBACK_*` (2), `ALTERNATIVE_DISTRIBUTION_*` (3)                                              | stored as received; no state change                                        |
 
-An event type this build does not know is answered `204` and stored as ignored.
+An event type this build does not know is answered `204` and stored as ignored. Stored events
+(at most 16 KiB of each body) are kept for 30 days; the nightly maintenance sweep deletes older
+ones for every product, including a deleted product or one with Distribution turned off.
 
 **The poller.** Every 15 minutes it reads what no webhook covers: the app's App Store versions
 with their **phased release**, open **review submissions**, and the newest **builds** with their

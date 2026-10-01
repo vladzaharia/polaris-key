@@ -41,6 +41,7 @@ import {
   prunePortalAudit,
   purgeDownloadTokensForProduct,
 } from "./services/identity/portal/repo.js";
+import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 
 /**
  * How long an audit record is kept before the sweep deletes it.
@@ -230,6 +231,13 @@ export async function runScheduledMaintenance(
     // P2-02: CI tokens and upload tickets that expired more than a day ago.
     await step(report, `ciCredentials:${product}`, () =>
       pruneCiCredentials(db, product, now),
+    );
+    // P5-02: store-connector webhook events past `CONNECTOR_EVENT_RETENTION_SECONDS` (30 days).
+    // Here and not on the connector poll tick, because the poll reaches only live products with
+    // Distribution on and a loadable signing key — a deleted or disabled product's raw payloads
+    // would otherwise be kept forever.
+    await step(report, `connectorEvents:${product}`, () =>
+      drain((limit) => pruneConnectorEvents(db, product, now, limit)),
     );
   }
 

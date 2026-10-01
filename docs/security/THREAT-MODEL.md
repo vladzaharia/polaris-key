@@ -849,9 +849,13 @@ Neither reveals or forges anything, and the poller keeps App Store versions, bui
 release current regardless. An operator seeing either should rotate nothing (the secret is not
 at risk) and can block the source at the edge. Whoever holds a product's `asc-webhook-secret` can
 also make the Worker spend API budget re-reading objects (bounded by the rate limit and Apple's
-per-key hourly limit, which the poller reads from `X-Rate-Limit` and backs off from). Raw event payloads are stored for 30 days, capped
-at 16 KiB each; beta-feedback events can name testers, so `dist_connector_events` is personal data
-under the same retention reasoning as `audit`.
+per-key hourly limit, which the poller reads from `X-Rate-Limit` and backs off from). Raw event
+payloads are stored for 30 days, capped at 16 KiB each; beta-feedback events can name testers, so
+`dist_connector_events` is personal data under the same retention reasoning as `audit`. The 30
+days are enforced by the nightly maintenance sweep (`scheduled.ts`, step
+`connectorEvents:<product>`), which walks every product slug, soft-deleted and Distribution-off
+products included, so a product that stops being polled does not keep its payloads forever
+(`test/scheduled.test.ts`).
 
 ### The device-code user-code page (P1-06)
 
