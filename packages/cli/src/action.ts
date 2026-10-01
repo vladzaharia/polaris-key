@@ -25,6 +25,8 @@ export const ACTION_INPUTS = [
   "source",
   "meta",
   "base-url",
+  "release-key",
+  "min-supported-seq",
   "dry-run",
 ] as const;
 
@@ -84,6 +86,12 @@ export async function runAction(io: ActionIo): Promise<number> {
       source: input("source") as PublishSource | undefined,
       meta: input("meta"),
       baseUrl: input("base-url"),
+      // P3-03: the release key's PKCS#8 PEM, from a GitHub Environment secret. Read here, never
+      // echoed; absent, PKEY_RELEASE_KEY from the job's environment is used.
+      ...(input("release-key") ? { releaseKeyPem: input("release-key") } : {}),
+      ...(input("min-supported-seq") !== undefined
+        ? { minSupportedSeq: Number(input("min-supported-seq")) }
+        : {}),
       dryRun: dryRun === "true",
       env: io.env,
       stdout: io.stdout,
