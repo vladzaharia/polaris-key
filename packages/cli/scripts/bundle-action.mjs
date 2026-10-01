@@ -87,5 +87,5 @@ if (check) {
 } else {
   await mkdir(path.dirname(outFile), { recursive: true });
   await writeFile(outFile, text, "utf8");
-  console.log(`Wrote ${path.relative(repoRoot, outFile)} (${text.length} bytes).`);
+  console.log(`Wrote ${path.relative(repoRoot, outFile)} (${Buffer.byteLength(text)} bytes).`);
 }
