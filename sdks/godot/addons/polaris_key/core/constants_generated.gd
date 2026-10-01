@@ -70,10 +70,21 @@ class ErrorCode:
 	const SERVER_ERROR := "server-error"
 	const CANCELLED := "cancelled"
 	const SIGN_IN_UNAVAILABLE := "sign-in-unavailable"
+	const INVALID_OPTIONS := "invalid-options"
+	const NOT_CONFIGURED := "not-configured"
+	const UNSUPPORTED := "unsupported"
+	const TIMEOUT := "timeout"
+	const RESPONSE_TOO_LARGE := "response-too-large"
+	const TOO_MANY_REDIRECTS := "too-many-redirects"
+	const INSECURE_REDIRECT := "insecure-redirect"
+	const HTTP_ERROR := "http-error"
+	const INVALID_RESPONSE := "invalid-response"
+	const STORE_FAILED := "store-failed"
+	const NO_TOKEN := "no-token"
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-unavailable"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -135,6 +146,17 @@ const ERROR_CODE_KINDS := {
 	"server-error": "client",
 	"cancelled": "client",
 	"sign-in-unavailable": "client",
+	"invalid-options": "client",
+	"not-configured": "client",
+	"unsupported": "client",
+	"timeout": "client",
+	"response-too-large": "client",
+	"too-many-redirects": "client",
+	"insecure-redirect": "client",
+	"http-error": "client",
+	"invalid-response": "client",
+	"store-failed": "client",
+	"no-token": "client",
 }
 
 

@@ -27,11 +27,7 @@
       "wp": "P1b-04",
       "note": "P1-02 sends the seven X-PKey-* headers from one table (core/headers.gd: SDK id polaris-key-godot, the report's platform and arch vocabulary); P1b-04's headers.json pins the canonical values."
     },
-    "core.errors": {
-      "status": "planned",
-      "wp": "P1b-02",
-      "note": "P1-02 reads both error-body spellings and keeps the wire codes in core/errors.gd; P1b-02 generates them into core/constants_generated.gd."
-    },
+    "core.errors": { "status": "implemented" },
     "core.caps": {
       "status": "planned",
       "wp": "P1b-10"

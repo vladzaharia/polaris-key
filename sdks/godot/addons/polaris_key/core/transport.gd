@@ -21,7 +21,7 @@ extends RefCounted
 ##
 ## `request` is a coroutine returning a PKeyResult: ok with detail {status, headers (lower-case
 ## names), body: PackedByteArray, url} when a response arrived (any status), or a failure:
-## `timeout`, `body-too-large`, `too-many-redirects`, `insecure-redirect`, `local-only`,
+## `timeout`, `response-too-large`, `too-many-redirects`, `insecure-redirect`, `local-only`,
 ## `network-error`.
 
 const MAX_REDIRECTS := 5
@@ -199,7 +199,7 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 		HTTPRequest.RESULT_TIMEOUT:
 			return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": result})
 		HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
-			return PKeyResult.failure(PKeyErrors.BODY_TOO_LARGE, "The response is larger than %d bytes." % body_limit, {"result": result})
+			return PKeyResult.failure(PKeyErrors.RESPONSE_TOO_LARGE, "The response is larger than %d bytes." % body_limit, {"result": result})
 	return PKeyResult.failure(PKeyErrors.NETWORK, "The request failed (HTTPRequest result %d)." % result, {"result": result})
 
 

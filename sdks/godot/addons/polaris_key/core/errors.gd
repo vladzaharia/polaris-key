@@ -1,8 +1,9 @@
 class_name PKeyErrors
 extends RefCounted
 ## Error codes. Wire codes are the server's own spellings (`PolarisErrorCode`,
-## shared-protocol `core.ts`); client codes never cross the wire. P1b-02 generates the wire
-## list into `core/constants_generated.gd`; until then it lives here.
+## shared-protocol `core.ts`); client codes never cross the wire. Every value here must be
+## registered in conformance/parity/errors.json (generated into `PKeyConstants.ErrorCode`);
+## tests/core/test_errors.gd fails otherwise.
 
 # ── Wire codes (PolarisErrorCode) ──────────────────────────────────────────────────────────
 const UNAUTHORIZED := &"unauthorized"
@@ -29,7 +30,7 @@ const SERVICE_UNAVAILABLE := &"service-unavailable"
 const UNSUPPORTED := &"unsupported"
 const TIMEOUT := &"timeout"
 const NETWORK := &"network-error"
-const BODY_TOO_LARGE := &"body-too-large"
+const RESPONSE_TOO_LARGE := &"response-too-large"
 const TOO_MANY_REDIRECTS := &"too-many-redirects"
 const INSECURE_REDIRECT := &"insecure-redirect"
 const HTTP_ERROR := &"http-error"

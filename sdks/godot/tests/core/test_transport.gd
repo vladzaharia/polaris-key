@@ -81,7 +81,7 @@ func run(t: PKeyTestContext) -> void:
 	t.check("transport: a redirect to plain http on another host is refused", not r.ok and r.code == PKeyErrors.INSECURE_REDIRECT, str(r))
 
 	r = await tr.request("GET", server.base_url() + "/big")
-	t.check("transport: a body over the 512 KiB cap is a PKeyResult error", not r.ok and r.code == PKeyErrors.BODY_TOO_LARGE, str(r))
+	t.check("transport: a body over the 512 KiB cap is a PKeyResult error", not r.ok and r.code == PKeyErrors.RESPONSE_TOO_LARGE, str(r))
 
 	# The budget is wall time from the request's start: a long frame just before the call (here a
 	# 1.5 s block) does not spend it. HTTPRequest.timeout counts process delta and would fire here.
