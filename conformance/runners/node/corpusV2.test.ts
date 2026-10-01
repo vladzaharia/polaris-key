@@ -405,7 +405,10 @@ function impliedChannel(version: string): string {
   return digits ? prChannel(digits) : CHANNEL_PR;
 }
 /** §5.1 rule 3: `null` is a malformed header, which the gate refuses. */
-function normalizeChannelHeader(header: string, version: string): string | null {
+function normalizeChannelHeader(
+  header: string,
+  version: string,
+): string | null {
   if (Object.hasOwn(CHANNEL_ALIASES, header))
     return CHANNEL_ALIASES[header as keyof typeof CHANNEL_ALIASES];
   if (header === CHANNEL_PR) {
@@ -437,7 +440,9 @@ function checkBuildGate(g: MatrixRow["gate"]): BlockedState | undefined {
   if (max && compareSemver(g.version, max) > 0)
     return { reason: "version-too-new", allowedRange };
   const declared =
-    g.channel === undefined ? null : normalizeChannelHeader(g.channel, g.version);
+    g.channel === undefined
+      ? null
+      : normalizeChannelHeader(g.channel, g.version);
   if (g.channel !== undefined && declared === null)
     return { reason: "channel-not-entitled" };
   for (const channel of new Set([impliedChannel(g.version), declared])) {

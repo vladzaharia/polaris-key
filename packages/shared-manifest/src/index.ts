@@ -947,7 +947,7 @@ function validateDocuments(
             "product",
             `/licensing/tiers/${i}/channels/${j}`,
             "noncanonical_channel_name",
-            "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$ and spell a PR as pr-<n>; this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V3 §5.1).",
+            "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V3 §5.1).",
           );
         }
       }
@@ -1300,7 +1300,7 @@ function validateDocuments(
                 "release",
                 `${at}/name`,
                 "reserved_channel_name",
-                "This manual channel name is taken by a built-in channel (stable, latest, beta, pr, pr-<n> or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1).",
+                "This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1).",
               );
             }
             if (

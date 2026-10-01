@@ -361,7 +361,12 @@ describe("checkBuildGate — the declared channel cannot loosen the build's own 
   it("an unrecognised channel declaration is refused, not coerced to stable", () => {
     // Malformed (`STAGING`, `Beta.2`) is refused outright; well-formed but ungranted
     // (`staging-2`, `nonsense`) must be granted by name (§5.1 rules 3–4).
-    for (const channelHeader of ["staging-2", "STAGING", "Beta.2", "nonsense"]) {
+    for (const channelHeader of [
+      "staging-2",
+      "STAGING",
+      "Beta.2",
+      "nonsense",
+    ]) {
       const r = checkBuildGate({
         version: "1.2.3",
         channelHeader,

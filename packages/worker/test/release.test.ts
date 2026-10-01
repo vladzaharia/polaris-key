@@ -237,7 +237,9 @@ describe("channels", () => {
     ];
     expect(
       resolveChannel(classifyChannel("staging", manual)!, releases)?.tag_name,
-    ).toBe(resolveChannel(classifyChannel("beta", manual)!, releases)?.tag_name);
+    ).toBe(
+      resolveChannel(classifyChannel("beta", manual)!, releases)?.tag_name,
+    );
 
     // A declared manual `staging` wins over the alias.
     const withStaging = parseManualChannels(

@@ -2114,12 +2114,13 @@ const RETIRED_CARRIED_ROWS: Record<
   string,
   { retiredBy: string; why: string; successor: string }
 > = {
-  "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel": {
-    retiredBy: "P0-04",
-    why: "It pins the unconditional dev-build bypass that R3-01 removed: today's server answers `version-too-old` for its inputs, and R3 calls the row defensible only for a client-side build gate, which no SDK has.",
-    successor:
-      "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
-  },
+  "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel":
+    {
+      retiredBy: "P0-04",
+      why: "It pins the unconditional dev-build bypass that R3-01 removed: today's server answers `version-too-old` for its inputs, and R3 calls the row defensible only for a client-side build gate, which no SDK has.",
+      successor:
+        "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+    },
 };
 
 /** The standard in-window build gate, for rows whose subject is the license half. */
@@ -2375,7 +2376,7 @@ function gateMatrixV2(): {
   return {
     gateMatrixVersion: 2,
     description:
-      "Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1's matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: \"token\" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: \"bundle\"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.",
+      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.',
     rows: [
       ...carriedRows(),
       {

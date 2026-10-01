@@ -799,8 +799,7 @@ describe("licensing", () => {
 
   it("X-PKey-Channel: staging is the beta channel; a malformed header is refused", async () => {
     expect(
-      (await docWithChannel("lic_beta2", ["stable", "beta"], "staging"))
-        .status,
+      (await docWithChannel("lic_beta2", ["stable", "beta"], "staging")).status,
     ).toBe(200);
 
     const malformed = await docWithChannel(

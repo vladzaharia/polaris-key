@@ -1456,7 +1456,15 @@ describe("channel names (P0-04, WIRE-CONTRACT-V3 §5.1)", () => {
   });
 
   it("isReservedChannelName reads the protocol constants", () => {
-    for (const name of ["stable", "latest", "beta", "pr", "dev", "pr-42", "pr42"])
+    for (const name of [
+      "stable",
+      "latest",
+      "beta",
+      "pr",
+      "dev",
+      "pr-42",
+      "pr42",
+    ])
       expect(isReservedChannelName(name), name).toBe(true);
     for (const name of ["staging", "nightly", "prod", "pr-", "Beta"])
       expect(isReservedChannelName(name), name).toBe(false);

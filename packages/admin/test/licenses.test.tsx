@@ -686,9 +686,7 @@ describe("license channel picker", () => {
     await user.click(dev);
     await user.click(screen.getByRole("button", { name: /Save/ }));
     await waitFor(() => expect(mockApi.patchLicense).toHaveBeenCalledTimes(1));
-    expect(mockApi.patchLicense.mock.calls[0]![2].channels).toEqual([
-      "stable",
-    ]);
+    expect(mockApi.patchLicense.mock.calls[0]![2].channels).toEqual(["stable"]);
   });
 
   it("keeps a held value the picker does not offer through a save", async () => {
