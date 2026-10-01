@@ -49,6 +49,7 @@ from .context import (
     now_sec,
 )
 from .errors import InsecureBaseUrlError, PolarisError
+from .headers import canonical_arch, canonical_platform
 from .jws import TrustSet, VerifiedJws, sign_jws, verify_jws
 from .models import (
     CLOCK_SKEW_SECONDS,
@@ -137,6 +138,9 @@ __all__ = [
     "VerifiedJws",
     "sign_jws",
     "verify_jws",
+    # headers (WIRE-CONTRACT-V3 §5.2)
+    "canonical_platform",
+    "canonical_arch",
     # verify
     "verify_doc",
     "verify_license_doc",
