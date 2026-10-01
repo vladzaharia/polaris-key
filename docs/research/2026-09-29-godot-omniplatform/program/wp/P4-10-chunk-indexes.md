@@ -119,14 +119,44 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
   and hashes to `id`; the written index parses cleanly with the shared parser; the bundle table's
   sizes match the uploaded objects.
 - **File-aware chunking.** For a container payload (`layout: container` files index from P4-03),
-  run FastCDC separately over each segment (gap, file, gap, …) and set `fileAware`. A single-file
-  payload without a container index (an `ml.model`, say) is chunked whole with the bit clear.
+  run FastCDC separately over each segment (gap, file, gap, …) and set `fileAware`. **Padding
+  rule (S-03):** a gap shorter than 64 bytes that directly follows a file is chunked together with
+  that file. It is the exporter's 16-byte alignment padding. The header, the directory and longer
+  gaps stay their own segments, and a chunk still never spans two files. On real Diceroll history
+  this halves the index (655 → 350 KB for 6,733 entries) and cuts the mean N−1 download by 21%,
+  with identical missing bytes and requests
+  ([notes/S-03 §4.5](../../notes/S-03-chunk-size-real-history.md#45-reading-the-tables)). A
+  single-file payload without a container index (an `ml.model`, say) is chunked whole with the
+  bit clear.
 - **Parameters** are not in the binary index; they go in the record's `chunks.params` and never
-  change for a published release (CI never re-chunks history). Default: FastCDC average 64 KiB,
-  minimum average/4, maximum average×4 (A6). A7's generator records
+  change for a published release (CI never re-chunks history). Default: FastCDC, minimum
+  average/4, maximum average×4, plus the padding rule above. **The average depends on the
+  index-on-wire question below; settle that first, because `avgSize` is frozen for every published
+  release.** Measured by S-03 on five real releases, at the 16 KiB request weight
+  ([notes/S-03 §4.7](../../notes/S-03-chunk-size-real-history.md#47-index-size-on-the-wire), cost
+  table):
+  - **Index sent raw or as one zstd frame: 64 KiB.** The averages 16–128 KiB land within 5% of each
+    other in every pair class. 32 KiB's 3.7–4.4% N−1 gain is roughly even at N−2 and is lost from
+    N−3 on (2.2–2.5% dearer), because it needs more request runs.
+  - **Index sent as a delta of the seed index: 64 KiB for a payload whose N−1 delta fits the
+    device memory budget; 32 KiB only where chunk sync serves N−1.** The index term then drops to
+    1.4–9 KB at any average. On the monolithic 85 MB PCK, 32 KiB is 9.7% cheaper at N−1 (741 KB
+    against 821 KB) and 2.2% cheaper at N−2, and 1.4–1.5% dearer at N−3 and older. At a 64 KiB
+    weight it is 8.7% cheaper at N−1 and 1.7–5.5% dearer from N−2 on. That N−1 gain counts only
+    where chunk sync serves N−1: a payload above about `memBudget`/2 (the whole-file delta needs
+    about 2 × its size, so the 85 MB PCK needs ~170 MB), or an SDK without delta support. Every
+    Diceroll pack slice's N−1 delta fits a 64 MiB budget (at most about 42 MB), so under per-pack
+    delivery N−1 is delta-served and chunk sync runs from N−2 on. There 32 and 64 KiB are within
+    −1.2% to +5.3% per pack ([notes/S-03 §4.10](../../notes/S-03-chunk-size-real-history.md#410-per-pack-estimate-desktop-pck-sliced-by-the-proposed-packs-an-estimate),
+    last table), so keep 64 KiB. `chunks.params` is per payload record, so the plan may set 32 KiB
+    for oversized payloads only; if it wants one default, take 64 KiB.
+
+  See [notes/S-03 §5](../../notes/S-03-chunk-size-real-history.md#5-recommendation). A7's generator records
   `{chunker: "fastcdc-2016-nc1", fileAware, avgSize, minSize, maxSize, bundleTarget, zstdLevel}`;
   notes/E8 §5.4 sketched `{alg, min, avg, max, id, codec}`. Use what P4-01 froze; otherwise the
-  plan picks A7's names. S-03 may move the default average; that changes CI config, not the format.
+  plan picks A7's names. The default average is CI config, not format, but it cannot change for a
+  release once published.
+
 - **Manifest.** README §3.12 sketches `patch.chunking: {alg: fastcdc, avg: 65536, fileAware: true}`
   in `.pkey/release`. If this package makes chunking configurable there, it is a rule-9 change:
   validator rule, mutation-table entry in `packages/shared-manifest/test/schema-parity.test.ts`,
@@ -142,9 +172,22 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
   - bundles shared across releases of **one** deliverable, where a new release's bundles hold only
     new chunks (what the run rule, A7 §4.3, and CONTENT §11's repacking assume; much less storage).
 
-  Recommend the second, scoped to one deliverable and one gating class. The index format supports
-  both. Never share a bundle between a gated and a free pack: a `Range` would leak content
+  Recommend the second, scoped to one deliverable and one gating class. S-03 measured both. With
+  shared bundles an N−1 sync is 2 requests (index plus one run), against 42 with fresh bundles.
+  The 4, 8 and 16 MiB targets gave identical bytes and requests in every pair class. Target
+  **4 MiB** unless S-02's Range and cache results argue for more. The index format supports both.
+  Never share a bundle between a gated and a free pack: a `Range` would leak content
   (CONTENT §12).
+
+- **Index on the wire (plan question from S-03).** With the padding rule the raw index is 0.35 MB,
+  31% of an N−1 chunk sync. As one zstd frame it is 0.28 MB. As a `zstd --patch-from` frame
+  against the seed index the client already stores, it is **1.4–9 KB**
+  ([notes/S-03 §4.7](../../notes/S-03-chunk-size-real-history.md#47-index-size-on-the-wire)).
+  The plan decides whether v2 ships the index compressed, adds an index-delta artifact (a
+  `pkey-patch/1` over the index blob, planner-visible), or defers both. Either is a record or
+  artifact-role change, so name it in the wire section. Decide it before the default average
+  (Parameters above): with an index delta, 32 KiB beats 64 KiB at N−1 by about 10% on a payload
+  whose N−1 is served by chunk sync (the 85 MB PCK), and by at most 1.2% on a pack.
 
 - **Storage.** R2 keys from P2-01's `bundleKey(sha256, {gated})` (`bundles/sha256/<h>`, or under
   `gated/` for gated deliverables); `release_artifacts` roles `chunk-index` and `chunk-bundle`
