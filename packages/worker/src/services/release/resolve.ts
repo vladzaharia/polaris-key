@@ -41,7 +41,10 @@ import {
 } from "@polaris-key/manifest";
 import { CHANNEL_ALIASES, CHANNEL_NAME_PATTERN } from "@polaris-key/protocol";
 import type { Db } from "../../core/platform.js";
-import { compareSemver, parseSemver } from "../../core/entitlements.js";
+import {
+  compareVersions as compareVersionsV4,
+  parseVersion,
+} from "@polaris-key/client-core/version";
 import {
   parseIgnoreTags,
   parseManualChannels,
@@ -88,59 +91,49 @@ export function isVersionSelector(selector: string): boolean {
 export const VERSION_SCHEMES = ["semver", "semver+build", "4part"] as const;
 export type VersionScheme = (typeof VERSION_SCHEMES)[number];
 
-function parseFourPart(v: string): number[] | null {
-  const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(v);
-  return m ? m.slice(1, 5).map(Number) : null;
-}
-
-/** The numeric build metadata of `1.2.3+45`, or null. */
-function buildMetadata(v: string): number | null {
-  const m = /\+(\d+)$/.exec(v);
-  return m ? Number(m[1]) : null;
-}
-
-/** Does `v` parse in `scheme`? A version that does not cannot be ordered against the rest. */
+/**
+ * Does `v` parse in `scheme`? A version that does not cannot be ordered against the rest.
+ * client-core's `parseVersion` (P3-02): SemVer 2.0's own grammar for `semver` and
+ * `semver+build`, P2-04's four-part grammar for `4part` — the parser every v4 SDK runs, so the
+ * Worker and the clients agree on what a version is (P3-03).
+ */
 export function parsesInScheme(scheme: VersionScheme, v: string): boolean {
-  return scheme === "4part" ? parseFourPart(v) !== null : !!parseSemver(v);
+  return parseVersion(scheme, v) !== null;
 }
 
 /**
- * Precedence in `scheme`: > 0 when `a` is newer. Callers compare only versions that parse
- * (`parsesInScheme`); an unparseable pair compares equal, so `seq` decides.
+ * Precedence in `scheme`: > 0 when `a` is newer. client-core's `compareVersions` (P3-03: one
+ * ordering, the clients'), with an unparseable pair comparing equal so `seq` decides — callers
+ * compare only versions that parse (`parsesInScheme`).
  *
- *   semver        P0-02's comparator (build metadata ignored, as SemVer says);
- *   semver+build  semver, then the numeric `+N` build metadata (`1.2.3+45` > `1.2.3+9`);
- *   4part         `a.b.c.d`, numerically (MSIX, Android-style versions).
+ *   semver        SemVer 2.0 §11 precedence (build metadata ignored);
+ *   semver+build  semver, then digit-only `+N` build metadata (`1.2.3+45` > `1.2.3+9`);
+ *   4part         `a.b.c.d`, numerically on digit strings (no precision limit).
  */
 export function compareVersions(
   scheme: VersionScheme,
   a: string,
   b: string,
 ): number {
-  if (scheme === "4part") {
-    const pa = parseFourPart(a);
-    const pb = parseFourPart(b);
-    if (!pa || !pb) return 0;
-    for (let i = 0; i < 4; i++) {
-      const d = (pa[i] as number) - (pb[i] as number);
-      if (d !== 0) return d;
-    }
-    return 0;
-  }
-  const c = compareSemver(a, b);
-  if (c !== 0 || scheme === "semver") return c;
-  return (buildMetadata(a) ?? -1) - (buildMetadata(b) ?? -1);
+  return compareVersionsV4(scheme, a, b) ?? 0;
 }
 
-/** The scheme a deliverable declares in its definition (`versionScheme`), default `semver`. */
+/**
+ * The scheme a deliverable declares (`def_json` is P2-04's `ManifestAppDeliverable`, so the
+ * scheme is `versioning.scheme`), default `semver`. P2-05 read a top-level `versionScheme`
+ * member no writer ever set, so every product resolved as `semver` until P3-03.
+ */
 export function versionSchemeOf(
   deliverable: Pick<ReleaseDeliverableRow, "def_json"> | null,
 ): VersionScheme {
   if (!deliverable?.def_json) return "semver";
   try {
-    const def = JSON.parse(deliverable.def_json) as { versionScheme?: unknown };
-    return (VERSION_SCHEMES as readonly unknown[]).includes(def.versionScheme)
-      ? (def.versionScheme as VersionScheme)
+    const def = JSON.parse(deliverable.def_json) as {
+      versioning?: { scheme?: unknown } | null;
+    };
+    const scheme = def?.versioning?.scheme;
+    return (VERSION_SCHEMES as readonly unknown[]).includes(scheme)
+      ? (scheme as VersionScheme)
       : "semver";
   } catch {
     return "semver";

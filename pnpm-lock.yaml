@@ -316,6 +316,9 @@ importers:
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog
+      '@polaris-key/client-core':
+        specifier: workspace:*
+        version: link:../client-core
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
@@ -341,9 +344,6 @@ importers:
       '@polaris-key/cli':
         specifier: workspace:*
         version: link:../cli
-      '@polaris-key/client-core':
-        specifier: workspace:*
-        version: link:../client-core
       '@polaris-key/node':
         specifier: workspace:*
         version: link:../sdk-node
