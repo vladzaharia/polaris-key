@@ -53,7 +53,8 @@ export async function latestReleaseHasDmg(
  * pass would fail under D1's foreign-key enforcement the moment one live download URL existed.
  * A release withdrawn upstream therefore leaves its row behind — stale, but inert: the portal
  * still gates every download on a live licence, and the artifact URL it holds is GitHub's, which
- * will 404 on its own.
+ * will 404 on its own. What the sync does record is that it is gone: its `release_health` row
+ * turns `degraded` with `{"absentUpstream": true}` once a complete list no longer carries it.
  *
  * ── WHAT A RESYNC OWNS, AND WHAT IT DOES NOT (P2-03) ────────────────────────────────────────
  *
@@ -231,6 +232,22 @@ export async function listReleaseHealth(
       ORDER BY subject_kind ASC, subject_id ASC`,
     product,
   );
+}
+
+/**
+ * Every release id the store holds for a product. The truth-store sync hands these to
+ * `releaseStoreStatements` so it can mark a release that has gone from upstream (P0-03) without
+ * the statement builder touching the database.
+ */
+export async function listStoredReleaseIds(
+  db: Db,
+  product: string,
+): Promise<string[]> {
+  const rows = await db.all<{ release_id: string }>(
+    "SELECT release_id FROM release_metadata WHERE product = ? ORDER BY release_id ASC",
+    product,
+  );
+  return rows.map((r) => r.release_id);
 }
 
 export async function listChannelFloors(
@@ -561,6 +578,15 @@ function floorStatement(
  * every metadata row is emitted before anything that references it — and the `app` deliverable
  * before everything. The metadata rows themselves go out oldest first, (published_at,
  * release_id), because each new one takes the next `seq` in statement order (P2-03).
+ *
+ * ABSENT UPSTREAM (P0-03). `storedReleaseIds` is what the store held before this sync, and the
+ * caller passes it ONLY when `releases` is the whole upstream list (the paginated read reached a
+ * page with no `next`). Each stored release that is not among the published ones (nor among the
+ * `held` floor releases a tag lookup found) — deleted, or unpublished back to a draft — gets
+ * `release_health` `degraded` with `{"absentUpstream": true}`. Its metadata and artifact rows
+ * stay (see IDEMPOTENCE above). A capped or cut-short list passes `null` and marks nothing:
+ * absence from a partial read proves nothing. A release that comes back is re-marked by its
+ * ordinary health row on the next sync.
  */
 export function releaseStoreStatements(
   product: string,
@@ -575,6 +601,7 @@ export function releaseStoreStatements(
    * have read them either.
    */
   held: Release[] = [],
+  storedReleaseIds: readonly string[] | null = null,
 ): DbStatement[] {
   const policy = artifactPolicy(cfg);
   const candidates = resolutionPolicy(cfg);
@@ -656,6 +683,23 @@ export function releaseStoreStatements(
         details_json: JSON.stringify({ assetCount: release.assets.length }),
       }),
     );
+  }
+
+  if (storedReleaseIds) {
+    const upstream = new Set(recorded.map((r) => r.tag_name));
+    for (const releaseId of storedReleaseIds) {
+      if (upstream.has(releaseId)) continue;
+      health.push(
+        stmtUpsertHealth({
+          product,
+          subject_kind: "release",
+          subject_id: releaseId,
+          status: "degraded",
+          checked_at: now,
+          details_json: JSON.stringify({ absentUpstream: true }),
+        }),
+      );
+    }
   }
 
   const channels: DbStatement[] = [];

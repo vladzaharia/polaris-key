@@ -221,8 +221,7 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 ```sh
 # From the Godot CI job P1-01 set up; exact paths follow that job.
 godot --headless --path sdks/godot --import
-godot --headless --path sdks/godot --script res://tests/run_conformance.gd -- content
-godot --headless --path sdks/godot --script res://tests/run_conformance.gd -- plan
+godot --headless --path sdks/godot -- --pkey-test content,plan   # templates ignore --script
 # and the same suites through the exported runner on the linux_release template
 ```
 

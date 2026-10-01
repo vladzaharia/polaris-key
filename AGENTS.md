@@ -28,9 +28,12 @@ packages/
 sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
+  godot/             Godot addon               pure-GDScript verify and a headless runner
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
                      + parity/ (features.json registry; each SDK keeps its own parity.json)
-tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts
+                     + transcripts/ (HTTP conversations recorded through the Worker router)
+tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-transcripts.mjs ·
+                     gen-services.ts + services.json
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
                      security/ (threat model, wire contract v3, audit + findings)
@@ -52,11 +55,13 @@ the repo; the monorepo map, the wave model, the corpus and the release flow now 
 `packages/docs/src/content/docs/contribute/`.
 
 The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node
-conformance runner. Python and Swift are standalone toolchains under `sdks/`.
+conformance runner. Python, Swift and Godot are standalone toolchains under `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
-opt-in service (`license`, `config`, `release`, `update`, `identity`). `src/mount.ts` is the
-composition root; `src/router.ts` holds `SERVICE_NAMESPACES`.
+opt-in service (`license`, `config`, `release`, `update`, `identity`). The services are declared
+once, as rows of `tools/services.json`; `pnpm gen:services` generates every language's slug
+constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
+`SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`.
 
 ## Toolchain constraint: Node 22
 
@@ -78,6 +83,8 @@ already covers the source files.
 ```sh
 pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
+pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
+pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -93,24 +100,32 @@ pnpm --filter @polaris-key/worker test:workerd
 
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
+sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```
 
-`pnpm test:all` runs turbo test + Python pytest + Swift `swift test` in one shot. Note that
+`pnpm test:all` runs turbo test + Python pytest + Swift `swift test` + the Godot runner in one
+shot. Note that
 `pnpm build` does **not** typecheck the worker (esbuild strips types), so `pnpm typecheck` is not
 redundant with it — that gap once hid five broken type-only imports.
 
-The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corpus -- --check`
-and `pnpm typecheck`). A green hook is not a green gate.
+The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corpus -- --check`,
+`pnpm gen:services -- --check` and `pnpm typecheck`). A green hook is not a green gate.
 
 ## Hard rules
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
-gate-matrix.json,fingerprint.json}` and the Swift mirror at
-`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` are output. Regenerate with `pnpm gen:corpus`
-and commit the result in the same change. `pnpm gen:corpus -- --check` regenerates in memory and
-fails on any difference, mirror included. Never weaken a runner to make a change "pass".
+gate-matrix.json,fingerprint.json,stage-matrix.json}` and the generator-owned mirrors at
+`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output.
+Regenerate with `pnpm gen:corpus` and commit the result in the same change.
+`pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,
+and on a stray JSON file in any of them. Never weaken a runner to make a change "pass". The same
+holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Swift mirror at
+`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` are recorded by the Worker's scenario
+tests (`packages/worker/test/transcripts/`) through `pnpm gen:transcripts`; a Worker change that
+alters a recorded response regenerates them in the same change, and the SDK replayers then show
+which SDKs must follow.
 
 **2. A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** The constant lives in
 `packages/shared-protocol/src/core.ts` and is currently **3**. The signed document set is
@@ -119,15 +134,19 @@ license / config / trust / bundle (`pkey-license+jws`, `pkey-config+jws`, `pkey-
 `graceUntil`). Changing the encoding is a deliberate, all-languages event: contract → catalog →
 corpus → SDKs, in that order, and a feature is not done until all five implementations pass.
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Two families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Three families:
 
-| File(s)                                          | Written by                                        |
-| ------------------------------------------------ | ------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`       | the docs build (`scripts/collect-csp-hashes.mjs`) |
-| `packages/docs/src/content/docs/reference/*.mdx` | `pnpm --filter @polaris-key/docs gen`             |
+| File(s)                                                                 | Written by                                        |
+| ----------------------------------------------------------------------- | ------------------------------------------------- |
+| `packages/worker/src/docsCsp.generated.ts`                              | the docs build (`scripts/collect-csp-hashes.mjs`) |
+| `packages/docs/src/content/docs/reference/*.mdx`                        | `pnpm --filter @polaris-key/docs gen`             |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift` | `pnpm gen:services` from `tools/services.json`    |
 
-Both are committed on purpose (reviewable diffs; the site builds without running generators) and
-both have a freshness test, so a hand edit fails CI rather than shipping.
+All are committed on purpose (reviewable diffs; the site and packages build without running
+generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
+table), so a hand edit fails CI rather than shipping. The service table is the one declaration
+of the opt-in services; adding one is the checklist at
+`packages/docs/src/content/docs/contribute/layout.md` ("Adding a service").
 
 **4. Terminology comes from the concepts page.** `packages/docs/src/content/docs/start/concepts.md`
 (served at `/docs/start/concepts/`) is the canonical glossary — the former `docs/CONCEPTS.md`,

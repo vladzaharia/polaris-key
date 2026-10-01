@@ -383,16 +383,23 @@ function corpusInventory() {
   const fp = JSON.parse(
     read("conformance", "corpus", "v2", "fingerprint.json"),
   );
+  const stages = JSON.parse(
+    read("conformance", "corpus", "v2", "stage-matrix.json"),
+  );
   const families = Object.entries(cases)
     .filter(([, v]) => Array.isArray(v))
     .map(([k, v]) => [`\`${k}\``, String(v.length)]);
   return page(
     "Conformance corpus v2",
     "The case families every SDK verifies identically, generated from the corpus files themselves.",
-    `One generator (\`tools/sign-corpus.ts\`) signs every vector; four language runners verify
-them; \`pnpm gen:corpus -- --check\` is the CI drift gate (source AND the Swift test-resource
-mirror). Corpus v1 is deleted — v2 is the only corpus. \`corpusVersion ${cases.corpusVersion}\`,
-\`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`.`,
+    `One generator (\`tools/sign-corpus.ts\`) signs every vector, and every language runner
+verifies them: Node, Python, Swift, React (the gate matrix) and Godot (\`jwsCases\`, from an
+editor and an exported release template). \`pnpm gen:corpus -- --check\` is the CI drift gate,
+over the source and both generator-owned mirrors (the Swift test resources and the Godot
+\`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`). Corpus v1 is deleted — v2 is the
+only corpus. \`corpusVersion ${cases.corpusVersion}\`,
+\`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`,
+\`stageMatrixVersion ${stages.stageMatrixVersion}\`.`,
     [
       "## Case families (`cases.json`)",
       "",
@@ -401,6 +408,10 @@ mirror). Corpus v1 is deleted — v2 is the only corpus. \`corpusVersion ${cases
       `## Gate matrix (\`gate-matrix.json\`): ${gate.rows?.length ?? gate.cases?.length ?? "?"} rows`,
       "",
       `## Fingerprint corpus (\`fingerprint.json\`): ${fp.vectors?.length ?? "?"} vectors, ${fp.deviceIds?.length ?? "?"} device-id derivations, component order ${fp.componentOrder?.map((c) => `\`${c}\``).join(" → ")}`,
+      "",
+      `## Stage matrix (\`stage-matrix.json\`): ${stages.rows?.length ?? "?"} rows, ${stages.guardCases?.length ?? "?"} guard cases`,
+      "",
+      "Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach.",
     ].join("\n"),
   );
 }
@@ -418,6 +429,20 @@ function parityMatrix() {
     manifest: JSON.parse(read(...sdk.manifest.split("/"))),
   }));
 
+  // A transcript proof EXISTS once some committed transcript (conformance/transcripts/, written
+  // by `pnpm gen:transcripts`) lists the feature; until then it shows its owner, or "not
+  // recorded" when it has none.
+  const transcriptsDir = join(repo, "conformance", "transcripts");
+  const recorded = new Set(
+    existsSync(transcriptsDir)
+      ? readdirSync(transcriptsDir)
+          .filter((f) => f.endsWith(".json"))
+          .flatMap(
+            (f) => JSON.parse(read("conformance", "transcripts", f)).features,
+          )
+      : [],
+  );
+
   const runtimeList = (runtime) =>
     (Array.isArray(runtime) ? runtime : [runtime]).join(", ");
   const exceptText = (except) =>
@@ -430,14 +455,17 @@ function parityMatrix() {
     const owner = entry.wp ?? "unowned";
     return `planned (${owner})${exceptText(entry.except)}`;
   };
-  const proofText = (proof) =>
+  const proofText = (id, proof) =>
     proof
       .map((p) => {
         const owner = p.wp ? ` (${p.wp})` : "";
         if (p.kind === "corpus")
           return `\`${p.file}\`${p.family ? ` \`${p.family}\`` : ""}${owner}`;
         if (p.kind === "generated") return `\`${p.command}\`${owner}`;
-        if (p.kind === "transcript") return `transcripts${owner}`;
+        if (p.kind === "transcript")
+          return recorded.has(id)
+            ? "transcripts"
+            : `transcripts${owner || " (not recorded)"}`;
         if (p.kind === "device") return "device tests";
         if (p.kind === "snapshot") return "snapshot tests";
         return p.kind;
@@ -462,7 +490,7 @@ function parityMatrix() {
       .map((f) => [
         `\`${f.id}\``,
         mdxText(f.title),
-        proofText(f.proof),
+        proofText(f.id, f.proof),
         ...sdks.map((sdk) => cell(sdk.manifest.features[f.id])),
         allowedText(f.allowedNa),
       ]);
@@ -502,19 +530,23 @@ function parityMatrix() {
         unowned.push([sdk.title, `\`${f.id}\``, mdxText(entry.note ?? "")]);
     }
 
+  const manifestPaths = registry.sdks
+    .map((sdk) => `\`${sdk.manifest}\``)
+    .join(", ");
+
   return page(
     "SDK parity matrix",
     "Every feature in the registry against every SDK's parity manifest: implemented, a typed N/A the registry allows, or planned in a named work package.",
     `One row per feature id in \`conformance/parity/features.json\`, one column per SDK manifest
-(\`packages/sdk-node/parity.json\`, \`packages/sdk-react/parity.json\`, \`sdks/python/parity.json\`,
-\`sdks/swift/parity.json\`). \`pnpm parity:check\` gates the manifests: an implemented entry
+(${manifestPaths}). \`pnpm parity:check\` gates the manifests: an implemented entry
 needs a test tagged \`@pkey-feature <id>\`, an N/A must be one the registry allows for that
 runtime, and a planned entry names an open work package or is marked unowned. A new feature
 starts with its registry entry; a new SDK starts with a manifest in which everything is planned.
 
 Cells: **✓** implemented; **N/A (runtime: reason)** a typed "unsupported here" result;
 **planned (P1b-07)** the work package that closes the gap; **planned (unowned)** a gap with no
-owner yet (listed below). A proof marked with a work package does not exist yet.`,
+owner yet (listed below). A proof marked with a work package does not exist yet; "transcripts
+(not recorded)" is a transcript proof no work package has taken on.`,
     [
       table(
         [

@@ -95,6 +95,8 @@ availability of those packs feeds readiness holds. This package closes the progr
   installed, build id, beta name; read the marker from the depot; never write there). Each verifies
   the marker, then every file against the files index, before handing the pack to the handler.
 - `parity.json` for Godot: `packs.transport.apple`, `packs.transport.play`, `packs.transport.steam`.
+  Keep the runtime `except` entries P1-01 declared when marking them implemented.
+  `packs.transport.apple` on macOS has no owner (P5-05 Out).
 - End-to-end device runs (human): one Apple-hosted pack on TestFlight, one fast-follow pack on the
   internal track, one content-only Steam build on a test branch.
 

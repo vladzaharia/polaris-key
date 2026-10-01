@@ -242,6 +242,11 @@ deletes the _key_. A key created by one request from one IP in 2026 is still res
 `id` is `clientIp(req)`. Over IPv6 an attacker with a routed /64 controls 2^64 distinct source
 addresses at zero cost, each one minting a permanent DO storage key.
 
+_Later change (P1-06):_ the RFC 8628 user-code page's `authDeviceEntry` bucket is the first
+per-client bucket that guards a guessable secret, so it keys on `clientNetwork(req)` — the IPv4
+address, or the IPv6 /64 — instead. That bounds both the rotation and the key growth for that one
+bucket; every other bucket still keys on `clientIp` (aggregating them is unowned).
+
 Quantified (KV-backed DO pricing — `wrangler.toml` uses `new_classes`, not
 `new_sqlite_classes`): key `activate:<ipv6>` ≈ 48 B, value ≈ 30 B, plus per-key overhead.
 
@@ -360,6 +365,11 @@ not. Workers request billing and D1 row-read billing stack on top.
 **PoC status: PROVEN.** `R10-05 > POST /<p>/auth/device/start costs 2 KV writes per anonymous
 request` (25 requests ⇒ 50 KV records, no 429),
 `… GET /<p>/auth/start costs 1 KV write per anonymous request`.
+
+_Later change (P1-06):_ the RFC 8628 user-code page added a third record per device flow, the
+user-code index `p:<p>:device-user:<hash>`, so the PoC now reads `costs 3 KV writes` (25
+requests ⇒ 75 records). The per-IP `authDeviceStart` bucket that closed this finding bounds it
+the same way.
 
 **Fix direction.** Rate-limit the flow-start endpoints per IP (they are the only `/auth/*`
 routes that _create_ state; poll/callback only read it). A 10/min/IP bucket is generous for a

@@ -142,7 +142,7 @@ Required settings:
 | Webhook URL          | `https://key.plrs.im/webhooks/github` |
 | Webhook content type | `application/json`                    |
 | Permissions          | Contents: read, Actions: read         |
-| Events               | Push                                  |
+| Events               | Push, Release                         |
 | Installation         | `vladzaharia/djdl`                    |
 
 Generate and download a private key (`.pem`). Record:
@@ -155,6 +155,14 @@ GITHUB_WEBHOOK_SECRET
 
 The webhook secret is an operator-chosen high-entropy value. It must exactly match the
 Worker secret `GITHUB_WEBHOOK_SECRET`.
+
+**Push** deliveries resync a product when its `.pkey/` manifest changes. **Release**
+deliveries (published, edited, deleted, and the rest) refresh only the release truth store,
+so the console's Releases view and the portal show a new build without a manifest push or a
+manual resync. Release events are covered by the existing **Contents: read** permission, so
+adding the subscription should not ask installations to re-approve; confirm on the App's
+permissions page. Until the subscription is added, the Worker's release-event handling is
+inert.
 
 ### GitHub Actions secret
 

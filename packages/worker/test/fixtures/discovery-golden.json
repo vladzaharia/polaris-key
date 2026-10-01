@@ -1,0 +1,257 @@
+{
+  "defaults": {
+    "version": 2,
+    "protocolVersion": 3,
+    "schemaVersion": 1,
+    "product": "dflt",
+    "slug": "dflt",
+    "name": "dflt",
+    "baseUrl": "https://key.plrs.im",
+    "core": {
+      "registration": "requires-license",
+      "compat": {
+        "min": "0.0.0",
+        "max": "99.0.0"
+      },
+      "endpoints": {
+        "discovery": "https://key.plrs.im/dflt/.well-known/polaris.json",
+        "jwks": "https://key.plrs.im/dflt/.well-known/jwks.json",
+        "trustManifest": "https://key.plrs.im/dflt/.well-known/polaris-trust.jws",
+        "devices": "https://key.plrs.im/dflt/devices",
+        "report": "https://key.plrs.im/dflt/devices/report"
+      }
+    },
+    "trust": {
+      "jwksUrl": "https://key.plrs.im/dflt/.well-known/jwks.json",
+      "trustManifestUrl": "https://key.plrs.im/dflt/.well-known/polaris-trust.jws",
+      "cacheSeconds": 300,
+      "pinnedKeys": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "signingKid": "pkey-test-prod-2026",
+      "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+      "keys": [
+        {
+          "kid": "pkey-test-prod-2026",
+          "alg": "EdDSA",
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+          "status": "active",
+          "active": true
+        }
+      ]
+    },
+    "services": {
+      "license": {
+        "enabled": true,
+        "endpoints": {
+          "activate": "https://key.plrs.im/dflt/license/activate",
+          "enroll": "https://key.plrs.im/dflt/license/enroll",
+          "token": "https://key.plrs.im/dflt/license/token",
+          "deauthorize": "https://key.plrs.im/dflt/license/deauthorize",
+          "document": "https://key.plrs.im/dflt/license/document"
+        }
+      },
+      "config": {
+        "enabled": true,
+        "schemaVersion": 1,
+        "endpoints": {
+          "document": "https://key.plrs.im/dflt/config/document",
+          "schema": "https://key.plrs.im/dflt/config/schema"
+        },
+        "mint": {
+          "available": false
+        }
+      },
+      "release": {
+        "enabled": false
+      },
+      "update": {
+        "enabled": false
+      },
+      "identity": {
+        "enabled": false
+      }
+    }
+  },
+  "everything": {
+    "version": 2,
+    "protocolVersion": 3,
+    "schemaVersion": 1,
+    "product": "full",
+    "slug": "full",
+    "name": "full",
+    "baseUrl": "https://key.plrs.im",
+    "core": {
+      "registration": "requires-license",
+      "compat": {
+        "min": "0.0.0",
+        "max": "99.0.0"
+      },
+      "endpoints": {
+        "discovery": "https://key.plrs.im/full/.well-known/polaris.json",
+        "jwks": "https://key.plrs.im/full/.well-known/jwks.json",
+        "trustManifest": "https://key.plrs.im/full/.well-known/polaris-trust.jws",
+        "devices": "https://key.plrs.im/full/devices",
+        "report": "https://key.plrs.im/full/devices/report"
+      }
+    },
+    "trust": {
+      "jwksUrl": "https://key.plrs.im/full/.well-known/jwks.json",
+      "trustManifestUrl": "https://key.plrs.im/full/.well-known/polaris-trust.jws",
+      "cacheSeconds": 300,
+      "pinnedKeys": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "signingKid": "pkey-test-prod-2026",
+      "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+      "keys": [
+        {
+          "kid": "pkey-test-prod-2026",
+          "alg": "EdDSA",
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+          "status": "active",
+          "active": true
+        }
+      ]
+    },
+    "services": {
+      "license": {
+        "enabled": true,
+        "endpoints": {
+          "activate": "https://key.plrs.im/full/license/activate",
+          "enroll": "https://key.plrs.im/full/license/enroll",
+          "token": "https://key.plrs.im/full/license/token",
+          "deauthorize": "https://key.plrs.im/full/license/deauthorize",
+          "document": "https://key.plrs.im/full/license/document"
+        }
+      },
+      "config": {
+        "enabled": true,
+        "schemaVersion": 1,
+        "endpoints": {
+          "document": "https://key.plrs.im/full/config/document",
+          "schema": "https://key.plrs.im/full/config/schema"
+        },
+        "mint": {
+          "available": false
+        }
+      },
+      "release": {
+        "enabled": true,
+        "configured": true,
+        "binaryName": "full",
+        "repository": {
+          "owner": "acme",
+          "name": "full"
+        },
+        "endpoints": {
+          "changelog": "https://key.plrs.im/full/release/changelog",
+          "install": "https://key.plrs.im/full/release/install.sh",
+          "download": "https://key.plrs.im/full/release/dl"
+        }
+      },
+      "update": {
+        "enabled": true,
+        "configured": true,
+        "channels": ["stable", "beta"],
+        "sparkleEd25519PublicKey": "SPARKLEPUB",
+        "endpoints": {
+          "version": "https://key.plrs.im/full/update/version",
+          "appcast": "https://key.plrs.im/full/update/appcast.xml",
+          "channelAppcast": "https://key.plrs.im/full/update/{channel}/appcast.xml"
+        },
+        "archParameter": ["arm64", "x86_64"]
+      },
+      "identity": {
+        "enabled": true,
+        "configured": true,
+        "endpoints": {
+          "session": "https://key.plrs.im/full/identity/session",
+          "sessionLicense": "https://key.plrs.im/full/identity/session/license",
+          "authStart": "https://key.plrs.im/full/identity/auth/start",
+          "authCallback": "https://key.plrs.im/full/identity/auth/callback",
+          "authPoll": "https://key.plrs.im/full/identity/auth/poll",
+          "authLogout": "https://key.plrs.im/full/identity/auth/logout",
+          "authDeviceStart": "https://key.plrs.im/full/identity/auth/device/start",
+          "authDeviceEntry": "https://key.plrs.im/full/identity/auth/device",
+          "authDeviceVerify": "https://key.plrs.im/full/identity/auth/device/verify",
+          "authDevicePoll": "https://key.plrs.im/full/identity/auth/device/poll"
+        }
+      }
+    }
+  },
+  "configOnly": {
+    "version": 2,
+    "protocolVersion": 3,
+    "schemaVersion": 1,
+    "product": "cfg",
+    "slug": "cfg",
+    "name": "cfg",
+    "baseUrl": "https://key.plrs.im",
+    "core": {
+      "registration": "open",
+      "compat": {
+        "min": "0.0.0",
+        "max": "99.0.0"
+      },
+      "endpoints": {
+        "discovery": "https://key.plrs.im/cfg/.well-known/polaris.json",
+        "jwks": "https://key.plrs.im/cfg/.well-known/jwks.json",
+        "trustManifest": "https://key.plrs.im/cfg/.well-known/polaris-trust.jws",
+        "devices": "https://key.plrs.im/cfg/devices",
+        "report": "https://key.plrs.im/cfg/devices/report",
+        "register": "https://key.plrs.im/cfg/devices/register"
+      }
+    },
+    "trust": {
+      "jwksUrl": "https://key.plrs.im/cfg/.well-known/jwks.json",
+      "trustManifestUrl": "https://key.plrs.im/cfg/.well-known/polaris-trust.jws",
+      "cacheSeconds": 300,
+      "pinnedKeys": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "signingKid": "pkey-test-prod-2026",
+      "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+      "keys": [
+        {
+          "kid": "pkey-test-prod-2026",
+          "alg": "EdDSA",
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+          "status": "active",
+          "active": true
+        }
+      ]
+    },
+    "services": {
+      "license": {
+        "enabled": false
+      },
+      "config": {
+        "enabled": true,
+        "schemaVersion": 1,
+        "endpoints": {
+          "document": "https://key.plrs.im/cfg/config/document",
+          "schema": "https://key.plrs.im/cfg/config/schema"
+        },
+        "mint": {
+          "available": false
+        }
+      },
+      "release": {
+        "enabled": false
+      },
+      "update": {
+        "enabled": false
+      },
+      "identity": {
+        "enabled": false
+      }
+    }
+  }
+}

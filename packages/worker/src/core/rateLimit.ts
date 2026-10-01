@@ -77,6 +77,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   authStart: "closed",
   authDeviceStart: "closed",
   authDeviceVerify: "closed",
+  // The RFC 8628 user-code page: the only brake on guessing a live code (§5.1) besides the
+  // code space itself, so an outage must not turn it into an unlimited oracle.
+  authDeviceEntry: "closed",
   authCallback: "closed",
   authCallbackState: "closed",
   authPoll: "closed",
@@ -154,4 +157,59 @@ export async function rateLimitOk(
  */
 export function clientIp(req: Request): string {
   return req.headers.get("cf-connecting-ip") ?? "unknown";
+}
+
+/**
+ * The caller's network, for a per-client bucket that guards a GUESSABLE secret: the IPv4
+ * address as-is, or the IPv6 /64 the address sits in (`2001:db8:0:1::/64`). One ordinary IPv6
+ * host is routed a whole /64 — 2^64 source addresses at no cost (R10-04b) — so keying such a
+ * bucket on the full address would give it an unlimited supply of fresh budgets. Used only
+ * where the budget itself is the brute-force bound (`authDeviceEntry`, the RFC 8628 user-code
+ * page); every other bucket keeps `clientIp` (aggregating them is an unowned platform
+ * follow-up). Anything that does not parse as IPv6 falls back to `clientIp`.
+ */
+export function clientNetwork(req: Request): string {
+  const ip = clientIp(req);
+  if (!ip.includes(":")) return ip;
+  const hextets = expandIpv6(ip);
+  return hextets ? `${hextets.slice(0, 4).join(":")}::/64` : ip;
+}
+
+/** The eight hextets of an IPv6 address (lower-case, no leading zeros), or null. Accepts `::`
+ *  compression, a zone id and an embedded IPv4 tail (`::ffff:192.0.2.1`). */
+function expandIpv6(raw: string): string[] | null {
+  const addr = raw.split("%")[0]!.toLowerCase();
+  const halves = addr.split("::");
+  if (halves.length > 2) return null;
+  const parse = (part: string): string[] | null => {
+    if (part === "") return [];
+    const out: string[] = [];
+    const groups = part.split(":");
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i]!;
+      if (i === groups.length - 1 && g.includes(".")) {
+        const octets = g.split(".");
+        if (
+          octets.length !== 4 ||
+          !octets.every((o) => /^\d{1,3}$/.test(o) && Number(o) <= 255)
+        )
+          return null;
+        const n = octets.map(Number);
+        out.push(((n[0]! << 8) | n[1]!).toString(16));
+        out.push(((n[2]! << 8) | n[3]!).toString(16));
+      } else if (/^[0-9a-f]{1,4}$/.test(g)) {
+        out.push(parseInt(g, 16).toString(16));
+      } else {
+        return null;
+      }
+    }
+    return out;
+  };
+  const head = parse(halves[0]!);
+  const tail = halves.length === 2 ? parse(halves[1]!) : [];
+  if (!head || !tail) return null;
+  if (halves.length === 1) return head.length === 8 ? head : null;
+  const fill = 8 - head.length - tail.length;
+  if (fill < 1) return null;
+  return [...head, ...Array<string>(fill).fill("0"), ...tail];
 }

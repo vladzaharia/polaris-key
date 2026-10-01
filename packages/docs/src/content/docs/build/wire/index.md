@@ -75,7 +75,7 @@ The full route table, including every non-document surface, is at
 | [Trust](/docs/build/wire/trust/)                     | Pinned keys, the signed trust manifest, revocation by absence, and why the cache is never a key source                                      | §1, §2.3      |
 | [Cache and clock](/docs/build/wire/cache-and-clock/) | The v3 cache record, the re-verify-everything load, and the monotonic clock floor                                                           | §4            |
 | [Offline bundles](/docs/build/wire/bundles/)         | `pkey-bundle+jws`, its three time bounds, and the four ordered refusal steps                                                                | §7            |
-| [The conformance corpus](/docs/build/wire/corpus/)   | One generator, four runners, and the CI drift gate that keeps them honest                                                                   | §6, §10       |
+| [The conformance corpus](/docs/build/wire/corpus/)   | One generator, the language runners, and the CI drift gate that keeps them honest                                                           | §6, §10       |
 
 ## One client, end to end
 
@@ -111,16 +111,17 @@ is unchanged — which is the point of minting bundle documents in the ordinary 
 
 ## Version counters, and who owns them
 
-Five numbers travel in this system and they are deliberately independent. Confusing two of
+Six numbers travel in this system and they are deliberately independent. Confusing two of
 them is the most common way to misread a document (spec §9).
 
-| Counter               | Value | Owner / meaning                                                                |
-| --------------------- | ----- | ------------------------------------------------------------------------------ |
-| `PROTOCOL_VERSION`    | `3`   | The wire contract itself. `@polaris-key/protocol/core`.                        |
-| `CACHE_VERSION` (`v`) | `3`   | The on-disk cache record format. Any other value is discarded, never migrated. |
-| `corpusVersion`       | `2`   | The conformance corpus at `conformance/corpus/v2/`.                            |
-| `gateMatrixVersion`   | `2`   | The gate-transition matrix inside that corpus.                                 |
-| `fingerprintVersion`  | `1`   | The hardware-fingerprint formulas. Unchanged since v1.                         |
+| Counter               | Value | Owner / meaning                                                                                              |
+| --------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
+| `PROTOCOL_VERSION`    | `3`   | The wire contract itself. `@polaris-key/protocol/core`.                                                      |
+| `CACHE_VERSION` (`v`) | `3`   | The on-disk cache record format. Any other value is discarded, never migrated.                               |
+| `corpusVersion`       | `2`   | The conformance corpus at `conformance/corpus/v2/`.                                                          |
+| `gateMatrixVersion`   | `2`   | The gate-transition matrix inside that corpus.                                                               |
+| `fingerprintVersion`  | `1`   | The hardware-fingerprint formulas. Unchanged since v1.                                                       |
+| `stageMatrixVersion`  | `1`   | The boot stage machine (client boot behaviour, outside this contract), owned by `client-core/src/stages.ts`. |
 
 Two more `schemaVersion` fields exist and neither is a wire version:
 
@@ -151,16 +152,16 @@ deprecated. No verifier, signer or store has ever accepted them.
 The normative spec is repo-only by decision; it is not published on this site. If you are
 reading these pages with a checkout in front of you:
 
-| What                         | Path                                                                                                  |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------- |
-| The normative spec           | `docs/security/WIRE-CONTRACT-V3.md`                                                                   |
-| Its predecessor (historical) | `docs/security/WIRE-CONTRACT-V2.md`                                                                   |
-| The conformance corpus       | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`                       |
-| The corpus generator         | `tools/sign-corpus.ts`                                                                                |
-| Frozen JWS encode/verify     | `packages/shared-jws/src/index.ts`                                                                    |
-| Wire types and constants     | `packages/shared-protocol/src/` — `core.ts`, `license.ts`, `config.ts`, `trust.ts`                    |
-| The reference client         | `packages/client-core/src/` — `verify.ts`, `trust.ts`, `bundle.ts`, `gate.ts`, `clock.ts`, `store.ts` |
-| The signer                   | `packages/worker/src/core/` — `signing.ts`, `trust.ts`, `bundles.ts`                                  |
+| What                         | Path                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| The normative spec           | `docs/security/WIRE-CONTRACT-V3.md`                                                                                |
+| Its predecessor (historical) | `docs/security/WIRE-CONTRACT-V2.md`                                                                                |
+| The conformance corpus       | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`               |
+| The corpus generator         | `tools/sign-corpus.ts`                                                                                             |
+| Frozen JWS encode/verify     | `packages/shared-jws/src/index.ts`                                                                                 |
+| Wire types and constants     | `packages/shared-protocol/src/` — `core.ts`, `license.ts`, `config.ts`, `trust.ts`                                 |
+| The reference client         | `packages/client-core/src/` — `verify.ts`, `trust.ts`, `bundle.ts`, `gate.ts`, `clock.ts`, `store.ts`, `stages.ts` |
+| The signer                   | `packages/worker/src/core/` — `signing.ts`, `trust.ts`, `bundles.ts`                                               |
 
 Case counts for the corpus, generated from the corpus files themselves, are at
 [Conformance corpus v2](/docs/reference/corpus/).

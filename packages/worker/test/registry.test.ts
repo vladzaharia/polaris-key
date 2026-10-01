@@ -17,6 +17,7 @@ import {
 } from "../src/fingerprint.js";
 import {
   DEFAULT_SERVICES,
+  SERVICE_SLUGS,
   type ServicesMap,
   type ServiceSlug,
 } from "../src/core/services.js";
@@ -224,28 +225,16 @@ describe("dispatchService", () => {
   it("404s every service for a product that enables nothing", async () => {
     const env = makeEnv(new KvMock(), ["djdl"]);
     const registry = registryOf(
-      ...(
-        ["license", "config", "release", "update", "identity"] as ServiceSlug[]
-      ).map(
+      ...SERVICE_SLUGS.map(
         (slug) =>
           stub(slug, () => new Response("reached", { status: 200 })).descriptor,
       ),
     );
-    const allOff: ServicesMap = {
-      license: { enabled: false },
-      config: { enabled: false },
-      release: { enabled: false },
-      update: { enabled: false },
-      identity: { enabled: false },
-    };
+    const allOff = Object.fromEntries(
+      SERVICE_SLUGS.map((slug) => [slug, { enabled: false }]),
+    ) as ServicesMap;
 
-    for (const slug of [
-      "license",
-      "config",
-      "release",
-      "update",
-      "identity",
-    ] as ServiceSlug[]) {
+    for (const slug of SERVICE_SLUGS) {
       const res = await dispatchService(registry, slug, allOff, makeCtx(env));
       expect(res.status).toBe(404);
     }

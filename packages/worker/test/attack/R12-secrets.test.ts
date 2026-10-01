@@ -1036,6 +1036,7 @@ describe("R12-07 committed corpus key published as a prod trust anchor", () => {
     const readmes = [
       join(REPO, "sdks", "python", "README.md"),
       join(REPO, "sdks", "swift", "README.md"),
+      join(REPO, "sdks", "godot", "README.md"),
       join(REPO, "packages", "sdk-node", "README.md"),
       join(REPO, "packages", "sdk-react", "README.md"),
       join(REPO, "README.md"),

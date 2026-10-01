@@ -8,7 +8,7 @@
 | Unblocks    | [P4-08](P4-08-godot-packs.md), [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md), [P5-07](P5-07-desktop-plugins.md), [D-03](D-03-diceroll-after-p3.md)                                        |
 | Role        | `pkey-godot-engineer`                                                                                                                                                                                            |
 | Plan mode   | no                                                                                                                                                                                                               |
-| Gates       | none in the graph; `stage-matrix.json` boot-guard rows must already exist (planned in P3-01, emitted by P3-02), else this is a corpus change that needs a plan first                                             |
+| Gates       | none in the graph; `stage-matrix.json` confirmation rows must already exist (planned in P3-01, emitted by P3-02; the guard rows exist from P1-09), else this is a corpus change that needs a plan first          |
 | Human input | none required. A Windows machine or CI runner to measure the sidecar rename                                                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                        |
 
@@ -122,10 +122,12 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   ids (`app_store`, `steam`) with updater mechanisms (`velopack`, `sparkle`, `appimage`, `apk`).
   Key the adapters on the README §3.1 outlet ids the plan fixes (`direct.gd`, `app_store.gd`,
   `ms_store.gd`, …), and keep the mechanisms as the bridge scripts that `binary.method` reaches.
-- **Guard rows come from the plan.** [P1-09](P1-09-boot-stage-machine.md) leaves the boot-guard
-  rows of `stage-matrix.json` to this package "under its own plan". P3-01 is asked to plan them
-  (its item 20) so P3-02 emits them. If they are missing when you start, stop and escalate:
-  adding them here would make this a corpus-touching, plan-mode change.
+- **Only the confirmation rows come from the plan.** [P1-09](P1-09-boot-stage-machine.md) already
+  ships `guardCases` and rows 24–25 (`bootGuardAction`, `MAX_FAILED_BOOTS = 2`). P3-01 (item 20)
+  plans the confirmation rows and P3-02 emits them. This package implements the slots and the
+  counting against `bootGuardAction`, and the host side of P3-02's confirmation rows. If those rows
+  are missing when you start, stop and escalate: adding them here would make this a
+  corpus-touching, plan-mode change.
 - **Capabilities only narrow.** The compiled outlet defaults from P3-08 are the ceiling; the feed
   can lower them. A store, Steam or itch build can never be talked into self-updating code.
 - **Verify, then act.** Godot never checks a PCK's own hashes, so the SDK verifies the staged file
@@ -172,7 +174,8 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
 - [ ] Staged code is dropped on a channel switch, an engine change, or a binary at least as new.
 - [ ] With no native plugin installed, `binary` with `method: native` degrades to a download link and
       boot continues.
-- [ ] The Godot stage machine passes the boot-guard rows of `stage-matrix.json`.
+- [ ] The Godot stage machine passes the boot-guard rows and `guardCases` of `stage-matrix.json`,
+      including the confirmation rows P3-02 emitted.
 - [ ] No SDK code passes `--main-pack`, `--path`, `--scene` or `-s` (a test greps the addon).
 - [ ] Windows rename behaviour is measured and the chosen approach recorded in the PR.
 - [ ] The Godot CI job passes on the editor and a release template; the green gate passes for the

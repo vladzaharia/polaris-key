@@ -8,10 +8,11 @@
  *
  * This is deliberately NOT in `core/`. Core owns dispatch and knows nothing about which services
  * exist (see `core/registry.ts`); knowing the names is the composition root's job, and this file
- * is the composition root's list. Adding a service is a multi-file change: one entry here, one
- * slug in `router.ts`'s `SERVICE_NAMESPACES`, and the slug in `core/services.ts` and
- * `core/discovery.ts` (plus the manifest package, console and SDKs). Core's DISPATCH learns no
- * names; its static tables do.
+ * is the composition root's list. The slugs themselves are declared once, in
+ * `tools/services.json` (Core, `router.ts`'s `SERVICE_NAMESPACES` and discovery all iterate the
+ * generated `SERVICE_SLUGS`); `test/serviceTable.test.ts` fails until every table row has an
+ * entry here. Adding a service is a checklist, not a one-liner:
+ * /docs/contribute/layout/#adding-a-service.
  *
  * Descriptors are stateless route tables, so rebuilding the map per request would be work on
  * every cold path for no benefit.

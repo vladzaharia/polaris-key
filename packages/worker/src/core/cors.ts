@@ -88,8 +88,8 @@ export const CORS_MAX_AGE = "600";
  *
  * Deliberately absent (cookie-bearing or navigation-only; they stay first-party):
  * `identity/session`, `identity/session/license`, `identity/auth/start`,
- * `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device/verify`,
- * `config/mint/{mintId}/auth`, and Release's CI policy routes
+ * `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device`,
+ * `identity/auth/device/verify`, `config/mint/{mintId}/auth`, and Release's CI policy routes
  * (`release/channels/{channel}/{promote,pin,unpin}`, `release/releases/{releaseId}/yank`), which
  * a CI job calls with a `pkeyci_` bearer and no browser page ever should.
  *

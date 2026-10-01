@@ -9,8 +9,12 @@
  *     /identity/auth/callback               GET   exchange the code, mint/locate the licence
  *     /identity/auth/poll                   GET   loopback poll for a device token
  *     /identity/auth/logout                 POST  drop the session + deauthorize its device
+ *     /identity/auth/device                 GET   the RFC 8628 user-code page (entry form, or the
+ *                                                 confirmation page for `?user_code=`)
+ *                                           POST  look a typed code up, or confirm it (CSRF)
  *     /identity/auth/device/start           POST  begin a device-code flow
- *     /identity/auth/device/verify          GET   render the confirmation page
+ *     /identity/auth/device/verify          GET   render the confirmation page (by device code;
+ *                                                 kept for flows started before `/device`)
  *                                           POST  confirm it
  *     /identity/auth/device/poll            POST  poll a confirmed device flow
  *
@@ -32,6 +36,7 @@
 import type { ServiceContext } from "../../core/registry.js";
 import {
   handleAuthCallback,
+  handleAuthDeviceEntry,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
@@ -68,6 +73,8 @@ export async function handleIdentityRoutes(
         return handleAuthPoll(req, env, db, product, now);
       case "logout":
         return handleBrowserLogout(req, env, db, product);
+      case "device":
+        return handleAuthDeviceEntry(req, env, product);
       default:
         return null;
     }
