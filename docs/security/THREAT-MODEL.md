@@ -1063,7 +1063,12 @@ guard with P3-12, each of which extends this section.
   and decided a mistyped bundle member at the wrong step, Godot read `1e4294967297` as 10), and
   all four accepted a small-order `R`. A divergence between verifiers is a forgery that works
   against some installs; the corpus now pins the strict verdict in every language. P3-12 makes
-  the Worker unable to sign anything the strict verifier refuses.
+  the Worker unable to sign anything the strict verifier refuses. The verifier's work and memory
+  are linear in the capped payload: each SDK holds the non-wire-integer pointers as a tree of
+  reference tokens and builds full pointer strings only when a caller lists them, because one
+  pointer per number grows with the square of the payload (a 64 KiB document of long member
+  names over fractional numbers cost 0.25 to 1.5 GB). Each of shared-jws, Swift and Godot has a
+  regression test on that document.
 - **The canonical channel and its residual.** A feed's `channel` claim is the canonical channel
   the Worker resolved, which keys the client's `seq` floor; a `latest` claim is refused, and no
   SDK resolves an alias itself. One residual is accepted (plan decision 4): a request for
