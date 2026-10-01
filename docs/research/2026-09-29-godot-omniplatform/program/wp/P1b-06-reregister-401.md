@@ -66,8 +66,10 @@ when License is disabled.
 - React: no renderer change. The desktop adapter reaches the Worker through the host's Node client,
   which gains the behaviour. Record in React's manifest whatever P1b-01 decided for the `web` runtime,
   whose browser adapter holds no device token.
-- A line in each SDK's docs page (`packages/docs/src/content/docs/build/sdks/{node,python,swift}.mdx`)
-  describing the rule.
+- A line in each SDK's docs page describing the rule. The pages
+  (`packages/docs/src/content/docs/build/sdks/{node,python,swift}.mdx`) render each SDK's README
+  whole, so the line goes in `packages/sdk-node/README.md`, `sdks/python/README.md` and
+  `sdks/swift/README.md`.
 
 **Out** (and where it belongs instead):
 
@@ -85,10 +87,17 @@ when License is disabled.
 
 - the License service is disabled for the product (`ctx.enabled("license") === false`, resolved from
   discovery, `expectedServices` or the default); or
-- the current token was minted by `devices.register()` in this process, or, after a restart, the
-  device has no verified licence document and no imported bundle.
+- the current token was minted by `devices.register()` in this process.
 
 Otherwise use `license/token`, as today.
+
+_Correction (P1b-06 implementation):_ the original rule had a third limb, "after a restart, the
+device has no verified licence document and no imported bundle". It is not implemented. The recorded
+`sync-errors` transcript starts from exactly that state (a token, an empty cache, License on) for a
+licensed device and pins its 401 to `POST /license/token`; a licence-less device after a restart
+looks identical. Distinguishing them needs the token source persisted, which is the plan-mode store
+change named under **Out**. So after a restart, a device on a product with License on uses
+`license/token`; a config-only product (License off) still re-registers.
 
 - The in-memory source can live beside the token in each token manager (Node already has a
   `TokenSource` type with `"register"` in `core/token.ts`).
@@ -121,18 +130,18 @@ real licence is refused with `registration_closed`.
 
 ## Acceptance criteria
 
-- [ ] Node, Python and Swift replay `register-reregister-401` green.
-- [ ] Unit tests in each of the three SDKs show:
-  - [ ] a licensed device still uses `/license/token`;
-  - [ ] a licence-less device, and a product with License disabled, use `/devices/register` with no
+- [x] Node, Python and Swift replay `register-reregister-401` green.
+- [x] Unit tests in each of the three SDKs show:
+  - [x] a licensed device still uses `/license/token`;
+  - [x] a licence-less device, and a product with License disabled, use `/devices/register` with no
         `Authorization` header;
-  - [ ] two parallel 401s cause exactly one register call;
-  - [ ] a `403 registration_closed` records the hard 401 and makes no second attempt.
-- [ ] React's desktop adapter test shows the renderer picking up the host's new state after a
+  - [x] two parallel 401s cause exactly one register call;
+  - [x] a `403 registration_closed` records the hard 401 and makes no second attempt.
+- [x] React's desktop adapter test shows the renderer picking up the host's new state after a
       host-side re-register (bridge fixture), tagged `@pkey-feature license.reregister`.
-- [ ] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
+- [x] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
       passes.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 

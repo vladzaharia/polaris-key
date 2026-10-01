@@ -106,7 +106,7 @@ from .stages import (
 from .store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle, Store
 from .sync import DocOutcome, SyncDeps, SyncResult, sync
 from .telemetry import build_snapshot, report_snapshot
-from .token import TokenManager
+from .token import Reacquired, TokenManager, TokenSource, choose_reacquire_route
 from .trust import (
     SUPPORTED_TRUST_SCHEMA_VERSIONS,
     TrustManager,
@@ -164,6 +164,9 @@ __all__ = [
     "Store",
     # token / sync / telemetry
     "TokenManager",
+    "TokenSource",
+    "Reacquired",
+    "choose_reacquire_route",
     "sync",
     "SyncDeps",
     "SyncResult",
