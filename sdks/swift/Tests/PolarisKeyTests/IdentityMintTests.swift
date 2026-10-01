@@ -8,6 +8,8 @@
 //   * a failed poll is retried at the SAME interval, never faster;
 //   * the prompt's expiry and task cancellation both stop polling;
 //   * a second `mintToken` inside the lifetime makes no request, and nothing minted is stored;
+//   * a cached token is bound to the device token it was minted with: after `deactivate()` the
+//     next mint is `unauthorized` without a request, and a different device token re-mints;
 //   * a disabled service refuses before any request.
 //
 // The clock is `CoreOptions.clock`, advanced by the injected sleep, so every wait is exact and
@@ -308,6 +310,44 @@ final class IdentityMintTests: XCTestCase {
         XCTAssertEqual(token, "pkeyt_device")
         let cache = await store.readCache()
         XCTAssertFalse(String(describing: cache).contains("m1"))
+    }
+
+    func testDeactivateDropsTheCachedMintedToken() async throws {
+        let plane = Plane(
+            clock: ReplayClock(t0),
+            [
+                mintPath: [Self.minted("m1", t0 + 600)],
+                "/\(product)/license/deauthorize": [.reply(200, #"{"ok":true}"#)],
+            ])
+        let (core, _) = try await core(plane, services: [.license, .config], token: "pkeyt_device")
+        let config = ConfigClient(core: core)
+        let license = LicenseClient(core: core, options: LicenseClientOptions(fingerprint: false))
+        let first = try await config.mintToken("musickit")
+        XCTAssertEqual(first.token, "m1")
+        try await license.deactivate()
+        XCTAssertEqual(plane.calls.filter { $0.path == mintPath }.count, 1)
+        do {
+            _ = try await config.mintToken("musickit")
+            XCTFail("expected unauthorized")
+        } catch let error as PolarisError {
+            XCTAssertEqual(error.code, "unauthorized")
+        }
+        XCTAssertEqual(plane.calls.filter { $0.path == mintPath }.count, 1)
+    }
+
+    func testADifferentDeviceTokenReMints() async throws {
+        let plane = Plane(
+            clock: ReplayClock(t0),
+            [mintPath: [Self.minted("m1", t0 + 600), Self.minted("m2", t0 + 600)]])
+        let (core, _) = try await core(plane, services: [.license, .config], token: "pkeyt_device")
+        let config = ConfigClient(core: core)
+        let first = try await config.mintToken("musickit")
+        XCTAssertEqual(first.token, "m1")
+        try await core.setToken("pkeyt_other")
+        let second = try await config.mintToken("musickit")
+        XCTAssertEqual(second.token, "m2")
+        XCTAssertEqual(
+            plane.calls.map(\.authorization), ["Bearer pkeyt_device", "Bearer pkeyt_other"])
     }
 
     func testMintRefusesBeforeAnyRequestWhenConfigIsOff() async throws {

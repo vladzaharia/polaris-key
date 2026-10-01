@@ -10,6 +10,11 @@
 // never written to the cache file or the keychain, and it dies with the process. Within one
 // process it is reused until `expiresAt` minus a 30-second margin. Mirrors `@polaris-key/node`'s
 // `config/mint.ts`.
+//
+// A CACHED TOKEN IS BOUND TO THE DEVICE TOKEN IT WAS MINTED WITH. A hit counts only while the
+// client still holds that same device token, so `license.deactivate()`, a cleared or revoked
+// token, or a different identity signing in all invalidate it: the call then takes the normal
+// path, which refuses with `unauthorized` before any request when no token is held.
 
 import Foundation
 import PolarisKeyCore
@@ -44,25 +49,28 @@ enum MintEndpoint {
             }
     }
 
+    /// One mint (with the single re-acquire), and the device token that was presented for it.
     static func mint(
         _ core: CoreContext, recipeId: String, reacquire: ReacquireToken?
-    ) async throws -> MintedToken {
+    ) async throws -> (deviceToken: String, minted: MintedToken) {
         guard let token = await core.token else {
             throw PolarisError(
                 code: "unauthorized",
                 message: "edge-mint needs a device token: activate, enrol, sign in or register first.")
         }
-        var response = try await get(core, token: token, recipeId: recipeId)
+        var presented = token
+        var response = try await get(core, token: presented, recipeId: recipeId)
         if response.status == 401, let reacquire, let next = await reacquire(token) {
             try? await core.setToken(next)
-            response = try await get(core, token: next, recipeId: recipeId)
+            presented = next
+            response = try await get(core, token: presented, recipeId: recipeId)
         }
         if response.status == 200 {
             guard let body = try? JSONDecoder().decode(MintBody.self, from: response.body) else {
                 throw PolarisError(
                     code: "bad_response", message: "edge-mint answered without a token and its expiry.")
             }
-            return MintedToken(token: body.token, expiresAt: body.expiresAt)
+            return (presented, MintedToken(token: body.token, expiresAt: body.expiresAt))
         }
         let error = try? JSONDecoder().decode(MintError.self, from: response.body)
         throw PolarisError(

@@ -77,9 +77,10 @@ public actor ConfigClient {
     private let envPrefix: String
     private let environment: [String: String]
     private let reacquire: ReacquireToken?
-    /// Edge-minted tokens, in memory only (see `Mint.swift`).
-    private var minted: [String: MintedToken] = [:]
-    private var minting: [String: Task<MintedToken, Error>] = [:]
+    /// Edge-minted tokens, in memory only, each with the device token it was minted with (see
+    /// `Mint.swift`).
+    private var minted: [String: (deviceToken: String, token: MintedToken)] = [:]
+    private var minting: [String: (deviceToken: String, task: Task<MintedToken, Error>)] = [:]
 
     /// - Parameter reacquire: the §5 single re-acquire an edge-mint 401 gets. Injected by the
     ///   facade because the route belongs to the license module; without it a 401 simply fails.
@@ -113,25 +114,40 @@ public actor ConfigClient {
                 message:
                     "\"\(recipeId)\" is not an edge-mint recipe id (lowercase letters, digits and \"-\").")
         }
-        if let held = minted[recipeId],
-            await core.now() < held.expiresAt - MINT_REUSE_MARGIN_SECONDS
-        {
-            return held
+        let current = await core.token
+        if let held = minted[recipeId] {
+            if let current, held.deviceToken == current,
+                await core.now() < held.token.expiresAt - MINT_REUSE_MARGIN_SECONDS
+            {
+                return held.token
+            }
+            minted[recipeId] = nil
         }
-        if let pending = minting[recipeId] { return try await pending.value }
+        if let pending = minting[recipeId], let current, pending.deviceToken == current {
+            return try await pending.task.value
+        }
         let core = self.core
         let reacquire = self.reacquire
-        let task = Task { try await MintEndpoint.mint(core, recipeId: recipeId, reacquire: reacquire) }
-        minting[recipeId] = task
-        defer { minting[recipeId] = nil }
-        do {
-            let fresh = try await task.value
-            minted[recipeId] = fresh
+        let task = Task { () async throws -> MintedToken in
+            let (deviceToken, fresh) = try await MintEndpoint.mint(
+                core, recipeId: recipeId, reacquire: reacquire)
+            self.store(recipeId, deviceToken: deviceToken, token: fresh)
             return fresh
+        }
+        minting[recipeId] = (current ?? "", task)
+        defer {
+            if minting[recipeId]?.task == task { minting[recipeId] = nil }
+        }
+        do {
+            return try await task.value
         } catch {
             minted[recipeId] = nil
             throw error
         }
+    }
+
+    private func store(_ recipeId: String, deviceToken: String, token: MintedToken) {
+        minted[recipeId] = (deviceToken, token)
     }
 
     private func doc() async -> ConfigDoc? {
