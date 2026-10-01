@@ -9,10 +9,10 @@ This guide is a template for bringing a product onto Polaris Key, using **djdl**
 first Polaris Key product — as the worked example throughout. Substitute your own product
 slug, repo, and secrets wherever djdl appears.
 
-Polaris Key is five opt-in services — **License**, **Config**, **Release**, **Update**,
-**Identity** — over an always-on **Core** substrate (product registry, the device principal,
+Polaris Key is six opt-in services — **License**, **Config**, **Release**, **Distribution**,
+**Update**, **Identity** — over an always-on **Core** substrate (product registry, the device principal,
 trust and signing, discovery, rate limiting, audit). So onboarding starts with two declarations
-rather than with code: which of the five this product runs, and how its devices get a credential.
+rather than with code: which of the six this product runs, and how its devices get a credential.
 Which routes exist, what discovery says, and which SDK sub-clients answer are all projections of
 those two.
 
@@ -33,12 +33,13 @@ product view and portal capabilities all read that one column. A disabled servic
 if the product had never existed — the same answer an unregistered slug gets, so probing tells a
 caller nothing.
 
-The five service slugs (`license`, `config`, `release`, `update`, `identity`) are the current
+The six service slugs (`license`, `config`, `release`, `distribution`, `update`, `identity`) are
+the current
 vocabulary; the pre-suite module names still validate and are translated, so a manifest may mix
 them. `licensing` → license, `oidc` → identity, `edgeMint` → config (edge-minting is a
-secret-**delivery** capability of Config, not a service of its own), and `releases` → release
-**and** update, because the old module meant "distributes software", which the suite splits into
-the truth store and the feed over it. A manifest that declares no `modules` block — or one where
+secret-**delivery** capability of Config, not a service of its own), and `releases` → release,
+distribution **and** update, because the old module meant "distributes software", which the suite
+splits into the truth store, delivery, and the feed. A manifest that declares no `modules` block — or one where
 nothing is `enabled: true` — runs **license + config**, which is what every product ran before the
 suite existed.
 
@@ -53,7 +54,7 @@ suite existed.
 Leaving it undeclared is meaningfully different from choosing a value: an undeclared product
 tracks the derivation — `requires-license` if License is on, else `requires-identity` if Identity
 is on, else `open` — so turning License off later moves it rather than leaving it pinned to a
-policy nobody wrote. djdl declares all five services and the closed policy:
+policy nobody wrote. djdl declares all six services and the closed policy:
 
 ```jsonc
 {
@@ -61,6 +62,7 @@ policy nobody wrote. djdl declares all five services and the closed policy:
     "license": { "enabled": true },
     "config": { "enabled": true },
     "release": { "enabled": true },
+    "distribution": { "enabled": true },
     "update": { "enabled": true },
     "identity": { "enabled": true },
   },
@@ -68,9 +70,11 @@ policy nobody wrote. djdl declares all five services and the closed policy:
 }
 ```
 
-Three coherence rules are enforced on the manifest and the admin API alike. `update` without
-`release` is an error (`update_requires_release`) — the feed renders over Release's truth store,
-so it would answer every client with an empty document rather than a failure. `requires-identity`
+Four coherence rules are enforced on the manifest and the admin API alike. Release, Distribution
+and Update form a chain: `distribution` without `release` is an error
+(`distribution_requires_release`), and `update` without `distribution` is an error
+(`update_requires_distribution`) — the feed would answer every client with an empty document
+rather than a failure. `requires-identity`
 without Identity is an error (`registration_requires_identity`): there is no login to stand
 behind, so the endpoint could never say yes. Config with License off **and** `requires-license`
 declared is an error (`config_without_activation`) — the service is enabled and its devices have

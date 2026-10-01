@@ -39,11 +39,14 @@ Every SDK composes one always-on **Core** (device id, credential, trust, the off
 | `client.release` | changelog, install script, artifact URLs                                   |
 | `client.update`  | version check, the Sparkle appcast URL                                     |
 
+Distribution has no sub-client: storefront clients read its feeds directly, and the SDKs only
+carry its slug in their capability map.
+
 A handful of calls — `status`/`isLicensed`, `getConfig`, `sync`, `importBundle` — are also kept
 on the top-level client, for the code a host writes before it knows which service it's talking
 to. Verbs and field names follow each language's own convention (`activateWithKey` in
 TypeScript, `activate_with_key` in Python, `activate(key:)` in Swift), but the _shape_ —
-Core plus one sub-client per service, the same five services in the same order — never
+Core plus one sub-client per service, the same services in the same order — never
 changes, which is what makes the SDK READMEs on the following pages readable as one document
 in four dialects rather than four unrelated APIs.
 

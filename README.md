@@ -1,13 +1,15 @@
 # Polaris Key
 
-A reusable, multi-product **licensing + remotely-managed-config + release-distribution**
+A reusable, multi-product **licensing + remotely-managed-config + release-delivery**
 platform — a single Cloudflare Worker at `key.plrs.im` plus SDKs for **Node, Python, Swift,
 and React**. An always-on **Core** substrate (product registry, the device principal, trust
-and signing, discovery, rate limiting, audit) carries five services a product opts into one
+and signing, discovery, rate limiting, audit) carries six services a product opts into one
 at a time: **License** (activation, tiers, entitlements), **Config** (signed config/secret
 delivery, edge token minting), **Release** (GitHub-connected release truth, artifacts,
-changelogs), **Update** (Sparkle appcasts, version feeds), and **Identity** (OIDC, browser
-sessions, customer portal). Any product registers as data (no worker redeploy) and enables
+changelogs), **Distribution** (how releases reach devices and outlets: transports,
+availability, rollouts), **Update** (Sparkle appcasts, version feeds), and **Identity** (OIDC,
+browser sessions, customer portal). Release, Distribution and Update form a chain —
+release ← distribution ← update — and read one another only through Core's descriptor hooks. Any product registers as data (no worker redeploy) and enables
 only what it uses — Config serves any registered device with no licence in the picture.
 Extracted and generalized from DJDL's baked-in system; djdl is the first product.
 
@@ -73,9 +75,9 @@ normative spec.
   mints/locates a license by subject; verified claims drive entitlements + host-allowlisted
   secrets.
 - **Edge-mint + releases:** generic per-product token minting (Apple MusicKit) under Config at
-  `/<product>/config/mint/*`, and GitHub-App release distribution split across Release (truth:
-  sync, channels, artifacts, changelogs) and Update (the feed: Sparkle appcasts, `/version`,
-  eligibility).
+  `/<product>/config/mint/*`, and GitHub-App releases split across Release (truth: sync,
+  channels, artifacts, changelogs), Distribution (delivery to devices and outlets) and Update
+  (the feed: Sparkle appcasts, `/version`, eligibility).
 
 ## Develop
 

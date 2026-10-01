@@ -47,6 +47,7 @@
           "license": true,
           "config": true,
           "release": false,
+          "distribution": false,
           "update": false,
           "identity": false
         }
@@ -78,6 +79,7 @@
           "license": true,
           "config": true,
           "release": false,
+          "distribution": false,
           "update": false,
           "identity": false
         }

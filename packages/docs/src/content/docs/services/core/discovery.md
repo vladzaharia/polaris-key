@@ -89,7 +89,7 @@ The v2 document had a `modules` object that each surface re-derived its own way 
 were unconditional because every product had them. The document could say a service was on while
 its routes 404ed, or off while they answered.
 
-`services` replaces it, keyed by the five service slugs, and every entry is a projection of one
+`services` replaces it, keyed by the six service slugs, and every entry is a projection of one
 authority, `products.services_json`:
 
 - **enabled** — the service's own `discoveryFragment`. Core does not know what a service

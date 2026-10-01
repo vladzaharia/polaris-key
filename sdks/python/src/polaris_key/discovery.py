@@ -69,9 +69,9 @@ def _map(enabled: Iterable[str] = ()) -> ServicesMap:
 
 
 #: What a client believes when it has neither a discovery document nor a stated
-#: expectation: licensing + settings distribution, which is what every product ran before
-#: the suite existed. Distribution and identity are OFF, so their sub-clients refuse until
-#: something says otherwise — the fail-closed half of D-21 applied to the genuinely new
+#: expectation: licensing + settings delivery, which is what every product ran before
+#: the suite existed. Release, Distribution, Update and Identity are OFF, so their sub-clients
+#: refuse until something says otherwise — the fail-closed half of D-21 applied to the genuinely new
 #: surfaces. The service table's ``defaultEnabled`` rows.
 DEFAULT_SERVICES: ServicesMap = _map(DEFAULT_ENABLED_SERVICES)
 

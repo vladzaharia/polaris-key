@@ -114,19 +114,20 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Services — what the product runs", () => {
-  it("renders all five services with their enabled state, the owner badge, and a derived registration policy", async () => {
+  it("renders all six services with their enabled state, the owner badge, and a derived registration policy", async () => {
     renderServices();
 
-    // All five of D-15's opt-in services, each showing what the server said — not a default.
+    // All six opt-in services (D-15, plus P2b-01's Distribution), each showing what the server said — not a default.
     //
     // Wait for the SETTLED value, not merely for the switch to exist. The card seeds its draft
-    // from the response in an effect, so there is exactly one committed render where the five
+    // from the response in an effect, so there is exactly one committed render where the six
     // switches are in the DOM at their initial all-off state; `findByRole` can resolve on that
     // render when the machine is busy, and this assertion then reads a frame that never reaches
     // an operator's eye.
     await waitFor(() => expect(checked(toggle("License"))).toBe(true));
     expect(checked(toggle("Config"))).toBe(false);
     expect(checked(toggle("Release"))).toBe(true);
+    expect(checked(toggle("Distribution"))).toBe(true);
     expect(checked(toggle("Update"))).toBe(true);
     expect(checked(toggle("Identity"))).toBe(true);
 

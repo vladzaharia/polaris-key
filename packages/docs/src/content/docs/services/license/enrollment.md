@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-A product that mainly wants signed settings distribution should not have to gate every install
+A product that mainly wants signed settings delivery should not have to gate every install
 behind a license key or a sign-in. **Enrollment** is the keyless path: the server auto-issues a
 license bound to the machine, authorizes the device, and hands back the same body
 [activation](/docs/services/license/activation/) returns.

@@ -290,6 +290,7 @@ describe("UpdateClient — the feed over Release's store (§R1)", () => {
             license: { enabled: false },
             config: { enabled: false },
             release: { enabled: true },
+            distribution: { enabled: true },
             update: {
               enabled: true,
               endpoints: {
@@ -349,6 +350,7 @@ describe("Release/Update — the D-21 gate fires before the dial", () => {
             license: { enabled: false },
             config: { enabled: false },
             release: { enabled: true },
+            distribution: { enabled: true },
             update: { enabled: false },
             identity: { enabled: false },
           },

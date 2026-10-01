@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Polaris Key is five opt-in services over an always-on Core. "Which services does this product
+Polaris Key is six opt-in services over an always-on Core. "Which services does this product
 run?" therefore has to have exactly one answer, in exactly one place, or the surfaces that depend
 on it drift: before this existed, four different surfaces each re-derived enablement from the
 presence of some child row, which is how the discovery document could advertise a service whose
@@ -23,6 +23,7 @@ set — the product's declared device registration policy:
   "license": { "enabled": true },
   "config": { "enabled": true },
   "release": { "enabled": false },
+  "distribution": { "enabled": false },
   "update": { "enabled": false },
   "identity": { "enabled": false },
   "registration": "open"
@@ -67,6 +68,7 @@ modules:
   license: { enabled: true }
   config: { enabled: true }
   release: { enabled: true }
+  distribution: { enabled: true }
   update: { enabled: true }
 ```
 
@@ -86,16 +88,19 @@ The pre-suite module names still validate. They are translated to service slugs 
 **only slugs are stored**, so no manifest in the field has to be rewritten on the day the server
 learns the new words, and one block may mix the two spellings.
 
-| Declared    | Enables                  | Why                                                                                                                                                                                                                          |
-| ----------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `licensing` | `license`                | a rename                                                                                                                                                                                                                     |
-| `config`    | `config`                 | unchanged                                                                                                                                                                                                                    |
-| `releases`  | `release` **+** `update` | the old module meant "this product distributes software", which the suite splits into the truth store and the feed over it; mapping it to `release` alone would take the appcast away from every product already serving one |
-| `oidc`      | `identity`               | a rename, not a change of meaning                                                                                                                                                                                            |
-| `edgeMint`  | `config`                 | edge-minting is a secret-**delivery** capability of Config, not a unit of its own, so declaring it turns Config on                                                                                                           |
+| Declared    | Enables                                       | Why                                                                                                                                                                                                                             |
+| ----------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `licensing` | `license`                                     | a rename                                                                                                                                                                                                                        |
+| `config`    | `config`                                      | unchanged                                                                                                                                                                                                                       |
+| `releases`  | `release` **+** `distribution` **+** `update` | the old module meant "this product distributes software", which the suite splits into the truth store, delivery, and the feed; mapping it to `release` alone would take the appcast away from every product already serving one |
+| `oidc`      | `identity`                                    | a rename, not a change of meaning                                                                                                                                                                                               |
+| `edgeMint`  | `config`                                      | edge-minting is a secret-**delivery** capability of Config, not a unit of its own, so declaring it turns Config on                                                                                                              |
 
-Because `releases` brings Release with it by construction, a legacy manifest can never trip the
-`update_requires_release` rule below.
+Because `releases` brings the whole chain with it by construction, a legacy manifest can never
+trip `distribution_requires_release` or `update_requires_distribution` below. A manifest that names
+the slugs `release` and `update` directly, without `distribution`, does trip the second one: add
+`distribution: { enabled: true }`. (Migration `0033` turned Distribution on for every stored
+product that had Release on, so such a product keeps serving until its manifest is fixed.)
 
 ## Who owns the column: `services_source`
 
@@ -125,7 +130,7 @@ token, or make a timing difference. Disabled, unregistered, and no-such-route re
 `404`, because telling them apart is the reconnaissance being refused.
 
 **2. The discovery document.** `/<product>/.well-known/polaris.json` carries a `services` object
-keyed by the five slugs. An enabled service contributes its own fragment — its endpoints and its
+keyed by the six slugs. An enabled service contributes its own fragment — its endpoints and its
 capability answers; a disabled one is `{"enabled": false}` and nothing else, so a disabled
 service's endpoints cannot be read out of a public document. This is also the SDK's
 capability-negotiation source, and it is fail-closed: a discovery document loaded this session
@@ -151,27 +156,51 @@ _relationship_ between two toggles, so no single flag can be blamed for it. Vali
 stable error **codes**, not prose, so the admin API, the console and the manifest validator can
 each render them their own way.
 
-| Code                             | The fault                                                            | Why it is refused                                                                                                                                    |
-| -------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `update_requires_release`        | Update on, Release off                                               | Update renders a feed over Release's truth store. The feed would answer every client with an empty document rather than an error — a silent failure. |
-| `registration_requires_identity` | a declared `requires-identity` policy with Identity off              | there is no login to stand behind, so the endpoint could never say yes to anyone; the product has taken registration away rather than restricted it. |
-| `config_without_activation`      | Config on, License off, **and** a declared `requires-license` policy | that closes the only mint path such a product has, leaving the service enabled and unreachable.                                                      |
+| Code                             | The fault                                                            | Why it is refused                                                                                                                                      |
+| -------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `distribution_requires_release`  | Distribution on, Release off                                         | Distribution delivers what Release says exists; with Release off there is nothing to deliver.                                                          |
+| `update_requires_distribution`   | Update on, Distribution off                                          | Update's feed tells a device what to do next over what Distribution delivered. It would answer every client with an empty document — a silent failure. |
+| `registration_requires_identity` | a declared `requires-identity` policy with Identity off              | there is no login to stand behind, so the endpoint could never say yes to anyone; the product has taken registration away rather than restricted it.   |
+| `config_without_activation`      | Config on, License off, **and** a declared `requires-license` policy | that closes the only mint path such a product has, leaving the service enabled and unreachable.                                                        |
 
 The rules are not all enforced in the same place, and the difference matters when you are
 debugging a manifest that pushed cleanly but behaves oddly:
 
-- **Manifest ingest** refuses `update_requires_release` as an error, refuses an unrecognised
+- **Manifest ingest** refuses `distribution_requires_release` and `update_requires_distribution`
+  as errors, refuses an unrecognised
   `devices.registration` outright (`invalid_registration_policy`) rather than coercing it, and
   **warns** on the softer form of `config_without_activation` — Config on with neither License nor
   Identity. That stays a warning on purpose: a config-only product issuing config documents to
   registered devices is the wire-level proof that the services are independent, not a mistake.
-- **The enablement API** (`PATCH …/services`) applies all three as hard errors, including
+- **The enablement API** (`PATCH …/services`) applies all four as hard errors, including
   `registration_requires_identity`, which manifest ingest does not check at all.
 
 That gap is why the runtime registration check is load-bearing rather than a redundant second
 opinion: a repo-authored `requires-identity` policy on an identity-disabled product reaches the
 database, and the only thing standing between it and a minted device token is Core re-asking the
 Identity descriptor at request time — a question that fails closed at every step.
+
+The chain **Release ← Distribution ← Update** replaced the single `update_requires_release` rule,
+which the two edges together imply (Distribution itself requires Release). That code is retired
+and is never emitted.
+
+## Services read one another through Core
+
+A service may import only Core and itself; `update → release` is the one historical exception,
+enforced by `boundaries.test.ts`. Everything else crosses through **descriptor hooks** that Core
+declares (`core/hooks.ts`) and the providing service implements — the pattern the registration
+predicate below set:
+
+| Hook                 | Provided by  | What it answers                                                                 |
+| -------------------- | ------------ | ------------------------------------------------------------------------------- |
+| `releaseCatalog`     | Release      | deliverables, releases, builds, artifact records, channel policy, yanks         |
+| `delivery`           | Distribution | the default transport (`pkey-cdn`) and availability; later rollouts and URLs    |
+| `outletCapabilities` | Distribution | what one outlet permits (`null` for every outlet until outlets can be declared) |
+
+Core builds the hooks for each request from the registry and the product's `services_json`, and
+every accessor **fails closed**: while the providing service is off it returns `null` and the
+provider's code never runs. Hooks are read-only — a cross-service write would be an import in
+disguise.
 
 ## Registration policy and its derived default
 

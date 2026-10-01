@@ -43,11 +43,11 @@ directory: `.pkey/`. Three documents, each independently JSON, YAML, or YML — 
 tries `.json` first, then `.yaml`, then `.yml`, per document, so a repo may mix formats
 freely:
 
-| Document          | Purpose                                                                       |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `.pkey/schema.*`  | the config catalog                                                            |
-| `.pkey/product.*` | product metadata, enabled services, registration policy, OIDC, tiers          |
-| `.pkey/release.*` | GitHub distribution: binary name, channel workflow, Sparkle key, access modes |
+| Document          | Purpose                                                                   |
+| ----------------- | ------------------------------------------------------------------------- |
+| `.pkey/schema.*`  | the config catalog                                                        |
+| `.pkey/product.*` | product metadata, enabled services, registration policy, OIDC, tiers      |
+| `.pkey/release.*` | GitHub releases: binary name, channel workflow, Sparkle key, access modes |
 
 There is no fallback directory and no dual-read of an alternate location — one directory,
 tried in one fixed extension order, is the whole lookup.

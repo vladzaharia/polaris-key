@@ -58,10 +58,15 @@ The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and 
 conformance runner. Python, Swift and Godot are standalone toolchains under `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
-opt-in service (`license`, `config`, `release`, `update`, `identity`). The services are declared
+opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`). The services
+are declared
 once, as rows of `tools/services.json`; `pnpm gen:services` generates every language's slug
 constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
-`SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`.
+`SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`. Release, Distribution and Update form a
+chain (release ← distribution ← update, coherence codes `distribution_requires_release` and
+`update_requires_distribution`); services read one another's state only through Core's
+read-only descriptor hooks in `src/core/hooks.ts` (`releaseCatalog`, `delivery`,
+`outletCapabilities`), which answer `null` while the providing service is off.
 
 ## Toolchain constraint: Node 22
 
@@ -163,7 +168,8 @@ require a worker redeploy. If you are about to write `if (product === "djdl")`, 
 **6. Service boundaries are enforced by a test.** `packages/worker/test/boundaries.test.ts` walks
 every file under `src/services/` and refuses anything outside: a service may import `../../core/…`,
 its own directory, declared package dependencies, and `node:*` builtins. The **only** sanctioned
-cross-service edge is `update → release`. Everything else goes through a core-mediated interface.
+cross-service edge is `update → release`. Everything else goes through a core-mediated interface
+— for one service reading another's state, the descriptor hooks in `src/core/hooks.ts`.
 (It is a test and not a lint rule because this repo has no ESLint — `pnpm lint` is Prettier.)
 
 **7. Raw hardware values are hashed on-device and never transmitted.** A fingerprint is a set of

@@ -57,6 +57,7 @@ export default defineConfig({
             { label: "License", autogenerate: { directory: "services/license" }, collapsed: true },
             { label: "Config", autogenerate: { directory: "services/config" }, collapsed: true },
             { label: "Release", autogenerate: { directory: "services/release" }, collapsed: true },
+            { label: "Distribution", autogenerate: { directory: "services/distribution" }, collapsed: true },
             { label: "Update", autogenerate: { directory: "services/update" }, collapsed: true },
             { label: "Identity", autogenerate: { directory: "services/identity" }, collapsed: true },
           ],

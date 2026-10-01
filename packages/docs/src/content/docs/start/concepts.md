@@ -11,7 +11,7 @@ reconcile. Consistent names are a feature: they make the system learnable across
 
 ## The suite: Core and services
 
-Polaris Key is **five opt-in services** over an always-on **Core** substrate. A product turns on
+Polaris Key is **six opt-in services** over an always-on **Core** substrate. A product turns on
 only what it needs, and what it left off does not exist for it. That is what lets one app take
 signed settings without taking licensing, and another take a release feed without taking either.
 
@@ -20,19 +20,25 @@ signed settings without taking licensing, and another take a release feed withou
   list/rename/deauthorize, fingerprints, facts), trust & signing, discovery, rate limiting, the
   error taxonomy, audit, and manifest-ingest dispatch. Core is not a service and never appears in
   an enablement set; a product that enables nothing still registers devices and serves its JWKS.
-- **service** — one of exactly five opt-in units, each addressed by a singular **slug**. The slug
+- **service** — one of exactly six opt-in units, each addressed by a singular **slug**. The slug
   is the worker directory (`packages/worker/src/services/<slug>/`), the route namespace
-  (`/<product>/<slug>/…`), the SDK sub-client, and the console section, so there is one word per
-  unit everywhere:
+  (`/<product>/<slug>/…`), the SDK sub-client (where one exists), and the console section, so
+  there is one word per unit everywhere. The services are declared once, as rows of
+  `tools/services.json`:
   - **[license](/docs/services/license/)** — activation and enrollment, the license document,
     licenses and keys, tiers, fingerprint and auto-issue policy.
   - **[config](/docs/services/config/)** — the catalog (schema), the config document, profiles,
     edge-mint secret delivery.
   - **[release](/docs/services/release/)** — GitHub sync, channel resolution, artifacts,
-    changelog, install script: the release truth store.
-  - **[update](/docs/services/update/)** — the appcast, `/version`, eligibility: the feed
-    rendered _over_ Release's truth store. `update → release` is the only sanctioned
-    cross-service dependency; every other pair talks through Core.
+    changelog, install script: the release truth store. It answers _what exists?_
+  - **[distribution](/docs/services/distribution/)** — how every release of every deliverable
+    reaches devices and outlets, and what state it is in there: outlets, transports,
+    availability, rollouts. It answers _how does it reach devices, and is it there yet?_ (The
+    word means only this service — never "release + update".)
+  - **[update](/docs/services/update/)** — the appcast, `/version`, eligibility: the feed that
+    tells an installed copy what to do next. It answers _what should this device do next?_
+    `update → release` is the only sanctioned cross-service import; every other pair talks
+    through Core (the **descriptor hooks**, below).
   - **[identity](/docs/services/identity/)** — product OIDC, browser sessions, the customer
     portal.
 
@@ -47,6 +53,7 @@ signed settings without taking licensing, and another take a release feed withou
     "license": { "enabled": true },
     "config": { "enabled": true },
     "release": { "enabled": false },
+    "distribution": { "enabled": false },
     "update": { "enabled": false },
     "identity": { "enabled": false },
     "registration": "open"
@@ -74,7 +81,7 @@ the presence of some child row, so the discovery document could advertise a serv
   rate-limit token. Disabled, unregistered, and no-such-route return one identical 404, because
   telling them apart is the reconnaissance being refused.
 - **the discovery document** — `/<product>/.well-known/polaris.json` carries a `services` object
-  keyed by the five slugs. An enabled service contributes its own fragment; a disabled one is
+  keyed by the six slugs. An enabled service contributes its own fragment; a disabled one is
   `{"enabled": false}` and nothing else, so a disabled service's endpoints cannot be read out of
   a public document.
 - **the admin product view** — one projection (`serviceStateOf`) stamps `services`,
@@ -88,12 +95,16 @@ the presence of some child row, so the discovery document could advertise a serv
 
 **Coherence.** An enablement set is validated as a set, not flag by flag — every one of these
 faults is a _relationship_ between two toggles, so no single flag can be blamed for it. The
-enablement API (`PATCH /manage/api/products/<slug>/services`) refuses all three, and returns
+enablement API (`PATCH /manage/api/products/<slug>/services`) refuses all four, and returns
 stable codes rather than prose so the API, the console, and the manifest validator can each
 render them their own way:
 
-- `update_requires_release` — Update on with Release off. The feed would answer every client with
-  an empty document rather than an error, which is a silent failure.
+- `distribution_requires_release` — Distribution on with Release off. Distribution delivers what
+  Release says exists; with Release off there is nothing to deliver.
+- `update_requires_distribution` — Update on with Distribution off. The feed would answer every
+  client with an empty document rather than an error, which is a silent failure. Together with
+  the rule above it implies Release is on whenever Update is, so the older
+  `update_requires_release` is retired.
 - `registration_requires_identity` — a declared `requires-identity` policy with Identity off.
   There is no login to stand behind, so the product has taken registration away rather than
   restricted it.
@@ -136,13 +147,28 @@ A `.pkey/product` `modules:` block may still use the pre-suite names. The parser
 to service slugs and stores only slugs, so no manifest in the field has to be rewritten on the
 day the server learns the new words, and a block may mix the two vocabularies:
 
-`licensing → license` · `config → config` · `releases → release + update` · `oidc → identity` ·
-`edgeMint → config`
+`licensing → license` · `config → config` · `releases → release + distribution + update` ·
+`oidc → identity` · `edgeMint → config`
 
 The two non-obvious rows: `releases` meant "this product distributes software", which the suite
-splits into the truth store (Release) and the feed (Update) — mapping it to `release` alone would
-take the appcast away from every product already serving one. And `edgeMint` is a secret-delivery
+splits into the truth store (Release), delivery (Distribution) and the feed (Update) — mapping it
+to `release` alone would take the appcast away from every product already serving one. And `edgeMint` is a secret-delivery
 _capability_ of Config, not a unit of its own, so declaring it turns Config on.
+
+### Descriptor hooks
+
+A service may import only Core and itself (the one exception is `update → release`). When one
+service needs another's state, it asks **Core**, which asks the service that provides it:
+
+- **`releaseCatalog`** (provided by Release) — deliverables, releases, builds, artifact records,
+  channel policy and yanks, read-only.
+- **`delivery`** (provided by Distribution) — transports, availability and, later, rollout and
+  delivery URLs per outlet.
+- **`outletCapabilities`** (provided by Distribution) — what one outlet permits.
+
+A hook answers `null` while the service that provides it is off for the product — its code never
+runs — and the consumer degrades explicitly. A hook never writes: a write across services would
+be an import in disguise.
 
 ## Core nouns
 
@@ -246,6 +272,29 @@ for product.
   critical flag. Owned by the manifest until an operator or CI changes it, then by `admin` until
   it is reverted — the `services_source` precedent. Not the same as a release **channel floor**,
   the sync's anti-rollback high-water mark.
+
+## Distribution model
+
+Distribution's nouns (see [Distribution](/docs/services/distribution/)). The service ships them as
+vocabulary first; the records arrive with the distribution manifest and the packages after it.
+
+- **outlet** — a venue a build reaches players through, and that owns (or delegates) its updates:
+  `direct`, `app-store`, `testflight`, `play`, `steam`, `itch`, `ms-store`, `flathub`, `web`, …
+  Not "surface" (a Release/Update route kind) and not "distribution" (the service).
+- **transport** — how a deliverable's bytes arrive on an outlet: `pkey-cdn` (Polaris Key's own
+  CDN, the default), `embedded`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`,
+  `flatpak-ext`, `web`. One deliverable, many transports.
+- **availability** — "release V of deliverable D is live on outlet O since T": a distribution
+  record, the answer to "is it in the store yet?".
+- **submission** — a build's review lifecycle at a store outlet (App Store Connect, Play,
+  Microsoft Store states).
+- **rollout** — percentage exposure of a release on one outlet; distribution state, carried into
+  Update's feed. Distinct from a **channel**, which is Release's.
+- **listing** — store-page metadata (name, subtitle, description, icon, screenshots, category)
+  that feeds storefront sources and the download page.
+- **outlet capabilities** — what an outlet permits: `binaryUpdates` (`self` | `store` | `none`),
+  `codeUpdates`, `dataUpdates`, `channelSwitch`, `commerce`, `downloadedScripts`. The
+  security-relevant bits are operator-owned, never manifest-writable.
 
 ## Layering & precedence
 

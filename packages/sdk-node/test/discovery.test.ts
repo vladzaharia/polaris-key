@@ -42,6 +42,7 @@ const NONE = {
   license: { enabled: false },
   config: { enabled: false },
   release: { enabled: false },
+  distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: false },
 } as const;
@@ -113,6 +114,7 @@ function workerDoc(
         mint: { available: false },
       },
       release: { enabled: false },
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     },
@@ -321,7 +323,7 @@ describe("discoverProduct — the typed stable fields", () => {
 // boolean, and an unreadable `services` value rejects the document instead of degrading to the
 // permissive default.
 describe("discoverProduct — the v3 services map (D-21)", () => {
-  it("expands a partial map into all five slugs, absent ⇒ disabled", async () => {
+  it("expands a partial map into all six slugs, absent ⇒ disabled", async () => {
     const res = await parse(
       workerDoc({
         services: {
@@ -342,11 +344,13 @@ describe("discoverProduct — the v3 services map (D-21)", () => {
       config: { enabled: true },
       release: { enabled: false },
       // Never mentioned by the document at all — and therefore OFF.
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     });
     expect(Object.keys(res.manifest.services).sort()).toEqual([
       "config",
+      "distribution",
       "identity",
       "license",
       "release",
