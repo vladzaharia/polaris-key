@@ -1,126 +1,118 @@
-# Polaris Key compact-JWS verify (WIRE-CONTRACT-V3 §1) in GDScript — feasibility port of
-# packages/shared-jws/src/index.ts `verifyJws`. Same step order:
-#   1. bound ENCODED segment lengths before decoding anything
-#   2. header: strict base64url, <= 1024 B, duplicate-key rejection, must be an object
-#   3. alg == "EdDSA", typ == expected, kid is a String present in the caller's trust set
-#   4. Ed25519 over the ASCII bytes of "<h>.<p>" exactly as received
-#   5. ONLY THEN decode + cap + duplicate-key-check + parse the payload
-# Returns {"kid": String, "payload": Variant} or null on ANY failure.
 class_name PKeyJws
 extends RefCounted
+## Compact-JWS verify (WIRE-CONTRACT-V3 §1, §10): a port of packages/shared-jws `verifyJws`, in
+## the frozen 13-step order (notes/A2 §1.1):
+##
+##    1. split into exactly three parts
+##   2–3. bound the ENCODED header (b64Cap(1024)) and payload (b64Cap(cap)) before decoding;
+##        the cap is max(65536, requested), so a caller can only raise it
+##   4–6. strict base64url header, ≤ 1024 bytes, strict JSON (PKeyJson: no duplicate keys),
+##        must be an object
+##    7. alg == "EdDSA"
+##    8. typ == the call site's typ when one is named; a present typ must be a string
+##    9. kid is a string
+##   10. the key is trust[kid] (never from the document): raw 32-byte Ed25519, base64url
+##   11. strict base64url signature
+##   12. Ed25519 over the bytes of "<header>.<payload>" exactly as received
+##   13. ONLY THEN decode the payload, apply the cap and parse it strictly
+##
+## Returns {"kid": String, "payload": Variant}, or null on ANY failure.
+##
+## Steps 1–11 are `prepare`, step 12 is a `PKeyEd25519Job`, step 13 is `finish`. `verify` runs
+## them inline. `verify_async` (a coroutine) runs step 12 on `WorkerThreadPool` when the
+## signing input is over 4 KB (or when asked to: every verify during gameplay) and the build has
+## threads, and slices it across frames when it has none (S-04).
+##
+## The per-kid cache keeps each trusted key decompressed with its odd-multiple table
+## (PKeyEd25519.prepare_key), keyed by the key BYTES so a kid that names other bytes in another
+## trust set can never reuse a stale entry.
 
 const MAX_DOC_BYTES := 65536
 const MAX_HEADER_BYTES := 1024
+const MAX_BUNDLE_BYTES := 262144
+## Signing inputs above this size leave the calling thread in `verify_async`.
+const OFFLOAD_BYTES := 4096
+const _KEY_CACHE_MAX := 32
 
-static var _b64url_re: RegEx
-static var _nul_escape_re: RegEx
+enum Mode { AUTO, INLINE, THREAD, SLICED }
+
+## How `verify_async` runs step 12. AUTO: inline up to OFFLOAD_BYTES unless offload is asked
+## for, then a worker thread where `OS.has_feature("threads")`, else frame slices. The others
+## force one path (tests and the profile suite).
+static var mode: Mode = Mode.AUTO
+## The per-frame budget for sliced verification, in microseconds (default 6 ms; 4–8 ms).
+static var slice_budget_usec := 6000
+static var _keys: Dictionary = {}
+
+
+## Sets the slice budget, clamped to 4–8 ms.
+static func set_slice_budget_ms(ms: float) -> void:
+	slice_budget_usec = int(clampf(ms, 4.0, 8.0) * 1000.0)
+
+
+static func clear_key_cache() -> void:
+	_keys.clear()
 
 
 static func _b64cap(n: int) -> int:
 	return int(ceil(n * 4.0 / 3.0)) + 4
 
 
-## Strict base64url (unpadded, `A-Z a-z 0-9 - _` only). Returns null when invalid.
-## Validation runs in native RegEx (PCRE2) so a 350 KB bundle segment costs no GDScript loop.
-static func b64url_decode_strict(s: String) -> Variant:
-	if _b64url_re == null:
-		_b64url_re = RegEx.create_from_string("^[A-Za-z0-9_-]*$")
-	if _b64url_re.search(s) == null:
-		return null
-	var n := s.length()
-	if n % 4 == 1:
-		return null  # impossible length; Marshalls would print an engine ERROR and return []
-	if n == 0:
-		return PackedByteArray()
-	var std := s.replace("-", "+").replace("_", "/")
-	match n % 4:
-		2: std += "=="
-		3: std += "="
-	var out: PackedByteArray = Marshalls.base64_to_raw(std)
-	if out.is_empty():
-		return null
-	return out
-
-
-## Port of hasDuplicateKeys (shared-jws): tracks one key-set per open object; null for arrays.
-static func has_duplicate_keys(text: String) -> bool:
-	var stack: Array = []
-	var expect_key := false
-	var i := 0
-	var n := text.length()
-	while i < n:
-		var c := text.unicode_at(i)
-		if c == 34:  # "
-			i += 1
-			var start := i
-			var has_escape := false
-			while i < n:
-				var d := text.unicode_at(i)
-				if d == 92:  # backslash
-					has_escape = true
-					i += 2
-					continue
-				if d == 34:
-					break
-				i += 1
-			var literal := text.substr(start, i - start)
-			i += 1
-			if expect_key:
-				var top = stack.back() if not stack.is_empty() else null
-				if top != null:
-					var key: String = literal
-					if has_escape:
-						var j := JSON.new()
-						if j.parse("\"" + literal + "\"") != OK or typeof(j.data) != TYPE_STRING:
-							return true  # unparseable key — refuse rather than guess
-						key = j.data
-					if (top as Dictionary).has(key):
-						return true
-					(top as Dictionary)[key] = true
-				expect_key = false
-			continue
-		if c == 123:  # {
-			stack.append({})
-			expect_key = true
-		elif c == 91:  # [
-			stack.append(null)
-			expect_key = false
-		elif c == 125 or c == 93:  # } ]
-			if not stack.is_empty():
-				stack.pop_back()
-			expect_key = false
-		elif c == 44:  # ,
-			expect_key = not stack.is_empty() and stack.back() != null
-		i += 1
-	return false
-
-
-## WIRE-CONTRACT-V3 §10 (the U+0000 representation limit): a GDScript String cannot hold U+0000
-## (Godot 4.4 drops it, 4.7 replaces it), so every real `\u0000` escape becomes the six-character
-## escape `\ufffd` before the duplicate-key scan and the parse. Decoded documents are then the
-## same on every engine and the loss stays visible. An escaped backslash before `u0000` (`\\u0000`)
-## is text and stays. One native RegEx pass, only when the text contains the escape; no offset
-## moves.
-static func _nul_as_fffd(text: String) -> String:
-	if not text.contains("\\u0000"):
-		return text
-	if _nul_escape_re == null:
-		_nul_escape_re = RegEx.create_from_string("(?<!\\\\)((?:\\\\\\\\)*)\\\\u0000")
-	return _nul_escape_re.sub(text, "$1\\ufffd", true)
-
-
-static func _parse_strict_json(bytes: PackedByteArray) -> Variant:
-	var text := _nul_as_fffd(bytes.get_string_from_utf8())
-	if has_duplicate_keys(text):
-		return null
-	var j := JSON.new()
-	if j.parse(text) != OK:
-		return null
-	return j.data
-
-
-## trust: Dictionary kid -> base64url(raw 32-byte Ed25519 key). typ: required typ ("" = none).
+## Synchronous verify. `fast = false` uses the TweetNaCl-style reference verifier for step 12.
 static func verify(jws: String, trust: Dictionary, typ: String = "", max_payload_bytes: int = 0, fast := true) -> Variant:
+	var p = prepare(jws, trust, typ, max_payload_bytes)
+	if p == null:
+		return null
+	var ok: bool
+	if fast:
+		var job := PKeyEd25519Job.new(p["sig"], p["input"], p["key"])
+		job.run()
+		ok = job.ok
+	else:
+		ok = PKeyEd25519Ref.verify(p["sig"], p["input"], p["key"][0])
+	return finish(p) if ok else null
+
+
+## Coroutine verify: step 12 leaves the calling thread for big inputs, or for every input when
+## `offload` is true. Same result as `verify`.
+static func verify_async(jws: String, trust: Dictionary, typ: String = "", max_payload_bytes: int = 0, offload := false) -> Variant:
+	var p = prepare(jws, trust, typ, max_payload_bytes)
+	if p == null:
+		return null
+	var job := PKeyEd25519Job.new(p["sig"], p["input"], p["key"])
+	await run_job(job, offload or (p["input"] as PackedByteArray).size() > OFFLOAD_BYTES)
+	return finish(p) if job.ok else null
+
+
+## Runs `job` per `mode`: inline, on a worker thread, or in frame slices.
+static func run_job(job: PKeyEd25519Job, offload: bool) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var how := mode
+	if how == Mode.AUTO:
+		if not offload:
+			how = Mode.INLINE
+		elif OS.has_feature("threads"):
+			how = Mode.THREAD
+		else:
+			how = Mode.SLICED
+	if tree == null:
+		how = Mode.INLINE
+	match how:
+		Mode.THREAD:
+			var id := WorkerThreadPool.add_task(job.run, false, "PolarisKey verify")
+			while not WorkerThreadPool.is_task_completed(id):
+				await tree.process_frame
+			WorkerThreadPool.wait_for_task_completion(id)
+		Mode.SLICED:
+			while not job.step(slice_budget_usec):
+				await tree.process_frame
+		_:
+			job.run()
+
+
+## Steps 1–11. Returns the pending verification (a Dictionary: kid, sig, input, key, payload
+## segment and cap) or null.
+static func prepare(jws: String, trust: Dictionary, typ: String = "", max_payload_bytes: int = 0) -> Variant:
 	var parts := jws.split(".", true)
 	if parts.size() != 3:
 		return null
@@ -128,18 +120,19 @@ static func verify(jws: String, trust: Dictionary, typ: String = "", max_payload
 	var enc_payload: String = parts[1]
 	var enc_sig: String = parts[2]
 
-	var payload_cap: int = max(MAX_DOC_BYTES, max_payload_bytes)
+	var payload_cap: int = maxi(MAX_DOC_BYTES, max_payload_bytes)
 	if enc_header.length() > _b64cap(MAX_HEADER_BYTES):
 		return null
 	if enc_payload.length() > _b64cap(payload_cap):
 		return null
 
-	var header_bytes = b64url_decode_strict(enc_header)
+	var header_bytes = PKeyB64Url.decode_strict(enc_header)
 	if header_bytes == null or (header_bytes as PackedByteArray).size() > MAX_HEADER_BYTES:
 		return null
-	var header = _parse_strict_json(header_bytes)
-	if typeof(header) != TYPE_DICTIONARY:
+	var parsed := PKeyJson.parse_bytes(header_bytes)
+	if not parsed["ok"] or not (parsed["value"] is Dictionary):
 		return null
+	var header: Dictionary = parsed["value"]
 
 	if not (header.get("alg") is String) or header["alg"] != "EdDSA":
 		return null
@@ -150,28 +143,47 @@ static func verify(jws: String, trust: Dictionary, typ: String = "", max_payload
 	if not (header.get("kid") is String):
 		return null
 	var kid: String = header["kid"]
-	if not trust.has(kid) or not (trust[kid] is String):
+	if not (trust.get(kid) is String) or trust[kid] == "":
 		return null
-	var raw_key = b64url_decode_strict(trust[kid])
-	if raw_key == null or (raw_key as PackedByteArray).size() != 32:
+	var key := _prepared_key(trust[kid])
+	if key.is_empty():
 		return null
 
-	var sig = b64url_decode_strict(enc_sig)
+	var sig = PKeyB64Url.decode_strict(enc_sig)
 	if sig == null:
 		return null
-	var signing_input := (enc_header + "." + enc_payload).to_ascii_buffer()
-	var ok: bool
-	if fast:
-		ok = PKeyEd25519.verify(sig, signing_input, raw_key)
-	else:
-		ok = PKeyEd25519Ref.verify(sig, signing_input, raw_key)
-	if not ok:
-		return null
+	return {
+		"kid": kid,
+		"sig": sig,
+		"input": (enc_header + "." + enc_payload).to_utf8_buffer(),
+		"key": key,
+		"payload": enc_payload,
+		"cap": payload_cap,
+	}
 
-	var payload_bytes = b64url_decode_strict(enc_payload)
-	if payload_bytes == null or (payload_bytes as PackedByteArray).size() > payload_cap:
+
+## Step 13, for a pending verification whose signature has verified.
+static func finish(p: Dictionary) -> Variant:
+	var payload_bytes = PKeyB64Url.decode_strict(p["payload"])
+	if payload_bytes == null or (payload_bytes as PackedByteArray).size() > int(p["cap"]):
 		return null
-	var payload = _parse_strict_json(payload_bytes)
-	if payload == null:
+	var parsed := PKeyJson.parse_bytes(payload_bytes)
+	if not parsed["ok"] or parsed["value"] == null:
 		return null
-	return {"kid": kid, "payload": payload}
+	return {"kid": p["kid"], "payload": parsed["value"]}
+
+
+## The trust-set value decoded (leniently, as shared-jws `importVerifyKey` does) and prepared
+## once per key. [] when it is not a valid Ed25519 public key.
+static func _prepared_key(encoded: String) -> Array:
+	var raw = PKeyB64Url.decode_lenient(encoded)
+	if raw == null or (raw as PackedByteArray).size() != 32:
+		return []
+	var id := (raw as PackedByteArray).hex_encode()
+	if _keys.has(id):
+		return _keys[id]
+	var key := PKeyEd25519.prepare_key(raw)
+	if _keys.size() >= _KEY_CACHE_MAX:
+		_keys.clear()
+	_keys[id] = key
+	return key

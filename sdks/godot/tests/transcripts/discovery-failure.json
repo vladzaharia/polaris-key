@@ -1,0 +1,89 @@
+{
+  "transcriptVersion": 1,
+  "id": "discovery-failure",
+  "description": "Discovery fails closed. A 404 (the product is unknown) and a 500 (the Worker threw: its D1 binding is unavailable, recorded as the runtime's bare 500) both leave the client on the capability map it already had, the suite default, rather than on anything more permissive.",
+  "features": ["core.discover"],
+  "requires": [],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "note": "The product is not registered: 404.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "not-found",
+        "services": {
+          "license": true,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": false
+        }
+      }
+    },
+    {
+      "action": "discover",
+      "note": "The Worker's database is unavailable and the request throws: a bare 500.",
+      "args": {},
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": { "status": 500, "headers": {}, "body": "" }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "services": {
+          "license": true,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": false
+        }
+      }
+    }
+  ]
+}

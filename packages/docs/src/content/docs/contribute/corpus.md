@@ -25,9 +25,10 @@ gate-matrix-only runner); the ones a contributor touches most:
 - **Swift** — `sdks/swift/Tests/PolarisKeyTests/`: `ConformanceTests.swift`,
   `GateMatrixTests.swift`, `FingerprintConformanceTests.swift`, `StageMatrixTests.swift`,
   and more.
-- **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers the JWS cases today (P1-02 adds
-  the rest), run by `sdks/godot/tools/run_tests.sh` on an editor and an exported release
-  template.
+- **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers every `cases.json` family and
+  the `fingerprint.json` device ids (the gate and stage matrices follow with the licence client
+  and the boot stage machine), run by `sdks/godot/tools/run_tests.sh` on an editor and an
+  exported release template.
 - **The Worker** — two slices. `packages/worker/test/fingerprintCorpus.test.ts` covers the
   fingerprint/device-id vectors: the Worker recomputes a submitted device's `hwid` server-side
   rather than trusting the client's copy, so it has to agree with what every SDK computes
@@ -138,10 +139,12 @@ serves the recorded responses and asserts each request.
 | Recorder and scenarios | `packages/worker/test/transcripts/` (`recorder.ts`, `determinism.ts`, `scenarios/`)     |
 | Drift check            | `packages/worker/test/transcripts.test.ts`, wrapped by `pnpm gen:transcripts`           |
 | Swift mirror           | `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` (generator-owned, like `v2/`) |
+| Godot mirror           | `sdks/godot/tests/transcripts/` (generator-owned; an exported pack reads only `res://`) |
 | Node replayer          | `conformance/runners/node/transcripts.test.ts` over `transcriptReplay.ts`               |
 | React replayer         | `packages/sdk-react/test/transcripts.test.ts` (the same engine; discovery only)         |
 | Python replayer        | `sdks/python/tests/test_transcripts.py` over `transcript_replay.py`                     |
 | Swift replayer         | `sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift` over `TranscriptReplay.swift`  |
+| Godot replayer         | `sdks/godot/tests/suite_transcripts.gd` over `support/transcript_replay.gd`             |
 
 **Recording.** A scenario seeds a product, builds each request exactly as a wire-contract client
 would, sends it through `dispatchWith` (the router with the request clock injected), asserts
@@ -164,7 +167,7 @@ each feature it proves needs a test tagged `@pkey-feature <id>` that replays
 `conformance/transcripts`.
 
 ```sh
-pnpm gen:transcripts            # re-record every scenario, write the files and the Swift mirror
+pnpm gen:transcripts            # re-record every scenario, write the files and both mirrors
 pnpm gen:transcripts -- --check # the drift guard — exit 1 if anything is stale
 ```
 

@@ -1,0 +1,113 @@
+{
+  "transcriptVersion": 1,
+  "id": "discovery-capabilities",
+  "description": "Discovery installs the product's real capability map. The product runs Config alone (D-08), so a client that starts from the suite default (license + config) must come out of discover() with License OFF: discovery is the authority once it has answered.",
+  "features": ["core.discover"],
+  "requires": [],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 3,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "open",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "register": "https://key.plrs.im/djdl/devices/register"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": { "enabled": false },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": false,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": false
+        }
+      }
+    }
+  ]
+}

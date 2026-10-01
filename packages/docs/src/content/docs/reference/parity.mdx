@@ -23,22 +23,22 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 17 | 12 | 21 | 6 |
 | Python | `python` | 27 | 3 | 19 | 7 |
 | Swift | `macos`, `ios` | 27 | 3 | 20 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 0 | 0 | 53 | 3 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 7 | 0 | 46 | 3 |
 
 ## Core
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `core.verify` | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json` | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
-| `core.cache` | Verified cache; construct and load offline | transcripts + unit | ✓ | planned (unowned) | ✓ | ✓ | planned (P1-02) | — |
-| `core.bundle` | Offline bundle import | `cases.json` `bundleCases` | ✓ | planned (P1b-07) | ✓ | ✓ | planned (P1-02) | — |
-| `core.discover` | Discovery and capabilities, fail-closed | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
-| `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
-| `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | planned (P1-02) | — |
-| `core.headers` | Canonical platform/arch/SDK/engine header values | `headers.json` (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1-02) | — |
-| `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
+| `core.verify` | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `core.cache` | Verified cache; construct and load offline | transcripts + unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | — |
+| `core.bundle` | Offline bundle import | `cases.json` `bundleCases` | ✓ | planned (P1b-07) | ✓ | ✓ | ✓ | — |
+| `core.discover` | Discovery and capabilities, fail-closed | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | — |
+| `core.headers` | Canonical platform/arch/SDK/engine header values | `headers.json` (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | — |
+| `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.caps` | supports() and capability telemetry | unit | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | — |
-| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | planned (P1b-09) | planned (P1-02) | web, desktop-bridge: runtime |
+| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | planned (P1b-09) | planned (P5-05) | web, desktop-bridge: runtime |
 
 ## License
 

@@ -4,7 +4,8 @@
 // Until this landed, device-id derivation was the ONE cross-language behaviour with no golden
 // vector — Node, Python, and Swift agreed only by code review. Both formulas are now pinned,
 // and the Python (pytest) and Swift (XCTest) runners mirror this file against the SAME
-// corpus/v2/fingerprint.json.
+// corpus/v2/fingerprint.json; the Godot runner (sdks/godot/tests/suite_conformance.gd) mirrors
+// its `deviceIds` vectors, on an editor and an exported release template.
 //
 // P4 re-attribution: these two stay with `@polaris-key/node`, unlike the verification cases that
 // moved to `@polaris-key/client-core`. They are the one part of the wire contract that CANNOT be

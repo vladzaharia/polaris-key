@@ -117,6 +117,8 @@ already have partial kits to mirror (notes/A2 §10).
   - On the web build without WebCrypto Ed25519, budget about 0.45 s for the three small verifies
     and 1.6 s (blocking) or 6–12 s (sliced) for the bundle.
   - Show progress once a stage passes 250 ms.
+    - P1-02 deferred the sliced bundle verify's progress signal to this package: emit the
+      `PKeyEd25519Job` phase fraction through a `PolarisKey` signal.
   - Never time a verify stage out in under 10 s natively or 30 s on sliced web: on an A53-class
     phone a 1 s stage is normal, not a hang. A desktop host takes about 11 ms and 37 ms natively
     (19–42 ms and 75–160 ms on web) for the same stages.

@@ -111,6 +111,7 @@ file carrying a GENERATED banner:
 | `packages/sdk-react/src/core/services.generated.ts`             | the React SDK                     |
 | `sdks/python/src/polaris_key/_services.py`                      | the Python SDK                    |
 | `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift` | the Swift SDK                     |
+| `sdks/godot/addons/polaris_key/core/services_generated.gd`      | the Godot SDK                     |
 
 `pnpm gen:services -- --check` regenerates in memory and fails on any difference; it runs in the
 green gate, in CI and in the pre-commit hook. The console and the SDKs get their own generated

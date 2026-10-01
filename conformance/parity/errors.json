@@ -350,6 +350,72 @@
       "kind": "client",
       "service": "identity",
       "description": "Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own."
+    },
+    {
+      "code": "invalid-options",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: PKeyOptions failed validation at configure (a bad product slug, version, base URL or pin)."
+    },
+    {
+      "code": "not-configured",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: A call that needs configure() ran before it."
+    },
+    {
+      "code": "unsupported",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: The capability is not available on this platform or build (a stub where a native plugin is absent)."
+    },
+    {
+      "code": "timeout",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: The request got no complete answer within its wall-clock budget, every redirect hop included."
+    },
+    {
+      "code": "response-too-large",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: The response body exceeded the client's cap (512 KiB for API calls)."
+    },
+    {
+      "code": "too-many-redirects",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: The request was redirected more times than the client follows."
+    },
+    {
+      "code": "insecure-redirect",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: A redirect pointed at plain http on a non-loopback host, or at a non-http(s) URL; it was refused."
+    },
+    {
+      "code": "http-error",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: The server answered a non-success status with no recognised error code in its body."
+    },
+    {
+      "code": "invalid-response",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: The server answered 2xx with a body that failed strict parsing or lacked a required field."
+    },
+    {
+      "code": "store-failed",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: The credential or cache store could not be read or written."
+    },
+    {
+      "code": "no-token",
+      "kind": "client",
+      "service": "core",
+      "description": "Godot: An authenticated call ran with no device token in hand."
     }
   ]
 }

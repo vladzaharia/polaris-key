@@ -103,6 +103,17 @@ class ErrorCode:
     SERVER_ERROR: Final = "server-error"
     CANCELLED: Final = "cancelled"
     SIGN_IN_UNAVAILABLE: Final = "sign-in-unavailable"
+    INVALID_OPTIONS: Final = "invalid-options"
+    NOT_CONFIGURED: Final = "not-configured"
+    UNSUPPORTED: Final = "unsupported"
+    TIMEOUT: Final = "timeout"
+    RESPONSE_TOO_LARGE: Final = "response-too-large"
+    TOO_MANY_REDIRECTS: Final = "too-many-redirects"
+    INSECURE_REDIRECT: Final = "insecure-redirect"
+    HTTP_ERROR: Final = "http-error"
+    INVALID_RESPONSE: Final = "invalid-response"
+    STORE_FAILED: Final = "store-failed"
+    NO_TOKEN: Final = "no-token"
 
 
 #: Every ``ErrorCode`` value, in source order.
@@ -165,6 +176,17 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "server-error",
     "cancelled",
     "sign-in-unavailable",
+    "invalid-options",
+    "not-configured",
+    "unsupported",
+    "timeout",
+    "response-too-large",
+    "too-many-redirects",
+    "insecure-redirect",
+    "http-error",
+    "invalid-response",
+    "store-failed",
+    "no-token",
 )
 
 
@@ -229,6 +251,17 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "server-error": "client",
         "cancelled": "client",
         "sign-in-unavailable": "client",
+        "invalid-options": "client",
+        "not-configured": "client",
+        "unsupported": "client",
+        "timeout": "client",
+        "response-too-large": "client",
+        "too-many-redirects": "client",
+        "insecure-redirect": "client",
+        "http-error": "client",
+        "invalid-response": "client",
+        "store-failed": "client",
+        "no-token": "client",
     }
 )
 

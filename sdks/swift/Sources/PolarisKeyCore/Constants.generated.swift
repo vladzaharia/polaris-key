@@ -67,6 +67,17 @@ public enum ErrorCode {
     public static let serverError = "server-error"
     public static let cancelled = "cancelled"
     public static let signInUnavailable = "sign-in-unavailable"
+    public static let invalidOptions = "invalid-options"
+    public static let notConfigured = "not-configured"
+    public static let unsupported = "unsupported"
+    public static let timeout = "timeout"
+    public static let responseTooLarge = "response-too-large"
+    public static let tooManyRedirects = "too-many-redirects"
+    public static let insecureRedirect = "insecure-redirect"
+    public static let httpError = "http-error"
+    public static let invalidResponse = "invalid-response"
+    public static let storeFailed = "store-failed"
+    public static let noToken = "no-token"
 }
 
 /// Every `ErrorCode` value, in source order.
@@ -129,6 +140,17 @@ public let ERROR_CODE_VALUES: [String] = [
     "server-error",
     "cancelled",
     "sign-in-unavailable",
+    "invalid-options",
+    "not-configured",
+    "unsupported",
+    "timeout",
+    "response-too-large",
+    "too-many-redirects",
+    "insecure-redirect",
+    "http-error",
+    "invalid-response",
+    "store-failed",
+    "no-token",
 ]
 
 /// The registry: every error code and its kind (`wire` or `client`).
@@ -191,6 +213,17 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "server-error": "client",
     "cancelled": "client",
     "sign-in-unavailable": "client",
+    "invalid-options": "client",
+    "not-configured": "client",
+    "unsupported": "client",
+    "timeout": "client",
+    "response-too-large": "client",
+    "too-many-redirects": "client",
+    "insecure-redirect": "client",
+    "http-error": "client",
+    "invalid-response": "client",
+    "store-failed": "client",
+    "no-token": "client",
 ]
 
 /// Every feature id in the parity registry (conformance/parity/features.json).

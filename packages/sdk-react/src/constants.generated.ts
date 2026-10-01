@@ -65,6 +65,17 @@ export const ErrorCode = {
   serverError: "server-error",
   cancelled: "cancelled",
   signInUnavailable: "sign-in-unavailable",
+  invalidOptions: "invalid-options",
+  notConfigured: "not-configured",
+  unsupported: "unsupported",
+  timeout: "timeout",
+  responseTooLarge: "response-too-large",
+  tooManyRedirects: "too-many-redirects",
+  insecureRedirect: "insecure-redirect",
+  httpError: "http-error",
+  invalidResponse: "invalid-response",
+  storeFailed: "store-failed",
+  noToken: "no-token",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -128,6 +139,17 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "server-error",
   "cancelled",
   "sign-in-unavailable",
+  "invalid-options",
+  "not-configured",
+  "unsupported",
+  "timeout",
+  "response-too-large",
+  "too-many-redirects",
+  "insecure-redirect",
+  "http-error",
+  "invalid-response",
+  "store-failed",
+  "no-token",
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. */
@@ -193,6 +215,17 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "server-error": "client",
   cancelled: "client",
   "sign-in-unavailable": "client",
+  "invalid-options": "client",
+  "not-configured": "client",
+  unsupported: "client",
+  timeout: "client",
+  "response-too-large": "client",
+  "too-many-redirects": "client",
+  "insecure-redirect": "client",
+  "http-error": "client",
+  "invalid-response": "client",
+  "store-failed": "client",
+  "no-token": "client",
 };
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */

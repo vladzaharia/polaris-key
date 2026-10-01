@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(58 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(69 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -82,3 +82,14 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `server-error` | `identity` | Node, Python, Swift: a device-code sign-in poll answered 5xx. Transient: the wait polls again at the same interval. |
 | `cancelled` | `identity` | Python: a device-code sign-in wait was cancelled by the host. |
 | `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. |
+| `invalid-options` | `core` | Godot: PKeyOptions failed validation at configure (a bad product slug, version, base URL or pin). |
+| `not-configured` | `core` | Godot: A call that needs configure() ran before it. |
+| `unsupported` | `core` | Godot: The capability is not available on this platform or build (a stub where a native plugin is absent). |
+| `timeout` | `core` | Godot: The request got no complete answer within its wall-clock budget, every redirect hop included. |
+| `response-too-large` | `core` | Godot: The response body exceeded the client's cap (512 KiB for API calls). |
+| `too-many-redirects` | `core` | Godot: The request was redirected more times than the client follows. |
+| `insecure-redirect` | `core` | Godot: A redirect pointed at plain http on a non-loopback host, or at a non-http(s) URL; it was refused. |
+| `http-error` | `core` | Godot: The server answered a non-success status with no recognised error code in its body. |
+| `invalid-response` | `core` | Godot: The server answered 2xx with a body that failed strict parsing or lacked a required field. |
+| `store-failed` | `core` | Godot: The credential or cache store could not be read or written. |
+| `no-token` | `core` | Godot: An authenticated call ran with no device token in hand. |
