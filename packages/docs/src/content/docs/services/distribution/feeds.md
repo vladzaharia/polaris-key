@@ -118,17 +118,23 @@ the repo key.
    `index-v2.json`, `entry.json` and a diff against the current index, then signs `entry.jar` with
    `apksigner` (v1 scheme, minimum SDK 23) using the CI-held key.
 2. It uploads the files through an upload ticket. P2-02's uploads route accepts
-   `distribution:feeds`.
+   `distribution:feeds`. Only a file that is already one of the channel's registered files skips
+   the upload. Any other object must come from the ticket, even one the product already stores
+   for a release.
 3. It registers the set with `POST …/distribution/feeds/fdroid/<channel>`. The set must include
    `entry.jar`, `entry.json` and `index-v2.json`. Each path must pass the safe-path check and end
-   in `.json`, `.jar`, `.png`, `.jpg`, `.jpeg`, `.webp` or `.asc`. The registration replaces the
-   channel's previous set in one batch, so a client never reads a new `entry.jar` beside an old
-   index.
+   in `.json`, `.jar`, `.png`, `.jpg`, `.jpeg`, `.webp` or `.asc`. No file may be an object that a
+   non-public deliverable's release carries, such as a paid pack's payload (`not_public`). The
+   registration replaces the channel's previous set in one batch, so a client never reads a new
+   `entry.jar` beside an old index.
 
 The relay then serves **only registered files**, using the content type the Worker chose for
 each extension, never a type sent by CI. Every answer carries `nosniff` and a sandbox CSP. An APK
-that the index names is a `302` to its immutable delivery URL. Anything else, including a path
-that fails the safe-path check, is not-found.
+that the index names is a `302` to its immutable delivery URL. The relay finds an APK by its file
+name, so each listed release's APK needs a distinct name (put the version in it, as in
+`Diceroll-1.2.0-android.apk`); `pkey feeds fdroid` refuses a set where two releases share one.
+Anything else, including a path that fails the safe-path check, is not-found. So is a registered
+file once a non-public deliverable's release carries the same bytes.
 
 Grant `distribution:feeds` to the product's CI token deliberately. Like `distribution:rollout`,
 it is not in the default grant.

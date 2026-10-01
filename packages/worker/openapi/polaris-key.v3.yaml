@@ -3121,7 +3121,9 @@ paths:
         `Cache-Control: public, max-age=300, no-transform` and the SHA-256 as ETag (the paths are
         mutable). An APK the channel's F-Droid feed lists (`<name>.apk`) is a `302` to its
         immutable delivery URL. A path failing the safe-path check, any other path, a non-public
-        app deliverable, or a product without a live `fdroid-repo` outlet: the plain not-found.
+        app deliverable, a registered file whose object a non-public deliverable's release
+        carries (the blob route's strictest-mode rule), or a product without a live
+        `fdroid-repo` outlet: the plain not-found.
         The repository URL users add is `…/fdroid/{channel}/repo?fingerprint=<sha256>`, the
         fingerprint from the key inventory (`fdroid-repo` purpose).
       parameters:
@@ -3307,16 +3309,19 @@ paths:
         P2b-05. `{ticket?, files: [{path, sha256, size}]}`: at most 256 files, which must include
         `entry.jar`, `entry.json` and `index-v2.json`; each path a safe relative path ending in
         `.json`, `.jar`, `.png`, `.jpg`, `.jpeg`, `.webp` or `.asc`, each at most 32 MiB. Every
-        file is the content-addressed `blobs/sha256/<sha256>`: one this product already
-        references, or an object of the upload `ticket` (P2-02's uploads route, which accepts
-        `distribution:feeds`), verified in staging and promoted here. The channel's set and its
+        file is the content-addressed `blobs/sha256/<sha256>`: one an earlier register already
+        earned (this product's `feed` blob ref; a release's or a pack's ref does not count), or
+        an object of the upload `ticket` (P2-02's uploads route, which accepts
+        `distribution:feeds`), verified in staging and promoted here. No file may be an object
+        that a non-public deliverable's release carries (the blob route's strictest-mode rule,
+        which the relay re-applies per request). The channel's set and its
         `feed` blob refs are then REPLACED in one batch. Audited as
         `distribution.feeds.register`. Requires a `pkeyci_` token with `distribution:feeds`. No
         CORS. Errors are LEGACY FLAT with a `reason`: `bad_files`, `bad_feed_path`,
         `incomplete_repository`, `object_not_in_ticket`, `staged_object_missing`,
         `staged_object_mismatch`, `stored_object_mismatch`, `ticket_redeemed`, `bad_body` (400);
-        `invalid_ticket`, `ticket_expired` (403); `unknown_channel`, `unknown_outlet`,
-        `no_blob_store` (404); `promote_failed` (409, retryable).
+        `invalid_ticket`, `ticket_expired`, `not_public` (403); `unknown_channel`,
+        `unknown_outlet`, `no_blob_store` (404); `promote_failed` (409, retryable).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3332,7 +3337,7 @@ paths:
                 ticket:
                   {
                     type: string,
-                    description: "A `pkeyup_` ticket; needed when any file is new to the product.",
+                    description: "A `pkeyup_` ticket; needed when any file is not already a registered feed file of the product.",
                   }
                 files:
                   type: array

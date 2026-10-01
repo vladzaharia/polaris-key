@@ -23,7 +23,8 @@
  *     ref, the stored checksum re-checked by `blobResponse`) with the type the Worker chose at
  *     registration from the extension — `application/json`, `application/java-archive`,
  *     `image/png`, … — never one CI sent, never HTML, XML or SVG; `nosniff` and the sandbox CSP on
- *     every answer. The paths are MUTABLE (a new `entry.jar` replaces the old), so the cache is
+ *     every answer. Only while the object passes the blob route's strictest-mode rule
+ *     (`objectIsPublic`): one a non-public deliverable's release carries is not-found. The paths are MUTABLE (a new `entry.jar` replaces the old), so the cache is
  *     short and the ETag (the SHA-256) revalidates.
  *   - An APK the index lists (`/<name>.apk`, a payload of a release the channel's F-Droid feed
  *     selects) is a 302 to its immutable delivery URL — the bytes host when there is one.
@@ -33,9 +34,12 @@
  * ── REGISTRATION ────────────────────────────────────────────────────────────────────────────
  *
  * `{ticket?, files: [{path, sha256, size}]}` must name `entry.jar`, `entry.json` and
- * `index-v2.json`, at most 256 files. Every file is `blobs/sha256/<sha256>`: one this product
- * already references (an earlier register or release), or an object of the ticket, verified in
- * staging and promoted here — the same earn-a-ref rule as the release submit (THREAT-MODEL §3).
+ * `index-v2.json`, at most 256 files. Every file is `blobs/sha256/<sha256>`: one an earlier
+ * register already earned (this product's `feed` ref — a release's or a pack's ref does NOT
+ * count, since naming a digest is no proof of holding it), or an object of the caller's ticket,
+ * verified in staging and promoted here — the same earn-a-ref rule as the release submit
+ * (THREAT-MODEL §3). No file may be an object a non-public deliverable's release carries (the
+ * blob route's strictest-mode rule), and the relay re-applies that rule on every request.
  * The (product, `fdroid`, channel) set and its `feed` refs are then REPLACED in one batch, so a
  * client never reads a new `entry.jar` beside an old index.
  */
@@ -68,6 +72,8 @@ import {
   type CiTokenRecord,
 } from "../../../core/publisher.js";
 import { ciActor, type CiPrincipal } from "../../../core/ciScope.js";
+import type { Delivery, ReleaseCatalog } from "../../../core/hooks.js";
+import { strictestAccess } from "../access.js";
 import { appendAudit } from "../../../core/data.js";
 import {
   feedReaders,
@@ -145,6 +151,45 @@ async function feedFiles(
   );
 }
 
+/**
+ * Whether an object may be served to anyone: the blob route's rule (`bytes.ts`), the strictest
+ * delivery mode of the deliverables whose releases carry it (the `app` mode when none do) must be
+ * `public`. A registered file passes this at registration AND on every relay request, so neither
+ * an earlier register nor a later access change can make the relay hand out a non-public
+ * deliverable's bytes.
+ */
+export async function objectIsPublic(
+  catalog: ReleaseCatalog,
+  delivery: Delivery,
+  sha256: string,
+): Promise<boolean> {
+  const r = await catalog.resolve({ kind: "blob", sha256 });
+  const releases = r?.kind === "blob" ? r.releases : [];
+  return (
+    (await strictestAccess(
+      delivery,
+      releases.map((rel) => rel.deliverableId),
+    )) === "public"
+  );
+}
+
+/** Whether this product already holds a `feed` ref to `key` — an object an earlier register
+ *  earned from its own ticket. Any other ref (a release artifact, a pack object) does not count:
+ *  naming a digest is no proof of holding its bytes. */
+async function hasFeedRef(
+  db: Db,
+  product: string,
+  key: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM blob_refs
+      WHERE product = ? AND storage_key = ? AND ref_kind = 'feed' LIMIT 1`,
+    product,
+    key,
+  );
+  return row !== null;
+}
+
 function harden(res: Response): Response {
   const sandboxed = res.headers.get("content-security-policy") === BLOB_CSP;
   const headers = appSecurityHeaders(new Headers(res.headers));
@@ -196,7 +241,11 @@ export async function serveFdroidRelay(
   );
   if (file) {
     const key = blobKey(file.sha256);
-    if (!env.BLOBS || !(await hasRef(db, product.slug, key)))
+    if (
+      !env.BLOBS ||
+      !(await hasRef(db, product.slug, key)) ||
+      !(await objectIsPublic(readers.catalog, readers.delivery, file.sha256))
+    )
       return harden(notFound());
     const res = await blobResponse(req, env.BLOBS, key, {
       sha256: file.sha256,
@@ -376,10 +425,12 @@ export async function registerFdroid(
       reason: "no_blob_store",
     });
   const catalog = ctx.hooks.releaseCatalog();
-  const history = catalog
-    ? await catalog.channelReleases(APP_DELIVERABLE_ID, rawChannel)
-    : null;
-  if (!history)
+  const delivery = ctx.hooks.delivery();
+  const history =
+    catalog && delivery
+      ? await catalog.channelReleases(APP_DELIVERABLE_ID, rawChannel)
+      : null;
+  if (!catalog || !delivery || !history)
     return errorResponse(404, ErrorCode.NotFound, "no such channel", {
       reason: "unknown_channel",
     });
@@ -394,13 +445,26 @@ export async function registerFdroid(
   const files = parseFiles(body.files);
   if (files instanceof Response) return files;
 
-  // Which objects this product already references, with the size and hash promote verified.
+  // The relay serves every file to anyone, so no file may be an object a non-public deliverable's
+  // release carries (the blob route's strictest-mode rule; the relay re-checks it per request).
+  for (const f of files)
+    if (!(await objectIsPublic(catalog, delivery, f.sha256)))
+      return errorResponse(
+        403,
+        ErrorCode.Forbidden,
+        `${f.path}: that object belongs to a deliverable that is not public`,
+        { reason: "not_public", path: f.path },
+      );
+
+  // Which objects an earlier register already earned (a `feed` ref), with the size and hash
+  // promote verified. Every other object comes from the caller's own ticket, even one the product
+  // already stores for a release: knowing a digest is not holding its bytes (THREAT-MODEL §3).
   const keys = files.map((f) => blobKey(f.sha256));
   const stored = await storedObjects(db, keys);
   const needed = new Map<string, RegisterFile>();
   for (const f of files) {
     const key = blobKey(f.sha256);
-    if (await hasRef(db, product.slug, key)) {
+    if (await hasFeedRef(db, product.slug, key)) {
       const s = stored.get(key);
       if (!s || s.size !== f.size)
         return bad(

@@ -56,11 +56,15 @@ import type { Env } from "../src/env.js";
 import { dispatch } from "../src/dispatch.js";
 import { ingestReleaseDescriptor } from "../src/services/release/descriptor.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
-import { yankRelease } from "../src/services/release/model.js";
+import {
+  upsertDeliverable,
+  yankRelease,
+} from "../src/services/release/model.js";
 import {
   blobKey,
   putVerified,
   recordObject,
+  recordRef,
   stagingKey,
 } from "../src/core/blobs.js";
 import { issueUploadTicket } from "../src/core/publisher.js";
@@ -435,9 +439,11 @@ describe("storefront feeds: golden files", () => {
     ["altstore/stable/source.json", "altstore-stable.json"],
     ["altstore/beta/source.json", "altstore-beta.json"],
     ["altstore-pal/stable/source.json", "altstore-pal-stable.json"],
+    ["altstore-pal/beta/source.json", "altstore-pal-beta.json"],
     ["obtainium/stable.json", "obtainium-stable.json"],
     ["obtainium/beta.json", "obtainium-beta.json"],
     ["scoop/stable.json", "scoop-stable.json"],
+    ["scoop/beta.json", "scoop-beta.json"],
     ["flathub/stable.json", "flathub-stable.json"],
     ["flathub/beta.json", "flathub-beta.json"],
   ];
@@ -450,18 +456,19 @@ describe("storefront feeds: golden files", () => {
     });
   }
 
-  it("the F-Droid generator inputs match fdroid-inputs-stable.json", async () => {
-    const w = await setup({ blobOrigin: BYTES });
-    const res = await get(w, "feeds/fdroid/stable", {
-      headers: { authorization: `Bearer ${FEEDER}` },
+  for (const channel of ["stable", "beta"])
+    it(`the F-Droid generator inputs match fdroid-inputs-${channel}.json`, async () => {
+      const w = await setup({ blobOrigin: BYTES });
+      const res = await get(w, `feeds/fdroid/${channel}`, {
+        headers: { authorization: `Bearer ${FEEDER}` },
+      });
+      const body = await res.text();
+      expect(res.status, body).toBe(200);
+      await golden(
+        `fdroid-inputs-${channel}.json`,
+        `${JSON.stringify(JSON.parse(body), null, 2)}\n`,
+      );
     });
-    const body = await res.text();
-    expect(res.status, body).toBe(200);
-    await golden(
-      "fdroid-inputs-stable.json",
-      `${JSON.stringify(JSON.parse(body), null, 2)}\n`,
-    );
-  });
 });
 
 // ── Selection ────────────────────────────────────────────────────────────────────────────────
@@ -520,6 +527,20 @@ describe("storefront feeds: which releases appear", () => {
     ).toEqual(["1.1.0", "1.0.0"]);
     expect((await feed(w, "scoop/stable.json")).doc.version).toBe("1.1.0");
     // Flathub: nothing holds 1.2.0 back there.
+    expect((await feed(w, "flathub/stable.json")).doc.version).toBe("1.2.0");
+  });
+
+  it("Flathub: a hold on the flathub outlet lists the previous release", async () => {
+    const w = await setup();
+    await rollout(w, "flathub", "app@1.2.0", 10000, "halted");
+    expect((await feed(w, "flathub/stable.json")).doc.version).toBe("1.1.0");
+    // Beta includes stable: with 1.2.0 held, its newest is the beta.
+    expect((await feed(w, "flathub/beta.json")).doc.version).toBe(
+      "1.2.0-beta.1",
+    );
+    await w.db.run(
+      "UPDATE dist_rollouts SET state = 'complete' WHERE outlet_id = 'flathub'",
+    );
     expect((await feed(w, "flathub/stable.json")).doc.version).toBe("1.2.0");
   });
 
@@ -681,6 +702,81 @@ const REPO_FILES: Record<string, Uint8Array> = {
   "diff/1.json": new TextEncoder().encode("{}\n"),
   "icons/icon.png": new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
 };
+
+/**
+ * A pack deliverable `dice.dlc` under `mode`, with one release whose payload is `bytes`: stored
+ * in the blob store and referenced as a release artifact, the way a pack publish leaves it.
+ */
+async function seedPackPayload(
+  w: World,
+  bytes: Uint8Array,
+  mode: string,
+): Promise<void> {
+  const digest = sha(bytes);
+  const key = blobKey(digest);
+  await upsertDeliverable(
+    w.db,
+    {
+      product: SLUG,
+      deliverableId: "dice.dlc",
+      kind: "pack",
+      packType: "godot.pck",
+    },
+    NOW,
+  );
+  await w.db.run(
+    `INSERT INTO release_metadata
+       (product, release_id, version, metadata_access, artifacts_access, published_at,
+        created_at, modified_at, deliverable_id, seq, channel)
+     VALUES (?, 'dlc-1', '1', 'public', 'public', ?, ?, ?, 'dice.dlc', 1, 'stable')`,
+    SLUG,
+    NOW,
+    NOW,
+    NOW,
+  );
+  await w.db.run(
+    `INSERT INTO release_artifacts
+       (product, release_id, artifact_id, name, kind, platform, arch, content_type,
+        size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
+        metadata_json, created_at, build_id, role)
+     VALUES (?, 'dlc-1', '1', 'dice.pck', NULL, NULL, NULL, 'application/octet-stream',
+             ?, ?, NULL, ?, NULL, 'public', NULL, ?, NULL, 'payload')`,
+    SLUG,
+    bytes.length,
+    digest,
+    key,
+    NOW,
+  );
+  if (!(await w.r2.get(key)))
+    await putVerified(asR2(w.r2), key, bytes, {
+      sha256: digest,
+      size: bytes.length,
+    });
+  await recordObject(
+    w.db,
+    {
+      storageKey: key,
+      sha256: digest,
+      size: bytes.length,
+      kind: "blob",
+      gated: false,
+    },
+    NOW,
+  );
+  await recordRef(
+    w.db,
+    { product: SLUG, storageKey: key, refKind: "artifact", refId: "dlc-1/1" },
+    NOW,
+  );
+  await w.db.run(
+    `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
+     VALUES (?, 'dice.dlc', ?, NULL, 'admin', ?)
+     ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode`,
+    SLUG,
+    mode,
+    NOW,
+  );
+}
 
 /** Stage the files under a ticket, as `pkey feeds fdroid` uploads them, and register them. */
 async function registerRepo(
@@ -874,6 +970,85 @@ describe("F-Droid: register and relay", () => {
     expect(r4.status).toBe(403);
     expect(((await r4.json()) as any).reason).toBe("missing_scope");
     expect((await get(w, "feeds/fdroid/stable")).status).toBe(401);
+  });
+
+  it("a release's object is no feed file without the caller's own upload; a registered feed file is", async () => {
+    const w = await setup();
+    // The product references this public APK for a release, and its digest is published in
+    // every feed. Naming it is not holding it: register still wants it from a ticket.
+    const apk = bytesFor("Diceroll-1.1.0-android.apk");
+    const files = (set: Record<string, Uint8Array>) =>
+      JSON.stringify({
+        files: Object.entries(set).map(([path, b]) => ({
+          path,
+          sha256: sha(b),
+          size: b.length,
+        })),
+      });
+    const post = (body: string) =>
+      get(w, "feeds/fdroid/stable", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${FEEDER}`,
+          "content-type": "application/json",
+        },
+        body,
+      });
+    const r1 = await post(
+      files({ "entry.jar": apk, "entry.json": apk, "index-v2.json": apk }),
+    );
+    expect(r1.status).toBe(403);
+    expect(((await r1.json()) as any).reason).toBe("invalid_ticket");
+    // Once registered from a ticket, the same files re-register without one.
+    expect((await registerRepo(w, "stable")).status).toBe(200);
+    const r2 = await post(files(REPO_FILES));
+    expect(r2.status, await r2.clone().text()).toBe(200);
+  });
+
+  it("never registers or relays an object a non-public deliverable's release carries", async () => {
+    const w = await setup();
+    const paid = new TextEncoder().encode("the paid expansion's bytes\n");
+    await seedPackPayload(w, paid, "entitled");
+    // The blob route refuses it anonymously…
+    expect((await get(w, `blobs/sha256/${sha(paid)}`)).status).toBe(401);
+    // …so registering it as a repository file is refused, with or without a ticket.
+    const bare = await get(w, "feeds/fdroid/stable", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${FEEDER}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        files: ["entry.jar", "entry.json", "index-v2.json"].map((path) => ({
+          path,
+          sha256: sha(paid),
+          size: paid.length,
+        })),
+      }),
+    });
+    expect(bare.status).toBe(403);
+    expect(((await bare.json()) as any).reason).toBe("not_public");
+    const ticketed = await registerRepo(w, "stable", {
+      ...REPO_FILES,
+      "entry.jar": paid,
+    });
+    expect(ticketed.status).toBe(403);
+    expect(((await ticketed.json()) as any).reason).toBe("not_public");
+    expect((await get(w, "fdroid/stable/repo/entry.jar")).status).toBe(404);
+  });
+
+  it("the relay re-checks: a registered file a non-public deliverable later carries is not served", async () => {
+    const w = await setup();
+    expect((await registerRepo(w, "stable")).status).toBe(200);
+    // A pack release later carries the same bytes as the registered entry.jar.
+    await seedPackPayload(w, REPO_FILES["entry.jar"]!, "entitled");
+    expect((await get(w, "fdroid/stable/repo/entry.jar")).status).toBe(404);
+    expect((await get(w, "fdroid/stable/repo/index-v2.json")).status).toBe(200);
+    await w.db.run(
+      "UPDATE dist_access SET mode = 'public' WHERE product = ? AND deliverable_id = 'dice.dlc'",
+      SLUG,
+    );
+    expect((await get(w, "fdroid/stable/repo/entry.jar")).status).toBe(200);
   });
 
   it("refuses without a live fdroid-repo outlet", async () => {

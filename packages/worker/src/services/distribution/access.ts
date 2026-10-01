@@ -59,6 +59,22 @@ export function stricter(a: ReleaseAccess, b: ReleaseAccess): ReleaseAccess {
   return STRICTNESS[b] > STRICTNESS[a] ? b : a;
 }
 
+/**
+ * The strictest delivery mode of `deliverables`, the `app` mode when there are none. This is the
+ * blob route's rule (`bytes.ts`): an object is as protected as the strictest deliverable whose
+ * releases carry it. The F-Droid relay applies the same rule before serving a registered file.
+ */
+export async function strictestAccess(
+  delivery: { accessMode(deliverable: string): Promise<ReleaseAccess> },
+  deliverables: Iterable<string>,
+): Promise<ReleaseAccess> {
+  const ids = new Set(deliverables);
+  if (ids.size === 0) ids.add(APP_DELIVERABLE_ID);
+  let mode: ReleaseAccess = "public";
+  for (const d of ids) mode = stricter(mode, await delivery.accessMode(d));
+  return mode;
+}
+
 export interface DistAccessRow {
   product: string;
   deliverable_id: string;
