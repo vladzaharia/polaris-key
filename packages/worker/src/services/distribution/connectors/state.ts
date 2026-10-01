@@ -1,5 +1,5 @@
 /**
- * Connector-agnostic state (P5-02): the two tables of migration 0040 and the writers a store
+ * Connector-agnostic state (P5-02): the two tables of migration 0041 and the writers a store
  * connector uses to reach `dist_availability`, `dist_submissions` and `dist_rollouts`.
  *
  *   - `dist_connector_objects` — the store objects a connector tracks (`upsertObject`), which the

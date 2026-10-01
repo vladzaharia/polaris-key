@@ -358,7 +358,7 @@ describe("App Store Connect webhooks on workerd (P5-02)", () => {
     ).toBeNull();
   });
 
-  it("applies migration 0040 and answers the service not-found shape for a product without the connector", async () => {
+  it("applies migration 0041 and answers the service not-found shape for a product without the connector", async () => {
     const db = new D1Db(env.DB);
     await seedProduct(env, db, "djdl5", djdlCatalog);
     await db.run(

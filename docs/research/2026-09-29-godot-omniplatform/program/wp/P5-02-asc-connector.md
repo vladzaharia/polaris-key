@@ -67,7 +67,7 @@ built and tested against recorded payloads and a fake ASC server before any real
   constant-time compare, dedupe on `data.id` (7 days in KV), 2xx fast, then fetch the instance with
   the API and write state. Unknown event types answer 204 and are logged.
   _Correction (implementation):_ the Worker writes no runtime log (R12), so "logged" is a row in
-  the new `dist_connector_events` table (migration 0040, with `dist_connector_objects`), outcome
+  the new `dist_connector_events` table (migration 0041, with `dist_connector_objects`), outcome
   `ignored`. "2xx fast, then fetch" uses `ExecutionContext.waitUntil`, threaded to services as
   `ServiceContext.waitUntil`; without it (tests) the follow-up runs inline.
 - Mapping of all 12 event types (below), of `AppVersionState` and the legacy `AppStoreVersionState`,
