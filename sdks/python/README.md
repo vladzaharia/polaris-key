@@ -69,6 +69,16 @@ re-pulls. The default `KeyringStore` stores credentials in the OS keyring when a
 fallback. Inject an `InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client`
 (e.g. with a `MockTransport`) for the transport.
 
+A 401 on a document gets exactly **one** re-acquire per `sync()` pass, then one retry of the
+failed fetch. A licensed device rotates its token with `POST /<product>/license/token`. A
+registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `devices.register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
+`Authorization` header). A refusal (403 `registration_closed`, 404, 429) spends the attempt and
+the hard 401 is recorded. After a restart the token's origin is not persisted, so a product
+with License on uses `license/token`. Under the `requires-identity` policy a native device
+cannot re-register (that needs a browser session) and lands on the hard 401.
+
 ## Sub-packages
 
 Every one is importable on its own, so a config-only daemon never pulls the licence module:

@@ -5,14 +5,13 @@ makes applicable, against a fake server (``transcript_replay.ReplayServer``, an
 ``httpx.MockTransport`` handler) that serves the Worker's recorded answers and asserts every
 request.
 
-Which transcripts run is DATA: a transcript for a feature this SDK has not implemented
-(register-reregister-401, until P1b-06) is skipped, and starts running the moment the manifest
-claims it. The SDK clock is ``time.time`` pinned to each step's ``now``: the recorded documents
+Which transcripts run is DATA: a transcript for a feature this SDK has not implemented is
+skipped, and starts running the moment the manifest claims it. The SDK clock is ``time.time`` pinned to each step's ``now``: the recorded documents
 were signed at a fixed instant and expire an hour later.
 """
 
 # @pkey-feature core.discover core.sync core.cache license.activate license.enroll
-# @pkey-feature license.deactivate devices.register devices.report
+# @pkey-feature license.deactivate license.reregister devices.register devices.report
 
 from __future__ import annotations
 
