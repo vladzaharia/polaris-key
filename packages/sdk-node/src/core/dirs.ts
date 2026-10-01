@@ -42,6 +42,9 @@ export interface DirsHost {
 
 const VENDOR = "polaris-key";
 
+/** A drive-absolute (`C:\\`) or UNC (`\\\\server`) Windows path. */
+const WIN_ABSOLUTE = /^(?:[A-Za-z]:[\\/]|\\\\)/;
+
 function pathFor(platform: NodeJS.Platform) {
   return platform === "win32" ? win32 : posix;
 }
@@ -75,7 +78,7 @@ export function defaultDirBases(host: DirsHost = {}): ProductDirs {
   }
   if (platform === "win32") {
     const local =
-      env.LOCALAPPDATA && win32.isAbsolute(env.LOCALAPPDATA)
+      env.LOCALAPPDATA && WIN_ABSOLUTE.test(env.LOCALAPPDATA)
         ? env.LOCALAPPDATA
         : win32.join(home, "AppData", "Local");
     const root = win32.join(local, VENDOR);

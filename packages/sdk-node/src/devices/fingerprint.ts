@@ -78,8 +78,9 @@ export interface WindowsCimComponents {
 /**
  * Rule 1: parse what `WINDOWS_CIM_COMMAND` printed. Strips one leading U+FEFF, requires a JSON
  * object, and keeps `boardSerial` / `machineModel` only when each is a string that is non-empty
- * after trimming ASCII whitespace. Vendor placeholders are kept verbatim (they are what `wmic`
- * returned, so Windows 10 sees no drift); other keys are ignored; anything else yields `{}`.
+ * after trimming ASCII whitespace. Vendor placeholders are kept verbatim (they are what the
+ * retired WMI command-line tool returned, so Windows 10 sees no drift); other keys are
+ * ignored; anything else yields `{}`.
  */
 export function parseWindowsCim(stdout: string | null): WindowsCimComponents {
   if (!stdout) return {};
@@ -199,7 +200,7 @@ export function windowsPowerShellPath(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   const root = env.SystemRoot ?? env.SYSTEMROOT;
-  if (root && win32.isAbsolute(root) && /^(?:[A-Za-z]:[\\/]|\\\\)/.test(root))
+  if (root && /^(?:[A-Za-z]:[\\/]|\\\\)/.test(root))
     return win32.join(
       root,
       "System32",
