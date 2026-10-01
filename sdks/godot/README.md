@@ -22,9 +22,15 @@ sdks/godot/
     plugin.cfg, plugin.gd     editor shell
     polaris_key.gd            the PolarisKey autoload: configure, start, discover, capabilities,
                               sync, get_sync_state, import_bundle, status; three signals;
-                              the `devices` sub-object
+                              the `devices` and `license` sub-objects
     services/devices.gd       PKeyDevices (PolarisKey.devices): fingerprint, register, list,
                               rename, deauthorize, report (also after every sync)
+    services/license.gd       PKeyLicense (PolarisKey.license): the gate, activate_with_key,
+                              enroll, deactivate, entitlements, entitled_channels, and the
+                              401 re-acquire it installs into Core (license/token or
+                              devices/register, P1b-06's rule)
+    services/license/         PKeyActivationResult (both error spellings), PKeyLicenseEndpoints
+    core/channel.gd           PKeyChannel: the §5.1 channel vocabulary, the header this SDK sends
     core/fingerprint.gd       PKeyFingerprint: per-platform readers as pure parsers over captured
                               output, hashing, the desktop device-id raw source
     core/host_io.gd           PKeyHostIo: every side effect the readers perform (replaceable)
@@ -61,6 +67,22 @@ sdks/godot/
                               Windows) and the Linux template
     godot.sha512              upstream SHA-512 pins for those downloads
 ```
+
+## Licence notes
+
+- `X-PKey-Channel` is always a canonical §5.1 name: `dev` for `0.0.0-dev*` builds, `pr` for PR
+  builds (the Worker narrows it to the build's `pr-<n>`), `beta` for `0.0.0-beta*` and
+  `0.0.0-staging*`, never `staging`. `PKeyOptions.default_channel` accepts `stable`, `beta`,
+  `pr-<n>`, `dev` or a manual channel name; an alias is sent canonically and anything malformed
+  is refused at `configure`.
+- The 401 re-acquire re-registers (`POST /devices/register`, keyless) when License is off or the
+  token came from `devices.register()` in this process; otherwise it asks `POST /license/token`.
+  The token's source is held in memory only, so after a restart a licensed product's device asks
+  `license/token`. One attempt per sync pass, whichever route.
+- `enroll()` is unsupported on web (no machine anchor). On iOS, enrolling again after every one of
+  the vendor's apps was uninstalled mints a new free licence; the client does not work around it.
+- Unlocking paid digital content on iOS or Android with an externally bought key conflicts with
+  App Store 3.1.1 and Play's payments policy. The client does not enforce this.
 
 ## Running the tests
 
