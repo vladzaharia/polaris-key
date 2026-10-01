@@ -216,6 +216,13 @@ those strings against the generator's `expect.docNulReplaced`.
   placeholder whose methods fail. The export plugin and the dock reach `PKeyChannel`,
   `PKeySemver`, `PKeyJson`, `PKeyB64Url`, `PKeyTransport`, `PKeyJws`, `PKeyEd25519` and
   `PKeyOptions`, so those carry `@tool`; a new static-state script on that path needs it too.
+- **Thread-reachable code never indexes or iterates a `const` Array.** On 4.4.1 a read-only
+  Array hands each element out through one shared slot, so two threads reading the same constant
+  get each other's values (a two-thread loop over a 16-element constant: about 1 read in 40,000
+  wrong; 4.7.2: none). It made offloaded document verifies fail about one time in 70 (the
+  scalar reduction reads the constant `L`), which surfaced as a flaky `ci` set on the 4.4 floor.
+  Convert first (`PackedInt64Array(L)`, `PackedStringArray(PATHS)`): the conversion is safe.
+  The `ed25519` suite runs the crypto on two threads to keep it that way.
 - **Commit every `.uid` with its script.** The first import writes it; `run_tests.sh` fails on an
   untracked one.
 - **Never reformat the crypto files.** A negative shift in a constant expression is a parse error in
@@ -229,18 +236,19 @@ those strings against the generator's `expect.docNulReplaced`.
 
 ## Measured pitfalls
 
-| Behaviour                         | 4.7.2                                                                      | 4.4.1                                                        | Consequence                                                         |
-| --------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
-| `--import` with a parse error     | exit 0, prints nothing                                                     | exit 0, prints the error                                     | watch the log; never `\|\| true`                                    |
-| runner fails to load              | macOS: modal alert, the run hangs; Linux: exit 1 (`Invalid MainLoop`)      | macOS: SIGABRT, exit 134; Linux: exit 1 (`Invalid MainLoop`) | watchdog and timeout                                                |
-| runtime error in a suite          | editor aborts it; template continues silently                              | editor aborts it                                             | explicit and coverage checks                                        |
-| `\u0000` in JSON                  | U+FFFD, plus a "Unicode parsing error" line                                | dropped                                                      | the §10 rule in `PKeyJson`                                          |
-| `--export-pack`                   | works with no templates installed                                          | same                                                         | CI needs only the template binary                                   |
-| redirect with `max_redirects = 0` | `RESULT_REDIRECT_LIMIT_REACHED`                                            | 303 and 307 come back as `RESULT_SUCCESS`                    | follow any 3xx with a `Location`                                    |
-| lone surrogate `\ud800` in JSON   | rejected                                                                   | rejected                                                     | JS accepts it: divergence for P3-02                                 |
-| slim container without fontconfig | `ERROR: Unable to load fontconfig` on every run                            | same                                                         | the watchdog ignores generic errors                                 |
-| non-tool script in the editor     | static vars and `_static_init` skipped; a loaded Resource is a placeholder | not measured (the `@tool` fix is green there)                | `@tool` on what the export plugin and dock reach                    |
-| `HTTPRequest.timeout`             | a Timer on process delta: a long frame before the request spends it        | same                                                         | `PKeyTransport` times out on the wall clock, one budget per request |
+| Behaviour                             | 4.7.2                                                                      | 4.4.1                                                        | Consequence                                                                 |
+| ------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `--import` with a parse error         | exit 0, prints nothing                                                     | exit 0, prints the error                                     | watch the log; never `\|\| true`                                            |
+| runner fails to load                  | macOS: modal alert, the run hangs; Linux: exit 1 (`Invalid MainLoop`)      | macOS: SIGABRT, exit 134; Linux: exit 1 (`Invalid MainLoop`) | watchdog and timeout                                                        |
+| runtime error in a suite              | editor aborts it; template continues silently                              | editor aborts it                                             | explicit and coverage checks                                                |
+| `\u0000` in JSON                      | U+FFFD, plus a "Unicode parsing error" line                                | dropped                                                      | the §10 rule in `PKeyJson`                                                  |
+| `--export-pack`                       | works with no templates installed                                          | same                                                         | CI needs only the template binary                                           |
+| redirect with `max_redirects = 0`     | `RESULT_REDIRECT_LIMIT_REACHED`                                            | 303 and 307 come back as `RESULT_SUCCESS`                    | follow any 3xx with a `Location`                                            |
+| lone surrogate `\ud800` in JSON       | rejected                                                                   | rejected                                                     | JS accepts it: divergence for P3-02                                         |
+| slim container without fontconfig     | `ERROR: Unable to load fontconfig` on every run                            | same                                                         | the watchdog ignores generic errors                                         |
+| non-tool script in the editor         | static vars and `_static_init` skipped; a loaded Resource is a placeholder | not measured (the `@tool` fix is green there)                | `@tool` on what the export plugin and dock reach                            |
+| two threads reading one `const` Array | correct                                                                    | wrong values now and then (shared read slot)                 | convert to a packed array first; never index a constant off the main thread |
+| `HTTPRequest.timeout`                 | a Timer on process delta: a long frame before the request spends it        | same                                                         | `PKeyTransport` times out on the wall clock, one budget per request         |
 
 So every `run_tests.sh` step fails on `SCRIPT ERROR`, `Parse Error`, `Failed to load script`,
 `Cannot get class` or `Invalid MainLoop` in its log, on its timeout, on a non-zero exit, and (for

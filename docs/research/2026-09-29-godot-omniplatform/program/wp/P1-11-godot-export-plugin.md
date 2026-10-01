@@ -188,6 +188,15 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   `PKeyJson`, `PKeyB64Url`, `PKeyTransport`, `PKeyJws`, `PKeyEd25519` and `PKeyOptions` gained
   `@tool` (one line each; nothing else in the crypto file changed). The README's pitfall table
   records it.
+- **A 4.4.1 const-Array race, found by review.** With this package the 4.4.1 `ci` set flaked
+  (licence or config `error`/`needs-activation`, about one run in three). The cause was not
+  `@tool`: on 4.4.1 two threads reading one `const` Array get each other's values, and the
+  scalar reduction (`sc_reduce`, constant `L`) runs on both document-verify workers at once.
+  main has the same race (a two-thread verify loop gets about 1.5% wrong on main, 0 on 4.7.2);
+  this package's timing only made it show in `ci`. `ed25519.gd`, `ed25519_ref.gd` and
+  `sha512.gd` now copy their constants into local packed arrays, and `fingerprint.gd` converts
+  `LINUX_ANCHOR_PATHS` before its worker-side loops. The `ed25519` suite checks the scalar code,
+  SHA-512 and whole verify jobs on two threads. The README records the rule and the pitfall.
 - **The logic lives outside the editor classes.** `core/build_stamp.gd` (PKeyBuildStamp) holds
   the stamp format, the reader, the fallback and every export-side check;
   `editor/setup_check.gd` (PKeySetupCheck) holds the dock's pin parsing, Check and Save. The
