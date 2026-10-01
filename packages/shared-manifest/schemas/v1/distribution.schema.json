@@ -374,7 +374,7 @@
       }
     },
     "outlet_testflight": {
-      "description": "The identity fields a testflight outlet reads: appleId, bundleId. Other keys are ignored.",
+      "description": "The identity fields a testflight outlet reads: appleId, bundleId, publicLink. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -385,6 +385,9 @@
         },
         "bundleId": {
           "$ref": "#/$defs/bundleId"
+        },
+        "publicLink": {
+          "$ref": "#/$defs/publicLink"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -735,6 +738,11 @@
       "items": {
         "enum": ["macos", "ios", "android", "windows", "linux", "web"]
       }
+    },
+    "publicLink": {
+      "description": "The join code of the public TestFlight link (https://testflight.apple.com/join/<publicLink>), from which the signed feed composes the outlet's listingUrl.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9]{1,32}$"
     },
     "homebrewCask": {
       "description": "The Homebrew cask token.",

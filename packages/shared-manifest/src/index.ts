@@ -10,6 +10,16 @@ import {
   PR_CHANNEL_PATTERN,
 } from "@polaris-key/protocol/core";
 import { parse as parseYaml } from "yaml";
+import {
+  MAX_RELEASE_KEYS,
+  RELEASE_KEY_KID_PATTERN,
+  decodeBase64Loose,
+  isWeakEd25519Key,
+  normalizeReleaseKeys,
+  releaseKeyBytes,
+  sameKeyBytes,
+  type ManifestReleaseKey,
+} from "./releaseKeys.js";
 
 import {
   DEFAULT_ENABLED_SERVICES,
@@ -232,6 +242,12 @@ export interface ManifestRelease {
    * configurable — a repo cannot weaken its own control.
    */
   trustedPublisher: ManifestTrustedPublisher | null;
+  /**
+   * `releaseKeys` (P3-03): the CI-held Ed25519 keys that sign this product's release records
+   * (`pkey-release+jws`). `[]` when undeclared, and then no publish carries a record. Persisted
+   * to `release_config.release_keys_json`; never a product signing key (checked at sync).
+   */
+  releaseKeys: ManifestReleaseKey[];
 }
 
 /** `publishing.trustedPublisher` as persisted to `ci_publishers` (workflow, environment). */
@@ -1527,6 +1543,7 @@ function validateDocuments(
       }
       validateDeliverables(errors, warnings, relRoot);
       validatePublishing(errors, relRoot);
+      validateReleaseKeys(errors, warnings, relRoot);
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
         add(
           errors,
@@ -2139,6 +2156,112 @@ function validatePublishing(
   }
 }
 
+/**
+ * `releaseKeys` (P3-03, plans/P3-01.md §3): the CI-held keys that sign release records. The
+ * Worker adds the one check a document cannot make, `release_key_is_product_key`, at sync.
+ */
+function validateReleaseKeys(
+  errors: ValidationMessage[],
+  warnings: ValidationMessage[],
+  relRoot: Record<string, unknown>,
+): void {
+  if (relRoot.contentKeys !== undefined) {
+    add(
+      warnings,
+      "release",
+      "/release/contentKeys",
+      "content_keys_not_supported",
+      "release.contentKeys is reserved for content-key delegation (P4-19) and is ignored.",
+    );
+  }
+  const raw = relRoot.releaseKeys;
+  if (raw === undefined) return;
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_RELEASE_KEYS) {
+    add(
+      errors,
+      "release",
+      "/release/releaseKeys",
+      "invalid_release_key",
+      `release.releaseKeys must be an array of 1 to ${MAX_RELEASE_KEYS} { kid, publicKey } entries.`,
+    );
+    return;
+  }
+  const sparkle =
+    typeof relRoot.sparkleEd25519Pub === "string" &&
+    SPARKLE_PUB_RE.test(relRoot.sparkleEd25519Pub)
+      ? decodeBase64Loose(relRoot.sparkleEd25519Pub)
+      : null;
+  const kids = new Set<string>();
+  const keys: Uint8Array[] = [];
+  for (const [i, entry] of raw.entries()) {
+    const at = `/release/releaseKeys/${i}`;
+    if (!isRecord(entry)) {
+      add(
+        errors,
+        "release",
+        at,
+        "invalid_release_key",
+        "Each release key must be a { kid, publicKey } object.",
+      );
+      continue;
+    }
+    if (
+      typeof entry.kid !== "string" ||
+      !RELEASE_KEY_KID_PATTERN.test(entry.kid)
+    ) {
+      add(
+        errors,
+        "release",
+        `${at}/kid`,
+        "invalid_release_key",
+        `releaseKeys[].kid must match ${RELEASE_KEY_KID_PATTERN.source}.`,
+      );
+    }
+    const bytes = releaseKeyBytes(entry.publicKey);
+    if (!bytes) {
+      add(
+        errors,
+        "release",
+        `${at}/publicKey`,
+        "invalid_release_key",
+        "releaseKeys[].publicKey must be a raw 32-byte Ed25519 public key in unpadded base64url (43 characters), as `pkey release keys generate` prints it.",
+      );
+    } else if (isWeakEd25519Key(bytes)) {
+      add(
+        errors,
+        "release",
+        `${at}/publicKey`,
+        "weak_release_key",
+        "releaseKeys[].publicKey is a non-canonical or small-order Ed25519 point, which no v4 verifier accepts a signature from (WIRE-CONTRACT-V4 §1.1).",
+      );
+    }
+    const dupKid = typeof entry.kid === "string" && kids.has(entry.kid);
+    const dupKey = bytes !== null && keys.some((k) => sameKeyBytes(k, bytes));
+    if (dupKid || dupKey) {
+      add(
+        errors,
+        "release",
+        at,
+        "duplicate_release_key",
+        "Each release key's kid and key must be unique.",
+      );
+    }
+    if (typeof entry.kid === "string") kids.add(entry.kid);
+    if (bytes) {
+      keys.push(bytes);
+      if (sparkle && sameKeyBytes(sparkle, bytes)) {
+        add(
+          errors,
+          "release",
+          `${at}/publicKey`,
+          "release_key_reused",
+          "A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs.",
+        );
+      }
+    }
+  }
+}
+
 function isTagPattern(value: unknown): boolean {
   return typeof value === "string" && compileManualChannelRegex(value) !== null;
 }
@@ -2703,6 +2826,7 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     access: normalizeReleaseAccess(rel.access),
     app,
     trustedPublisher: normalizeTrustedPublisher(rel.publishing),
+    releaseKeys: normalizeReleaseKeys(rel.releaseKeys),
   };
 }
 
@@ -3582,3 +3706,4 @@ function add(
 export * from "./descriptor.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
+export * from "./releaseKeys.js";
