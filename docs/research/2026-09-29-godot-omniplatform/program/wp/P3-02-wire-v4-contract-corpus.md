@@ -1,16 +1,16 @@
 # P3-02 Implement the wire v4 contract and corpus (feed, release, malleability, update and outlet matrices)
 
-| Field       | Value                                                                                                                                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                                                       |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                             |
-| Depends on  | [P3-01](P3-01-wire-v4-plan.md), [S-06](S-06-outlet-signals.md)                                                                                                                                                                                   |
-| Unblocks    | [P3-03](P3-03-feed-composition.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P3-08](P3-08-v4-godot.md), [P3-11](P3-11-outlet-detection.md), [P6-05](P6-05-kotlin-sdk.md) |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                            |
-| Plan mode   | yes: execute the approved `plans/P3-01.md`; do not start until a human has merged it                                                                                                                                                             |
-| Gates       | `PROTOCOL_VERSION` 3 → 4; corpus drift gate (`pnpm gen:corpus -- --check`, with the Swift and Godot mirrors); all SDKs (the new `jwsCases` run in every existing runner); generated docs (`reference/corpus.mdx`)                                |
-| Human input | none beyond the approved plan                                                                                                                                                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                        |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                                                                                                                                                                                                           |
+| Size        | 2.75–3.25 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                             |
+| Depends on  | [P3-01](P3-01-wire-v4-plan.md), [S-06](S-06-outlet-signals.md)                                                                                                                                                                                                                                                                                                                                       |
+| Unblocks    | [P3-03](P3-03-feed-composition.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P3-08](P3-08-v4-godot.md), [P3-11](P3-11-outlet-detection.md), [P3-12](P3-12-worker-representability.md), [P6-05](P6-05-kotlin-sdk.md)                                                                                                          |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                |
+| Plan mode   | yes: execute the approved `plans/P3-01.md`; do not start until a human has merged it                                                                                                                                                                                                                                                                                                                 |
+| Gates       | `PROTOCOL_VERSION` 3 → 4; corpus drift gate (`pnpm gen:corpus -- --check`, with the Swift and Godot mirrors); all SDKs (the new `jwsCases`, the v3 claim cases and the pointer-set sections run in every existing runner); constants (`gen:constants`); transcripts (`gen:transcripts`); parity (`parity:check`); generated docs (`reference/corpus.mdx`, `reference/error-codes.mdx`); threat model |
+| Human input | none beyond the approved plan                                                                                                                                                                                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                            |
 
 ## Goal
 
@@ -95,6 +95,41 @@ vectors today, so backends can diverge silently
 - **Parity registry** (once P1b-01 has landed): entries `release.record` (`releaseRecordCases`),
   `update.feed` (`feedCases`), `update.decide` (`update-matrix.json`) and `outlet.detect`
   (`outlet-matrix.json`) point at the new proofs, `planned` in every SDK manifest.
+- **From the approved plan (`plans/P3-01.md` §2.2–§4, §5 order 0, §8):**
+  - the verifier fixes in every existing verifier (§2.2): the Ed25519 pre-checks; Python's
+    `parse_constant`, `parse_int` and `parse_float` hooks; rules 8 (numbers) and 9 (depth 64) in
+    all four verifiers; Swift's scalar-keyed member-name set and byte-level `StrictJSON.validate`;
+    the non-wire-integer pointer sets (`nonWireIntegers`) and the integer helpers
+    (`isWireInteger`, `_wire_int`, `wireInteger`, `is_wire_integer`) for every integer claim of
+    every `typ`, each with the minimum §2.2's "Minimums" table fixes (0 for every timestamp, 1
+    for `schemaVersion`), Godot's `_is_valid_schema_version` and Python's trust `schemaVersion`
+    included; Swift's total decoders and its bundle reason; the `profile: null` and bundle `docs`
+    refusals in Python and Swift; the whole-string pattern helper in each SDK, with the v3 semver
+    parsers on it;
+  - `client-core`'s `parseVersion`, `compareVersions`, `feedClaims` and `releaseRecordClaims`
+    (the four functions [P3-03](P3-03-feed-composition.md) imports), with the Node runner's
+    `versionCases` section and its claims section over the feed and record cases (§2.7, §5);
+  - `MAX_WIRE_INTEGER`, `MAX_JSON_DEPTH` and `MAX_RECORD_JWS_BYTES` in `shared-protocol` and
+    `gen:constants`; `BUILD_ID_PATTERN` and `FEED_PLATFORM_PATTERN` (§2.3, §2.4);
+  - the generator's reference implementations and claim checks, which recompute every matrix
+    row and prove every per-claim token, bound and minimum case, and §4.6's delta rule (§4.2,
+    §4.9);
+  - the 28 v3 claim cases (§4.3) and the counts of §4.1: 44 `jwsCases`, 77 `feedCases`, 49
+    `releaseRecordCases`;
+  - the `nonWireIntegers` case member (beside `expect`) and the pointer-set section in the Node,
+    Python, Swift and Godot runners, over the seven JWS families (§4.1, §4.9);
+  - the canonical-channel rule in `feedClaims` (a `latest` claim is refused) and the three
+    channel cases (§2.3, §4.4);
+  - the threat-model update, with the release-key boundary, the `staging` residual and the
+    fast-forward in AT-3's new branch (§6);
+  - `stage-matrix.json` version 2 and its ports (§4.8);
+  - the `enums.json` additions, `outletKind` included (P2b-02 left it out), the four client codes
+    in `errors.json`, and `gen:constants`, with §2.8's vocabularies exactly;
+  - `gen:transcripts` (discovery's `protocolVersion`);
+  - the `@noble/curves` devDependency in `tools`;
+  - `shared-protocol/distribution.ts` (new subpath), `PLATFORM_NARROWING` included, with
+    `OUTLET_KINDS`, `OutletKind` and `OUTLET_ID_PATTERN` moved there from
+    `@polaris-key/manifest`, which re-exports them with the same values and order.
 - **Wave-1 sync:** **Negative Ed25519 vectors.** Add corpus vectors for S >= L (and S+L), a small-order public key (identity, order-8), a non-canonical R (R with y >= p, or x = 0 with the sign bit set), so every SDK's verifier refuses what P0-10's streaming verifier refuses and WebCrypto may accept.
 
 **Out** (and where it belongs instead):
@@ -105,6 +140,10 @@ vectors today, so backends can diverge silently
   (→ [P3-08](P3-08-v4-godot.md)); runner sections for the new families (same packages).
 - Outlet detection in the SDKs (→ [P3-11](P3-11-outlet-detection.md)).
 - Record ingest, feed routes and signing in the Worker (→ [P3-03](P3-03-feed-composition.md)).
+- The Worker's write path: the `signJws` and `signDoc` guards, `StrictJsonError`,
+  `representabilityIssue`, the admin write checks, `500 document_not_representable`, the two
+  `core` codes and `check:representable` (→ [P3-12](P3-12-worker-representability.md), plan
+  decision 3).
 - Pack records, pack sets, content rows and revocations (→ [P4-01](P4-01-packs-plan.md),
   [P4-13](P4-13-revocation-floors-decision.md)); content-key delegation
   (→ [P4-19](P4-19-content-key-delegation.md)).
@@ -123,15 +162,20 @@ vectors today, so backends can diverge silently
   new `jwsCases` vector uses `pkey-feed+jws` or `pkey-release+jws` (typ-separation cases would),
   add both values to Swift's `JwsTyp` and Python's `TYP_*` constants here; P3-06 and P3-07 then
   build on them.
-- **The new families are dormant until the wave.** The runners read named sections
+- **The new families are mostly dormant until the wave.** The runners read named sections
   (`test_conformance.py:48`, `ConformanceTests.swift:30`), so `feedCases`, `releaseRecordCases`
-  and the two new files break nothing here. [P3-05](P3-05-v4-react.md) is the first full proof of
-  them; run it next, so a corpus mistake surfaces once rather than in five SDKs.
+  and the two new files break nothing here, except what this package proves itself: the Node
+  runner's `versionCases` and claims sections, and the pointer-set section in all four runners.
+  [P3-05](P3-05-v4-react.md) is the first full proof of the rest; run it next, so a corpus
+  mistake surfaces once rather than in five SDKs.
 - **Boot-guard rows.** If the plan appends boot-guard rows to `stage-matrix.json` (its item 20),
   the existing stage runners (`client-core` through the Node runner, and Godot's) read every row,
   so make them pass here or follow the plan's assignment; never leave a runner red.
-- **Keep `corpusVersion: 2`** unless the plan says otherwise: the Node (`:179`), Python (`:61`) and
-  Swift (`:185`) runners assert it.
+- **Keep `corpusVersion: 2`** unless the plan says otherwise: the Node (`:217`), Python (`:62`) and
+  Swift (`ConformanceTests.swift:186`) runners assert it.
+- **Line references have moved** since this brief was written: `KEYS` `:87`, the fixed clocks
+  `:243-254`, `buildJwsCases` `:382`, `buildV2` `:1709`, the gate matrix `:1737`/`:2358`, the
+  stage matrix `:3641`, the Node runner's jws section `:215`, `corpusInventory` `:452`.
 - **Deterministic output.** Ed25519 is deterministic and the clocks are fixed constants. Add v4
   clocks beside `V3_ISSUED` rather than reading the system clock. `--check` must be stable.
 - **Hand-authored matrices are append-only**, like `CARRIED_MATRIX_ROWS`: a later change is a new
@@ -176,6 +220,14 @@ vectors today, so backends can diverge silently
       `sdks/godot` exists) all pass, including every new `jwsCases` vector.
 - [ ] `reference/corpus.mdx` lists the new families and files; `docs gen:check` passes.
 - [ ] The green gate passes (`AGENTS.md`), including the corpus and generated-docs drift gates.
+- [ ] Every integer claim has a token case, a bound case and a minimum case wherever no other
+      check implies them (§2.2 "Minimums", §4.9), and reverting any one SDK's integer helper at
+      any one claim fails that SDK's runner.
+- [ ] Every runner compares its verifier's `nonWireIntegers` with each case's member over the
+      seven JWS families.
+- [ ] `client-core` exports `parseVersion`, `compareVersions`, `feedClaims` and
+      `releaseRecordClaims`, and the Node runner's version and claims sections pass.
+- [ ] `docs/security/THREAT-MODEL.md` has the release-key boundary and AT-3's two-signer branch.
 - [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
 ## Verify
@@ -203,6 +255,13 @@ release template:
 - `ChannelFeedDoc`, `ReleaseRecordDoc` and the decision types in `@polaris-key/protocol`, used by
   [P3-03](P3-03-feed-composition.md) (signer and ingest) and [P3-05](P3-05-v4-react.md)
   (`client-core`).
+- `client-core`'s `parseVersion`, `compareVersions`, `feedClaims` and `releaseRecordClaims`, the
+  only client-core functions [P3-03](P3-03-feed-composition.md) imports, so it does not wait for
+  [P3-05](P3-05-v4-react.md).
+- `scanStrictJson` and `SMALL_ORDER_ENCODINGS` exported from `shared-jws`, which
+  [P3-12](P3-12-worker-representability.md)'s signer guard and P3-03's composer call.
+- No SDK release built after this package is published before P3-12's Worker is deployed with
+  a clean `check:representable` (plan §7).
 - Any later corpus fix is plan-mode: amend `plans/P3-01.md` and regenerate, never hand-edit.
 - `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P3-02 done` in the PR
   that completes the work.

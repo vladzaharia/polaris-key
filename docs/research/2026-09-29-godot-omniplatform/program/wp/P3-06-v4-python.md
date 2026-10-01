@@ -1,16 +1,16 @@
 # P3-06 Wire v4 in the Python SDK
 
-| Field       | Value                                                                              |
-| ----------- | ---------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                              |
-| Size        | 0.5–0.75 engineer-weeks                                                            |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md)                                          |
-| Unblocks    | [P4-07](P4-07-python-swift-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
-| Role        | `pkey-sdk-porter`                                                                  |
-| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                          |
-| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                   |
-| Human input | none                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                          |
+| Field       | Value                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                                                                  |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P3-05](P3-05-v4-react.md)                                                  |
+| Unblocks    | [P3-11](P3-11-outlet-detection.md), [P4-07](P4-07-python-swift-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
+| Role        | `pkey-sdk-porter`                                                                                                      |
+| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                                                              |
+| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                                                       |
+| Human input | none                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                              |
 
 ## Goal
 
@@ -75,6 +75,30 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
 
 ## Design notes
 
+- **Plan amendments (`plans/P3-01.md` §8, approved).** Where this brief and the plan differ, the
+  plan wins:
+  - the function names, refusal reasons and steps in plan §2.7 and §2.5, including
+    `parseVersion`, `compareVersions`, `resolveUpdateOutlet` and
+    `effectiveCapabilities(kind, {platform, …})`;
+  - `decide()` returns an `UpdateCheck` (`channel`, `decision`, `feed`, `record`, `errors`) with
+    §2.5's error map, the record-body bound (`MAX_RECORD_JWS_BYTES`, 88 844 bytes, refused at
+    step 12 without hashing) included; the decision inputs are `outlet {id, kind}`, `subkind`,
+    `format` and `methods`;
+  - every pattern goes through the SDK's whole-string pattern helper, and member presence is as
+    plan §2.2 says (a required member present, an optional one absent or typed, never `null`);
+    `builds[].id` and `targets[].platform` are ASCII by `BUILD_ID_PATTERN` and
+    `FEED_PLATFORM_PATTERN`;
+  - the cache slices are `feeds` and `releaseRecords`; `bootDecision` never answers `required`,
+    and `mandatory` and `blocked` are prompts the player cannot dismiss; an empty
+    `pinnedReleaseKeys` raises `not-configured` and a release key that is also a trust pin raises
+    `invalid-options`;
+  - the canonical channel (§2.3, §2.5, §2.6): `feeds` and the floors are keyed by each feed's own
+    `channel` claim, `verifyFeed`'s `floors` map is read only after step 5, the fallback order,
+    the removal of the requested name's entry after an alias answer, and `UpdateCheck.channel`;
+    no SDK resolves an alias itself, and the decision has no `channel` input;
+  - this package's transcript replayer learns the `updateDecide` action and the `initial.update`
+    block in the same PR that flips `update.feed`, `release.record` and `update.decide`
+    (plan §5).
 - **Same order, same verdicts** as README §3.3 and the plan: feed against the product trust set;
   record hash compared with the pin **before** any signature work; record against
   `pinned_release_keys` only; `deliverable`, `version` and `seq` checked against the feed.
@@ -90,7 +114,7 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
 
 ## Steps
 
-1. Confirm P3-02 is `done` (P3-05 ideally too); branch `wp/P3-06-v4-python`.
+1. Confirm P3-02 and P3-05 are `done` (P3-05 is a graph dependency); branch `wp/P3-06-v4-python`.
 2. Models and pure functions; the conformance and matrix tests go green.
 3. Cache slices and reload derivation.
 4. Update client and options.

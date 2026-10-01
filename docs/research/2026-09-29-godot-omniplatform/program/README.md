@@ -162,7 +162,7 @@ Several packages can run at once only if they do not fight over the same generat
 | Hotspot                                                         | Rule                                                                                            |
 | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `tools/sign-corpus.ts`, `conformance/corpus/**` and its mirrors | **one corpus-touching package in flight at a time** (every ⚑ package, and those gated `corpus`) |
-| `PROTOCOL_VERSION`, `shared-protocol`, `shared-jws`             | only inside an approved plan (P0-04, P3-02, P4-13, P4-19)                                       |
+| `PROTOCOL_VERSION`, `shared-protocol`, `shared-jws`             | only inside an approved plan (P0-04, P3-02, P3-12, P4-13, P4-19)                                |
 | D1 migrations                                                   | number migrations when rebasing onto the default branch, never in advance                       |
 | OpenAPI spec and `routeCoverage` (rule 10)                      | rebase before review; the gate catches misses                                                   |
 | the service table (after P0-09)                                 | one new slug per PR                                                                             |

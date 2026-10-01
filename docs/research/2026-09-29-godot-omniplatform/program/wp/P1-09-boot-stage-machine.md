@@ -197,6 +197,9 @@ mise exec node@22 -- pnpm parity:check
 
 ## Hand-off
 
+- **Later change (P3-01's approved plan, §2.10, §8):** P3-02 moves `stage-matrix.json` to version
+  2 (`bootOkSeconds`, `vocabulary.confirmations`, `confirmCases`, `bootConfirmation`), and no v4
+  decision sends `decide.done required`.
 - `@polaris-key/client-core/stages` (`bootTransition`, the stage, event and outcome names) and
   `stage-matrix.json`: P1-10 ports them to GDScript under the same names in snake_case and loads
   the Godot mirror in its runner.
