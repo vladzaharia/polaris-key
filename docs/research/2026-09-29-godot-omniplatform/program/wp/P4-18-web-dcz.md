@@ -105,8 +105,8 @@ That moves README P4 v3's "web Compression Dictionary Transport" from speculativ
   refinement, for the reason above.
 - **Limits.** Dictionaries over 100 MiB are never offered (Chromium's `kDictionarySizeLimit`), and
   a per-site budget evicts dictionaries (A7 §9.3); do not send `Use-As-Dictionary` above 100 MiB.
-  RFC 9842 requires secure contexts and same-origin matching; the bytes are on a separate
-  registrable domain (README §3.5), so the page fetches cross-origin under the product's CORS
+  RFC 9842 requires secure contexts and same-origin matching; the bytes are on `dl.plrs.im` (P2-01; same-site with the console, but a
+  different origin from the page, so the README §3.5 "separate registrable domain" does not hold), so the page fetches cross-origin under the product's CORS
   allowlist. Confirm in Playwright that a CORS-mode fetch uses the dictionary.
 - **Avoid a silent full download on a miss.** If the browser does not send
   `Available-Dictionary`, the target URL returns the full payload, which costs more than planned.

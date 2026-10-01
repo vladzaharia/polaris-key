@@ -90,7 +90,7 @@
         "notes/A3"
       ],
       "brief": "wp/P0-01-operator-ownership.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-02",
@@ -111,7 +111,7 @@
         "notes/A1"
       ],
       "brief": "wp/P0-02-release-resolution.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-03",
@@ -169,7 +169,7 @@
       "optional": false,
       "refs": ["README §9.1 #10", "README §3.11", "notes/A3"],
       "brief": "wp/P0-05-cors.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-06",
@@ -203,7 +203,7 @@
       "optional": false,
       "refs": ["README §9.1 #13", "notes/A3"],
       "brief": "wp/P0-07-cli-init-validate.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-08",
@@ -223,7 +223,7 @@
         "README §3.2 first, make the service list data-driven"
       ],
       "brief": "wp/P0-08-unknown-slug-tolerance.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-09",
@@ -259,7 +259,7 @@
       "optional": false,
       "refs": ["README §9.1 #11 #16"],
       "brief": "wp/P0-10-sparkle-hardening.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-11",
@@ -316,7 +316,7 @@
         "packages/worker/src/services/identity/oidc.ts:295-301"
       ],
       "brief": "wp/P0-13-oidc-flow-key-hashing.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-01",
@@ -549,7 +549,7 @@
       "optional": false,
       "refs": ["PARITY §3", "PARITY §5"],
       "brief": "wp/P1b-01-parity-registry.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-02",
@@ -728,7 +728,7 @@
       "optional": false,
       "refs": ["README §3.5", "README §11 decision 4", "notes/A3 §7"],
       "brief": "wp/P2-01-blob-store.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-02",

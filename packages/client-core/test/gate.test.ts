@@ -1,3 +1,4 @@
+// @pkey-feature license.gate
 // The v3 gate. Ports the Node SDK's gate coverage onto the new `GateInput` and adds the
 // three things v3 introduces: `not-applicable` for products without the license service,
 // `activation: "bundle"` as a first-class activation, and the monotonic clock floor.

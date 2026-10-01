@@ -1,3 +1,4 @@
+# @pkey-feature license.gate
 """Cross-SDK gate-parity conformance.
 
 Drives the shared ``conformance/corpus/v2/gate-matrix.json`` fixture through the Python

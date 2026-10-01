@@ -1,3 +1,4 @@
+// @pkey-feature core.store
 // The Node persistence layer: the device-id formula and the three stores that round-trip the
 // `pkeyt_` credential and the Core-owned cache record.
 //

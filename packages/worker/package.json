@@ -16,6 +16,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@noble/curves": "2.4.0",
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/manifest": "workspace:*",

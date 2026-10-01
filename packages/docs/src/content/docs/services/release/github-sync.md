@@ -123,14 +123,18 @@ A resync re-parses the manifest and re-applies it as a diff against the product'
 state:
 
 - **Always fully replaced** from the manifest, every sync: the release configuration row
-  (channel workflow, binary name, Sparkle key, access modes), the config catalog (only
+  (channel workflow, binary name, Sparkle key, access modes, and the `stableTagPattern` /
+  `ignoreTags` candidate filter), the config catalog (only
   when its content actually changed, which publishes a new schema version), OIDC
   configuration, tiers, profiles, provisioning rules, and edge-mint recipes. A tier or
   profile still referenced by a live license blocks its own removal rather than silently
   orphaning that license.
-- **The release truth store** — refreshed in the same pass, one extra release listing
-  against the same installation token. See
-  [The truth store](/docs/services/release/truth-store/) for what that populates.
+- **The release truth store** — refreshed in the same pass, with one paginated release
+  listing against the same installation token. It follows GitHub's `Link: rel="next"` for up
+  to 10 pages of 100 (1,000 releases), so a busy repository cannot push its last stable release
+  out of the store. A repository with fewer than 100 releases still costs one call. The same
+  pass raises each moving channel's [floor](/docs/services/update/eligibility/#channel-floors-no-silent-downgrade).
+  See [The truth store](/docs/services/release/truth-store/) for what that populates.
 
 Removing a repository-side field returns the corresponding server value to its default,
 not to whatever it last was — a manifest is the whole statement of intent, not a set of

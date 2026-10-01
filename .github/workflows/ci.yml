@@ -28,6 +28,11 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+      # Parity gate: every SDK's parity.json lists every feature in
+      # conformance/parity/features.json, each implemented entry has a test tagged
+      # `@pkey-feature <id>`, each N/A is one the registry allows, and each planned entry names an
+      # open work package (PARITY §3.2). Read-only; the matrix page is written by the docs generator.
+      - run: pnpm parity:check
       - run: pnpm lint
       # Drift gate: the cross-language conformance corpus must be regenerable in place.
       - run: pnpm gen:corpus -- --check

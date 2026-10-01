@@ -130,8 +130,14 @@ describe("update/settings", () => {
     expect(await res.json()).toEqual({
       metadataAccess: "public",
       artifactsAccess: "public",
+      // Never touched by an operator, so both claimable blocks are still the manifest's (P0-01).
+      accessSource: "manifest",
       compatMin: "0.0.0",
       compatMax: "99.0.0",
+      compatSource: "manifest",
+      // The operator-only artifact policy, on its fail-safe defaults.
+      minimumSystemVersion: null,
+      requireSparkleSignature: true,
       configured: true,
     });
   });

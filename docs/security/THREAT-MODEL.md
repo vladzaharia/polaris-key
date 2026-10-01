@@ -23,17 +23,18 @@ and what binary it installs next.
 
 ## 2. Assets, ranked by what their loss costs
 
-| #   | Asset                                                             | Where it lives                                                  | Loss impact                                                                                                                |
-| --- | ----------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| A1  | **`PLATFORM_KEK`**                                                | Worker secret                                                   | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9). |
-| A2  | **Per-product Ed25519 signing keys**                              | `product_keys.enc_private_json`, sealed under A1                | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.   |
-| A3  | **The release channel**                                           | GitHub App key, webhook secret, `release_config`                | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                          |
-| A4  | **`ADMIN_SESSION_SECRET`**                                        | Worker secret                                                   | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                               |
-| A5  | **Product secrets** (OIDC client secrets, edge-mint signing keys) | `product_secrets`, sealed under A1                              | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                  |
-| A6  | **Customer PII**                                                  | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                      |
-| A7  | **Licensing revenue**                                             | The whole enforcement path                                      | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                       |
-| A8  | **Service availability**                                          | Worker, D1, KV, DO                                              | A licensing outage can block paying customers from software they already bought.                                           |
-| A9  | **The ability to recover**                                        | Rotation and revocation machinery                               | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.      |
+| #   | Asset                                                             | Where it lives                                                                   | Loss impact                                                                                                                                |
+| --- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| A1  | **`PLATFORM_KEK`**                                                | Worker secret                                                                    | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                 |
+| A2  | **Per-product Ed25519 signing keys**                              | `product_keys.enc_private_json`, sealed under A1                                 | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                   |
+| A3  | **The release channel**                                           | GitHub App key, webhook secret, `release_config`                                 | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                          |
+| A4  | **`ADMIN_SESSION_SECRET`**                                        | Worker secret                                                                    | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                               |
+| A5  | **Product secrets** (OIDC client secrets, edge-mint signing keys) | `product_secrets`, sealed under A1                                               | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                  |
+| A6  | **Customer PII**                                                  | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext                  | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                      |
+| A7  | **Licensing revenue**                                             | The whole enforcement path                                                       | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                       |
+| A8  | **Service availability**                                          | Worker, D1, KV, DO                                                               | A licensing outage can block paying customers from software they already bought.                                                           |
+| A9  | **The ability to recover**                                        | Rotation and revocation machinery                                                | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                      |
+| A10 | **The blob store** (release bytes)                                | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1 | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach. |
 
 ## 3. Trust boundaries
 
@@ -45,7 +46,11 @@ and what binary it installs next.
   (SDK, fully           │    ├── D1  (relational, authoritative)    │
    attacker-controlled) │    ├── KV  (hot-path hints only)          │
                         │    ├── DO  (atomic rate limiting)         │
- browser (admin/portal)►│    └── ASSETS (SPA bundles)               │
+ browser (admin/portal)►│    ├── ASSETS (SPA bundles)               │
+                        │    └── R2  BLOBS (content-addressed bytes)│
+ downloader ───────────►│  same Worker on dl.plrs.im (bytes host:   │
+  (any client)          │    byte routes only — see below)          │
+ CI (temp creds) ──────►│  R2 staging/ only; never a locked prefix  │
                         │                                          │
  GitHub (webhooks, ────►│  secrets: PLATFORM_KEK, session secrets,  │
   repo contents,        │           GitHub App key, webhook secret  │
@@ -62,6 +67,119 @@ and what binary it installs next.
 Concretely: a bypassed client gate can fake "licensed" locally, but it cannot manufacture
 `payload.secrets` or an edge-mint token, because those only exist if the server chose to emit them.
 Any feature whose security depends on the client _refusing_ to do something is not secured.
+
+### The blob store and the bytes host (P2-01)
+
+**Asset A10.** Release bytes live in one R2 bucket per environment, content-addressed:
+`blobs/sha256/<hex>`, `bundles/sha256/<hex>`, `deltas/<from>/<to>.<method>`, the same layout
+under `gated/` for entitlement-gated content, and `staging/<product>/<ticketId>/<hex>` for CI
+uploads. Its write paths, and nothing else:
+
+1. **CI → `staging/` only**, with R2 temporary credentials scoped to that prefix (P2-02). CI can
+   never write a locked prefix.
+2. **The Worker's `BLOBS` binding → locked prefixes**, only through `core/blobs.ts`
+   `putVerified`/`promote`. The operator's account token can also write, and is out of the
+   Worker's control (as it is for D1).
+
+**Invariants** (code: `packages/worker/src/core/blobs.ts`; tests: `test/blobs.test.ts`,
+`test-workerd/blobs.test.ts`):
+
+- **Verify before lock.** A wrong object stored under a hash name would be locked in place, so
+  `promote` verifies the staged object first (R2's stored SHA-256, else a streamed re-hash via
+  `crypto.DigestStream`), pins the copy to the exact object version it verified, and writes the
+  target with R2's `sha256` put option so R2 itself refuses a mismatch. A key named by a hash
+  must be named by the expected hash. Writes are create-only (`If-None-Match: *`); the bucket
+  lock enforces the same at rest.
+- **`blob_objects` is written only after verification**; `blob_refs.storage_key` is a foreign
+  key into it, so a ref never names unverified bytes, and an object with a ref cannot be
+  deleted from D1.
+- **Every read goes through the Worker.** No R2 public domain and no `r2.dev`: only the Worker
+  sets `ETag` to the SHA-256, adds `Repr-Digest` (RFC 9530), and checks that **this** product
+  holds a ref to the key (`hasRef`) before serving it. A hash is never treated as a secret:
+  gated content is authorised per request and served `private, no-store`.
+- **Clients verify against the signed manifest, not the headers.** `Repr-Digest` and the ETag
+  help resumption; integrity rests on the hash in a signed document.
+- **A product earns a `blob_ref` only by proving it had the bytes.** `blob_objects` is shared
+  across products (content addressing deduplicates), so it records that _someone_ stored the
+  bytes, never _who may serve them_; tenancy is `blob_refs`, and `hasRef` is only as strong as
+  the way refs are granted. The rule for every caller of `recordRef` (P2-04, P4-02): a product
+  gets a ref to a key only (a) by promoting a verified upload from its **own**
+  `staging/<product>/…` prefix — a promote that finds the key `alreadyStored` still required
+  the upload — or (b) when it already references that key. Never on the strength of
+  `isStored`/`storedKeys`: a tenant (T3) could otherwise take the hash of another product's
+  gated build, which that product's signed manifests publish to every customer, be told
+  "present", skip the upload, get a ref, and serve the other product's paid bytes from its
+  own byte route.
+- **Deduplication answers are per product.** An upload ticket's `present` flag (P2-02, P4-03)
+  comes from `referencedKeys(db, product, keys)` — the keys _this_ product already
+  references — never from `blob_objects` alone, which would also tell a tenant which hashes
+  other products hold. `isStored`/`storedKeys` stay internal bookkeeping (promote, GC).
+
+**Lock duration and the GC trade-off.** `blobs/`, `bundles/`, `deltas/` and `gated/` carry an
+**age** lock of **180 days**, not an indefinite one. An indefinite lock would make it impossible
+for P4-14's collector ever to delete an unreferenced object, so storage would only grow; 180
+days is longer than any build a channel can still point at plausibly needs for rollback. The
+cost: an object older than 180 days is deletable by anyone holding account-level R2 write
+access, so the lock bounds the window in which a compromised Worker or token cannot destroy
+published bytes — it is not permanent immutability. `staging/` is unlocked with a 1-day expiry.
+
+**Boundary: the bytes host.** The same Worker answers on `dl.plrs.im` (`dl-staging`, `dl-dev`),
+named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allowlist
+(`mount.ts` `BYTE_ROUTES`, dispatched by `core/bytesHost.ts`; empty until P2-05/P2b-04);
+`/manage`, `/docs`, the portal, discovery and every product route answer not-found there
+(`test/bytesHost.test.ts`). The host does not go through `dispatchService`, so it makes that
+function's enablement check itself: every byte route names its service, and one whose service
+is disabled for the product never runs and answers the same not-found as an unknown product. The host
+match is case-insensitive and ignores trailing dots: the edge routes the fully-qualified
+`dl.plrs.im.` to the Worker with the dot kept in the URL, so an exact comparison would hand
+that spelling the whole console. Every byte route is product-scoped; CORS on the host is the
+same `core/cors.ts` step as the console's covered routes (the product's own `web.origins`,
+preflight answered before the route runs, headers added after it returns, never
+`Allow-Credentials`), and a route cannot set its own `Access-Control-*` headers: the dispatcher
+drops them from every route answer, including for a product with no `web.origins` (for which
+`withCors` adds nothing).
+
+**Deviation, recorded: the bytes host is same-site with the console.** The design rule
+(research README §3.5, decision 4) was a separate registrable domain, because a `*.plrs.im`
+sibling is same-site with `key.plrs.im` and `SameSite` cookies then do not separate the two.
+The owner chose `dl.plrs.im` anyway. What that exposes: if anything on `dl.plrs.im` could run
+script, it could issue same-site requests to the console carrying `SameSite=Strict` cookies,
+and could try to toss `Domain=plrs.im` cookies at it. The compensations, each test-pinned:
+
+- every bytes-host response carries `X-Content-Type-Options: nosniff` and
+  `Content-Security-Policy: sandbox; default-src 'none'; frame-ancestors 'none'`, so a body a
+  browser decides to render gets an opaque origin and runs no script;
+- nothing script-executable or renderable is ever served there, and the **dispatcher**
+  enforces it for every route answer, whether or not the route used `blobResponse` (which
+  applies the same allowlist): a non-error answer must carry a type on the explicit inert
+  allowlist (`BYTES_HOST_TYPES`: APK, wasm, zip, archives, installers), and a body with no
+  type is refused, so PDF, images, video, HTML, XHTML, SVG, XML, JavaScript, JSON and
+  `text/*` all become not-found; an error answer may carry only the platform's JSON error type
+  or an allowlisted type; and `Content-Disposition` is forced to `attachment` unless the type
+  is allowlisted and the route asked for `inline`;
+- no cookie is read or set on the host: `Cookie` is stripped before a byte route sees the
+  request and `Set-Cookie` from every response;
+- the console's session cookies are host-only: `__Host-pkey_admin` and `__Host-pkey_portal`
+  (the prefix forbids `Domain` and so cannot be shadowed by a sibling), and the per-product
+  identity cookie carries no `Domain` either; a test fails if any `Domain=` cookie attribute
+  appears in the Worker source. The browser therefore never sends a console cookie to
+  `dl.plrs.im`.
+
+Residual risk: the compensations hold only while nothing else is hosted on `dl.plrs.im` or on
+any other `plrs.im` sibling that serves attacker-influenced HTML. Hosted web builds (P6-04),
+which need HTML and script, cannot live on this host under these rules and need their own
+registrable domain.
+
+Residual risk: **delta keys can be squatted.** `deltas/<from>/<to>.<method>` is named by its
+endpoints, not by its own content, and is not product-scoped, so `promote` can verify only
+that the bytes match the hash the caller supplies. Any tenant can promote arbitrary bytes under
+another product's delta key first; the 180-day lock then fixes them in place, and the
+legitimate promote answers `conflict`. This must stay an availability problem only: a client
+must accept a delta's output only when it matches the signed `to` hash, and so falls back to
+the full blob; the delta path for that pair is then denied until the lock lapses. The packages
+that publish deltas (P4-03, P4-17) own the fix: product-scoped or content-named delta keys, or
+granting a delta ref only under the earn-a-ref rule above, so a squatted key is never served
+under the victim product.
 
 ### Boundaries that are weaker than they look
 
@@ -90,16 +208,17 @@ Any feature whose security depends on the client _refusing_ to do something is n
 These deserve their own section because each is treated as trusted somewhere in the code while
 originating outside the trust boundary.
 
-| Input                   | Trusted for                                                   | Actual origin        | Control                                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC `groups`           | **Platform admin authority**                                  | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.          |
-| OIDC `sub`              | License identity                                              | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license. |
-| OIDC `email`            | Portal license linking, cross-product                         | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.            |
-| `.pkey/` manifest       | Tiers, OIDC issuer, artifact policy, admin group, binary name | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy.                                                 |
-| `X-PKey-Version` header | Version and channel gating                                    | The client           | `0.0.0-dev` bypasses all of it.                                                                                                           |
-| `X-PKey-Device` header  | Device identity                                               | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                   |
-| Fingerprint components  | Seat/hardware binding                                         | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                             |
-| Cached `trustedKeys`    | **Signature verification**                                    | A user-writable file | Overrides pinned keys.                                                                                                                    |
+| Input                           | Trusted for                                                               | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OIDC `groups`                   | **Platform admin authority**                                              | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                         |
+| OIDC `sub`                      | License identity                                                          | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                |
+| OIDC `email`                    | Portal license linking, cross-product                                     | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                           |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name             | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                                                                                                |
+| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS) | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09). |
+| `X-PKey-Version` header         | Version and channel gating                                                | The client           | `0.0.0-dev` bypasses all of it.                                                                                                                                                                                                                                                                                                                                                          |
+| `X-PKey-Device` header          | Device identity                                                           | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                  |
+| Fingerprint components          | Seat/hardware binding                                                     | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                            |
+| Cached `trustedKeys`            | **Signature verification**                                                | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                   |
 
 ## 6. What the licensing enforcement actually promises
 
@@ -179,6 +298,8 @@ operator; and denial of service originating from Cloudflare's own network contro
 
 Revisit this document when any of the following changes: a new tenant that is not first-party is
 onboarded; the portal gains write capability beyond device disconnect and key claim; a second
-release channel or artifact type is added; the admin authorization model changes; the wire contract
+release channel or artifact type is added; a byte route is added to `BYTE_ROUTES`, a type to
+`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; the bucket-lock duration
+changes; the admin authorization model changes; the wire contract
 version increments; or any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default).

@@ -88,6 +88,10 @@ must hold before any more operator controls (channel policy, rollouts, halts) ar
 - **Migration file rules.** One `ALTER TABLE … ADD COLUMN` per file with nothing after it
   (see `0013`, `0020`); the backfill goes in its own file after the `ALTER`s. Number the files
   when rebasing (the next free number is `0022` today); P0-02 also adds migrations.
+  _Correction (implementation):_ the lead pre-assigned this package the single number `0022`, so
+  the four one-statement files share it with a letter suffix — `0022_a_compat_source.sql`,
+  `0022_b_access_source.sql`, `0022_c_operator_policy.sql`, `0022_d_operator_policy_backfill.sql`
+  — which sort (and apply) in that order in both wrangler and `test/helpers.ts`.
 - **Readers.** `artifactPolicy(cfg)` (`config.ts:97-122`) reads `requireSparkleSignature` from
   `operator_policy_json`; `minimumSystemVersion` in `feed.ts` does the same; `health.ts`'s local
   `artifactPolicy` reads `requireDmg`/`requireCli` from `artifact_policy_json` and
@@ -121,24 +125,24 @@ must hold before any more operator controls (channel policy, rollouts, halts) ar
 
 ## Acceptance criteria
 
-- [ ] Worker test: PATCH `artifactsAccess: "entitled"`, then `resyncRepo` with a manifest saying
+- [x] Worker test: PATCH `artifactsAccess: "entitled"`, then `resyncRepo` with a manifest saying
       `access.artifacts: public` → `release_config.artifacts_access` is still `entitled`.
-- [ ] Worker test: PATCH `compatMin: "2.0.0"`, then resync with `compatMin: 1.0.0` → the stored
+- [x] Worker test: PATCH `compatMin: "2.0.0"`, then resync with `compatMin: 1.0.0` → the stored
       window is still `2.0.0`; after `revert` and another resync it is `1.0.0`.
-- [ ] Worker test: operator `minimumSystemVersion: "13.0"` survives a resync and appears as
+- [x] Worker test: operator `minimumSystemVersion: "13.0"` survives a resync and appears as
       `sparkle:minimumSystemVersion` in the appcast; `requireSparkleSignature: false` survives too.
-- [ ] Worker test: a product never touched by an operator still follows every manifest change.
-- [ ] Migration test (or `scheduled`/`repo` test) shows the backfill copies hand-set keys and is
+- [x] Worker test: a product never touched by an operator still follows every manifest change.
+- [x] Migration test (or `scheduled`/`repo` test) shows the backfill copies hand-set keys and is
       a no-op on replay.
-- [ ] `schema-parity.test.ts` has a fixture with a 32–63 character architecture that both the
+- [x] `schema-parity.test.ts` has a fixture with a 32–63 character architecture that both the
       validator and `release.schema.json` accept.
-- [ ] `reference/data-model.mdx` is regenerated and `pnpm --filter @polaris-key/docs gen:check` passes.
-- [ ] The green gate passes (`AGENTS.md`), including the admin build.
+- [x] `reference/data-model.mdx` is regenerated and `pnpm --filter @polaris-key/docs gen:check` passes.
+- [x] The green gate passes (`AGENTS.md`), including the admin build.
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm --filter @polaris-key/worker test -- serviceAdmin releaseStore linkRepo updateFeed release
+mise exec node@22 -- pnpm --filter @polaris-key/worker test serviceAdmin releaseStore linkRepo updateFeed release
 mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 mise exec node@22 -- pnpm --filter @polaris-key/admin test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check

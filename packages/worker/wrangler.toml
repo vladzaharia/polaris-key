@@ -63,6 +63,23 @@ new_sqlite_classes = ["RateLimitDO"]
 crons = ["17 3 * * *"]
 
 # ---------------------------------------------------------------------------
+# The Core blob store and the bytes host (P2-01; docs/DEPLOYMENT.md "Blob store").
+#
+# Each environment binds its own R2 bucket as BLOBS — polaris-key-blobs-<env>, created by
+# the operator with an AGE lock of 180 days on blobs/, bundles/, deltas/ and gated/, a 1-day
+# lifecycle expiry on staging/, and r2.dev DISABLED. No R2 public/custom domain is ever
+# attached to a bucket: every read goes through this Worker (core/blobs.ts), the only place
+# that sets ETag to the SHA-256, adds Repr-Digest and enforces the per-product ref check.
+#
+# The bytes host is the SAME Worker on a second custom domain (dl*.plrs.im), declared as a
+# route with custom_domain = true; BLOB_ORIGIN names it so src/core/bytesHost.ts can confine
+# that host to byte routes. dl.plrs.im is same-site with key.plrs.im (an owner decision that
+# deviates from the separate-registrable-domain rule — see docs/security/THREAT-MODEL.md §3);
+# the compensating headers and the cookie rules are test-pinned in test/bytesHost.test.ts.
+# `vars` is NOT inheritable, so each environment carries its own BLOB_ORIGIN.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # Per-environment bindings. The D1 database and KV namespace are created once,
 # per environment, with wrangler (see docs/DEPLOYMENT.md "Cloudflare resources"):
 #   wrangler d1 create polaris_key_<env>          -> database_id
@@ -75,6 +92,9 @@ crons = ["17 3 * * *"]
 [[env.prod.routes]]
 pattern = "key.plrs.im"
 custom_domain = true
+[[env.prod.routes]]
+pattern = "dl.plrs.im"
+custom_domain = true
 [[env.prod.durable_objects.bindings]]
 name = "RL"
 class_name = "RateLimitDO"
@@ -85,6 +105,11 @@ id = "51b31c97ac2140e5af2402bed1a31e71"
 binding = "DB"
 database_name = "polaris_key_prod"
 database_id = "4bcb24b2-80af-4180-abcc-0e5e99564ed8"
+[[env.prod.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "polaris-key-blobs-prod"
+[env.prod.vars]
+BLOB_ORIGIN = "https://dl.plrs.im"
 [[env.prod.send_email]]
 name = "EMAIL"
 allowed_sender_addresses = ["noreply@plrs.im"]
@@ -92,6 +117,9 @@ allowed_sender_addresses = ["noreply@plrs.im"]
 [env.staging]
 [[env.staging.routes]]
 pattern = "key-staging.plrs.im"
+custom_domain = true
+[[env.staging.routes]]
+pattern = "dl-staging.plrs.im"
 custom_domain = true
 [[env.staging.durable_objects.bindings]]
 name = "RL"
@@ -103,10 +131,18 @@ id = "REPLACE_ME_STAGING_KV_ID"
 binding = "DB"
 database_name = "polaris_key_staging"
 database_id = "REPLACE_ME_STAGING_D1_ID"
+[[env.staging.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "polaris-key-blobs-staging"
+[env.staging.vars]
+BLOB_ORIGIN = "https://dl-staging.plrs.im"
 
 [env.dev]
 [[env.dev.routes]]
 pattern = "key-dev.plrs.im"
+custom_domain = true
+[[env.dev.routes]]
+pattern = "dl-dev.plrs.im"
 custom_domain = true
 [[env.dev.durable_objects.bindings]]
 name = "RL"
@@ -118,6 +154,11 @@ id = "REPLACE_ME_DEV_KV_ID"
 binding = "DB"
 database_name = "polaris_key_dev"
 database_id = "REPLACE_ME_DEV_D1_ID"
+[[env.dev.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "polaris-key-blobs-dev"
+[env.dev.vars]
+BLOB_ORIGIN = "https://dl-dev.plrs.im"
 
 # Required secrets (set with `wrangler secret put <NAME> --env <env>`):
 #   KEY_HASH_PEPPER, ADMIN_SESSION_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY,
