@@ -22,15 +22,61 @@ export {
 } from "./version.js";
 
 export {
+  boundChannels,
+  commitFeed,
   feedClaims,
+  feedFloor,
+  reloadFeeds,
+  verifyFeed,
+  type CommittedFeed,
   type FeedClaimsOptions,
   type FeedClaimsRefusal,
+  type FeedFloor,
+  type FeedRefusal,
+  type ReloadedFeeds,
+  type VerifyFeedOptions,
+  type VerifyFeedResult,
 } from "./feed.js";
 
 export {
+  recordHash,
   releaseRecordClaims,
+  reloadReleaseRecords,
+  verifyReleaseRecord,
   type ReleaseRecordClaimsOptions,
+  type ReleaseRecordPin,
+  type ReleaseRecordStep,
+  type VerifyReleaseRecordOptions,
+  type VerifyReleaseRecordResult,
 } from "./record.js";
+
+export {
+  OUTLET_CAPABILITY_DEFAULTS,
+  PLATFORM_NARROWING,
+  SUBKIND_NARROWING,
+  bootDecision,
+  decideUpdate,
+  effectiveCapabilities,
+  feedTarget,
+  isUndismissable,
+  isValidHostOutlet,
+  outletEntry,
+  resolveUpdateOutlet,
+  rolloutBucket,
+  type DetectedOutlet,
+  type EffectiveCapabilitiesOptions,
+  type HostOutlet,
+  type OutletStamp,
+  type ResolvedOutlet,
+} from "./decide.js";
+
+export {
+  runUpdateCheck,
+  type FetchOutcome,
+  type RunUpdateCheckOptions,
+  type RunUpdateCheckResult,
+  type UpdateCheckError,
+} from "./check.js";
 
 export {
   CONFIG_DOC,
