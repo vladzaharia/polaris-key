@@ -1,4 +1,7 @@
-import { type ProductCatalog } from "@polaris-key/catalog";
+import {
+  representabilityIssue,
+  type ProductCatalog,
+} from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
   CHANNEL_ALIASES,
@@ -375,9 +378,12 @@ const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
  *  today's behaviour for every product (design spec §2.2). The table's `defaultEnabled`. */
 const DEFAULT_ENABLED: readonly ServiceSlug[] = DEFAULT_ENABLED_SERVICES;
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
-const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
+/** Tier, profile and probe ids. Exported (P3-12) so the Worker's admin handlers check the same
+ *  values the same way (plans/P3-01.md §2.2's inventory); no rule is added by exporting it. */
+export const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
 const SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;
-const SEMVER_RE =
+/** Exported (P3-12) for the admin handlers' version bounds, as `ID_RE` is. */
+export const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 // Release strings reach a shell (`install.sh`), a GitHub API path, or a RegExp source. Every
 // one of them is character-class-bounded HERE, at the ingest boundary, so a `.pkey/` push can
@@ -436,10 +442,12 @@ const RESERVED_PROPERTY_NAMES = new Set([
 ]);
 /** `oidc.clientId` — echoed into the authorize query, the token POST body, and `aud`. */
 const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$/;
-/** `edgeMint[].kid` — emitted verbatim in a JWS protected header. */
-const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-/** Channel / architecture names — they reach URL path segments and asset-match patterns. */
-const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+/** `edgeMint[].kid` — emitted verbatim in a JWS protected header. Exported (P3-12) for the
+ *  admin product handler's `signingKid`, as `ID_RE` is. */
+export const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+/** Channel / architecture names — they reach URL path segments and asset-match patterns.
+ *  Exported (P3-12) for the admin tier and licence handlers' channels, as `ID_RE` is. */
+export const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 /** `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`). */
 export const MANUAL_CHANNEL_REGEX_MAX = 80;
 /**
@@ -2030,6 +2038,53 @@ function validateDocuments(
         if (typeof origin === "string") seen.add(origin);
       }
     }
+  }
+
+  // Representability (plans/P3-01.md §2.2): every value of every `.pkey/` document, member
+  // names included, must be one a signed document can carry and every wire-v4 verifier accept.
+  // This is the only write check on the values the manifest sync alone stores (catalog
+  // defaults, provisioning entitlement values, edge-mint claims templates), so it runs over
+  // each whole parsed document rather than field by field, and reports the first value that
+  // breaks a rule. An absent document has nothing to flag.
+  const productIssue = representabilityIssue(productRoot);
+  if (productIssue) {
+    add(
+      errors,
+      "product",
+      `${productIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${productIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`,
+    );
+  }
+  const schemaIssue = representabilityIssue(manifest.schema);
+  if (schemaIssue) {
+    add(
+      errors,
+      "schema",
+      `${schemaIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${schemaIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`,
+    );
+  }
+  const releaseIssue = representabilityIssue(manifest.release);
+  if (releaseIssue) {
+    add(
+      errors,
+      "release",
+      `${releaseIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${releaseIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`,
+    );
+  }
+  const distributionIssue = representabilityIssue(manifest.distribution);
+  if (distributionIssue) {
+    add(
+      errors,
+      "distribution",
+      `${distributionIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${distributionIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`,
+    );
   }
 
   return {

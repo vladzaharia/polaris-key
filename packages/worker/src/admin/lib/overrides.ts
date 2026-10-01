@@ -9,6 +9,7 @@ import type { ManagedEntry } from "@polaris-key/protocol";
 import type { ManagedPayload } from "../../core/payload.js";
 import type { Env } from "../../env.js";
 import { isManagedSecretKey, sealManagedValue } from "./managedSecrets.js";
+import { ErrorCode } from "../../core/errors.js";
 
 export interface OverrideUpdate {
   key: string;
@@ -31,9 +32,19 @@ export async function applyOverrides(
   catalog: Catalog,
   now: number,
 ): Promise<
-  { ok: true; payload: ManagedPayload } | { ok: false; fields: string[] }
+  | { ok: true; payload: ManagedPayload }
+  | {
+      ok: false;
+      fields: string[];
+      /** `value_not_representable` when any refused value breaks a representability rule
+       *  (plans/P3-01.md §2.2), else `bad_request`. Both callers answer it with `422`. */
+      code:
+        | typeof ErrorCode.BadRequest
+        | typeof ErrorCode.ValueNotRepresentable;
+    }
 > {
   const fields: string[] = [];
+  let unrepresentable = false;
   const next: ManagedPayload = {
     config: { ...current.config },
     secrets: { ...current.secrets },
@@ -64,8 +75,11 @@ export async function applyOverrides(
       continue;
     }
     if (u.value !== undefined) {
+      // Representability runs first inside `validateEntryValue`, on the PLAINTEXT, so a secret
+      // whose value no signed document could carry is refused before it is sealed.
       const res = catalog.validateKeyValue(u.key, u.value);
       if (!res.ok) {
+        if (res.representability) unrepresentable = true;
         fields.push(...res.errors);
         continue;
       }
@@ -82,6 +96,9 @@ export async function applyOverrides(
       updatedAt: now,
     };
   }
-  if (fields.length) return { ok: false, fields };
+  if (fields.length)
+    return unrepresentable
+      ? { ok: false, fields, code: ErrorCode.ValueNotRepresentable }
+      : { ok: false, fields, code: ErrorCode.BadRequest };
   return { ok: true, payload: next };
 }

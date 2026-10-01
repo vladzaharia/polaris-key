@@ -20,6 +20,8 @@ public enum ErrorCode {
     public static let methodNotAllowed = "method_not_allowed"
     public static let misconfigured = "misconfigured"
     public static let registrationClosed = "registration_closed"
+    public static let valueNotRepresentable = "value_not_representable"
+    public static let documentNotRepresentable = "document_not_representable"
     public static let deviceLimit = "device_limit"
     public static let licenseDisabled = "license_disabled"
     public static let licenseExpired = "license_expired"
@@ -107,6 +109,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "method_not_allowed",
     "misconfigured",
     "registration_closed",
+    "value_not_representable",
+    "document_not_representable",
     "device_limit",
     "license_disabled",
     "license_expired",
@@ -194,6 +198,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "method_not_allowed": "wire",
     "misconfigured": "wire",
     "registration_closed": "wire",
+    "value_not_representable": "wire",
+    "document_not_representable": "wire",
     "device_limit": "wire",
     "license_disabled": "wire",
     "license_expired": "wire",

@@ -18,6 +18,7 @@ import {
   parseJsonList,
   readBody,
   upsertTier,
+  WriteChecks,
 } from "../../../core/adminApi.js";
 import type { LicenseAdminContext } from "./index.js";
 
@@ -38,6 +39,20 @@ function parseChannels(raw: unknown): string | null {
  */
 function invalidDeviceLimit(raw: unknown): boolean {
   return typeof raw === "number" && (!Number.isInteger(raw) || raw <= 0);
+}
+
+/**
+ * The write checks a tier body's signed values take (plans/P3-01.md §2.2's inventory): the
+ * label is free text, the channels and version bounds the manifest's patterns, the device limit
+ * at most `MAX_WIRE_INTEGER` (the positive-integer rule is `invalidDeviceLimit`'s).
+ */
+function tierWriteChecks(body: Record<string, unknown>): WriteChecks {
+  return new WriteChecks()
+    .text("label", body.label)
+    .channels("channels", body.channels)
+    .semver("minVersion", body.minVersion)
+    .semver("maxVersion", body.maxVersion)
+    .wireInteger("policyDeviceLimit", body.policyDeviceLimit);
 }
 
 async function profileExists(
@@ -76,6 +91,11 @@ export async function handleTiers(
     }
     if (req.method === "POST") {
       const body = await readBody(req);
+      // plans/P3-01.md §2.2: the tier id is the signed `license.tier`, its label
+      // `license.tierLabel`, its channels and version bounds signed entitlements — each takes
+      // the manifest's own rule. A generated id needs no check.
+      const refused = tierWriteChecks(body).id("id", body.id).response();
+      if (refused) return refused;
       const tierId = String(body.id ?? randomId("tier"));
       if (!(await profileExists(db, slug, body.profile)))
         return err(422, ErrorCode.BadRequest, "unknown profile", {
@@ -128,6 +148,8 @@ export async function handleTiers(
   if (!row) return adminNotFound();
   if (req.method === "PATCH") {
     const body = await readBody(req);
+    const refused = tierWriteChecks(body).response();
+    if (refused) return refused;
     if ("profile" in body && !(await profileExists(db, slug, body.profile)))
       return err(422, ErrorCode.BadRequest, "unknown profile", {
         fields: ["profile"],
