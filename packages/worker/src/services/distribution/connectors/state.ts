@@ -5,7 +5,8 @@
  *   - `dist_connector_objects` — the store objects a connector tracks (`upsertObject`), which the
  *     poller reconciles and where an object no release claims yet waits (`release_id` NULL).
  *   - `dist_connector_events` — every webhook delivery that passed its signature check, stored raw
- *     with its outcome (`recordEvent`), pruned by the poll tick (`pruneEvents`).
+ *     with its outcome (`recordEvent`); the poll tick re-drives one whose follow-up failed or was
+ *     cut off (`eventsToRedrive`) and prunes old rows (`pruneEvents`).
  *
  * A connector writes availability and submissions through P2b-03's own writers with a
  * `connectorWriter` (`source` = the connector kind, actor `connector:<kind>`), and mirrors a
@@ -381,6 +382,33 @@ export async function setEventOutcome(
     ctx.product,
     connector,
     eventId,
+  );
+}
+
+/**
+ * Events whose follow-up never reached an outcome, for the poller to re-drive, oldest first:
+ * `failed` ones, and `received` ones received at or before `receivedBefore` (the follow-up of a delivery
+ * runs right after it, so a `received` row older than that was cut off). Only events received
+ * since `since` are re-driven; an older one waits for a manual redelivery.
+ */
+export function eventsToRedrive(
+  db: Db,
+  product: string,
+  connector: string,
+  opts: { since: number; receivedBefore: number; limit: number },
+): Promise<ConnectorEventRow[]> {
+  return db.all<ConnectorEventRow>(
+    `SELECT * FROM dist_connector_events
+      WHERE product = ? AND connector = ? AND received_at >= ?
+        AND instance_type IS NOT NULL AND instance_id IS NOT NULL
+        AND (outcome = 'failed' OR (outcome = 'received' AND received_at <= ?))
+      ORDER BY received_at, event_id
+      LIMIT ?`,
+    product,
+    connector,
+    opts.since,
+    opts.receivedBefore,
+    opts.limit,
   );
 }
 

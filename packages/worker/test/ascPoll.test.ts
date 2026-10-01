@@ -17,6 +17,10 @@ import {
   handleScheduled,
   runConnectorPolls,
 } from "../src/scheduled.js";
+import {
+  REDRIVE_GRACE_SECONDS,
+  REDRIVE_WINDOW_SECONDS,
+} from "../src/services/distribution/connectors/asc/poll.js";
 import { webhookFixture } from "./ascFake.js";
 import {
   ascWorld,
@@ -37,6 +41,20 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
+
+async function eventOutcomes(w: AscWorld): Promise<string[]> {
+  const rows = await w.db.all<{ outcome: string }>(
+    "SELECT outcome FROM dist_connector_events ORDER BY received_at, event_id",
+  );
+  return rows.map((r) => r.outcome);
+}
+
+function objectState(w: AscWorld, id: string) {
+  return w.db.first<{ store_state: string; terminal: number }>(
+    "SELECT store_state, terminal FROM dist_connector_objects WHERE object_id = ?",
+    id,
+  );
+}
 
 const poll = (w: AscWorld) =>
   withFetch(w, () => runConnectorPolls(w.env, w.db, NOW));
@@ -234,6 +252,92 @@ describe("the poll", () => {
     expect(w.fake.requests.map((r) => r.path)).not.toContain(
       "/v1/backgroundAssetVersions/bav-1",
     );
+  });
+
+  it("re-drives a Background Asset delivery whose follow-up failed, so the object a delivery named first is not lost", async () => {
+    const w = await ascWorld();
+    w.fake.set("backgroundAssetVersions", "bav-1", { state: "PROCESSING" });
+    w.fake.fail429(10);
+    await deliver(w, webhookFixture("BACKGROUND_ASSET_VERSION_STATE_UPDATED"));
+    w.fake.fail429(0);
+    expect(await eventOutcomes(w)).toEqual(["failed"]);
+    expect(await objectState(w, "bav-1")).toBeNull();
+    w.fake.requests.length = 0;
+    const report = await poll(w);
+    expect(report.failures).toEqual({});
+    // The instance is re-read through the same ownership chain the webhook uses.
+    expect(w.fake.requests.map((r) => r.path)).toEqual(
+      expect.arrayContaining([
+        "/v1/backgroundAssetVersions/bav-1",
+        "/v1/backgroundAssets/ba-levels",
+      ]),
+    );
+    expect(await objectState(w, "bav-1")).toEqual({
+      store_state: "PROCESSING",
+      terminal: 0,
+    });
+    // Stored, not yet claimed by a release (P5-08): the event settles as `unresolved`…
+    expect(await eventOutcomes(w)).toEqual(["unresolved"]);
+    // …and a later manual redelivery of the same id is a duplicate.
+    const again = await deliver(
+      w,
+      webhookFixture("BACKGROUND_ASSET_VERSION_STATE_UPDATED"),
+    );
+    expect(await again.json()).toEqual({ ok: true, duplicate: true });
+  });
+
+  it("re-drives a `received` event only once its follow-up has had time to finish, and only within 24 hours", async () => {
+    const w = await ascWorld();
+    w.fake.set("backgroundAssetVersions", "bav-1", { state: "PROCESSING" });
+    await deliver(w, webhookFixture("BACKGROUND_ASSET_VERSION_STATE_UPDATED"));
+    // A follow-up cut off before it recorded anything: the row still says `received`.
+    await w.db.run("UPDATE dist_connector_events SET outcome = 'received'");
+    await w.db.run("DELETE FROM dist_connector_objects");
+    const at = (now: number) =>
+      withFetch(w, () => runConnectorPolls(w.env, w.db, now));
+    const bavReads = () =>
+      w.fake.requests.filter(
+        (r) => r.path === "/v1/backgroundAssetVersions/bav-1",
+      ).length;
+
+    w.fake.requests.length = 0;
+    await at(NOW + REDRIVE_GRACE_SECONDS - 1);
+    expect(bavReads()).toBe(0);
+    expect(await eventOutcomes(w)).toEqual(["received"]);
+
+    await at(NOW + REDRIVE_GRACE_SECONDS);
+    expect(bavReads()).toBe(1);
+    expect(await eventOutcomes(w)).toEqual(["unresolved"]);
+
+    // Past the window: left for a manual redelivery.
+    await w.db.run("UPDATE dist_connector_events SET outcome = 'failed'");
+    await w.db.run("UPDATE dist_connector_objects SET terminal = 1");
+    w.fake.requests.length = 0;
+    await at(NOW + REDRIVE_WINDOW_SECONDS + 1);
+    expect(bavReads()).toBe(0);
+    expect(await eventOutcomes(w)).toEqual(["failed"]);
+  });
+
+  it("re-driving another app's Background Asset stores and writes nothing", async () => {
+    const w = await ascWorld();
+    w.fake.fail429(10);
+    await deliver(w, webhookFixture("BACKGROUND_ASSET_VERSION_STATE_UPDATED"));
+    w.fake.fail429(0);
+    const asset = w.fake.get("backgroundAssets", "ba-levels");
+    w.fake.put({
+      ...asset,
+      relationships: { app: { data: { type: "apps", id: "9999999999" } } },
+    });
+    const before = (await audits(w.db)).length;
+    await poll(w);
+    expect(await objectState(w, "bav-1")).toBeNull();
+    expect(await eventOutcomes(w)).toEqual(["ignored"]);
+    // The poll's own steps write the app's versions and builds; nothing from the asset.
+    expect(
+      (await audits(w.db))
+        .slice(before)
+        .some((a) => a.summary.includes("bav-1")),
+    ).toBe(false);
   });
 
   it("a 429 backs off and the tick still completes", async () => {

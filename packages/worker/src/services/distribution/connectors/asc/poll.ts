@@ -14,8 +14,18 @@
  *      (`phasedReleaseState`, `currentDayNumber` → 1, 2, 5, 10, 20, 50, 100 %).
  *   3. **Builds / internal TestFlight** — `GET /v1/builds?filter[app]=…` newest first, with the
  *      beta detail and pre-release version included.
- *   4. **Reconciliation** — re-read the least recently read non-terminal Background Asset objects
+ *   4. **Re-drive** — stored webhook events whose follow-up `failed`, or that still say
+ *      `received` five minutes on (the follow-up was cut off), from the last 24 hours: the
+ *      instance each names is re-read exactly as the webhook would have, and the event's outcome
+ *      moves. This is what recovers a Background Asset version or release that a delivery named
+ *      first: nothing lists them, so a lost follow-up would otherwise never be read again.
+ *   5. **Reconciliation** — re-read the least recently read non-terminal Background Asset objects
  *      (their only signal is a webhook, which may have been missed).
+ *
+ * A delivery the webhook REFUSED (429, 401) was never stored and cannot be re-driven. App Store
+ * versions, builds and phased release come back on the next tick through steps 1–3; a Background
+ * Asset object first named by a refused delivery waits for Apple's next event for it or a manual
+ * redelivery (THREAT-MODEL.md, the ASC section's residuals).
  *
  * **Budget.** The limit is per key over a rolling hour (`X-Rate-Limit`). The last value seen is
  * kept in KV; with under 20 % left the tick runs step 2 only, under 5 % it skips (`pollBudget`).
@@ -23,15 +33,23 @@
  */
 
 import type { ConnectorContext, PollOutcome } from "../index.js";
-import { objectsToReconcile, retireObject } from "../state.js";
 import {
+  eventsToRedrive,
+  objectsToReconcile,
+  retireObject,
+  setEventOutcome,
+} from "../state.js";
+import {
+  eventOutcomeOf,
   syncAppStoreVersion,
   syncBackgroundAsset,
   syncBuild,
+  syncEventInstance,
   type AscRun,
   type ReviewOverride,
 } from "./apply.js";
 import {
+  AscError,
   ascPath,
   attr,
   findIncluded,
@@ -39,8 +57,11 @@ import {
   type AscResource,
 } from "./client.js";
 import {
+  ASC_EVENT_EFFECTS,
   BACKGROUND_ASSET_INSTANCE_TYPES,
+  INSTANCE_TYPES,
   REVIEW_SUBMISSION_STATE,
+  eventTypeOf,
   isBackgroundAssetInstanceType,
 } from "./map.js";
 import { ascRun, finishRun, pollBudget, readRate } from "./run.js";
@@ -51,6 +72,11 @@ const VERSIONS_PER_TICK = 5;
 const BUILDS_PER_TICK = 10;
 /** Background Asset objects re-read per tick. */
 const RECONCILE_PER_TICK = 10;
+/** Stored webhook events re-driven per tick, and how far back. */
+const REDRIVE_PER_TICK = 5;
+export const REDRIVE_WINDOW_SECONDS = 24 * 60 * 60;
+/** A `received` event younger than this may still have its follow-up running. */
+export const REDRIVE_GRACE_SECONDS = 5 * 60;
 
 export async function pollAsc(ctx: ConnectorContext): Promise<PollOutcome> {
   const { env, db, product, now } = ctx;
@@ -83,7 +109,9 @@ export async function pollAsc(ctx: ConnectorContext): Promise<PollOutcome> {
     out.applied += await pollVersions(run, reviews);
     if (budget === "full") {
       out.applied += await pollBuilds(run);
-      out.applied += await reconcile(run);
+      const readThisTick = new Set<string>();
+      out.applied += await redrive(run, readThisTick);
+      out.applied += await reconcile(run, readThisTick);
     }
   } catch (e) {
     error = e;
@@ -183,7 +211,58 @@ async function pollBuilds(run: AscRun): Promise<number> {
   return applied;
 }
 
-async function reconcile(run: AscRun): Promise<number> {
+/**
+ * Re-drive stored webhook events whose follow-up failed or was cut off. One event's failure is
+ * recorded on its row and the next is tried; the store's rate limit (a 429 the client gave up
+ * on) stops the tick, as everywhere else.
+ */
+async function redrive(
+  run: AscRun,
+  readThisTick: Set<string>,
+): Promise<number> {
+  const write = { db: run.db, product: run.product, now: run.now };
+  const rows = await eventsToRedrive(run.db, run.product, ASC_CONNECTOR, {
+    since: run.now - REDRIVE_WINDOW_SECONDS,
+    receivedBefore: run.now - REDRIVE_GRACE_SECONDS,
+    limit: REDRIVE_PER_TICK,
+  });
+  let applied = 0;
+  for (const row of rows) {
+    const eventType = eventTypeOf(row.event_type);
+    const effect = eventType ? ASC_EVENT_EFFECTS[eventType] : undefined;
+    const instance =
+      row.instance_type && row.instance_id
+        ? { type: row.instance_type, id: row.instance_id }
+        : null;
+    if (
+      !effect ||
+      effect === "store-only" ||
+      !instance ||
+      !INSTANCE_TYPES[effect].includes(instance.type)
+    ) {
+      // The webhook never leaves such a row `received`/`failed`; settle it if one exists.
+      await setEventOutcome(write, ASC_CONNECTOR, row.event_id, "unresolved");
+      continue;
+    }
+    try {
+      readThisTick.add(`${instance.type}/${instance.id}`);
+      const outcome = eventOutcomeOf(
+        await syncEventInstance(run, effect, instance),
+      );
+      await setEventOutcome(write, ASC_CONNECTOR, row.event_id, outcome);
+      if (outcome === "applied") applied++;
+    } catch (e) {
+      if (e instanceof AscError && e.status === 429) throw e;
+      await setEventOutcome(write, ASC_CONNECTOR, row.event_id, "failed");
+    }
+  }
+  return applied;
+}
+
+async function reconcile(
+  run: AscRun,
+  readThisTick: ReadonlySet<string>,
+): Promise<number> {
   const rows = await objectsToReconcile(
     run.db,
     run.product,
@@ -194,6 +273,8 @@ async function reconcile(run: AscRun): Promise<number> {
   let applied = 0;
   for (const row of rows) {
     if (!isBackgroundAssetInstanceType(row.object_type)) continue;
+    // Already read this tick by a re-driven event.
+    if (readThisTick.has(`${row.object_type}/${row.object_id}`)) continue;
     const outcome = await syncBackgroundAsset(
       run,
       row.object_type,

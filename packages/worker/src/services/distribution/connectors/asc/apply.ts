@@ -67,7 +67,9 @@ import {
   phasedDayToBp,
   phasedStateToRollout,
   sameVersion,
+  isBackgroundAssetInstanceType,
   testflightAvailability,
+  type AscEventEffect,
   type BackgroundAssetInstanceType,
 } from "./map.js";
 import { ASC_CONNECTOR, ASC_LABEL, outletFor, type AscSetup } from "./setup.js";
@@ -608,4 +610,39 @@ export async function versionObjectForRelease(
     /* no ref */
   }
   return { versionId: row.object_id, phasedId, storeState: row.store_state };
+}
+
+/** The event outcome recorded for what re-reading its instance came to. */
+export function eventOutcomeOf(
+  applied: ApplyOutcome | "unresolved",
+): "applied" | "unresolved" | "ignored" {
+  return applied === "applied"
+    ? "applied"
+    : applied === "unresolved"
+      ? "unresolved"
+      : "ignored";
+}
+
+/**
+ * Re-read the instance one webhook event named, by the event type's effect. Shared by the webhook
+ * (right after the delivery) and the poller (re-driving a stored event whose follow-up failed or
+ * never finished). Throws only what the client throws (an ASC error, a network failure).
+ */
+export async function syncEventInstance(
+  run: AscRun,
+  effect: Exclude<AscEventEffect, "store-only">,
+  instance: { type: string; id: string },
+): Promise<ApplyOutcome | "unresolved"> {
+  switch (effect) {
+    case "app-store-version":
+      return syncAppStoreVersion(run, instance.id);
+    case "build-upload":
+      return syncBuildUpload(run, instance.id);
+    case "build-beta-detail":
+      return syncBuildBetaDetail(run, instance.id);
+    case "background-asset":
+      return isBackgroundAssetInstanceType(instance.type)
+        ? syncBackgroundAsset(run, instance.type, instance.id)
+        : "unresolved";
+  }
 }

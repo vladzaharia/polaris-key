@@ -718,7 +718,10 @@ verifying an inbound App Store Connect webhook against `asc-webhook-secret` (P5-
 every time, and each open is two D1 writes; such a path must authenticate or rate-limit the request
 before the open, or it becomes an unauthenticated write amplifier (the R1-04 class). P5-02 does
 both what it can before the open: the signature header's shape is checked, and the delivery is
-rate-limited per product, fail closed (next section). Least privilege per store (App Manager team key; one-app Play service account; Partner
+rate-limited per product, fail closed (next section). That bounds the amplification; it does not
+keep the signal quiet: anyone can send a well-formed header, so `asc-webhook-secret` can be made
+to log up to 60 opens a minute per product, and its "tens a day" baseline does not hold under
+attack (next section, Residual). Least privilege per store (App Manager team key; one-app Play service account; Partner
 Center Manager role) is documented for operators in `admin/secrets-and-keys.md` but cannot be
 verified by the Worker.
 
@@ -760,15 +763,29 @@ data the real API would not send.
 
 **Replay.** Deliveries are deduplicated on `data.id`: a KV marker (7 days, like the GitHub
 webhook) and the `dist_connector_events` primary key. A redelivery answers 200 `{duplicate: true}`
-and makes no API call and no write. A delivery whose follow-up failed drops its KV marker so a
-manual redelivery can retry; the poller reconciles in any case.
+and makes no API call and no write.
+
+**Lost follow-ups.** The webhook answers before it re-reads the instance. A follow-up that fails
+records `failed` on the event row and drops the KV marker; one cut off before it records anything
+leaves `received`. The poll tick re-drives both (`poll.ts` step 4): up to 5 events a tick, received
+in the last 24 hours, `received` ones only 5 minutes on, each re-read through the same ownership
+chain as the webhook, the row's outcome moved to what that read came to. An older event waits for
+a manual redelivery (Apple allows one resend per delivery, notes/E1 §A1), which the dropped
+marker lets through. A delivery the route REFUSED (401, 413, 429) was never stored and is not
+re-driven, and Apple does not retry it on its own: notes/E1 documents only the manual resend. App
+Store versions, builds and phased release still come back on the next 15-minute tick, because the
+poller lists them; a Background Asset version or release that the refused delivery named first
+does not, since nothing lists them — it is read when Apple sends its next event for it, or when an
+operator resends the delivery from App Store Connect.
 
 **Write amplification.** Each secret open is an audit row and a D1 write (P5-01), so deliveries
 are rate-limited per product (`ascWebhook`, 60 a minute) BEFORE the open, and the limiter fails
-CLOSED: with the limiter down a 429 tells Apple to retry rather than letting an unsigned flood
-write. Unknown products, products without the connector, and Distribution-off products answer
-Core's not-found shape before any of this, byte-identical to an unknown connector, so the route
-does not reveal which products run it.
+CLOSED: with the limiter down the route answers 429 rather than letting an unsigned flood write.
+Unknown products, products without the connector, and Distribution-off products answer Core's
+not-found shape before any of this, byte-identical to an unknown connector. A product that has
+the connector set up answers 401 to an unsigned request instead, so the route does tell a prober
+which products run it; that is not treated as a secret (the product's App Store listing says as
+much), but it is what makes the residual below targetable.
 
 **SSRF.** The client sends requests only to `https://api.appstoreconnect.apple.com/v1/…`. Paths
 are built from segments that must match `^[A-Za-z0-9][A-Za-z0-9-]*$` (so a payload's
@@ -805,9 +822,23 @@ with the session's subject, and re-reads the object. "Register webhook" sends th
 to Apple once; the secret is generated server-side by the Core admin handler
 (`PUT …/outlet-credentials/<id>` with `generate: true`) and never returned to anyone.
 
-**Residual.** Whoever holds a product's `asc-webhook-secret` can make the Worker spend API budget
-re-reading objects (bounded by the rate limit and Apple's per-key hourly limit, which the poller
-reads from `X-Rate-Limit` and backs off from). Raw event payloads are stored for 30 days, capped
+**Residual.** The `ascWebhook` bucket is per product and counted before the signature is
+verified, so forged and genuine deliveries share it. Anyone who finds a product that runs the connector
+(the 401 above) can, without the secret:
+
+- **starve genuine deliveries** — about one well-formed `hmacsha256=<64 hex>` request a second
+  keeps the bucket full, and every genuine Apple delivery for that product in that minute is
+  answered 429 and lost (see Lost follow-ups for what the poller recovers and what it does not);
+- **write up to 60 audited opens a minute per product** — each forged request opens the secret
+  once (`outlet_credential.use` audit row plus the `last_used_at` write), about 86,400 a day,
+  which buries the per-open detection signal the P5-01 section relies on for that credential.
+  The `asc-api-key` opens are not affected (its token cache is checked first).
+
+Neither reveals or forges anything, and the poller keeps App Store versions, builds and phased
+release current regardless. An operator seeing either should rotate nothing (the secret is not
+at risk) and can block the source at the edge. Whoever holds a product's `asc-webhook-secret` can
+also make the Worker spend API budget re-reading objects (bounded by the rate limit and Apple's
+per-key hourly limit, which the poller reads from `X-Rate-Limit` and backs off from). Raw event payloads are stored for 30 days, capped
 at 16 KiB each; beta-feedback events can name testers, so `dist_connector_events` is personal data
 under the same retention reasoning as `audit`.
 

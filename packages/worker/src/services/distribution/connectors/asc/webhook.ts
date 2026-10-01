@@ -8,7 +8,8 @@
  *   1. **Configured?** The product must declare an `app-store`/`testflight` outlet with an
  *      `appleId` and hold an `asc-api-key` and an `asc-webhook-secret` credential. Otherwise the
  *      route answers `null` — Core's service not-found shape — exactly as it does with
- *      Distribution off: nothing tells a prober which products run the connector.
+ *      Distribution off: a product without the connector looks like one without Distribution. (A
+ *      product with it answers step 2's 401, so its existence is not hidden.)
  *   2. **Signature shape** — `x-apple-signature: hmacsha256=<64 hex>`. A missing header or another
  *      prefix is refused 401 BEFORE anything is opened or counted.
  *   3. **Body** read raw, at most 64 KiB (413 past it): the HMAC is over these exact bytes.
@@ -22,8 +23,10 @@
  *      follow-up GET and the writes run after it (`waitUntil` when the runtime gives one, inline
  *      otherwise — the tests). The webhook is a HINT: the instance is re-read from the API and
  *      only what the API says is written (`apply.ts`). A failure is recorded on the event row and
- *      the KV marker is dropped, so a manual redelivery can try again; the poller reconciles in
- *      any case.
+ *      the KV marker is dropped, so a manual redelivery can try again; the poll tick re-drives a
+ *      `failed` row, and a `received` row whose follow-up was cut off, for 24 hours (`poll.ts`).
+ *      A delivery refused before it was stored (401, 413, 429) is not re-driven: see
+ *      THREAT-MODEL.md, the ASC section's Lost follow-ups and Residual.
  *
  * Unknown event types answer 204 and are stored with outcome `ignored` — this Worker writes no
  * runtime log (R12), so the events table is the log. Beta feedback, the three alternative-
@@ -41,14 +44,7 @@ import {
   setEventOutcome,
   type ConnectorEventOutcome,
 } from "../state.js";
-import {
-  syncAppStoreVersion,
-  syncBackgroundAsset,
-  syncBuildBetaDetail,
-  syncBuildUpload,
-  type ApplyOutcome,
-  type AscRun,
-} from "./apply.js";
+import { eventOutcomeOf, syncEventInstance, type AscRun } from "./apply.js";
 import type { FetchImpl } from "./client.js";
 import {
   ASC_EVENT_EFFECTS,
@@ -265,29 +261,8 @@ async function processEvent(
   let outcome: ConnectorEventOutcome;
   let error: unknown = null;
   try {
-    let applied: ApplyOutcome;
-    switch (effect) {
-      case "app-store-version":
-        applied = await syncAppStoreVersion(run, instance.id);
-        break;
-      case "build-upload":
-        applied = await syncBuildUpload(run, instance.id);
-        break;
-      case "build-beta-detail":
-        applied = await syncBuildBetaDetail(run, instance.id);
-        break;
-      case "background-asset":
-        applied = isBackgroundAssetInstanceType(instance.type)
-          ? await syncBackgroundAsset(run, instance.type, instance.id)
-          : "unresolved";
-        break;
-    }
-    outcome =
-      applied === "applied"
-        ? "applied"
-        : applied === "unresolved"
-          ? "unresolved"
-          : "ignored";
+    const applied = await syncEventInstance(run, effect, instance);
+    outcome = eventOutcomeOf(applied);
   } catch (e) {
     error = e;
     outcome = "failed";
@@ -297,6 +272,6 @@ async function processEvent(
     if (outcome === "failed") await run.env.HOT.delete(kvk);
     await finishRun(run, error);
   } catch {
-    /* the event row already says `received`; the poller reconciles */
+    /* the event row still says `received`; the poller re-drives it (`poll.ts`) */
   }
 }

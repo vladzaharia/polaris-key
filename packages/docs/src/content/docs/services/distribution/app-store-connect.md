@@ -79,7 +79,12 @@ An event type this build does not know is answered `204` and stored as ignored.
 **The poller.** Every 15 minutes it reads what no webhook covers: the app's App Store versions
 with their **phased release**, open **review submissions**, and the newest **builds** with their
 TestFlight state (internal testing has no webhook). It also re-reads Background Asset objects a
-webhook reported, until they stop changing. It reads the `X-Rate-Limit` header Apple sends with
+webhook reported, until they stop changing, and retries any notification from the last 24 hours
+whose follow-up read failed. A notification the Worker refused (for example during a flood of
+forged requests, which shares the webhook's rate limit) is not retried by Apple: versions, builds
+and phased release still catch up on the next poll, but a Background Asset version first named by
+that notification waits for its next event — or resend it from the webhook's delivery history in
+App Store Connect. It reads the `X-Rate-Limit` header Apple sends with
 every answer (a per-key hourly budget): below 20 % left it reads only versions and phased
 release, below 5 % it waits for the next tick.
 
