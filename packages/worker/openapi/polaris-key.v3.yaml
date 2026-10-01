@@ -169,6 +169,8 @@ paths:
                           changelog: https://key.plrs.im/djdl/release/changelog
                           install: https://key.plrs.im/djdl/release/install.sh
                           download: https://key.plrs.im/djdl/release/dl
+                          builds: https://dl.plrs.im/djdl/release/builds/{selector}/{buildId}
+                          blobs: https://dl.plrs.im/djdl/release/blobs/sha256/{sha256}
                       update:
                         enabled: true
                         configured: true
@@ -1722,6 +1724,416 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
+  /{product}/release/builds/{selector}/{buildId}:
+    get:
+      operationId: downloadBuild
+      tags: [release]
+      summary: Download the payload of a declared build
+      description: >
+        P2-05. Resolves `{selector}` for the deliverable (`?deliverable=`, default `app`) from the
+        release truth store — channel membership and `includes` (beta ⊇ stable), the channel's
+        pointer and pin, yanks, the deliverable's version scheme, the tag filter — keeping only
+        releases that have the build `{buildId}`, so a release missing one platform's build falls
+        back to the newest release that has it. Then serves that build's `payload` artifact from
+        its first location: R2 (`ETag` = the SHA-256, `Repr-Digest`, `Range`, `If-Range`,
+        `If-None-Match`), then GitHub (streamed through the worker; the signed storage URL is
+        cached, so a `Range` chunk costs no API call), then an external `https://` URL (302).
+        Also answers `HEAD` with the same headers and no body. Served on the console host and on
+        the bytes host (`BLOB_ORIGIN`, e.g. `dl.plrs.im`); discovery advertises the bytes-host
+        URL. Access follows the product's `artifacts` mode exactly as `/release/dl` does
+        (flat 401 under `authenticated`/`licensed`, nested under `entitled`), and requests count
+        against the artifact rate-limit lane. A moving selector is cached `public, max-age=120`,
+        a version selector `immutable`; a non-public product's bytes are `private, no-store`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: selector
+          in: path
+          required: true
+          description: >
+            A channel (`stable`, `latest`, `beta`, the legacy `staging` = `beta`, a manual
+            channel, a channel a release was published to) or a version (`1.2.3`, `1.2.3.4`).
+            A version is explicit: it resolves even when that release is yanked.
+          schema: { type: string }
+        - name: buildId
+          in: path
+          required: true
+          description: The build's id in the deliverable's artifact map (`macos`, `win-zip`, `apk`).
+          schema: { type: string }
+        - name: deliverable
+          in: query
+          required: false
+          schema: { type: string, default: app }
+        - name: checksum
+          in: query
+          required: false
+          description: >
+            `sha256` answers the payload's SHA-256 as bare lowercase hex plus a newline instead of
+            the payload (`text/plain` on the console host, `application/octet-stream` on the
+            bytes host, which serves no text type).
+          schema: { type: string, enum: [sha256] }
+        - name: redirect
+          in: query
+          required: false
+          description: >
+            `1` asks for a 302 to GitHub's own download URL instead of a stream. Honoured only
+            for a PUBLIC artifact of a PUBLIC repository; everything else streams. Streaming is
+            the default because winget refuses redirects and App Installer and zsync need `Range`.
+          schema: { type: string, enum: ["1"] }
+        - { $ref: "#/components/parameters/Range" }
+        - { $ref: "#/components/parameters/IfNoneMatch" }
+      responses:
+        "200":
+          description: The payload (or, with `?checksum=sha256`, its digest).
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+            text/plain:
+              schema: { type: string, pattern: "^[0-9a-f]{64}\\n$" }
+              examples:
+                checksum:
+                  summary: "?checksum=sha256 (test/releaseBytes.test.ts)"
+                  value: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n"
+        "206":
+          description: Partial content for a `Range` request.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "302":
+          description: >
+            `?redirect=1` on a public artifact of a public repository, or an artifact whose only
+            location is an external `https://` URL.
+        "304":
+          description: Not modified (`If-None-Match`).
+        "401":
+          description: >
+            The artifacts access mode refused the caller — LEGACY FLAT under
+            `authenticated`/`licensed`, NESTED under `entitled` (see `/release/dl`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - { $ref: "#/components/schemas/WireError" }
+              examples:
+                licensedModeFlat:
+                  summary: "`authenticated` / `licensed` — test/releaseBytes.test.ts"
+                  value:
+                    error: download_auth_required
+                    message: a valid license is required to download this release artifact
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "416":
+          description: "An unsatisfiable `Range` (R2-served bytes), with `Content-Range: bytes */<size>`."
+        "429":
+          description: The artifact rate-limit lane (120 per 60 s per client IP) — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                limited: { value: { error: rate_limited, message: too many release requests } }
+        "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightDownloadBuild
+      tags: [release]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: selector, in: path, required: true, schema: { type: string } }
+        - { name: buildId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/release/files/{releaseId}/{name}:
+    get:
+      operationId: downloadReleaseFile
+      tags: [release]
+      summary: Download one exact file of one release
+      description: >
+        P2-05. One file of one release by its exact name — payloads and sidecars alike
+        (`.sig`, `.sha256`, an index). Immutable: the release id and the name fix the bytes, so a
+        public response is cached `public, max-age=31536000, immutable`. Same locations, `HEAD`,
+        `Range`, access mode, rate-limit lane and `?redirect=1` rule as `downloadBuild`; served
+        on the console host and on the bytes host. Under `entitled` the release's version is
+        checked against the caller's window.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: releaseId
+          in: path
+          required: true
+          description: The release id — the GitHub tag, or `<deliverable>@<version>` for a tagless descriptor release. Percent-encode a `/`.
+          schema: { type: string }
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+        - name: redirect
+          in: query
+          required: false
+          schema: { type: string, enum: ["1"] }
+        - { $ref: "#/components/parameters/Range" }
+        - { $ref: "#/components/parameters/IfNoneMatch" }
+      responses:
+        "200":
+          description: The file.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: Partial content for a `Range` request.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "302":
+          description: "`?redirect=1` (public artifact, public repository) or an external location."
+        "304":
+          description: Not modified (`If-None-Match`).
+        "401":
+          description: The artifacts access mode refused the caller (see `downloadBuild`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "416":
+          description: An unsatisfiable `Range` (R2-served bytes).
+        "429":
+          description: The artifact rate-limit lane — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightDownloadReleaseFile
+      tags: [release]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: releaseId, in: path, required: true, schema: { type: string } }
+        - { name: name, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/release/blobs/sha256/{sha256}:
+    get:
+      operationId: downloadBlob
+      tags: [release]
+      summary: Download a content-addressed object
+      description: >
+        P2-05. The object stored under `blobs/sha256/{sha256}` — served only if an artifact (or a
+        pack object) of THIS product references it (`blob_refs`); another product's copy of the
+        same bytes does not count, and the answer is the same plain not-found as an unknown
+        hash. `ETag` is the SHA-256 and `Repr-Digest` covers the whole representation (also on a
+        206); `Range`, `If-Range` and `If-None-Match` are evaluated against it; `HEAD` returns
+        the same headers. Public products get `public, max-age=31536000, immutable,
+        no-transform`; others `private, no-store, no-transform` after the artifacts access mode
+        admits the caller. Served on the console host (always an octet-stream attachment) and on
+        the bytes host.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: sha256
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+        - { $ref: "#/components/parameters/Range" }
+        - { $ref: "#/components/parameters/IfNoneMatch" }
+      responses:
+        "200":
+          description: The object.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: Partial content for a `Range` request.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "304":
+          description: Not modified (`If-None-Match`).
+        "401":
+          description: The artifacts access mode refused the caller (see `downloadBuild`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "405":
+          description: "Any method other than `GET` and `HEAD` (`Allow: GET, HEAD`)."
+        "416":
+          description: "An unsatisfiable `Range`, with `Content-Range: bytes */<size>`."
+        "429":
+          description: The artifact rate-limit lane — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    options:
+      operationId: preflightDownloadBlob
+      tags: [release]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: sha256, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/release/channels/{channel}/promote:
+    post:
+      operationId: ciPromoteChannel
+      tags: [release]
+      summary: Promote a release to a channel (CI)
+      description: >
+        P2-05. Sets the channel's pointer for the deliverable to `releaseId` (the pin flag is
+        left as it is, so promoting a pinned channel moves the pin); the release becomes a
+        member of the channel. A yanked release cannot be promoted (409 `release_yanked`).
+        Requires a `pkeyci_` token with `release:promote` (P2-02 issues them). Channel names are
+        canonical: `staging` means `beta` unless the product declares a manual `staging`
+        channel. Writes the policy as an operator change (`source = admin`, so a resync never
+        undoes it), audits it as `ci:<subject>`, and invalidates cached resolutions. No CORS: a
+        CI route, not a browser one. Errors are LEGACY FLAT with a machine-readable `reason`.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/PolicyChannel" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PointerRequest" }
+            examples:
+              promote: { value: { releaseId: v1.4.0 } }
+      responses:
+        "200": { $ref: "#/components/responses/ChannelPolicyChanged" }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/channels/{channel}/pin:
+    post:
+      operationId: ciPinChannel
+      tags: [release]
+      summary: Pin a channel to a release (CI)
+      description: >
+        P2-05. Sets the pointer to `releaseId` and pins it: the channel serves only releases at
+        or below the pointer (per platform), and a pinned pointer resolves even when it is
+        yanked — yanked releases resolve only by explicit pin. Same token, scope, canonical
+        names, audit and error shape as `ciPromoteChannel`.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/PolicyChannel" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PointerRequest" }
+            examples:
+              pin: { value: { releaseId: v1.3.2 } }
+      responses:
+        "200": { $ref: "#/components/responses/ChannelPolicyChanged" }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/channels/{channel}/unpin:
+    post:
+      operationId: ciUnpinChannel
+      tags: [release]
+      summary: Unpin a channel (CI)
+      description: >
+        P2-05. Clears the pin; the pointer stays a member of the channel, and the channel serves
+        its newest eligible release again. `releaseId` is not needed. Same token, scope, audit
+        and error shape as `ciPromoteChannel`.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/PolicyChannel" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PointerRequest" }
+            examples:
+              unpin: { value: {} }
+      responses:
+        "200": { $ref: "#/components/responses/ChannelPolicyChanged" }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/releases/{releaseId}/yank:
+    post:
+      operationId: ciYankRelease
+      tags: [release]
+      summary: Yank a release (CI)
+      description: >
+        P2-05. The release stops resolving on every moving selector — `/release/dl`, the
+        appcasts, `/update/version` and `/release/builds` — and remains reachable only through
+        an explicit pin or a version selector. Nothing is deleted; re-yanking updates the
+        reason. Requires a `pkeyci_` token with `release:yank` (opt-in in P2-02's default
+        grant). Audited as `ci:<subject>`; invalidates cached resolutions. Lifting a yank is an
+        operator action in the console. No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: releaseId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500 }
+            examples:
+              yank: { value: { reason: crashes on launch on macOS 15 } }
+      responses:
+        "200":
+          description: The release is yanked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, yank]
+                properties:
+                  ok: { type: boolean, const: true }
+                  yank:
+                    type: object
+                    properties:
+                      releaseId: { type: string }
+                      yanked: { type: boolean }
+                      reason: { type: [string, "null"] }
+                      at: { type: [integer, "null"] }
+                      by: { type: [string, "null"] }
+              examples:
+                yanked:
+                  summary: test/releasePolicy.test.ts
+                  value:
+                    ok: true
+                    yank: { releaseId: v1.1.0, yanked: true, reason: crashes on launch, at: 1700000000, by: "ci:static:tok_1" }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
+
   # ── update ────────────────────────────────────────────────────────────────────
   /{product}/update/appcast.xml:
     get:
@@ -2813,6 +3225,17 @@ paths:
 
 components:
   securitySchemes:
+    ciToken:
+      type: http
+      scheme: bearer
+      bearerFormat: pkeyci_
+      description: >
+        A CI credential (`pkeyci_…`), scoped to one product and a set of scopes
+        (`release:promote`, `release:yank`, …). Minted by P2-02's trusted-publisher exchange or
+        issued by an operator; only its peppered hash is stored. A missing or unknown token is
+        401 (`reason: ci_token_required` / `invalid_ci_token`), a token for another product is
+        indistinguishable from an unknown one, and a token without the route's scope is 403
+        (`reason: missing_scope`).
     deviceToken:
       type: http
       scheme: bearer
@@ -2841,6 +3264,16 @@ components:
         The value is an opaque base64url token with no prefix — unlike `pkeyt_` device
         tokens.
   parameters:
+    PolicyChannel:
+      name: channel
+      in: path
+      required: true
+      description: >
+        A canonical channel (`stable`, `beta`, a declared manual channel, `pr-<n>`, or a channel a
+        release was published to). `staging` is accepted as the legacy spelling of `beta` unless
+        the product declares a manual `staging` channel, and is never stored; `latest` means
+        `stable`.
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,63}$" }
     Product:
       name: product
       in: path
@@ -2946,6 +3379,63 @@ components:
       schema: { type: string }
       example: pkey_djdl_session=; Path=/djdl; Max-Age=0; HttpOnly; Secure; SameSite=Lax
   responses:
+    ChannelPolicyChanged:
+      description: The channel's policy after the change.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok, policy]
+            properties:
+              ok: { type: boolean, const: true }
+              policy: { $ref: "#/components/schemas/ChannelPolicy" }
+          examples:
+            promoted:
+              summary: test/releasePolicy.test.ts
+              value:
+                ok: true
+                policy:
+                  deliverable: app
+                  channel: beta
+                  pointer: v1.0.0
+                  pinned: false
+                  includes: null
+                  minSupported: null
+                  critical: false
+                  source: admin
+                  modifiedAt: 1700000000
+                  modifiedBy: "ci:repo:acme/djdl:environment:release"
+    CiRefusal:
+      description: >
+        LEGACY FLAT with a machine-readable `reason` (and `fields` where one field is at fault):
+        `unknown_channel`, `unknown_deliverable`, `unknown_release` (404); `bad_body` (400);
+        `bad_release`, `bad_reason` (422); `release_yanked` (409).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/FlatError" }
+          examples:
+            yanked:
+              value:
+                error: bad_request
+                message: a yanked release cannot be promoted; unyank it or pin it explicitly
+                reason: release_yanked
+                fields: [releaseId]
+    CiUnauthorized:
+      description: No `pkeyci_` bearer, or one that is unknown, expired, revoked or issued for another product — LEGACY FLAT.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/FlatError" }
+          examples:
+            invalid:
+              value: { error: unauthorized, message: "unknown, expired or revoked CI token", reason: invalid_ci_token }
+    CiForbidden:
+      description: A valid token for this product that lacks the route's scope — LEGACY FLAT.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/FlatError" }
+          examples:
+            missingScope:
+              value: { error: forbidden, message: this token lacks the release:yank scope, reason: missing_scope, scope: "release:yank" }
     CorsPreflight:
       description: >
         CORS preflight (P0-05). Always `204` with no body. When the request's `Origin` is
