@@ -18,7 +18,10 @@ extends Node
 ## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
 ## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync) and
 ## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitlements, entitled
-## channels, and the 401 re-acquire it installs into Core).
+## channels, and the 401 re-acquire it installs into Core), `update` (PKeyUpdate: the version check,
+## its `update_available(check)` signal, the appcast URL) and `release` (PKeyRelease: the
+## changelog, the install and download URLs). `config`, `update` and `release` exist before
+## `configure()`, so a signal connected early survives it.
 
 const SDK_VERSION := "0.1.0"
 
@@ -37,6 +40,11 @@ var license: PKeyLicense = null
 var last_store_error: Dictionary = {}
 ## Managed config. Usable before `configure()` (every key falls back).
 var config := PKeyConfig.new()
+## The version check and appcast URL (services/update.gd). Refuses until configure().
+var update := PKeyUpdate.new()
+## The changelog and the install and download URLs (services/release.gd). Refuses until
+## configure().
+var release := PKeyRelease.new()
 
 var _timer: Timer = null
 var _syncing := false
@@ -54,6 +62,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	core = r.detail
 	core.store_error.connect(_on_store_error)
 	config.attach(core)
+	update.attach(core)
+	release.attach(core)
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state

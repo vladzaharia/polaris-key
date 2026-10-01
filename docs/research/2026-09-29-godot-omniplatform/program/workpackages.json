@@ -459,7 +459,7 @@
       "optional": false,
       "refs": ["notes/A2 §9.6", "PARITY §5.5"],
       "brief": "wp/P1-08-godot-update-check.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-09",

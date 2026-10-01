@@ -1,0 +1,158 @@
+{
+  "description": "Hand-maintained URL vectors (P1-08): what sdk-node's ReleaseClient.downloadUrl / installUrl and appcastUrlFrom return for these inputs, byte for byte. The Godot update suite holds PolarisKey.release and PolarisKey.update to them; packages/sdk-node/test/godotUrlVectors.test.ts holds Node to them, so neither side can drift alone. An appcast expect of null is Node's null and Godot's empty string.",
+  "baseUrl": "https://key.plrs.im",
+  "product": "diceroll",
+  "installUrl": "https://key.plrs.im/diceroll/release/install.sh",
+  "download": [
+    {
+      "version": "1.2.3",
+      "binary": "diceroll",
+      "arch": "x86_64",
+      "checksum": true,
+      "dmg": false,
+      "expect": "https://key.plrs.im/diceroll/release/dl/1.2.3/diceroll-x86_64?checksum=sha256"
+    },
+    {
+      "version": "1.2.3",
+      "binary": "diceroll",
+      "arch": "arm64",
+      "checksum": false,
+      "dmg": false,
+      "expect": "https://key.plrs.im/diceroll/release/dl/1.2.3/diceroll-arm64"
+    },
+    {
+      "version": "1.2.3",
+      "binary": "diceroll",
+      "arch": "arm64",
+      "checksum": false,
+      "dmg": true,
+      "expect": "https://key.plrs.im/diceroll/release/dl/1.2.3/diceroll-arm64.dmg"
+    },
+    {
+      "version": "1.3.0-beta.1+build.5",
+      "binary": "diceroll",
+      "arch": "aarch64",
+      "checksum": true,
+      "dmg": false,
+      "expect": "https://key.plrs.im/diceroll/release/dl/1.3.0-beta.1%2Bbuild.5/diceroll-aarch64?checksum=sha256"
+    },
+    {
+      "version": "../../admin",
+      "binary": "diceroll",
+      "arch": "amd64",
+      "checksum": false,
+      "dmg": false,
+      "expect": "https://key.plrs.im/diceroll/release/dl/..%2F..%2Fadmin/diceroll-amd64"
+    },
+    {
+      "version": "1.2.3",
+      "binary": "dice roll é",
+      "arch": "x86_64",
+      "checksum": false,
+      "dmg": false,
+      "expect": "https://key.plrs.im/diceroll/release/dl/1.2.3/dice%20roll%20%C3%A9-x86_64"
+    },
+    {
+      "version": "1.2.3",
+      "binary": "it's(1)!*~",
+      "arch": "arm64",
+      "checksum": true,
+      "dmg": false,
+      "expect": "https://key.plrs.im/diceroll/release/dl/1.2.3/it's(1)!*~-arm64?checksum=sha256"
+    },
+    {
+      "version": "1.2.3",
+      "binary": "a/b?c#d&e=f%",
+      "arch": "x86_64",
+      "checksum": false,
+      "dmg": false,
+      "expect": "https://key.plrs.im/diceroll/release/dl/1.2.3/a%2Fb%3Fc%23d%26e%3Df%25-x86_64"
+    }
+  ],
+  "discovery": {
+    "version": 2,
+    "protocolVersion": 3,
+    "schemaVersion": 4,
+    "product": "diceroll",
+    "slug": "diceroll",
+    "name": "Diceroll",
+    "baseUrl": "https://key.plrs.im",
+    "services": {
+      "license": { "enabled": false },
+      "config": { "enabled": false },
+      "release": { "enabled": true },
+      "distribution": { "enabled": true },
+      "update": {
+        "enabled": true,
+        "configured": true,
+        "channels": ["stable", "beta"],
+        "endpoints": {
+          "version": "https://key.plrs.im/diceroll/update/version",
+          "appcast": "https://key.plrs.im/diceroll/update/appcast.xml",
+          "channelAppcast": "https://key.plrs.im/diceroll/update/{channel}/appcast.xml"
+        },
+        "archParameter": ["arm64", "x86_64"]
+      },
+      "identity": { "enabled": false }
+    }
+  },
+  "appcast": [
+    {
+      "channel": "beta",
+      "arch": "arm64",
+      "expect": "https://key.plrs.im/diceroll/update/beta/appcast.xml?arch=arm64"
+    },
+    {
+      "channel": "",
+      "arch": "",
+      "expect": "https://key.plrs.im/diceroll/update/appcast.xml"
+    },
+    {
+      "channel": "stable",
+      "arch": "",
+      "expect": "https://key.plrs.im/diceroll/update/appcast.xml"
+    },
+    {
+      "channel": "stable",
+      "arch": "x86_64",
+      "expect": "https://key.plrs.im/diceroll/update/appcast.xml?arch=x86_64"
+    },
+    {
+      "channel": "beta",
+      "arch": "",
+      "expect": "https://key.plrs.im/diceroll/update/beta/appcast.xml"
+    },
+    {
+      "channel": "",
+      "arch": "x86_64",
+      "expect": "https://key.plrs.im/diceroll/update/appcast.xml?arch=x86_64"
+    },
+    {
+      "channel": "pr-12",
+      "arch": "arm64",
+      "expect": "https://key.plrs.im/diceroll/update/pr-12/appcast.xml?arch=arm64"
+    },
+    {
+      "channel": "my-channel",
+      "arch": "a b&c=d/é~*-._",
+      "expect": "https://key.plrs.im/diceroll/update/my-channel/appcast.xml?arch=a+b%26c%3Dd%2F%C3%A9%7E*-._"
+    }
+  ],
+  "appcastOff": [
+    {
+      "note": "Update is on but unconfigured: no endpoints are published.",
+      "update": { "enabled": true, "configured": false, "channels": [] },
+      "expect": null
+    },
+    {
+      "note": "An appcast leaked onto a disabled fragment: the flag decides.",
+      "update": {
+        "enabled": false,
+        "endpoints": {
+          "appcast": "https://key.plrs.im/diceroll/update/appcast.xml"
+        }
+      },
+      "expect": null
+    }
+  ]
+}

@@ -101,22 +101,13 @@
       "status": "planned",
       "wp": "P1-07"
     },
-    "release.changelog": {
-      "status": "planned",
-      "wp": "P1-08"
-    },
-    "release.download": {
-      "status": "planned",
-      "wp": "P1-08"
-    },
+    "release.changelog": { "status": "implemented" },
+    "release.download": { "status": "implemented" },
     "release.record": {
       "status": "planned",
       "wp": "P3-08"
     },
-    "update.check": {
-      "status": "planned",
-      "wp": "P1-08"
-    },
+    "update.check": { "status": "implemented" },
     "update.feed": {
       "status": "planned",
       "wp": "P3-08"
