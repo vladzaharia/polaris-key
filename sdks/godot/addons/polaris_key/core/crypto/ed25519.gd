@@ -1182,6 +1182,9 @@ static func ge_tobytes(s: PackedByteArray, h: Array) -> void:
 # ---- scalars (TweetNaCl modL: runs once per verify, not worth unrolling)
 
 static func sc_reduce(h: PackedByteArray) -> PackedByteArray:
+	# A local copy: on 4.4 two threads reading one const Array race (it hands elements out
+	# through a single shared slot), so thread-reachable code never indexes or iterates one.
+	var l := PackedInt64Array(L)
 	var x := PackedInt64Array()
 	x.resize(64)
 	for i in 64:
@@ -1192,7 +1195,7 @@ static func sc_reduce(h: PackedByteArray) -> PackedByteArray:
 		carry = 0
 		j = i - 32
 		while j < i - 12:
-			x[j] += carry - 16 * x[i] * L[j - (i - 32)]
+			x[j] += carry - 16 * x[i] * l[j - (i - 32)]
 			carry = (x[j] + 128) >> 8
 			x[j] -= carry * 256
 			j += 1
@@ -1200,11 +1203,11 @@ static func sc_reduce(h: PackedByteArray) -> PackedByteArray:
 		x[i] = 0
 	carry = 0
 	for k in 32:
-		x[k] += carry - (x[31] >> 4) * L[k]
+		x[k] += carry - (x[31] >> 4) * l[k]
 		carry = x[k] >> 8
 		x[k] &= 255
 	for k in 32:
-		x[k] -= carry * L[k]
+		x[k] -= carry * l[k]
 	var r := PackedByteArray()
 	r.resize(32)
 	for k in 32:
@@ -1214,11 +1217,12 @@ static func sc_reduce(h: PackedByteArray) -> PackedByteArray:
 
 
 static func s_is_canonical(sig: PackedByteArray) -> bool:
+	var l := PackedInt64Array(L)  # see sc_reduce
 	for i in range(31, -1, -1):
 		var si: int = sig[32 + i]
-		if si < L[i]:
+		if si < l[i]:
 			return true
-		if si > L[i]:
+		if si > l[i]:
 			return false
 	return false
 

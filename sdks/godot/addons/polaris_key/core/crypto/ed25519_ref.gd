@@ -23,10 +23,13 @@ const L := [0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0x
 
 
 static func gf(init: Array = []) -> PackedInt64Array:
+	# A local copy: on 4.4 two threads reading one const Array race (it hands elements out
+	# through a single shared slot), so thread-reachable code never indexes or iterates one.
+	var src := PackedInt64Array(init)
 	var r := PackedInt64Array()
 	r.resize(16)
 	for i in init.size():
-		r[i] = init[i]
+		r[i] = src[i]
 	return r
 
 
@@ -214,13 +217,14 @@ static func scalarbase(p: Array, s: PackedByteArray) -> void:
 
 
 static func modL(r: PackedByteArray, x: PackedInt64Array) -> void:
+	var l := PackedInt64Array(L)  # see gf
 	var carry: int
 	var j: int
 	for i in range(63, 31, -1):
 		carry = 0
 		j = i - 32
 		while j < i - 12:
-			x[j] += carry - 16 * x[i] * L[j - (i - 32)]
+			x[j] += carry - 16 * x[i] * l[j - (i - 32)]
 			carry = (x[j] + 128) >> 8
 			x[j] -= carry * 256
 			j += 1
@@ -228,11 +232,11 @@ static func modL(r: PackedByteArray, x: PackedInt64Array) -> void:
 		x[i] = 0
 	carry = 0
 	for k in 32:
-		x[k] += carry - (x[31] >> 4) * L[k]
+		x[k] += carry - (x[31] >> 4) * l[k]
 		carry = x[k] >> 8
 		x[k] &= 255
 	for k in 32:
-		x[k] -= carry * L[k]
+		x[k] -= carry * l[k]
 	for k in 32:
 		x[k + 1] += x[k] >> 8
 		r[k] = x[k] & 255
@@ -251,11 +255,12 @@ static func reduce(h: PackedByteArray) -> PackedByteArray:
 
 ## True iff the 32-byte little-endian scalar at sig[32..64) is < L (canonical S).
 static func s_is_canonical(sig: PackedByteArray) -> bool:
+	var l := PackedInt64Array(L)  # see gf
 	for i in range(31, -1, -1):
 		var si: int = sig[32 + i]
-		if si < L[i]:
+		if si < l[i]:
 			return true
-		if si > L[i]:
+		if si > l[i]:
 			return false
 	return false  # S == L
 
