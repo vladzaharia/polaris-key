@@ -79,7 +79,8 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
   routes (narrative-only) `GET …/distribution/outlets` and
   `PUT …/distribution/outlets/{outletId}/capabilities` (narrow-only, sets
   `capabilities_source = 'admin'`, audited), plus revert.
-- **Editors and CLI:** `.vscode/settings.json` globs; `pkey validate` loads and reports the file.
+- **Editors and CLI:** `.vscode/settings.json` globs; `pkey validate` loads and reports the file;
+  `pkey distribution outlet-ids` (below, under "Identities for runtime outlet detection").
 - Docs: a `build/manifest/distribution.md` page (or a section of `authoring.md`), the skill's
   step 3 ("four files"), `services/distribution/index.md`, regenerated `reference/*.mdx`.
 
@@ -104,10 +105,46 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
 - **Identity fields per kind** (proposed): `app-store`/`testflight` `appleId`, `bundleId`;
   `altstore`/`altstore-pal` `artifact`, `bundleId`, `marketplaceId` (PAL only); `play`/`play-testing`
   `packageName`, `tracks {<channel>: <track>}`; `obtainium`/`fdroid-repo` `artifact`,
-  `packageName`; `ms-store` `productId`; `steam` `appId`, `branches {<channel>: <branch>}`;
-  `itch` `target`; `flathub` `appId`; `snap` `name`; `winget` `packageIdentifier`; `direct`
-  `platforms[]`; `web` none. `artifact` names an artifact-map `id` (P2-04); channel keys must be
-  declared channels.
+  `packageName`; `ms-store` `productId`, `packageFamilyName`; `app-installer`
+  `packageFamilyName`; `steam` `appId`, `branches {<channel>: <branch>}`; `itch` `target`,
+  `gameId`; `flathub` `appId`; `snap` `name`; `winget` `packageIdentifier`; `direct`
+  `platforms[]`, `homebrewCask`; `web` none. `artifact` names an artifact-map `id` (P2-04);
+  channel keys must be declared channels.
+- **Identities for runtime outlet detection**
+  ([notes/S-06](../../notes/S-06-outlet-signals.md) precedence rule 4). Runtime detection
+  (P3-11) accepts a launcher signal only when it names this product, and P1-11's export plugin
+  puts the ids it matches into the build stamp's `outletIds`. The plugin cannot read this file
+  (Godot has no YAML parser, and `.pkey/` need not be inside the Godot project), so this package
+  owns the bridge: **`pkey distribution outlet-ids --outlet <id>`** loads the file through
+  `loadManifest` (any of `.json`, `.yaml`, `.yml`), validates it, and prints one compact JSON
+  object on stdout, keys sorted, absent ids left out, for CI to pass as `PKEY_OUTLET_IDS`. **Every
+  value is a JSON string**: a numeric `steam.appId` or `itch.gameId` prints as its decimal digits
+  (`{"itchGameId":"1001"}`), because P1-11 drops non-string values. `--outlet` names the build's
+  outlet entry and is required. The absent-file check runs first: with no `.pkey/distribution`
+  file the command prints `{}` and exits 0 for any `--outlet`. With a file, an outlet id the
+  file does not declare exits non-zero. The mapping is
+  `steam.appId` → `steamAppId`, `itch.gameId` → `itchGameId`, `flathub.appId` → `flatpakId`,
+  `snap.name` → `snapName`, `direct.homebrewCask` → `caskToken`, and the `packageFamilyName` of
+  the `ms-store` or `app-installer` entry matching the build's outlet → `msixFamilyName`. Three of these fields are here only
+  for detection, and each is optional:
+  - `itch.gameId`: the numeric itch.io game id, matched against the itch app's receipt
+    `game.id`. `target` is the butler `user/game` slug, not that id. The schema accepts a
+    positive integer or a string of digits (`^[1-9][0-9]*$`); the normaliser stores it as the
+    digit string, and `steam.appId` is normalised the same way, so `outlet-ids` never has to
+    convert.
+  - `packageFamilyName` on `ms-store` and `app-installer`: the MSIX package family name
+    (`<Name>_<PublisherId>`, the publisher id being 13 characters [I]). The `windows.*`
+    identity gate matches it, because a process can inherit package identity from an MSIX
+    parent. The two entries may differ, because a Store-signed and a self-signed package can
+    have different publisher ids [I].
+  - `direct.homebrewCask`: the Homebrew cask token (lowercase letters, digits, `-`, `.`, `@`
+    [I]), matched against `Caskroom/<token>/` by `macos.homebrewCask`. Detection never
+    enumerates Caskroom, so the token has to be declared.
+
+  Each field is a rule-9 addition. It gets a property in `distribution.schema.json`, a check
+  under the existing `invalid_outlet_identity` code (a positive integer or digit string for
+  `gameId`, the patterns above), and its own mutation entry.
+
 - **Transports** `embedded`, `pkey-cdn`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`,
   `flatpak-ext`, `web`. `pkey-cdn` and `embedded` fit any outlet; `apple-ba` only `app-store`/
   `testflight`; `play-pad` only `play`/`play-testing`; `steam-depot` only `steam`;
@@ -144,13 +181,21 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
 ## Acceptance criteria
 
 - [ ] `pnpm --filter @polaris-key/manifest test` passes with a Diceroll-shaped `distribution`
-      document in the base fixture and one mutation per new code.
+      document in the base fixture and one mutation per new code, plus one
+      `invalid_outlet_identity` mutation each for `itch.gameId`, `packageFamilyName` and
+      `direct.homebrewCask`.
 - [ ] Resync of a fixture repo writes the expected `dist_outlets` and `dist_transports` rows; a
       second resync is a no-op; removing an outlet sets `removed_at`.
 - [ ] A manifest with `capabilities` fails validation; an operator widening a capability is
       refused; an operator narrowing survives a resync; revert restores the default.
 - [ ] With distribution disabled, its `manifestIngest` does not run (spy) and the hook returns `null`.
 - [ ] `pkey validate` reports errors in `distribution.yaml` with the file name.
+- [ ] `pkey distribution outlet-ids --outlet ms-store` on a fixture `.pkey/distribution.yaml`
+      prints the mapped object (with that entry's `packageFamilyName` as `msixFamilyName`), with
+      every value a JSON string (an integer `itch.gameId: 1001` and `steam.appId: 480` print as
+      `"1001"` and `"480"`); the same bytes for the equivalent `.json` file; `{}` and exit 0 with
+      no file, for any `--outlet` including an undeclared one; and a non-zero exit for an
+      undeclared outlet id when the file exists (`packages/cli` test).
 - [ ] `docs gen:check` is clean; the green gate passes (`AGENTS.md`).
 
 ## Verify
@@ -167,5 +212,9 @@ mise exec node@22 -- pnpm typecheck
 
 - `dist_outlets`, `dist_transports`, the outlet id and kind vocabulary, the identity fields and
   `capabilities.ts` are what P2b-03 to P2b-06, P3-01 (outlet matrix), P4-05 and P5-02 to P5-04 read.
+- `pkey distribution outlet-ids` is the only path from this file into P1-11's stamp: CI sets
+  `PKEY_OUTLET_IDS` from it before a Godot export (D-03 for Diceroll). P1-11 never reads the
+  file itself; until this package lands, the ids go into P1-11's `polaris_key/outlet_ids`
+  export option by hand.
 - The Core `manifestIngest` helper is available to any later service.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P2b-02 done`.

@@ -3,7 +3,7 @@ extends SceneTree
 # Editor:   godot --headless --path . --script res://tests/cli.gd -- <suite> [args...]
 # Exported: ./pkey.x86_64 --headless -- <suite> [args...]   (project main_loop_type = PKTestRunner;
 #           official 4.7 templates refuse --path / --main-pack / --script)
-# <suite> is one of: sha512 | ed25519 | jws | profile | platform
+# <suite> is one of: sha512 | ed25519 | jws | profile | platform | outlet
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
