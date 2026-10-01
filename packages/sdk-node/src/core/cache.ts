@@ -58,6 +58,16 @@ export interface LoadedCache {
   lastVerifiedAt: number | null;
 }
 
+/** The string-valued own entries of a slice read from disk; anything else is not a JWS. */
+function stringEntries(value: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return out;
+  for (const [k, v] of Object.entries(value))
+    if (typeof v === "string") out[k] = v;
+  return out;
+}
+
 const EMPTY: LoadedCache = {
   license: null,
   config: null,
@@ -84,6 +94,40 @@ export class CacheManager {
    *  validator, and the worst a forged one achieves is an unnecessary 200. */
   etag(slice: "license" | "config"): string | undefined {
     return this.record?.etags?.[slice];
+  }
+
+  /**
+   * The wire v4 update slices AS STORED (`feeds`, keyed by canonical channel, and
+   * `releaseRecords`, keyed by hash): signed JWSs and nothing else, never a floor. They are
+   * UNVERIFIED here — the update client re-verifies every entry before using it (the reload path
+   * of plans/P3-01.md §2.5), and the floors are derived from what survives. Copies, so a caller
+   * cannot edit the record behind `patch()`'s back.
+   */
+  updateSlices(): {
+    feeds: Record<string, string>;
+    releaseRecords: Record<string, string>;
+  } {
+    return {
+      feeds: stringEntries(this.record?.feeds),
+      releaseRecords: stringEntries(this.record?.releaseRecords),
+    };
+  }
+
+  /**
+   * Replace the update slices with what the reload path kept. In memory only, like
+   * `dropSlice()`: a slice that failed verification is absent for this session and rewritten out
+   * on the next `patch()`, never erased from disk on a read path.
+   */
+  keepUpdateSlices(slices: {
+    feeds: Record<string, string>;
+    releaseRecords: Record<string, string>;
+  }): void {
+    if (!this.record) return;
+    this.record = {
+      ...this.record,
+      feeds: { ...slices.feeds },
+      releaseRecords: { ...slices.releaseRecords },
+    };
   }
 
   /** Re-verify the whole record and derive every counter from it (§4.1). */
@@ -214,19 +258,43 @@ export class CacheManager {
    * Replace the record wholesale, atomically. Only `importBundle` uses this: §7 step 5 is an
    * all-or-nothing write of a verified bundle's contents, and merging it into whatever was
    * there before would let a stale slice survive an air-gapped re-provisioning.
+   *
+   * The wire v4 update slices are the one exception (as in React's browser adapter): they are
+   * signed public documents, not grants, and they carry each channel's `seq` floor. Dropping
+   * them would let a replayed older feed past the floor, so they are carried into the new
+   * record and re-verified, like everything else, before any use.
    */
   async replace(record: CacheRecordV3): Promise<void> {
-    this.record = record;
-    await this.ctx.store.writeCache(record);
+    this.record = { ...record, ...this.carriedUpdateSlices() };
+    await this.ctx.store.writeCache(this.record);
   }
 
-  /** Wipe everything, in memory and on disk. */
+  /** Wipe everything, in memory and on disk — except the update slices (see `replace()`): a
+   *  deactivation removes every credential and grant, not the feeds' `seq` floors. */
   async clear(): Promise<void> {
+    const carried = this.carriedUpdateSlices();
     this.record = null;
     this.loaded = { ...EMPTY };
     this.trust.reset();
     this.ctx.resetFloor();
-    await this.ctx.store.clearCache();
+    if (Object.keys(carried).length === 0) {
+      await this.ctx.store.clearCache();
+      return;
+    }
+    this.record = { ...this.empty(), ...carried };
+    await this.ctx.store.writeCache(this.record);
+  }
+
+  private carriedUpdateSlices(): Pick<
+    CacheRecordV3,
+    "feeds" | "releaseRecords"
+  > {
+    const out: Pick<CacheRecordV3, "feeds" | "releaseRecords"> = {};
+    const feeds = stringEntries(this.record?.feeds);
+    const records = stringEntries(this.record?.releaseRecords);
+    if (Object.keys(feeds).length > 0) out.feeds = feeds;
+    if (Object.keys(records).length > 0) out.releaseRecords = records;
+    return out;
   }
 
   private empty(): CacheRecordV3 {

@@ -269,6 +269,50 @@ export async function discoverProduct(
   return parseDiscovery(body, opts.product);
 }
 
+/**
+ * One endpoint template from an ENABLED service's published fragment, or null when the
+ * fragment is disabled, absent, or lacks a non-empty string under `name`. A disabled fragment is
+ * `{"enabled": false}` and nothing else (wire contract v3), so its endpoints are never read.
+ */
+export function serviceEndpoint(
+  doc: ProductDiscoveryDocument | null,
+  service: ServiceSlug,
+  name: string,
+): string | null {
+  const fragment: unknown = doc?.services?.[service];
+  if (!isRecord(fragment) || fragment.enabled !== true) return null;
+  const endpoints = fragment.endpoints;
+  if (!isRecord(endpoints)) return null;
+  const template = endpoints[name];
+  return typeof template === "string" && template.length > 0 ? template : null;
+}
+
+/** Wire v4's update endpoints (plans/P3-01.md §2.4–§2.5), as discovery publishes them. */
+export interface UpdateEndpoints {
+  /** `update.endpoints.feed`: `<base>/update/{channel}/feed.jws`. */
+  feed: string | null;
+  /** `release.endpoints.record`: `<base>/release/records/{sha256}`. */
+  record: string | null;
+  /** `distribution.endpoints.builds`, else Release's permanent `release.endpoints.builds`
+   *  alias: `<bytesBase>/distribution/builds/{selector}/{buildId}`. The route an install uses
+   *  (§2.4 "Bytes"); the R2-only `blobs` route never is. */
+  builds: string | null;
+}
+
+/** Read the v4 update endpoints. An older Worker, or a product with Update off, yields nulls,
+ *  which `client.update.decide()` refuses as `service-unavailable` before dialling (§2.5 step 1). */
+export function updateEndpointsFrom(
+  doc: ProductDiscoveryDocument | null,
+): UpdateEndpoints {
+  return {
+    feed: serviceEndpoint(doc, "update", "feed"),
+    record: serviceEndpoint(doc, "release", "record"),
+    builds:
+      serviceEndpoint(doc, "distribution", "builds") ??
+      serviceEndpoint(doc, "release", "builds"),
+  };
+}
+
 /** The absolute appcast URL a Sparkle host should feed its updater, taken from Update's
  *  published fragment rather than string-built by the caller (§R1 moves these paths). */
 export function appcastUrlFrom(
