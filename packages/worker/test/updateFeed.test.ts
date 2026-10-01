@@ -534,6 +534,102 @@ describe("entitled feeds (D-13) — the R3 gap", () => {
 // T2.4 — per-arch appcasts
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// P0-04 — `staging` is the legacy alias of `beta` (WIRE-CONTRACT-V3 §5.1 rule 6)
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const RC = release({
+  tag_name: "v2.0.0-rc.1",
+  prerelease: true,
+  published_at: "2026-03-01T00:00:00Z",
+  assets: [asset("djdl-2.0.0-rc.1-arm64.dmg", 41, 4096)],
+});
+
+const MANUAL_STAGING = JSON.stringify([
+  { name: "staging", regex: "v\\d+\\.\\d+\\.\\d+-rc\\.\\d+" },
+]);
+
+describe("the staging alias (P0-04)", () => {
+  const channelFeed = async (
+    f: { db: SqliteDb; env: Env; product: Product },
+    channel: string,
+    headers: Record<string, string> = {},
+    releases: Release[] = [BETA, DUAL_ARCH],
+  ): Promise<Response> => {
+    const url = `https://key.plrs.im/djdl/update/${channel}/appcast.xml`;
+    return handleUpdate(
+      feedReq(url, headers),
+      f.env,
+      f.db,
+      f.product,
+      "channelAppcast",
+      { channel, arch: "arm64" },
+      stubFetch(releases),
+    );
+  };
+
+  it("/update/staging/appcast.xml resolves like beta", async () => {
+    const f = await fixture();
+    const staging = await channelFeed(f, "staging");
+    expect(staging.status).toBe(200);
+    const body = await staging.text();
+    expect(body).toContain("djdl-2.0.0-beta.1-arm64.dmg");
+    // The requested spelling is kept in the enclosure segment (D8).
+    expect(body).toContain("/staging/");
+  });
+
+  it("a declared manual staging channel wins over the alias", async () => {
+    const f = await fixture({ manual_channels_json: MANUAL_STAGING });
+    const res = await channelFeed(f, "staging", {}, [RC, BETA, DUAL_ARCH]);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("djdl-2.0.0-rc.1-arm64.dmg");
+    expect(body).not.toContain("djdl-2.0.0-beta.1-arm64.dmg");
+  });
+
+  it("under entitled, staging and beta grants cover each other", async () => {
+    const f = await fixture({ artifacts_access: "entitled" });
+    const legacy = await deviceToken(f.env, f.db, f.product, {
+      id: "lic_legacy",
+      channels: ["stable", "staging"],
+    });
+    expect(
+      (await channelFeed(f, "beta", { authorization: `Bearer ${legacy}` }))
+        .status,
+    ).toBe(200);
+
+    const f2 = await fixture({ artifacts_access: "entitled" });
+    const modern = await deviceToken(f2.env, f2.db, f2.product, {
+      id: "lic_modern",
+      channels: ["stable", "beta"],
+    });
+    expect(
+      (await channelFeed(f2, "staging", { authorization: `Bearer ${modern}` }))
+        .status,
+    ).toBe(200);
+  });
+
+  it("a beta grant is refused a manual staging channel", async () => {
+    const f = await fixture({
+      artifacts_access: "entitled",
+      manual_channels_json: MANUAL_STAGING,
+    });
+    const token = await deviceToken(f.env, f.db, f.product, {
+      channels: ["stable", "beta"],
+    });
+    const res = await channelFeed(
+      f,
+      "staging",
+      { authorization: `Bearer ${token}` },
+      [RC, BETA, DUAL_ARCH],
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({
+      error: { code: "channel_not_allowed" },
+    });
+  });
+});
+
 describe("per-arch appcasts", () => {
   /** Render the feed the way the sub-router would: the same `updateParams`, the same handler,
    *  with the GitHub client stubbed out (the router has no injection point, by design). */

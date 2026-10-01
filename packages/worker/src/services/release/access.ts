@@ -31,6 +31,7 @@
  * `allowedRange` at the top level, exactly as `GET /<p>/license/document` does.
  */
 
+import { CHANNEL_BETA, CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { Env, Db } from "../../core/platform.js";
 import { bearer } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
@@ -69,14 +70,17 @@ export function selectorFor(
 }
 
 /**
- * Translate a release selector into the plain names Core's entitlement check evaluates.
+ * Translate a release selector into the canonical channel name Core's entitlement check
+ * evaluates (WIRE-CONTRACT-V3 §5.1).
  *
  * Channel classification is Release's model, so it happens here: `latest`/`stable`/a pinned
- * `X.Y.Z` are all the stable channel (the floor every grant holds), `pr-42` is additionally
- * checkable as the coarser `pr` the licence-side gate spells, and an operator's manual channel
- * is checked under its own name. An UNCLASSIFIABLE selector is passed through verbatim rather
- * than treated as stable — the surface will 404 it anyway, and quietly promoting an unknown
- * string to the one channel that is never checked is precisely the R3-01 mistake.
+ * `X.Y.Z` are all the stable channel (the floor every grant holds); a `beta` or `staging`
+ * selector is the canonical `beta` (unless the product declares a manual `staging`, which is
+ * then checked under its own name); `pr-42` is checked as `pr-42`, which a `pr` grant also
+ * covers; and an operator's manual channel is checked under its own name. An UNCLASSIFIABLE
+ * selector is passed through verbatim rather than treated as stable — the surface will 404 it
+ * anyway, and quietly promoting an unknown string to the one channel that is never checked is
+ * precisely the R3-01 mistake.
  *
  * `version` is populated only for a PINNED selector. A moving one (`latest`, `beta`) resolves to
  * a concrete release inside the surface handler, after this decision; blocking it here would
@@ -92,12 +96,17 @@ export function entitledSelectorFor(
     raw,
     parseManualChannels(cfg.manual_channels_json),
   );
-  if (!sel) return { channel: raw ?? null, channelKind: null, version: null };
+  if (!sel) return { channel: raw ?? null, version: null };
   const pinned =
     sel.kind === "stable" && sel.raw !== "latest" && sel.raw !== "stable";
+  const channel =
+    sel.kind === "stable"
+      ? CHANNEL_STABLE
+      : sel.kind === "beta"
+        ? CHANNEL_BETA
+        : sel.raw;
   return {
-    channel: sel.kind === "stable" ? "stable" : sel.raw,
-    channelKind: sel.kind,
+    channel,
     version: pinned ? sel.raw.replace(/^v/, "") : null,
   };
 }

@@ -21,7 +21,8 @@
 // conformance/runners/node/stageMatrix.test.ts and the Python and Swift runners).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
-// `CARRIED_MATRIX_ROWS` below before deletion, so nothing it pinned was dropped.
+// `CARRIED_MATRIX_ROWS` below before deletion. Fourteen are still emitted; one, the pre-R3-01
+// dev-build bypass, was retired by P0-04 through `RETIRED_CARRIED_ROWS`, with a named successor.
 //
 //   pnpm gen:corpus            # write the corpus
 //   pnpm gen:corpus -- --check # CI drift guard (exit 1 if any file is stale)
@@ -1719,9 +1720,9 @@ async function buildV2(): Promise<unknown> {
 }
 
 // ── gate-matrix v2 (§5) ──────────────────────────────────────────────────────
-// The matrix is hand-authored and frozen. Its first fifteen rows are corpus v1's, inlined
-// verbatim below when v1 was deleted; the rows v1 could not express are appended in
-// `buildGateMatrixV2`.
+// The matrix is hand-authored and frozen. Its first rows are corpus v1's fifteen, inlined
+// verbatim below when v1 was deleted, less the one P0-04 retired (`RETIRED_CARRIED_ROWS`); the
+// rows v1 could not express are appended in `buildGateMatrixV2`.
 
 /**
  * The fifteen rows corpus v1's hand-authored matrix carried, INLINED here when corpus v1 was
@@ -1730,7 +1731,8 @@ async function buildV2(): Promise<unknown> {
  * `activation` — so a v3 gate that changes any decision v2 made goes red below.
  *
  * Frozen: nothing may be edited here to make a gate change pass. A genuinely new decision is a
- * NEW row appended in `buildGateMatrixV2`, so the diff shows what changed.
+ * NEW row appended in `buildGateMatrixV2`, so the diff shows what changed. A carried row can be
+ * retired only by an approved plan, through `RETIRED_CARRIED_ROWS`, with a named successor row.
  */
 const CARRIED_MATRIX_ROWS = [
   {
@@ -2103,6 +2105,24 @@ const CARRIED_MATRIX_ROWS = [
   },
 ] as const;
 
+/**
+ * Carried rows an approved plan retired, keyed by exact row name. The frozen array above stays
+ * byte-for-byte as it was; `buildGateMatrixV2` filters these out, and refuses to generate if a
+ * key names no carried row or its successor is missing from the output.
+ */
+const RETIRED_CARRIED_ROWS: Record<
+  string,
+  { retiredBy: string; why: string; successor: string }
+> = {
+  "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel":
+    {
+      retiredBy: "P0-04",
+      why: "It pins the unconditional dev-build bypass that R3-01 removed: today's server answers `version-too-old` for its inputs, and R3 calls the row defensible only for a client-side build gate, which no SDK has.",
+      successor:
+        "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+    },
+};
+
 /** The standard in-window build gate, for rows whose subject is the license half. */
 const PASSING_GATE = {
   version: "2.0.0",
@@ -2120,13 +2140,245 @@ const BLOCKING_GATE = {
 /** The v1 matrix's document window, reused so the new rows sit on the same timeline. */
 const MATRIX_DOC = { issuedAt: 1000, expiresAt: 4600, graceUntil: 2593000 };
 
+// ── The channel rows (P0-04, WIRE-CONTRACT-V3 §5.1) ──────────────────────────
+
+/** A `channels` entitlement granting `names`; no names means no entitlement at all. */
+function grant(...names: string[]): Record<string, unknown> {
+  if (names.length === 0) return {};
+  return {
+    channels: { state: "enforced", value: names, updatedAt: 1699990000 },
+  };
+}
+/** The header rows' window: wide, with a floor that refuses every `0.0.0-*` build. */
+const HEADER_WINDOW = { compatMin: "0.0.0", compatMax: "99.0.0" };
+/** `0.0.0-0` sorts below every `0.0.0-<word>` build, so those builds reach the channel check. */
+const PRERELEASE_WINDOW = { compatMin: "0.0.0-0", compatMax: "99.0.0" };
+/** The licence half of every channel row: an activated, in-window document. */
+const CHANNEL_LICENSE = {
+  licenseServiceEnabled: true,
+  activation: "token",
+  ...MATRIX_DOC,
+  now: 1500,
+};
+const CHANNEL_OK = { status: "ok", ok: true };
+const CHANNEL_NOT_ENTITLED = {
+  status: "channel-not-entitled",
+  ok: false,
+  reason: "channel-not-entitled",
+};
+
+function channelRow(
+  name: string,
+  version: string,
+  channel: string | null,
+  window: { compatMin: string; compatMax: string },
+  entitlements: Record<string, unknown>,
+  expect: Record<string, unknown>,
+): unknown {
+  return {
+    name,
+    gate: {
+      version,
+      ...(channel === null ? {} : { channel }),
+      ...window,
+      entitlements,
+    },
+    license: CHANNEL_LICENSE,
+    expect,
+  };
+}
+
+/** The channel vocabulary, pinned (P0-04 plan §4). Rows 1–8 are the brief's minimum set. */
+function channelRows(): unknown[] {
+  const H = HEADER_WINDOW;
+  const P = PRERELEASE_WINDOW;
+  const DEV_WINDOW = { compatMin: "5.0.0", compatMax: "6.0.0" };
+  return [
+    channelRow(
+      "ok — beta header, channels [stable, beta]",
+      "2.0.0",
+      "beta",
+      H,
+      grant("stable", "beta"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — beta header, channels [stable, staging] (alias)",
+      "2.0.0",
+      "beta",
+      H,
+      grant("stable", "staging"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — staging header, channels [stable, beta] (alias)",
+      "2.0.0",
+      "staging",
+      H,
+      grant("stable", "beta"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "channel-not-entitled — beta header, channels [stable]",
+      "2.0.0",
+      "beta",
+      H,
+      grant("stable"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "ok — manual channel header, entitled by name",
+      "2.0.0",
+      "nightly",
+      H,
+      grant("stable", "nightly"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "channel-not-entitled — manual channel header, not entitled",
+      "2.0.0",
+      "nightly",
+      H,
+      grant("stable", "beta"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "channel-not-entitled — malformed channel header",
+      "2.0.0",
+      "STAGING",
+      H,
+      grant("stable", "staging", "beta"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "ok — 0.0.0-beta build with beta entitlement",
+      "0.0.0-beta.3",
+      null,
+      P,
+      grant("stable", "beta"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "channel-not-entitled — 0.0.0-beta build without a beta entitlement",
+      "0.0.0-beta.3",
+      null,
+      P,
+      grant("stable"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "ok — 0.0.0-staging build is the beta channel, channels [stable, beta]",
+      "0.0.0-staging.1",
+      null,
+      P,
+      grant("stable", "beta"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — latest header is the stable channel",
+      "2.0.0",
+      "latest",
+      H,
+      grant(),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — pr-42 header, channels grant the pr family",
+      "2.0.0",
+      "pr-42",
+      H,
+      grant("stable", "pr"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — pr header on a 0.0.0-pr-42 build, channels [stable, pr-42]",
+      "0.0.0-pr-42+sha",
+      "pr",
+      P,
+      grant("stable", "pr-42"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "channel-not-entitled — pr-7 header, channels grant only pr-42",
+      "2.0.0",
+      "pr-7",
+      H,
+      grant("stable", "pr-42"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "channel-not-entitled — stable header cannot loosen a 0.0.0-pr-42 build",
+      "0.0.0-pr-42+sha",
+      "stable",
+      P,
+      grant(),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "channel-not-entitled — dev header without the dev entitlement",
+      "2.0.0",
+      "dev",
+      H,
+      grant("stable", "beta"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+      "0.0.0-dev+abc123",
+      "staging",
+      DEV_WINDOW,
+      grant(),
+      {
+        status: "version-too-old",
+        ok: false,
+        reason: "version-too-old",
+        allowedRange: { min: "5.0.0", max: "6.0.0" },
+      },
+    ),
+    channelRow(
+      "ok — dev build with the dev entitlement bypasses the window (R3-01)",
+      "0.0.0-dev+abc123",
+      "staging",
+      DEV_WINDOW,
+      grant("stable", "dev"),
+      CHANNEL_OK,
+    ),
+  ];
+}
+
+/** The carried rows still emitted, after `RETIRED_CARRIED_ROWS`. */
+function carriedRows(): readonly unknown[] {
+  const names = new Set<string>(CARRIED_MATRIX_ROWS.map((r) => r.name));
+  for (const retired of Object.keys(RETIRED_CARRIED_ROWS))
+    if (!names.has(retired))
+      throw new Error(`RETIRED_CARRIED_ROWS names no carried row: ${retired}`);
+  return CARRIED_MATRIX_ROWS.filter((r) => !(r.name in RETIRED_CARRIED_ROWS));
+}
+
 function buildGateMatrixV2(): unknown {
+  const matrix = gateMatrixV2();
+  const emitted = new Set(matrix.rows.map((r) => (r as { name: string }).name));
+  if (emitted.size !== matrix.rows.length)
+    throw new Error("gate-matrix v2 has two rows with one name");
+  for (const [name, { successor }] of Object.entries(RETIRED_CARRIED_ROWS))
+    if (!emitted.has(successor))
+      throw new Error(
+        `retired carried row "${name}" names a successor that is not emitted: ${successor}`,
+      );
+  return matrix;
+}
+
+function gateMatrixV2(): {
+  gateMatrixVersion: number;
+  description: string;
+  rows: unknown[];
+} {
   return {
     gateMatrixVersion: 2,
     description:
-      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. Rows 1-15 are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here. The remaining rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on that last row is deliberately NOT the status. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.',
+      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.',
     rows: [
-      ...CARRIED_MATRIX_ROWS,
+      ...carriedRows(),
       {
         name: "not-applicable — license service disabled, nothing cached",
         gate: PASSING_GATE,
@@ -2199,6 +2451,7 @@ function buildGateMatrixV2(): unknown {
           reason: "version-too-new",
         },
       },
+      ...channelRows(),
     ],
   };
 }

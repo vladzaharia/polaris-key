@@ -24,6 +24,7 @@ vi.mock("../src/api.js", async (importOriginal) => {
       createTier: vi.fn(),
       patchTier: vi.fn(),
       deleteTier: vi.fn(),
+      releases: vi.fn(),
     },
   };
 });
@@ -36,6 +37,7 @@ const mockApi = api as unknown as {
   createTier: ReturnType<typeof vi.fn>;
   patchTier: ReturnType<typeof vi.fn>;
   deleteTier: ReturnType<typeof vi.fn>;
+  releases: ReturnType<typeof vi.fn>;
 };
 
 const PRO: TierSummary = {
@@ -78,6 +80,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockApi.tiers.mockResolvedValue({ tiers: [PRO, FREE] });
   mockApi.profiles.mockResolvedValue({ profiles: PROFILES });
+  mockApi.releases.mockResolvedValue({ releases: [], channels: [] });
   // jsdom lacks these Radix-needed APIs.
   (
     Element.prototype as unknown as { hasPointerCapture: () => boolean }
@@ -184,8 +187,8 @@ describe("Tiers view", () => {
       within(dialog).getByRole("tab", { name: "Channels" }),
     );
     expect(
-      within(dialog).getByLabelText("beta").getAttribute("aria-checked"),
-    ).toBe("true");
+      (within(dialog).getByLabelText("beta") as HTMLInputElement).checked,
+    ).toBe(true);
     await userEvent.click(within(dialog).getByLabelText("beta"));
     await userEvent.click(within(dialog).getByRole("tab", { name: "Policy" }));
     await userEvent.type(within(dialog).getByLabelText("Max version"), "2.0.0");
@@ -219,5 +222,103 @@ describe("Tiers view", () => {
     await waitFor(() =>
       expect(mockApi.deleteTier).toHaveBeenCalledWith("djdl", "free"),
     );
+  });
+});
+
+// ── The channel picker (P0-04, WIRE-CONTRACT-V3 §5.1) ─────────────────────────────────
+describe("tier channel picker", () => {
+  const channelRows = (names: string[]) => ({
+    releases: [],
+    channels: names.map((channel) => ({
+      channel,
+      releaseId: "v1",
+      modifiedAt: null,
+    })),
+  });
+
+  async function openCreateChannels() {
+    renderTiers();
+    await screen.findByText("Pro");
+    await userEvent.click(screen.getByRole("button", { name: /New tier/ }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: "Channels" }),
+    );
+    return dialog;
+  }
+
+  it("offers neither dev nor staging on create for a product with no manual channels", async () => {
+    const dialog = await openCreateChannels();
+    for (const name of ["stable", "beta", "pr"])
+      expect(within(dialog).getByLabelText(name)).toBeTruthy();
+    expect(within(dialog).queryByLabelText("dev")).toBeNull();
+    expect(within(dialog).queryByLabelText("staging")).toBeNull();
+    // The old fixed list is gone.
+    expect(within(dialog).queryByLabelText("alpha")).toBeNull();
+  });
+
+  it("drops reserved and non-canonical manual names; a manual staging is listed once", async () => {
+    mockApi.releases.mockResolvedValue(
+      channelRows(["stable", "beta", "dev", "pr", "Nightly", "staging"]),
+    );
+    const dialog = await openCreateChannels();
+    await waitFor(() =>
+      expect(within(dialog).getAllByLabelText("staging")).toHaveLength(1),
+    );
+    expect(within(dialog).queryByLabelText("dev")).toBeNull();
+    expect(within(dialog).queryByLabelText("Nightly")).toBeNull();
+    expect(within(dialog).getAllByLabelText("pr")).toHaveLength(1);
+    expect(within(dialog).getByText("every PR build")).toBeTruthy();
+    expect(
+      within(dialog).getByText("manual; the grant also covers beta"),
+    ).toBeTruthy();
+  });
+
+  it("shows a held dev grant with its label, and can remove it", async () => {
+    mockApi.tiers.mockResolvedValue({
+      tiers: [{ ...PRO, channels: ["stable", "dev"] }, FREE],
+    });
+    mockApi.patchTier.mockResolvedValue({ ok: true, id: "pro" });
+    renderTiers();
+    await screen.findByText("Pro");
+    await userEvent.click(screen.getByRole("button", { name: "Edit pro" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: "Channels" }),
+    );
+    const dev = within(dialog).getByLabelText("dev") as HTMLInputElement;
+    expect(dev.checked).toBe(true);
+    expect(within(dialog).getByText(/skips the version window/)).toBeTruthy();
+    await userEvent.click(dev);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
+    await waitFor(() => expect(mockApi.patchTier).toHaveBeenCalledTimes(1));
+    expect(mockApi.patchTier.mock.calls[0]![2].channels).toEqual(["stable"]);
+  });
+
+  it("keeps a held value the picker does not offer through a save", async () => {
+    mockApi.tiers.mockResolvedValue({
+      tiers: [{ ...PRO, channels: ["stable", "Legacy.X"] }, FREE],
+    });
+    mockApi.patchTier.mockResolvedValue({ ok: true, id: "pro" });
+    renderTiers();
+    await screen.findByText("Pro");
+    await userEvent.click(screen.getByRole("button", { name: "Edit pro" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: "Channels" }),
+    );
+    expect(within(dialog).getByText("not offered")).toBeTruthy();
+    await userEvent.click(within(dialog).getByLabelText("beta"));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
+    await waitFor(() => expect(mockApi.patchTier).toHaveBeenCalledTimes(1));
+    expect(mockApi.patchTier.mock.calls[0]![2].channels).toEqual([
+      "stable",
+      "beta",
+      "Legacy.X",
+    ]);
   });
 });

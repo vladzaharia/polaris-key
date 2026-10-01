@@ -93,12 +93,20 @@ public enum UpdateFeedBuilder {
     /// window in `entitled` mode; if these two ever disagree, the server wins and the user sees
     /// a 403 instead of a download. Making the client the enforcement point would be the mistake
     /// §5.5 of the anti-piracy review warns about.
+    ///
+    /// `staging` is the legacy spelling of `beta` (WIRE-CONTRACT-V3 §5.1): a `staging` grant also
+    /// allows `beta`, and a `beta` grant also allows `staging`, as the server's `entitled` feed
+    /// check treats them.
     public static func allowedChannels(from entitlements: [String: JSONValue]) -> Set<String> {
         var out: Set<String> = ["stable"]
         if let granted = entitlements["channels"]?.arrayValue {
             for value in granted {
                 if let name = value.stringValue, !name.isEmpty { out.insert(name) }
             }
+        }
+        if out.contains("staging") || out.contains("beta") {
+            out.insert("beta")
+            out.insert("staging")
         }
         return out
     }

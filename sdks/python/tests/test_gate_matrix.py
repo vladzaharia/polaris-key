@@ -16,12 +16,14 @@ compare the resulting status / usable / reason / allowedRange to the fixture.
 gate-matrix v2 adds what v1 could not express: ``not-applicable`` for a product that does
 not enable the licence service (D-08), ``activation: "bundle"`` for an air-gapped install
 (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned
-``blocked`` hint, so ``expect.reason`` on that row is deliberately NOT the status.
+``blocked`` hint, so ``expect.reason`` on that row is deliberately NOT the status. P0-04 added
+the channel rows of WIRE-CONTRACT-V3 §5.1 and retired the carried pre-R3-01 dev-bypass row.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -43,7 +45,17 @@ _MATRIX = json.loads(_MATRIX_PATH.read_text(encoding="utf-8"))
 _ROWS: List[Dict[str, Any]] = _MATRIX["rows"]
 
 
-# ── Build-gate port (mirrors packages/worker/src/gate.ts `checkBuildGate`) ───────────
+# ── Build-gate port (mirrors packages/worker/src/core/gate.ts `checkBuildGate`) ──────
+# WIRE-CONTRACT-V3 §5.1 rules 2–5, rebuilt from the SDK's own semver/channel primitives. The
+# Worker replays the same rows through the real gate (packages/worker/test/gateMatrixCorpus.test.ts).
+_CHANNEL_ALIASES = {"staging": "beta", "latest": "stable"}
+_CHANNEL_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+_PR_CHANNEL_RE = re.compile(r"^pr-?([0-9]+)$")
+_PR_BUILD_RE = re.compile(r"^0\.0\.0-pr-?([0-9]+)")
+_PR_N_RE = re.compile(r"^pr-[0-9]+$")
+_PR_NUMBER_MAX_DIGITS = 7
+
+
 def _str_ent(e: Optional[ManagedEntry]) -> Optional[str]:
     return e.value if e is not None and isinstance(e.value, str) else None
 
@@ -70,21 +82,50 @@ def _tighter_max(a: Optional[str], b: Optional[str]) -> Optional[str]:
     return a if compare_semver(a, b) <= 0 else b
 
 
-def _normalize_channel(header: str) -> str:
-    if header == "staging":
-        return "staging"
-    if header == "pr" or header.startswith("pr"):
-        return "pr"
-    if header == "dev":
-        return "dev"
-    return "stable"
+def _pr_channel(digits: str) -> str:
+    return "pr" if len(digits) > _PR_NUMBER_MAX_DIGITS else f"pr-{digits}"
+
+
+def _implied_channel(version: str) -> str:
+    """§5.1 rule 2: the family, with a PR build narrowed to its own ``pr-<n>``."""
+    family = channel_for_version(version)
+    if family != "pr":
+        return family
+    m = _PR_BUILD_RE.match(version)
+    return _pr_channel(m.group(1)) if m else "pr"
+
+
+def _normalize_channel_header(header: str, version: str) -> Optional[str]:
+    """§5.1 rule 3: ``None`` is a malformed header, which the gate refuses."""
+    if header in _CHANNEL_ALIASES:
+        return _CHANNEL_ALIASES[header]
+    if header == "pr":
+        implied = _implied_channel(version)
+        return implied if _PR_N_RE.match(implied) else "pr"
+    m = _PR_CHANNEL_RE.match(header)
+    if m:
+        return _pr_channel(m.group(1))
+    return header if _CHANNEL_NAME_RE.match(header) else None
+
+
+def _channel_entitled(granted: List[str], channel: str) -> bool:
+    """§5.1 rule 4: stable always; exact name; staging covers beta; pr covers pr-<n>."""
+    if channel == "stable" or channel in granted:
+        return True
+    if channel == "beta" and "staging" in granted:
+        return True
+    return bool(_PR_N_RE.match(channel)) and "pr" in granted
 
 
 def _check_build_gate(gate: Dict[str, Any]) -> Optional[BlockedState]:
+    """§5.1 rule 5, in order: dev bypass by grant, version window, malformed header, channels."""
     version: str = gate["version"]
-    if is_dev_build(version):
-        return None
     ents = {k: ManagedEntry.from_any(v) for k, v in gate.get("entitlements", {}).items()}
+    granted = _arr_ent(ents.get("channels"))
+    if granted is None:
+        granted = ["stable"]
+    if is_dev_build(version) and "dev" in granted:
+        return None
     min_v = _tighter_min(gate["compatMin"], _str_ent(ents.get("app.minVersion")))
     max_v = _tighter_max(gate["compatMax"], _str_ent(ents.get("app.maxVersion")))
     allowed = AllowedRange(min=min_v, max=max_v)
@@ -92,10 +133,12 @@ def _check_build_gate(gate: Dict[str, Any]) -> Optional[BlockedState]:
         return BlockedState(reason="version-too-old", allowedRange=allowed)
     if max_v and compare_semver(version, max_v) > 0:
         return BlockedState(reason="version-too-new", allowedRange=allowed)
-    channel = _normalize_channel(gate.get("channel") or channel_for_version(version))
-    if channel not in ("stable", "dev"):
-        granted = _arr_ent(ents.get("channels")) or ["stable"]
-        if channel not in granted:
+    header = gate.get("channel")
+    declared = None if header is None else _normalize_channel_header(header, version)
+    if header is not None and declared is None:
+        return BlockedState(reason="channel-not-entitled")
+    for channel in {_implied_channel(version), declared}:
+        if channel is not None and not _channel_entitled(granted, channel):
             return BlockedState(reason="channel-not-entitled")
     return None
 
@@ -119,6 +162,41 @@ def _build_doc(lic: Dict[str, Any]) -> Optional[LicenseDoc]:
 def test_gate_matrix_is_v2_and_has_rows() -> None:
     assert _MATRIX["gateMatrixVersion"] == 2
     assert len(_ROWS) > 0
+
+
+# The rows P0-04 appended to gate-matrix v2 (WIRE-CONTRACT-V3 §5.1).
+_P0_04_CHANNEL_ROWS = [
+    "ok — beta header, channels [stable, beta]",
+    "ok — beta header, channels [stable, staging] (alias)",
+    "ok — staging header, channels [stable, beta] (alias)",
+    "channel-not-entitled — beta header, channels [stable]",
+    "ok — manual channel header, entitled by name",
+    "channel-not-entitled — manual channel header, not entitled",
+    "channel-not-entitled — malformed channel header",
+    "ok — 0.0.0-beta build with beta entitlement",
+    "channel-not-entitled — 0.0.0-beta build without a beta entitlement",
+    "ok — 0.0.0-staging build is the beta channel, channels [stable, beta]",
+    "ok — latest header is the stable channel",
+    "ok — pr-42 header, channels grant the pr family",
+    "ok — pr header on a 0.0.0-pr-42 build, channels [stable, pr-42]",
+    "channel-not-entitled — pr-7 header, channels grant only pr-42",
+    "channel-not-entitled — stable header cannot loosen a 0.0.0-pr-42 build",
+    "channel-not-entitled — dev header without the dev entitlement",
+    "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+    "ok — dev build with the dev entitlement bypasses the window (R3-01)",
+]
+
+
+# @pkey-feature license.gate
+def test_gate_matrix_covers_the_p0_04_channel_rows() -> None:
+    names = {r["name"] for r in _ROWS}
+    assert len(_ROWS) == 38
+    for name in _P0_04_CHANNEL_ROWS:
+        assert name in names, name
+    assert (
+        "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel"
+        not in names
+    )
 
 
 @pytest.mark.parametrize("row", _ROWS, ids=[r["name"] for r in _ROWS])
