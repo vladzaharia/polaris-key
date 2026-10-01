@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 import pytest
 
+from polaris_key.core.errors import PolarisError
 from polaris_key.core.token import choose_reacquire_route
 from polaris_key.devices.store import InMemoryStore
 
@@ -62,6 +63,10 @@ class Plane:
             return httpx.Response(200, json={"token": "pkeyt_registered", "deviceId": device})
         if path == f"{p}/devices/report":
             return httpx.Response(200, json={"ok": True})
+        if path.startswith(f"{p}/config/mint/"):
+            if self.always_unauthorized or self.revoked:
+                return httpx.Response(401, json={"error": {"code": "unauthorized"}})
+            return httpx.Response(200, json={"token": "edge_minted", "expiresAt": NOW + 3600})
         if path in (f"{p}/license/document", f"{p}/config/document"):
             if self.always_unauthorized or self.revoked:
                 return httpx.Response(401, json={"error": {"code": "unauthorized"}})
@@ -88,7 +93,7 @@ def _client(plane: Plane, *, store: Optional[InMemoryStore] = None, **kw: Any):
 
 
 # ── The path-selection rule ─────────────────────────────────────────────────────────
-@pytest.mark.parametrize("source", ["activate", "enroll", "reacquire", None])
+@pytest.mark.parametrize("source", ["activate", "enroll", "signin", "reacquire", None])
 def test_a_licensed_device_uses_license_token(source: Any) -> None:
     assert choose_reacquire_route(license_enabled=True, source=source) == "license-token"
 
@@ -225,4 +230,40 @@ def test_the_next_pass_re_arms_the_attempt() -> None:
     assert plane.count("/config/document") == 2
     c.sync()
     assert plane.count("/devices/register") == 2
+    c.close()
+
+
+# ── Edge-mint ───────────────────────────────────────────────────────────────────────
+def test_edge_mint_401_on_a_registered_device_re_registers_once_then_retries() -> None:
+    """The edge-mint's own single re-acquire takes the same route a document fetch's would:
+    §5's rule is about the device token, and a licence-less device has no license/token."""
+    plane = Plane()
+    store = InMemoryStore(PRODUCT)
+    c = _client(plane, store=store)
+    assert c.devices.register().kind == "ok"
+    plane.calls.clear()
+    plane.revoked = True
+    assert c.config.mint_token("recipe-a").token == "edge_minted"
+    assert plane.count("/license/token") == 0
+    assert plane.count("/devices/register") == 1
+    assert plane.first("/devices/register")["bearer"] is None
+    mints = [x["bearer"] for x in plane.calls if "/config/mint/" in x["path"]]
+    assert mints == ["Bearer pkeyt_registered", "Bearer pkeyt_registered"]
+    assert store.get_token() == "pkeyt_registered"
+    c.close()
+
+
+def test_edge_mint_401_whose_re_register_is_refused_fails_after_one_attempt() -> None:
+    plane = Plane()
+    c = _client(plane)
+    assert c.devices.register().kind == "ok"
+    plane.calls.clear()
+    plane.revoked = True
+    plane.register_status = 403
+    with pytest.raises(PolarisError) as e:
+        c.config.mint_token("recipe-a")
+    assert e.value.code == "unauthorized"
+    assert plane.count("/devices/register") == 1
+    assert plane.count("/license/token") == 0
+    assert sum(1 for x in plane.calls if "/config/mint/" in x["path"]) == 1
     c.close()

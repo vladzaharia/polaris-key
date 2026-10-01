@@ -51,7 +51,7 @@ __all__ = [
 ]
 
 #: How the token was obtained in this process.
-TokenSource = Literal["activate", "enroll", "register", "reacquire"]
+TokenSource = Literal["activate", "enroll", "register", "signin", "reacquire"]
 
 #: The two routes the §5 single re-acquire can take.
 ReacquireRoute = Literal["license-token", "devices-register"]
@@ -141,17 +141,21 @@ class TokenManager:
         """The single re-acquire for an authenticated call made OUTSIDE a sync pass (an
         edge-mint). One attempt per call, never a loop: the caller retries its request once
         when this returns ``True`` and fails on a second 401. It does not touch the sync
-        pass's budget."""
+        pass's budget.
+
+        It takes the SAME route a document fetch's 401 would (``choose_reacquire_route``):
+        §5's single-attempt rule is about the device token, not about which call presented
+        it, and a licence-less device has no ``license/token`` route to take."""
         current = self._token
         if not current:
             return False
         try:
-            nxt = self._reacquire(self._ctx, current)
+            nxt = self._reacquire(self._ctx, current, self._source)
         except Exception:
             return False
-        if not nxt:
+        if nxt is None:
             return False
-        self.set(nxt)
+        self.set(nxt.token, nxt.source)
         return True
 
     def reacquire_once(self) -> bool:
