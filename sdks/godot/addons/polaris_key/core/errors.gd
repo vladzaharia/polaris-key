@@ -40,6 +40,11 @@ const STORE_FAILED := &"store-failed"
 const NO_TOKEN := &"no-token"
 ## Edge-mint: discovery says the product has no approved recipe, so nothing was sent.
 const MINT_UNAVAILABLE := &"mint-unavailable"
+## Wire v4 update decision (PolarisKey.update.decide, plans/P3-01.md §2.5's error map).
+const FEED_REJECTED := &"feed-rejected"
+const FEED_ROLLBACK := &"feed-rollback"
+const RECORD_REJECTED := &"record-rejected"
+const RECORD_MISMATCH := &"record-mismatch"
 ## Device management (rename, deauthorize) needs a device token this client does not hold.
 const DEVICE_MANAGEMENT_UNSUPPORTED := &"device-management-unsupported"
 ## The four §7 bundle steps (PKeyBundle).

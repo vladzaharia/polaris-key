@@ -118,7 +118,9 @@ static func resolve(base_url: String, location: String) -> String:
 
 
 ## One request, redirects followed by hand. `headers` is name -> value. `body` is sent as is.
-## Options: range (bool: send no Accept-Encoding gzip).
+## Options: range (bool: send no Accept-Encoding gzip); body_limit (int > 0: this request's own
+## response cap in bytes, below `body_limit`; a release record stops at 88 844, plans/P3-01.md
+## §2.5 step 11).
 func request(method: String, url: String, headers: Dictionary = {}, body: PackedByteArray = PackedByteArray(), opts: Dictionary = {}) -> PKeyResult:
 	if local_only:
 		return PKeyResult.failure(PKeyErrors.LOCAL_ONLY, "This client is local-only; network calls are refused.")
@@ -147,7 +149,7 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 			for k in h.keys():
 				if String(k).to_lower() == "authorization":
 					h.erase(k)
-		var r := await _once(m, current, h, b, PKeyClaims.is_true(opts.get("range", false)), deadline)
+		var r := await _once(m, current, h, b, PKeyClaims.is_true(opts.get("range", false)), deadline, int(opts.get("body_limit", 0)) if PKeyClaims.is_number(opts.get("body_limit")) else 0)
 		if not r.ok or r.detail.get("redirect", "") == "":
 			return r
 		var status: int = r.detail["status"]
@@ -162,7 +164,8 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 
 
 ## `deadline` is the request's `Time.get_ticks_msec()` deadline (0: none), shared by every hop.
-func _once(method: String, url: String, headers: Dictionary, body: PackedByteArray, ranged: bool, deadline: int) -> PKeyResult:
+func _once(method: String, url: String, headers: Dictionary, body: PackedByteArray, ranged: bool, deadline: int, limit := 0) -> PKeyResult:
+	var cap := mini(limit, body_limit) if limit > 0 else body_limit
 	var lines := PackedStringArray()
 	var logged := {}
 	for k in headers:
@@ -174,7 +177,7 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 	var req := HTTPRequest.new()
 	req.max_redirects = 0
 	req.timeout = 0.0
-	req.body_size_limit = body_limit
+	req.body_size_limit = cap
 	req.accept_gzip = not ranged
 	req.use_threads = false
 	host.add_child(req)
@@ -200,7 +203,7 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 		HTTPRequest.RESULT_TIMEOUT:
 			return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": result})
 		HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
-			return PKeyResult.failure(PKeyErrors.RESPONSE_TOO_LARGE, "The response is larger than %d bytes." % body_limit, {"result": result})
+			return PKeyResult.failure(PKeyErrors.RESPONSE_TOO_LARGE, "The response is larger than %d bytes." % cap, {"result": result})
 	return PKeyResult.failure(PKeyErrors.NETWORK, "The request failed (HTTPRequest result %d)." % result, {"result": result})
 
 

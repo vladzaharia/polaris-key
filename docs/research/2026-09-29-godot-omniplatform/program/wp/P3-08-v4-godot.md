@@ -133,15 +133,55 @@ install ([notes/A4 §5.7](../../notes/A4-diceroll-mapping.md)).
 
 ## Acceptance criteria
 
-- [ ] The runner passes every `feedCases`, `releaseRecordCases`, `update-matrix.json` row and
+- [x] The runner passes every `feedCases`, `releaseRecordCases`, `update-matrix.json` row and
       bucket vector on the editor and on an exported release template.
-- [ ] Verify timings for a feed and a record are recorded in the PR for both targets.
-- [ ] A reload refuses a feed with a lower `seq`, using a floor derived from a re-verified cached
+- [x] Verify timings for a feed and a record are recorded in the PR for both targets.
+- [x] A reload refuses a feed with a lower `seq`, using a floor derived from a re-verified cached
       JWS; a record with a mismatched hash is refused before Ed25519 runs.
-- [ ] `await PolarisKey.update.decide()` returns the plan's decision and `update_available` fires
+- [x] `await PolarisKey.update.decide()` returns the plan's decision and `update_available` fires
       with it; if P1-08 has landed, its `check()` tests still pass.
-- [ ] The green gate passes for the parts touched, including the Godot CI job.
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] The green gate passes for the parts touched, including the Godot CI job.
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+
+## Corrections from the implementation
+
+Recorded by P3-08 where the code, the plan or the repository made this brief's text inexact:
+
+- **Timings** (the conformance suite logs them on every run, `timing feed+record verify`; Apple
+  silicon, macOS 27): a feed plus its record verify in about 15 ms on the 4.7.2 editor (debug;
+  feed 7.2 ms, record 8.1 ms warm median) and about 10 ms on the 4.7.2 macOS release template
+  (feed 5.1 ms, record 5.4 ms; cold, with an empty key cache, 9.0 ms). The 4.4.1 editor floor
+  passes too (about 16.6 ms). The Linux release template is CI's leg.
+- **Names.** Per the plan (§2.7): `PKeyVersion` (`core/version.gd`), `PKeyFeed`
+  (`core/feed.gd`: `feed_claims`, `verify_feed`, `feed_floor`, `reload_feeds`, `commit_feed`),
+  `PKeyReleaseRecord` (`core/release_record.gd`: `record_hash`, `release_record_claims`,
+  `verify_release_record`, `reload_release_records`) and `PKeyDecision`
+  (`distribution/decision.gd`: `rollout_bucket`, `effective_capabilities`,
+  `resolve_update_outlet`, `decide_update`, `boot_decision`, `is_undismissable`). The flow
+  (§2.5 steps 2–18, client-core `runUpdateCheck`) is `PKeyUpdateFlow`
+  (`services/update/flow.gd`); the results are `PKeyUpdateCheck`, `PKeyUpdateFeed` and
+  `PKeyReleaseRecordResult`. Decision inputs and outputs keep `update-matrix.json`'s camelCase
+  member names, so they compare by value with the matrix and the transcripts.
+- **`update_available`.** P1-08's signal carried a `PKeyVersionCheck`. It now carries a
+  `PKeyResult`: a `PKeyUpdateCheck` from `decide()` when the decision is one to show (boot
+  `optional`), or a `PKeyVersionCheck` from the v3 `check()` as before, so P1-08's tests pass
+  unchanged.
+- **Options.** Beside `pinned_release_keys`, `PKeyOptions` gains `update_outlet` (a kind),
+  `update_outlet_id`, `update_outlet_subkind`, `update_methods` (default `["download"]`) and
+  `update_format`; `configure()` refuses a bad value, and a release key equal to a trust pin
+  compared as raw bytes, as `invalid-options`.
+- **Discovery.** `decide()` runs `discover()` itself when the session has not; offline, a build
+  that expects Update decides from the committed slices with the transport's code in `errors`.
+- **Transport.** `PKeyTransport.request` takes a per-request `body_limit`, so a record answer
+  stops at 88 844 bytes (§2.5 step 11) and is refused at step `hash` unhashed.
+- **Transcripts.** P3-03 merged while this package was open, so its `update-feed-rollback` and
+  `update-record-by-hash` replay in Godot here; synthetic transcripts in `suite_transcripts.gd`
+  cover an alias request and the doctored cases.
+- **Docs.** There is no Godot page on the docs site yet; the Godot docs page is
+  `sdks/godot/README.md`, whose update section this package rewrote. The parity reference page is
+  regenerated.
+- **Branch and status.** The branch is `wp/P3-08-godot-v4`. The lead sets the package's status at
+  merge; this branch does not run `check.mjs --set`.
 
 ## Verify
 

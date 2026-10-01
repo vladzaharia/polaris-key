@@ -61,6 +61,9 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	for k in opts.pinned_trust_keys:
 		if not (k is String and opts.pinned_trust_keys[k] is String):
 			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "pinned_trust_keys must map kid strings to base64url key strings.")
+	var update_refusal := check_update_options(opts)
+	if update_refusal != "":
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, update_refusal)
 	var channel = PKeyChannel.header_for(opts.default_channel, v)
 	if channel == null:
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "default_channel must be a channel name (stable, beta, pr-<n>, dev or a manual channel matching %s), got '%s'." % [PKeyConstants.CHANNEL_NAME_PATTERN, opts.default_channel])
@@ -97,6 +100,34 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	return PKeyResult.success(core)
 
 
+## The wire v4 update options (plans/P3-01.md §2.6, §2.8): "" when they are valid, else why
+## `configure` refuses them (`invalid-options`). pinned_release_keys maps kid strings to keys,
+## and no release key is also a trust pin (compared as raw bytes, so two spellings of one key
+## are one key); the host outlet is a kind, an outlet id and a subkind from their vocabularies;
+## every update method is one of `native`, `download`, `sidecar-pck`. An EMPTY
+## pinned_release_keys is valid here: decide() answers `not-configured`.
+static func check_update_options(opts: PKeyOptions) -> String:
+	var trust_raw := {}
+	for k in opts.pinned_trust_keys:
+		var raw = PKeyB64Url.decode_lenient(String(opts.pinned_trust_keys[k]))
+		trust_raw[raw.hex_encode() if raw != null else "text:" + String(opts.pinned_trust_keys[k])] = true
+	for k in opts.pinned_release_keys:
+		var key = opts.pinned_release_keys[k]
+		if not (k is String and key is String):
+			return "pinned_release_keys must map kid strings to base64url key strings."
+		var raw = PKeyB64Url.decode_lenient(key)
+		if trust_raw.has(raw.hex_encode() if raw != null else "text:" + key):
+			return "pinned_release_keys['%s'] is also a trust pin: a release key is never a product key (WIRE-CONTRACT-V4 §2.6)." % k
+	if PKeyDecision.resolve_update_outlet({"host": opts.host_outlet()}) == null:
+		return "update_outlet must be an outlet kind (%s), update_outlet_id an outlet id (^[a-z][a-z0-9-]{0,63}$) and update_outlet_subkind one of %s; got '%s', '%s', '%s'." % [
+			", ".join(PKeyConstants.OUTLET_KIND_VALUES), ", ".join(PKeyConstants.OUTLET_SUBKIND_VALUES),
+			opts.update_outlet, opts.update_outlet_id, opts.update_outlet_subkind]
+	for m in opts.update_methods:
+		if not PKeyConstants.BINARY_METHOD_VALUES.has(m):
+			return "update_methods may hold only %s; got '%s'." % [", ".join(PKeyConstants.BINARY_METHOD_VALUES), m]
+	return ""
+
+
 ## Offline load: device id, token, and the verified cache. No network. A coroutine.
 func start() -> PKeyResult:
 	if not store.has_device_id():
@@ -106,6 +137,8 @@ func start() -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The store has no device id.", last_store_error)
 	tokens.load_token()
 	cache = PKeyCache.new(store, trust, clock, product, device_id)
+	cache.platform = update_platform()
+	cache.release_keys = options.pinned_release_keys
 	await cache.load_record()
 	started = true
 	return PKeyResult.success()
@@ -263,6 +296,12 @@ func build_info() -> Dictionary:
 	return PKeyBuildStamp.fallback(channel, product, version)
 
 
+## The platform the update decision runs for: the stamp's, else this device's.
+func update_platform() -> String:
+	var p = build_info().get("platform")
+	return p if p is String and p != "" else PKeyHeaders.platform()
+
+
 ## The stamped outlet, or "" (never detected at run time here; that is P3-11's).
 func outlet() -> String:
 	return build_stamp["outlet"] if build_stamp != null else ""
@@ -303,6 +342,13 @@ func import_bundle(text: String, now := -1.0) -> PKeyResult:
 		"docs": docs,
 		"importedBundle": {"bundleId": b["bundle_id"], "importedAt": int(at)},
 	}
+	# The committed feeds and records are not the bundle's to drop: keeping them keeps each
+	# channel's `seq` floor. The reload below re-verifies them against the bundle's trust set.
+	var held = cache.record()
+	if held is Dictionary:
+		for slice in PKeyCache.UPDATE_SLICES:
+			if held.has(slice):
+				record[slice] = held[slice]
 	if not cache.replace(record):
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The verified bundle could not be written.", last_store_error)
 	# Re-run the normal load over what was written: the import reaches exactly the state a
