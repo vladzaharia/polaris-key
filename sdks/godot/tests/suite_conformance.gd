@@ -13,6 +13,9 @@ extends RefCounted
 #   trustCases       PKeyTrust                   accepted, the merged set, issuedAt
 #   clockFloorCases  the reload path + PKeyGate  highWaterMark, effectiveNow, status
 #   bundleCases      PKeyBundle.inspect          imports + docs, or the refusing step
+#   pointer sets     PKeyJws.verify              WIRE-CONTRACT-V4 §4.1: non_wire_integers equals
+#                                                each case's `nonWireIntegers` over the seven JWS
+#                                                families (feedCases, releaseRecordCases included)
 #   gate-matrix rows the build-gate port + PKeyGate status, usable, reason, allowedRange
 #   deviceIds        PKeyDeviceId.from_raw       the derived id (fingerprint.json)
 #   vectors          PKeyFingerprint             components and hwid (fingerprint.json)
@@ -41,6 +44,7 @@ const FLOORS := {
 	"trustCases": 11,
 	"clockFloorCases": 7,
 	"bundleCases": 9,
+	"pointerSets": 288,
 	"gate-matrix": 38,
 	"deviceIds": 4,
 	"vectors": 6,
@@ -63,6 +67,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _trust_cases(t, _section(t, corpus, "trustCases"))
 	await _clock_floor_cases(t, _section(t, corpus, "clockFloorCases"))
 	await _bundle_cases(t, _section(t, corpus, "bundleCases"))
+	_pointer_sets(t, corpus)
 	var matrix = _load(t, GATE_MATRIX)
 	if matrix != null:
 		_gate_matrix(t, matrix)
@@ -146,6 +151,49 @@ func _jws_cases(t: PKeyTestContext, cases: Array) -> void:
 			t.check("%s doc" % id, r is Dictionary and r.has("payload") and r["payload"] == doc)
 	t.info("jwsCases: %d with docNulReplaced" % annotated)
 	_coverage(t, "jwsCases", evaluated, cases.size(), _ms_since(t0))
+
+
+# ── WIRE-CONTRACT-V4 §4.1: the non-wire-integer pointer sets ────────────────────────────────
+# Every case of the seven JWS families goes through PKeyJws.verify with its family's keys, typ
+# and cap. Whenever it verifies, `non_wire_integers` must equal the case's `nonWireIntegers` as a
+# set (absent = empty), and a case that carries the member must verify.
+
+func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
+	var families := [
+		["jwsCases", "jws", "trust", "", 0],
+		["licenseDocCases", "jws", "trust", PKeyClaims.TYP_LICENSE, 0],
+		["configDocCases", "jws", "trust", PKeyClaims.TYP_CONFIG, 0],
+		["trustCases", "manifestJws", "pinned", PKeyClaims.TYP_TRUST, 0],
+		["bundleCases", "bundleJws", "pinned", PKeyClaims.TYP_BUNDLE, PKeyClaims.MAX_BUNDLE_BYTES],
+		["feedCases", "jws", "trust", PKeyClaims.TYP_FEED, 0],
+		["releaseRecordCases", "jws", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
+	]
+	var evaluated := 0
+	var total := 0
+	var t0 := Time.get_ticks_usec()
+	for f in families:
+		var cases := _section(t, corpus, f[0])
+		total += cases.size()
+		for c in cases:
+			if not (c is Dictionary and c.get(f[1]) is String and c.get(f[2]) is Dictionary):
+				t.check("%s/%s well-formed for the pointer set" % [f[0], str(c.get("id"))], false)
+				continue
+			var typ: String = f[3] if f[3] != "" else str(c.get("typ", ""))
+			var cap: int = f[4] if f[0] != "jwsCases" else int(c.get("maxPayloadBytes", 0))
+			var r = PKeyJws.verify(c[f[1]], c[f[2]], typ, cap)
+			evaluated += 1
+			var where := "%s/%s pointer set" % [f[0], c["id"]]
+			if c.has("nonWireIntegers") and r == null:
+				t.check(where, false, "carries nonWireIntegers, so it must verify")
+				continue
+			if r == null:
+				continue
+			var want := {}
+			for p in c.get("nonWireIntegers", []):
+				want[p] = true
+			var got: Dictionary = r.get("non_wire_integers", {})
+			t.check(where, got.keys().size() == want.keys().size() and want.keys().all(func(k): return got.has(k)), "got %s" % str(got.keys()))
+	_coverage(t, "pointerSets", evaluated, total, _ms_since(t0))
 
 
 static func _jws_well_formed(c) -> bool:

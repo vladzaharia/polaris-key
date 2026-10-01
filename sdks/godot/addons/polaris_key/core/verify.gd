@@ -1,6 +1,7 @@
 class_name PKeyVerify
 extends RefCounted
-## Signed-document verification with the full v3 claim set (WIRE-CONTRACT-V3 §2–§3): a port of
+## Signed-document verification with the full v3 claim set (WIRE-CONTRACT-V3 §2–§3, with V4 §3's
+## integer claims): a port of
 ## `client-core/src/verify.ts`. Cryptography is PKeyJws; this adds the envelope every document
 ## shares and the per-type claims, so an expired, foreign, far-future or wrong-`typ` document
 ## never becomes a document at all. Every failure returns null, never an error.
@@ -16,8 +17,9 @@ extends RefCounted
 ##   offload                 run the signature off the calling thread (PKeyJws.verify_async)
 
 
-static func _is_valid_schema_version(v: Variant) -> bool:
-	return PKeyClaims.is_number(v) and is_finite(float(v)) and float(v) == floorf(float(v)) and float(v) >= 1.0
+static func _is_valid_schema_version(v: Variant, non_wire_integers: Dictionary = {}) -> bool:
+	# V4 §3: an integer claim decided from its token, minimum 1.
+	return PKeyClaims.is_wire_integer(v, "/schemaVersion", 1, non_wire_integers)
 
 
 ## `pkey-license+jws` (§2.1): a non-empty licenseId, an object `entitlements`, and a `profile`
@@ -34,8 +36,8 @@ static func check_license_claims(doc: Dictionary) -> bool:
 
 ## `pkey-config+jws` (§2.2, D-08): an integer schemaVersion >= 1 (a catalog version, so a shape
 ## check and not an allow-list), and object `config` and `secrets`. No licence fields needed.
-static func check_config_claims(doc: Dictionary) -> bool:
-	if not _is_valid_schema_version(doc.get("schemaVersion")):
+static func check_config_claims(doc: Dictionary, non_wire_integers: Dictionary = {}) -> bool:
+	if not _is_valid_schema_version(doc.get("schemaVersion"), non_wire_integers):
 		return false
 	if not (doc.get("config") is Dictionary):
 		return false
@@ -45,7 +47,7 @@ static func check_config_claims(doc: Dictionary) -> bool:
 
 
 ## The shared envelope (§2/§3), checked once so the two documents can never drift apart.
-static func check_envelope(doc: Dictionary, opts: Dictionary, now: float) -> bool:
+static func check_envelope(doc: Dictionary, opts: Dictionary, now: float, non_wire_integers: Dictionary = {}) -> bool:
 	if not _eq_str(doc.get("aud"), opts.get("expected_aud")):
 		return false
 	var iss = opts.get("expected_iss")
@@ -56,7 +58,9 @@ static func check_envelope(doc: Dictionary, opts: Dictionary, now: float) -> boo
 	var issued = doc.get("issuedAt")
 	var expires = doc.get("expiresAt")
 	var grace = doc.get("graceUntil")
-	if not (PKeyClaims.is_number(issued) and PKeyClaims.is_number(expires) and PKeyClaims.is_number(grace)):
+	# V4 §3: every timestamp is an integer claim, decided from its token, minimum 0.
+	var nw := non_wire_integers
+	if not (PKeyClaims.is_wire_integer(issued, "/issuedAt", 0, nw) and PKeyClaims.is_wire_integer(expires, "/expiresAt", 0, nw) and PKeyClaims.is_wire_integer(grace, "/graceUntil", 0, nw)):
 		return false
 	var floor_at = opts.get("last_accepted_issued_at")
 	if floor_at != null and issued <= floor_at:
@@ -80,13 +84,14 @@ static func verify_doc(jws: String, typ: String, opts: Dictionary) -> Variant:
 		return null
 	var doc: Dictionary = v["payload"]
 	var now = opts.get("now")
-	if not check_envelope(doc, opts, float(now) if now != null else float(PKeyClaims.system_now())):
+	var nw: Dictionary = v.get("non_wire_integers", {})
+	if not check_envelope(doc, opts, float(now) if now != null else float(PKeyClaims.system_now()), nw):
 		return null
 	match typ:
 		PKeyClaims.TYP_LICENSE:
 			return doc if check_license_claims(doc) else null
 		PKeyClaims.TYP_CONFIG:
-			return doc if check_config_claims(doc) else null
+			return doc if check_config_claims(doc, nw) else null
 	return null
 
 

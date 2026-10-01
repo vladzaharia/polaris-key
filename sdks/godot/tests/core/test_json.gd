@@ -65,22 +65,28 @@ func run(t: PKeyTestContext) -> void:
 		var r := PKeyJson.parse(ACCEPT[name][0])
 		t.check("json accepts %s" % name, r["ok"] and r["value"] == ACCEPT[name][1] and typeof(r["value"]) == typeof(ACCEPT[name][1]), str(r))
 
-	# Numbers are float64 exactly as in JS.
+	# Numbers are float64 exactly as in JS, inside WIRE-CONTRACT-V4 §1.2 rule 8's range.
 	var big := PKeyJson.parse("9007199254740991")
 	t.check("json reads 2^53 - 1 exactly", big["ok"] and big["value"] is float and int(big["value"]) == 9007199254740991 and big["value"] == float("9007199254740991"), str(big))
-	var inf := PKeyJson.parse("1e400")
-	t.check("json reads 1e400 as infinity", inf["ok"] and inf["value"] is float and is_inf(inf["value"]) and inf["value"] > 0, str(inf))
-	var neg := PKeyJson.parse("[-1e400, 1E-400]")
-	t.check("json reads -1e400 and an underflow", neg["ok"] and is_inf(neg["value"][0]) and neg["value"][1] == 0.0, str(neg))
+	for out_of_range in ["1e400", "[-1e400, 1E-400]", "5e-324", "1e4294967297", "1e308", "1e-308"]:
+		t.check("json refuses %s (rule 8)" % out_of_range, not PKeyJson.parse(out_of_range)["ok"])
+	for in_range in ["7", "-0", "7.0", "7e0", "1e-7", "1e+21", "1e-307", "9.99e307", "0e5"]:
+		t.check("json keeps %s (rule 8)" % in_range, PKeyJson.parse(in_range)["ok"])
+	# V4 §3: the pointers of the number tokens that cannot be wire integers.
+	var nw := PKeyJson.parse("{\"seq\":7,\"b\":7.0,\"a/b\":[1,17e8,9007199254740991,9007199254740992],\"t~\":{\"x\":-0,\"y\":1.5}}")
+	var ptrs: Array = nw["non_wire_integers"].keys() if nw["ok"] else []
+	ptrs.sort()
+	t.check("json reports the non-wire-integer pointers", ptrs == ["/a~1b/1", "/a~1b/3", "/b", "/t~0/y"], str(ptrs))
 
 	# WIRE-CONTRACT-V3 §10: a real \u0000 escape becomes U+FFFD; an escaped backslash stays text.
 	var nul := PKeyJson.parse("{\"a\":\"x\\u0000y\",\"b\":\"x\\\\u0000y\"}")
 	t.check("json §10: \\u0000 decodes as U+FFFD", nul["ok"] and nul["value"]["a"] == "x" + char(0xFFFD) + "y", str(nul))
 	t.check("json §10: an escaped backslash before u0000 stays text", nul["ok"] and nul["value"]["b"] == "x\\u0000y", str(nul))
 	var nul_dup := PKeyJson.parse("{\"a\\u0000\":1,\"a\\ufffd\":2}")
-	t.check("json §10: the replacement applies before the duplicate-key scan", not nul_dup["ok"])
+	t.check("json V4 §1.2 rule 7: a member name holding U+0000 is refused", not nul_dup["ok"])
+	t.check("json V4 rule 7: an escaped backslash before u0000 in a name is text", PKeyJson.parse("{\"a\\\\u0000\":1}")["ok"])
 
-	# Bytes: a raw NUL is refused before decoding; one BOM is dropped (TextDecoder).
+	# Bytes: a raw NUL is refused before decoding; a BOM and ill-formed UTF-8 are refused (V4 §1.2).
 	var raw_nul := PackedByteArray([0x22, 0x61, 0x00, 0x62, 0x22])
 	t.check("json rejects a raw NUL byte", not PKeyJson.parse_bytes(raw_nul)["ok"])
 	var truncating := "{\"a\":1}".to_utf8_buffer()
@@ -88,7 +94,10 @@ func run(t: PKeyTestContext) -> void:
 	t.check("json rejects data after a raw NUL byte", not PKeyJson.parse_bytes(truncating)["ok"])
 	var bom := PackedByteArray([0xEF, 0xBB, 0xBF])
 	bom.append_array("{\"a\":1}".to_utf8_buffer())
-	t.check("json drops one leading BOM", PKeyJson.parse_bytes(bom)["ok"])
+	t.check("json refuses a leading BOM", not PKeyJson.parse_bytes(bom)["ok"])
+	for bad in [PackedByteArray([0x22, 0xFF, 0x22]), PackedByteArray([0x22, 0xED, 0xA0, 0x80, 0x22]), PackedByteArray([0x22, 0xC0, 0xAF, 0x22])]:
+		t.check("json refuses ill-formed UTF-8 %s" % bad.hex_encode(), not PKeyJson.parse_bytes(bad)["ok"])
+	t.check("json accepts well-formed UTF-8", PKeyJson.parse_bytes("\"ünï 💻\"".to_utf8_buffer())["ok"])
 
 	# A bundle-sized string is one token, not a GDScript loop per byte.
 	var long := "\"" + "A".repeat(350000) + "\""
@@ -98,8 +107,9 @@ func run(t: PKeyTestContext) -> void:
 	t.info("json: 350 KB string validated in %.1f ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
 	var escapes := "\"" + "\\n".repeat(30000) + "\""
 	t.check("json validates 30 000 escapes", PKeyJson.parse(escapes)["ok"])
-	var deep := "[".repeat(200) + "]".repeat(200)
-	t.check("json validates 200 levels of nesting", PKeyJson.parse(deep)["ok"])
+	# V4 §1.2 rule 9: at most 64 levels, the top-level value as level 1.
+	t.check("json validates 64 levels of nesting", PKeyJson.parse("[".repeat(64) + "]".repeat(64))["ok"])
+	t.check("json refuses 65 levels of nesting", not PKeyJson.parse("[".repeat(65) + "]".repeat(65))["ok"])
 
 	# base64url.
 	t.check("b64url strict decodes", PKeyB64Url.decode_strict("AQID") == PackedByteArray([1, 2, 3]))
@@ -126,3 +136,15 @@ func run(t: PKeyTestContext) -> void:
 			t.check("sha512 stream len=%d" % m.size(), s.digest().hex_encode() == v["sha512"])
 			n += 1
 		t.check("sha512 stream coverage", n == vectors.size() and n >= 24, "%d/%d" % [n, vectors.size()])
+
+	# V4 §3: the whole-string pattern helper and the integer-claim helper.
+	for term in ["\n", "\r\n", "\r", char(0x85), char(0x2028), char(0x2029)]:
+		t.check("matches_whole refuses a trailing terminator %s" % str(term.unicode_at(0)), not PKeyClaims.matches_whole("[a-z][a-z0-9-]{0,63}", "direct" + term))
+	t.check("matches_whole accepts the whole value", PKeyClaims.matches_whole("[a-z][a-z0-9-]{0,63}", "direct"))
+	t.check("semver refuses 1.2.3 and a newline", PKeySemver.parse("1.2.3\n") == null)
+	t.check("is_wire_integer: 0 at minimum 0", PKeyClaims.is_wire_integer(0.0, "/issuedAt", 0, {}))
+	t.check("is_wire_integer: 2^53 - 1", PKeyClaims.is_wire_integer(9007199254740991.0, "/seq", 1, {}))
+	t.check("is_wire_integer refuses 2^53", not PKeyClaims.is_wire_integer(9007199254740992.0, "/seq", 1, {}))
+	t.check("is_wire_integer refuses a flagged pointer", not PKeyClaims.is_wire_integer(7.0, "/seq", 1, {"/seq": true}))
+	t.check("is_wire_integer refuses below the minimum", not PKeyClaims.is_wire_integer(0.0, "/seq", 1, {}))
+	t.check("is_wire_integer refuses a fraction and a bool", not PKeyClaims.is_wire_integer(7.5, "/seq", 1, {}) and not PKeyClaims.is_wire_integer(true, "/seq", 1, {}))

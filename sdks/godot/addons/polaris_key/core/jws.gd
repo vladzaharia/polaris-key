@@ -1,6 +1,6 @@
 class_name PKeyJws
 extends RefCounted
-## Compact-JWS verify (WIRE-CONTRACT-V3 §1, §10): a port of packages/shared-jws `verifyJws`, in
+## Compact-JWS verify (WIRE-CONTRACT-V4 §1, §10): a port of packages/shared-jws `verifyJws`, in
 ## the frozen 13-step order (notes/A2 §1.1):
 ##
 ##    1. split into exactly three parts
@@ -12,11 +12,13 @@ extends RefCounted
 ##    8. typ == the call site's typ when one is named; a present typ must be a string
 ##    9. kid is a string
 ##   10. the key is trust[kid] (never from the document): raw 32-byte Ed25519, base64url
-##   11. strict base64url signature
+##   11. strict base64url signature, then V4 §1.1's byte pre-checks (`S < L`, canonical `A` and
+##       `R`, neither of small order)
 ##   12. Ed25519 over the bytes of "<header>.<payload>" exactly as received
 ##   13. ONLY THEN decode the payload, apply the cap and parse it strictly
 ##
-## Returns {"kid": String, "payload": Variant}, or null on ANY failure.
+## Returns {"kid": String, "payload": Dictionary, "non_wire_integers": Dictionary}, or null on ANY
+## failure. Header and payload are V4 §1.2 strict JSON (PKeyJson), and the payload is one object.
 ##
 ## Steps 1–11 are `prepare`, step 12 is a `PKeyEd25519Job`, step 13 is `finish`. `verify` runs
 ## them inline. `verify_async` (a coroutine) runs step 12 on `WorkerThreadPool` when the
@@ -152,6 +154,9 @@ static func prepare(jws: String, trust: Dictionary, typ: String = "", max_payloa
 	var sig = PKeyB64Url.decode_strict(enc_sig)
 	if sig == null:
 		return null
+	# WIRE-CONTRACT-V4 §1.1: S < L, canonical A and R, no small-order A or R — before step 12.
+	if not PKeyEd25519.v4_prechecks(key[0], sig):
+		return null
 	return {
 		"kid": kid,
 		"sig": sig,
@@ -168,9 +173,10 @@ static func finish(p: Dictionary) -> Variant:
 	if payload_bytes == null or (payload_bytes as PackedByteArray).size() > int(p["cap"]):
 		return null
 	var parsed := PKeyJson.parse_bytes(payload_bytes)
-	if not parsed["ok"] or parsed["value"] == null:
+	# V4 §1.2 rule 3: the payload is exactly one JSON object.
+	if not parsed["ok"] or not (parsed["value"] is Dictionary):
 		return null
-	return {"kid": p["kid"], "payload": parsed["value"]}
+	return {"kid": p["kid"], "payload": parsed["value"], "non_wire_integers": parsed["non_wire_integers"]}
 
 
 ## The trust-set value decoded (leniently, as shared-jws `importVerifyKey` does) and prepared
