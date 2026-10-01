@@ -42,8 +42,7 @@ Scaffolds `.pkey/` in the current directory: `product.yaml` and `schema.yaml` al
 field, so its licences do not expire. `--modules` takes either vocabulary: the service slugs
 (`license`, `config`, `release`, `distribution`, `update`, `identity`) or the legacy module
 names `.pkey/product`'s `modules` block still accepts (`licensing`, `releases` = release +
-distribution + update,
-`oidc`, `edgeMint` = config). The scaffold always writes the `modules` block in service slugs,
+distribution + update, `oidc`, `edgeMint` = config). The scaffold always writes the `modules` block in service slugs,
 one line per service. Omit `--modules` and you get `license,config`, matching what every
 product ran before the service suite existed. `--product`/`--slug` default to the current directory's name,
 lowercased and reduced to `[a-z0-9-]`; `--name` defaults to a titleized version of the slug.
