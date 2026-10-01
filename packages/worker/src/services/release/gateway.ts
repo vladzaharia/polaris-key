@@ -158,6 +158,8 @@ function releaseCacheKey(
   if (params.version) url.searchParams.set("v", params.version);
   if (params.channel) url.searchParams.set("c", params.channel);
   if (params.arch) url.searchParams.set("a", params.arch);
+  if (params.fixedVersion !== undefined)
+    url.searchParams.set("f", params.fixedVersion);
   return new Request(url.toString(), { method: "GET" }) as unknown as Request;
 }
 

@@ -552,6 +552,132 @@ describe("the entitled access mode on the build, file and blob routes", () => {
       expect(anon.status, origin).toBe(401);
     }
   });
+
+  it("a release's stored version is never re-read as a moving selector (tags latest, stable, pr-N, a manual channel)", async () => {
+    // The sync stores `versionFromTag(tag)`, so a rolling prerelease tagged `latest` has the
+    // version `latest`. Read as a route selector that is the moving stable channel — no window,
+    // and every grant holds stable — so a licence capped at 1.0.0 with no beta grant fetched
+    // the prerelease's bytes by file and by hash. `pr-5` and a manual `nightly` were checked as
+    // moving channels the licence holds, again with no window. A stored version is the version
+    // of one fixed release: window-checked, and refused when the window cannot order it.
+    const db = makeTestDb();
+    await seedReleaseProduct(db, {
+      artifacts_access: "entitled",
+      manual_channels_json: JSON.stringify([
+        { name: "nightly", regex: "nightly" },
+      ]),
+    });
+    const env = envFor({ blobOrigin: BYTES });
+    const r2 = new R2Mock();
+    env.BLOBS = asR2(r2);
+    const rolling = [
+      ["latest", 401],
+      ["stable", 402],
+      ["pr-5", 403],
+      ["nightly", 404],
+    ] as const;
+    for (const [i, [, id]] of rolling.entries())
+      ASSET_BYTES[id] = bytesOf(4000 + i, 40 + i);
+    const gh = github({
+      releases: [
+        ...rolling.map(([tag, id]) =>
+          release(
+            tag,
+            [
+              {
+                id,
+                name: "djdl-arm64",
+                size: ASSET_BYTES[id]!.length,
+                content_type: "application/octet-stream",
+                browser_download_url: `https://github.com/acme/djdl/releases/download/${tag}/djdl-arm64`,
+              },
+            ],
+            { prerelease: true },
+          ),
+        ),
+        ...RELEASES,
+      ],
+    });
+    await syncAndDescribe(env, db, gh.fetchImpl);
+    const digests: [string, string][] = [];
+    for (const [tag, id] of rolling) {
+      const bytes = ASSET_BYTES[id]!;
+      await storeBlob(db, r2, SLUG, bytes);
+      const set = stmtSetArtifactModel({
+        product: SLUG,
+        releaseId: tag,
+        artifactId: String(id),
+        buildId: null,
+        role: "payload",
+        sha256: sha256Hex(bytes),
+      });
+      await db.run(set.sql, ...set.params);
+      digests.push([tag, sha256Hex(bytes)]);
+    }
+    // Stable plus the two moving channels, capped at 1.0.0: no beta grant.
+    const { key } = await seedLicenseWithKey(db, SLUG, {
+      maxVersion: "1.0.0",
+      channels: ["stable", "pr", "nightly"],
+    });
+    const product = (await loadProduct(env, db, SLUG))!;
+    const act = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(act.status).toBe(200);
+    const token = ((await act.json()) as { token: string }).token;
+    const s = { env, db, gh };
+    const auth = { headers: { authorization: `Bearer ${token}` } };
+
+    for (const origin of [BYTES, CONSOLE]) {
+      for (const [tag, hex] of digests) {
+        for (const p of [
+          `/release/files/${tag}/djdl-arm64`,
+          `/release/blobs/sha256/${hex}`,
+        ]) {
+          const res = await get(s, `${origin}/${SLUG}${p}`, auth);
+          expect(res.status, `${origin}${p}`).toBe(403);
+          expect(await res.json(), `${origin}${p}`).toMatchObject({
+            error: { code: "version_blocked" },
+            allowedRange: { max: "1.0.0" },
+          });
+        }
+      }
+      // Controls: a file inside the window is served; one outside it, and the beta channel the
+      // licence does not hold, are refused as before.
+      const ok = await get(
+        s,
+        `${origin}/${SLUG}/release/files/v1.0.0/djdl-arm64`,
+        auth,
+      );
+      expect(ok.status, origin).toBe(200);
+      expect(new Uint8Array(await ok.arrayBuffer())).toEqual(ASSET_BYTES[101]);
+      const outside = await get(
+        s,
+        `${origin}/${SLUG}/release/files/v1.1.0/djdl-arm64`,
+        auth,
+      );
+      expect(outside.status, origin).toBe(403);
+      expect(await outside.json()).toMatchObject({
+        error: { code: "version_blocked" },
+      });
+      const beta = await get(
+        s,
+        `${origin}/${SLUG}/release/builds/beta/cli-arm64`,
+        auth,
+      );
+      expect(beta.status, origin).toBe(403);
+      expect(await beta.json()).toMatchObject({
+        error: { code: "channel_not_allowed" },
+      });
+    }
+  });
 });
 
 describe("GitHub caching (fetch-counting)", () => {

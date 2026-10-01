@@ -23,8 +23,10 @@
  * configuration must exist, the `artifacts` access mode is enforced (a pinned selector or a
  * file's release is version-checked under `entitled`, and a version the window cannot order,
  * such as a four-part `1.2.3.4`, is refused whenever the window is bounded: `access.ts`; a
- * blob is served under `entitled` only if a release of this product carrying that digest passes
- * the same check, `entitledBlobRefusal`), and
+ * file's release is checked by its STORED version as a fixed, pinned version (`fixedVersion`),
+ * never re-read as a selector, so a release tagged `latest`, `stable`, `beta`, `pr-5` or a manual
+ * channel's name cannot pass as a moving channel; a blob is served under `entitled` only if a
+ * release of this product carrying that digest passes the same check, `entitledBlobRefusal`), and
  * the request counts against the ARTIFACT rate-limit lane. Nothing here is put in the edge cache.
  *
  * ── WHERE THE BYTES COME FROM ───────────────────────────────────────────────────────────────
@@ -437,10 +439,14 @@ async function computeFile(
   ctx: SurfaceContext,
   target: Extract<ByteTarget, { kind: "file" }>,
 ): Promise<Response> {
+  // Joined to its release row: the access decision checked that row's version, so an artifact
+  // whose release row is missing is not served on the strength of a check that saw nothing.
   const artifact = await ctx.db.first<ReleaseArtifactRow>(
-    `SELECT * FROM release_artifacts
-      WHERE product = ? AND release_id = ? AND name = ?
-      ORDER BY artifact_id ASC LIMIT 1`,
+    `SELECT a.* FROM release_artifacts a
+       JOIN release_metadata m
+         ON m.product = a.product AND m.release_id = a.release_id
+      WHERE a.product = ? AND a.release_id = ? AND a.name = ?
+      ORDER BY a.artifact_id ASC LIMIT 1`,
     ctx.product.slug,
     target.releaseId,
     target.name,
@@ -458,8 +464,10 @@ const BLOB_RELEASES_CHECKED = 16;
  * secret (THREAT-MODEL §3: signed manifests publish it). Without a per-release decision every
  * R2-held payload the build and file routes window-check would be one hash away. So the blob is
  * served only if at least one release of THIS product whose artifact has this digest passes the
- * same check `/release/files` applies to that release's version (`enforceReleaseAccess`, which
- * also refuses a version the window cannot order). A hash no release artifact carries (only a
+ * same check `/release/files` applies to that release's version (`enforceReleaseAccess` with the
+ * stored version as `fixedVersion`, so a release tagged `latest` or `pr-5` is window-checked
+ * rather than read as a moving channel, and a version the window cannot order is refused). A
+ * hash no release artifact carries (only a
  * pack object, say) answers the flat not-found until per-request authorisation exists
  * (P2b-04 / P4-05). Returns `null` to serve, or the refusal.
  */
@@ -488,7 +496,8 @@ async function entitledBlobRefusal(
       product,
       cfg,
       "blob",
-      { version },
+      // The release's STORED version, pinned — never re-read as a selector (`fixedVersion`).
+      { fixedVersion: version },
       now,
     );
     if (!denied) return null;
@@ -539,10 +548,14 @@ export async function serveReleaseBytes(
       headers: { allow: "GET, HEAD", "cache-control": "no-store" },
     });
 
-  // What `entitled` checks here: a version selector is pinned; a file's release has a version; a
-  // moving selector resolves after the decision (as on `/release/dl`). A blob names neither, so
-  // this decision proves only a usable licence; `computeBlob` then checks the releases that
-  // carry the hash (`entitledBlobRefusal`).
+  // What `entitled` checks here: a version selector is pinned; a moving selector resolves after
+  // the decision (as on `/release/dl`). A file's release is one FIXED release, so its stored
+  // version goes in as `fixedVersion`, never as a selector: a release tagged `latest` stores the
+  // version `latest`, which as a selector would be the moving stable channel with no window
+  // check. A file whose release row is missing is checked as an empty fixed version (refused
+  // under a bounded window) and then answers not-found (`computeFile` joins the row). A blob
+  // names neither, so this decision proves only a usable licence; `computeBlob` then checks the
+  // releases that carry the hash (`entitledBlobRefusal`).
   let params: ReleaseParams = {};
   if (target.kind === "build") params = { version: target.selector };
   if (target.kind === "file") {
@@ -551,7 +564,7 @@ export async function serveReleaseBytes(
       product.slug,
       target.releaseId,
     );
-    if (release) params = { version: release.version };
+    params = { fixedVersion: release?.version ?? "" };
   }
 
   const kind: ReleaseKind = target.kind;

@@ -10,7 +10,8 @@
  *   licensed       identical to `authenticated` today; the distinction is declarative, and it
  *                  is preserved rather than collapsed so a product's stated posture survives.
  *   entitled       (D-13, new in P2.T3) the licence's OWN grant: the requested channel must be
- *                  in its entitled set, and a pinned version must sit inside its window.
+ *                  in its entitled set, and a pinned version — or the stored version of a
+ *                  fixed release (`fixedVersion`) — must sit inside its window.
  *
  * ── THE LICENCE QUESTION, WITHOUT THE LICENCE SERVICE ───────────────────────────────────────
  *
@@ -58,6 +59,17 @@ export interface ReleaseParams {
   channel?: string;
   /** Requested architecture (dl, and `?arch=` on the appcast). */
   arch?: "arm64" | "x86_64";
+  /**
+   * The STORED version of the one fixed release a route serves (`/release/files`, and each
+   * release `/release/blobs` checks). Never a selector: it is checked as a pinned version
+   * whatever it spells. A release synced from the tag `latest`, `stable`, `beta`, `pr-5` or a
+   * manual channel's name stores that word as its version, and reading it as a route selector
+   * would classify it as a MOVING channel, which has no window check — a capped, stable-only
+   * licence then fetched a rolling prerelease's bytes (P2-05 security round). When set, it
+   * overrides `version` and `channel` for the `entitled` decision. Only server code sets it;
+   * no route copies a request value into it.
+   */
+  fixedVersion?: string;
 }
 
 /** The raw selector string a surface resolves against, before classification. */
@@ -86,12 +98,23 @@ export function selectorFor(
  * `version` is populated only for a PINNED selector. A moving one (`latest`, `beta`) resolves to
  * a concrete release inside the surface handler, after this decision; blocking it here would
  * mean guessing.
+ *
+ * A release's STORED version (`params.fixedVersion`) is never fed through this classification:
+ * it is always pinned, so a release tagged `latest` cannot pass as the moving stable channel.
  */
 export function entitledSelectorFor(
   cfg: ReleaseConfigRow,
   kind: ReleaseKind,
   params: ReleaseParams,
 ): EntitledSelector {
+  // A fixed release is pinned, never classified: see `ReleaseParams.fixedVersion`. Pinned means
+  // what it means for a pinned selector — the stable channel, the version window-checked — and
+  // `enforceReleaseAccess` refuses it when the window is bounded and cannot order it.
+  if (params.fixedVersion !== undefined)
+    return {
+      channel: CHANNEL_STABLE,
+      version: params.fixedVersion.replace(/^v/, ""),
+    };
   const raw = selectorFor(kind, params);
   const sel = classifyChannel(
     raw,
@@ -145,10 +168,13 @@ export async function enforceReleaseAccess(
       // `1.2.3.4`, `2.0.0.1` or `3.0.0beta` would pass any window. A pinned version that is
       // not semver is therefore refused whenever the window is bounded (a licence, tier or the
       // product's compat range sets a min or max); an unbounded window has nothing to enforce.
+      // A fixed release's version is checked even when it is empty, which `selector.version`
+      // alone would read as "unpinned".
       const { allowedRange } = decision;
+      const pinned = params.fixedVersion !== undefined || !!selector.version;
       if (
-        selector.version &&
-        !parseSemver(selector.version) &&
+        pinned &&
+        !parseSemver(selector.version ?? "") &&
         (allowedRange.min || allowedRange.max)
       ) {
         return wireError(403, "version_blocked", { allowedRange });
