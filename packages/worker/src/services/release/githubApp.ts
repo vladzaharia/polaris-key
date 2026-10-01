@@ -3,8 +3,8 @@
 /**
  * GitHub App authentication for the release engine.
  *
- * We mint a short-lived App JWT (ES256, signed with the App's PEM private key via
- * WebCrypto — no node:* crypto) then exchange it for an **installation token** down-scoped
+ * We mint a short-lived App JWT (RS256, signed with the App's PEM private key via
+ * WebCrypto in `core/jwt.ts` — no node:* crypto) then exchange it for an **installation token** down-scoped
  * to a single repository and a read-only permission set. Tokens are cached in KV — sealed,
  * never plaintext — so the common path is a single KV read, not two GitHub round-trips.
  *
@@ -20,6 +20,7 @@ import {
   type Env,
   type SealContext,
 } from "../../core/platform.js";
+import { signJwtRs256 } from "../../core/jwt.js";
 
 const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "polaris-key-release";
@@ -32,89 +33,15 @@ export type FetchImpl = (
   init?: RequestInit,
 ) => Promise<Response>;
 
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-const b64urlStr = (s: string): string => b64url(new TextEncoder().encode(s));
-
-function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-
-/** Strip PEM armor + whitespace and decode the base64 body to raw DER bytes. */
-function pemToDer(pem: string): Uint8Array {
-  const body = pem
-    .replace(/-----BEGIN [^-]+-----/g, "")
-    .replace(/-----END [^-]+-----/g, "")
-    .replace(/\s+/g, "");
-  const bin = atob(body);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-/**
- * GitHub App private keys are distributed as RSA PKCS#1 (`BEGIN RSA PRIVATE KEY`).
- * WebCrypto only imports PKCS#8, so wrap PKCS#1 DER in the PKCS#8 PrivateKeyInfo
- * envelope (the fixed rsaEncryption AlgorithmIdentifier prefix) when needed.
- */
-function toPkcs8(pem: string): ArrayBuffer {
-  const der = pemToDer(pem);
-  if (/BEGIN PRIVATE KEY/.test(pem)) return toAB(der);
-
-  // PKCS#8 = SEQUENCE { version 0, AlgorithmIdentifier rsaEncryption NULL, OCTET STRING pkcs1 }
-  const rsaOid = [
-    0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
-    0x01, 0x05, 0x00,
-  ];
-  const version = [0x02, 0x01, 0x00];
-  const octetHeader = derLen(0x04, der.length);
-  const inner = [...version, ...rsaOid, ...octetHeader, ...der];
-  const seq = [...derLen(0x30, inner.length), ...inner];
-  return toAB(Uint8Array.from(seq));
-}
-
-/** Build a DER tag+length prefix (definite form) for a body of `n` bytes. */
-function derLen(tag: number, n: number): number[] {
-  if (n < 0x80) return [tag, n];
-  const bytes: number[] = [];
-  let v = n;
-  while (v > 0) {
-    bytes.unshift(v & 0xff);
-    v >>= 8;
-  }
-  return [tag, 0x80 | bytes.length, ...bytes];
-}
-
-/** Sign a JWT with RS256 (GitHub App JWTs are RS256). */
+/** Sign the App JWT (GitHub App JWTs are RS256; `core/jwt.ts` owns the signer). */
 async function signAppJwt(
   appId: string,
   pem: string,
   now: number,
 ): Promise<string> {
-  const header = { alg: "RS256", typ: "JWT" };
   // 30s clock-skew backdate; 9-minute window (GitHub caps App JWTs at 10m).
   const payload = { iat: now - 30, exp: now + 9 * 60, iss: appId };
-  const signingInput = `${b64urlStr(JSON.stringify(header))}.${b64urlStr(JSON.stringify(payload))}`;
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    toPkcs8(pem),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    toAB(new TextEncoder().encode(signingInput)),
-  );
-  return `${signingInput}.${b64url(new Uint8Array(sig))}`;
+  return signJwtRs256(payload, pem);
 }
 
 interface CachedToken {
