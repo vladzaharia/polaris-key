@@ -1,10 +1,10 @@
 // Generalized schema-mirror generator (the multi-language successor to djdl's
 // scripts/gen-config-schema.ts). Given a product catalog JSON (the `/<product>/config/schema`
 // shape), it emits self-contained typed mirrors for products that want compile-time
-// config types: TypeScript, Python (dataclasses), and Swift. Products that stay purely
+// config types: TypeScript, Python (dataclasses), Swift and GDScript. Products that stay purely
 // data-driven skip this and read the catalog at runtime.
 //
-//   tsx tools/gen-mirrors.ts --catalog <path> --out-dir <dir> --lang ts,python,swift
+//   tsx tools/gen-mirrors.ts --catalog <path> --out-dir <dir> --lang ts,python,swift,gdscript
 //   tsx tools/gen-mirrors.ts ... --check     # CI drift guard (exit 1 if stale)
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -244,17 +244,130 @@ ${rows}
 `;
 }
 
+// ── GDScript mirror (the Godot SDK, P1-04) ────────────────────────────────────
+//
+// A script of constants with no `class_name` (a game may mirror more than one product, and a
+// global name would collide), loaded with `preload` and handed to
+// `PolarisKey.config.set_compiled_catalog(script)`. It must parse on Godot 4.4, the SDK's
+// floor, so it uses nothing newer than untyped `const` literals and static functions.
+//
+// Deterministic like the other renderers: entries keep the catalog's order (it is data), every
+// object's keys are SORTED, and `DEFAULTS` is sorted by key. Strings are ASCII-only on output:
+// quotes, backslashes and control characters are escaped, and every non-ASCII code point is
+// written as `\uXXXX` (BMP) or `\UXXXXXX` (astral), so the file survives any editor or
+// checkout encoding.
+
+/** A GDScript string literal: ASCII only, every special character escaped. */
+export function gdStr(s: string): string {
+  let out = '"';
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) as number;
+    if (ch === "\\") out += "\\\\";
+    else if (ch === '"') out += '\\"';
+    else if (ch === "\n") out += "\\n";
+    else if (ch === "\r") out += "\\r";
+    else if (ch === "\t") out += "\\t";
+    else if (cp < 0x20 || (cp >= 0x7f && cp <= 0xffff))
+      out += `\\u${cp.toString(16).toUpperCase().padStart(4, "0")}`;
+    else if (cp > 0xffff)
+      out += `\\U${cp.toString(16).toUpperCase().padStart(6, "0")}`;
+    else out += ch;
+  }
+  return `${out}"`;
+}
+
+/** A GDScript number literal. JSON integers within 2^53 stay `int`; anything else is a `float`
+ *  literal (an integer beyond int64 written without a decimal point would not parse). */
+function gdNumber(n: number): string {
+  if (!Number.isFinite(n)) throw new Error(`non-finite number ${n} in catalog`);
+  if (Number.isInteger(n) && Math.abs(n) <= Number.MAX_SAFE_INTEGER)
+    return String(n === 0 ? 0 : n);
+  const s = String(n);
+  return /[.e]/.test(s) ? s : `${s}.0`;
+}
+
+/** A JSON value as a GDScript constant expression, tab-indented, object keys sorted. */
+export function gdValue(value: unknown, depth = 0): string {
+  if (value === null || value === undefined) return "null";
+  if (value === true) return "true";
+  if (value === false) return "false";
+  if (typeof value === "number") return gdNumber(value);
+  if (typeof value === "string") return gdStr(value);
+  const pad = "\t".repeat(depth + 1);
+  const end = "\t".repeat(depth);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+    return `[\n${value.map((v) => `${pad}${gdValue(v, depth + 1)},\n`).join("")}${end}]`;
+  }
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const keys = Object.keys(obj)
+      .filter((k) => obj[k] !== undefined)
+      .sort();
+    if (keys.length === 0) return "{}";
+    const rows = keys.map(
+      (k) => `${pad}${gdStr(k)}: ${gdValue(obj[k], depth + 1)},\n`,
+    );
+    return `{\n${rows.join("")}${end}}`;
+  }
+  throw new Error(`unsupported value in catalog: ${typeof value}`);
+}
+
+export function renderGdscript(catalog: ProductCatalog): string {
+  const defaults: Record<string, unknown> = {};
+  for (const e of catalog.entries)
+    if (e.kind === "config" && e.default !== undefined)
+      defaults[e.key] = e.default;
+  // A game binary is extractable: a secret's catalog default is never compiled into one.
+  const entries = catalog.entries.map((e) =>
+    e.kind === "secret" ? { ...e, default: undefined } : e,
+  );
+  return `${PY_BANNER}
+# Typed mirror of a Polaris Key product catalog, for the Godot SDK. Load it and hand it over:
+#
+#   PolarisKey.config.set_compiled_catalog(preload("res://catalog_generated.gd"))
+#
+# DEFAULTS holds each config key's catalog default: PolarisKey.config.get_value(key) returns it
+# when nothing else resolves and the caller passed no fallback. A secret's default is omitted
+# everywhere: anything compiled into a game can be extracted from it.
+extends RefCounted
+
+const CATALOG_VERSION := ${gdNumber(catalog.schemaVersion)}
+
+const KEYS := ${gdValue(catalog.entries.map((e) => e.key))}
+
+const ENTRIES := ${gdValue(entries)}
+
+const DEFAULTS := ${gdValue(defaults)}
+
+
+## The entry for \`key\` (read-only), or an empty Dictionary.
+static func entry_by_key(key: String) -> Dictionary:
+\tfor e in ENTRIES:
+\t\tif e["key"] == key:
+\t\t\treturn e
+\treturn {}
+
+
+## Every entry of one kind ("config", "secret" or "flag"), in catalog order.
+static func entries_by_kind(kind: String) -> Array:
+\treturn ENTRIES.filter(func(e): return e["kind"] == kind)
+`;
+}
+
 // ── CLI ──────────────────────────────────────────────────────────────────────
-type Lang = "ts" | "python" | "swift";
+type Lang = "ts" | "python" | "swift" | "gdscript";
 const FILENAME: Record<Lang, string> = {
   ts: "catalog.generated.ts",
   python: "catalog_generated.py",
   swift: "ConfigSchema.generated.swift",
+  gdscript: "catalog_generated.gd",
 };
 const RENDER: Record<Lang, (c: ProductCatalog) => string> = {
   ts: renderTs,
   python: renderPython,
   swift: renderSwift,
+  gdscript: renderGdscript,
 };
 
 function arg(name: string): string | undefined {
@@ -287,7 +400,7 @@ async function main(): Promise<void> {
   const check = process.argv.includes("--check");
   if (!catalogPath || !outDir) {
     console.error(
-      "usage: gen-mirrors --catalog <path> --out-dir <dir> [--lang ts,python,swift] [--check]",
+      "usage: gen-mirrors --catalog <path> --out-dir <dir> [--lang ts,python,swift,gdscript] [--check]",
     );
     process.exit(2);
   }

@@ -65,30 +65,12 @@
       "status": "planned",
       "wp": "P1-03"
     },
-    "config.resolve": {
-      "status": "planned",
-      "wp": "P1-04"
-    },
-    "config.list": {
-      "status": "planned",
-      "wp": "P1-04"
-    },
-    "config.secret": {
-      "status": "planned",
-      "wp": "P1-04"
-    },
-    "config.schema": {
-      "status": "planned",
-      "wp": "P1-04"
-    },
-    "config.mint": {
-      "status": "planned",
-      "wp": "P1-04"
-    },
-    "config.mirror": {
-      "status": "planned",
-      "wp": "P1-04"
-    },
+    "config.resolve": { "status": "implemented" },
+    "config.list": { "status": "implemented" },
+    "config.secret": { "status": "implemented" },
+    "config.schema": { "status": "implemented" },
+    "config.mint": { "status": "implemented" },
+    "config.mirror": { "status": "implemented" },
     "devices.fingerprint": {
       "status": "implemented",
       "note": "PKeyFingerprint: per-platform readers as pure parsers over captured output, the capture on a WorkerThreadPool task once a session; the desktop device id hashes MachineGuid (Windows), IOPlatformUUID (macOS) and the rule-2 machine-id (Linux).",
