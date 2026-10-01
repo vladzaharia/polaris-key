@@ -154,7 +154,7 @@ Godot form of the build identity that `pkey build-info` writes for other build s
 
 ## Acceptance criteria
 
-- [ ] A headless `--export-release` of the harness preset with `PKEY_BUILD_OUTLET=steam`,
+- [x] A headless `--export-release` of the harness preset with `PKEY_BUILD_OUTLET=steam`,
       `PKEY_BUILD_CHANNEL=beta`, `PKEY_BUILD_NUMBER=42` produces a pack whose
       `res://.polaris_key/build.json` has those values, `pkeyBuild: 1`, the version from
       `application/config/version`, an `outletIds` object and no timestamp; the stamp is
@@ -163,22 +163,22 @@ Godot form of the build identity that `pkey build-info` writes for other build s
       keys appear in `outletIds` unchanged; with `PKEY_OUTLET_IDS` set to a different object, the
       environment's keys appear instead; a `.pkey/distribution.yaml` beside the project changes
       nothing.
-- [ ] The export dialog warns when `polaris_key/outlet_ids` is not a JSON object, has an unknown
+- [x] The export dialog warns when `polaris_key/outlet_ids` is not a JSON object, has an unknown
       key or has a non-string value; a headless export with
       `PKEY_OUTLET_IDS='{"itchGameId":1001}'` prints a `push_warning` naming `PKEY_OUTLET_IDS`
       and leaves `itchGameId` out of the stamp.
-- [ ] On the release template, `OS.has_feature("pkey_outlet_steam")` and
+- [x] On the release template, `OS.has_feature("pkey_outlet_steam")` and
       `OS.has_feature("pkey_channel_beta")` are true, and `PolarisKey.build_info()` returns the
       stamp.
-- [ ] In the editor (no stamp), `build_info()` returns the fallback with the dock's channel and no
+- [x] In the editor (no stamp), `build_info()` returns the fallback with the dock's channel and no
       outlet.
-- [ ] The export dialog warns for an unknown outlet, a channel outside the vocabulary and a
+- [x] The export dialog warns for an unknown outlet, a channel outside the vocabulary and a
       non-semver version.
-- [ ] The dock's "Check" accepts a manifest signed by the pasted key and rejects one signed by
+- [x] The dock's "Check" accepts a manifest signed by the pasted key and rejects one signed by
       another key or for another product.
-- [ ] `mise exec node@22 -- pnpm --filter @polaris-key/cli test` covers the Godot snippet.
-- [ ] The plugin loads on the 4.4 and 4.7.2 editors (the dock appears; no errors in the log).
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
+- [x] `mise exec node@22 -- pnpm --filter @polaris-key/cli test` covers the Godot snippet.
+- [x] The plugin loads on the 4.4 and 4.7.2 editors (the dock appears; no errors in the log).
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job.
 
 ## Implementation notes (recorded by P1-11 where the code disagreed with this brief)
 
