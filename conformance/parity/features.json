@@ -105,7 +105,7 @@
     {
       "id": "core.headers",
       "family": "core",
-      "title": "Canonical platform/arch/SDK/engine header values",
+      "title": "Canonical platform, arch and SDK header values",
       "service": "core",
       "proof": [{ "kind": "corpus", "file": "headers.json", "wp": "P1b-04" }],
       "allowedNa": []
@@ -241,7 +241,7 @@
         { "kind": "corpus", "file": "config-matrix.json", "wp": "P1b-04" }
       ],
       "allowedNa": [],
-      "note": "The environment layer applies to desktop hosts only; in a browser it is empty by definition, which the matrix pins rather than an N/A."
+      "note": "The environment layer applies to desktop hosts only; in a browser it is empty by definition, which the matrix pins as each case's `expectNoEnv` answer rather than an N/A."
     },
     {
       "id": "config.list",
