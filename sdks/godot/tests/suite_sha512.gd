@@ -6,7 +6,7 @@ func run(args: PackedStringArray) -> void:
 	for c in cases:
 		var m: PackedByteArray = String(c.msg).hex_decode()
 		var t0 := Time.get_ticks_usec()
-		var d := PKSha512.hash(m)
+		var d := PKeySha512.hash(m)
 		var dt := Time.get_ticks_usec() - t0
 		var pass_: bool = d.hex_encode() == c.sha512
 		if pass_: ok += 1
@@ -15,5 +15,5 @@ func run(args: PackedStringArray) -> void:
 	# throughput
 	var big := PackedByteArray(); big.resize(262144)
 	var t1 := Time.get_ticks_usec()
-	PKSha512.hash(big)
+	PKeySha512.hash(big)
 	print("SHA-512 of 256 KiB: %.1f ms" % ((Time.get_ticks_usec() - t1) / 1000.0))

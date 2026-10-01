@@ -4,10 +4,10 @@ extends RefCounted
 func run(args: PackedStringArray) -> void:
 	var impl_name: String = args[0] if args.size() > 0 else "ref"
 	var iters: int = int(args[1]) if args.size() > 1 else 5
-	var impl = PKEd25519Ref if impl_name == "ref" else PKEd25519Fast
+	var impl = PKeyEd25519Ref if impl_name == "ref" else PKeyEd25519
 	if impl_name == "fast":
 		var t_init := Time.get_ticks_usec()
-		PKEd25519Fast.warmup()
+		PKeyEd25519.warmup()
 		print("fast: one-time table init %.2f ms" % ((Time.get_ticks_usec() - t_init) / 1000.0))
 	var cases = JSON.parse_string(FileAccess.get_file_as_string("res://vectors/ed25519.json"))
 	var ok := 0

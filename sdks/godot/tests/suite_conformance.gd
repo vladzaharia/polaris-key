@@ -25,14 +25,14 @@ static func canon(v) -> String:
 func run(args: PackedStringArray) -> void:
 	var fast: bool = args.size() == 0 or args[0] != "ref"
 	var tag := "fast" if fast else "ref"
-	PKEd25519Fast.warmup()
+	PKeyEd25519.warmup()
 	# --- 1. full verifyJws pipeline over corpus v2 jwsCases
 	var cases = JSON.parse_string(FileAccess.get_file_as_string("res://vectors/corpus_jws.json"))
 	var pass_n := 0
 	var doc_mismatch := []
 	for c in cases:
 		var t0 := Time.get_ticks_usec()
-		var r = PKJws.verify(c.jws, c.trust, c.typ, int(c.maxPayloadBytes), fast)
+		var r = PKeyJws.verify(c.jws, c.trust, c.typ, int(c.maxPayloadBytes), fast)
 		var dt := (Time.get_ticks_usec() - t0) / 1000.0
 		var got := "ok" if r != null else "fail"
 		var ok: bool = got == c.expect
@@ -56,9 +56,9 @@ func run(args: PackedStringArray) -> void:
 		var msg: PackedByteArray = String(s.signingInput).to_ascii_buffer()
 		var v: bool
 		if fast:
-			v = PKEd25519Fast.verify(String(s.sig).hex_decode(), msg, String(s.pk).hex_decode())
+			v = PKeyEd25519.verify(String(s.sig).hex_decode(), msg, String(s.pk).hex_decode())
 		else:
-			v = PKEd25519Ref.verify(String(s.sig).hex_decode(), msg, String(s.pk).hex_decode())
+			v = PKeyEd25519Ref.verify(String(s.sig).hex_decode(), msg, String(s.pk).hex_decode())
 		var dt := (Time.get_ticks_usec() - t0) / 1000.0
 		total_ms += dt
 		if dt > worst: worst = dt

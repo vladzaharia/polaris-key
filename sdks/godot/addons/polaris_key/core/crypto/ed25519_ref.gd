@@ -11,7 +11,7 @@
 #   * Carries use multiplication instead of `c << 16` so no shift ever has a negative LEFT
 #     operand written as a constant expression (GDScript's analyzer rejects that at parse time
 #     in debug builds; the runtime VM uses validated operators and does an arithmetic shift).
-class_name PKEd25519Ref
+class_name PKeyEd25519Ref
 extends RefCounted
 
 const D := [0x78a3, 0x1359, 0x4dca, 0x75eb, 0xd8ab, 0x4141, 0x0a4d, 0x0070, 0xe898, 0x7779, 0x4079, 0x8cc7, 0xfe73, 0x2b6f, 0x6cee, 0x5203]
@@ -317,7 +317,7 @@ static func verify(sig: PackedByteArray, msg: PackedByteArray, pk: PackedByteArr
 	var hin := sig.slice(0, 32)
 	hin.append_array(pk)
 	hin.append_array(msg)
-	var h := reduce(PKSha512.hash(hin))
+	var h := reduce(PKeySha512.hash(hin))
 	var p := [gf(), gf(), gf(), gf()]
 	scalarmult(p, q, h)
 	scalarbase(q, sig.slice(32, 64))

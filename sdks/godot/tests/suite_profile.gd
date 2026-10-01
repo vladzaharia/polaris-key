@@ -1,8 +1,8 @@
 extends RefCounted
 
 func run(args: PackedStringArray) -> void:
-	PKEd25519Fast.warmup()
-	var F = PKEd25519Fast
+	PKeyEd25519.warmup()
+	var F = PKeyEd25519
 	var a := F.fe_new(); var b := F.fe_new(); var c := F.fe_new()
 	for i in 10:
 		a[i] = 1234567 + i * 1000; b[i] = 7654321 - i * 999
@@ -16,7 +16,7 @@ func run(args: PackedStringArray) -> void:
 	var t3 := Time.get_ticks_usec()
 	print("fe_mul: %.2f us  fe_sq: %.2f us  fe_add: %.2f us" % [(t1 - t0) / float(N), (t2 - t1) / float(N), (t3 - t2) / float(N)])
 	# TweetNaCl M for comparison
-	var R = PKEd25519Ref
+	var R = PKeyEd25519Ref
 	var ga := R.gf(); var gb := R.gf(); var gc := R.gf()
 	for i in 16:
 		ga[i] = 1000 + i; gb[i] = 60000 - i
@@ -36,7 +36,7 @@ func run(args: PackedStringArray) -> void:
 		F.ge_frombytes_negate_vartime(A, pk)
 		var s1 := Time.get_ticks_usec()
 		var hin := sig.slice(0, 32); hin.append_array(pk); hin.append_array(msg)
-		var h := F.sc_reduce(PKSha512.hash(hin))
+		var h := F.sc_reduce(PKeySha512.hash(hin))
 		var s2 := Time.get_ticks_usec()
 		var Rp := F._pt(3)
 		F.ge_double_scalarmult_vartime(Rp, h, A, sig.slice(32, 64))

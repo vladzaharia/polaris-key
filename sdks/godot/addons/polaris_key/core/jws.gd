@@ -6,7 +6,7 @@
 #   4. Ed25519 over the ASCII bytes of "<h>.<p>" exactly as received
 #   5. ONLY THEN decode + cap + duplicate-key-check + parse the payload
 # Returns {"kid": String, "payload": Variant} or null on ANY failure.
-class_name PKJws
+class_name PKeyJws
 extends RefCounted
 
 const MAX_DOC_BYTES := 65536
@@ -147,9 +147,9 @@ static func verify(jws: String, trust: Dictionary, typ: String = "", max_payload
 	var signing_input := (enc_header + "." + enc_payload).to_ascii_buffer()
 	var ok: bool
 	if fast:
-		ok = PKEd25519Fast.verify(sig, signing_input, raw_key)
+		ok = PKeyEd25519.verify(sig, signing_input, raw_key)
 	else:
-		ok = PKEd25519Ref.verify(sig, signing_input, raw_key)
+		ok = PKeyEd25519Ref.verify(sig, signing_input, raw_key)
 	if not ok:
 		return null
 

@@ -16,7 +16,7 @@
 #
 # Checks added beyond ref10 (to match WebCrypto/OpenSSL, CryptoKit, pyca/cryptography):
 #   S < L (canonical scalar), public key y < p (canonical encoding).
-class_name PKEd25519Fast
+class_name PKeyEd25519
 extends RefCounted
 
 const FE_D := [-10913610, 13857413, -15372611, 6949391, 114729, -8787816, -6275908, -3247719, -18696448, -12055116]
@@ -1244,7 +1244,7 @@ static func verify(sig: PackedByteArray, msg: PackedByteArray, pk: PackedByteArr
 	var hin := sig.slice(0, 32)
 	hin.append_array(pk)
 	hin.append_array(msg)
-	var h := sc_reduce(PKSha512.hash(hin))
+	var h := sc_reduce(PKeySha512.hash(hin))
 	var R := _pt(3)
 	ge_double_scalarmult_vartime(R, h, A, sig.slice(32, 64))
 	var chk := PackedByteArray()
