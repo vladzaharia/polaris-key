@@ -606,7 +606,9 @@ stays routed and in discovery, answering its existing generic statuses.
   `Origin`. `Origin: null` must pass, because a browser sends exactly that on a same-origin form
   POST from a page served with `referrer-policy: no-referrer`, which both device pages are; the
   earlier `Origin`-only check refused every real confirmation.) The token is deleted on use
-  (single-use).
+  (single-use). Together these stop cross-site forgery against _someone else's_ flow only; they
+  do not stop a flow's starter, who mints the token for their own flow and POSTs it with no
+  `Origin` — the open R1-07 / R8-03 residual (see the P1-06 note below and `THREAT-MODEL.md`).
 - The confirmation redirect is a `303` carrying `Referrer-Policy: no-referrer` and
   `Cache-Control: no-store`; the same two headers are now on the rendered page, whose URL holds
   the device code.
@@ -654,6 +656,16 @@ change:
   after the real user has confirmed. What a user-code holder can still do is bounded in
   `THREAT-MODEL.md`: before the victim confirms, invalidate their CSRF token, or confirm first and
   sign the device in under the holder's own IdP identity.
+- **Not closed by P1-06: the flow's starter.** Everything above bounds a party holding _someone
+  else's_ user code. The party that started a flow can still confirm it themselves — GET the page
+  for its own user code, read the CSRF token, POST it with no `Origin` — and receive the IdP
+  authorize URL, then phish that URL; a victim who signs in there binds their license to the
+  attacker's device, which polls it with its own device code. Typing the user code does not close
+  this, because the starter types its own. It is the still-open R1-07 (Fixed-partial), rooted in
+  R8-03 (no browser binding), and is asserted as a gap by `test/attack/R8-oidc.test.ts` ›
+  `OPEN (R1-07 / R8-03): the starter confirms its own flow…`. Fix direction (unowned): bind a
+  `viaDeviceCode` flow's callback to the browser that confirmed it, e.g. a `__Host-`
+  `SameSite=Lax` cookie set on the confirmation `303` and required by `handleAuthCallback`.
 
 The two R8-02 PoCs that asserted the residual now assert the fix
 (`test/attack/R8-oidc.test.ts`), a third (`› holding only the user code, an attacker reads the
@@ -726,6 +738,9 @@ is fixed_. They are not mine to edit:
 - `test/attack/R1-control-plane.test.ts` › `R1-07a` — expects `302` from
   `GET …/auth/device/verify?confirm=1`; it now renders `200` (the fix). The finding it documents
   (self-confirmable device gate) is R8-02 defect 1 and is now closed.
+  **Correction (P1-06 review):** only the GET half is closed. The starter can still confirm
+  through the `POST` (it mints the CSRF token itself) and is handed the authorize URL, so R1-07
+  remains **Fixed-partial** in the audit, rooted in R8-03; see the P1-06 note under R8-02.
 - `test/attack/R9-injection.test.ts` › `R9-12` (first case) — a source-text assertion that
   `oidc.ts` contains `<a href="${escapeHtml(confirmUrl.toString())}"`. That anchor is now a
   `<form method="post">`; the property the test actually checks (every sink is a text node or a

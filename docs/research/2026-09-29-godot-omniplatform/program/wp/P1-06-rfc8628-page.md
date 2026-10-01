@@ -122,6 +122,13 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
   out every player.
 - **Remote phishing** (§5.4): the confirmation page keeps showing the product and the device label
   and requires a button press; a QR scan (`verificationUriComplete`) still lands on it.
+  _Correction (review):_ that is not a control against the flow's starter, who can confirm their
+  own flow (GET the page, read the CSRF token, POST it with no `Origin`) and phish the IdP
+  authorize URL from the `303`; the victim never sees the page. That is the still-open R1-07
+  (Fixed-partial), rooted in R8-03 (no browser binding), not a residual inherent to RFC 8628.
+  P1-06 documents it accurately (THREAT-MODEL.md "Remote phishing", R1/R8 findings notes) and
+  adds a PoC asserting the gap; closing it (bind a `viaDeviceCode` flow's callback to the
+  confirming browser) is an unowned follow-up.
 - **R12-04:** the index key is a peppered hash of the code, never the code itself, as the admin
   flow key does since that fix (`packages/worker/src/admin/auth.ts:33-45`). (Correction, P1-06:
   P0-13 already hashed the `p:<slug>:device-flow:` and `p:<slug>:flow:` keys under

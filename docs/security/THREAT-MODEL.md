@@ -192,7 +192,9 @@ or a form on this path, and the user code is drawn independently of it. Its KV i
 a peppered hash (R12-04), lives at most for the flow's 600 s, and is deleted the moment the flow
 is confirmed.
 
-**What a user-code holder can do.** The user code is public by design: clients show it large
+**What a user-code holder can do** — to a flow someone _else_ started (the flow's own starter
+is the remote-phishing case below, and is not bounded by anything here). The user code is public
+by design: clients show it large
 and render it as a QR code, so assume it is read over a shoulder, off a stream or from a photo.
 Before the real user confirms, its holder can (a) open the confirmation page, which re-mints the
 single-use CSRF token and so makes the real user's pending click 403 until they reload; and (b)
@@ -219,7 +221,12 @@ Three controls make that true, and the first is the one that matters:
 policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
 decides on Fetch Metadata when the browser sends it (only `Sec-Fetch-Site: same-origin` passes)
 and otherwise accepts an absent Origin, this origin, or `null`; a foreign Origin is refused. The
-single-use CSRF token minted on the render is what actually guards a confirmation.
+single-use CSRF token minted on the render then guards a confirmation against cross-site forgery
+of _someone else's_ flow. Neither control stops a flow's _starter_: anyone can GET the page for
+their own user code, read the token and POST it back with no `Origin` at all (curl), so the
+starter can always confirm their own flow and receive the IdP authorize URL — see "Remote
+phishing" below. The `Origin: null` allowance adds only a legacy-browser variant of that same
+attack (a browser without Fetch Metadata, or a sandboxed or no-referrer attacker page).
 
 **Brute force (RFC 8628 §5.1).** The code space is 20⁸ ≈ 2.56 × 10¹⁰ (RFC 8628 §6.1's
 consonant alphabet). The page allows 30 requests per minute per _client network_, fail-closed:
@@ -245,13 +252,34 @@ deliberately no product-wide bucket: one attacker could exhaust it and lock ever
 product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
 `clientIp`, and sharding the rate-limit Durable Object (R10-04a).
 
-**Remote phishing (RFC 8628 §5.4).** An attacker can start a flow on their own device and send a
-victim the `verificationUriComplete` link; if the victim confirms and signs in, the attacker's
-device receives the victim's license. The control is the confirmation page itself, which a QR
-scan still lands on: it names the product and shows the device label and user code, and nothing
-happens without a button press. The device label is `deviceName` from `/device/start`, which is
-client-supplied display text, so a phisher can make it say anything. This residual is inherent
-to the device-authorization grant; it is the same one every RFC 8628 deployment carries.
+**Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** Whoever starts a flow can
+confirm it themselves, with no browser: `/device/start` with their own device id, GET the page
+for their own user code, read the CSRF token, POST it with no `Origin` (it passes, as above), and
+read the IdP authorize URL — `state`, `nonce` and PKCE challenge — out of the `303`. They then
+forward that URL to a victim, or redirect the victim to it from any page. The victim signs in at
+the IdP — or, with silent SSO, does nothing at all — and never sees the Polaris confirmation
+page. The callback binds the victim's license to the flow, whose device id is the attacker's,
+and the attacker's own `/device/poll`, with their own device code, returns a device token on the
+victim's license (PoC: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own
+flow…`, which asserts the gap).
+
+So the confirmation page and its CSRF token protect only flows the attacker did _not_ start
+(cross-site forgery against someone else's flow, above). Typing the user code does not close
+this either: the starter types their own. The variant where the victim is sent the
+`verificationUriComplete` link instead lands them on the confirmation page, which names the
+product and shows the device label and user code — but the label is `deviceName` from
+`/device/start`, client-supplied display text a phisher sets to anything — so it is a speed bump,
+not a control.
+
+This is **not** inherent to the device-authorization grant. In RFC 8628 the user authenticates in
+the same browser session that entered the code; Polaris does not yet bind the IdP callback to
+the browser that confirmed, which is R8-03 (no flow on any surface is bound to the visitor's
+browser). R1-07 therefore stays **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
+GET self-confirm, the framable page and the device code in the URL, not the starter's ability to
+confirm. Fix direction, unowned: bind a `viaDeviceCode` flow's callback to the browser that
+confirmed it — e.g. a `__Host-` `SameSite=Lax` cookie set on the confirmation `303` and required
+by `handleAuthCallback` — which closes R1-07 for device-code flows and makes the `Origin: null`
+question moot.
 
 **Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
 flight across the deploy. Confirmation on both routes is one function: the Fetch Metadata /

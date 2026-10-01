@@ -120,6 +120,16 @@ CSRF-bearing `POST` for the mutation is the fix (`docs/security/findings/R8-oidc
 `R8-02`).
 :::
 
+:::caution[What confirmation does not protect]
+The origin check and the CSRF token stop a cross-site page from confirming _someone else's_ flow.
+They do not stop a flow's own starter: anyone can start a flow, open this page for their own user
+code, read the token and post it back — no browser needed, since a request with no `Origin` passes
+— and be handed the IdP authorize URL. Sent to a victim who signs in there, that URL binds the
+victim's license to the starter's device, and the victim never sees this page. This is an open
+residual (`R1-07`, rooted in `R8-03`: the IdP callback is not bound to the browser that
+confirmed), written up in the security threat model under "Remote phishing".
+:::
+
 ## `POST /identity/auth/device/poll`
 
 The client's half of the exchange. Body: `{ "deviceCode": "…", "deviceId": "…" }` (the field may

