@@ -1,0 +1,106 @@
+{
+  "transcriptVersion": 1,
+  "id": "update-feed-rollback",
+  "description": "The v4 update decision when the network answers with an OLDER feed. The client requests `latest`; the Worker signs the canonical channel `stable` at seq 7, but the client already committed a seq 8 feed of `stable`. The floor is looked up by the feed's own channel claim (`stable`), never by the requested name, so seq 7 is refused as feed-rollback, the decision comes from the committed seq 8 feed, and the record its macOS target pins is fetched by hash and verified against the pinned release key. A client that keyed floors by the requested name would find no floor for `latest`, commit seq 7 and fail.",
+  "features": ["update.feed", "update.decide"],
+  "requires": ["core.store", "release.record"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["release", "distribution", "update"],
+    "update": {
+      "pinnedReleaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "outlet": { "id": "direct", "kind": "direct" },
+      "platform": "macos",
+      "arch": "arm64",
+      "installed": {
+        "version": "1.2.0",
+        "buildNumber": null,
+        "format": "dmg",
+        "engine": null
+      },
+      "methods": ["download"],
+      "cache": {
+        "feeds": {
+          "stable": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktZmVlZCtqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJjaGFubmVsIjoic3RhYmxlIiwic2VsZWN0b3IiOnt9LCJzZXEiOjgsImlzc3VlZEF0IjoxNjk5OTk5OTQwLCJleHBpcmVzQXQiOjE3MDAwMDA4NDAsImFwcCI6eyJkZWxpdmVyYWJsZSI6ImFwcCIsInZlcnNpb25TY2hlbWUiOiJzZW12ZXIiLCJ0YXJnZXRzIjpbeyJwbGF0Zm9ybSI6Im1hY29zIiwicmVsZWFzZSI6eyJzaGEyNTYiOiI1Mjk0MTA2YjRkYjg1OGE2MjFkM2Q5MTAxZTFiZmQ5OTE2ZWY1MjQwNzA1ZTE3OGJlMTI1MmZkNzQ3NTMwMTEwIiwic2VxIjoxLCJ2ZXJzaW9uIjoiMS4zLjAifSwiZmxvb3IiOm51bGwsImNyaXRpY2FsIjpmYWxzZSwib3V0bGV0cyI6eyJkaXJlY3QiOnsia2luZCI6ImRpcmVjdCIsImxpdmUiOnsidmVyc2lvbiI6IjEuMy4wIiwic2VxIjoxfSwiaGFsdGVkIjpmYWxzZX19fV19fQ.dC99-vwBLjzEgUGXeuCnmqkhEWdiTeNJOvam0aZhJADbU9nDrfOE00nrxWIw8zUf0kYuVm_7VRgemZSfU1xgBA"
+        },
+        "releaseRecords": {}
+      }
+    }
+  },
+  "steps": [
+    {
+      "action": "updateDecide",
+      "note": "seq 7 < the committed seq 8: feed-rollback; decide from the committed feed.",
+      "args": { "channel": "latest" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/update/latest/feed.jws?platform=macos",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=60, no-transform",
+                "content-type": "application/jose"
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktZmVlZCtqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJjaGFubmVsIjoic3RhYmxlIiwic2VsZWN0b3IiOnt9LCJzZXEiOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDA5MDAsImFwcCI6eyJkZWxpdmVyYWJsZSI6ImFwcCIsInZlcnNpb25TY2hlbWUiOiJzZW12ZXIiLCJ0YXJnZXRzIjpbeyJwbGF0Zm9ybSI6Im1hY29zIiwicmVsZWFzZSI6eyJzaGEyNTYiOiI1Mjk0MTA2YjRkYjg1OGE2MjFkM2Q5MTAxZTFiZmQ5OTE2ZWY1MjQwNzA1ZTE3OGJlMTI1MmZkNzQ3NTMwMTEwIiwic2VxIjoxLCJ2ZXJzaW9uIjoiMS4zLjAifSwiZmxvb3IiOm51bGwsImNyaXRpY2FsIjpmYWxzZSwib3V0bGV0cyI6eyJkaXJlY3QiOnsia2luZCI6ImRpcmVjdCIsImxpdmUiOnsidmVyc2lvbiI6IjEuMy4wIiwic2VxIjoxfSwiaGFsdGVkIjpmYWxzZX19fV19fQ.jjZqMCMCEConKi54piDwjYVxAQatqoKCTH-aIP9HSs3CUDpNjSk2h5ajrEWMcv2ZDO0D2maLQ7G_uS0R9_DmDg"
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/release/records/5294106b4db858a621d3d9101e1bfd9916ef5240705e178be1252fd747530110",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=31536000, immutable, no-transform",
+                "content-type": "application/jose",
+                "etag": "\"5294106b4db858a621d3d9101e1bfd9916ef5240705e178be1252fd747530110\""
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJhcHAiLCJraW5kIjoiYXBwIiwidmVyc2lvbiI6IjEuMy4wIiwic2VxIjoxLCJpc3N1ZWRBdCI6MTY5OTk5NjQwMCwidGFnIjoidjEuMy4wIiwiY2hhbm5lbCI6InN0YWJsZSIsImJ1aWxkcyI6W3siaWQiOiJtYWNvcyIsInBsYXRmb3JtIjoibWFjb3MiLCJhcmNoIjoidW5pdmVyc2FsIiwiZm9ybWF0IjoiZG1nIiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGpkbC0xLjMuMC1tYWNvcy5kbWciLCJyb2xlIjoicGF5bG9hZCIsInNoYTI1NiI6ImNjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2MiLCJzaXplIjoxMDAwfV19XX0.JsCG08J5PW0DNL0INC_gbZPPmXMT_3t3aaMkVP6CKjuPi3TULBWS65Hahxru7z-yWcSYbA02K1d31FagAfBLBQ"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "channel": "stable",
+        "feed": "committed",
+        "record": "network",
+        "errors": [{ "code": "feed-rollback", "detail": null }],
+        "decision": {
+          "action": "binary",
+          "method": "download",
+          "release": {
+            "version": "1.3.0",
+            "seq": 1,
+            "sha256": "5294106b4db858a621d3d9101e1bfd9916ef5240705e178be1252fd747530110"
+          },
+          "build": "macos",
+          "mandatory": false,
+          "critical": false,
+          "prestage": [],
+          "discardStaged": false
+        }
+      }
+    }
+  ]
+}
