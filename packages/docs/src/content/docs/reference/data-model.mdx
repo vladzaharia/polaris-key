@@ -78,6 +78,7 @@ this page or fails the freshness gate.
 | `dist_keys` | 0039_distribution_availability_keys.sql | `product`, `purpose`, `fingerprint_sha256`, `outlet_id`, `notes`, `registered_at`, `source`, `observed_json`, `created_at`, `modified_at` |
 | `dist_connector_objects` | 0041_distribution_connectors.sql | `product`, `connector`, `object_type`, `object_id`, `outlet_id`, `release_id`, `build_id`, `store_state`, `state`, `ref_json`, `detail_json`, `terminal`, `first_seen_at`, `updated_at`, `polled_at` |
 | `dist_connector_events` | 0041_distribution_connectors.sql | `product`, `connector`, `event_id`, `event_type`, `instance_type`, `instance_id`, `outcome`, `payload_json`, `received_at` |
+| `dist_connector_settings` | 0042_distribution_connector_settings.sql | `product`, `connector`, `settings_json`, `updated_at`, `updated_by` |
 
 ## identity
 

@@ -24,10 +24,19 @@ resource, and record the date and the person.
       Secrets tab asks for the App Store Connect app id with the key, or send `"pin": "<Apple ID>"`
       on the `PUT`. Check the number against App Store Connect (App Information → Apple ID) before
       saving, and again before any re-pin.
-- [ ] **A Google Play service account waits for the same pin in P5-03.** Do not store a real
+- [x] **A Google Play service account waits for the same pin in P5-03.** Do not store a real
       `google-service-account` until P5-03's connector adds its `packageName` entry to
       `OUTLET_CREDENTIAL_PINS` and checks it in its setup (the mechanism is generic; see the doc
       comment in `core/outletCredentials.ts`).
+      2026-10-01: the pin landed with P5-03. `google-service-account` is pinned by `packageName`;
+      the Play connector runs only while the pin equals the `packageName` in `.pkey/distribution`,
+      and a credential without a pin, or a manifest naming another package, leaves it inert with
+      every control refused (409 `credential_pin_missing` / `credential_pin_mismatch`) and nothing
+      polled (THREAT-MODEL, "Store connectors: Google Play"). When you store the real service
+      account, **pin it to the product's package**: the Secrets tab asks for the Google Play
+      package name with the key file, or send `"pin": "<package name>"` on the `PUT`. Check it
+      against Play Console (the app's dashboard shows the package name) before saving, and again
+      before any re-pin.
 
 ## Before djdl's next `.pkey` push (from v0.5.0)
 
