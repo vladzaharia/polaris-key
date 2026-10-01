@@ -122,25 +122,51 @@ sooner.
 6. The capability table import and its equality test; THREAT-MODEL §3.
 7. Run the green gate, including workerd. Set `in-review`.
 
+## Corrections from the code (recorded by P3-12)
+
+- **No log line on a refusal.** Plan §2.2 asks for `500 document_not_representable` "logged with
+  the product and `typ`". The Worker logs nothing, by a tested invariant
+  (`test/attack/R12-secrets.test.ts`, "no console.\* logging anywhere in packages/worker/src"),
+  and the value that trips the guard may be a secret. The routes answer the code without a log;
+  the bundle mint's message names the `typ`, and the product is in every route's URL.
+- **`value_not_representable` is registered through the Worker's `ErrorCode`.** The constants
+  generator does not scan `src/admin/` (the console API is not an SDK surface), where the write
+  checks live, so both new codes are `ErrorCode` members in `core/errors.ts`, which the generator
+  reads.
+- **`signJws` also refuses a payload that is not an object.** The plan says `JSON.stringify`
+  cannot break any strict-JSON rule but 5, 7, 8 and 9; it can break rule 3 (a scalar payload).
+  The guard runs `scanStrictJson` over the serialized text, which refuses that too. Nothing in
+  the Worker signs one; `attack.test.ts`'s scalar vector now signs raw segments.
+- **The capability change moves two kind-change tests.** Under wire v4's table `web` updates
+  through the platform (`binaryUpdates: none`), so `web → altstore` widens and is no longer the
+  example of a narrowing kind change; `test/distributionOutlets.test.ts` uses `direct → altstore`.
+- **Also checked at write**, beyond the inventory: the console's catalog publish and manual
+  product create refuse a catalog whose defaults no document could carry (the catalog prune
+  would drop such a default at signing anyway), and an OIDC provisioning hook whose claim
+  `encodeURIComponent` cannot encode (a lone surrogate) is skipped instead of failing sign-in.
+- **`check:representable` reads only the active catalog** (`product_schema` rows with
+  `active = 1`), the only one whose defaults reach a document, and reports a JSON column that
+  does not parse as a warning, not a blocker (the Worker ignores such a column).
+
 ## Acceptance criteria
 
-- [ ] `signJws` throws `StrictJsonError` on a payload with a lone surrogate, a U+0000 member name,
+- [x] `signJws` throws `StrictJsonError` on a payload with a lone surrogate, a U+0000 member name,
       a number out of range or 65 levels, and `signDoc` throws it on a licence whose `graceUntil`
       is `1700000000.5` or `-1`; the licence and config document routes, the trust manifest, the
       bundle mint and the edge mint each answer `500 document_not_representable` in their own
       body shape instead of throwing.
-- [ ] A licence override and a profile payload carrying `"\ud800"`, a `"a\u0000b"` member, two
+- [x] A licence override and a profile payload carrying `"\ud800"`, a `"a\u0000b"` member, two
       canonically equivalent sibling names, `1e-320` or 33 levels, and a licence name or tier
       label with a lone surrogate, are refused with `422 value_not_representable`; such a stored
       config value is pruned from the config document; an OIDC sign-in whose provider sends a
       lone surrogate in `name` stores a null name.
-- [ ] The admin handlers answer `422 bad_request` to a tier id, a channel, a `minVersion` or a
+- [x] The admin handlers answer `422 bad_request` to a tier id, a channel, a `minVersion` or a
       `maxVersion` outside the manifest's pattern, a product `signingKid` outside `KID_RE`, a
       `policyDeviceLimit` above `MAX_WIRE_INTEGER`, and an offline-day count that is not an
       integer from 1 to 365.
-- [ ] `check:representable` reports a seeded bad row in each of its 21 columns, and a warning for
+- [x] `check:representable` reports a seeded bad row in each of its 21 columns, and a warning for
       each of its two warning columns, in a local D1, and nothing on a clean one.
-- [ ] The Worker's capability table, `OUTLET_CAPABILITY_DEFAULTS` and `outlet-matrix.json#/kinds`
+- [x] The Worker's capability table, `OUTLET_CAPABILITY_DEFAULTS` and `outlet-matrix.json#/kinds`
       are equal, and a stored override wider than a narrowed default reads back narrowed.
 - [ ] The green gate passes (`AGENTS.md`), including schema-parity (rule 9), the generated-reference
       gate, the constants gate and the workerd smoke job.
