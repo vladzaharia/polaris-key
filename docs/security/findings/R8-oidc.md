@@ -698,15 +698,17 @@ holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). F
   on it. Migrate (the victim has a license): `moveDevices` re-points every device on the starter's
   anonymous license at the victim's, with `seat_no = NULL` and outside `authorizeDevice`'s seat
   check, where the plain R1-07 poll authorizes one device through it. Bounded in the same review:
-  a migrate is `attachable` only while the seat-holding devices on both licenses fit the victim
-  license's device limit, so it cannot push the victim past the limit. It can still fill the
+  a migrate is `attachable` only while every authorized device on the starter's license (dormant
+  ones included: `moveDevices` moves them, and a moved dormant device returns without claiming a
+  seat) plus the victim's seat-holding devices fit the victim license's device limit, so it
+  cannot push the victim past the limit. It can still fill the
   victim's free seats, so the victim's next device gets `device_limit` until they remove the
   starter's. The attach also never commits when the mint would be refused: the merge runs before
   the mint and nothing undoes it, so on a tier with fingerprint mode `strict` (a device-code poll
   presents no fingerprint, so its mint always answers `fingerprint_required`) nothing is
   `attachable`. Without that check a starter turned a flow the Worker refuses into a claim or
   migrate onto the victim's strict licence. PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07
-claim)`, `OPEN (R1-07 / R8-03, P1-07 migrate)` (the gap), `P1-07 (R1-07 bound)` (the seat
+claim)`, `OPEN (R1-07 / R8-03, P1-07 migrate)` (the gap), `P1-07 (R1-07 bound)` and `… bound, dormant devices` (the seat
   refusal) and `P1-07 (R1-07, claim on a strict tier)` / `… migrate on a strict tier` (the mint
   refusal). The browser binding above closes it.
 

@@ -859,8 +859,10 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
 - **Migrate** (the victim already has a license): `moveDevices` re-points _every_ device on the
   starter's anonymous license at the victim's license, with `seat_no = NULL` and without
   `authorizeDevice`. Bounded since P1-07 review: the attach is offered (`attachable`) only while
-  the seat-holding devices on both licenses together fit the victim's license's device limit.
-  So the migrate cannot take the victim past that limit. It can still fill the victim's free
+  every authorized device on the starter's license (dormant ones too, since `moveDevices` moves
+  them and a moved dormant device comes back without claiming a seat) plus the seat-holding
+  devices on the victim's license fit the victim's license's device limit. So the migrate
+  cannot take the victim past that limit. It can still fill the victim's free
   seats with the starter's devices, so the victim's own next device then gets `device_limit`
   until the owner removes them. This is a read before the move, like `authorizeDevice`'s
   pre-count, not a seat claim; a concurrent activation can race it.
@@ -873,7 +875,7 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   licence.
 
 PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
-migrate)` assert the gap; `P1-07 (R1-07 bound)` asserts the seat-limit refusal, and `P1-07
+migrate)` assert the gap; `P1-07 (R1-07 bound)` and `P1-07 (R1-07 bound, dormant devices)` assert the seat-limit refusal, and `P1-07
 (R1-07, claim on a strict tier)` and `P1-07 (R1-07, migrate on a strict tier)` assert that nothing
 merges when the mint would be refused. Binding the
 callback to the confirming browser (below) closes all of it, because the device-code holder is

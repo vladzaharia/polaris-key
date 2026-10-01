@@ -67,6 +67,8 @@ import {
   getDevice,
   getLicense,
   getLicenseBySub,
+  SEAT_DORMANCY_SECONDS,
+  seatActiveSince,
 } from "../../src/repo.js";
 import { handleEnroll } from "../../src/services/license/enroll.js";
 import {
@@ -1667,6 +1669,61 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
       starterLicence,
     );
+  });
+
+  it("P1-07 (R1-07 bound, dormant devices): a dormant device on the anonymous licence counts against the destination's limit, because the migrate moves it too", async () => {
+    // Two seats: the victim's own device holds one. The starter's anonymous licence holds the
+    // flow's device, which fits, plus a device unseen for longer than SEAT_DORMANCY_SECONDS.
+    // A floor on `moving` would leave the dormant one out (1 + 1 <= 2), yet `moveDevices` moves
+    // it onto the victim's licence, where it comes back without ever claiming a seat.
+    await ctx.db.run(
+      "UPDATE tiers SET policy_device_limit = 2 WHERE product = 'djdl' AND id = 'pro'",
+    );
+    const victimLicence = await victimLicenceWithOwnDevice();
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(PHISHED);
+    const dormantSince = NOW - SEAT_DORMANCY_SECONDS - 86400;
+    await ctx.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen)
+       VALUES ('djdl', 'starter-dormant', ?, 'authorized', ?, ?)`,
+      starterLicence,
+      dormantSince,
+      dormantSince,
+    );
+    expect(
+      await countActiveDevices(
+        ctx.db,
+        "djdl",
+        starterLicence,
+        seatActiveSince(NOW),
+      ),
+    ).toBe(1);
+    const shown = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      starterToken,
+    );
+    expect(shown.body).toMatchObject({ status: "confirm", attachable: false });
+    const forced = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      starterToken,
+    );
+    expect(forced.body).toMatchObject({
+      status: "confirm",
+      attachable: false,
+    });
+    expect(forced.body.token).toBeUndefined();
+    await expectNoMerge(starterLicence);
+    expect(await countActiveDevices(ctx.db, "djdl", victimLicence)).toBe(1);
+    for (const id of ["victim-game", "starter-dormant"]) {
+      expect((await getDevice(ctx.db, "djdl", id))?.license_id).toBe(
+        starterLicence,
+      );
+    }
   });
 
   // ── P1-07: the attach never commits when the mint would be refused ──────────────────────

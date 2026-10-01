@@ -1619,9 +1619,10 @@ function shownIdentity(identity: OidcIdentity): {
  *  When `identity` already has a usable licence, the attach is a migrate, and `moveDevices`
  *  re-points EVERY device on the anonymous licence at it without `authorizeDevice`'s seat
  *  check. Under R1-07 (the flow's starter phishes the authorize URL) the starter makes this
- *  decision, not the identity's owner, so it is offered only while every seat-holding device
- *  on both licences still fits the destination's limit: the migrate can never push the
- *  victim's licence past it, nor lock the victim's own next device out with `device_limit`.
+ *  decision, not the identity's owner, so it is offered only while every authorized device
+ *  the migrate moves (dormant or not) plus the destination's seat-holding devices still fit
+ *  the destination's limit: the migrate can never push the victim's licence past it. It can
+ *  still fill the victim's free seats (see THREAT-MODEL, R1-07).
  *  Like the pre-count in `authorizeDevice`, this is a read, not a claim. Nothing is attachable
  *  onto a tier whose mint would refuse this device (fingerprint mode `strict`). */
 async function attachableLicense(
@@ -1657,12 +1658,14 @@ async function attachableLicense(
   if (destination && licenseUsable(destination, now)) {
     const since = seatActiveSince(now);
     const limit = await licenseDeviceLimit(db, product, destination, now);
-    const moving = await countActiveDevices(
-      db,
-      product.slug,
-      license.id,
-      since,
-    );
+    // `moving` has NO dormancy floor. `moveDevices` re-points every row on the anonymous
+    // licence, dormant ones included, with `seat_no = NULL`. A moved dormant device then comes
+    // back on the destination without claiming a seat (`validateDeviceToken` rebuilds its token
+    // record from the device row, and nothing on that path calls `claimDeviceSeat`). Counting
+    // only recently seen devices would let a starter stockpile dormant devices on its own
+    // anonymous licence and move all of them onto the victim's. `held` keeps the floor: the
+    // destination's own dormant devices have given up their seats under R3.
+    const moving = await countActiveDevices(db, product.slug, license.id);
     const held = await countActiveDevices(
       db,
       product.slug,
