@@ -62,6 +62,13 @@ public struct CoreOptions: Sendable {
     /// host that replays recorded traffic (the HTTP transcripts, P1b-03) can run the client at
     /// the instant the traffic was signed. The §4.2 floor still applies on top of it.
     public let clock: (@Sendable () -> Int)?
+    /// Data BASE; `<product>` is appended. Default `<Application Support>/polaris-key/data`.
+    /// Nothing is created until a consumer uses it (P1b-09).
+    public let dataDir: URL?
+    /// Cache BASE; `<product>` is appended. Default `<Caches>/polaris-key`.
+    public let cacheDir: URL?
+    /// State BASE; `<product>` is appended. Default `<Application Support>/polaris-key/state`.
+    public let stateDir: URL?
 
     public init(
         productSlug: String,
@@ -75,7 +82,10 @@ public struct CoreOptions: Sendable {
         transport: (any PolarisTransport)? = nil,
         requestTimeoutSeconds: Double = 15,
         expectedServices: [ServiceSlug]? = nil,
-        clock: (@Sendable () -> Int)? = nil
+        clock: (@Sendable () -> Int)? = nil,
+        dataDir: URL? = nil,
+        cacheDir: URL? = nil,
+        stateDir: URL? = nil
     ) {
         self.productSlug = productSlug
         self.baseUrl = baseUrl
@@ -89,6 +99,9 @@ public struct CoreOptions: Sendable {
         self.requestTimeoutSeconds = requestTimeoutSeconds
         self.expectedServices = expectedServices
         self.clock = clock
+        self.dataDir = dataDir
+        self.cacheDir = cacheDir
+        self.stateDir = stateDir
     }
 }
 
@@ -198,6 +211,9 @@ public actor CoreContext {
     public nonisolated let pinnedTrust: TrustSet
     public nonisolated let trustRefreshEnabled: Bool
     public nonisolated let store: any Store
+    /// This product's config, data, cache and state directories (P1b-09). Resolved, never
+    /// created.
+    public nonisolated let dirs: ProductDirs
     public nonisolated let transport: any PolarisTransport
     public nonisolated let requestTimeoutSeconds: Double
     /// True when the transport refuses to dial (§7.3). Surfaced so the facade can decline to
@@ -237,6 +253,9 @@ public actor CoreContext {
         self.channel = options.channel ?? Semver.channelForVersion(options.version).rawValue
         self.pinnedTrust = options.pinnedKeys
         self.trustRefreshEnabled = options.trustRefresh
+        self.dirs = ProductDirs.resolve(
+            productSlug: options.productSlug, configDir: options.configDir,
+            dataDir: options.dataDir, cacheDir: options.cacheDir, stateDir: options.stateDir)
         self.store =
             options.store
             ?? KeychainStore(productSlug: options.productSlug, configDir: options.configDir)
@@ -269,6 +288,12 @@ public actor CoreContext {
 
     /// The last persistence failure, for a host application that wants to surface it.
     public var lastStoreError: StoreError? { lastStoreErrorValue }
+
+    /// Where the token store keeps the token, and why if that is weaker than this platform's
+    /// best option (P1b-09, R4-11). `nil` when the store does not report.
+    public func storeStatus() async -> StoreStatus? {
+        await store.status()
+    }
 
     public func setToken(_ token: String) async throws {
         do {
