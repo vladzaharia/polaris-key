@@ -133,7 +133,8 @@ published bytes — it is not permanent immutability. `staging/` is unlocked wit
 
 **Boundary: the bytes host.** The same Worker answers on `dl.plrs.im` (`dl-staging`, `dl-dev`),
 named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allowlist
-(`mount.ts` `BYTE_ROUTES`, dispatched by `core/bytesHost.ts`; empty until P2-05/P2b-04);
+(`mount.ts` `BYTE_ROUTES`, dispatched by `core/bytesHost.ts`; since P2-05, Release's build,
+file and blob routes);
 `/manage`, `/docs`, the portal, discovery and every product route answer not-found there
 (`test/bytesHost.test.ts`). The host does not go through `dispatchService`, so it makes that
 function's enablement check itself: every byte route names its service, and one whose service
@@ -146,6 +147,25 @@ preflight answered before the route runs, headers added after it returns, never
 `Allow-Credentials`), and a route cannot set its own `Access-Control-*` headers: the dispatcher
 drops them from every route answer, including for a product with no `web.origins` (for which
 `withCors` adds nothing).
+
+The dispatcher never lets a failure escape as the platform's own HTML error page: a throw from
+a route, the product load or D1 answers a flat JSON 500 carrying the host's hardening headers
+(P2-05). Byte routes get the product WITHOUT its signing key (`ProductPublic`), so a download
+never unseals the key under `PLATFORM_KEK`. `blobResponse` derives the host it shapes a
+response for from the request URL, never from its caller, so a console route cannot obtain the
+bytes host's type and `inline` relaxation; and it refuses a locked-prefix object that has no
+stored checksum, since everything `putVerified` writes carries one. The blob route serves a hash
+only when `blob_refs` holds a ref from the requesting product, with the same not-found as an
+unknown hash. `BLOB_ORIGIN` and the `dl*` route must be configured together: a test refuses a
+`wrangler.toml` that deploys the route without the var or points the var at a console host.
+
+**Cached GitHub signed URLs (P2-05).** To make a `Range` chunk cost no GitHub API call, the
+signed storage URL GitHub returns for an asset is cached in KV under the product's own key
+scope, sealed under `PLATFORM_KEK` like the installation token (R12-03), with a TTL shorter than
+the URL's own expiry; its host is re-checked against `isAllowedStorageHost` on every use (R6-08),
+and a refused URL is dropped. For a private repository that URL is a bearer credential for the
+asset, so it is never sent to a client: the opt-in `?redirect=1` mode redirects only a public
+artifact of a public repository, and only to GitHub's own `browser_download_url`.
 
 **Deviation, recorded: the bytes host is same-site with the console.** The design rule
 (research README §3.5, decision 4) was a separate registrable domain, because a `*.plrs.im`

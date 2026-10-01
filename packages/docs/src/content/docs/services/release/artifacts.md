@@ -2,17 +2,19 @@
 sidebar:
   order: 4
 title: "Artifacts, changelog & install"
-description: "The unified download route, architecture matching, the four access modes, and the curl-pipe installer."
+description: "The unified download route, the build, file and blob routes, the bytes host, architecture matching, the four access modes, and the curl-pipe installer."
 ---
 
 Three things make up what a human or an install script actually touches: downloading a
 binary (as a bare CLI executable or a macOS disk image — two content types behind one
-route), reading the changelog, and running the installer. The first two resolve live against
-GitHub on every request — the changelog is the only one of the three the edge cache will
-hold, and a download is streamed through every time — while the installer is rendered from
+route), reading the changelog, and running the installer. The first two resolve against
+GitHub — a download's selector resolution is cached for 90 seconds, the changelog is the only
+one of the three the edge cache will hold, and a download is streamed through every time —
+while the installer is rendered from
 stored configuration and touches GitHub not at all. What none of them read is the
 [truth store](/docs/services/release/truth-store/), which exists for the portal and the
-console, not for these routes.
+console, not for these routes. The newer [build, file and blob routes](#builds-files-and-blobs)
+are the opposite: they resolve from the truth store and touch GitHub only for the bytes.
 
 ## The download route
 
@@ -44,6 +46,10 @@ this one wasn't).
   selects the bare CLI binary. Same handler and the same scoring function, two different
   `Content-Type` values on the way out; only the CLI path carries the exact-name
   short-circuit above.
+
+The channel policy applies here exactly as on the appcast and the version check: a
+[yanked](/docs/services/release/channels/#yanks) release is never served on a moving selector,
+and a [pinned](/docs/services/release/channels/#pointers-and-pins) channel serves its pointer.
 
 ### Architecture
 
@@ -77,6 +83,62 @@ same-origin scripts could execute.
 lowercase hex digest — not the raw `shasum`-style `<digest>  <filename>` line, just the
 digest. This is exactly what the [install script](#the-install-script) verifies against
 before it will make anything executable.
+
+## Builds, files and blobs
+
+Three more byte routes serve what the [release model](/docs/services/release/truth-store/)
+records rather than what GitHub's asset names suggest. Each answers `GET` and `HEAD`, on the
+console host and on the **bytes host** (`dl.plrs.im`, see below):
+
+```
+GET /<product>/release/builds/<selector>/<buildId>   [?deliverable=<id>] [?checksum=sha256] [?redirect=1]
+GET /<product>/release/files/<releaseId>/<name>      [?redirect=1]
+GET /<product>/release/blobs/sha256/<hash>
+```
+
+- **builds** resolves `<selector>` for a deliverable (default `app`) and serves the payload of
+  the build `<buildId>` — an id from the deliverable's artifact map, such as `macos` or `apk`.
+  Resolution is per platform: a release that lacks this build is skipped, so a release with no
+  iOS build does not blank iOS; iOS gets the newest release that has one. The rules — channel
+  membership, `includes`, pointers and pins, yanks, the version scheme and the tag filter — are
+  on [Channels and policy](/docs/services/release/channels/). `?checksum=sha256` answers the
+  payload's SHA-256 as bare hex, like the download route.
+- **files** serves one exact file of one release by name, sidecars included (`.sig`,
+  `.sha256`, an index). The release id and the name fix the bytes, so the response is
+  immutable.
+- **blobs** serves a content-addressed object only when an artifact of **this** product
+  references it. Another product holding the same bytes does not count, and the answer is the
+  same not-found as for an unknown hash, so the route reveals nothing about other tenants.
+
+An artifact's bytes are taken from the first location that has them, in this order:
+
+1. **R2**, through the blob store: `ETag` is the SHA-256, `Repr-Digest` covers the whole
+   object, and `Range`, `If-Range` and `If-None-Match` are evaluated against it.
+2. **GitHub**, streamed through the worker as on the download route. The signed storage URL
+   GitHub hands out is cached for less than its lifetime, sealed in KV, so a resumed or
+   chunked download costs one GitHub API call in total rather than one per chunk.
+3. An **external** `https://` URL, as a 302.
+
+Streaming is the default because winget refuses redirects and App Installer and zsync need
+`Range`. `?redirect=1` asks for a 302 to GitHub's own download URL instead; it is honoured
+only for a public artifact of a public repository, and everything else keeps streaming.
+
+All three routes count against the artifact rate-limit lane and follow the product's
+`artifacts` access mode (below). A moving selector is cached for two minutes, a version
+selector, a file and a blob for a year (immutable); a non-public product's bytes are
+`private, no-store`. Every byte response carries `no-transform`, so the edge never recompresses
+bytes whose length, ranges and digest are fixed.
+
+### The bytes host
+
+The byte routes are also served on a second hostname, the bytes host (`BLOB_ORIGIN`,
+`https://dl.plrs.im` in production), and discovery advertises them there as
+`endpoints.builds` and `endpoints.blobs`. Only these routes exist on that host; everything
+else answers not-found. Every response there carries `X-Content-Type-Options: nosniff` and a
+`sandbox` Content-Security-Policy, sets no cookie, and may carry a real inert type (such as
+`application/wasm`) instead of `application/octet-stream`. A product that turns Release off
+stops serving them there at once. The host's configuration is in the repository's
+`docs/DEPLOYMENT.md`.
 
 ## Access modes
 
@@ -191,4 +253,6 @@ validation actually runs.
 - [Eligibility](/docs/services/update/eligibility/) — channel resolution and the full
   `entitled` decision.
 - [Appcast](/docs/services/update/appcast/) — the DMG's other life as a Sparkle enclosure.
+- [Channels and policy](/docs/services/release/channels/) — resolution rules, promote, pin,
+  yank, and the CI and console operations.
 - [Public route table](/docs/reference/routes/) for every Release path in one place.
