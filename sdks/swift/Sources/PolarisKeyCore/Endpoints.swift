@@ -114,6 +114,10 @@ public struct Endpoints: Sendable, Equatable {
     // ── Release ──────────────────────────────────────────────────────────────────────────
     public var releaseChangelog: URL { url("release/changelog") }
     public var releaseInstall: URL { url("release/install.sh") }
+    /// `/release/dl/:version/:file` — `file` is `<binary>-<arch>[.dmg]`. Each is ONE segment.
+    public func releaseDownload(version: String, file: String) -> URL {
+        url("release/dl/\(Endpoints.segment(version))/\(Endpoints.segment(file))")
+    }
 
     /// The signed-document route for one cache slice — the pairing `sync()` drives both
     /// documents through, so neither can acquire a path the other lacks.

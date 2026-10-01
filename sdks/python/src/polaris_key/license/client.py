@@ -25,7 +25,7 @@ had no way to say "there is no licence here, sync anyway".
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Literal, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
 
 from ..core.cache import CacheManager
 from ..core.context import CoreContext, now_sec
@@ -42,8 +42,12 @@ from .gate import LicenseState, is_usable, license_state
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..devices.client import DevicesClient
+# The floor every licence holds (WIRE-CONTRACT-V3 §5.1), and the answer when a licence carries
+# no ``channels`` entitlement. Re-exported for hosts that imported it from here.
+from ..constants_generated import CHANNEL_STABLE
 
-__all__ = ["LicenseClient", "LicenseAcquiredListener"]
+__all__ = ["LicenseClient", "LicenseAcquiredListener", "CHANNEL_STABLE"]
+
 
 #: Raised after a credential is minted, so the facade can sync without every activation
 #: path having to remember to.
@@ -114,6 +118,22 @@ class LicenseClient:
         if doc is None:
             return {}
         return {k: v.value for k, v in doc.entitlements.items()}
+
+    def entitled_channels(self) -> List[str]:
+        """The channels this licence grants: the ``channels`` entitlement's string values,
+        in order, as granted — or ``["stable"]`` when the entitlement is absent or not an
+        array. This is the Worker's own answer (``entitledChannels`` in
+        core/entitlements.ts) and the same list every SDK returns for the same document.
+
+        The grants are RAW: ``staging`` is not rewritten to ``beta`` here. Whether a grant
+        covers a channel is the entitlement rule's question (WIRE-CONTRACT-V3 §5.1 rule 4),
+        not this list's.
+        """
+        doc = self.doc
+        entry = doc.entitlements.get("channels") if doc is not None else None
+        if entry is None or not isinstance(entry.value, list):
+            return [CHANNEL_STABLE]
+        return [v for v in entry.value if isinstance(v, str)]
 
     def get_profile(self) -> Optional[DocProfile]:
         """The signed greeting block, or ``None``. Signed so it cannot be spoofed

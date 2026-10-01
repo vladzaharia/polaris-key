@@ -281,7 +281,7 @@ C#** target every row, minus the N/As listed.
 | --------------- | ----------------------------------------------------------- | ------------------ | ---- | ----- | ------ | ----- | --------------------------- |
 | `core.verify`   | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json`       | ✓    | ✓     | ✓      | ✓     | —                           |
 | `core.cache`    | verified cache; construct and load offline                  | transcripts + unit | ✓    | ✓     | ✓      | ✓     | —                           |
-| `core.bundle`   | offline bundle import                                       | `cases.json`       | ✓    | ✗     | ✓      | ✓     | —                           |
+| `core.bundle`   | offline bundle import                                       | `cases.json`       | ✓    | ✓     | ✓      | ✓     | —                           |
 | `core.discover` | discovery and capabilities, fail-closed                     | transcripts        | ✓    | ✓     | ✓      | ✓     | —                           |
 | `core.sync`     | sync, `ETag`/`304`, backoff, refresh loop, change events    | transcripts        | ✓    | ✓     | ✓      | ✓     | —                           |
 | `core.local`    | local-only client (no network)                              | unit               | ✓    | ✗     | ✓      | ✓     | —                           |
@@ -305,20 +305,20 @@ C#** target every row, minus the N/As listed.
 | `license.activate`     | activate with a key (+ fingerprint)         | transcripts        | ✓    | ✓     | ✓      | ✓     | —                                |
 | `license.enroll`       | keyless enrolment                           | transcripts        | ✓    | N/A   | ✓      | ✓     | web: `runtime` (no hardware ids) |
 | `license.deactivate`   | remote best-effort, local wipe mandatory    | transcripts        | ✓    | ✓     | ✓      | ✓     | —                                |
-| `license.entitlements` | entitlements, profile, licence id           | `cases.json`       | ✓    | ✓     | ✓      | ✓     | —                                |
-| `license.channels`     | `entitledChannels()`                        | `cases.json`       | ✗    | ✗     | ✗      | ✓     | —                                |
+| `license.entitlements` | entitlements, profile, licence id           | unit               | ✓    | ✓     | ✓      | ✓     | —                                |
+| `license.channels`     | `entitledChannels()`                        | unit               | ✓    | ✓     | ✓      | ✓     | —                                |
 | `license.reregister`   | re-register on 401 for licence-less devices | transcripts        | ✗    | ✗     | ✗      | ✗     | —                                |
 
 ### 5.3 Config
 
-| Id               | Capability                                         | Proven by             | Node | React | Python | Swift | Allowed N/A                                |
-| ---------------- | -------------------------------------------------- | --------------------- | ---- | ----- | ------ | ----- | ------------------------------------------ |
-| `config.resolve` | precedence (enforced, default, local, environment) | `config-matrix.json`  | ✓    | ✓ ¹   | ✓      | ✓     | —                                          |
-| `config.list`    | user-visible config, enforced rows flagged         | `config-matrix.json`  | ✓    | ✓     | ✓      | ✓     | —                                          |
-| `config.secret`  | `getSecret`                                        | transcripts           | ✓    | N/A   | ✓      | ✓     | web: `runtime` (the Worker strips secrets) |
-| `config.schema`  | catalog fetch (`/config/schema`)                   | transcripts           | ✗    | ✗     | ✗      | ✓     | —                                          |
-| `config.mint`    | edge-mint of third-party tokens                    | transcripts           | ✗    | ✗     | ✗      | ✗     | —                                          |
-| `config.mirror`  | typed catalog mirrors                              | `gen-mirrors --check` | ✓    | ✓     | ✓      | ✓     | —                                          |
+| Id               | Capability                                         | Proven by            | Node | React | Python | Swift | Allowed N/A                                |
+| ---------------- | -------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------------------------------------------ |
+| `config.resolve` | precedence (enforced, default, local, environment) | `config-matrix.json` | ✓    | ✓ ¹   | ✓      | ✓     | —                                          |
+| `config.list`    | user-visible config, enforced rows flagged         | `config-matrix.json` | ✓    | ✓     | ✓      | ✓     | —                                          |
+| `config.secret`  | `getSecret`                                        | transcripts          | ✓    | N/A   | ✓      | ✓     | web: `runtime` (the Worker strips secrets) |
+| `config.schema`  | catalog fetch (`/config/schema`)                   | transcripts          | ✓    | ✓     | ✓      | ✓     | —                                          |
+| `config.mint`    | edge-mint of third-party tokens                    | transcripts          | ✗    | ✗     | ✗      | ✗     | —                                          |
+| `config.mirror`  | typed catalog mirrors                              | unit                 | ✓    | ✓     | ✓      | ✓     | —                                          |
 
 1. The environment layer applies to desktop hosts only; in a browser it is empty by definition,
    which the matrix pins rather than an N/A.
@@ -331,14 +331,14 @@ C#** target every row, minus the N/As listed.
 | `devices.facts`       | device facts and probes                | unit               | ✓    | N/A   | ✓      | ✓     | web: `runtime` |
 | `devices.register`    | keyless registration                   | transcripts        | ✓    | ✗     | ✓      | ✓     | —              |
 | `devices.manage`      | list, rename, deauthorise              | transcripts        | ✓    | ◐ ²   | ✓      | ✓     | —              |
-| `devices.report`      | telemetry (allowlisted keys)           | transcripts        | ✓    | ✗     | ✓      | ◐ ³   | —              |
+| `devices.report`      | telemetry (allowlisted keys)           | transcripts        | ✓    | ✓ ²   | ✓      | ✓ ³   | web: `runtime` |
 | `identity.oidc`       | browser sign-in                        | transcripts        | ✗    | ✓     | ✗      | ◐ ⁴   | —              |
 | `identity.devicecode` | device-code sign-in (RFC 8628) with QR | transcripts        | ✗ ⁵  | ✓     | ✗      | ✗     | —              |
 
 1. `wmic` is gone from Windows 11, so two components silently vanish; on Linux the anchor depends
    on privilege (README §9.1 #23–24).
 2. Through the desktop bridge only.
-3. Only as part of sync.
+3. A public `report()` since P1b-07; before it, only as part of sync.
 4. Through a host-supplied closure.
 5. The Electron desktop host bridge implements it; the Node SDK does not.
 
@@ -346,8 +346,8 @@ C#** target every row, minus the N/As listed.
 
 | Id                  | Capability                                            | Proven by            | Node | React | Python | Swift | Allowed N/A                     |
 | ------------------- | ----------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------------------------------- |
-| `release.changelog` | changelog                                             | transcripts          | ✓    | ✗     | ✓      | ✗     | —                               |
-| `release.download`  | download and install URLs                             | transcripts          | ✓    | ✗     | ✓      | ✗     | —                               |
+| `release.changelog` | changelog                                             | transcripts          | ✓    | ✓     | ✓      | ✓     | —                               |
+| `release.download`  | download and install URLs                             | transcripts          | ✓    | ✓     | ✓      | ✓     | —                               |
 | `release.record`    | verify `pkey-release+jws` against pinned release keys | `releaseRecordCases` | ○    | ○     | ○      | ○     | —                               |
 | `update.check`      | today's version check                                 | transcripts          | ✓    | ✓     | ✓      | ✓     | —                               |
 | `update.feed`       | verify `pkey-feed+jws`: freshness, `seq`              | `feedCases`          | ○    | ○     | ○      | ○     | —                               |
@@ -495,12 +495,12 @@ lacks it:
 | --------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------- | ------ |
 | Re-register on 401 for licence-less devices                     | all                 | a transcript, then the flow in each SDK                                             | P1b    |
 | Header values differ (`win32`/`x64` vs `windows`/`AMD64`, …)    | all                 | `headers.json` and generated canonical values                                       | P1b    |
-| `entitledChannels()`                                            | Node, Python, React | port from Swift                                                                     | P1b    |
-| Catalog fetch (`/config/schema`)                                | Node, Python, React | port from Swift                                                                     | P1b    |
+| `entitledChannels()` (closed by P1b-07)                         | Node, Python, React | port from Swift                                                                     | P1b    |
+| Catalog fetch (`/config/schema`) (closed by P1b-07)             | Node, Python, React | port from Swift                                                                     | P1b    |
 | Edge-mint                                                       | all                 | Godot implements it first (P1); port with the transcript                            | P1–P1b |
 | Device-code sign-in                                             | Node, Python, Swift | port React's flow; the server's RFC 8628 page lands in P1                           | P1b    |
-| Release client (changelog, download URLs)                       | Swift, React        | port from Node/Python                                                               | P1b    |
-| Offline bundle import, telemetry                                | React               | expose `client-core`'s bundle import; add reporting                                 | P1b    |
+| Release client (changelog, download URLs) (closed by P1b-07)    | Swift, React        | port from Node/Python                                                               | P1b    |
+| Offline bundle import, telemetry (closed by P1b-07)             | React               | expose `client-core`'s bundle import; add reporting                                 | P1b    |
 | Windows `wmic`, Linux privilege-dependent anchor                | Node, Python        | CIM/SMBIOS reads; a documented non-root anchor; new `fingerprint.json` cases        | P1b    |
 | `~/.config` on every OS                                         | Node, Python, Swift | platform data, cache and state directories with backup exclusion (needed for packs) | P1b    |
 | Silent keyring downgrade (Node single-executable builds)        | Node                | a surfaced `degraded` store state; bump `@napi-rs/keyring`                          | P1b    |

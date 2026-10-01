@@ -19,10 +19,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 29 | 3 | 17 | 7 |
-| React | `web`, `desktop-bridge` | 17 | 12 | 21 | 6 |
-| Python | `python` | 29 | 3 | 17 | 7 |
-| Swift | `macos`, `ios` | 28 | 3 | 19 | 6 |
+| Node | `node` | 31 | 3 | 15 | 7 |
+| React | `web`, `desktop-bridge` | 23 | 12 | 15 | 6 |
+| Python | `python` | 31 | 3 | 15 | 7 |
+| Swift | `macos`, `ios` | 32 | 3 | 15 | 6 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 7 | 0 | 46 | 3 |
 
 ## Core
@@ -31,7 +31,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `core.verify` | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.cache` | Verified cache; construct and load offline | transcripts + unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | — |
-| `core.bundle` | Offline bundle import | `cases.json` `bundleCases` | ✓ | planned (P1b-07) | ✓ | ✓ | ✓ | — |
+| `core.bundle` | Offline bundle import | `cases.json` `bundleCases` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.discover` | Discovery and capabilities, fail-closed | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | — |
@@ -49,7 +49,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `license.enroll` | Keyless enrolment | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-03) | web, desktop-bridge: runtime |
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
 | `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
-| `license.channels` | entitledChannels() | unit | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1-03) | — |
+| `license.channels` | entitledChannels() | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
 | `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-03) | web, desktop-bridge: runtime |
 
 ## Config
@@ -59,7 +59,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `config.resolve` | Precedence (enforced, default, local, environment) | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
 | `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
 | `config.secret` | getSecret | transcripts (not recorded) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-04) | web, desktop-bridge: runtime |
-| `config.schema` | Catalog fetch (/config/schema) | transcripts (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | ✓ | planned (P1-04) | — |
+| `config.schema` | Catalog fetch (/config/schema) | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
 | `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | planned (unowned) | ✓ | ✓ | planned (P1-04) | — |
 | `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-04) | — |
 
@@ -71,7 +71,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.facts` | Device facts and probes | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-05) | web, desktop-bridge: runtime |
 | `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-05) | web, desktop-bridge: runtime |
 | `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-05) | web: runtime |
-| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | planned (P1b-07); N/A (web: runtime) | ✓ | planned (P1b-07) | planned (P1-05) | web: runtime |
+| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-05) | web: runtime |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-07) | web: runtime |
 
@@ -79,8 +79,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `release.changelog` | Changelog | transcripts (P1b-07) | ✓ | planned (P1b-07) | ✓ | planned (P1b-07) | planned (P1-08) | — |
-| `release.download` | Download and install URLs | transcripts (P1b-07) | ✓ | planned (P1b-07) | ✓ | planned (P1b-07) | planned (P1-08) | — |
+| `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-08) | — |
+| `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-08) | — |
 | `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
 | `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | planned (P1-08) | — |
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |

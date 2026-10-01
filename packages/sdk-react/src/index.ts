@@ -24,10 +24,12 @@ export {
   useEntitlement,
   usePolarisAuth,
   useLicenseGate,
+  useImportBundle,
   usePolarisTheme,
   screenFor,
   type UsePolarisKey,
   type UseLicense,
+  type UseImportBundle,
   type UseManagedConfig,
   type UsePolarisAuth,
   type UseLicenseGate,
@@ -38,6 +40,11 @@ export {
   type UseLatestVersion,
   type UseLatestVersionOptions,
 } from "./update/useLatestVersion.js";
+export {
+  useChangelog,
+  type UseChangelog,
+  type UseChangelogOptions,
+} from "./release/useChangelog.js";
 
 // ── Components ───────────────────────────────────────────────────────────────
 export {
@@ -100,6 +107,17 @@ export {
   splitSessionDoc,
   type BrowserAdapterOptions,
 } from "./browser/browserAdapter.js";
+export { fetchCatalog } from "./browser/catalog.js";
+export {
+  buildDownloadUrl,
+  buildInstallUrl,
+  fetchChangelog,
+} from "./browser/release.js";
+export {
+  indexedDbOfflineStore,
+  type OfflineRecord,
+  type OfflineStore,
+} from "./browser/offline.js";
 export {
   discoverProduct,
   parseDiscovery,
@@ -122,6 +140,7 @@ export {
   type BridgeOidcBegin,
   type BridgeOidcPoll,
   type BridgeActivation,
+  type BridgeImportBundle,
 } from "./desktop/bridge.js";
 
 // ── Core (mode-agnostic types + helpers) ─────────────────────────────────────
@@ -135,6 +154,7 @@ export {
   flattenEntries,
   readConfig,
   readEntitled,
+  readEntitledChannels,
   resolveConfig,
   resolveConfigValue,
   configSource,
@@ -169,6 +189,10 @@ export {
   type DeviceInfo,
   type UserConfigEntry,
   type VersionCheck,
+  type ChangelogEntry,
+  type DownloadUrlOptions,
+  type ImportBundleResult,
+  type ProductCatalog,
   type ServicesMap,
   type ServiceBusyMap,
   type ServiceErrorMap,

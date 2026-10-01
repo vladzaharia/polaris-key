@@ -25,11 +25,7 @@
     "license.enroll": { "status": "implemented" },
     "license.deactivate": { "status": "implemented" },
     "license.entitlements": { "status": "implemented" },
-    "license.channels": {
-      "status": "planned",
-      "wp": "P1b-07",
-      "note": "entitledChannels() exists but is untested and returns [] when the entitlement is absent, where the Worker returns [\"stable\"]; P1b-07 settles the semantics."
-    },
+    "license.channels": { "status": "implemented" },
     "license.reregister": { "status": "implemented" },
     "config.resolve": { "status": "implemented" },
     "config.list": { "status": "implemented" },
@@ -44,19 +40,15 @@
     "devices.facts": { "status": "implemented" },
     "devices.register": { "status": "implemented" },
     "devices.manage": { "status": "implemented" },
-    "devices.report": {
-      "status": "planned",
-      "wp": "P1b-07",
-      "note": "Reported only as part of sync; P1b-07 exposes it as public API."
-    },
+    "devices.report": { "status": "implemented" },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
       "note": "Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in."
     },
     "identity.devicecode": { "status": "implemented" },
-    "release.changelog": { "status": "planned", "wp": "P1b-07" },
-    "release.download": { "status": "planned", "wp": "P1b-07" },
+    "release.changelog": { "status": "implemented" },
+    "release.download": { "status": "implemented" },
     "release.record": { "status": "planned", "wp": "P3-07" },
     "update.check": { "status": "implemented" },
     "update.feed": { "status": "planned", "wp": "P3-07" },

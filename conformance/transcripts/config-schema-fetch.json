@@ -1,0 +1,109 @@
+{
+  "transcriptVersion": 1,
+  "id": "config-schema-fetch",
+  "description": "The catalog fetch (GET /<p>/config/schema): unsigned, unauthenticated and diagnostic. fetchSchema() sends no credential and returns the product's active catalog parsed; when the fetch fails — here the operator has retired the active catalog, so the Worker answers 404 — it returns null and does not throw.",
+  "features": ["config.schema"],
+  "requires": [],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config"]
+  },
+  "steps": [
+    {
+      "action": "fetchSchema",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/config/schema",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=60",
+                "content-type": "application/json"
+              },
+              "body": {
+                "schemaVersion": 1,
+                "entries": [
+                  {
+                    "key": "ui.theme",
+                    "kind": "config",
+                    "category": "Interface",
+                    "label": "Theme",
+                    "description": "Dashboard color theme.",
+                    "accessor": "ui.theme",
+                    "schema": { "type": "string", "enum": ["dark", "light"] },
+                    "ui": { "widget": "select" }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "catalog": {
+          "schemaVersion": 1,
+          "entries": [
+            {
+              "key": "ui.theme",
+              "kind": "config",
+              "category": "Interface",
+              "label": "Theme",
+              "description": "Dashboard color theme.",
+              "accessor": "ui.theme",
+              "schema": { "type": "string", "enum": ["dark", "light"] },
+              "ui": { "widget": "select" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "action": "fetchSchema",
+      "note": "No active catalog: a 404, which the SDK reports as null rather than throwing.",
+      "args": {},
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/config/schema",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "not_found",
+                "message": "no active schema for product"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "catalog": null }
+    }
+  ]
+}

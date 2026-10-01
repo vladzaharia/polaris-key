@@ -153,6 +153,42 @@ def test_a_403_reports_the_entitlement_refusal_rather_than_retrying() -> None:
     c.close()
 
 
+# @pkey-feature release.changelog
+@pytest.mark.parametrize(
+    "body, code",
+    [
+        ({"error": {"code": "unauthorized"}}, "unauthorized"),
+        ({"error": "download_auth_required"}, "download_auth_required"),
+        ({}, "unauthorized"),
+    ],
+)
+def test_a_401_surfaces_the_refusal_body_code(body: Dict[str, Any], code: str) -> None:
+    """``entitled`` answers the nested v3 shape; ``authenticated``/``licensed`` keep the flat
+    v2 one. Either way the host learns WHY (pinned by the release-changelog transcript)."""
+    c = make_client(
+        _feed_routes(**{f"/{PRODUCT}/release/changelog": httpx.Response(401, json=body)}),
+        expected_services=["release"],
+    )
+    with pytest.raises(PolarisError) as exc:
+        c.release.changelog()
+    assert exc.value.code == code
+    c.close()
+
+
+def test_a_null_summary_stays_none() -> None:
+    """The Worker answers ``summary: null`` for a release body with no prose; it must not
+    become the string ``"None"``."""
+    entry = {"version": "1.0.0", "tag": "v1.0.0", "date": None, "summary": None, "url": "u"}
+    c = make_client(
+        _feed_routes(
+            **{f"/{PRODUCT}/release/changelog": httpx.Response(200, json={"entries": [entry]})}
+        ),
+        expected_services=["release"],
+    )
+    assert c.release.changelog()[0].summary is None
+    c.close()
+
+
 # ── Update ──────────────────────────────────────────────────────────────────────────
 # @pkey-feature update.check
 def test_version_check_compares_against_the_HOST_application_version() -> None:

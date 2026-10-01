@@ -57,6 +57,10 @@ public enum ErrorCode {
     public static let fetchFailed = "fetch-failed"
     public static let bridgeMissing = "bridge-missing"
     public static let unknown = "unknown"
+    public static let releaseRefused = "release-refused"
+    public static let bundleRejected = "bundle-rejected"
+    public static let bundleImportUnsupported = "bundle-import-unsupported"
+    public static let reportUnsupported = "report-unsupported"
     public static let deviceManagementUnsupported = "device-management-unsupported"
     public static let deviceListFailed = "device_list_failed"
     public static let deviceRenameFailed = "device_rename_failed"
@@ -130,6 +134,10 @@ public let ERROR_CODE_VALUES: [String] = [
     "fetch-failed",
     "bridge-missing",
     "unknown",
+    "release-refused",
+    "bundle-rejected",
+    "bundle-import-unsupported",
+    "report-unsupported",
     "device-management-unsupported",
     "device_list_failed",
     "device_rename_failed",
@@ -203,6 +211,10 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "fetch-failed": "client",
     "bridge-missing": "client",
     "unknown": "client",
+    "release-refused": "client",
+    "bundle-rejected": "client",
+    "bundle-import-unsupported": "client",
+    "report-unsupported": "client",
     "device-management-unsupported": "client",
     "device_list_failed": "client",
     "device_rename_failed": "client",

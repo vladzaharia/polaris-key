@@ -95,6 +95,10 @@ class ErrorCode:
     FETCH_FAILED: Final = "fetch-failed"
     BRIDGE_MISSING: Final = "bridge-missing"
     UNKNOWN: Final = "unknown"
+    RELEASE_REFUSED: Final = "release-refused"
+    BUNDLE_REJECTED: Final = "bundle-rejected"
+    BUNDLE_IMPORT_UNSUPPORTED: Final = "bundle-import-unsupported"
+    REPORT_UNSUPPORTED: Final = "report-unsupported"
     DEVICE_MANAGEMENT_UNSUPPORTED: Final = "device-management-unsupported"
     DEVICE_LIST_FAILED: Final = "device_list_failed"
     DEVICE_RENAME_FAILED: Final = "device_rename_failed"
@@ -168,6 +172,10 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "fetch-failed",
     "bridge-missing",
     "unknown",
+    "release-refused",
+    "bundle-rejected",
+    "bundle-import-unsupported",
+    "report-unsupported",
     "device-management-unsupported",
     "device_list_failed",
     "device_rename_failed",
@@ -243,6 +251,10 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "fetch-failed": "client",
         "bridge-missing": "client",
         "unknown": "client",
+        "release-refused": "client",
+        "bundle-rejected": "client",
+        "bundle-import-unsupported": "client",
+        "report-unsupported": "client",
         "device-management-unsupported": "client",
         "device_list_failed": "client",
         "device_rename_failed": "client",

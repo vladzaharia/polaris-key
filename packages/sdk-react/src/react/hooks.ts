@@ -28,7 +28,9 @@ import {
   type ServicesMap,
   type UserConfigEntry,
   type VersionCheck,
+  type ImportBundleResult,
 } from "../core/index.js";
+import { readEntitledChannels } from "../core/adapter.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 import type { PolarisTheme } from "../components/theme.js";
 
@@ -165,6 +167,9 @@ export interface UseLicense {
   activation: ActivationSource | null;
   /** §4.2's monotonic clock floor, epoch seconds. `0` before anything signed is seen. */
   highWaterMark: number;
+  /** The channels the licence grants (the `channels` entitlement's strings, in order), or
+   *  `["stable"]` when it grants none explicitly — the Worker's answer and every SDK's. */
+  entitledChannels: string[];
   busy: boolean;
   error: PolarisError | null;
   refresh: () => Promise<void>;
@@ -182,9 +187,47 @@ export function useLicense(): UseLicense {
     enabled: state.capabilities.license.enabled,
     activation: state.activation,
     highWaterMark: state.highWaterMark,
+    entitledChannels: readEntitledChannels(state),
     busy: state.busy.license,
     error: state.error.license,
     refresh: () => adapter.refresh(),
+  };
+}
+
+export interface UseImportBundle {
+  /** Verify and install an offline activation bundle (§7). Resolves to what landed, or
+   *  `null` when it was refused — the refusal is in `error` (`bundle-rejected`, with the §7
+   *  step as `wireCode`, or `bundle-import-unsupported`). Nothing is written on a refusal. */
+  importBundle: (jws: string) => Promise<ImportBundleResult | null>;
+  /** True while an import is in flight. */
+  busy: boolean;
+  /** The last import's refusal, cleared by the next success. */
+  error: PolarisError | null;
+  /** How this install is activated now — `"bundle"` after an import that carried a licence. */
+  activation: ActivationSource | null;
+}
+
+/** Offline bundle import (§7): desktop through the host bridge (protocol v3), browser verified
+ *  in-page and kept in IndexedDB. */
+export function useImportBundle(): UseImportBundle {
+  const { adapter } = useCtx();
+  const state = useAdapterState(adapter);
+  const importBundle = useCallback(
+    async (jws: string): Promise<ImportBundleResult | null> => {
+      try {
+        return await adapter.importBundle(jws);
+      } catch {
+        // The adapter recorded the refusal on the license slice; the hook reads it from there.
+        return null;
+      }
+    },
+    [adapter],
+  );
+  return {
+    importBundle,
+    busy: state.busy.license,
+    error: state.error.license,
+    activation: state.activation,
   };
 }
 

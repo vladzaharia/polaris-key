@@ -19,9 +19,8 @@
       "note": "The browser adapter is online-only with no verified cache; on desktop the host's Node SDK holds it. No work package gives the browser one."
     },
     "core.bundle": {
-      "status": "planned",
-      "wp": "P1b-07",
-      "note": "client-core's inspectBundle exists; the React SDK does not expose an import."
+      "status": "implemented",
+      "note": "Desktop through the host bridge (protocol v3 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB."
     },
     "core.discover": { "status": "implemented" },
     "core.sync": { "status": "implemented" },
@@ -49,7 +48,7 @@
     },
     "license.deactivate": { "status": "implemented" },
     "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "planned", "wp": "P1b-07" },
+    "license.channels": { "status": "implemented" },
     "license.reregister": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
@@ -64,7 +63,7 @@
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). The desktop renderer never holds secrets either; the host reads them with the Node SDK."
     },
-    "config.schema": { "status": "planned", "wp": "P1b-07" },
+    "config.schema": { "status": "implemented" },
     "config.mint": {
       "status": "planned",
       "unowned": true,
@@ -98,10 +97,9 @@
       "note": "New web N/A (P1b-01). Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported."
     },
     "devices.report": {
-      "status": "planned",
-      "wp": "P1b-07",
+      "status": "implemented",
       "except": [{ "runtime": "web", "reason": "runtime" }],
-      "note": "New web N/A (P1b-01). P1b-07 adds desktop reporting through the bridge. POST /<p>/devices/report accepts only a device bearer, which a browser does not hold."
+      "note": "Desktop through invoke(\"devices\", \"report\"). POST /<p>/devices/report accepts only a device bearer, which a browser session does not hold; the browser adapter throws report-unsupported."
     },
     "identity.oidc": { "status": "implemented" },
     "identity.devicecode": {
@@ -109,8 +107,8 @@
       "except": [{ "runtime": "web", "reason": "runtime" }],
       "note": "New web N/A (P1b-01). Through the desktop bridge (beginSignIn/pollSignIn). A browser signs in with the OIDC redirect (identity.oidc)."
     },
-    "release.changelog": { "status": "planned", "wp": "P1b-07" },
-    "release.download": { "status": "planned", "wp": "P1b-07" },
+    "release.changelog": { "status": "implemented" },
+    "release.download": { "status": "implemented" },
     "release.record": { "status": "planned", "wp": "P3-05" },
     "update.check": { "status": "implemented" },
     "update.feed": { "status": "planned", "wp": "P3-05" },

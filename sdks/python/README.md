@@ -126,13 +126,21 @@ Every one is importable on its own, so a config-only daemon never pulls the lice
 | Import                 | Owns                                                                                                                 |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `polaris_key.core`     | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto |
-| `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate                                 |
-| `polaris_key.config`   | the signed config document + layered resolution, edge-mint (`mint_token`)                                            |
+| `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate, `entitled_channels()`          |
+| `polaris_key.config`   | the signed config document + layered resolution, `fetch_schema()` (the catalog), edge-mint (`mint_token`)            |
 | `polaris_key.devices`  | registration, the roster, fingerprint / facts / device-id, the stores                                                |
 | `polaris_key.identity` | device-code sign-in (RFC 8628): `begin_sign_in` / `poll_sign_in` / `wait_for_sign_in`                                |
 | `polaris_key.release`  | changelog, install script, artifact URLs                                                                             |
 | `polaris_key.update`   | version check + the Sparkle appcast URL                                                                              |
 | `polaris_key.local`    | the transportless profile                                                                                            |
+
+`client.license.entitled_channels()` returns the `channels` entitlement's string grants in
+order, or `["stable"]` when the licence carries none — the Worker's own answer, and every SDK's.
+`client.config.fetch_schema()` returns the product's catalog as a `dict`, or `None` on any
+failure (it is unsigned and diagnostic, so it never raises). `client.release` raises
+`service-unavailable` when the product does not run Release, forwards the device token when one
+is held, and raises a 401/403 with the refusal body's own code (`unauthorized`,
+`channel_not_allowed`, …); a changelog entry's `summary` is `None` when the release has none.
 
 ### Capabilities (fail-closed)
 

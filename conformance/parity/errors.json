@@ -280,6 +280,30 @@
       "description": "React desktop: the host bridge threw something that carries no code."
     },
     {
+      "code": "release-refused",
+      "kind": "client",
+      "service": "release",
+      "description": "React: the Worker refused a release call (changelog, download URL) because this build or licence is not entitled to that channel or feed; `wireCode` carries the Worker's own code."
+    },
+    {
+      "code": "bundle-rejected",
+      "kind": "client",
+      "service": "core",
+      "description": "React: an offline bundle import was refused; `wireCode` carries the refusal step (`bundle-jws-rejected`, `bundle-claims-rejected`, `bundle-trust-rejected` or `inner-doc-rejected`)."
+    },
+    {
+      "code": "bundle-import-unsupported",
+      "kind": "client",
+      "service": "core",
+      "description": "React: this adapter cannot import offline bundles (a desktop bridge older than protocol v3, or a browser without pinned trust keys or IndexedDB)."
+    },
+    {
+      "code": "report-unsupported",
+      "kind": "client",
+      "service": "core",
+      "description": "React: device telemetry cannot be reported from here (a browser session has no device token, or the desktop bridge does not expose it)."
+    },
+    {
       "code": "device-management-unsupported",
       "kind": "client",
       "service": "core",

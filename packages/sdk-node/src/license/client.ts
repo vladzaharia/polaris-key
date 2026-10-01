@@ -21,7 +21,7 @@
 // meant every activation path had to remember to, and a config-only product had no way to say
 // "there is no licence here, sync anyway".
 
-import type { JSONValue } from "@polaris-key/protocol/core";
+import { CHANNEL_STABLE, type JSONValue } from "@polaris-key/protocol/core";
 import type {
   ActivationSource,
   DocProfile,
@@ -114,6 +114,22 @@ export class LicenseClient {
     for (const [k, v] of Object.entries(this.doc?.entitlements ?? {}))
       out[k] = v.value;
     return out;
+  }
+
+  /**
+   * The channels this licence grants: the `channels` entitlement's string values, in order, as
+   * granted — or `["stable"]` when the entitlement is absent or not an array. This is the
+   * Worker's own answer (`entitledChannels` in core/entitlements.ts), and the same list every
+   * SDK returns for the same document.
+   *
+   * The grants are RAW: `staging` is not rewritten to `beta` here. Whether a grant covers a
+   * channel is the entitlement rule's question (WIRE-CONTRACT-V3 §5.1 rule 4, `channelEntitled`),
+   * not this list's; `stable` is the floor every licence holds whether or not it is listed.
+   */
+  entitledChannels(): string[] {
+    const value = this.doc?.entitlements["channels"]?.value;
+    if (!Array.isArray(value)) return [CHANNEL_STABLE];
+    return value.filter((v): v is string => typeof v === "string");
   }
 
   /** The signed greeting block, or null. Signed so it cannot be spoofed locally. */

@@ -28,13 +28,31 @@ public enum ConfigEndpoints {
 
     /// `GET /<p>/config/schema` — the product's active catalog, unsigned and unauthenticated.
     /// Diagnostic only: nothing security-relevant is ever read from it, because it carries no
-    /// signature to check.
+    /// signature to check. So every failure — a refusal, a transport error, a body that is not
+    /// a catalog, local-only mode, a product that does not run Config (D-21: not even probed) —
+    /// is `nil`, never a throw. The bytes are returned as served; the SDKs agree on the outer
+    /// shape (`schemaVersion` + `entries`) they accept.
     public static func fetchSchema(_ core: CoreContext) async -> Data? {
-        guard
+        guard await core.enabled(.config),
             let response = try? await core.request(
                 core.endpoints.configSchema, headers: ["accept": "application/json"]),
-            response.isOK
+            response.isOK,
+            isCatalog(response.body)
         else { return nil }
         return response.body
+    }
+
+    /// The catalog's outer shape. The entries are the product's own data; the client does not
+    /// validate them, because nothing it decides depends on them.
+    static func isCatalog(_ body: Data) -> Bool {
+        guard case .object(let root)? = try? JSONDecoder().decode(JSONValue.self, from: body)
+        else { return false }
+        switch root["schemaVersion"] {
+        case .int?: break
+        case .double(let d)? where d == d.rounded(): break
+        default: return false
+        }
+        if case .array? = root["entries"] { return true }
+        return false
     }
 }
