@@ -102,6 +102,10 @@ function parseIncludes(json: string | null): string[] | null {
 export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
   const { db, product } = ctx;
   const slug = product.slug;
+  // One read of `release_config` per reader (a reader lives for one request): a byte route asks
+  // for the metadata mode, the selector classification and the resolution in turn.
+  let cfgRead: ReturnType<typeof getReleaseConfig> | undefined;
+  const config = () => (cfgRead ??= getReleaseConfig(db, slug));
   return {
     async deliverables(): Promise<CatalogDeliverable[]> {
       return (await listDeliverables(db, slug)).map((d) => ({
@@ -178,12 +182,12 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
     },
 
     async metadataAccess() {
-      const cfg = await getReleaseConfig(db, slug);
+      const cfg = await config();
       return cfg ? readAccessMode(cfg.metadata_access) : null;
     },
 
     async accessSelector(selector: string | undefined) {
-      const cfg = await getReleaseConfig(db, slug);
+      const cfg = await config();
       // Only the manual channels matter to the classification; a product with no configuration
       // has none (and every byte route 404s it before this answer is used).
       return entitledSelectorFor(
@@ -196,7 +200,7 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
       );
     },
 
-    resolve: (q: CatalogResolveQuery) => resolveTarget(ctx, q),
+    resolve: (q: CatalogResolveQuery) => resolveTarget(ctx, q, config),
 
     openSource: (ref, req) => openSource(ctx, ref, req),
 
@@ -208,10 +212,11 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
 async function resolveTarget(
   { db, product }: HookContext,
   q: CatalogResolveQuery,
+  config: () => ReturnType<typeof getReleaseConfig>,
 ): Promise<CatalogResolution | null> {
   const slug = product.slug;
   if (q.kind === "build") {
-    const cfg = await getReleaseConfig(db, slug);
+    const cfg = await config();
     const resolved = await resolveBuild(
       db,
       slug,
