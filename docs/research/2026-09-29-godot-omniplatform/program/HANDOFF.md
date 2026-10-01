@@ -14,6 +14,15 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
+## Before djdl's next `.pkey` push (from v0.5.0)
+
+- [ ] **Add `"distribution": { "enabled": true }` to `modules` in `vladzaharia/djdl`'s
+      `.pkey/product.json`.** P2b-01's new coherence rule (`update_requires_distribution`) rejects
+      djdl's current manifest (`update` on, no `distribution`). Migration `0033` already gave the
+      stored row `distribution`, so djdl keeps serving; only its next manifest push would be refused
+      (visible in the console) until this line is added. Also add `beta` to the `channels` enum in
+      djdl's `.pkey/schema` (P0-04; optional, blocks nothing).
+
 ## Before the first production deploy
 
 ### P0-08 (unknown-slug tolerance)
