@@ -6,6 +6,7 @@
 //   EDMAX=<bytes> skip WebCrypto Ed25519 inputs larger than this (65000 for WebKitGTK)
 //   GODOT=1       load /lowend/build/web/index.html instead and wait for the wrapper's POST
 //   TIMEOUT_S=<n> default 900
+//   HEADFUL=1     launch headed (run under xvfb-run on Linux)
 // playwright-core comes from ../../content/npm (see ../../content/README.md step 4).
 import { writeFileSync, mkdirSync } from "node:fs";
 const pw = await import(
@@ -21,8 +22,9 @@ const tag =
   tagArg ||
   `${process.env.GODOT ? "godot-web" : "browser"}-${engine}${cpu ? "-cpu" + cpu : ""}`;
 // Headless Firefox in a GPU-less container has no WebGL2 (Godot refuses to start); force software GL.
+// HEADFUL=1 (under xvfb-run) gives Firefox Mesa's llvmpipe WebGL2 where headless has none.
 const browser = await pw[engine].launch({
-  headless: true,
+  headless: !process.env.HEADFUL,
   ...(engine === "firefox"
     ? {
         firefoxUserPrefs: {

@@ -2,12 +2,10 @@
 // usage: node report.mjs <file.json>...
 import fs from "node:fs";
 import path from "node:path";
-const rows = process.argv
-  .slice(2)
-  .map((f) => ({
-    name: path.basename(f, ".json"),
-    d: JSON.parse(fs.readFileSync(f, "utf8")),
-  }));
+const rows = process.argv.slice(2).map((f) => ({
+  name: path.basename(f, ".json"),
+  d: JSON.parse(fs.readFileSync(f, "utf8")),
+}));
 const t = (h, b) =>
   [
     `| ${h.join(" | ")} |`,
