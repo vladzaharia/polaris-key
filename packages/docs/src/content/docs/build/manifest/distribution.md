@@ -93,22 +93,22 @@ what they had.
 Each kind reads only its own fields; any other key on the entry is ignored. Every field is
 optional. A bad value is `invalid_outlet_identity`.
 
-| Kind                       | Fields                                                                  |
-| -------------------------- | ----------------------------------------------------------------------- |
-| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token) |
-| `app-store`, `testflight`  | `appleId` (numeric), `bundleId` (reverse-DNS)                           |
-| `altstore`                 | `artifact`, `bundleId`                                                  |
-| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                 |
-| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)        |
-| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                               |
-| `ms-store`                 | `productId` (12 characters), `packageFamilyName`                        |
-| `app-installer`            | `packageFamilyName`                                                     |
-| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                  |
-| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)              |
-| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                       |
-| `snap`                     | `name`                                                                  |
-| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                           |
-| `web`                      | none                                                                    |
+| Kind                       | Fields                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token), `scoop` (`{bin, shortcuts}`) |
+| `app-store`, `testflight`  | `appleId` (numeric), `bundleId` (reverse-DNS)                                                         |
+| `altstore`                 | `artifact`, `bundleId`                                                                                |
+| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                               |
+| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                      |
+| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                             |
+| `ms-store`                 | `productId` (12 characters), `packageFamilyName`                                                      |
+| `app-installer`            | `packageFamilyName`                                                                                   |
+| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                |
+| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                            |
+| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                     |
+| `snap`                     | `name`                                                                                                |
+| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                         |
+| `web`                      | none                                                                                                  |
 
 - **Numeric ids** (`appleId`, `steam.appId`, `itch.gameId`) accept a positive integer or a
   string of digits with no leading zero, and are stored as the digit string either way.
@@ -123,6 +123,14 @@ optional. A bad value is `invalid_outlet_identity`.
 Three fields exist only so an installed copy can recognise its own launcher (runtime outlet
 detection, notes/S-06 rule 4): `itch.gameId` (the receipt's numeric `game.id` — `target` is
 not it), `packageFamilyName`, and `direct.homebrewCask`.
+
+`direct.scoop` (optional) is what the [Scoop manifest](/docs/services/distribution/feeds/#scoop)
+installs: `bin`, a relative path inside the Windows archive or a list of up to 16, which Scoop
+shims onto `PATH`; and `shortcuts`, up to 16 Start-menu entries as `[target, name]` pairs. A path
+may not climb out of the archive (`..`). A `direct` outlet that declares `platforms` must include
+`windows` to carry it. The storefront feeds themselves — AltStore, Obtainium, F-Droid, Scoop,
+Flathub — are rendered from these outlets; see
+[Storefront feeds](/docs/services/distribution/feeds/).
 
 ## Transports
 
