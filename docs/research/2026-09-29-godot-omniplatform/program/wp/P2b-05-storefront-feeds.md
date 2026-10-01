@@ -202,6 +202,21 @@ Recorded where the code disagreed with the text above.
   (`FDroidRepo`, `DirectAPKLink`). `FDroidRepo` reads `appIdOrName`, `pickHighestVersionCode` and
   `trySelectingSuggestedVersionCode`. `DirectAPKLink` reads `defaultPseudoVersioningMethod`
   (`partialAPKHash` or `ETag`).
+- **Registering earns refs from feed refs only, and never a non-public object** (review fix).
+  The first cut let a register skip the ticket for ANY key the product referenced, so a token
+  holding only `distribution:feeds` could name a paid pack's payload digest and have the relay
+  serve it publicly. Now only an existing `feed` ref skips the ticket; registration refuses
+  (`not_public`, 403) any object a non-public deliverable's release carries; and the relay
+  re-applies the blob route's strictest-mode rule on every read (`strictestAccess`, shared with
+  `bytes.ts`). `pkey feeds fdroid` therefore uploads every file that is not already one of the
+  channel's registered files, `present` or not.
+- **APK file names must be distinct across the listed releases** (review fix). The relay finds
+  an APK by name, so `pkey feeds fdroid` refuses a set where two releases share one.
+- **Goldens** (review fix). Every feed has a stable and a beta golden: AltStore, AltStore PAL,
+  Obtainium, Scoop, Flathub and the F-Droid generator inputs (`packages/worker/test/fixtures/feeds/`).
+  The F-Droid documents themselves (`index-v2.json`, `entry.json` and the diff) are compared byte
+  for byte in `packages/cli/test/fixtures/feeds/`. A held rollout on the `flathub` outlet has its
+  own test.
 
 ## Hand-off
 
