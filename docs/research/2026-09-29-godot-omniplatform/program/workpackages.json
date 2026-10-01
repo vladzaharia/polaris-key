@@ -442,7 +442,7 @@
       "optional": false,
       "refs": ["README §5.8", "notes/A2 §6", "notes/E9 §8"],
       "brief": "wp/P1-07-godot-identity.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-08",
