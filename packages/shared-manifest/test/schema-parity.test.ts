@@ -339,6 +339,21 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).licensing.tiers[0].maxOfflineDays = 14),
   },
   {
+    // P0-04: a name `CHANNEL_RE` accepts but the canonical alphabet (WIRE-CONTRACT-V3 §5.1)
+    // does not. A warning, and the schemas keep `CHANNEL_RE`, so they accept.
+    code: "noncanonical_channel_name",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).licensing.tiers[0].channels = ["Beta.2"]),
+  },
+  {
+    // P0-04: a manual channel a built-in takes over. A warning, so the schema accepts.
+    code: "reserved_channel_name",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (rel(d).manualChannels[0].name = "beta"),
+  },
+  {
     code: "invalid_profile_id",
     file: "product",
     schema: "rejects",

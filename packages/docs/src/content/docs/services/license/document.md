@@ -214,16 +214,23 @@ Inputs are the `X-PKey-Version` header (defaulting to `0.0.0` when absent), the 
    `app.minVersion` / `app.maxVersion`; **tighter wins in both directions**. Outside it, the
    refusal names `version-too-old` or `version-too-new` and returns the range. An unparseable
    version compares equal to everything, so a malformed version is never blocked on shape alone.
-3. **Channel.** The channel the **build implies** always applies:
-   `0.0.0-dev…` is `dev`, `0.0.0-staging…` is `staging`, `0.0.0-pr-42` (hyphen optional) is
-   `pr`, everything else is `stable`. A declared `X-PKey-Channel` header can only **add** a
-   second channel to check, never replace the first — otherwise a pre-release build would simply
-   declare `stable` and skip the entitlement check.
-4. **Unrecognised declarations are refusals.** A header that names no known channel is
-   `channel-not-entitled`. Mapping the unknown onto `stable` — the one channel that is never
-   entitlement-checked — meant `staging-2`, `STAGING` and `beta` all skipped the check outright.
+3. **Channel.** The channel the **build implies** always applies: `0.0.0-dev…` is `dev`,
+   `0.0.0-beta…` and the legacy `0.0.0-staging…` are `beta`, `0.0.0-pr-42` (hyphen optional) is
+   `pr-42`, everything else (including `2.0.0-beta.1`) is `stable`. A declared `X-PKey-Channel`
+   header can only **add** a second channel to check, never replace the first — otherwise a
+   pre-release build would simply declare `stable` and skip the entitlement check. The header is
+   normalised: `latest` is `stable`, `staging` is `beta`, the literal `pr` is the build's own
+   `pr-<n>`, and `pr42` is `pr-42`.
+4. **Malformed declarations are refusals; unknown names must be granted.** A header outside the
+   channel alphabet (`STAGING`, `Beta.2`) is `channel-not-entitled`. A well-formed name the gate
+   does not know (`nightly`, `staging-2`) is checked as a grant of exactly that name, so it is
+   never a free pass. Mapping the unknown onto `stable` — the one channel that is never
+   entitlement-checked — once meant such headers skipped the check outright.
 5. **`stable` is the floor** every license holds. A product that has never authored a `channels`
-   entitlement still serves its shipping release to everybody.
+   entitlement still serves its shipping release to everybody. Otherwise the `channels` grant
+   must name the channel, with two widenings: a `staging` grant also covers `beta`, and a `pr`
+   grant covers every `pr-<n>`. The full vocabulary is WIRE-CONTRACT-V3 §5.1; see
+   [channel](/docs/start/concepts/#core-nouns) in the glossary.
 
 ## Offline
 

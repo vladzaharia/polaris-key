@@ -1,6 +1,6 @@
 {
   "gateMatrixVersion": 2,
-  "description": "Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. Rows 1-15 are corpus v1's matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: \"token\" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here. The remaining rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: \"bundle\"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on that last row is deliberately NOT the status. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.",
+  "description": "Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1's matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: \"token\" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: \"bundle\"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.",
   "rows": [
     {
       "name": "ok — stable build inside window, valid doc",
@@ -35,25 +35,6 @@
             "updatedAt": 1699990000
           }
         }
-      },
-      "license": {
-        "licenseServiceEnabled": true,
-        "activation": "token",
-        "issuedAt": 1000,
-        "expiresAt": 4600,
-        "graceUntil": 2593000,
-        "now": 1500
-      },
-      "expect": { "status": "ok", "ok": true }
-    },
-    {
-      "name": "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel",
-      "gate": {
-        "version": "0.0.0-dev+abc123",
-        "channel": "staging",
-        "compatMin": "5.0.0",
-        "compatMax": "6.0.0",
-        "entitlements": {}
       },
       "license": {
         "licenseServiceEnabled": true,
@@ -437,6 +418,468 @@
         "ok": false,
         "reason": "version-too-new"
       }
+    },
+    {
+      "name": "ok — beta header, channels [stable, beta]",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "beta",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "beta"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "ok — beta header, channels [stable, staging] (alias)",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "beta",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "staging"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "ok — staging header, channels [stable, beta] (alias)",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "staging",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "beta"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "channel-not-entitled — beta header, channels [stable]",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "beta",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
+    },
+    {
+      "name": "ok — manual channel header, entitled by name",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "nightly",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "nightly"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "channel-not-entitled — manual channel header, not entitled",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "nightly",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "beta"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
+    },
+    {
+      "name": "channel-not-entitled — malformed channel header",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "STAGING",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "staging", "beta"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
+    },
+    {
+      "name": "ok — 0.0.0-beta build with beta entitlement",
+      "gate": {
+        "version": "0.0.0-beta.3",
+        "compatMin": "0.0.0-0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "beta"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "channel-not-entitled — 0.0.0-beta build without a beta entitlement",
+      "gate": {
+        "version": "0.0.0-beta.3",
+        "compatMin": "0.0.0-0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
+    },
+    {
+      "name": "ok — 0.0.0-staging build is the beta channel, channels [stable, beta]",
+      "gate": {
+        "version": "0.0.0-staging.1",
+        "compatMin": "0.0.0-0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "beta"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "ok — latest header is the stable channel",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "latest",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "ok — pr-42 header, channels grant the pr family",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "pr-42",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "pr"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "ok — pr header on a 0.0.0-pr-42 build, channels [stable, pr-42]",
+      "gate": {
+        "version": "0.0.0-pr-42+sha",
+        "channel": "pr",
+        "compatMin": "0.0.0-0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "pr-42"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
+    },
+    {
+      "name": "channel-not-entitled — pr-7 header, channels grant only pr-42",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "pr-7",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "pr-42"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
+    },
+    {
+      "name": "channel-not-entitled — stable header cannot loosen a 0.0.0-pr-42 build",
+      "gate": {
+        "version": "0.0.0-pr-42+sha",
+        "channel": "stable",
+        "compatMin": "0.0.0-0",
+        "compatMax": "99.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
+    },
+    {
+      "name": "channel-not-entitled — dev header without the dev entitlement",
+      "gate": {
+        "version": "2.0.0",
+        "channel": "dev",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "beta"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
+    },
+    {
+      "name": "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+      "gate": {
+        "version": "0.0.0-dev+abc123",
+        "channel": "staging",
+        "compatMin": "5.0.0",
+        "compatMax": "6.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "version-too-old",
+        "ok": false,
+        "reason": "version-too-old",
+        "allowedRange": { "min": "5.0.0", "max": "6.0.0" }
+      }
+    },
+    {
+      "name": "ok — dev build with the dev entitlement bypasses the window (R3-01)",
+      "gate": {
+        "version": "0.0.0-dev+abc123",
+        "channel": "staging",
+        "compatMin": "5.0.0",
+        "compatMax": "6.0.0",
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "dev"],
+            "updatedAt": 1699990000
+          }
+        }
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": { "status": "ok", "ok": true }
     }
   ]
 }

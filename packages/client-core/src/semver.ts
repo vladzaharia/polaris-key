@@ -1,5 +1,8 @@
-// Client-side semver + channel helpers (mirrors the worker's gate.ts). Pinned by the
-// conformance corpus so all SDKs agree.
+// Client-side semver + channel helpers. `channelForVersion` matches the Worker's function of
+// the same name (`packages/worker/src/core/channels.ts`, WIRE-CONTRACT-V3 §5.1 rule 2); only the
+// Worker narrows a PR build to `pr-<n>`. Pinned by the conformance corpus so all SDKs agree.
+
+import type { BuildChannel } from "@polaris-key/protocol";
 
 interface ParsedSemver {
   major: number;
@@ -48,11 +51,15 @@ export function compareSemver(a: string, b: string): -1 | 0 | 1 {
   return 0;
 }
 
-export function channelForVersion(
-  version: string,
-): "stable" | "staging" | "pr" | "dev" {
+/**
+ * The channel family a build's version implies, which an SDK sends as its default
+ * `X-PKey-Channel`: `dev` for `0.0.0-dev*`, `beta` for `0.0.0-beta*` and the legacy
+ * `0.0.0-staging*`, `pr` for `0.0.0-pr-<n>` (hyphen optional), `stable` for anything else.
+ */
+export function channelForVersion(version: string): BuildChannel {
   if (version.startsWith("0.0.0-dev")) return "dev";
-  if (version.startsWith("0.0.0-staging")) return "staging";
+  if (version.startsWith("0.0.0-beta") || version.startsWith("0.0.0-staging"))
+    return "beta";
   if (/^0\.0\.0-pr-?\d+/.test(version)) return "pr";
   return "stable";
 }

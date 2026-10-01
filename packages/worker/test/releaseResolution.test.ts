@@ -22,6 +22,7 @@ import { DEFAULT_SERVICES } from "../src/core/services.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
   classifyChannel,
+  floorChannelOf,
   resolutionPolicy,
   resolveChannel,
 } from "../src/services/release/channels.js";
@@ -724,6 +725,61 @@ describe("channel floors (R6-10)", () => {
       `${API}/releases?per_page=100`,
       `${API}/releases/tags/v2.0.0`,
     ]);
+  });
+
+  it("a staging selector reads the beta floor (P0-04, the legacy alias)", async () => {
+    expect(
+      floorChannelOf(classifyChannel("staging")!, { channel_workflow: null }),
+    ).toBe("beta");
+    expect(
+      floorChannelOf(classifyChannel("staging")!, { channel_workflow: "ci" }),
+    ).toBeNull();
+
+    const db = makeTestDb();
+    await seed(db);
+    const env = envFor();
+    const state: GitHubState = {
+      releases: [
+        release("v2.1.0-rc.1", { prerelease: true }),
+        release("v2.0.0"),
+      ],
+    };
+    const gh = github(state);
+    await syncReleaseStore(env, db, SLUG, NOW, gh.fetchImpl);
+    expect((await getChannelFloor(db, SLUG, "beta"))?.version).toBe(
+      "2.1.0-rc.1",
+    );
+
+    const versionOf = async (selector: string) => {
+      const res = await handleReleaseSurface(
+        req(),
+        env,
+        db,
+        product(),
+        "version",
+        { version: selector },
+        gh.fetchImpl,
+      );
+      return {
+        status: res.status,
+        body: res.status === 200 ? await res.json() : null,
+      };
+    };
+    expect(await versionOf("staging")).toMatchObject({
+      status: 200,
+      body: { version: "2.1.0-rc.1" },
+    });
+
+    // An older prerelease is all the list offers now: the floor refuses it for `beta`, and the
+    // `staging` alias answers exactly as `beta` does.
+    state.releases = [
+      release("v2.0.0-rc.5", { prerelease: true }),
+      release("v2.0.0"),
+    ];
+    state.byTag = {};
+    const beta = await versionOf("beta");
+    expect(beta.status).not.toBe(200);
+    expect(await versionOf("staging")).toEqual(beta);
   });
 
   it("pinned selectors and pr-<n> are never floored", async () => {

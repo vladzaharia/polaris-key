@@ -11,12 +11,13 @@ import {
   Input,
   useToast,
 } from "../../components/ui/index.js";
-import { ChannelMultiSelect } from "./shared.js";
+import { ChannelMultiSelect, useManualChannels } from "./shared.js";
 
 /**
  * The channel & version policy editor. An admin picks which release channels this license may
- * receive (a subset of stable/beta/staging/pr) and an optional version floor/ceiling; submitting
- * PATCHes the license. Diffs against the loaded values so an unchanged form is a no-op.
+ * receive (the canonical stable/beta/pr, the product's manual channels, and any legacy grant the
+ * license already holds, labelled) and an optional version floor/ceiling; submitting PATCHes the
+ * license. Diffs against the loaded values so an unchanged form is a no-op.
  */
 export function PolicySection({
   slug,
@@ -28,6 +29,7 @@ export function PolicySection({
   onSaved: () => void;
 }): React.ReactElement {
   const toast = useToast();
+  const manualChannels = useManualChannels(slug);
   const [channels, setChannels] = React.useState<string[]>(license.channels);
   const [minVersion, setMinVersion] = React.useState(license.minVersion ?? "");
   const [maxVersion, setMaxVersion] = React.useState(license.maxVersion ?? "");
@@ -92,6 +94,8 @@ export function PolicySection({
               <ChannelMultiSelect
                 value={channels}
                 onChange={setChannels}
+                manual={manualChannels}
+                held={license.channels}
                 idPrefix="policy-channel"
               />
             </div>

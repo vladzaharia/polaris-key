@@ -57,8 +57,8 @@ existed as separate slugs keeps working unchanged.
 Every version-shaped path in Release and Update — a changelog entry, a download, an
 appcast item — resolves against the same small vocabulary of **channels**. `stable` (or
 `latest`, or a bare pinned `X.Y.Z` tag) is the floor every product and every license holds.
-`beta` and `pr-<n>` resolve through an optional GitHub Actions workflow the product
-configures, falling back to prerelease heuristics when it hasn't. Only tags that are real app
+`beta` (and its legacy alias `staging`) and `pr-<n>` resolve through an optional GitHub Actions
+workflow the product configures, falling back to prerelease heuristics when it hasn't. Only tags that are real app
 releases are candidates, and the highest semver wins rather than the newest by creation order.
 `release.stableTagPattern` and `release.ignoreTags` say which tags count, so a rolling
 `channels` or `packs` release never becomes `latest`. A channel also never silently drops
@@ -69,7 +69,9 @@ over release tags — for anything project-specific, like a `nightly` or `canary
 writer, linkRepo/resync persist it, and resolution honours the names everywhere a channel
 can appear. The same
 resolution logic backs the download route, the appcast, and the version check, so the
-three can never disagree about what "beta" currently means. [GitHub sync](/docs/services/release/github-sync/)
+three can never disagree about what "beta" currently means. These are the same names a license
+is granted and an SDK sends as `X-PKey-Channel` (WIRE-CONTRACT-V3 §5.1); a manual channel
+named `staging` takes precedence over the alias. [GitHub sync](/docs/services/release/github-sync/)
 covers where a channel workflow is configured; Update's
 [Eligibility](/docs/services/update/eligibility/) page covers the full selector grammar.
 
