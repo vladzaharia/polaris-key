@@ -521,6 +521,16 @@ describe("resync and the release model v2 columns (P2-03)", () => {
       }),
     ])
       await db.run(s.sql, ...s.params);
+    // ...and the marker the ingest leaves on the release (P2-04): the descriptor owns this
+    // release's builds and classification from now on.
+    const marker = { status: "ingested", sha256: hash, source: "ci", at: NOW };
+    await db.run(
+      `UPDATE release_metadata SET metadata_json = json_set(metadata_json, '$.descriptor', json(?))
+        WHERE product = ? AND release_id = ?`,
+      JSON.stringify(marker),
+      SLUG,
+      "v1.0.0",
+    );
     const seqBefore = (await listReleaseMetadata(db, SLUG))[0]!.seq;
 
     await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
@@ -539,7 +549,13 @@ describe("resync and the release model v2 columns (P2-03)", () => {
       name: "djdl-1.0.0-arm64.dmg",
       kind: "dmg",
     });
-    expect((await listReleaseMetadata(db, SLUG))[0]!.seq).toBe(seqBefore);
+    const meta = (await listReleaseMetadata(db, SLUG))[0]!;
+    expect(meta.seq).toBe(seqBefore);
+    // The sync rewrote metadata_json from GitHub, and carried the descriptor marker over.
+    expect(JSON.parse(meta.metadata_json!)).toMatchObject({
+      tag: "v1.0.0",
+      descriptor: marker,
+    });
     expect(await listBuilds(db, SLUG, "v1.0.0")).toHaveLength(1);
   });
 

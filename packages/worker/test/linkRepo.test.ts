@@ -988,6 +988,8 @@ describe("linkRepo (GitHub-forward product creation)", () => {
           "tiers",
           "provisioning",
           "edgeMint",
+          // The app deliverable's declaration rides with the release document (P2-04).
+          "deliverables",
         ],
       },
     ]);

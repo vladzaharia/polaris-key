@@ -2406,6 +2406,24 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
 }
 
 /**
+ * Read back a persisted app declaration (`release_deliverables.def_json`, which resync writes
+ * from `ManifestRelease.app`). `null` for NULL, unparseable or non-app JSON — the implicit app
+ * deliverable, with legacy sniffing.
+ */
+export function parseManifestAppDeliverable(
+  defJson: string | null | undefined,
+): ManifestAppDeliverable | null {
+  if (!defJson) return null;
+  try {
+    return normalizeAppDeliverable({
+      [APP_DELIVERABLE_ID]: JSON.parse(defJson),
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * `deliverables.app`, as validated. `null` when the document has no `deliverables` block, or one
  * without an `app` entry (packs alone are ignored until P4-02): the implicit app deliverable.
  */
