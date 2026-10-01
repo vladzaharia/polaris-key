@@ -106,6 +106,8 @@ class ErrorCode:
     UPSTREAM_RATE_LIMITED: Final = "upstream_rate_limited"
     SERVER_MISCONFIGURED: Final = "server_misconfigured"
     INTERNAL_ERROR: Final = "internal_error"
+    RELEASE_RECORD_REJECTED: Final = "release_record_rejected"
+    FEED_NOT_COMPOSABLE: Final = "feed_not_composable"
     SERVICE_UNAVAILABLE: Final = "service-unavailable"
     SERVICE_DISABLED: Final = "service-disabled"
     LOCAL_ONLY: Final = "local-only"
@@ -191,6 +193,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "upstream_rate_limited",
     "server_misconfigured",
     "internal_error",
+    "release_record_rejected",
+    "feed_not_composable",
     "service-unavailable",
     "service-disabled",
     "local-only",
@@ -278,6 +282,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "upstream_rate_limited": "wire",
         "server_misconfigured": "wire",
         "internal_error": "wire",
+        "release_record_rejected": "wire",
+        "feed_not_composable": "wire",
         "service-unavailable": "client",
         "service-disabled": "client",
         "local-only": "client",

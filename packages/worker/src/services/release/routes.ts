@@ -7,6 +7,7 @@
  *     /release/channels/:channel/{promote,pin,unpin}  POST, `pkeyci_` + release:promote
  *     /release/releases/:releaseId/yank               POST, `pkeyci_` + release:yank
  *     /release/publish/{token,uploads,submit}         POST (P2-02, trusted publishing)
+ *     /release/records/:sha256                        GET, HEAD (P3-03, a CI-signed record)
  *
  * Returning `null` for an unmatched segment is the registry contract (`core/registry.ts`): only
  * Core decides what "no route here" means, which is what makes a disabled service, an
@@ -24,6 +25,7 @@ import { readCiJson, requireCiScope } from "../../core/ciScope.js";
 import { handleRelease } from "./surfaces.js";
 import { getReleaseConfig } from "./config.js";
 import { handlePublishRoute } from "./publish.js";
+import { handleRecordRoute } from "./recordRoute.js";
 import {
   applyPointerOp,
   yank,
@@ -41,6 +43,10 @@ export async function handleReleaseRoutes(
       return handleRelease(req, env, db, product, "changelog", {});
     return null;
   }
+
+  // A CI-signed release record by its hash (P3-03, `recordRoute.ts`).
+  if (rest.length === 2 && rest[0] === "records")
+    return handleRecordRoute(ctx, rest[1] as string);
 
   // Trusted publishing (P2-02): the OIDC exchange, upload tickets and the submit.
   if (rest.length === 2 && rest[0] === "publish")

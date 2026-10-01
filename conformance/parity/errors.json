@@ -190,6 +190,18 @@
       "description": "The byte host (dl.plrs.im) failed while answering; a flat, hardened JSON 500 that discloses nothing about the failure."
     },
     {
+      "code": "release_record_rejected",
+      "kind": "wire",
+      "service": "release",
+      "description": "A trusted-publishing submit carried a release record (pkey-release+jws) the ingest refused; nothing was stored. `reason` names the check: typ, kid, product-key, signature, claims, scheme, descriptor-mismatch or seq."
+    },
+    {
+      "code": "feed_not_composable",
+      "kind": "wire",
+      "service": "update",
+      "description": "The channel feed could not be composed into a document every v4 SDK accepts (its self-check failed, or a per-platform document is over 65 536 bytes), so the Worker signed nothing. Keep deciding from the committed feed."
+    },
+    {
       "code": "service-unavailable",
       "kind": "client",
       "service": "core",

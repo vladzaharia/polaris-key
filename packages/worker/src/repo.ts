@@ -619,14 +619,16 @@ export interface ReleaseConfigInput {
   operatorPolicyJson?: string | null;
   stableTagPattern?: string | null;
   ignoreTagsJson?: string | null;
+  /** `release.releaseKeys` (0044, P3-03); NULL when none or refused at link. */
+  releaseKeysJson?: string | null;
 }
 export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
   return {
     sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
             manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json,
             metadata_access, artifacts_access, access_source, operator_policy_json,
-            stable_tag_pattern, ignore_tags_json)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            stable_tag_pattern, ignore_tags_json, release_keys_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       r.product,
       r.ghOwner,
@@ -645,6 +647,7 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
       r.operatorPolicyJson ?? null,
       r.stableTagPattern ?? null,
       r.ignoreTagsJson ?? null,
+      r.releaseKeysJson ?? null,
     ],
   };
 }

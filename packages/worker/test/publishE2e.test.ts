@@ -51,6 +51,14 @@ import {
 } from "../src/core/publisher.js";
 import { setPublishJwksFetcherForTests } from "../src/services/release/publish.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
+import { verifyJws } from "@polaris-key/jws";
+import { TEST_KID, TEST_PUB } from "./seed.js";
+import {
+  RELEASE_KID,
+  RELEASE_PEM,
+  RELEASE_PUB,
+  releaseKeysJson,
+} from "./releaseKeysFixture.js";
 
 installDigestStream();
 
@@ -328,7 +336,10 @@ function out() {
   };
 }
 
-async function publish(s: Shim, over: { dryRun?: boolean } = {}) {
+async function publish(
+  s: Shim,
+  over: { dryRun?: boolean; releaseKeyPem?: string } = {},
+) {
   const stdout = out();
   const stderr = out();
   const result = await publishRelease({
@@ -521,5 +532,81 @@ describe("pkey release publish → the Worker", () => {
     );
     expect(s.puts).toEqual([]);
     expect(s.workerCalls).toEqual([`POST /${SLUG}/release/publish/token`]);
+  });
+
+  it("P3-03: with a release key, the CLI's signed record is ingested, served by its hash, and pinned by the signed feed", async () => {
+    // The product declares the corpus release key, in the repository and in the stored config.
+    const keyed = {
+      ...RELEASE_DOC,
+      release: {
+        ...RELEASE_DOC.release,
+        releaseKeys: [{ kid: RELEASE_KID, publicKey: RELEASE_PUB }],
+      },
+    };
+    await writeFile(
+      path.join(cwd, ".pkey/release.json"),
+      JSON.stringify(keyed),
+    );
+    await db.run(
+      "UPDATE release_config SET release_keys_json = ? WHERE product = ?",
+      releaseKeysJson(),
+      SLUG,
+    );
+    const s = shim();
+    const { result } = await publish(s, { releaseKeyPem: RELEASE_PEM });
+    expect(result.server).toMatchObject({
+      outcome: "created",
+      record: { stored: true },
+    });
+    const recordSha = sha(new TextEncoder().encode(result.recordJws!));
+    // The record route serves the exact bytes.
+    const rec = await call(
+      env,
+      db,
+      noFetch,
+      `${CONSOLE}/${SLUG}/release/records/${recordSha}`,
+    );
+    expect(rec.status).toBe(200);
+    expect(await rec.text()).toBe(result.recordJws);
+    // The feed pins it on every platform with a build.
+    const feed = await call(
+      env,
+      db,
+      noFetch,
+      `${CONSOLE}/${SLUG}/update/latest/feed.jws?platform=android`,
+    );
+    expect(feed.status).toBe(200);
+    const v = await verifyJws(
+      await feed.text(),
+      { [TEST_KID]: TEST_PUB },
+      { typ: "pkey-feed+jws" },
+    );
+    const payload = v!.payload as {
+      channel: string;
+      app: { targets: { platform: string; release: unknown }[] };
+    };
+    expect(payload.channel).toBe("stable");
+    expect(payload.app.targets.map((t) => t.platform)).toEqual([
+      "macos",
+      "ios",
+      "android",
+      "windows",
+      "linux",
+      "web",
+    ]);
+    for (const t of payload.app.targets)
+      expect(t.release).toEqual({
+        sha256: recordSha,
+        seq: 1,
+        version: "1.3.0",
+      });
+    // A re-run of the same publish (a minute later, so a new signing) is a no-op and keeps the
+    // first record.
+    vi.setSystemTime((NOW + 60) * 1000);
+    const again = await publish(shim(), { releaseKeyPem: RELEASE_PEM });
+    expect(again.result.server).toMatchObject({
+      outcome: "unchanged",
+      record: { sha256: recordSha, stored: false },
+    });
   });
 });

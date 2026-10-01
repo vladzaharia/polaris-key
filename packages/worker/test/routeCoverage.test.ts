@@ -86,6 +86,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/release/publish/token", ["post"]],
   ["/{product}/release/publish/uploads", ["post"]],
   ["/{product}/release/publish/submit", ["post"]],
+  // P3-03: a CI-signed release record by its hash.
+  ["/{product}/release/records/{sha256}", ["get"]],
   // P2b-04: all byte delivery is Distribution's (the installer, the download and P2-05's three
   // byte routes, the last three also on the bytes host), plus the CI rollout routes.
   ["/{product}/distribution/install.sh", ["get"]],
@@ -104,6 +106,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/hooks/asc", ["post"]],
   ["/{product}/update/appcast.xml", ["get"]],
   ["/{product}/update/{channel}/appcast.xml", ["get"]],
+  // P3-03: the signed channel feed.
+  ["/{product}/update/{channel}/feed.jws", ["get"]],
   ["/{product}/update/version", ["get"]],
   ["/{product}/identity/session", ["get"]],
   ["/{product}/identity/session/license", ["post"]],

@@ -642,7 +642,13 @@ own key could also publish that key as the expected one.
 
 - **Operator-only writes.** Only the console's `PUT`/`DELETE …/distribution/keys` (platform-admin
   session, CSRF, audited with the session's subject) create, change or remove an entry
-  (`source = 'admin'`). No ingest writes `dist_keys`; no manifest field reaches it.
+  (`source = 'admin'`). No ingest writes a `dist_keys` ENTRY. The one manifest field that
+  reaches the table is `.pkey/release` `releaseKeys` (P3-03; see "Release keys, the strict
+  verifier and the signed feed" below): on every link and resync it writes `release`-purpose
+  observations (`source = 'ci'`, under the same `MAX_KEY_OBSERVATIONS` cap, past which a new one
+  is silently not stored) and refreshes `observed_json` on a matching entry, exactly as a CI key
+  report does — but with no per-observation audit row. An unadopted one still flags the purpose
+  in the inventory until an operator adopts or dismisses it.
 - **CI reports observations, never entries.** A `type: key` report that matches an entry writes
   only that row's `observed_json` (the upsert's `DO UPDATE` names no other operator column). One
   that matches no entry becomes an observation row (`source = 'ci'`), audited as
@@ -1278,6 +1284,74 @@ guard with P3-12, each of which extends this section.
 - **Feeds do not move the clock floor**, and their freshness is judged against the effective
   clock, so winding the system clock back cannot revive an expired feed. A stale feed freezes
   updates (`none {stale}`); it never stops play.
+
+P3-03 adds the Worker's half: the record ingest, the record and feed routes, their four tables,
+the composer and the `seq` ceiling script.
+
+- **Record ingest refuses before it stores.** `POST /<p>/release/publish/submit` carries the
+  CI-signed record beside the descriptor, and checks it after the descriptor and before anything
+  is promoted. One code, `release_record_rejected`, with a reason per check, in order: `typ`
+  (`pkey-release+jws`), `kid` (one of the product's declared `releaseKeys`), `product-key` (that
+  key is none of the product's signing keys, current or retired — the Worker holds those), the
+  signature through the strict verifier (`signature`), `releaseRecordClaims` given the verifier's
+  non-wire-integer pointers (`claims`, the claims every v4 SDK runs), the version under the
+  deliverable's scheme (`scheme`, SemVer 2.0's grammar for `semver`), the record equals the
+  descriptor under the §2.4 mapping (`descriptor-mismatch`: a CI step that signs one thing and
+  submits another is refused; the descriptor must also carry the record's `seq` explicitly, so
+  a publish that loses a `seq` race is refused by P2-04's explicit-seq guard with nothing stored,
+  never stored unaudited without its record), and the release's `seq` (`seq`). A refusal stores
+  nothing. An
+  accepted record is written in the descriptor's own batch, guarded on that descriptor and seq,
+  into `release_records`, which is never rewritten: a re-run keeps the first record. Ingest is
+  defence in depth — clients trust only pinned release keys — so a record that slipped past it
+  still fails on every device. The Worker never holds, accepts or mints a release key's private
+  half. `.pkey/release` `releaseKeys` is repo-owned like `sparkleEd25519Pub`, so a repo writer can
+  declare a key they hold; that changes nothing on devices (they pin their own keys), and each
+  declared key is also written to the key inventory as a `release`-purpose OBSERVATION (never an
+  entry; `dist_keys` `source = 'ci'`, capped like CI reports, no per-observation audit row — see
+  "The key inventory is the independent control"), which flags the purpose for the operator
+  until they adopt or dismiss it.
+- **The record route** (`GET /<p>/release/records/<sha256>`) serves the stored bytes exactly
+  (their hash is the path) under the release METADATA mode, in the blob route's order: the
+  mode's request-level check first (under `entitled`, only a usable licence), then an unknown
+  hash is the plain 404, so the route is no oracle for which records exist; under `entitled` the
+  licence's window must also admit the record's own release (its stored version, pinned). A hash
+  learned elsewhere unlocks nothing the device could not already download. Public records are
+  `immutable`; gated ones `private, no-store`.
+- **The feed route** (`GET /<p>/update/<channel>/feed.jws?platform=`) holds nothing
+  device-specific: one stored document per (product, canonical channel, selector) in
+  `update_feed_docs`, re-signed when the composed content's hash changes or the copy is 450 s
+  old, so one signing serves every caller. Only a channel that offers, or once offered,
+  something is stored: a channel with no target and no `update_feed_state` row — any of the ~10⁷
+  `pr-<n>` spellings, an unused manual channel, a product with no app release — is signed at the
+  starting `seq` (1, or the ceiling) and writes no row, so an unauthenticated caller choosing
+  channel names cannot grow D1 (R10). What is left is one Ed25519 signing per request, behind
+  the per-address 60/min `updateFeed` bucket (`clientIp`, no /64 grouping: R10-04b). Access is
+  the METADATA mode, checked per request
+  before anything is composed or served; under `entitled` the licence must hold the CANONICAL
+  channel. The composer is the first reader of `dist_rollouts` and `dist_availability` that
+  decides what a device is offered, and it reads Distribution only through the `delivery` and
+  `outletCapabilities` hooks (`delivery.outlets()` is new and read-only); without the hook every
+  outlet entry is empty, so nothing is offered. A rollout is copied only for its own release, and
+  a store-mirrored rollout is never client-evaluated; a listing URL is composed from the
+  outlet's identity and kept only when it passes the per-kind prefixes.
+- **The composer's self-check.** Every document is checked with `feedClaims` (the v4 claims, with
+  the canonical channel) and `scanStrictJson` before signing, and a document over the 65 536-byte
+  payload cap after the per-platform split is not signed: `500 feed_not_composable`. So the
+  Worker never signs a feed every SDK would refuse, whichever of P3-03 and P3-12 lands first.
+- **`seq` and the ceiling script.** `update_feed_state` keeps one `seq` per (product, canonical
+  channel), bumped only on a change of content in one conditional write, capped at 2^53 − 1. The
+  recovery from a fast-forward (AT-3) is `pnpm --filter @polaris-key/worker feed:seq-ceiling
+--product <slug>`: in one batch it sets the product's `update_feed_ceiling` flag (never
+  cleared), raises every existing row to the ceiling and deletes the product's stored documents.
+  A row created later starts at the ceiling, so a channel with no row at recovery time — the
+  attacker's choice of a manual or `pr-<n>` channel — is covered. It is product-wide on purpose
+  and has no per-channel option. Its own risk is denial of updates for the product, not code
+  execution: it can only raise `seq`. The RUNBOOK runs it after any suspected product-key or
+  Worker compromise.
+- **Floors prompt, never block.** A floor (`min_supported`, a record's `minSupportedSeq`) reaches
+  devices as a prompt the player cannot dismiss, per platform, and play continues; License's
+  compatibility window is the only control that stops an old build.
 
 ### Boundaries that are weaker than they look
 

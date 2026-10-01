@@ -6,6 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "assemble": "node scripts/assemble-assets.mjs",
+    "feed:seq-ceiling": "node scripts/feed-seq-ceiling.mjs",
     "test": "vitest run",
     "test:workerd": "vitest run --config vitest.workers.config.ts",
     "typecheck:workerd": "tsc -p test-workerd",
@@ -18,6 +19,7 @@
   "dependencies": {
     "@noble/curves": "2.4.0",
     "@polaris-key/catalog": "workspace:*",
+    "@polaris-key/client-core": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/manifest": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
@@ -28,7 +30,6 @@
     "@cloudflare/vitest-pool-workers": "0.12.21",
     "@cloudflare/workers-types": "^4.20251001.0",
     "@polaris-key/cli": "workspace:*",
-    "@polaris-key/client-core": "workspace:*",
     "@polaris-key/node": "workspace:*",
     "@types/better-sqlite3": "^7.6.11",
     "better-sqlite3": "^11.8.0",

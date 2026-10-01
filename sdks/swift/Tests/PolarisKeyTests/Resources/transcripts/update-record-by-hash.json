@@ -1,0 +1,148 @@
+{
+  "transcriptVersion": 1,
+  "id": "update-record-by-hash",
+  "description": "The v4 update decision, twice. First call: the client fetches the signed `stable` feed, commits it, fetches the release record its macOS target pins by the record's SHA-256 (hash before signature), verifies it against the pinned release key and decides to download v1.3.0. Second call: the Worker answers the same feed bytes, so nothing changed; the record comes from the client's verified cache and no record request is made.",
+  "features": ["release.record", "update.decide"],
+  "requires": ["core.store", "update.feed"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["release", "distribution", "update"],
+    "update": {
+      "pinnedReleaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "outlet": { "id": "direct", "kind": "direct" },
+      "platform": "macos",
+      "arch": "arm64",
+      "installed": {
+        "version": "1.2.0",
+        "buildNumber": null,
+        "format": "dmg",
+        "engine": null
+      },
+      "methods": ["download"],
+      "cache": { "feeds": {}, "releaseRecords": {} }
+    }
+  },
+  "steps": [
+    {
+      "action": "updateDecide",
+      "args": { "channel": "stable" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/update/stable/feed.jws?platform=macos",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=60, no-transform",
+                "content-type": "application/jose"
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktZmVlZCtqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJjaGFubmVsIjoic3RhYmxlIiwic2VsZWN0b3IiOnt9LCJzZXEiOjEsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDA5MDAsImFwcCI6eyJkZWxpdmVyYWJsZSI6ImFwcCIsInZlcnNpb25TY2hlbWUiOiJzZW12ZXIiLCJ0YXJnZXRzIjpbeyJwbGF0Zm9ybSI6Im1hY29zIiwicmVsZWFzZSI6eyJzaGEyNTYiOiI1Mjk0MTA2YjRkYjg1OGE2MjFkM2Q5MTAxZTFiZmQ5OTE2ZWY1MjQwNzA1ZTE3OGJlMTI1MmZkNzQ3NTMwMTEwIiwic2VxIjoxLCJ2ZXJzaW9uIjoiMS4zLjAifSwiZmxvb3IiOm51bGwsImNyaXRpY2FsIjpmYWxzZSwib3V0bGV0cyI6eyJkaXJlY3QiOnsia2luZCI6ImRpcmVjdCIsImxpdmUiOnsidmVyc2lvbiI6IjEuMy4wIiwic2VxIjoxfSwiaGFsdGVkIjpmYWxzZX19fV19fQ.BOcUMlElQDegSHq1tPbOCsQQVmR7C0cauB7Z4-O-8086i6JoWxagDhiZ1LxNlKOh1XTmWtWuQwbB01n_-1BMDA"
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/release/records/5294106b4db858a621d3d9101e1bfd9916ef5240705e178be1252fd747530110",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=31536000, immutable, no-transform",
+                "content-type": "application/jose",
+                "etag": "\"5294106b4db858a621d3d9101e1bfd9916ef5240705e178be1252fd747530110\""
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJhcHAiLCJraW5kIjoiYXBwIiwidmVyc2lvbiI6IjEuMy4wIiwic2VxIjoxLCJpc3N1ZWRBdCI6MTY5OTk5NjQwMCwidGFnIjoidjEuMy4wIiwiY2hhbm5lbCI6InN0YWJsZSIsImJ1aWxkcyI6W3siaWQiOiJtYWNvcyIsInBsYXRmb3JtIjoibWFjb3MiLCJhcmNoIjoidW5pdmVyc2FsIiwiZm9ybWF0IjoiZG1nIiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGpkbC0xLjMuMC1tYWNvcy5kbWciLCJyb2xlIjoicGF5bG9hZCIsInNoYTI1NiI6ImNjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2MiLCJzaXplIjoxMDAwfV19XX0.JsCG08J5PW0DNL0INC_gbZPPmXMT_3t3aaMkVP6CKjuPi3TULBWS65Hahxru7z-yWcSYbA02K1d31FagAfBLBQ"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "channel": "stable",
+        "feed": "network",
+        "record": "network",
+        "errors": [],
+        "decision": {
+          "action": "binary",
+          "method": "download",
+          "release": {
+            "version": "1.3.0",
+            "seq": 1,
+            "sha256": "5294106b4db858a621d3d9101e1bfd9916ef5240705e178be1252fd747530110"
+          },
+          "build": "macos",
+          "mandatory": false,
+          "critical": false,
+          "prestage": [],
+          "discardStaged": false
+        }
+      }
+    },
+    {
+      "action": "updateDecide",
+      "note": "The same feed bytes: decide from the committed feed; the record is cached.",
+      "args": { "channel": "stable" },
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/update/stable/feed.jws?platform=macos",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=60, no-transform",
+                "content-type": "application/jose"
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktZmVlZCtqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJjaGFubmVsIjoic3RhYmxlIiwic2VsZWN0b3IiOnt9LCJzZXEiOjEsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDA5MDAsImFwcCI6eyJkZWxpdmVyYWJsZSI6ImFwcCIsInZlcnNpb25TY2hlbWUiOiJzZW12ZXIiLCJ0YXJnZXRzIjpbeyJwbGF0Zm9ybSI6Im1hY29zIiwicmVsZWFzZSI6eyJzaGEyNTYiOiI1Mjk0MTA2YjRkYjg1OGE2MjFkM2Q5MTAxZTFiZmQ5OTE2ZWY1MjQwNzA1ZTE3OGJlMTI1MmZkNzQ3NTMwMTEwIiwic2VxIjoxLCJ2ZXJzaW9uIjoiMS4zLjAifSwiZmxvb3IiOm51bGwsImNyaXRpY2FsIjpmYWxzZSwib3V0bGV0cyI6eyJkaXJlY3QiOnsia2luZCI6ImRpcmVjdCIsImxpdmUiOnsidmVyc2lvbiI6IjEuMy4wIiwic2VxIjoxfSwiaGFsdGVkIjpmYWxzZX19fV19fQ.BOcUMlElQDegSHq1tPbOCsQQVmR7C0cauB7Z4-O-8086i6JoWxagDhiZ1LxNlKOh1XTmWtWuQwbB01n_-1BMDA"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "channel": "stable",
+        "feed": "network",
+        "record": "cache",
+        "errors": [],
+        "decision": {
+          "action": "binary",
+          "method": "download",
+          "release": {
+            "version": "1.3.0",
+            "seq": 1,
+            "sha256": "5294106b4db858a621d3d9101e1bfd9916ef5240705e178be1252fd747530110"
+          },
+          "build": "macos",
+          "mandatory": false,
+          "critical": false,
+          "prestage": [],
+          "discardStaged": false
+        }
+      }
+    }
+  ]
+}

@@ -229,6 +229,33 @@ describe("release string character classes (R6-01, R6-07)", () => {
     expect(parse({ sparkleEd25519Pub: "PUBKEY==" }).ok).toBe(true);
   });
 
+  it("parses releaseKeys into { kid, publicKey } and defaults to []", () => {
+    const key = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo";
+    const res = parse({ releaseKeys: [{ kid: "ci-2026", publicKey: key }] });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.releaseKeys).toEqual([
+      { kid: "ci-2026", publicKey: key },
+    ]);
+    const none = parse({});
+    expect(none.ok && none.manifest.release?.releaseKeys).toEqual([]);
+  });
+
+  it("refuses a release key that is the Sparkle key, whatever the base64 spelling", () => {
+    const res = parse({
+      sparkleEd25519Pub: "11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=",
+      releaseKeys: [
+        {
+          kid: "ci",
+          publicKey: "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+        },
+      ],
+    });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors.join("\n")).toContain("sparkleEd25519Pub");
+  });
+
   it("drops requireSparkleSignature: a repo cannot disable the platform's own control", () => {
     const res = parse({
       artifactPolicy: { requireSparkleSignature: false, requireDmg: true },

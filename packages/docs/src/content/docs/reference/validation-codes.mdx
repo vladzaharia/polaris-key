@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 138 distinct emit sites.
+codes with their JSON-pointer paths. 144 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -17,6 +17,7 @@ the offending value, or the allowed set.
 | --- | --- | --- | --- | --- |
 | `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
 | `conflicting_versioning` | error | release | `/release/deliverables/app/versioning` | stableTagPattern and ignoreTags are declared both at the release root and under deliverables.app.versioning; keep one spelling. |
+| `content_keys_not_supported` | warning | release | `/release/contentKeys` | release.contentKeys is reserved for content-key delegation (P4-19) and is ignored. |
 | `distribution_requires_release` | error | product | `/modules/distribution` | The distribution service delivers release artifacts, so release must be enabled too. |
 | `duplicate_artifact_id` | error | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} is declared twice; each entry declares one build. |
 | `duplicate_profile_id` | error | product | `/licensing/profiles/${i}/id` | Profile ids must be unique. |
@@ -95,6 +96,9 @@ the offending value, or the allowed set.
 | `invalid_registration_policy` | error | product | `/devices/registration` | devices.registration must be one of $\{REGISTRATION_POLICIES.join(", ")\}. |
 | `invalid_release_access` | error | release | `/release/access/${key}` | release.access values must be public, authenticated, or licensed. |
 | `invalid_release_access` | error | release | `/release/access` | release.access must be an object when present. |
+| `invalid_release_key` | error | release | `/release/releaseKeys` | release.releaseKeys must be an array of 1 to $\{MAX_RELEASE_KEYS\} \{ kid, publicKey \} entries. |
+| `invalid_release_key` | error | release | `${at}/kid` | releaseKeys[].kid must match $\{RELEASE_KEY_KID_PATTERN.source\}. |
+| `invalid_release_key` | error | release | `${at}/publicKey` | releaseKeys[].publicKey must be a raw 32-byte Ed25519 public key in unpadded base64url (43 characters), as `pkey release keys generate` prints it. |
 | `invalid_schema` | error | schema | `/` | Schema must be a ProductCatalog object with entries[]. |
 | `invalid_secret_key` | error | product | `/provisioning/${i}/secretKey` | Provisioned secret keys must be catalog identifiers. |
 | `invalid_secret_ref` | error | release | `/edgeMint/${i}/signingKeySecret` | Edge mint signing key refs must be stable uppercase names. |
@@ -135,6 +139,7 @@ the offending value, or the allowed set.
 | `noncanonical_channel_name` | warning | release | `${at}/name` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1). |
 | `outlet_kind_mismatch` | error | distribution | `/outlets/${id}/kind` | outlet $\{id\} is itself an outlet kind, so its kind may only be $\{id\} (or omitted); declare another id, such as $\{id\}-beta, for an outlet of a different kind. |
 | `pack_deliverables_not_supported` | warning | release | `/release/deliverables/${id}` | pack deliverables are not supported yet; $\{id\} is ignored. |
+| `release_key_reused` | error | release | `${at}/publicKey` | A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs. |
 | `reserved_channel_name` | warning | release | `${at}/name` | This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1). |
 | `reserved_slug` | error | product | `/product/slug` | product.slug "$\{productSlug\}" collides with a reserved platform route. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/deviceLimit` | deviceLimit on a tier is ignored; use policyDeviceLimit. |
@@ -153,6 +158,7 @@ the offending value, or the allowed set.
 | `unknown_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier references unknown profile $\{profile\}. |
 | `unsupported_release_provider` | error | release | `/release/provider/type` | Only github is implemented. |
 | `update_requires_distribution` | error | product | `/modules/update` | The update service serves a feed over distribution's delivery state, so distribution must be enabled too. |
+| `weak_release_key` | error | release | `${at}/publicKey` | releaseKeys[].publicKey is a non-canonical or small-order Ed25519 point, which no v4 verifier accepts a signature from (WIRE-CONTRACT-V4 §1.1). |
 
 ## Release descriptor codes
 

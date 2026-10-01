@@ -179,6 +179,11 @@ paths:
                           download: https://key.plrs.im/djdl/release/dl
                           builds: https://dl.plrs.im/djdl/release/builds/{selector}/{buildId}
                           blobs: https://dl.plrs.im/djdl/release/blobs/sha256/{sha256}
+                          record: https://key.plrs.im/djdl/release/records/{sha256}
+                        releaseKeyFingerprints:
+                          [
+                            d8f1a6a3f0b2a1c7e6d9b4c3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3,
+                          ]
                       distribution:
                         enabled: true
                         configured: true
@@ -196,6 +201,7 @@ paths:
                           version: https://key.plrs.im/djdl/update/version
                           appcast: https://key.plrs.im/djdl/update/appcast.xml
                           channelAppcast: https://key.plrs.im/djdl/update/{channel}/appcast.xml
+                          feed: https://key.plrs.im/djdl/update/{channel}/feed.jws
                         archParameter: [arm64, x86_64]
                       identity:
                         enabled: true
@@ -3235,7 +3241,12 @@ paths:
         Upload each object with `x-amz-checksum-sha256` so R2 records its digest. The route
         answers 404 until the environment's parent R2 token (`R2_ACCOUNT_ID`,
         `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`, `BLOBS_BUCKET_NAME`) and the
-        `BLOBS` binding exist. No CORS. `bad_objects` and `bad_body` are 400.
+        `BLOBS` binding exist. No CORS. `bad_objects`, `bad_releases` and `bad_body` are 400.
+        P3-03: `releases` names the releases CI is about to publish (at most 16
+        `{deliverable, version}`), and `seqs` answers each one's `seq` — the stored one for a
+        release that exists (the GitHub sync may have created it first), else the next one for
+        its deliverable, counting the new releases named before it. CI signs that `seq` into
+        the release record and the descriptor; a re-run gets the stored value again.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3258,6 +3269,24 @@ paths:
                       sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
                       size: { type: integer, minimum: 0, maximum: 5363466240 }
                       gated: { type: boolean }
+                releases:
+                  type: array
+                  maxItems: 16
+                  items:
+                    type: object
+                    required: [deliverable, version]
+                    properties:
+                      deliverable:
+                        {
+                          type: string,
+                          pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+                          maxLength: 64,
+                        }
+                      version:
+                        {
+                          type: string,
+                          pattern: "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$",
+                        }
       responses:
         "200":
           description: The ticket, the credentials, the staging keys and `nextSeq`.
@@ -3310,6 +3339,16 @@ paths:
                   nextSeq:
                     type: object
                     additionalProperties: { type: integer }
+                  seqs:
+                    type: array
+                    description: One entry per `releases` entry, in order (empty without `releases`).
+                    items:
+                      type: object
+                      required: [deliverable, version, seq]
+                      properties:
+                        deliverable: { type: string }
+                        version: { type: string }
+                        seq: { type: integer, minimum: 1 }
         "400": { $ref: "#/components/responses/CiRefusal" }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }
@@ -3340,6 +3379,20 @@ paths:
         `promote_failed`) may be sent again; every other refusal is final. A descriptor's
         `title`, `notes` and `publishedAt` are the release's until a GitHub release with the
         same tag is synced, after which GitHub's are shown. No CORS.
+        P3-03: `record` is the CI-signed release record (`pkey-release+jws`, WIRE-CONTRACT-V4
+        §2.4) — the descriptor moved into a signed payload, signed with a key from the
+        product's declared `releaseKeys`. It is checked after the descriptor and before anything
+        is promoted, and stored (never rewritten) in the descriptor's batch. A refusal is
+        `release_record_rejected` with a `reason`: `typ`, `kid` (not a declared release key),
+        `product-key` (the key is one of the product's signing keys), `signature`, `claims`,
+        `scheme` (the version does not parse under the deliverable's scheme; SemVer 2.0's
+        grammar for `semver`), `descriptor-mismatch` (the record is not the descriptor under
+        §2.4's mapping, or the descriptor does not carry the record's `seq` explicitly) — all
+        400 — or `seq` (409, `retryable`: not the release's `seq`; ask the upload route again).
+        Because the descriptor carries the `seq`, two publishes racing for one new `seq` are
+        refused by the ingest (`seq_not_increasing` or the retryable `release_exists`) with
+        nothing stored. A re-run whose release already holds a record keeps it
+        (`record.stored: false`).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3355,6 +3408,10 @@ paths:
                 descriptor:
                   type: object
                   description: A release descriptor (`release-descriptor.schema.json` in `@polaris-key/manifest`).
+                record:
+                  type: string
+                  maxLength: 88844
+                  description: "P3-03: the compact JWS of the release record (`pkey-release+jws`)."
                 dryRun: { type: boolean }
       responses:
         "200":
@@ -3380,6 +3437,16 @@ paths:
                     type: array
                     items: { type: string }
                     description: "`dryRun` only: storage keys of ticket objects not yet uploaded, judged as if they were."
+                  record:
+                    type: object
+                    description: >
+                      P3-03, when the submit carried a record: its `sha256` (the record route's
+                      path) and `kid` on a dry run; otherwise the release's stored record and
+                      whether it is this submit's (`stored`).
+                    properties:
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      kid: { type: string }
+                      stored: { type: boolean }
               examples:
                 created:
                   summary: test/publishRoutes.test.ts
@@ -3396,6 +3463,57 @@ paths:
         "403": { $ref: "#/components/responses/CiRefusal" }
         "404": { $ref: "#/components/responses/CiRefusal" }
         "409": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/records/{sha256}:
+    get:
+      operationId: getReleaseRecord
+      tags: [release]
+      summary: A CI-signed release record, by its SHA-256
+      description: >
+        P3-03 (WIRE-CONTRACT-V4 §2.4–§2.5). The stored `pkey-release+jws` exactly as CI signed
+        it, so the lowercase hex SHA-256 of the body equals the path: a client checks that hash
+        before any signature work, then verifies the record against the release keys its binary
+        pins (never the product trust set). `ETag` is the quoted hash; `If-None-Match` answers
+        304; `HEAD` returns the same headers. Governed by the release METADATA access mode:
+        `public` answers anyone with `public, max-age=31536000, immutable, no-transform`;
+        otherwise `private, no-store, no-transform`. The mode's request-level check runs first
+        (under `entitled` it proves only a usable licence); an unknown hash is then the plain
+        404, so the route is no oracle for which records exist; under `entitled` the licence's
+        version window must also admit the record's own release (its stored version, pinned —
+        the byte blob route's rule). Discovery advertises it as `release.endpoints.record`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: sha256
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+        - { $ref: "#/components/parameters/IfNoneMatch" }
+      responses:
+        "200":
+          description: "The compact JWS, `application/jose`."
+          content:
+            application/jose:
+              schema: { type: string }
+        "304":
+          description: Not modified (`If-None-Match`).
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The record rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    options:
+      operationId: preflightGetReleaseRecord
+      tags: [release]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: sha256, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── update ────────────────────────────────────────────────────────────────────
   /{product}/update/appcast.xml:
@@ -3510,6 +3628,73 @@ paths:
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
     options:
       operationId: preflightGetChannelAppcast
+      tags: [update]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/update/{channel}/feed.jws:
+    get:
+      operationId: getChannelFeed
+      tags: [update]
+      summary: The signed channel feed (pkey-feed+jws)
+      description: >
+        P3-03 (WIRE-CONTRACT-V4 §2.3). The device-less `pkey-feed+jws` for one channel, signed
+        with the product key: per platform, the release target (pinning a CI-signed release
+        record by hash, `seq` and version), that platform's floor (a prompt, never a block),
+        `critical`, and an entry per live outlet of the platform (keyed by outlet id, with its
+        `kind`, the newest release `live` there, `halted`, a client-evaluated `rollout`, a store
+        `listingUrl` and any operator-narrowed `capabilities`). Every caller of a channel gets
+        the same bytes. The `channel` claim is the CANONICAL channel (`latest` → `stable`;
+        `staging` → `beta` unless the product declares a manual `staging`), which keys the
+        client's `seq` floor. `seq` is shared by every selector of the channel and moves only
+        when the composed content changes; `expiresAt = issuedAt + 900`; a stored copy is
+        re-signed once it is 450 s old. A channel that has never offered a target is signed at
+        the starting `seq` (1, or the ceiling after a `feed:seq-ceiling` recovery) with empty
+        `targets`, and nothing is stored for it. The channel-wide document (`selector: {}`) is served
+        while its payload fits 65 536 bytes, else the per-platform one (`selector:
+        {platform}`); a document that fails the composer's self-check (the v4 claims and the
+        strict JSON profile) or does not fit is never signed: `500 feed_not_composable`.
+        Governed by the release METADATA access mode; under `entitled` the licence's
+        entitlements must hold the canonical channel (403 `channel_not_allowed`). `public`
+        caches `public, max-age=60, no-transform`, every other mode `private, no-store,
+        no-transform`. An unknown channel, or a missing or unknown `platform`, is the plain
+        404. Discovery advertises it as `update.endpoints.feed`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - name: platform
+          in: query
+          required: true
+          schema:
+            { type: string, enum: [macos, ios, android, windows, linux, web] }
+      responses:
+        "200":
+          description: "The compact JWS, `application/jose`."
+          content:
+            application/jose:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The feed rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "500":
+          description: "`feed_not_composable` — nothing was signed; keep deciding from the committed feed."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightGetChannelFeed
       tags: [update]
       summary: CORS preflight
       description: >

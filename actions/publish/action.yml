@@ -45,6 +45,12 @@ inputs:
     description: The Polaris Key origin.
     required: false
     default: https://key.plrs.im
+  release-key:
+    description: The release key's PKCS#8 PEM, from a GitHub Environment secret (secrets.PKEY_RELEASE_KEY). With it the Action signs the release record (pkey-release+jws) under the .pkey/release releaseKeys entry it matches. Required when .pkey/release declares releaseKeys. Never logged or sent.
+    required: false
+  min-supported-seq:
+    description: The release record's minSupportedSeq — the oldest release seq installs on the platforms this release targets should be prompted up to.
+    required: false
   dry-run:
     description: Print the descriptor and the server's verdict; upload and write nothing.
     required: false

@@ -154,9 +154,18 @@ importers:
 
   packages/cli:
     dependencies:
+      '@polaris-key/client-core':
+        specifier: workspace:*
+        version: link:../client-core
+      '@polaris-key/jws':
+        specifier: workspace:*
+        version: link:../shared-jws
       '@polaris-key/manifest':
         specifier: workspace:*
         version: link:../shared-manifest
+      '@polaris-key/protocol':
+        specifier: workspace:*
+        version: link:../shared-protocol
       yaml:
         specifier: ^2.6.1
         version: 2.9.0
@@ -316,6 +325,9 @@ importers:
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog
+      '@polaris-key/client-core':
+        specifier: workspace:*
+        version: link:../client-core
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
@@ -341,9 +353,6 @@ importers:
       '@polaris-key/cli':
         specifier: workspace:*
         version: link:../cli
-      '@polaris-key/client-core':
-        specifier: workspace:*
-        version: link:../client-core
       '@polaris-key/node':
         specifier: workspace:*
         version: link:../sdk-node

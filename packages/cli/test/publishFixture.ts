@@ -91,6 +91,21 @@ release:
         - { id: web, platform: web, arch: wasm32, format: zip, match: "Diceroll-*-web.zip" }
 `;
 
+/** The corpus's CI-held release test key (tools/sign-corpus.ts `KEYS`): never a product key. */
+export const RELEASE_KID = "djdl-release-test-2026";
+export const RELEASE_PUB = "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE";
+export const RELEASE_PEM =
+  "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIMPC/pYWRN17C6MFlFHhktg/TQgXNUydx+PQtkD9KTBs\n-----END PRIVATE KEY-----\n";
+/** The base64 body of the private key: it must never appear in a log or a request. */
+export const RELEASE_PEM_BODY =
+  "MC4CAQAwBQYDK2VwBCIEIMPC/pYWRN17C6MFlFHhktg/TQgXNUydx+PQtkD9KTBs";
+
+/** `RELEASE_YAML` with the release key declared. */
+export const RELEASE_YAML_KEYED = RELEASE_YAML.replace(
+  "  binaryName: diceroll\n",
+  `  binaryName: diceroll\n  releaseKeys:\n    - kid: ${RELEASE_KID}\n      publicKey: ${RELEASE_PUB}\n`,
+);
+
 /** Deterministic bytes of length n. */
 export function bytesOf(n: number, seed: number): Uint8Array {
   const out = new Uint8Array(n);
@@ -265,12 +280,21 @@ export function fakeServer(): FakeServer {
             present: present.has(o.sha256),
           })),
           nextSeq: { app: 7 },
+          // P3-03: each named release's seq (a fixed 7 here, like nextSeq).
+          seqs: (
+            (
+              rec.body as {
+                releases?: { deliverable: string; version: string }[];
+              }
+            ).releases ?? []
+          ).map((r) => ({ ...r, seq: 7 })),
         });
       }
       case "/release/publish/submit": {
         const b = rec.body as {
           dryRun?: boolean;
           descriptor: { tag?: string };
+          record?: string;
         };
         return json({
           ok: true,
@@ -279,6 +303,14 @@ export function fakeServer(): FakeServer {
           outcome: "created",
           descriptorSha256: "f".repeat(64),
           ...(b.dryRun ? { planned: {}, unverified: [] } : {}),
+          ...(b.record
+            ? {
+                record: {
+                  sha256: sha(b.record),
+                  stored: true,
+                },
+              }
+            : {}),
         });
       }
       default:
