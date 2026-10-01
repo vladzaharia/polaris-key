@@ -407,6 +407,47 @@ export const ARCH_VALUES: readonly Arch[] = [
   "wasm32",
 ];
 
+/** Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal. */
+export const StoreBackend = {
+  keyring: "keyring",
+  keychain: "keychain",
+  keystore: "keystore",
+  file: "file",
+  memory: "memory",
+  indexeddb: "indexeddb",
+  custom: "custom",
+} as const;
+export type StoreBackend = (typeof StoreBackend)[keyof typeof StoreBackend];
+
+/** Every `StoreBackend` value, in source order. */
+export const STORE_BACKEND_VALUES: readonly StoreBackend[] = [
+  "keyring",
+  "keychain",
+  "keystore",
+  "file",
+  "memory",
+  "indexeddb",
+  "custom",
+];
+
+/** Why a token store is weaker than its platform's best option, the `degraded.reason` of `Store.status()` (P1b-09). Mirrors `STORE_DEGRADED_REASONS` in `@polaris-key/client-core/store`; a test keeps them equal. */
+export const StoreDegradedReason = {
+  keyringUnavailable: "keyring-unavailable",
+  keyringError: "keyring-error",
+  legacyKeychain: "legacy-keychain",
+  notPersistent: "not-persistent",
+} as const;
+export type StoreDegradedReason =
+  (typeof StoreDegradedReason)[keyof typeof StoreDegradedReason];
+
+/** Every `StoreDegradedReason` value, in source order. */
+export const STORE_DEGRADED_REASON_VALUES: readonly StoreDegradedReason[] = [
+  "keyring-unavailable",
+  "keyring-error",
+  "legacy-keychain",
+  "not-persistent",
+];
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 export const HeaderName = {
   arch: "X-PKey-Arch",

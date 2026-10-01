@@ -68,9 +68,10 @@ Packs (P4) need proper data and cache directories
   - Python `sdks/python/src/polaris_key/devices/store.py:170-231` and `core/context.py:125-128`;
   - Swift `sdks/swift/Sources/PolarisKeyCore/Store.swift:213-284` (`defaultConfigDir`, `setToken`)
     and `PolarisKey/PolarisKeyClient.swift:363` (`storeFailure()`).
-- The corpus generator: `tools/sign-corpus.ts:2117-2307` (the fingerprint helpers, then
-  `buildFingerprintCorpus` at `:2207-2307`; `main()` at `:2334-2379`; corrected by the P1b-09
-  plan); the runners
+- The corpus generator: `tools/sign-corpus.ts:3657-4305` (the fingerprint helpers at `:3657`,
+  P1b-09's derivation sections and their self-check at `:3747-4173`, then
+  `buildFingerprintCorpus` at `:4175`; `main()` at `:4308`; re-anchored after P1-01 moved the
+  file); the runners
   `conformance/runners/node/fingerprint.test.ts`, `sdks/python/tests/test_fingerprint_conformance.py`,
   `sdks/swift/Tests/PolarisKeyTests/FingerprintConformanceTests.swift`,
   `packages/worker/test/fingerprintCorpus.test.ts`.
@@ -191,6 +192,14 @@ but Python does too), and `~/.config` on macOS in Swift by design (`Store.swift:
 - Read both keychains (data-protection first) so existing items still load, and delete from both on
   clear.
 - The alternative is to document the trade-off (notes/E9 §12 item 5); the plan chooses.
+- (Correction, P1b-09 plan §5.6 and H4, from review: an attribute-only read cannot detect the
+  missing entitlement. Measured on macOS 27, an unentitled `SecItemCopyMatching` on the
+  data-protection keychain answers `errSecItemNotFound` (−25300), not −34018; only add, update
+  and delete answer −34018. So `status()` follows a "not found" with a `SecItemDelete` of a
+  sentinel item that never exists (`pkey-status-probe`): −34018 reports `legacy-keychain`, "not
+  found" means the process is entitled. An entitled process whose token is still in the legacy
+  keychain also reports `legacy-keychain` until a read migrates it. **P5-05** must follow this
+  real probe, not the plan's read-only one.)
 
 **6. `ramBucket`.** Node emits `"0.5"`-style values below 1 GiB (`fingerprint.ts:62-66`), while Python
 and Swift omit the component. **Recommend Node omits it too.** Pin the rule in a `ramBuckets`
@@ -215,22 +224,22 @@ section: byte counts to a bucket or `omitted`.
 
 ## Acceptance criteria
 
-- [ ] `program/plans/P1b-09.md` is merged (approved) before any code change.
-- [ ] `fingerprint.json` carries the new sections with the mirrors (Swift, Godot);
+- [x] `program/plans/P1b-09.md` is merged (approved) before any code change.
+- [x] `fingerprint.json` carries the new sections with the mirrors (Swift, Godot);
       `mise exec node@22 -- pnpm gen:corpus -- --check` passes.
-- [ ] Node, Python and Swift pass every section that applies to them; the Worker's fingerprint corpus
+- [x] Node, Python and Swift pass every section that applies to them; the Worker's fingerprint corpus
       test passes.
-- [ ] No `wmic` invocation remains in `packages/sdk-node/src` or `sdks/python/src`
+- [x] No `wmic` invocation remains in `packages/sdk-node/src` or `sdks/python/src`
       (`grep -rn wmic` is empty).
-- [ ] On Linux, a unit test with `product_uuid` readable and unreadable yields the same
+- [x] On Linux, a unit test with `product_uuid` readable and unreadable yields the same
       `machineUuid`.
-- [ ] Each SDK reports `degraded` in a test where the keyring backend is missing or failing.
-- [ ] The directory defaults have unit tests per OS, and the config directory is unchanged unless the
+- [x] Each SDK reports `degraded` in a test where the keyring backend is missing or failing.
+- [x] The directory defaults have unit tests per OS, and the config directory is unchanged unless the
       plan decided otherwise.
-- [ ] `docs/PRIVACY.md` lists the new sources; `pnpm --filter @polaris-key/docs gen:check` passes.
-- [ ] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
+- [x] `docs/PRIVACY.md` lists the new sources; `pnpm --filter @polaris-key/docs gen:check` passes.
+- [x] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
       passes.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 

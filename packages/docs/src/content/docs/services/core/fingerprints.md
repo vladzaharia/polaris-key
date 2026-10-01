@@ -25,10 +25,26 @@ existing device.
 | `ramBucket`      | Total RAM rounded down to a power of two in GiB  |
 | `machineModel`   | The model identifier                             |
 
-Two of those deserve their reasoning. `ramBucket` is bucketed so a BIOS or OS reporting 15.9
-versus 16.0 GiB does not read as a hardware change. `primaryMac` is selected by **address**
+Two of those deserve their reasoning. `ramBucket` is whole GiB rounded down to a power of two
+(omitted below 1 GiB), so what it buys is stability while the reported total stays between two
+powers of two: a 16 GB machine whose OS reports 15.4 GiB buckets to `8`, and keeps doing so.
+`primaryMac` is selected by **address**
 rather than by interface name, because interface naming is unstable across reboots and OS
 upgrades — sorting by name would make `en0` becoming `enp3s0` look like a NIC swap.
+
+### Where components come from
+
+The per-OS sources, and the three rules the conformance corpus pins (the Windows CIM parser, the
+Linux anchor and the RAM bucket), are normative in WIRE-CONTRACT-V3 §6.1
+(`docs/security/WIRE-CONTRACT-V3.md`). In short:
+
+- **Windows** reads `boardSerial` and `machineModel` with one PowerShell `Get-CimInstance` call
+  (`Win32_BaseBoard.SerialNumber`, `Win32_ComputerSystem.Model`), the same WMI properties the
+  retired `wmic` tool read, so Windows 10 values are unchanged.
+- **Linux** reads the anchor from `/etc/machine-id`, else `/var/lib/dbus/machine-id`, skipping a
+  blank file and systemd's `uninitialized`. It never reads the root-only DMI `product_uuid` or
+  `board_serial`, so root and non-root processes present the same fingerprint. A host with no
+  usable machine-id (most container images) has no anchor.
 
 A component that cannot be read is **omitted, never substituted**. A placeholder would make
 every partial reader collide with every other partial reader; an omission merely degrades match

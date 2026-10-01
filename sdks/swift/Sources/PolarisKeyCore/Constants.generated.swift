@@ -6,6 +6,8 @@
 // difference. To change a constant, edit its source and regenerate.
 
 // `ServiceSlug` is not here: ServiceSlug.generated.swift (pnpm gen:services) declares it.
+// `StoreBackend` and `StoreDegradedReason` are not here: Store.swift declares them as
+// `String`-backed enums.
 
 /// Every error code the Worker answers with or an SDK raises (conformance/parity/errors.json). Hosts match on these strings.
 public enum ErrorCode {

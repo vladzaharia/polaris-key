@@ -53,6 +53,7 @@ from .models import (
     BlockReason,
 )
 from .semver import channel_for_version
+from .dirs import ProductDirs, default_dir_bases, resolve_dirs
 from .store import Store
 from .._version import SDK_NAME, SDK_VERSION
 from ..discovery import (
@@ -123,9 +124,7 @@ def normalize_base_url(raw: str) -> str:
 
 
 def _default_config_dir() -> str:
-    return os.environ.get("XDG_CONFIG_HOME") or os.path.join(
-        os.path.expanduser("~"), ".config"
-    )
+    return default_dir_bases().config
 
 
 # ── The §5 status taxonomy every signed-document GET collapses to ───────────────────
@@ -195,6 +194,9 @@ class CoreContext:
         channel: Optional[str] = None,
         store: Optional[Store] = None,
         config_dir: Optional[str] = None,
+        data_dir: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        state_dir: Optional[str] = None,
         client: Optional[httpx.Client] = None,
         trust_refresh: bool = True,
         request_timeout: Optional[float] = DEFAULT_REQUEST_TIMEOUT_SECONDS,
@@ -202,6 +204,15 @@ class CoreContext:
         local_only: bool = False,
     ) -> None:
         self.product = product_slug
+        #: This product's config, data, cache and state directories (P1b-09). Every option
+        #: is a BASE with ``<product>`` appended; resolved, never created.
+        self.dirs: ProductDirs = resolve_dirs(
+            product_slug,
+            config_dir=config_dir,
+            data_dir=data_dir,
+            cache_dir=cache_dir,
+            state_dir=state_dir,
+        )
         # `is None`, not falsy: an EMPTY `base_url` is a misconfiguration the host should
         # hear about, not a request for the default. Node's `??` draws the same line.
         self.base_url = normalize_base_url(

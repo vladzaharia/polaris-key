@@ -578,13 +578,15 @@ export function buildModel(sources: Sources): Model {
       "Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).",
       fromValues(sources.reasons),
     ),
-    ...sources.enums.map((def) =>
-      group(
-        def.name[0]!.toUpperCase() + def.name.slice(1),
+    ...sources.enums.map((def) => {
+      const name = def.name[0]!.toUpperCase() + def.name.slice(1);
+      return group(
+        name,
         def.description,
         fromValues(def.values),
-      ),
-    ),
+        !SWIFT_DECLARED.has(name),
+      );
+    }),
     group(
       "HeaderName",
       "The `X-PKey-*` request header names (wire contract v3 §5).",
@@ -780,10 +782,19 @@ function swiftScalar(s: Scalar): string {
     : `public let ${s.name}: [String: String] = [\n${entries.map(([k, x]) => `    ${q(k)}: ${q(x)},`).join("\n")}\n]`;
 }
 
+/** Enum groups Swift declares by hand as `String`-backed enums, so a generated caseless enum of
+ *  the same name would clash. `KeychainStoreTests` pins their raw values. */
+export const SWIFT_DECLARED: ReadonlySet<string> = new Set([
+  "StoreBackend", // Store.swift (P1b-09)
+  "StoreDegradedReason", // Store.swift (P1b-09)
+]);
+
 export function renderSwift(model: Model): string {
   const out: string[] = [
     `${banner("//")}
 // \`ServiceSlug\` is not here: ServiceSlug.generated.swift (pnpm gen:services) declares it.
+// \`StoreBackend\` and \`StoreDegradedReason\` are not here: Store.swift declares them as
+// \`String\`-backed enums.
 `,
   ];
   for (const g of model.groups) {

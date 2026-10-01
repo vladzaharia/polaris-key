@@ -39,7 +39,7 @@ from .core.models import (
     DocProfile,
     LicenseDoc,
 )
-from .core.store import Store
+from .core.store import Store, StoreStatus
 from .core.sync import SyncDeps, SyncResult, sync as run_sync
 from .core.telemetry import build_snapshot, report_snapshot
 from .core.token import (
@@ -129,6 +129,9 @@ class PolarisKeyClient:
         channel: Optional[str] = None,
         store: Optional[Store] = None,
         config_dir: Optional[str] = None,
+        data_dir: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        state_dir: Optional[str] = None,
         client: Optional[httpx.Client] = None,
         trust_refresh: bool = True,
         request_timeout: Optional[float] = DEFAULT_REQUEST_TIMEOUT_SECONDS,
@@ -154,6 +157,9 @@ class PolarisKeyClient:
             channel=channel,
             store=store,
             config_dir=config_dir,
+            data_dir=data_dir,
+            cache_dir=cache_dir,
+            state_dir=state_dir,
             client=client,
             trust_refresh=trust_refresh,
             request_timeout=request_timeout,
@@ -356,6 +362,19 @@ class PolarisKeyClient:
 
     def is_licensed(self, now: Optional[int] = None) -> bool:
         return self.license.is_licensed(now)
+
+    def store_status(self) -> Optional[StoreStatus]:
+        """Where the token store keeps the token, and why if that is weaker than this
+        platform's best option (P1b-09, R4-11). ``None`` when the store does not report (a
+        host store without ``status()``). Never raises."""
+        status = getattr(self.core.store, "status", None)
+        if not callable(status):
+            return None
+        try:
+            result = status()
+        except Exception:
+            return None
+        return result if isinstance(result, StoreStatus) else None
 
     def get_config(self, key: str, fallback: Any = None) -> Any:
         return self.config.get_config(key, fallback)

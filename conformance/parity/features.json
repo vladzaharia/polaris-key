@@ -302,7 +302,10 @@
       "family": "devices",
       "title": "Components, hashing, device id",
       "service": "core",
-      "proof": [{ "kind": "corpus", "file": "fingerprint.json" }],
+      "proof": [
+        { "kind": "corpus", "file": "fingerprint.json" },
+        { "kind": "corpus", "file": "fingerprint.json", "family": "ramBuckets" }
+      ],
       "allowedNa": [
         {
           "runtime": "web",

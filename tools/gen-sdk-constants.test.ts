@@ -4,6 +4,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  STORE_BACKENDS,
+  STORE_DEGRADED_REASONS,
+} from "@polaris-key/client-core/store";
+import {
   buildModel,
   camelName,
   CHANNEL_EXPORT,
@@ -100,6 +104,14 @@ describe("the sources", () => {
       "web",
     ]);
     expect(byName.arch).toEqual(["arm64", "x86_64", "armv7", "wasm32"]);
+  });
+
+  it("storeBackend and storeDegradedReason equal client-core's STORE_BACKENDS and STORE_DEGRADED_REASONS", () => {
+    const byName = Object.fromEntries(
+      SOURCES.enums.map((e) => [e.name, e.values]),
+    );
+    expect(byName.storeBackend).toEqual([...STORE_BACKENDS]);
+    expect(byName.storeDegradedReason).toEqual([...STORE_DEGRADED_REASONS]);
   });
 
   it("reads the corpus versions and the protocol version", () => {
@@ -328,6 +340,17 @@ describe("renderers", () => {
       '\tconst SERVICE_UNAVAILABLE := "service-unavailable"',
     );
     expect(gd).toContain("const PROTOCOL_VERSION := 3");
+  });
+
+  it("Swift leaves StoreBackend and StoreDegradedReason to Store.swift; the others emit them", () => {
+    for (const name of ["StoreBackend", "StoreDegradedReason"]) {
+      expect(renderSwift(MODEL)).not.toMatch(
+        new RegExp(`public enum ${name} `),
+      );
+      expect(renderTs(MODEL)).toContain(`export const ${name} = {`);
+      expect(renderPython(MODEL)).toContain(`class ${name}:`);
+      expect(renderGdscript(MODEL)).toContain(`class ${name}:`);
+    }
   });
 
   it("Swift leaves ServiceSlug to ServiceSlug.generated.swift; the others emit it", () => {

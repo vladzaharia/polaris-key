@@ -263,6 +263,33 @@ class Arch:
 const ARCH_VALUES := ["arm64", "x86_64", "armv7", "wasm32"]
 
 
+## Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal.
+class StoreBackend:
+	const KEYRING := "keyring"
+	const KEYCHAIN := "keychain"
+	const KEYSTORE := "keystore"
+	const FILE := "file"
+	const MEMORY := "memory"
+	const INDEXEDDB := "indexeddb"
+	const CUSTOM := "custom"
+
+
+## Every `StoreBackend` value, in source order.
+const STORE_BACKEND_VALUES := ["keyring", "keychain", "keystore", "file", "memory", "indexeddb", "custom"]
+
+
+## Why a token store is weaker than its platform's best option, the `degraded.reason` of `Store.status()` (P1b-09). Mirrors `STORE_DEGRADED_REASONS` in `@polaris-key/client-core/store`; a test keeps them equal.
+class StoreDegradedReason:
+	const KEYRING_UNAVAILABLE := "keyring-unavailable"
+	const KEYRING_ERROR := "keyring-error"
+	const LEGACY_KEYCHAIN := "legacy-keychain"
+	const NOT_PERSISTENT := "not-persistent"
+
+
+## Every `StoreDegradedReason` value, in source order.
+const STORE_DEGRADED_REASON_VALUES := ["keyring-unavailable", "keyring-error", "legacy-keychain", "not-persistent"]
+
+
 ## The `X-PKey-*` request header names (wire contract v3 §5).
 class HeaderName:
 	const ARCH := "X-PKey-Arch"

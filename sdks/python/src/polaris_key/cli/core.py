@@ -33,6 +33,7 @@ from typing import Callable, Dict, IO, Iterable, List, Mapping, Optional
 from .._version import __version__ as PACKAGE_VERSION
 from ..client import PolarisKeyClient
 from ..core.errors import PolarisError
+from ..core.store import StoreStatus
 from ..devices.client import (
     RegisterClosed,
     RegisterNotConfigured,
@@ -65,6 +66,8 @@ __all__ = [
     "enroll",
     "deactivate",
     "status",
+    "format_store_status",
+    "LINUX_NO_MACHINE_ID_HINT",
     "register",
     "config",
     "import_bundle",
@@ -252,7 +255,16 @@ def run_command(
         client.close()
 
 
-def _describe_activation_failure(r: object, verb: str) -> CommandResult:
+#: The Linux remedy for a keyless enrolment refused for want of a machine anchor (P1b-09).
+LINUX_NO_MACHINE_ID_HINT = (
+    "This host has no machine id (/etc/machine-id). In a container, mount the host's "
+    "read-only, or create one and keep it in a volume."
+)
+
+
+def _describe_activation_failure(
+    r: object, verb: str, platform: Optional[str] = None
+) -> CommandResult:
     """Render a non-ok activation outcome.
 
     Shared by ``activate`` and ``enroll`` so the two can't drift into describing the same
@@ -266,13 +278,15 @@ def _describe_activation_failure(r: object, verb: str) -> CommandResult:
     if isinstance(r, ActivationUnauthorized):
         return CommandResult(1, [f"{verb} failed: invalid or revoked credential."])
     if isinstance(r, ActivationFingerprintRequired):
-        return CommandResult(
-            1,
-            [
-                f"{verb} failed: a hardware fingerprint is required but could not be "
-                "collected on this host."
-            ],
-        )
+        lines = [
+            f"{verb} failed: a hardware fingerprint is required but could not be "
+            "collected on this host."
+        ]
+        # Keyless enrolment needs a machine anchor, which Linux reads only from the
+        # machine-id files (WIRE-CONTRACT-V3 §6.1 rule 2); most container images ship none.
+        if verb == "Enrollment" and (platform or sys.platform).startswith("linux"):
+            lines.append(LINUX_NO_MACHINE_ID_HINT)
+        return CommandResult(1, lines)
     if isinstance(r, ActivationHardwareMismatch):
         changed = f" ({', '.join(r.changed)})" if r.changed else ""
         return CommandResult(
@@ -300,8 +314,10 @@ def activate(client: PolarisKeyClient, key: str) -> CommandResult:
     return _describe_activation_failure(r, "Activation")
 
 
-def enroll(client: PolarisKeyClient) -> CommandResult:
-    """Obtain a licence with no key and no sign-in, when the product offers a free tier."""
+def enroll(client: PolarisKeyClient, platform: Optional[str] = None) -> CommandResult:
+    """Obtain a licence with no key and no sign-in, when the product offers a free tier.
+
+    ``platform`` only selects the failure hint; it defaults to ``sys.platform``."""
     r = client.license.enroll()
     if isinstance(r, ActivationOk):
         st = client.status()
@@ -314,7 +330,7 @@ def enroll(client: PolarisKeyClient) -> CommandResult:
                 "activate with a license key instead."
             ],
         )
-    return _describe_activation_failure(r, "Enrollment")
+    return _describe_activation_failure(r, "Enrollment", platform)
 
 
 def deactivate(client: PolarisKeyClient) -> CommandResult:
@@ -341,7 +357,21 @@ def status(client: PolarisKeyClient) -> CommandResult:
         lines.append(f"Licensed to: {profile.name} <{profile.email}>")
     usable = client.is_licensed()
     lines.append(f"Usable: {usable}")
+    # `getattr`: a host's test double need not implement it.
+    store_status = getattr(client, "store_status", None)
+    store = store_status() if callable(store_status) else None
+    if isinstance(store, StoreStatus):
+        lines.append(format_store_status(store))
     return CommandResult(0 if usable else 1, lines)
+
+
+def format_store_status(store: StoreStatus) -> str:
+    """One line naming the token store, e.g. ``Token store: keyring`` or
+    ``Token store: file (degraded: keyring-unavailable: <detail>)``."""
+    if store.degraded is None:
+        return f"Token store: {store.backend}"
+    detail = f": {store.degraded.detail}" if store.degraded.detail else ""
+    return f"Token store: {store.backend} (degraded: {store.degraded.reason}{detail})"
 
 
 # ── devices ─────────────────────────────────────────────────────────────────────────

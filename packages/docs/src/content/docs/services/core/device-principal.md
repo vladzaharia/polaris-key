@@ -23,9 +23,22 @@ deviceId = base64url(sha256("pkey-device:<product-slug>:<raw>"))[0..32]
 ```
 
 `<raw>` is the platform machine identifier (macOS `IOPlatformUUID`, Windows `MachineGuid`,
-Linux `/etc/machine-id`), falling back to a random UUID when none can be read. The prefix
+Linux `/etc/machine-id`, else `/var/lib/dbus/machine-id`; a blank file or systemd's
+`uninitialized` marker is skipped), falling back to a random UUID when none can be read. The
+Linux value is the same anchor the fingerprint uses (WIRE-CONTRACT-V3 §6.1 rule 2), and the SDK
+persists the id it derived, so a later change of the source never changes an installed device's
+id. The prefix
 `pkey-device:` is a **hash domain** and is frozen — renaming it would orphan every enrolled
 device. The formula is pinned by `conformance/corpus/v2/fingerprint.json`.
+
+### Containers
+
+Without a machine-id a Linux host has no fingerprint anchor, so it gets no anchor bonus and no
+keyless (free-tier) enrolment: `/enroll` answers `fingerprint_required`. Give the container one:
+mount the host's `/etc/machine-id` read-only, or create one at first start and keep it in a
+volume. Never bake one into an image (installing `dbus` at build time writes
+`/var/lib/dbus/machine-id`): every container of that image, on every host, would then share it,
+and so share one device id and one free licence.
 
 Two different acceptance rules apply server-side:
 

@@ -49,12 +49,12 @@ row pins the opt-in bypass instead.
 
 ## The four files
 
-| File                | What it pins                                                                                    | Contract section                              |
-| ------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `cases.json`        | Six case families covering verification end to end, plus the two test keys                      | §1–§4, §7                                     |
-| `gate-matrix.json`  | Every gate transition, as pure input/expected-status rows                                       | §5                                            |
-| `fingerprint.json`  | Component order, per-component and composite digest lengths, and the device-id derivations      | Fingerprint v1                                |
-| `stage-matrix.json` | The boot stage machine: rows of host events with the exact emits each produces, and guard cases | client boot behaviour, not a contract section |
+| File                | What it pins                                                                                                                                                                                       | Contract section                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `cases.json`        | Six case families covering verification end to end, plus the two test keys                                                                                                                         | §1–§4, §7                                     |
+| `gate-matrix.json`  | Every gate transition, as pure input/expected-status rows                                                                                                                                          | §5                                            |
+| `fingerprint.json`  | Component order, per-component and composite digest lengths, the device-id derivations, and the three source rules (`windowsCim` with the pinned `windowsCimCommand`, `linuxAnchor`, `ramBuckets`) | Fingerprint v1, §6.1                          |
+| `stage-matrix.json` | The boot stage machine: rows of host events with the exact emits each produces, and guard cases                                                                                                    | client boot behaviour, not a contract section |
 
 ### The case families in `cases.json`
 

@@ -25,7 +25,11 @@ import type {
   DocProfile,
   LicenseDoc,
 } from "@polaris-key/protocol/license";
-import type { BlockedState, LicenseState } from "@polaris-key/client-core";
+import type {
+  BlockedState,
+  LicenseState,
+  StoreStatus,
+} from "@polaris-key/client-core";
 import { CacheManager } from "./core/cache.js";
 import { CoreContext, nowSec, type CoreOptions } from "./core/context.js";
 import { importBundle, type ImportBundleResult } from "./core/bundle.js";
@@ -326,6 +330,22 @@ export class PolarisKeyClient {
   // for the calls a host makes before it knows which service it is talking to.
   status(now = nowSec()): LicenseState {
     return this.license.status(now);
+  }
+
+  /**
+   * Where the token store keeps the token, and why if that is weaker than this platform's best
+   * option (P1b-09, R4-11): `{ backend: "file", degraded: { reason: "keyring-unavailable" } }`
+   * on a host whose OS keyring is missing. `null` when the store does not report (a host store
+   * without `status()`). Never throws.
+   */
+  async storeStatus(): Promise<StoreStatus | null> {
+    const store = this.core.store;
+    if (typeof store.status !== "function") return null;
+    try {
+      return await store.status();
+    } catch {
+      return null;
+    }
   }
 
   isLicensed(now = nowSec()): boolean {

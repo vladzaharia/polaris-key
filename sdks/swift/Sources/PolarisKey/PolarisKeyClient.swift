@@ -409,6 +409,14 @@ public actor PolarisKeyClient {
         await core.lastStoreError
     }
 
+    /// Where the token store keeps the token, and why if that is weaker than this platform's
+    /// best option: `.keychain`, or `.keychain` degraded by `.legacyKeychain` for a macOS
+    /// process without the data-protection keychain entitlement (P1b-09, R4-11). `nil` when a
+    /// host store does not report.
+    public func storeStatus() async -> StoreStatus? {
+        await core.storeStatus()
+    }
+
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────
     /// Start polling, invoking `onChange` when a sync actually changes a document.
     public func startRefreshLoop(onChange: (@Sendable (LicenseState) -> Void)? = nil) {
@@ -469,7 +477,8 @@ extension PolarisKeyClient {
             channel: core.channel, pinnedKeys: core.pinnedKeys, trustRefresh: false,
             store: core.store, configDir: core.configDir, transport: NoNetworkTransport(),
             requestTimeoutSeconds: core.requestTimeoutSeconds,
-            expectedServices: core.expectedServices)
+            expectedServices: core.expectedServices, dataDir: core.dataDir,
+            cacheDir: core.cacheDir, stateDir: core.stateDir)
         return try await create(
             options: PolarisKeyClientOptions(
                 core: local, license: options.license, config: options.config,

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@polaris-key/catalog": "workspace:*",
+    "@polaris-key/client-core": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
     "ajv": "^8.20.0"

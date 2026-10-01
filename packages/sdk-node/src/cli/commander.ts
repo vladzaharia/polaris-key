@@ -100,7 +100,8 @@ export function registerPolarisCommands(
     .command("status")
     .description("[license] Show the current licence gate status")
     .action(async function statusAction(this: Command) {
-      emit(status(await buildClient(this)));
+      const client = await buildClient(this);
+      emit(status(client, await client.storeStatus()));
     });
 
   program

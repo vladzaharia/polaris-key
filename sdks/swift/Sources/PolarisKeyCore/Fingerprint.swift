@@ -99,7 +99,7 @@ public enum Fingerprint {
         put(&raw, .machineUuid, DeviceID.rawDeviceId())
         put(&raw, .machineModel, sysctlString("hw.machine"))
         #endif
-        put(&raw, .ramBucket, ramBucket())
+        put(&raw, .ramBucket, ramBucket(bytes: ProcessInfo.processInfo.physicalMemory))
         return raw
     }
 
@@ -113,14 +113,17 @@ public enum Fingerprint {
         raw[component.rawValue] = value
     }
 
-    /// Total RAM rounded down to a power of two in GiB, identical to the Node and Python
-    /// SDKs' `2 ** floor(log2(gib))`, so a 15.9-vs-16.0 report never reads as a change.
-    private static func ramBucket() -> String? {
-        let bytes = ProcessInfo.processInfo.physicalMemory
-        guard bytes > 0 else { return nil }
-        let gib = Double(bytes) / 1_073_741_824.0
-        guard gib >= 1 else { return nil }
-        return String(Int(pow(2.0, floor(log2(gib)))))
+    /// Rule 3 of WIRE-CONTRACT-V3 §6.1 (`ramBuckets` in `fingerprint.json`):
+    /// `g = floor(bytes / 2^30)`; `nil` when `g == 0`, otherwise the largest power of two not
+    /// above `g`, in decimal. Integer arithmetic, dividing BEFORE any logarithm — a float `log2`
+    /// rounds a total just below a power of two up to the next bucket from 1 PiB.
+    ///
+    /// What the bucket buys is stability while the reported total stays between two powers of
+    /// two (a 16 GB machine reporting 15.4 GiB buckets to 8, and keeps doing so).
+    public static func ramBucket(bytes: UInt64) -> String? {
+        let g = bytes >> 30
+        guard g > 0 else { return nil }
+        return String(UInt64(1) << (63 - g.leadingZeroBitCount))
     }
 
     private static func sysctlString(_ name: String) -> String? {

@@ -17,9 +17,8 @@
     "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
-      "status": "planned",
-      "wp": "P1b-09",
-      "note": "The macOS keychain ignores the accessibility attribute without kSecUseDataProtectionKeychain."
+      "status": "implemented",
+      "note": "macOS uses the data-protection keychain where entitled; an unentitled process (an unsigned CLI) keeps the file-based keychain and storeStatus() reports legacy-keychain."
     },
     "license.gate": { "status": "implemented" },
     "license.activate": { "status": "implemented" },

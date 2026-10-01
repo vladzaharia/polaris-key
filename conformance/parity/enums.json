@@ -11,6 +11,29 @@
       "name": "arch",
       "description": "CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed.",
       "values": ["arm64", "x86_64", "armv7", "wasm32"]
+    },
+    {
+      "name": "storeBackend",
+      "description": "Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal.",
+      "values": [
+        "keyring",
+        "keychain",
+        "keystore",
+        "file",
+        "memory",
+        "indexeddb",
+        "custom"
+      ]
+    },
+    {
+      "name": "storeDegradedReason",
+      "description": "Why a token store is weaker than its platform's best option, the `degraded.reason` of `Store.status()` (P1b-09). Mirrors `STORE_DEGRADED_REASONS` in `@polaris-key/client-core/store`; a test keeps them equal.",
+      "values": [
+        "keyring-unavailable",
+        "keyring-error",
+        "legacy-keychain",
+        "not-persistent"
+      ]
     }
   ]
 }

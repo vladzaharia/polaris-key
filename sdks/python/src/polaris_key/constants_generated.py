@@ -22,6 +22,10 @@ __all__ = [
     "PLATFORM_VALUES",
     "Arch",
     "ARCH_VALUES",
+    "StoreBackend",
+    "STORE_BACKEND_VALUES",
+    "StoreDegradedReason",
+    "STORE_DEGRADED_REASON_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -445,6 +449,48 @@ ARCH_VALUES: Tuple[str, ...] = (
     "x86_64",
     "armv7",
     "wasm32",
+)
+
+
+class StoreBackend:
+    """Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal."""
+
+    KEYRING: Final = "keyring"
+    KEYCHAIN: Final = "keychain"
+    KEYSTORE: Final = "keystore"
+    FILE: Final = "file"
+    MEMORY: Final = "memory"
+    INDEXEDDB: Final = "indexeddb"
+    CUSTOM: Final = "custom"
+
+
+#: Every ``StoreBackend`` value, in source order.
+STORE_BACKEND_VALUES: Tuple[str, ...] = (
+    "keyring",
+    "keychain",
+    "keystore",
+    "file",
+    "memory",
+    "indexeddb",
+    "custom",
+)
+
+
+class StoreDegradedReason:
+    """Why a token store is weaker than its platform's best option, the `degraded.reason` of `Store.status()` (P1b-09). Mirrors `STORE_DEGRADED_REASONS` in `@polaris-key/client-core/store`; a test keeps them equal."""
+
+    KEYRING_UNAVAILABLE: Final = "keyring-unavailable"
+    KEYRING_ERROR: Final = "keyring-error"
+    LEGACY_KEYCHAIN: Final = "legacy-keychain"
+    NOT_PERSISTENT: Final = "not-persistent"
+
+
+#: Every ``StoreDegradedReason`` value, in source order.
+STORE_DEGRADED_REASON_VALUES: Tuple[str, ...] = (
+    "keyring-unavailable",
+    "keyring-error",
+    "legacy-keychain",
+    "not-persistent",
 )
 
 
