@@ -93,6 +93,12 @@ already have partial kits to mirror (notes/A2 §10).
 
 ## Design notes
 
+- **Stage budgets on a low-end phone ([S-04](../../notes/S-04-low-end-performance.md), derived).**
+  - Budget about 0.2 s for trust + licence + config (three small verifies), up to about 0.9 s
+    for one 350 KB bundle import, and 0.1 s or less for the cache.
+  - Show progress once a stage passes 250 ms.
+  - Never time a verify stage out in under 10 s: on an A53-class phone a 1 s stage is normal, not
+    a hang. Desktop takes about 25 ms and 100 ms for the same stages.
 - **One machine, many views.** `PKeyBoot` never decides a transition itself; it performs a stage's
   work, sends the result to the machine and renders what the machine says. A game that wants its
   own visuals connects to the signals and hides the default view.

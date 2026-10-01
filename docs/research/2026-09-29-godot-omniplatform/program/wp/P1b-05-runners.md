@@ -85,13 +85,22 @@
   - a Worker test, `packages/worker/test/gateMatrixCorpus.test.ts`, that feeds every row's `gate`
     inputs to the real `checkBuildGate` and asserts `expect.reason` and `allowedRange`, so the server
     is the oracle and the ports cannot drift silently again.
+- **D. WebKit and Firefox ([S-04](../../notes/S-04-low-end-performance.md)).** The same browser runner adds WebKit 26.6 and Firefox 155.0,
+  the builds bundled with `playwright-core` 1.63.0, run on Linux: for example in
+  `mcr.microsoft.com/playwright:v1.63.0-noble`. That WebKit is the Linux port and stands in for
+  WebKitGTK.
+  - WebKit's WebCrypto Ed25519 crashes the web process on signing inputs of about 64 KiB and above.
+    Its run must route `payload-at-cap` and `bundle-payload-at-cap` through the documented
+    fallback, or cap them, rather than crash.
+  - Playwright WebKit has no OPFS sync access handle, so OPFS is asserted only in Chromium and
+    Firefox.
 - Docs: the runner table in `packages/docs/src/content/docs/build/wire/corpus.md` ("Four runners")
   and `contribute/corpus.md` gain the Chromium and version-floor jobs.
 
 **Out** (and where it belongs instead):
 
 - Changing any corpus row (→ [P0-04](P0-04-channel-unification.md)'s plan).
-- WebKit and Firefox runs (→ [S-04](S-04-low-end-performance.md) and PARITY §11 Q4); an iOS simulator
+- Real iOS Safari and Android Chrome runs (→ [S-04](S-04-low-end-performance.md)'s hand-off); an iOS simulator
   job (→ [P5-05](P5-05-apple-plugin-package.md)); the Godot runner (→ [P1-01](P1-01-godot-scaffold.md)).
 - zstd probes and the WASM decoder in the browser job (→ [P4-06](P4-06-client-core-packs.md),
   [P4-18](P4-18-web-dcz.md)); the Chromium job is where they will run.

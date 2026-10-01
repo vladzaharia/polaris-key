@@ -74,8 +74,10 @@ That moves README P4 v3's "web Compression Dictionary Transport" from speculativ
 
 - Generating deltas (CI: P4-03; lazy: [P4-17](P4-17-lazy-deltas.md)).
 - `dcb` (Brotli dictionaries): there is no second codec (README decision 21).
-- Firefox and Safari: they do not implement CDT, so the WASM path is their delta route. A WebKit
-  run belongs to S-04 and PARITY §11 Q4 before React claims `packs.apply.delta` everywhere.
+- Firefox and Safari: they do not implement CDT, so the WASM path is their delta route.
+  [S-04](../../notes/S-04-low-end-performance.md) ran WebKit 26.6 (macOS and Linux), Mobile Safari 26.5 (simulator) and Firefox 155.
+  All 75 content cases pass there with the vendored WASM decoder, so React may claim
+  `packs.apply.delta` on them through the WASM path.
 - Hosting web builds (→ P6-04).
 
 ## Design notes
