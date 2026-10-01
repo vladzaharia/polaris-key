@@ -108,6 +108,13 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 
 ## Design notes
 
+- **Throughput for planning ([S-04](../../notes/S-04-low-end-performance.md)).** Plan chunk sync (the CPU part, output MB/s) at
+  about 20 MB/s natively on an A53-class phone (range 16–30, derived) and 12 MB/s for the web
+  build there (emulated), about 40 MB/s on mid-range, and 250 MB/s or more on desktop and current
+  phones (measured 324–369 natively, 120–260 on desktop web). File rebuild and verified delta run
+  at 0.5–0.8× that.
+  - Sync payloads up to 50 MB natively, or 25 MB on web, inline at boot.
+  - Above 50 MB, sync in the background with progress and keep the old content playable.
 - **Never overwrite a mounted pack.** Overwriting corrupts reads (118 of 625 files correct) and can
   return another file's bytes; a same-session remount serves stale cached resources (A6 §2.7).
   Always write a new path and switch at the next boot.

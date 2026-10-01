@@ -1,7 +1,16 @@
 // Static server with single-range Range support + Compression Dictionary Transport (dcz) endpoints.
 // usage: node server.mjs <root> <port>
+//   MOUNTS=/prefix=/abs/dir[,...]  serve extra directories under a URL prefix (S-04's lowend/ harness)
+//   RESULTS_DIR=<dir>              POST /results/<tag> saves the body as <dir>/<tag>-<time>.json
+//   HOST=<addr>                    listen address (default 127.0.0.1)
 import http from "node:http";
-import { createReadStream, readFileSync, statSync } from "node:fs";
+import {
+  createReadStream,
+  readFileSync,
+  statSync,
+  mkdirSync,
+  writeFileSync,
+} from "node:fs";
 import { createHash } from "node:crypto";
 import zlib from "node:zlib";
 import { join, extname, normalize } from "node:path";
@@ -13,8 +22,14 @@ const TYPES = {
   ".js": "text/javascript",
   ".json": "application/json",
   ".wasm": "application/wasm",
+  ".png": "image/png",
 };
 const log = [];
+const MOUNTS = (process.env.MOUNTS || "")
+  .split(",")
+  .filter(Boolean)
+  .map((m) => m.split("="));
+const RESULTS_DIR = process.env.RESULTS_DIR;
 
 // CDT fixtures: v1 payload as the dictionary, v2 as the target, the vector's --patch-from frame as the dcz body.
 const V = join(root, process.env.CDT_SET || "vectors/small");
@@ -50,6 +65,31 @@ http
       res.writeHead(200, { "content-type": "application/json" });
       return res.end(JSON.stringify(log));
     }
+    if (req.method === "POST" && url.pathname.startsWith("/results/")) {
+      const tag =
+        url.pathname.slice(9).replace(/[^A-Za-z0-9_.-]/g, "_") || "run";
+      const parts = [];
+      req.on("data", (c) => parts.push(c));
+      req.on("end", () => {
+        if (RESULTS_DIR) {
+          mkdirSync(RESULTS_DIR, { recursive: true });
+          const f = join(RESULTS_DIR, `${tag}-${Date.now()}.json`);
+          const body = Buffer.concat(parts).toString("utf8");
+          let doc;
+          try {
+            doc = JSON.parse(body);
+          } catch {
+            doc = { unparsed: body };
+          }
+          doc.postedFrom = { ua: req.headers["user-agent"], query: url.search };
+          writeFileSync(f, JSON.stringify(doc));
+          console.log("saved", f);
+        }
+        res.writeHead(RESULTS_DIR ? 204 : 501);
+        res.end();
+      });
+      return;
+    }
     if (url.pathname === "/cdt/v1.pck") {
       res.writeHead(200, {
         "content-type": "application/octet-stream",
@@ -80,8 +120,11 @@ http
       });
       return res.end(v2);
     }
-    const p = normalize(join(root, decodeURIComponent(url.pathname)));
-    if (!p.startsWith(normalize(root))) {
+    const mount = MOUNTS.find(([pre]) => url.pathname.startsWith(pre + "/"));
+    const base = mount ? mount[1] : root;
+    const rel = mount ? url.pathname.slice(mount[0].length) : url.pathname;
+    const p = normalize(join(base, decodeURIComponent(rel)));
+    if (!p.startsWith(normalize(base))) {
       res.writeHead(403);
       return res.end();
     }
@@ -137,8 +180,8 @@ http
     res.writeHead(200, { ...h, "content-length": st.size });
     createReadStream(pp).pipe(res);
   })
-  .listen(+port, "127.0.0.1", () =>
+  .listen(+port, process.env.HOST || "127.0.0.1", () =>
     console.log(
-      `serving ${root} on http://127.0.0.1:${port} (v2 ${v2.length} B, dcz ${dcz.length} B)`,
+      `serving ${root} on http://${process.env.HOST || "127.0.0.1"}:${port} (v2 ${v2.length} B, dcz ${dcz.length} B)`,
     ),
   );

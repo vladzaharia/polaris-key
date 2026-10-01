@@ -94,6 +94,11 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
 
 ## Design notes
 
+- **Progress UX numbers ([S-04](../../notes/S-04-low-end-performance.md)).** Browser chunk sync measured 105–297 MB/s in memory and
+  85–230 MB/s over HTTP `Range` on desktop engines and the emulated phones, at host speed; divide
+  by about 20 for an A53-class phone. That phone is derived at about 20 MB/s natively in GDScript
+  and 12 MB/s in the Godot web build. Report progress per fetched run, and assume a 50 MB payload
+  can take 2.5 s of CPU natively (4 s on web) on the slowest supported phone.
 - **Algorithm, exactly A7 §3.4.** Build `S`: id → (seed, offset), first occurrence over seeds in
   order, then records in order. For each target record: copy from a seed; else copy from the
   output if the id was already written; else fetch. Seeded chunks are not re-hashed on the fast
