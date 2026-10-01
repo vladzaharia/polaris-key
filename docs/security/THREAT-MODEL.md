@@ -1297,7 +1297,10 @@ the composer and the `seq` ceiling script.
   non-wire-integer pointers (`claims`, the claims every v4 SDK runs), the version under the
   deliverable's scheme (`scheme`, SemVer 2.0's grammar for `semver`), the record equals the
   descriptor under the §2.4 mapping (`descriptor-mismatch`: a CI step that signs one thing and
-  submits another is refused), and the release's `seq` (`seq`). A refusal stores nothing. An
+  submits another is refused; the descriptor must also carry the record's `seq` explicitly, so
+  a publish that loses a `seq` race is refused by P2-04's explicit-seq guard with nothing stored,
+  never stored unaudited without its record), and the release's `seq` (`seq`). A refusal stores
+  nothing. An
   accepted record is written in the descriptor's own batch, guarded on that descriptor and seq,
   into `release_records`, which is never rewritten: a re-run keeps the first record. Ingest is
   defence in depth — clients trust only pinned release keys — so a record that slipped past it

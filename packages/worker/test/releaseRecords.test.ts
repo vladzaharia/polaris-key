@@ -479,18 +479,77 @@ describe("POST /release/publish/submit — the release record", () => {
       },
     },
     {
-      // A non-increasing seq: the descriptor omits seq (the Worker assigns 1), the record says 5.
-      reason: "seq",
-      status: 409,
-      make: async () => {
+      // A descriptor without its explicit seq: the ingest would number the release itself, and a
+      // concurrent publish could leave the release stored without its record.
+      reason: "descriptor-mismatch",
+      status: 400,
+      make: async (seq) => {
         const d = descriptor("1.3.0");
         return {
           descriptor: d,
-          record: await signRecord(recordFor(d, { seq: 5, issuedAt: NOW })),
+          record: await signRecord(recordFor(d, { seq, issuedAt: NOW })),
+        };
+      },
+    },
+    {
+      // The descriptor's seq and the record's differ.
+      reason: "descriptor-mismatch",
+      status: 400,
+      make: async (seq) => {
+        const d = descriptor("1.3.0", seq);
+        return {
+          descriptor: d,
+          record: await signRecord(
+            recordFor(descriptor("1.3.0", seq + 4), {
+              seq: seq + 4,
+              issuedAt: NOW,
+            }),
+          ),
         };
       },
     },
   ];
+
+  it("a non-increasing seq (another publish took it) is refused seq_not_increasing and stores nothing of the release", async () => {
+    // Both CI runs asked the upload route before either submitted: both were answered seq 1.
+    const a = await staged("1.2.0");
+    const b = await staged("1.3.0");
+    expect([a.seq, b.seq]).toEqual([1, 1]);
+    const da = descriptor("1.2.0", a.seq);
+    const first = await post("submit", {
+      ticket: a.ticket,
+      descriptor: da,
+      record: await signRecord(recordFor(da, { seq: a.seq, issuedAt: NOW })),
+    });
+    expect(first.status).toBe(200);
+    const db_ = descriptor("1.3.0", b.seq);
+    const second = await post("submit", {
+      ticket: b.ticket,
+      descriptor: db_,
+      record: await signRecord(recordFor(db_, { seq: b.seq, issuedAt: NOW })),
+    });
+    expect(second.status).toBe(409);
+    expect(await second.json()).toMatchObject({ reason: "seq_not_increasing" });
+    expect(await counts()).toEqual({ releases: 1, records: 1 });
+    const audits = await db.all<{ target_id: string }>(
+      "SELECT target_id FROM audit WHERE product = ? AND action = 'release.publish'",
+      SLUG,
+    );
+    expect(audits).toEqual([{ target_id: "app@1.2.0" }]);
+    // The ticket was never claimed, so the retry (asking again: seq 2) goes through.
+    const again = await staged("1.3.0");
+    expect(again.seq).toBe(2);
+    const dc = descriptor("1.3.0", again.seq);
+    const retry = await post("submit", {
+      ticket: again.ticket,
+      descriptor: dc,
+      record: await signRecord(
+        recordFor(dc, { seq: again.seq, issuedAt: NOW }),
+      ),
+    });
+    expect(retry.status).toBe(200);
+    expect(await counts()).toEqual({ releases: 2, records: 2 });
+  });
 
   for (const r of REFUSALS) {
     it(`refuses release_record_rejected (${r.reason}) and stores nothing`, async () => {

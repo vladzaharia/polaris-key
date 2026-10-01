@@ -355,8 +355,18 @@ export async function checkReleaseRecord(
       ? { minSupportedSeq: record.minSupportedSeq }
       : {}),
   };
+  // The descriptor must carry the record's `seq` explicitly. Without it the ingest numbers the
+  // release itself, and a concurrent publish taking the planned seq would store the release
+  // under the next one while the record's guarded insert writes nothing — a stored publish
+  // answered as a refusal. With it, P2-04's explicit-seq guard writes nothing on that race and
+  // answers its own retryable refusal, the ticket given back.
+  if (descriptor.seq === undefined)
+    return refuse(
+      "descriptor-mismatch",
+      "a descriptor submitted with a record must carry the record's seq (the upload route's answer).",
+    );
   if (
-    (descriptor.seq !== undefined && descriptor.seq !== record.seq) ||
+    descriptor.seq !== record.seq ||
     canonicalDescriptorJson(descriptorToRecord(descriptor, fields)) !==
       canonicalDescriptorJson(record)
   )

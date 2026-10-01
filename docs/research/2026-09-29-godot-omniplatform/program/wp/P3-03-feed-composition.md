@@ -264,8 +264,15 @@ Where the code disagreed with the text above, the code won; recorded here (P3-03
   count.
 - **Record ingest of a re-run** keeps the release's first record (`record.stored: false`) rather
   than refusing it on `record_sha256`/`seq` uniqueness: records are never rewritten, and a CI
-  re-run stays idempotent. A record lost to a race is `409 release_record_rejected {seq}`,
-  `retryable`.
+  re-run stays idempotent. A descriptor submitted with a record must carry the record's `seq`
+  explicitly (`descriptor-mismatch` otherwise), so two publishes racing for one new `seq` are
+  refused by P2-04's explicit-seq guard (`seq_not_increasing`, or the retryable
+  `release_exists`) with nothing stored and the ticket given back. Should a release still be
+  stored without its record, it is audited and the generation bumped before the answer,
+  `409 release_record_rejected {seq}`, `retryable`.
+- **The feed of an unused channel** (no target and no `update_feed_state` row: an unused `pr-<n>`
+  or manual channel, or a product with no app release) is signed at the starting `seq` and
+  nothing is stored, so unauthenticated requests naming channels cannot grow D1.
 - **The CLI** requires a release key when `.pkey/release` declares `releaseKeys` (`--no-record`
   opts out), finds the `kid` from the declared key matching `PKEY_RELEASE_KEY`, and adds
   `--release-key-file`, `--min-supported-seq` and the Action inputs `release-key` and

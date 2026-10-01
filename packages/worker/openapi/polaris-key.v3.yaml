@@ -3387,8 +3387,12 @@ paths:
         `product-key` (the key is one of the product's signing keys), `signature`, `claims`,
         `scheme` (the version does not parse under the deliverable's scheme; SemVer 2.0's
         grammar for `semver`), `descriptor-mismatch` (the record is not the descriptor under
-        §2.4's mapping) — all 400 — or `seq` (409: not the release's `seq`; ask the upload route
-        again). A re-run whose release already holds a record keeps it (`record.stored: false`).
+        §2.4's mapping, or the descriptor does not carry the record's `seq` explicitly) — all
+        400 — or `seq` (409, `retryable`: not the release's `seq`; ask the upload route again).
+        Because the descriptor carries the `seq`, two publishes racing for one new `seq` are
+        refused by the ingest (`seq_not_increasing` or the retryable `release_exists`) with
+        nothing stored. A re-run whose release already holds a record keeps it
+        (`record.stored: false`).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }

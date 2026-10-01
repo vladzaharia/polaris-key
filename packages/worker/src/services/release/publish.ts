@@ -682,23 +682,21 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     await releaseUploadTicket(db, ticket.ticketHash, now);
     return ingestRefusal(result);
   }
-  // The record, as stored: this one, the release's earlier one (never rewritten), or none —
-  // the release's seq moved under the plan (a race), which the CLI fixes by asking again.
+  // The record, as stored: this one, or the release's earlier one (never rewritten). None is
+  // not expected — the record check requires the descriptor's explicit seq, so a seq race is
+  // refused by the ingest above and stores nothing — but if the release was stored without its
+  // record anyway, it is still a stored publish: spent copies cleaned, audited, generation
+  // bumped, and only then answered `seq` (retryable: a re-run attaches the record).
   let storedRecord: { sha256: string; stored: boolean } | null = null;
+  let recordLost = false;
   if (checkedRecord) {
     const row = await getRecordForRelease(db, product.slug, result.releaseId);
-    if (!row)
-      return refusal(
-        409,
-        RELEASE_RECORD_REJECTED,
-        "seq",
-        `${result.releaseId} was stored with another seq than the record's; ask the upload route for its seq and publish again.`,
-        { retryable: true },
-      );
-    storedRecord = {
-      sha256: row.record_sha256,
-      stored: row.record_sha256 === checkedRecord.sha256,
-    };
+    if (row)
+      storedRecord = {
+        sha256: row.record_sha256,
+        stored: row.record_sha256 === checkedRecord.sha256,
+      };
+    else recordLost = true;
   }
 
   // The staged copies are spent; the bucket's one-day rule would take them anyway.
@@ -740,6 +738,14 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     });
     await bumpReleaseGeneration(env, product.slug, now);
   }
+  if (recordLost)
+    return refusal(
+      409,
+      RELEASE_RECORD_REJECTED,
+      "seq",
+      `${result.releaseId} was stored, but not with the record's seq, so its record was not; ask the upload route for its seq and publish again to attach one.`,
+      { retryable: true, releaseId: result.releaseId },
+    );
   return json({
     ok: true,
     dryRun: false,
