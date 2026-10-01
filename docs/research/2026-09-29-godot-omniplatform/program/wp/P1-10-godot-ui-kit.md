@@ -54,16 +54,34 @@ already have partial kits to mirror (notes/A2 §10).
 
 **In** (under `addons/polaris_key/ui/` unless noted):
 
-- `boot/stages.gd`: a GDScript port of `client-core`'s `bootTransition`, and a `stage-matrix.json`
-  section in the Godot runner (from `res://tests/corpus/v2/`).
+- `core/stages.gd` (`PKeyStages`, not `ui/boot/`, so headless exports can use it): a GDScript port
+  of `client-core`'s `bootTransition` and `bootGuardAction`, with the five vocabulary constants, and
+  a `stage-matrix` suite in the Godot runner (rows, probes and guard cases, from
+  `res://tests/corpus/v2/stage-matrix.json`) plus a malformed-event test. It compares `failedBoots`
+  numerically, because Godot parses JSON numbers as floats.
 - `boot/pkey_boot.tscn` (`PKeyBoot`): built-in controls only, a logo slot, a status line, a
   progress bar, the offline and error cards (Retry; "Play offline" when the machine allows it).
   Signals `stage_changed(stage, previous)`, `blocked(reason)`, `offline(can_play_offline)`,
-  `error(code)`, `ready()`. It feeds the machine from real work: `shell` (build stamp if present,
+  `error(code)`, `boot_ready()` (not `ready()`: a `Control` cannot redeclare `ready`, plan
+  decision 10), `waiting(status)`, `update_available()` and `boot_rolled_back()`. It does a stage's
+  work each time the machine enters that stage, including `shell` and `guard` again after a retry
+  that resumes there. It feeds the machine from real work: `shell` (build stamp if present,
   cache load), `guard` (`ok` until P3-10), `sync` (`PolarisKey.sync()` with a bounded timeout),
   `gate` (`PolarisKey.status()`, then the gate UI until resolved), `decide`
   (`PolarisKey.update.check()`), `fetch` and `mount` (`ok` until P4-08).
-- `PolarisKey.boot(opts) -> PKeyBootResult` (`outcome`, `reason`), with `allow_offline` and
+- **What `PKeyBoot` sends** is exactly [P1-09 plan §2.2](../plans/P1-09.md) "What a host sends". A
+  sync is `ok` when answered (200, 304, 401, 403 or 429), `offline` when a document got no answer
+  (status 0), and `error` when an answer was unusable. A failed update check is `decide.done none`,
+  a failed download is `fetch.done failed`, and `fail` is only for exceptions. There is no
+  `gate.resolved`: send `gate.status` again. `fetch.done` carries `installed`. A fake-server test
+  covers each sync class.
+- **Keyless registration.** With no token, a product without License whose registration policy is
+  `open` (discovery's `core.registration` when present, otherwise the §6 default from
+  `expected_services`) calls `PolarisKey.devices.register()` inside `sync`, before
+  `PolarisKey.sync()`. A registration with no answer is `sync.done offline`, and one refused or
+  unusable is `error`. Fake-server tests cover both, and an offline first launch under
+  `allow_offline: false` that stops at `offline`.
+- `PolarisKey.boot(opts) -> PKeyBootResult` (`outcome`, `reason`), with `allow_offline`, `allow_grace` and
   `required_packs` (accepted, empty until P4-08), and the constants `PKeyBoot.READY`, `BLOCKED`,
   `OFFLINE`, `ERROR`.
 - Scenes, each with a headless controller script: `PKeyGate` (mirrors `screenFor`),
@@ -176,6 +194,9 @@ already have partial kits to mirror (notes/A2 §10).
       setting writes the override store and changes `get_source()` to `local`.
 - [ ] No visible string bypasses `PKeyUiCopy`/`tr()` (a test walks every `Label` and `Button`).
 - [ ] Editor screenshots of each scene are attached to the PR.
+- [ ] The `stage-matrix` suite drives `PKeyStages` through every row, every probe and every guard
+      case of `stage-matrix.json`, and the fake-server tests drive `PKeyBoot` through the sync
+      classes above.
 - [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
 - [ ] `sdks/godot/parity.json` marks `ui.stages` and `ui.kit` implemented, with test tags (once
       P1b-01 has landed).
@@ -183,7 +204,7 @@ already have partial kits to mirror (notes/A2 §10).
 ## Verify
 
 ```sh
-godot --headless --path sdks/godot -- --pkey-test ui,boot,conformance
+godot --headless --path sdks/godot -- --pkey-test ui,boot,stage-matrix,conformance
 GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh
 ```
 

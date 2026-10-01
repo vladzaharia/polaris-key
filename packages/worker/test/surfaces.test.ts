@@ -271,6 +271,7 @@ describe("worker surfaces", () => {
         authPoll: "https://key.plrs.im/djdl/identity/auth/poll",
         authLogout: "https://key.plrs.im/djdl/identity/auth/logout",
         authDeviceStart: "https://key.plrs.im/djdl/identity/auth/device/start",
+        authDeviceEntry: "https://key.plrs.im/djdl/identity/auth/device",
         authDeviceVerify:
           "https://key.plrs.im/djdl/identity/auth/device/verify",
         authDevicePoll: "https://key.plrs.im/djdl/identity/auth/device/poll",

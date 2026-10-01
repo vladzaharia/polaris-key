@@ -88,8 +88,8 @@ export const CORS_MAX_AGE = "600";
  *
  * Deliberately absent (cookie-bearing or navigation-only; they stay first-party):
  * `identity/session`, `identity/session/license`, `identity/auth/start`,
- * `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device/verify`,
- * `config/mint/{mintId}/auth`.
+ * `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device`,
+ * `identity/auth/device/verify`, `config/mint/{mintId}/auth`.
  *
  * The four permanent aliases resolve to the same `{kind:"service"}` route as their targets
  * (`router.ts`), so they are covered exactly when their targets are.

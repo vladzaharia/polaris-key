@@ -896,7 +896,10 @@ async function seedOidc(db: Db): Promise<void> {
 }
 
 describe("R10-05 /<p>/auth/* is unauthenticated, unrate-limited and writes KV", () => {
-  it("POST /<p>/auth/device/start costs 2 KV writes per anonymous request", async () => {
+  // P1-06 added a third record per flow — the RFC 8628 user-code index
+  // (`p:<p>:device-user:<hash>`) — so the per-request cost is now 3. The per-IP
+  // `authDeviceStart` bucket (60/min, fail-closed) is what bounds it; 25 requests stay under it.
+  it("POST /<p>/auth/device/start costs 3 KV writes per anonymous request", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
@@ -917,10 +920,13 @@ describe("R10-05 /<p>/auth/* is unauthenticated, unrate-limited and writes KV", 
       );
       expect(res.status).toBe(200);
     }
-    // 25 anonymous requests ⇒ 50 durable KV records. No 429 anywhere.
-    expect(kv.keys().length).toBe(50);
+    // 25 anonymous requests ⇒ 75 durable KV records. No 429 anywhere.
+    expect(kv.keys().length).toBe(75);
     expect(kv.keys().filter((k) => k.includes(":flow:")).length).toBe(25);
     expect(kv.keys().filter((k) => k.includes(":device-flow:")).length).toBe(
+      25,
+    );
+    expect(kv.keys().filter((k) => k.includes(":device-user:")).length).toBe(
       25,
     );
   });

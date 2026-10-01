@@ -77,8 +77,10 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
   - an unknown or expired code re-renders the entry form with one generic message (status 404);
   - the static-HTML CSP and headers from `staticHtmlSecurityHeaders`, `no-store`,
     `referrer-policy: no-referrer`, no script.
-- A per-IP rate-limit bucket `authDeviceEntry` (for example 30 per 60 s), fail-closed in
-  `FAIL_MODE`.
+- A per-client rate-limit bucket `authDeviceEntry` (for example 30 per 60 s), fail-closed in
+  `FAIL_MODE`. _Correction (review):_ keyed per client network (`clientNetwork`: the IPv4 address
+  or the IPv6 /64), not the raw `clientIp`, because one IPv6 host holds a whole /64 (R10-04b) and
+  this is the one bucket whose budget is the brute-force bound.
 - The existing `/identity/auth/device/verify?device_code=` stays unchanged, for flows in flight
   during the deploy and for any client that builds that URL.
 - `authDeviceEntry` in the identity discovery fragment and its OpenAPI example.
@@ -96,25 +98,51 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
   unowned — report it).
 - A shorter vanity path such as `/<p>/link` (optional; not needed while QR is the primary path).
 - A server-rendered SVG QR code (notes/E9 §8.1 alternative; not needed, clients render QR).
-- Changing `interval`, `expiresIn` or the poll contract.
+- Changing `interval`, `expiresIn` or the poll contract. _Correction (review):_ one narrowing of
+  `/identity/auth/poll` was required — see the design note below — while `/device/poll`,
+  `interval` and `expiresIn` are unchanged.
 
 ## Design notes
 
 - **Never expose the device code on the user-code path.** Anyone who learns a device code and the
   device id (the page shows the id when no `deviceName` was given) could poll and race the real
   device for the token once the user confirms. The lookup therefore stays server-side and the
-  confirmation form carries `user_code`, not `device_code`.
+  confirmation form carries `user_code`, not `device_code`. _Correction (review):_ that was not
+  enough. Confirming 303s the user-code holder to the authorize URL, which carries `state`, and
+  `/identity/auth/poll` redeems `state` + device id — so the user code alone was a path to the
+  victim's token. The code now: marks flows `/device/start` begins (`FlowRecord.viaDeviceCode`)
+  and has `/identity/auth/poll` answer them with the generic `error`, so only `/device/poll` with
+  the device code redeems them; shows `deviceName` or "Unnamed device", never the device id; and
+  deletes the user-code index on confirmation. The same review found that `Origin`-only checking
+  refused every real browser POST (a `no-referrer` page sends `Origin: null`); the check now
+  decides on `Sec-Fetch-Site` first and lets `Origin: null` through to the CSRF check.
+- **The callback must not merge on a device-code flow.** _Correction (security review):_ the
+  user code was also a path to the victim's licence. `handleAuthCallback` took
+  `enrolledLicenseId` from `flow.deviceId`, so a user-code holder who confirmed first and signed
+  in as themselves either claimed the device's anonymous enrolled licence (re-subjected to them)
+  or migrated its devices onto their own licence and disabled it. Fixed fail-closed: the callback
+  passes no enrolled licence, so a device-code sign-in yields only that identity's own licence.
+  `R8-oidc.test.ts` › `R8-02 / P1-06 a user-code holder cannot claim…` covers both cases. An
+  opt-in attach applied at `/device/poll` after the player accepts on the device is a P1-07
+  scope row.
 - **Brute force** (RFC 8628 §5.1): 20^8 codes, a 600-second lifetime, a per-IP limit and a
   per-flow single-use CSRF token keep blind guessing impractical; the threat-model paragraph
   states the numbers. Do not add a product-wide bucket that one attacker could exhaust to lock
   out every player.
 - **Remote phishing** (§5.4): the confirmation page keeps showing the product and the device label
   and requires a button press; a QR scan (`verificationUriComplete`) still lands on it.
+  _Correction (review):_ that is not a control against the flow's starter, who can confirm their
+  own flow (GET the page, read the CSRF token, POST it with no `Origin`) and phish the IdP
+  authorize URL from the `303`; the victim never sees the page. That is the still-open R1-07
+  (Fixed-partial), rooted in R8-03 (no browser binding), not a residual inherent to RFC 8628.
+  P1-06 documents it accurately (THREAT-MODEL.md "Remote phishing", R1/R8 findings notes) and
+  adds a PoC asserting the gap; closing it (bind a `viaDeviceCode` flow's callback to the
+  confirming browser) is an unowned follow-up.
 - **R12-04:** the index key is a peppered hash of the code, never the code itself, as the admin
-  flow key does since that fix (`packages/worker/src/admin/auth.ts:33-45`). The existing
-  `p:<slug>:device-flow:<code>` and `p:<slug>:flow:<state>` keys (`oidc.ts:295-301`) still use the
-  secret verbatim although the audit lists R12-04 as fixed; do not change them here (in-flight
-  flows would break on deploy), and report the gap.
+  flow key does since that fix (`packages/worker/src/admin/auth.ts:33-45`). (Correction, P1-06:
+  P0-13 already hashed the `p:<slug>:device-flow:` and `p:<slug>:flow:` keys under
+  `KEY_HASH_PEPPER` — `deviceFlowKey` and `flowKey` in `oidc.ts` — so there is no remaining gap
+  to report; the new `device-user:` index follows the same pattern.)
 - **Compatibility:** `userCode` keeps the `XXXX-XXXX` shape (existing tests match
   `/^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$/`). A host that opened `verificationUri` now lands on the entry
   page and must type the code; hosts should open `verificationUriComplete` (RFC 8628 §3.3.1). Say
@@ -138,8 +166,10 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
       `verificationUri !== verificationUriComplete`, and neither contains the device code.
 - [ ] `GET /djdl/identity/auth/device` returns the entry form with the static-HTML CSP,
       `no-store` and `no-referrer`, and no `<script>`.
-- [ ] `GET …/device?user_code=zk8l qr8n` (lower-case, space) renders the confirmation page for the
-      right flow; the HTML contains the user code and device label and not the device code.
+- [ ] `GET …/device?user_code=wdjb mjht` (the live code, lower-case, space) renders the
+      confirmation page for the right flow; the HTML contains the user code and device label and
+      not the device code. (Correction, P1-06: the earlier example `zk8l qr8n` contains digits,
+      which are outside the §6.1 alphabet and so can never be a valid code.)
 - [ ] `POST` with `user_code` and the page's `csrf` returns `303` to the IdP and sets
       `confirmedAt` on the flow record; the next poll proceeds to the IdP result.
 - [ ] `POST` without `csrf`, with a reused `csrf`, or with a foreign `Origin` returns 403.

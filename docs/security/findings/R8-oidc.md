@@ -549,21 +549,21 @@ chose, but they encode the device binding only on the surface that _has_ it:
 All changes are confined to `packages/worker/src/oidc.ts` plus its tests. The PoC suite
 `packages/worker/test/attack/R8-oidc.test.ts` has been **inverted**: the `it()` titles are
 unchanged (so they still map to the finding ids above) but every body now asserts the attack
-**fails**. It is the regression suite. 28/28 pass; `test/oidc.test.ts` + `test/oidcEdge.test.ts`
+**fails**. It is the regression suite. 29/29 pass; `test/oidc.test.ts` + `test/oidcEdge.test.ts`
 (37 tests) pass.
 
-| Finding | Fixed                    | Proof                                                                                                                                 |
-| ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| R8-01   | ✅                       | `R8-01 › ATTACK: knowing only 'state'…`, `› …bypass of BOTH guards…`                                                                  |
-| R8-02   | ✅ (partial)             | `R8-02 › ATTACK: an unauthenticated GET turns a device_code…`, `› …ships no security headers…`, `› userCode is a case-folded PREFIX…` |
-| R8-03   | ❌ out of scope          | unchanged PoCs still assert the gap                                                                                                   |
-| R8-04   | ✅                       | `R8-04 › ATTACK: a second callback on the same state…`                                                                                |
-| R8-05   | ✅ (a–d)                 | four tests under `R8-05 claim trust`                                                                                                  |
-| R8-06   | ✅                       | four tests under `R8-06 unguarded JSON.parse…`                                                                                        |
-| R8-07   | ❌ deliberate            | unchanged PoC still asserts the fail-open                                                                                             |
-| R8-08   | ❌ out of scope (portal) | unchanged PoCs                                                                                                                        |
-| R8-09   | ❌ out of scope          | code-verified only                                                                                                                    |
-| R8-10   | ✅                       | `R8-01 › ATTACK: repeated /auth/poll guesses are never rate limited…`                                                                 |
+| Finding | Fixed                         | Proof                                                                                                                                 |
+| ------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| R8-01   | ✅                            | `R8-01 › ATTACK: knowing only 'state'…`, `› …bypass of BOTH guards…`                                                                  |
+| R8-02   | ✅ (residual closed by P1-06) | `R8-02 › ATTACK: an unauthenticated GET turns a device_code…`, `› …ships no security headers…`, `› userCode is a case-folded PREFIX…` |
+| R8-03   | ❌ out of scope               | unchanged PoCs still assert the gap                                                                                                   |
+| R8-04   | ✅                            | `R8-04 › ATTACK: a second callback on the same state…`                                                                                |
+| R8-05   | ✅ (a–d)                      | four tests under `R8-05 claim trust`                                                                                                  |
+| R8-06   | ✅                            | four tests under `R8-06 unguarded JSON.parse…`                                                                                        |
+| R8-07   | ❌ deliberate                 | unchanged PoC still asserts the fail-open                                                                                             |
+| R8-08   | ❌ out of scope (portal)      | unchanged PoCs                                                                                                                        |
+| R8-09   | ❌ out of scope               | code-verified only                                                                                                                    |
+| R8-10   | ✅                            | `R8-01 › ATTACK: repeated /auth/poll guesses are never rate limited…`                                                                 |
 
 ## R8-01 — `/auth/poll` device-id confusion (Critical)
 
@@ -589,13 +589,26 @@ more. That is the intended fail-closed direction (a bare `state` must not be a b
 `/auth/device/start` + either poll surface remains fully functional. `pollUrl` is still
 advertised in discovery and still works for device flows.
 
+**Later change (P1-06):** "either poll surface" no longer holds. A flow `/auth/device/start`
+began is refused on `/auth/poll` (`FlowRecord.viaDeviceCode`, generic `error`) and completes
+only on `/auth/device/poll` with the device code, because the user-code page made `state` plus
+the device id reachable by anyone holding the public user code (see R8-02 below). Since those
+are the only flows ever bound to a device id, `/auth/poll` currently completes no flow; it
+stays routed and in discovery, answering its existing generic statuses.
+
 ## R8-02 — device-code CSRF / disclosure / throttle (High)
 
 - Confirmation is now **`POST` only**. `GET` renders the page and is side-effect free; `?confirm=1`
   on a GET is ignored (no mutation, no `Location`, no `state`/`nonce`).
 - The GET mints a CSRF token into `DeviceFlowRecord.csrf`; the POST must echo it and is
-  additionally refused when an `Origin` header names a foreign origin. The token is deleted on
-  use (single-use).
+  additionally refused when it is cross-site. (P1-06: the check decides on `Sec-Fetch-Site` when
+  the browser sends it — only `same-origin` passes — and otherwise refuses only a foreign
+  `Origin`. `Origin: null` must pass, because a browser sends exactly that on a same-origin form
+  POST from a page served with `referrer-policy: no-referrer`, which both device pages are; the
+  earlier `Origin`-only check refused every real confirmation.) The token is deleted on use
+  (single-use). Together these stop cross-site forgery against _someone else's_ flow only; they
+  do not stop a flow's starter, who mints the token for their own flow and POSTs it with no
+  `Origin` — the open R1-07 / R8-03 residual (see the P1-06 note below and `THREAT-MODEL.md`).
 - The confirmation redirect is a `303` carrying `Referrer-Policy: no-referrer` and
   `Cache-Control: no-store`; the same two headers are now on the rendered page, whose URL holds
   the device code.
@@ -607,14 +620,82 @@ src/oidc.ts` is now non-zero. Per-IP buckets: `authStart`/`authDeviceStart`/`aut
   carry a **second** bucket keyed on the `state`/`device_code` (40·60s and 5·60s), so one flow
   cannot be hammered from a botnet.
 
-**Not fixed (residual, asserted by the inverted PoCs):** `verificationUri ===
-verificationUriComplete` and `userCode` remaining a case-folded prefix of `deviceCode`.
-Generating an independent RFC 8628 user code changes the public device-flow contract
-(`/auth/device/start`'s response shape and the human lookup path) and is a product change, not a
-patch. Residual entropy is ~84 bits, so it is not brute-forceable today.
+**Residual, since fixed (P1-06, the RFC 8628 user-code page):** `verificationUri ===
+verificationUriComplete` and `userCode` remaining a case-folded prefix of `deviceCode` were left
+at audit time because fixing them changes the public device-flow contract. P1-06 made that
+change:
 
-**Not fixed:** the full security-header bundle (`content-security-policy`, `x-frame-options`,
-`x-content-type-options`) on the verify page. Two other lanes' PoCs assert their _absence_
+- `userCode` is eight characters from RFC 8628 §6.1's consonant alphabet
+  (`BCDFGHJKLMNPQRSTVWXZ`, 20⁸ ≈ 2.6 × 10¹⁰ codes, ~34.5 bits), drawn independently of
+  `deviceCode`, still shown as `XXXX-XXXX`.
+- It is indexed as `p:<slug>:device-user:<hashKey(normalised code, KEY_HASH_PEPPER)>` → the
+  device code, with the flow's 600 s TTL, regenerated on collision and deleted as soon as the
+  flow is confirmed (or when a poll returns `ready` or `timeout`); a confirmed flow never
+  resolves by user code again. No KV key name holds a raw user code (R12-04).
+- `verificationUri` is `<origin>/<p>/identity/auth/device` (the code-entry page) and
+  `verificationUriComplete` adds `?user_code=XXXX-XXXX` for a QR code. Neither carries the device
+  code.
+- `GET`/`POST /<p>/identity/auth/device` looks the code up server-side and renders the same
+  confirmation page, whose form posts `user_code` + `csrf` — never the device code — back to the
+  same route. Confirmation is the shared `confirmDeviceFlow` (Origin check, single-use CSRF, 303
+  with `no-referrer`/`no-store`). Unknown, expired and malformed codes share one generic 404 page.
+- An `authDeviceEntry` bucket (30·60s, fail-closed) keyed per client network — the IPv4 address
+  or the IPv6 /64 (`clientNetwork`), since one host holds a whole /64 (R10-04b); deliberately no
+  product-wide bucket, which one attacker could exhaust to lock every player out. The
+  brute-force numbers and their residuals are in `THREAT-MODEL.md`.
+- `/auth/device/verify?device_code=` is unchanged, for flows in flight across the deploy.
+- **Only the device code redeems a device-code flow.** The user code is public by design (shown
+  large, rendered as a QR code), and confirming 303s its holder to the authorize URL, which
+  carries `state`. `/auth/poll` redeems `state` + device id, and the page used to show the raw
+  device id when no `deviceName` was sent, so a user-code holder could have raced the real device
+  for its token once the victim signed in — an R8-01-class theft found in P1-06 review. Fixed
+  three ways: a flow `/device/start` began carries `FlowRecord.viaDeviceCode` and `/auth/poll`
+  answers it with the generic `error` (it redeems only on `/auth/device/poll`, with the device
+  code); the page shows `deviceName` or "Unnamed device", never the id; and confirmation deletes
+  the user-code index, so nobody can re-render, re-mint the CSRF token or reach the authorize URL
+  after the real user has confirmed. What a user-code holder can still do is bounded in
+  `THREAT-MODEL.md`. Before the victim confirms, they can invalidate the victim's CSRF token, or
+  confirm first and sign the flow in under their own IdP identity. In that case the victim's
+  device, when it polls with its device code, lands on the holder's own license. The holder
+  gets no token, and no license other than their own changes.
+- **The callback merges nothing (P1-06 security review).** The public user code was also enough
+  to reach the callback's enrolled-license merge. `handleAuthCallback` derived
+  `enrolledLicenseId` from `flow.deviceId`, the victim's device, and `activateFromIdentity` merged
+  that license into whichever identity signed in. If the holder had no license, it rewrote the
+  victim's anonymous enrolled license's `sub` to the holder (claim). Otherwise it moved the
+  victim's devices onto the holder's license and disabled the victim's license, keeping
+  `enroll_hwid`, so that machine could never enroll again (migrate). The holder could then mint
+  tokens on the captured license from their own devices. Before P1-06 this needed the 128-bit
+  device code. After P1-06 a shoulder-surfed, streamed or guessed user code was enough: at the
+  rate-limit ceiling with 1,000 live flows, a blind guesser captured about one license every
+  7 hours. Fixed fail-closed: the callback passes no enrolled license, so a device-code sign-in
+  yields only the identity's own license (`getLicenseBySub`) or a new one under the existing
+  group-map / `oidcDefault` policy. The browser-redirect flow carries no device id and never
+  merged. PoCs, asserting the fix: `test/attack/R8-oidc.test.ts` › `R8-02 / P1-06 a user-code
+holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). Follow-up owned
+  by P1-07: an opt-in "attach this device's anonymous license to my account", applied only at
+  `/auth/device/poll` by the device-code holder after the player has seen the signed-in identity
+  on the device and accepted it.
+- **Not closed by P1-06: the flow's starter.** Everything above bounds a party holding _someone
+  else's_ user code. The party that started a flow can still confirm it themselves — GET the page
+  for its own user code, read the CSRF token, POST it with no `Origin` — and receive the IdP
+  authorize URL, then phish that URL; a victim who signs in there binds their license to the
+  attacker's device, which polls it with its own device code. Typing the user code does not close
+  this, because the starter types its own. It is the still-open R1-07 (Fixed-partial), rooted in
+  R8-03 (no browser binding), and is asserted as a gap by `test/attack/R8-oidc.test.ts` ›
+  `OPEN (R1-07 / R8-03): the starter confirms its own flow…`. Fix direction (unowned): bind a
+  `viaDeviceCode` flow's callback to the browser that confirmed it, e.g. a `__Host-`
+  `SameSite=Lax` cookie set on the confirmation `303` and required by `handleAuthCallback`.
+
+The two R8-02 PoCs that asserted the residual now assert the fix
+(`test/attack/R8-oidc.test.ts`), a third (`› holding only the user code, an attacker reads the
+device id and state off the page…`) asserts the user-code path is not a token path, and
+`test/oidcEdge.test.ts` covers the page, including the `Origin: null` / Fetch Metadata shapes a
+real browser sends.
+
+**Not fixed at audit time (since fixed by R1-09's `staticHtmlSecurityHeaders`):** the full
+security-header bundle (`content-security-policy`, `x-frame-options`, `x-content-type-options`) on
+the verify page. Two other lanes' PoCs assert their _absence_
 (`R1-07b`, `R9-12`); adding them belongs with that remediation so the header policy lands once,
 from `src/securityHeaders.ts`, rather than being hand-rolled here.
 
@@ -677,6 +758,9 @@ is fixed_. They are not mine to edit:
 - `test/attack/R1-control-plane.test.ts` › `R1-07a` — expects `302` from
   `GET …/auth/device/verify?confirm=1`; it now renders `200` (the fix). The finding it documents
   (self-confirmable device gate) is R8-02 defect 1 and is now closed.
+  **Correction (P1-06 review):** only the GET half is closed. The starter can still confirm
+  through the `POST` (it mints the CSRF token itself) and is handed the authorize URL, so R1-07
+  remains **Fixed-partial** in the audit, rooted in R8-03; see the P1-06 note under R8-02.
 - `test/attack/R9-injection.test.ts` › `R9-12` (first case) — a source-text assertion that
   `oidc.ts` contains `<a href="${escapeHtml(confirmUrl.toString())}"`. That anchor is now a
   `<form method="post">`; the property the test actually checks (every sink is a text node or a

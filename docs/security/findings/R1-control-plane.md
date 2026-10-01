@@ -387,6 +387,16 @@ Require the user to type `userCode` and verify it; make confirmation a `POST` wi
 token; never return `authorizeUrl` to the flow initiator; apply `appSecurityHeaders`
 (`frame-ancestors 'none'`) to the page.
 
+**Later change (P1-06):** the user now types (or scans) `userCode` on the RFC 8628 user-code page
+(`/identity/auth/device`), which verifies it server-side, and confirmation is a `POST` with a
+single-use CSRF token (R8-02). That does **not** close R1-07: the starter types its own user code,
+mints its own CSRF token, POSTs it with no `Origin`, and is still handed `authorizeUrl` in the
+`303`. "Never return `authorizeUrl` to the flow initiator" cannot hold while the confirming party
+and the flow's starter are indistinguishable; the closing control is binding the IdP callback to
+the browser that confirmed (R8-03). Status stays **Fixed-partial**; the gap is asserted by
+`test/attack/R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own flow…`, and
+the residual is written up in `THREAT-MODEL.md` › "Remote phishing".
+
 ---
 
 ## R1-08 — Admin cookie has no `__Host-` prefix; first-match cookie parsing
