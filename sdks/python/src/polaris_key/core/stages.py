@@ -34,6 +34,10 @@ __all__ = [
     "BOOT_EMIT_TYPES",
     "BOOT_GUARD_ACTIONS",
     "MAX_FAILED_BOOTS",
+    "BOOT_DECISIONS",
+    "BOOT_OK_SECONDS",
+    "BOOT_CONFIRMATIONS",
+    "boot_confirmation",
     "BootStage",
     "BootOutcome",
     "BootGuardAction",
@@ -102,6 +106,14 @@ BOOT_EMIT_TYPES: Tuple[str, ...] = (
 BOOT_GUARD_ACTIONS: Tuple[str, ...] = ("none", "apply-staged", "roll-back")
 #: Unconfirmed launches of the active slot that trigger a rollback on the next launch.
 MAX_FAILED_BOOTS = 2
+
+#: What ``decide.done`` carries. ``required`` is P1-09's; no v4 update decision maps to it.
+BOOT_DECISIONS: Tuple[str, ...] = ("none", "optional", "required")
+#: How long the outcome must stay ``ready``, with the process alive, before the launch counts
+#: as confirmed (plans/P3-01.md §2.10; ``stage-matrix.json#/bootOkSeconds``).
+BOOT_OK_SECONDS = 10
+#: When a launch is confirmed, by outcome.
+BOOT_CONFIRMATIONS: Tuple[str, ...] = ("now", "after-ok-seconds", "never")
 
 BootStage = Literal[
     "idle",
@@ -456,3 +468,15 @@ def boot_transition(state: BootState, event: BootEvent) -> BootTransition:
     # ``play-offline`` is accepted nowhere in v1 (``canPlayOffline`` is never true), and an
     # unknown type is malformed.
     return _ignore(state)
+
+
+def boot_confirmation(outcome: str) -> str:
+    """Stage matrix v2 (plans/P3-01.md §2.10): when the launch that reached ``outcome`` counts
+    as confirmed. ``waiting``, ``blocked`` and ``offline`` confirm at once; ``ready`` after
+    ``BOOT_OK_SECONDS`` with the process alive (or the game's ``confirm_boot()``, host-side);
+    ``running`` and ``error`` never confirm."""
+    if outcome in ("waiting", "blocked", "offline"):
+        return "now"
+    if outcome == "ready":
+        return "after-ok-seconds"
+    return "never"

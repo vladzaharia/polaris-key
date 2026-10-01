@@ -6,7 +6,9 @@ Mirrors ``conformance/runners/node/corpusV2.test.ts`` against the SAME ``cases.j
 that is how four SDKs prove byte-identical verification. The corpus is found via a relative
 path up to the monorepo root.
 
-Six sections, six layers of wire contract v3:
+Six sections, six layers of the v3 documents (which wire contract v4 keeps), plus v4's
+pointer-set section (§4.1) over the seven JWS families, ``feedCases`` and
+``releaseRecordCases`` included:
 
 ====================  ==========================================================
 ``jwsCases``          §1–§2 raw compact-JWS verification      -> ``verify_jws``
@@ -309,3 +311,69 @@ def test_python_signer_reproduces_the_non_ascii_corpus_vector_byte_for_byte() ->
         case["expect"]["doc"], keys[kid]["privateKeyPkcs8Pem"], kid, case["typ"]
     )
     assert resigned == case["jws"]
+
+
+# ── WIRE-CONTRACT-V4 §4.1: the non-wire-integer pointer sets, over the seven JWS families ──
+# Python's verifier needs no pointer set: ``json.loads`` returns an ``int`` exactly for a plain
+# integer token and a ``float`` for any other, so ``_wire_int`` is already the token rule. For
+# this comparison only, the set is the pointers of the payload's floats and of its ints above
+# 2^53 - 1 in magnitude, and it must equal each case's ``nonWireIntegers`` (absent = empty).
+_MAX_WIRE_INTEGER = 9_007_199_254_740_991
+
+
+def _pointer_token(name: str) -> str:
+    return name.replace("~", "~0").replace("/", "~1")
+
+
+def non_wire_integers(value: Any, pointer: str = "") -> List[str]:
+    """The RFC 6901 pointers of every number in ``value`` that cannot be a wire integer."""
+    if isinstance(value, bool):
+        return []
+    if isinstance(value, float):
+        return [pointer]
+    if isinstance(value, int):
+        return [pointer] if abs(value) > _MAX_WIRE_INTEGER else []
+    if isinstance(value, dict):
+        out: List[str] = []
+        for key, item in value.items():
+            out += non_wire_integers(item, f"{pointer}/{_pointer_token(key)}")
+        return out
+    if isinstance(value, list):
+        out = []
+        for index, item in enumerate(value):
+            out += non_wire_integers(item, f"{pointer}/{index}")
+        return out
+    return []
+
+
+def _family_views() -> List[Any]:
+    views = []
+    for c in _JWS_CASES:
+        views.append(("jwsCases", c, c["jws"], c["trust"], c.get("typ"), c.get("maxPayloadBytes")))
+    for c in _LICENSE_DOC_CASES + _CONFIG_DOC_CASES:
+        views.append(("docCases", c, c["jws"], c["trust"], c["typ"], None))
+    for c in _TRUST_CASES:
+        views.append(("trustCases", c, c["manifestJws"], c["pinned"], "pkey-trust+jws", None))
+    for c in _BUNDLE_CASES:
+        views.append(("bundleCases", c, c["bundleJws"], c["pinned"], "pkey-bundle+jws", MAX_BUNDLE_BYTES))
+    for c in _CORPUS["feedCases"]:
+        views.append(("feedCases", c, c["jws"], c["trust"], "pkey-feed+jws", None))
+    for c in _CORPUS["releaseRecordCases"]:
+        views.append(("releaseRecordCases", c, c["jws"], c["releaseKeys"], "pkey-release+jws", None))
+    return views
+
+
+_POINTER_VIEWS = _family_views()
+
+
+@pytest.mark.parametrize(
+    "view", _POINTER_VIEWS, ids=[f"{v[0]}/{v[1]['id']}" for v in _POINTER_VIEWS]
+)
+def test_non_wire_integer_pointer_set(view: Any) -> None:
+    _family, case, jws, keys, typ, cap = view
+    result = verify_jws(jws, keys, typ=typ, require_typ=True, max_payload_bytes=cap)
+    if "nonWireIntegers" in case:
+        assert result is not None, f"{case['id']} carries nonWireIntegers, so it must verify"
+    if result is None:
+        return
+    assert sorted(non_wire_integers(result.payload)) == sorted(case.get("nonWireIntegers", []))

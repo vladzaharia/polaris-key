@@ -38,6 +38,7 @@ import {
   type ReleasePlatform,
   type ValidationMessage,
 } from "./index.js";
+import { BUILD_ID_PATTERN } from "@polaris-key/protocol/release";
 
 /** The one descriptor version this code reads. */
 export const DESCRIPTOR_VERSION = 1;
@@ -335,7 +336,8 @@ const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const FOUR_PART_RE = /^(0|[1-9]\d*)(\.(0|[1-9]\d*)){3}$/;
 const TAG_RE = /^[^\u0000-\u0020\u007f]{1,255}$/u;
-const BUILD_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+/** The record's build-id rule (WIRE-CONTRACT-V4 §2.4), one source for both. */
+const BUILD_ID_RE = BUILD_ID_PATTERN;
 const FORMAT_RE = /^[a-z0-9][a-z0-9.+-]{0,31}$/;
 const BUILD_NUMBER_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const MIN_OS_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;

@@ -41,9 +41,10 @@ static func verify_manifest(jws: String, opts: Dictionary) -> Dictionary:
 	var now = opts.get("now")
 	now = float(now) if now != null else float(PKeyClaims.system_now())
 
-	# Supported schema versions: {1}. Unknown fails closed.
+	# V4 §3: integer claims decided from their tokens. Supported schema versions: {1}.
+	var nw: PKeyJson.PointerSet = v.get("non_wire_integers")
 	var sv = doc.get("schemaVersion")
-	if not (PKeyClaims.is_number(sv) and float(sv) == 1.0):
+	if not (PKeyClaims.is_wire_integer(sv, "/schemaVersion", 1, nw) and float(sv) == 1.0):
 		return rejected
 	if not (doc.get("aud") is String and opts.get("expected_aud") is String and doc["aud"] == opts["expected_aud"]):
 		return rejected
@@ -52,7 +53,7 @@ static func verify_manifest(jws: String, opts: Dictionary) -> Dictionary:
 		return rejected
 	var issued = doc.get("issuedAt")
 	var expires = doc.get("expiresAt")
-	if not (PKeyClaims.is_number(issued) and PKeyClaims.is_number(expires)):
+	if not (PKeyClaims.is_wire_integer(issued, "/issuedAt", 0, nw) and PKeyClaims.is_wire_integer(expires, "/expiresAt", 0, nw)):
 		return rejected
 	var floor_at = opts.get("last_trust_issued_at")
 	if floor_at != null and issued <= floor_at:

@@ -997,7 +997,7 @@
       "optional": false,
       "refs": ["README §3.3", "README §9.1 #19", "notes/A5 §3"],
       "brief": "wp/P3-02-wire-v4-contract-corpus.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "P3-01"
     },
     {

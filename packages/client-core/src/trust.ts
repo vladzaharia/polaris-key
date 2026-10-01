@@ -12,7 +12,7 @@
 import { verifyJws, type TrustSet } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
 import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
-import { CLOCK_SKEW_SECONDS } from "./claims.js";
+import { CLOCK_SKEW_SECONDS, isWireInteger } from "./claims.js";
 
 /** Trust-manifest schema versions this client understands. Unknown ⇒ fail closed. */
 const SUPPORTED_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1]);
@@ -77,10 +77,18 @@ export async function verifyTrustManifest(
   if (!doc || typeof doc !== "object") return REJECTED;
 
   const now = opts.now ?? Math.floor(Date.now() / 1000);
+  const nonWire = verified.nonWireIntegers;
+  // V4 §3: integer claims decided from the token (`1.0` and `true` are refused), then the
+  // allow-list.
+  if (!isWireInteger(doc.schemaVersion, "/schemaVersion", 1, nonWire))
+    return REJECTED;
   if (!SUPPORTED_SCHEMA_VERSIONS.has(doc.schemaVersion)) return REJECTED;
   if (doc.aud !== opts.expectedAud) return REJECTED;
   if (doc.iss !== (opts.expectedIss ?? ISSUER)) return REJECTED;
-  if (typeof doc.issuedAt !== "number" || typeof doc.expiresAt !== "number")
+  if (
+    !isWireInteger(doc.issuedAt, "/issuedAt", 0, nonWire) ||
+    !isWireInteger(doc.expiresAt, "/expiresAt", 0, nonWire)
+  )
     return REJECTED;
   if (
     opts.lastTrustIssuedAt !== undefined &&

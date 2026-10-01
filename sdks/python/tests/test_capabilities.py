@@ -137,7 +137,7 @@ def test_the_document_is_allowed_to_grow() -> None:
         {
             "product": PRODUCT,
             "name": "DJDL",
-            "protocolVersion": 3,
+            "protocolVersion": 4,
             "onboarding": {"steps": ["a", "b"]},
             "services": {"config": {"enabled": True, "endpoints": {"document": "/x"}}},
         },

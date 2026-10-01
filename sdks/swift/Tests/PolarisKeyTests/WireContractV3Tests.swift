@@ -388,7 +388,8 @@ final class WireContractV3Tests: XCTestCase {
                     signer.sign(doc), options: options(now: t, checkFreshness: false)))
         }
         // …and the fully saturated document survives the arithmetic rather than trapping on it.
-        XCTAssertNotNil(
+        // Wire contract v4 §3 then refuses it: `Int.max` is above `MAX_WIRE_INTEGER`, 2^53 − 1.
+        XCTAssertNil(
             verifyLicenseDoc(
                 signer.sign(saturated), options: options(now: t, checkFreshness: false)))
     }
@@ -435,7 +436,7 @@ final class WireContractV3Tests: XCTestCase {
     /// cross-language break rather than a local bug.
     func testV3IdentifierRegistry() {
         XCTAssertEqual(POLARIS_ISSUER, "key.plrs.im")
-        XCTAssertEqual(POLARIS_PROTOCOL_VERSION, 3)
+        XCTAssertEqual(POLARIS_PROTOCOL_VERSION, 4)
         XCTAssertEqual(CACHE_RECORD_VERSION, 3)
         XCTAssertEqual(DEVICE_TOKEN_PREFIX, "pkeyt_")
         XCTAssertEqual(MAX_BUNDLE_BYTES, 262_144)
@@ -451,6 +452,9 @@ final class WireContractV3Tests: XCTestCase {
         XCTAssertEqual(HEADER_SDK_VERSION, "X-PKey-SDK-Version")
         XCTAssertEqual(
             Set(JwsTyp.allCases.map(\.rawValue)),
-            ["pkey-license+jws", "pkey-config+jws", "pkey-trust+jws", "pkey-bundle+jws"])
+            [
+                "pkey-license+jws", "pkey-config+jws", "pkey-trust+jws", "pkey-bundle+jws",
+                "pkey-feed+jws", "pkey-release+jws",
+            ])
     }
 }
