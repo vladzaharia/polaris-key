@@ -109,7 +109,7 @@ export async function handleProfiles(
       now,
     );
     if (!result.ok)
-      return err(422, ErrorCode.BadRequest, "validation failed", {
+      return err(422, result.code, "validation failed", {
         fields: result.fields,
       });
     await upsertProfile(db, {

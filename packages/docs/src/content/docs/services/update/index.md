@@ -5,8 +5,9 @@ sidebar:
   order: 1
 ---
 
-Update renders a live feed _over_ [Release](/docs/services/release/)'s truth. It owns no
-tables of its own — every row it reads belongs to Release — and it answers exactly two
+Update renders a live feed _over_ [Release](/docs/services/release/)'s truth. Its only
+tables are the signed feed's own (`update_feed_state`, `update_feed_ceiling`,
+`update_feed_docs`) — every release row it reads belongs to Release — and it answers exactly two
 questions: what is the newest build on a given channel, and which build is _this specific
 caller_ allowed to be offered. The Sparkle appcast, the plain version check, and the
 per-license `entitled` access mode are all different framings of those same two questions.
@@ -63,12 +64,15 @@ separately keeps working unchanged. See
 What Distribution knows — transports, availability, and later per-outlet rollouts — reaches
 Update through Core's descriptor hooks, never by import, and only while Distribution is on.
 
-## The three pages
+## The pages
 
 - **[Appcast](/docs/services/update/appcast/)** — the Sparkle feed itself, per-architecture
   enclosures, and the four pre-namespace URLs kept working forever.
 - **[Eligibility](/docs/services/update/eligibility/)** — the version check, channel
   resolution, and the `entitled` access mode end to end.
+- **[Signed feed](/docs/services/update/signed-feed/)** — `pkey-feed+jws` and the CI-signed
+  release records it pins (wire v4): what a v4 SDK decides from, floors, rollouts and halts,
+  and the `seq` ceiling recovery.
 - **[Swift client & Sparkle](/docs/services/update/sparkle/)** — the macOS client target,
   the Sparkle version floor, and the trust anchor Polaris Key deliberately never
   reimplements.

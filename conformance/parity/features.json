@@ -434,6 +434,10 @@
           "file": "cases.json",
           "family": "releaseRecordCases",
           "wp": "P3-02"
+        },
+        {
+          "kind": "transcript",
+          "wp": "P3-03"
         }
       ],
       "allowedNa": []
@@ -457,6 +461,10 @@
           "file": "cases.json",
           "family": "feedCases",
           "wp": "P3-02"
+        },
+        {
+          "kind": "transcript",
+          "wp": "P3-03"
         }
       ],
       "allowedNa": []
@@ -467,7 +475,11 @@
       "title": "The update decision",
       "service": "update",
       "proof": [
-        { "kind": "corpus", "file": "update-matrix.json", "wp": "P3-02" }
+        { "kind": "corpus", "file": "update-matrix.json", "wp": "P3-02" },
+        {
+          "kind": "transcript",
+          "wp": "P3-03"
+        }
       ],
       "allowedNa": []
     },

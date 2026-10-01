@@ -246,7 +246,10 @@ describe("worker surfaces", () => {
         download: "https://key.plrs.im/djdl/release/dl",
         builds: "https://key.plrs.im/djdl/release/builds/{selector}/{buildId}",
         blobs: "https://key.plrs.im/djdl/release/blobs/sha256/{sha256}",
+        // P3-03: a CI-signed release record by its hash.
+        record: "https://key.plrs.im/djdl/release/records/{sha256}",
       },
+      releaseKeyFingerprints: [],
     });
     expect(body.services.update).toEqual({
       enabled: true,
@@ -257,6 +260,8 @@ describe("worker surfaces", () => {
         version: "https://key.plrs.im/djdl/update/version",
         appcast: "https://key.plrs.im/djdl/update/appcast.xml",
         channelAppcast: "https://key.plrs.im/djdl/update/{channel}/appcast.xml",
+        // P3-03: the signed channel feed.
+        feed: "https://key.plrs.im/djdl/update/{channel}/feed.jws",
       },
       archParameter: ["arm64", "x86_64"],
     });

@@ -38,6 +38,7 @@ outlets: # identities only — capabilities are operator-owned
     bundleId: gg.vlad.diceroll
   testflight:
     bundleId: gg.vlad.diceroll
+    publicLink: AbCdEf12 # the join code of https://testflight.apple.com/join/AbCdEf12
   altstore:
     artifact: ipa-sideload # an id in .pkey/release's artifact map
   altstore-beta:
@@ -96,7 +97,8 @@ optional. A bad value is `invalid_outlet_identity`.
 | Kind                       | Fields                                                                  |
 | -------------------------- | ----------------------------------------------------------------------- |
 | `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token) |
-| `app-store`, `testflight`  | `appleId` (numeric), `bundleId` (reverse-DNS)                           |
+| `app-store`                | `appleId` (numeric), `bundleId` (reverse-DNS)                           |
+| `testflight`               | `appleId`, `bundleId`, `publicLink` (the public link's join code)       |
 | `altstore`                 | `artifact`, `bundleId`                                                  |
 | `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                 |
 | `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)        |
@@ -110,6 +112,10 @@ optional. A bad value is `invalid_outlet_identity`.
 | `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                           |
 | `web`                      | none                                                                    |
 
+- **`publicLink`** is the code after `/join/` in a public TestFlight link: 1–32 letters and
+  digits. The signed update feed turns it into the outlet's `listingUrl`
+  (`https://testflight.apple.com/join/<publicLink>`); without it a TestFlight outlet has no
+  listing link.
 - **Numeric ids** (`appleId`, `steam.appId`, `itch.gameId`) accept a positive integer or a
   string of digits with no leading zero, and are stored as the digit string either way.
 - **`appleId` must match the operator's pin.** The App Store Connect connector runs only while

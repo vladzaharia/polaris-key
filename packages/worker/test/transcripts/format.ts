@@ -76,10 +76,28 @@
 //   licenseStatus   the gate's status afterwards (client-core `licenseState`)
 //   tokenHeld       whether the client holds a device token afterwards
 //
+// updateDecide (P3-03, plans/P3-01.md §2.5) — `client.update.decide({channel})` returns an
+// `UpdateCheck`, and every member is asserted:
+//   channel         the canonical channel: the `channel` claim of the feed the decision used
+//   feed            "network" (the fetched copy was committed, or equals the committed one) |
+//                   "committed" (the decision used the earlier copy)
+//   record          "network" | "cache" | "none"
+//   errors          [{code, detail}] in the order the steps raised them (`feed-rollback`, …)
+//   decision        the `UpdateDecision`, compared by value (update-matrix.json's shape)
+//
+// `initial.update` (only on updateDecide transcripts) is the update client's state:
+//   pinnedReleaseKeys  kid → raw Ed25519 release key (base64url), compiled into the app
+//   outlet             the host's outlet {id, kind}
+//   platform, arch     the device
+//   installed          the InstalledBuild the host reports (version, buildNumber, format, engine)
+//   methods            the host's binary methods
+//   cache              {feeds: canonical channel → compact JWS, releaseRecords: sha256 → JWS},
+//                      what the client's store holds before the first step
+//
 // Every key present is asserted; an absent key is not.
 //
 // Step `args` per action: activate { key }; sync { force }; beginSignIn { deviceName? };
-// mintToken { recipeId }. pollSignIn and waitForSignIn act on the prompt the transcript's last
+// mintToken { recipeId }; updateDecide { channel } (the REQUESTED name, which may be an alias). pollSignIn and waitForSignIn act on the prompt the transcript's last
 // beginSignIn returned.
 
 export const TRANSCRIPT_VERSION = 1;
@@ -140,7 +158,9 @@ export type Action =
   | "beginSignIn"
   | "pollSignIn"
   | "waitForSignIn"
-  | "mintToken";
+  | "mintToken"
+  /** P3-03: `client.update.decide({channel})` — the signed feed, the pinned record, the decision. */
+  | "updateDecide";
 
 export interface Step {
   action: Action;
@@ -173,8 +193,29 @@ export interface Transcript {
     token?: string;
     version: string;
     services?: string[];
+    /** P3-03: the update client's state, on `updateDecide` transcripts only. */
+    update?: UpdateInitial;
   };
   steps: Step[];
+}
+
+/** The update client's state before the first `updateDecide` step (P3-03). */
+export interface UpdateInitial {
+  pinnedReleaseKeys: Record<string, string>;
+  outlet: { id: string | null; kind: string };
+  platform: string;
+  arch: string;
+  installed: {
+    version: string;
+    buildNumber: string | null;
+    format: string | null;
+    engine: string | null;
+  };
+  methods: string[];
+  cache: {
+    feeds: Record<string, string>;
+    releaseRecords: Record<string, string>;
+  };
 }
 
 /** The response headers a client acts on. Everything else the Worker sends (HSTS, CSP, CORS,

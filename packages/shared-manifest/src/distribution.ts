@@ -97,6 +97,8 @@ export interface ManifestOutletIdentity {
   appleId?: string;
   /** `app-store` / `testflight` / `altstore` / `altstore-pal`: the iOS bundle id. */
   bundleId?: string;
+  /** `testflight`: the join code of the public TestFlight link (`testflight.apple.com/join/<code>`). */
+  publicLink?: string;
   /** `altstore` / `altstore-pal` / `obtainium` / `fdroid-repo`: an artifact-map `id` (P2-04). */
   artifact?: string;
   /** `altstore-pal`: the AltStore PAL marketplace id. */
@@ -134,7 +136,7 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
 > = {
   direct: ["platforms", "homebrewCask"],
   "app-store": ["appleId", "bundleId"],
-  testflight: ["appleId", "bundleId"],
+  testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
   "altstore-pal": ["artifact", "bundleId", "marketplaceId"],
   play: ["packageName", "tracks"],
@@ -155,6 +157,8 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
 export const NUMERIC_ID_PATTERN = /^[1-9][0-9]{0,19}$/;
 const BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 const MAX_BUNDLE_ID_LENGTH = 155;
+/** The join code of a public TestFlight link (P3-03, from which the feed composes `listingUrl`). */
+export const TESTFLIGHT_PUBLIC_LINK_PATTERN = /^[A-Za-z0-9]{1,32}$/;
 const MARKETPLACE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const ANDROID_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 const MAX_PACKAGE_NAME_LENGTH = 255;
@@ -242,6 +246,11 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
           : `must be an artifact-map id (${ARTIFACT_ENTRY_ID_PATTERN.source})`;
     case "marketplaceId":
       return pattern(MARKETPLACE_ID_RE, "a marketplace id");
+    case "publicLink":
+      return pattern(
+        TESTFLIGHT_PUBLIC_LINK_PATTERN,
+        "the join code of a public TestFlight link (1-32 letters and digits)",
+      );
     case "packageName":
       return pattern(
         ANDROID_PACKAGE_RE,

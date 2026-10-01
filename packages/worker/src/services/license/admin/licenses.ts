@@ -48,6 +48,7 @@ import {
   shapeFacts,
   shapeFingerprint,
   type OverrideUpdate,
+  WriteChecks,
 } from "../../../core/adminApi.js";
 import { tierExpiresAt } from "../authz.js";
 import type { LicenseAdminContext } from "./index.js";
@@ -67,6 +68,23 @@ function parseProfiles(body: Record<string, unknown>): string[] {
     return body.profiles.filter((p) => typeof p === "string") as string[];
   }
   return typeof body.profile === "string" && body.profile ? [body.profile] : [];
+}
+
+/**
+ * The write checks a licence body's signed values take (plans/P3-01.md §2.2's inventory): the
+ * name and email are free text the profile carries, the channels and version bounds the
+ * manifest's patterns, and the offline-day count an integer from 1 to 365, the bundle mint's
+ * rule (it becomes `graceUntil`).
+ */
+function licenseWriteChecks(body: Record<string, unknown>): Response | null {
+  return new WriteChecks()
+    .text("name", body.name)
+    .text("email", body.email)
+    .channels("channels", body.channels)
+    .semver("minVersion", body.minVersion)
+    .semver("maxVersion", body.maxVersion)
+    .offlineDays("maxOfflineDays", body.maxOfflineDays)
+    .response();
 }
 
 async function validateRefs(
@@ -107,6 +125,8 @@ export async function handleLicenses(
     }
     if (req.method === "POST") {
       const body = await readBody(req);
+      const refused = licenseWriteChecks(body);
+      if (refused) return refused;
       const licenseId = randomId("lic");
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
@@ -243,6 +263,8 @@ export async function handleLicenses(
     }
     if (req.method === "PATCH") {
       const body = await readBody(req);
+      const refused = licenseWriteChecks(body);
+      if (refused) return refused;
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
         tier: body.tier,
@@ -416,7 +438,7 @@ export async function handleLicenses(
       now,
     );
     if (!result.ok)
-      return err(422, ErrorCode.BadRequest, "validation failed", {
+      return err(422, result.code, "validation failed", {
         fields: result.fields,
       });
     await patchLicense(

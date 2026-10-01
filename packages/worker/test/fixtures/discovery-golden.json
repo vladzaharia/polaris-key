@@ -156,8 +156,10 @@
           "install": "https://key.plrs.im/full/release/install.sh",
           "download": "https://key.plrs.im/full/release/dl",
           "builds": "https://key.plrs.im/full/release/builds/{selector}/{buildId}",
-          "blobs": "https://key.plrs.im/full/release/blobs/sha256/{sha256}"
-        }
+          "blobs": "https://key.plrs.im/full/release/blobs/sha256/{sha256}",
+          "record": "https://key.plrs.im/full/release/records/{sha256}"
+        },
+        "releaseKeyFingerprints": []
       },
       "distribution": {
         "enabled": true,
@@ -177,7 +179,8 @@
         "endpoints": {
           "version": "https://key.plrs.im/full/update/version",
           "appcast": "https://key.plrs.im/full/update/appcast.xml",
-          "channelAppcast": "https://key.plrs.im/full/update/{channel}/appcast.xml"
+          "channelAppcast": "https://key.plrs.im/full/update/{channel}/appcast.xml",
+          "feed": "https://key.plrs.im/full/update/{channel}/feed.jws"
         },
         "archParameter": ["arm64", "x86_64"]
       },

@@ -73,7 +73,9 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | POST | `/{product}/release/publish/submit` | release | Submit a release descriptor against an upload ticket (trusted publishing) |
 | POST | `/{product}/release/publish/token` | release | Exchange a GitHub Actions OIDC token for a pkeyci_ token (trusted publishing) |
 | POST | `/{product}/release/publish/uploads` | release | Obtain an upload ticket and R2 temporary credentials (trusted publishing) |
+| GET | `/{product}/release/records/{sha256}` | release | A CI-signed release record, by its SHA-256 |
 | POST | `/{product}/release/releases/{releaseId}/yank` | release | Yank a release (CI) |
 | GET | `/{product}/update/{channel}/appcast.xml` | update | The Sparkle appcast for a channel |
+| GET | `/{product}/update/{channel}/feed.jws` | update | The signed channel feed (pkey-feed+jws) |
 | GET | `/{product}/update/appcast.xml` | update | The Sparkle appcast (default channel) |
 | GET | `/{product}/update/version` | update | Latest-version check |

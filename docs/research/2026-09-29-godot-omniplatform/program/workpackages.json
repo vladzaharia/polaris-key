@@ -1022,7 +1022,7 @@
       "optional": false,
       "refs": ["README §3.3", "README §3.6"],
       "brief": "wp/P3-03-feed-composition.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P3-04",
@@ -1198,7 +1198,7 @@
       "optional": false,
       "refs": ["plans/P3-01.md §2.2", "plans/P3-01.md §6", "plans/P3-01.md §7"],
       "brief": "wp/P3-12-worker-representability.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "P3-01"
     },
     {
