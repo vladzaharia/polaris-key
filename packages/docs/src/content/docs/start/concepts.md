@@ -159,6 +159,13 @@ _capability_ of Config, not a unit of its own, so declaring it turns Config on.
 - **tier** — a named plan: an optional profile plus policy (default expiry, device limit, and —
   from the channels work — default upgrade channels and version window). (Not "plan".)
 - **profile** — a reusable managed-payload baseline that a tier or license can attach.
+- **channel** — a named release stream a build belongs to and a license may be granted, one
+  vocabulary for the license build gate, Release and every SDK (WIRE-CONTRACT-V3 §5.1): `stable`
+  (always granted), `beta`, `pr-<n>` (one pull request; a `pr` grant covers every PR), a
+  product's manual channels, and `dev`, the gate's pseudo-channel for `0.0.0-dev*` builds (Release
+  has none). `staging` is the legacy spelling of `beta` and `latest` names `stable`; both are
+  accepted, and no SDK sends them. Names match `^[a-z0-9][a-z0-9-]{0,63}$`. A license's channels
+  are the `channels` entitlement.
 - **entitlement** — a capability flag or value delivered to the client (the `flag` config kind),
   e.g. `polarisVpn`, `channels`, `app.minVersion`. Entitlements ride the **license** document and
   only it; the config document carries no grant data.
@@ -173,7 +180,8 @@ _capability_ of Config, not a unit of its own, so declaring it turns Config on.
 - **claim / migrate** — the two merge outcomes when a signed-in identity meets an auto-issued
   license. _Claim_: the identity is attached to the same row, so devices and local state
   survive. _Migrate_: the identity already had a license, so the enrolled row's devices move
-  onto it and the enrolled row is retired.
+  onto it and the enrolled row is retired. No sign-in route merges today; see
+  [claim and migrate](/docs/services/license/enrollment/#claim-and-migrate).
 - **re-licensing** — changing a license's `tier_id`. Running clients pick up the new
   entitlements on their next license-document refresh; nothing is pushed. A downgrade below the
   active device count **grandfathers** existing devices and refuses new activations until the

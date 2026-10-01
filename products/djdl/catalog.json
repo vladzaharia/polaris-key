@@ -440,12 +440,12 @@
       "kind": "flag",
       "category": "Release channels",
       "label": "Allowed update channels",
-      "description": "Release channels this license may run. `stable` is always allowed.",
+      "description": "Release channels this license may run. `stable` is always allowed; `staging` is the legacy spelling of `beta`.",
       "schema": {
         "type": "array",
         "items": {
           "type": "string",
-          "enum": ["stable", "staging", "pr"]
+          "enum": ["stable", "beta", "staging", "pr"]
         },
         "uniqueItems": true
       },

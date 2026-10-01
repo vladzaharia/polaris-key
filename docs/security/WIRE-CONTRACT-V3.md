@@ -143,9 +143,79 @@ Unchanged semantics: a recorded hard 401 (`lastSyncUnauthorized`) yields `revoke
 
 - **Documents:** `GET /<p>/license/document` and `GET /<p>/config/document`, `Authorization: Bearer pkeyt_…`, response `application/jwt`. Per-document `ETag`/`If-None-Match`; on 304, if `effectiveNow > doc.expiresAt − REFRESH_MARGIN_SECONDS` the client refetches unconditionally (the v2 half-life rule, applied per document). **[C]**
 - **401 handling:** exactly one `POST /<p>/license/token` re-acquire attempt, then one retry of the failed fetch. (Registered-without-license devices re-register instead; same single-attempt rule.)
-- **Build gate placement (D-20):** channel/version-window enforcement returns `403 {"error":{"code":"version_blocked"|"channel_not_allowed"},"allowedRange":{…}}` on **`/license/document`** (and identity's `/session`). The config document enforces device authentication only.
+- **Build gate placement (D-20):** channel/version-window enforcement returns `403 {"error":{"code":"version_blocked"|"channel_not_allowed"},"allowedRange":{…}}` on **`/license/document`** (and identity's `/session`). The config document enforces device authentication only. The channel names, the header normalisation and the entitlement predicate the gate applies are §5.1.
 - **Client metadata headers** on every product-scoped call: `X-PKey-Device`, `X-PKey-Version`, `X-PKey-Channel`, `X-PKey-SDK`, `X-PKey-SDK-Version`, `X-PKey-Platform`, `X-PKey-Arch`.
 - **Gate function** (client-side, shared implementation): input `{ licenseServiceEnabled, activation: "token"|"bundle"|null, doc, now, highWaterMark, lastSyncUnauthorized, blocked, lastVerifiedAt }` with `now := max(now, highWaterMark)`. `licenseServiceEnabled: false` ⇒ status **`not-applicable`**, `isUsable = true`. `activation: null` ⇒ `needs-activation`. Otherwise v2 state machine unchanged (`ok` → `grace` → `expired`; `revoked` on recorded 401; blocked states from the unsigned hint). **[C]** via gate-matrix v2.
+
+### 5.1 Channel vocabulary
+
+One set of channel names serves the licence build gate, the `entitled` release check
+(`release`/`update` access mode) and every SDK's `X-PKey-Channel`. The constants live in
+`@polaris-key/protocol/core` (`CHANNEL_*`, `CHANNEL_ALIASES`, `CHANNEL_NAME_PATTERN`,
+`PR_CHANNEL_PATTERN`, `PR_NUMBER_MAX_DIGITS`). **[C]** via gate-matrix v2.
+
+| Name      | What it is                                                               | Valid as                         |
+| --------- | ------------------------------------------------------------------------ | -------------------------------- |
+| `stable`  | the shipping channel; every grant holds it                               | header, selector, grant          |
+| `beta`    | the pre-release channel                                                  | header, selector, grant          |
+| `pr-<n>`  | one pull request; `<n>` is 1–7 digits, kept as written                   | header, selector, grant          |
+| `pr`      | the PR family: as a grant it covers every `pr-<n>`                       | header, grant                    |
+| `dev`     | the gate pseudo-channel of `0.0.0-dev*` builds (R3-01); Release has none | header, grant                    |
+| manual    | a name from the product's `release.manualChannels`                       | header, selector, grant          |
+| `staging` | the legacy alias of `beta`                                               | header, grant; selector (rule 6) |
+| `latest`  | an alias of `stable`                                                     | header, selector                 |
+
+1. **Alphabet.** Every name matches `^[a-z0-9][a-z0-9-]{0,63}$`: the intersection of the
+   manifest's `CHANNEL_RE` and the feed routes' `^[a-z0-9-]+$`. The routes keep their own
+   pattern, which every valid name passes.
+2. **Build-implied channel**, `impliedChannel(version)`:
+
+   | Version          | Channel                                             |
+   | ---------------- | --------------------------------------------------- |
+   | `0.0.0-dev*`     | `dev`                                               |
+   | `0.0.0-beta*`    | `beta`                                              |
+   | `0.0.0-staging*` | `beta`                                              |
+   | `0.0.0-pr-?<d>*` | `pr-<d>`, or `pr` when `<d>` has more than 7 digits |
+   | anything else    | `stable`                                            |
+
+   Only the `0.0.0-<word>` sentinels carry a channel: `2.0.0-beta.1` is `stable`. An SDK's
+   `channelForVersion` returns the coarse family (`stable`, `beta`, `pr`, `dev`) and sends it as
+   its default `X-PKey-Channel`; only the server narrows `pr` to `pr-<n>`.
+
+3. **Header**, `normalizeChannelHeader(header, version)`:
+
+   | `X-PKey-Channel`               | Becomes                                             |
+   | ------------------------------ | --------------------------------------------------- |
+   | `stable`, `latest`             | `stable`                                            |
+   | `beta`, `staging`              | `beta`                                              |
+   | `dev`                          | `dev`                                               |
+   | the literal `pr`               | the build's `pr-<n>` if it has one, else `pr`       |
+   | `pr-<d>`, `pr<d>`              | `pr-<d>`, or `pr` when `<d>` has more than 7 digits |
+   | any other name in the alphabet | itself                                              |
+   | anything else                  | refused with `channel-not-entitled`                 |
+
+   An unknown well-formed name is never a free pass: it must be granted by name (R3-01, R3-13).
+
+4. **Predicate**, `channelEntitled(granted, channel)`, where `granted` is the `channels`
+   entitlement (absent means `["stable"]`):
+   - `stable` is always granted;
+   - otherwise `granted` must contain the name exactly;
+   - two exceptions widen a grant: `staging` also covers `beta`, and `pr` also covers `pr-<n>`.
+
+   Nothing else widens one. `dev` and manual names are granted only by their exact name, and a
+   `beta` grant never covers a manual channel named `staging`. Grants are matched as stored and
+   are never rewritten.
+
+5. **Gate order.** The server checks, in order:
+   1. the dev bypass: `allowDevBuilds ?? granted includes "dev"`;
+   2. the version window;
+   3. a malformed header, which is refused;
+   4. every channel in {build-implied, header} other than `stable`, each against rule 4.
+6. **Release selectors keep their grammar:** `latest`, `stable`, `beta`, `pr-<1–7 digits>`, a
+   manual name, or a pinned `X.Y.Z`. `staging` resolves as `beta`, and it is looked up **after**
+   the manual names, so a declared manual `staging` channel wins. An aliased request keeps its
+   requested spelling for the asset suffix, the enclosure, the feed title and the edge-cache key;
+   resolution, floors and the `entitled` check go by the canonical channel.
 
 ## 6. Device principal
 
@@ -216,11 +286,11 @@ either string ever existed in the wild.
 
 ## 9. Rollout & versioning
 
-Pre-launch, no live clients: v3 replaces v2 in one movement — no dual-accept window. `PROTOCOL_VERSION = 3`; cache v2 records are discarded on first v3 load (§4.1); djdl is re-seeded; the corpus lives at `corpus/v2/` and v1 has been deleted (its fifteen gate-matrix rows were inlined into the v2 generator first, so nothing it pinned was dropped). Version counters and their owners: `PROTOCOL_VERSION` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1` (unchanged), per-product catalog `schemaVersion` (orthogonal). The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+Pre-launch, no live clients: v3 replaces v2 in one movement — no dual-accept window. `PROTOCOL_VERSION = 3`; cache v2 records are discarded on first v3 load (§4.1); djdl is re-seeded; the corpus lives at `corpus/v2/` and v1 has been deleted (its fifteen gate-matrix rows were inlined into the v2 generator first; gate-matrix v2 has since retired one of them, the pre-R3-01 dev-build bypass, through an approved plan with a named successor row, P0-04). Version counters and their owners: `PROTOCOL_VERSION` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1` (unchanged), `stageMatrixVersion = 1` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), per-product catalog `schemaVersion` (orthogonal). The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger (seeded from v2 §6)
 
-All v2 divergence classes (alg confusion, oversize, duplicate keys, alphabet strictness, typ separation, freshness profiles, trust substitution, clock floor) carry into corpus v2 unchanged. New classes introduced by v3, each with corpus coverage: per-type anti-replay floors (§3), config-document-without-license issuance (§2.2), registration-policy token minting (§6), bundle all-or-nothing import (§7), bundle payload cap (§1), gate `not-applicable`/`activation` semantics (§5). Implementations must not add local tolerances beyond this document; any observed divergence gets a corpus case before a fix.
+All v2 divergence classes (alg confusion, oversize, duplicate keys, alphabet strictness, typ separation, freshness profiles, trust substitution, clock floor) carry into corpus v2 unchanged. New classes introduced by v3, each with corpus coverage: per-type anti-replay floors (§3), config-document-without-license issuance (§2.2), registration-policy token minting (§6), bundle all-or-nothing import (§7), bundle payload cap (§1), gate `not-applicable`/`activation` semantics (§5), channel vocabulary and aliases (§5.1, gate-matrix). Implementations must not add local tolerances beyond this document; any observed divergence gets a corpus case before a fix.
 
 **Declared representation limit: U+0000 in decoded strings.** Some client platforms have a native string type that cannot hold U+0000. GDScript's `String` is one: Godot 4.4 drops the character and 4.7 replaces it. Such a platform is conformant only under this rule.
 

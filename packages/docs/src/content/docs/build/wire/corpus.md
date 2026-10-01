@@ -22,6 +22,7 @@ Spec references: §6 (mandatory corpus additions, carried from v2), §9 (version
 tools/sign-corpus.ts  →  conformance/corpus/v2/cases.json
                          conformance/corpus/v2/gate-matrix.json
                          conformance/corpus/v2/fingerprint.json
+                         conformance/corpus/v2/stage-matrix.json
                       →  sdks/swift/Tests/PolarisKeyTests/Resources/v2/   (Swift mirror)
                       →  sdks/godot/tests/corpus/v2/                      (Godot mirror)
 ```
@@ -42,15 +43,18 @@ are not secret, and nothing outside the corpus and its generator-owned mirrors s
 reference them.
 
 `corpus/v1` is **deleted** — v2 is the only corpus. Its fifteen gate-matrix rows were inlined
-into the v2 generator before deletion, so nothing it pinned was dropped.
+into the v2 generator before deletion. Fourteen are still carried; the fifteenth, which pinned
+the dev-build bypass R3-01 removed, was retired by an approved plan (P0-04), and its successor
+row pins the opt-in bypass instead.
 
-## The three files
+## The four files
 
-| File               | What it pins                                                                               | Contract section |
-| ------------------ | ------------------------------------------------------------------------------------------ | ---------------- |
-| `cases.json`       | Six case families covering verification end to end, plus the two test keys                 | §1–§4, §7        |
-| `gate-matrix.json` | Every gate transition, as pure input/expected-status rows                                  | §5               |
-| `fingerprint.json` | Component order, per-component and composite digest lengths, and the device-id derivations | Fingerprint v1   |
+| File                | What it pins                                                                                    | Contract section                              |
+| ------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `cases.json`        | Six case families covering verification end to end, plus the two test keys                      | §1–§4, §7                                     |
+| `gate-matrix.json`  | Every gate transition, as pure input/expected-status rows                                       | §5                                            |
+| `fingerprint.json`  | Component order, per-component and composite digest lengths, and the device-id derivations      | Fingerprint v1                                |
+| `stage-matrix.json` | The boot stage machine: rows of host events with the exact emits each produces, and guard cases | client boot behaviour, not a contract section |
 
 ### The case families in `cases.json`
 
@@ -79,6 +83,13 @@ reference implementation written for the test.
 | Swift  | `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift` | The Swift SDK, against the mirrored `Resources/v2/`                                                |
 | React  | `packages/sdk-react/test/gateMatrixParity.test.ts`        | `gate-matrix.json` through `licenseState` **and** the React projection                             |
 | Godot  | `sdks/godot/tests/suite_conformance.gd`                   | The addon's core, from the `res://` mirror, on an editor **and** an exported template              |
+| Worker | `packages/worker/test/gateMatrixCorpus.test.ts`           | `gate-matrix.json` through the server's own `checkBuildGate`: the oracle for every runner's port   |
+
+`stage-matrix.json` has its own runners too: `conformance/runners/node/stageMatrix.test.ts`
+(through `@polaris-key/client-core/stages`, which React shares),
+`sdks/python/tests/test_stage_matrix.py` and
+`sdks/swift/Tests/PolarisKeyTests/StageMatrixTests.swift`. Each replays every row, sends every
+probe of the file's `accepts` table at every state the rows reach, and checks every guard case.
 
 The React runner is the odd one out on purpose. The gate itself is proven by the Node runner;
 what only the React suite can prove is that the React state machine feeds it the right
@@ -87,11 +98,16 @@ inputs — `licenseServiceEnabled` from the capability map, `activation` from th
 from.
 
 The Godot runner covers every `cases.json` family and the `deviceIds` vectors; the gate matrix
-follows with the licence client (P1-03). Its platform has one declared representation limit (WIRE-CONTRACT-V3 §10): a GDScript `String`
-cannot hold U+0000. The Godot verifier decodes the escape `\u0000` as U+FFFD on every engine, and
+follows with the licence client (P1-03). Its platform has one declared representation limit
+(WIRE-CONTRACT-V3 §10): a GDScript `String` cannot hold U+0000. The Godot verifier decodes the escape `\u0000` as U+FFFD on every engine, and
 for each `jwsCases` string that contains U+0000 the generator writes `expect.docNulReplaced`, a
 map from the value's RFC 6901 pointer to its U+FFFD form. The Godot runner compares those values
 exactly; every other runner ignores the field. Verdicts are unaffected.
+
+The Node, Python and Swift gate-matrix runners each carry a **port** of the server's build gate
+(WIRE-CONTRACT-V3 §5.1), built from that SDK's own semver and channel helpers; the Worker runner
+replays the same rows through the real gate, so a port that drifts, or a doctored `expect`,
+fails on the server side too.
 
 `fingerprint.json` has its own runners alongside these — `conformance/runners/node/fingerprint.test.ts`,
 `sdks/python/tests/test_fingerprint_conformance.py`,
@@ -154,8 +170,9 @@ Worth stating plainly, so it is not over-trusted:
 
 - It pins **verification**, not signing. There is exactly one signer, so agreement among
   signers is not a question the corpus is asked.
-- It pins the **client-side** contract. Server behaviour reaches it only through the artifacts
-  the generator mints in the server's shape.
+- It pins the **client-side** contract, plus one server function: the build gate, which the
+  Worker replays over `gate-matrix.json`. Other server behaviour reaches it only through the
+  artifacts the generator mints in the server's shape.
 - It is a set of vectors, not a proof. A rule with no case is a rule the implementations may
   quietly disagree about — which is exactly how the divergence ledger got its first entries.
 

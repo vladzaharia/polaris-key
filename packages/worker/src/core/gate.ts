@@ -1,6 +1,7 @@
 // Version + channel gating. Ported from djdl's license.ts/licensing.ts. The per-license
 // app.min/maxVersion window is intersected with the product's global compat window
-// (tighter wins); pre-release channels (staging/pr/dev) require the `channels` entitlement.
+// (tighter wins); every channel but `stable` requires the `channels` entitlement, under the one
+// vocabulary of WIRE-CONTRACT-V3 §5.1 (`core/channels.ts`).
 //
 // ── WHY THIS IS IN CORE ──────────────────────────────────────────────────────────────────────
 //
@@ -11,14 +12,14 @@
 // services asking the same question of the same rows may not import each other
 // (`test/boundaries.test.ts`), so the predicate lives here, once, beside the entitlement algebra
 // it is built from. `services/license/gate.ts` re-exports it, so every existing importer of that
-// module — and the `src/gate.ts` compat shim — is unchanged.
+// module is unchanged.
 //
 // R3-01 — this module is fed `X-PKey-Version` / `X-PKey-Channel`, i.e. two strings the caller
-// chooses. That is tolerable for the CLIENT-side gate an SDK runs against its own compiled-in
-// version; it is not tolerable server-side, where the same values arrive over the wire. So:
+// chooses, over the wire. So:
 //
 //   * the dev-build bypass is OFF unless the license is positively entitled to it,
-//   * an unrecognised channel header no longer silently normalises to `stable`, and
+//   * a channel header is normalised per §5.1 rule 3: a malformed one is refused, and an
+//     unknown well-formed name is checked as a grant of that exact name, never as `stable`, and
 //   * the declared channel can only ever be TIGHTENED relative to the one the version implies,
 //     so a `0.0.0-pr-42` build cannot present itself as `stable` to skip the entitlement check.
 
@@ -31,6 +32,12 @@ import type {
 // Release and Update need exactly that computation for the `entitled` access mode (D-13). They
 // are re-exported below so every importer of this module (and of the two shims that point at
 // it) sees one surface.
+import {
+  channelEntitled,
+  impliedChannel,
+  isDevBuild,
+  normalizeChannelHeader,
+} from "./channels.js";
 import {
   compareSemver,
   entitledChannels,
@@ -48,44 +55,13 @@ export {
   tighterMin,
 } from "./entitlements.js";
 
-export type ReleaseChannel = "stable" | "staging" | "pr" | "dev";
-
-export function channelForVersion(version: string): ReleaseChannel {
-  if (version.startsWith("0.0.0-dev")) return "dev";
-  if (version.startsWith("0.0.0-staging")) return "staging";
-  // R3-07 — the hyphen is OPTIONAL, matching `sdks/*` (`/^0\.0\.0-pr-?\d+/`, pinned by
-  // `sdk-node/test/semver.test.ts:92`). The Worker previously required a digit immediately
-  // after `pr`, so `0.0.0-pr-42` — the form the SDKs actually emit — was `pr` to the client
-  // and `stable` to the server, and the server therefore never ran the channel entitlement
-  // check on a real PR build. A digit is still required, so `0.0.0-prfoo` stays `stable`.
-  if (/^0\.0\.0-pr-?\d+/.test(version)) return "pr";
-  return "stable";
-}
-
-export function isDevBuild(version: string): boolean {
-  return version.startsWith("0.0.0-dev");
-}
-
-/**
- * Map a client-declared channel header onto a known channel, or `null` when it names none.
- *
- * R3-13 — the old pattern `^pr-?\d` followed by a star was unanchored at BOTH ends and allowed
- * zero digits, so it matched any header merely *beginning* with `pr`: `prod`, `preview` were
- * all classified as the `pr` channel and refused with `channel-not-entitled`. It is now
- * anchored and requires at least one digit.
- *
- * Returning `null` rather than `"stable"` for an unrecognised value is the other half: mapping
- * the unknown onto the one channel that is never entitlement-checked meant `staging-2`,
- * `STAGING` and `beta` all skipped the check outright (R3-01). The caller decides what an
- * unknown declaration means; it no longer means "trusted".
- */
-function normalizeChannel(header: string): ReleaseChannel | null {
-  if (header === "stable") return "stable";
-  if (header === "staging") return "staging";
-  if (header === "pr" || /^pr-?\d+$/.test(header)) return "pr";
-  if (header === "dev") return "dev";
-  return null;
-}
+// The channel vocabulary lives in `core/channels.ts`, shared with Release's `entitled` check;
+// `channelForVersion` and `isDevBuild` are re-exported so this module's surface is unchanged.
+export {
+  channelForVersion,
+  isDevBuild,
+  type BuildChannel,
+} from "./channels.js";
 
 export interface GateResult {
   ok: boolean;
@@ -139,20 +115,21 @@ export function checkBuildGate(input: GateInput): GateResult {
   // The channel the BUILD implies always applies. A declared header can only add a second
   // channel to check, never replace the first: previously `channelHeader` won outright, so a
   // pre-release build simply declared `stable` (or any unrecognised word, which normalised to
-  // `stable`) and the entitlement was never evaluated. An unrecognised declaration is now
-  // itself a refusal rather than a free pass.
+  // `stable`) and the entitlement was never evaluated. A malformed declaration is itself a
+  // refusal rather than a free pass (§5.1 rule 5).
   const declared = input.channelHeader;
-  const fromHeader = declared === undefined ? null : normalizeChannel(declared);
+  const fromHeader =
+    declared === undefined ? null : normalizeChannelHeader(declared, version);
   if (declared !== undefined && fromHeader === null) {
     return { ok: false, reason: "channel-not-entitled" };
   }
 
-  const allowed = entitledChannels(entitlements);
-  for (const channel of new Set([channelForVersion(version), fromHeader])) {
-    // `stable` is the floor every license holds; `dev` is checked like any other channel now
-    // that it no longer short-circuits above.
-    if (channel === null || channel === "stable") continue;
-    if (!allowed.includes(channel))
+  const granted = entitledChannels(entitlements);
+  for (const channel of new Set([impliedChannel(version), fromHeader])) {
+    // `stable` is the floor every license holds (inside `channelEntitled`); `dev` is checked
+    // like any other channel now that it no longer short-circuits above.
+    if (channel === null) continue;
+    if (!channelEntitled(granted, channel))
       return { ok: false, reason: "channel-not-entitled" };
   }
   return { ok: true };

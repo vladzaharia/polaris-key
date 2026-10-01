@@ -190,6 +190,7 @@ paths:
                           authPoll: https://key.plrs.im/djdl/identity/auth/poll
                           authLogout: https://key.plrs.im/djdl/identity/auth/logout
                           authDeviceStart: https://key.plrs.im/djdl/identity/auth/device/start
+                          authDeviceEntry: https://key.plrs.im/djdl/identity/auth/device
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
                 configOnly:
@@ -1117,8 +1118,12 @@ paths:
         enforces channel/version windows HERE with 403 + `allowedRange`.
 
 
-        The gate reads `X-PKey-Version` (defaulting to `0.0.0`) and `X-PKey-Channel`; an
-        UNRECOGNISED channel header is itself a refusal rather than a free pass. The 403 body
+        The gate reads `X-PKey-Version` (defaulting to `0.0.0`) and `X-PKey-Channel`, under the
+        channel vocabulary of WIRE-CONTRACT-V3 §5.1: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and
+        manual names, with `staging` (→ `beta`) and `latest` (→ `stable`) accepted as aliases.
+        A malformed channel header is itself a refusal rather than a free pass, and an unknown
+        well-formed name must be granted by name. A `channels` grant of `staging` also covers
+        `beta`, and `pr` covers every `pr-<n>`. The 403 body
         is NESTED and collapses both version outcomes into `code: "version_blocked"` while
         keeping the distinction in `error.reason`; `allowedRange` rides at the TOP level, as
         `{min, max}`, and is OMITTED entirely on `channel_not_allowed` — naming the window of
@@ -1630,8 +1635,9 @@ paths:
           description: >
             A selector, not necessarily a semver: `latest`, `stable`, a pinned bare `1.2.3`
             (looked up as the `v1.2.3` tag, then as `1.2.3` if that 404s; a `v`-prefixed
-            selector is not accepted), `beta`, `pr-42`, or an operator-defined channel name.
-            Pinned selectors
+            selector is not accepted), `beta` (or its legacy alias `staging`, unless the product
+            declares a manual channel of that name), `pr-42`, or an operator-defined channel
+            name. An aliased selector keeps its own spelling for the asset suffix. Pinned selectors
             get `max-age=86400, immutable`; moving ones `max-age=120`.
           schema: { type: string }
         - name: asset
@@ -1790,7 +1796,10 @@ paths:
       summary: The Sparkle appcast for a channel
       description: >
         Identical to the default feed except that `{channel}` selects the release stream and
-        appears in the channel `<title>` as `<binary> (<channel>)`. Under the `entitled`
+        appears in the channel `<title>` as `<binary> (<channel>)`. `staging` is the legacy
+        alias of `beta` and serves the beta release (keeping its own spelling in the title and
+        the enclosure) unless the product declares a manual channel named `staging`, which
+        wins. Under the `entitled`
         access mode this is where a stable-only license is refused a beta feed — 403
         `channel_not_allowed`, with no `allowedRange`. `arch` is part of the edge-cache key,
         so the two architectures never share a cached body.
@@ -1860,7 +1869,7 @@ paths:
         - name: channel
           in: query
           required: false
-          description: "Channel to check (default stable): stable, beta, pr-<n>, or a manifest-declared manual channel."
+          description: "Channel to check (default stable): stable, beta (staging is its legacy alias), pr-<n>, or a manifest-declared manual channel."
           schema: { type: string, pattern: "^[a-z0-9-]+$" }
       responses:
         "200":
@@ -2202,12 +2211,16 @@ paths:
       tags: [identity]
       summary: Poll a browser sign-in flow
       description: >
-        The CLI's half of the browser flow: it opened `authStart` in a browser and now waits
-        here for the device token. Both query parameters are required. Four terminal-or-not
-        states, all at HTTP 200: `pending` (nothing confirmed yet), `ready` (with the minted
-        `pkeyt_` token), `timeout` (the flow record is gone — including immediately after a
-        `ready`, which deletes it), and `error`. `error` deliberately carries NO reason: an
-        unauthenticated poller learns that it failed, not why.
+        Polls a sign-in flow by `state` for the device token. Both query parameters are
+        required. Only a flow bound to a device id can complete, and a flow begun by
+        `authDeviceStart` never completes here: it answers `error` and redeems only on
+        `authDevicePoll`, with the secret device code, because `state` rides on the authorize
+        URL the user-code confirmation page hands to anyone holding the public user code.
+        Four terminal-or-not states, all at HTTP 200: `pending` (nothing confirmed yet),
+        `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone —
+        including immediately after a `ready`, which deletes it), and `error`. `error`
+        deliberately carries NO reason: an unauthenticated poller learns that it failed, not
+        why.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: state
@@ -2314,11 +2327,21 @@ paths:
       description: >
         RFC 8628 in shape but NOT in spelling: every field is camelCase (`deviceCode`,
         `userCode`, `verificationUri`, `expiresIn`) except `interval`, which coincides. There
-        is no `device_code`/`user_code`/`expires_in` anywhere on the wire — the one snake_case
-        survivor is the `device_code` QUERY parameter inside `verificationUri`. Two extra
+        is no `device_code`/`user_code`/`expires_in` in the JSON body — the one snake_case
+        survivor is the `user_code` QUERY parameter inside `verificationUriComplete`. Two extra
         fields RFC 8628 does not have: `status`, always `"pending"`, and `pollUrl`, the
-        absolute URL of `/identity/auth/device/poll`. `verificationUriComplete` is currently
-        the identical string to `verificationUri`.
+        absolute URL of `/identity/auth/device/poll`.
+
+
+        `userCode` is eight characters from RFC 8628 §6.1's consonant alphabet
+        (`BCDFGHJKLMNPQRSTVWXZ`), shown as `XXXX-XXXX` and generated independently of
+        `deviceCode`. `verificationUri` is the code-entry page (`/identity/auth/device`), short
+        enough to type; `verificationUriComplete` is the same page with `?user_code=` filled in,
+        for a QR code or a clickable link (RFC 8628 §3.3.1). Neither URL carries the device
+        code. A client should show `userCode` large, render `verificationUriComplete` as a QR
+        code and as the link it opens, and show `verificationUri` as the URL to type; a client
+        that opens `verificationUri` instead lands on the entry form and the user has to type
+        the code.
 
 
         The device id may come from the body, the `X-PKey-Device` header, or a `?device=`
@@ -2356,9 +2379,9 @@ paths:
                   value:
                     status: pending
                     deviceCode: Zk8LqR8nT0sYp2vcEgHj6A
-                    userCode: ZK8L-QR8N
-                    verificationUri: https://key.plrs.im/djdl/identity/auth/device/verify?device_code=Zk8LqR8nT0sYp2vcEgHj6A
-                    verificationUriComplete: https://key.plrs.im/djdl/identity/auth/device/verify?device_code=Zk8LqR8nT0sYp2vcEgHj6A
+                    userCode: WDJB-MJHT
+                    verificationUri: https://key.plrs.im/djdl/identity/auth/device
+                    verificationUriComplete: https://key.plrs.im/djdl/identity/auth/device?user_code=WDJB-MJHT
                     expiresIn: 600
                     interval: 2
                     pollUrl: https://key.plrs.im/djdl/identity/auth/device/poll
@@ -2392,6 +2415,15 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 misconfigured: { value: { error: misconfigured, message: custom oidc issuer is not permitted } }
+        "503":
+          description: >
+            Five user codes in a row collided with live ones (in practice unreachable: the code
+            space is 20^8) — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                unavailable: { value: { error: unavailable, message: try again } }
     options:
       operationId: preflightDeviceAuthStart
       tags: [identity]
@@ -2404,6 +2436,158 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/auth/device:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    get:
+      operationId: deviceAuthEntryPage
+      tags: [identity]
+      summary: The RFC 8628 user-code page (entry form, or confirmation for `?user_code=`)
+      description: >
+        The `verificationUri` a device-code client shows. Without `user_code` it renders the
+        entry form: one text field that POSTs back to this URL. With `user_code` (the
+        `verificationUriComplete` a QR code carries) it looks the code up server-side and
+        renders the confirmation page — product, device label (`deviceName` if given, else
+        "Unnamed device"; never the device id) and user code — with a fresh single-use hidden
+        `csrf` field; that form posts
+        `user_code` and `csrf` back here, never the device code. Input is case-insensitive and
+        spaces and hyphens are ignored; anything outside `BCDFGHJKLMNPQRSTVWXZ` or not eight
+        characters long is invalid. An unknown, expired, malformed or already-confirmed code
+        re-renders the entry form with one generic message and status 404. Every page is
+        script-free, under the
+        static-HTML CSP, `cache-control: no-store` and `referrer-policy: no-referrer`; the
+        confirmation page's `form-action` additionally allows the IdP origin its POST
+        redirects to. Nothing about the flow is confirmed by this GET.
+      parameters:
+        - name: user_code
+          in: query
+          required: false
+          description: The user code, as typed or as `verificationUriComplete` carries it.
+          schema: { type: string }
+          example: WDJB-MJHT
+      responses:
+        "200":
+          description: "The entry form, or the confirmation page. `text/html; charset=utf-8`, `cache-control: no-store`."
+          content:
+            text/html:
+              schema: { type: string }
+              examples:
+                entry:
+                  summary: No `user_code` (test/oidcEdge.test.ts)
+                  value: |
+                    <form method="post" action="https://key.plrs.im/djdl/identity/auth/device">
+                      <input id="user_code" name="user_code" type="text" required placeholder="XXXX-XXXX">
+                      <button type="submit">Continue</button>
+                    </form>
+                confirmation:
+                  summary: "`?user_code=wdjb mjht` (test/oidcEdge.test.ts reads `csrf` out of it)"
+                  value: |
+                    <dl><dt>Code<dd>WDJB-MJHT<dt>Device<dd>Steam Deck<dt>Product<dd>djdl</dl>
+                    <form method="post" action="https://key.plrs.im/djdl/identity/auth/device">
+                      <input type="hidden" name="user_code" value="WDJB-MJHT">
+                      <input type="hidden" name="csrf" value="7hK2mQ0xZk8LqR8nT0sYp2">
+                      <button type="submit">Continue to sign in</button>
+                    </form>
+        "404":
+          description: >
+            Unknown, expired, malformed or already-confirmed code: the entry form again with one
+            generic line ("That code is not valid or has expired."), whatever the reason.
+            `text/html`.
+          content:
+            text/html:
+              schema: { type: string }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: >
+            30 requests per 60 s per client network — the IPv4 address, or the IPv6 /64
+            (fail-closed) — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                limited: { value: { error: rate_limited, message: too many requests } }
+    post:
+      operationId: deviceAuthEntry
+      tags: [identity]
+      summary: Look a typed code up, or confirm it (CSRF from the confirmation page)
+      description: >
+        Two forms post here. The entry form sends `user_code` alone: the code is looked up and
+        the confirmation page rendered, exactly as the GET with `?user_code=` does. The
+        confirmation form sends `user_code` and `csrf`: when the `csrf` field is present at
+        all, this is a confirmation — the single-use token must match the one the page minted,
+        and on success the flow is stamped confirmed, the user code stops resolving, and the
+        browser is sent to the IdP with a 303, `cache-control: no-store` and
+        `referrer-policy: no-referrer`, as `deviceAuthVerify` does. Both forms are refused when
+        cross-site: `Sec-Fetch-Site` decides when present (only `same-origin` passes);
+        otherwise an `Origin` naming another origin is refused, while an absent `Origin` or
+        `Origin: null` — what a browser sends from this no-referrer page — passes to the
+        `csrf` check. A cross-site request, and an empty, wrong, reused or orphaned `csrf`,
+        share ONE 403 message. The body is
+        `application/x-www-form-urlencoded` (the pages' own forms) or JSON when the
+        `content-type` says so.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/DeviceAuthEntryRequest" }
+            examples:
+              lookup:
+                summary: The entry form
+                value: { user_code: wdjb-mjht }
+              confirm:
+                summary: The confirmation form (test/oidcEdge.test.ts)
+                value: { user_code: WDJB-MJHT, csrf: 7hK2mQ0xZk8LqR8nT0sYp2 }
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceAuthEntryRequest" }
+            examples:
+              confirm:
+                value: { user_code: WDJB-MJHT, csrf: 7hK2mQ0xZk8LqR8nT0sYp2 }
+      responses:
+        "200":
+          description: "No `csrf` field: the confirmation page, as for the GET. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+        "303":
+          description: >
+            Confirmed. Empty body; the browser is sent to the IdP. `cache-control: no-store`,
+            `referrer-policy: no-referrer`.
+          headers:
+            Location:
+              description: The IdP authorize URL stored when the device flow started.
+              schema: { type: string, format: uri }
+              example: https://id.example/authorize
+        "403":
+          description: >
+            A cross-site request, or a `csrf` that is empty, wrong, already used, or for a code
+            that no longer exists — LEGACY FLAT. One message for all of them, deliberately.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                confirmationFailed: { value: { error: forbidden, message: confirmation failed } }
+        "404":
+          description: >
+            No `csrf` field and an unknown, expired or malformed code: the generic entry page,
+            as for the GET. `text/html`. (A confirmation whose OIDC flow record lapsed between
+            render and submit answers the LEGACY FLAT `not_found` instead.)
+          content:
+            text/html:
+              schema: { type: string }
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                expired: { value: { error: not_found, message: device code expired } }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: >
+            30 requests per 60 s per client network — the IPv4 address, or the IPv6 /64
+            (fail-closed) — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                limited: { value: { error: rate_limited, message: too many requests } }
   /{product}/identity/auth/device/verify:
     parameters:
       - { $ref: "#/components/parameters/Product" }
@@ -2411,9 +2595,10 @@ paths:
         in: query
         required: true
         description: >
-          The `deviceCode` from `deviceAuthStart`. Snake_case HERE — it is the one snake_case
-          name on the identity wire, because it is baked into the `verificationUri` the user
-          is handed.
+          The `deviceCode` from `deviceAuthStart`. Snake_case HERE, like `user_code` on
+          `/identity/auth/device`, because it is a URL a browser opens. `deviceAuthStart` no
+          longer hands this URL out (its `verificationUri` is the user-code page); the route stays
+          for flows started before that change and for any client that builds it itself.
         schema: { type: string }
     get:
       operationId: deviceAuthVerifyPage
@@ -2472,8 +2657,9 @@ paths:
         stored at device-start — not 200, and not 302, so the follow-up is a GET regardless of
         this POST. The token is deleted on use. The body may be
         `application/x-www-form-urlencoded` (the page's own form) or JSON when the
-        `content-type` says so; either way the field is named `csrf`. A cross-site `Origin`
-        header and a missing/wrong token share ONE 403 message.
+        `content-type` says so; either way the field is named `csrf`. A cross-site request
+        (the same `Sec-Fetch-Site` / `Origin` rule as `deviceAuthEntry`, under which
+        `Origin: null` passes) and a missing/wrong token share ONE 403 message.
       requestBody:
         required: true
         content:
@@ -2507,7 +2693,7 @@ paths:
                 missingCode: { value: { error: bad_request, message: missing code } }
         "403":
           description: >
-            Cross-site `Origin`, or a missing/mismatched `csrf` — LEGACY FLAT. One message for
+            A cross-site request, or a missing/mismatched `csrf` — LEGACY FLAT. One message for
             both, deliberately.
           content:
             application/json:
@@ -2859,7 +3045,10 @@ components:
       name: channel
       in: path
       required: true
-      description: A release channel name (`stable`, `beta`, `nightly`, `pr-42`, …).
+      description: >
+        A release channel name (`stable`, `beta`, `nightly`, `pr-42`, …). `staging` is accepted
+        as the legacy alias of `beta` unless the product declares a manual `staging` channel
+        (WIRE-CONTRACT-V3 §5.1).
       schema: { type: string, pattern: "^[a-z0-9-]+$" }
     Arch:
       name: arch
@@ -2892,9 +3081,11 @@ components:
       name: X-PKey-Channel
       in: header
       description: >
-        The channel the caller declares. It can only TIGHTEN the channel the version already
-        implies, never replace it, and a value the server does not recognise is itself a
-        refusal rather than a free pass.
+        The channel the caller declares (WIRE-CONTRACT-V3 §5.1): `stable`, `beta`, `pr` (read
+        as the build's own `pr-<n>`), `pr-<n>`, `dev` or a manual name; `staging` and `latest`
+        are accepted aliases of `beta` and `stable`. It can only TIGHTEN the channel the
+        version already implies, never replace it. A malformed value is itself a refusal
+        rather than a free pass, and an unknown well-formed name must be granted by name.
       schema: { type: string }
     PlatformHeader:
       name: X-PKey-Platform
@@ -3858,16 +4049,26 @@ components:
     DeviceAuthStartResult:
       type: object
       description: >
-        RFC 8628 in shape, camelCase in spelling. `verificationUriComplete` is currently the
-        identical string to `verificationUri`. `pollUrl` and `status` are additions RFC 8628
-        does not define.
+        RFC 8628 in shape, camelCase in spelling. `userCode` is independent of `deviceCode`;
+        `verificationUri` is the user-code entry page and `verificationUriComplete` the same page
+        with `?user_code=` pre-filled, and neither carries the device code. `pollUrl` and
+        `status` are additions RFC 8628 does not define.
       required: [status, deviceCode, userCode, verificationUri, verificationUriComplete, expiresIn, interval, pollUrl]
       properties:
         status: { type: string, const: pending }
         deviceCode: { type: string }
-        userCode: { type: string, pattern: "^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$" }
-        verificationUri: { type: string, format: uri }
-        verificationUriComplete: { type: string, format: uri }
+        userCode:
+          type: string
+          pattern: "^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$"
+          description: RFC 8628 §6.1's consonant alphabet, eight characters, shown as `XXXX-XXXX`.
+        verificationUri:
+          type: string
+          format: uri
+          description: The code-entry page, `<origin>/<product>/identity/auth/device`.
+        verificationUriComplete:
+          type: string
+          format: uri
+          description: The entry page with the code filled in — `…/identity/auth/device?user_code=XXXX-XXXX`.
         expiresIn: { type: integer, description: Seconds — 600. }
         interval: { type: integer, description: Seconds between polls — 2. }
         pollUrl: { type: string, format: uri }
@@ -3879,6 +4080,15 @@ components:
       required: [csrf]
       properties:
         csrf: { type: string }
+    DeviceAuthEntryRequest:
+      type: object
+      description: >
+        What the user-code page's two forms submit. `user_code` alone is a lookup (render the
+        confirmation page); `user_code` with a `csrf` field is a confirmation.
+      required: [user_code]
+      properties:
+        user_code: { type: string, description: Case-insensitive; spaces and hyphens ignored. }
+        csrf: { type: string, description: The single-use token the confirmation page embedded. }
     DeviceAuthPollRequest:
       type: object
       description: >

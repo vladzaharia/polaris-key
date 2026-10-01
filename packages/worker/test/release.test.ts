@@ -18,6 +18,8 @@ import {
 } from "../src/services/release/channels.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import { findBinaryAsset, matchAsset } from "../src/services/release/assets.js";
+import { entitledSelectorFor } from "../src/services/release/access.js";
+import type { ReleaseConfigRow } from "../src/services/release/config.js";
 import { extractSummary } from "../src/services/release/changelog.js";
 import {
   applyInstallTemplate,
@@ -223,6 +225,86 @@ describe("channels", () => {
     expect(resolveChannel(sel, releases)?.tag_name).toBe("v2.0.0-beta.2");
   });
 
+  it("classifies staging as the beta alias, after the manual names (P0-04 §5.1 rule 6)", () => {
+    // No manual `staging`: the alias resolves by kind, keeping the requested spelling (D8).
+    expect(classifyChannel("staging", manual)).toEqual({
+      kind: "beta",
+      raw: "staging",
+    });
+    const releases = [
+      release({ tag_name: "v2.0.0-beta.2", prerelease: true }),
+      release({ tag_name: "v2.0.0-beta.1", prerelease: true }),
+    ];
+    expect(
+      resolveChannel(classifyChannel("staging", manual)!, releases)?.tag_name,
+    ).toBe(
+      resolveChannel(classifyChannel("beta", manual)!, releases)?.tag_name,
+    );
+
+    // A declared manual `staging` wins over the alias.
+    const withStaging = parseManualChannels(
+      JSON.stringify([
+        { name: "staging", regex: "v\\d+\\.\\d+\\.\\d+-rc\\.\\d+" },
+      ]),
+    );
+    expect(classifyChannel("staging", withStaging)?.kind).toBe("manual");
+    // `latest` is still the stable alias; nothing else is aliased.
+    expect(classifyChannel("latest", [])?.kind).toBe("stable");
+    expect(classifyChannel("Staging", [])).toBeNull();
+  });
+
+  it("entitledSelectorFor sends the canonical channel (P0-04)", () => {
+    const cfg = (manualJson: string | null): ReleaseConfigRow => ({
+      product: SLUG,
+      gh_owner: null,
+      gh_repo: null,
+      gh_installation_id: null,
+      channel_workflow: null,
+      beta_branch: "main",
+      manual_channels_json: manualJson,
+      binary_name: null,
+      install_template: null,
+      sparkle_ed25519_pub: null,
+      summary_marker: "",
+      artifact_policy_json: null,
+    });
+    const plain = cfg(null);
+    const nightly = cfg(
+      JSON.stringify([{ name: "nightly", regex: "v\\d+-nightly" }]),
+    );
+    const staging = cfg(
+      JSON.stringify([{ name: "staging", regex: "v\\d+-rc" }]),
+    );
+    expect(entitledSelectorFor(plain, "dmg", { version: "latest" })).toEqual({
+      channel: "stable",
+      version: null,
+    });
+    expect(entitledSelectorFor(plain, "dmg", { version: "1.2.3" })).toEqual({
+      channel: "stable",
+      version: "1.2.3",
+    });
+    expect(
+      entitledSelectorFor(plain, "channelAppcast", { channel: "beta" }),
+    ).toEqual({ channel: "beta", version: null });
+    expect(
+      entitledSelectorFor(plain, "channelAppcast", { channel: "staging" }),
+    ).toEqual({ channel: "beta", version: null });
+    expect(
+      entitledSelectorFor(staging, "channelAppcast", { channel: "staging" }),
+    ).toEqual({ channel: "staging", version: null });
+    expect(entitledSelectorFor(plain, "dmg", { version: "pr-42" })).toEqual({
+      channel: "pr-42",
+      version: null,
+    });
+    expect(
+      entitledSelectorFor(nightly, "channelAppcast", { channel: "nightly" }),
+    ).toEqual({ channel: "nightly", version: null });
+    expect(entitledSelectorFor(plain, "dmg", { version: "bogus" })).toEqual({
+      channel: "bogus",
+      version: null,
+    });
+  });
+
   it("rejects an over-long / unsafe manual regex", () => {
     const bad = parseManualChannels(
       JSON.stringify([{ name: "x", regex: "a".repeat(200) }]),
@@ -279,6 +361,26 @@ describe("assets", () => {
       "djdl-staging-arm64",
     );
     expect(findBinaryAsset(assets, "djdl", "arm64")?.name).toBe("djdl-arm64");
+  });
+
+  it("a request naming no channel passes over beta-tagged assets too (P0-04)", () => {
+    // Was a tie (both score 0 for the channel half), so a stable DMG request returned null.
+    const assets = [
+      asset("djdl-1.0.0-arm64.dmg"),
+      asset("djdl-beta-1.0.0-arm64.dmg"),
+    ];
+    expect(
+      matchAsset(assets, { arch: "arm64", ext: "dmg", binaryName: "djdl" })
+        ?.name,
+    ).toBe("djdl-1.0.0-arm64.dmg");
+    expect(
+      matchAsset(assets, {
+        arch: "arm64",
+        ext: "dmg",
+        binaryName: "djdl",
+        channelSuffix: "beta",
+      })?.name,
+    ).toBe("djdl-beta-1.0.0-arm64.dmg");
   });
 });
 

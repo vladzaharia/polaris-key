@@ -253,14 +253,22 @@ these into packages when their phase approaches, using the next free id in the p
 - React `core.local`.
 - `identity.oidc` in Node, Python and Swift, and a registry decision on native Godot, which has no
   native completion path.
-- Swift `ui.kit`, React `<PolarisBoot>` and SwiftUI `PolarisBootView`.
+- Swift `ui.kit`, React `<PolarisBoot>` and SwiftUI `PolarisBootView` (P1-09 follow-up).
+- Terminal boot renderers (Node `runBoot()`, Python `rich_boot()`) over the stage machine. They need
+  the transport status on `DocOutcome.error` and `RegisterResult.error` in Node, Python and Swift
+  first (P1-09 plan §8).
+- An adopter-facing docs page on the boot protocol (the stage machine and "What a host sends";
+  P1-09 plan §8).
 - `update.driver` in Node, Python and React.
 - Browser telemetry: `/devices/report` accepts only a bearer token today.
 - React `config.mint`.
 - `Retry-After` back-off in every SDK; the Worker's 429s do not send the header yet.
 - A fingerprint on the device-code path, so strict tiers work.
 - A desktop keyring store for Godot.
-- Godot runs on web (headless Chromium) and on real devices.
+- Godot runs on web (headless Chromium) and on real devices. The runner legs on web, Android and
+  iOS have no owner (P1-01 and P1-09 hand-offs).
+- Porting the prototype `lowend/sync.sh` to `sdks/godot` (P1-01 follow-up; it still copies the
+  pre-move verifier).
 - `commerce.receipt` and device attestation in Node, Python, Swift and React.
 
 **Release, distribution and CLI**

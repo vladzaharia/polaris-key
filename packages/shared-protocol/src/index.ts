@@ -25,6 +25,14 @@ export {
   MAX_DEVICE_PROBES,
   DOC_EXPIRY_SECONDS,
   SECONDS_PER_DAY,
+  CHANNEL_STABLE,
+  CHANNEL_BETA,
+  CHANNEL_PR,
+  CHANNEL_DEV,
+  CHANNEL_ALIASES,
+  CHANNEL_NAME_PATTERN,
+  PR_CHANNEL_PATTERN,
+  PR_NUMBER_MAX_DIGITS,
 } from "./core.js";
 export type {
   JSONValue,
@@ -41,6 +49,7 @@ export type {
   DeviceFacts,
   PolarisErrorCode,
   PolarisErrorBody,
+  BuildChannel,
 } from "./core.js";
 
 export type {

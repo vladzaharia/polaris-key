@@ -12,7 +12,8 @@ import PackageDescription
 // absent ⇒ no update traffic" is a fact about the binary, not a promise about a code path.
 //
 //   PolarisKeyCore     device principal, credential, trust set, verified cache, clock floor,
-//                   transport, discovery, bundle verification. Always on.
+//                   transport, discovery, bundle verification, the boot stage machine.
+//                   Always on.
 //   PolarisKeyLicense  the gate, activation, the license document.        (deps Core)
 //   PolarisKeyConfig   the config document, layered resolution, facts.    (deps Core)
 //   PolarisKeyUpdate   Sparkle wiring. macOS ONLY.                        (deps Core)
@@ -101,9 +102,9 @@ let package = Package(
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig", "PolarisKeyUI",
                 "PolarisKeyUpdate",
             ],
-            // Bundle the SAME cross-language corpus + gate-matrix + fingerprint fixtures the
-            // Node and Python runners drive, so the Swift verifier, gate and bundle importer
-            // are held to byte-for-byte conformance. The `v2` segment is kept so this path
+            // Bundle the SAME cross-language corpus + gate-matrix + fingerprint + stage-matrix
+            // fixtures the Node and Python runners drive, so the Swift verifier, gate, bundle
+            // importer and boot stage machine are held to byte-for-byte conformance. The `v2` segment is kept so this path
             // matches `conformance/corpus/v2/` one-for-one — the mirror is findable from the
             // source without a translation step. Written by `pnpm gen:corpus`, guarded by
             // `--check`. `Resources/transcripts` is the same arrangement for the HTTP transcripts

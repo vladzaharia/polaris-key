@@ -9,6 +9,12 @@
  * Two findings are deliberately NOT fixed and their tests still assert the (unchanged)
  * behaviour: R8-03 (no browser binding on any of the three flows) and R8-07
  * (`redirect_uris_json` fails open on NULL). See the Remediation section of the finding doc.
+ * R8-02's two residuals (the device code in `verificationUri`, and `userCode` derived from it)
+ * were closed by P1-06's RFC 8628 user-code page; their PoCs below now assert the fix. P1-06's
+ * security review found that the public user code then sufficed to confirm someone else's flow
+ * and, through the callback's enrolled-license merge, claim or retire the victim device's
+ * anonymous license; the callback no longer merges, and `R8-02 / P1-06 a user-code holder
+ * cannot claim…` asserts it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -20,6 +26,7 @@ import {
 } from "jose";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { verifyJws } from "@polaris-key/jws";
+import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
@@ -29,6 +36,7 @@ import {
   DJDL_CATALOG,
   TEST_KID,
   TEST_PUB,
+  mkReq,
 } from "../seed.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
 import {
@@ -36,12 +44,14 @@ import {
   applyProvisioning,
   handleAuthCallback,
   handleAuthDevicePoll,
+  handleAuthDeviceEntry,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
   handleAuthPoll,
   handleAuthStart,
   flowKey,
   deviceFlowKey,
+  deviceUserKey,
 } from "../../src/services/identity/oidc.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 // Wire v3 split `validateDeviceToken` in two: core answers "is this token a live device row",
@@ -49,7 +59,13 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 // The latter is the exact behavioural equivalent of the pre-split core function, so it is what
 // these tests assert against.
 import { requireLicensedDevice } from "../../src/services/license/auth.js";
-import { getDevice, getLicense } from "../../src/repo.js";
+import {
+  countActiveDevices,
+  getDevice,
+  getLicense,
+  getLicenseBySub,
+} from "../../src/repo.js";
+import { handleEnroll } from "../../src/services/license/enroll.js";
 import {
   handleMagicStart,
   handleMagicVerify,
@@ -285,11 +301,28 @@ describe("R8-01 /auth/poll device-id confusion", () => {
     // No seat was taken and no device row exists for the attacker's device.
     expect(await getDevice(ctx.db, "djdl", "ATTACKER-DEVICE")).toBeNull();
 
-    // 5. The legitimate device still completes — the fix closes the hole, not the flow.
-    const victim = (await (await poll(ctx, state, "victim-cli")).json()) as {
+    // 5. P1-06: a device-code flow does not redeem on /auth/poll at all, not even for the
+    //    device that started it — `state` plus the device id is not a credential. The
+    //    legitimate device completes where it always polled: /auth/device/poll, with the
+    //    secret device code. The fix closes the hole, not the flow.
+    const viaState = (await (await poll(ctx, state, "victim-cli")).json()) as {
       status: string;
-      token: string;
+      token?: string;
     };
+    expect(viaState.status).toBe("error");
+    expect(viaState.token).toBeUndefined();
+    const victim = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "victim-cli" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token: string };
     expect(victim.status).toBe("ready");
     const valid = await requireLicensedDevice(
       ctx.env,
@@ -458,6 +491,13 @@ describe("R8-01 /auth/poll device-id confusion", () => {
         ctx.product,
       ),
     );
+    await counted("authDeviceEntry", () =>
+      handleAuthDeviceEntry(
+        req(`${ORIGIN}/djdl/identity/auth/device?user_code=BCDF-GHJK`),
+        ctx.env,
+        ctx.product,
+      ),
+    );
     await counted("authDevicePoll", () =>
       handleAuthDevicePoll(
         req(`${ORIGIN}/djdl/auth/device/poll`, {
@@ -500,11 +540,31 @@ describe("R8-02 device-code flow weaknesses", () => {
         verificationUri: string;
         verificationUriComplete: string;
       };
-    // NOT FIXED (documented residual): the "show the user a URL" value is still the secret
-    // device code — splitting it into an independent user code is an RFC 8628 redesign that
-    // would change the public device-flow contract.
-    expect(verificationUri).toBe(verificationUriComplete);
-    expect(verificationUri).toContain(encodeURIComponent(deviceCode));
+    // FIXED (P1-06; was the documented residual): the "show the user a URL" values are the
+    // RFC 8628 user-code page, which never carries the secret device code. The human types
+    // (or scans) the independent user code; the lookup stays server-side.
+    expect(verificationUri).not.toBe(verificationUriComplete);
+    expect(verificationUri).toBe(`${ORIGIN}/djdl/identity/auth/device`);
+    expect(verificationUriComplete).toMatch(
+      /\/djdl\/identity\/auth\/device\?user_code=[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/,
+    );
+    for (const uri of [verificationUri, verificationUriComplete]) {
+      expect(uri).not.toContain(deviceCode);
+      expect(uri).not.toContain(encodeURIComponent(deviceCode));
+    }
+    // …and the page a QR scan lands on shows the flow without ever echoing the device code.
+    const scanned = await handleAuthDeviceEntry(
+      req(verificationUriComplete),
+      ctx.env,
+      ctx.product,
+    );
+    expect(scanned.status).toBe(200);
+    const scannedHtml = await scanned.text();
+    expect(scannedHtml).not.toContain(deviceCode);
+    expect(scannedHtml).not.toContain("device_code");
+
+    // The legacy by-device-code page below is kept for flows in flight across the deploy; its
+    // own hardening is unchanged.
 
     // FIXED: `?confirm=1` on a GET no longer mutates anything and no longer hands back a
     // Location at all — an <img src>/prefetch gets a plain HTML page.
@@ -596,6 +656,205 @@ describe("R8-02 device-code flow weaknesses", () => {
     expect(page.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
+  // P1-06 review: the user code is shown large and rendered as a QR code, so it must not be a
+  // path to the victim's token. The chain was: the page shows the raw device id when no
+  // deviceName was sent; a POST with the page's csrf 303s to the authorize URL, which carries
+  // `state`; and /auth/poll redeemed exactly `state` + device id once the victim signed in.
+  it("ATTACK: holding only the user code, an attacker reads the device id and `state` off the page and steals the victim's token on /auth/poll", async () => {
+    const started = await handleAuthDeviceStart(
+      req(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        body: JSON.stringify({ deviceId: "victim-cli" }), // no deviceName
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    const { deviceCode, userCode } = (await started.json()) as {
+      deviceCode: string;
+      userCode: string;
+    };
+    const ENTRY = `${ORIGIN}/djdl/identity/auth/device`;
+    const entryPost = (fields: Record<string, string>, ip: string) =>
+      handleAuthDeviceEntry(
+        req(ENTRY, {
+          method: "POST",
+          // What a browser sends from this no-referrer page.
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            origin: "null",
+            "sec-fetch-site": "same-origin",
+            "cf-connecting-ip": ip,
+          },
+          body: new URLSearchParams(fields).toString(),
+        }),
+        ctx.env,
+        ctx.product,
+      );
+
+    // 1. The attacker (a stream viewer, a photo of the QR code, a lucky guess) opens the page.
+    //    FIXED: it no longer shows the raw device id.
+    const attackerPage = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "198.51.100.66" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    expect(attackerPage.status).toBe(200);
+    const attackerHtml = await attackerPage.text();
+    expect(attackerHtml).not.toContain("victim-cli");
+    expect(attackerHtml).toContain("Unnamed device");
+
+    // 2. The victim confirms on their own phone and goes on to the IdP.
+    const victimPage = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "203.0.113.20" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    const csrf = (await victimPage.text()).match(
+      /name="csrf" value="([^"]+)"/,
+    )![1]!;
+    const confirmed = await entryPost(
+      { user_code: userCode, csrf },
+      "203.0.113.20",
+    );
+    expect(confirmed.status).toBe(303);
+    const authorize = new URL(confirmed.headers.get("location")!);
+
+    // 3. FIXED: after confirmation the code is retired. The attacker can no longer re-render
+    //    the page, re-mint a csrf token, or be 303'd to the authorize URL.
+    const again = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "198.51.100.66" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    expect(again.status).toBe(404);
+    expect(await again.text()).not.toContain('name="csrf"');
+    expect(
+      (await entryPost({ user_code: userCode }, "198.51.100.66")).status,
+    ).toBe(404);
+
+    // 4. Grant the attacker the strongest position anyway: `state` (as if they had confirmed
+    //    first and been 303'd) AND the device id. The victim signs in at the IdP.
+    const state = authorize.searchParams.get("state")!;
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "victim-sub",
+        email: "victim@corp.com",
+        email_verified: true,
+        groups: ["family"],
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    expect((await callback(ctx, state)).status).toBe(200);
+
+    // 5. FIXED: /auth/poll refuses a device-code flow outright — generic error, no token.
+    const stolen = (await (await poll(ctx, state, "victim-cli")).json()) as {
+      status: string;
+      token?: string;
+    };
+    expect(stolen.status).toBe("error");
+    expect(stolen.token).toBeUndefined();
+
+    // 6. The flow is intact, and the real device — holding the device code — gets its token.
+    const real = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "victim-cli" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(real.status).toBe("ready");
+    expect(real.token?.startsWith("pkeyt_")).toBe(true);
+  });
+
+  // OPEN — R1-07 (Fixed-partial) rooted in R8-03. This PoC asserts the GAP, not a fix: the
+  // user-code page does not stop the flow's STARTER, who can confirm their own flow with no
+  // browser at all and phish the resulting IdP authorize URL. Neither the Fetch Metadata /
+  // Origin check nor the single-use csrf token is a control here — the starter mints the token.
+  it("OPEN (R1-07 / R8-03): the starter confirms its own flow from curl, phishes the authorize URL, and polls a token on the victim's license", async () => {
+    const started = await handleAuthDeviceStart(
+      req(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        body: JSON.stringify({ deviceId: "attacker-device" }),
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    const { deviceCode, userCode } = (await started.json()) as {
+      deviceCode: string;
+      userCode: string;
+    };
+    const ENTRY = `${ORIGIN}/djdl/identity/auth/device`;
+    // 1. The attacker reads the csrf token off the page for their OWN code…
+    const page = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "198.51.100.66" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    const csrf = (await page.text()).match(/name="csrf" value="([^"]+)"/)![1]!;
+    // 2. …and POSTs it with no Origin and no Sec-Fetch-Site, as curl does. It confirms.
+    const confirmed = await handleAuthDeviceEntry(
+      req(ENTRY, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "cf-connecting-ip": "198.51.100.66",
+        },
+        body: new URLSearchParams({ user_code: userCode, csrf }).toString(),
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    expect(confirmed.status).toBe(303);
+    // 3. The attacker now holds the IdP authorize URL (state, nonce, PKCE challenge).
+    const authorize = new URL(confirmed.headers.get("location")!);
+    expect(authorize.origin).toBe("https://id.example");
+    // 4. A victim who signs in at that URL (or is silently SSO'd) never sees the Polaris page.
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "victim-sub",
+        email: "victim@corp.com",
+        email_verified: true,
+        groups: ["family"],
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    expect(
+      (await callback(ctx, authorize.searchParams.get("state")!)).status,
+    ).toBe(200);
+    // 5. GAP: the attacker's device, with its own device code, receives a token on the
+    //    victim's license. Fix direction (unowned): bind a viaDeviceCode flow's callback to the
+    //    browser that confirmed it (a __Host- SameSite=Lax cookie set on the confirmation 303).
+    const stolen = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "attacker-device" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(stolen.status).toBe("ready");
+    expect(stolen.token?.startsWith("pkeyt_")).toBe(true);
+  });
+
   // R8-02 — `interval` is enforced server-side and the poll surface is rate limited.
   it("ATTACK: userCode is a case-folded PREFIX of the device code, and `interval`/`slow_down` are advertised but never enforced", async () => {
     const start = await handleAuthDeviceStart(
@@ -612,15 +871,23 @@ describe("R8-02 device-code flow weaknesses", () => {
       userCode: string;
       interval: number;
     };
-    // NOT FIXED (documented residual): the user code is still derived from the device code.
+    // FIXED (P1-06; was the documented residual): the user code is drawn independently from
+    // RFC 8628 §6.1's consonant alphabet, so it reveals nothing about the device code.
     //
-    // Assert against the exact construction rather than stripping dashes. `deviceCode` is
-    // base64url, whose alphabet INCLUDES `-`, so `userCode.replace("-", "")` removed whichever
-    // dash came first — sometimes one belonging to the code itself rather than the separator.
-    // That made this test fail roughly whenever the first 8 characters happened to contain a
-    // dash: a real flake, not a real regression.
+    // Assert against the exact OLD construction rather than stripping dashes: `deviceCode` is
+    // base64url, whose alphabet INCLUDES `-`, so a dash-stripping comparison flaked whenever
+    // the first 8 characters happened to contain one.
     const head = body.deviceCode.slice(0, 8).toUpperCase();
-    expect(body.userCode).toBe(`${head.slice(0, 4)}-${head.slice(4, 8)}`);
+    expect(body.userCode).not.toBe(`${head.slice(0, 4)}-${head.slice(4, 8)}`);
+    expect(body.userCode).toMatch(
+      /^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/,
+    );
+    // Only the peppered hash of the code names its index key (R12-04).
+    const normalised = body.userCode.replace("-", "");
+    expect(
+      await ctx.env.HOT.get(await deviceUserKey(ctx.env, "djdl", normalised)),
+    ).toBe(body.deviceCode);
+    for (const key of ctx.kv.keys()) expect(key).not.toContain(normalised);
     expect(body.interval).toBe(2);
 
     // FIXED: a second poll inside the advertised interval is told to slow down.
@@ -666,6 +933,254 @@ describe("R8-02 device-code flow weaknesses", () => {
       if (res.status === 429) throttled++;
     }
     expect(throttled).toBeGreaterThan(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// R8-02 / P1-06 — a user-code holder must not claim or retire the device's license
+// ═══════════════════════════════════════════════════════════════════════════════
+// P1-06 security review: once the RFC 8628 page made the PUBLIC user code enough to confirm a
+// device-code flow, the callback's merge (`enrolledLicenseId` from `flow.deviceId`) let whoever
+// confirmed first and signed in under their OWN identity take the victim device's anonymous
+// enrolled license (Case 1: `sub` rewritten to the attacker) or retire it into theirs (Case 2:
+// devices migrated, row disabled, `enroll_hwid` kept so the machine could never enrol again).
+// FIXED (fail closed): the callback applies no enrolled license at all. A device-code sign-in
+// yields only what an ordinary sign-in for that identity yields.
+describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous license", () => {
+  let ctx: Ctx;
+  const VICTIM_MACHINE = {
+    machineUuid: "uuid-victim".padEnd(FINGERPRINT_COMPONENT_LENGTH, "x"),
+    boardSerial: "board-victim".padEnd(FINGERPRINT_COMPONENT_LENGTH, "x"),
+    cpuModel: "cpu-victim".padEnd(FINGERPRINT_COMPONENT_LENGTH, "x"),
+  };
+  const ATTACKER = {
+    sub: "attacker-sub",
+    email: "attacker@evil.example",
+    name: "Attacker",
+    groups: ["family"],
+    claims: {} as Record<string, unknown>,
+  };
+
+  beforeEach(async () => {
+    ctx = await makeCtx();
+    // Anonymous enrolment on, landing on the seeded `pro` tier.
+    await ctx.db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = ?",
+      JSON.stringify({ enabled: true, tierId: "pro", mode: "both" }),
+      "djdl",
+    );
+    ctx.product = (await loadProduct(ctx.env, ctx.db, "djdl"))!;
+  });
+
+  const enroll = (deviceId: string) =>
+    handleEnroll(
+      mkReq(
+        "POST",
+        { "x-pkey-device": deviceId },
+        { fingerprint: { components: VICTIM_MACHINE, hwid: "ignored" } },
+      ),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      NOW,
+    );
+
+  /** The reviewer's PoC up to the callback: the victim's enrolled game starts a device-code
+   *  flow; the attacker, holding ONLY the user code, GETs the page, POSTs its csrf with no
+   *  Origin (curl), and completes the IdP login as `attacker-sub`. */
+  async function attackerConfirmsVictimFlow(): Promise<{
+    victimLicense: string;
+    deviceCode: string;
+  }> {
+    const enrolled = await enroll("victim-game");
+    expect(enrolled.status).toBe(200);
+    const victimLicense = (
+      (await enrolled.json()) as { license: { id: string } }
+    ).license.id;
+
+    const started = await handleAuthDeviceStart(
+      req(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        body: JSON.stringify({ deviceId: "victim-game" }),
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    const { deviceCode, userCode } = (await started.json()) as {
+      deviceCode: string;
+      userCode: string;
+    };
+
+    const ENTRY = `${ORIGIN}/djdl/identity/auth/device`;
+    const page = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "198.51.100.66" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    const csrf = (await page.text()).match(/name="csrf" value="([^"]+)"/)![1]!;
+    const confirmed = await handleAuthDeviceEntry(
+      req(ENTRY, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "cf-connecting-ip": "198.51.100.66",
+        },
+        body: new URLSearchParams({ user_code: userCode, csrf }).toString(),
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    expect(confirmed.status).toBe(303);
+    const authorize = new URL(confirmed.headers.get("location")!);
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: ATTACKER.sub,
+        email: ATTACKER.email,
+        email_verified: true,
+        groups: ATTACKER.groups,
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    expect(
+      (await callback(ctx, authorize.searchParams.get("state")!)).status,
+    ).toBe(200);
+    return { victimLicense, deviceCode };
+  }
+
+  async function expectVictimUntouched(victimLicense: string): Promise<void> {
+    const row = await getLicense(ctx.db, "djdl", victimLicense);
+    expect(row?.sub).toBeNull();
+    expect(row?.origin).toBe("enroll");
+    expect(row?.status).toBe("active");
+    expect(row?.email).toBeNull();
+    // Its device was not migrated off it.
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      victimLicense,
+    );
+    expect(await countActiveDevices(ctx.db, "djdl", victimLicense)).toBe(1);
+    // No merge was audited.
+    const merges = await ctx.db.all(
+      "SELECT id FROM audit WHERE product = 'djdl' AND action = 'license.merge'",
+    );
+    expect(merges).toHaveLength(0);
+    // The victim machine can still enrol: it gets its own anonymous license back, not
+    // `enroll_claimed` (Case 1) or a disabled row (Case 2).
+    const again = await enroll("victim-game-reinstalled");
+    expect(again.status).toBe(200);
+    expect(
+      ((await again.json()) as { license: { id: string } }).license.id,
+    ).toBe(victimLicense);
+  }
+
+  it("ATTACK (Case 1): an attacker with no license of their own confirms by user code and signs in — the victim's anonymous license is NOT re-subjected to them", async () => {
+    const { victimLicense } = await attackerConfirmsVictimFlow();
+    await expectVictimUntouched(victimLicense);
+
+    // The attacker got exactly an ordinary sign-in: a NEW license of their own.
+    const own = await getLicenseBySub(ctx.db, "djdl", ATTACKER.sub);
+    expect(own).toBeTruthy();
+    expect(own!.id).not.toBe(victimLicense);
+    expect(own!.sub).toBe(ATTACKER.sub);
+    // So an ordinary sign-in from the attacker's own devices never reaches the victim's row.
+    const later = await activateFromIdentity(
+      ctx.db,
+      ctx.product,
+      ATTACKER,
+      NOW,
+    );
+    expect(later).toMatchObject({ licenseId: own!.id });
+  });
+
+  it("ATTACK (Case 2): an attacker who already has a license confirms by user code — the victim's devices are NOT migrated and the victim's license is NOT disabled", async () => {
+    const pre = await activateFromIdentity(ctx.db, ctx.product, ATTACKER, NOW);
+    const attackerLicense = (pre as { licenseId: string }).licenseId;
+
+    const { victimLicense } = await attackerConfirmsVictimFlow();
+    await expectVictimUntouched(victimLicense);
+
+    // The attacker's license is still just theirs, with none of the victim's devices on it.
+    expect((await getLicenseBySub(ctx.db, "djdl", ATTACKER.sub))?.id).toBe(
+      attackerLicense,
+    );
+    expect(await countActiveDevices(ctx.db, "djdl", attackerLicense)).toBe(0);
+  });
+
+  it("the attacker holds no device code, so nothing redeems the flow for them; only the device-code holder can complete it, onto the attacker's OWN license", async () => {
+    const { victimLicense, deviceCode } = await attackerConfirmsVictimFlow();
+    // A guessed device code redeems nothing.
+    const guessed = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({
+            deviceCode: "not-the-device-code",
+            deviceId: "attacker-device",
+          }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(guessed.token).toBeUndefined();
+    // The real device code, presented with another device id, redeems nothing either.
+    const wrongDevice = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "attacker-device" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(wrongDevice.token).toBeUndefined();
+    // And the victim's license is still theirs, anonymous and active.
+    const row = await getLicense(ctx.db, "djdl", victimLicense);
+    expect(row?.sub).toBeNull();
+    expect(row?.status).toBe("active");
+
+    // RESIDUAL (documented in THREAT-MODEL.md): the victim's own game, which holds the device
+    // code, keeps polling and is signed in to the ATTACKER's own license — a mis-binding the
+    // player sees on the device, bound only through the device-code holder. It moves that one
+    // device; it never touches the victim's license, which stays anonymous, active and
+    // re-enrollable, and it hands the attacker no token.
+    const polled = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "victim-game" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(polled.status).toBe("ready");
+    const attackerLicense = (await getLicenseBySub(
+      ctx.db,
+      "djdl",
+      ATTACKER.sub,
+    ))!.id;
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      attackerLicense,
+    );
+    const after = await getLicense(ctx.db, "djdl", victimLicense);
+    expect(after?.sub).toBeNull();
+    expect(after?.origin).toBe("enroll");
+    expect(after?.status).toBe("active");
+    const reenrolled = await enroll("victim-game");
+    expect(reenrolled.status).toBe(200);
+    expect(
+      ((await reenrolled.json()) as { license: { id: string } }).license.id,
+    ).toBe(victimLicense);
   });
 });
 

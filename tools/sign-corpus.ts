@@ -15,8 +15,14 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
+// Four files: `cases.json` (signed vectors), `gate-matrix.json` (§5), `fingerprint.json` (the
+// hardware-hash formulas) and `stage-matrix.json` (the boot stage machine of
+// `@polaris-key/client-core/stages`, client boot behaviour outside the wire contract, read by
+// conformance/runners/node/stageMatrix.test.ts and the Python and Swift runners).
+//
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
-// `CARRIED_MATRIX_ROWS` below before deletion, so nothing it pinned was dropped.
+// `CARRIED_MATRIX_ROWS` below before deletion. Fourteen are still emitted; one, the pre-R3-01
+// dev-build bypass, was retired by P0-04 through `RETIRED_CARRIED_ROWS`, with a named successor.
 //
 //   pnpm gen:corpus            # write the corpus
 //   pnpm gen:corpus -- --check # CI drift guard (exit 1 if any file is stale)
@@ -212,7 +218,7 @@ const V2_DIR = join(HERE, "..", "conformance", "corpus", "v2");
 const V2_OUT = join(V2_DIR, "cases.json");
 const V2_GATE_MATRIX_OUT = join(V2_DIR, "gate-matrix.json");
 const V2_FINGERPRINT_OUT = join(V2_DIR, "fingerprint.json");
-
+const V2_STAGE_MATRIX_OUT = join(V2_DIR, "stage-matrix.json");
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
 
@@ -1714,9 +1720,9 @@ async function buildV2(): Promise<unknown> {
 }
 
 // ── gate-matrix v2 (§5) ──────────────────────────────────────────────────────
-// The matrix is hand-authored and frozen. Its first fifteen rows are corpus v1's, inlined
-// verbatim below when v1 was deleted; the rows v1 could not express are appended in
-// `buildGateMatrixV2`.
+// The matrix is hand-authored and frozen. Its first rows are corpus v1's fifteen, inlined
+// verbatim below when v1 was deleted, less the one P0-04 retired (`RETIRED_CARRIED_ROWS`); the
+// rows v1 could not express are appended in `buildGateMatrixV2`.
 
 /**
  * The fifteen rows corpus v1's hand-authored matrix carried, INLINED here when corpus v1 was
@@ -1725,7 +1731,8 @@ async function buildV2(): Promise<unknown> {
  * `activation` — so a v3 gate that changes any decision v2 made goes red below.
  *
  * Frozen: nothing may be edited here to make a gate change pass. A genuinely new decision is a
- * NEW row appended in `buildGateMatrixV2`, so the diff shows what changed.
+ * NEW row appended in `buildGateMatrixV2`, so the diff shows what changed. A carried row can be
+ * retired only by an approved plan, through `RETIRED_CARRIED_ROWS`, with a named successor row.
  */
 const CARRIED_MATRIX_ROWS = [
   {
@@ -2098,6 +2105,24 @@ const CARRIED_MATRIX_ROWS = [
   },
 ] as const;
 
+/**
+ * Carried rows an approved plan retired, keyed by exact row name. The frozen array above stays
+ * byte-for-byte as it was; `buildGateMatrixV2` filters these out, and refuses to generate if a
+ * key names no carried row or its successor is missing from the output.
+ */
+const RETIRED_CARRIED_ROWS: Record<
+  string,
+  { retiredBy: string; why: string; successor: string }
+> = {
+  "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel":
+    {
+      retiredBy: "P0-04",
+      why: "It pins the unconditional dev-build bypass that R3-01 removed: today's server answers `version-too-old` for its inputs, and R3 calls the row defensible only for a client-side build gate, which no SDK has.",
+      successor:
+        "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+    },
+};
+
 /** The standard in-window build gate, for rows whose subject is the license half. */
 const PASSING_GATE = {
   version: "2.0.0",
@@ -2115,13 +2140,245 @@ const BLOCKING_GATE = {
 /** The v1 matrix's document window, reused so the new rows sit on the same timeline. */
 const MATRIX_DOC = { issuedAt: 1000, expiresAt: 4600, graceUntil: 2593000 };
 
+// ── The channel rows (P0-04, WIRE-CONTRACT-V3 §5.1) ──────────────────────────
+
+/** A `channels` entitlement granting `names`; no names means no entitlement at all. */
+function grant(...names: string[]): Record<string, unknown> {
+  if (names.length === 0) return {};
+  return {
+    channels: { state: "enforced", value: names, updatedAt: 1699990000 },
+  };
+}
+/** The header rows' window: wide, with a floor that refuses every `0.0.0-*` build. */
+const HEADER_WINDOW = { compatMin: "0.0.0", compatMax: "99.0.0" };
+/** `0.0.0-0` sorts below every `0.0.0-<word>` build, so those builds reach the channel check. */
+const PRERELEASE_WINDOW = { compatMin: "0.0.0-0", compatMax: "99.0.0" };
+/** The licence half of every channel row: an activated, in-window document. */
+const CHANNEL_LICENSE = {
+  licenseServiceEnabled: true,
+  activation: "token",
+  ...MATRIX_DOC,
+  now: 1500,
+};
+const CHANNEL_OK = { status: "ok", ok: true };
+const CHANNEL_NOT_ENTITLED = {
+  status: "channel-not-entitled",
+  ok: false,
+  reason: "channel-not-entitled",
+};
+
+function channelRow(
+  name: string,
+  version: string,
+  channel: string | null,
+  window: { compatMin: string; compatMax: string },
+  entitlements: Record<string, unknown>,
+  expect: Record<string, unknown>,
+): unknown {
+  return {
+    name,
+    gate: {
+      version,
+      ...(channel === null ? {} : { channel }),
+      ...window,
+      entitlements,
+    },
+    license: CHANNEL_LICENSE,
+    expect,
+  };
+}
+
+/** The channel vocabulary, pinned (P0-04 plan §4). Rows 1–8 are the brief's minimum set. */
+function channelRows(): unknown[] {
+  const H = HEADER_WINDOW;
+  const P = PRERELEASE_WINDOW;
+  const DEV_WINDOW = { compatMin: "5.0.0", compatMax: "6.0.0" };
+  return [
+    channelRow(
+      "ok — beta header, channels [stable, beta]",
+      "2.0.0",
+      "beta",
+      H,
+      grant("stable", "beta"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — beta header, channels [stable, staging] (alias)",
+      "2.0.0",
+      "beta",
+      H,
+      grant("stable", "staging"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — staging header, channels [stable, beta] (alias)",
+      "2.0.0",
+      "staging",
+      H,
+      grant("stable", "beta"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "channel-not-entitled — beta header, channels [stable]",
+      "2.0.0",
+      "beta",
+      H,
+      grant("stable"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "ok — manual channel header, entitled by name",
+      "2.0.0",
+      "nightly",
+      H,
+      grant("stable", "nightly"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "channel-not-entitled — manual channel header, not entitled",
+      "2.0.0",
+      "nightly",
+      H,
+      grant("stable", "beta"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "channel-not-entitled — malformed channel header",
+      "2.0.0",
+      "STAGING",
+      H,
+      grant("stable", "staging", "beta"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "ok — 0.0.0-beta build with beta entitlement",
+      "0.0.0-beta.3",
+      null,
+      P,
+      grant("stable", "beta"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "channel-not-entitled — 0.0.0-beta build without a beta entitlement",
+      "0.0.0-beta.3",
+      null,
+      P,
+      grant("stable"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "ok — 0.0.0-staging build is the beta channel, channels [stable, beta]",
+      "0.0.0-staging.1",
+      null,
+      P,
+      grant("stable", "beta"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — latest header is the stable channel",
+      "2.0.0",
+      "latest",
+      H,
+      grant(),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — pr-42 header, channels grant the pr family",
+      "2.0.0",
+      "pr-42",
+      H,
+      grant("stable", "pr"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "ok — pr header on a 0.0.0-pr-42 build, channels [stable, pr-42]",
+      "0.0.0-pr-42+sha",
+      "pr",
+      P,
+      grant("stable", "pr-42"),
+      CHANNEL_OK,
+    ),
+    channelRow(
+      "channel-not-entitled — pr-7 header, channels grant only pr-42",
+      "2.0.0",
+      "pr-7",
+      H,
+      grant("stable", "pr-42"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "channel-not-entitled — stable header cannot loosen a 0.0.0-pr-42 build",
+      "0.0.0-pr-42+sha",
+      "stable",
+      P,
+      grant(),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "channel-not-entitled — dev header without the dev entitlement",
+      "2.0.0",
+      "dev",
+      H,
+      grant("stable", "beta"),
+      CHANNEL_NOT_ENTITLED,
+    ),
+    channelRow(
+      "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+      "0.0.0-dev+abc123",
+      "staging",
+      DEV_WINDOW,
+      grant(),
+      {
+        status: "version-too-old",
+        ok: false,
+        reason: "version-too-old",
+        allowedRange: { min: "5.0.0", max: "6.0.0" },
+      },
+    ),
+    channelRow(
+      "ok — dev build with the dev entitlement bypasses the window (R3-01)",
+      "0.0.0-dev+abc123",
+      "staging",
+      DEV_WINDOW,
+      grant("stable", "dev"),
+      CHANNEL_OK,
+    ),
+  ];
+}
+
+/** The carried rows still emitted, after `RETIRED_CARRIED_ROWS`. */
+function carriedRows(): readonly unknown[] {
+  const names = new Set<string>(CARRIED_MATRIX_ROWS.map((r) => r.name));
+  for (const retired of Object.keys(RETIRED_CARRIED_ROWS))
+    if (!names.has(retired))
+      throw new Error(`RETIRED_CARRIED_ROWS names no carried row: ${retired}`);
+  return CARRIED_MATRIX_ROWS.filter((r) => !(r.name in RETIRED_CARRIED_ROWS));
+}
+
 function buildGateMatrixV2(): unknown {
+  const matrix = gateMatrixV2();
+  const emitted = new Set(matrix.rows.map((r) => (r as { name: string }).name));
+  if (emitted.size !== matrix.rows.length)
+    throw new Error("gate-matrix v2 has two rows with one name");
+  for (const [name, { successor }] of Object.entries(RETIRED_CARRIED_ROWS))
+    if (!emitted.has(successor))
+      throw new Error(
+        `retired carried row "${name}" names a successor that is not emitted: ${successor}`,
+      );
+  return matrix;
+}
+
+function gateMatrixV2(): {
+  gateMatrixVersion: number;
+  description: string;
+  rows: unknown[];
+} {
   return {
     gateMatrixVersion: 2,
     description:
-      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. Rows 1-15 are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here. The remaining rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on that last row is deliberately NOT the status. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.',
+      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.',
     rows: [
-      ...CARRIED_MATRIX_ROWS,
+      ...carriedRows(),
       {
         name: "not-applicable — license service disabled, nothing cached",
         gate: PASSING_GATE,
@@ -2194,7 +2451,1206 @@ function buildGateMatrixV2(): unknown {
           reason: "version-too-new",
         },
       },
+      ...channelRows(),
     ],
+  };
+}
+
+// ── stage-matrix v1 (client boot behaviour, outside the wire contract) ───────
+// The boot stage machine (`@polaris-key/client-core/stages` and its Python and Swift ports),
+// pinned as data. Unsigned, like the gate matrix: it pins a reducer, not a signature. The rows,
+// `accepts` and `probes` are literal data built with small step helpers. Nothing here imports
+// `client-core`: a golden file that shares code with the implementation it checks cannot catch
+// a bug in that shared code. `buildStageMatrixV1` self-checks the rows before writing, so a row
+// that contradicts the vocabulary, the `accepts` table or its own stage list fails
+// `gen:corpus`.
+//
+// Append-only, like `CARRIED_MATRIX_ROWS`. Rows that use only v1 semantics keep
+// `stageMatrixVersion: 1`; a change to the vocabulary, to `accepts`, to an existing row's
+// expectation, or a `canPlayOffline: true` path bumps the version, and the package that does it
+// updates every port.
+
+/** `MAX_FAILED_BOOTS`, restated rather than imported (as `MAX_BUNDLE_BYTES` is). */
+const STAGE_MAX_FAILED_BOOTS = 2;
+
+/** The nine `LicenseStatus` values, restated from `@polaris-key/protocol/license`. */
+const LICENSE_STATUSES = [
+  "ok",
+  "grace",
+  "expired",
+  "revoked",
+  "needs-activation",
+  "version-too-old",
+  "version-too-new",
+  "channel-not-entitled",
+  "not-applicable",
+] as const;
+
+const STAGE_VOCABULARY = {
+  stages: [
+    "idle",
+    "shell",
+    "guard",
+    "sync",
+    "gate",
+    "decide",
+    "fetch",
+    "mount",
+    "ready",
+    "background",
+    "offline",
+    "blocked",
+    "error",
+  ],
+  outcomes: ["running", "waiting", "ready", "blocked", "offline", "error"],
+  events: [
+    "start",
+    "shell.done",
+    "guard.done",
+    "sync.done",
+    "sync.timeout",
+    "gate.status",
+    "decide.done",
+    "fetch.done",
+    "mount.done",
+    "background.start",
+    "background.done",
+    "retry",
+    "play-offline",
+    "fail",
+  ],
+  emits: [
+    "stage_changed",
+    "waiting",
+    "update_available",
+    "blocked",
+    "offline",
+    "error",
+    "boot_rolled_back",
+    "boot_ready",
+  ],
+  guardActions: ["none", "apply-staged", "roll-back"],
+};
+
+/** The plan's "Accepted in" table. A key is a stage, or `gate:waiting` for the gate while it
+ *  waits for the player. */
+const STAGE_ACCEPTS: Record<string, string[]> = {
+  idle: ["start"],
+  shell: ["shell.done", "fail"],
+  guard: ["guard.done", "fail"],
+  sync: ["sync.done", "sync.timeout", "fail"],
+  gate: ["gate.status", "fail"],
+  "gate:waiting": ["gate.status", "retry"],
+  decide: ["decide.done", "fail"],
+  fetch: ["fetch.done", "fail"],
+  mount: ["mount.done", "fail"],
+  ready: ["background.start"],
+  background: ["background.done"],
+  offline: ["retry"],
+  blocked: ["retry"],
+  error: ["retry"],
+};
+
+type StageEvent = { type: string } & Record<string, unknown>;
+type StageEmit = { type: string } & Record<string, unknown>;
+interface StageStep {
+  event: StageEvent;
+  emits: StageEmit[];
+}
+interface StageInit {
+  allowOffline?: boolean;
+  allowGrace?: boolean;
+  requiredPacks?: string[];
+}
+interface StageRow {
+  name: string;
+  init: StageInit;
+  steps: StageStep[];
+  expect: { stages: string[]; outcome: string };
+}
+
+// Events.
+const evStart: StageEvent = { type: "start" };
+const evShellDone: StageEvent = { type: "shell.done" };
+const evGuard = (result: string): StageEvent => ({
+  type: "guard.done",
+  result,
+});
+const evSync = (result: string): StageEvent => ({ type: "sync.done", result });
+const evTimeout: StageEvent = { type: "sync.timeout" };
+const evGate = (status: string): StageEvent => ({
+  type: "gate.status",
+  status,
+});
+const evDecide = (decision: string): StageEvent => ({
+  type: "decide.done",
+  decision,
+});
+const evFetch = (result: string, installed: string[]): StageEvent => ({
+  type: "fetch.done",
+  result,
+  installed,
+});
+const evMountDone: StageEvent = { type: "mount.done" };
+const evBackgroundStart: StageEvent = { type: "background.start" };
+const evBackgroundDone: StageEvent = { type: "background.done" };
+const evRetry: StageEvent = { type: "retry" };
+const evPlayOffline: StageEvent = { type: "play-offline" };
+const evFail = (code: string): StageEvent => ({ type: "fail", code });
+
+// Emits.
+const changed = (stage: string, previous: string): StageEmit => ({
+  type: "stage_changed",
+  stage,
+  previous,
+});
+const emWaiting = (status: string): StageEmit => ({ type: "waiting", status });
+const emBlocked = (reason: string): StageEmit => ({ type: "blocked", reason });
+const emOffline: StageEmit = { type: "offline", canPlayOffline: false };
+const emError = (code: string): StageEmit => ({ type: "error", code });
+const emUpdateAvailable: StageEmit = { type: "update_available" };
+const emRolledBack: StageEmit = { type: "boot_rolled_back" };
+const emBootReady: StageEmit = { type: "boot_ready" };
+
+const step = (event: StageEvent, ...emits: StageEmit[]): StageStep => ({
+  event,
+  emits,
+});
+/** An event the current stage does not accept: it emits nothing. */
+const ignored = (event: StageEvent): StageStep => ({ event, emits: [] });
+
+// Shared step runs.
+/** `P`: start, shell.done, guard.done with `result` (ok unless a row says otherwise). */
+const prefix = (result = "ok"): StageStep[] => [
+  step(evStart, changed("shell", "idle")),
+  step(evShellDone, changed("guard", "shell")),
+  result === "rolled-back"
+    ? step(evGuard(result), changed("sync", "guard"), emRolledBack)
+    : step(evGuard(result), changed("sync", "guard")),
+];
+/** A sync result that continues to the gate. */
+const toGate = (result: string): StageStep =>
+  step(evSync(result), changed("gate", "sync"));
+/** A gate status that passes to decide. */
+const pass = (status = "ok"): StageStep =>
+  step(evGate(status), changed("decide", "gate"));
+/** `T`: decide.done none, fetch.done ok [], mount.done. */
+const tail = (): StageStep[] => [
+  step(evDecide("none"), changed("fetch", "decide")),
+  step(evFetch("ok", []), changed("mount", "fetch")),
+  step(evMountDone, changed("ready", "mount"), emBootReady),
+];
+
+const INIT_D: StageInit = {
+  allowOffline: true,
+  allowGrace: true,
+  requiredPacks: [],
+};
+const INIT_D_O: StageInit = { ...INIT_D, allowOffline: false };
+const INIT_D_G: StageInit = { ...INIT_D, allowGrace: false };
+const INIT_D_K: StageInit = { ...INIT_D, requiredPacks: ["core"] };
+
+/** The stages every row except 34 and 35 enters first. */
+const S_BASE = ["shell", "guard", "sync"];
+/** Row 1's stages: the whole normal path. */
+const S_READY = [...S_BASE, "gate", "decide", "fetch", "mount", "ready"];
+/** After a retry that resumes at the sync: the normal path from there. */
+const S_RESYNC = ["sync", "gate", "decide", "fetch", "mount", "ready"];
+
+function stageRows(): StageRow[] {
+  return [
+    {
+      name: "ready — every stage is entered in order",
+      init: INIT_D,
+      steps: [...prefix(), toGate("ok"), pass(), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "ready — not-applicable passes the gate",
+      init: INIT_D,
+      steps: [...prefix(), toGate("ok"), pass("not-applicable"), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "ready — needs-activation waits for the player, then continues",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(evGate("needs-activation"), emWaiting("needs-activation")),
+        step(evGate("needs-activation"), emWaiting("needs-activation")),
+        pass(),
+        ...tail(),
+      ],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "waiting — revoked waits for the player",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(evGate("revoked"), emWaiting("revoked")),
+      ],
+      expect: { stages: [...S_BASE, "gate"], outcome: "waiting" },
+    },
+    {
+      name: "offline — expired without a network cannot continue",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        step(evGate("expired"), changed("offline", "gate"), emOffline),
+      ],
+      expect: { stages: [...S_BASE, "gate", "offline"], outcome: "offline" },
+    },
+    {
+      name: "ready — expired while online waits, and retry syncs again",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(evGate("expired"), emWaiting("expired")),
+        step(evRetry, changed("sync", "gate")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: { stages: [...S_BASE, "gate", ...S_RESYNC], outcome: "ready" },
+    },
+    {
+      name: "blocked — version-too-old requires an update",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(
+          evGate("version-too-old"),
+          changed("blocked", "gate"),
+          emBlocked("update-required"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "blocked — version-too-new is not available",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(
+          evGate("version-too-new"),
+          changed("blocked", "gate"),
+          emBlocked("not-available"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "ready — channel-not-entitled blocks, and retry continues once entitled",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(
+          evGate("channel-not-entitled"),
+          changed("blocked", "gate"),
+          emBlocked("not-available"),
+        ),
+        step(evRetry, changed("sync", "blocked")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: {
+        stages: [...S_BASE, "gate", "blocked", ...S_RESYNC],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "ready — by default a sync timeout continues offline and grace passes",
+      init: {},
+      steps: [
+        ...prefix(),
+        step(evTimeout, changed("gate", "sync")),
+        pass("grace"),
+        ...tail(),
+      ],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "offline — allowGrace false refuses grace offline",
+      init: INIT_D_G,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        step(evGate("grace"), changed("offline", "gate"), emOffline),
+      ],
+      expect: { stages: [...S_BASE, "gate", "offline"], outcome: "offline" },
+    },
+    {
+      name: "waiting — offline and not yet activated still reaches activation",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        step(evGate("needs-activation"), emWaiting("needs-activation")),
+      ],
+      expect: { stages: [...S_BASE, "gate"], outcome: "waiting" },
+    },
+    {
+      name: "ready — an offline first launch of a config-only product continues on its defaults",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        pass("not-applicable"),
+        step(evDecide("none"), changed("fetch", "decide")),
+        step(evFetch("offline", []), changed("mount", "fetch")),
+        step(evMountDone, changed("ready", "mount"), emBootReady),
+      ],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "ready — a sync error continues from local state",
+      init: INIT_D,
+      steps: [...prefix(), toGate("error"), pass(), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "offline — allowOffline false stops when the network is unreachable",
+      init: INIT_D_O,
+      steps: [
+        ...prefix(),
+        step(evSync("offline"), changed("offline", "sync"), emOffline),
+      ],
+      expect: { stages: [...S_BASE, "offline"], outcome: "offline" },
+    },
+    {
+      name: "error — allowOffline false stops with sync-failed on a server error",
+      init: INIT_D_O,
+      steps: [
+        ...prefix(),
+        step(evSync("error"), changed("error", "sync"), emError("sync-failed")),
+      ],
+      expect: { stages: [...S_BASE, "error"], outcome: "error" },
+    },
+    {
+      name: "ready — allowOffline false: a timeout stops, play-offline is ignored, retry syncs",
+      init: INIT_D_O,
+      steps: [
+        ...prefix(),
+        step(evTimeout, changed("offline", "sync"), emOffline),
+        ignored(evPlayOffline),
+        step(evRetry, changed("sync", "offline")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: { stages: [...S_BASE, "offline", ...S_RESYNC], outcome: "ready" },
+    },
+    {
+      name: "ready — an optional update continues and emits update_available",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(
+          evDecide("optional"),
+          changed("fetch", "decide"),
+          emUpdateAvailable,
+        ),
+        step(evFetch("ok", []), changed("mount", "fetch")),
+        step(evMountDone, changed("ready", "mount"), emBootReady),
+      ],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "blocked — a required update blocks",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(
+          evDecide("required"),
+          changed("blocked", "decide"),
+          emBlocked("update-required"),
+        ),
+      ],
+      expect: {
+        stages: [...S_BASE, "gate", "decide", "blocked"],
+        outcome: "blocked",
+      },
+    },
+    {
+      name: "ready — a missing required pack is fetched",
+      init: INIT_D_K,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(evDecide("none"), changed("fetch", "decide")),
+        step(evFetch("ok", ["core"]), changed("mount", "fetch")),
+        step(evMountDone, changed("ready", "mount"), emBootReady),
+      ],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "offline — a required pack is missing and there is no network",
+      init: INIT_D_K,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        pass(),
+        step(evDecide("none"), changed("fetch", "decide")),
+        step(evFetch("offline", []), changed("offline", "fetch"), emOffline),
+      ],
+      expect: {
+        stages: [...S_BASE, "gate", "decide", "fetch", "offline"],
+        outcome: "offline",
+      },
+    },
+    {
+      name: "error — a required pack is still missing after a failed fetch",
+      init: INIT_D_K,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(evDecide("none"), changed("fetch", "decide")),
+        step(
+          evFetch("failed", []),
+          changed("error", "fetch"),
+          emError("fetch-failed"),
+        ),
+      ],
+      expect: {
+        stages: [...S_BASE, "gate", "decide", "fetch", "error"],
+        outcome: "error",
+      },
+    },
+    {
+      name: "ready — a failed download never blocks when the required set is present",
+      init: INIT_D_K,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(evDecide("none"), changed("fetch", "decide")),
+        step(evFetch("failed", ["core"]), changed("mount", "fetch")),
+        step(evMountDone, changed("ready", "mount"), emBootReady),
+      ],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "ready — a rolled-back boot continues and emits boot_rolled_back",
+      init: INIT_D,
+      steps: [...prefix("rolled-back"), toGate("ok"), pass(), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "ready — an applied staged update continues",
+      init: INIT_D,
+      steps: [...prefix("applied"), toGate("ok"), pass(), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "ready — a late sync.timeout after sync.done is ignored",
+      init: INIT_D,
+      steps: [...prefix(), toGate("ok"), ignored(evTimeout), pass(), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "ready — a host failure ends in error, and retry syncs again",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(evDecide("none"), changed("fetch", "decide")),
+        step(evFetch("ok", []), changed("mount", "fetch")),
+        step(
+          evFail("mount-failed"),
+          changed("error", "mount"),
+          emError("mount-failed"),
+        ),
+        step(evRetry, changed("sync", "error")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: {
+        stages: [
+          ...S_BASE,
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "error",
+          ...S_RESYNC,
+        ],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "ready — background work after ready returns to ready",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+        step(evBackgroundStart, changed("background", "ready")),
+        step(evBackgroundDone, changed("ready", "background")),
+      ],
+      expect: { stages: [...S_READY, "background", "ready"], outcome: "ready" },
+    },
+    {
+      name: "error — expired after a server error stops with sync-failed",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("error"),
+        step(
+          evGate("expired"),
+          changed("error", "gate"),
+          emError("sync-failed"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "error"], outcome: "error" },
+    },
+    {
+      name: "running — events outside their stage are ignored mid-boot",
+      init: INIT_D,
+      steps: [
+        step(evStart, changed("shell", "idle")),
+        ignored(evStart),
+        ignored(evMountDone),
+        step(evShellDone, changed("guard", "shell")),
+        ignored(evRetry),
+        step(evGuard("ok"), changed("sync", "guard")),
+        ignored(evBackgroundDone),
+        step(evTimeout, changed("gate", "sync")),
+        ignored(evSync("ok")),
+        ignored(evRetry),
+      ],
+      expect: { stages: [...S_BASE, "gate"], outcome: "running" },
+    },
+    {
+      name: "ready — fail while the gate waits, and fail and retry after ready, are ignored",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(evGate("needs-activation"), emWaiting("needs-activation")),
+        ignored(evFail("activation-failed")),
+        pass(),
+        ...tail(),
+        ignored(evFail("late-failure")),
+        ignored(evRetry),
+      ],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "error — fetch reports ok but a required pack is still missing",
+      init: INIT_D_K,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(evDecide("none"), changed("fetch", "decide")),
+        step(
+          evFetch("ok", []),
+          changed("error", "fetch"),
+          emError("fetch-failed"),
+        ),
+      ],
+      expect: {
+        stages: [...S_BASE, "gate", "decide", "fetch", "error"],
+        outcome: "error",
+      },
+    },
+    {
+      name: "waiting — allowGrace false holds grace for the player after a sync",
+      init: INIT_D_G,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(evGate("grace"), emWaiting("grace")),
+      ],
+      expect: { stages: [...S_BASE, "gate"], outcome: "waiting" },
+    },
+    {
+      name: "ready — a shell failure ends in error, and retry runs the shell again",
+      init: INIT_D,
+      steps: [
+        step(evStart, changed("shell", "idle")),
+        step(
+          evFail("shell-failed"),
+          changed("error", "shell"),
+          emError("shell-failed"),
+        ),
+        step(evRetry, changed("shell", "error")),
+        step(evShellDone, changed("guard", "shell")),
+        step(evGuard("ok"), changed("sync", "guard")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: {
+        stages: [
+          "shell",
+          "error",
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready",
+        ],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "ready — a guard failure ends in error, and retry runs the guard again",
+      init: INIT_D,
+      steps: [
+        step(evStart, changed("shell", "idle")),
+        step(evShellDone, changed("guard", "shell")),
+        step(
+          evFail("guard-failed"),
+          changed("error", "guard"),
+          emError("guard-failed"),
+        ),
+        step(evRetry, changed("guard", "error")),
+        step(evGuard("ok"), changed("sync", "guard")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: {
+        stages: [
+          "shell",
+          "guard",
+          "error",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready",
+        ],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "ready — a sync failure ends in error even with allowOffline, and retry syncs again",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        step(
+          evFail("sync-exception"),
+          changed("error", "sync"),
+          emError("sync-exception"),
+        ),
+        step(evRetry, changed("sync", "error")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: { stages: [...S_BASE, "error", ...S_RESYNC], outcome: "ready" },
+    },
+    {
+      name: "ready — a gate failure before any status ends in error, and retry syncs again",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(
+          evFail("gate-exception"),
+          changed("error", "gate"),
+          emError("gate-exception"),
+        ),
+        step(evRetry, changed("sync", "error")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: {
+        stages: [...S_BASE, "gate", "error", ...S_RESYNC],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "ready — a decide failure ends in error, and retry syncs again",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(
+          evFail("decide-exception"),
+          changed("error", "decide"),
+          emError("decide-exception"),
+        ),
+        step(evRetry, changed("sync", "error")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: {
+        stages: [...S_BASE, "gate", "decide", "error", ...S_RESYNC],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "ready — a fetch failure ends in error, and retry syncs again",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        pass(),
+        step(evDecide("none"), changed("fetch", "decide")),
+        step(
+          evFail("fetch-exception"),
+          changed("error", "fetch"),
+          emError("fetch-exception"),
+        ),
+        step(evRetry, changed("sync", "error")),
+        toGate("ok"),
+        pass(),
+        ...tail(),
+      ],
+      expect: {
+        stages: [...S_BASE, "gate", "decide", "fetch", "error", ...S_RESYNC],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "waiting — revoked without a network waits for the player",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        step(evGate("revoked"), emWaiting("revoked")),
+      ],
+      expect: { stages: [...S_BASE, "gate"], outcome: "waiting" },
+    },
+    {
+      name: "blocked — version-too-old without a network still requires an update",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        step(
+          evGate("version-too-old"),
+          changed("blocked", "gate"),
+          emBlocked("update-required"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "blocked — version-too-new without a network is not available",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        step(
+          evGate("version-too-new"),
+          changed("blocked", "gate"),
+          emBlocked("not-available"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "blocked — channel-not-entitled without a network is not available",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        step(
+          evGate("channel-not-entitled"),
+          changed("blocked", "gate"),
+          emBlocked("not-available"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "ready — not-applicable passes the gate after a server error",
+      init: INIT_D,
+      steps: [...prefix(), toGate("error"), pass("not-applicable"), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "ready — grace passes the gate after a server error",
+      init: INIT_D,
+      steps: [...prefix(), toGate("error"), pass("grace"), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "error — allowGrace false refuses grace after a server error",
+      init: INIT_D_G,
+      steps: [
+        ...prefix(),
+        toGate("error"),
+        step(evGate("grace"), changed("error", "gate"), emError("sync-failed")),
+      ],
+      expect: { stages: [...S_BASE, "gate", "error"], outcome: "error" },
+    },
+    {
+      name: "waiting — needs-activation after a server error still reaches activation",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("error"),
+        step(evGate("needs-activation"), emWaiting("needs-activation")),
+      ],
+      expect: { stages: [...S_BASE, "gate"], outcome: "waiting" },
+    },
+    {
+      name: "waiting — revoked after a server error waits for the player",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("error"),
+        step(evGate("revoked"), emWaiting("revoked")),
+      ],
+      expect: { stages: [...S_BASE, "gate"], outcome: "waiting" },
+    },
+    {
+      name: "blocked — version-too-old after a server error requires an update",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("error"),
+        step(
+          evGate("version-too-old"),
+          changed("blocked", "gate"),
+          emBlocked("update-required"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "blocked — version-too-new after a server error is not available",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("error"),
+        step(
+          evGate("version-too-new"),
+          changed("blocked", "gate"),
+          emBlocked("not-available"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "blocked — channel-not-entitled after a server error is not available",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("error"),
+        step(
+          evGate("channel-not-entitled"),
+          changed("blocked", "gate"),
+          emBlocked("not-available"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "ready — grace passes the gate after a sync",
+      init: INIT_D,
+      steps: [...prefix(), toGate("ok"), pass("grace"), ...tail()],
+      expect: { stages: S_READY, outcome: "ready" },
+    },
+    {
+      name: "blocked — a gate that waits for the player still blocks on channel-not-entitled",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(evGate("needs-activation"), emWaiting("needs-activation")),
+        step(
+          evGate("channel-not-entitled"),
+          changed("blocked", "gate"),
+          emBlocked("not-available"),
+        ),
+      ],
+      expect: { stages: [...S_BASE, "gate", "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "offline — a gate that waits without a network still stops on expired",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        toGate("offline"),
+        step(evGate("needs-activation"), emWaiting("needs-activation")),
+        step(evGate("expired"), changed("offline", "gate"), emOffline),
+      ],
+      expect: { stages: [...S_BASE, "gate", "offline"], outcome: "offline" },
+    },
+    {
+      name: "offline — expired after a sync timeout stops as offline, not as sync-failed",
+      init: INIT_D,
+      steps: [
+        ...prefix(),
+        step(evTimeout, changed("gate", "sync")),
+        step(evGate("expired"), changed("offline", "gate"), emOffline),
+      ],
+      expect: { stages: [...S_BASE, "gate", "offline"], outcome: "offline" },
+    },
+    {
+      name: "waiting — allowOffline false does not change the gate: expired after a sync waits",
+      init: INIT_D_O,
+      steps: [
+        ...prefix(),
+        toGate("ok"),
+        step(evGate("expired"), emWaiting("expired")),
+      ],
+      expect: { stages: [...S_BASE, "gate"], outcome: "waiting" },
+    },
+  ];
+}
+
+/** The boot guard's launch decision, G1–G7. */
+const STAGE_GUARD_CASES = [
+  {
+    name: "none — nothing staged and no failed boots",
+    input: { staged: false, failedBoots: 0 },
+    expect: { action: "none" },
+  },
+  {
+    name: "apply-staged — a staged update is applied",
+    input: { staged: true, failedBoots: 0 },
+    expect: { action: "apply-staged" },
+  },
+  {
+    name: "none — one failed boot does not roll back",
+    input: { staged: false, failedBoots: 1 },
+    expect: { action: "none" },
+  },
+  {
+    name: "apply-staged — a staged update replaces a slot with one failure",
+    input: { staged: true, failedBoots: 1 },
+    expect: { action: "apply-staged" },
+  },
+  {
+    name: "roll-back — two failed boots roll back",
+    input: { staged: false, failedBoots: 2 },
+    expect: { action: "roll-back" },
+  },
+  {
+    name: "roll-back — a rollback takes precedence over a staged update",
+    input: { staged: true, failedBoots: 2 },
+    expect: { action: "roll-back" },
+  },
+  {
+    name: "roll-back — more than two failed boots still roll back",
+    input: { staged: false, failedBoots: 3 },
+    expect: { action: "roll-back" },
+  },
+];
+
+/** One well-formed event per vocabulary event type, in vocabulary order. */
+const STAGE_PROBES: StageEvent[] = [
+  evStart,
+  evShellDone,
+  evGuard("ok"),
+  evSync("ok"),
+  evTimeout,
+  evGate("ok"),
+  evDecide("none"),
+  evFetch("ok", []),
+  evMountDone,
+  evBackgroundStart,
+  evBackgroundDone,
+  evRetry,
+  evPlayOffline,
+  evFail("probe"),
+];
+
+/** Throws unless the rows agree with the vocabulary, `accepts`, their own stage lists, and
+ *  cover every cell of the plan's sync and gate tables. Nothing here computes an expectation:
+ *  it only checks the hand-authored ones against each other. */
+function checkStageMatrix(
+  rows: StageRow[],
+  guardCases: typeof STAGE_GUARD_CASES,
+): void {
+  const fail = (msg: string): never => {
+    throw new Error(`stage-matrix: ${msg}`);
+  };
+  const v = STAGE_VOCABULARY;
+  const same = (a: unknown, b: unknown): boolean =>
+    JSON.stringify(a) === JSON.stringify(b);
+
+  // accepts: exactly the 13 stages plus gate:waiting, listing vocabulary events only.
+  const keys = [...v.stages, "gate:waiting"];
+  if (!same(Object.keys(STAGE_ACCEPTS).sort(), [...keys].sort()))
+    fail("accepts must have the 13 stages and gate:waiting as its keys");
+  for (const [key, events] of Object.entries(STAGE_ACCEPTS))
+    for (const e of events)
+      if (!v.events.includes(e)) fail(`accepts.${key} lists unknown ${e}`);
+  // probes: one per vocabulary event type, in order.
+  if (
+    !same(
+      STAGE_PROBES.map((p) => p.type),
+      v.events,
+    )
+  )
+    fail("probes must hold one event per vocabulary event type, in order");
+
+  const used = {
+    stages: new Set<string>(),
+    outcomes: new Set<string>(),
+    events: new Set<string>(),
+    emits: new Set<string>(),
+    statuses: new Set<string>(),
+  };
+  const acceptCells = new Set<string>();
+  const syncCells = new Set<string>();
+  const gateCells = new Set<string>();
+  const names = new Set<string>();
+  const finalOutcomes: Record<string, string[]> = {
+    idle: ["running"],
+    shell: ["running"],
+    guard: ["running"],
+    sync: ["running"],
+    gate: ["running", "waiting"],
+    decide: ["running"],
+    fetch: ["running"],
+    mount: ["running"],
+    ready: ["ready"],
+    background: ["ready"],
+    offline: ["offline"],
+    blocked: ["blocked"],
+    error: ["error"],
+  };
+
+  for (const row of rows) {
+    if (names.has(row.name)) fail(`duplicate row name: ${row.name}`);
+    names.add(row.name);
+    const allowOffline = row.init.allowOffline ?? true;
+    const allowGrace = row.init.allowGrace ?? true;
+    let key = "idle";
+    let sync = "pending";
+    const stages: string[] = [];
+    for (const [i, s] of row.steps.entries()) {
+      const where = `${row.name}, step ${i + 1}`;
+      const type = s.event.type;
+      if (!v.events.includes(type)) fail(`${where}: unknown event ${type}`);
+      used.events.add(type);
+      const accepted = STAGE_ACCEPTS[key]!.includes(type);
+      if (accepted !== s.emits.length > 0)
+        fail(
+          `${where}: ${type} in ${key} must ${accepted ? "emit something" : "emit nothing"}`,
+        );
+      if (!accepted) continue;
+      acceptCells.add(`${key}|${type}`);
+      if (type === "sync.done" || type === "sync.timeout") {
+        const result = type === "sync.timeout" ? "timeout" : s.event.result;
+        syncCells.add(`${result}|${allowOffline}`);
+        sync = result === "timeout" ? "offline" : String(s.event.result);
+      }
+      if (type === "gate.status") {
+        const status = String(s.event.status);
+        used.statuses.add(status);
+        const cls = status === "grace" ? `grace:${allowGrace}` : status;
+        gateCells.add(`${cls}|${sync}`);
+      }
+      for (const [j, em] of s.emits.entries()) {
+        if (!v.emits.includes(em.type))
+          fail(`${where}: unknown emit ${em.type}`);
+        used.emits.add(em.type);
+        if (em.type === "stage_changed") {
+          if (j !== 0) fail(`${where}: stage_changed must come first`);
+          const stage = String(em.stage);
+          if (!v.stages.includes(stage)) fail(`${where}: unknown ${stage}`);
+          if (em.previous !== (key === "gate:waiting" ? "gate" : key))
+            fail(`${where}: stage_changed.previous must be ${key}`);
+          used.stages.add(stage);
+          used.stages.add(String(em.previous));
+          stages.push(stage);
+          key = stage;
+        } else if (j > 1 || (j === 1 && s.emits[0]!.type !== "stage_changed")) {
+          fail(`${where}: at most one emit besides stage_changed`);
+        }
+        if (em.type === "waiting") {
+          if (key !== "gate" && key !== "gate:waiting")
+            fail(`${where}: waiting outside the gate`);
+          key = "gate:waiting";
+        }
+      }
+    }
+    if (!same(stages, row.expect.stages))
+      fail(`${row.name}: expect.stages differs from the stage_changed emits`);
+    const final = stages[stages.length - 1] ?? "idle";
+    if (!finalOutcomes[final]!.includes(row.expect.outcome))
+      fail(`${row.name}: ${final} cannot end ${row.expect.outcome}`);
+    if (
+      final === "gate" &&
+      (row.expect.outcome === "waiting") !== (key === "gate:waiting")
+    )
+      fail(`${row.name}: the gate's outcome disagrees with its waiting emit`);
+    used.outcomes.add(row.expect.outcome);
+  }
+
+  const guardActions = new Set(guardCases.map((c) => c.expect.action));
+  for (const [list, set] of [
+    [v.stages, used.stages],
+    [v.outcomes, used.outcomes],
+    [v.events, used.events],
+    [v.emits, used.emits],
+    [v.guardActions, guardActions],
+    [LICENSE_STATUSES, used.statuses],
+  ] as const)
+    for (const entry of list)
+      if (!set.has(entry)) fail(`${entry} is used by no row or case`);
+  for (const action of guardActions)
+    if (!v.guardActions.includes(action))
+      fail(`unknown guard action ${action}`);
+
+  for (const [key, events] of Object.entries(STAGE_ACCEPTS))
+    for (const e of events)
+      if (!acceptCells.has(`${key}|${e}`))
+        fail(`no row step takes the accepts cell ${key} × ${e}`);
+  for (const result of ["ok", "offline", "error", "timeout"])
+    for (const allow of [true, false])
+      if (!syncCells.has(`${result}|${allow}`))
+        fail(`no row takes the sync cell ${result}, allowOffline ${allow}`);
+  const gateClasses = [
+    ...LICENSE_STATUSES.filter((s) => s !== "grace"),
+    "grace:true",
+    "grace:false",
+  ];
+  for (const cls of gateClasses)
+    for (const sync of ["ok", "offline", "error"])
+      if (!gateCells.has(`${cls}|${sync}`))
+        fail(`no row takes the gate cell ${cls} after sync ${sync}`);
+}
+
+function buildStageMatrixV1(): unknown {
+  const rows = stageRows();
+  checkStageMatrix(rows, STAGE_GUARD_CASES);
+  return {
+    stageMatrixVersion: 1,
+    description:
+      "The boot stage machine (client boot behaviour, outside the wire contract), owned by `@polaris-key/client-core/stages` and ported to every SDK. Each row starts from `initialBootState(init)` (an omitted option takes its default: allowOffline true, allowGrace true, requiredPacks []) and feeds `bootTransition` its steps in order; each step lists the exact emits that event produces, `stage_changed` first. `expect.stages` is every stage entered, in order, and its last entry is the final stage; `expect.outcome` is the final outcome. Events are dotted, emits snake_case, payload keys camelCase and payload values kebab-case. An event the current stage does not accept, or a malformed one, is ignored: the state comes back unchanged with no emits. `accepts` lists what each stage accepts (`gate:waiting` is the gate while it waits for the player), and a runner sends every probe at the initial state and after every step of every row, asserting an unchanged state and no emits exactly when the probe's type is not accepted there. `guardCases` pin `bootGuardAction`, which rolls back at `maxFailedBoots`. Append-only: a change to the vocabulary, to `accepts` or to an existing row's expectation bumps `stageMatrixVersion`.",
+    maxFailedBoots: STAGE_MAX_FAILED_BOOTS,
+    vocabulary: STAGE_VOCABULARY,
+    accepts: STAGE_ACCEPTS,
+    probes: STAGE_PROBES,
+    rows,
+    guardCases: STAGE_GUARD_CASES,
   };
 }
 
@@ -2425,15 +3881,19 @@ async function main(): Promise<void> {
   });
 
   // ── corpus v2 (wire contract v3) ───────────────────────────────────────────
-  // Three files in one directory so a runner can point at `corpus/v2/` and find everything
+  // Four files in one directory so a runner can point at `corpus/v2/` and find everything
   // it needs, and so `--check` guards the whole set. The `fingerprint.json` formulas are
   // unchanged across the wire revisions (`fingerprintVersion` stays 1) and deliberately NOT
   // rebranded — the `pkey-hw:`/`pkey-device:` prefixes are hash domains baked into every
-  // enrolled digest, not user-visible identifiers.
+  // enrolled digest, not user-visible identifiers. `stage-matrix.json` pins client boot
+  // behaviour, which is outside the wire contract but shares the directory and the gate.
   const v2Content = await format(JSON.stringify(await buildV2()), {
     parser: "json",
   });
   const v2GateMatrix = await format(JSON.stringify(buildGateMatrixV2()), {
+    parser: "json",
+  });
+  const v2StageMatrix = await format(JSON.stringify(buildStageMatrixV1()), {
     parser: "json",
   });
 
@@ -2443,6 +3903,7 @@ async function main(): Promise<void> {
     [basename(V2_OUT), v2Content],
     [basename(V2_GATE_MATRIX_OUT), v2GateMatrix],
     [basename(V2_FINGERPRINT_OUT), fingerprint],
+    [basename(V2_STAGE_MATRIX_OUT), v2StageMatrix],
   ]);
   let stale = false;
   for (const dir of CORPUS_TARGETS) {

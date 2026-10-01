@@ -125,7 +125,7 @@ export function defaultInstallScript(ctx: InstallContext): string {
 #   curl -fsSL ${origin}${installPath} | ${versionEnv}=1.2.3 sh
 #
 # Install a testing channel (coexists with stable; installs ${binaryName}-<channel>):
-#   curl -fsSL ${origin}${installPath} | ${versionEnv}=staging sh
+#   curl -fsSL ${origin}${installPath} | ${versionEnv}=beta sh
 #   curl -fsSL ${origin}${installPath} | ${versionEnv}=pr-42 sh
 set -eu
 

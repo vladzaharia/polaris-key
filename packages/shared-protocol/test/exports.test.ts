@@ -27,6 +27,27 @@ describe("@polaris-key/protocol layout", () => {
     expect(core.FINGERPRINT_HASH_PREFIX).toBe("pkey-hw");
   });
 
+  it("pins the channel vocabulary (WIRE-CONTRACT-V3 §5.1), one identifier set", () => {
+    expect(core.CHANNEL_STABLE).toBe("stable");
+    expect(core.CHANNEL_BETA).toBe("beta");
+    expect(core.CHANNEL_PR).toBe("pr");
+    expect(core.CHANNEL_DEV).toBe("dev");
+    expect(core.CHANNEL_ALIASES).toEqual({ staging: "beta", latest: "stable" });
+    expect(core.CHANNEL_NAME_PATTERN).toBe("^[a-z0-9][a-z0-9-]{0,63}$");
+    expect(core.PR_CHANNEL_PATTERN).toBe("^pr-?([0-9]+)$");
+    expect(core.PR_NUMBER_MAX_DIGITS).toBe(7);
+    expect(barrel.CHANNEL_STABLE).toBe(core.CHANNEL_STABLE);
+    expect(barrel.CHANNEL_BETA).toBe(core.CHANNEL_BETA);
+    expect(barrel.CHANNEL_PR).toBe(core.CHANNEL_PR);
+    expect(barrel.CHANNEL_DEV).toBe(core.CHANNEL_DEV);
+    expect(barrel.CHANNEL_ALIASES).toBe(core.CHANNEL_ALIASES);
+    expect(barrel.CHANNEL_NAME_PATTERN).toBe(core.CHANNEL_NAME_PATTERN);
+    expect(barrel.PR_CHANNEL_PATTERN).toBe(core.PR_CHANNEL_PATTERN);
+    expect(barrel.PR_NUMBER_MAX_DIGITS).toBe(core.PR_NUMBER_MAX_DIGITS);
+    const families: barrel.BuildChannel[] = ["stable", "beta", "pr", "dev"];
+    expect(families).toHaveLength(4);
+  });
+
   it("release access gains the entitled mode with public defaults intact", () => {
     const modes: barrel.ReleaseAccess[] = [
       "public",

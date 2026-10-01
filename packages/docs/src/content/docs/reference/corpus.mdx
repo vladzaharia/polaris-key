@@ -13,7 +13,8 @@ template). `pnpm gen:corpus -- --check` is the CI drift gate,
 over the source and both generator-owned mirrors (the Swift test resources and the Godot
 `res://` mirror at `sdks/godot/tests/corpus/v2/`). Corpus v1 is deleted — v2 is the
 only corpus. `corpusVersion 2`,
-`gateMatrixVersion 2`, `fingerprintVersion 1`.
+`gateMatrixVersion 2`, `fingerprintVersion 1`,
+`stageMatrixVersion 1`.
 
 ## Case families (`cases.json`)
 
@@ -27,6 +28,10 @@ only corpus. `corpusVersion 2`,
 | `clockFloorCases` | 7 |
 | `bundleCases` | 9 |
 
-## Gate matrix (`gate-matrix.json`): 21 rows
+## Gate matrix (`gate-matrix.json`): 38 rows
 
 ## Fingerprint corpus (`fingerprint.json`): 6 vectors, 4 device-id derivations, component order `machineUuid` → `boardSerial` → `cpuModel` → `primaryMac` → `bootVolumeUuid` → `ramBucket` → `machineModel`
+
+## Stage matrix (`stage-matrix.json`): 56 rows, 7 guard cases
+
+Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach.

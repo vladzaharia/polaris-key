@@ -11,40 +11,40 @@ keys, devices). _Optional_ work packages are off the required path.
 
 13 work packages, 6.1–9 weeks.
 
-| Id                                            | Title                                                                                    | Depends on   | Role        | Weeks    | Status      |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------ | ----------- | -------- | ----------- |
-| [P0-01](wp/P0-01-operator-ownership.md)       | Make operator-owned release settings survive a manifest resync                           | —            | implementer | 0.5–0.75 | done        |
-| [P0-02](wp/P0-02-release-resolution.md)       | Fix release resolution: tag filter, version ordering, pagination, upsert conflict, R6-10 | —            | implementer | 1–1.25   | done        |
-| [P0-03](wp/P0-03-release-webhook.md) ✋       | Refresh the release truth store on GitHub `release` webhook events                       | P0-02        | implementer | 0.25     | done        |
-| [P0-04](wp/P0-04-channel-unification.md) ⚑    | Unify the licence-gate and Release channel vocabularies                                  | —            | sdk-porter  | 1–1.25   | in-progress |
-| [P0-05](wp/P0-05-cors.md)                     | Add a per-product CORS allowlist to the Worker                                           | —            | implementer | 0.5–0.75 | done        |
-| [P0-06](wp/P0-06-product-devices.md)          | List and manage devices product-wide, not only per licence                               | —            | implementer | 0.25–0.5 | done        |
-| [P0-07](wp/P0-07-cli-init-validate.md)        | Fix the `pkey init` scaffold and the validate/link disagreement                          | —            | implementer | 0.25     | done        |
-| [P0-08](wp/P0-08-unknown-slug-tolerance.md)   | Tolerate unknown service slugs in `parseServices` (ship one deploy ahead)                | —            | implementer | 0.1–0.25 | done        |
-| [P0-09](wp/P0-09-service-table.md) ✋         | Make the service list data-driven, with a drift gate                                     | P0-08, P0-07 | implementer | 1–1.5    | done        |
-| [P0-10](wp/P0-10-sparkle-hardening.md) ✋     | Raise Swift's Sparkle floor to 2.9.6 and stream Sparkle verification                     | —            | implementer | 0.25–0.5 | done        |
-| [P0-11](wp/P0-11-docs-drift.md)               | Fix documentation drift and macOS-only assumptions in health and setup                   | —            | implementer | 0.25–0.5 | done        |
-| [P0-12](wp/P0-12-edge-mint-hardening.md) ✋   | Harden edge-mint: scope signing secrets and authorise minting                            | —            | implementer | 0.5–0.75 | done        |
-| [P0-13](wp/P0-13-oidc-flow-key-hashing.md) ✋ | Hash product OIDC `state` and device-code KV key names (finish R12-04)                   | —            | implementer | 0.25–0.5 | done        |
+| Id                                            | Title                                                                                    | Depends on   | Role        | Weeks    | Status |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------ | ----------- | -------- | ------ |
+| [P0-01](wp/P0-01-operator-ownership.md)       | Make operator-owned release settings survive a manifest resync                           | —            | implementer | 0.5–0.75 | done   |
+| [P0-02](wp/P0-02-release-resolution.md)       | Fix release resolution: tag filter, version ordering, pagination, upsert conflict, R6-10 | —            | implementer | 1–1.25   | done   |
+| [P0-03](wp/P0-03-release-webhook.md) ✋       | Refresh the release truth store on GitHub `release` webhook events                       | P0-02        | implementer | 0.25     | done   |
+| [P0-04](wp/P0-04-channel-unification.md) ⚑    | Unify the licence-gate and Release channel vocabularies                                  | —            | sdk-porter  | 1–1.25   | done   |
+| [P0-05](wp/P0-05-cors.md)                     | Add a per-product CORS allowlist to the Worker                                           | —            | implementer | 0.5–0.75 | done   |
+| [P0-06](wp/P0-06-product-devices.md)          | List and manage devices product-wide, not only per licence                               | —            | implementer | 0.25–0.5 | done   |
+| [P0-07](wp/P0-07-cli-init-validate.md)        | Fix the `pkey init` scaffold and the validate/link disagreement                          | —            | implementer | 0.25     | done   |
+| [P0-08](wp/P0-08-unknown-slug-tolerance.md)   | Tolerate unknown service slugs in `parseServices` (ship one deploy ahead)                | —            | implementer | 0.1–0.25 | done   |
+| [P0-09](wp/P0-09-service-table.md) ✋         | Make the service list data-driven, with a drift gate                                     | P0-08, P0-07 | implementer | 1–1.5    | done   |
+| [P0-10](wp/P0-10-sparkle-hardening.md) ✋     | Raise Swift's Sparkle floor to 2.9.6 and stream Sparkle verification                     | —            | implementer | 0.25–0.5 | done   |
+| [P0-11](wp/P0-11-docs-drift.md)               | Fix documentation drift and macOS-only assumptions in health and setup                   | —            | implementer | 0.25–0.5 | done   |
+| [P0-12](wp/P0-12-edge-mint-hardening.md) ✋   | Harden edge-mint: scope signing secrets and authorise minting                            | —            | implementer | 0.5–0.75 | done   |
+| [P0-13](wp/P0-13-oidc-flow-key-hashing.md) ✋ | Hash product OIDC `state` and device-code KV key names (finish R12-04)                   | —            | implementer | 0.25–0.5 | done   |
 
 ## P1: Godot SDK core
 
 12 work packages, 10.5–14.5 weeks.
 
-| Id                                        | Title                                                                                      | Depends on                               | Role           | Weeks    | Status      |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------- | -------- | ----------- |
-| [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋  | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner                 | —                                        | godot-engineer | 1–1.5    | done        |
-| [P1-02](wp/P1-02-godot-core.md)           | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence               | P1-01                                    | godot-engineer | 1.5–2    | todo        |
-| [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | todo        |
-| [P1-04](wp/P1-04-godot-config.md)         | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors          | P1-02, P0-12                             | godot-engineer | 1–1.25   | todo        |
-| [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | todo        |
-| [P1-06](wp/P1-06-rfc8628-page.md) ✋      | Serve an RFC 8628 user-code page for device-code sign-in                                   | P0-13                                    | implementer    | 0.5–0.75 | todo        |
-| [P1-07](wp/P1-07-godot-identity.md) ✋    | Godot identity: device-code sign-in with a QR code                                         | P1-02, P1-06                             | godot-engineer | 0.75–1   | todo        |
-| [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | todo        |
-| [P1-09](wp/P1-09-boot-stage-machine.md) ⚑ | Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`    | —                                        | sdk-porter     | 1–1.5    | in-progress |
-| [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                       | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | todo        |
-| [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                        | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | todo        |
-| [P1-12](wp/P1-12-godot-release.md) ✋     | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)        | P1-05, P1-08, P1-10, P1-11, P0-05        | godot-engineer | 0.5–0.75 | todo        |
+| Id                                        | Title                                                                                      | Depends on                               | Role           | Weeks    | Status |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------- | -------- | ------ |
+| [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋  | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner                 | —                                        | godot-engineer | 1–1.5    | done   |
+| [P1-02](wp/P1-02-godot-core.md)           | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence               | P1-01                                    | godot-engineer | 1.5–2    | todo   |
+| [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | todo   |
+| [P1-04](wp/P1-04-godot-config.md)         | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors          | P1-02, P0-12                             | godot-engineer | 1–1.25   | todo   |
+| [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | todo   |
+| [P1-06](wp/P1-06-rfc8628-page.md) ✋      | Serve an RFC 8628 user-code page for device-code sign-in                                   | P0-13                                    | implementer    | 0.5–0.75 | done   |
+| [P1-07](wp/P1-07-godot-identity.md) ✋    | Godot identity: device-code sign-in with a QR code                                         | P1-02, P1-06                             | godot-engineer | 0.75–1   | todo   |
+| [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | todo   |
+| [P1-09](wp/P1-09-boot-stage-machine.md) ⚑ | Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`    | —                                        | sdk-porter     | 1–1.5    | done   |
+| [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                       | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | todo   |
+| [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                        | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | todo   |
+| [P1-12](wp/P1-12-godot-release.md) ✋     | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)        | P1-05, P1-08, P1-10, P1-11, P0-05        | godot-engineer | 0.5–0.75 | todo   |
 
 ## P1b: SDK parity
 
