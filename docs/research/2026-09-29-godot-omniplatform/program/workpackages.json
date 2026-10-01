@@ -425,7 +425,7 @@
       "optional": false,
       "refs": ["README §9.1 #18", "notes/A2 §6"],
       "brief": "wp/P1-06-rfc8628-page.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-07",
