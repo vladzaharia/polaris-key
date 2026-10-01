@@ -1532,6 +1532,92 @@ describe("R6-10 downgrade: deleting the newest release silently makes an older o
       "release.channel.update",
     ]);
   });
+
+  // P2-05 review. A yanked floor is LOWERED to the newest unyanked release the store holds below
+  // it, never removed: yanking the newest release (which is also the floor) must not leave the
+  // channel open to the very downgrade R6-10 fixed.
+  it("FIXED (P2-05): yanking the floor release lowers the floor; deleting the next release still 404s", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const env = envFor();
+    env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
+    env.PLATFORM_ADMIN_GROUP = "platform-admins";
+    let releases = [
+      release({ tag_name: "v2.0.0", published_at: "2026-03-01T00:00:00Z" }),
+      release({ tag_name: "v1.5.0", published_at: "2026-02-01T00:00:00Z" }),
+      release({ tag_name: "v1.0.0", published_at: "2026-01-01T00:00:00Z" }),
+    ];
+    const fetchImpl: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens"))
+        return new Response(JSON.stringify({ token: "t" }), { status: 200 });
+      if (url.includes("/releases?per_page"))
+        return new Response(JSON.stringify(releases), { status: 200 });
+      const tag = url.match(/\/releases\/tags\/([^/?]+)$/)?.[1];
+      const hit = releases.find((r) => r.tag_name === tag);
+      if (hit) return new Response(JSON.stringify(hit), { status: 200 });
+      return new Response("nf", { status: 404 });
+    };
+    const latest = async (e: Env = env) => {
+      const res = await handleRelease(
+        req(),
+        e,
+        db,
+        makeProduct(),
+        "version",
+        { version: "latest" },
+        fetchImpl,
+      );
+      return res.status === 200
+        ? ((await res.json()) as { version: string }).version
+        : res.status;
+    };
+    // The sync floors stable at 2.0.0 and records all three releases.
+    await syncReleaseStore(env, db, SLUG, NOW, fetchImpl);
+    expect(await latest()).toBe("2.0.0");
+
+    const { token, session } = await issueSession(
+      env,
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: ["platform-admins"],
+      },
+      NOW,
+    );
+    const path = `/api/products/${SLUG}/release/releases/v2.0.0/yank`;
+    const yanked = await handleAdmin(
+      new Request(`https://key.plrs.im/manage${path}`, {
+        method: "POST",
+        headers: {
+          cookie: `${ADMIN_COOKIE}=${token}`,
+          [CSRF_HEADER]: session.csrf,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ reason: "data loss on upgrade" }),
+      }) as unknown as Request,
+      env,
+      db,
+      path,
+      { now: NOW },
+    );
+    expect(yanked.status).toBe(200);
+    // The yank withdraws 2.0.0 to the next release down…
+    expect(await latest()).toBe("1.5.0");
+
+    // …and 1.5.0 now holds the channel up. Someone deletes it upstream; once the cached
+    // resolution has expired (a fresh KV stands in for the 90 s TTL, with no resync to bump the
+    // generation), the channel refuses rather than silently serving 1.0.0.
+    releases = releases.filter((r) => r.tag_name !== "v1.5.0");
+    expect(await latest(envFor())).toBe(404);
+
+    // A resync (the deletion's webhook) leaves the RECORDED floor at the yanked 2.0.0 — the sync
+    // does not read yanks — and the fallback is recomputed on every resolution, so the answer
+    // does not change.
+    await syncReleaseStore(env, db, SLUG, NOW + 1, fetchImpl);
+    expect(await latest()).toBe(404);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

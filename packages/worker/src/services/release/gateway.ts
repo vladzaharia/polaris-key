@@ -52,12 +52,15 @@ import {
   parseManualChannels,
   resolutionPolicy,
   resolveChannel,
+  semverOfTag,
 } from "./channels.js";
 import {
   getChannelFloor,
   isBelowFloor,
   type ReleaseChannelFloorRow,
+  storedAppReleases,
 } from "./store.js";
+import { compareSemver, parseSemver } from "../../core/entitlements.js";
 import {
   accessModeFor,
   artifactPolicy,
@@ -136,6 +139,12 @@ function edgeCache(): Cache | null {
  * is meant to stop. Only the inputs that actually change the response are encoded — which, as
  * of P2.T4, includes `arch`: the appcast serves a different enclosure per architecture, and a
  * key that ignored it would hand an Intel Mac the arm64 DMG (or the reverse).
+ *
+ * The release GENERATION (`ghCache.ts`) is deliberately NOT part of the key: reading it would put
+ * a KV read in front of every hit and cost R10-05 its zero-binding hit. The price is that a yank,
+ * pin or promote reaches a public product's version check and appcasts only when this entry
+ * expires (`MOVING_CACHE` 120 s, `APPCAST_CACHE` 300 s, per colo), which the channels docs page
+ * states. The byte routes and the download route are never edge-cached.
  */
 function releaseCacheKey(
   origin: string,
@@ -377,7 +386,8 @@ export function policyChannelOf(sel: ChannelSelector): string | null {
  *
  * The result is cached for `RESOLUTION_TTL` per (product, selector, release generation)
  * (`ghCache.ts`), so a download, an appcast and a version check cost at most one resolution per
- * selector per 90 s, and any policy change or sync invalidates it at once.
+ * selector per 90 s, and any policy change or sync invalidates it at once (the edge cache in
+ * front of the version check and appcasts is a separate, unpurged layer: `releaseCacheKey`).
  */
 export async function resolveSelector(
   env: Env,
@@ -486,9 +496,9 @@ export interface MovingResolution {
  *    one GitHub tag lookup for the floor's release. Still there (it sat on a page not read) ⇒
  *    serve it. Gone ⇒ `release: null`, `regressed: true` — the caller 404s rather than
  *    silently promoting an older build to `latest` with a public cache header. A floor whose
- *    release was YANKED holds nothing up: a yank is a deliberate, audited withdrawal, exactly
- *    like an operator lowering the floor, so the channel falls back to its newest unyanked
- *    candidate instead of 404ing.
+ *    release was YANKED is lowered, not removed: it drops to the newest unyanked release the
+ *    store holds below it (`yankedFloorFallback`), so the channel falls back to that release
+ *    instead of 404ing, and a later upstream deletion of it still 404s the channel.
  *
  * `tok` is passed in so `checkReleaseHealth` can call this with the token it already holds.
  */
@@ -578,12 +588,17 @@ async function resolveMovingSelectorLive(
   );
 
   const floorName = floorChannelOf(sel, cfg);
-  const floor = floorName
+  const recorded = floorName
     ? await getChannelFloor(db, cfg.product, floorName)
     : null;
-  const floorYanked =
-    !!floor && !!floor.release_id && yanked.has(floor.release_id);
-  if (!floor || floorYanked || !isBelowFloor(offered, floor)) {
+  // A floor whose release was YANKED is LOWERED, never removed (R6-10, P2-05 review): it drops
+  // to the newest unyanked release the store holds below it, so the most common yank — the
+  // newest release, which is also the floor — still leaves the channel protected.
+  const floor =
+    recorded && recorded.release_id && yanked.has(recorded.release_id)
+      ? await yankedFloorFallback(db, cfg, sel, recorded, yanked)
+      : recorded;
+  if (!floor || !isBelowFloor(offered, floor)) {
     return { release: offered, offered, floor, regressed: false, listed };
   }
   const held = await floorRelease(tok, cfg, floor, fetchImpl);
@@ -593,6 +608,40 @@ async function resolveMovingSelectorLive(
     return { release: held, offered, floor, regressed: false, listed };
   }
   return { release: null, offered, floor, regressed: true, listed };
+}
+
+/**
+ * The floor a channel effectively has when its recorded floor release has been yanked: the
+ * newest release the STORE holds at or below the recorded floor version that is not yanked and
+ * that this selector would pick, or null when there is none (the channel then serves its
+ * newest unyanked candidate, as it would with no floor at all).
+ *
+ * Read from the store, not the live list, on purpose: a release deleted upstream after the yank
+ * keeps its store row, so it still holds the channel up and its deletion 404s the channel —
+ * exactly what the same deletion does to an unyanked floor. Computed per resolution rather than
+ * written back to `release_channel_floors`, because the sync (which does not read yanks) would
+ * otherwise raise the floor straight back to the yanked release on the next resync.
+ *
+ * Costs one D1 read, only when the recorded floor is yanked.
+ */
+async function yankedFloorFallback(
+  db: Db,
+  cfg: ResolvedConfig,
+  sel: ChannelSelector,
+  recorded: ReleaseChannelFloorRow,
+  yanked: ReadonlySet<string>,
+): Promise<ReleaseChannelFloorRow | null> {
+  if (!parseSemver(recorded.version)) return null;
+  const below = (await storedAppReleases(db, cfg.product)).filter((r) => {
+    if (yanked.has(r.tag_name)) return false;
+    const v = semverOfTag(r.tag_name);
+    return v !== null && compareSemver(v, recorded.version) <= 0;
+  });
+  // No channel-workflow tags: a floored selector never resolves through them (`floorChannelOf`).
+  const pick = resolveChannel(sel, below, undefined, resolutionPolicy(cfg));
+  const version = pick ? semverOfTag(pick.tag_name) : null;
+  if (!pick || version === null) return null;
+  return { ...recorded, version, release_id: pick.tag_name };
 }
 
 /**
