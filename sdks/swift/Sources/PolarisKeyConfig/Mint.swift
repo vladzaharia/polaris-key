@@ -19,7 +19,8 @@
 import Foundation
 import PolarisKeyCore
 
-/// What a mint returns.
+/// What a mint returns. Printing it (`print`, `String(describing:)`, `debugPrint`, `dump`) shows
+/// `token` as `[redacted]`.
 public struct MintedToken: Sendable, Equatable {
     public let token: String
     /// Epoch seconds.
@@ -28,6 +29,14 @@ public struct MintedToken: Sendable, Equatable {
     public init(token: String, expiresAt: Int) {
         self.token = token
         self.expiresAt = expiresAt
+    }
+}
+
+extension MintedToken: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String { "MintedToken(token: [redacted], expiresAt: \(expiresAt))" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["token": "[redacted]", "expiresAt": expiresAt], displayStyle: .struct)
     }
 }
 

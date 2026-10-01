@@ -5,7 +5,11 @@
 //
 //   * no poll comes earlier than `interval` after the previous one (or after the prompt);
 //   * a `slow_down` lengthens the interval for every later poll and never shortens it;
+//   * repeated interval-less `slow_down`s each add five seconds to the CURRENT interval;
+//   * the sleep is clamped to [1, expiresIn] seconds — a negative, fractional or huge interval
+//     neither spins, traps nor outlives the code;
 //   * a failed poll is retried at the SAME interval, never faster;
+//   * a printed prompt or minted token never shows the device code or the token;
 //   * the prompt's expiry and task cancellation both stop polling;
 //   * a second `mintToken` inside the lifetime makes no request, and nothing minted is stored;
 //   * a cached token is bound to the device token it was minted with: after `deactivate()` the
@@ -19,7 +23,7 @@ import Foundation
 import PolarisKey
 import PolarisKeyConfig
 import PolarisKeyCore
-import PolarisKeyIdentity
+@testable import PolarisKeyIdentity
 import XCTest
 
 private let product = "djdl"
@@ -86,15 +90,44 @@ private final class Plane: PolarisTransport, @unchecked Sendable {
     }
 }
 
-private func started(expiresIn: Int = 600, interval: Int = 2) -> Plane.Answer {
+/// A start answer. The numbers are JSON literals, so a test can send `0.5` or `1e12`.
+private func started(
+    expiresIn: String = "600", interval: String = "2",
+    verificationUri: String = "\(base)/\(product)/identity/auth/device",
+    verificationUriComplete: String =
+        "\(base)/\(product)/identity/auth/device?user_code=WDJB-MJHT"
+) -> Plane.Answer {
     .reply(
         200,
         """
         {"status":"pending","deviceCode":"device-code-1","userCode":"WDJB-MJHT",\
-        "verificationUri":"\(base)/\(product)/identity/auth/device",\
-        "verificationUriComplete":"\(base)/\(product)/identity/auth/device?user_code=WDJB-MJHT",\
+        "verificationUri":"\(verificationUri)",\
+        "verificationUriComplete":"\(verificationUriComplete)",\
         "expiresIn":\(expiresIn),"interval":\(interval)}
         """)
+}
+
+/// Holds the polling task so a request hook installed BEFORE the task exists can cancel it.
+private final class TaskBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var task: Task<SignInResult, Error>?
+    private var cancelRequested = false
+
+    func set(_ task: Task<SignInResult, Error>) {
+        let cancel: Bool = lock.withLock {
+            self.task = task
+            return cancelRequested
+        }
+        if cancel { task.cancel() }
+    }
+
+    func cancel() {
+        let task: Task<SignInResult, Error>? = lock.withLock {
+            cancelRequested = true
+            return self.task
+        }
+        task?.cancel()
+    }
 }
 
 private let pending = Plane.Answer.reply(200, #"{"status":"pending"}"#)
@@ -206,6 +239,94 @@ final class IdentityMintTests: XCTestCase {
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [2, 7, 7])
     }
 
+    func testRepeatedSlowDownsWithoutIntervalStepFromTheCurrentInterval() async throws {
+        let limited = Plane.Answer.reply(429, #"{"error":"rate_limited"}"#)
+        let plane = Plane(
+            clock: ReplayClock(t0),
+            [startPath: [started()], pollPath: [limited, limited, limited, ready]])
+        let (core, _) = try await core(plane, services: [.identity])
+        let client = identity(core, plane)
+        _ = try await client.waitForSignIn(try await client.beginSignIn())
+        XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [2, 7, 12, 17])
+    }
+
+    func testANegativeIntervalIsClampedToOneSecond() async throws {
+        let plane = Plane(clock: ReplayClock(t0), [pollPath: [pending, ready]])
+        let (core, _) = try await core(plane, services: [.identity])
+        let prompt = SignInPrompt(
+            deviceCode: "device-code-1", userCode: "WDJB-MJHT", verificationUri: "u",
+            verificationUriComplete: "u?user_code=WDJB-MJHT", expiresIn: 600, interval: -3,
+            expiresAt: t0 + 600)
+        let result = try await identity(core, plane).waitForSignIn(prompt)
+        XCTAssertEqual(result, .ready)
+        XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [1, 1])
+    }
+
+    func testAHalfSecondIntervalRoundsUpToOne() async throws {
+        let plane = Plane(
+            clock: ReplayClock(t0),
+            [startPath: [started(interval: "0.5")], pollPath: [pending, ready]])
+        let (core, _) = try await core(plane, services: [.identity])
+        let client = identity(core, plane)
+        let prompt = try await client.beginSignIn()
+        XCTAssertEqual(prompt.interval, 1)
+        let result = try await client.waitForSignIn(prompt)
+        XCTAssertEqual(result, .ready)
+        XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [1, 1])
+    }
+
+    func testAHugeIntervalIsClampedToTheCodesLifetime() async throws {
+        let plane = Plane(
+            clock: ReplayClock(t0),
+            [startPath: [started(expiresIn: "60", interval: "1e12")], pollPath: [pending]])
+        let (core, _) = try await core(plane, services: [.identity])
+        let client = identity(core, plane)
+        let result = try await client.waitForSignIn(try await client.beginSignIn())
+        XCTAssertEqual(result, .expired)
+        // One 60 s sleep, then expiry: no poll.
+        XCTAssertTrue(plane.at(pollPath).isEmpty)
+        XCTAssertEqual(plane.clock.now - t0, 60)
+    }
+
+    func testTheDefaultSleepNeverTrapsOnAnOutOfRangeInterval() {
+        XCTAssertEqual(IdentityClient.sleepNanoseconds(-5), 0)
+        XCTAssertEqual(IdentityClient.sleepNanoseconds(.nan), 0)
+        XCTAssertEqual(IdentityClient.sleepNanoseconds(-.infinity), 0)
+        XCTAssertEqual(IdentityClient.sleepNanoseconds(0.5), 500_000_000)
+        XCTAssertEqual(
+            IdentityClient.sleepNanoseconds(1e300), UInt64(Double(Int32.max) * 1_000_000_000))
+        XCTAssertEqual(
+            IdentityClient.sleepNanoseconds(Double(Int.max)),
+            UInt64(Double(Int32.max) * 1_000_000_000))
+    }
+
+    func testBeginRejectsAnEmptyVerificationUri() async throws {
+        for answer in [started(verificationUri: ""), started(verificationUriComplete: "")] {
+            let plane = Plane(clock: ReplayClock(t0), [startPath: [answer]])
+            let (core, _) = try await core(plane, services: [.identity])
+            do {
+                _ = try await identity(core, plane).beginSignIn()
+                XCTFail("expected bad_response")
+            } catch let error as PolarisError {
+                XCTAssertEqual(error.code, "bad_response")
+            }
+        }
+    }
+
+    func testAPrintedPromptHidesTheDeviceCode() async throws {
+        let plane = Plane(clock: ReplayClock(t0), [startPath: [started()]])
+        let (core, _) = try await core(plane, services: [.identity])
+        let prompt = try await identity(core, plane).beginSignIn()
+        XCTAssertEqual(prompt.deviceCode, "device-code-1")
+        var dumped = ""
+        dump(prompt, to: &dumped)
+        for printed in [String(describing: prompt), String(reflecting: prompt), "\(prompt)", dumped] {
+            XCTAssertFalse(printed.contains("device-code-1"), printed)
+            XCTAssertTrue(printed.contains("WDJB-MJHT"), printed)
+            XCTAssertTrue(printed.contains("[redacted]"), printed)
+        }
+    }
+
     func testAFailedPollIsRetriedAtTheSameInterval() async throws {
         let plane = Plane(
             clock: ReplayClock(t0),
@@ -219,7 +340,7 @@ final class IdentityMintTests: XCTestCase {
 
     func testExpiryStopsPollingWithoutAskingAgain() async throws {
         let plane = Plane(
-            clock: ReplayClock(t0), [startPath: [started(expiresIn: 5)], pollPath: [pending]])
+            clock: ReplayClock(t0), [startPath: [started(expiresIn: "5")], pollPath: [pending]])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
         let result = try await client.waitForSignIn(try await client.beginSignIn())
@@ -242,8 +363,18 @@ final class IdentityMintTests: XCTestCase {
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
         let prompt = try await client.beginSignIn()
-        let task = Task { try await client.waitForSignIn(prompt) }
-        plane.onRequest = { task.cancel() }
+        // The hook is in place before the task can make its first request, and the gate keeps
+        // the task from polling until the box holds it, so the first poll always cancels.
+        let box = TaskBox()
+        plane.onRequest = { box.cancel() }
+        let (gate, open) = AsyncStream<Void>.makeStream()
+        let task = Task {
+            for await _ in gate { break }
+            return try await client.waitForSignIn(prompt)
+        }
+        box.set(task)
+        open.yield()
+        open.finish()
         do {
             _ = try await task.value
             XCTFail("expected CancellationError")
@@ -310,6 +441,17 @@ final class IdentityMintTests: XCTestCase {
         XCTAssertEqual(token, "pkeyt_device")
         let cache = await store.readCache()
         XCTAssertFalse(String(describing: cache).contains("m1"))
+    }
+
+    func testAPrintedMintedTokenHidesTheToken() {
+        let minted = MintedToken(token: "minted-secret", expiresAt: t0 + 600)
+        var dumped = ""
+        dump(minted, to: &dumped)
+        for printed in [String(describing: minted), String(reflecting: minted), "\(minted)", dumped] {
+            XCTAssertFalse(printed.contains("minted-secret"), printed)
+            XCTAssertTrue(printed.contains(String(t0 + 600)), printed)
+            XCTAssertTrue(printed.contains("[redacted]"), printed)
+        }
     }
 
     func testDeactivateDropsTheCachedMintedToken() async throws {

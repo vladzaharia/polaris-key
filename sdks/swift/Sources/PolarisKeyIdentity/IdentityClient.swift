@@ -18,13 +18,16 @@
 // Worker's callback merges nothing (P1-06): a device on an anonymous enrolled licence is not
 // attached to the account by signing in, and nothing here offers or implies that it is.
 //
-// Its own target (depends on Core only) for the same reason Update is one: a product that does
-// not run Identity does not link a sign-in flow. Mirrors `@polaris-key/node`'s `identity/client.ts`.
+// Its own target, depending on Core only, so a host that wants just the sign-in flow can link
+// `PolarisKeyIdentity` alone. The umbrella `PolarisKey` target depends on it and re-exports it
+// (the facade exposes `client.identity`), so a one-import adopter gets these types too — unlike
+// Update, which stays out of the umbrella. Mirrors `@polaris-key/node`'s `identity/client.ts`.
 
 import Foundation
 import PolarisKeyCore
 
-/// What the host shows the player, plus the poll credential the SDK keeps using.
+/// What the host shows the player, plus the poll credential the SDK keeps using. Printing it
+/// (`print`, `String(describing:)`, `debugPrint`, `dump`) shows `deviceCode` as `[redacted]`.
 public struct SignInPrompt: Sendable, Equatable {
     /// The poll credential. Never show it, never put it in a URL.
     public let deviceCode: String
@@ -55,6 +58,29 @@ public struct SignInPrompt: Sendable, Equatable {
     }
 }
 
+extension SignInPrompt: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String {
+        "SignInPrompt(deviceCode: \(redactedCredential), userCode: \(userCode), "
+            + "verificationUri: \(verificationUri), "
+            + "verificationUriComplete: \(verificationUriComplete), expiresIn: \(expiresIn), "
+            + "interval: \(interval), expiresAt: \(expiresAt))"
+    }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(
+            self,
+            children: [
+                "deviceCode": redactedCredential, "userCode": userCode,
+                "verificationUri": verificationUri,
+                "verificationUriComplete": verificationUriComplete, "expiresIn": expiresIn,
+                "interval": interval, "expiresAt": expiresAt,
+            ], displayStyle: .struct)
+    }
+}
+
+/// What a redacted credential prints as.
+let redactedCredential = "[redacted]"
+
 /// One poll's answer.
 public enum SignInPoll: Sendable, Equatable {
     /// The player has not finished yet.
@@ -79,8 +105,25 @@ public enum SignInResult: Sendable, Equatable {
 /// Raised after a sign-in mints a credential; the facade syncs.
 public typealias SignInAcquiredListener = @Sendable () async -> Void
 
-/// RFC 8628 §3.5: a `slow_down` without an interval adds five seconds.
+/// RFC 8628 §3.5: a `slow_down` without an interval adds five seconds to the CURRENT interval, so
+/// repeated interval-less answers keep lengthening it.
 public let SLOW_DOWN_STEP_SECONDS = 5
+
+/// The seconds `waitForSignIn` actually sleeps: never under one second (a zero or negative interval
+/// would spin) and never past the code's own lifetime.
+func pollDelay(interval: Int, expiresIn: Int) -> Int {
+    min(max(interval, 1), max(expiresIn, 1))
+}
+
+/// A server's seconds rounded UP (a 0.5 is one second, not zero) and capped, so no conversion or
+/// later `now + seconds` can trap. `nil` for anything that is not a positive, finite number.
+func wholeSeconds(_ value: Double?) -> Int? {
+    guard let value, value.isFinite, value > 0 else { return nil }
+    return Int(min(value.rounded(.up), maxSeconds))
+}
+
+/// The longest wait or lifetime this client represents: about 68 years.
+private let maxSeconds = Double(Int32.max)
 
 public final class IdentityClient: Sendable {
     /// Client-side codes this module throws, beside the Worker's own.
@@ -101,7 +144,16 @@ public final class IdentityClient: Sendable {
         self.core = core
         self.onAcquired = onAcquired
         self.sleep =
-            sleep ?? { seconds in try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
+            sleep ?? { seconds in
+                try await Task.sleep(nanoseconds: IdentityClient.sleepNanoseconds(seconds))
+            }
+    }
+
+    /// `seconds` as `Task.sleep`'s nanoseconds, clamped first: `UInt64(seconds * 1e9)` traps on a
+    /// negative, non-finite or huge value.
+    static func sleepNanoseconds(_ seconds: Double) -> UInt64 {
+        let bounded = seconds.isFinite ? min(max(seconds, 0), maxSeconds) : 0
+        return UInt64(bounded * 1_000_000_000)
     }
 
     /// Begin a device-code sign-in. Throws `PolarisError(service-unavailable)` before any request
@@ -122,7 +174,9 @@ public final class IdentityClient: Sendable {
                 message: "device sign-in could not start (status \(response.status)).")
         }
         guard let b = try? JSONDecoder().decode(StartBody.self, from: response.body),
-            !b.deviceCode.isEmpty, !b.userCode.isEmpty, b.expiresIn > 0, b.interval > 0
+            !b.deviceCode.isEmpty, !b.userCode.isEmpty, !b.verificationUri.isEmpty,
+            !b.verificationUriComplete.isEmpty, let expiresIn = wholeSeconds(b.expiresIn),
+            let interval = wholeSeconds(b.interval)
         else {
             throw PolarisError(
                 code: "bad_response",
@@ -130,8 +184,8 @@ public final class IdentityClient: Sendable {
         }
         return SignInPrompt(
             deviceCode: b.deviceCode, userCode: b.userCode, verificationUri: b.verificationUri,
-            verificationUriComplete: b.verificationUriComplete, expiresIn: b.expiresIn,
-            interval: b.interval, expiresAt: await core.now() + b.expiresIn)
+            verificationUriComplete: b.verificationUriComplete, expiresIn: expiresIn,
+            interval: interval, expiresAt: await core.now() + expiresIn)
     }
 
     /// Poll once. On `.ready` the token is stored and the post-acquisition sync has completed
@@ -141,6 +195,12 @@ public final class IdentityClient: Sendable {
     /// `PolarisError(server-error)` on a 5xx — neither says anything about the sign-in, so neither
     /// is folded into a status. `waitForSignIn` rides both out.
     public func pollSignIn(_ prompt: SignInPrompt) async throws -> SignInPoll {
+        try await poll(prompt, current: prompt.interval)
+    }
+
+    /// One poll, where an interval-less `slow_down` lengthens `current` — the interval the caller
+    /// is pacing at — rather than the prompt's original one.
+    private func poll(_ prompt: SignInPrompt, current: Int) async throws -> SignInPoll {
         try await core.requireService(.identity)
         let response = try await post(
             "identity/auth/device/poll",
@@ -154,8 +214,9 @@ public final class IdentityClient: Sendable {
         if response.status == 429 {
             // The Worker's own `slow_down` carries the interval; a rate limiter in front of it may
             // answer 429 without one, which RFC 8628 §3.5 treats the same way.
-            let given = body?.interval ?? 0
-            return .slowDown(interval: given > 0 ? given : prompt.interval + SLOW_DOWN_STEP_SECONDS)
+            if let given = wholeSeconds(body?.interval) { return .slowDown(interval: given) }
+            let (stepped, overflow) = current.addingReportingOverflow(SLOW_DOWN_STEP_SECONDS)
+            return .slowDown(interval: overflow ? Int.max : stepped)
         }
         guard response.status == 200 else {
             return .error(message: "device sign-in poll refused (status \(response.status)).")
@@ -188,12 +249,12 @@ public final class IdentityClient: Sendable {
         while true {
             try Task.checkCancellation()
             if await core.now() >= prompt.expiresAt { return .expired }
-            try await sleep(Double(interval))
+            try await sleep(Double(pollDelay(interval: interval, expiresIn: prompt.expiresIn)))
             try Task.checkCancellation()
             if await core.now() >= prompt.expiresAt { return .expired }
             let poll: SignInPoll
             do {
-                poll = try await pollSignIn(prompt)
+                poll = try await self.poll(prompt, current: interval)
             } catch let error as PolarisError
                 where error.code == IdentityClient.networkError
                 || error.code == IdentityClient.serverError
@@ -242,13 +303,14 @@ private struct StartBody: Decodable {
     let userCode: String
     let verificationUri: String
     let verificationUriComplete: String
-    let expiresIn: Int
-    let interval: Int
+    /// Doubles, so a fractional answer rounds up instead of failing to decode.
+    let expiresIn: Double
+    let interval: Double
 }
 
 private struct PollBody: Decodable {
     let status: String?
-    let interval: Int?
+    let interval: Double?
     let token: String?
 }
 
