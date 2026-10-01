@@ -3,7 +3,9 @@
  * — none of the 12 event types covers phased release, review submissions or internal TestFlight
  * state), plus reconciliation of what webhooks reported. Run on the connector cron
  * (`CONNECTOR_POLL_CRON`, every 15 minutes) for every product with Distribution on and an ASC
- * setup (`setup.ts`); a product without one is skipped before any call.
+ * setup (`setup.ts`); a product without one is skipped before any call — including one whose
+ * `asc-api-key` is not pinned to the app the manifest names (`credential-pin-missing`,
+ * `credential-pin-mismatch`).
  *
  * One tick, in order, each step a handful of requests:
  *
@@ -71,7 +73,7 @@ import {
   isBackgroundAssetInstanceType,
 } from "./map.js";
 import { ascRun, finishRun, pollBudget, readRate } from "./run.js";
-import { ASC_CONNECTOR, ascSetup } from "./setup.js";
+import { ASC_CONNECTOR, resolveAscSetup } from "./setup.js";
 
 /** How many App Store versions / builds one tick reads (newest first). */
 const VERSIONS_PER_TICK = 5;
@@ -87,8 +89,16 @@ export const REDRIVE_GRACE_SECONDS = 5 * 60;
 export async function pollAsc(ctx: ConnectorContext): Promise<PollOutcome> {
   const { env, db, product, now } = ctx;
   const out: PollOutcome = { connector: ASC_CONNECTOR, calls: 0, applied: 0 };
-  const setup = await ascSetup(db, product.slug);
-  if (!setup) return { ...out, skipped: "not-configured" };
+  const { setup, inert } = await resolveAscSetup(db, product.slug);
+  // An unpinned or mismatched key is skipped like a missing one (no call, no open), but says so.
+  if (!setup)
+    return {
+      ...out,
+      skipped:
+        inert.reason === "pin_missing" || inert.reason === "pin_mismatch"
+          ? `credential-${inert.reason.replace("_", "-")}`
+          : "not-configured",
+    };
 
   const budget = pollBudget(
     await readRate(env, product.slug, setup.apiKeyId, now),

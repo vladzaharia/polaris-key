@@ -13,7 +13,7 @@ import {
   ASC_CONNECTOR,
   ASC_LABEL,
   ASC_OUTLET_KINDS,
-  ascSetup,
+  resolveAscSetup,
 } from "./setup.js";
 import { handleAscWebhook } from "./webhook.js";
 
@@ -25,10 +25,13 @@ export const ascConnector: DistributionConnector = {
   webhook: handleAscWebhook,
   controls: ASC_CONTROLS,
   async status({ env, db, product, now }) {
-    const setup = await ascSetup(db, product);
+    const { setup, inert } = await resolveAscSetup(db, product);
     const objects = await listObjects(db, product, ASC_CONNECTOR);
     return {
       configured: setup !== null,
+      // Why it does not run (the pin reasons are the operator's to fix): the manifest's app, the
+      // chosen key's id and the app it is pinned to — app ids, never a credential value.
+      inert,
       // Ids and outlet bindings only — never a credential value or its metadata.
       setup: setup
         ? {

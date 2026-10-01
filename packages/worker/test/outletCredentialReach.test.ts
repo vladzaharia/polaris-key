@@ -18,9 +18,10 @@
  *      spells the `"outlet-credential"` seal kind — so no other code can open a value with
  *      `keyvault.open` directly.
  *   4. **The writers.** No file outside the owner and the Core admin handler names
- *      `putOutletCredential` or `deleteOutletCredential` — so although the Distribution service
- *      may import the module (to open), no connector, webhook handler or public route in it can
- *      write or delete a credential. "Written only by a platform admin" is enforced here.
+ *      `putOutletCredential`, `pinOutletCredential` or `deleteOutletCredential` — so although the
+ *      Distribution service may import the module (to open, and to CHECK a pin), no connector,
+ *      webhook handler or public route in it can write, re-pin or delete a credential. "Written
+ *      only by a platform admin" is enforced here, and so is "the pin is the operator's" (P5-02f).
  *   5. **The token helpers.** `core/outletTokens.ts` hands out a cached store bearer token on a
  *      cache hit WITHOUT an audited open, so it is a custody boundary of its own: only the
  *      Distribution service (`src/services/distribution/**`) may import it.
@@ -137,7 +138,9 @@ function reachViolations(sources: Source[]): string[] {
       out.push(`${src.file} spells the "outlet-credential" seal kind`);
     if (
       !WRITER_ALLOW_FILES.includes(src.file) &&
-      /\b(?:putOutletCredential|deleteOutletCredential)\b/.test(body)
+      /\b(?:putOutletCredential|pinOutletCredential|deleteOutletCredential)\b/.test(
+        body,
+      )
     )
       out.push(`${src.file} names an outlet-credential writer`);
     const tokensOk =
@@ -216,10 +219,15 @@ describe("outlet-credential reach", () => {
           file: "src/services/distribution/routes.ts",
           text: 'import * as oc from "../../core/outletCredentials.js";\nawait oc.deleteOutletCredential(db, p, id);',
         },
+        {
+          file: "src/services/distribution/connectors/asc/setup.ts",
+          text: 'import { pinOutletCredential } from "../../../../core/outletCredentials.js";\nawait pinOutletCredential(db, { product, credentialId, kind, pin: appleId });',
+        },
       ]),
     ).toEqual([
       "src/services/distribution/connectors/x.ts names an outlet-credential writer",
       "src/services/distribution/routes.ts names an outlet-credential writer",
+      "src/services/distribution/connectors/asc/setup.ts names an outlet-credential writer",
     ]);
   });
 
