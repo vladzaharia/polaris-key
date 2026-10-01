@@ -74,11 +74,13 @@ availability of those packs feeds readiness holds. This package closes the progr
   hyphens, and an archived id can never be reused (notes/S-01 §5); validate with
   `^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$` and at most 64 characters before the first upload.
   The mapping is lossy (`diceroll.foes` and `diceroll-foes` both become `diceroll-foes-c3`), and a
-  collision would upload a new version into another pack's asset pack, permanently. So only `.` is
-  rewritten to `-`; an `apple-ba` pack id containing `_` or `:` is rejected. Resolution maps every
-  `apple-ba` pack id of the product at once and fails with a typed error, before any upload, when a
-  mapped id collides with another pack's, fails the regex, or exceeds 64 characters after the
-  `-c<contentApi>` suffix. The first upload records the ASC asset-pack resource id against the pack
+  collision would upload a new version into another pack's asset pack, permanently. Pack ids follow
+  P2-03's deliverable grammar `^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$`, so only `.` is rewritten to `-`
+  (anything else outside `[a-z0-9-]` is rejected as defence in depth). That grammar admits ids such
+  as `x-.foes` whose mapping has a double hyphen (`x--foes-c3`), which the regex rejects. Resolution
+  maps every `apple-ba` pack id of the product at once and fails with a typed error, before any
+  upload, when a mapped id collides with another pack's, fails the regex, or exceeds 64 characters
+  after the `-c<contentApi>` suffix. The first upload records the ASC asset-pack resource id against the pack
   id, and later uploads refuse when the asset pack found by identifier is not that one (notes/S-01
   §Recommendation; `asc/upload_pack.mjs --expect-resource`).
 - **Distribution:** link P5-02's `apple-ba` availability rows to pack releases through the uploaded
@@ -148,8 +150,8 @@ availability of those packs feeds readiness holds. This package closes the progr
 - [ ] `pnpm --filter @polaris-key/cli test` covers the Background Assets manifest, the Gradle
       modules (including texture suffixes) and the VDFs against golden files, and the upload
       sequence against a fake ASC server. The fake-server tests include a product whose pack ids
-      `x.foes` and `x-foes` map to the same asset-pack id, a pack id containing `_`, and a 62-character
-      pack id; each fails with a typed error before any request, and an upload whose found asset
+      `x.foes` and `x-foes` map to the same asset-pack id, a pack id `x-.foes` that maps to a double
+      hyphen, and a 62-character pack id; each fails with a typed error before any request, and an upload whose found asset
       pack is not the recorded resource id is refused.
 - [ ] Worker tests show a `BACKGROUND_ASSET_VERSION_APP_STORE_RELEASE_STATE_UPDATED` to
       `READY_FOR_DISTRIBUTION` for `foes-c4` moves readiness to `ready` for the app release that
