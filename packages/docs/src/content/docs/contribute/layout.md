@@ -6,8 +6,8 @@ sidebar:
 ---
 
 The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node
-conformance runner. Python and Swift are standalone toolchains under `sdks/`, with their own
-package managers and their own place in CI.
+conformance runner. Python, Swift and Godot are standalone toolchains under `sdks/`, with their
+own package managers and their own place in CI.
 
 ## The map
 
@@ -27,6 +27,7 @@ packages/
 sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
+  godot/             Godot addon               pure-GDScript verify and a headless runner
 conformance/          corpus/v2 ONLY (one signer's golden vectors) + the Node runner
 tools/                sign-corpus.ts · gen-mirrors.ts
 products/             per-product data (catalog.json + product.json) + gen-seed

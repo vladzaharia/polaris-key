@@ -28,6 +28,7 @@ packages/
 sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
+  godot/             Godot addon               pure-GDScript verify and a headless runner
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
                      + parity/ (features.json registry; each SDK keeps its own parity.json)
 tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts
@@ -52,7 +53,7 @@ the repo; the monorepo map, the wave model, the corpus and the release flow now 
 `packages/docs/src/content/docs/contribute/`.
 
 The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node
-conformance runner. Python and Swift are standalone toolchains under `sdks/`.
+conformance runner. Python, Swift and Godot are standalone toolchains under `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
 opt-in service (`license`, `config`, `release`, `update`, `identity`). `src/mount.ts` is the
@@ -93,11 +94,13 @@ pnpm --filter @polaris-key/worker test:workerd
 
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
+sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```
 
-`pnpm test:all` runs turbo test + Python pytest + Swift `swift test` in one shot. Note that
+`pnpm test:all` runs turbo test + Python pytest + Swift `swift test` + the Godot runner in one
+shot. Note that
 `pnpm build` does **not** typecheck the worker (esbuild strips types), so `pnpm typecheck` is not
 redundant with it — that gap once hid five broken type-only imports.
 
@@ -107,10 +110,11 @@ and `pnpm typecheck`). A green hook is not a green gate.
 ## Hard rules
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
-gate-matrix.json,fingerprint.json}` and the Swift mirror at
-`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` are output. Regenerate with `pnpm gen:corpus`
-and commit the result in the same change. `pnpm gen:corpus -- --check` regenerates in memory and
-fails on any difference, mirror included. Never weaken a runner to make a change "pass".
+gate-matrix.json,fingerprint.json}` and the generator-owned mirrors at
+`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output.
+Regenerate with `pnpm gen:corpus` and commit the result in the same change.
+`pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,
+and on a stray JSON file in any of them. Never weaken a runner to make a change "pass".
 
 **2. A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** The constant lives in
 `packages/shared-protocol/src/core.ts` and is currently **3**. The signed document set is
