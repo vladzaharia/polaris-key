@@ -243,6 +243,9 @@ export function trustSnippet(kid: string, publicKey: string): string {
     // Swift dictionary literals use square brackets — emitting the JSON `{…}` form here
     // produced a snippet that did not compile.
     `let trustedKeys = [${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}]`,
+    "",
+    "Godot (GDScript; assign to PKeyOptions.pinned_trust_keys):",
+    `const PINNED_TRUST_KEYS := {${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}}`,
   ].join("\n");
 }
 
