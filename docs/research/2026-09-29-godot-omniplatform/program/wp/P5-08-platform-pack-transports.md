@@ -58,7 +58,8 @@ availability of those packs feeds readiness holds. This package closes the progr
 - **CLI and Action** (`packages/cli`), proposed commands:
   - `pkey transport apple-ba package --deliverable <packId> --release <v>`: writes the marker,
     generates `Manifest.json` (asset-pack id, download policy from the pack's `delivery`,
-    `fileSelectors`), runs `xcrun ba-package` (macOS or the Linux tools);
+    `fileSelectors`), runs `xcrun ba-package` on macOS (Apple's Linux tools sit behind a developer sign-in and are
+    unverified; S-01 hand-off);
   - `pkey transport apple-ba upload`: `POST /v1/backgroundAssets` (first time),
     `/v1/backgroundAssetVersions`, `/v1/backgroundAssetUploadFiles`, the part uploads and the commit,
     with CI's own ASC key (never the Worker's);

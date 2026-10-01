@@ -27,6 +27,7 @@ require 'xcodeproj'
 
 EXT_POINT = 'com.apple.background-asset-downloader-extension'
 PRODUCT_TYPE = 'com.apple.product-type.extensionkit-extension'
+EXT_FLOOR = '26.0' # StoreDownloaderExtension / AssetPack availability (StoreKit, BackgroundAssets swiftinterfaces)
 
 # BackgroundDownloadHandler-AppleHosted.swift from the Xcode 27 template, header comment dropped.
 SWIFT_SRC = <<~SWIFT
@@ -118,7 +119,12 @@ else
   Xcodeproj::Plist.write_to_path({ 'com.apple.security.application-groups' => [opts[:group]] },
                                  File.join(dir, "#{ext_name}.entitlements"))
 
-  deploy = app_setting(app, 'IPHONEOS_DEPLOYMENT_TARGET') || '26.0'
+  # StoreDownloaderExtension and AssetPack are @available(iOS 26.0), so the extension cannot
+  # inherit an app floor below 26 (Godot 4.7.2's default export writes 15.0). The extension gets
+  # max(app floor, EXT_FLOOR); the app keeps its own floor. On an older iOS the system ignores the
+  # .appex and the app falls back to pkey-cdn.
+  app_deploy = app_setting(app, 'IPHONEOS_DEPLOYMENT_TARGET')
+  deploy = [app_deploy, EXT_FLOOR].compact.max_by { |v| Gem::Version.new(v) }
   ext = project.new_target(:app_extension, ext_name, :ios, deploy, nil, :swift)
   ext.product_type = PRODUCT_TYPE # the gem has no :extensionkit_extension symbol
   ext.product_reference.explicit_file_type = 'wrapper.extensionkit-extension'

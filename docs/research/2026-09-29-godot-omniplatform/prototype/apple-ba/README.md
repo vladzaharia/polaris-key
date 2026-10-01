@@ -18,8 +18,8 @@ the simulator.
 
 | Path                  | What                                                                                                                                                                                                                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `run.sh`              | the harness: `./run.sh shim packs export build sim ids` (or `all`); logs to `build/logs/`                                                                                                                                                                                                              |
-| `patch/patch_ba.rb`   | the post-export patch: extension target (`com.apple.product-type.extensionkit-extension`), its Swift file, Info.plist and entitlements, embed phase, App Group on both targets, the three `BA*` keys. Idempotent                                                                                       |
+| `run.sh`              | the harness: `./run.sh shim packs export build sim ids lowfloor` (or `all`); logs to `build/logs/`                                                                                                                                                                                                     |
+| `patch/patch_ba.rb`   | the post-export patch: extension target (`com.apple.product-type.extensionkit-extension`), its Swift file, Info.plist and entitlements, embed phase, App Group on both targets, the three `BA*` keys. The extension's floor is max(app floor, iOS 26.0). Idempotent                                    |
 | `shim/pkba.m`         | the GDExtension (C interface only, Objective-C, no godot-cpp): class `PKAppleBA`, one static `cmd(json) -> String`; async ops answer with a request id and push events that `poll` drains                                                                                                              |
 | `shim/build.sh`       | builds `pkba.xcframework` (ios-arm64, ios-arm64-simulator) and a macOS dylib, and copies them to `godot/bin/`                                                                                                                                                                                          |
 | `godot/`              | the probe project: `main.gd` runs a plan (`install`, `update`, `mount`, `live`, `emulate`) and logs one JSON line per event to `user://pkba_log.jsonl`                                                                                                                                                 |
@@ -68,11 +68,14 @@ export GODOT_SIM_LIB=<path to libgodot.ios.template_release.arm64.simulator.a>
 ./run.sh shim packs export build   # export, unpatched builds, patch, re-run patch, patched builds
 ./run.sh sim                        # install; plans install (no server) and emulate
 ./run.sh ids                        # asset-pack id acceptance by ba-package
+./run.sh lowfloor                   # app floor 15.0 (LOW_FLOOR): export, build unpatched and patched for device
 ```
 
 `build` prints one line per step (`rc`, seconds, `** BUILD SUCCEEDED **`) and checks that a second
 patch run leaves the project byte-identical. Re-running `export` + `build` is the "re-runs on a
-clean export" check.
+clean export" check. `lowfloor` re-exports with Godot's default floor (15.0, or `LOW_FLOOR`) and
+prints both targets' `IPHONEOS_DEPLOYMENT_TARGET` and built `MinimumOSVersion` (expected: app
+15.0, extension 26.0).
 
 **Mock-server sessions (simulator only).** These need a throwaway CA trusted by one simulator
 (never by the Mac):
@@ -110,5 +113,8 @@ still owed.
   (essential/prefetch) downloads are unmeasured here.
 - The mock server is Apple's documented local-testing path re-implemented, not Apple's CDN; its
   whole-pack behaviour is a lower bound on what the client asks for, not proof of what Apple serves.
+- Apple's "Managed Background Assets Developer Tools for Linux" were not obtained (the download
+  needs a developer sign-in), so every pack comes from `xcrun ba-package` on macOS.
+- `lowfloor` builds only; nothing ran below iOS 26.4, and the probe's shim stays at 26.4.
 - `ba-package` output is not byte-reproducible (the archive root, `Contents` and the embedded
   manifest carry the packaging time).

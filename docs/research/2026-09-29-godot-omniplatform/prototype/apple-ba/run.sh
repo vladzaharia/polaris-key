@@ -3,7 +3,7 @@
 # the Background Assets extension, build it, and run the parts a Mac without an Apple account can
 # run (simulator). Every stage writes a log under build/logs/.
 #
-# usage: ./run.sh <stage>...   stages: shim packs export build sim ids   (or: all)
+# usage: ./run.sh <stage>...   stages: shim packs export build sim ids lowfloor   (or: all)
 #
 # Environment:
 #   A6_OUT          dir holding A6's v1.pck and v2.pck (prototype/patching README, steps 1–2)
@@ -14,6 +14,7 @@
 #   APP_GROUP       default group.dev.polariskey.research.pkba (placeholder; the real one is the
 #                   team's, never committed)
 #   SIM_DEVICE      simulator name, default "iPhone 17 Pro"
+#   LOW_FLOOR       app floor for the lowfloor stage, default 15.0 (Godot 4.7.2's default export)
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 b="$here/build"
@@ -50,8 +51,8 @@ stage_export() {
   test -d "$b/export/probe.xcodeproj"
 }
 
-prep_copy() { # <dst>: fresh copy of the export, with the simulator libgodot swapped if given
-  rm -rf "$1" && cp -R "$b/export" "$1"
+prep_copy() { # <dst> [src]: fresh copy of the export, with the simulator libgodot swapped if given
+  rm -rf "$1" && cp -R "${2:-$b/export}" "$1"
   if [ -n "${GODOT_SIM_LIB:-}" ]; then
     local slice="$1/probe.xcframework/ios-arm64_x86_64-simulator/libgodot.a"
     lipo -create "$GODOT_SIM_LIB" "$slice" -output "$slice.fat" && mv "$slice.fat" "$slice"
@@ -114,7 +115,36 @@ stage_sim() {
   grep -h '^PKBA ' "$logs/sim-plan-install.log" "$logs/sim-plan-emulate.log" | cut -c1-400
 }
 
+# The probe pins the app to iOS 26.4. A shipped game keeps a lower floor (Godot's default export
+# writes 15.0; P5-05's package floor is 17), so re-export with LOW_FLOOR, patch, and build for
+# device. The patch must lift only the extension to 26.0; the app keeps LOW_FLOOR.
+stage_lowfloor() {
+  local floor="${LOW_FLOOR:-15.0}" src="$b/godot-lowfloor" exp="$b/export-lowfloor"
+  rm -rf "$src" "$exp" && mkdir -p "$exp"
+  rsync -a --exclude .godot "$here/godot/" "$src/"
+  sed -i '' "s/^application\/min_ios_version=.*/application\/min_ios_version=\"$floor\"/" "$src/export_presets.cfg"
+  grep '^application/min_ios_version' "$src/export_presets.cfg"
+  timed lowfloor-import godot --headless --path "$src" --import || true
+  timed lowfloor-export godot --headless --path "$src" --export-release iOS "$exp/probe.ipa"
+  test -d "$exp/probe.xcodeproj"
+  prep_copy "$b/lowfloor-unpatched" "$exp"
+  timed lowfloor-build-unpatched-device xb "$b/lowfloor-unpatched" iphoneos "$b/dd/lowfloor-unpatched-device" "${DEV[@]}" || true
+  prep_copy "$b/lowfloor-patched" "$exp"
+  timed lowfloor-patch ruby "$here/patch/patch_ba.rb" "$b/lowfloor-patched/probe.xcodeproj" --app-group "$APP_GROUP"
+  cat "$logs/lowfloor-patch.log"
+  timed lowfloor-build-patched-device xb "$b/lowfloor-patched" iphoneos "$b/dd/lowfloor-patched-device" "${DEV[@]}" || true
+  (cd "$b/lowfloor-patched" && xcodebuild -project probe.xcodeproj -showBuildSettings -configuration Release -alltargets 2>/dev/null |
+    grep -E '^Build settings for action build and target|IPHONEOS_DEPLOYMENT_TARGET =') | tee "$logs/lowfloor-settings.log"
+  local app="$b/dd/lowfloor-patched-device/Build/Products/Release-iphoneos/probe.app"
+  if [ -d "$app" ]; then
+    printf 'app   MinimumOSVersion %s\n' "$(plutil -extract MinimumOSVersion raw "$app/Info.plist")"
+    for x in "$app"/Extensions/*.appex; do
+      printf 'appex MinimumOSVersion %s (%s)\n' "$(plutil -extract MinimumOSVersion raw "$x/Info.plist")" "$(basename "$x")"
+    done
+  fi
+}
+
 stage_ids() { "$here/packs/id_rules.sh" "$b/idrules" | tee "$logs/ids.log"; }
 
-stages=("$@"); [ "${stages[0]:-all}" = all ] && stages=(shim packs export build sim ids)
+stages=("$@"); [ "${stages[0]:-all}" = all ] && stages=(shim packs export build sim ids lowfloor)
 for s in "${stages[@]}"; do echo "== $s"; "stage_$s"; done

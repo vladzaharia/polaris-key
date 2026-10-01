@@ -117,7 +117,11 @@ Group that S-01 proved are added to the exported Xcode project by a repeatable s
   type `com.apple.product-type.extensionkit-extension`, id `<app id>.BackgroundDownload`, a
   `StoreDownloaderExtension`, `EXExtensionPointIdentifier =
 com.apple.background-asset-downloader-extension`, versions copied from the app, App Group on both
-  targets, embed into `$(EXTENSIONS_FOLDER_PATH)`. In the binding: never touch `sharedManager` unless
+  targets, embed into `$(EXTENSIONS_FOLDER_PATH)`. The extension's `IPHONEOS_DEPLOYMENT_TARGET` is
+  the higher of the app's and 26.0, and the app keeps its own floor: copying an app floor below 26
+  (Godot's default export writes 15.0) fails the build, because `StoreDownloaderExtension` and
+  `AssetPack` are iOS 26 (measured, notes/S-01 §Results 1). Build the shim at the app's floor, not
+  at 26.4, and guard every Background Assets call. In the binding: never touch `sharedManager` unless
   the `BA*` Info.plist keys are present (it traps); `url(for:)` returns a path for files that do not
   exist, so check existence; after `ensure` fails, re-check `getLocalStatus` and treat `downloaded`
   as ready (the simulator reports "Couldn't communicate with a helper application" after complete
