@@ -104,7 +104,10 @@ uploads. Its write paths, and nothing else:
 - **Every read goes through the Worker.** No R2 public domain and no `r2.dev`: only the Worker
   sets `ETag` to the SHA-256, adds `Repr-Digest` (RFC 9530), and checks that **this** product
   holds a ref to the key (`hasRef`) before serving it. A hash is never treated as a secret:
-  gated content is authorised per request and served `private, no-store`.
+  gated content is authorised per request and served `private, no-store`. Until that per-request
+  check exists (P2b-04, P4-05), Release's build and file routes refuse a location under
+  `gated/` outright, whatever the product's access mode, and the blob route reads only the
+  ungated key (P2-05).
 - **Clients verify against the signed manifest, not the headers.** `Repr-Digest` and the ETag
   help resumption; integrity rests on the hash in a signed document.
 - **A product earns a `blob_ref` only by proving it had the bytes.** `blob_objects` is shared
@@ -166,6 +169,36 @@ the URL's own expiry; its host is re-checked against `isAllowedStorageHost` on e
 and a refused URL is dropped. For a private repository that URL is a bearer credential for the
 asset, so it is never sent to a client: the opt-in `?redirect=1` mode redirects only a public
 artifact of a public repository, and only to GitHub's own `browser_download_url`.
+
+**Channel policy writes (P2-05).** Promote, pin, unpin and yank change what every surface
+serves, so who may make them is part of this boundary:
+
+- **Principals.** A console admin session authorised for the product, through the console's
+  session- and CSRF-guarded routes, can do all of them. CI can do them for one product with a `pkeyci_` token: promote,
+  pin and unpin need `release:promote`, a yank needs `release:yank`. The token store is P2-02's
+  and does not exist yet: `core/ciTokens.ts` `lookupCiToken` knows no token, so every CI route
+  answers 401 today. When P2-02 fills it with credentials derived from a repository's OIDC
+  identity, anyone who can run that repository's release workflow holds these scopes, and this
+  paragraph's consequences become theirs. Every write is audited with its actor (`admin:<sub>`
+  or `ci:<subject>`).
+- **A pin bypasses the anti-rollback floor.** A pinned channel serves its pointer exactly, with
+  no floor check (`gateway.ts` `resolveSelectorLive`), and the pointer may be a yanked release.
+  A holder of `release:promote` alone can therefore roll a channel below its R6-10 floor, or put
+  a yanked build back on it. That is the purpose of a pin (an audited, deliberate rollback), and
+  why pin shares promote's scope rather than having a weaker one; it is not a bypass of
+  yank's scope, because a yank never stops an explicit pin.
+- **A yank lowers the floor, it does not remove it.** A floor whose release is yanked drops to
+  the newest unyanked release the truth store holds below it, computed on every resolution
+  (`yankedFloorFallback`), so yanking the newest release leaves the channel protected against
+  the R6-10 deletion downgrade. `release:yank` cannot be used to strip a channel's floor.
+- **External locations are a tenant-chosen redirect.** An artifact location of provider
+  `external` makes the build and file routes answer a `302` to that `https://` URL, from
+  `dl.plrs.im` and from the console host. The URL is whatever the release descriptor recorded
+  in `locations_json`, so it is tenant-controlled in the way R6-12's portal redirect was: the
+  platform's hostname vouches for a destination the tenant picked. Only `https:` is followed and
+  the response carries no credentials, but the destination is not allowlisted. Today nothing
+  writes `locations_json` (the descriptor is P2-04's); P2-04 owns deciding whether external
+  URLs need a host allowlist before it does.
 
 **Deviation, recorded: the bytes host is same-site with the console.** The design rule
 (research README §3.5, decision 4) was a separate registrable domain, because a `*.plrs.im`

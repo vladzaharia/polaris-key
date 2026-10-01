@@ -912,6 +912,17 @@ below said it needed: a migration and an admin surface.
   removed from the manifest, or no longer floored, such as a `beta` floor recorded before a
   `channel_workflow` was configured) can be cleared but not lowered (P2-03).
 
+- **Yanks and pins (P2-05).** The floor is no longer unconditional; two audited operations
+  interact with it. A **yank** of the release a floor names lowers that floor rather than
+  removing it: resolution uses the newest unyanked release the truth store holds at or below
+  the recorded floor (`yankedFloorFallback` in `gateway.ts`), recomputed on every resolution
+  because the sync does not read yanks and would raise the recorded floor straight back. A
+  later upstream deletion of that release therefore still 404s the channel. A **pin** bypasses
+  the floor by design: a pinned channel serves its pointer with no floor check, even a yanked
+  or older one. Pin needs `release:promote` (a `pkeyci_` token, P2-02) or a platform-admin
+  session, and is audited with its actor. See `docs/security/THREAT-MODEL.md` §3, "Channel
+  policy writes".
+
 The fix direction's "compare against a client-reported version" half is not done: no client
 version is accepted on these routes, and the floor alone closes the deleted-release primitive.
 The floor table stays release's own anti-rollback high-water mark. P2-03 decided **not** to fold
@@ -926,7 +937,10 @@ deleting it 404s latest until an operator lowers the floor")`. It gains the sync
 never had (without a sync there is no floor), then asserts `/version` 404s without a public
 cache header, health reports `channel-regressed` naming `2.0.0` and `v1.0.0`, and after the
 admin endpoint lowers the floor `v1.0.0` serves. `test/releaseResolution.test.ts` covers the
-floor's raise-only behaviour and the still-listed-elsewhere case.
+floor's raise-only behaviour and the still-listed-elsewhere case. P2-05 adds two cases: a yank
+withdraws `latest` to the next release and only an explicit pin serves the yanked one; and
+yanking the floor release lowers the floor, so deleting the next release down still 404s, before
+and after a resync.
 
 ### Deliberately NOT fixed (PoCs left green on purpose)
 

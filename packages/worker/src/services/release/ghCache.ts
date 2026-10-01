@@ -20,9 +20,15 @@
  * A cached resolution must not outlive a deliberate change. Every write that can change what a
  * selector resolves to — a truth-store sync or resync, a promote, pin, unpin, yank or unyank,
  * an operator floor change — bumps the product's release GENERATION, and the generation is part
- * of every resolution key. So a yank takes effect on the next request in the colo that made it
- * (and within KV's propagation window elsewhere), not after the TTL. What the TTL alone bounds
- * is upstream drift nobody told us about: a release deleted on GitHub with no webhook.
+ * of every resolution key. So a yank stops being RESOLVED on the next request in the colo that
+ * made it (and within KV's propagation window elsewhere), not after the TTL. What the TTL alone
+ * bounds is upstream drift nobody told us about: a release deleted on GitHub with no webhook.
+ *
+ * That is this cache, not every surface. For a public product the version check and the
+ * appcasts sit in front of it behind the edge Cache API (`gateway.ts` `releaseCacheKey`), whose
+ * key carries no generation and which nothing purges: each colo keeps serving the previous
+ * answer for up to `MOVING_CACHE` (120 s) and `APPCAST_CACHE` (300 s) after a yank or pin. The
+ * byte routes and the download route are not edge-cached and see the change at once.
  *
  * ── THE SIGNED URL IS A CREDENTIAL ──────────────────────────────────────────────────────────
  *

@@ -9,7 +9,9 @@
  * The rows and their source guard are P2-03's (`model.ts`); this module decides what an
  * operation MEANS, validates it against the truth store, writes it, audits it with its actor
  * (`admin:<sub>` or `ci:<subject>`), and invalidates the cached resolutions
- * (`ghCache.ts` `bumpReleaseGeneration`) so the next request sees the change.
+ * (`ghCache.ts` `bumpReleaseGeneration`) so the next resolution sees the change. A public
+ * product's edge-cached version check and appcasts lag by up to 120 s / 300 s per colo
+ * (`gateway.ts` `releaseCacheKey`).
  *
  * ── NAMES ───────────────────────────────────────────────────────────────────────────────────
  *

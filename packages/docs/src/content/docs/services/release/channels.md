@@ -72,16 +72,26 @@ declaration again.
 
 A yanked release cannot be promoted. Unyank it first, or pin it explicitly.
 
+A pin is the one deliberate way below the anti-rollback floor: a pinned channel serves its
+pointer exactly, with no floor check, even when the pointer is yanked or older than the floor.
+That is why pin needs the same `release:promote` scope as promote and is audited with its
+actor.
+
 ## Yanks
 
-A yank withdraws a release from every moving selector at once — `latest`, `stable`, `beta`,
-manual channels — on every surface. Nothing is deleted, and the release still resolves by
-version and by pin. A yank needs a reason, which is kept with the actor and the time.
+A yank withdraws a release from every moving selector — `latest`, `stable`, `beta`, manual
+channels — on every surface. How soon each surface stops offering it is set out under
+[Caching](#caching): the download, build, file and blob routes stop on the next request, but
+for a public product the edge-cached version check and appcast can keep the old answer for up
+to two and five minutes. Nothing is deleted, and the release still resolves by version and by
+pin. A yank needs a reason, which is kept with the actor and the time.
 
-On the download route, the appcast and the version check, a yanked release also stops holding
-up its channel's anti-rollback floor. The yank is an audited, deliberate withdrawal, like an
-operator lowering the floor, so the channel falls back to its newest unyanked release instead
-of answering not-found.
+On the download route, the appcast and the version check, a yanked release that held up its
+channel's anti-rollback floor lowers that floor rather than removing it. The floor drops to
+the newest unyanked release the truth store holds below it, so the channel falls back to that
+release instead of answering not-found. That release then holds the channel up like any
+floor: if it is later deleted upstream, the channel answers not-found rather than falling
+further. A floor with no unyanked release below it holds nothing up.
 
 ## Who can change it
 
@@ -111,17 +121,33 @@ routes and answer no CORS.
 | `GET releases`                     | Releases with their builds, artifact roles, SHA-256s, locations and yank.       |
 
 Every change writes an audit row naming its actor (`admin` for the console session's subject,
-`ci:<subject>` for a CI token), and invalidates the product's cached resolutions so the next
-request sees it.
+`ci:<subject>` for a CI token), and invalidates the product's cached resolutions. See
+[Caching](#caching) for how soon each surface reflects it.
 
 ## Caching
 
 The download route, the appcast, the version check and the console's release health check
 resolve a channel against GitHub at most once per 90 seconds. A sync, a resync, any policy
-change and any floor change drop those cached resolutions immediately, so a yank or a pin
-takes effect on the next request (within KV's propagation delay across locations). What the
-90 seconds alone bounds is a change nobody told the worker about, such as a release deleted on
-GitHub with no webhook. A channel that resolves to nothing is never cached.
+change and any floor change drop those cached resolutions immediately. What the 90 seconds
+alone bounds is a change nobody told the worker about, such as a release deleted on GitHub
+with no webhook. A channel that resolves to nothing is never cached.
+
+That does not make every surface change on the next request. How soon a yank, pin, unpin or
+promote reaches each surface:
+
+| Surface                                                 | Sees the change                                                           |
+| ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Build, file and blob routes; the download route         | On the next request, within KV's propagation delay across locations.      |
+| Version check (`/update/version`), for a public product | Up to 120 seconds later in each Cloudflare location, from its edge cache. |
+| Appcasts, for a public product                          | Up to 300 seconds later in each Cloudflare location, from its edge cache. |
+| Version check and appcasts, for a non-public product    | On the next request, as for the download route.                           |
+
+The edge cache is keyed by product, surface, selector and architecture only, and a policy
+change does not purge it: adding a KV read to every cache hit would cost the edge cache the
+property that makes it a defence against request floods. Moving-selector responses also carry
+`Cache-Control: public, max-age=120` (appcasts `max-age=300`), so a browser or proxy that keeps
+one can hold the old answer for as long. Plan an emergency yank with these windows in mind: a
+client that checks for updates within them can still be offered the yanked release.
 
 ## See also
 

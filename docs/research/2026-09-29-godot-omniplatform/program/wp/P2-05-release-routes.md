@@ -171,6 +171,14 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
   no `text/*`); the console keeps `text/plain`.
 - **`BLOB_ORIGIN` guard** is a test over the committed `wrangler.toml` (no `dl*` route without the
   var; the var never names a console host) plus a `docs/DEPLOYMENT.md` line.
+- **Review fixes.** (1) The edge Cache API in front of a public product's version check and
+  appcasts is keyed without the release generation and is not purged, so a yank or pin reaches
+  those two surfaces only after 120 s / 300 s per colo; the channels page says so (the key was
+  left alone to keep R10-05's zero-binding hit). (2) Gated R2 locations are refused by the build
+  and file routes until P2b-04/P4-05 add per-request authorisation. (3) A yanked floor is
+  lowered to the newest unyanked stored release below it, never removed (`yankedFloorFallback`);
+  computed per resolution because the sync does not read yanks. (4) The threat model and R6-10's
+  remediation cover the CI write routes, pin's floor bypass and external-location redirects.
 
 ## Steps
 
