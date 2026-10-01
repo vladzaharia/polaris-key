@@ -771,7 +771,10 @@ export async function planDescriptorIngest(
  * release has no ingested descriptor, or has this very one. A different descriptor ingested
  * after this ingest read the store (two CI submissions racing, or CI racing the GitHub sync)
  * makes it a no-op, and with it every row of the ingest (`RELEASE_DESCRIBED_BY_SQL` guards the
- * tail). The CI path reads the marker back and reports the loss as `release_exists`.
+ * tail). So does a stored seq other than the one the plan checked against: a release the sync
+ * numbered after the plan read the store (no row then, an explicit `seq` in the descriptor) keeps
+ * its seq and is not described. The CI path reads the marker back and reports the loss as the
+ * refusal a fresh plan gives (`seq_mismatch` there), else `release_exists`.
  */
 function stmtUpsertDescribedRelease(
   product: string,
@@ -801,9 +804,10 @@ function stmtUpsertDescribedRelease(
             metadata_json = json_set(COALESCE(release_metadata.metadata_json, '{}'),
                                      '$.descriptor', json(?)),
             modified_at = excluded.modified_at
-          WHERE COALESCE(json_extract(release_metadata.metadata_json, '$.descriptor.status'), '')
-                  <> 'ingested'
-             OR json_extract(release_metadata.metadata_json, '$.descriptor.sha256') = ?`,
+          WHERE (COALESCE(json_extract(release_metadata.metadata_json, '$.descriptor.status'), '')
+                   <> 'ingested'
+                 OR json_extract(release_metadata.metadata_json, '$.descriptor.sha256') = ?)
+            AND (release_metadata.seq IS NULL OR ? IS NULL OR release_metadata.seq = ?)`,
     params: [
       product,
       r.releaseId,
@@ -823,6 +827,8 @@ function stmtUpsertDescribedRelease(
       r.channel,
       extra.markerJson,
       extra.descriptorSha256,
+      r.seq,
+      r.seq,
     ],
   };
 }
@@ -904,7 +910,8 @@ export async function ingestReleaseDescriptor(
     await db.batch([...plan.head, ...plan.tail]);
     // The batch writes nothing when the store changed under the plan in a way that would have
     // refused it — a different descriptor for this release ingested, another release of this
-    // version created, or an explicit seq overtaken — after the plan read the store (the head's
+    // version created, an explicit seq overtaken, or the row created by a sync with a seq other
+    // than the descriptor's — after the plan read the store (the head's
     // conditions). Read back whose marker it is; on a loss, the same checks run again against
     // the store as it is now name the reason.
     const stored = await db.first<{

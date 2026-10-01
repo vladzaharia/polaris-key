@@ -1737,6 +1737,41 @@ describe("concurrent descriptor ingests: the first to commit wins, whole", () =>
     expect(await dump(db)).toEqual(await dump(alone));
   });
 
+  it("an explicit seq on a new release the sync numbers meanwhile is refused seq_mismatch, writing nothing", async () => {
+    const withSeq = () => {
+      const d = descriptor();
+      d.seq = 10;
+      return d;
+    };
+    // In order, the sync first: the release exists with seq 1, and the descriptor's 10 is refused.
+    const ordered = await ciSetup();
+    await syncReleaseStore(envFor(), ordered.db, SLUG, NOW, ordered.fetchImpl);
+    expect(await ordered.ingest(withSeq())).toMatchObject({
+      ok: false,
+      reason: "seq_mismatch",
+    });
+
+    // Raced: CI plans a new release with seq 10, the sync commits the row (seq 1), CI applies.
+    const { db, webKey, fetchImpl } = await ciSetup();
+    const res = await ingestReleaseDescriptor(
+      interleaved(db, () =>
+        syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl),
+      ),
+      envFor(),
+      SLUG,
+      withSeq(),
+      { source: "ci", now: NOW + 100, promoted: [webKey], fetchImpl },
+    );
+    expect(res).toMatchObject({ ok: false, reason: "seq_mismatch" });
+    const [meta] = await listReleaseMetadata(db, SLUG);
+    expect(meta!.seq).toBe(1);
+    expect(JSON.parse(meta!.metadata_json ?? "{}").descriptor?.status).not.toBe(
+      "ingested",
+    );
+    // Exactly what the sync alone leaves.
+    expect(await dump(db)).toEqual(await dump(ordered.db));
+  });
+
   it("a sync that planned to ingest the attached descriptor loses to a CI descriptor committed first, and still applies", async () => {
     const setup = async () => {
       const db = makeTestDb();

@@ -187,8 +187,9 @@ nothing — when:
 
 These checks read the store before the batch is written, so the batch repeats the ones another
 writer can invalidate in between: it writes the release only while it has no other descriptor
-(or this same one), no other release of its version has appeared, and an explicit `seq` is
-still above the maximum. When two submissions race, the first to commit wins whole; the other
+(or this same one), no other release of its version has appeared, an explicit `seq` is still
+above the maximum, and a stored `seq` is still the one the checks compared (a sync can number
+the release in between). When two writers race, the first to commit wins whole; the other
 writes nothing and is refused with the reason the checks give against the store as it now is.
 
 A refused `pkey-release.json` marks its release `degraded` in release health, with the

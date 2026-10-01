@@ -181,10 +181,13 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
     `sniffed`/`mapped` artifact upserts and the map's build upserts do nothing to a release that
     has an ingested descriptor by then. The ingest's head writes a new release only while no other
     release of its version exists and an explicit `seq` is still above the maximum. It updates an
-    existing row only while it has no ingested descriptor, or has this one. Every tail statement
-    runs only while the release carries this descriptor's marker. Two racing submissions
-    therefore resolve as first-commit-wins. The CI path reads the marker back and reports a loss
-    as the refusal that a fresh plan gives.
+    existing row only while it has no ingested descriptor, or has this one, and while the row's
+    stored `seq` (if any) is the one the plan checked: a row the sync created and numbered after
+    the plan read the store is not overwritten by a descriptor whose explicit `seq` differs.
+    Every tail statement runs only while the release carries this descriptor's marker. Racing
+    writers (two submissions, or a submission and a sync) therefore resolve as
+    first-commit-wins. The CI path reads the marker back and reports a loss as the refusal that a
+    fresh plan gives (`release_exists`, `seq_not_increasing` or `seq_mismatch`).
 
 ## Steps
 
