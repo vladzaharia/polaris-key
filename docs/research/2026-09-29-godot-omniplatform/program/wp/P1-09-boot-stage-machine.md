@@ -55,9 +55,9 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   file format, the rows, the SDK order below, and the decisions for the human.
 - **Corpus:** `buildStageMatrixV1()` in `tools/sign-corpus.ts` writing
   `conformance/corpus/v2/stage-matrix.json` (`stageMatrixVersion: 1`, unsigned, like
-  `gate-matrix.json`), mirrored into the Swift mirror and guarded by `--check`. The Godot mirror
-  (`GODOT_V2_RESOURCES`) does not exist until [P1-01](P1-01-godot-scaffold.md) adds it. If P1-01
-  lands first, the file joins that mirror here; otherwise P1-01 mirrors it.
+  `gate-matrix.json`), mirrored into the mirrors (Swift, Godot) through `CORPUS_TARGETS` and guarded by `--check`. P1-09
+  landed before [P1-01](P1-01-godot-scaffold.md), so the Godot mirror joins the list when P1-01
+  creates `sdks/godot/tests/corpus/v2/`, with no other change.
 - **`client-core`:** `src/stages.ts` (`BootStage`, `BootEvent`, `BootState`,
   `initialBootState(opts)`, `bootTransition(state, event) -> {state, emits}`), exported from the
   barrel and as `@polaris-key/client-core/stages`; unit tests.
@@ -162,7 +162,7 @@ proposes moving them to a follow-up and marking `ui.stages` `planned` for those 
 ## Acceptance criteria
 
 - [x] The approved plan is merged before the first code commit.
-- [x] `conformance/corpus/v2/stage-matrix.json` and its Swift mirror (and the Godot mirror, if
+- [x] `conformance/corpus/v2/stage-matrix.json` and the mirrors (Swift, and Godot once
       P1-01 has landed) are generated, byte-identical, and `pnpm gen:corpus -- --check` fails if
       any of them changes.
 - [x] The Node runner (`pnpm conformance`) passes every row, asserting the stage sequence, the
