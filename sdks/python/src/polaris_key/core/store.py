@@ -25,6 +25,12 @@ WHAT v3 CHANGED FROM v2
 * ``CACHE_FORMAT_VERSION`` is ``3``, and a record carrying any other value is DISCARDED,
   never migrated — one network round trip is the correct price for not carrying poisoned
   state forward, and an air-gapped install re-imports its bundle.
+
+WIRE v4 (plans/P3-01.md §2.6) adds two optional slices, ``feeds`` (the committed channel
+feeds, keyed by each feed's own canonical ``channel`` claim) and ``releaseRecords`` (verified
+release records, keyed by lowercase hex SHA-256). The change is additive, so the version stays
+3: a v3 loader ignores them and a record without them has no ``seq`` floor yet. Both hold
+signed JWSs verbatim and nothing else; the floors are derived on load, never stored.
 """
 
 from __future__ import annotations
@@ -77,6 +83,13 @@ class CacheRecord:
     lastSyncUnauthorized: bool = False
     #: The last 403 version/channel block from ``GET /<p>/license/document``.
     blocked: Optional[BlockedState] = None
+    #: WIRE-CONTRACT-V4 §4: committed ``pkey-feed+jws`` documents, verbatim, keyed by the
+    #: CANONICAL channel (each feed's own ``channel`` claim; ``latest`` is stored under
+    #: ``stable``). Re-verified on load; each survivor derives its channel's ``seq`` floor.
+    feeds: Dict[str, str] = field(default_factory=dict)
+    #: WIRE-CONTRACT-V4 §4: verified ``pkey-release+jws`` records, verbatim, keyed by their
+    #: lowercase hex SHA-256; kept only while a committed feed pins the hash.
+    releaseRecords: Dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {
@@ -97,6 +110,10 @@ class CacheRecord:
             if self.blocked.allowedRange is not None:
                 b["allowedRange"] = self.blocked.allowedRange.to_dict()
             out["blocked"] = b
+        if self.feeds:
+            out["feeds"] = dict(self.feeds)
+        if self.releaseRecords:
+            out["releaseRecords"] = dict(self.releaseRecords)
         return out
 
     @staticmethod
@@ -140,6 +157,14 @@ class CacheRecord:
                 bundleId=imported_raw["bundleId"],
                 importedAt=imported_raw["importedAt"],
             )
+        def string_entries(key: str) -> Dict[str, str]:
+            # A slice read from disk: its string-valued entries, nothing else (unverified
+            # here; the update client re-verifies every one before use).
+            raw = d.get(key)
+            if not isinstance(raw, dict):
+                return {}
+            return {k: v for k, v in raw.items() if isinstance(k, str) and isinstance(v, str)}
+
         trust_jws = d.get("trustJws")
         return CacheRecord(
             docs=slice_map("docs"),
@@ -148,6 +173,8 @@ class CacheRecord:
             importedBundle=imported,
             lastSyncUnauthorized=d.get("lastSyncUnauthorized") is True,
             blocked=blocked,
+            feeds=string_entries("feeds"),
+            releaseRecords=string_entries("releaseRecords"),
         )
 
 

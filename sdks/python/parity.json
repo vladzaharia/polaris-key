@@ -47,10 +47,19 @@
     "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
-    "release.record": { "status": "planned", "wp": "P3-06" },
+    "release.record": {
+      "status": "implemented",
+      "note": "core/release_record.py verify_release_record (hash before signature, pinned release keys only, never a product key); client.update.release_record() and decide() fetch by hash and keep the releaseRecords slice while a committed feed pins it."
+    },
     "update.check": { "status": "implemented" },
-    "update.feed": { "status": "planned", "wp": "P3-06" },
-    "update.decide": { "status": "planned", "wp": "P3-06" },
+    "update.feed": {
+      "status": "implemented",
+      "note": "core/feed.py verify_feed with floors keyed by the canonical channel; client.update.feed() and decide() fetch, verify and commit the feeds cache slice, re-verified on load."
+    },
+    "update.decide": {
+      "status": "implemented",
+      "note": "core/decide.py decide_update over core/check.py run_update_check; client.update.decide() returns the UpdateCheck at the effective clock. The outlet is host-supplied (UpdateClientOptions.outlet) until P3-11."
+    },
     "update.driver": {
       "status": "planned",
       "unowned": true,

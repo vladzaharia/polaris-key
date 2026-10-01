@@ -49,6 +49,9 @@ __all__ = [
     "parse_discovery",
     "discover_product",
     "appcast_url_from",
+    "service_endpoint",
+    "UpdateEndpoints",
+    "update_endpoints_from",
     "DISCOVERY_PATH",
 ]
 
@@ -215,6 +218,50 @@ def discover_product(
     except Exception:
         return DiscoveryInvalid("Discovery response is not valid JSON.")
     return parse_discovery(body, product)
+
+
+def service_endpoint(
+    manifest: Optional[Dict[str, Any]], service: str, name: str
+) -> Optional[str]:
+    """One endpoint template from an ENABLED service's published fragment, or ``None`` when
+    the fragment is disabled, absent, or lacks a non-empty string under ``name``. A disabled
+    fragment is ``{"enabled": false}`` and nothing else (wire contract v3), so its endpoints are
+    never read."""
+    if not isinstance(manifest, dict):
+        return None
+    services = manifest.get("services")
+    fragment = services.get(service) if isinstance(services, dict) else None
+    if not isinstance(fragment, dict) or fragment.get("enabled") is not True:
+        return None
+    endpoints = fragment.get("endpoints")
+    template = endpoints.get(name) if isinstance(endpoints, dict) else None
+    return template if isinstance(template, str) and template else None
+
+
+@dataclass(frozen=True)
+class UpdateEndpoints:
+    """Wire v4's update endpoints (plans/P3-01.md §2.4–§2.5), as discovery publishes them."""
+
+    #: ``update.endpoints.feed``: ``<base>/update/{channel}/feed.jws``.
+    feed: Optional[str]
+    #: ``release.endpoints.record``: ``<base>/release/records/{sha256}``.
+    record: Optional[str]
+    #: ``distribution.endpoints.builds``, else Release's permanent ``release.endpoints.builds``
+    #: alias: ``<bytesBase>/distribution/builds/{selector}/{buildId}``. The route an install
+    #: uses (§2.4 "Bytes"); the R2-only ``blobs`` route never is.
+    builds: Optional[str]
+
+
+def update_endpoints_from(manifest: Optional[Dict[str, Any]]) -> UpdateEndpoints:
+    """Read the v4 update endpoints. An older Worker, or a product with Update off, yields
+    ``None``s, which ``client.update.decide()`` refuses as ``service-unavailable`` before
+    dialling (§2.5 step 1)."""
+    return UpdateEndpoints(
+        feed=service_endpoint(manifest, "update", "feed"),
+        record=service_endpoint(manifest, "release", "record"),
+        builds=service_endpoint(manifest, "distribution", "builds")
+        or service_endpoint(manifest, "release", "builds"),
+    )
 
 
 def appcast_url_from(
