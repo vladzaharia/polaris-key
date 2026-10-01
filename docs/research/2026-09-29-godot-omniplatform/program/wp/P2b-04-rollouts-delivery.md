@@ -184,7 +184,11 @@ Recorded where the code (or a dependency's state) disagreed with the text above.
 - **CLI subcommands deferred.** `pkey distribution rollout|halt|resume` were to sit "on P2-06's
   plumbing", but P2-06 is not done and `packages/cli` has no HTTP client or CI-token handling
   yet. Inventing that plumbing here would pre-empt P2-06's `ciClient`. The CI routes are live and
-  documented; P2-06 (or a follow-up after it) adds the three subcommands over them.
+  documented. **Owner: [P2b-03](P2b-03-availability-keys.md)**, which already depends on P2-06
+  and creates the `pkey distribution` command group (`report`) on its token plumbing; its brief
+  now lists the three subcommands in Scope → In and in its acceptance criteria. P2-06's brief
+  still points `rollout|halt` at P2b-04; that pointer now resolves through this correction to
+  P2b-03.
 - **`releaseCatalog` gained two more readers** than the three named: `accessSelector(selector)`
   (channel classification for the `entitled` check is Release's model, and Distribution must
   enforce it before resolving) and `installScript(origin)` (the template and binary name are
@@ -216,4 +220,9 @@ Recorded where the code (or a dependency's state) disagreed with the text above.
   halts through.
 - The canonical byte routes and `deliveryUrl` are what P2b-05's feeds, P2b-06's page, P3-09's
   updater feeds and P4-05's pack transports link to.
+- The CLI subcommands `pkey distribution rollout|halt|resume` are owned by
+  [P2b-03](P2b-03-availability-keys.md): it adds them on P2-06's `packages/cli` CI plumbing next
+  to `pkey distribution report`, over the CI routes this package shipped
+  (`POST /{product}/distribution/rollouts/{outlet}/{channel}[/pause|resume|halt|complete]`,
+  scope `distribution:rollout`).
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P2b-04 done`.

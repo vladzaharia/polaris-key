@@ -76,13 +76,19 @@ signing keys per package something to track and publish
   `GET …/distribution/submissions`, and the key inventory: `GET`, `PUT` (upsert by purpose and
   fingerprint), `DELETE`, and a `registered` flag for Android developer verification.
 - **CLI:** `pkey distribution report availability|submission|key …` on P2-06's token plumbing.
+- **CLI (taken over from [P2b-04](P2b-04-rollouts-delivery.md)):** `pkey distribution
+rollout|halt|resume …` on the same plumbing, over the CI routes P2b-04 shipped:
+  `POST /{product}/distribution/rollouts/{outlet}/{channel}` (start or update, body
+  `{deliverable?, releaseId?, bp?}`) and `…/{pause|resume|halt|complete}`, scope
+  `distribution:rollout`. P2b-04 deferred them because P2-06's CLI client did not exist yet.
 - Docs: `services/distribution/availability.md` and a key-inventory section; threat model.
 
 **Out** (and where it belongs instead):
 
 - Store connectors that write these tables from webhooks and polling (→ P5-02, P5-03, P5-04);
   registering keys through the Android Developer Console API (no owner; operator flag only here).
-- Rollouts, halts and delivery access (→ [P2b-04](P2b-04-rollouts-delivery.md)); readiness holds
+- The rollout and halt routes, state machine and delivery access (→ [P2b-04](P2b-04-rollouts-delivery.md);
+  only their CLI subcommands are in scope here); readiness holds
   (→ P4-14); the matrix view (→ [P2b-06](P2b-06-download-page-matrix.md)).
 - Public exposure of availability in the signed feed (→ P3-03).
 
@@ -130,6 +136,8 @@ signing keys per package something to track and publish
 - [ ] A CI key report that differs from the inventory is flagged and does not change it; an
       operator change is audited.
 - [ ] `pkey distribution report` works end to end against the Worker in a test.
+- [ ] `pkey distribution rollout`, `halt` and `resume` drive P2b-04's CI rollout routes end to
+      end in a test, and a token without `distribution:rollout` is refused.
 - [ ] `routeCoverage` passes; `docs gen:check` is clean; the threat model lists the new input.
 - [ ] The green gate passes (`AGENTS.md`).
 
