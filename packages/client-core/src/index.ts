@@ -69,7 +69,16 @@ export { effectiveNow, highWaterMark, type DatedArtifact } from "./clock.js";
 
 export { PolarisError } from "./errors.js";
 
-export { CACHE_VERSION, type CacheRecordV3, type Store } from "./store.js";
+export {
+  CACHE_VERSION,
+  STORE_BACKENDS,
+  STORE_DEGRADED_REASONS,
+  type CacheRecordV3,
+  type Store,
+  type StoreBackend,
+  type StoreDegradedReason,
+  type StoreStatus,
+} from "./store.js";
 
 export {
   BOOT_EMIT_TYPES,
