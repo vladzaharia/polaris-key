@@ -44,11 +44,12 @@ import {
 import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
-import { MANIFEST_FILES } from "./manifestFiles.js";
+import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSyncStatements } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
-import { serializeServices } from "../../core/services.js";
+import { parseServices, serializeServices } from "../../core/services.js";
+import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 
 export type ResyncResult =
@@ -97,11 +98,12 @@ export async function resyncRepo(
   slug: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
+  ingest?: ManifestIngest,
 ): Promise<ResyncResult> {
   let result: ResyncResult;
   let dropped: string[];
   try {
-    result = await applyRepoManifest(env, db, slug, now, fetchImpl);
+    result = await applyRepoManifest(env, db, slug, now, fetchImpl, ingest);
   } finally {
     // Every manifest-owned input to an approval that this push got to write is written by now:
     // `services_json` and `auto_issue_json` by the un-batched writes, `oidc_config` in the batch.
@@ -130,6 +132,7 @@ async function applyRepoManifest(
   slug: string,
   now: number,
   fetchImpl: FetchImpl,
+  ingest: ManifestIngest | undefined,
 ): Promise<ResyncResult> {
   const product = await getProduct(db, slug);
   if (!product) return { ok: false, error: "unknown product" };
@@ -165,7 +168,7 @@ async function applyRepoManifest(
 
   const files: Record<string, string> = {};
   try {
-    for (const name of ["schema", "product", "release"] as const) {
+    for (const name of MANIFEST_FILE_NAMES) {
       const text = await readManifestFile(
         token,
         owner,
@@ -498,6 +501,21 @@ async function applyRepoManifest(
   if (rel) {
     stmts.push(...manifestDeliverableStatements(slug, rel.app, now));
     updated.push("deliverables");
+  }
+
+  // ── the services' own manifest rows (P2b-02): Core's ingest pipeline ─────────
+  //
+  // Every ENABLED service's `manifestIngest` (Distribution's outlets and transports today), in
+  // this same batch. Enablement is the product's STORED set as `setServices` above left it — not
+  // the manifest's — so a service an operator turned off live does not have its rows rewritten by
+  // a push that still says on. Release never imports the services that answer (AGENTS rule 6):
+  // the pipeline is handed down from the composition root.
+  if (ingest) {
+    const stored = await getProduct(db, slug);
+    const services = parseServices(stored?.services_json).services;
+    const serviceRows = ingest(manifest, slug, services, now);
+    stmts.push(...serviceRows.statements);
+    updated.push(...serviceRows.slugs);
   }
 
   // ── release truth store: the same pass, one extra GitHub read (P2.T2) ───────
