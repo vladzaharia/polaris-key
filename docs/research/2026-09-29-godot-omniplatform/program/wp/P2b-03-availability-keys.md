@@ -128,18 +128,18 @@ rollout|halt|resume …` on the same plumbing, over the CI routes P2b-04 shipped
 
 ## Acceptance criteria
 
-- [ ] A CI report with `distribution:report` records availability for (release, build, outlet);
+- [x] A CI report with `distribution:report` records availability for (release, build, outlet);
       one without the scope, for an undeclared or removed outlet, an unknown release or build, or
       an unknown state is refused and writes nothing.
-- [ ] A `pkey-cdn` outlet shows `live` for a release with a matching build and no row; an
+- [x] A `pkey-cdn` outlet shows `live` for a release with a matching build and no row; an
       `app-store` outlet shows nothing until reported.
-- [ ] A CI key report that differs from the inventory is flagged and does not change it; an
+- [x] A CI key report that differs from the inventory is flagged and does not change it; an
       operator change is audited.
-- [ ] `pkey distribution report` works end to end against the Worker in a test.
-- [ ] `pkey distribution rollout`, `halt` and `resume` drive P2b-04's CI rollout routes end to
+- [x] `pkey distribution report` works end to end against the Worker in a test.
+- [x] `pkey distribution rollout`, `halt` and `resume` drive P2b-04's CI rollout routes end to
       end in a test, and a token without `distribution:rollout` is refused.
-- [ ] `routeCoverage` passes; `docs gen:check` is clean; the threat model lists the new input.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `routeCoverage` passes; `docs gen:check` is clean; the threat model lists the new input.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
