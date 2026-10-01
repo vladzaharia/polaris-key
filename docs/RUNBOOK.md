@@ -274,7 +274,7 @@ Product validation:
 ```sh
 curl -fsS https://key.plrs.im/djdl/.well-known/polaris.json | jq .
 curl -fsS https://key.plrs.im/djdl/.well-known/jwks.json | jq .
-curl -fsS https://key.plrs.im/djdl/schema | jq .
+curl -fsS https://key.plrs.im/djdl/config/schema | jq .
 curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 ```
 

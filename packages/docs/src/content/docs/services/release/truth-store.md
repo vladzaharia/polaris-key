@@ -32,7 +32,7 @@ independent paths to it, not one reading from the other.
 A floor table, `release_channel_floors`, sits beside them. A sync raises it and an operator
 lowers it (see [below](#release_channel_floors)).
 
-A fifth table, `release_config`, anchors all four — it is the one row per product carrying
+A further table, `release_config`, anchors them all — it is the one row per product carrying
 the linked repository's coordinates, binary name, Sparkle key, and access modes, and it is
 what [GitHub sync](/docs/services/release/github-sync/) describes in full. The truth store
 is downstream of it, not a replacement for it.
@@ -144,7 +144,8 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
 1. **Release config** — are the GitHub owner, repo, installation id, and binary name all
    present at all.
 2. **Sparkle public key** — configured or not (a missing key is a warning here, not a
-   failure: a product may not ship Sparkle updates at all).
+   failure: a product may not ship Sparkle updates at all). Checked only for a product that
+   _ships DMGs_ (below).
 3. **GitHub access** — can the installation token actually list releases right now.
 4. **Channel floors** — one `channel-regressed` error per floored channel whose floor release
    is gone, naming the floor and what the release list now offers (see
@@ -155,10 +156,11 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
 5. **Latest release** — what `stable` resolves to, through the same resolution function the
    download route, the appcast and the version check use: candidate filter, semver order,
    page cap and floor included.
-6. **macOS arm64 DMG** — present or not. Absence counts as _missing_, unconditionally:
-   every macOS product is expected to ship one.
-7. **macOS x86_64 DMG** — present or not. Also _missing_ by default; it softens to a warning
-   only for a product whose artifact policy turns `requireDmg` off.
+6. **macOS arm64 DMG** — present or not. Absence counts as _missing_ by default: a product
+   that ships DMGs is expected to have both architectures. It softens to a warning for a
+   product whose artifact policy turns `requireDmg` off but whose latest release carries a
+   DMG anyway.
+7. **macOS x86_64 DMG** — present or not. Same rule as the arm64 check.
 8. **Sparkle signature** — either the policy requires signed appcasts and no public key is
    configured at all (_missing_), or a key is configured and the question is whether the
    sibling `.sig` asset for the arm64 DMG is actually present. This check confirms presence;
@@ -166,6 +168,12 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
    [Appcast](/docs/services/update/appcast/).
 9. **CLI assets** — arm64 and x86_64 bare-binary assets, present or not (each a warning
    unless the artifact policy requires it).
+
+A product **ships DMGs** when its artifact policy requires one (the default, so a product with
+no policy is checked exactly as before) or its latest release already contains a `.dmg`. For a
+product that does neither — a Linux or Godot build, say — checks 2 and 6 to 8 are skipped
+entirely rather than reported as missing, so it is not told it "needs setup" for artifacts it
+never builds.
 
 The rolled-up status a product carries is `healthy` when every check passes, `needs-setup`
 when something expected is simply missing, and `error` when GitHub access itself failed or

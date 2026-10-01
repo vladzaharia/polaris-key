@@ -368,6 +368,65 @@ describe("portal downloads listing", () => {
     ).not.toBeNull();
   });
 
+  it("lists only downloadable artifacts, never signature or checksum sidecars", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    await seedLicenseWithKey(db, "djdl");
+    await setProductServices(db, "djdl", { release: { enabled: true } });
+    await seedRelease(db, "djdl", {
+      releaseId: "rel_1",
+      version: "1.2.3",
+      artifactId: "art_dmg",
+    });
+    for (const [id, name, kind] of [
+      ["art_sig", "djdl.dmg.sig", "signature"],
+      ["art_sum", "SHA256SUMS.sha256", "checksum"],
+    ] as const) {
+      await db.run(
+        `INSERT INTO release_artifacts
+           (product, release_id, artifact_id, name, kind, platform, arch, content_type,
+            size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
+            metadata_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        "djdl",
+        "rel_1",
+        id,
+        name,
+        kind,
+        null,
+        null,
+        "application/octet-stream",
+        64,
+        null,
+        `https://github.com/acme/djdl/releases/download/v1.2.3/${name}`,
+        null,
+        null,
+        "authenticated",
+        null,
+        NOW,
+      );
+    }
+    const session = await portalSession(env, db);
+
+    const res = await handlePortalApi(
+      req("GET", "/api/releases", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/releases",
+      NOW,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      releases: Array<{ artifacts: Array<{ name: string }> }>;
+    };
+    expect(body.releases).toHaveLength(1);
+    expect(body.releases[0]!.artifacts.map((a) => a.name)).toEqual([
+      "djdl.dmg",
+    ]);
+  });
+
   it("contributes nothing for a product whose services_json cannot be read", async () => {
     const db = makeTestDb();
     const env = portalEnv();

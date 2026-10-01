@@ -226,8 +226,9 @@ Notes:
   `artifact_policy_json`, and **read by nothing**. Only `requireDmg`/`requireCli` are read (by
   `health.ts:65-95`), and `requireSparkleSignature`/`minimumSystemVersion` (operator fields) by
   `config.ts:97-120` / `feed.ts:126-139`.
-- Schema/validator drift: the JSON schema bounds `artifactPolicy.architectures` items to `{0,31}` chars
-  (`schemas/v1/release.schema.json`), the validator uses `CHANNEL_RE` `{0,63}`.
+- Schema/validator drift (fixed by P0-01): the JSON schema bounded `artifactPolicy.architectures` items
+  to `{0,31}` chars (`schemas/v1/release.schema.json`) while the validator used `CHANNEL_RE` `{0,63}`;
+  the schema now uses `{0,63}` too.
 - Manual channel names allow `A-Z` and `.`/`_` (`CHANNEL_RE`), but `/update/<channel>/appcast.xml` and
   `?channel=` only accept `^[a-z0-9-]+$` (`update/routes.ts:20`, router `router.ts:181`) — a valid
   manifest channel like `Beta.2` is unreachable on the feed routes.
@@ -724,7 +725,7 @@ deps_json)`.
   pushes; release events are ignored.
 - `feed.ts:119-125` / `config.ts:89-96` call `artifact_policy_json` operator-owned; resync overwrites
   it (`resync.ts:280, 288`).
-- `release.schema.json` `architectures` item length `{0,31}` vs validator `{0,63}`.
+- `release.schema.json` `architectures` item length `{0,31}` vs validator `{0,63}` (fixed by P0-01).
 
 ---
 

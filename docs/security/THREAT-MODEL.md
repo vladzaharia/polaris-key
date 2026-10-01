@@ -283,8 +283,9 @@ Poison the release channel
 ├── Hold GITHUB_WEBHOOK_SECRET (one global secret, no per-repo binding, no replay protection)
 │   └── forge a push payload naming ANY linked repo, with an arbitrary `after` ref
 ├── Write access to a linked repo
-│   ├── publish a DMG + matching .sig (signature is passed through, never verified server-side)
-│   └── set `.pkey/release` requireSparkleSignature:false  ← repo disables its own control
+│   ├── set `.pkey/release` sparkleEd25519Pub to a key you hold  (the verifying key is repo-sourced: resync rewrites `sparkle_ed25519_pub` on every push-triggered resync, with no operator guard)
+│   ├── publish a DMG + a .sig made with that key (the appcast verifies the sidecar over the DMG bytes against `sparkle_ed25519_pub`, so a repo writer who swapped the key passes; only the client-side Sparkle `SUPublicEDKey` pin stops it)
+│   └── set `.pkey/release` requireSparkleSignature:false  (no effect: the requirement is operator-owned, read from `operator_policy_json`, which no manifest path writes)
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
 ```
 

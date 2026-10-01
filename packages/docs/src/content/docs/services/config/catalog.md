@@ -88,7 +88,9 @@ three values — anything else, or a `delivery` on a `config`/`flag` entry, fail
 
 - **`clientScoped`** is the shape every catalog secret has by default: the value travels in the
   config document's `secrets` map, redacted everywhere in the admin surface, decrypted
-  client-side into the OS keyring.
+  client-side. The SDK caches it with the rest of the document in its `0600` `managed.json`; only
+  the device token lives in the OS keyring, so a host that wants the value in a vault copies it
+  there itself.
 - **`serverOnly`** means the value exists for the Worker's own use and **never leaves it**: the
   document-signing prune drops the entry from every device-facing document — the config
   document, and bundles, which reuse the same builder — however the value was populated.
@@ -197,7 +199,7 @@ fetch into a `500`.
   "default": 3, "managementDefault": "default", "ui": { "widget": "stepper" }
 }
 
-// secret — withheld from enumeration, delivered to the OS keyring
+// secret — withheld from enumeration, delivered in the signed config document
 {
   "key": "proxy.subscriptionUrl", "kind": "secret", "secret": true, "category": "VPN",
   "label": "VPN subscription URL",

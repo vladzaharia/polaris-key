@@ -707,6 +707,7 @@ export async function listPortalArtifacts(
             content_type, size_bytes, sha256, source_url, access
        FROM release_artifacts
       WHERE product = ? AND release_id = ?
+        AND kind NOT IN ('signature', 'checksum')
       ORDER BY kind ASC, platform ASC, arch ASC, name ASC`,
     product,
     releaseId,

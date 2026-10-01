@@ -21,6 +21,8 @@ import {
   getPortalProductSettings,
   portalProductSettingsView,
 } from "../../services/identity/portal/repo.js";
+import { shipsDmgs } from "../../services/release/config.js";
+import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { countKeysByLicense } from "../repo.js";
 
 interface RequiredSecretStatus {
@@ -47,6 +49,7 @@ interface ReleaseSetupRow {
   gh_installation_id: number | null;
   binary_name: string | null;
   sparkle_ed25519_pub: string | null;
+  artifact_policy_json: string | null;
 }
 
 /**
@@ -161,18 +164,19 @@ export async function productView(
         trustKeys: { [signingKid]: signingPublicKey },
       }
     : null;
+  const services = serviceStateOf(p);
   const setup = await productSetupView(
     env,
     db,
     p.slug,
     Boolean(signingPublicKey),
+    services.services.update.enabled,
   );
   const portalSettings = await getPortalProductSettings(db, p.slug);
   // D-15: the console's nav is a projection of enablement, and the SHELL needs the answer before
   // it can draw the sidebar that frames the view. Carrying it on the product row the shell
   // already loads is what keeps the nav from popping in after its own content; a second
   // round-trip to `…/services` would be a strictly slower way to render the same tree.
-  const services = serviceStateOf(p);
   return {
     slug: p.slug,
     name: p.name,
@@ -215,6 +219,7 @@ async function productSetupView(
   db: Db,
   product: string,
   signingConfigured: boolean,
+  updateEnabled: boolean,
 ): Promise<Record<string, unknown>> {
   const oidc = await db.first<OidcSetupRow>(
     "SELECT provider, issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
@@ -225,7 +230,8 @@ async function productSetupView(
     product,
   );
   const release = await db.first<ReleaseSetupRow>(
-    `SELECT gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub
+    `SELECT gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub,
+            artifact_policy_json
       FROM release_config WHERE product = ?`,
     product,
   );
@@ -308,8 +314,15 @@ async function productSetupView(
         ...(release.binary_name ? [] : ["binary name"]),
       ]
     : [];
+  // The Sparkle warning is only meaningful when Update renders appcasts for DMGs: the product
+  // has Update enabled AND ships DMGs (same predicate as release health).
+  const latestHasDmg =
+    release && updateEnabled ? await latestReleaseHasDmg(db, product) : false;
   const warnings =
-    release && !release.sparkle_ed25519_pub
+    release &&
+    updateEnabled &&
+    shipsDmgs(release.artifact_policy_json, latestHasDmg) &&
+    !release.sparkle_ed25519_pub
       ? ["release: Sparkle public key not configured; appcasts may be unsigned"]
       : [];
   const syncMissing =

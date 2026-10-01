@@ -87,12 +87,13 @@ route itself):
 | Mode            | Who                                                                   | Notes                                                                       |
 | --------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `public`        | anyone                                                                | The default — keeps anonymous installs and anonymous update checks working. |
-| `authenticated` | a device with a valid token                                           | The license behind it doesn't have to be usable.                            |
-| `licensed`      | a device whose license is usable                                      | Behaves identically to `authenticated` today.                               |
+| `authenticated` | a device with a valid token                                           | Requires a usable license, exactly as `licensed` does today.                |
+| `licensed`      | a device whose license is usable                                      | Behaves identically to `authenticated` today (both require a usable one).   |
 | `entitled`      | a device whose _own license_ covers the requested channel and version | The only mode that can offer two licensed devices different builds.         |
 
 `licensed` and `authenticated` are kept as two distinct names on purpose, even though
-nothing currently distinguishes their enforcement — a product's stated posture should
+nothing currently distinguishes their enforcement: both refuse a device whose license is not
+usable — a product's stated posture should
 survive even when today's behavior happens to coincide. `entitled` is genuinely different:
 it evaluates the _caller's own_ channel and version entitlements, not merely whether some
 usable license exists. The full mechanics — channel resolution, the version window, and
