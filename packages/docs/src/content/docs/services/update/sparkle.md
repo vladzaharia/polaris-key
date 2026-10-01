@@ -110,7 +110,8 @@ Sparkle asks its delegate which channels an installation may see before it offer
 The SDK answers from the license's own `channels` entitlement — the same value
 [Eligibility](/docs/services/update/eligibility/) checks server-side — rather than
 whatever channel list a host happened to hard-code, which is exactly the gap that let a
-stable-only customer get offered a beta build in the first place.
+stable-only customer get offered a beta build in the first place. `stable` is always allowed,
+and because `staging` is the legacy spelling of `beta`, either grant allows both names.
 
 :::note[A narrowing, not the enforcement point]
 This filter decides what a user is _offered_; it decides nothing about what they're allowed

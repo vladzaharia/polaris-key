@@ -26,12 +26,16 @@
  * `injectAdminPolicy` — so a caller refused a beta document is refused the beta feed for the
  * same reason, from the same rows.
  *
- * Nothing here knows what a "release channel" is beyond its name. The selector arrives as plain
- * strings the CALLING service has already classified, because channel classification (stable /
- * beta / `pr-42` / an operator's manual channel) is Release's model, not Core's.
+ * Nothing here knows what a "release channel" is beyond its name. The selector arrives as a
+ * canonical name the CALLING service has already classified, because channel classification
+ * (stable / beta / `pr-42` / an operator's manual channel) is Release's model, not Core's. The
+ * grant is then read by `channelEntitled` (`core/channels.ts`), the same predicate the licence
+ * build gate uses (WIRE-CONTRACT-V3 §5.1 rule 4).
  */
 
+import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { AllowedRange } from "@polaris-key/protocol";
+import { channelEntitled } from "./channels.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";
@@ -79,16 +83,12 @@ export async function usableLicensedDevice(
 /** What the caller asked for, in terms Core can evaluate. */
 export interface EntitledSelector {
   /**
-   * The channel name the request resolves to — `null` or `"stable"` for the shipping channel,
-   * which every grant holds. Already classified by the calling service.
+   * The canonical channel name the request resolves to (WIRE-CONTRACT-V3 §5.1) — `null` or
+   * `"stable"` for the shipping channel, which every grant holds; `beta` for a `beta` or
+   * `staging` selector; `pr-<n>` (which a `pr` grant also covers); a manual name; or the raw
+   * unclassifiable string. Already classified by the calling service.
    */
   channel?: string | null;
-  /**
-   * A second, coarser name the same request may be entitled under: a `pr-42` selector is
-   * satisfied by a grant that names either `pr-42` or `pr`, which is how the licence-side gate
-   * spells the PR channel.
-   */
-  channelKind?: string | null;
   /** The concrete version being fetched, when the request pins one. Unpinned reads pass `null`. */
   version?: string | null;
 }
@@ -121,18 +121,6 @@ export type EntitledDenial =
       code: "version_blocked";
       allowedRange: AllowedRange;
     };
-
-/** Is a requested channel covered by the grant? `stable` is the floor every grant holds. */
-function channelAllowed(
-  allowed: readonly string[],
-  selector: EntitledSelector,
-): boolean {
-  const channel = selector.channel;
-  if (!channel || channel === "stable" || channel === "latest") return true;
-  if (allowed.includes(channel)) return true;
-  const kind = selector.channelKind;
-  return Boolean(kind && kind !== channel && allowed.includes(kind));
-}
 
 /**
  * The `entitled` decision for one request.
@@ -168,7 +156,7 @@ export async function entitledAccessCheck(
     product.compatMax,
   );
 
-  if (!channelAllowed(channels, selector)) {
+  if (!channelEntitled(channels, selector.channel || CHANNEL_STABLE)) {
     return {
       ok: false,
       status: 403,

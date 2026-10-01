@@ -171,7 +171,10 @@ def test_compare_unparseable_is_zero() -> None:
 def test_channel_for_version() -> None:
     assert channel_for_version("1.2.3") == "stable"
     assert channel_for_version("0.0.0-dev+abc") == "dev"
-    assert channel_for_version("0.0.0-staging.1") == "staging"
+    # P0-04: `staging` is the legacy spelling of `beta` (WIRE-CONTRACT-V3 §5.1 rule 2).
+    assert channel_for_version("0.0.0-staging.1") == "beta"
+    assert channel_for_version("0.0.0-beta.3") == "beta"
+    assert channel_for_version("2.0.0-beta.1") == "stable"
     assert channel_for_version("0.0.0-pr42.1") == "pr"
     assert channel_for_version("0.0.0-pr-42.1") == "pr"
 

@@ -19,6 +19,26 @@ channels, and a version window. On submit the license is created **and its first
 the same request** — the raw key is shown exactly once, in a copy panel; the server keeps only
 its hash and can never show it again.
 
+### The channel picker
+
+The licence and tier editors share one channel picker, built from the channel vocabulary
+(WIRE-CONTRACT-V3 §5.1). It offers, in order:
+
+1. `stable`, `beta` and `pr` (labelled "every PR build": a `pr` grant covers every `pr-<n>`);
+2. the product's declared manual channels, read from its Release channels. A name the feed
+   routes cannot reach (uppercase, `.` or `_`) or that a built-in takes over (`dev`, `pr`,
+   `latest`, `pr42`, …) is not offered. A manual `staging` is listed and labelled, because its
+   grant also covers `beta`;
+3. `staging`, only when the licence or tier already holds it, labelled as the legacy alias of
+   `beta`;
+4. `dev`, only when already held, labelled: a `dev` grant lets every `0.0.0-dev*` build skip the
+   version window and the channel checks (R3-01). The console never offers `dev` as a new
+   grant; a deliberate one goes through the admin API or a manifest tier;
+5. any other value already held, marked "not offered".
+
+Unticking a held value leaves it on screen until the dialog closes, and a held value the picker
+does not offer survives a save untouched.
+
 ## Editing a license, and what a tier change does
 
 **Edit** reopens the same holder/policy fields. Changing the tier is the one edit worth calling

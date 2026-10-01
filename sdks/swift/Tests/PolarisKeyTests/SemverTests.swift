@@ -75,11 +75,15 @@ final class SemverTests: XCTestCase {
     func testChannelForVersion() {
         XCTAssertEqual(Semver.channelForVersion("1.2.3"), .stable)
         XCTAssertEqual(Semver.channelForVersion("0.0.0-dev+abc"), .dev)
-        XCTAssertEqual(Semver.channelForVersion("0.0.0-staging.1"), .staging)
+        // P0-04: `staging` is the legacy spelling of `beta` (WIRE-CONTRACT-V3 §5.1 rule 2).
+        XCTAssertEqual(Semver.channelForVersion("0.0.0-staging.1"), .beta)
+        XCTAssertEqual(Semver.channelForVersion("0.0.0-beta.3"), .beta)
+        XCTAssertEqual(Semver.channelForVersion("0.0.0-beta.3").rawValue, "beta")
+        XCTAssertEqual(Semver.channelForVersion("2.0.0-beta.1"), .stable)
         XCTAssertEqual(Semver.channelForVersion("0.0.0-pr42"), .pr)
         XCTAssertEqual(Semver.channelForVersion("0.0.0-pr-42"), .pr)
         XCTAssertEqual(Semver.channelForVersion("0.0.0-pr1.2"), .pr)
-        // A normal prerelease that is not the dev/staging/pr sentinel is still stable.
+        // A normal prerelease that is not the dev/beta/staging/pr sentinel is still stable.
         XCTAssertEqual(Semver.channelForVersion("1.0.0-rc.1"), .stable)
     }
 

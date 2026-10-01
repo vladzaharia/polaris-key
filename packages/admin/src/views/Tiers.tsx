@@ -9,6 +9,7 @@ import {
 } from "../api.js";
 import { invalidate, useResource } from "../context.js";
 import { docsUrl } from "../lib/docsLinks.js";
+import { useManualChannels } from "./licenses/shared.js";
 import {
   Badge,
   Button,
@@ -35,6 +36,7 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
   // Profiles are needed for the create/edit profile selectors; a soft dependency (the tier
   // editor still works if this fails — it just shows ids).
   const profilesRes = useResource(`profiles:${slug}`, () => api.profiles(slug));
+  const manualChannels = useManualChannels(slug);
 
   const tiers = tiersRes.data?.tiers ?? [];
   const profiles: ProfileOption[] = (profilesRes.data?.profiles ?? []).map(
@@ -265,6 +267,7 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
         onOpenChange={setCreateOpen}
         profiles={profiles}
         existingIds={tiers.map((t) => t.id)}
+        manualChannels={manualChannels}
         saving={busy}
         onCreate={(body) => void handleCreate(body)}
       />
@@ -274,6 +277,7 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
         open={editing !== null}
         onOpenChange={(open) => !open && setEditing(null)}
         profiles={profiles}
+        manualChannels={manualChannels}
         saving={busy}
         onSave={(id, body) => void handleSave(id, body)}
       />

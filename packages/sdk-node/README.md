@@ -77,7 +77,7 @@ one implementation, and every JS host consumes it.
 | `version`          | The **host application's** semver. Sent as `X-PKey-Version`; the channel derives from it.                                                    |
 | `trust.pinnedKeys` | `{ kid -> rawEd25519PubBase64url }`. Core-owned: it verifies licence documents, config documents, trust manifests and offline bundles alike. |
 | `baseUrl`          | Control-plane origin (default `https://key.plrs.im`). Must be `https:` or loopback.                                                          |
-| `channel`          | Override the channel (default derived from `version`).                                                                                       |
+| `channel`          | Override `X-PKey-Channel` (default derived from `version`): `stable`, `beta`, `pr`/`pr-<n>`, `dev` or a manual name; `staging` is accepted.  |
 | `trustRefresh`     | Refresh the trust manifest on Core's own cadence inside `sync()` (default true).                                                             |
 | `store`            | A `Store` (default `KeyringStore`; `InMemoryStore` for tests).                                                                               |
 | `configDir`        | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                                                     |

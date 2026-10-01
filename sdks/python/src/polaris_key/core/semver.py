@@ -84,11 +84,17 @@ def compare_semver(a: str, b: str) -> int:
 
 
 def channel_for_version(version: str) -> str:
-    """Map a version string to its release channel (stable/staging/pr/dev)."""
+    """Map a version string to the channel family it implies (WIRE-CONTRACT-V3 §5.1 rule 2).
+
+    Returns ``dev`` for ``0.0.0-dev*``, ``beta`` for ``0.0.0-beta*`` and the legacy
+    ``0.0.0-staging*``, ``pr`` for ``0.0.0-pr-<n>`` (hyphen optional), and ``stable`` for
+    anything else. This is the value the SDK sends as ``X-PKey-Channel``; only the Worker
+    narrows a PR build to ``pr-<n>``.
+    """
     if version.startswith("0.0.0-dev"):
         return "dev"
-    if version.startswith("0.0.0-staging"):
-        return "staging"
+    if version.startswith("0.0.0-beta") or version.startswith("0.0.0-staging"):
+        return "beta"
     if _PR_RE.match(version):
         return "pr"
     return "stable"
