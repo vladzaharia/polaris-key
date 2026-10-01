@@ -16,7 +16,8 @@
 // A device-code sign-in yields the SIGNED-IN IDENTITY'S OWN licence and nothing else. The
 // Worker's callback merges nothing (P1-06): a device that was on an anonymous enrolled licence is
 // not attached to the account by signing in, and nothing here offers or implies that it is. The
-// opt-in, device-confirmed attach is P1-07's, on a separate call.
+// opt-in, device-confirmed attach (P1-07) is two optional fields on the same poll
+// (`confirmIdentity`, then `attachLicense` with the device's bearer); this client sends neither.
 
 import { PolarisError } from "@polaris-key/client-core";
 import type { CoreContext } from "../core/context.js";

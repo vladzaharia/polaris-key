@@ -103,6 +103,49 @@ all built against recorded responses and a fake Google API before a real key exi
 - **Threat model:** a stolen service-account key can change rollouts for the one app it is invited
   to; scope it there and to release permissions only.
 
+## Corrections recorded during implementation (P5-03)
+
+The code was the fact; these are where it, or a decision the brief left open, differs from the
+text above.
+
+- **Shared connector plumbing came from P5-02, not from main.** P5-02's `connectors/index.ts`,
+  `connectors/state.ts`, `mirrorRollout` (`rollouts.ts`), the `AvailabilityWriter`
+  (`availability.ts`), the registry `scheduled` hook and the connector cron were not on main when
+  this package started; the branch merges `wp/P5-02-app-store-connect` and registers `play` in its
+  `CONNECTORS` rather than creating a second set. The dependency gap the brief names
+  (`dist_rollouts`) does not exist: P2b-04 is on main.
+- **Operator settings need a table.** The priority default and the vitals settings are
+  operator-owned and must survive every push, so they live in a new `dist_connector_settings`
+  (migration 0042, `TABLE_OWNERS.distribution`, data-model page regenerated) behind
+  `connectors/settings.ts`. The brief's gate list did not name the migration.
+- **Availability of a halted release is `approved`, a draft `pending`.** The brief maps status
+  only onto rollout state; for availability, `inProgress`/`completed` are `live`, `halted`
+  (reviewed, served to no one new) `approved`, `draft` `pending`, and a build no track of the
+  outlet carries any more `removed`.
+- **Controls live under the connectors admin route P5-02 added:**
+  `POST …/distribution/connectors/play/{rollout/fraction,rollout/halt,rollout/resume,rollout/complete,priority,settings}`,
+  each rollout control taking `{track, versionCode | releaseId, …}`. A PATCH sends the track's
+  releases as read with only the target changed (Play replaces the array); `complete` drops the
+  previously completed release.
+- **"A raised floor" is read as** Release's channel `minSupported` above the version the track
+  serves now (its completed release); `critical` is the channel policy's flag.
+- **The Reporting window is HOURLY.** HOURLY is UTC and has no weighted metrics (row 17), so the
+  rate is the user-weighted mean of hourly rates across the release's version codes, and the
+  minimum sample counts user-hours (Google warns `distinctUsers` does not add across periods).
+  Thresholds compare with Google's decimal as a fraction of users — confirm on the first real
+  read. Row 17 re-ran PASS at the start of the package (discovery revision now 20260930).
+- **The service account is pinned to the package (P5-02f's pin).** The brief let the manifest's
+  `packageName` alone choose the app; the account is operator-owned and may see several apps, so a
+  repo writer could have aimed the controls and the vitals auto-halt at another app. After the
+  merge of main (P5-02f), `google-service-account` is in `OUTLET_CREDENTIAL_PINS` (field
+  `packageName`), `resolvePlaySetup` checks the pin before anything opens, and a missing or
+  different pin leaves the connector inert: every control (`settings` too) answers 409
+  `credential_pin_missing` / `credential_pin_mismatch`, the poll skips, the status shows `inert`.
+  The console form requires the package name; `test/playPin.test.ts` covers it. Connector
+  migrations renumbered on main: `dist_connector_*` is 0041, this package's settings stay 0042.
+- **Fixtures are recorded-shape, not recorded.** No Play account exists; `test/fixtures/play/`
+  holds payloads in the documented shapes, labelled as such, to re-record with the first real key.
+
 ## Steps
 
 1. Fixtures for `edits.insert`, `tracks.list`, `tracks.patch`, `edits.commit`, `edits.delete`, the
@@ -114,17 +157,17 @@ all built against recorded responses and a fake Google API before a real key exi
 
 ## Acceptance criteria
 
-- [ ] `pnpm --filter @polaris-key/worker test -- play` covers: mapping of all four `status` values;
+- [x] `pnpm --filter @polaris-key/worker test -- play` covers: mapping of all four `status` values;
       `userFraction` 0.05 → 500 bp; a track release naming two version codes; an unknown internal
       track id read from `tracks.list`; an edit invalidated mid-poll (the poll retries next tick,
       writes nothing partial); 429 backoff.
-- [ ] Each control sends the documented PATCH and commit to the fake server, writes one audit row
+- [x] Each control sends the documented PATCH and commit to the fake server, writes one audit row
       and re-reads state; setting priority on a release already rolling out is refused.
-- [ ] With the vitals setting off, no Reporting API call is made; with it on, a rate over the
+- [x] With the vitals setting off, no Reporting API call is made; with it on, a rate over the
       threshold with enough sample halts once and audits once.
-- [ ] The credential is reached only through `openOutletCredential`.
-- [ ] The threat model covers the key; operator docs describe the least-privilege setup.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd`.
+- [x] The credential is reached only through `openOutletCredential`.
+- [x] The threat model covers the key; operator docs describe the least-privilege setup.
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
 
 ## Verify
 

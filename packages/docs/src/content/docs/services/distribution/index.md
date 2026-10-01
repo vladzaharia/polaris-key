@@ -176,8 +176,8 @@ tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, 
 non-secret version of the credential, so the cache is checked first and a credential is opened
 only when a fresh token is needed. Operators set them on the Secrets tab — see
 [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). The first connector is
-the [App Store Connect connector](/docs/services/distribution/app-store-connect/); Play and the
-Microsoft Store follow.
+the [App Store Connect connector](/docs/services/distribution/app-store-connect/), then the
+[Google Play connector](/docs/services/distribution/google-play/); the Microsoft Store follows.
 
 ## Vocabulary
 

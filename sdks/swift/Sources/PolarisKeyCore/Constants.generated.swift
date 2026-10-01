@@ -75,6 +75,8 @@ public enum ErrorCode {
     public static let networkError = "network-error"
     public static let serverError = "server-error"
     public static let cancelled = "cancelled"
+    public static let signInExpired = "sign-in-expired"
+    public static let signInDenied = "sign-in-denied"
     public static let signInUnavailable = "sign-in-unavailable"
     public static let invalidOptions = "invalid-options"
     public static let notConfigured = "not-configured"
@@ -160,6 +162,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "network-error",
     "server-error",
     "cancelled",
+    "sign-in-expired",
+    "sign-in-denied",
     "sign-in-unavailable",
     "invalid-options",
     "not-configured",
@@ -245,6 +249,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "network-error": "client",
     "server-error": "client",
     "cancelled": "client",
+    "sign-in-expired": "client",
+    "sign-in-denied": "client",
     "sign-in-unavailable": "client",
     "invalid-options": "client",
     "not-configured": "client",

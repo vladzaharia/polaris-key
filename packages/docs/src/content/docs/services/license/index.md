@@ -108,9 +108,12 @@ one operator action:
 The three converge: whatever minted it, the license is an ordinary row, and every downstream
 behaviour — seat limits, fingerprint drift, re-licensing, the build gate — applies identically.
 Identity can _merge_ an enrolled license into a signed-in identity rather than abandon it (see
-[claim and migrate](/docs/services/license/enrollment/#claim-and-migrate)). No sign-in route
-triggers that merge today: a device-code sign-in is confirmed with a public user code, so it
-leaves the device's enrolled license untouched.
+[claim and migrate](/docs/services/license/enrollment/#claim-and-migrate)). A sign-in alone
+never triggers that merge: a device-code sign-in is confirmed with a public user code, so it
+leaves the device's enrolled license untouched. The only merge is the device-code holder's
+opt-in at `/device/poll`, after the device was shown the signed-in identity (`confirmIdentity` →
+`confirm` → `attachLicense`); see
+[attaching the device's anonymous license](/docs/services/identity/device-flow/#attaching-the-devices-anonymous-license).
 
 ## How a client uses it
 

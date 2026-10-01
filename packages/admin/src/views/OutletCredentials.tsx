@@ -50,8 +50,8 @@ import { absoluteTime, relativeTime } from "./format.js";
  * the list shows metadata (kind, outlet, created, last used, last result) and never a value.
  * The full "Outlets and credentials" view with webhook health is not this package's.
  *
- * **Pins (P5-02f).** A kind that can reach several store apps (a team-wide App Store Connect key)
- * carries the operator's pin: the one app its connector may read and act on. The connector stays
+ * **Pins (P5-02f).** A kind that can reach several store apps (a team-wide App Store Connect key,
+ * a Google Play service account invited to several apps — P5-03) carries the operator's pin: the one app its connector may read and act on. The connector stays
  * off unless the product's `.pkey/distribution` names that same app, so a repo writer cannot aim
  * the key elsewhere. The form asks for it with the key; each row shows it, and "Pin" changes it
  * without the key material (an audited `outlet_credential.pin`).
@@ -104,6 +104,10 @@ const KINDS: {
   {
     value: "google-service-account",
     label: "Google service account",
+    pin: {
+      label: "Google Play package name",
+      help: "The package name (application id) of the one Play app this service account may read and act on for this product. The connector stays off unless .pkey/distribution names the same package.",
+    },
     fields: [
       {
         key: "json",
@@ -187,7 +191,12 @@ export function OutletCredentials({
   const spec = KINDS.find((k) => k.value === kind)!;
   /** The `meta` field a kind's pin is kept under (the server's word, when it has spoken). */
   const pinField = (k: string): string | null =>
-    data?.pins?.[k]?.field ?? (k === "asc-api-key" ? "appleId" : null);
+    data?.pins?.[k]?.field ??
+    (k === "asc-api-key"
+      ? "appleId"
+      : k === "google-service-account"
+        ? "packageName"
+        : null);
 
   const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();

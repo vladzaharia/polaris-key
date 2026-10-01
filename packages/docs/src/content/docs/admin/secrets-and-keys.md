@@ -94,12 +94,12 @@ there, and no edge-mint recipe can name one.
 
 Four kinds exist today:
 
-| Kind                         | Value                                                     | Least privilege                                                                    |
-| ---------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| App Store Connect API key    | key ID, issuer ID and the `.p8` file (a P-256 PKCS#8 key) | A **team** key with the **App Manager** role — not Admin.                          |
-| App Store webhook secret     | the shared secret App Store Connect signs webhooks with   | Used only to verify Apple's webhook calls; let the Worker generate it.             |
-| Google service account       | the service account's JSON key file                       | Invite the account to **one app** in Play Console with release permissions only.   |
-| Microsoft Partner Center app | tenant ID, client ID, client secret and seller ID         | An Entra app added to Partner Center with the **Manager** role, not Account admin. |
+| Kind                         | Value                                                     | Least privilege                                                                                                                                                                              |
+| ---------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App Store Connect API key    | key ID, issuer ID and the `.p8` file (a P-256 PKCS#8 key) | A **team** key with the **App Manager** role — not Admin.                                                                                                                                    |
+| App Store webhook secret     | the shared secret App Store Connect signs webhooks with   | Used only to verify Apple's webhook calls; let the Worker generate it.                                                                                                                       |
+| Google service account       | the service account's JSON key file                       | Invite the account to **one app** in Play Console with release permissions only ([Google Play connector](/docs/services/distribution/google-play/#least-privilege-for-the-service-account)). |
+| Microsoft Partner Center app | tenant ID, client ID, client secret and seller ID         | An Entra app added to Partner Center with the **Manager** role, not Account admin.                                                                                                           |
 
 Each is validated when you save it — a `.p8` that is not a P-256 PKCS#8 key, or a Google key that
 is not RSA or names a token endpoint other than `https://oauth2.googleapis.com/token`, is refused
@@ -140,7 +140,10 @@ The rules, all enforced by the Worker rather than by the console:
   stored but unused: see
   [the connector's setup](/docs/services/distribution/app-store-connect/#pinning-the-app). The
   list shows the pin with the key's metadata (`meta.appleId`), and `pins` maps each kind that
-  takes one to its field.
+  takes one to its field. A **Google service account** is pinned the same way, by the Play app's
+  package name (`{"kind": "google-service-account", "pin": "gg.acme.dice"}`, `meta.packageName`),
+  because one account can be invited to several apps: see
+  [the Play connector's setup](/docs/services/distribution/google-play/#pinning-the-app).
 - **Deleted with the product,** and re-sealed by the KEK rotation sweep like everything else on
   this page (its own `outletCredentials` bucket in `GET /manage/api/products/kek`).
 

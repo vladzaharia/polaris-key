@@ -206,7 +206,10 @@ be an import in disguise.
 - **claim / migrate** — the two merge outcomes when a signed-in identity meets an auto-issued
   license. _Claim_: the identity is attached to the same row, so devices and local state
   survive. _Migrate_: the identity already had a license, so the enrolled row's devices move
-  onto it and the enrolled row is retired. No sign-in route merges today; see
+  onto it and the enrolled row is retired. The only merge is the device-code holder's opt-in at
+  `/device/poll`, after the device was shown the signed-in identity (`confirmIdentity` →
+  `confirm` → `attachLicense`); a sign-in alone merges nothing. See
+  [attaching the device's anonymous license](/docs/services/identity/device-flow/#attaching-the-devices-anonymous-license) and
   [claim and migrate](/docs/services/license/enrollment/#claim-and-migrate).
 - **re-licensing** — changing a license's `tier_id`. Running clients pick up the new
   entitlements on their next license-document refresh; nothing is pushed. A downgrade below the

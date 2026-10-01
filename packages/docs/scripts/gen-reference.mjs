@@ -357,6 +357,7 @@ const TABLE_OWNERS = {
     "dist_keys",
     "dist_connector_objects",
     "dist_connector_events",
+    "dist_connector_settings",
   ],
   identity: [
     "oidc_config",

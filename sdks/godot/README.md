@@ -71,6 +71,10 @@ sdks/godot/
     services/config/          PKeyConfigResolve (client-core's rules), PKeyConfigEnv,
                               PKeyOverrideStore, PKeyConfigFileStore, PKeyConfigEntry,
                               PKeyMintResult, PKeyConfigBinding
+    services/identity.gd      PKeyIdentity (PolarisKey.identity): device-code sign-in, polling,
+                              the opt-in confirm-identity step and licence attach
+    services/identity/        PKeySignInPrompt, PKeySignInResult
+    ui/qr/                    PKeyQr (byte mode, level M, versions 1-10), PKeyQrCode, PKeyQrRect
   tests/
     runner.gd                 PKeyTestRunner
     support/test_context.gd   PKeyTestContext: check() and info()
@@ -90,6 +94,7 @@ sdks/godot/
     corpus/v2/                GENERATED mirror of conformance/corpus/v2/ — never edit
     transcripts/              GENERATED mirror of conformance/transcripts/ — never edit
     vectors/                  hand-generated SHA-512 and Ed25519 vectors (byte-for-byte)
+    qr/                       QR fixtures from a reference encoder (gen_fixtures.py; byte-for-byte)
   tools/
     run_tests.sh              the one entry point, locally and in CI
     fetch_godot.sh            CI: download and hash-check the official editor (Linux, macOS,
@@ -325,3 +330,38 @@ var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token
   `config.mint.available` is false, the recipe id fails `^[a-z0-9-]+$`, or no device token is
   held. A 401 gets one re-acquire, then the call fails. 401, 404, 429 and 5xx come back as
   distinct `PKeyMintResult.kind` values.
+
+## Identity (`PolarisKey.identity`)
+
+```gdscript
+PolarisKey.identity.sign_in_pending.connect(func(p: PKeySignInPrompt):
+	$Code.text = p.user_code                      # show it large
+	$Qr.text = p.verification_uri_complete        # a PKeyQrRect
+	$Url.text = p.verification_uri)               # the short URL to type
+PolarisKey.identity.sign_in_finished.connect(func(r: PKeySignInResult):
+	if r.ok: $Who.text = "Signed in as %s" % r.identity.get("email", r.identity.get("name", "")))
+await PolarisKey.identity.begin_sign_in()        # polls in the background; cancel() stops it
+```
+
+- Device-code sign-in (RFC 8628) is the only native way a game finishes an identity sign-in.
+  `begin_sign_in` refuses with `service-unavailable` before any request when Identity is off or,
+  per this session's discovery, not configured.
+- Polling follows the server's cadence: at least `interval` between polls (never under one
+  second, never past the code's lifetime), a `slow_down` uses the returned interval or adds five
+  seconds to the current one, a poll that got no answer or a 5xx is retried at the same
+  interval, and nothing is sent after `expires_at`. Every poll carries the `X-PKey-Device` id.
+- `ready` stores the device token (source `signin`) and runs one forced `sync(true)`, so the
+  licence and config documents arrive at once. Show `PKeySignInResult.identity` afterwards: it
+  is how a player notices a stranger confirmed the code and signed the device in to their
+  account.
+- **Opt-in licence attach.** `begin_sign_in(name, true)` holds the flow at the signed-in identity:
+  `sign_in_confirm({identity, attachable})` fires and polling stops until the game calls
+  `accept_sign_in(attach)` or `cancel()`. With `attachable`, `accept_sign_in(true)` attaches the
+  device's anonymous enrolled licence to the account (`attached` is `claimed` or `migrated`).
+  Nothing is minted or merged before the player accepts on the device, and only the device,
+  which holds the device code, can ask.
+- Device-code sign-in sends no fingerprint, so a `strict` tier refuses it.
+- `PKeyQrRect` renders `verification_uri_complete` at any size: one texel per module, NEAREST
+  filtering, a four-module quiet zone, theme colours `dark` / `light` for the type `PKeyQrRect`.
+  The encoder is pure GDScript, held to fixtures from Nayuki's qrcodegen (`tests/qr/`); about
+  8 ms per encode on a release template (11 ms in the editor) on an M-series Mac.
