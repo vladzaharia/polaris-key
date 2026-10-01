@@ -55,6 +55,7 @@ from .core.bundle import (
     verify_bundle,
 )
 from .core.cache import CacheManager
+from .core.headers import canonical_arch, canonical_platform
 from .core.clock import effective_now, high_water_mark
 from .core.context import (
     DEFAULT_BASE,
@@ -161,6 +162,9 @@ __all__ = [
     "DIST_NAME",
     "SDK_NAME",
     "SDK_VERSION",
+    # client metadata header values (WIRE-CONTRACT-V3 §5.2)
+    "canonical_platform",
+    "canonical_arch",
     # facade
     "PolarisKeyClient",
     "SyncState",

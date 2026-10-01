@@ -30,6 +30,10 @@
       "types": "./dist/config.d.ts",
       "default": "./dist/config.js"
     },
+    "./headers": {
+      "types": "./dist/headers.d.ts",
+      "default": "./dist/headers.js"
+    },
     "./semver": {
       "types": "./dist/semver.d.ts",
       "default": "./dist/semver.js"

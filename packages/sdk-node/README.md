@@ -250,9 +250,21 @@ An override env var is `${envPrefix}${key.replaceAll(".", "__")}` (dots → doub
 | `run.concurrency` | `PKEY_CONFIG_run__concurrency` |
 | `quality.floor`   | `PKEY_CONFIG_quality__floor`   |
 
-The value is JSON-parsed when it looks like JSON (`4` → number, `true` → boolean, `[…]`/`{…}` →
-array/object, `"…"` → string); otherwise it is the raw string. Malformed JSON-looking values fall
-back to the raw string.
+The value is the parsed JSON value when the raw string is one strict JSON text (`4` → number,
+`true` → boolean, `[…]`/`{…}` → array/object, `"…"` → string), and otherwise the raw string,
+unchanged (WIRE-CONTRACT-V3 §2.2.1 rule 2, pinned by `conformance/corpus/v2/config-matrix.json`).
+Strict means: no trailing comma, `NaN`, `Infinity`, leading zero or byte order mark; no duplicate
+member names and no member name holding U+0000; no lone surrogate; every number zero or of
+magnitude 10^−307 up to below 10^308; and at most 64 levels of nesting. Reading a variable never
+throws. A set but empty variable counts (its value is `""`).
+
+### What the SDK sends
+
+Every product-scoped request carries the `X-PKey-*` metadata headers. `X-PKey-Platform` and
+`X-PKey-Arch` are the canonical values of WIRE-CONTRACT-V3 §5.2 (`macos`, `windows`, `linux`, …;
+`arm64`, `x86_64`, …), mapped from `os.platform()` and `os.arch()`; a spelling with no value
+(`freebsd`, `ia32`) omits its header. `X-PKey-SDK` is `node` (`SdkId.node`); `SDK_NAME` stays the
+npm package name and is not sent.
 
 ## Offline depths
 

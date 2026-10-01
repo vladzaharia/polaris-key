@@ -80,15 +80,22 @@ func _env_coercion(t: PKeyTestContext) -> void:
 		var c := _ctx({"run.knob": S.entry("default", "remote")}, {}, {"PKEY_CONFIG_run__knob": row[1]})
 		var got := PKeyConfigResolve.resolve_value(c, "run.knob")
 		t.check("resolve: env coercion, %s" % row[0], got.size() == 1 and S.same(got[0], row[2]) and PKeyConfigResolve.resolve_source(c, "run.knob") == PKeyConfigResolve.ENV, JSON.stringify(got))
-	t.check("resolve: looks_like_json", PKeyConfigResolve.looks_like_json(" true") and PKeyConfigResolve.looks_like_json("-0.5e-3") and PKeyConfigResolve.looks_like_json("[") and not PKeyConfigResolve.looks_like_json("") and not PKeyConfigResolve.looks_like_json("yes") and not PKeyConfigResolve.looks_like_json("+1"))
+	# The rule 2 scans on their own (config-matrix.json pins the verdicts; these pin the helpers).
+	t.check("resolve: the depth scan counts brackets outside strings only", not PKeyConfigResolve.nesting_exceeds("[".repeat(64) + "]".repeat(64), 64) and PKeyConfigResolve.nesting_exceeds("[".repeat(65) + "]".repeat(65), 64) and not PKeyConfigResolve.nesting_exceeds("[\"" + "[".repeat(80) + "\"]", 64))
+	t.check("resolve: the number judge reads digits", PKeyConfigResolve.number_token_in_range("9.99e307") and not PKeyConfigResolve.number_token_in_range("1e308") and PKeyConfigResolve.number_token_in_range("0e999999") and not PKeyConfigResolve.number_token_in_range("0e1000000") and not PKeyConfigResolve.number_token_in_range("1e4294967297"))
+	var malformed_ok := true
+	for token in ["1e5-5", "-", "--", "1e", "1e+", "1..2", "1ee5"]:
+		malformed_ok = malformed_ok and PKeyConfigResolve.number_token_in_range(token) is bool
+	t.check("resolve: the number judge never fails on a malformed run", malformed_ok)
 
 
 func _list(t: PKeyTestContext) -> void:
-	var rows := PKeyConfigResolve.list_user_entries({
+	var rows := PKeyConfigResolve.list_user_entries(_ctx({
 		"run.concurrency": S.entry("default", 4),
 		"quality.floor": S.entry("enforced", "flac"),
 		"secret.knob": S.entry("hidden", "locked"),
-	})
+	}, {"run.concurrency": 6, "only.local": 1}))
 	t.check("resolve: the user list drops hidden keys, in document order", rows.map(func(r): return r["key"]) == ["run.concurrency", "quality.floor"], str(rows))
 	t.check("resolve: enforced rows are flagged", rows[1] == {"key": "quality.floor", "value": "flac", "enforced": true} and rows[0]["enforced"] == false)
-	t.check("resolve: no document lists nothing", PKeyConfigResolve.list_user_entries(null).is_empty())
+	t.check("resolve: each row carries its resolved value, and override-only keys are not listed", rows[0]["value"] == 6 and rows.size() == 2, str(rows))
+	t.check("resolve: no document lists nothing", PKeyConfigResolve.list_user_entries(_ctx(null, {"a": 1})).is_empty())

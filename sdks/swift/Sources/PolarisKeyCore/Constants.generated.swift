@@ -420,6 +420,24 @@ public let ARCH_VALUES: [String] = [
     "wasm32",
 ]
 
+/// The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands.
+public enum SdkId {
+    public static let node = "node"
+    public static let react = "react"
+    public static let python = "python"
+    public static let swift = "swift"
+    public static let godot = "godot"
+}
+
+/// Every `SdkId` value, in source order.
+public let SDK_ID_VALUES: [String] = [
+    "node",
+    "react",
+    "python",
+    "swift",
+    "godot",
+]
+
 /// The `X-PKey-*` request header names (wire contract v3 §5).
 public enum HeaderName {
     public static let arch = "X-PKey-Arch"
@@ -480,3 +498,35 @@ public let PR_CHANNEL_PATTERN = "^pr-?([0-9]+)$"
 
 /// Channel constant `PR_NUMBER_MAX_DIGITS` (`@polaris-key/protocol/core`).
 public let PR_NUMBER_MAX_DIGITS = 7
+
+/// Header-value table `ARCH_SPELLINGS`: a runtime's spelling, ASCII-lowercased, to its canonical value (WIRE-CONTRACT-V3 §5.2, `@polaris-key/protocol/core`).
+public let ARCH_SPELLINGS: [String: String] = [
+    "arm64": "arm64",
+    "aarch64": "arm64",
+    "arm64-v8a": "arm64",
+    "x86_64": "x86_64",
+    "x64": "x86_64",
+    "amd64": "x86_64",
+    "armv7": "armv7",
+    "armv7l": "armv7",
+    "armv8l": "armv7",
+    "arm": "armv7",
+    "arm32": "armv7",
+    "armeabi-v7a": "armv7",
+    "wasm32": "wasm32",
+]
+
+/// Header-value table `PLATFORM_SPELLINGS`: a runtime's spelling, ASCII-lowercased, to its canonical value (WIRE-CONTRACT-V3 §5.2, `@polaris-key/protocol/core`).
+public let PLATFORM_SPELLINGS: [String: String] = [
+    "macos": "macos",
+    "darwin": "macos",
+    "maccatalyst": "macos",
+    "ios": "ios",
+    "ipados": "ios",
+    "android": "android",
+    "windows": "windows",
+    "win32": "windows",
+    "linux": "linux",
+    "web": "web",
+    "browser": "web",
+]

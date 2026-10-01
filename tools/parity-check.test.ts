@@ -438,6 +438,51 @@ describe("rule 4 — a planned entry names an open work package", () => {
   });
 });
 
+describe("rule 4 — a registry corpus proof's wp (proof level)", () => {
+  const proofNaming = (file: string, wp: string): Json => {
+    const r = registry();
+    (r.features as Json[])[0]!.proof = [{ kind: "corpus", file, wp }];
+    return r;
+  };
+  const untagged = {
+    ...TESTS,
+    "verify.test.ts": `// @pkey-feature demo.verify\n`,
+  };
+
+  it("fails a missing proof whose owner is done", () => {
+    const { violations } = run({
+      registry: proofNaming("future.json", "P9-02"),
+      tests: untagged,
+    });
+    expect(violations).toEqual([
+      "[rule 4] demo.verify: corpus proof names P9-02, which is done, but conformance/corpus/v2/future.json does not exist",
+    ]);
+  });
+
+  it("fails a missing proof whose owner is not a work package", () => {
+    const { violations } = run({
+      registry: proofNaming("future.json", "P9-99"),
+      tests: untagged,
+    });
+    expect(violations).toEqual([
+      "[rule 4] demo.verify: corpus proof future.json names P9-99, which is not a work package",
+    ]);
+  });
+
+  it("passes a missing proof whose owner is still open", () => {
+    const { violations } = run({
+      registry: proofNaming("future.json", "P9-01"),
+      tests: untagged,
+    });
+    expect(violations).toEqual([]);
+  });
+
+  it("passes a present proof whose owner is done: the wp is provenance", () => {
+    const { violations } = run({ registry: proofNaming("mini.json", "P9-02") });
+    expect(violations).toEqual([]);
+  });
+});
+
 // ── Rule 5 ─────────────────────────────────────────────────────────────────────────────────
 
 describe("rule 5 — a tag names a registry feature", () => {

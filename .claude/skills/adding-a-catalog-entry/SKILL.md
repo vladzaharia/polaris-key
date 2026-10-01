@@ -81,7 +81,9 @@ tier/license/device. The client precedence is
 | `hidden`   | `enforced` **and** withheld from `listUserConfig` / enumeration; still applied internally | the user must not see or reason about the value at all                         |
 
 The env override for a key is `PKEY_CONFIG_` + the key with dots → `__`
-(`run.concurrency` → `PKEY_CONFIG_run__concurrency`), JSON-parsed when it parses.
+(`run.concurrency` → `PKEY_CONFIG_run__concurrency`), parsed only when it is one strict JSON
+text (WIRE-CONTRACT-V3 §2.2.1 rule 2: no duplicate names, every number zero or of magnitude
+10^−307 up to below 10^308, at most 64 deep), else the raw string.
 
 ### 5. Choose `delivery` (secret kinds only)
 

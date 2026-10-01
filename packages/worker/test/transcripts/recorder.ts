@@ -47,13 +47,15 @@ import {
 export const BASE_URL = "https://key.plrs.im";
 
 /** The values the recorder sends for the metadata headers a transcript asserts by presence
- *  only. They are the recorder's own, not any SDK's, and never appear in a transcript. */
+ *  only. They are the recorder's own, not any SDK's; platform and arch are canonical
+ *  WIRE-CONTRACT-V3 §5.2 values, and appear in a transcript only where a roster response echoes
+ *  the stored device row. */
 const RECORDER_METADATA = {
   "x-pkey-channel": "stable",
   "x-pkey-sdk": "pkey-transcript-recorder",
   "x-pkey-sdk-version": "1",
   "x-pkey-platform": "linux",
-  "x-pkey-arch": "x64",
+  "x-pkey-arch": "x86_64",
 };
 
 export interface World {

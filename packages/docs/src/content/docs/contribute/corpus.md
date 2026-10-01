@@ -18,18 +18,23 @@ gate-matrix-only runner); the ones a contributor touches most:
 
 - **Node** — `conformance/runners/node`: `corpusV2.test.ts` covers the JWS, document, trust,
   and bundle cases plus the gate matrix; `fingerprint.test.ts` covers the fingerprint vectors;
-  `stageMatrix.test.ts` covers the boot stage machine.
+  `stageMatrix.test.ts` covers the boot stage machine; `headers.test.ts` and
+  `configMatrix.test.ts` cover the header values and config resolution.
+- **React** — `packages/sdk-react/test/`: `headers.test.ts` (the `web` rows and the captured
+  request) and `configMatrix.test.ts` (every config case, against its no-environment answer).
 - **Python** — `sdks/python/tests/`: `test_conformance.py`, `test_gate_matrix.py`,
-  `test_fingerprint_conformance.py`, `test_stage_matrix.py`, and more, one file per corpus
-  concern.
+  `test_fingerprint_conformance.py`, `test_stage_matrix.py`, `test_headers.py`,
+  `test_config_matrix.py`, and more, one file per corpus concern.
 - **Swift** — `sdks/swift/Tests/PolarisKeyTests/`: `ConformanceTests.swift`,
   `GateMatrixTests.swift`, `FingerprintConformanceTests.swift`, `StageMatrixTests.swift`,
-  and more.
-- **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers every `cases.json` family and
-  the `fingerprint.json` device ids (the gate and stage matrices follow with the licence client
-  and the boot stage machine), run by `sdks/godot/tools/run_tests.sh` on an editor and an
-  exported release template.
-- **The Worker** — two slices. `packages/worker/test/fingerprintCorpus.test.ts` covers the
+  `HeadersTests.swift`, `ConfigMatrixTests.swift`, and more.
+- **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers every `cases.json` family, the
+  `fingerprint.json` device ids and both `headers.json` sections, and `config/test_matrix.gd`
+  runs `config-matrix.json` with the environment layer on and off (the gate and stage matrices
+  follow with the licence client and the boot stage machine), run by
+  `sdks/godot/tools/run_tests.sh` on an editor and an exported release template.
+- **The Worker** — three slices. `packages/worker/test/headersCorpus.test.ts` runs every
+  `headers.json` row through the normaliser that stores the client metadata headers. `packages/worker/test/fingerprintCorpus.test.ts` covers the
   fingerprint/device-id vectors: the Worker recomputes a submitted device's `hwid` server-side
   rather than trusting the client's copy, so it has to agree with what every SDK computes
   client-side. `packages/worker/test/gateMatrixCorpus.test.ts` replays every `gate-matrix.json`
@@ -44,19 +49,21 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 ## What's in the corpus
 
-Four files, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
+Six files, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
-| File                | Contents                                                                                                                                                                                                        |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cases.json`        | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles.                                                                                                                   |
-| `gate-matrix.json`  | The client gate's decision table — every input combination and the state it must produce.                                                                                                                       |
-| `fingerprint.json`  | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`. |
-| `stage-matrix.json` | The boot stage machine (client boot behaviour, outside the wire contract): rows and guard cases.                                                                                                                |
+| File                 | Contents                                                                                                                                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cases.json`         | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles.                                                                                                                   |
+| `gate-matrix.json`   | The client gate's decision table — every input combination and the state it must produce.                                                                                                                       |
+| `fingerprint.json`   | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`. |
+| `stage-matrix.json`  | The boot stage machine (client boot behaviour, outside the wire contract): rows and guard cases.                                                                                                                |
+| `headers.json`       | WIRE-CONTRACT-V3 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                    |
+| `config-matrix.json` | WIRE-CONTRACT-V3 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                      |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the
 files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerprintVersion` **1**,
-`stageMatrixVersion` **1** — and case counts, generated straight from the corpus files, live at
+`stageMatrixVersion` **1**, `headersVersion` **1**, `configMatrixVersion` **1** — and case counts, generated straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
 ## The Swift resource mirror
@@ -70,7 +77,7 @@ the source, file for file.
 ## The Godot resource mirror
 
 An exported Godot pack can read only `res://`, its own project directory, so the generator also
-writes all three files into `sdks/godot/tests/corpus/v2/`. The editor run and the
+writes every file into `sdks/godot/tests/corpus/v2/`. The editor run and the
 release-template run both read that mirror, and the drift check guards it like the Swift one.
 Every target is one entry in `CORPUS_TARGETS` in `sign-corpus.ts`, so a new corpus file reaches
 every mirror by construction. A JSON file in a mirror that the generator does not write fails
@@ -81,7 +88,8 @@ for that platform, `expect.docNulReplaced` (WIRE-CONTRACT-V3 §10). Other runner
 
 ## Never hand-edit the generated files
 
-`cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, and both mirrors are all output.
+`cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`,
+`config-matrix.json`, and both mirrors are all output.
 `pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
 committed file differs — mirrors included. A red drift job means a wire-affecting change wasn't
 reflected in the corpus; regenerate and commit the result in the same PR:
@@ -124,6 +132,16 @@ runner replays every row and sends every probe at every state the rows reach. Ro
 only the current vocabulary keep `stageMatrixVersion`; a change to the vocabulary, to `accepts`
 or to an existing row's expectation bumps it, and the package that does so updates every port
 in the same change.
+
+`headers.json` and `config-matrix.json` are hand-authored and **append-only** too.
+`buildHeadersCorpus` writes one row per spelling; its self-check ties every canonical value to
+`conformance/parity/enums.json` and requires an identity row for each, so a new vocabulary value
+needs a corpus case, and every runner asserts that its generated table equals the rows. A new
+spelling (a row plus a table entry) keeps `headersVersion`. `buildConfigMatrix` checks every
+expectation against a generator-local reference of §2.2.1 that imports nothing from the SDKs,
+and fails on a missing or redundant `expectNoEnv`, an unsorted list, an unused source or JSON
+type, a number some SDK would read differently, or a rule whose edges are not pinned. A new row
+keeps `configMatrixVersion`; a changed row or rule bumps it.
 
 ## HTTP transcripts
 

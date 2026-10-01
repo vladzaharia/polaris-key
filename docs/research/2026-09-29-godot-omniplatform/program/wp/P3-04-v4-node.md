@@ -1,16 +1,16 @@
 # P3-04 Wire v4 in the Node SDK: feed and release-record verification, update decision
 
-| Field       | Value                                                                             |
-| ----------- | --------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                             |
-| Size        | 0.5–0.75 engineer-weeks                                                           |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P3-05](P3-05-v4-react.md)             |
-| Unblocks    | [P4-06](P4-06-client-core-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
-| Role        | `pkey-sdk-porter`                                                                 |
-| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                         |
-| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                  |
-| Human input | none                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                         |
+| Field       | Value                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                                                                 |
+| Size        | 0.5–0.75 engineer-weeks                                                                                               |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P3-05](P3-05-v4-react.md)                                                 |
+| Unblocks    | [P3-11](P3-11-outlet-detection.md), [P4-06](P4-06-client-core-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
+| Role        | `pkey-sdk-porter`                                                                                                     |
+| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                                                             |
+| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                                                      |
+| Human input | none                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                             |
 
 ## Goal
 
@@ -29,9 +29,9 @@ processes are "verify, then stage" hosts ([notes/E9 §2.3](../../notes/E9-runtim
 so the verified decision is what they act on.
 
 **Dependency note.** The pure functions live in `client-core` and are written in
-[P3-05](P3-05-v4-react.md), which also adds the Node conformance runner sections. Start this
-package after P3-05 has merged. The graph lists only P3-02; adding P3-05 as a dependency is
-proposed.
+[P3-02](P3-02-wire-v4-contract-corpus.md) (`parseVersion`, `compareVersions`, `feedClaims`,
+`releaseRecordClaims`) and [P3-05](P3-05-v4-react.md) (the rest), which also adds the Node
+conformance runner sections. P3-05 is a graph dependency.
 
 ## Read first
 
@@ -82,6 +82,33 @@ proposed.
 
 ## Design notes
 
+- **Plan amendments (`plans/P3-01.md` §8, approved).** Where this brief and the plan differ, the
+  plan wins:
+  - the function names, refusal reasons and steps in plan §2.7 and §2.5, including
+    `parseVersion`, `compareVersions`, `resolveUpdateOutlet` and
+    `effectiveCapabilities(kind, {platform, …})`;
+  - `decide()` returns an `UpdateCheck` (`channel`, `decision`, `feed`, `record`, `errors`) with
+    §2.5's error map, the record-body bound (`MAX_RECORD_JWS_BYTES`, 88 844 bytes, refused at
+    step 12 without hashing) included; the decision inputs are `outlet {id, kind}`, `subkind`,
+    `format` and `methods`;
+  - every pattern goes through the SDK's whole-string pattern helper, and member presence is as
+    plan §2.2 says (a required member present, an optional one absent or typed, never `null`);
+    `builds[].id` and `targets[].platform` are ASCII by `BUILD_ID_PATTERN` and
+    `FEED_PLATFORM_PATTERN`;
+  - the cache slices are `feeds` and `releaseRecords`; `bootDecision` never answers `required`,
+    and `mandatory` and `blocked` are prompts the player cannot dismiss; an empty
+    `pinnedReleaseKeys` raises `not-configured` and a release key that is also a trust pin raises
+    `invalid-options`;
+  - the canonical channel (§2.3, §2.5, §2.6): `feeds` and the floors are keyed by each feed's own
+    `channel` claim, `verifyFeed`'s `floors` map is read only after step 5, the fallback order,
+    the removal of the requested name's entry after an alias answer, and `UpdateCheck.channel`;
+    no SDK resolves an alias itself, and the decision has no `channel` input;
+  - this package's transcript replayer learns the `updateDecide` action and the `initial.update`
+    block in the same PR that flips `update.feed`, `release.record` and `update.decide`
+    (plan §5).
+- **Node specifics.** Options gain `outlet` as a kind or `{id, kind, subkind?}` (a bad value
+  raises `invalid-options`), `format` and `methods`; the overlap refusal at construction; the
+  replayer is `conformance/runners/node/transcriptReplay.ts`.
 - Use `client-core`; do not re-implement any check here. The SDK's job is transport, storage and
   mapping host state to decision inputs.
 - `pinnedReleaseKeys` never merges with `trust.pinnedKeys` or the discovered set, and nothing

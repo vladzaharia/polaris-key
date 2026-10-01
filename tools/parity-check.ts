@@ -23,7 +23,9 @@
 //      runtime/reason pair the registry does not allow, or an `na` leaves one of the
 //      manifest's runtimes uncovered (unless it names a trait the manifest lists);
 //   4. a `planned` entry's `wp` is not a work package, or that package is already `done`
-//      (`unowned: true` with a note is listed, not failed; with no program file, skipped);
+//      (`unowned: true` with a note is listed, not failed; with no program file, skipped); and
+//      likewise a registry corpus proof that does not exist yet names a `wp` that is unknown or
+//      already `done` (an active proof's `wp` is provenance and is not checked);
 //   5. a tag names an unknown feature id;
 //   6. a transcript is malformed, names a feature the registry lacks, or lists a feature whose
 //      registry entry has no `transcript` proof; or a transcript APPLIES to an SDK — every id in
@@ -422,6 +424,21 @@ export function checkParity(options: ParityOptions): ParityResult {
       );
     features.set(f.id, f);
   }
+  // ── The program (rule 4's source of truth) ──────────────────────────────────────────────
+  const programFile = options.programFile ?? PROGRAM_PATH;
+  let program: Map<string, ProgramPackage> | null = null;
+  const programJson = readJson(root, programFile);
+  if (programJson.error) {
+    warnings.push(
+      `[rule 4] skipped: ${programJson.error}; planned entries' work packages are not checked`,
+    );
+  } else {
+    const packages =
+      (programJson.data as { workPackages?: ProgramPackage[] }).workPackages ??
+      [];
+    program = new Map(packages.map((p) => [p.id, p]));
+  }
+
   const runtimeIds = new Set(registry.runtimes.map((r) => r.id));
   const traitIds = new Set(registry.traits.map((t) => t.id));
   const familyIds = new Set(registry.families.map((f) => f.id));
@@ -446,26 +463,27 @@ export function checkParity(options: ParityOptions): ParityResult {
     }
     for (const proof of f.proof) {
       if (proof.kind !== "corpus") continue;
-      if (!corpusProofState(root, proof).active && !proof.wp)
+      const where = `${proof.file}${proof.family ? `#${proof.family}` : ""}`;
+      // An active proof's `wp` is provenance only. A proof that does not exist yet must name
+      // the open work package that adds it (rule 4, proof level).
+      if (corpusProofState(root, proof).active) continue;
+      if (!proof.wp) {
         violations.push(
-          `[registry] ${f.id}: corpus proof ${proof.file}${proof.family ? `#${proof.family}` : ""} does not exist and names no work package that adds it`,
+          `[registry] ${f.id}: corpus proof ${where} does not exist and names no work package that adds it`,
+        );
+        continue;
+      }
+      if (!program) continue;
+      const owner = program.get(proof.wp);
+      if (!owner)
+        violations.push(
+          `[rule 4] ${f.id}: corpus proof ${where} names ${proof.wp}, which is not a work package`,
+        );
+      else if (owner.status === "done")
+        violations.push(
+          `[rule 4] ${f.id}: corpus proof names ${proof.wp}, which is done, but ${CORPUS_DIR}/${proof.file} does not exist${proof.family ? ` (or lacks ${proof.family})` : ""}`,
         );
     }
-  }
-
-  // ── The program (rule 4's source of truth) ──────────────────────────────────────────────
-  const programFile = options.programFile ?? PROGRAM_PATH;
-  let program: Map<string, ProgramPackage> | null = null;
-  const programJson = readJson(root, programFile);
-  if (programJson.error) {
-    warnings.push(
-      `[rule 4] skipped: ${programJson.error}; planned entries' work packages are not checked`,
-    );
-  } else {
-    const packages =
-      (programJson.data as { workPackages?: ProgramPackage[] }).workPackages ??
-      [];
-    program = new Map(packages.map((p) => [p.id, p]));
   }
 
   // ── The transcripts (rule 6) ────────────────────────────────────────────────────────────

@@ -153,10 +153,22 @@ are ignored for those keys; `hidden` keys are additionally withheld from `listUs
 still applied by `config(_:default:)`).
 
 The env var for a key is `envPrefix + key` with dots replaced by `__` (default prefix
-`PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The raw string is
-JSON-decoded when it looks like JSON (`4` → int, `true` → bool, `[1,2]` → array); otherwise it
-is taken as a plain string. Supply `localOverrides` / `envPrefix` / an injected `environment`
-via `ConfigClientOptions`.
+`PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The value is the decoded
+JSON value when the raw string is one strict JSON text (`4` → int, `true` → bool, `[1,2]` →
+array), and otherwise the plain string, unchanged (WIRE-CONTRACT-V3 §2.2.1 rule 2, pinned by
+`conformance/corpus/v2/config-matrix.json`). Strict means: no trailing comma, leading byte order
+mark, duplicate member names (compared by scalar value) or member name holding U+0000; every
+number zero or of magnitude 10^−307 up to below 10^308; and at most 64 levels of nesting.
+Reading a variable never throws. One declared limit (WIRE-CONTRACT-V3 §10): Swift's
+`[String: JSONValue]` keeps only the first of two canonically equivalent member names, though
+the verdict is the same as everywhere else. Supply `localOverrides` / `envPrefix` / an injected
+`environment` via `ConfigClientOptions`; the rules themselves are the public, pure
+`ConfigResolution`.
+
+Every request carries `X-PKey-Platform` and `X-PKey-Arch` as the canonical §5.2 values of the
+binary's compilation conditions (`macos`, `ios` — a Catalyst build sends `macos` — `linux`,
+`windows`, `android`; `arm64`, `x86_64`, `armv7`, `wasm32`), omitted when there is none, and
+`X-PKey-SDK: swift` (`POLARIS_SDK_NAME`, the generated `SdkId.swift`).
 
 ### Device-code sign-in
 

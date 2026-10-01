@@ -4966,17 +4966,31 @@ components:
     PlatformHeader:
       name: X-PKey-Platform
       in: header
-      description: Recorded on the device row and echoed back as `platform`.
+      description: >
+        The OS family of the running binary (WIRE-CONTRACT-V3 §5.2): `macos`, `ios` (iPadOS
+        too), `android`, `windows`, `linux` or `web`. An SDK omits it when its runtime's
+        spelling has no value. Recorded on the device row and echoed back as `platform`; an
+        older spelling (`darwin`, `win32`, `browser`, …) is stored as its canonical value, any
+        other value as sent, and an empty value as absent.
       schema: { type: string }
     ArchHeader:
       name: X-PKey-Arch
       in: header
-      description: Recorded on the device row and echoed back as `arch`.
+      description: >
+        The CPU architecture the running binary was built for (WIRE-CONTRACT-V3 §5.2): `arm64`,
+        `x86_64`, `armv7` or `wasm32`; a browser sends none. Recorded on the device row and
+        echoed back as `arch`; an older spelling (`x64`, `AMD64`, `aarch64`, …) is stored as its
+        canonical value, any other value as sent, and an empty value as absent.
       schema: { type: string }
     SdkHeader:
       name: X-PKey-SDK
       in: header
-      description: Recorded on the device row and echoed back as `sdkName`.
+      description: >
+        The SDK id (WIRE-CONTRACT-V3 §5.2): `node`, `react`, `python`, `swift` or `godot`; a
+        later SDK registers its own. The package version is `X-PKey-SDK-Version`. Recorded on
+        the device row and echoed back as `sdkName`; a pre-§5.2 package name
+        (`@polaris-key/node`, `PolarisKeySwift`, …) is stored as its id, any other value as
+        sent, and an empty value as absent.
       schema: { type: string }
     SdkVersionHeader:
       name: X-PKey-SDK-Version

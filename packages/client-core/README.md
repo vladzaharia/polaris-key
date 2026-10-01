@@ -45,20 +45,21 @@ verification primitives with no transport or store attached.
 Each module is also its own entry point, for a host that wants a single concern without
 pulling the barrel (`sideEffects: false`, so an unused subpath costs nothing either way):
 
-| Subpath                           | Exports                                                                                                                   | What it does                                                                                 |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `@polaris-key/client-core`        | everything below                                                                                                          | the barrel                                                                                   |
-| `@polaris-key/client-core/verify` | `verifyDoc`, `verifyLicenseDoc`, `verifyConfigDoc`, `LICENSE_DOC`, `CONFIG_DOC`                                           | JWS verification + per-document claim validation                                             |
-| `@polaris-key/client-core/trust`  | `verifyTrustManifest`, `mergeTrust`                                                                                       | trust-manifest verification and the two-tier pinned-then-discovered merge                    |
-| `@polaris-key/client-core/bundle` | `verifyBundle`, `inspectBundle`, `MAX_BUNDLE_BYTES`                                                                       | offline activation bundle verification, all-or-nothing, in wire-contract §7's numbered order |
-| `@polaris-key/client-core/gate`   | `licenseState`, `isUsable`                                                                                                | the license gate state machine over a cached document + the clock floor                      |
-| `@polaris-key/client-core/config` | `resolveValue`, `resolveSource`, `listUserEntries`                                                                        | layered config resolution                                                                    |
-| `@polaris-key/client-core/semver` | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                         | client-side semver + the build-channel family (WIRE-CONTRACT-V3 §5.1)                        |
-| `@polaris-key/client-core/claims` | `CLOCK_SKEW_SECONDS`, `MAX_GRACE_SECONDS`, `REFRESH_MARGIN_SECONDS`                                                       | the shared claim-validation constants every implementation must agree on                     |
-| `@polaris-key/client-core/clock`  | `highWaterMark`, `effectiveNow`                                                                                           | the monotonic clock floor: `max(issuedAt)` over every re-verified artifact                   |
-| `@polaris-key/client-core/errors` | `PolarisError`                                                                                                            | the one error type, carrying the server's machine-readable code                              |
-| `@polaris-key/client-core/store`  | `CACHE_VERSION`, `Store`, `CacheRecordV3`                                                                                 | the persistence _contract_ (types only) — no concrete store lives here                       |
-| `@polaris-key/client-core/stages` | `initialBootState`, `bootTransition`, `bootGuardAction`, `MAX_FAILED_BOOTS`, `BOOT_STAGES` and the other vocabulary lists | the boot stage machine every renderer drives, and the boot guard's launch decision           |
+| Subpath                            | Exports                                                                                                                   | What it does                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `@polaris-key/client-core`         | everything below                                                                                                          | the barrel                                                                                   |
+| `@polaris-key/client-core/verify`  | `verifyDoc`, `verifyLicenseDoc`, `verifyConfigDoc`, `LICENSE_DOC`, `CONFIG_DOC`                                           | JWS verification + per-document claim validation                                             |
+| `@polaris-key/client-core/trust`   | `verifyTrustManifest`, `mergeTrust`                                                                                       | trust-manifest verification and the two-tier pinned-then-discovered merge                    |
+| `@polaris-key/client-core/bundle`  | `verifyBundle`, `inspectBundle`, `MAX_BUNDLE_BYTES`                                                                       | offline activation bundle verification, all-or-nothing, in wire-contract §7's numbered order |
+| `@polaris-key/client-core/gate`    | `licenseState`, `isUsable`                                                                                                | the license gate state machine over a cached document + the clock floor                      |
+| `@polaris-key/client-core/config`  | `resolveValue`, `resolveSource`, `listUserEntries`                                                                        | layered config resolution (WIRE-CONTRACT-V3 §2.2.1, `config-matrix.json`)                    |
+| `@polaris-key/client-core/headers` | `canonicalPlatform`, `canonicalArch`                                                                                      | a runtime's platform/arch spelling to its canonical header value (§5.2, `headers.json`)      |
+| `@polaris-key/client-core/semver`  | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                         | client-side semver + the build-channel family (WIRE-CONTRACT-V3 §5.1)                        |
+| `@polaris-key/client-core/claims`  | `CLOCK_SKEW_SECONDS`, `MAX_GRACE_SECONDS`, `REFRESH_MARGIN_SECONDS`                                                       | the shared claim-validation constants every implementation must agree on                     |
+| `@polaris-key/client-core/clock`   | `highWaterMark`, `effectiveNow`                                                                                           | the monotonic clock floor: `max(issuedAt)` over every re-verified artifact                   |
+| `@polaris-key/client-core/errors`  | `PolarisError`                                                                                                            | the one error type, carrying the server's machine-readable code                              |
+| `@polaris-key/client-core/store`   | `CACHE_VERSION`, `Store`, `CacheRecordV3`                                                                                 | the persistence _contract_ (types only) — no concrete store lives here                       |
+| `@polaris-key/client-core/stages`  | `initialBootState`, `bootTransition`, `bootGuardAction`, `MAX_FAILED_BOOTS`, `BOOT_STAGES` and the other vocabulary lists | the boot stage machine every renderer drives, and the boot guard's launch decision           |
 
 ## The pieces
 
@@ -114,9 +115,22 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 ```
 
 Isomorphic on purpose: the environment is an injected lookup table, never `process.env` read
-here, so the same function resolves config inside a browser bundle. This module owns the
-dot-to-`__` mapping (`run.concurrency` → `${envPrefix}run__concurrency`) every host's
-`PKEY_CONFIG_*` convention builds on.
+here, so the same function resolves config inside a browser bundle (a host without an
+environment passes `{}`). This module owns the dot-to-`__` mapping (`run.concurrency` →
+`${envPrefix}run__concurrency`) every host's `PKEY_CONFIG_*` convention builds on, and the
+environment-value rule (WIRE-CONTRACT-V3 §2.2.1 rule 2): a value is parsed only when the raw
+string is one strict JSON text (no duplicate names, no lone surrogate, no U+0000 in a member
+name, every number zero or of magnitude 10^−307 up to below 10^308, at most 64 levels deep),
+and is otherwise the raw string. Reading a variable never throws. Every layer reads own
+properties only, so a key named `constructor` is an ordinary key. `listUserEntries(ctx)` lists
+the document's entries minus `hidden`, each with its resolved value.
+
+### Headers (`headers.ts`)
+
+`canonicalPlatform` and `canonicalArch` map a runtime's report (`darwin`, `x64`, …) through
+`PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` from `@polaris-key/protocol/core`, after ASCII case
+folding, to the WIRE-CONTRACT-V3 §5.2 value, or `null` when the spelling has none (the host
+then omits the header).
 
 ### Clock (`clock.ts`)
 

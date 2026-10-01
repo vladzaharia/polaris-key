@@ -43,7 +43,7 @@ import type {
 } from "@polaris-key/protocol/license";
 import { compareSemver, highWaterMark } from "@polaris-key/client-core";
 import type { ProductCatalog } from "@polaris-key/catalog";
-import { SDK_NAME, SDK_VERSION } from "../version.js";
+import { SDK_VERSION } from "../version.js";
 import {
   configSource,
   currentDeviceFromState,
@@ -53,7 +53,7 @@ import {
   readEntitled,
   readEntitledChannels,
 } from "../core/adapter.js";
-import { ErrorCode } from "../constants.generated.js";
+import { ErrorCode, Platform, SdkId } from "../constants.generated.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -250,12 +250,14 @@ export class BrowserAdapter implements PolarisAdapter {
    *
    * Browsers send NO hardware fingerprint — canvas/WebGL-style fingerprinting is unreliable,
    * actively degraded by browsers, and privacy-hostile — so these headers plus the User-Agent
-   * the browser adds itself are the entire honest signal available here.
+   * the browser adds itself are the entire honest signal available here. The values are
+   * WIRE-CONTRACT-V3 §5.2's: platform `web`, SDK id `react`, and no `X-PKey-Arch` (a browser's
+   * JavaScript has no architecture to report).
    */
   private metadataHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      [HEADER_PLATFORM]: "browser",
-      [HEADER_SDK_NAME]: SDK_NAME,
+      [HEADER_PLATFORM]: Platform.web,
+      [HEADER_SDK_NAME]: SdkId.react,
       [HEADER_SDK_VERSION]: SDK_VERSION,
     };
     if (this.version) headers[HEADER_VERSION] = this.version;

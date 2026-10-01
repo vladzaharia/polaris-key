@@ -81,6 +81,13 @@ decision is conformance-tested like the licence gate, so these rows are what kee
 
 ## Design notes
 
+- **From P3-01's approved plan** (`plans/P3-01.md` §2.8, §8): the feed route is
+  `GET /{product}/update/{channel}/feed.jws?platform=`; `content-floor` and `revoked-content` sit
+  after `app-floor` and the mandatory offers in the decision order, and `prestage` is filled on
+  `binary`. Both reasons are reserved names that this package adds to `BLOCKED_REASONS`, the
+  `updateBlockedReason` enum and `vocabulary.blockedReasons` together. This package decides
+  whether either maps to `required`, the boot value v4 leaves unused (P3-01 decision 1: no v4
+  answer stops play). New integer claims follow plan §2.2's rule, each with its minimum.
 - **The slots exist.** P3-01's plan reserves, for P4: in the record, `kind: revocation` and
   `content: {contentApi, pins[], holds[], expects[], packChannels}`; in the feed, `packSets`, pack
   floors per `contentApi` and revocations; in the decision, `packs`, `prestage`, `content-floor`

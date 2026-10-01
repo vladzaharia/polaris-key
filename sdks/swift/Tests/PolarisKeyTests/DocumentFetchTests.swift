@@ -75,6 +75,12 @@ final class DocumentFetchTests: XCTestCase {
         XCTAssertEqual(req?.headers[HEADER_VERSION], "1.0.0")
         XCTAssertEqual(req?.headers[HEADER_CHANNEL], "stable")
         XCTAssertEqual(req?.headers[HEADER_SDK_NAME], POLARIS_SDK_NAME)
+        // @pkey-feature core.headers
+        // WIRE-CONTRACT-V3 §5.2: the short SDK id and the canonical platform and arch.
+        XCTAssertEqual(req?.headers[HEADER_SDK_NAME], "swift")
+        XCTAssertNotNil(PlatformFamily.headerValue)
+        XCTAssertEqual(req?.headers[HEADER_PLATFORM], PlatformFamily.headerValue)
+        XCTAssertEqual(req?.headers[HEADER_ARCH], ArchFamily.headerValue)
         XCTAssertEqual(req?.headers["if-none-match"], "v1")
     }
 

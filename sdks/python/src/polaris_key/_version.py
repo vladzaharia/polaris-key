@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
+from .constants_generated import SdkId
+
 #: The PyPI distribution name. The IMPORT package is ``polaris_key``.
 DIST_NAME = "polaris-key"
 
@@ -16,8 +18,8 @@ def _installed_version() -> str:
 
 
 __version__ = _installed_version()
-#: Sent as ``X-PKey-SDK``. The Python SDK identifies as ``polaris-key-python`` — the header
-#: names the SDK, not the distribution, and the four SDKs must be distinguishable in the
-#: Worker's device roster.
-SDK_NAME = "polaris-key-python"
+#: Sent as ``X-PKey-SDK``: the short SDK id ``python`` (WIRE-CONTRACT-V3 §5.2, the generated
+#: ``SdkId``). The header names the SDK, not the distribution, so the SDKs are distinguishable
+#: in the Worker's device roster; the version travels in ``X-PKey-SDK-Version``.
+SDK_NAME = SdkId.PYTHON
 SDK_VERSION = __version__

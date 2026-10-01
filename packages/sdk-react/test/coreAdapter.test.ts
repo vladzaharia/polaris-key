@@ -325,13 +325,11 @@ describe("listUserConfig (settings-UI enumeration)", () => {
       value: "local",
       enforced: false,
     });
-    // Override-only rows are included — which is why this is NOT client-core's
-    // `listUserEntries`, which enumerates the remote catalog alone.
-    expect(byKey.onlyLocal).toEqual({
-      key: "onlyLocal",
-      value: "y",
-      enforced: false,
-    });
+    // WIRE-CONTRACT-V3 §2.2.1 rule 4: a key only a local override supplies has no catalog
+    // entry and is not listed (D10); it stays in the effective config.
+    expect(byKey.onlyLocal).toBeUndefined();
+    expect(state.config.onlyLocal).toBe("y");
+    expect(rows).toHaveLength(2);
   });
 });
 

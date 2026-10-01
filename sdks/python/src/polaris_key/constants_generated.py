@@ -22,6 +22,8 @@ __all__ = [
     "PLATFORM_VALUES",
     "Arch",
     "ARCH_VALUES",
+    "SdkId",
+    "SDK_ID_VALUES",
     "StoreBackend",
     "STORE_BACKEND_VALUES",
     "StoreDegradedReason",
@@ -43,6 +45,8 @@ __all__ = [
     "CHANNEL_STABLE",
     "PR_CHANNEL_PATTERN",
     "PR_NUMBER_MAX_DIGITS",
+    "ARCH_SPELLINGS",
+    "PLATFORM_SPELLINGS",
 ]
 
 
@@ -470,6 +474,26 @@ ARCH_VALUES: Tuple[str, ...] = (
 )
 
 
+class SdkId:
+    """The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands."""
+
+    NODE: Final = "node"
+    REACT: Final = "react"
+    PYTHON: Final = "python"
+    SWIFT: Final = "swift"
+    GODOT: Final = "godot"
+
+
+#: Every ``SdkId`` value, in source order.
+SDK_ID_VALUES: Tuple[str, ...] = (
+    "node",
+    "react",
+    "python",
+    "swift",
+    "godot",
+)
+
+
 class StoreBackend:
     """Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal."""
 
@@ -609,3 +633,41 @@ PR_CHANNEL_PATTERN: Final[str] = "^pr-?([0-9]+)$"
 
 #: Channel constant `PR_NUMBER_MAX_DIGITS` (`@polaris-key/protocol/core`).
 PR_NUMBER_MAX_DIGITS: Final[int] = 7
+
+
+#: Header-value table `ARCH_SPELLINGS`: a runtime's spelling, ASCII-lowercased, to its canonical value (WIRE-CONTRACT-V3 §5.2, `@polaris-key/protocol/core`).
+ARCH_SPELLINGS: Mapping[str, str] = MappingProxyType(
+    {
+        "arm64": "arm64",
+        "aarch64": "arm64",
+        "arm64-v8a": "arm64",
+        "x86_64": "x86_64",
+        "x64": "x86_64",
+        "amd64": "x86_64",
+        "armv7": "armv7",
+        "armv7l": "armv7",
+        "armv8l": "armv7",
+        "arm": "armv7",
+        "arm32": "armv7",
+        "armeabi-v7a": "armv7",
+        "wasm32": "wasm32",
+    }
+)
+
+
+#: Header-value table `PLATFORM_SPELLINGS`: a runtime's spelling, ASCII-lowercased, to its canonical value (WIRE-CONTRACT-V3 §5.2, `@polaris-key/protocol/core`).
+PLATFORM_SPELLINGS: Mapping[str, str] = MappingProxyType(
+    {
+        "macos": "macos",
+        "darwin": "macos",
+        "maccatalyst": "macos",
+        "ios": "ios",
+        "ipados": "ios",
+        "android": "android",
+        "windows": "windows",
+        "win32": "windows",
+        "linux": "linux",
+        "web": "web",
+        "browser": "web",
+    }
+)

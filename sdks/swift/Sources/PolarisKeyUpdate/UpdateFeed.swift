@@ -125,11 +125,12 @@ public enum UpdateFeedBuilder {
             HEADER_DEVICE: deviceId,
             HEADER_VERSION: version,
             HEADER_CHANNEL: channel,
-            HEADER_PLATFORM: PlatformFamily.current,
-            HEADER_ARCH: ArchFamily.current,
             HEADER_SDK_NAME: POLARIS_SDK_NAME,
             HEADER_SDK_VERSION: POLARIS_SDK_VERSION,
         ]
+        // WIRE-CONTRACT-V3 §5.2: canonical values, omitted when this binary's has none.
+        if let platform = PlatformFamily.headerValue { headers[HEADER_PLATFORM] = platform }
+        if let arch = ArchFamily.headerValue { headers[HEADER_ARCH] = arch }
         if let token, !token.isEmpty { headers["Authorization"] = "Bearer \(token)" }
         return headers
     }
