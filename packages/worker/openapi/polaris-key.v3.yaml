@@ -3120,8 +3120,8 @@ paths:
         blob store with the type chosen at registration (`application/json`,
         `application/java-archive`, `image/png`, …), `nosniff` and a sandbox CSP,
         `Cache-Control: public, max-age=300, no-transform` and the SHA-256 as ETag (the paths are
-        mutable). An APK the channel's F-Droid feed lists (`<name>.apk`) is a `302` to its
-        immutable delivery URL. A path failing the safe-path check, any other path, a non-public
+        mutable). An APK the registered `index-v2.json` names and the channel's F-Droid feed
+        still selects (`<name>.apk`) is a `302` to its immutable delivery URL. A path failing the safe-path check, any other path, a non-public
         app deliverable, a registered file whose object a non-public deliverable's release
         carries (the blob route's strictest-mode rule), or a product without a live
         `fdroid-repo` outlet: the plain not-found.

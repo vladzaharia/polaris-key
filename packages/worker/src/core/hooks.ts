@@ -244,8 +244,12 @@ export interface ReleaseCatalog {
   releases(deliverableId: string): Promise<CatalogRelease[]>;
   /** A release's builds, by build id. */
   builds(releaseId: string): Promise<CatalogBuild[]>;
-  /** A release's artifact records; narrowed to one build when `buildId` is given. */
-  artifacts(releaseId: string, buildId?: string): Promise<CatalogArtifact[]>;
+  /** A release's artifact records, with where their bytes live; narrowed to one build when
+   *  `buildId` is given. */
+  artifacts(
+    releaseId: string,
+    buildId?: string,
+  ): Promise<CatalogSourceArtifact[]>;
   /** Channel policy, for one deliverable or (omitted) all of them. */
   channelPolicies(deliverableId?: string): Promise<CatalogChannelPolicy[]>;
   /** Every yank, newest first. */

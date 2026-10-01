@@ -22,6 +22,11 @@
  * `nosniff` and the platform security headers. CORS is Core's per-product allowlist
  * (`core/cors.ts`); there is no per-route wildcard. Served on the console host only: none of
  * these is registered on the bytes host.
+ *
+ * Cost: the delivery-access check runs on every request; the rendered document is then served
+ * from the feed cache (`cache.ts`, keyed by path, `?outlet=` and a stamp of the state a feed must
+ * follow at once), so a cached answer is a handful of D1 reads and a miss a bounded selection
+ * (`select.ts`).
  */
 
 import type { ServiceContext } from "../../../core/registry.js";
@@ -36,13 +41,14 @@ import {
   renderObtainiumConfig,
   renderScoopManifest,
 } from "./render.js";
-import { pickOutlet, selectFeed, type FeedReadContext } from "./select.js";
 import {
-  fdroidInputs,
-  registerFdroid,
-  selectFdroid,
-  serveFdroidRelay,
-} from "./fdroid.js";
+  feedReaders,
+  pickOutlet,
+  selectFeed,
+  type FeedReadContext,
+} from "./select.js";
+import { fdroidInputs, registerFdroid, serveFdroidRelay } from "./fdroid.js";
+import { cachedFeedText, feedCacheKey, feedStateStamp } from "./cache.js";
 
 /** The first path segments this module answers (after `/<p>/distribution`). */
 export const FEED_AREAS = [
@@ -93,12 +99,16 @@ async function sha256Hex(text: string): Promise<string> {
     .join("");
 }
 
-/** A feed document: pretty JSON, strong ETag of the body, revalidating cache. */
+/** A feed document's body: pretty JSON and a final newline. */
+function feedBody(doc: unknown): string {
+  return `${JSON.stringify(doc, null, 2)}\n`;
+}
+
+/** A feed document `body`: strong ETag of the body, revalidating cache. */
 export async function feedResponse(
   req: Request,
-  doc: unknown,
+  body: string,
 ): Promise<Response> {
-  const body = `${JSON.stringify(doc, null, 2)}\n`;
   const etag = `"${await sha256Hex(body)}"`;
   const headers = {
     "content-type": "application/json; charset=utf-8",
@@ -174,6 +184,7 @@ export async function handleFeedRoutes(
     product: { slug: ctx.product.slug, name: ctx.product.name },
     hooks: ctx.hooks,
     origin,
+    env: ctx.env,
   };
   const outletParam = new URL(req.url).searchParams.get("outlet");
 
@@ -192,8 +203,25 @@ export async function handleFeedRoutes(
       ? decode(rest[1] as string)
       : channelOfFile(rest[1] as string);
   if (channel === null) return harden(notFound());
-  const doc = await renderArea(ctx, fctx, area, channel, outletParam);
-  return doc === null ? harden(notFound()) : feedResponse(req, doc);
+  // Never cached: a deliverable made non-public has no feed from this request on.
+  const readers = await feedReaders(fctx);
+  if (!readers) return harden(notFound());
+  const key = feedCacheKey(
+    origin,
+    new URL(req.url).pathname,
+    outletParam,
+    await feedStateStamp(
+      ctx.db,
+      ctx.product.slug,
+      readers.catalog,
+      readers.notesPublic,
+    ),
+  );
+  const body = await cachedFeedText(key, async () => {
+    const doc = await renderArea(ctx, fctx, area, channel, outletParam);
+    return doc === null ? null : feedBody(doc);
+  });
+  return body === null ? harden(notFound()) : feedResponse(req, body);
 }
 
 async function renderArea(
@@ -258,19 +286,19 @@ async function renderArea(
       const name = listing.name ?? product.name;
       const author = listing.developerName ?? name;
       // A live F-Droid repository on this channel is the better source: real version codes,
-      // arch selection and stable/beta filtering.
+      // arch selection and stable/beta filtering. The channel is the one just resolved, so only
+      // the outlet's existence is asked here, never a second selection.
       const repo = await pickOutlet(fctx.db, product.slug, {
         kinds: ["fdroid-repo"],
       });
-      const fdroid = repo ? await selectFdroid(fctx, channel, repo.id) : null;
-      if (fdroid)
+      if (repo)
         return renderObtainiumConfig({
           source: "fdroid-repo",
           packageName,
           name,
           author,
-          repoUrl: `${fctx.origin}/${product.slug}/distribution/fdroid/${encodeURIComponent(fdroid.channel)}/repo`,
-          stable: fdroid.channel === "stable",
+          repoUrl: `${fctx.origin}/${product.slug}/distribution/fdroid/${encodeURIComponent(sel.channel)}/repo`,
+          stable: sel.channel === "stable",
         });
       const buildId =
         (typeof sel.outlet.identity.artifact === "string"
@@ -350,7 +378,7 @@ async function handleFeedsCi(
     now,
   );
   if (principal instanceof Response) return principal;
-  const fctx = {
+  const fctx: FeedReadContext = {
     db,
     product: { slug: product.slug, name: product.name },
     hooks,

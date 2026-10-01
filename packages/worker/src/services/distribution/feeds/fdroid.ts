@@ -26,8 +26,11 @@
  *     every answer. Only while the object passes the blob route's strictest-mode rule
  *     (`objectIsPublic`): one a non-public deliverable's release carries is not-found. The paths are MUTABLE (a new `entry.jar` replaces the old), so the cache is
  *     short and the ETag (the SHA-256) revalidates.
- *   - An APK the index lists (`/<name>.apk`, a payload of a release the channel's F-Droid feed
- *     selects) is a 302 to its immutable delivery URL — the bytes host when there is one.
+ *   - An APK the index lists (`/<name>.apk`: named by the REGISTERED `index-v2.json`, and a
+ *     payload of a release the channel's F-Droid feed selects now) is a 302 to its immutable
+ *     delivery URL — the bytes host when there is one. A name the registered index does not list
+ *     is not-found without a selection, and the redirect is kept in the feed cache (`cache.ts`),
+ *     so neither a guessed nor a repeated name costs a selection per request.
  *   - Anything else is not-found. So is everything while the app's delivery access is not
  *     public, or the product has no live `fdroid-repo` outlet.
  *
@@ -75,6 +78,7 @@ import { ciActor, type CiPrincipal } from "../../../core/ciScope.js";
 import type { Delivery, ReleaseCatalog } from "../../../core/hooks.js";
 import { strictestAccess } from "../access.js";
 import { appendAudit } from "../../../core/data.js";
+import { cachedFeedText, feedCacheKey, feedStateStamp } from "./cache.js";
 import {
   feedReaders,
   pickOutlet,
@@ -265,19 +269,79 @@ export async function serveFdroidRelay(
     return harden(new Response(res.body, { status: res.status, headers }));
   }
 
-  // An APK the index names: 302 to its immutable delivery URL.
-  if (segments.length === 1 && path.endsWith(".apk")) {
-    const selection = await selectFdroid(ctx, channel);
-    const entry = selection?.entries.find((e) => e.name === path);
-    if (entry)
+  // An APK the registered index names: 302 to its immutable delivery URL.
+  if (
+    segments.length === 1 &&
+    path.endsWith(".apk") &&
+    env.BLOBS &&
+    (await registeredIndexLists(env.BLOBS, db, product.slug, channel, path))
+  ) {
+    const key = feedCacheKey(
+      ctx.origin,
+      new URL(req.url).pathname,
+      null,
+      await feedStateStamp(
+        db,
+        product.slug,
+        readers.catalog,
+        readers.notesPublic,
+      ),
+    );
+    const location = await cachedFeedText(key, async () => {
+      const selection = await selectFdroid(ctx, channel);
+      return selection?.entries.find((e) => e.name === path)?.url ?? null;
+    });
+    if (location)
       return harden(
         new Response(null, {
           status: 302,
-          headers: { location: entry.url, "cache-control": RELAY_CACHE },
+          headers: { location, "cache-control": RELAY_CACHE },
         }),
       );
   }
   return harden(notFound());
+}
+
+/** The largest registered index the relay reads to learn which APK names it lists. */
+const MAX_INDEX_READ_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Does the channel's registered `index-v2.json` list `/<name>` as a version's file? The index is
+ * what clients download from, so an APK it does not name is never asked for by one.
+ */
+async function registeredIndexLists(
+  blobs: R2Bucket,
+  db: Db,
+  product: string,
+  channel: string,
+  name: string,
+): Promise<boolean> {
+  const row = await db.first<{ sha256: string; size: number }>(
+    `SELECT sha256, size FROM dist_feed_files
+      WHERE product = ? AND feed = ? AND channel = ? AND path = 'index-v2.json'`,
+    product,
+    FDROID_FEED,
+    channel,
+  );
+  if (!row || row.size > MAX_INDEX_READ_BYTES) return false;
+  const obj = await blobs.get(blobKey(row.sha256));
+  if (!obj) return false;
+  let index: unknown;
+  try {
+    index = JSON.parse(await obj.text());
+  } catch {
+    return false;
+  }
+  const packages = (index as { packages?: unknown })?.packages;
+  if (!packages || typeof packages !== "object") return false;
+  for (const pkg of Object.values(packages as Record<string, unknown>)) {
+    const versions = (pkg as { versions?: unknown })?.versions;
+    if (!versions || typeof versions !== "object") continue;
+    for (const v of Object.values(versions as Record<string, unknown>))
+      if ((v as { file?: { name?: unknown } })?.file?.name === `/${name}`)
+        return true;
+  }
+  return false;
 }
 
 // ── The CI read: the generator's inputs ──────────────────────────────────────────────────────

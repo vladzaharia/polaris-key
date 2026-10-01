@@ -6,15 +6,26 @@
  *      removed except a pinned pointer, at or below a pinned pointer);
  *   2. that have a build for O: O's artifact-map id when its identity names one, else a build of
  *      the feed's platform (and, for a `direct` outlet with `platforms`, a platform it offers);
- *   3. that are LIVE on O — `delivery.availability()`, where a self-hosted outlet is live by
- *      derivation and a store outlet (AltStore PAL) once reported — or, for a feed that tells a
- *      third party where OUR bytes are (`liveness: "bytes"`, Flathub's checker), whose payload we
- *      serve;
+ *   3. that are LIVE on O — the answer of `delivery.availability()`, where a self-hosted outlet
+ *      is live by derivation and a store outlet (AltStore PAL) once reported — or, for a feed that
+ *      tells a third party where OUR bytes are (`liveness: "bytes"`, Flathub's checker), whose
+ *      payload we serve;
  *   4. that are not yanked, and not held back on O: these clients cannot bucket installs, so a
  *      release whose rollout on O is paused or halted, or active below 10000 bp, is left out until
  *      it completes — the previous release is listed instead;
- *   5. whose payload has an immutable delivery URL (`delivery.deliveryUrl`, on the bytes host when
- *      `BLOB_ORIGIN` is set).
+ *   5. whose payload has an immutable delivery URL (the answer of `delivery.deliveryUrl`, on the
+ *      bytes host when `BLOB_ORIGIN` is set).
+ *
+ * COST. These routes are public and unauthenticated, so the selection reads in bulk rather than
+ * through the per-release hooks (`availability()` and `deliveryUrl()` each re-read every release
+ * row of every deliverable): the outlet's stored availability rows and its transport ONCE, then
+ * per scanned release its builds and its artifact records (with their locations) — two queries,
+ * one when no build matches. A store outlet's releases with no live report cost nothing. At most
+ * `MAX_FEED_SCAN` releases are scanned, so a selection stays a bounded, small number of D1
+ * queries whatever the history (`test/storefrontFeeds.test.ts` holds a ceiling), and the routes
+ * cache what they render (`cache.ts`). Steps 3 and 5 apply the hooks' rules (`availability.ts`'s
+ * derived records, stored row winning; `delivery.ts`'s build branch); the test suite checks the
+ * two agree.
  *
  * ACCESS. None of these clients can authenticate, so a feed exists only while the app
  * deliverable's delivery access (`dist_access`) is `public`; otherwise every feed route is the
@@ -24,15 +35,24 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db } from "../../../core/platform.js";
-import type {
-  CatalogArtifact,
-  CatalogBuild,
-  CatalogChannelRelease,
-  Delivery,
-  ReleaseCatalog,
-  ServiceHooks,
+import type { Db, Env } from "../../../core/platform.js";
+import {
+  DEFAULT_TRANSPORT,
+  type CatalogBuild,
+  type CatalogChannelRelease,
+  type CatalogSourceArtifact,
+  type Delivery,
+  type ReleaseCatalog,
+  type ServiceHooks,
 } from "../../../core/hooks.js";
+import {
+  DERIVED_OUTLET_KINDS,
+  DERIVED_TRANSPORTS,
+  hasServingLocation,
+  outletMatches,
+  transportOf,
+} from "../availability.js";
+import { fileDeliveryUrl } from "../delivery.js";
 import {
   listOutlets,
   parseJsonColumn,
@@ -41,9 +61,9 @@ import {
 import { FULL_ROLLOUT_BP, type DistRolloutRow } from "../rollouts.js";
 import type { RenderEntry, RenderListing } from "./render.js";
 
-/** The most versions a feed lists, and the most releases it reads to find them. */
+/** The most versions a feed lists, and the most releases it reads to find them (newest first). */
 export const MAX_FEED_VERSIONS = 20;
-export const MAX_FEED_SCAN = 200;
+export const MAX_FEED_SCAN = 100;
 
 export interface FeedReadContext {
   db: Db;
@@ -51,6 +71,8 @@ export interface FeedReadContext {
   hooks: ServiceHooks;
   /** The request's origin: a delivery URL minted as a path (no bytes host) is made absolute. */
   origin: string;
+  /** For the bytes host (`BLOB_ORIGIN`) delivery URLs are minted on. */
+  env: Env;
 }
 
 /** The outlet a feed is rendered for. */
@@ -183,6 +205,73 @@ export async function feedReaders(ctx: FeedReadContext): Promise<{
   return { catalog, delivery, notesPublic: metadata === "public" };
 }
 
+/** What step 3 reads once per selection: the outlet's reports and whether it derives `live`. */
+interface OutletLiveness {
+  /** Stored availability rows on the outlet, by release: build (`''` = every build) → live. */
+  reports: Map<string, { buildId: string; live: boolean }[]>;
+  /** A self-hosted outlet kind over a derived transport: live wherever our bytes are. */
+  derives: boolean;
+}
+
+async function outletLiveness(
+  db: Db,
+  product: string,
+  outlet: FeedOutlet,
+  transport: string,
+): Promise<OutletLiveness> {
+  const rows = await db.all<{
+    release_id: string;
+    build_id: string;
+    state: string;
+  }>(
+    `SELECT release_id, build_id, state FROM dist_availability
+      WHERE product = ? AND outlet_id = ?`,
+    product,
+    outlet.id,
+  );
+  const reports = new Map<string, { buildId: string; live: boolean }[]>();
+  for (const r of rows) {
+    const list = reports.get(r.release_id) ?? [];
+    // A state outside the vocabulary reads as `pending` (availability.ts): only `live` counts.
+    list.push({ buildId: r.build_id, live: r.state === "live" });
+    reports.set(r.release_id, list);
+  }
+  return {
+    reports,
+    derives:
+      DERIVED_OUTLET_KINDS.includes(outlet.kind) &&
+      DERIVED_TRANSPORTS.includes(transport),
+  };
+}
+
+/**
+ * Is `build` of `releaseId` live on the outlet? `availability()`'s answer: a stored report of the
+ * build or of the whole release wins (live only if one says `live`); without one, a self-hosted
+ * outlet derives `live` for a matching build whose payload has its bytes.
+ */
+function isLive(
+  l: OutletLiveness,
+  outlet: FeedOutlet,
+  releaseId: string,
+  build: CatalogBuild,
+  payload: CatalogSourceArtifact,
+): boolean {
+  const reports = (l.reports.get(releaseId) ?? []).filter(
+    (r) => r.buildId === "" || r.buildId === build.buildId,
+  );
+  if (reports.length) return reports.some((r) => r.live);
+  return (
+    l.derives &&
+    outletMatches(
+      outlet.kind,
+      outlet.identity,
+      build.buildId,
+      build.platform,
+    ) &&
+    hasServingLocation(payload)
+  );
+}
+
 /**
  * Select the entries of one feed (see the file comment). `null` = the route's not-found: the
  * product cannot serve a public feed, the channel does not exist, or there is no such outlet.
@@ -195,74 +284,97 @@ export async function selectFeed(
 ): Promise<FeedSelection | null> {
   const readers = await feedReaders(ctx);
   if (!readers) return null;
-  const { catalog, delivery, notesPublic } = readers;
-  const outlet = await pickOutlet(ctx.db, ctx.product.slug, spec);
+  const { catalog, notesPublic } = readers;
+  const slug = ctx.product.slug;
+  const outlet = await pickOutlet(ctx.db, slug, spec);
   if (!outlet) return null;
   const history = await catalog.channelReleases(APP_DELIVERABLE_ID, rawChannel);
   if (!history) return null;
+  const empty = { channel: history.channel, outlet, entries: [], notesPublic };
 
-  const held = await heldReleases(ctx.db, ctx.product.slug, outlet.id);
+  // Step 5's transport rule: the outlet must deliver the app by our own CDN, or no build of it
+  // has a delivery URL here at all.
+  const transport = await transportOf(
+    ctx.db,
+    slug,
+    APP_DELIVERABLE_ID,
+    outlet.id,
+  );
+  if (transport !== DEFAULT_TRANSPORT) return empty;
+  const liveness =
+    spec.liveness === "availability"
+      ? await outletLiveness(ctx.db, slug, outlet, transport)
+      : null;
+  const held = await heldReleases(ctx.db, slug, outlet.id);
   const limit = spec.limit ?? MAX_FEED_VERSIONS;
   const entries: RenderEntry[] = [];
   let releasesListed = 0;
   for (const release of history.releases.slice(0, MAX_FEED_SCAN)) {
     if (releasesListed >= limit) break;
     if (release.yanked || held.has(release.releaseId)) continue;
+    // A store outlet is live only where reported: a release with no live report costs nothing.
+    if (
+      liveness &&
+      !liveness.derives &&
+      !(liveness.reports.get(release.releaseId) ?? []).some((r) => r.live)
+    )
+      continue;
     const builds = (await catalog.builds(release.releaseId)).filter((b) =>
       buildMatchesOutlet(outlet, b, spec.platform),
     );
     if (!builds.length) continue;
-    const live =
-      spec.liveness === "availability"
-        ? (await delivery.availability(release.releaseId)).filter(
-            (a) => a.outletId === outlet.id && a.state === "live",
-          )
-        : null;
+    const artifacts = await catalog.artifacts(release.releaseId);
     let any = false;
     for (const build of builds) {
+      const payload = artifacts.find(
+        (a) => a.buildId === build.buildId && a.role === "payload",
+      );
+      if (!payload) continue;
       if (
-        live &&
-        !live.some((a) => a.buildId === "" || a.buildId === build.buildId)
+        liveness &&
+        !isLive(liveness, outlet, release.releaseId, build, payload)
       )
         continue;
-      const entry = await entryFor(
-        catalog,
-        delivery,
-        ctx.origin,
-        outlet.id,
-        release,
-        build,
-        notesPublic,
-      );
-      if (!entry) continue;
-      entries.push(entry);
+      const url = servedUrl(ctx, release.releaseId, payload, artifacts);
+      if (!url) continue;
+      entries.push(entryFor(release, build, payload, url, notesPublic));
       any = true;
       if (!spec.allBuilds) break;
     }
     if (any) releasesListed++;
   }
-  return { channel: history.channel, outlet, entries, notesPublic };
+  return { ...empty, entries };
 }
 
-async function entryFor(
-  catalog: ReleaseCatalog,
-  delivery: Delivery,
-  origin: string,
-  outletId: string,
+/**
+ * The payload's immutable delivery URL — `deliveryUrl()`'s build branch, the release and the
+ * transport already checked: the `files` route serves the FIRST artifact (by id) with that name
+ * in the release, so the URL exists only when that is this payload.
+ */
+function servedUrl(
+  ctx: FeedReadContext,
+  releaseId: string,
+  payload: CatalogSourceArtifact,
+  artifacts: readonly CatalogSourceArtifact[],
+): string | null {
+  let first: CatalogSourceArtifact | undefined;
+  for (const a of artifacts)
+    if (a.name === payload.name && (!first || a.artifactId < first.artifactId))
+      first = a;
+  if (first?.artifactId !== payload.artifactId) return null;
+  return new URL(
+    fileDeliveryUrl(ctx.env, ctx.product.slug, releaseId, payload.name),
+    ctx.origin,
+  ).toString();
+}
+
+function entryFor(
   release: CatalogChannelRelease,
   build: CatalogBuild,
+  payload: CatalogSourceArtifact,
+  url: string,
   notesPublic: boolean,
-): Promise<RenderEntry | null> {
-  const payload: CatalogArtifact | undefined = (
-    await catalog.artifacts(release.releaseId, build.buildId)
-  ).find((a) => a.role === "payload");
-  if (!payload) return null;
-  const url = await delivery.deliveryUrl({
-    releaseId: release.releaseId,
-    buildId: build.buildId,
-    outlet: outletId,
-  });
-  if (!url) return null;
+): RenderEntry {
   return {
     releaseId: release.releaseId,
     version: release.version,
@@ -278,6 +390,6 @@ async function entryFor(
     name: payload.name,
     sha256: payload.sha256,
     size: payload.sizeBytes,
-    url: new URL(url, origin).toString(),
+    url,
   };
 }

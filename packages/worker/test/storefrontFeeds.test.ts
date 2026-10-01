@@ -69,6 +69,17 @@ import {
 } from "../src/core/blobs.js";
 import { issueUploadTicket } from "../src/core/publisher.js";
 import { feedFileType } from "../src/services/distribution/feeds/fdroid.js";
+import {
+  buildMatchesOutlet,
+  MAX_FEED_SCAN,
+  MAX_FEED_VERSIONS,
+  pickOutlet,
+  selectFeed,
+  type FeedSpec,
+} from "../src/services/distribution/feeds/select.js";
+import { buildHooks } from "../src/core/hooks.js";
+import { loadProduct } from "../src/core/products.js";
+import { SERVICES } from "../src/mount.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLDEN_DIR = join(HERE, "fixtures", "feeds");
@@ -228,6 +239,7 @@ function bytesFor(name: string): Uint8Array {
   return new TextEncoder().encode(`bytes of ${name}\n`);
 }
 
+/** The seeded releases' version codes; any other `a.b.c` is a*10000 + b*100 + c. */
 const VERSION_CODES: Record<string, number> = {
   "1.0.0": 10000,
   "1.1.0": 10100,
@@ -235,6 +247,11 @@ const VERSION_CODES: Record<string, number> = {
   "1.2.0-beta.1": 10199,
   "1.2.0": 10200,
 };
+
+function versionCode(version: string): number {
+  const [a, b, c] = version.split(".").map((n) => parseInt(n, 10));
+  return VERSION_CODES[version] ?? a! * 10000 + b! * 100 + c!;
+}
 
 function metadataFor(
   buildId: string,
@@ -244,7 +261,7 @@ function metadataFor(
     return {
       bundleIdentifier: "gg.vlad.diceroll",
       version,
-      buildVersion: String(VERSION_CODES[version]),
+      buildVersion: String(versionCode(version)),
       minOSVersion: "16.0",
       appPermissions: {
         entitlements: ["get-task-allow", "com.apple.developer.game-center"],
@@ -254,7 +271,7 @@ function metadataFor(
   if (buildId === "apk")
     return {
       packageName: "gg.vlad.diceroll",
-      versionCode: VERSION_CODES[version],
+      versionCode: versionCode(version),
       versionName: version,
       minSdk: 24,
       targetSdk: 35,
@@ -273,28 +290,36 @@ const RELEASES: Array<[string, "stable" | "beta", number]> = [
   ["1.2.0", "stable", NOW - 10 * DAY],
 ];
 
-async function publish(w: World, version: string, channel: string, at: number) {
-  const builds = ARTIFACTS.map((a) => {
-    const name = a.match.replace("*", version);
-    const bytes = bytesFor(name);
-    const meta = metadataFor(a.id, version);
-    return {
-      id: a.id,
-      platform: a.platform,
-      arch: a.arch,
-      format: a.format,
-      ...(meta ? { metadata: meta } : {}),
-      artifacts: [
-        {
-          name,
-          role: "payload",
-          sha256: sha(bytes),
-          size: bytes.length,
-          locations: [{ provider: "r2", key: blobKey(sha(bytes)) }],
-        },
-      ],
-    };
-  });
+async function publish(
+  w: World,
+  version: string,
+  channel: string,
+  at: number,
+  only?: readonly string[],
+) {
+  const builds = ARTIFACTS.filter((a) => !only || only.includes(a.id)).map(
+    (a) => {
+      const name = a.match.replace("*", version);
+      const bytes = bytesFor(name);
+      const meta = metadataFor(a.id, version);
+      return {
+        id: a.id,
+        platform: a.platform,
+        arch: a.arch,
+        format: a.format,
+        ...(meta ? { metadata: meta } : {}),
+        artifacts: [
+          {
+            name,
+            role: "payload",
+            sha256: sha(bytes),
+            size: bytes.length,
+            locations: [{ provider: "r2", key: blobKey(sha(bytes)) }],
+          },
+        ],
+      };
+    },
+  );
   const promoted: string[] = [];
   for (const b of builds) {
     const a = b.artifacts[0]!;
@@ -412,6 +437,41 @@ function get(
     w.env,
     w.db,
   );
+}
+
+/** Wrap a Db and tally its reads, so a route's per-request D1 cost is measurable (cf. R10). */
+function countingDb(inner: Db): { db: Db; reads: () => number } {
+  let reads = 0;
+  const db: Db = {
+    all: (sql, ...p) => {
+      reads++;
+      return inner.all(sql, ...p);
+    },
+    first: (sql, ...p) => {
+      reads++;
+      return inner.first(sql, ...p);
+    },
+    runChanges: (sql, ...p) => inner.runChanges(sql, ...p),
+    run: (sql, ...p) => inner.run(sql, ...p),
+    batch: (st) => inner.batch(st),
+  };
+  return { db, reads: () => reads };
+}
+
+/** GET a feed path through the real dispatcher, counting the D1 reads it took. */
+async function counted(
+  w: World,
+  path: string,
+): Promise<{ status: number; reads: number; body: string }> {
+  const c = countingDb(w.db);
+  const res = await dispatch(
+    new Request(`${CONSOLE}/${SLUG}/distribution/${path}`, {
+      redirect: "manual",
+    }),
+    w.env,
+    c.db,
+  );
+  return { status: res.status, reads: c.reads(), body: await res.text() };
 }
 
 async function golden(name: string, body: string): Promise<void> {
@@ -654,6 +714,404 @@ describe("storefront feeds: which releases appear", () => {
   });
 });
 
+// ── Agreement with the hooks, cost, and the answer cache ────────────────────────────────────
+
+/** The specs the routes select with (`feeds/index.ts`, `fdroid.ts`), plus a Linux direct feed. */
+const SPECS: Record<string, FeedSpec> = {
+  altstore: { kinds: ["altstore"], platform: "ios", liveness: "availability" },
+  "altstore-pal": {
+    kinds: ["altstore-pal"],
+    platform: "ios",
+    liveness: "availability",
+  },
+  obtainium: {
+    kinds: ["obtainium"],
+    platform: "android",
+    liveness: "availability",
+    limit: 1,
+  },
+  fdroid: {
+    kinds: ["fdroid-repo"],
+    platform: "android",
+    liveness: "availability",
+  },
+  scoop: {
+    kinds: ["direct"],
+    platform: "windows",
+    liveness: "availability",
+    limit: 1,
+    allBuilds: true,
+  },
+  linux: {
+    kinds: ["direct"],
+    platform: "linux",
+    liveness: "availability",
+    allBuilds: true,
+  },
+  flathub: {
+    kinds: ["flathub"],
+    platform: "linux",
+    liveness: "bytes",
+    limit: 1,
+    allBuilds: true,
+  },
+};
+
+async function hooksFor(w: World) {
+  const product = (await loadProduct(w.env, w.db, SLUG))!;
+  return buildHooks(SERVICES, product.services, {
+    env: w.env,
+    db: w.db,
+    product,
+    now: NOW,
+  });
+}
+
+/**
+ * The selection as the hooks define it, release by release: `delivery.availability()` for step
+ * 3 and `delivery.deliveryUrl()` for step 5 — the per-release reads the bulk selection replaces.
+ */
+async function hookSelection(
+  w: World,
+  channel: string,
+  spec: FeedSpec,
+): Promise<string[] | null> {
+  const hooks = await hooksFor(w);
+  const catalog = hooks.releaseCatalog()!;
+  const delivery = hooks.delivery()!;
+  const outlet = await pickOutlet(w.db, SLUG, spec);
+  if (!outlet) return null;
+  const history = await catalog.channelReleases("app", channel);
+  if (!history) return null;
+  const held = new Set(
+    (
+      await w.db.all<{ release_id: string; rollout_bp: number; state: string }>(
+        `SELECT release_id, rollout_bp, state FROM dist_rollouts
+          WHERE product = ? AND deliverable_id = 'app' AND outlet_id = ?`,
+        SLUG,
+        outlet.id,
+      )
+    )
+      .filter(
+        (r) =>
+          !(
+            r.state === "complete" ||
+            (r.state === "active" && r.rollout_bp >= 10000)
+          ),
+      )
+      .map((r) => r.release_id),
+  );
+  const out: string[] = [];
+  let listed = 0;
+  for (const release of history.releases.slice(0, MAX_FEED_SCAN)) {
+    if (listed >= (spec.limit ?? MAX_FEED_VERSIONS)) break;
+    if (release.yanked || held.has(release.releaseId)) continue;
+    const builds = (await catalog.builds(release.releaseId)).filter((b) =>
+      buildMatchesOutlet(outlet, b, spec.platform),
+    );
+    if (!builds.length) continue;
+    const live =
+      spec.liveness === "availability"
+        ? (await delivery.availability(release.releaseId)).filter(
+            (a) => a.outletId === outlet.id && a.state === "live",
+          )
+        : null;
+    let any = false;
+    for (const build of builds) {
+      if (
+        live &&
+        !live.some((a) => a.buildId === "" || a.buildId === build.buildId)
+      )
+        continue;
+      const payload = (
+        await catalog.artifacts(release.releaseId, build.buildId)
+      ).find((a) => a.role === "payload");
+      if (!payload) continue;
+      const url = await delivery.deliveryUrl({
+        releaseId: release.releaseId,
+        buildId: build.buildId,
+        outlet: outlet.id,
+      });
+      if (!url) continue;
+      out.push(
+        `${release.releaseId} ${build.buildId} ${new URL(url, CONSOLE)}`,
+      );
+      any = true;
+      if (!spec.allBuilds) break;
+    }
+    if (any) listed++;
+  }
+  return out;
+}
+
+async function bulkSelection(
+  w: World,
+  channel: string,
+  spec: FeedSpec,
+): Promise<string[] | null> {
+  const sel = await selectFeed(
+    {
+      db: w.db,
+      product: { slug: SLUG, name: "Diceroll" },
+      hooks: await hooksFor(w),
+      origin: CONSOLE,
+      env: w.env,
+    },
+    channel,
+    spec,
+  );
+  return sel
+    ? sel.entries.map((e) => `${e.releaseId} ${e.buildId} ${e.url}`)
+    : null;
+}
+
+async function report(
+  w: World,
+  releaseId: string,
+  buildId: string,
+  outlet: string,
+  state: string,
+): Promise<void> {
+  await w.db.run(
+    `INSERT INTO dist_availability
+       (product, release_id, build_id, outlet_id, transport, state, since, source, updated_at)
+     VALUES (?, ?, ?, ?, 'pkey-cdn', ?, ?, 'ci', ?)`,
+    SLUG,
+    releaseId,
+    buildId,
+    outlet,
+    state,
+    NOW,
+    NOW,
+  );
+}
+
+describe("storefront feeds: the bulk selection agrees with the delivery hook", () => {
+  const scenarios: Array<[string, (w: World) => Promise<void>]> = [
+    ["as seeded", async () => {}],
+    [
+      "stored reports win over derived ones, live or not",
+      async (w) => {
+        await report(w, "app@1.1.0", "ipa-sideload", "altstore", "in-review");
+        await report(w, "app@1.0.0", "apk", "fdroid-repo", "live");
+        await report(w, "app@1.1.0", "", "obtainium", "rejected");
+        await report(w, "app@1.2.0-beta.1", "", "altstore-pal", "live");
+        await report(w, "app@1.1.0", "win-arm64", "direct", "removed");
+        // A per-build report that is not live beside a live per-release one: still live.
+        await report(w, "app@1.1.0", "ipa-sideload", "altstore-pal", "bogus");
+      },
+    ],
+    [
+      "a payload without its bytes is not derived live; a reported one still is",
+      async (w) => {
+        await w.db.run(
+          `UPDATE release_artifacts SET locations_json = ?
+            WHERE product = ? AND release_id IN ('app@1.1.0', 'app@1.2.0')`,
+          JSON.stringify([{ provider: "external", url: "https://x.test/a" }]),
+          SLUG,
+        );
+        await reportLive(w, "app@1.2.0", "altstore-pal");
+      },
+    ],
+    [
+      "a payload whose name another artifact serves has no delivery URL",
+      async (w) => {
+        await w.db.run(
+          `INSERT INTO release_artifacts
+             (product, release_id, artifact_id, name, kind, platform, arch, content_type,
+              size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
+              metadata_json, created_at, build_id, role)
+           SELECT product, release_id, '!' || artifact_id, name, kind, platform, arch, content_type,
+                  size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
+                  metadata_json, created_at, NULL, 'source'
+             FROM release_artifacts
+            WHERE product = ? AND release_id = 'app@1.0.0' AND build_id IN ('win-x64', 'apk')`,
+          SLUG,
+        );
+      },
+    ],
+    [
+      "an outlet that delivers by another transport lists nothing",
+      async (w) => {
+        for (const outlet of ["direct", "altstore", "flathub"])
+          await w.db.run(
+            `INSERT INTO dist_transports (product, deliverable_id, outlet_id, transport)
+             VALUES (?, 'app', ?, 'store')`,
+            SLUG,
+            outlet,
+          );
+      },
+    ],
+    [
+      "rollouts complete",
+      async (w) => {
+        await w.db.run(
+          "UPDATE dist_rollouts SET state = 'complete', rollout_bp = 10000 WHERE product = ?",
+          SLUG,
+        );
+      },
+    ],
+  ];
+  for (const [name, mutate] of scenarios)
+    it(name, async () => {
+      for (const blobOrigin of [undefined, BYTES]) {
+        const w = await setup(blobOrigin ? { blobOrigin } : {});
+        await mutate(w);
+        for (const [feedName, spec] of Object.entries(SPECS))
+          for (const channel of ["stable", "beta", "nope"]) {
+            const expected = await hookSelection(w, channel, spec);
+            expect(
+              await bulkSelection(w, channel, spec),
+              `${feedName}/${channel}`,
+            ).toEqual(expected);
+          }
+      }
+    });
+});
+
+describe("storefront feeds: cost", () => {
+  /** A long history: `n` more stable releases after the seeded ones. */
+  async function longHistory(n: number): Promise<World> {
+    const w = await setup({ blobOrigin: BYTES });
+    for (let i = 0; i < n; i++)
+      await publish(w, `2.${i}.0`, "stable", NOW - 9 * DAY + i * 60, [
+        "ipa-sideload",
+        "apk",
+        "win-x64",
+        "linux-x64",
+      ]);
+    return w;
+  }
+
+  /** The most D1 reads one public feed request may take, whatever the history. */
+  const CEILING = 2 * MAX_FEED_SCAN + 40;
+  const PATHS = [
+    "altstore/stable/source.json",
+    "altstore-pal/stable/source.json",
+    "obtainium/stable.json",
+    "scoop/stable.json",
+    "flathub/stable.json",
+    "fdroid/stable/repo/Diceroll-2.119.0-android.apk",
+    "fdroid/stable/repo/not-listed.apk",
+  ];
+
+  it(`a history of 120 releases stays under ${CEILING} D1 reads per request`, async () => {
+    const w = await longHistory(120);
+    await registerRepo(w, "stable", {
+      ...REPO_FILES,
+      "index-v2.json": indexListing(["Diceroll-2.119.0-android.apk"]),
+    });
+    for (const path of PATHS) {
+      const r = await counted(w, path);
+      expect(r.reads, `${path}: ${r.reads} reads`).toBeLessThanOrEqual(CEILING);
+    }
+    expect(
+      (await counted(w, "fdroid/stable/repo/Diceroll-2.119.0-android.apk"))
+        .status,
+    ).toBe(302);
+    // A store outlet reads nothing for a release with no live report: the PAL source, with two
+    // old releases reported live, costs no more than a short feed.
+    const pal = await counted(w, "altstore-pal/stable/source.json");
+    expect(pal.status).toBe(200);
+    expect(pal.reads).toBeLessThanOrEqual(40);
+  });
+
+  it("the worst case (nothing listable, every release scanned) is bounded too", async () => {
+    const w = await longHistory(120);
+    // No payload has its bytes: the derived outlets list nothing and scan MAX_FEED_SCAN releases.
+    await w.db.run(
+      "UPDATE release_artifacts SET locations_json = ? WHERE product = ?",
+      JSON.stringify([{ provider: "external", url: "https://x.test/a" }]),
+      SLUG,
+    );
+    for (const path of PATHS.slice(0, 5)) {
+      const r = await counted(w, path);
+      expect(r.reads, `${path}: ${r.reads} reads`).toBeLessThanOrEqual(CEILING);
+    }
+  });
+});
+
+/** A `caches.default` that keeps what is put, by URL, as the Workers Cache API does. */
+class FakeCache {
+  readonly entries = new Map<string, Response>();
+  async match(req: Request): Promise<Response | undefined> {
+    return this.entries.get(req.url)?.clone();
+  }
+  async put(req: Request, res: Response): Promise<void> {
+    this.entries.set(req.url, res.clone());
+  }
+}
+
+describe("storefront feeds: the answer cache", () => {
+  let cache: FakeCache;
+  beforeEach(() => {
+    cache = new FakeCache();
+    vi.stubGlobal("caches", { default: cache });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("serves a rendered feed from the cache until the state it follows changes", async () => {
+    const w = await setup();
+    const first = await counted(w, "altstore/stable/source.json");
+    expect(first.status).toBe(200);
+    const again = await counted(w, "altstore/stable/source.json");
+    expect(again.body).toBe(first.body);
+    // The access check and the state stamp only.
+    expect(again.reads).toBeLessThanOrEqual(12);
+    expect(again.reads).toBeLessThan(first.reads);
+    // Other query parameters do not miss the cache; `?outlet=` is part of the key.
+    const junk = await counted(w, "altstore/stable/source.json?x=1&y=2");
+    expect(junk.reads).toBe(again.reads);
+    expect(cache.entries.size).toBe(1);
+    // Completing the halted rollout is a new key: 1.2.0 is listed at once.
+    await w.db.run(
+      "UPDATE dist_rollouts SET state = 'complete', rollout_bp = 10000, updated_at = ? WHERE outlet_id = 'altstore'",
+      NOW + 1,
+    );
+    const after = JSON.parse(
+      (await counted(w, "altstore/stable/source.json")).body,
+    );
+    expect(after.apps[0].versions[0].version).toBe("1.2.0");
+    // And halting it again withdraws it at once.
+    await w.db.run(
+      "UPDATE dist_rollouts SET state = 'halted', updated_at = ? WHERE outlet_id = 'altstore'",
+      NOW + 2,
+    );
+    const halted = JSON.parse(
+      (await counted(w, "altstore/stable/source.json")).body,
+    );
+    expect(halted.apps[0].versions[0].version).toBe("1.1.0");
+  });
+
+  it("never caches the access decision or a not-found", async () => {
+    const w = await setup();
+    expect((await get(w, "altstore/stable/source.json")).status).toBe(200);
+    await w.db.run(
+      "UPDATE dist_access SET mode = 'licensed' WHERE product = ? AND deliverable_id = 'app'",
+      SLUG,
+    );
+    expect((await get(w, "altstore/stable/source.json")).status).toBe(404);
+    const size = cache.entries.size;
+    expect((await get(w, "flathub/nope.json")).status).toBe(404);
+    expect(cache.entries.size).toBe(size);
+  });
+
+  it("caches the relay's redirect for an APK the index names", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    await registerRepo(w, "stable", {
+      ...REPO_FILES,
+      "index-v2.json": indexListing(["Diceroll-1.1.0-android.apk"]),
+    });
+    const path = "fdroid/stable/repo/Diceroll-1.1.0-android.apk";
+    const first = await counted(w, path);
+    const again = await counted(w, path);
+    expect([first.status, again.status]).toEqual([302, 302]);
+    expect(again.reads).toBeLessThan(first.reads);
+  });
+});
+
 // ── Access ───────────────────────────────────────────────────────────────────────────────────
 
 describe("storefront feeds: a non-public deliverable has no feed", () => {
@@ -702,6 +1160,17 @@ const REPO_FILES: Record<string, Uint8Array> = {
   "diff/1.json": new TextEncoder().encode("{}\n"),
   "icons/icon.png": new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
 };
+
+/** An `index-v2.json` whose versions name these APK files (the relay reads only that). */
+function indexListing(names: string[]): Uint8Array {
+  const versions: Record<string, unknown> = {};
+  names.forEach((name, i) => {
+    versions[`h${i}`] = { file: { name: `/${name}`, sha256: "0".repeat(64) } };
+  });
+  return new TextEncoder().encode(
+    `${JSON.stringify({ repo: {}, packages: { "gg.vlad.diceroll": { versions } } })}\n`,
+  );
+}
 
 /**
  * A pack deliverable `dice.dlc` under `mode`, with one release whose payload is `bytes`: stored
@@ -884,7 +1353,14 @@ describe("F-Droid: register and relay", () => {
 
   it("an APK the index names is a 302 to its immutable delivery URL; one held back is not", async () => {
     const w = await setup({ blobOrigin: BYTES });
-    await registerRepo(w, "stable");
+    await registerRepo(w, "stable", {
+      ...REPO_FILES,
+      "index-v2.json": indexListing(
+        ["1.0.0", "1.1.0", "1.1.1", "1.2.0"].map(
+          (v) => `Diceroll-${v}-android.apk`,
+        ),
+      ),
+    });
     const r = await get(w, "fdroid/stable/repo/Diceroll-1.1.0-android.apk", {
       redirect: "manual",
     });
@@ -898,6 +1374,34 @@ describe("F-Droid: register and relay", () => {
     ).toBe(404);
     expect(
       (await get(w, "fdroid/stable/repo/Diceroll-1.1.1-android.apk")).status,
+    ).toBe(404);
+  });
+
+  it("an APK the registered index does not name is not-found, without a selection", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    // The release's APK is selectable, but this index names only 1.0.0.
+    await registerRepo(w, "stable", {
+      ...REPO_FILES,
+      "index-v2.json": indexListing(["Diceroll-1.0.0-android.apk"]),
+    });
+    const listed = await counted(
+      w,
+      "fdroid/stable/repo/Diceroll-1.0.0-android.apk",
+    );
+    expect(listed.status).toBe(302);
+    const unlisted = await counted(
+      w,
+      "fdroid/stable/repo/Diceroll-1.1.0-android.apk",
+    );
+    expect(unlisted.status).toBe(404);
+    const guessed = await counted(w, "fdroid/stable/repo/anything-at-all.apk");
+    expect(guessed.status).toBe(404);
+    // A selection reads every scanned release; refusing a name reads none of them.
+    expect(unlisted.reads).toBeLessThan(listed.reads);
+    expect(guessed.reads).toBe(unlisted.reads);
+    // No repository registered: no APK either.
+    expect(
+      (await get(w, "fdroid/beta/repo/Diceroll-1.0.0-android.apk")).status,
     ).toBe(404);
   });
 

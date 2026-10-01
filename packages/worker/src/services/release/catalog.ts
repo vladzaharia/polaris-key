@@ -165,7 +165,7 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
     async artifacts(
       releaseId: string,
       buildId?: string,
-    ): Promise<CatalogArtifact[]> {
+    ): Promise<CatalogSourceArtifact[]> {
       const rows =
         buildId === undefined
           ? await db.all<ReleaseArtifactRow>(
@@ -176,7 +176,7 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
               releaseId,
             )
           : await listArtifactsForBuild(db, slug, releaseId, buildId);
-      return rows.map(artifactRecord);
+      return rows.map(sourceRecord);
     },
 
     async channelPolicies(
