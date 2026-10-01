@@ -12,6 +12,34 @@
 | Human input | none (real credentials arrive with P5-02, P5-03 and P5-04)                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                      |
 
+## Corrections from implementation
+
+Recorded by the implementer where the code disagreed with this brief, or where the brief left a
+choice open:
+
+- **Migration number.** The latest migration on `main` was `0033_distribution_backfill.sql`, not
+  0021; the lead pre-assigned **`0034_outlet_credentials.sql`**.
+- **Admin handler location.** The routes are dispatched from `handleProductScopedResource`
+  beside `secrets`, but the handler lives in its own file,
+  `src/admin/handlers/outletCredentials.ts`, so the reach test can allowlist exactly the one file
+  that imports `core/outletCredentials` (not all of `products.ts`).
+- **Reach-test allowlists.** Three lists, not one: importers (distribution, `core/outletTokens.ts`,
+  the admin handler); files naming the table (the owner, `admin/handlers/products.ts` for
+  `SEALED_TABLES`, `admin/repo.ts` for `deleteProduct`); files spelling the `"outlet-credential"`
+  AAD kind (`keyvault.ts`, the owner, `core/outletTokens.ts`, the KEK sweep).
+- **`openOutletCredential` signature.** `(env, db, product, credentialId, use, opts?)`, where
+  `opts` is `{ kind?, now? }`: `kind` narrows the result type and refuses another kind, `now`
+  keeps it testable. It returns `null` for every unusable case.
+- **Token cache key.** The "scope hash" in `token:<credential_id>:<scope hash>` covers the scopes
+  **and** the key material, so rotating a key in place never serves a token minted by its
+  predecessor. `ascToken` memoises per isolate (no KV), keyed the same way.
+- **`meta_json`** also keeps the Partner Center client id and seller id (identifiers, not secrets).
+- **Google `token_uri`** must be exactly `https://oauth2.googleapis.com/token` (refused otherwise),
+  so a stored key can never redirect the signed assertion.
+- **Product-secret usage in the AAD.** `THREAT-MODEL.md` said binding `product_secrets.usage` into
+  the AAD was "deferred to the outlet-credential work (P5-01)". It is not in this brief's scope and
+  was not done; the threat model now records it as an open follow-up.
+
 ## Goal
 
 Store credentials (an App Store Connect `.p8`, a Google service-account key, a Partner Center

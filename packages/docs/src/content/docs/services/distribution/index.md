@@ -85,6 +85,17 @@ Every accessor **fails closed**: while the providing service is off for the prod
 delivery hook serves no per-outlet state. Hooks are read-only; a cross-service write would be an
 import in disguise.
 
+## Outlet credentials
+
+A store connector signs in to its store with an **outlet credential** — an App Store Connect API
+key, the App Store webhook secret, a Google service account or a Partner Center app. Those live
+in Core, in their own sealed table, and Distribution is the only service that can open one
+(`core/outletCredentials.ts`, held to that by a test); every open is audited. The JWTs and access
+tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, so a credential
+is opened only when a fresh token is needed. Operators set them on the Secrets tab — see
+[Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). No connector uses them
+yet; the App Store, Play and Microsoft Store connectors arrive in later packages.
+
 ## Vocabulary
 
 Distribution's nouns — **outlet**, **transport**, **availability**, **submission**, **rollout**,

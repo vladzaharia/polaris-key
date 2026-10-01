@@ -1,6 +1,6 @@
 ---
 title: "Secrets & keys"
-description: "Write-only product secrets and their usage, edge-mint recipe approval, the setup-health required-secrets list, and signing-key rotation."
+description: "Write-only product secrets and their usage, edge-mint recipe approval, the setup-health required-secrets list, outlet credentials, and signing-key rotation."
 sidebar:
   order: 6
 ---
@@ -81,6 +81,53 @@ applemusic"). Clicking a name fills it into the form. This is the same computati
 tab's "needs attention" strip draws from — see [Products](/docs/admin/products/#setup-health)
 for exactly which manifest fields feed it.
 
+## Outlet credentials
+
+Below the edge-mint card, the Secrets tab has an **Outlet credentials** card: the keys the
+Distribution service uses to reach a store on the product's behalf. They are **not** product
+secrets, and the difference is the point. Edge-mint can sign with any product secret an operator
+marks _edge-mint_, for any device of the product — and under open registration anyone can be a
+device — so a store key stored as a product secret would be one approval away from a public
+token mint for your App Store Connect account. Outlet credentials live in their own table under
+their own encryption binding: a value copied into the product-secret table does not even decrypt
+there, and no edge-mint recipe can name one.
+
+Four kinds exist today:
+
+| Kind                         | Value                                                     | Least privilege                                                                    |
+| ---------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| App Store Connect API key    | key ID, issuer ID and the `.p8` file (a P-256 PKCS#8 key) | A **team** key with the **App Manager** role — not Admin.                          |
+| App Store webhook secret     | the shared secret for App Store Server Notifications      | Used only to verify Apple's webhook calls.                                         |
+| Google service account       | the service account's JSON key file                       | Invite the account to **one app** in Play Console with release permissions only.   |
+| Microsoft Partner Center app | tenant ID, client ID, client secret and seller ID         | An Entra app added to Partner Center with the **Manager** role, not Account admin. |
+
+Each is validated when you save it — a `.p8` that is not a P-256 PKCS#8 key, or a Google key that
+is not RSA or names a token endpoint other than `https://oauth2.googleapis.com/token`, is refused
+and nothing is stored. Of a Google key file only `client_email`, `private_key` and `token_uri` are
+kept.
+
+The rules, all enforced by the Worker rather than by the console:
+
+- **Platform admins only, write-only.** `PUT /manage/api/products/<slug>/outlet-credentials/<id>`
+  with `{kind, value, outletId?, expiresAt?}` seals and stores the value and echoes the **id
+  only**. Saving to an existing id of the same kind rotates it in place (and clears its health);
+  saving a different kind to an existing id is refused (409) — delete it first. No `.pkey/`
+  manifest, resync or service can write one.
+- **Metadata only on read.** `GET …/outlet-credentials` lists each credential's kind, outlet,
+  non-secret identifiers (key ID, issuer ID, client email, tenant, client and seller IDs), when it
+  was created and by whom, when it was last used, and the last result a connector reported. There
+  is no endpoint that returns a value.
+- **Every use is audited.** Only the Distribution service can open one, and each open writes an
+  `outlet_credential.use` row to the product's activity log with actor `system:distribution` and
+  what it was for (for example `asc:poll`) — including opens that failed. Connectors cache the
+  short-lived tokens they mint, so this is tens of rows a day per credential, not one per request.
+  Your own writes are audited as `outlet_credential.set` and `outlet_credential.delete`.
+- **Deleted with the product,** and re-sealed by the KEK rotation sweep like everything else on
+  this page (its own `outletCredentials` bucket in `GET /manage/api/products/kek`).
+
+**Delete** (the bin icon on a row, `DELETE …/outlet-credentials/<id>`) removes the value for good;
+connectors that used it stop working until a new one is set.
+
 ## Rotating the signing key
 
 Every product signs everything it hands a client — license documents, config documents, trust
@@ -129,8 +176,8 @@ rotates the KEK that seals every product's keys; this rotates one product's own 
 - [Operating: the KEK keyring](/docs/admin/kek/) — the runbook for `PLATFORM_KEK` itself, which
   seals both the secrets and the keys on this page. If it's misconfigured, every product route
   serving something signed 404s silently — read that page's opening note before you touch it.
-- [D1 data model](/docs/reference/data-model/) — `product_secrets`, `product_keys` and
-  `edge_mint_approvals`.
+- [D1 data model](/docs/reference/data-model/) — `product_secrets`, `product_keys`,
+  `outlet_credentials` and `edge_mint_approvals`.
 - [Edge-mint](/docs/services/config/edge-mint/) — recipes, the two operator conditions, and the
   mint route.
 - [Products](/docs/admin/products/#setup-health) — the full setup-health computation.
