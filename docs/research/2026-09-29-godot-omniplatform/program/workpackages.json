@@ -355,7 +355,7 @@
       "optional": false,
       "refs": ["README §5.2 §5.3", "notes/A2 §1", "notes/A5", "PARITY §5.1"],
       "brief": "wp/P1-02-godot-core.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-03",
