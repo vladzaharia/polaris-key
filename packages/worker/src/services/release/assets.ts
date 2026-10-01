@@ -124,8 +124,9 @@ export function matchAsset(
       const wanted = tokens(spec.channelSuffix);
       if (wanted.length > 0 && wanted.every((t) => toks.has(t))) s += 2;
     } else {
-      // No channel requested: prefer assets that DON'T carry a channel-ish token.
-      if (!toks.has("staging") && !toks.has("pr")) s += 1;
+      // No channel requested: prefer assets that DON'T carry a channel-ish token — `beta`, its
+      // legacy alias `staging`, or `pr` (WIRE-CONTRACT-V3 §5.1).
+      if (!toks.has("beta") && !toks.has("staging") && !toks.has("pr")) s += 1;
     }
     return s;
   };

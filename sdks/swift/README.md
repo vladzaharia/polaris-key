@@ -232,13 +232,25 @@ updaterController.updater.delegate = delegate // RETAIN it: `delegate` is weak
 - **`httpHeaders`** so an `entitled` product's feed (D-13) is reachable at all; Sparkle makes its
   own HTTP requests, and without this they are anonymous and answer 401.
 - **`allowedChannels`** from the licence's `channels` entitlement, so a stable-only customer is
-  not offered a beta the server will then refuse. A UX narrowing, not an enforcement point.
+  not offered a beta the server will then refuse. A UX narrowing, not an enforcement point. A
+  `staging` grant also allows `beta`, and a `beta` grant `staging`, as the server treats them.
 
 It does **not** verify updates. `SUPublicEDKey` in the host app's code-signed `Info.plist` is the
 terminal anchor; `PolarisKeyUpdate` asserts it is present and fails loudly if it is not, because an
 app that ships Sparkle without it does not fail to build, launch, or check for updates — it
 simply installs unsigned payloads. A Polaris Key-side signature check would be a second, weaker
 anchor beside the real one.
+
+## Channels
+
+The channel names are WIRE-CONTRACT-V3 §5.1's: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and a
+product's manual channels. `Semver.channelForVersion` derives the default `X-PKey-Channel` from
+the build version: `0.0.0-beta*` and the legacy `0.0.0-staging*` builds are now `.beta`.
+
+**Source note (P0-04):** `enum Channel` gained `case beta`, and `case staging` is deprecated
+(`staging` is the legacy spelling of `beta`; `channelForVersion` no longer returns it). An
+exhaustive `switch` over `Channel` in your code needs a `.beta` case. Pass
+`CoreOptions.channel: "staging"` only as a stopgap against a Worker older than this change.
 
 ## The frozen wire contract
 

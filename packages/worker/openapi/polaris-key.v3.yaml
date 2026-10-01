@@ -1123,8 +1123,12 @@ paths:
         enforces channel/version windows HERE with 403 + `allowedRange`.
 
 
-        The gate reads `X-PKey-Version` (defaulting to `0.0.0`) and `X-PKey-Channel`; an
-        UNRECOGNISED channel header is itself a refusal rather than a free pass. The 403 body
+        The gate reads `X-PKey-Version` (defaulting to `0.0.0`) and `X-PKey-Channel`, under the
+        channel vocabulary of WIRE-CONTRACT-V3 §5.1: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and
+        manual names, with `staging` (→ `beta`) and `latest` (→ `stable`) accepted as aliases.
+        A malformed channel header is itself a refusal rather than a free pass, and an unknown
+        well-formed name must be granted by name. A `channels` grant of `staging` also covers
+        `beta`, and `pr` covers every `pr-<n>`. The 403 body
         is NESTED and collapses both version outcomes into `code: "version_blocked"` while
         keeping the distinction in `error.reason`; `allowedRange` rides at the TOP level, as
         `{min, max}`, and is OMITTED entirely on `channel_not_allowed` — naming the window of
@@ -1636,8 +1640,9 @@ paths:
           description: >
             A selector, not necessarily a semver: `latest`, `stable`, a pinned bare `1.2.3`
             (looked up as the `v1.2.3` tag, then as `1.2.3` if that 404s; a `v`-prefixed
-            selector is not accepted), `beta`, `pr-42`, or an operator-defined channel name.
-            Pinned selectors
+            selector is not accepted), `beta` (or its legacy alias `staging`, unless the product
+            declares a manual channel of that name), `pr-42`, or an operator-defined channel
+            name. An aliased selector keeps its own spelling for the asset suffix. Pinned selectors
             get `max-age=86400, immutable`; moving ones `max-age=120`.
           schema: { type: string }
         - name: asset
@@ -1796,7 +1801,10 @@ paths:
       summary: The Sparkle appcast for a channel
       description: >
         Identical to the default feed except that `{channel}` selects the release stream and
-        appears in the channel `<title>` as `<binary> (<channel>)`. Under the `entitled`
+        appears in the channel `<title>` as `<binary> (<channel>)`. `staging` is the legacy
+        alias of `beta` and serves the beta release (keeping its own spelling in the title and
+        the enclosure) unless the product declares a manual channel named `staging`, which
+        wins. Under the `entitled`
         access mode this is where a stable-only license is refused a beta feed — 403
         `channel_not_allowed`, with no `allowedRange`. `arch` is part of the edge-cache key,
         so the two architectures never share a cached body.
@@ -1866,7 +1874,7 @@ paths:
         - name: channel
           in: query
           required: false
-          description: "Channel to check (default stable): stable, beta, pr-<n>, or a manifest-declared manual channel."
+          description: "Channel to check (default stable): stable, beta (staging is its legacy alias), pr-<n>, or a manifest-declared manual channel."
           schema: { type: string, pattern: "^[a-z0-9-]+$" }
       responses:
         "200":
@@ -3042,7 +3050,10 @@ components:
       name: channel
       in: path
       required: true
-      description: A release channel name (`stable`, `beta`, `nightly`, `pr-42`, …).
+      description: >
+        A release channel name (`stable`, `beta`, `nightly`, `pr-42`, …). `staging` is accepted
+        as the legacy alias of `beta` unless the product declares a manual `staging` channel
+        (WIRE-CONTRACT-V3 §5.1).
       schema: { type: string, pattern: "^[a-z0-9-]+$" }
     Arch:
       name: arch
@@ -3075,9 +3086,11 @@ components:
       name: X-PKey-Channel
       in: header
       description: >
-        The channel the caller declares. It can only TIGHTEN the channel the version already
-        implies, never replace it, and a value the server does not recognise is itself a
-        refusal rather than a free pass.
+        The channel the caller declares (WIRE-CONTRACT-V3 §5.1): `stable`, `beta`, `pr` (read
+        as the build's own `pr-<n>`), `pr-<n>`, `dev` or a manual name; `staging` and `latest`
+        are accepted aliases of `beta` and `stable`. It can only TIGHTEN the channel the
+        version already implies, never replace it. A malformed value is itself a refusal
+        rather than a free pass, and an unknown well-formed name must be granted by name.
       schema: { type: string }
     PlatformHeader:
       name: X-PKey-Platform

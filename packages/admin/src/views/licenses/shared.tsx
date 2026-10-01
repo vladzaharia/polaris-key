@@ -1,12 +1,15 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
-import type { KeyStatus, LicenseStatus } from "../../api.js";
+import { api, type KeyStatus, type LicenseStatus } from "../../api.js";
 import { Badge, Button } from "../../components/ui/index.js";
+import { useResource } from "../../context.js";
+import { channelOptions } from "../../lib/channels.js";
 
 /**
  * Cross-cutting helpers for the licenses views: epoch formatting, status → badge mapping,
- * a release-channel multi-select, and the one-time "reveal a freshly-minted secret" panel.
- * Kept presentational so both the list and detail views can share them without prop drilling.
+ * a release-channel multi-select (shared with the tier dialogs), and the one-time "reveal a
+ * freshly-minted secret" panel. Kept presentational so both the list and detail views can share
+ * them without prop drilling.
  */
 
 /** Format an epoch-seconds timestamp as a locale date-time, or an em-dash when absent. */
@@ -80,31 +83,58 @@ export function DeviceStatusBadge({
   return <Badge variant={variant}>{status}</Badge>;
 }
 
-/** The release channels a license/tier can subscribe to. */
-const CHANNELS = ["stable", "beta", "staging", "pr"] as const;
-type Channel = (typeof CHANNELS)[number];
+/**
+ * The product's declared channel names, read from the Release truth store
+ * (`api.releases(slug).channels`, which holds a row for `stable`, `beta` and every declared manual
+ * channel). `channelOptions` filters the built-ins back out. An error or a 404 means there are
+ * none: the picker still offers the canonical channels.
+ */
+export function useManualChannels(slug: string): string[] {
+  // `async`, so a synchronous throw from the client is a rejection the cache records.
+  const res = useResource(`releases:${slug}`, async () => api.releases(slug));
+  return React.useMemo(
+    () => (res.data?.channels ?? []).map((c) => c.channel),
+    [res.data],
+  );
+}
 
 /**
- * A small checkbox-grid multi-select for release channels. Controlled — emits the next set on
- * every toggle. Each option is an accessible labelled checkbox so keyboard users can tab + space.
+ * A small checkbox-grid multi-select for release channels (WIRE-CONTRACT-V3 §5.1). Controlled —
+ * emits the next set on every toggle. Each option is an accessible labelled checkbox (named by
+ * the channel alone; its hint is a description) so keyboard users can tab + space.
+ *
+ * The options come from `channelOptions(manual, held)`: the canonical channels, the product's
+ * manual channels, and — only when `held` already has them — `staging` and `dev`, labelled.
+ * A value the picker does not offer is KEPT on every change, never silently dropped.
  */
 export function ChannelMultiSelect({
   value,
   onChange,
+  manual = [],
+  held = [],
   disabled,
   idPrefix = "channel",
 }: {
   value: string[];
   onChange: (next: string[]) => void;
+  /** The product's declared channel names (`useManualChannels`). */
+  manual?: readonly string[];
+  /** The value the licence or tier had when the editor opened; empty for a create dialog. */
+  held?: readonly string[];
   disabled?: boolean;
   idPrefix?: string;
 }): React.ReactElement {
+  const options = channelOptions(manual, held);
   const set = new Set(value);
   const toggle = (channel: string): void => {
     const next = new Set(set);
     if (next.has(channel)) next.delete(channel);
     else next.add(channel);
-    onChange(CHANNELS.filter((c) => next.has(c)));
+    const offered = options.map((o) => o.name);
+    onChange([
+      ...offered.filter((c) => next.has(c)),
+      ...value.filter((c) => !offered.includes(c) && next.has(c)),
+    ]);
   };
   return (
     <div
@@ -112,13 +142,13 @@ export function ChannelMultiSelect({
       aria-label="Release channels"
       className="flex flex-wrap gap-3"
     >
-      {CHANNELS.map((channel) => {
+      {options.map(({ name: channel, hint }) => {
         const id = `${idPrefix}-${channel}`;
+        const hintId = `${id}-hint`;
         return (
-          <label
+          <div
             key={channel}
-            htmlFor={id}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card/40 px-3 py-1.5 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/10"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-card/40 px-3 py-1.5 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/10"
           >
             <input
               id={id}
@@ -126,10 +156,18 @@ export function ChannelMultiSelect({
               className="size-4 accent-[hsl(var(--primary))]"
               checked={set.has(channel)}
               disabled={disabled}
+              aria-describedby={hint ? hintId : undefined}
               onChange={() => toggle(channel)}
             />
-            {channel}
-          </label>
+            <label htmlFor={id} className="cursor-pointer">
+              {channel}
+            </label>
+            {hint ? (
+              <span id={hintId} className="text-xs text-muted-foreground">
+                {hint}
+              </span>
+            ) : null}
+          </div>
         );
       })}
     </div>
