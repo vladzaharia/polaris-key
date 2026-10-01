@@ -60,8 +60,9 @@ export interface RunUpdateCheckOptions {
   releaseKeys: TrustSet;
   /** The effective clock, epoch seconds: `max(system, highWaterMark)`. */
   now: number;
-  /** The SDK's device id, as it sends `X-PKey-Device`: the rollout bucket's install id. */
-  installId: string;
+  /** The SDK's device id, as it sends `X-PKey-Device`: the rollout bucket's install id. Null
+   *  when the host has none, which leaves the bucket null (out of every client rollout). */
+  installId: string | null;
   installed: InstalledBuild;
   outlet: UpdateOutlet;
   subkind: string | null;
@@ -298,7 +299,7 @@ export async function runUpdateCheck(
   // Steps 17–18.
   const entry = outletEntry(target, opts.outlet);
   const bucket =
-    entry?.rollout !== undefined && entry.rollout !== null
+    entry?.rollout !== undefined && opts.installId !== null
       ? await rolloutBucket(entry.rollout.salt, opts.installId)
       : null;
   const decision = decideUpdate({
