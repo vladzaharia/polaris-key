@@ -171,6 +171,28 @@ Promote, pin and unpin need the `release:promote` scope, which the default grant
 needs `release:yank`, which an operator adds to the product's publisher policy in the console.
 `--deliverable` selects another deliverable once packs exist.
 
+## Distribution commands
+
+The same credential reports what a store says and drives outlet rollouts:
+
+```sh
+pkey distribution report availability --product your-product --outlet app-store \
+  --release v0.3.0 --build ios --state in-review
+pkey distribution report submission --product your-product --outlet app-store \
+  --release v0.3.0 --state submitted
+pkey distribution report key --product your-product --purpose android-app-signing \
+  --sha256 "$SIGNING_CERT_SHA256"
+pkey distribution rollout --product your-product --outlet direct --channel stable \
+  --release v0.3.0 --bp 2500
+pkey distribution halt --product your-product --outlet direct --channel stable   # also resume, pause, complete
+```
+
+The reports need `distribution:report`, which the default grant includes; a key report whose
+fingerprint is not in the product's key inventory is flagged and exits 1. See
+[Availability, submissions and keys](/docs/services/distribution/availability/). The rollout
+commands need `distribution:rollout`, which an operator adds deliberately; see
+[Rollouts and halts](/docs/services/distribution/rollouts/).
+
 ## Other CI systems
 
 Outside GitHub Actions there is no OIDC token to exchange. An operator issues a **static**

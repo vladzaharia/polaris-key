@@ -372,7 +372,7 @@
       "optional": false,
       "refs": ["notes/A2 §1.9 §9.2", "PARITY §5.2"],
       "brief": "wp/P1-03-godot-license.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-04",
@@ -899,7 +899,7 @@
       "optional": false,
       "refs": ["README §3.8 data model", "notes/E2 (developer verification)"],
       "brief": "wp/P2b-03-availability-keys.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2b-04",

@@ -603,6 +603,60 @@ build; the emergency stop is still a yank or a pin (`release:yank`, `release:pro
 is random per release and the bucket is evaluated on the device, so the Worker serves one feed
 to everyone and a rollout leaks nothing about which devices are in it.
 
+### Availability, submissions and the key inventory (P2b-03)
+
+**What arrived.** `dist_availability` (is release R, build B, available on outlet O, and since
+when) and `dist_submissions` (where R stands in O's review) — written by CI through
+`POST /<p>/distribution/report` until the store connectors exist (P5-02 to P5-04) — and
+`dist_keys`, the per-product signing-key inventory, written only by an operator in the console
+(`services/distribution/availability.ts`; tests: `test/distributionAvailability.test.ts`,
+`test/distributionReportE2e.test.ts`).
+
+- **The principal.** A `pkeyci_` token with `distribution:report`, which is in the DEFAULT grant
+  (P2-02): any job that can publish can report. A report is validated whole before anything is
+  written — the outlet declared and not removed, the release and build known to Release's
+  catalog, the state in the type's vocabulary, `since` not in the future — so a refused report
+  writes nothing. Every change is audited as `ci:<subject>`. The route is CI-only (no CORS),
+  answers not-found with Distribution off, and is not on the bytes host.
+- **What a report can and cannot do.** It can make the console, and later the matrix (P2b-06),
+  the storefront feeds (P2b-05) and the signed feed (P3-03), show a WRONG STATE: claim a build is
+  `live` on a store where it is not, or `removed` from a self-hosted outlet where it is. It
+  cannot ship code, serve or withhold bytes (nothing on the byte path reads these tables), change
+  a rollout, or change a key. It is recorded as a §5 semi-trusted input. A consumer that turns
+  availability into an offer to a device (P3-03) must treat a CI-sourced `live` as a claim, not
+  as proof — the bytes, their digest and the release's signature remain the authority.
+- **Derived availability reads only Release's truth.** A self-hosted outlet (`direct`, `web`,
+  `altstore`, `obtainium`, `fdroid-repo`, `app-installer`) delivering by `pkey-cdn`, `embedded` or
+  `web` reads `live` for a build that is not yanked and whose payload has an R2 or GitHub location,
+  through the `releaseCatalog` hook; no report is needed and none can widen it beyond that — a
+  stored report can only replace the derived answer for its own outlet. Store kinds never derive,
+  since every outlet's default transport is `pkey-cdn`.
+- **Fail-closed vocabulary.** States, purposes and sources are enforced on write in code (no CHECK,
+  so P5 can grow them); a stored availability state outside the vocabulary reads as `pending`,
+  never `live`.
+
+**The key inventory is the independent control.** Its fingerprints are what players, the download
+page (P2b-06), F-Droid clients (P2b-05) and AppVerifier check a download against, so a
+compromised pipeline must not be able to edit it — otherwise an attacker who can sign with their
+own key could also publish that key as the expected one.
+
+- **Operator-only writes.** Only the console's `PUT`/`DELETE …/distribution/keys` (platform-admin
+  session, CSRF, audited with the session's subject) create, change or remove an entry
+  (`source = 'admin'`). No ingest writes `dist_keys`; no manifest field reaches it.
+- **CI reports observations, never entries.** A `type: key` report that matches an entry writes
+  only that row's `observed_json` (the upsert's `DO UPDATE` names no other operator column). One
+  that matches no entry becomes an observation row (`source = 'ci'`), audited as
+  `distribution.key.mismatch`; the `delivery` hook's `keys()` never returns observations and
+  marks every entry of that purpose `flagged`, and the CLI exits 1. An operator adopts or
+  dismisses it. A pipeline that rotates to an attacker's key is therefore visible, not silent.
+- **Residual.** An attacker holding a `distribution:report` token can add observation rows and
+  mark entries `flagged` — noise an operator clears, and visible in the audit log. The CI routes
+  have no rate limit of their own, so observations are capped per product
+  (`MAX_KEY_OBSERVATIONS`, 64; past it a new one is refused 409 `too_many_observations`, which
+  still fails the job), and availability and submission rows are bounded by the product's
+  releases × builds × declared outlets. The `registered` flag is the operator's own record of
+  Android developer verification; nothing verifies it against Google.
+
 ### Outlet credentials (P5-01)
 
 **What they are.** The keys a store connector authenticates with (A11): an App Store Connect API
@@ -897,6 +951,7 @@ originating outside the trust boundary.
 | Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                               |
 | Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                      |
 | CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02). |
+| CI distribution reports         | Availability and submission state per release and outlet; key observations        | A CI job (`pkeyci_`) | `distribution:report` (default grant). Validated whole before writing (declared live outlet, known release and build, vocabulary); audited. Can show a wrong state, never ship code, gate bytes or change a key: the operator-owned key inventory only records a CI-observed fingerprint, flagging a mismatch (P2b-03).                                                                     |
 
 **CI OIDC claims are only as strong as the repository's own settings.** The policy proves the
 token came from the declared workflow, in the declared environment, on a ref a branch or tag
@@ -1046,7 +1101,8 @@ release channel or artifact type is added; a service gains a route, a table or a
 descriptor hook gains a method that writes or a new provider, or a method that returns bytes
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
-offered (P3-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
+offered (P3-03), or a reader of `dist_availability` does, or anything but the console's key
+routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; the bucket-lock duration

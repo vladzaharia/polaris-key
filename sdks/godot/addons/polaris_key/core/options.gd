@@ -18,8 +18,11 @@ const CONFIG_ENV_NEVER := 2
 ## The game's version, sent as X-PKey-Version and gated on by the server. Empty: the project's
 ## `application/config/version`. Must be semver; `configure` refuses anything else.
 @export var version := ""
-## X-PKey-Channel until the build stamp (P1-11) supplies one. Empty: derived from the version
-## (`stable`, or `dev`/`beta`/`pr` for 0.0.0-* versions).
+## X-PKey-Channel until the build stamp (P1-11) supplies one (WIRE-CONTRACT-V3 §5.1): `stable`,
+## `beta`, `pr-<n>`, `dev` or a manual channel the product declares (`^[a-z0-9][a-z0-9-]{0,63}$`).
+## Aliases are sent as their canonical name (`staging` as `beta`, `latest` as `stable`);
+## `configure` refuses anything malformed. Empty: derived from the version (`stable`, or
+## `dev`/`beta`/`pr` for 0.0.0-* versions; the server narrows `pr` to the build's number).
 @export var default_channel := ""
 ## kid -> raw Ed25519 public key (base64url). The ONLY trust root; never taken from discovery.
 @export var pinned_trust_keys: Dictionary = {}

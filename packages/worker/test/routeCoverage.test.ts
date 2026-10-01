@@ -98,6 +98,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/rollouts/{outlet}/{channel}/resume", ["post"]],
   ["/{product}/distribution/rollouts/{outlet}/{channel}/halt", ["post"]],
   ["/{product}/distribution/rollouts/{outlet}/{channel}/complete", ["post"]],
+  // P2b-03: the CI report of availability, submissions and signing keys.
+  ["/{product}/distribution/report", ["post"]],
   ["/{product}/update/appcast.xml", ["get"]],
   ["/{product}/update/{channel}/appcast.xml", ["get"]],
   ["/{product}/update/version", ["get"]],
@@ -242,6 +244,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/rollouts/{outlet}/{channel}/resume",
   "/{product}/distribution/rollouts/{outlet}/{channel}/halt",
   "/{product}/distribution/rollouts/{outlet}/{channel}/complete",
+  // P2b-03: the CI report route, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/report",
 ]);
 
 /** Every product path the router serves, from the three tables above. */

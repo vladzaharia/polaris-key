@@ -12,8 +12,9 @@
  *   - `releaseCatalog`      (implemented by Release): deliverables, releases, builds, artifact
  *                            records, channel policy, yanks, resolution, and the GitHub-located
  *                            bytes only Release can reach (P2b-04);
- *   - `delivery`            (implemented by Distribution): transports, availability, outlet
- *                            rollouts and halts, delivery access and delivery URLs (P2b-04);
+ *   - `delivery`            (implemented by Distribution): transports, availability and
+ *                            submissions (P2b-03), outlet rollouts and halts, delivery access and
+ *                            delivery URLs (P2b-04), and the signing-key inventory (P2b-03);
  *   - `outletCapabilities`  (implemented by Distribution): what one outlet permits.
  *
  * ── THE RULES ───────────────────────────────────────────────────────────────────────────────
@@ -37,8 +38,8 @@
  * ── WHO EXTENDS WHAT ────────────────────────────────────────────────────────────────────────
  *
  * P2b-04 added resolution and source access to `ReleaseCatalog` and rollouts, delivery access and
- * delivery URLs to `Delivery`; P2b-02 implements `outletCapabilities`; P2b-03 fills availability.
- * P3-03, P4-05, P4-14 and P6-03 consume.
+ * delivery URLs to `Delivery`; P2b-02 implements `outletCapabilities`; P2b-03 added availability,
+ * submissions and the key inventory. P2b-05, P2b-06, P3-03, P4-05, P4-14 and P6-03 consume.
  */
 
 /// <reference types="@cloudflare/workers-types" />
@@ -276,16 +277,89 @@ export type TransportId = string;
 /** The transport every deliverable uses when no outlet says otherwise: our own CDN. */
 export const DEFAULT_TRANSPORT: TransportId = "pkey-cdn";
 
-/** "Version V of deliverable D is live on outlet O since T" (README §3.1 "availability"). */
+/**
+ * "Release R (build B) of deliverable D is <state> on outlet O since T" (README §3.1
+ * "availability"). P2b-03 sets the vocabulary (`AVAILABILITY_STATES` in
+ * `services/distribution/availability.ts`): `pending`, `processing`, `in-review`, `approved`,
+ * `live`, `rejected`, `removed`. A stored value outside it reads as `pending` (never `live`).
+ */
 export interface AvailabilityRecord {
   deliverableId: string;
   releaseId: string;
+  /** The build the record is about; `''` when it is per release. */
+  buildId: string;
   outletId: string;
   transport: TransportId;
-  /** The outlet-side state, e.g. `live`, `in-review`. Vocabulary set by P2b-03. */
   state: string;
-  /** Epoch seconds the record entered `state`. */
-  since: number;
+  /** Epoch seconds the record entered `state`; `null` for a derived record whose release never
+   *  said when it was published. */
+  since: number | null;
+  /** Store-assigned ids (ASC build id, Play version code, Steam depot manifest); never in Release. */
+  platformRef: Record<string, unknown> | null;
+  detail: Record<string, unknown> | null;
+  /** `ci`, `admin`, a connector kind (`asc`, `play`, `ms-store`), or `derived`. */
+  source: string;
+  /**
+   * True when no row says so and the answer is DERIVED from Release's truth: a self-hosted outlet
+   * delivering the deliverable by `pkey-cdn`, `embedded` or `web`, with a matching build whose
+   * bytes have a stored or GitHub location, is `live` without a report.
+   */
+  derived: boolean;
+  /** Epoch seconds of the last write; `null` for a derived record. */
+  updatedAt: number | null;
+}
+
+/**
+ * Where release R stands in outlet O's submission (review) lifecycle (P2b-03). States:
+ * `prepared`, `submitted`, `in-review`, `approved`, `rejected`, `pending-developer-release`,
+ * `released`, `cancelled` (`SUBMISSION_STATES`); P5's connectors map store states onto them.
+ */
+export interface SubmissionRecord {
+  deliverableId: string;
+  releaseId: string;
+  outletId: string;
+  state: string;
+  /** Epoch seconds the submission last entered `submitted`, or `null`. */
+  submittedAt: number | null;
+  /** Epoch seconds it last entered `approved` or `rejected`, or `null`. */
+  reviewedAt: number | null;
+  detail: Record<string, unknown> | null;
+  source: string;
+  updatedAt: number;
+}
+
+/**
+ * One OPERATOR-owned signing-key inventory entry (P2b-03, `dist_keys`): what players, the download
+ * page, F-Droid clients and AppVerifier check a download against. A CI report can never create
+ * or change one; a CI-observed fingerprint that is not in the inventory is an observation, never
+ * an entry, and only raises `flagged` on the entries of its purpose.
+ */
+export interface KeyRecord {
+  /** `KEY_PURPOSES`: `android-app-signing`, `android-upload`, `android-sideload`,
+   *  `fdroid-repo`, `sparkle-ed25519`, `release`, `msix-publisher`. */
+  purpose: string;
+  /** Lower-case hex SHA-256 of the certificate (or of the raw public key for Ed25519). */
+  sha256: string;
+  /** The outlet the key is for, when it is outlet-specific. */
+  outletId: string | null;
+  notes: string | null;
+  /** The operator's record that it is registered for Android developer verification. */
+  registered: boolean;
+  registeredAt: number | null;
+  /** The last time CI reported signing with this exact key, or `null`. */
+  observed: KeyObservation | null;
+  /** True when CI has reported a DIFFERENT fingerprint for this purpose that is not in the
+   *  inventory: an operator should look. */
+  flagged: boolean;
+}
+
+/** One CI observation of a fingerprint (`dist_keys.observed_json`). */
+export interface KeyObservation {
+  /** Epoch seconds. */
+  at: number;
+  /** The audit actor, `ci:<subject>`. */
+  by: string;
+  outletId: string | null;
 }
 
 /** The states an outlet rollout can be in (P2b-04, README §3.9). */
@@ -317,17 +391,25 @@ export interface RolloutRecord {
 
 /**
  * Distribution's read-only view of how releases reach devices and outlets (README §3.2).
- * P2b-01 shipped it with no outlets (the default transport, empty availability); P2b-04 adds
- * rollouts, delivery access and delivery URLs. P2b-03 fills availability.
+ * P2b-01 shipped it with no outlets (the default transport, empty availability); P2b-04 added
+ * rollouts, delivery access and delivery URLs; P2b-03 added availability, submissions and the key
+ * inventory.
  */
 export interface Delivery {
   /** The transport a deliverable uses on an outlet that names none. */
   defaultTransport: TransportId;
-  /** Availability records for one deliverable, optionally narrowed to one release. */
-  availability(
-    deliverableId: string,
-    releaseId?: string,
-  ): Promise<AvailabilityRecord[]>;
+  /**
+   * Availability of one release on each of the product's LIVE outlets: the stored records (CI
+   * reports, later connectors), plus the derived `live` records of self-hosted outlets (see
+   * `AvailabilityRecord.derived`). A stored record for (release, build, outlet) — or a per-release
+   * one for (release, outlet) — wins over the derived answer. Ordered by outlet, then build.
+   * Empty for a release Release does not know.
+   */
+  availability(releaseId: string): Promise<AvailabilityRecord[]>;
+  /** The submission records of one release on the product's live outlets, by outlet. */
+  submissions(releaseId: string): Promise<SubmissionRecord[]>;
+  /** The key inventory (operator entries only), optionally narrowed to one purpose. */
+  keys(q?: { purpose?: string }): Promise<KeyRecord[]>;
   /** The rollout on one outlet's channel for a deliverable, or `null` when there is none. */
   rollout(q: {
     deliverable: string;
