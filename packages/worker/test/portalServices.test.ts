@@ -21,7 +21,7 @@ import type { Env } from "../src/env.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
-import { handlePortalApi } from "../src/services/identity/portal/api.js";
+import { handlePortalApi } from "./portalHarness.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -74,7 +74,11 @@ async function portalSession(
   };
 }
 
-/** Enablement written the way the manifest writes it: a FULL set, through the owning writer. */
+/**
+ * Enablement written the way the manifest writes it: a FULL set, through the owning writer.
+ * Distribution follows Release unless a test says otherwise: P2b-01 backfilled it onto every
+ * Release product, and since P2b-04 it is the service that serves a download.
+ */
 async function setProductServices(
   db: ReturnType<typeof makeTestDb>,
   slug: string,
@@ -88,7 +92,7 @@ async function setProductServices(
         license: { enabled: true },
         config: { enabled: true },
         release: { enabled: false },
-        distribution: { enabled: false },
+        distribution: { enabled: services.release?.enabled === true },
         update: { enabled: false },
         identity: { enabled: false },
         ...services,

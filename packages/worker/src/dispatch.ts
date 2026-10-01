@@ -10,7 +10,12 @@
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { matchRoute, type Route } from "./router.js";
-import { loadProduct, type Product } from "./core/products.js";
+import {
+  loadProduct,
+  type Product,
+  type ProductPublic,
+} from "./core/products.js";
+import { buildHooks, type ServiceHooks } from "./core/hooks.js";
 import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust.js";
@@ -66,8 +71,14 @@ export async function dispatchWith(
   // portal, `/docs` or a product route. With `BLOB_ORIGIN` unset this is always false, and
   // everything below runs exactly as it did before the bytes host existed.
   if (isBytesHost(url, env))
-    return dispatchBytesHost(req, env, db, BYTE_ROUTES);
+    return dispatchBytesHost(req, env, db, BYTE_ROUTES, SERVICES);
   const route = matchRoute(url.pathname);
+  // The portal is one account across every product, so it has no product to dispatch on; when
+  // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
+  // access every download surface reads), built here from the composition root's registry under
+  // that product's own enablement.
+  const hooksFor = (product: ProductPublic, at: number): ServiceHooks =>
+    buildHooks(SERVICES, product.services, { env, db, product, now: at });
 
   if ("product" in route && PRODUCT_ROUTES.has(route.kind)) {
     const product = await loadProduct(env, db, route.product);
@@ -104,13 +115,14 @@ export async function dispatchWith(
     case "portalCallback":
     case "portalLogout":
     case "portalMagicVerify":
-      return handlePortal(req, env, db, url.pathname);
+      return handlePortal(req, env, db, url.pathname, { hooksFor });
     case "portalDownload":
       return handlePortal(
         req,
         env,
         db,
         `/download/${encodeURIComponent(route.token)}`,
+        { hooksFor },
       );
     case "adminSpa":
     case "adminApi":

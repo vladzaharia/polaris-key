@@ -6,16 +6,22 @@ description: "Every public wire route by owning service, generated from the Open
 {/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
     Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
 
-The public API, one row per operation. The `aliases` rows are the four permanent
-pre-namespace spellings — exact rewrites of their canonical routes, kept forever because
-they are compiled into shipped app bundles and published curl lines. Removed v2 spellings
+The public API, one row per operation. The `aliases` rows are the permanent alias
+spellings — the four pre-namespace paths and Release's old byte paths (moved to Distribution
+in P2b-04) — exact rewrites of their canonical routes, kept forever because they are compiled
+into shipped app bundles, built by SDKs and printed in published curl lines. Removed v2 spellings
 (`/activate`, `/config`, `/auth/*`, `/cli/*`, `/dmg/*`, …) 404 outright.
 
 | Method | Path | Service | Summary |
 | --- | --- | --- | --- |
 | GET | `/{product}/{channel}/appcast.xml` | aliases | Alias → /\{product\}/update/\{channel\}/appcast.xml |
 | GET | `/{product}/appcast.xml` | aliases | Alias → /\{product\}/update/appcast.xml |
-| GET | `/{product}/install.sh` | aliases | Alias → /\{product\}/release/install.sh |
+| GET | `/{product}/install.sh` | aliases | Alias → /\{product\}/distribution/install.sh |
+| GET | `/{product}/release/blobs/sha256/{sha256}` | aliases | Alias → /\{product\}/distribution/blobs/sha256/\{sha256\} |
+| GET | `/{product}/release/builds/{selector}/{buildId}` | aliases | Alias → /\{product\}/distribution/builds/\{selector\}/\{buildId\} |
+| GET | `/{product}/release/dl/{version}/{asset}` | aliases | Alias → /\{product\}/distribution/dl/\{version\}/\{asset\} |
+| GET | `/{product}/release/files/{releaseId}/{name}` | aliases | Alias → /\{product\}/distribution/files/\{releaseId\}/\{name\} |
+| GET | `/{product}/release/install.sh` | aliases | Alias → /\{product\}/distribution/install.sh |
 | GET | `/{product}/version` | aliases | Alias → /\{product\}/update/version |
 | GET | `/{product}/config/document` | config | The signed config document (pkey-config+jws) |
 | GET | `/{product}/config/mint/{mintId}/auth` | config | The edge-mint auth page (HTML) |
@@ -31,6 +37,16 @@ they are compiled into shipped app bundles and published curl lines. Removed v2 
 | POST | `/{product}/devices/register` | core | Keyless device registration (policy-gated) |
 | POST | `/{product}/devices/report` | core | Report device facts (software snapshot + declared probes) |
 | GET | `/{product}/devices` | core | List the devices sharing this device's seat pool |
+| GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
+| GET | `/{product}/distribution/builds/{selector}/{buildId}` | distribution | Download the payload of a declared build |
+| GET | `/{product}/distribution/dl/{version}/{asset}` | distribution | Download a release artifact |
+| GET | `/{product}/distribution/files/{releaseId}/{name}` | distribution | Download one exact file of one release |
+| GET | `/{product}/distribution/install.sh` | distribution | The curl-pipe install script |
+| POST | `/{product}/distribution/rollouts/{outlet}/{channel}/complete` | distribution | Complete an outlet rollout (CI) |
+| POST | `/{product}/distribution/rollouts/{outlet}/{channel}/halt` | distribution | Halt an outlet rollout (CI) |
+| POST | `/{product}/distribution/rollouts/{outlet}/{channel}/pause` | distribution | Pause an outlet rollout (CI) |
+| POST | `/{product}/distribution/rollouts/{outlet}/{channel}/resume` | distribution | Resume an outlet rollout (CI) |
+| POST | `/{product}/distribution/rollouts/{outlet}/{channel}` | distribution | Start an outlet rollout, or set its percentage (CI) |
 | GET | `/{product}/identity/auth/callback` | identity | OIDC redirect URI |
 | POST | `/{product}/identity/auth/device/poll` | identity | Poll the device-code flow |
 | POST | `/{product}/identity/auth/device/start` | identity | Begin the device-code flow |
@@ -48,15 +64,10 @@ they are compiled into shipped app bundles and published curl lines. Removed v2 
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
-| GET | `/{product}/release/blobs/sha256/{sha256}` | release | Download a content-addressed object |
-| GET | `/{product}/release/builds/{selector}/{buildId}` | release | Download the payload of a declared build |
 | GET | `/{product}/release/changelog` | release | Release changelog |
 | POST | `/{product}/release/channels/{channel}/pin` | release | Pin a channel to a release (CI) |
 | POST | `/{product}/release/channels/{channel}/promote` | release | Promote a release to a channel (CI) |
 | POST | `/{product}/release/channels/{channel}/unpin` | release | Unpin a channel (CI) |
-| GET | `/{product}/release/dl/{version}/{asset}` | release | Download a release artifact |
-| GET | `/{product}/release/files/{releaseId}/{name}` | release | Download one exact file of one release |
-| GET | `/{product}/release/install.sh` | release | The curl-pipe install script |
 | POST | `/{product}/release/publish/submit` | release | Submit a release descriptor against an upload ticket (trusted publishing) |
 | POST | `/{product}/release/publish/token` | release | Exchange a GitHub Actions OIDC token for a pkeyci_ token (trusted publishing) |
 | POST | `/{product}/release/publish/uploads` | release | Obtain an upload ticket and R2 temporary credentials (trusted publishing) |

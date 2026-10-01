@@ -56,6 +56,10 @@ export interface PortalReleaseRow {
   product: string;
   product_name: string;
   release_id: string;
+  /** The deliverable the release belongs to (P2-03); delivery access is decided per deliverable. */
+  deliverable_id: string;
+  /** The channel it was published to; `null` = derived from GitHub (read as stable). */
+  channel: string | null;
   version: string;
   title: string | null;
   notes: string | null;
@@ -709,6 +713,23 @@ export async function listPortalArtifacts(
       WHERE product = ? AND release_id = ?
         AND kind NOT IN ('signature', 'checksum')
       ORDER BY kind ASC, platform ASC, arch ASC, name ASC`,
+    product,
+    releaseId,
+  );
+}
+
+/** The facts the delivery-access decision needs about one release, or `null` when it is gone. */
+export async function getPortalReleaseFacts(
+  db: Db,
+  product: string,
+  releaseId: string,
+): Promise<Pick<
+  PortalReleaseRow,
+  "deliverable_id" | "version" | "channel"
+> | null> {
+  return db.first(
+    `SELECT deliverable_id, version, channel FROM release_metadata
+      WHERE product = ? AND release_id = ?`,
     product,
     releaseId,
   );

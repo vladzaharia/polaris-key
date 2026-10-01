@@ -41,7 +41,7 @@
 
 import type { ServiceContext } from "../../core/registry.js";
 import { errorResponse, ErrorCode, json, notFound } from "../../core/errors.js";
-import { requireCiScope, ciActor } from "../../core/ciScope.js";
+import { readCiJson, requireCiScope, ciActor } from "../../core/ciScope.js";
 import { rateLimitOk, clientIp } from "../../core/rateLimit.js";
 import {
   blobKey,
@@ -70,7 +70,6 @@ import { randomId } from "../../core/platform.js";
 import { MAX_DESCRIPTOR_BYTES } from "@polaris-key/manifest";
 import { ingestReleaseDescriptor, type IngestResult } from "./descriptor.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
-import { readCiJson } from "./ciBody.js";
 
 /** The token request carries one JWT. */
 const MAX_TOKEN_BODY_BYTES = 16 * 1024;

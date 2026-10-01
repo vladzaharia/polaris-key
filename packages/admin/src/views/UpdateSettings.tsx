@@ -3,6 +3,7 @@ import { AlertTriangle, Info, Undo2 } from "lucide-react";
 import {
   ApiError,
   api,
+  type DeliveryAccess,
   type ReleaseAccess,
   type SettingsSource,
   type UpdateSettings as UpdateSettingsDto,
@@ -43,14 +44,19 @@ import {
  * called". They are here now because they are intersected with every grant the feed evaluates,
  * so they are read in the same breath as the access modes.
  *
- * The access modes and the compat window go to the same PATCH but land in different tables
+ * The metadata mode and the compat window go to the same PATCH but land in different tables
  * (`release_config` vs the product row), which is why `configured: false` disables only half
  * the form: a product with no release configuration has nowhere to store an access mode and the
  * server answers 422 rather than accepting a value the next GET would not return.
  *
- * Ownership (P0-01). The access pair and the compat window are ALSO written by a manifest
- * resync, so each carries a source badge: saving one here claims it (`admin`), and resync skips
- * a claimed block until "Revert to manifest" hands it back. The operator-only artifact policy
+ * ARTIFACT access is Distribution's delivery access since P2b-04 (`…/distribution/access`): the
+ * ONE answer the appcast, the downloads and the portal read, so the feed can no longer offer what
+ * the download refuses. It is edited here because it is read in the same breath, but it saves to
+ * its own endpoint and carries its own owner.
+ *
+ * Ownership (P0-01). The metadata mode, the delivery access and the compat window are ALSO
+ * written by a manifest resync, so each carries a source badge: saving one here claims it
+ * (`admin`), and resync skips a claimed block until "Revert to manifest" hands it back. The operator-only artifact policy
  * (minimum macOS version, the Sparkle signature requirement) has no manifest spelling at all, so
  * it has no badge — no push can write or erase it. Turning the signature requirement off weakens
  * a security control and asks for confirmation first.
@@ -59,6 +65,11 @@ export function UpdateSettings({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(
     `update-settings:${slug}`,
     () => api.updateSettings(slug),
+  );
+  // Distribution's delivery access (P2b-04). Loaded beside the settings; while it is loading or
+  // unreadable the Artifact access control is disabled rather than guessed at.
+  const delivery = useResource(`delivery-access:${slug}`, () =>
+    api.deliveryAccess(slug),
   );
 
   return (
@@ -90,7 +101,12 @@ export function UpdateSettings({ slug }: { slug: string }): React.ReactElement {
           }
         />
       ) : data ? (
-        <SettingsForm slug={slug} settings={data} />
+        <SettingsForm
+          slug={slug}
+          settings={data}
+          delivery={delivery.data ?? null}
+          deliveryError={delivery.error ?? null}
+        />
       ) : null}
     </section>
   );
@@ -126,7 +142,8 @@ const ACCESS_MODES: { value: ReleaseAccess; label: string; help: string }[] = [
 
 type FormState = {
   metadataAccess: ReleaseAccess;
-  artifactsAccess: ReleaseAccess;
+  /** Distribution's delivery access for the app; `null` until it has loaded. */
+  artifactsAccess: ReleaseAccess | null;
   compatMin: string;
   compatMax: string;
   /** The input's raw text; empty means "no minimum" and is sent as `null`. */
@@ -134,10 +151,13 @@ type FormState = {
   requireSparkleSignature: boolean;
 };
 
-function seed(settings: UpdateSettingsDto): FormState {
+function seed(
+  settings: UpdateSettingsDto,
+  delivery: DeliveryAccess | null,
+): FormState {
   return {
     metadataAccess: settings.metadataAccess,
-    artifactsAccess: settings.artifactsAccess,
+    artifactsAccess: delivery?.app.mode ?? null,
     compatMin: settings.compatMin,
     compatMax: settings.compatMax,
     minimumSystemVersion: settings.minimumSystemVersion ?? "",
@@ -145,54 +165,90 @@ function seed(settings: UpdateSettingsDto): FormState {
   };
 }
 
-const BLOCK_COPY: Record<UpdateSettingsBlock, { name: string; title: string }> =
-  {
-    access: {
-      name: "access modes",
-      title: "Return the access modes to the manifest?",
-    },
-    compat: {
-      name: "compatibility window",
-      title: "Return the compatibility window to the manifest?",
-    },
-  };
+/** The revertible blocks: Update's two, plus Distribution's delivery access (P2b-04). */
+type Block = UpdateSettingsBlock | "delivery";
+
+const BLOCK_COPY: Record<Block, { name: string; title: string }> = {
+  access: {
+    name: "metadata access mode",
+    title: "Return the metadata access mode to the manifest?",
+  },
+  delivery: {
+    name: "delivery access",
+    title: "Return the delivery access to the manifest?",
+  },
+  compat: {
+    name: "compatibility window",
+    title: "Return the compatibility window to the manifest?",
+  },
+};
 
 function SettingsForm({
   slug,
   settings,
+  delivery,
+  deliveryError,
 }: {
   slug: string;
   settings: UpdateSettingsDto;
+  delivery: DeliveryAccess | null;
+  deliveryError: string | null;
 }): React.ReactElement {
   const toast = useToast();
-  const [form, setForm] = React.useState<FormState>(() => seed(settings));
+  const [form, setForm] = React.useState<FormState>(() =>
+    seed(settings, delivery),
+  );
   const [saving, setSaving] = React.useState(false);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
     {},
   );
   // A save that turns the signature requirement OFF waits here for the operator to confirm.
-  const [pendingUnsigned, setPendingUnsigned] =
-    React.useState<UpdateSettingsBody | null>(null);
-  const [confirmRevert, setConfirmRevert] =
-    React.useState<UpdateSettingsBlock | null>(null);
+  const [pendingUnsigned, setPendingUnsigned] = React.useState<{
+    body: UpdateSettingsBody;
+    artifacts: ReleaseAccess | null;
+  } | null>(null);
+  const [confirmRevert, setConfirmRevert] = React.useState<Block | null>(null);
   const [reverting, setReverting] = React.useState(false);
 
   // Re-seed after a save (or a resync) replaces the settings this form was built from.
   React.useEffect(() => {
-    setForm(seed(settings));
+    setForm(seed(settings, delivery));
     setFieldErrors({});
-  }, [settings]);
+  }, [settings, delivery]);
 
-  const initial = seed(settings);
+  const initial = seed(settings, delivery);
   const dirty = (Object.keys(initial) as (keyof FormState)[]).some(
     (k) => form[k] !== initial[k],
   );
 
-  const save = async (body: UpdateSettingsBody): Promise<void> => {
+  const save = async (
+    body: UpdateSettingsBody,
+    artifacts: ReleaseAccess | null,
+  ): Promise<void> => {
     setSaving(true);
     setFieldErrors({});
     try {
-      await api.saveUpdateSettings(slug, body);
+      // Two owners, two endpoints (P2b-04): the delivery access is Distribution's.
+      if (artifacts !== null) {
+        try {
+          await api.saveDeliveryAccess(slug, { mode: artifacts });
+        } catch (err) {
+          // Attribute a refusal of the delivery-access save to its own control.
+          if (err instanceof ApiError && err.fields?.length) {
+            const attributed = new ApiError(
+              err.status,
+              ["artifactsAccess"],
+              err.code,
+            );
+            attributed.message = err.message;
+            throw attributed;
+          }
+          throw err;
+        }
+        invalidate(`delivery-access:${slug}`);
+      }
+      if (Object.keys(body).length > 0)
+        await api.saveUpdateSettings(slug, body);
       invalidate(`update-settings:${slug}`);
       // The compat window lives on the product row, so anything showing the product (the
       // overview, the releases distribution card) is now stale.
@@ -236,8 +292,11 @@ function SettingsForm({
     const body: UpdateSettingsBody = {};
     if (form.metadataAccess !== settings.metadataAccess)
       body.metadataAccess = form.metadataAccess;
-    if (form.artifactsAccess !== settings.artifactsAccess)
-      body.artifactsAccess = form.artifactsAccess;
+    const artifacts =
+      form.artifactsAccess !== null &&
+      form.artifactsAccess !== initial.artifactsAccess
+        ? form.artifactsAccess
+        : null;
     if (form.compatMin !== settings.compatMin)
       body.compatMin = form.compatMin.trim();
     if (form.compatMax !== settings.compatMax)
@@ -249,17 +308,22 @@ function SettingsForm({
       body.requireSparkleSignature = form.requireSparkleSignature;
 
     if (body.requireSparkleSignature === false) {
-      setPendingUnsigned(body);
+      setPendingUnsigned({ body, artifacts });
       return;
     }
-    await save(body);
+    await save(body, artifacts);
   };
 
-  const onRevert = async (block: UpdateSettingsBlock): Promise<void> => {
+  const onRevert = async (block: Block): Promise<void> => {
     setReverting(true);
     try {
-      await api.revertUpdateSettings(slug, [block]);
-      invalidate(`update-settings:${slug}`);
+      if (block === "delivery") {
+        await api.revertDeliveryAccess(slug);
+        invalidate(`delivery-access:${slug}`);
+      } else {
+        await api.revertUpdateSettings(slug, [block]);
+        invalidate(`update-settings:${slug}`);
+      }
       toast.success(
         "Returned to manifest control",
         `The manifest’s ${BLOCK_COPY[block].name} re-apply on the next resync.`,
@@ -283,9 +347,9 @@ function SettingsForm({
         <CardHeader>
           <CardTitle>Feed access &amp; compatibility</CardTitle>
           <CardDescription>
-            Who may read the appcast, who may download what it points at, the
-            version window every grant is intersected with, and the
-            operator-only artifact policy.
+            Who may read the changelog and version check, who may read the
+            appcast and download what it points at, the version window every
+            grant is intersected with, and the operator-only artifact policy.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -329,7 +393,7 @@ function SettingsForm({
             <AccessField
               id={`update-${slug}-metadata`}
               label="Metadata access"
-              help="Who may read the changelog and the version-check endpoint (not the appcast — see Artifact access)."
+              help="Who may read the changelog, the version-check endpoint and the installer (not the appcast — see Artifact access)."
               value={form.metadataAccess}
               disabled={!settings.configured}
               error={fieldErrors.metadataAccess}
@@ -337,12 +401,26 @@ function SettingsForm({
                 setForm((f) => ({ ...f, metadataAccess }))
               }
             />
+          </div>
+
+          <BlockHeading
+            title="Delivery access"
+            block="delivery"
+            source={delivery?.app.source ?? "manifest"}
+            canRevert={settings.configured && delivery !== null}
+            onRevert={() => setConfirmRevert("delivery")}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
             <AccessField
               id={`update-${slug}-artifacts`}
               label="Artifact access"
-              help="Who may read the appcast feed and download the binaries it points at."
-              value={form.artifactsAccess}
-              disabled={!settings.configured}
+              help={
+                deliveryError
+                  ? `Couldn’t load the delivery access: ${deliveryError}`
+                  : "Distribution’s delivery access: who may read the appcast, download the binaries it points at, and mint a download in the customer portal — one answer for all three."
+              }
+              value={form.artifactsAccess ?? "public"}
+              disabled={!settings.configured || delivery === null}
               error={fieldErrors.artifactsAccess}
               onChange={(artifactsAccess) =>
                 setForm((f) => ({ ...f, artifactsAccess }))
@@ -482,7 +560,11 @@ function SettingsForm({
         confirmLabel="Turn off signatures"
         confirmVariant="destructive"
         loading={saving}
-        onConfirm={() => (pendingUnsigned ? save(pendingUnsigned) : undefined)}
+        onConfirm={() =>
+          pendingUnsigned
+            ? save(pendingUnsigned.body, pendingUnsigned.artifacts)
+            : undefined
+        }
       />
 
       <ConfirmDialog
@@ -521,7 +603,7 @@ function BlockHeading({
   onRevert,
 }: {
   title: string;
-  block: UpdateSettingsBlock;
+  block: Block;
   source: SettingsSource;
   canRevert: boolean;
   onRevert: () => void;

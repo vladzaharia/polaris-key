@@ -29,6 +29,10 @@ export interface ReleaseConfigRow {
    *  allowAmbiguousAssets. A resync rewrites it on every push. */
   artifact_policy_json: string | null;
   metadata_access?: string | null;
+  /** NOT READ for any access decision since P2b-04: the artifacts mode is Distribution's
+   *  `dist_access` (backfilled from this column by 0038). Kept because dropping a column needs a
+   *  table rebuild; resync still writes the manifest's value here, and the truth-store snapshot
+   *  (`artifactsAccessSnapshot`) copies it into rows nothing reads for access either. */
   artifacts_access?: string | null;
   /** Owner of BOTH access modes (0022_b): NULL/'manifest' ⇒ resync writes them, 'admin' ⇒ skips. */
   access_source?: string | null;
@@ -156,17 +160,33 @@ export function operatorPolicy(
  * `false` and disarm the platform's own signing requirement, nor erase an operator's deliberate
  * `false`. The default is always "required".
  *
- * The access modes come from their own columns; whether a resync may rewrite them is decided by
- * `access_source` (see `setReleaseAccess`).
+ * The METADATA mode comes from its own column; whether a resync may rewrite it is decided by
+ * `access_source` (see `setReleaseAccess`). The ARTIFACTS mode is not Release's any more
+ * (P2b-04): it is Distribution's delivery access (`dist_access`), which a caller reads through
+ * `delivery.accessMode()` and passes as `artifactsAccess`. Without one it fails CLOSED to
+ * `entitled`, the strictest mode — never back to `release_config.artifacts_access`.
  */
-export function artifactPolicy(cfg: ReleaseConfigRow): ArtifactPolicy {
+export function artifactPolicy(
+  cfg: ReleaseConfigRow,
+  artifactsAccess?: ReleaseAccess,
+): ArtifactPolicy {
   return {
     requireSparkleSignature: operatorPolicy(cfg).requireSparkleSignature,
     access: {
       metadata: readAccessMode(cfg.metadata_access),
-      artifacts: readAccessMode(cfg.artifacts_access),
+      artifacts: artifactsAccess ?? "entitled",
     },
   };
+}
+
+/**
+ * The value the truth store's per-row `access` columns (`release_metadata.artifacts_access`,
+ * `release_artifacts.access`, 0007) are written with. A SNAPSHOT, and nothing reads it for an
+ * access decision since P2b-04 — the portal, its one consumer, now asks Distribution. Kept so
+ * those NOT NULL columns keep carrying the value they always carried.
+ */
+export function artifactsAccessSnapshot(cfg: ReleaseConfigRow): ReleaseAccess {
+  return readAccessMode(cfg.artifacts_access);
 }
 
 /** Who owns the access modes right now. NULL and anything unrecognised read as `manifest`. */
@@ -204,12 +224,14 @@ export function shipsDmgs(
 }
 
 /**
- * The seven surfaces the two services serve between them.
+ * The release surfaces, as the access classification names them.
  *
  * Still one union after the split, because it is what the SHARED gateway keys on: which lane
  * the rate limiter charges, whether the edge cache may hold the answer, and which of the two
- * access modes governs. Release owns `install`/`changelog`/`cli`/`dmg`; Update owns
- * `appcast`/`channelAppcast`/`version`.
+ * access modes governs. Through the gateway today: Release's `changelog` and Update's
+ * `appcast`/`channelAppcast`/`version`. `install`, `cli`, `dmg`, `build`, `file` and `blob` are
+ * Distribution's routes since P2b-04; they stay in the union because `entitledSelectorFor` (behind
+ * `releaseCatalog.accessSelector`) classifies their selectors.
  */
 export type ReleaseKind =
   | "appcast"
@@ -235,7 +257,7 @@ export function accessModeFor(
 }
 
 /**
- * Set a product's release access modes, and CLAIM them for the operator.
+ * Set a product's release METADATA access mode, and CLAIM it for the operator.
  *
  * The WRITER lives with the table (spec §5.2: `release_config` is Release's), even though the
  * admin endpoint that calls it is `update/settings` — Update reaches it across the one
@@ -243,23 +265,25 @@ export function accessModeFor(
  * modes are validated by the caller against `isReleaseAccess`; this function does not re-check,
  * because a silent fallback here would turn a rejected value into a quiet downgrade.
  *
- * Setting either mode flips `access_source` to `admin`, so the next resync skips BOTH (the guard
- * is in resync's own UPDATE). Without that, `entitled` — which no manifest can express — would be
+ * Setting it flips `access_source` to `admin`, so the next resync skips it (the guard is in
+ * resync's own UPDATE). Without that, `entitled` — which no manifest can express — would be
  * downgraded to the manifest's mode (default `public`) by the very next push.
+ *
+ * METADATA ONLY since P2b-04. The artifacts mode moved to Distribution's `dist_access`
+ * (`GET|PUT …/distribution/access`); `release_config.artifacts_access` is no longer read for any
+ * decision and this function no longer writes it (see `ReleaseConfigRow.artifacts_access`).
  */
 export async function setReleaseAccess(
   db: Db,
   product: string,
-  access: { metadata?: ReleaseAccess; artifacts?: ReleaseAccess },
+  access: { metadata?: ReleaseAccess },
 ): Promise<void> {
   await db.run(
     `UPDATE release_config
         SET metadata_access = COALESCE(?, metadata_access),
-            artifacts_access = COALESCE(?, artifacts_access),
             access_source = 'admin'
       WHERE product = ?`,
     access.metadata ?? null,
-    access.artifacts ?? null,
     product,
   );
 }

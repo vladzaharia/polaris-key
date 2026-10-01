@@ -1,13 +1,22 @@
 import { Catalog } from "@polaris-key/catalog";
 import type { ConfigEntry } from "@polaris-key/catalog";
+import { CHANNEL_STABLE } from "@polaris-key/protocol";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
   deleteTokenRecord,
   hashKey,
+  isAllowedDownloadRedirectHost,
   isAllowedStorageHost,
   productFromKey,
   type Db,
   type Env,
 } from "../../../core/platform.js";
+import type { Delivery, ServiceHooks } from "../../../core/hooks.js";
+import {
+  loadProductPublic,
+  type ProductPublic,
+} from "../../../core/products.js";
+import { licenseEntitled } from "../../../core/entitledAccess.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
   getActiveSchema,
@@ -27,6 +36,7 @@ import {
   getPortalDownloadToken,
   getPortalLicense,
   getPortalProductSettings,
+  getPortalReleaseFacts,
   linkLicense,
   listLinkedProducts,
   listPortalArtifacts,
@@ -44,6 +54,7 @@ import {
   deletePortalAccount,
   type PortalArtifactRow,
   type PortalLicenseRow,
+  type PortalReleaseRow,
 } from "./repo.js";
 import {
   PORTAL_CSRF_HEADER,
@@ -244,16 +255,6 @@ async function requireSession(
   return { session };
 }
 
-async function hasUsableProductLicense(
-  db: Db,
-  accountId: string,
-  product: string,
-  now: number,
-): Promise<boolean> {
-  const rows = await listPortalLicenses(db, accountId);
-  return rows.some((row) => row.product === product && licenseUsable(row, now));
-}
-
 async function hasLinkedProductLicense(
   db: Db,
   accountId: string,
@@ -263,11 +264,112 @@ async function hasLinkedProductLicense(
   return rows.some((row) => row.product === product);
 }
 
-function artifactAccess(artifact: PortalArtifactRow): string {
-  if (artifact.access === "authenticated" || artifact.access === "licensed") {
-    return artifact.access;
+// ── Delivery access (P2b-04) ────────────────────────────────────────────────────────────────
+//
+// Who may download a release is Distribution's delivery access (`dist_access`, per deliverable),
+// read through the `delivery` hook — the SAME answer the byte routes and the appcast read, so the
+// portal can no longer offer what the download refuses or refuse what it serves. Before P2b-04
+// the portal read a per-artifact snapshot of `release_config.artifacts_access` taken at sync
+// time (`release_artifacts.access`), which could not even hold `entitled`.
+//
+// The portal authenticates a PERSON with linked licences, not a device, so each mode is asked of
+// those licences: `public` and `authenticated` need the linked licence every download already
+// requires; `licensed` needs one that is usable; `entitled` needs one whose own grant holds the
+// release's channel and whose window holds its version (Core's `licenseEntitled`, the device
+// decision minus the device layer).
+
+/** Builds one product's descriptor hooks (the composition root does: `dispatch.ts`). */
+export type PortalHooksFor = (
+  product: ProductPublic,
+  now: number,
+) => ServiceHooks;
+
+interface DeliveryGate {
+  product: ProductPublic;
+  delivery: Delivery;
+}
+
+/**
+ * The product's delivery hook, or `null` when downloads are not served: no hooks were provided,
+ * the product is gone, or Distribution is off for it (byte delivery is Distribution's, and a
+ * product with it off serves no downloads anywhere).
+ */
+async function deliveryGate(
+  db: Db,
+  hooksFor: PortalHooksFor | undefined,
+  product: string,
+  now: number,
+): Promise<DeliveryGate | null> {
+  if (!hooksFor) return null;
+  const loaded = await loadProductPublic(db, product);
+  if (!loaded) return null;
+  const delivery = hooksFor(loaded, now).delivery();
+  return delivery ? { product: loaded, delivery } : null;
+}
+
+type ReleaseFacts = Pick<
+  PortalReleaseRow,
+  "deliverable_id" | "version" | "channel"
+>;
+
+/** May this account download a release under `mode`? (A linked licence is checked by callers.) */
+async function accountMayDownload(
+  db: Db,
+  accountId: string,
+  gate: DeliveryGate,
+  mode: ReleaseAccess,
+  release: ReleaseFacts,
+  now: number,
+): Promise<boolean> {
+  if (mode === "public" || mode === "authenticated") return true;
+  const licenses = (await listPortalLicenses(db, accountId)).filter(
+    (row) => row.product === gate.product.slug,
+  );
+  if (mode === "licensed")
+    return licenses.some((row) => licenseUsable(row, now));
+  // `entitled`: the release's own channel (stable when GitHub-derived) at its stored version.
+  const selector = {
+    channel: release.channel ?? CHANNEL_STABLE,
+    version: release.version.replace(/^v/, ""),
+  };
+  for (const license of licenses) {
+    if (await licenseEntitled(db, gate.product, license, selector, now))
+      return true;
   }
-  return "public";
+  return false;
+}
+
+/**
+ * Where a download redirects (R6-12): the artifact's own GitHub storage URL when it is one;
+ * otherwise, for a PUBLIC deliverable only, Distribution's bytes-host URL for the file
+ * (`delivery.deliveryUrl`), accepted only when it is `https` on the configured bytes host. A
+ * non-public deliverable is never redirected to the bytes host: the browser holds no device
+ * token, so the redirect could only end in a refusal.
+ */
+async function downloadTarget(
+  env: Env,
+  artifact: PortalArtifactRow,
+  gate: DeliveryGate,
+  mode: ReleaseAccess,
+): Promise<string | null> {
+  const source = redirectableSourceUrl(artifact);
+  if (source !== null) return source;
+  if (mode !== "public") return null;
+  const minted = await gate.delivery.deliveryUrl({
+    releaseId: artifact.release_id,
+    name: artifact.name,
+  });
+  if (!minted) return null;
+  let url: URL;
+  try {
+    url = new URL(minted);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  return isAllowedDownloadRedirectHost(url.hostname, env)
+    ? url.toString()
+    : null;
 }
 
 /**
@@ -612,6 +714,7 @@ async function handleReleases(
   session: PortalSession,
   rest: string[],
   now: number,
+  hooksFor: PortalHooksFor | undefined,
 ): Promise<Response> {
   const [product, releaseId, artifactsSegment, artifactId, tokenSegment] = rest;
   if (!product) {
@@ -633,24 +736,56 @@ async function handleReleases(
       }
     }
     const releases = await listPortalReleases(db, enabledProducts);
-    const usableByProduct = new Map<string, boolean>();
+    const gates = new Map<string, DeliveryGate | null>();
     const out = [];
     for (const release of releases) {
-      let usable = usableByProduct.get(release.product);
-      if (usable === undefined) {
-        usable = await hasUsableProductLicense(
+      let gate = gates.get(release.product);
+      if (gate === undefined) {
+        gate = await deliveryGate(db, hooksFor, release.product, now);
+        gates.set(release.product, gate);
+      }
+      // Distribution off: nothing is downloadable, and the listing says so.
+      const mode: ReleaseAccess | null = gate
+        ? await gate.delivery.accessMode(release.deliverable_id)
+        : null;
+      const allowed =
+        gate !== null &&
+        mode !== null &&
+        (await accountMayDownload(
           db,
           session.accountId,
-          release.product,
+          gate,
+          mode,
+          release,
           now,
-        );
-        usableByProduct.set(release.product, usable);
-      }
+        ));
       const artifacts = await listPortalArtifacts(
         db,
         release.product,
         release.release_id,
       );
+      const rows = [];
+      for (const artifact of artifacts) {
+        rows.push({
+          artifactId: artifact.artifact_id,
+          name: artifact.name,
+          kind: artifact.kind,
+          platform: artifact.platform,
+          arch: artifact.arch,
+          sizeBytes: artifact.size_bytes,
+          sha256: artifact.sha256,
+          access: mode ?? "public",
+          // Same predicates the mint and the redirect apply (R6-12, P2b-04), so the portal
+          // never offers a download it is going to refuse — an artifact stored with an
+          // unservable URL, or one the account's licences do not reach, reads as unavailable
+          // here rather than as a button that 404s.
+          canDownload:
+            allowed &&
+            gate !== null &&
+            mode !== null &&
+            (await downloadTarget(env, artifact, gate, mode)) !== null,
+        });
+      }
       out.push({
         product: release.product,
         productName: release.product_name,
@@ -660,22 +795,7 @@ async function handleReleases(
         notes: release.notes,
         publishedAt: release.published_at,
         sourceUrl: release.source_url,
-        artifacts: artifacts.map((artifact) => ({
-          artifactId: artifact.artifact_id,
-          name: artifact.name,
-          kind: artifact.kind,
-          platform: artifact.platform,
-          arch: artifact.arch,
-          sizeBytes: artifact.size_bytes,
-          sha256: artifact.sha256,
-          access: artifactAccess(artifact),
-          // Same predicate the redirect applies (R6-12), so the portal never offers a download
-          // it is going to refuse — an artifact stored with an unservable URL reads as
-          // unavailable here rather than as a button that 404s.
-          canDownload:
-            redirectableSourceUrl(artifact) !== null &&
-            (artifactAccess(artifact) !== "licensed" || usable),
-        })),
+        artifacts: rows,
       });
     }
     return portalJson({ releases: out });
@@ -707,9 +827,23 @@ async function handleReleases(
     return notFound();
   }
   const artifact = await getPortalArtifact(db, product, releaseId, artifactId);
+  const facts = artifact
+    ? await getPortalReleaseFacts(db, product, releaseId)
+    : null;
+  // Byte delivery is Distribution's: with it off (or no hooks to ask), nothing is minted.
+  const gate = facts ? await deliveryGate(db, hooksFor, product, now) : null;
+  const mode =
+    gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
   // Refused at MINT time as well as at redemption: a token that could only ever be rejected is
   // a row written, a rate-limit charge spent and a URL handed to the user for nothing.
-  if (!artifact || redirectableSourceUrl(artifact) === null) return notFound();
+  if (
+    !artifact ||
+    !facts ||
+    !gate ||
+    !mode ||
+    (await downloadTarget(env, artifact, gate, mode)) === null
+  )
+    return notFound();
   if (!(await hasLinkedProductLicense(db, session.accountId, product))) {
     return notFound();
   }
@@ -726,16 +860,12 @@ async function handleReleases(
     product,
   );
   if (limited) return limited;
-  const access = artifactAccess(artifact);
-  if (access === "licensed") {
-    const ok = await hasUsableProductLicense(
-      db,
-      session.accountId,
-      product,
-      now,
-    );
-    if (!ok) return forbidden("licensed release access required");
-  }
+  // The delivery access every download surface reads (P2b-04): `licensed` needs a usable
+  // licence, `entitled` one whose grant holds this release's channel and version.
+  if (
+    !(await accountMayDownload(db, session.accountId, gate, mode, facts, now))
+  )
+    return forbidden(`${mode} release access required`);
   const token = await createPortalDownloadToken(env, db, {
     accountId: session.accountId,
     product,
@@ -752,6 +882,8 @@ export async function handlePortalApi(
   db: Db,
   path: string,
   now: number,
+  /** One product's descriptor hooks (`dispatch.ts`); without them no download is offered. */
+  hooksFor?: PortalHooksFor,
 ): Promise<Response> {
   let p = path.startsWith("/api") ? path.slice(4) : path;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
@@ -808,7 +940,7 @@ export async function handlePortalApi(
     return handleClaimKey(req, env, db, session, now);
   }
   if (head === "releases")
-    return handleReleases(req, env, db, session, rest, now);
+    return handleReleases(req, env, db, session, rest, now, hooksFor);
   return notFound();
 }
 
@@ -818,6 +950,8 @@ export async function handlePortalDownload(
   db: Db,
   token: string,
   now: number,
+  /** One product's descriptor hooks (`dispatch.ts`); without them nothing is redeemed. */
+  hooksFor?: PortalHooksFor,
 ): Promise<Response> {
   if (req.method !== "GET") return err(405, "method_not_allowed");
   // R11-05: opportunistic retention. Nothing else ever deletes from this table and the worker
@@ -829,11 +963,24 @@ export async function handlePortalDownload(
   const artifact = row.artifact_id
     ? await getPortalArtifact(db, row.product, row.release_id, row.artifact_id)
     : null;
+  const facts = artifact
+    ? await getPortalReleaseFacts(db, row.product, row.release_id)
+    : null;
+  const gate = facts
+    ? await deliveryGate(db, hooksFor, row.product, now)
+    : null;
+  const mode =
+    gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
   // R6-12: the ONLY value that may become a `Location` header. `null` here means the stored URL
-  // is absent, unparseable, not https, or not a GitHub storage host — all of which are refusals,
-  // never redirects.
-  const location = artifact ? redirectableSourceUrl(artifact) : null;
-  if (!artifact || location === null) return notFound();
+  // is absent, unparseable, not https, or not a GitHub storage host — and, for a public
+  // deliverable, that Distribution has no bytes-host URL for it either (`downloadTarget`) — all
+  // of which are refusals, never redirects.
+  const location =
+    artifact && gate && mode
+      ? await downloadTarget(env, artifact, gate, mode)
+      : null;
+  if (!artifact || !facts || !gate || !mode || location === null)
+    return notFound();
   const settings = await getPortalProductSettings(db, row.product);
   if (settings.portal_enabled !== 1 || settings.releases_enabled !== 1) {
     return notFound();
@@ -848,11 +995,12 @@ export async function handlePortalDownload(
     return notFound();
   }
   if (
-    artifactAccess(artifact) === "licensed" &&
-    !(await hasUsableProductLicense(
+    !(await accountMayDownload(
       db,
       scope.portalAccountId,
-      row.product,
+      gate,
+      mode,
+      facts,
       now,
     ))
   ) {

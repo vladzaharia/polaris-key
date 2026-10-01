@@ -1,0 +1,109 @@
+/// <reference types="@cloudflare/workers-types" />
+
+/**
+ * Distribution's sub-router, over the path segments AFTER `/<product>/distribution`.
+ *
+ *     /distribution/install.sh                               (P2b-04, `bytes.ts`)
+ *     /distribution/dl/:version/:binary-:arch[.dmg]
+ *     /distribution/builds/:selector/:buildId                GET|HEAD, also on the bytes host
+ *     /distribution/files/:releaseId/:name                   GET|HEAD, also on the bytes host
+ *     /distribution/blobs/sha256/:hash                       GET|HEAD, also on the bytes host
+ *     /distribution/rollouts/:outlet/:channel                POST, `pkeyci_` + distribution:rollout
+ *     /distribution/rollouts/:outlet/:channel/{pause,resume,halt,complete}   POST, same
+ *
+ * The permanent aliases (`/<p>/release/{install.sh,dl,builds,files,blobs}/…`, `/<p>/install.sh`)
+ * reach this file already rewritten into the canonical segments by the core router, so there is
+ * one code path per surface. Returning `null` for an unmatched path is the registry contract:
+ * only Core decides what "no route here" means.
+ */
+
+import type { ServiceContext } from "../../core/registry.js";
+import { errorResponse, ErrorCode, json } from "../../core/errors.js";
+import { readCiJson, requireCiScope } from "../../core/ciScope.js";
+import { byteTargetOf, serveDistributionBytes } from "./bytes.js";
+import {
+  applyRollout,
+  isRolloutVerb,
+  type RolloutRefusal,
+  type RolloutVerb,
+} from "./rollouts.js";
+
+/** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`). */
+const MAX_CI_BODY_BYTES = 16 * 1024;
+
+export async function handleDistributionRoutes(
+  ctx: ServiceContext,
+): Promise<Response | null> {
+  const { req, env, db, product, rest, hooks, now } = ctx;
+
+  if (rest[0] === "rollouts") {
+    const verb: RolloutVerb | null =
+      rest.length === 3
+        ? "set"
+        : rest.length === 4 && isRolloutVerb(rest[3] as string)
+          ? (rest[3] as RolloutVerb)
+          : null;
+    if (!verb || req.method !== "POST") return null;
+    return handleCiRollout(ctx, rest[1] as string, rest[2] as string, verb);
+  }
+
+  const target = byteTargetOf(rest);
+  if (!target) return null;
+  return serveDistributionBytes({ req, env, db, product, hooks, now }, target);
+}
+
+function decodeSegment(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
+export function rolloutRefusal(r: RolloutRefusal): Response {
+  return errorResponse(r.status, r.code, r.message, {
+    reason: r.reason,
+    ...(r.fields ? { fields: r.fields } : {}),
+  });
+}
+
+/** `POST /<p>/distribution/rollouts/<outlet>/<channel>[/<verb>]` — `distribution:rollout`. */
+async function handleCiRollout(
+  ctx: ServiceContext,
+  rawOutlet: string,
+  rawChannel: string,
+  verb: RolloutVerb,
+): Promise<Response> {
+  const { req, env, db, product, hooks, now } = ctx;
+  const principal = await requireCiScope(
+    req,
+    env,
+    db,
+    product.slug,
+    "distribution:rollout",
+    now,
+  );
+  if (principal instanceof Response) return principal;
+  const body = await readCiJson(req, MAX_CI_BODY_BYTES);
+  if (body instanceof Response) return body;
+  const outlet = decodeSegment(rawOutlet);
+  const channel = decodeSegment(rawChannel);
+  if (outlet === null || channel === null)
+    return errorResponse(404, ErrorCode.NotFound, "no such rollout", {
+      reason: "unknown_outlet",
+    });
+  const result = await applyRollout(
+    { db, product: product.slug, hooks, now },
+    verb,
+    {
+      outlet,
+      channel,
+      deliverable: body.deliverable,
+      releaseId: body.releaseId,
+      bp: body.bp,
+    },
+    { kind: "ci", principal },
+  );
+  if (!result.ok) return rolloutRefusal(result);
+  return json({ ok: true, rollout: result.rollout });
+}

@@ -6,8 +6,8 @@
  *     explicitly listed as narrative-only (browser surfaces the docs site documents in
  *     prose). A new kind fails until someone decides which it is.
  *  2. Every canonical service route (the `services/<slug>/routes.ts` dispatch surface,
- *     pinned as a table here) and all four permanent aliases exist in the spec with the
- *     right methods.
+ *     pinned as a table here) and every permanent alias (the four pre-namespace spellings and
+ *     P2b-04's `/release/…` byte spellings) exist in the spec with the right methods.
  *  3. The spec contains NO path outside the expected set — documentation for routes that do
  *     not exist is drift too.
  *
@@ -77,12 +77,7 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/config/mint/{mintId}/token", ["get", "post"]],
   ["/{product}/config/mint/{mintId}/auth", ["get"]],
   ["/{product}/release/changelog", ["get"]],
-  ["/{product}/release/install.sh", ["get"]],
-  ["/{product}/release/dl/{version}/{asset}", ["get"]],
-  // P2-05: the three byte routes (also on the bytes host) and the CI policy routes.
-  ["/{product}/release/builds/{selector}/{buildId}", ["get"]],
-  ["/{product}/release/files/{releaseId}/{name}", ["get"]],
-  ["/{product}/release/blobs/sha256/{sha256}", ["get"]],
+  // P2-05: the CI policy routes.
   ["/{product}/release/channels/{channel}/promote", ["post"]],
   ["/{product}/release/channels/{channel}/pin", ["post"]],
   ["/{product}/release/channels/{channel}/unpin", ["post"]],
@@ -91,6 +86,18 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/release/publish/token", ["post"]],
   ["/{product}/release/publish/uploads", ["post"]],
   ["/{product}/release/publish/submit", ["post"]],
+  // P2b-04: all byte delivery is Distribution's (the installer, the download and P2-05's three
+  // byte routes, the last three also on the bytes host), plus the CI rollout routes.
+  ["/{product}/distribution/install.sh", ["get"]],
+  ["/{product}/distribution/dl/{version}/{asset}", ["get"]],
+  ["/{product}/distribution/builds/{selector}/{buildId}", ["get"]],
+  ["/{product}/distribution/files/{releaseId}/{name}", ["get"]],
+  ["/{product}/distribution/blobs/sha256/{sha256}", ["get"]],
+  ["/{product}/distribution/rollouts/{outlet}/{channel}", ["post"]],
+  ["/{product}/distribution/rollouts/{outlet}/{channel}/pause", ["post"]],
+  ["/{product}/distribution/rollouts/{outlet}/{channel}/resume", ["post"]],
+  ["/{product}/distribution/rollouts/{outlet}/{channel}/halt", ["post"]],
+  ["/{product}/distribution/rollouts/{outlet}/{channel}/complete", ["post"]],
   ["/{product}/update/appcast.xml", ["get"]],
   ["/{product}/update/{channel}/appcast.xml", ["get"]],
   ["/{product}/update/version", ["get"]],
@@ -106,12 +113,20 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/identity/auth/device/poll", ["post"]],
 ];
 
-/** The four permanent pre-namespace aliases (D-07). */
+/**
+ * The permanent aliases: the four pre-namespace spellings (D-07) and Release's old byte paths,
+ * which P2b-04 moved to Distribution (download URLs SDKs build, byte URLs discovery advertised).
+ */
 const ALIAS_PATHS: Array<[string, string[]]> = [
   ["/{product}/appcast.xml", ["get"]],
   ["/{product}/{channel}/appcast.xml", ["get"]],
   ["/{product}/install.sh", ["get"]],
   ["/{product}/version", ["get"]],
+  ["/{product}/release/install.sh", ["get"]],
+  ["/{product}/release/dl/{version}/{asset}", ["get"]],
+  ["/{product}/release/builds/{selector}/{buildId}", ["get"]],
+  ["/{product}/release/files/{releaseId}/{name}", ["get"]],
+  ["/{product}/release/blobs/sha256/{sha256}", ["get"]],
 ];
 
 function specMethods(path: string): string[] {
@@ -156,7 +171,7 @@ describe("router → spec", () => {
     }
   });
 
-  it("all four permanent aliases are documented", () => {
+  it("every permanent alias is documented", () => {
     for (const [path, methods] of ALIAS_PATHS) {
       for (const method of methods) {
         expect(specMethods(path), `${method} ${path}`).toContain(method);
@@ -221,6 +236,12 @@ const CORS_EXCLUDED = new Set([
   "/{product}/release/publish/token",
   "/{product}/release/publish/uploads",
   "/{product}/release/publish/submit",
+  // P2b-04: the CI rollout routes, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/rollouts/{outlet}/{channel}",
+  "/{product}/distribution/rollouts/{outlet}/{channel}/pause",
+  "/{product}/distribution/rollouts/{outlet}/{channel}/resume",
+  "/{product}/distribution/rollouts/{outlet}/{channel}/halt",
+  "/{product}/distribution/rollouts/{outlet}/{channel}/complete",
 ]);
 
 /** Every product path the router serves, from the three tables above. */
@@ -244,6 +265,7 @@ function concrete(template: string): string {
     releaseId: "v1.2.3",
     name: "acme.dmg",
     sha256: "a".repeat(64),
+    outlet: "direct",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];
@@ -316,4 +338,23 @@ describe("CORS preflight (P0-05)", () => {
       expect(isCorsCoveredRoute(matchRoute(path)), path).toBe(false);
     }
   });
+});
+
+describe("aliases resolve to their canonical routes (P2b-04)", () => {
+  // Rewriting, not a second handler: an alias yields the SAME `{kind:"service"}` route as the
+  // canonical spelling its summary names, so the two cannot drift.
+  for (const [path] of ALIAS_PATHS) {
+    it(`${path} routes exactly like its target`, () => {
+      const op = spec.paths[path]?.get as { summary?: string } | undefined;
+      const target = op?.summary?.match(/→ (\/\S+)/)?.[1];
+      expect(target, path).toBeTruthy();
+      const aliased = matchRoute(concrete(path));
+      const direct = matchRoute(concrete(target!));
+      expect({ ...aliased, alias: undefined }).toEqual({
+        ...direct,
+        alias: undefined,
+      });
+      expect((aliased as { alias?: true }).alias).toBe(true);
+    });
+  }
 });

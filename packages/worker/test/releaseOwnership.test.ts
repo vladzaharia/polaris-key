@@ -9,6 +9,8 @@
  * The fix follows `services_source`: two ownership markers (`products.compat_source`,
  * `release_config.access_source`) that `update/settings` claims and resync's own UPDATE honours,
  * plus a separate `release_config.operator_policy_json` that no manifest path writes at all.
+ * Since P2b-04 the ARTIFACTS mode is Distribution's delivery access, with the same rule on its
+ * own marker (`dist_access.source`, claimed through `…/distribution/access`).
  *
  * Every case here drives the REAL path: `linkRepo` registers the product from a stubbed GitHub,
  * the console API (`handleAdmin`) makes the operator's edit, and `resyncRepo` re-reads a changed
@@ -37,14 +39,19 @@ import { loadProduct } from "../src/core/products.js";
 import { getProduct, listAudit } from "../src/repo.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
+import { manifestIngestFor } from "../src/core/registry.js";
+import { SERVICES } from "../src/mount.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
-import { handleUpdate } from "../src/services/update/index.js";
+// P2b-04: the appcast reads Distribution's delivery access, so it is driven the way the router
+// drives it (`releaseSurface.ts`).
+import { handleReleaseSurface as handleUpdate } from "./releaseSurface.js";
 
 const SLUG = "acme";
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
 const SETTINGS = `/api/products/${SLUG}/update/settings`;
 const REVERT = `${SETTINGS}/revert`;
+const ACCESS = `/api/products/${SLUG}/distribution/access`;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BACKFILL_SQL = readFileSync(
@@ -68,7 +75,11 @@ const SCHEMA_JSON = JSON.stringify({
   ],
 });
 
-function productJson(compatMin: string, compatMax = "9.0.0"): string {
+function productJson(
+  compatMin: string,
+  compatMax = "9.0.0",
+  modules?: Record<string, { enabled: boolean }>,
+): string {
   return JSON.stringify({
     slug: SLUG,
     name: "Acme",
@@ -79,8 +90,19 @@ function productJson(compatMin: string, compatMax = "9.0.0"): string {
     adminGroup: "acme-admins",
     tiers: [],
     provisioning: [],
+    ...(modules ? { modules } : {}),
   });
 }
+
+/** A product running the release chain, so Distribution's ingest runs (P2b-04). */
+const CHAIN_MODULES = {
+  license: { enabled: true },
+  config: { enabled: true },
+  release: { enabled: true },
+  distribution: { enabled: true },
+  update: { enabled: true },
+};
+const chainProduct = (): string => productJson("1.0.0", "9.0.0", CHAIN_MODULES);
 
 /** No Sparkle key: the appcast case opts the product out of signatures as OPERATOR policy. */
 function releaseJson(
@@ -171,12 +193,15 @@ async function linked(
 ) {
   const db = makeTestDb();
   const env = envFor();
+  // With Core's ingest pipeline, as the console and the webhook run it: Distribution's
+  // `manifestIngest` writes the manifest's delivery access (P2b-04).
   const res = await linkRepo(
     env,
     db,
     "acme-org/acme-app",
     NOW,
     pkey(product, release),
+    manifestIngestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -188,6 +213,16 @@ async function linked(
 }
 
 type Ctx = Awaited<ReturnType<typeof linked>>;
+
+/** The `app` row of Distribution's delivery access (P2b-04). */
+async function deliveryAccess(
+  ctx: Ctx,
+): Promise<{ mode: string; source: string } | null> {
+  return ctx.db.first<{ mode: string; source: string }>(
+    "SELECT mode, source FROM dist_access WHERE product = ? AND deliverable_id = 'app'",
+    SLUG,
+  );
+}
 
 async function call(
   ctx: Ctx,
@@ -214,7 +249,14 @@ async function call(
 }
 
 async function resync(ctx: Ctx, fetchImpl: FetchImpl, at = NOW + 60) {
-  const res = await resyncRepo(ctx.env, ctx.db, SLUG, at, fetchImpl);
+  const res = await resyncRepo(
+    ctx.env,
+    ctx.db,
+    SLUG,
+    at,
+    fetchImpl,
+    manifestIngestFor(SERVICES),
+  );
   expect(res.ok).toBe(true);
   return res;
 }
@@ -222,67 +264,109 @@ async function resync(ctx: Ctx, fetchImpl: FetchImpl, at = NOW + 60) {
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 
 describe("operator-owned access modes survive a resync", () => {
-  it("keeps `entitled` after a push whose manifest says public", async () => {
-    const ctx = await linked();
-    const patched = await call(ctx, "PATCH", SETTINGS, {
-      artifactsAccess: "entitled",
-    });
-    expect(patched.status).toBe(200);
-    expect(patched.json).toMatchObject({
-      artifactsAccess: "entitled",
-      accessSource: "admin",
+  // P2b-04 split the pair: the METADATA mode stays Release's (`release_config`, claimed through
+  // `update/settings`); the ARTIFACTS mode is Distribution's delivery access (`dist_access`,
+  // claimed through `…/distribution/access`). Each keeps P0-01's guarantee on its own owner.
+
+  it("keeps an `entitled` delivery access after a push whose manifest says public", async () => {
+    const ctx = await linked(chainProduct());
+    const put = await call(ctx, "PUT", ACCESS, { mode: "entitled" });
+    expect(put.status).toBe(200);
+    expect(put.json).toMatchObject({
+      app: { mode: "entitled", source: "admin" },
     });
 
     await resync(
       ctx,
       pkey(
-        productJson("1.0.0"),
+        chainProduct(),
         releaseJson({ metadata: "public", artifacts: "public" }),
       ),
     );
 
-    const cfg = await getReleaseConfig(ctx.db, SLUG);
-    expect(cfg?.artifacts_access).toBe("entitled");
-    expect(cfg?.access_source).toBe("admin");
+    expect(await deliveryAccess(ctx)).toEqual({
+      mode: "entitled",
+      source: "admin",
+    });
   });
 
-  it("claims BOTH modes, even when only one was saved", async () => {
-    const ctx = await linked();
-    await call(ctx, "PATCH", SETTINGS, { artifactsAccess: "licensed" });
+  it("keeps an `entitled` metadata mode after a push whose manifest says public", async () => {
+    const ctx = await linked(chainProduct());
+    const patched = await call(ctx, "PATCH", SETTINGS, {
+      metadataAccess: "entitled",
+    });
+    expect(patched.status).toBe(200);
+    expect(patched.json).toMatchObject({
+      metadataAccess: "entitled",
+      accessSource: "admin",
+    });
     await resync(
       ctx,
       pkey(
-        productJson("1.0.0"),
-        releaseJson({ metadata: "authenticated", artifacts: "public" }),
+        chainProduct(),
+        releaseJson({ metadata: "public", artifacts: "public" }),
       ),
     );
     const cfg = await getReleaseConfig(ctx.db, SLUG);
-    expect(cfg?.metadata_access).toBe("public");
-    expect(cfg?.artifacts_access).toBe("licensed");
+    expect(cfg?.metadata_access).toBe("entitled");
+    expect(cfg?.access_source).toBe("admin");
+  });
+
+  it("claims each mode on its own owner: a resync still writes the other", async () => {
+    const ctx = await linked(chainProduct());
+    await call(ctx, "PATCH", SETTINGS, { metadataAccess: "licensed" });
+    await resync(
+      ctx,
+      pkey(
+        chainProduct(),
+        releaseJson({ metadata: "authenticated", artifacts: "licensed" }),
+      ),
+    );
+    // Metadata was claimed and kept; delivery access was not, and followed the manifest.
+    expect((await getReleaseConfig(ctx.db, SLUG))?.metadata_access).toBe(
+      "licensed",
+    );
+    expect(await deliveryAccess(ctx)).toEqual({
+      mode: "licensed",
+      source: "manifest",
+    });
   });
 
   it("returns to the manifest after a revert, on the NEXT resync only", async () => {
-    const ctx = await linked();
-    await call(ctx, "PATCH", SETTINGS, { artifactsAccess: "entitled" });
+    const ctx = await linked(chainProduct());
+    await call(ctx, "PUT", ACCESS, { mode: "entitled" });
 
-    const reverted = await call(ctx, "POST", REVERT, { fields: ["access"] });
+    const reverted = await call(ctx, "POST", `${ACCESS}/revert`, {});
     expect(reverted.status).toBe(200);
     // The revert flips the owner and changes nothing else.
     expect(reverted.json).toMatchObject({
-      artifactsAccess: "entitled",
-      accessSource: "manifest",
+      app: { mode: "entitled", source: "manifest" },
     });
 
     await resync(
       ctx,
       pkey(
-        productJson("1.0.0"),
+        chainProduct(),
         releaseJson({ metadata: "public", artifacts: "licensed" }),
       ),
     );
-    expect((await getReleaseConfig(ctx.db, SLUG))?.artifacts_access).toBe(
-      "licensed",
-    );
+    expect(await deliveryAccess(ctx)).toEqual({
+      mode: "licensed",
+      source: "manifest",
+    });
+  });
+
+  it("refuses artifactsAccess on update/settings by name: it moved to distribution/access", async () => {
+    const ctx = await linked(chainProduct());
+    const res = await call(ctx, "PATCH", SETTINGS, {
+      artifactsAccess: "entitled",
+    });
+    expect(res.status).toBe(422);
+    expect(res.json).toMatchObject({ fields: ["artifactsAccess"] });
+    expect(await deliveryAccess(ctx)).toEqual({
+      mode: "public",
+      source: "manifest",
+    });
   });
 });
 
@@ -496,7 +580,7 @@ describe("update/settings/revert", () => {
   it("reverts both blocks at once and audits it", async () => {
     const ctx = await linked();
     await call(ctx, "PATCH", SETTINGS, {
-      artifactsAccess: "entitled",
+      metadataAccess: "entitled",
       compatMax: "8.0.0",
     });
     const res = await call(ctx, "POST", REVERT, {
@@ -506,7 +590,7 @@ describe("update/settings/revert", () => {
     expect(res.json).toMatchObject({
       accessSource: "manifest",
       compatSource: "manifest",
-      artifactsAccess: "entitled",
+      metadataAccess: "entitled",
       compatMax: "8.0.0",
     });
     const rows = await listAudit(ctx.db, SLUG, { limit: 10 });

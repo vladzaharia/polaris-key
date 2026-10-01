@@ -10,9 +10,10 @@
  * (`registry.ts`), generalised to three read-only views:
  *
  *   - `releaseCatalog`      (implemented by Release): deliverables, releases, builds, artifact
- *                            records, channel policy, yanks;
- *   - `delivery`            (implemented by Distribution): transports, availability and, later,
- *                            rollout, halts and delivery URLs per outlet;
+ *                            records, channel policy, yanks, resolution, and the GitHub-located
+ *                            bytes only Release can reach (P2b-04);
+ *   - `delivery`            (implemented by Distribution): transports, availability, outlet
+ *                            rollouts and halts, delivery access and delivery URLs (P2b-04);
  *   - `outletCapabilities`  (implemented by Distribution): what one outlet permits.
  *
  * ── THE RULES ───────────────────────────────────────────────────────────────────────────────
@@ -35,16 +36,19 @@
  *
  * ── WHO EXTENDS WHAT ────────────────────────────────────────────────────────────────────────
  *
- * P2b-04 adds resolution and source access to `ReleaseCatalog`; P2b-02 implements
- * `outletCapabilities`; P2b-03 and P2b-04 fill `Delivery`. P3-03, P4-05, P4-14 and P6-03 consume.
+ * P2b-04 added resolution and source access to `ReleaseCatalog` and rollouts, delivery access and
+ * delivery URLs to `Delivery`; P2b-02 implements `outletCapabilities`; P2b-03 fills availability.
+ * P3-03, P4-05, P4-14 and P6-03 consume.
  */
 
 /// <reference types="@cloudflare/workers-types" />
 
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import type { Product } from "./products.js";
+import type { ProductPublic } from "./products.js";
 import type { ServiceSlug, ServicesMap } from "./services.js";
+import type { EntitledSelector } from "./entitledAccess.js";
 
 // ── releaseCatalog (Release) ────────────────────────────────────────────────────────────────
 
@@ -121,8 +125,102 @@ export interface CatalogYank {
 }
 
 /**
+ * One place an artifact's bytes live (P2-04's `locations_json`). No order is implied: the
+ * consumer ranks them (R2, then GitHub, then an external URL; README §3.5). A `store` location
+ * carries no bytes.
+ */
+export interface CatalogLocation {
+  provider: "r2" | "github" | "external" | "store";
+  /** R2: the content-addressed key. */
+  key?: string;
+  /** GitHub: an asset id, or a file name in the same release. */
+  asset?: number | string;
+  /** External: the `https://` URL. */
+  url?: string;
+}
+
+/** An artifact record plus where its bytes live: what a byte route serves from. */
+export interface CatalogSourceArtifact extends CatalogArtifact {
+  /** Parsed `locations_json`; a legacy row with no locations reads as its GitHub asset. */
+  locations: CatalogLocation[];
+}
+
+/** What a byte route asks Release to resolve (P2-05's `resolveBuild`, generalised). */
+export type CatalogResolveQuery =
+  | { kind: "build"; deliverable: string; selector: string; buildId: string }
+  | { kind: "file"; releaseId: string; name: string }
+  | { kind: "blob"; sha256: string };
+
+/** A build selector resolved against the truth store. */
+export interface CatalogBuildResolution {
+  kind: "build";
+  release: CatalogRelease;
+  build: CatalogBuild;
+  /** The build's `payload` artifact, or `null` when it declares none. */
+  payload: CatalogSourceArtifact | null;
+  /** True when the selector was a channel (its answer moves), false for a version. */
+  moving: boolean;
+}
+
+/** One exact file of one release. `release` is `null` when the release row does not exist. */
+export interface CatalogFileResolution {
+  kind: "file";
+  release: Pick<
+    CatalogRelease,
+    "deliverableId" | "releaseId" | "version" | "channel"
+  > | null;
+  /** `null` when the release has no file of that name (or the release does not exist). */
+  artifact: CatalogSourceArtifact | null;
+}
+
+/** The releases of this product whose artifacts carry one digest (at most 16, by version). */
+export interface CatalogBlobResolution {
+  kind: "blob";
+  releases: Array<
+    Pick<CatalogRelease, "deliverableId" | "releaseId" | "version" | "channel">
+  >;
+}
+
+export type CatalogResolution =
+  | CatalogBuildResolution
+  | CatalogFileResolution
+  | CatalogBlobResolution;
+
+/**
+ * Bytes only Release can reach: the ones on GitHub, behind its installation token and its SSRF
+ * guard. Distribution never holds a GitHub token (README §3.5); it hands Release a reference
+ * and gets a streamed `Response` back.
+ *
+ *   - `github`: one artifact's GitHub location. `redirect` asks for P2-05's opt-in 302 to
+ *     GitHub's own download URL; Release honours it only for a public repository, and the
+ *     caller passes it only for a public deliverable.
+ *   - `dl`: the legacy `/dl/<selector>/<binary>-<arch>[.dmg]` route, which resolves a selector
+ *     LIVE against GitHub and matches the asset by name. `checksum` serves the `.sha256` sidecar.
+ */
+export type CatalogSourceRef =
+  | {
+      kind: "github";
+      releaseId: string;
+      artifactId: string;
+      asset?: number | string;
+      redirect: boolean;
+    }
+  | {
+      kind: "dl";
+      selector: string | undefined;
+      arch: string;
+      format: "cli" | "dmg";
+      checksum: boolean;
+    };
+
+/**
  * Release's read-only view of what exists (README §3.2). Every method reads; none writes.
  * Results are ordered deterministically so a consumer's output is stable.
+ *
+ * P2b-04 added the five methods byte delivery needs: `metadataAccess`, `accessSelector`,
+ * `resolve`, `openSource` and `installScript`. `openSource` is the one method that answers with
+ * bytes rather than records — still read-only, and the only way bytes behind Release's GitHub
+ * token leave Release.
  */
 export interface ReleaseCatalog {
   /** Every deliverable, `app` first, then packs by id. */
@@ -137,6 +235,34 @@ export interface ReleaseCatalog {
   channelPolicies(deliverableId?: string): Promise<CatalogChannelPolicy[]>;
   /** Every yank, newest first. */
   yanks(): Promise<CatalogYank[]>;
+  /**
+   * The product's METADATA access mode (`release_config.metadata_access`, which Release keeps:
+   * the changelog, the version check, the installer), or `null` when the product has no release
+   * configuration at all — every byte route answers not-found then, as it always has.
+   */
+  metadataAccess(): Promise<ReleaseAccess | null>;
+  /**
+   * Classify a route selector (`latest`, `beta`, `pr-5`, `1.2.3`, a manual channel; `undefined`
+   * = the default) into the canonical channel and pinned version Core's `entitled` check reads.
+   * Channel classification is Release's model, so it lives here, not in the consumer.
+   */
+  accessSelector(selector: string | undefined): Promise<EntitledSelector>;
+  /** Resolve a byte route's target against the truth store; `null` = nothing there. */
+  resolve(q: CatalogResolveQuery): Promise<CatalogResolution | null>;
+  /**
+   * Stream bytes from GitHub (see `CatalogSourceRef`). `null` means "not at this location": the
+   * caller tries its next one or answers not-found. Release maps its own upstream failures — a
+   * withdrawn release is `null` (or a 404 for `dl`), an exhausted GitHub quota is a 503 with
+   * `Retry-After` — so the caller never sees a Release error type. The answer is not hardened;
+   * the caller's pipeline does that.
+   */
+  openSource(ref: CatalogSourceRef, req: Request): Promise<Response | null>;
+  /**
+   * The rendered `install.sh` for this product, pointed at `origin` (scheme + host), or `null`
+   * when there is no configuration or a value falls outside the renderer's safe character
+   * classes (R6-01). The template and the binary name are Release's data.
+   */
+  installScript(origin: string): Promise<string | null>;
 }
 
 // ── delivery (Distribution) ─────────────────────────────────────────────────────────────────
@@ -162,10 +288,37 @@ export interface AvailabilityRecord {
   since: number;
 }
 
+/** The states an outlet rollout can be in (P2b-04, README §3.9). */
+export type RolloutState = "active" | "paused" | "halted" | "complete";
+
+/**
+ * One outlet rollout: release R of deliverable D on outlet O's channel C, offered to
+ * `rolloutBp / 10000` of the fleet. The device evaluates its own bucket,
+ * `u32(sha256(salt ‖ installId)[0..4]) mod 10000` (README §3.6); the Worker never does.
+ */
+export interface RolloutRecord {
+  deliverableId: string;
+  outletId: string;
+  channel: string;
+  releaseId: string;
+  /** 0–10000. */
+  rolloutBp: number;
+  /** 16 random bytes, hex; fresh for every new release. */
+  rolloutSalt: string;
+  state: RolloutState;
+  /** True when a store connector owns the row (P5-02/P5-03); direct edits are refused. */
+  mirrored: boolean;
+  /** `admin`, `ci`, a connector kind (`asc`, `play`, `ms-store`) or `auto-halt`. */
+  source: string;
+  startedAt: number;
+  updatedAt: number;
+  updatedBy: string;
+}
+
 /**
  * Distribution's read-only view of how releases reach devices and outlets (README §3.2).
- * P2b-01 ships it with no outlets: the default transport is `pkey-cdn` and availability is
- * empty. P2b-03 and P2b-04 fill it in.
+ * P2b-01 shipped it with no outlets (the default transport, empty availability); P2b-04 adds
+ * rollouts, delivery access and delivery URLs. P2b-03 fills availability.
  */
 export interface Delivery {
   /** The transport a deliverable uses on an outlet that names none. */
@@ -175,6 +328,34 @@ export interface Delivery {
     deliverableId: string,
     releaseId?: string,
   ): Promise<AvailabilityRecord[]>;
+  /** The rollout on one outlet's channel for a deliverable, or `null` when there is none. */
+  rollout(q: {
+    deliverable: string;
+    outlet: string;
+    channel: string;
+  }): Promise<RolloutRecord | null>;
+  /**
+   * Who may download a deliverable (`dist_access`): its own row, else the `app` row, else
+   * `entitled` (fail-closed: no row never reads as open). The ONE answer the byte routes, the
+   * appcast and the portal all read (README §3.5).
+   */
+  accessMode(deliverable: string): Promise<ReleaseAccess>;
+  /**
+   * The canonical, immutable URL of one release file (`name`) or of a build's payload
+   * (`buildId`), both minted as `…/files/<releaseId>/<name>` — pinned to the release by id, never
+   * to its stored version, which can be a channel-like tag (`latest`) a `builds/<selector>` URL
+   * would re-read as moving (P2-05's fixedVersion rule). On the bytes host when `BLOB_ORIGIN` is
+   * set, else a path on this origin. `null` when the release, file, build or build payload does
+   * not exist, when the payload's name is not the one the `files` route serves for that name, or
+   * when `outlet` delivers the deliverable by a transport other than `pkey-cdn` (the bytes are
+   * not ours to serve there).
+   */
+  deliveryUrl(q: {
+    releaseId: string;
+    buildId?: string;
+    name?: string;
+    outlet?: string;
+  }): Promise<string | null>;
 }
 
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────
@@ -204,7 +385,9 @@ export interface OutletCapabilities {
 export interface HookContext {
   env: Env;
   db: Db;
-  product: Product;
+  /** Without its signing key (least privilege): no hook signs anything, and the bytes host and
+   *  the portal build hooks from the key-free loader. */
+  product: ProductPublic;
   /** Epoch seconds — the same value as the request this is answering. */
   now: number;
   hooks: ServiceHooks;

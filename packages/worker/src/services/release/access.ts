@@ -33,14 +33,13 @@
  */
 
 import { CHANNEL_BETA, CHANNEL_STABLE } from "@polaris-key/protocol";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Env, Db } from "../../core/platform.js";
 import { bearer } from "../../core/platform.js";
 import type { ProductPublic } from "../../core/products.js";
-import { errorResponse, wireError } from "../../core/errors.js";
-import { parseSemver } from "../../core/entitlements.js";
 import {
-  entitledAccessCheck,
-  usableLicensedDevice,
+  accessRefusal,
+  fixedReleaseSelector,
   type EntitledSelector,
 } from "../../core/entitledAccess.js";
 import {
@@ -109,12 +108,9 @@ export function entitledSelectorFor(
 ): EntitledSelector {
   // A fixed release is pinned, never classified: see `ReleaseParams.fixedVersion`. Pinned means
   // what it means for a pinned selector — the stable channel, the version window-checked — and
-  // `enforceReleaseAccess` refuses it when the window is bounded and cannot order it.
+  // `accessRefusal` refuses it when the window is bounded and cannot order it.
   if (params.fixedVersion !== undefined)
-    return {
-      channel: CHANNEL_STABLE,
-      version: params.fixedVersion.replace(/^v/, ""),
-    };
+    return fixedReleaseSelector(params.fixedVersion);
   const raw = selectorFor(kind, params);
   const sel = classifyChannel(
     raw,
@@ -137,7 +133,12 @@ export function entitledSelectorFor(
 
 /**
  * Enforce the effective access mode. Returns `null` when the request may proceed, or the
- * refusal to serve.
+ * refusal to serve. The refusal itself is Core's (`accessRefusal`), shared with Distribution's
+ * byte routes, so a mode answers the same on every surface.
+ *
+ * `artifactsAccess` is the ARTIFACTS mode, which is no longer Release's to answer (P2b-04): it is
+ * Distribution's delivery access, read by the caller through `delivery.accessMode()` and passed
+ * in. A surface governed by it with none supplied fails closed to `entitled`, the strictest mode.
  */
 export async function enforceReleaseAccess(
   req: Request,
@@ -148,57 +149,22 @@ export async function enforceReleaseAccess(
   kind: ReleaseKind,
   params: ReleaseParams,
   now: number,
+  artifactsAccess?: ReleaseAccess,
 ): Promise<Response | null> {
-  const mode = accessModeFor(artifactPolicy(cfg), kind);
+  const mode = accessModeFor(artifactPolicy(cfg, artifactsAccess), kind);
   if (mode === "public") return null;
-
-  if (mode === "entitled") {
-    const selector = entitledSelectorFor(cfg, kind, params);
-    const decision = await entitledAccessCheck(
-      env,
-      db,
-      product,
-      bearer(req),
-      selector,
-      now,
-    );
-    if (decision.ok) {
-      // Fail closed on a version the window cannot order. `versionInWindow` compares with
-      // `compareSemver`, which calls anything it cannot parse EQUAL to both bounds, so
-      // `1.2.3.4`, `2.0.0.1` or `3.0.0beta` would pass any window. A pinned version that is
-      // not semver is therefore refused whenever the window is bounded (a licence, tier or the
-      // product's compat range sets a min or max); an unbounded window has nothing to enforce.
-      // A fixed release's version is checked even when it is empty, which `selector.version`
-      // alone would read as "unpinned".
-      const { allowedRange } = decision;
-      const pinned = params.fixedVersion !== undefined || !!selector.version;
-      if (
-        pinned &&
-        !parseSemver(selector.version ?? "") &&
-        (allowedRange.min || allowedRange.max)
-      ) {
-        return wireError(403, "version_blocked", { allowedRange });
-      }
-      return null;
-    }
-    if (decision.code === "version_blocked") {
-      return wireError(403, "version_blocked", {
-        allowedRange: decision.allowedRange,
-      });
-    }
-    if (decision.code === "channel_not_allowed") {
-      return wireError(403, "channel_not_allowed");
-    }
-    return wireError(401, "unauthorized");
-  }
-
-  const valid = await usableLicensedDevice(env, db, product, bearer(req), now);
-  if ("error" in valid) {
-    return errorResponse(
-      401,
-      "download_auth_required",
-      "a valid license is required to download this release artifact",
-    );
-  }
-  return null;
+  const selector = entitledSelectorFor(cfg, kind, params);
+  // A fixed release's version is checked even when it is empty, which `selector.version` alone
+  // would read as "unpinned".
+  const pinned = params.fixedVersion !== undefined || !!selector.version;
+  return accessRefusal(
+    env,
+    db,
+    product,
+    bearer(req),
+    mode,
+    selector,
+    pinned,
+    now,
+  );
 }

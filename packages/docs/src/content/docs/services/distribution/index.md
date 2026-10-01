@@ -48,25 +48,42 @@ switched on by a migration, so its stored state keeps serving while its manifest
 
 ## What it does today
 
-Distribution ships as the foundation the later work builds on. Today it has:
-
-- **No routes.** Every `/<product>/distribution/…` path answers the platform's single not-found
-  response, the same answer a disabled service gives. Storefront feeds, byte delivery and the
-  download page arrive as routes in later packages.
-- **A discovery fragment** that says the service is on but not yet configured:
+- **All byte delivery.** The installer, the direct download and the build, file and blob routes
+  are Distribution routes under `/<product>/distribution/…`, and their older `/release/…`
+  spellings (and `/<product>/install.sh`) are permanent aliases. The build, file and blob routes
+  also answer on the bytes host. See
+  [Byte delivery and delivery access](/docs/services/distribution/delivery/).
+- **Delivery access** per deliverable — who may download it — read by the downloads, the
+  Sparkle appcast and the customer portal alike.
+- **Outlet rollouts and halts**, controlled from CI and the console. Until the signed feed
+  carries them, a halt is recorded and shown but does not stop legacy feeds; see
+  [Rollouts and halts](/docs/services/distribution/rollouts/).
+- **A discovery fragment** advertising the canonical byte URLs; `configured` is `true` once the
+  product has a release configuration:
 
   ```json
-  { "enabled": true, "configured": false, "endpoints": {} }
+  {
+    "enabled": true,
+    "configured": true,
+    "endpoints": {
+      "download": "https://key.plrs.im/<p>/distribution/dl",
+      "install": "https://key.plrs.im/<p>/distribution/install.sh",
+      "builds": "https://dl.plrs.im/<p>/distribution/builds/{selector}/{buildId}",
+      "blobs": "https://dl.plrs.im/<p>/distribution/blobs/sha256/{sha256}"
+    }
+  }
   ```
 
 - **Outlets and transports** from the product's optional `.pkey/distribution` file (below),
   applied on every link and resync.
-- **Two descriptor hooks** (below): `delivery` (the default transport, `pkey-cdn`, and no
-  availability records yet) and `outletCapabilities` (what one declared outlet permits).
-- **A console section**, shown only while Distribution is on, with an overview of the chain and
-  of which hook answers for the product.
+- **Two descriptor hooks** (below): `delivery` and `outletCapabilities`.
+- **A console section**, shown only while Distribution is on, with an overview of the chain, the
+  outlet rollouts and which hook answers for the product.
 
-Because it now owns the `distribution` path segment, a manual release channel named
+With Distribution off, a product serves no downloads at all: every byte route and alias answers
+not-found.
+
+Because it owns the `distribution` path segment, a manual release channel named
 `distribution` loses the short `/<product>/distribution/appcast.xml` alias; its canonical
 `/<product>/update/distribution/appcast.xml` keeps working.
 
@@ -76,11 +93,11 @@ A service may import only Core and itself — `update → release` is the single
 exception — so services read one another through **descriptor hooks** that Core declares and
 gates. Distribution consumes one and provides two:
 
-| Hook                 | Provided by  | Read by      | Answers                                                                         |
-| -------------------- | ------------ | ------------ | ------------------------------------------------------------------------------- |
-| `releaseCatalog`     | Release      | Distribution | deliverables, releases, builds, artifact records, channel policy, yanks         |
-| `delivery`           | Distribution | Update       | the default transport and availability; later rollouts, halts and delivery URLs |
-| `outletCapabilities` | Distribution | Update       | what one declared outlet permits: its kind's default, narrowed by an operator   |
+| Hook                 | Provided by  | Read by            | Answers                                                                                                                                                                |
+| -------------------- | ------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `releaseCatalog`     | Release      | Distribution       | deliverables, releases, builds, artifact records, channel policy, yanks; resolution, the metadata access mode, the installer and GitHub-held bytes for the byte routes |
+| `delivery`           | Distribution | Update, the portal | the default transport, availability, outlet rollouts, delivery access and delivery URLs                                                                                |
+| `outletCapabilities` | Distribution | Update             | what one declared outlet permits: its kind's default, narrowed by an operator                                                                                          |
 
 Every accessor **fails closed**: while the providing service is off for the product it answers
 `null`, the provider's code never runs, and the consumer degrades explicitly — Update without a

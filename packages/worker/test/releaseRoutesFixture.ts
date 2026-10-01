@@ -27,6 +27,7 @@ import {
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
+import { seedDeliveryAccess } from "./releaseSurface.js";
 
 export const SLUG = "djdl";
 export const CONSOLE = "https://key.example.test";
@@ -250,6 +251,9 @@ export async function seedReleaseProduct(
     `INSERT INTO release_config (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`,
     ...(Object.values(row) as never[]),
   );
+  // P2b-04: the artifacts mode is Distribution's `dist_access` (0038 backfilled it from this
+  // column), so the fixture seeds the row the migration would have.
+  await seedDeliveryAccess(db, slug, row.artifacts_access as string);
 }
 
 /**

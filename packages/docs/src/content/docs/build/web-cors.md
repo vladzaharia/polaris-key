@@ -97,9 +97,9 @@ plain `404`.
 
 Every product-scoped route in the [public route table](/docs/reference/routes/) is covered
 except the seven below. The covered routes include discovery, JWKS, the trust manifest, the
-device routes, License, Config (document, schema, mint token), Release (changelog, `install.sh`,
-downloads), Update (appcasts, version) and the device-code flow. The four permanent aliases are
-covered like the routes they point to.
+device routes, License, Config (document, schema, mint token), Release (changelog),
+Distribution (`install.sh`, downloads, builds, files, blobs), Update (appcasts, version) and the
+device-code flow. The permanent aliases are covered like the routes they point to.
 
 These stay first-party and never answer CORS. They set or read the per-product browser-session
 cookie, or they are top-level navigations:

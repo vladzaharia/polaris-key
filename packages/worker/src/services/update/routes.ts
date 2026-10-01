@@ -12,12 +12,27 @@
  * construction rather than by two implementations agreeing.
  */
 
+import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { ServiceContext } from "../../core/registry.js";
 import { handleUpdate } from "./feed.js";
 import { updateParams } from "./eligibility.js";
 
 /** Channel names the router will hand through, matching the product-slug class. */
 const CHANNEL = /^[a-z0-9-]+$/;
+
+/**
+ * Who may read an appcast: Distribution's delivery access for the app (P2b-04). `undefined`
+ * when Distribution is off — impossible for a coherent product (`update_requires_distribution`),
+ * and the gateway then fails closed to `entitled`.
+ */
+async function appcastAccess(
+  ctx: ServiceContext,
+): Promise<ReleaseAccess | undefined> {
+  return (
+    (await ctx.hooks.delivery()?.accessMode(APP_DELIVERABLE_ID)) ?? undefined
+  );
+}
 
 export async function handleUpdateRoutes(
   ctx: ServiceContext,
@@ -33,6 +48,8 @@ export async function handleUpdateRoutes(
         product,
         "appcast",
         updateParams(req, "appcast"),
+        undefined,
+        await appcastAccess(ctx),
       );
     }
     if (rest[0] === "version") {
@@ -65,6 +82,8 @@ export async function handleUpdateRoutes(
       product,
       "channelAppcast",
       updateParams(req, "channelAppcast", channel),
+      undefined,
+      await appcastAccess(ctx),
     );
   }
 

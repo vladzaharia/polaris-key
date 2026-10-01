@@ -481,9 +481,10 @@ export type ReleaseAccess =
 export type SettingsSource = "manifest" | "admin";
 
 export interface UpdateSettings {
+  /** Who may read the changelog, the version check and the installer. */
   metadataAccess: ReleaseAccess;
-  artifactsAccess: ReleaseAccess;
-  /** One owner for BOTH access modes — the console saves them together. */
+  /** Who owns the metadata mode. (The artifacts mode is Distribution's since P2b-04:
+   *  `DeliveryAccess`.) */
   accessSource: SettingsSource;
   compatMin: string;
   compatMax: string;
@@ -501,7 +502,6 @@ export type UpdateSettingsBody = Partial<
   Pick<
     UpdateSettings,
     | "metadataAccess"
-    | "artifactsAccess"
     | "compatMin"
     | "compatMax"
     | "minimumSystemVersion"
@@ -511,6 +511,49 @@ export type UpdateSettingsBody = Partial<
 
 /** The blocks `update/settings/revert` can hand back to the manifest. */
 export type UpdateSettingsBlock = "access" | "compat";
+
+// ── distribution: delivery access + rollouts (P2b-04) ────────────────────────
+/**
+ * Who may download a deliverable (worker `services/distribution/access.ts`): the ONE answer the
+ * downloads, the appcast and the portal read. The `app` row is manifest-owned until an operator
+ * saves it; a pack with no row inherits the app's.
+ */
+export interface DeliveryAccess {
+  modes: ReleaseAccess[];
+  app: { deliverableId: string; mode: ReleaseAccess; source: SettingsSource };
+  deliverables: Array<{
+    deliverableId: string;
+    mode: ReleaseAccess;
+    entitlement: string | null;
+    source: SettingsSource;
+    modifiedAt: number;
+  }>;
+}
+
+export type RolloutState = "active" | "paused" | "halted" | "complete";
+
+/** One outlet rollout (worker `core/hooks.ts` `RolloutRecord`). */
+export interface Rollout {
+  deliverableId: string;
+  outletId: string;
+  channel: string;
+  releaseId: string;
+  /** Basis points, 0–10000. */
+  rolloutBp: number;
+  state: RolloutState;
+  /** A store connector owns it; direct edits are refused. */
+  mirrored: boolean;
+  source: string;
+  startedAt: number;
+  updatedAt: number;
+  updatedBy: string;
+}
+
+export interface RolloutsResponse {
+  rollouts: Rollout[];
+  /** What a rollout or halt does today: recorded and shown, not yet in the signed feed (P3-03). */
+  effect: { reachesDevices: boolean; note: string };
+}
 
 // ── release truth store ───────────────────────────────────────────────────────
 export interface ReleaseArtifactDto {
@@ -1056,6 +1099,26 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ fields }),
     }),
+
+  // ── distribution: delivery access + rollouts (P2b-04) ───────────────────────
+  deliveryAccess: (slug: string) =>
+    call<DeliveryAccess>(`${p(slug)}/distribution/access`),
+  saveDeliveryAccess: (
+    slug: string,
+    body: { mode: ReleaseAccess; deliverable?: string },
+  ) =>
+    call<DeliveryAccess>(`${p(slug)}/distribution/access`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  /** Hand the app's delivery access back to the manifest; it re-applies on the next resync. */
+  revertDeliveryAccess: (slug: string) =>
+    call<DeliveryAccess>(`${p(slug)}/distribution/access/revert`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+  rollouts: (slug: string) =>
+    call<RolloutsResponse>(`${p(slug)}/distribution/rollouts`),
 
   // ── config: catalog ───────────────────────────────────────────────────────────
   schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/config/catalog`),

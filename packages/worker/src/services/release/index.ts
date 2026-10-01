@@ -60,6 +60,11 @@ export const releaseService: ServiceDescriptor = {
         cfg?.gh_owner && cfg.gh_repo
           ? { owner: cfg.gh_owner, name: cfg.gh_repo }
           : null,
+      // `install`, `download`, `builds` and `blobs` are Distribution's routes since P2b-04, and
+      // Distribution's fragment advertises their CANONICAL `/<p>/distribution/…` URLs. These four
+      // keys stay because the discovery document is wire (removing a key is a plan-mode change,
+      // `test/discoveryGolden.test.ts`); the URLs they name are permanent router aliases that
+      // answer byte-identically, so a client reading them keeps working.
       endpoints: {
         changelog: `${base}/release/changelog`,
         install: `${base}/release/install.sh`,
@@ -74,7 +79,6 @@ export const releaseService: ServiceDescriptor = {
 
 // ── The service's public face ────────────────────────────────────────────────
 export { handleRelease, type ReleaseSurfaceKind } from "./surfaces.js";
-export { RELEASE_BYTE_ROUTES } from "./bytes.js";
 export {
   accessModeFor,
   artifactPolicy,
