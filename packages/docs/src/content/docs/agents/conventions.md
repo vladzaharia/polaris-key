@@ -29,6 +29,7 @@ files):
 pnpm build
 pnpm gen:corpus -- --check
 pnpm gen:services -- --check
+pnpm gen:constants -- --check
 pnpm parity:check
 pnpm typecheck
 pnpm test

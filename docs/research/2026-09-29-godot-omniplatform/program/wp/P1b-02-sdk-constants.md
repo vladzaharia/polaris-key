@@ -56,7 +56,8 @@ Today:
 - Today's literals: `packages/sdk-node/src/core/context.ts`, `release/client.ts`, `update/client.ts`,
   `core/bundle.ts`; `packages/sdk-react/src/browser/browserAdapter.ts`,
   `desktop/desktopAdapter.ts`; `sdks/python/src/polaris_key/core/errors.py`;
-  `sdks/swift/Sources/PolarisKeyCore/Models.swift:307-317` and `Platform.swift`.
+  `sdks/swift/Sources/PolarisKeyCore/Transport.swift` (`PolarisError`'s client-side codes,
+  `:39-47`; `Models.swift:307-317` is the `HEADER_*` block) and `Platform.swift`.
 
 ## Scope
 
@@ -72,7 +73,10 @@ Today:
   - Also read: feature ids and `reasons` from `conformance/parity/features.json`; service slugs from
     P0-09's table; header names, `PROTOCOL_VERSION` and P0-04's channel constants (`CHANNEL_STABLE`,
     `CHANNEL_BETA`, `CHANNEL_PR`, `CHANNEL_DEV`, `CHANNEL_ALIASES`, `CHANNEL_NAME_PATTERN`,
-    `PR_CHANNEL_PATTERN`, `PR_NUMBER_MAX_DIGITS`, plan §2.2) imported from `@polaris-key/protocol/core`;
+    `PR_CHANNEL_PATTERN`, `PR_NUMBER_MAX_DIGITS`, plan §2.2) imported from `@polaris-key/protocol/core`
+    (P0-04 had not landed when this package was implemented, so the generator emits every
+    `CHANNEL_*`/`PR_*` export the module has, which today is none; P0-04's additions flow through
+    on its next `pnpm gen:constants`);
     `corpusVersion`, `gateMatrixVersion` and `fingerprintVersion` from the corpus files.
 - **Outputs**, each with a GENERATED banner (TypeScript formatted with prettier, as `sign-corpus.ts`
   does):
@@ -80,8 +84,10 @@ Today:
   - `packages/sdk-react/src/constants.generated.ts`;
   - `sdks/python/src/polaris_key/constants_generated.py`;
   - `sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift`;
-  - a GDScript module under `sdks/godot/` at the path P1-01's layout implies, written only if that
-    directory exists. The GDScript renderer is unit-tested either way.
+  - a GDScript module under `sdks/godot/` at the path P1-01's layout implies
+    (`sdks/godot/addons/polaris_key/core/constants_generated.gd`, `class_name PKeyConstants`),
+    written only if `sdks/godot/addons/polaris_key` exists. The GDScript renderer is unit-tested
+    either way.
 - Root script `"gen:constants": "tsx tools/gen-sdk-constants.ts"` with `--check`; a CI step; the
   `AGENTS.md` green gate; a row in the `contribute/waves.md` drift-gate inventory.
 - `tools/gen-sdk-constants.test.ts`: renderers, casing and collision checks, `--check` behaviour, and

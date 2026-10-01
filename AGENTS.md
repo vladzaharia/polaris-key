@@ -30,10 +30,11 @@ sdks/
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
   godot/             Godot addon               pure-GDScript verify and a headless runner
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
-                     + parity/ (features.json registry; each SDK keeps its own parity.json)
+                     + parity/ (features.json registry, errors.json + enums.json; each SDK
+                       keeps its own parity.json)
                      + transcripts/ (HTTP conversations recorded through the Worker router)
 tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-transcripts.mjs ·
-                     gen-services.ts + services.json
+                     gen-services.ts + services.json · gen-sdk-constants.ts
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
                      security/ (threat model, wire contract v3, audit + findings)
@@ -85,6 +86,7 @@ pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
 pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
 pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
+pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -134,17 +136,21 @@ license / config / trust / bundle (`pkey-license+jws`, `pkey-config+jws`, `pkey-
 `graceUntil`). Changing the encoding is a deliberate, all-languages event: contract → catalog →
 corpus → SDKs, in that order, and a feature is not done until all five implementations pass.
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Three families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Four families:
 
-| File(s)                                                                 | Written by                                        |
-| ----------------------------------------------------------------------- | ------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`                              | the docs build (`scripts/collect-csp-hashes.mjs`) |
-| `packages/docs/src/content/docs/reference/*.mdx`                        | `pnpm --filter @polaris-key/docs gen`             |
-| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift` | `pnpm gen:services` from `tools/services.json`    |
+| File(s)                                                                                                   | Written by                                                                                                                    |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `packages/worker/src/docsCsp.generated.ts`                                                                | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                             |
+| `packages/docs/src/content/docs/reference/*.mdx`                                                          | `pnpm --filter @polaris-key/docs gen`                                                                                         |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`                                   | `pnpm gen:services` from `tools/services.json`                                                                                |
+| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd` | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core` |
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
-table), so a hand edit fails CI rather than shipping. The service table is the one declaration
+table, `pnpm gen:constants -- --check` for the SDK constants), so a hand edit fails CI rather
+than shipping. A new error code needs an entry in `conformance/parity/errors.json` first: the
+constants generator refuses a Worker code it lacks, and each SDK's registry test refuses an SDK
+code it lacks. The service table is the one declaration
 of the opt-in services; adding one is the checklist at
 `packages/docs/src/content/docs/contribute/layout.md` ("Adding a service").
 
