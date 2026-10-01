@@ -111,8 +111,16 @@ object belongs to, and drops it when the answer is another app or none (the even
 
 An App Store version belongs to the release whose version equals its version string (a leading
 `v` is ignored). A TestFlight build belongs to the release build whose `buildNumber` equals
-Apple's build number (`CFBundleVersion`), or to the whole release when none does. On the
+Apple's build number (`CFBundleVersion`) on the same platform, or to the whole release when none
+does. TestFlight usually holds several builds of one version, so the whole release reads the
+state of its **newest** such build; older ones are kept as connector objects. On the
 `testflight` outlet a build any tester can install reads `live`; an expired build reads `removed`.
+
+One app record can carry several platforms (a Universal Purchase app with iOS and macOS versions
+of the same version string), but a release has one state per outlet. **iOS speaks for the
+release** when the app has iOS versions or builds; the macOS (or other platform's) version is kept
+as a connector object that claims no release. A Mac-only app's macOS versions speak, since it has
+no iOS ones.
 
 **Background Assets** map the same way (for example an App Store release
 `READY_FOR_DISTRIBUTION` is `live`, `SUPERSEDED` is `removed`), but they belong to asset packs,
@@ -125,7 +133,9 @@ Apple releases a phased version to users with automatic updates on over seven da
 10, 20, 50 and 100 %. The connector mirrors it as the release's rollout on the `app-store` outlet
 — `ACTIVE` as `active`, `PAUSED` as `paused`, `COMPLETE` as `complete` — at the basis points of
 Apple's current day (day 3 is 500). The row is marked `mirrored` and refuses direct edits; change
-it with the controls below.
+it with the controls below. Only the current version's phased release is mirrored: a version
+Apple has replaced or removed (typically with its phased release `COMPLETE`) is history, and an
+older release never takes the row from a newer one.
 
 The mirror informs the feed and the console. It is **not** an access control: anyone can download
 a phased version from the App Store by hand at any time, and a phase can be paused for up to 30
@@ -144,8 +154,11 @@ In the console API, under `/manage/api/products/<slug>/distribution/connectors/a
 | `testflight/public-link`  | `{ betaGroupId, enabled }` | `PATCH /v1/betaGroups/{id}` `publicLinkEnabled`                   |
 | `webhook`                 | `{}`                       | `POST /v1/webhooks` (all 12 events), then `POST /v1/webhookPings` |
 
-Each control is audited as `distribution.asc.<control>` with your identity, and re-reads the
-object afterwards, so the answer is what Apple now says. If Apple refuses — an invalid phase
+Before sending anything, a version control re-reads the release's App Store version and checks
+that Apple still says it belongs to the outlet's app (and, for `release`, that it is held now):
+otherwise the answer is `unknown_version` and nothing is sent. A version stored while the outlet
+named another app is never acted on. Each control is audited as `distribution.asc.<control>` with
+your identity, and re-reads the object afterwards, so the answer is what Apple now says. If Apple refuses — an invalid phase
 change, a version that is not held — the answer is `store_refused` with Apple's HTTP status.
 `GET …/distribution/connectors` (or `…/connectors/asc`) shows the setup (credential ids only),
 the objects the connector tracks, unresolved ones flagged, and the latest webhook deliveries.

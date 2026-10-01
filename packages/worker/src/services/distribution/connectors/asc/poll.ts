@@ -11,9 +11,14 @@
  *      version under review included: an override of that version's submission state.
  *   2. **App Store versions + phased release** — `GET /v1/apps/{id}/appStoreVersions` with the
  *      phased release included: state, submission and the `dist_rollouts` mirror
- *      (`phasedReleaseState`, `currentDayNumber` → 1, 2, 5, 10, 20, 50, 100 %).
+ *      (`phasedReleaseState`, `currentDayNumber` → 1, 2, 5, 10, 20, 50, 100 %) of a version not
+ *      yet replaced or removed.
  *   3. **Builds / internal TestFlight** — `GET /v1/builds?filter[app]=…` newest first, with the
- *      beta detail and pre-release version included.
+ *      beta detail and pre-release version included. A release's whole-release row follows its
+ *      newest build.
+ *
+ *   Steps 2 and 3 read iOS before other platforms: one platform speaks for a release
+ *   (`platformSpeaks` in `apply.ts`), so a second tick over unchanged state writes nothing.
  *   4. **Re-drive** — stored webhook events whose follow-up `failed`, or that still say
  *      `received` five minutes on (the follow-up was cut off), from the last 24 hours: the
  *      instance each names is re-read exactly as the webhook would have, and the event's outcome
@@ -61,6 +66,7 @@ import {
   BACKGROUND_ASSET_INSTANCE_TYPES,
   INSTANCE_TYPES,
   REVIEW_SUBMISSION_STATE,
+  byPlatformRank,
   eventTypeOf,
   isBackgroundAssetInstanceType,
 } from "./map.js";
@@ -136,7 +142,9 @@ async function pollVersions(
     1,
   );
   let applied = 0;
-  for (const v of data) {
+  // Highest-ranked platform first, so a Universal Purchase app's iOS version is known before
+  // its macOS one is asked whether it speaks (`platformSpeaks`).
+  for (const v of byPlatformRank(data, (r) => attr(r, "platform"))) {
     if (v.type !== "appStoreVersions") continue;
     // A list answer is scoped to the app already; say so for `ownApp`.
     const resource: AscResource = withApp(v, run.setup.appleId);
@@ -202,7 +210,18 @@ async function pollBuilds(run: AscRun): Promise<number> {
     1,
   );
   let applied = 0;
-  for (const b of data) {
+  // Newest first within each platform (the list's order), highest-ranked platform first.
+  const ordered = byPlatformRank(data, (r) =>
+    attr(
+      findIncluded(
+        included,
+        "preReleaseVersions",
+        relId(r, "preReleaseVersion"),
+      ),
+      "platform",
+    ),
+  );
+  for (const b of ordered) {
     if (b.type !== "builds") continue;
     const resource = withApp(b, run.setup.appleId);
     if ((await syncBuild(run, b.id, { resource, included })) === "applied")

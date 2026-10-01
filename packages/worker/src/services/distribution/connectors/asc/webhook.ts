@@ -30,7 +30,9 @@
  *
  * Unknown event types answer 204 and are stored with outcome `ignored` — this Worker writes no
  * runtime log (R12), so the events table is the log. Beta feedback, the three alternative-
- * distribution events and Apple's ping are stored raw with outcome `stored`.
+ * distribution events and Apple's ping are stored raw with outcome `stored`, as is an event whose
+ * object was read but writes nothing because a newer one speaks for its row (an older TestFlight
+ * build of the same release).
  */
 
 import type { ServiceContext } from "../../../../core/registry.js";

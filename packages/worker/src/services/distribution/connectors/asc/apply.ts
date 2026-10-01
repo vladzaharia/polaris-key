@@ -7,10 +7,13 @@
  *
  *   - `appStoreVersions` → availability and submission of the app release whose version is the
  *     store `versionString`, on the `app-store` outlet (build `''`: one binary per release); its
- *     phased release, when there is one, mirrored into `dist_rollouts`.
+ *     phased release, when there is one and the version is not terminal, mirrored into
+ *     `dist_rollouts`. Only one platform writes (`platformSpeaks`: iOS when the app has it): a
+ *     Universal Purchase app's other platform is stored, unclaimed.
  *   - `builds` (and the `buildUploads` / `buildBetaDetails` that lead to one) → availability on
- *     the `testflight` outlet, of the release build whose `buildNumber` is the store build
- *     `version` (or of the whole release when none matches).
+ *     the `testflight` outlet, of the release build whose `buildNumber` (and platform) is the
+ *     store build's (or of the whole release when none matches — then only the NEWEST upload of
+ *     the speaking platform writes that row, since TestFlight holds many builds per version).
  *   - Background Asset versions and their three release kinds → a connector object with the
  *     asset pack's ids, UNRESOLVED until P5-08 maps the pack to a pack release; once resolved,
  *     availability on that release with transport `apple-ba`.
@@ -40,7 +43,7 @@ import {
   type ReportContext,
   type SubmissionState,
 } from "../../availability.js";
-import { mirrorRollout } from "../../rollouts.js";
+import { getRollout, mirrorRollout } from "../../rollouts.js";
 import {
   auditConnector,
   connectorWriter,
@@ -58,6 +61,7 @@ import {
   type AscResource,
 } from "./client.js";
 import {
+  ASC_PLATFORM_TO_RELEASE,
   APP_VERSION_AVAILABILITY,
   APP_VERSION_SUBMISSION,
   APP_VERSION_TERMINAL,
@@ -66,6 +70,7 @@ import {
   appVersionStateOf,
   phasedDayToBp,
   phasedStateToRollout,
+  platformsAbove,
   sameVersion,
   isBackgroundAssetInstanceType,
   testflightAvailability,
@@ -93,6 +98,8 @@ export type ApplyOutcome =
   | "unresolved"
   /** the object is not proven to be the outlet's app; nothing stored or written */
   | "foreign"
+  /** object stored, but a newer one of the same app speaks for the row it would write */
+  | "superseded"
   /** the store no longer has it (404); nothing written */
   | "gone";
 
@@ -118,6 +125,35 @@ async function releaseForVersion(
   if (!catalog) return null;
   const releases = await catalog.releases(deliverable);
   return releases.find((r) => sameVersion(r.version, versionString)) ?? null;
+}
+
+/**
+ * Does an object on `platform` speak for its release? Yes unless this app is known (a stored
+ * version, build or upload of it) to have a platform ranked above it (`ASC_PLATFORM_RANK`): then
+ * that platform's objects write the (release, outlet) rows and this one is stored, unclaimed. A
+ * resource that names no platform speaks. The poller reads its lists highest rank first, so the
+ * answer settles on the first tick.
+ */
+async function platformSpeaks(
+  run: AscRun,
+  platform: string | null,
+): Promise<boolean> {
+  if (platform === null) return true;
+  const above = platformsAbove(platform);
+  if (above.length === 0) return true;
+  const hit = await run.db.first<{ object_id: string }>(
+    `SELECT object_id FROM dist_connector_objects
+      WHERE product = ? AND connector = ?
+        AND object_type IN ('appStoreVersions', 'builds', 'buildUploads')
+        AND json_extract(ref_json, '$.ascAppId') = ?
+        AND json_extract(detail_json, '$.platform') IN (${above.map(() => "?").join(", ")})
+      LIMIT 1`,
+    run.product,
+    ASC_CONNECTOR,
+    run.setup.appleId,
+    ...above,
+  );
+  return hit === null;
 }
 
 async function releaseById(
@@ -192,7 +228,14 @@ export async function syncAppStoreVersion(
     phasedId,
   );
   const buildId = relId(resource, "build");
-  const release = await releaseForVersion(run, versionString);
+  const versionRelease = await releaseForVersion(run, versionString);
+  // One platform speaks for the release (the rows have no platform key): another platform's
+  // version of the same version string is stored, but claims no release and writes nothing.
+  const release =
+    versionRelease && (await platformSpeaks(run, platform))
+      ? versionRelease
+      : null;
+  const terminal = storeState !== null && APP_VERSION_TERMINAL.has(storeState);
   const availability = storeState
     ? (APP_VERSION_AVAILABILITY[storeState] ?? null)
     : null;
@@ -212,6 +255,7 @@ export async function syncAppStoreVersion(
     releaseType: attr(resource, "releaseType"),
     phasedReleaseState: attr(phased, "phasedReleaseState"),
     currentDayNumber: numAttr(phased, "currentDayNumber"),
+    otherPlatformOf: release ? null : (versionRelease?.releaseId ?? null),
   });
   await upsertObject(ctx, ASC_CONNECTOR, {
     type: "appStoreVersions",
@@ -223,7 +267,7 @@ export async function syncAppStoreVersion(
     state: availability,
     ref,
     detail,
-    terminal: storeState !== null && APP_VERSION_TERMINAL.has(storeState),
+    terminal,
   });
   if (!release || !outlet) return "unresolved";
 
@@ -258,7 +302,10 @@ export async function syncAppStoreVersion(
       ),
     });
   }
-  if (phased) await mirrorPhasedRelease(run, release, outlet, phased);
+  // A replaced or removed version's phased release (typically COMPLETE) is history: mirroring it
+  // would fight the current version's over the one (deliverable, outlet, channel) row.
+  if (phased && !terminal)
+    await mirrorPhasedRelease(run, release, outlet, phased);
   return "applied";
 }
 
@@ -266,7 +313,8 @@ export async function syncAppStoreVersion(
  * Mirror an `appStoreVersionPhasedReleases` resource into `dist_rollouts` (`mirrored = 1`,
  * `source = asc`): `ACTIVE` → `active`, `PAUSED` → `paused`, `COMPLETE` → `complete`, at the
  * basis points of Apple's day (`phasedDayToBp`). `INACTIVE` — configured, not started — writes
- * nothing.
+ * nothing, and neither does an OLDER release (by publication `seq`) than the one the row already
+ * mirrors: the row tracks the newest phased release, whatever order its versions are read in.
  */
 export async function mirrorPhasedRelease(
   run: AscRun,
@@ -284,6 +332,25 @@ export async function mirrorPhasedRelease(
     release.channel && CHANNEL.test(release.channel)
       ? release.channel
       : "stable";
+  const existing = await getRollout(
+    run.db,
+    run.product,
+    release.deliverableId,
+    outlet,
+    channel,
+  );
+  if (
+    existing &&
+    existing.mirrored === 1 &&
+    existing.source === ASC_CONNECTOR &&
+    existing.release_id !== release.releaseId &&
+    release.seq !== null
+  ) {
+    const current = (
+      await run.hooks.releaseCatalog()!.releases(release.deliverableId)
+    ).find((r) => r.releaseId === existing.release_id);
+    if (current?.seq != null && current.seq > release.seq) return false;
+  }
   const ctx = writeCtx(run);
   const { changed } = await mirrorRollout(
     ctx,
@@ -341,7 +408,9 @@ export async function syncBuild(
     relId(resource, "buildBetaDetail"),
   );
   const versionString = attr(pre, "version");
+  const platform = attr(pre, "platform");
   const buildNumber = attr(resource, "version");
+  const uploadedDate = attr(resource, "uploadedDate");
   const processingState = attr(resource, "processingState");
   const internal = attr(beta, "internalBuildState");
   const external = attr(beta, "externalBuildState");
@@ -353,15 +422,12 @@ export async function syncBuild(
     state = "rejected";
   else state = testflightAvailability(internal, external);
 
-  const release = await releaseForVersion(run, versionString);
-  let releaseBuild = "";
-  if (release && buildNumber) {
-    const builds = await run.hooks.releaseCatalog()!.builds(release.releaseId);
-    releaseBuild =
-      builds.find(
-        (b) => b.buildNumber !== null && b.buildNumber === buildNumber,
-      )?.buildId ?? "";
-  }
+  const { release, releaseBuild } = await releaseBuildFor(
+    run,
+    versionString,
+    buildNumber,
+    platform,
+  );
   const outlet = run.setup.testflightOutlet;
   const ctx = writeCtx(run);
   const ref = stripNulls({
@@ -376,6 +442,8 @@ export async function syncBuild(
     externalBuildState: external,
     buildNumber,
     versionString,
+    platform,
+    uploadedDate,
     expired: expired || null,
   });
   await upsertObject(ctx, ASC_CONNECTOR, {
@@ -393,6 +461,13 @@ export async function syncBuild(
     terminal: expired,
   });
   if (!release || !outlet || !state) return "unresolved";
+  if (
+    await newerBuildSpeaks(run, outlet, release.releaseId, releaseBuild, {
+      id: resource.id,
+      uploadedDate,
+    })
+  )
+    return "superseded";
   await reportAvailability(
     ctx,
     connectorWriter(ctx, ASC_CONNECTOR, ASC_LABEL),
@@ -407,6 +482,75 @@ export async function syncBuild(
     },
   );
   return "applied";
+}
+
+/**
+ * The release and release build a TestFlight build (or upload) is: the release whose version is
+ * the build's version string, and its build with this build number on this platform (or a
+ * platform-independent one). With no such build it is the whole release (`''`), which only the
+ * speaking platform writes (`platformSpeaks`): another platform's build claims no release.
+ */
+async function releaseBuildFor(
+  run: AscRun,
+  versionString: string | null,
+  buildNumber: string | null,
+  platform: string | null,
+): Promise<{ release: CatalogRelease | null; releaseBuild: string }> {
+  const release = await releaseForVersion(run, versionString);
+  if (!release) return { release: null, releaseBuild: "" };
+  const builds = await run.hooks.releaseCatalog()!.builds(release.releaseId);
+  const want = platform
+    ? (ASC_PLATFORM_TO_RELEASE[platform] ?? platform)
+    : null;
+  const match = buildNumber
+    ? builds.find(
+        (b) =>
+          b.buildNumber !== null &&
+          b.buildNumber === buildNumber &&
+          (want === null || b.platform === null || b.platform === want),
+      )
+    : undefined;
+  if (match) return { release, releaseBuild: match.buildId };
+  if (!(await platformSpeaks(run, platform)))
+    return { release: null, releaseBuild: "" };
+  return { release, releaseBuild: "" };
+}
+
+/**
+ * Does another stored build of this app, claiming the same (release, release build) row, have a
+ * later upload than this one? Then that one speaks for the row (the newest upload is what
+ * TestFlight testers get), and this one writes nothing — so the row neither depends on the
+ * order Apple lists builds in nor flips on every tick. Ties go to the larger object id.
+ */
+async function newerBuildSpeaks(
+  run: AscRun,
+  outlet: string,
+  releaseId: string,
+  releaseBuild: string,
+  self: { id: string; uploadedDate: string | null },
+): Promise<boolean> {
+  const mine = self.uploadedDate ?? "";
+  const hit = await run.db.first<{ object_id: string }>(
+    `SELECT object_id FROM dist_connector_objects
+      WHERE product = ? AND connector = ? AND object_type = 'builds'
+        AND outlet_id = ? AND release_id = ? AND build_id = ? AND object_id <> ?
+        AND json_extract(ref_json, '$.ascAppId') = ?
+        AND (COALESCE(json_extract(detail_json, '$.uploadedDate'), '') > ?
+             OR (COALESCE(json_extract(detail_json, '$.uploadedDate'), '') = ?
+                 AND object_id > ?))
+      LIMIT 1`,
+    run.product,
+    ASC_CONNECTOR,
+    outlet,
+    releaseId,
+    releaseBuild,
+    self.id,
+    run.setup.appleId,
+    mine,
+    mine,
+    self.id,
+  );
+  return hit !== null;
 }
 
 /** `BUILD_UPLOAD_STATE_UPDATED`: read the upload; once it has a build, read the build. */
@@ -424,8 +568,15 @@ export async function syncBuildUpload(
   const build = relId(upload, "build");
   const versionString = attr(upload, "cfBundleShortVersionString");
   const buildNumber = attr(upload, "cfBundleVersion");
+  const platform = attr(upload, "platform");
+  const createdDate = attr(upload, "createdDate");
   const ctx = writeCtx(run);
-  const release = await releaseForVersion(run, versionString);
+  const { release, releaseBuild } = await releaseBuildFor(
+    run,
+    versionString,
+    buildNumber,
+    platform,
+  );
   const mapped = state ? (BUILD_UPLOAD_AVAILABILITY[state] ?? null) : null;
   await upsertObject(ctx, ASC_CONNECTOR, {
     type: "buildUploads",
@@ -436,19 +587,21 @@ export async function syncBuildUpload(
     storeState: state,
     state: mapped,
     ref: stripNulls({ ascAppId: run.setup.appleId, ascBuildId: build }),
-    detail: stripNulls({ versionString, buildNumber }),
+    detail: stripNulls({ versionString, buildNumber, platform, createdDate }),
     terminal: state === "COMPLETE" || state === "FAILED",
   });
   // Processing finished: the build (and its beta detail) is the truth from here on.
   if (state === "COMPLETE" && build) return syncBuild(run, build);
   const outlet = run.setup.testflightOutlet;
   if (!release || !outlet || !mapped) return "unresolved";
-  let releaseBuild = "";
-  if (buildNumber) {
-    const builds = await run.hooks.releaseCatalog()!.builds(release.releaseId);
-    releaseBuild =
-      builds.find((b) => b.buildNumber === buildNumber)?.buildId ?? "";
-  }
+  // An upload older than a build already speaking for the row says nothing new.
+  if (
+    await newerBuildSpeaks(run, outlet, release.releaseId, releaseBuild, {
+      id: upload.id,
+      uploadedDate: createdDate,
+    })
+  )
+    return "superseded";
   await reportAvailability(
     ctx,
     connectorWriter(ctx, ASC_CONNECTOR, ASC_LABEL),
@@ -577,10 +730,15 @@ export async function syncBackgroundAsset(
   return "applied";
 }
 
-/** The stored object a control acts on: the App Store version of one release. */
+/**
+ * The stored object a control acts on: the App Store version of one release, of the app the
+ * setup names NOW (a row stored while the outlet named another app is never acted on). A control
+ * still re-reads it from Apple before writing (`proveVersion` in `controls.ts`).
+ */
 export async function versionObjectForRelease(
   db: Db,
   product: string,
+  appleId: string,
   releaseId: string,
 ): Promise<{
   versionId: string;
@@ -594,11 +752,12 @@ export async function versionObjectForRelease(
   }>(
     `SELECT object_id, ref_json, store_state FROM dist_connector_objects
       WHERE product = ? AND connector = ? AND object_type = 'appStoreVersions'
-        AND release_id = ?
+        AND release_id = ? AND json_extract(ref_json, '$.ascAppId') = ?
       ORDER BY updated_at DESC LIMIT 1`,
     product,
     ASC_CONNECTOR,
     releaseId,
+    appleId,
   );
   if (!row) return null;
   let phasedId: string | null = null;
@@ -615,12 +774,14 @@ export async function versionObjectForRelease(
 /** The event outcome recorded for what re-reading its instance came to. */
 export function eventOutcomeOf(
   applied: ApplyOutcome | "unresolved",
-): "applied" | "unresolved" | "ignored" {
+): "applied" | "unresolved" | "stored" | "ignored" {
   return applied === "applied"
     ? "applied"
     : applied === "unresolved"
       ? "unresolved"
-      : "ignored";
+      : applied === "superseded"
+        ? "stored"
+        : "ignored";
 }
 
 /**

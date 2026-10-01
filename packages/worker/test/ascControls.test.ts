@@ -20,6 +20,7 @@ import {
   type AscWorld,
 } from "./ascWorld.js";
 import { runConnectorPolls } from "../src/scheduled.js";
+import { upsertObject } from "../src/services/distribution/connectors/state.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -206,7 +207,7 @@ describe("release a held version", () => {
     expect(avail?.state).toBe("live");
   });
 
-  it("refuses a version that is not held, without calling Apple", async () => {
+  it("refuses a version that is not held, sending Apple no write", async () => {
     const w = await seeded();
     const res = await admin(w, "POST", "/distribution/connectors/asc/release", {
       releaseId: "v1.0.0",
@@ -462,4 +463,90 @@ describe("the console reads", () => {
       "not_configured",
     );
   });
+});
+
+describe("version controls prove the version is this app's before writing", () => {
+  const CONTROLS = [
+    "release",
+    "phased-release/pause",
+    "phased-release/resume",
+    "phased-release/complete",
+  ];
+
+  /** A stored appStoreVersions row linked to v1.1.0, held, with a phased release. */
+  async function seedVersionRow(
+    w: AscWorld,
+    id: string,
+    ascAppId: string,
+  ): Promise<void> {
+    await upsertObject({ db: w.db, product: SLUG, now: NOW }, "asc", {
+      type: "appStoreVersions",
+      id,
+      outletId: "app-store",
+      releaseId: "v1.1.0",
+      buildId: "",
+      storeState: "PENDING_DEVELOPER_RELEASE",
+      state: "approved",
+      ref: { ascAppId, ascVersionId: id, ascPhasedReleaseId: `phr-${id}` },
+      detail: { versionString: "1.1.0", platform: "IOS" },
+      terminal: false,
+    });
+  }
+
+  for (const control of CONTROLS) {
+    it(`${control}: a row stored for another app is never acted on`, async () => {
+      // The outlet's appleId was corrected after the old app's versions were stored.
+      const w = await ascWorld();
+      await seedVersionRow(w, "asv-old-app", "9999999999");
+      const res = await admin(
+        w,
+        "POST",
+        `/distribution/connectors/asc/${control}`,
+        { releaseId: "v1.1.0" },
+      );
+      expect(res.status).toBe(404);
+      expect(((await res.json()) as { reason: string }).reason).toBe(
+        "unknown_version",
+      );
+      expect(w.fake.writes()).toEqual([]);
+      expect(await controlAudits(w)).toEqual([]);
+    });
+
+    it(`${control}: a row Apple says is another app's version is refused before any write`, async () => {
+      const w = await ascWorld();
+      // The stored row claims this app; Apple's re-read says otherwise.
+      w.fake.put({
+        type: "appStoreVersions",
+        id: "asv-foreign",
+        attributes: {
+          platform: "IOS",
+          versionString: "1.1.0",
+          appVersionState: "PENDING_DEVELOPER_RELEASE",
+        },
+        relationships: {
+          app: { data: { type: "apps", id: "9999999999" } },
+          appStoreVersionPhasedRelease: {
+            data: { type: "appStoreVersionPhasedReleases", id: "phr-110" },
+          },
+        },
+      });
+      await seedVersionRow(w, "asv-foreign", "1234567890");
+      const res = await admin(
+        w,
+        "POST",
+        `/distribution/connectors/asc/${control}`,
+        { releaseId: "v1.1.0" },
+      );
+      expect(res.status).toBe(404);
+      expect(((await res.json()) as { reason: string }).reason).toBe(
+        "unknown_version",
+      );
+      expect(w.fake.requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+        "GET /v1/appStoreVersions/asv-foreign",
+      ]);
+      expect(w.fake.requests[0]!.query.include).toContain("app");
+      expect(w.fake.writes()).toEqual([]);
+      expect(await controlAudits(w)).toEqual([]);
+    });
+  }
 });

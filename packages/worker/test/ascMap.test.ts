@@ -18,6 +18,8 @@ import {
   INTERNAL_BUILD_AVAILABILITY,
   PHASED_RELEASE_BP,
   appVersionStateOf,
+  byPlatformRank,
+  platformsAbove,
   camelEventType,
   eventTypeOf,
   instanceOf,
@@ -390,5 +392,36 @@ describe("the client", () => {
       status: 401,
     });
     expect(client.calls).toBe(0);
+  });
+});
+
+describe("platform rank (one platform speaks for a release)", () => {
+  it("iOS leads, then macOS; an unknown platform ranks below all", () => {
+    expect(platformsAbove("IOS")).toEqual([]);
+    expect(platformsAbove("MAC_OS")).toEqual(["IOS"]);
+    expect(platformsAbove("TV_OS")).toEqual(["IOS", "MAC_OS", "VISION_OS"]);
+    expect(platformsAbove("CAR_OS")).toEqual([
+      "IOS",
+      "MAC_OS",
+      "VISION_OS",
+      "TV_OS",
+    ]);
+  });
+
+  it("orders by rank, keeping the list's order within a platform", () => {
+    const items = [
+      { id: "mac-new", p: "MAC_OS" },
+      { id: "ios-new", p: "IOS" },
+      { id: "mac-old", p: "MAC_OS" },
+      { id: "none", p: null },
+      { id: "ios-old", p: "IOS" },
+    ];
+    expect(byPlatformRank(items, (i) => i.p).map((i) => i.id)).toEqual([
+      "ios-new",
+      "none",
+      "ios-old",
+      "mac-new",
+      "mac-old",
+    ]);
   });
 });

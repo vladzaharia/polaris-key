@@ -758,7 +758,13 @@ check, each link read from the primary data of its own GET. A build upload that 
 writes nothing, whatever its state, and is never followed into the build it names. The poller's
 lists are app-scoped by their endpoint (`/v1/apps/{appleId}/…`, `/v1/builds?filter[app]=…`); a
 reconciled object that is gone or no longer provable is retired (`terminal = 1`), never updated.
-The test fake (`test/ascFake.ts`) answers relationships the same way, so a test cannot pass on
+The state-changing controls hold to the same rule before they write, because a team key's write
+to another app's version (releasing it, completing its phased release) cannot be undone by a later
+re-read: `release` and `phased-release/*` act only on a stored version whose `ascAppId` is the
+app the setup names now (a row stored while the outlet named another app is invisible to them),
+and first re-read it with `include=app`, sending nothing unless Apple answers that it is this
+app's version of that release; `testflight/public-link` proves its beta group with
+`betaGroups/{id}?include=app`. The test fake (`test/ascFake.ts`) answers relationships the same way, so a test cannot pass on
 data the real API would not send.
 
 **Replay.** Deliveries are deduplicated on `data.id`: a KV marker (7 days, like the GitHub
@@ -814,10 +820,15 @@ documented in `services/distribution/app-store-connect.md`.
 updates on, and anyone can download the version by hand, so `dist_rollouts` rows with
 `source = asc` are informative for the feed (P3-03) and the console; nothing may gate a download
 on them. A mirrored row refuses direct edits (`rollout_mirrored`); the connector overwrites any
-operator rollout on the same (deliverable, outlet, channel) and audits that it did.
+operator rollout on the same (deliverable, outlet, channel) and audits that it did. Only one
+writer may own that row, or the audit signal drowns: a replaced or removed version's phased
+release is not mirrored, an older release never takes the row from a newer one, and of a
+Universal Purchase app's platforms only one (iOS when present) writes a release's rows — the same
+rule keeps the whole-release TestFlight row on the newest build — so a tick over unchanged store
+state writes no row and no audit entry.
 
-**Controls.** Each is a platform-admin console action (session, CSRF, rate limit), sends exactly
-one documented request (two for webhook registration: create, then ping), writes one audit row
+**Controls.** Each is a platform-admin console action (session, CSRF, rate limit), proves the
+object is the outlet's app first (above), sends exactly one documented request (two for webhook registration: create, then ping), writes one audit row
 with the session's subject, and re-reads the object. "Register webhook" sends the stored secret
 to Apple once; the secret is generated server-side by the Core admin handler
 (`PUT …/outlet-credentials/<id>` with `generate: true`) and never returned to anyone.

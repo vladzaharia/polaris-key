@@ -12,6 +12,13 @@
  *     testflight/public-link   PATCH /v1/betaGroups/{id}  publicLinkEnabled
  *     webhook                  POST  /v1/webhooks (all 12 event types), then POST /v1/webhookPings
  *
+ * **Ownership before every write.** A version control acts only on a stored version of the app
+ * the setup names now (`versionObjectForRelease`), and first RE-READS it from Apple with
+ * `include=app` (`proveVersion`): unless Apple says it is this app's version of this release,
+ * nothing is sent — the team-scoped key could otherwise release or complete another app's
+ * version, which no later re-read can undo. The public-link control proves its beta group the
+ * same way.
+ *
  * Every control sends exactly the documented request, writes ONE audit row with the session's
  * subject (`distribution.asc.<control>`), and then RE-READS the object from the API, so what the
  * console shows afterwards is Apple's answer, not the request's intent. Apple refusing a request
@@ -149,6 +156,35 @@ function auditControl(
   );
 }
 
+/**
+ * The App Store version a control may write to for `releaseId`, proven NOW: the stored row of
+ * this app's version, re-read from Apple (ownership, presence, current state) before anything is
+ * sent. `null` when no row is linked, or the re-read does not come back as this app's version of
+ * this release (another app's, gone, another platform's).
+ */
+async function proveVersion(
+  run: AscRun,
+  setup: AscSetup,
+  releaseId: string,
+): Promise<Awaited<ReturnType<typeof versionObjectForRelease>>> {
+  const stored = await versionObjectForRelease(
+    run.db,
+    run.product,
+    setup.appleId,
+    releaseId,
+  );
+  if (!stored) return null;
+  const outcome = await syncAppStoreVersion(run, stored.versionId);
+  if (outcome !== "applied" && outcome !== "unresolved") return null;
+  const fresh = await versionObjectForRelease(
+    run.db,
+    run.product,
+    setup.appleId,
+    releaseId,
+  );
+  return fresh && fresh.versionId === stored.versionId ? fresh : null;
+}
+
 function releaseIdOf(body: Record<string, unknown>): string | null {
   return typeof body.releaseId === "string" && body.releaseId !== ""
     ? body.releaseId
@@ -171,21 +207,14 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
         return refuse(422, "invalid_body", "releaseId is required", [
           "releaseId",
         ]);
-      const known = await versionObjectForRelease(c.db, c.product, releaseId);
+      const known = await proveVersion(run, setup, releaseId);
       if (!known)
         return refuse(
           404,
           "unknown_version",
-          `no App Store version is linked to ${releaseId} yet`,
+          `no App Store version of this app is linked to ${releaseId}`,
         );
-      let phasedId = known.phasedId;
-      if (!phasedId) {
-        // The object may predate the phased release: ask Apple.
-        await syncAppStoreVersion(run, known.versionId);
-        phasedId =
-          (await versionObjectForRelease(c.db, c.product, releaseId))
-            ?.phasedId ?? null;
-      }
+      const phasedId = known.phasedId;
       if (!phasedId)
         return refuse(
           404,
@@ -235,18 +264,19 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
 // ── Release a held version ───────────────────────────────────────────────────────────────────
 
 const releaseHeld: ConnectorControl = (c, body) =>
-  withRun(c, async (run) => {
+  withRun(c, async (run, setup) => {
     const releaseId = releaseIdOf(body);
     if (!releaseId)
       return refuse(422, "invalid_body", "releaseId is required", [
         "releaseId",
       ]);
-    const known = await versionObjectForRelease(c.db, c.product, releaseId);
+    // Apple's answer, not the stored one, decides whether the version is held.
+    const known = await proveVersion(run, setup, releaseId);
     if (!known)
       return refuse(
         404,
         "unknown_version",
-        `no App Store version is linked to ${releaseId} yet`,
+        `no App Store version of this app is linked to ${releaseId}`,
       );
     if (known.storeState !== "PENDING_DEVELOPER_RELEASE")
       return refuse(
@@ -271,7 +301,12 @@ const releaseHeld: ConnectorControl = (c, body) =>
       `Released the held App Store version of ${releaseId}`,
     );
     await syncAppStoreVersion(run, known.versionId);
-    const after = await versionObjectForRelease(c.db, c.product, releaseId);
+    const after = await versionObjectForRelease(
+      c.db,
+      c.product,
+      setup.appleId,
+      releaseId,
+    );
     return {
       ok: true,
       versionId: known.versionId,

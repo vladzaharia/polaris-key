@@ -388,3 +388,44 @@ export function sameVersion(a: string, b: string): boolean {
   const n = (s: string) => s.trim().replace(/^v/i, "");
   return n(a) === n(b);
 }
+
+// ── Platforms ────────────────────────────────────────────────────────────────────────────────
+
+/** App Store Connect `platform` → the release platform (`RELEASE_PLATFORMS`) a build names. */
+export const ASC_PLATFORM_TO_RELEASE: Readonly<Record<string, string>> = {
+  IOS: "ios",
+  MAC_OS: "macos",
+};
+
+/**
+ * Which App Store platform speaks for a release when one app has several (a Universal Purchase
+ * app: iOS and macOS versions of one version string). Availability, submission and the rollout
+ * mirror are keyed (release, outlet) with no platform, so only one may write: the first of this
+ * list the app is known to have. The outlet's `bundleId` is the iOS bundle id, so iOS leads; a
+ * Mac-only app's macOS versions speak because no iOS object of the app exists.
+ */
+export const ASC_PLATFORM_RANK: readonly string[] = [
+  "IOS",
+  "MAC_OS",
+  "VISION_OS",
+  "TV_OS",
+];
+
+/** The platforms ranked above `platform` (all of the list for one it does not know). */
+export function platformsAbove(platform: string): string[] {
+  const i = ASC_PLATFORM_RANK.indexOf(platform);
+  return [...ASC_PLATFORM_RANK.slice(0, i === -1 ? undefined : i)];
+}
+
+/** Order resources so the higher-ranked platform comes first (stable within one platform). */
+export function byPlatformRank<T>(
+  items: readonly T[],
+  platformOf: (t: T) => string | null,
+): T[] {
+  const rank = (t: T) => {
+    const p = platformOf(t);
+    const i = p === null ? 0 : ASC_PLATFORM_RANK.indexOf(p);
+    return i === -1 ? ASC_PLATFORM_RANK.length : i;
+  };
+  return [...items].sort((a, b) => rank(a) - rank(b));
+}

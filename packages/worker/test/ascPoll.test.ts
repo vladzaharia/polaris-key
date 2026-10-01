@@ -165,6 +165,222 @@ describe("the poll", () => {
     });
   });
 
+  it("the phased release of a replaced version never fights the current one's mirror", async () => {
+    const w = await ascWorld();
+    w.fake.set("appStoreVersions", "asv-110", {
+      appVersionState: "READY_FOR_DISTRIBUTION",
+    });
+    w.fake.set("appStoreVersionPhasedReleases", "phr-110", {
+      phasedReleaseState: "ACTIVE",
+      currentDayNumber: 3,
+    });
+    // v1.0.0 phased too, and finished: it is listed after v1.1.0 (older createdDate).
+    w.fake.put({
+      type: "appStoreVersionPhasedReleases",
+      id: "phr-100",
+      attributes: { phasedReleaseState: "COMPLETE", currentDayNumber: 7 },
+    });
+    const v100 = w.fake.get("appStoreVersions", "asv-100");
+    w.fake.put({
+      ...v100,
+      relationships: {
+        ...v100.relationships,
+        appStoreVersionPhasedRelease: {
+          data: { type: "appStoreVersionPhasedReleases", id: "phr-100" },
+        },
+      },
+    });
+    const mirrorRows = async () =>
+      (await audits(w.db)).filter(
+        (a) => a.action === "distribution.rollout.mirror",
+      );
+    await poll(w);
+    expect(await rollouts(w.db)).toEqual([
+      expect.objectContaining({
+        release_id: "v1.1.0",
+        rollout_bp: 500,
+        state: "active",
+      }),
+    ]);
+    expect(await mirrorRows()).toHaveLength(1);
+    await poll(w);
+    await poll(w);
+    expect((await rollouts(w.db))[0]).toMatchObject({
+      release_id: "v1.1.0",
+      rollout_bp: 500,
+    });
+    expect(await mirrorRows()).toHaveLength(1);
+    // The control acts on v1.1.0's phased release and reports its mirror.
+    const { admin } = await import("./ascWorld.js");
+    const res = await admin(
+      w,
+      "POST",
+      "/distribution/connectors/asc/phased-release/pause",
+      { releaseId: "v1.1.0" },
+    );
+    expect(res.status).toBe(200);
+    expect(
+      ((await res.json()) as { rollout: { releaseId: string } | null }).rollout,
+    ).toMatchObject({ releaseId: "v1.1.0" });
+  });
+
+  it("an older release's phased release does not take the mirror from a newer one", async () => {
+    const w = await ascWorld();
+    w.fake.set("appStoreVersions", "asv-110", {
+      appVersionState: "READY_FOR_DISTRIBUTION",
+    });
+    w.fake.set("appStoreVersionPhasedReleases", "phr-110", {
+      phasedReleaseState: "ACTIVE",
+      currentDayNumber: 2,
+    });
+    // Not terminal (Apple has not said REPLACED yet), and COMPLETE.
+    w.fake.put({
+      type: "appStoreVersionPhasedReleases",
+      id: "phr-100",
+      attributes: { phasedReleaseState: "COMPLETE", currentDayNumber: 7 },
+    });
+    const v100 = w.fake.get("appStoreVersions", "asv-100");
+    w.fake.put({
+      ...v100,
+      attributes: {
+        ...v100.attributes,
+        appVersionState: "READY_FOR_DISTRIBUTION",
+        appStoreState: "READY_FOR_DISTRIBUTION",
+      },
+      relationships: {
+        ...v100.relationships,
+        appStoreVersionPhasedRelease: {
+          data: { type: "appStoreVersionPhasedReleases", id: "phr-100" },
+        },
+      },
+    });
+    await poll(w);
+    await poll(w);
+    expect(await rollouts(w.db)).toEqual([
+      expect.objectContaining({ release_id: "v1.1.0", rollout_bp: 200 }),
+    ]);
+    expect(
+      (await audits(w.db)).filter(
+        (a) => a.action === "distribution.rollout.mirror",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("the whole-release TestFlight row follows the newest of several unmatched builds", async () => {
+    const w = await ascWorld();
+    for (const [n, uploaded, expired, internal] of [
+      ["40", "2026-09-21T09:00:00.000Z", true, "EXPIRED"],
+      ["41", "2026-09-22T09:00:00.000Z", false, "IN_BETA_TESTING"],
+    ] as const) {
+      w.fake.put({
+        type: "buildBetaDetails",
+        id: `bbd-110-${n}`,
+        attributes: {
+          internalBuildState: internal,
+          externalBuildState: expired ? "EXPIRED" : "READY_FOR_BETA_SUBMISSION",
+        },
+        relationships: {
+          build: { data: { type: "builds", id: `bld-110-${n}` } },
+        },
+      });
+      w.fake.put({
+        type: "builds",
+        id: `bld-110-${n}`,
+        attributes: {
+          version: n,
+          uploadedDate: uploaded,
+          expired,
+          processingState: "VALID",
+        },
+        relationships: {
+          app: { data: { type: "apps", id: "1234567890" } },
+          preReleaseVersion: {
+            data: { type: "preReleaseVersions", id: "prv-110" },
+          },
+          buildBetaDetail: {
+            data: { type: "buildBetaDetails", id: `bbd-110-${n}` },
+          },
+        },
+      });
+    }
+    await poll(w);
+    const tf = async () =>
+      (await availability(w.db))
+        .filter(
+          (r) => r.outlet_id === "testflight" && r.release_id === "v1.1.0",
+        )
+        .map((r) => [r.build_id, r.state]);
+    expect(await tf()).toEqual([
+      ["", "live"],
+      ["ios", "live"],
+    ]);
+    const before = (await audits(w.db)).filter((a) =>
+      a.action.startsWith("distribution."),
+    );
+    await poll(w);
+    await poll(w);
+    expect(await tf()).toEqual([
+      ["", "live"],
+      ["ios", "live"],
+    ]);
+    expect(
+      (await audits(w.db)).filter((a) => a.action.startsWith("distribution.")),
+    ).toEqual(before);
+    // The older build is stored, but speaks for nothing.
+    expect(
+      await w.db.first(
+        "SELECT release_id, build_id, state FROM dist_connector_objects WHERE object_id = 'bld-110-40'",
+      ),
+    ).toEqual({ release_id: "v1.1.0", build_id: "", state: "removed" });
+  });
+
+  it("a Universal Purchase app's macOS version of a release does not fight its iOS version", async () => {
+    const w = await ascWorld();
+    w.fake.set("appStoreVersions", "asv-110", {
+      appVersionState: "READY_FOR_DISTRIBUTION",
+    });
+    // Listed FIRST (newer createdDate), waiting for review, same version string.
+    w.fake.put({
+      type: "appStoreVersions",
+      id: "asv-110-mac",
+      attributes: {
+        platform: "MAC_OS",
+        versionString: "1.1.0",
+        appVersionState: "WAITING_FOR_REVIEW",
+        appStoreState: "WAITING_FOR_REVIEW",
+        releaseType: "MANUAL",
+        createdDate: "2026-09-25T10:00:00.000Z",
+      },
+      relationships: {
+        app: { data: { type: "apps", id: "1234567890" } },
+        appStoreVersionPhasedRelease: { data: null },
+        build: { data: null },
+      },
+    });
+    const state = async () => ({
+      avail: (await availability(w.db))
+        .filter((r) => r.outlet_id === "app-store" && r.release_id === "v1.1.0")
+        .map((r) => r.state),
+      subs: (await submissions(w.db)).map((r) => r.state),
+    });
+    await poll(w);
+    expect(await state()).toEqual({ avail: ["live"], subs: ["released"] });
+    const before = (await audits(w.db)).filter((a) =>
+      a.action.startsWith("distribution."),
+    );
+    await poll(w);
+    expect(await state()).toEqual({ avail: ["live"], subs: ["released"] });
+    expect(
+      (await audits(w.db)).filter((a) => a.action.startsWith("distribution.")),
+    ).toEqual(before);
+    // Stored for the console, claiming no release.
+    expect(
+      await w.db.first<{ release_id: string | null; detail_json: string }>(
+        "SELECT release_id, detail_json FROM dist_connector_objects WHERE object_id = 'asv-110-mac'",
+      ),
+    ).toMatchObject({ release_id: null });
+  });
+
   it("a mirrored rollout refuses direct edits", async () => {
     const w = await ascWorld();
     w.fake.set("appStoreVersions", "asv-110", {
