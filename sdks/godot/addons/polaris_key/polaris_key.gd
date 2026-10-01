@@ -11,7 +11,8 @@ extends Node
 ## Every call that can wait is a coroutine returning a PKeyResult (or PKeySyncResult). Signals:
 ## `state_changed(state)` when the licence state changes, `sync_finished(result)` after every
 ## sync, `store_error(err)` when the store fails to read or write (also `last_store_error`).
-## `core` is the PKeyCore every service client builds on.
+## `core` is the PKeyCore every service client builds on. `build_info()` says which build this is
+## (the export plugin's stamp, or the editor fallback).
 ##
 ## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
 ## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
@@ -129,6 +130,21 @@ func status() -> Dictionary:
 
 func is_licensed() -> bool:
 	return PKeyGate.is_usable(status())
+
+
+## Which build this is: the export's stamp (`res://.polaris_key/build.json`, PKeyBuildStamp:
+## product, version, build, outlet, channel, engine, platform, arch, outletIds, …), or, without
+## one (the editor), the fallback: application/config/version, build 0, no outlet, the editor
+## channel (the setup dock's, from res://polaris_key.tres until configure()), this platform and
+## arch. Works before configure().
+func build_info() -> Dictionary:
+	if core != null:
+		return core.build_info()
+	var stamp = PKeyBuildStamp.read()
+	if stamp != null:
+		return stamp
+	var d := PKeyBuildStamp.editor_defaults()
+	return PKeyBuildStamp.fallback(d["channel"], d["product"])
 
 
 ## Where the token lives: {backend, degraded?: {reason, detail?}}.

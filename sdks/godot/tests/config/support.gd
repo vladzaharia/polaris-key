@@ -27,6 +27,7 @@ static func options(services := PackedStringArray()) -> PKeyOptions:
 	o.local_only = true
 	o.store = PKeyMemoryStore.new("", "pkeyt_cached")
 	o.expected_services = services
+	o.build_stamp_path = ""
 	return o
 
 

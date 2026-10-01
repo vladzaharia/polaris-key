@@ -1,3 +1,4 @@
+@tool
 class_name PKeySemver
 extends RefCounted
 ## Client-side semver and channel helpers: a port of `client-core/src/semver.ts`, which mirrors
