@@ -47,9 +47,9 @@ export interface ServiceContext {
   /** Epoch seconds for this request — one value for every timestamp it writes or signs. */
   now: number;
   /**
-   * True when the request arrived on one of the permanent pre-namespace aliases (§R1,
-   * `router.ts`): `/<p>/appcast.xml`, `/<p>/<channel>/appcast.xml`, `/<p>/install.sh`,
-   * `/<p>/version`.
+   * True when the request arrived on one of the permanent aliases (§R1, P2b-04, `router.ts`):
+   * `/<p>/appcast.xml`, `/<p>/<channel>/appcast.xml`, `/<p>/install.sh`, `/<p>/version`, and
+   * Release's old byte paths `/<p>/release/{install.sh,dl,builds,files,blobs}/…`.
    *
    * Present so the route table can be ASSERTED on, not so a handler can branch. The router
    * rewrites an alias into the canonical segments before dispatch, so every handler sees the

@@ -3,7 +3,9 @@
 /**
  * The release gateway — everything both services do around their own surface handler.
  *
- * One request pipeline, in this order, for all seven surfaces:
+ * One request pipeline, in this order, for the surfaces that still run through it (Release's
+ * changelog, Update's appcasts and version check; the byte routes are Distribution's since
+ * P2b-04 and run the same steps in `services/distribution/bytes.ts`):
  *
  *     edge cache (public surfaces only) → access enforcement → rate limit → compute → cache put
  *

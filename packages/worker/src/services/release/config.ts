@@ -224,12 +224,14 @@ export function shipsDmgs(
 }
 
 /**
- * The seven surfaces the two services serve between them.
+ * The release surfaces, as the access classification names them.
  *
  * Still one union after the split, because it is what the SHARED gateway keys on: which lane
  * the rate limiter charges, whether the edge cache may hold the answer, and which of the two
- * access modes governs. Release owns `install`/`changelog`/`cli`/`dmg`; Update owns
- * `appcast`/`channelAppcast`/`version`.
+ * access modes governs. Through the gateway today: Release's `changelog` and Update's
+ * `appcast`/`channelAppcast`/`version`. `install`, `cli`, `dmg`, `build`, `file` and `blob` are
+ * Distribution's routes since P2b-04; they stay in the union because `entitledSelectorFor` (behind
+ * `releaseCatalog.accessSelector`) classifies their selectors.
  */
 export type ReleaseKind =
   | "appcast"
