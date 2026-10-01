@@ -16634,7 +16634,15 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash4 } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir as mkdir3, readdir as readdir3, readFile as readFile4, rm, writeFile as writeFile4 } from "node:fs/promises";
+import {
+  lstat,
+  mkdir as mkdir3,
+  readdir as readdir3,
+  readFile as readFile4,
+  rm,
+  rmdir,
+  writeFile as writeFile4
+} from "node:fs/promises";
 import path5 from "node:path";
 import { promisify } from "node:util";
 var FEEDS_USAGE = "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
@@ -16964,6 +16972,57 @@ async function signEntryJar(jar, opts) {
     await rm(unsigned, { force: true });
   }
 }
+var OUT_FILES = /* @__PURE__ */ new Set(["entry.jar", "entry.json", "index-v2.json"]);
+var OUT_DIRS = {
+  diff: /^[0-9]+\.json$/,
+  icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/
+};
+async function staleOutFiles(dir, cwd) {
+  const up = path5.relative(dir, path5.resolve(cwd));
+  if (up === "" || up.split(path5.sep)[0] !== ".." && !path5.isAbsolute(up))
+    throw new Error(
+      `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
+    );
+  let top;
+  try {
+    top = await lstat(dir);
+  } catch {
+    return { files: [], dirs: [] };
+  }
+  if (!top.isDirectory())
+    throw new Error(`--out ${dir} exists and is not a directory.`);
+  const files = [];
+  const dirs = [];
+  const foreign = [];
+  for (const name of (await readdir3(dir)).sort()) {
+    const full = path5.join(dir, name);
+    const st = await lstat(full);
+    if (OUT_FILES.has(name) && st.isFile()) {
+      files.push(full);
+      continue;
+    }
+    const pattern2 = OUT_DIRS[name];
+    if (pattern2 && st.isDirectory()) {
+      let clean = true;
+      for (const inner of (await readdir3(full)).sort()) {
+        const f = path5.join(full, inner);
+        if (pattern2.test(inner) && (await lstat(f)).isFile()) files.push(f);
+        else {
+          foreign.push(path5.join(name, inner));
+          clean = false;
+        }
+      }
+      if (clean) dirs.push(full);
+      continue;
+    }
+    foreign.push(name);
+  }
+  if (foreign.length)
+    throw new Error(
+      `--out ${dir} holds files pkey feeds fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`
+    );
+  return { files, dirs };
+}
 async function currentIndex(inputs, fetchImpl, log) {
   const reg = inputs.files.find((f) => f.path === "index-v2.json");
   if (!reg) return null;
@@ -16987,6 +17046,8 @@ async function buildFdroidFeed(opts) {
   if (opts.keystore === void 0 !== (opts.alias === void 0))
     throw new Error(`--keystore and --alias go together.
 ${FEEDS_USAGE}`);
+  const dir = path5.resolve(opts.cwd, opts.out);
+  await staleOutFiles(dir, opts.cwd);
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
     product: opts.product,
@@ -17032,8 +17093,9 @@ ${FEEDS_USAGE}`);
     previous,
     ...icon ? { icon } : {}
   });
-  const dir = path5.resolve(opts.cwd, opts.out);
-  await rm(dir, { recursive: true, force: true });
+  const stale = await staleOutFiles(dir, opts.cwd);
+  for (const f of stale.files) await rm(f, { force: true });
+  for (const d of stale.dirs) await rmdir(d);
   const written = {};
   for (const [p, bytes] of repo.files) {
     const file = path5.join(dir, ...p.split("/"));
