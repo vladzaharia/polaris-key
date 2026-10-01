@@ -189,6 +189,13 @@ function base(): Docs {
           allowAmbiguousAssets: false,
         },
         access: { metadata: "public", artifacts: "licensed" },
+        // P2-02: the trusted publisher (only the workflow and environment are manifest fields).
+        publishing: {
+          trustedPublisher: {
+            workflow: ".github/workflows/release.yml",
+            environment: "release",
+          },
+        },
         // P2-04: the declared app deliverable. Its tag filters stay at the root above (the
         // legacy spelling); `conflicting_versioning` is what declaring them here too would be.
         deliverables: {
@@ -271,6 +278,28 @@ const entry = (d: Docs) => app(d).artifacts[0];
 
 /** One entry per validator error code (asserted complete against the source below). */
 const MUTATIONS: Mutation[] = [
+  {
+    code: "invalid_trusted_publisher_workflow",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) =>
+      (rel(d).publishing.trustedPublisher.workflow = "../../evil.yml"),
+  },
+  {
+    // A workflow path outside .github/workflows is the same code: the manifest names a file
+    // GitHub's job_workflow_ref could never carry.
+    code: "invalid_trusted_publisher_workflow",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => delete rel(d).publishing.trustedPublisher.workflow,
+  },
+  {
+    code: "invalid_trusted_publisher_environment",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) =>
+      (rel(d).publishing.trustedPublisher.environment = "prod;rm -rf"),
+  },
   {
     code: "invalid_api_version",
     file: "product",

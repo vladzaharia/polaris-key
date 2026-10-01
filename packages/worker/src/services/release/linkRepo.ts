@@ -46,13 +46,14 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { fetchRepoFile } from "./github.js";
+import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { serializeServices } from "../../core/services.js";
 import { serializeWebOrigins } from "../../core/cors.js";
+import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 
 export type LinkRepoResult =
   | {
@@ -238,7 +239,7 @@ export async function linkRepo(
     env,
     db,
     manifest,
-    { owner, repo, installId },
+    { owner, repo, installId, token },
     now,
     fetchImpl,
   );
@@ -249,7 +250,7 @@ async function registerFromManifest(
   env: Env,
   db: Db,
   manifest: ParsedManifest,
-  gh: { owner: string; repo: string; installId: number },
+  gh: { owner: string; repo: string; installId: number; token: string },
   now: number,
   fetchImpl: FetchImpl,
 ): Promise<LinkRepoResult> {
@@ -300,6 +301,36 @@ async function registerFromManifest(
       ok: false,
       error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
     };
+  }
+
+  // P2-02: a declared trusted publisher pins the repository's NUMERIC ids, resolved here from
+  // GitHub with the installation token — never taken from the manifest (a repo must not be able
+  // to name someone else's repository as its publisher). Before the batch, so a failed lookup
+  // refuses the link instead of registering a product without the policy it declared.
+  let publisherStmt: DbStatement | null = null;
+  if (rel?.trustedPublisher) {
+    try {
+      const identity = await getRepoIdentity(
+        gh.token,
+        gh.owner,
+        gh.repo,
+        fetchImpl,
+      );
+      publisherStmt = stmtUpsertManifestPublisher({
+        product: slug,
+        repositoryId: identity.id,
+        repositoryOwnerId: identity.ownerId,
+        repository: identity.fullName,
+        workflow: rel.trustedPublisher.workflow,
+        environment: rel.trustedPublisher.environment,
+        now,
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        error: `could not resolve the repository's ids for publishing.trustedPublisher: ${err instanceof Error ? err.message : "github lookup failed"}`,
+      };
+    }
   }
 
   const statements: DbStatement[] = [
@@ -437,6 +468,10 @@ async function registerFromManifest(
   // The app deliverable's declaration (P2-04), read back by the truth-store sync below.
   if (rel)
     statements.push(...manifestDeliverableStatements(slug, rel.app, now));
+
+  // The trusted-publisher policy (P2-02), manifest-owned from the start. A row a previous product
+  // of the same slug left behind is replaced only if it is manifest-owned too.
+  if (publisherStmt) statements.push(publisherStmt);
 
   for (const e of manifest.edgeMint) {
     statements.push(

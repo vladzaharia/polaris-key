@@ -215,6 +215,22 @@ export interface ManifestRelease {
    * normalized into the two fields above, whichever spelling declared them.
    */
   app: ManifestAppDeliverable | null;
+  /**
+   * `publishing.trustedPublisher` (P2-02): the GitHub Actions workflow and environment whose OIDC
+   * token may exchange for a `pkeyci_` token. `null` when undeclared (no trusted publisher). The
+   * manifest names ONLY these two: the repository ids come from GitHub at link/resync, and the
+   * platform-fixed checks (protected ref, GitHub-hosted runner, allowed events) are not
+   * configurable — a repo cannot weaken its own control.
+   */
+  trustedPublisher: ManifestTrustedPublisher | null;
+}
+
+/** `publishing.trustedPublisher` as persisted to `ci_publishers` (workflow, environment). */
+export interface ManifestTrustedPublisher {
+  /** `.github/workflows/<file>.yml` — the path GitHub puts in `job_workflow_ref`. */
+  workflow: string;
+  /** The GitHub environment the publishing job runs in; `release` when undeclared. */
+  environment: string;
 }
 
 /** One `deliverables.app.artifacts[]` entry: a build, and the file name that is its payload. */
@@ -341,6 +357,15 @@ const BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const GH_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 /** `channelWorkflow` — a workflow filename or numeric id in an API path segment. */
 const CHANNEL_WORKFLOW_RE = /^(?:[0-9]{1,20}|[A-Za-z0-9._-]{1,100}\.ya?ml)$/;
+/** `publishing.trustedPublisher.workflow`: a workflow file path as `job_workflow_ref` spells it. */
+export const TRUSTED_PUBLISHER_WORKFLOW_RE =
+  /^\.github\/workflows\/[A-Za-z0-9._-]{1,100}\.ya?ml$/;
+/** `publishing.trustedPublisher.environment`: a GitHub environment name (no quotes, commas,
+ *  semicolons or slashes; no leading or trailing space). */
+export const TRUSTED_PUBLISHER_ENVIRONMENT_RE =
+  /^[A-Za-z0-9_.-](?:[A-Za-z0-9 _.-]{0,98}[A-Za-z0-9_.-])?$/;
+/** The environment a trusted publisher runs in when the manifest names none. */
+export const DEFAULT_TRUSTED_PUBLISHER_ENVIRONMENT = "release";
 /** `betaBranch` — a git branch name used as a query value. */
 const BRANCH_RE = /^[A-Za-z0-9._][A-Za-z0-9._/-]{0,254}$/;
 /** `summaryMarker` — embedded (escaped) in a RegExp source; capped to bound the pattern. */
@@ -1485,6 +1510,7 @@ function validateDocuments(
         }
       }
       validateDeliverables(errors, warnings, relRoot);
+      validatePublishing(errors, relRoot);
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
         add(
           errors,
@@ -1973,6 +1999,55 @@ function validateDocuments(
 
 /** A `stableTagPattern` value: a string the manual-channel safety rule compiles. One rule for
  *  both spellings (the release root, P0-02, and `deliverables.app.versioning`, P2-04). */
+/**
+ * `publishing.trustedPublisher` (P2-02, README §3.12): `{workflow, environment?}` and nothing a
+ * repo could use to weaken its own control — the repository ids and the platform-fixed checks
+ * are not manifest fields.
+ */
+function validatePublishing(
+  errors: ValidationMessage[],
+  relRoot: Record<string, unknown>,
+): void {
+  if (relRoot.publishing === undefined) return;
+  const shape = () =>
+    add(
+      errors,
+      "release",
+      "/release/publishing/trustedPublisher",
+      "invalid_trusted_publisher_workflow",
+      "publishing.trustedPublisher must be an object with a workflow (.github/workflows/<file>.yml).",
+    );
+  if (!isRecord(relRoot.publishing)) return shape();
+  const tp = relRoot.publishing.trustedPublisher;
+  if (tp === undefined) return;
+  if (!isRecord(tp)) return shape();
+  if (
+    typeof tp.workflow !== "string" ||
+    !TRUSTED_PUBLISHER_WORKFLOW_RE.test(tp.workflow)
+  ) {
+    add(
+      errors,
+      "release",
+      "/release/publishing/trustedPublisher/workflow",
+      "invalid_trusted_publisher_workflow",
+      "publishing.trustedPublisher.workflow must be a workflow path like .github/workflows/release.yml.",
+    );
+  }
+  if (
+    tp.environment !== undefined &&
+    (typeof tp.environment !== "string" ||
+      !TRUSTED_PUBLISHER_ENVIRONMENT_RE.test(tp.environment))
+  ) {
+    add(
+      errors,
+      "release",
+      "/release/publishing/trustedPublisher/environment",
+      "invalid_trusted_publisher_environment",
+      "publishing.trustedPublisher.environment must be a GitHub environment name of at most 100 characters (letters, digits, space, . _ -).",
+    );
+  }
+}
+
 function isTagPattern(value: unknown): boolean {
   return typeof value === "string" && compileManualChannelRegex(value) !== null;
 }
@@ -2517,6 +2592,25 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     artifactPolicy: normalizeArtifactPolicy(rel.artifactPolicy),
     access: normalizeReleaseAccess(rel.access),
     app,
+    trustedPublisher: normalizeTrustedPublisher(rel.publishing),
+  };
+}
+
+function normalizeTrustedPublisher(
+  raw: unknown,
+): ManifestTrustedPublisher | null {
+  const tp = asRecord(asRecord(raw).trustedPublisher);
+  if (
+    typeof tp.workflow !== "string" ||
+    !TRUSTED_PUBLISHER_WORKFLOW_RE.test(tp.workflow)
+  )
+    return null;
+  return {
+    workflow: tp.workflow,
+    environment:
+      typeof tp.environment === "string"
+        ? tp.environment
+        : DEFAULT_TRUSTED_PUBLISHER_ENVIRONMENT,
   };
 }
 

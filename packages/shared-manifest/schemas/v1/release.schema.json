@@ -55,6 +55,9 @@
       "items": {
         "$ref": "#/$defs/edgeMintRecipe"
       }
+    },
+    "publishing": {
+      "$ref": "#/$defs/publishing"
     }
   },
   "$defs": {
@@ -109,6 +112,9 @@
           "items": {
             "$ref": "#/$defs/edgeMintRecipe"
           }
+        },
+        "publishing": {
+          "$ref": "#/$defs/publishing"
         }
       }
     },
@@ -405,6 +411,28 @@
         }
       },
       "required": ["id", "platform", "arch", "format", "match"]
+    },
+    "publishing": {
+      "description": "Trusted publishing (P2-02, README §3.4): which GitHub Actions workflow and environment may exchange their OIDC token for a short-lived pkeyci_ token. The manifest names only these two fields: the repository's numeric ids are resolved from GitHub at link/resync, and the protected-ref, GitHub-hosted-runner and allowed-event checks are platform-fixed. Once an operator claims the policy in the console, resync leaves it alone.",
+      "type": "object",
+      "properties": {
+        "trustedPublisher": {
+          "type": "object",
+          "required": ["workflow"],
+          "properties": {
+            "workflow": {
+              "description": "The workflow file, as GitHub's job_workflow_ref spells it.",
+              "type": "string",
+              "pattern": "^\\.github/workflows/[A-Za-z0-9._-]{1,100}\\.ya?ml$"
+            },
+            "environment": {
+              "description": "The GitHub environment the publishing job runs in. Default release.",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-](?:[A-Za-z0-9 _.-]{0,98}[A-Za-z0-9_.-])?$"
+            }
+          }
+        }
+      }
     }
   }
 }

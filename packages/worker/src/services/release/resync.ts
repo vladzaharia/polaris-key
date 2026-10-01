@@ -41,7 +41,7 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { fetchRepoFile } from "./github.js";
+import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
@@ -50,6 +50,13 @@ import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { serializeServices } from "../../core/services.js";
 import { serializeWebOrigins } from "../../core/cors.js";
+import {
+  getPublisherPolicy,
+  manifestPublisherChanged,
+  stmtDeleteManifestPublisher,
+  stmtUpsertManifestPublisher,
+} from "../../core/publisher.js";
+import { randomId } from "../../core/platform.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
@@ -221,6 +228,38 @@ async function applyRepoManifest(
     if ((stored?.issuer ?? "") !== nextOidc.issuer) {
       const refusal = manifestIssuerRefusal(env, nextOidc.issuer);
       if (refusal) return { ok: false, error: refusal };
+    }
+  }
+
+  // P2-02 — the trusted-publisher policy. Resolved BEFORE the first write for the same reason the
+  // issuer gate is: a GitHub failure here must refuse the push, not leave half a manifest
+  // applied. An operator-claimed policy (`source = 'admin'`) is never touched — no lookup, no
+  // write (`stmtUpsertManifestPublisher` is also guarded inside the statement).
+  const currentPublisher = await getPublisherPolicy(db, slug);
+  const publisherClaimed = currentPublisher?.source === "admin";
+  let nextPublisher: {
+    repositoryId: number;
+    repositoryOwnerId: number;
+    repository: string;
+    workflow: string;
+    environment: string;
+  } | null = null;
+  const declaredPublisher = manifest.release?.trustedPublisher ?? null;
+  if (declaredPublisher && !publisherClaimed) {
+    try {
+      const identity = await getRepoIdentity(token, owner, repo, fetchImpl);
+      nextPublisher = {
+        repositoryId: identity.id,
+        repositoryOwnerId: identity.ownerId,
+        repository: identity.fullName,
+        workflow: declaredPublisher.workflow,
+        environment: declaredPublisher.environment,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        error: `could not resolve the repository's ids for publishing.trustedPublisher: ${err instanceof Error ? err.message : "github lookup failed"}`,
+      };
     }
   }
 
@@ -493,6 +532,30 @@ async function applyRepoManifest(
   stmts.push(stmtDeleteOrphanEdgeMintApprovals(slug));
   updated.push("edgeMint");
 
+  // The trusted-publisher policy (P2-02): manifest-owned rows follow the manifest — written when
+  // declared, dropped when not — and a change is audited. A claimed row is left exactly as the
+  // operator set it, whatever the manifest says.
+  if (!publisherClaimed) {
+    stmts.push(
+      nextPublisher
+        ? stmtUpsertManifestPublisher({ product: slug, ...nextPublisher, now })
+        : stmtDeleteManifestPublisher(slug),
+    );
+    if (manifestPublisherChanged(currentPublisher, nextPublisher)) {
+      updated.push("publisher");
+      stmts.push(
+        auditStatement(
+          slug,
+          now,
+          `manifest:${owner}/${repo}`,
+          nextPublisher
+            ? `Trusted publisher set from the manifest: ${nextPublisher.repository} ${nextPublisher.workflow} (environment ${nextPublisher.environment})`
+            : "Trusted publisher removed: the manifest no longer declares publishing.trustedPublisher",
+        ),
+      );
+    }
+  }
+
   // The app deliverable's declaration (P2-04): `release_deliverables.def_json` and the channels'
   // `includes`. Before the truth store below, which classifies by the same declaration.
   if (rel) {
@@ -536,4 +599,21 @@ async function applyRepoManifest(
 
   if (droppedBefore.length > 0) updated.push("edgeMintApprovals");
   return { ok: true, updated };
+}
+
+/** The audit row for a manifest-driven publisher change, in the resync's batch. */
+function auditStatement(
+  product: string,
+  now: number,
+  actor: string,
+  summary: string,
+): DbStatement {
+  return {
+    sql: `INSERT INTO audit
+            (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
+             target_id, parent_id, summary)
+          VALUES (?, ?, ?, ?, 'Manifest resync', NULL, 'ci.publisher.manifest', 'ci_publisher',
+                  ?, NULL, ?)`,
+    params: [product, randomId("aud"), now, actor, product, summary],
+  };
 }
