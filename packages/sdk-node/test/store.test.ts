@@ -13,7 +13,13 @@
 // v2. §8 rebrands wire identifiers and the keyring service tag; it does not rename a file an
 // installed host is already reading.
 
-import { mkdtempSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -336,5 +342,235 @@ describe("KeyringStore", () => {
 
     await store.clearCache();
     expect(await store.readCache()).toBeNull();
+  });
+});
+
+// ── P1b-09: status() and the one read rule (plan §5.5, security finding R4-11) ─────────────
+//
+// THE INVARIANT under test: the 0600 token file exists only when the last token write fell
+// back, because a verified keyring write removes it. So reads are file-first, a fallen-back
+// write deletes the keyring entry, and `status()` says `file` exactly when `getToken` returns
+// the file's token or the keyring cannot be read.
+
+/** A programmable `@napi-rs/keyring` double: one shared secret slot, per-op failure switches,
+ *  and a log of every constructor's options (to observe the Linux Secret Service pin). */
+function fakeKeyring() {
+  const state = {
+    secret: undefined as string | undefined,
+    failGet: null as string | null,
+    failSet: null as string | null,
+    failDelete: null as string | null,
+    failConstruct: null as string | null,
+    /** Make `getPassword()` after a write return something else (a lying backend). */
+    readBack: null as string | null,
+    options: [] as unknown[],
+    deletes: 0,
+  };
+  class AsyncEntry {
+    constructor(_service: string, _account: string, options?: unknown) {
+      state.options.push(options);
+      if (state.failConstruct) throw new Error(state.failConstruct);
+    }
+    async getPassword(): Promise<string | undefined> {
+      if (state.failGet) throw new Error(state.failGet);
+      return state.readBack ?? state.secret;
+    }
+    async setPassword(password: string): Promise<void> {
+      if (state.failSet) throw new Error(state.failSet);
+      state.secret = password;
+    }
+    async deleteCredential(): Promise<boolean> {
+      state.deletes++;
+      if (state.failDelete) throw new Error(state.failDelete);
+      const had = state.secret !== undefined;
+      state.secret = undefined;
+      return had;
+    }
+  }
+  const mod = { AsyncEntry } as unknown as Pick<
+    typeof import("@napi-rs/keyring"),
+    "AsyncEntry"
+  >;
+  return { state, load: async () => mod };
+}
+
+describe("KeyringStore.status() — degraded when the keyring is missing or failing", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = realpathSync(mkdtempSync(join(tmpdir(), "pkey-status-")));
+  });
+  const tokenFile = () => join(dir, PRODUCT, "token");
+
+  it("an import failure reports file / keyring-unavailable, and the token still lands in the file", async () => {
+    const store = new KeyringStore(PRODUCT, dir, {
+      loadKeyring: async () => {
+        throw new Error("Cannot find module '@napi-rs/keyring'");
+      },
+      isSea: () => false,
+    });
+    const st = await store.status();
+    expect(st.backend).toBe("file");
+    expect(st.degraded?.reason).toBe("keyring-unavailable");
+    expect(st.degraded?.detail).toContain("could not be loaded");
+    await store.setToken("pkeyt_file");
+    expect(await store.getToken()).toBe("pkeyt_file");
+    expect(statSync(tokenFile()).mode & 0o777).toBe(0o600);
+    // The token never appears in the human detail.
+    expect(JSON.stringify(await store.status())).not.toContain("pkeyt_file");
+  });
+
+  it("inside a single-executable build, the detail explains why", async () => {
+    const store = new KeyringStore(PRODUCT, dir, {
+      loadKeyring: async () => {
+        throw new Error("no addon");
+      },
+      isSea: () => true,
+    });
+    const st = await store.status();
+    expect(st).toMatchObject({
+      backend: "file",
+      degraded: { reason: "keyring-unavailable" },
+    });
+    expect(st.degraded?.detail).toContain("single-executable");
+  });
+
+  it("on Linux every entry is pinned to the Secret Service; a missing one is keyring-unavailable", async () => {
+    const k = fakeKeyring();
+    k.state.failConstruct = "secret-service is not available";
+    const store = new KeyringStore(PRODUCT, dir, {
+      loadKeyring: k.load,
+      platform: "linux",
+    });
+    const st = await store.status();
+    expect(k.state.options[0]).toEqual({ linux: { store: "secret-service" } });
+    expect(st).toMatchObject({
+      backend: "file",
+      degraded: { reason: "keyring-unavailable" },
+    });
+    expect(st.degraded?.detail).toContain("Secret Service");
+    // Never the kernel keyring: the token is in the 0600 file, which survives a reboot.
+    await store.setToken("pkeyt_headless");
+    expect(await new FileStore(PRODUCT, dir).getToken()).toBe("pkeyt_headless");
+  });
+
+  it("other platforms pass no Linux options", async () => {
+    const k = fakeKeyring();
+    const store = new KeyringStore(PRODUCT, dir, {
+      loadKeyring: k.load,
+      platform: "darwin",
+    });
+    await store.status();
+    expect(k.state.options[0]).toBeUndefined();
+  });
+
+  it("a rejecting entry reports file / keyring-error with its message", async () => {
+    const k = fakeKeyring();
+    k.state.failGet = "the keychain is locked";
+    const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
+    expect(await store.status()).toEqual({
+      backend: "file",
+      degraded: { reason: "keyring-error", detail: "the keychain is locked" },
+    });
+  });
+
+  it("a healthy keyring: verified write, no file, status keyring", async () => {
+    const k = fakeKeyring();
+    const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
+    expect(await store.status()).toEqual({ backend: "keyring" });
+    await store.setToken("pkeyt_kr");
+    expect(k.state.secret).toBe("pkeyt_kr");
+    expect(await new FileStore(PRODUCT, dir).getToken()).toBeNull();
+    expect(await store.getToken()).toBe("pkeyt_kr");
+    expect(await store.status()).toEqual({ backend: "keyring" });
+    await store.clearToken();
+    expect(k.state.secret).toBeUndefined();
+    expect(await store.getToken()).toBeNull();
+  });
+
+  it("a read-back that differs falls back to the file and deletes the keyring entry", async () => {
+    const k = fakeKeyring();
+    k.state.readBack = "something-else";
+    const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
+    await store.setToken("pkeyt_unverified");
+    expect(await new FileStore(PRODUCT, dir).getToken()).toBe(
+      "pkeyt_unverified",
+    );
+    expect(k.state.deletes).toBe(1);
+    expect(k.state.secret).toBeUndefined();
+  });
+});
+
+describe("KeyringStore — one read rule: the file, when present, is the newest token", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = realpathSync(mkdtempSync(join(tmpdir(), "pkey-readrule-")));
+  });
+
+  it("the keyring is empty and the file holds the token: getToken returns it, status says file / keyring-error", async () => {
+    const k = fakeKeyring();
+    await new FileStore(PRODUCT, dir).setToken("pkeyt_in_file");
+    const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
+    expect(await store.getToken()).toBe("pkeyt_in_file");
+    const st = await store.status();
+    expect(st.backend).toBe("file");
+    expect(st.degraded?.reason).toBe("keyring-error");
+    expect(st.degraded?.detail).toContain("fell back");
+  });
+
+  it("a keyring write fails and the keyring later recovers: getToken still returns the file's token", async () => {
+    const k = fakeKeyring();
+    const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
+    k.state.failSet = "dbus timeout";
+    await store.setToken("pkeyt_new");
+    k.state.failSet = null; // recovered
+    expect(await store.getToken()).toBe("pkeyt_new");
+  });
+
+  it("a stale keyring token and a newer file token: the file's wins", async () => {
+    const k = fakeKeyring();
+    k.state.secret = "pkeyt_stale";
+    await new FileStore(PRODUCT, dir).setToken("pkeyt_newer");
+    const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
+    expect(await store.getToken()).toBe("pkeyt_newer");
+  });
+
+  it("a fallback write deletes the keyring entry", async () => {
+    const k = fakeKeyring();
+    k.state.secret = "pkeyt_old";
+    const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
+    k.state.failSet = "locked";
+    await store.setToken("pkeyt_fallback");
+    expect(k.state.deletes).toBe(1);
+    expect(k.state.secret).toBeUndefined();
+  });
+
+  it("a failed file removal after a verified write leaves the SAME token in the file", async () => {
+    const k = fakeKeyring();
+    const files = new FileStore(PRODUCT, dir);
+    await files.setToken("pkeyt_older");
+    const productDir = join(dir, PRODUCT);
+    // A read-only directory: the token file cannot be unlinked, but can still be rewritten.
+    chmodSync(productDir, 0o500);
+    try {
+      const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
+      await store.setToken("pkeyt_current");
+      expect(k.state.secret).toBe("pkeyt_current");
+      expect(await files.getToken()).toBe("pkeyt_current");
+      expect(await store.getToken()).toBe("pkeyt_current");
+    } finally {
+      chmodSync(productDir, 0o700);
+    }
+  });
+});
+
+describe("the other stores report themselves", () => {
+  it("FileStore is file (the host chose it) and InMemoryStore is memory", async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "pkey-other-")));
+    expect(await new FileStore(PRODUCT, dir).status()).toEqual({
+      backend: "file",
+    });
+    expect(await new InMemoryStore(PRODUCT).status()).toEqual({
+      backend: "memory",
+    });
   });
 });

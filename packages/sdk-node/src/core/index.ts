@@ -39,5 +39,18 @@ export {
   KeyringStore,
   randomFallbackId,
   type CacheRecordV3,
+  type KeyringStoreOptions,
   type Store,
+  type StoreStatus,
 } from "./store.js";
+export {
+  CACHEDIR_TAG_SIGNATURE,
+  defaultDirBases,
+  excludeFromBackup,
+  resolveDirs,
+  type BackupExclusion,
+  type BackupHost,
+  type DirOverrides,
+  type DirsHost,
+  type ProductDirs,
+} from "./dirs.js";

@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { cpus, networkInterfaces, totalmem } from "node:os";
 import { readFileSync } from "node:fs";
+import { win32 } from "node:path";
 import {
   FINGERPRINT_COMPONENTS,
   FINGERPRINT_COMPONENT_LENGTH,
@@ -30,39 +31,193 @@ function sha256B64url(input: string, length: number): string {
     .slice(0, length);
 }
 
-/** Run a command, returning null on any failure (missing binary, non-zero exit, timeout). */
-function run(cmd: string, args: string[]): string | null {
+// ── The pure derivation rules (WIRE-CONTRACT-V3 §6.1), pinned by fingerprint.json ──────────
+
+/** The one Windows CIM call (rule 1), byte-for-byte what `fingerprint.json`'s
+ *  `windowsCimCommand` pins. One line with no double quotes, so Windows argument quoting cannot
+ *  mangle it, and pure-ASCII output, so neither a console code page nor a missing console can
+ *  corrupt a value. `program` is resolved by `windowsPowerShellPath()`; stdin is the null
+ *  device, because Windows PowerShell 5.1 reads a redirected stdin as pipeline input and would
+ *  otherwise wait out the timeout under a parent whose stdin is an open pipe. */
+export const WINDOWS_CIM_COMMAND = Object.freeze({
+  program: "powershell.exe",
+  args: Object.freeze([
+    "-NoLogo",
+    "-NoProfile",
+    "-NonInteractive",
+    "-Command",
+    "$ErrorActionPreference='Stop';$b=$null;$m=$null;" +
+      "try{$b=@(Get-CimInstance -ClassName Win32_BaseBoard -Property SerialNumber)[-1].SerialNumber}catch{};" +
+      "try{$m=@(Get-CimInstance -ClassName Win32_ComputerSystem -Property Model)[-1].Model}catch{};" +
+      "$j=ConvertTo-Json -Compress -InputObject @{boardSerial=$b;machineModel=$m};" +
+      "$o='';foreach($c in $j.ToCharArray()){$n=[int]$c;if($n -gt 126){$o+='\\u'+$n.ToString('x4')}else{$o+=$c}};$o",
+  ] as const),
+  stdin: "null",
+  timeoutMs: 10_000,
+} as const);
+
+/** Rules 1 and 2 trim exactly U+0009–U+000D and U+0020 — never a language's default trim,
+ *  which also drops U+00A0 (JS `trim()`) or U+001F (others). */
+function isAsciiSpace(code: number): boolean {
+  return (code >= 0x09 && code <= 0x0d) || code === 0x20;
+}
+
+export function trimAsciiWhitespace(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && isAsciiSpace(value.charCodeAt(start))) start++;
+  while (end > start && isAsciiSpace(value.charCodeAt(end - 1))) end--;
+  return value.slice(start, end);
+}
+
+export interface WindowsCimComponents {
+  boardSerial?: string;
+  machineModel?: string;
+}
+
+/**
+ * Rule 1: parse what `WINDOWS_CIM_COMMAND` printed. Strips one leading U+FEFF, requires a JSON
+ * object, and keeps `boardSerial` / `machineModel` only when each is a string that is non-empty
+ * after trimming ASCII whitespace. Vendor placeholders are kept verbatim (they are what `wmic`
+ * returned, so Windows 10 sees no drift); other keys are ignored; anything else yields `{}`.
+ */
+export function parseWindowsCim(stdout: string | null): WindowsCimComponents {
+  if (!stdout) return {};
+  const text = stdout.charCodeAt(0) === 0xfeff ? stdout.slice(1) : stdout;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return {};
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+    return {};
+  const out: WindowsCimComponents = {};
+  for (const key of ["boardSerial", "machineModel"] as const) {
+    const value = (parsed as Record<string, unknown>)[key];
+    if (typeof value !== "string") continue;
+    const trimmed = trimAsciiWhitespace(value);
+    if (trimmed) out[key] = trimmed;
+  }
+  return out;
+}
+
+/** Rule 2's sources, in order. No DMI file is ever read: `product_uuid` and `board_serial` are
+ *  root-only, so reading them made the fingerprint depend on the process's privilege. */
+export const LINUX_ANCHOR_PATHS = Object.freeze([
+  "/etc/machine-id",
+  "/var/lib/dbus/machine-id",
+] as const);
+
+export interface AnchorSource {
+  source: string;
+  value: string;
+}
+
+/**
+ * Rule 2: the first of `/etc/machine-id` and `/var/lib/dbus/machine-id` whose content, trimmed
+ * of ASCII whitespace, is non-empty and not systemd's `uninitialized` marker. `files` maps each
+ * READABLE path to its raw content; an absent (or null) path is unreadable. `null` means the
+ * host has no anchor. The same value is the Linux device id's raw input.
+ */
+export function linuxAnchorSource(
+  files: Readonly<Record<string, string | null | undefined>>,
+): AnchorSource | null {
+  for (const source of LINUX_ANCHOR_PATHS) {
+    const content = files[source];
+    if (typeof content !== "string") continue;
+    const value = trimAsciiWhitespace(content);
+    if (value && value !== "uninitialized") return { source, value };
+  }
+  return null;
+}
+
+const GIB = 2 ** 30;
+
+/**
+ * Rule 3: `g = floor(bytes / 2^30)`; omitted (`null`) when `g = 0`, otherwise the largest power
+ * of two not above `g`, in decimal. Integer arithmetic, dividing BEFORE any logarithm: a float
+ * `log2` rounds a total just below a power of two up to the next bucket from 1 PiB.
+ *
+ * What the bucket buys is stability while the reported total stays between two powers of two
+ * (a 16 GB machine reporting 15.4 GiB buckets to 8, and keeps doing so).
+ */
+export function ramBucket(bytes: number): string | null {
+  if (!Number.isFinite(bytes) || bytes < GIB) return null;
+  const g = Math.floor(bytes / GIB);
+  let p = 1;
+  while (p * 2 <= g) p *= 2;
+  return String(p);
+}
+
+// ── The platform reads ───────────────────────────────────────────────────────────────────
+
+/** The two side effects a reader performs, injectable so tests can drive any OS's branch on
+ *  any host. `run` returns stdout or null on any failure; `read` returns a file's raw content or
+ *  null when it is unreadable. */
+export interface FingerprintIo {
+  run(cmd: string, args: readonly string[], timeoutMs?: number): string | null;
+  read(path: string): string | null;
+}
+
+/** Run a command, returning null on any failure (missing binary, non-zero exit, timeout).
+ *  stdin is the null device and no console window is shown (an Electron app on Windows would
+ *  otherwise flash one per call). */
+function run(
+  cmd: string,
+  args: readonly string[],
+  timeoutMs = 2000,
+): string | null {
   try {
     return execFileSync(cmd, args, {
       encoding: "utf8",
-      timeout: 2000,
+      timeout: timeoutMs,
       stdio: ["ignore", "pipe", "ignore"],
+      windowsHide: true,
     });
   } catch {
     return null;
   }
 }
 
-function readText(path: string): string | null {
+function read(path: string): string | null {
   try {
-    const value = readFileSync(path, "utf8").trim();
-    return value || null;
+    return readFileSync(path, "utf8");
   } catch {
     return null;
   }
 }
 
+export const defaultFingerprintIo: FingerprintIo = Object.freeze({
+  run,
+  read,
+});
+
+/** `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe` when `SystemRoot` is an
+ *  absolute path, else the bare name. */
+export function windowsPowerShellPath(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const root = env.SystemRoot ?? env.SYSTEMROOT;
+  if (root && win32.isAbsolute(root) && /^(?:[A-Za-z]:[\\/]|\\\\)/.test(root))
+    return win32.join(
+      root,
+      "System32",
+      "WindowsPowerShell",
+      "v1.0",
+      WINDOWS_CIM_COMMAND.program,
+    );
+  return WINDOWS_CIM_COMMAND.program;
+}
+
+function readTrimmed(io: FingerprintIo, path: string): string | null {
+  const content = io.read(path);
+  return content === null ? null : trimAsciiWhitespace(content) || null;
+}
+
 function firstMatch(text: string | null, re: RegExp): string | null {
   if (!text) return null;
   return text.match(re)?.[1]?.trim() || null;
-}
-
-/** Total RAM rounded down to a power of two in GiB, so a BIOS/OS reporting 15.9 vs 16.0 GiB
- *  doesn't read as a hardware change. */
-function ramBucket(): string | null {
-  const gib = totalmem() / 1024 ** 3;
-  if (!Number.isFinite(gib) || gib <= 0) return null;
-  return String(2 ** Math.floor(Math.log2(gib)));
 }
 
 /** CPU brand plus core count — one component, since they change together. */
@@ -91,8 +246,8 @@ function primaryMac(): string | null {
   return [...macs].sort()[0]!;
 }
 
-function darwinComponents(): RawComponents {
-  const ioreg = run("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"]);
+function darwinComponents(io: FingerprintIo): RawComponents {
+  const ioreg = io.run("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"]);
   return {
     ...opt(
       "machineUuid",
@@ -105,74 +260,70 @@ function darwinComponents(): RawComponents {
     ...opt(
       "bootVolumeUuid",
       firstMatch(
-        run("diskutil", ["info", "-plist", "/"]),
+        io.run("diskutil", ["info", "-plist", "/"]),
         /<key>VolumeUUID<\/key>\s*<string>([^<]+)<\/string>/,
       ),
     ),
-    ...opt("machineModel", run("sysctl", ["-n", "hw.model"])?.trim() || null),
+    ...opt(
+      "machineModel",
+      io.run("sysctl", ["-n", "hw.model"])?.trim() || null,
+    ),
   };
 }
 
-function win32Components(): RawComponents {
-  const reg = run("reg", [
+function win32Components(
+  io: FingerprintIo,
+  env: NodeJS.ProcessEnv,
+): RawComponents {
+  const reg = io.run("reg", [
     "query",
     "HKLM\\SOFTWARE\\Microsoft\\Cryptography",
     "/v",
     "MachineGuid",
   ]);
+  const cim = parseWindowsCim(
+    io.run(
+      windowsPowerShellPath(env),
+      WINDOWS_CIM_COMMAND.args,
+      WINDOWS_CIM_COMMAND.timeoutMs,
+    ),
+  );
   return {
     ...opt(
       "machineUuid",
       firstMatch(reg, /MachineGuid\s+REG_SZ\s+([A-Za-z0-9-]+)/),
     ),
-    ...opt(
-      "boardSerial",
-      csvValue(
-        run("wmic", ["baseboard", "get", "serialnumber", "/format:csv"]),
-      ),
-    ),
+    ...opt("boardSerial", cim.boardSerial ?? null),
     ...opt(
       "bootVolumeUuid",
       firstMatch(
-        run("cmd", ["/c", "vol", "C:"]),
+        io.run("cmd", ["/c", "vol", "C:"]),
         /Volume Serial Number is ([A-Za-z0-9-]+)/,
       ),
     ),
-    ...opt(
-      "machineModel",
-      csvValue(run("wmic", ["computersystem", "get", "model", "/format:csv"])),
-    ),
+    ...opt("machineModel", cim.machineModel ?? null),
   };
 }
 
-/** `wmic … /format:csv` emits a blank line, a header row, then `Node,<value>`. */
-function csvValue(out: string | null): string | null {
-  if (!out) return null;
-  const rows = out
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const last = rows[rows.length - 1];
-  if (!last || !last.includes(",")) return null;
-  return last.slice(last.indexOf(",") + 1).trim() || null;
+/** Read only rule 2's two files, and hand their raw contents to `linuxAnchorSource`. */
+export function readLinuxAnchor(
+  io: FingerprintIo = defaultFingerprintIo,
+): AnchorSource | null {
+  const files: Record<string, string | null> = {};
+  for (const path of LINUX_ANCHOR_PATHS) files[path] = io.read(path);
+  return linuxAnchorSource(files);
 }
 
-function linuxComponents(): RawComponents {
+function linuxComponents(io: FingerprintIo): RawComponents {
   return {
-    // product_uuid is genuinely hardware-scoped; machine-id is per OS INSTALL and changes on
-    // a container/VM clone, so it is only the fallback.
-    ...opt(
-      "machineUuid",
-      readText("/sys/class/dmi/id/product_uuid") ??
-        readText("/etc/machine-id") ??
-        readText("/var/lib/dbus/machine-id"),
-    ),
-    ...opt("boardSerial", readText("/sys/class/dmi/id/board_serial")),
+    // Rule 2: machine-id only, never product_uuid or board_serial, so root and non-root
+    // agree. A host with neither file (most container images) has no anchor.
+    ...opt("machineUuid", readLinuxAnchor(io)?.value ?? null),
     ...opt(
       "bootVolumeUuid",
-      firstMatch(run("findmnt", ["-no", "UUID", "/"]), /^(\S+)/),
+      firstMatch(io.run("findmnt", ["-no", "UUID", "/"]), /^(\S+)/),
     ),
-    ...opt("machineModel", readText("/sys/class/dmi/id/product_name")),
+    ...opt("machineModel", readTrimmed(io, "/sys/class/dmi/id/product_name")),
   };
 }
 
@@ -181,19 +332,31 @@ function opt(key: FingerprintComponent, value: string | null): RawComponents {
   return value ? ({ [key]: value } as RawComponents) : {};
 }
 
+export interface RawComponentsOptions {
+  platform?: NodeJS.Platform;
+  io?: FingerprintIo;
+  env?: NodeJS.ProcessEnv;
+  /** Total RAM in bytes; defaults to `os.totalmem()`. */
+  totalBytes?: number;
+}
+
 /** Read the platform-specific raw component values. Exported for tests. */
-export function rawComponents(): RawComponents {
+export function rawComponents(
+  options: RawComponentsOptions = {},
+): RawComponents {
+  const platform = options.platform ?? process.platform;
+  const io = options.io ?? defaultFingerprintIo;
   const platformSpecific =
-    process.platform === "darwin"
-      ? darwinComponents()
-      : process.platform === "win32"
-        ? win32Components()
-        : linuxComponents();
+    platform === "darwin"
+      ? darwinComponents(io)
+      : platform === "win32"
+        ? win32Components(io, options.env ?? process.env)
+        : linuxComponents(io);
   return {
     ...platformSpecific,
     ...opt("cpuModel", cpuModel()),
     ...opt("primaryMac", primaryMac()),
-    ...opt("ramBucket", ramBucket()),
+    ...opt("ramBucket", ramBucket(options.totalBytes ?? totalmem())),
   };
 }
 

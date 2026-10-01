@@ -31,8 +31,22 @@ export {
   InMemoryStore,
   KeyringStore,
   type CacheRecordV3,
+  type KeyringStoreOptions,
   type Store,
+  type StoreStatus,
 } from "./core/store.js";
+export {
+  CACHEDIR_TAG_SIGNATURE,
+  defaultDirBases,
+  excludeFromBackup,
+  resolveDirs,
+  type BackupExclusion,
+  type BackupHost,
+  type DirOverrides,
+  type DirsHost,
+  type ProductDirs,
+} from "./core/dirs.js";
+
 export { type ImportBundleResult } from "./core/bundle.js";
 export {
   type DocOutcome,
@@ -61,7 +75,15 @@ export { deriveDeviceId, deviceIdFromRaw } from "./devices/deviceId.js";
 export {
   collectFingerprint,
   hashComponents,
+  linuxAnchorSource,
+  parseWindowsCim,
+  ramBucket,
   rawComponents,
+  WINDOWS_CIM_COMMAND,
+  type AnchorSource,
+  type FingerprintIo,
+  type RawComponentsOptions,
+  type WindowsCimComponents,
 } from "./devices/fingerprint.js";
 export {
   collectFacts,
@@ -109,6 +131,12 @@ export type {
 export type { ConfigDoc } from "@polaris-key/protocol/config";
 export type { TrustSet } from "@polaris-key/jws";
 export type { BlockedState, LicenseState } from "@polaris-key/client-core";
+export {
+  STORE_BACKENDS,
+  STORE_DEGRADED_REASONS,
+  type StoreBackend,
+  type StoreDegradedReason,
+} from "@polaris-key/client-core";
 // The one error type the transport/orchestration layers throw. Its `.code` carries the wire
 // error code, the §7 bundle refusal step, `local-only`, or `service-unavailable`.
 export { PolarisError } from "@polaris-key/client-core";

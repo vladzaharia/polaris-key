@@ -19,7 +19,15 @@ export { deriveDeviceId, deviceIdFromRaw } from "./deviceId.js";
 export {
   collectFingerprint,
   hashComponents,
+  linuxAnchorSource,
+  parseWindowsCim,
+  ramBucket,
   rawComponents,
+  WINDOWS_CIM_COMMAND,
+  type AnchorSource,
+  type FingerprintIo,
+  type RawComponentsOptions,
+  type WindowsCimComponents,
 } from "./fingerprint.js";
 
 export { collectFacts, runProbes, type ProbeDeclaration } from "./facts.js";

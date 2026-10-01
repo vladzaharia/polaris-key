@@ -21,6 +21,7 @@ import type { TrustSet } from "@polaris-key/jws";
 import type { PolarisKeyClient } from "../client.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import type { ServiceSlug } from "../discovery.js";
+import type { StoreStatus } from "@polaris-key/client-core";
 
 /** A command's outcome: a success flag, a human-readable line, and optional structured
  *  data (e.g. the resolved gate status or a config value) for callers that want JSON. */
@@ -49,11 +50,16 @@ export type ClientFactory = (
   opts: ClientFactoryOptions,
 ) => Promise<PolarisKeyClient>;
 
+/** The Linux remedy for a keyless enrolment refused for want of a machine anchor. */
+export const LINUX_NO_MACHINE_ID_HINT =
+  "This host has no machine id (/etc/machine-id). In a container, mount the host's read-only, or create one and keep it in a volume.";
+
 /** Render a non-ok activation outcome. Shared by `activate` and `enroll` so the two can't
  *  drift into describing the same server response differently. */
 function describeFailure(
   r: Exclude<ActivationResult, { kind: "ok" }>,
   verb: string,
+  platform: NodeJS.Platform = process.platform,
 ): CommandResult {
   const fail = (message: string): CommandResult => ({
     ok: false,
@@ -72,7 +78,12 @@ function describeFailure(
       return fail("invalid or revoked credential.");
     case "fingerprint-required":
       return fail(
-        "a hardware fingerprint is required but could not be collected on this host.",
+        "a hardware fingerprint is required but could not be collected on this host." +
+          // Keyless enrolment needs a machine anchor, which Linux reads only from the
+          // machine-id files (WIRE-CONTRACT-V3 §6.1 rule 2); most container images ship none.
+          (verb === "Enrollment" && platform === "linux"
+            ? `\n${LINUX_NO_MACHINE_ID_HINT}`
+            : ""),
       );
     case "hardware-mismatch": {
       const changed = r.changed?.length ? ` (${r.changed.join(", ")})` : "";
@@ -102,14 +113,18 @@ export async function activate(
   return describeFailure(r, "Activation");
 }
 
-/** Obtain a licence with no key and no sign-in, when the product offers a free tier. */
-export async function enroll(client: PolarisKeyClient): Promise<CommandResult> {
+/** Obtain a licence with no key and no sign-in, when the product offers a free tier.
+ *  `platform` only selects the failure hint; it defaults to this process's. */
+export async function enroll(
+  client: PolarisKeyClient,
+  platform: NodeJS.Platform = process.platform,
+): Promise<CommandResult> {
   const r = await client.license.enroll();
   if (r.kind === "ok") {
     const st = client.status();
     return { ok: true, message: `Enrolled. Status: ${st.status}`, data: st };
   }
-  return describeFailure(r, "Enrollment");
+  return describeFailure(r, "Enrollment", platform);
 }
 
 /** Deauthorize this device and wipe the local token + cache. */
@@ -120,10 +135,24 @@ export async function deactivate(
   return { ok: true, message: "Deactivated. Local credentials wiped." };
 }
 
+/** One line naming the token store, e.g. `Token store: keyring` or
+ *  `Token store: file (degraded: keyring-unavailable: <detail>)`. */
+export function formatStoreStatus(store: StoreStatus): string {
+  if (!store.degraded) return `Token store: ${store.backend}`;
+  const detail = store.degraded.detail ? `: ${store.degraded.detail}` : "";
+  return `Token store: ${store.backend} (degraded: ${store.degraded.reason}${detail})`;
+}
+
 /** Report the current gate status + a short profile/grace summary. `ok` reflects whether the
  *  gate currently permits running (so an adapter can map it to a process exit code) — which
- *  for a product with License disabled is TRUE on `not-applicable`, not a failure. */
-export function status(client: PolarisKeyClient): CommandResult {
+ *  for a product with License disabled is TRUE on `not-applicable`, not a failure.
+ *
+ *  `store` is `await client.storeStatus()`, which the adapters pass; when given (and not
+ *  null), one more line names where the token lives. */
+export function status(
+  client: PolarisKeyClient,
+  store?: StoreStatus | null,
+): CommandResult {
   const st = client.status();
   const lines = [`Status: ${st.status}`];
   if (st.graceUntil !== undefined)
@@ -139,6 +168,7 @@ export function status(client: PolarisKeyClient): CommandResult {
     lines.push(`Licensed to: ${profile.name} <${profile.email}>`);
   const usable = client.isLicensed();
   lines.push(`Usable: ${usable}`);
+  if (store) lines.push(formatStoreStatus(store));
   return { ok: usable, message: lines.join("\n"), data: st };
 }
 

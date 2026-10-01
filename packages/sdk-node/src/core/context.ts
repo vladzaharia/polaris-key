@@ -20,8 +20,6 @@
 // deadline, and gets the same treatment when the network simply fails. Putting that in one
 // place is what keeps a new service from shipping a call with no timeout on it (R4-08).
 
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { arch, platform } from "node:os";
 import type { TrustSet } from "@polaris-key/jws";
 import {
@@ -42,6 +40,7 @@ import {
 } from "@polaris-key/client-core";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
+import { defaultDirBases, resolveDirs, type ProductDirs } from "./dirs.js";
 import {
   DEFAULT_SERVICES,
   copyServices,
@@ -93,10 +92,6 @@ export function normalizeBaseUrl(raw: string): string {
   return raw.replace(/\/+$/, "");
 }
 
-function defaultConfigDir(): string {
-  return process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
-}
-
 /** What Core needs. Per-service inputs live in that service's own option bag. */
 export interface CoreOptions {
   productSlug: string;
@@ -115,7 +110,19 @@ export interface CoreOptions {
    *  must still advance the independent signed clock. */
   trustRefresh?: boolean;
   store?: Store;
+  /** Config BASE; `<product>` is appended. Default `$XDG_CONFIG_HOME` or `~/.config` on every
+   *  OS (unchanged). Holds the token, the device id and `managed.json`. */
   configDir?: string;
+  /** Data BASE; `<product>` is appended. Default: XDG data on Linux,
+   *  `~/Library/Application Support/polaris-key/data` on macOS,
+   *  `%LOCALAPPDATA%\polaris-key\data` on Windows. Nothing is created until a consumer uses it. */
+  dataDir?: string;
+  /** Cache BASE; `<product>` is appended (XDG cache, `~/Library/Caches/polaris-key`,
+   *  `%LOCALAPPDATA%\polaris-key\cache`). */
+  cacheDir?: string;
+  /** State BASE; `<product>` is appended (XDG state,
+   *  `~/Library/Application Support/polaris-key/state`, `%LOCALAPPDATA%\polaris-key\state`). */
+  stateDir?: string;
   fetchImpl?: typeof fetch;
   /** Per-request deadline in milliseconds (default 15000). `0` disables it. */
   requestTimeoutMs?: number;
@@ -157,6 +164,9 @@ export class CoreContext {
   readonly pinnedTrust: TrustSet;
   readonly trustRefreshEnabled: boolean;
   readonly store: Store;
+  /** This product's config, data, cache and state directories (P1b-09). Resolved, not
+   *  created. */
+  readonly dirs: ProductDirs;
   readonly requestTimeoutMs: number;
   /** Set by `./local` — every network-requiring call refuses instead of dialling out. */
   readonly localOnly: boolean;
@@ -181,9 +191,13 @@ export class CoreContext {
     this.channel = opts.channel ?? channelForVersion(opts.version);
     this.pinnedTrust = { ...opts.trust.pinnedKeys };
     this.trustRefreshEnabled = opts.trustRefresh !== false;
+    this.dirs = resolveDirs(opts.productSlug, opts);
     this.store =
       opts.store ??
-      new KeyringStore(opts.productSlug, opts.configDir ?? defaultConfigDir());
+      new KeyringStore(
+        opts.productSlug,
+        opts.configDir ?? defaultDirBases().config,
+      );
     this.fetchImpl = opts.fetchImpl;
     this.requestTimeoutMs = opts.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     this.expectedServices = opts.expectedServices;
