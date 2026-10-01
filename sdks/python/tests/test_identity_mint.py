@@ -3,7 +3,11 @@ cannot show, because a recorded conversation has no clock between its requests.
 
 * no poll comes earlier than ``interval`` after the previous one (or after the prompt);
 * a ``slow_down`` lengthens the interval for every later poll and never shortens it;
+* repeated interval-less ``slow_down``s each add five seconds to the CURRENT interval;
+* the sleep is clamped to [1, expiresIn] seconds — a negative, fractional or huge interval
+  neither spins nor outlives the code;
 * a failed poll is retried at the SAME interval, never faster;
+* a printed prompt or minted token never shows the device code or the token;
 * the prompt's expiry, ``timeout`` and ``cancel`` all stop polling;
 * a second ``mint_token`` inside the lifetime makes no request, and nothing minted is stored;
 * a cached token is bound to the device token it was minted with: after ``deactivate()`` the
@@ -27,6 +31,7 @@ import httpx
 import pytest
 
 from polaris_key import PolarisError, PolarisKeyClient
+from polaris_key.identity import SignInPrompt
 from polaris_key.core.store import CacheRecord
 
 PRODUCT = "djdl"
@@ -217,6 +222,58 @@ def test_slow_down_without_interval_adds_five_and_never_shortens(clock) -> None:
     assert gaps(plane.at(POLL), T0) == [2, 7, 7]
 
 
+def test_repeated_slow_downs_without_interval_step_from_the_current_interval(clock) -> None:
+    limited = httpx.Response(429, json={"error": "rate_limited"})
+    plane = Plane(clock, {START: [started()], POLL: [limited, limited, limited, READY]})
+    c = make(plane, ["identity"])
+    c.identity.wait_for_sign_in(c.identity.begin_sign_in())
+    assert gaps(plane.at(POLL), T0) == [2, 7, 12, 17]
+
+
+def test_a_negative_interval_is_clamped_to_one_second(clock) -> None:
+    plane = Plane(clock, {POLL: [PENDING, READY]})
+    c = make(plane, ["identity"])
+    prompt = SignInPrompt(
+        deviceCode="device-code-1",
+        userCode="WDJB-MJHT",
+        verificationUri="u",
+        verificationUriComplete="u?user_code=WDJB-MJHT",
+        expiresIn=600,
+        interval=-3,
+        expiresAt=T0 + 600,
+    )
+    assert c.identity.wait_for_sign_in(prompt).status == "ready"
+    assert gaps(plane.at(POLL), T0) == [1, 1]
+
+
+def test_a_half_second_interval_rounds_up_to_one(clock) -> None:
+    plane = Plane(clock, {START: [started(interval=0.5)], POLL: [PENDING, READY]})
+    c = make(plane, ["identity"])
+    prompt = c.identity.begin_sign_in()
+    assert prompt.interval == 1
+    assert c.identity.wait_for_sign_in(prompt).status == "ready"
+    assert gaps(plane.at(POLL), T0) == [1, 1]
+
+
+def test_a_huge_interval_is_clamped_to_the_codes_lifetime(clock) -> None:
+    plane = Plane(clock, {START: [started(interval=10**12, expiresIn=60)], POLL: [PENDING]})
+    c = make(plane, ["identity"])
+    assert c.identity.wait_for_sign_in(c.identity.begin_sign_in()).status == "expired"
+    # One 60 s sleep, then expiry: no poll, and no 10**12-second sleep.
+    assert plane.at(POLL) == []
+    assert clock["now"] - T0 == 60
+
+
+def test_a_printed_prompt_hides_the_device_code(clock) -> None:
+    plane = Plane(clock, {START: [started()]})
+    c = make(plane, ["identity"])
+    prompt = c.identity.begin_sign_in()
+    assert prompt.deviceCode == "device-code-1"
+    for printed in (repr(prompt), str(prompt), f"{prompt}"):
+        assert "device-code-1" not in printed
+        assert "WDJB-MJHT" in printed
+
+
 def test_a_failed_poll_is_retried_at_the_same_interval(clock) -> None:
     plane = Plane(
         clock,
@@ -312,6 +369,16 @@ def test_a_second_mint_inside_the_lifetime_makes_no_request(clock) -> None:
     # Memory only: the store never sees a minted token.
     assert c.core.store.get_token() == "pkeyt_device"
     assert "m1" not in repr(c.core.store.read_cache())
+
+
+def test_a_printed_minted_token_hides_the_token(clock) -> None:
+    plane = Plane(clock, {MINT: [minted("minted-secret", T0 + 600)]})
+    c = make(plane, ["license", "config"], token="pkeyt_device")
+    m = c.config.mint_token("musickit")
+    assert m.token == "minted-secret"
+    for printed in (repr(m), str(m), f"{m}"):
+        assert "minted-secret" not in printed
+        assert str(T0 + 600) in printed
 
 
 def test_deactivate_drops_the_cached_minted_token(clock) -> None:

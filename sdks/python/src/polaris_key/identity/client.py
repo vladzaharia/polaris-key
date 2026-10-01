@@ -22,9 +22,10 @@ Mirrors ``@polaris-key/node``'s ``identity/client.ts``.
 
 from __future__ import annotations
 
+import math
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Optional
 
 import httpx
@@ -41,7 +42,8 @@ __all__ = [
     "SLOW_DOWN_STEP_SECONDS",
 ]
 
-#: RFC 8628 §3.5: a ``slow_down`` without an interval adds five seconds.
+#: RFC 8628 §3.5: a ``slow_down`` without an interval adds five seconds to the CURRENT
+#: interval, so repeated interval-less answers keep lengthening it.
 SLOW_DOWN_STEP_SECONDS = 5
 
 #: Transient failures ``wait_for_sign_in`` rides out at the current interval: the network,
@@ -51,10 +53,11 @@ _TRANSIENT = frozenset({"network-error", "server-error"})
 
 @dataclass(frozen=True)
 class SignInPrompt:
-    """What the host shows the player, plus the poll credential the SDK keeps using."""
+    """What the host shows the player, plus the poll credential the SDK keeps using. Its
+    ``repr`` leaves ``deviceCode`` out."""
 
     #: The poll credential. Never show it, never put it in a URL.
-    deviceCode: str
+    deviceCode: str = field(repr=False)
     #: What the player types on the verification page, e.g. ``WDJB-MJHT``.
     userCode: str
     #: The page the player opens and types the code into.
@@ -94,7 +97,27 @@ def _is_str(v: Any) -> bool:
 
 
 def _is_seconds(v: Any) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0
+    return (
+        isinstance(v, (int, float))
+        and not isinstance(v, bool)
+        and math.isfinite(v)
+        and v > 0
+    )
+
+
+def _whole_seconds(v: float) -> int:
+    """Round a server's seconds UP, so a 0.5 is one second rather than zero."""
+    return int(math.ceil(v))
+
+
+def _poll_delay(interval: float, expires_in: float) -> float:
+    """The seconds :meth:`IdentityClient.wait_for_sign_in` actually sleeps: never under one
+    second (a zero, negative or non-finite interval would spin) and never past the code's own
+    lifetime."""
+    ceiling = float(expires_in) if math.isfinite(expires_in) and expires_in >= 1 else 1.0
+    if not math.isfinite(interval):
+        return ceiling if interval > 0 else 1.0
+    return min(max(float(interval), 1.0), ceiling)
 
 
 class IdentityClient:
@@ -144,9 +167,9 @@ class IdentityClient:
             userCode=b["userCode"],
             verificationUri=b["verificationUri"],
             verificationUriComplete=b["verificationUriComplete"],
-            expiresIn=int(b["expiresIn"]),
-            interval=int(b["interval"]),
-            expiresAt=self._ctx.now() + int(b["expiresIn"]),
+            expiresIn=_whole_seconds(b["expiresIn"]),
+            interval=_whole_seconds(b["interval"]),
+            expiresAt=self._ctx.now() + _whole_seconds(b["expiresIn"]),
         )
 
     def poll_sign_in(self, prompt: SignInPrompt) -> SignInPoll:
@@ -157,6 +180,11 @@ class IdentityClient:
         ``PolarisError("server-error")`` on a 5xx — neither says anything about the sign-in,
         so neither is folded into a status. :meth:`wait_for_sign_in` rides both out.
         """
+        return self._poll(prompt, prompt.interval)
+
+    def _poll(self, prompt: SignInPrompt, current: int) -> SignInPoll:
+        """One poll, where an interval-less ``slow_down`` lengthens ``current`` — the interval
+        the caller is pacing at — rather than the prompt's original one."""
         self._ctx.require_service("identity")
         res = self._post(
             "identity/auth/device/poll",
@@ -174,9 +202,9 @@ class IdentityClient:
             interval = body.get("interval")
             return SignInPoll(
                 status="slow-down",
-                interval=int(interval)
+                interval=_whole_seconds(interval)
                 if _is_seconds(interval)
-                else prompt.interval + SLOW_DOWN_STEP_SECONDS,
+                else current + SLOW_DOWN_STEP_SECONDS,
             )
         if res.status_code != 200:
             return SignInPoll(
@@ -222,7 +250,7 @@ class IdentityClient:
             self._check_cancel(cancel)
             if self._ctx.now() >= prompt.expiresAt:
                 return SignInResult(status="expired")
-            delay = float(interval)
+            delay = _poll_delay(interval, prompt.expiresIn)
             if deadline is not None and time.time() + delay > deadline:
                 self._sleep(max(0.0, deadline - time.time()), cancel)
                 self._check_cancel(cancel)
@@ -232,7 +260,7 @@ class IdentityClient:
             if self._ctx.now() >= prompt.expiresAt:
                 return SignInResult(status="expired")
             try:
-                poll = self.poll_sign_in(prompt)
+                poll = self._poll(prompt, interval)
             except PolarisError as e:
                 if e.code in _TRANSIENT:
                     continue

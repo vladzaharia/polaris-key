@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import re
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 import httpx
@@ -45,7 +45,9 @@ MINT_ID = re.compile(r"\A[a-z0-9-]+\Z")
 
 @dataclass(frozen=True)
 class MintedToken:
-    token: str
+    """What a mint returns. Its ``repr`` leaves ``token`` out."""
+
+    token: str = field(repr=False)
     #: Epoch seconds.
     expiresAt: int
 
