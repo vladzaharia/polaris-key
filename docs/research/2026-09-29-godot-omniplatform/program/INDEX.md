@@ -70,7 +70,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | Id                                         | Title                                                                                       | Depends on          | Role        | Weeks | Status |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------- | ----------- | ----- | ------ |
 | [P2-01](wp/P2-01-blob-store.md) ✋         | Core blob store on R2: content-addressed, bucket-locked, on a separate domain               | —                   | implementer | 1–1.5 | done   |
-| [P2-02](wp/P2-02-trusted-publisher.md) ✋  | Trusted publishing: GitHub OIDC verification, publisher policy, scoped upload tickets       | P2-01, P2-04        | implementer | 1–1.5 | todo   |
+| [P2-02](wp/P2-02-trusted-publisher.md) ✋  | Trusted publishing: GitHub OIDC verification, publisher policy, scoped upload tickets       | P2-01, P2-04        | implementer | 1–1.5 | done   |
 | [P2-03](wp/P2-03-release-data-model.md)    | Release data model v2: deliverables, builds, artifact roles, channel policy, yanks          | P0-01, P0-02        | implementer | 1–1.5 | done   |
 | [P2-04](wp/P2-04-release-descriptor.md)    | Release descriptor ingest and the declared artifact map in `.pkey/release`                  | P2-03               | implementer | 1–1.5 | done   |
 | [P2-05](wp/P2-05-release-routes.md)        | Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching | P2-01, P2-03        | implementer | 1–1.5 | done   |
@@ -84,7 +84,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | Id                                             | Title                                                                                   | Depends on           | Role        | Weeks | Status |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------- | ----------- | ----- | ------ |
 | [P2b-01](wp/P2b-01-distribution-service.md) ✋ | Add the `distribution` service with Core descriptor hooks and coherence rules           | P0-09, P2-03         | implementer | 1–1.5 | done   |
-| [P2b-02](wp/P2b-02-distribution-manifest.md)   | `.pkey/distribution`: outlets, identities, listings and transports                      | P2b-01, P2-04        | implementer | 1     | todo   |
+| [P2b-02](wp/P2b-02-distribution-manifest.md)   | `.pkey/distribution`: outlets, identities, listings and transports                      | P2b-01, P2-04        | implementer | 1     | done   |
 | [P2b-03](wp/P2b-03-availability-keys.md)       | Availability, submissions (CI-reported first) and the key inventory                     | P2b-02, P2-06        | implementer | 1     | todo   |
 | [P2b-04](wp/P2b-04-rollouts-delivery.md)       | Outlet-scoped rollouts and halts; delivery access and byte serving move to distribution | P2b-02, P2-05        | implementer | 1.5–2 | todo   |
 | [P2b-05](wp/P2b-05-storefront-feeds.md)        | Storefront feeds: AltStore/SideStore/PAL, Obtainium, F-Droid, Scoop/Flathub JSON        | P2b-03, P2b-04, S-07 | implementer | 2–3   | todo   |
