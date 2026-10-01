@@ -24,7 +24,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P0-09](wp/P0-09-service-table.md) ✋         | Make the service list data-driven, with a drift gate                                     | P0-08, P0-07 | implementer | 1–1.5    | todo        |
 | [P0-10](wp/P0-10-sparkle-hardening.md) ✋     | Raise Swift's Sparkle floor to 2.9.6 and stream Sparkle verification                     | —            | implementer | 0.25–0.5 | done        |
 | [P0-11](wp/P0-11-docs-drift.md)               | Fix documentation drift and macOS-only assumptions in health and setup                   | —            | implementer | 0.25–0.5 | done        |
-| [P0-12](wp/P0-12-edge-mint-hardening.md) ✋   | Harden edge-mint: scope signing secrets and authorise minting                            | —            | implementer | 0.5–0.75 | todo        |
+| [P0-12](wp/P0-12-edge-mint-hardening.md) ✋   | Harden edge-mint: scope signing secrets and authorise minting                            | —            | implementer | 0.5–0.75 | done        |
 | [P0-13](wp/P0-13-oidc-flow-key-hashing.md) ✋ | Hash product OIDC `state` and device-code KV key names (finish R12-04)                   | —            | implementer | 0.25–0.5 | done        |
 
 ## P1: Godot SDK core

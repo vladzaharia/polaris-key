@@ -295,7 +295,7 @@
       "optional": false,
       "refs": ["README §9.1 #5", "README §5.3 secrets"],
       "brief": "wp/P0-12-edge-mint-hardening.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-13",
