@@ -1,0 +1,15 @@
+config_version=5
+
+[application]
+
+config/name="s05game"
+config/version="1.0.0"
+run/main_scene="res://main.tscn"
+
+[autoload]
+
+VeloProbe="*res://velo_probe.gd"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"

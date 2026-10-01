@@ -26,6 +26,7 @@ import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
 import {
   getProduct,
+  getProductSecret,
   getTier,
   revertAutoIssueToManifest,
   revertFingerprintPolicyToManifest,
@@ -844,7 +845,29 @@ export async function handleProductScopedResource(
   return notFound();
 }
 
-/** PUT /api/products/<slug>/secrets/<name> {value} — write-only: seal + store; echo NAME only. */
+/**
+ * The optional `usage` on a secret PUT (P0-12). Absent ⇒ `undefined`: keep what is stored (a new
+ * secret is general), so re-uploading a rotated key cannot silently change what it may sign.
+ * `"general"` or `null` ⇒ general (stored NULL). `"edge-mint"` ⇒ edge-mint key material.
+ * Anything else ⇒ `"invalid"`.
+ */
+function parseSecretUsage(
+  body: Record<string, unknown>,
+): "edge-mint" | null | undefined | "invalid" {
+  if (!("usage" in body) || body.usage === undefined) return undefined;
+  if (body.usage === null || body.usage === "general") return null;
+  if (body.usage === "edge-mint") return "edge-mint";
+  return "invalid";
+}
+
+/**
+ * PUT /api/products/<slug>/secrets/<name> {value, usage?} — write-only: seal + store; echo NAME
+ * (and the resulting usage) only.
+ *
+ * `usage` is the ONLY writer of `product_secrets.usage`: a `.pkey/` manifest can name a secret in
+ * an edge-mint recipe but can never mark one signable (P0-12). A change of usage is audited on
+ * its own (`secret.usage`) so "who made this secret mintable" is one query.
+ */
 async function handleSecrets(
   req: Request,
   env: Env,
@@ -864,6 +887,17 @@ async function handleSecrets(
       fields: ["value"],
     });
   }
+  const usage = parseSecretUsage(body);
+  if (usage === "invalid") {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      'usage must be "general" or "edge-mint"',
+      { fields: ["usage"] },
+    );
+  }
+  const before = await getProductSecret(db, slug, name);
+  const previousUsage = before ? (before.usage ?? null) : null;
   const enc = await seal(env, value, {
     product: slug,
     kind: "product-secret",
@@ -873,6 +907,7 @@ async function handleSecrets(
     product: slug,
     name,
     enc_value_json: enc,
+    ...(usage !== undefined ? { usage } : {}),
     created_at: now,
     modified_at: now,
   });
@@ -885,8 +920,20 @@ async function handleSecrets(
     { kind: "secret", id: name },
     `Set secret ${name}`,
   );
-  // NEVER echo the value back — only the name.
-  return adminJson({ ok: true, name });
+  const finalUsage = usage === undefined ? previousUsage : usage;
+  if (finalUsage !== previousUsage) {
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "secret.usage",
+      { kind: "secret", id: name },
+      `Secret ${name} usage: ${previousUsage ?? "general"} → ${finalUsage ?? "general"}`,
+    );
+  }
+  // NEVER echo the value back — only the name and what it may be used for.
+  return adminJson({ ok: true, name, usage: finalUsage ?? "general" });
 }
 
 const TRUST_CACHE_SECONDS = 300;

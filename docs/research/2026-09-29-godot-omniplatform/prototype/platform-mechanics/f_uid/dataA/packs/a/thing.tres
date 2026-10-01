@@ -1,0 +1,9 @@
+[gd_resource type="Resource" format=3 uid="uid://s05dataares1"]
+
+[ext_resource type="Resource" uid="uid://s05mainbase1" path="res://main_res/base.tres" id="1"]
+[ext_resource type="Resource" uid="uid://s05mainbase1" path="res://does/not/exist.tres" id="2"]
+
+[resource]
+metadata/tag = "data-a"
+metadata/main_by_uid_and_path = ExtResource("1")
+metadata/main_by_uid_only = ExtResource("2")

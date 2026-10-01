@@ -76,8 +76,9 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   (≤ running, inside `requires.engine`) and the **directory check**; commit to
   `user://pkey/store/<sha256>.pck`; activate `restart`.
 - **Mounting at boot** from an autoload before first use: in `mountOrder`, one pack per frame, only
-  the active set's content-addressed paths, after the directory check, `replace_files=false` for
-  full, disjoint-prefix, uid-free packs (A6 §6).
+  the active set's content-addressed paths, after the directory check, with `replace_files=true`
+  (S-05 §4.6: with `false` a pack's UIDs never register, and A6 §6: a delta overlay's full-file
+  entries are dropped). `false` is allowed only for UID-free packs and gains nothing.
 - **`files.tree` handler** (hot: `user://pkey/trees/<sha256>/` plus a pointer swap).
 - **Embedded baselines**: packs shipped in the build with their markers (P4-03 writes the markers),
   found in one configured `res://` directory (proposed `res://pkey_packs/`) or listed in the build
@@ -105,8 +106,8 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   `audio.bank`, `custom.*` handlers (→ [P4-16](P4-16-more-pack-types.md)).
 - `is_available(content_id)` from `provides` (→ [P4-20](P4-20-save-compat.md)).
 - Platform transports: Background Assets, PAD, Steam depots (→ P5-05, P5-06, P5-08).
-- Web builds with large packs (IDBFS keeps all of `user://` in memory, A6 §2.6): v1 supports small
-  packs on web; the large-pack web strategy waits for S-05's findings.
+- Web builds with large packs beyond the web cap below (IDBFS keeps all of `user://` in memory,
+  A6 §2.6; S-05 §4.3 measured every web path holding mounted packs in JS memory).
 - Export-plugin UI for choosing embedded or lean packs per preset (README §5.9). P1-11 builds only
   the build stamp and the dock, and no work package owns this yet; v1 games place embedded packs
   and their markers themselves.
@@ -131,15 +132,58 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   prefix (e.g. `__pkey/<planId>/base/`), never a path a game could load (A7 §6).
 - **Verify before the decoder sees anything.** Check each delta's SHA-256 from the signed menu and
   the base's hash first; a wrong base otherwise fails only at first read (A6 §2.1).
-- **Directory check**: every entry under a declared `handler.prefixes` entry, plus
-  `.godot/imported/` artefacts of in-prefix sources; no scripts, `project.binary`, class cache or
-  native libraries. Pin it to the same rules as [P4-03](P4-03-ci-patch-artifacts.md)'s lint.
-  Keep "no `uid://` into packs".
+- **Directory check** (the rule from S-05 §5 (f), verbatim, measured in S-05 §4.6): "Data packs are
+  mounted with `replace_files=true`, in `mountOrder`. A `godot.pck` payload may contain only: (1)
+  entries under one of the deliverable's `handler.prefixes`, including their `.remap` and `.import`
+  files; (2) the `.godot/exported/…` and `.godot/imported/…` files that those `.remap` and `.import`
+  files point to; and (3) `.godot/uid_cache.bin`, which is what makes the pack's `uid://`
+  references resolve. Everything else is rejected with its path, in particular `project.binary`,
+  `.godot/global_script_class_cache.cfg`, scripts (`.gd`, `.gdc`, `.cs`, and a `.remap` that points
+  to one), native libraries and `.gdextension` files. `--export-pack` always adds `project.binary`
+  and `.godot/global_script_class_cache.cfg`, even to a project with no scripts, so
+  `pkey release publish --deliverable <packId>` removes exactly those two entries from a `godot.pck`
+  payload before it lints, hashes and indexes it, and writes the stripped PCK back in place, so an
+  embedded copy is the one its marker pins. The publish lint and the device-side directory check
+  apply the same list; the directory check refuses a pack that still carries either file. `uid://`
+  references into a pack are allowed once it is mounted. With `replace_files=false` a pack's UIDs
+  never register, so only UID-free packs may use it." Why: mounting an unstripped pack with
+  `replace_files=true` replaces the main pack's class cache (`get_global_class_list()` went from 6
+  to 0); stripped, the main pack's UIDs and those of two independently built packs all resolved
+  together and the class list stayed at 6. The strip step and the publish-side lint are
+  [P4-03](P4-03-ci-patch-artifacts.md)'s; share its fixture PCKs so the two checks cannot drift.
+  This replaces A6's "no `uid://` into packs" as the SDK rule; a game may still keep its own packs
+  UID-free (Diceroll does, D-04).
 - **GDScript performance.** Assemble output with `append_array` or `store_buffer` in 1 MiB steps
   (a byte loop runs at about 30 MB/s); hash with `HashingContext` (~220–240 MB/s); `decompress`
   needs the exact size, which every zstd reference carries.
-- **Android**: mount one pack per frame (the `load_resource_pack` stall, godot#105009); S-05 may
-  refine this.
+- **Mount pacing** (S-05 §4.1, Android 14 emulator): the stall grows with a pack's entry count,
+  not its size (about 16 µs per entry cold from `user://`, 4 µs warm; a 200 MB pack of 8 files
+  mounts in ≤ 8 ms). Mount after the first frame, one pack per frame, on the main thread, because
+  `PackedData` and the UID registry are not documented as thread-safe while the main thread loads
+  resources (a `Thread` mount lowered the worst frame but did not remove it on the contended
+  emulator, so the thread evidence is inconclusive). A mount in `_ready` held the first `_process`
+  back by 88–276 ms, about its own call time.
+  A mount freezes the spinner for the whole call, so the budget is at most 100 ms (6 frames at
+  60 Hz) per mount on a low-end phone assumed 3–5× slower than the emulator: packs of up to 1,000
+  entries (an estimated 48–80 ms) may mount while the spinner runs; larger ones only under a loading
+  screen. The pack lint ([P4-03](P4-03-ci-patch-artifacts.md)) warns above 1,000 entries per pack
+  and fails above 20,000; the directory check logs the entry count. The low-end
+  phone run is still outstanding; replace the numbers when it lands.
+- **Web pack path** (S-05 §4.3): packs never go to `user://`. The HTML shell (or a head include)
+  fetches each pack by its content-addressed URL through the Cache Storage API, copies it into a
+  MEMFS path outside `user://` (`/pkey/packs/<sha256>.pck`) with the engine's `copyToFS`, and
+  GDScript mounts that path; a Cache Storage miss is a normal re-download. This path persisted
+  across reload and browser restart in Chromium, WebKit and iOS Simulator Safari; its warm boots
+  (engine ready plus fetch, 150 MB, n = 1 per cell) were 2.9–3.7 s in Chromium, 1.1–1.3 s in
+  WebKit and 0.68–0.77 s on the iOS Simulator. Keeping packs in `user://` booted faster in Chromium
+  (0.4–0.5 s) but loads every file there, mounted or not, into memory at each boot, which is why it
+  is not the path. Do not use `HTTPRequest.download_file` on web: in 4.7.2 the file is deleted
+  after a "successful" download. Cap the total mounted pack bytes on web (default 150 MB on mobile
+  browsers, 300 MB on desktop) until device numbers exist, and mount packs one at a time (inferred,
+  not measured: S-05 never tried concurrent copies). On the iOS Simulator a single load's
+  footprint rose by up to about twice the mounted bytes at 1 and 3 packs (probably the transient
+  copy; inferred, not measured), against 46–95% at the 150 MB cap; that ~2x was itself observed
+  with packs fetched, copied and mounted one at a time, so leave headroom for that transient.
 
 ## Steps
 
@@ -158,8 +202,14 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
       SHA-256 equals CI's, mounted at the next boot from `user://pkey/store/<sha256>.pck`.
 - [ ] The bake over a base that is currently mounted leaves the running session's reads correct
       and restores the base byte for byte (SHA-256 re-checked).
-- [ ] The directory check refuses a pack with a script, `project.binary` or an out-of-prefix path
-      before mounting; a tampered unpatched entry fails the whole-pack hash.
+- [ ] The directory check refuses a pack with a script, `project.binary`,
+      `.godot/global_script_class_cache.cfg` or an out-of-prefix path before mounting, and admits
+      a stripped `--export-pack` pack (in-prefix `.remap`/`.import` files, the `.godot/exported/`
+      and `.godot/imported/` files they name, `.godot/uid_cache.bin`); a tampered unpatched entry
+      fails the whole-pack hash.
+- [ ] Two independently built, stripped packs mounted with `replace_files=true` resolve their own
+      and the main pack's `uid://` references, and `get_global_class_list()` is unchanged (S-05
+      §4.6's `f_uid` case, on the release template).
 - [ ] After two failed boots with a new set, `previous` is active again and a report says so.
 - [ ] `PKeyBoot` with a missing required pack goes FETCH → MOUNT → READY with size disclosure,
       and offline with the required set present goes to READY; the four signals fire in order.

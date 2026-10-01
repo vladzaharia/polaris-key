@@ -1,0 +1,16 @@
+-- P0-12 — scope product secrets by USAGE, so an edge-mint recipe cannot sign with an arbitrary
+-- product secret.
+--
+-- NULL = general (the OIDC client secret, anything a recipe must NOT sign with).
+-- 'edge-mint' = an operator has marked this secret as edge-mint key material. The column is
+-- written ONLY by the admin API (`PUT /manage/api/products/<slug>/secrets/<name>` with
+-- `"usage"`), never by a `.pkey/` manifest: a repo writer must not be able to decide what a
+-- secret may be used for. `openProductSecret` takes the required usage and treats a mismatch
+-- exactly like a missing row.
+--
+-- The backfill that marks every secret a deployed recipe already names lives in
+-- 0025_b_edge_mint_approvals.sql, which is fully idempotent.
+--
+-- ONE statement per file (see 0013/0014): a bare ALTER cannot be made replay-idempotent in
+-- pure SQL, so nothing may sit behind it and be stranded by a failed replay.
+ALTER TABLE product_secrets ADD COLUMN usage TEXT;

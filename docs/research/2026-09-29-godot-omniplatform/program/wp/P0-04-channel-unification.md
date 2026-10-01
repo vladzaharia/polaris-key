@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                      |
 | ----------- | ---------------------------------------------------------------------------------------------------------- |
 | Phase       | P0: Hygiene and unblockers                                                                                 |
-| Size        | 0.75–1 engineer-weeks                                                                                      |
+| Size        | 1–1.25 engineer-weeks                                                                                      |
 | Depends on  | none                                                                                                       |
 | Unblocks    | [P1-03](P1-03-godot-license.md), [P1b-05](P1b-05-runners.md)                                               |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                       |
@@ -78,8 +78,8 @@ would have to send `staging` to pass ([notes/A2 §1.9](../../notes/A2-sdk-port.m
 
 **Out** (and where it belongs instead):
 
-- The Node runner's stale dev-build bypass (issue #15) and the carried row that encodes it
-  (→ P1b-05). This package fixes only the channel half of the runner ports.
+- Nothing of the runner ports: the stale dev-build bypass (issue #15), the carried dev row and
+  `gateMatrixCorpus.test.ts` are absorbed into this package (plan D6; P1b-05's Part C is deleted).
 - Godot's gate and header values (→ [P1-03](P1-03-godot-license.md), which consumes this plan).
 - Channel pointers, `includes: [stable]`, floors per channel (→ P2-03, P2-05).
 - Generated SDK constants for channel names (→ P1b-02).
@@ -181,6 +181,6 @@ mise exec node@22 -- pnpm test          # includes client-core, sdk-node, sdk-re
 
 P1-03 relies on: the canonical header values and aliases, the entitlement predicate, the
 `channelForVersion` mapping and the new row names in `gate-matrix.json`. P1b-02 generates channel
-constants from whatever the plan fixes. P1b-05 fixes the remaining (dev-bypass) half of the runner
-ports on top of this. When done:
+constants from whatever the plan fixes. The rewritten runner ports (including the dev-bypass half) and
+`gateMatrixCorpus.test.ts` are this package's; P1b-05 moves the port into its shared suite module. When done:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-04 done`.

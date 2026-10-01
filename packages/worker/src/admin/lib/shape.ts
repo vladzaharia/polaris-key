@@ -24,6 +24,13 @@ import {
 import { shipsDmgs } from "../../services/release/config.js";
 import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { countKeysByLicense } from "../repo.js";
+import {
+  approvalMismatch,
+  listEdgeMintRecipesWithApprovals,
+  mintApprovalBasis,
+  type MintPolicyProduct,
+} from "../../services/config/mint.js";
+import { parseAutoIssue } from "../../core/fingerprint.js";
 
 interface RequiredSecretStatus {
   name: string;
@@ -41,6 +48,8 @@ interface OidcSetupRow {
 interface EdgeMintSetupRow {
   id: string;
   signing_key_secret: string | null;
+  /** P0-12: whether an operator approved this recipe as it currently stands. */
+  approval: "approved" | "pending" | "changed";
 }
 
 interface ReleaseSetupRow {
@@ -164,6 +173,10 @@ export async function productView(
         trustKeys: { [signingKid]: signingPublicKey },
       }
     : null;
+  // D-15: the console's nav is a projection of enablement, and the SHELL needs the answer before
+  // it can draw the sidebar that frames the view. Carrying it on the product row the shell
+  // already loads is what keeps the nav from popping in after its own content; a second
+  // round-trip to `…/services` would be a strictly slower way to render the same tree.
   const services = serviceStateOf(p);
   const setup = await productSetupView(
     env,
@@ -171,12 +184,14 @@ export async function productView(
     p.slug,
     Boolean(signingPublicKey),
     services.services.update.enabled,
+    {
+      slug: p.slug,
+      registration: services.effectiveRegistration,
+      autoIssue: parseAutoIssue(p.auto_issue_json),
+      services: services.services,
+    },
   );
   const portalSettings = await getPortalProductSettings(db, p.slug);
-  // D-15: the console's nav is a projection of enablement, and the SHELL needs the answer before
-  // it can draw the sidebar that frames the view. Carrying it on the product row the shell
-  // already loads is what keeps the nav from popping in after its own content; a second
-  // round-trip to `…/services` would be a strictly slower way to render the same tree.
   return {
     slug: p.slug,
     name: p.name,
@@ -220,15 +235,26 @@ async function productSetupView(
   product: string,
   signingConfigured: boolean,
   updateEnabled: boolean,
+  /** The product policy an edge-mint approval is checked against (`approvalMismatch`): an
+   *  approval that no longer applies does not count as approved here either. */
+  mintPolicy: MintPolicyProduct,
 ): Promise<Record<string, unknown>> {
   const oidc = await db.first<OidcSetupRow>(
     "SELECT provider, issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
     product,
   );
-  const edgeMint = await db.all<EdgeMintSetupRow>(
-    "SELECT id, signing_key_secret FROM edge_mint_config WHERE product = ? ORDER BY id",
-    product,
-  );
+  const mintBasis = await mintApprovalBasis(db, mintPolicy);
+  const edgeMint: EdgeMintSetupRow[] = (
+    await listEdgeMintRecipesWithApprovals(db, product)
+  ).map(({ recipe, approval }) => ({
+    id: recipe.id,
+    signing_key_secret: recipe.signing_key_secret,
+    approval: !approval
+      ? "pending"
+      : approvalMismatch(recipe, approval, mintBasis).length === 0
+        ? "approved"
+        : "changed",
+  }));
   const release = await db.first<ReleaseSetupRow>(
     `SELECT gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub,
             artifact_policy_json
@@ -238,13 +264,15 @@ async function productSetupView(
   const portalSettings = await getPortalProductSettings(db, product);
   const syncState = await getProductSyncState(db, product);
   const sync = syncStateView(syncState);
-  const configuredSecrets = new Set(
-    (
-      await db.all<{ name: string }>(
-        "SELECT name FROM product_secrets WHERE product = ?",
-        product,
-      )
-    ).map((row) => row.name),
+  const secretRows = await db.all<{ name: string; usage: string | null }>(
+    "SELECT name, usage FROM product_secrets WHERE product = ?",
+    product,
+  );
+  const configuredSecrets = new Set(secretRows.map((row) => row.name));
+  const edgeMintSecrets = new Set(
+    secretRows
+      .filter((row) => row.usage === "edge-mint")
+      .map((row) => row.name),
   );
 
   const secretSources = new Map<string, Set<string>>();
@@ -307,6 +335,29 @@ async function productSetupView(
         !configuredSecrets.has(row.signing_key_secret),
     )
     .map((row) => row.signing_key_secret as string);
+  // P0-12: the two operator-held conditions a recipe needs beyond its manifest row. A secret
+  // that is configured but not marked `edge-mint` signs nothing (500 misconfigured); a recipe
+  // that is pending or changed answers 404 until someone approves it.
+  const edgeWrongUsage = [
+    ...new Set(
+      edgeMint
+        .filter(
+          (row) =>
+            row.signing_key_secret &&
+            configuredSecrets.has(row.signing_key_secret) &&
+            !edgeMintSecrets.has(row.signing_key_secret),
+        )
+        .map((row) => row.signing_key_secret as string),
+    ),
+  ];
+  const edgeUnapproved = edgeMint
+    .filter((row) => row.approval !== "approved")
+    .map((row) => row.id);
+  const edgeProblems = [
+    ...edgeMissing,
+    ...edgeWrongUsage.map((name) => `${name} is not marked edge-mint`),
+    ...edgeUnapproved.map((id) => `recipe ${id} awaits approval`),
+  ];
   const releaseMissing = release
     ? [
         ...(release.gh_owner && release.gh_repo ? [] : ["GitHub repo"]),
@@ -386,12 +437,15 @@ async function productSetupView(
       id: "edgeMint",
       label: "Edge mint",
       status: edgeMint.length
-        ? edgeMissing.length
+        ? edgeMissing.length || edgeWrongUsage.length
           ? "needs-secret"
-          : "configured"
+          : edgeUnapproved.length
+            ? "needs-approval"
+            : "configured"
         : "not-configured",
-      configured: edgeMint.length ? edgeMissing.length === 0 : null,
-      missing: edgeMissing,
+      configured: edgeMint.length ? edgeProblems.length === 0 : null,
+      missing: edgeProblems,
+      pendingApproval: edgeUnapproved,
     },
   ];
 
@@ -400,6 +454,10 @@ async function productSetupView(
     ...missingSecrets,
     ...releaseMissing.map((item) => `release: ${item}`),
     ...syncMissing,
+    ...edgeWrongUsage.map(
+      (name) => `edge mint: ${name} is not marked edge-mint`,
+    ),
+    ...edgeUnapproved.map((id) => `edge mint: recipe ${id} awaits approval`),
   ];
   const nextActions = [
     ...missingSecrets.map((name) => ({
@@ -416,6 +474,16 @@ async function productSetupView(
             route: `#/p/${product}/settings`,
           },
         ]),
+    ...edgeWrongUsage.map((name) => ({
+      id: `secret-usage:${name}`,
+      label: `Mark secret ${name} for edge-minting`,
+      route: `#/p/${product}/secrets`,
+    })),
+    ...edgeUnapproved.map((id) => ({
+      id: `edge-mint:${id}`,
+      label: `Review and approve edge-mint recipe ${id}`,
+      route: `#/p/${product}/secrets`,
+    })),
     ...(release && releaseMissing.length > 0
       ? [
           {

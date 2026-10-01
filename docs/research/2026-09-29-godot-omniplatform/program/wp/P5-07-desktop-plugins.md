@@ -95,8 +95,17 @@ missing, so boot never fails for want of a native library.
 - **Signed feeds stay off at first.** `SURequireSignedFeed` clashes with dynamically rendered
   appcasts unless CI pre-signs every variant (report §4.3).
 - **Velopack hooks relaunch the main exe** with `--veloapp-*` arguments and kill it after a timeout,
-  which is why the shim, not Godot, is the main exe. S-05 hands this package the Velopack decision
-  (shim or early GDExtension) and the MSIX `user://` behaviour; follow it if it has run.
+  which is why the shim, not Godot, is the main exe. S-05 §4.5 decided it: **ship the shim**
+  (Rust `velopack` crate, 0.7 MB on macOS: `VelopackApp::build().run()`, apply any downloaded
+  update, then start Godot beside it with the same arguments; hooks answered in 7–11 ms). Godot as
+  `--mainExe` with an autoload that quits from `_init` on `--veloapp-*` also stayed inside the
+  limits (1.0–1.7 s) but starts a window per hook. The macOS run is in
+  `prototype/platform-mechanics/e_velopack/`; the Windows run is still outstanding, so repeat
+  `time_hooks.py` on Windows in this package.
+- **MSIX** (S-05 §4.4, documentation only): the install directory is read-only; `user://` lands in
+  `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\…`, survives updates and is removed on
+  uninstall. Keep the default virtualization (disabling it needs the `unvirtualizedResources`
+  restricted capability).
 - **`StoreContext` has no simulator**: testing needs a Store-associated package, which is a human
   input. Unit-test the GDExtension's argument handling; leave the Store calls to a device checklist.
 - **GDExtensions on macOS** force the Disable Library Validation entitlement (notes/E4 §2.1); the

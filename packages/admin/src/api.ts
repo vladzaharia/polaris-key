@@ -89,6 +89,83 @@ export interface ProductModuleSummary {
   missingSecrets?: string[];
 }
 
+// ── edge-mint recipe approval (Config, P0-12) ────────────────────────────────
+
+/** What a product secret may be used for. Set by an operator only — never by a manifest. */
+export type SecretUsage = "general" | "edge-mint";
+
+/** The security-relevant recipe fields, exactly as the approve call must echo them. */
+export interface EdgeMintRecipeFields {
+  alg: string;
+  signingKeySecret: string;
+  kid: string | null;
+  claimsTemplateJson: string | null;
+  ttlSeconds: number;
+  audience: string | null;
+}
+
+/** The sign-in trust an edge-mint approval covers: the product's identity provider and the group
+ *  map that decides who a sign-in licenses. `null` means Identity is off (no sign-in path). */
+export interface EdgeMintIdentity {
+  provider: string | null;
+  issuer: string | null;
+  clientId: string | null;
+  groupRoleMapJson: string | null;
+}
+
+export interface EdgeMintRecipe extends EdgeMintRecipeFields {
+  id: string;
+  /** Parsed `claimsTemplateJson`, for display only (null when absent or corrupt). */
+  claimsTemplate: unknown;
+  /** `approved` mints; `pending` was never approved; `changed` was approved in another form. */
+  status: "approved" | "pending" | "changed";
+  secretUsage: SecretUsage | "missing" | "unrecognised";
+  approval:
+    | (EdgeMintRecipeFields & {
+        /** Whether the approval carries the open-registration acknowledgement. */
+        openRegistrationAcknowledged: boolean;
+        /** Whether License was on (licences checked) when the approval was given. */
+        licenseEnabled: boolean;
+        /** The sign-in trust recorded with the approval. */
+        identity: EdgeMintIdentity | null;
+        approvedAt: number;
+        approvedBy: string;
+      })
+    | null;
+  /** Why a `changed` recipe's approval no longer applies. `registration` means the mint is
+   *  public now (open registration, anonymous enrolment or an OIDC default tier) and the
+   *  approval was given without acknowledging that; `license` means License was turned off
+   *  since, so device licences are no longer checked; `identity` means sign-in now trusts a
+   *  different identity provider or group map than the approval recorded. The next push or
+   *  console edit of the product's services or License policy deletes such an approval before
+   *  it writes (the recipe then reads `pending`; the audit log says why), so `changed` for these
+   *  three lasts only until then — after an operator's own edit, or a push that was cut off
+   *  before its own sweep. */
+  changedFields: (
+    | keyof EdgeMintRecipeFields
+    | "registration"
+    | "license"
+    | "identity"
+  )[];
+}
+
+export interface EdgeMintRecipesResponse {
+  /** The product's EFFECTIVE registration policy; `open` means anyone can hold a device token. */
+  registration: "open" | "requires-identity" | "requires-license";
+  /** Whether auto-issue lets any caller enrol anonymously (`POST /<p>/license/enroll`). */
+  anonymousEnroll: boolean;
+  /** Whether Identity is on and auto-issue gives every signed-in account a default tier. */
+  oidcDefault: boolean;
+  /** Open registration, anonymous enrolment or an OIDC default tier: anyone (who can sign in)
+   *  can hold a device token, so approving needs the acknowledgement. */
+  publicMint: boolean;
+  /** Whether License is on, so the mint checks each device's licence. */
+  licenseEnabled: boolean;
+  /** The sign-in trust an approval given now would record; the approve call echoes it. */
+  identity: EdgeMintIdentity | null;
+  recipes: EdgeMintRecipe[];
+}
+
 export interface ProductSetupAction {
   id?: string;
   label?: string;
@@ -881,11 +958,20 @@ export const api = {
         body: JSON.stringify(body),
       },
     ),
-  putProductSecret: (slug: string, name: string, value: string) =>
-    call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, {
-      method: "PUT",
-      body: JSON.stringify({ value }),
-    }),
+  /** Write-only. `usage` omitted keeps what is stored (a new secret is general). */
+  putProductSecret: (
+    slug: string,
+    name: string,
+    value: string,
+    usage?: SecretUsage,
+  ) =>
+    call<{ ok: true; name: string; usage?: SecretUsage }>(
+      `${p(slug)}/secrets/${enc(name)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(usage ? { value, usage } : { value }),
+      },
+    ),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
 
@@ -924,6 +1010,46 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ catalog }),
     }),
+
+  // ── config: edge-mint recipe approval (P0-12) ───────────────────────────────
+  edgeMintRecipes: (slug: string) =>
+    call<EdgeMintRecipesResponse>(`${p(slug)}/config/mint`),
+  /** Approve exactly what the operator was shown — the recipe and the sign-in trust beside it:
+   *  the server refuses (409) if either changed. */
+  approveEdgeMintRecipe: (
+    slug: string,
+    id: string,
+    fields: EdgeMintRecipeFields,
+    identity: EdgeMintIdentity | null,
+    /** Whether License was on in the view the operator approved from (refused with 409 if a
+     *  push changed it since). */
+    licenseEnabled: boolean,
+    acknowledgeOpenRegistration = false,
+  ) =>
+    call<{ ok: true; id: string; status: "approved" }>(
+      `${p(slug)}/config/mint/${enc(id)}/approve`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          alg: fields.alg,
+          signingKeySecret: fields.signingKeySecret,
+          kid: fields.kid,
+          claimsTemplateJson: fields.claimsTemplateJson,
+          ttlSeconds: fields.ttlSeconds,
+          audience: fields.audience,
+          identity,
+          licenseEnabled,
+          ...(acknowledgeOpenRegistration
+            ? { acknowledgeOpenRegistration: true }
+            : {}),
+        }),
+      },
+    ),
+  revokeEdgeMintRecipe: (slug: string, id: string) =>
+    call<{ ok: true; id: string; status: "pending" }>(
+      `${p(slug)}/config/mint/${enc(id)}/revoke`,
+      { method: "POST" },
+    ),
 
   // ── licenses ────────────────────────────────────────────────────────────────
   licenses: (slug: string) =>

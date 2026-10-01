@@ -260,7 +260,12 @@ const TABLE_OWNERS = {
     "blob_refs",
   ],
   license: ["licenses", "keys_index", "tiers", "license_profiles"],
-  config: ["product_schema", "profiles", "edge_mint_config"],
+  config: [
+    "product_schema",
+    "profiles",
+    "edge_mint_config",
+    "edge_mint_approvals",
+  ],
   release: [
     "release_config",
     "release_metadata",

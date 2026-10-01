@@ -1,25 +1,22 @@
-# P1b-05 Add Chromium and minimum-version runners; fix the Node runner's build-gate port
+# P1b-05 Add Chromium and minimum-version runners
 
-| Field       | Value                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                      |
-| Size        | 0.75–1 engineer-weeks                                                                                |
-| Depends on  | [P0-04](P0-04-channel-unification.md)                                                                |
-| Unblocks    | [P4-18](P4-18-web-dcz.md)                                                                            |
-| Role        | `pkey-implementer`                                                                                   |
-| Plan mode   | no for Parts A, B and D; Part C needs a corpus row change, which only an approved plan may make      |
-| Gates       | CI (new jobs); for Part C, the corpus drift gate (`pnpm gen:corpus -- --check`) through P0-04's plan |
-| Human input | none for A, B and D; Part C rides on the human's approval of P0-04's plan                            |
-| Repo        | `vladzaharia/polaris-key`                                                                            |
+| Field       | Value                                 |
+| ----------- | ------------------------------------- |
+| Phase       | P1b: SDK parity                       |
+| Size        | 0.5–0.75 engineer-weeks               |
+| Depends on  | [P0-04](P0-04-channel-unification.md) |
+| Unblocks    | [P4-18](P4-18-web-dcz.md)             |
+| Role        | `pkey-implementer`                    |
+| Plan mode   | no                                    |
+| Gates       | CI (new jobs)                         |
+| Human input | none                                  |
+| Repo        | `vladzaharia/polaris-key`             |
 
 ## Goal
 
 - **A:** CI runs `client-core` over `cases.json` and `gate-matrix.json` in real Chromium.
 - **B:** the Node runner and the Node SDK suite run on the lowest Node that `engines` allows; the
   Python suite runs on CPython 3.9 and 3.14; every runner prints its runtime and library versions.
-- **C:** the build-gate ports in the Node, Python and Swift runners mirror
-  `packages/worker/src/core/gate.ts`, and a Worker test proves the gate-matrix rows agree with the
-  real server gate.
 - **D:** the same browser runner passes every `cases.json` and `gate-matrix.json` case in Firefox
   and WebKit too, on the engine builds S-04 measured.
 
@@ -32,11 +29,6 @@
   CI runs one Node 22 and one Python (3.12) today (`.github/workflows/ci.yml`).
 - **The React SDK is only tested in jsdom.** Its runtime is a browser, where WebCrypto Ed25519, WASM
   zstd, OPFS and `dcz` live ([PARITY §4.3](../../PARITY.md#43-runners)).
-- **The runners' build-gate port is stale**
-  ([README §9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) #15,
-  [notes/A2 §14](../../notes/A2-sdk-port.md#14-repo-divergences-found-along-the-way-worth-tickets)
-  item 1). It still has the dev-build bypass that finding R3-01 removed, maps an unknown channel to
-  `stable`, and lets a declared channel replace the one the version implies.
 
 ## Read first
 
@@ -46,15 +38,10 @@
   [§9](../../notes/A7-xlang-content.md#9-browser-specifics-chromium-141-measured).
 - `.github/workflows/ci.yml`, `pnpm-workspace.yaml`, root `package.json` (`engines: ">=22"`),
   `sdks/python/pyproject.toml` (`requires-python = ">=3.9"`).
-- `conformance/runners/node/corpusV2.test.ts` (the whole file; the port is at `:322-374`),
-  `sdks/python/tests/test_gate_matrix.py:72-100`,
-  `sdks/swift/Tests/PolarisKeyTests/GateMatrixTests.swift:75-100`.
-- `packages/worker/src/core/gate.ts:52-150` (`channelForVersion`, `isDevBuild`, `normalizeChannel`,
-  `checkBuildGate`), `packages/worker/src/core/entitlements.ts` (`entitledChannels`,
-  `versionWindow`).
-- `tools/sign-corpus.ts:1698` (the dev-bypass row); `packages/worker/test/fingerprintCorpus.test.ts`
-  (the pattern for "the Worker checks a corpus file").
-- The [P0-04](P0-04-channel-unification.md) brief and plan.
+- `conformance/runners/node/corpusV2.test.ts` (the whole file; P0-04 rewrites its build-gate port,
+  so start from P0-04's merged version).
+- The [P0-04](P0-04-channel-unification.md) brief and plan (it owns the build-gate port rewrite and
+  `gateMatrixCorpus.test.ts`).
 
 ## Scope
 
@@ -64,7 +51,7 @@
   (`@polaris-key/conformance-browser`), added to `pnpm-workspace.yaml`, using Vitest browser mode
   (`@vitest/browser` with the `playwright` provider). Part A is Chromium; Part D adds Firefox and
   WebKit to the same package.
-  - Move the case-driving code out of `corpusV2.test.ts` into a module both runners import (for
+  - Move the case-driving code (including P0-04's rewritten build-gate port, verbatim) out of `corpusV2.test.ts` into a module both runners import (for
     example `conformance/runners/node/suites.ts`, exporting `defineCorpusSuites(corpus, matrix)`).
     The Node runner keeps reading files with `node:fs`; the browser runner imports the JSON through
     Vite.
@@ -83,11 +70,6 @@
   - Version banners: the Node runner prints `process.versions` (node, openssl, v8); pytest prints
     `sys.version` and the `cryptography` and `httpx` versions (a `conftest.py` report header); the
     browser runner prints `navigator.userAgent`.
-- **C. The build-gate port** (after P0-04, see Design notes):
-  - the three ports rewritten to mirror `core/gate.ts`, including P0-04's channel vocabulary;
-  - a Worker test, `packages/worker/test/gateMatrixCorpus.test.ts`, that feeds every row's `gate`
-    inputs to the real `checkBuildGate` and asserts `expect.reason` and `allowedRange`, so the server
-    is the oracle and the ports cannot drift silently again.
 - **D. Firefox and WebKit ([S-04](../../notes/S-04-low-end-performance.md)).** The same browser
   package runs in the engine builds bundled with `playwright-core` 1.63.0, which S-04 measured:
   - a CI job `browser-firefox` on Linux runs Firefox 155.0, for example in the image
@@ -111,6 +93,9 @@
 
 **Out** (and where it belongs instead):
 
+- The build-gate port in the Node, Python and Swift runners, the carried dev row and
+  `gateMatrixCorpus.test.ts` (→ [P0-04](P0-04-channel-unification.md), plan D6). Part A's shared suite
+  module moves P0-04's rewritten port verbatim; it does not change it.
 - Changing any corpus row (→ [P0-04](P0-04-channel-unification.md)'s plan).
 - Real iOS Safari and Android Chrome runs (→ [S-04](S-04-low-end-performance.md)'s hand-off); an iOS simulator
   job (→ [P5-05](P5-05-apple-plugin-package.md)); the Godot runner (→ [P1-01](P1-01-godot-scaffold.md)).
@@ -120,31 +105,6 @@
   would let it pass (unowned; see Part D).
 
 ## Design notes
-
-**Why Part C cannot be fixed in the runners alone.** `gate-matrix.json` row "ok — dev build bypasses
-the gate despite an out-of-range window + non-entitled channel" (`tools/sign-corpus.ts:1698`) pins
-the pre-R3-01 behaviour. Its inputs are version `0.0.0-dev+abc123`, channel `staging`, window
-`5.0.0`–`6.0.0` and no entitlements. The Worker's `checkBuildGate` does not bypass for it (`dev` is
-not entitled) and returns `version-too-old`. A correct port therefore turns that row red.
-
-- AGENTS rule 1 forbids weakening the runner, and changing the row is a corpus change: plan-mode and
-  the one-corpus-package lane.
-- [P0-04](P0-04-channel-unification.md)'s plan already re-baselines `gate-matrix.json` for the channel
-  vocabulary.
-- So Part C lands with or after that plan. It asks P0-04's plan to include the re-baselined dev row
-  and three new rows:
-  - a `0.0.0-dev` build with the `dev` channel entitled bypasses the window;
-  - an unrecognised channel header (`beta` before P0-04, or whatever P0-04 leaves unknown) is refused
-    with `channel-not-entitled`;
-  - a declared `stable` header cannot loosen a `0.0.0-pr-42` build.
-- If P0-04 is not approved when you start, ship A and B in one PR, and open C as a second PR that
-  waits on it. Do not touch the corpus here.
-
-**The port must mirror the server, not re-derive it.** Port `normalizeChannel` returning `null` for
-unknown values, the `allowDevBuilds ?? entitledChannels(…).includes("dev")` rule, and "the implied
-channel always applies; a header can only add one". The React test
-(`packages/sdk-react/test/gateMatrixParity.test.ts`) feeds the row's own block decision and needs no
-port.
 
 **Runner hygiene.** A runner that cannot run a case fails loudly; it never skips
 ([notes/A7 §5](../../notes/A7-xlang-content.md#5-corpus-encoding-and-runner-expectations)).
@@ -156,9 +116,7 @@ port.
    (Chromium 137+).
 3. Add the `browser-firefox` and `browser-webkit` jobs (Part D) on Playwright 1.63.0.
 4. Add `engines`, the `node-floor` job, the Python matrix and the version banners.
-5. Update the runner docs. Open the PR for A, B and D.
-6. After P0-04's plan is approved: rewrite the three ports, add `gateMatrixCorpus.test.ts`, and
-   regenerate against P0-04's rows.
+5. Update the runner docs. Open the PR.
 
 ## Acceptance criteria
 
@@ -170,8 +128,6 @@ port.
       `sdk-node`, `client-core` and `sdk-react`.
 - [ ] The Python job passes on 3.9 and 3.14.
 - [ ] Each runner's log shows its runtime and library versions.
-- [ ] (C) The Node, Python and Swift ports match `core/gate.ts`; `gateMatrixCorpus.test.ts` passes on
-      the re-baselined matrix and fails if a row's `expect.reason` is doctored.
 - [ ] The runner docs list the new jobs.
 - [ ] `parity.json` manifests are updated for every SDK this changes (for example, React's `core.verify`
       proof now includes the Chromium runner).
@@ -188,7 +144,6 @@ mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser test -- --br
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser test -- --browser=webkit   # macOS
 mise exec node@<floor> -- pnpm --filter @polaris-key/conformance-node test
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # repeat in 3.9 and 3.14 virtualenvs
-mise exec node@22 -- pnpm --filter @polaris-key/worker test -- gateMatrixCorpus   # Part C
 mise exec node@22 -- pnpm gen:corpus -- --check
 ```
 
@@ -199,6 +154,4 @@ mise exec node@22 -- pnpm gen:corpus -- --check
   matrix.
 - P1b-04's `config-matrix.json` and every later corpus file should run in the browser job too. P4-06
   adds the zstd probe to the floor job, and P4-18 adds `dcz` to the browser job.
-- `gateMatrixCorpus.test.ts` makes the Worker the oracle for `gate-matrix.json`; P0-04 and later
-  gate changes keep it green.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1b-05 done`.
