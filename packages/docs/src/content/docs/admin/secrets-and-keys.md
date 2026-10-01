@@ -119,8 +119,10 @@ The rules, all enforced by the Worker rather than by the console:
   is no endpoint that returns a value.
 - **Every use is audited.** Only the Distribution service can open one, and each open writes an
   `outlet_credential.use` row to the product's activity log with actor `system:distribution` and
-  what it was for (for example `asc:poll`) — including opens that failed. Connectors cache the
-  short-lived tokens they mint, so this is tens of rows a day per credential, not one per request.
+  what it was for (for example `asc:poll`) — including opens that failed. Connectors check their
+  cache of short-lived tokens first and open the credential only when they need a fresh token, so
+  this is tens of rows a day per credential, not one per request; a request served from the cache
+  is not logged and does not move **Last used**.
   Your own writes are audited as `outlet_credential.set` and `outlet_credential.delete`.
 - **Deleted with the product,** and re-sealed by the KEK rotation sweep like everything else on
   this page (its own `outletCredentials` bucket in `GET /manage/api/products/kek`).

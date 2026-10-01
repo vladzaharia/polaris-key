@@ -276,9 +276,11 @@ accessor.
   `src/services/distribution/**`, `core/outletTokens.ts` and the Core admin handler
   (`admin/handlers/outletCredentials.ts`); only the owner, the KEK re-seal sweep and
   `deleteProduct` name the table; only the vault, the owner, the token helpers and the sweep spell
-  the AAD kind (`test/outletCredentialReach.test.ts`). In particular Config (edge-mint) and
-  `core/products.ts` (`openProductSecret`) cannot reach it, and no manifest ingest, resync or
-  service hook can write the table.
+  the AAD kind; and only the owner and the Core admin handler name the writers
+  `putOutletCredential` / `deleteOutletCredential` (`test/outletCredentialReach.test.ts`). In
+  particular Config (edge-mint) and `core/products.ts` (`openProductSecret`) cannot reach it, and
+  no manifest ingest, resync, service hook — nor a Distribution connector, webhook handler or
+  route, even though Distribution may import the module to open — can write or delete a row.
 - **Platform-admin, write-only.** `PUT …/outlet-credentials/<id>` (platform admin only, checked
   again in the handler) validates per kind — a `.p8` must be a P-256 PKCS#8 key, a Google key must
   be RSA and name exactly `https://oauth2.googleapis.com/token`, so a stored credential can never
@@ -289,18 +291,27 @@ accessor.
   `outlet_credential.use` row (actor `system:distribution`, the `use`, the outcome) on every call,
   usable or not, and answers `null` — "unusable credential" — for an unknown id, a disabled row,
   the wrong kind, a value that will not open or re-validate, or an invalid `use`.
-- **Tokens sealed at rest.** `core/outletTokens.ts` caches Google access tokens in KV sealed under
-  the same AAD kind (id `token:<credential_id>:<hash>`; a credential id cannot contain `:`, so a
-  token slot can never be opened as a credential), keyed by a hash of the scopes **and** the key,
-  so a rotated key never serves its predecessor's token. App Store Connect JWTs (≤ 20 minutes) are
-  memoised per isolate only. A failed exchange throws with the HTTP status, never the body.
+- **Tokens sealed at rest, checked before any open.** `core/outletTokens.ts` caches Google access
+  tokens in KV sealed under the same AAD kind (id `token:<credential_id>:<hash>`; a credential id
+  cannot contain `:`, so a token slot can never be opened as a credential). The slot is a hash of
+  the scopes and the credential's non-secret **version marker** (`outletCredentialVersion`: a hash
+  of the sealed blob, read without decrypting), so a rotated value never serves its predecessor's
+  token and the cache is checked before the credential is opened: a hit costs no decryption, no
+  audit row and no D1 write. App Store Connect JWTs (≤ 20 minutes) are memoised per isolate only,
+  keyed the same way. A failed exchange throws with the HTTP status, never the body. Because a hit
+  hands out a store bearer token without an audited open, `core/outletTokens.ts` is itself a
+  custody boundary: only `src/services/distribution/**` may import it (the reach test).
 - **Rotation and deletion.** The KEK sweep counts and re-seals the table like `product_secrets`;
   deleting a product deletes its rows in the same batch.
 
 **Residual risk.** A11 is still under A1: a `PLATFORM_KEK` compromise opens every outlet
 credential. The admin plane (A4) can overwrite a credential (but not read one back). A connector
-bug in the Distribution service could misuse an opened value; the audit row per open is the
-detection. Least privilege per store (App Manager team key; one-app Play service account; Partner
+bug in the Distribution service could misuse an opened value or a cached token; the audit row per
+open is the detection, and because token caches are checked first, opens stay at tens a day per
+credential, so that signal is not buried. A path that needs the raw value on every request —
+verifying an inbound App Store notification against `asc-webhook-secret` (P5-02) — opens it every
+time, and each open is two D1 writes; such a path must authenticate or rate-limit the request
+before the open, or it becomes an unauthenticated write amplifier (the R1-04 class). Least privilege per store (App Manager team key; one-app Play service account; Partner
 Center Manager role) is documented for operators in `admin/secrets-and-keys.md` but cannot be
 verified by the Worker.
 

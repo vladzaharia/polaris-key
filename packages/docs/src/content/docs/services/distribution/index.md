@@ -91,8 +91,9 @@ A store connector signs in to its store with an **outlet credential** — an App
 key, the App Store webhook secret, a Google service account or a Partner Center app. Those live
 in Core, in their own sealed table, and Distribution is the only service that can open one
 (`core/outletCredentials.ts`, held to that by a test); every open is audited. The JWTs and access
-tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, so a credential
-is opened only when a fresh token is needed. Operators set them on the Secrets tab — see
+tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, and keyed by a
+non-secret version of the credential, so the cache is checked first and a credential is opened
+only when a fresh token is needed. Operators set them on the Secrets tab — see
 [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). No connector uses them
 yet; the App Store, Play and Microsoft Store connectors arrive in later packages.
 
