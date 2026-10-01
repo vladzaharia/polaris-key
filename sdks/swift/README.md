@@ -147,6 +147,33 @@ via `ConfigClientOptions`.
   methods `throw`, so a failed keychain write or an unwritable config dir surfaces as a typed
   `StoreError` instead of vanishing.
 
+**The keychain.** The token goes to the data-protection keychain with
+`kSecAttrAccessibleAfterFirstUnlock`. A macOS process without the entitlement it needs (an
+unsigned CLI, a test bundle) gets `errSecMissingEntitlement` and keeps using the file-based login
+keychain, which ignores the accessibility attribute. Reads try the data-protection keychain
+first and migrate a legacy item into it when it is available; `clearToken()` deletes from both.
+iOS always uses the data-protection keychain.
+
+**Store status.** `await client.storeStatus()` returns a `StoreStatus` (`backend`, `degraded`), or
+`nil` for a host store that does not implement `status()` (the protocol's default). The default
+store reports `.keychain`, degraded by `.legacyKeychain` on an unentitled macOS process and by
+`.keyringError` when the keychain refuses; `InMemoryStore` reports `.memory`.
+
+**Directories.** `CoreOptions` takes `dataDir`, `cacheDir` and `stateDir` (bases; `<product>` is
+appended), and `core.dirs` holds the resolved `ProductDirs`. Nothing is created until something
+uses one, and the config directory has not moved.
+
+| Base   | macOS                                     | iOS                                       |
+| ------ | ----------------------------------------- | ----------------------------------------- |
+| config | `~/.config`                               | Application Support (unchanged)           |
+| data   | `<Application Support>/polaris-key/data`  | `<Application Support>/polaris-key/data`  |
+| cache  | `<Caches>/polaris-key`                    | `<Caches>/polaris-key`                    |
+| state  | `<Application Support>/polaris-key/state` | `<Application Support>/polaris-key/state` |
+
+Application Support and Caches come from `FileManager` (the container's inside a sandbox).
+`ProductDirs.excludeFromBackup(_:)` sets `isExcludedFromBackup` on an existing directory (plus a
+`CACHEDIR.TAG` on macOS) and never throws.
+
 ### What the cache holds
 
 Only **signed artifacts** (§4.1): the compact JWS of each per-service document and of the trust

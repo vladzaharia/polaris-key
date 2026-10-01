@@ -258,6 +258,8 @@ Realistic trigger: a config directory restored from a backup, created by an inst
 
 **Fix direction:** expose the resolved backend on the store (`store.tokenBackend: "keyring" | "file"`) and surface it in `status()`/`pkey doctor`, so a product can warn. Optionally add a `requireKeyring` option that fails closed.
 
+**Status** — **Fixed in P1b-09** (2026-09-30). `client-core`'s `Store` gains an optional `status()` returning `{ backend, degraded?: { reason, detail? } }`, and Node (`client.storeStatus()`), Python (`client.store_status()`) and Swift (`client.storeStatus()`) expose it; both CLIs print a `Token store:` line. A `KeyringStore` that fell back reports `file` with `keyring-unavailable` or `keyring-error`; Python counts the `fail` and `null` keyring backends as unavailable, and Node pins Linux to the Secret Service instead of the in-memory kernel keyring. Writes are verified by reading back and reads are file-first, so a fallen-back token is never shadowed by an older keyring entry. Swift uses the data-protection keychain where entitled and reports `legacy-keychain` where not. Proven by `packages/sdk-node/test/store.test.ts`, `sdks/python/tests/test_store_status.py` and `sdks/swift/Tests/PolarisKeyTests/KeychainStoreTests.swift`. The optional `requireKeyring` fail-closed switch is not built (an unowned follow-up).
+
 ---
 
 ### R4-12 — Swift discards Keychain status codes and has no token fallback

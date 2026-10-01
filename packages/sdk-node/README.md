@@ -14,8 +14,8 @@ corpus the Python and Swift SDKs run.
 pnpm add @polaris-key/node
 ```
 
-Node 22+. The OS keyring is an **optional** dependency (`@napi-rs/keyring`); without it the
-token falls back to a `0600` file under the config dir.
+Node 22+. The OS keyring is an **optional** dependency (`@napi-rs/keyring` ^2.1); without it the
+token falls back to a `0600` file under the config dir, and `await client.storeStatus()` says so.
 
 ## Quick start
 
@@ -79,12 +79,54 @@ one implementation, and every JS host consumes it.
 | `channel`          | Override `X-PKey-Channel` (default derived from `version`): `stable`, `beta`, `pr`/`pr-<n>`, `dev` or a manual name; `staging` is accepted.  |
 | `trustRefresh`     | Refresh the trust manifest on Core's own cadence inside `sync()` (default true).                                                             |
 | `store`            | A `Store` (default `KeyringStore`; `InMemoryStore` for tests).                                                                               |
-| `configDir`        | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                                                     |
+| `configDir`        | Config base; `<product>` is appended. Holds the token file, device id and cache (default `$XDG_CONFIG_HOME` or `~/.config`, on every OS).    |
+| `dataDir`          | Data base; `<product>` is appended. Default in the table below.                                                                              |
+| `cacheDir`         | Cache base; `<product>` is appended. Default in the table below.                                                                             |
+| `stateDir`         | State base; `<product>` is appended. Default in the table below.                                                                             |
 | `requestTimeoutMs` | Per-request deadline (default 15000; `0` disables).                                                                                          |
 | `expectedServices` | What this build expects the product to run — the capability fallback when discovery has not been fetched.                                    |
 
 Per-service inputs ride their own bags: `config: { localOverrides, envPrefix, env }`,
 `license: { fingerprint }`, `devices: { probes, fingerprint }`.
+
+### Directories
+
+`client.core.dirs` holds the four resolved directories (`config`, `data`, `cache`, `state`),
+each already ending in `<product>`. Nothing is created until something uses one; the config
+directory is where it has always been.
+
+| Base   | Linux and other POSIX                                         | macOS                                             | Windows                            |
+| ------ | ------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
+| config | `$XDG_CONFIG_HOME` or `~/.config`                             | same as Linux                                     | same as Linux (`~\.config`)        |
+| data   | `$XDG_DATA_HOME/polaris-key` or `~/.local/share/polaris-key`  | `~/Library/Application Support/polaris-key/data`  | `%LOCALAPPDATA%\polaris-key\data`  |
+| cache  | `$XDG_CACHE_HOME/polaris-key` or `~/.cache/polaris-key`       | `~/Library/Caches/polaris-key`                    | `%LOCALAPPDATA%\polaris-key\cache` |
+| state  | `$XDG_STATE_HOME/polaris-key` or `~/.local/state/polaris-key` | `~/Library/Application Support/polaris-key/state` | `%LOCALAPPDATA%\polaris-key\state` |
+
+The XDG variables count only when set, non-empty and absolute. `resolveDirs()` is the pure
+resolver; `excludeFromBackup(dir)` marks an existing directory (`CACHEDIR.TAG` on POSIX, plus
+`tmutil addexclusion` on macOS; `not-applicable` on Windows) and never throws.
+
+### Token store status
+
+`await client.storeStatus()` returns `{ backend, degraded? }`, or `null` for a host store
+without `status()`. The default `KeyringStore` reports `keyring`, or `file` with a reason:
+
+- `keyring-unavailable`: `@napi-rs/keyring` cannot load (including inside a Node
+  single-executable build, which cannot load the native addon), or, on Linux, there is no
+  Secret Service. Linux entries are pinned to the Secret Service, never the in-memory kernel
+  keyring, so a headless host keeps its token in the `0600` file across reboots.
+- `keyring-error`: the keyring loaded but failed, or an earlier write fell back to the file (the
+  next token write moves it to the keyring).
+
+The CLI `status` command prints the same as a `Token store:` line.
+
+### Linux and containers
+
+The fingerprint anchor and the device id read `/etc/machine-id`, else
+`/var/lib/dbus/machine-id`; DMI files are never read, so root and non-root agree. A container
+with neither file has no anchor and cannot enrol without a licence key: mount the host's
+`/etc/machine-id` read-only, or create one and keep it in a volume. Never bake one into an
+image.
 
 ## Capabilities, fail-closed
 

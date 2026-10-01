@@ -68,9 +68,10 @@ Packs (P4) need proper data and cache directories
   - Python `sdks/python/src/polaris_key/devices/store.py:170-231` and `core/context.py:125-128`;
   - Swift `sdks/swift/Sources/PolarisKeyCore/Store.swift:213-284` (`defaultConfigDir`, `setToken`)
     and `PolarisKey/PolarisKeyClient.swift:363` (`storeFailure()`).
-- The corpus generator: `tools/sign-corpus.ts:2117-2307` (the fingerprint helpers, then
-  `buildFingerprintCorpus` at `:2207-2307`; `main()` at `:2334-2379`; corrected by the P1b-09
-  plan); the runners
+- The corpus generator: `tools/sign-corpus.ts:3657-4305` (the fingerprint helpers at `:3657`,
+  P1b-09's derivation sections and their self-check at `:3747-4173`, then
+  `buildFingerprintCorpus` at `:4175`; `main()` at `:4308`; re-anchored after P1-01 moved the
+  file); the runners
   `conformance/runners/node/fingerprint.test.ts`, `sdks/python/tests/test_fingerprint_conformance.py`,
   `sdks/swift/Tests/PolarisKeyTests/FingerprintConformanceTests.swift`,
   `packages/worker/test/fingerprintCorpus.test.ts`.

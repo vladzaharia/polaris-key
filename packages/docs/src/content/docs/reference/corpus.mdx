@@ -31,6 +31,8 @@ only corpus. `corpusVersion 2`,
 
 ## Fingerprint corpus (`fingerprint.json`): 6 vectors, 4 device-id derivations, component order `machineUuid` → `boardSerial` → `cpuModel` → `primaryMac` → `bootVolumeUuid` → `ramBucket` → `machineModel`
 
+Source-rule sections (WIRE-CONTRACT-V3 §6.1): `windowsCim` 17, `linuxAnchor` 10, `ramBuckets` 13, plus the pinned `windowsCimCommand`.
+
 ## Stage matrix (`stage-matrix.json`): 56 rows, 7 guard cases
 
 Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach.

@@ -45,12 +45,12 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 Four files, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
-| File                | Contents                                                                                         |
-| ------------------- | ------------------------------------------------------------------------------------------------ |
-| `cases.json`        | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles.    |
-| `gate-matrix.json`  | The client gate's decision table — every input combination and the state it must produce.        |
-| `fingerprint.json`  | Hardware-fingerprint and device-id derivation vectors.                                           |
-| `stage-matrix.json` | The boot stage machine (client boot behaviour, outside the wire contract): rows and guard cases. |
+| File                | Contents                                                                                                                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cases.json`        | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles.                                                                                                                   |
+| `gate-matrix.json`  | The client gate's decision table — every input combination and the state it must produce.                                                                                                                       |
+| `fingerprint.json`  | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`. |
+| `stage-matrix.json` | The boot stage machine (client boot behaviour, outside the wire contract): rows and guard cases.                                                                                                                |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the

@@ -33,15 +33,23 @@ call site is named.
 Seven components, each hashed independently on-device. Any component that cannot be read is
 omitted rather than substituted.
 
-| Component        | Source                                                                    | Purpose                                                                   |
-| ---------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `machineUuid`    | macOS `IOPlatformUUID` · Windows `MachineGuid` · Linux DMI `product_uuid` | The anchor: identifies the machine across upgrades                        |
-| `boardSerial`    | Platform serial / baseboard serial                                        | Distinguishes otherwise-identical machines                                |
-| `cpuModel`       | CPU brand string + logical core count                                     | Detects a mainboard/CPU swap                                              |
-| `primaryMac`     | Lowest non-loopback MAC                                                   | Detects a NIC change                                                      |
-| `bootVolumeUuid` | Boot volume UUID / volume serial                                          | Detects a disk replacement or reimage                                     |
-| `ramBucket`      | Total RAM, rounded down to a power of two in GiB                          | Coarse on purpose — a 15.9-vs-16.0 GiB report must not look like a change |
-| `machineModel`   | Hardware model identifier                                                 | Distinguishes machine classes                                             |
+| Component        | Source                                                                                                                                             | Purpose                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `machineUuid`    | macOS `IOPlatformUUID` · Windows registry `MachineGuid` · Linux `/etc/machine-id`, else `/var/lib/dbus/machine-id` · iOS `identifierForVendor`     | The anchor: identifies the machine (on Linux, the OS install) across upgrades      |
+| `boardSerial`    | macOS `IOPlatformSerialNumber` · Windows `Win32_BaseBoard.SerialNumber` (PowerShell `Get-CimInstance`) · not read on Linux or iOS                  | Distinguishes otherwise-identical machines                                         |
+| `cpuModel`       | CPU brand string + logical core count                                                                                                              | Detects a mainboard/CPU swap                                                       |
+| `primaryMac`     | Lowest non-loopback MAC                                                                                                                            | Detects a NIC change                                                               |
+| `bootVolumeUuid` | macOS boot volume UUID · Windows `vol C:` serial · Linux `findmnt -no UUID /`                                                                      | Detects a disk replacement or reimage                                              |
+| `ramBucket`      | Total RAM in whole GiB, rounded down to a power of two; omitted below 1 GiB                                                                        | Coarse on purpose: stable while the reported total stays between two powers of two |
+| `machineModel`   | macOS `hw.model` · Windows `Win32_ComputerSystem.Model` (PowerShell `Get-CimInstance`) · Linux `/sys/class/dmi/id/product_name` · iOS `hw.machine` | Distinguishes machine classes                                                      |
+
+The exact derivation rules are normative in WIRE-CONTRACT-V3 §6.1 and pinned by the conformance
+corpus. **No DMI serial or product UUID is read on Linux** (`product_uuid` and `board_serial` are
+root-only, so reading them made the fingerprint depend on the process's privilege). A Linux host
+with no usable machine-id — which includes most container images — therefore has no anchor
+component, and cannot obtain a keyless (free-tier) licence; activating with a licence key still
+works. In a container, mount the host's `/etc/machine-id` read-only, or create one and keep it in a
+volume.
 
 **The browser SDK collects no hardware fingerprint at all.** Canvas/WebGL-style browser
 fingerprinting is unreliable, actively degraded by browsers, and privacy-hostile; the browser
