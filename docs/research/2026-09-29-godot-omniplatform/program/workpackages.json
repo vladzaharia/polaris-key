@@ -668,7 +668,7 @@
       "optional": false,
       "refs": ["PARITY §8", "notes/A2 §6 §9.5"],
       "brief": "wp/P1b-08-devicecode-edgemint-ports.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-09",
