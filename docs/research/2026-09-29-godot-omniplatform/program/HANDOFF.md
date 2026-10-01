@@ -31,6 +31,12 @@ Exercised only against the in-memory test D1. Apply to staging, then production,
       `(product, version)` unique index for a non-unique one).
 - [x] `0024_product_web_origins.sql` (P0-05). — production, v0.3.0
 - [x] `0026_blob_store.sql` (P2-01; `blob_objects`, `blob_refs`). Production, v0.4.0, together with P0-12's `0025_a`/`0025_b`.
+- [ ] `0027_a`…`0027_i` (P2-03 release model v2: deliverables, builds, `seq`, `deliverable_id`,
+      artifact roles and locations, backfill). Apply in file order. From now on every deploy
+      re-runs `0027_i_index_assertion.sql` (the newest assertion) instead of `0018`, so a database
+      missing `idx_release_metadata_seq` fails the deploy: watch the first tagged deploy after this.
+- [ ] P2-03, real GitHub: a repository with more than 1,000 releases whose stable floor release is
+      beyond page 10 still gets a healthy store row (tested only with stubbed responses).
 
 ### P2-01 (blob store; Cloudflare)
 
