@@ -10,7 +10,11 @@
  * behaviour: R8-03 (no browser binding on any of the three flows) and R8-07
  * (`redirect_uris_json` fails open on NULL). See the Remediation section of the finding doc.
  * R8-02's two residuals (the device code in `verificationUri`, and `userCode` derived from it)
- * were closed by P1-06's RFC 8628 user-code page; their PoCs below now assert the fix.
+ * were closed by P1-06's RFC 8628 user-code page; their PoCs below now assert the fix. P1-06's
+ * security review found that the public user code then sufficed to confirm someone else's flow
+ * and, through the callback's enrolled-license merge, claim or retire the victim device's
+ * anonymous license; the callback no longer merges, and `R8-02 / P1-06 a user-code holder
+ * cannot claim…` asserts it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -22,6 +26,7 @@ import {
 } from "jose";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { verifyJws } from "@polaris-key/jws";
+import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
@@ -31,6 +36,7 @@ import {
   DJDL_CATALOG,
   TEST_KID,
   TEST_PUB,
+  mkReq,
 } from "../seed.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
 import {
@@ -53,7 +59,13 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 // The latter is the exact behavioural equivalent of the pre-split core function, so it is what
 // these tests assert against.
 import { requireLicensedDevice } from "../../src/services/license/auth.js";
-import { getDevice, getLicense } from "../../src/repo.js";
+import {
+  countActiveDevices,
+  getDevice,
+  getLicense,
+  getLicenseBySub,
+} from "../../src/repo.js";
+import { handleEnroll } from "../../src/services/license/enroll.js";
 import {
   handleMagicStart,
   handleMagicVerify,
@@ -921,6 +933,254 @@ describe("R8-02 device-code flow weaknesses", () => {
       if (res.status === 429) throttled++;
     }
     expect(throttled).toBeGreaterThan(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// R8-02 / P1-06 — a user-code holder must not claim or retire the device's license
+// ═══════════════════════════════════════════════════════════════════════════════
+// P1-06 security review: once the RFC 8628 page made the PUBLIC user code enough to confirm a
+// device-code flow, the callback's merge (`enrolledLicenseId` from `flow.deviceId`) let whoever
+// confirmed first and signed in under their OWN identity take the victim device's anonymous
+// enrolled license (Case 1: `sub` rewritten to the attacker) or retire it into theirs (Case 2:
+// devices migrated, row disabled, `enroll_hwid` kept so the machine could never enrol again).
+// FIXED (fail closed): the callback applies no enrolled license at all. A device-code sign-in
+// yields only what an ordinary sign-in for that identity yields.
+describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous license", () => {
+  let ctx: Ctx;
+  const VICTIM_MACHINE = {
+    machineUuid: "uuid-victim".padEnd(FINGERPRINT_COMPONENT_LENGTH, "x"),
+    boardSerial: "board-victim".padEnd(FINGERPRINT_COMPONENT_LENGTH, "x"),
+    cpuModel: "cpu-victim".padEnd(FINGERPRINT_COMPONENT_LENGTH, "x"),
+  };
+  const ATTACKER = {
+    sub: "attacker-sub",
+    email: "attacker@evil.example",
+    name: "Attacker",
+    groups: ["family"],
+    claims: {} as Record<string, unknown>,
+  };
+
+  beforeEach(async () => {
+    ctx = await makeCtx();
+    // Anonymous enrolment on, landing on the seeded `pro` tier.
+    await ctx.db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = ?",
+      JSON.stringify({ enabled: true, tierId: "pro", mode: "both" }),
+      "djdl",
+    );
+    ctx.product = (await loadProduct(ctx.env, ctx.db, "djdl"))!;
+  });
+
+  const enroll = (deviceId: string) =>
+    handleEnroll(
+      mkReq(
+        "POST",
+        { "x-pkey-device": deviceId },
+        { fingerprint: { components: VICTIM_MACHINE, hwid: "ignored" } },
+      ),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      NOW,
+    );
+
+  /** The reviewer's PoC up to the callback: the victim's enrolled game starts a device-code
+   *  flow; the attacker, holding ONLY the user code, GETs the page, POSTs its csrf with no
+   *  Origin (curl), and completes the IdP login as `attacker-sub`. */
+  async function attackerConfirmsVictimFlow(): Promise<{
+    victimLicense: string;
+    deviceCode: string;
+  }> {
+    const enrolled = await enroll("victim-game");
+    expect(enrolled.status).toBe(200);
+    const victimLicense = (
+      (await enrolled.json()) as { license: { id: string } }
+    ).license.id;
+
+    const started = await handleAuthDeviceStart(
+      req(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        body: JSON.stringify({ deviceId: "victim-game" }),
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    const { deviceCode, userCode } = (await started.json()) as {
+      deviceCode: string;
+      userCode: string;
+    };
+
+    const ENTRY = `${ORIGIN}/djdl/identity/auth/device`;
+    const page = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "198.51.100.66" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    const csrf = (await page.text()).match(/name="csrf" value="([^"]+)"/)![1]!;
+    const confirmed = await handleAuthDeviceEntry(
+      req(ENTRY, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "cf-connecting-ip": "198.51.100.66",
+        },
+        body: new URLSearchParams({ user_code: userCode, csrf }).toString(),
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    expect(confirmed.status).toBe(303);
+    const authorize = new URL(confirmed.headers.get("location")!);
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: ATTACKER.sub,
+        email: ATTACKER.email,
+        email_verified: true,
+        groups: ATTACKER.groups,
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    expect(
+      (await callback(ctx, authorize.searchParams.get("state")!)).status,
+    ).toBe(200);
+    return { victimLicense, deviceCode };
+  }
+
+  async function expectVictimUntouched(victimLicense: string): Promise<void> {
+    const row = await getLicense(ctx.db, "djdl", victimLicense);
+    expect(row?.sub).toBeNull();
+    expect(row?.origin).toBe("enroll");
+    expect(row?.status).toBe("active");
+    expect(row?.email).toBeNull();
+    // Its device was not migrated off it.
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      victimLicense,
+    );
+    expect(await countActiveDevices(ctx.db, "djdl", victimLicense)).toBe(1);
+    // No merge was audited.
+    const merges = await ctx.db.all(
+      "SELECT id FROM audit WHERE product = 'djdl' AND action = 'license.merge'",
+    );
+    expect(merges).toHaveLength(0);
+    // The victim machine can still enrol: it gets its own anonymous license back, not
+    // `enroll_claimed` (Case 1) or a disabled row (Case 2).
+    const again = await enroll("victim-game-reinstalled");
+    expect(again.status).toBe(200);
+    expect(
+      ((await again.json()) as { license: { id: string } }).license.id,
+    ).toBe(victimLicense);
+  }
+
+  it("ATTACK (Case 1): an attacker with no license of their own confirms by user code and signs in — the victim's anonymous license is NOT re-subjected to them", async () => {
+    const { victimLicense } = await attackerConfirmsVictimFlow();
+    await expectVictimUntouched(victimLicense);
+
+    // The attacker got exactly an ordinary sign-in: a NEW license of their own.
+    const own = await getLicenseBySub(ctx.db, "djdl", ATTACKER.sub);
+    expect(own).toBeTruthy();
+    expect(own!.id).not.toBe(victimLicense);
+    expect(own!.sub).toBe(ATTACKER.sub);
+    // So an ordinary sign-in from the attacker's own devices never reaches the victim's row.
+    const later = await activateFromIdentity(
+      ctx.db,
+      ctx.product,
+      ATTACKER,
+      NOW,
+    );
+    expect(later).toMatchObject({ licenseId: own!.id });
+  });
+
+  it("ATTACK (Case 2): an attacker who already has a license confirms by user code — the victim's devices are NOT migrated and the victim's license is NOT disabled", async () => {
+    const pre = await activateFromIdentity(ctx.db, ctx.product, ATTACKER, NOW);
+    const attackerLicense = (pre as { licenseId: string }).licenseId;
+
+    const { victimLicense } = await attackerConfirmsVictimFlow();
+    await expectVictimUntouched(victimLicense);
+
+    // The attacker's license is still just theirs, with none of the victim's devices on it.
+    expect((await getLicenseBySub(ctx.db, "djdl", ATTACKER.sub))?.id).toBe(
+      attackerLicense,
+    );
+    expect(await countActiveDevices(ctx.db, "djdl", attackerLicense)).toBe(0);
+  });
+
+  it("the attacker holds no device code, so nothing redeems the flow for them; only the device-code holder can complete it, onto the attacker's OWN license", async () => {
+    const { victimLicense, deviceCode } = await attackerConfirmsVictimFlow();
+    // A guessed device code redeems nothing.
+    const guessed = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({
+            deviceCode: "not-the-device-code",
+            deviceId: "attacker-device",
+          }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(guessed.token).toBeUndefined();
+    // The real device code, presented with another device id, redeems nothing either.
+    const wrongDevice = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "attacker-device" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(wrongDevice.token).toBeUndefined();
+    // And the victim's license is still theirs, anonymous and active.
+    const row = await getLicense(ctx.db, "djdl", victimLicense);
+    expect(row?.sub).toBeNull();
+    expect(row?.status).toBe("active");
+
+    // RESIDUAL (documented in THREAT-MODEL.md): the victim's own game, which holds the device
+    // code, keeps polling and is signed in to the ATTACKER's own license — a mis-binding the
+    // player sees on the device, bound only through the device-code holder. It moves that one
+    // device; it never touches the victim's license, which stays anonymous, active and
+    // re-enrollable, and it hands the attacker no token.
+    const polled = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "victim-game" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(polled.status).toBe("ready");
+    const attackerLicense = (await getLicenseBySub(
+      ctx.db,
+      "djdl",
+      ATTACKER.sub,
+    ))!.id;
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      attackerLicense,
+    );
+    const after = await getLicense(ctx.db, "djdl", victimLicense);
+    expect(after?.sub).toBeNull();
+    expect(after?.origin).toBe("enroll");
+    expect(after?.status).toBe("active");
+    const reenrolled = await enroll("victim-game");
+    expect(reenrolled.status).toBe(200);
+    expect(
+      ((await reenrolled.json()) as { license: { id: string } }).license.id,
+    ).toBe(victimLicense);
   });
 });
 

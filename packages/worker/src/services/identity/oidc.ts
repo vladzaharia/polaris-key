@@ -55,7 +55,6 @@ import {
 import {
   appendAudit,
   claimEnrolledLicense,
-  getDevice,
   getLicense,
   getLicenseBySub,
   getTier,
@@ -111,8 +110,9 @@ interface FlowRecord {
   nonce: string;
   redirectUri: string;
   returnTo?: string;
-  /** The device that started a device-code/loopback flow. Carried so sign-in can see which
-   *  license that device is already running on and claim it if it's an auto-issued one. */
+  /** The device that started a device-code flow. `pollAuthFlow` mints only for this device.
+   *  The callback deliberately does NOT use it to claim or migrate the license that device is
+   *  on: the flow is confirmed with the public user code (P1-06 security fix). */
   deviceId?: string;
   licenseId?: string;
   error?: string;
@@ -566,7 +566,10 @@ export async function activateFromIdentity(
   identity: OidcIdentity,
   now: number,
   /** The license the caller's device is already using, when it presented one. An anonymous
-   *  enrolled license found here is merged into the identity rather than abandoned. */
+   *  enrolled license found here is merged into the identity rather than abandoned. No HTTP
+   *  route passes it today: the sign-in callback must not, because a device-code flow is
+   *  confirmed with the public user code (P1-06). P1-07 owns the opt-in that will, from
+   *  `/device/poll`, after the player accepts the signed-in identity on the device. */
   opts: { enrolledLicenseId?: string | null } = {},
 ): Promise<
   { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
@@ -1435,16 +1438,19 @@ export async function handleAuthCallback(
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
-  // A device-code/loopback flow carries the device id that started it. If that device is
-  // already running on an auto-issued license, sign-in claims that license in place rather
-  // than stranding the user's existing devices and local state on an orphan.
-  const enrolledLicenseId = flow.deviceId
-    ? ((await getDevice(db, product.slug, flow.deviceId))?.license_id ?? null)
-    : null;
-
-  const result = await activateFromIdentity(db, product, identity, now, {
-    enrolledLicenseId,
-  });
+  // The callback never claims, migrates or disables an existing license (P1-06 security fix).
+  // The only flows that carry a device id are device-code flows (`/device/start`; a record
+  // with `deviceId` but no `viaDeviceCode` predates the marker and is the same kind of flow),
+  // and a device-code flow is confirmed with the PUBLIC user code — read off a stream, a photo
+  // or guessed. Applying the device's enrolled license here let whoever confirmed first and
+  // signed in under their own identity take the victim device's anonymous license (claim) or
+  // retire it into theirs (migrate). So a device-code sign-in yields exactly what an ordinary
+  // sign-in for that identity yields: its own license (`getLicenseBySub`) or a new one under
+  // the existing group/default-tier policy. Attaching the device's anonymous license to the
+  // account is P1-07's opt-in, applied at `/device/poll` by the device-code holder after the
+  // player accepts the signed-in identity on the device. A browser-redirect flow carries no
+  // device id and so never merged; its behaviour is unchanged.
+  const result = await activateFromIdentity(db, product, identity, now);
   if ("error" in result) {
     // Failed activation: drop the flow so the poller gets a generic error, not the reason.
     await env.HOT.delete(stateKey);
