@@ -38,9 +38,17 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 		t.check("mobile: the anchor is OS.get_unique_id()", raw.get("machineUuid", "") == OS.get_unique_id())
 		return true
 
-	t.check("desktop: the anchor (machineUuid) is present", raw.has(PKeyFingerprint.ANCHOR), str(names))
 	t.check("desktop: cpuModel is present", raw.has("cpuModel"))
 	var direct := _direct_anchor(platform)
+	if platform == "linux" and direct == "":
+		# A container image without /etc/machine-id (Docker's ubuntu, for one; docs/PRIVACY.md):
+		# rule 2 has no source, so the anchor is OMITTED, never replaced by a DMI file. The CI
+		# runners are VMs with a machine-id and take the strict path below.
+		t.info("no machine-id on this Linux host (a container?): checking the anchor is omitted")
+		t.check("linux without machine-id: the anchor is omitted", not raw.has(PKeyFingerprint.ANCHOR), str(names))
+		t.check("linux without machine-id: no boardSerial either", not raw.has("boardSerial"))
+		return true
+	t.check("desktop: the anchor (machineUuid) is present", raw.has(PKeyFingerprint.ANCHOR), str(names))
 	t.check("desktop: the anchor was read independently", direct != "", platform)
 	t.check("desktop: the fingerprint anchor is that value", raw.get(PKeyFingerprint.ANCHOR, "") == direct)
 	t.check("desktop: the device id's raw source is that value", PKeyFingerprint.device_id_raw() == direct)
