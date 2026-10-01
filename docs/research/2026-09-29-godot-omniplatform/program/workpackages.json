@@ -566,7 +566,7 @@
       "optional": false,
       "refs": ["PARITY §4.4"],
       "brief": "wp/P1b-02-sdk-constants.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-03",
@@ -634,7 +634,7 @@
       "optional": false,
       "refs": ["README §9.1 #14", "PARITY §8"],
       "brief": "wp/P1b-06-reregister-401.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-07",
@@ -865,7 +865,7 @@
       "optional": false,
       "refs": ["README §3.2", "README §3.8", "README §11 decision 16"],
       "brief": "wp/P2b-01-distribution-service.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2b-02",
