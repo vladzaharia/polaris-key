@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertTriangle, KeyRound, Trash2 } from "lucide-react";
+import { AlertTriangle, KeyRound, Pin, Trash2 } from "lucide-react";
 import {
   api,
   type OutletCredentialInfo,
@@ -16,6 +16,14 @@ import {
   CardHeader,
   CardTitle,
   ConfirmDialog,
+  Dialog,
+  DialogActionBar,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   EmptyState,
   Field,
   Input,
@@ -41,7 +49,18 @@ import { absoluteTime, relativeTime } from "./format.js";
  * Like product secrets this is WRITE-ONLY: the form's values are sent once and never read back;
  * the list shows metadata (kind, outlet, created, last used, last result) and never a value.
  * The full "Outlets and credentials" view with webhook health is not this package's.
+ *
+ * **Pins (P5-02f).** A kind that can reach several store apps (a team-wide App Store Connect key)
+ * carries the operator's pin: the one app its connector may read and act on. The connector stays
+ * off unless the product's `.pkey/distribution` names that same app, so a repo writer cannot aim
+ * the key elsewhere. The form asks for it with the key; each row shows it, and "Pin" changes it
+ * without the key material (an audited `outlet_credential.pin`).
  */
+
+interface PinSpec {
+  label: string;
+  help: string;
+}
 
 interface FieldSpec {
   key: string;
@@ -55,10 +74,16 @@ const KINDS: {
   value: OutletCredentialKind;
   label: string;
   fields: FieldSpec[];
+  /** The operator's pin, for a kind whose connector requires one. */
+  pin?: PinSpec;
 }[] = [
   {
     value: "asc-api-key",
     label: "App Store Connect API key",
+    pin: {
+      label: "App Store Connect app id (Apple ID)",
+      help: "The numeric Apple ID of the one app this key may read and act on for this product. The connector stays off unless .pkey/distribution names the same app.",
+    },
     fields: [
       { key: "keyId", label: "Key ID" },
       { key: "issuerId", label: "Issuer ID" },
@@ -104,6 +129,9 @@ const KINDS: {
 const KIND_LABEL = new Map<string, string>(
   KINDS.map((k) => [k.value, k.label]),
 );
+const KIND_PIN = new Map<string, PinSpec>(
+  KINDS.flatMap((k) => (k.pin ? [[k.value, k.pin] as const] : [])),
+);
 
 function LastResult({
   cred,
@@ -148,8 +176,18 @@ export function OutletCredentials({
   const [saving, setSaving] = React.useState(false);
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [pin, setPin] = React.useState("");
+  const [pinning, setPinning] = React.useState<OutletCredentialInfo | null>(
+    null,
+  );
+  const [newPin, setNewPin] = React.useState("");
+  const [pinError, setPinError] = React.useState<string | null>(null);
+  const [pinSaving, setPinSaving] = React.useState(false);
 
   const spec = KINDS.find((k) => k.value === kind)!;
+  /** The `meta` field a kind's pin is kept under (the server's word, when it has spoken). */
+  const pinField = (k: string): string | null =>
+    data?.pins?.[k]?.field ?? (k === "asc-api-key" ? "appleId" : null);
 
   const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -163,6 +201,10 @@ export function OutletCredentials({
       setFormError(`${missing.label} is required.`);
       return;
     }
+    if (spec.pin && !pin.trim()) {
+      setFormError(`${spec.pin.label} is required.`);
+      return;
+    }
     setSaving(true);
     setFormError(null);
     try {
@@ -173,6 +215,7 @@ export function OutletCredentials({
       await api.putOutletCredential(slug, credentialId, {
         kind,
         value,
+        ...(spec.pin ? { pin: pin.trim() } : {}),
         outletId: outletId.trim() || null,
       });
       invalidate(`outlet-credentials:${slug}`);
@@ -183,6 +226,7 @@ export function OutletCredentials({
       setId("");
       setOutletId("");
       setValues({});
+      setPin("");
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Couldn’t save");
     } finally {
@@ -205,6 +249,33 @@ export function OutletCredentials({
     } finally {
       setBusy(false);
       invalidate(`outlet-credentials:${slug}`);
+    }
+  };
+
+  const savePin = async (): Promise<void> => {
+    if (!pinning) return;
+    const value = newPin.trim();
+    if (!value) {
+      setPinError("An app id is required.");
+      return;
+    }
+    setPinSaving(true);
+    setPinError(null);
+    try {
+      await api.putOutletCredential(slug, pinning.id, {
+        kind: pinning.kind as OutletCredentialKind,
+        pin: value,
+      });
+      invalidate(`outlet-credentials:${slug}`);
+      toast.success(
+        "Credential pinned",
+        `“${pinning.id}” is pinned to ${value}.`,
+      );
+      setPinning(null);
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : "Couldn’t pin");
+    } finally {
+      setPinSaving(false);
     }
   };
 
@@ -259,11 +330,38 @@ export function OutletCredentials({
                     <td className="py-2 pr-3 font-mono text-xs">{cred.id}</td>
                     <td className="py-2 pr-3">
                       {KIND_LABEL.get(cred.kind) ?? cred.kind}
-                      {Object.keys(cred.meta).length ? (
-                        <p className="font-mono text-xs text-muted-foreground">
-                          {Object.values(cred.meta).join(" · ")}
-                        </p>
-                      ) : null}
+                      {(() => {
+                        const field = pinField(cred.kind);
+                        const shown = Object.entries(cred.meta)
+                          .filter(([k]) => k !== field)
+                          .map(([, v]) => v);
+                        return (
+                          <>
+                            {shown.length ? (
+                              <p className="font-mono text-xs text-muted-foreground">
+                                {shown.join(" · ")}
+                              </p>
+                            ) : null}
+                            {field ? (
+                              cred.meta[field] ? (
+                                <p className="text-xs text-muted-foreground">
+                                  Pinned to app{" "}
+                                  <span className="font-mono">
+                                    {cred.meta[field]}
+                                  </span>
+                                </p>
+                              ) : (
+                                <Badge
+                                  variant="warning"
+                                  title="Its connector stays off until the credential is pinned to the product's app."
+                                >
+                                  Not pinned
+                                </Badge>
+                              )
+                            ) : null}
+                          </>
+                        );
+                      })()}
                     </td>
                     <td className="py-2 pr-3">{cred.outletId ?? "—"}</td>
                     <td className="py-2 pr-3">
@@ -275,7 +373,21 @@ export function OutletCredentials({
                     <td className="py-2 pr-3">
                       <LastResult cred={cred} />
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="whitespace-nowrap py-2 text-right">
+                      {pinField(cred.kind) ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Pin ${cred.id}`}
+                          onClick={() => {
+                            setPinning(cred);
+                            setNewPin(cred.meta[pinField(cred.kind)!] ?? "");
+                            setPinError(null);
+                          }}
+                        >
+                          <Pin aria-hidden className="size-4" />
+                        </Button>
+                      ) : null}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -368,6 +480,17 @@ export function OutletCredentials({
               )}
             </Field>
           ))}
+          {spec.pin ? (
+            <Field label={spec.pin.label} help={spec.pin.help}>
+              <Input
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                inputMode="numeric"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </Field>
+          ) : null}
           {formError ? (
             <p role="alert" className="text-sm font-medium text-destructive">
               {formError}
@@ -380,6 +503,66 @@ export function OutletCredentials({
           </CardFooter>
         </form>
       </CardContent>
+
+      <Dialog
+        open={pinning !== null}
+        onOpenChange={(o) => !o && !pinSaving && setPinning(null)}
+      >
+        <DialogContent className="max-w-md" aria-describedby="pin-desc">
+          <DialogHeader>
+            <DialogTitle>Pin “{pinning?.id ?? ""}” to an app</DialogTitle>
+            <DialogDescription id="pin-desc">
+              The connector reads and acts on this app only, and stays off while
+              the product’s .pkey/distribution names another. Check that this is
+              the product’s app: the console’s release controls cannot be
+              undone. The change is audited.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <form
+              id="pin-form"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                void savePin();
+              }}
+            >
+              <Field
+                label={
+                  (pinning && KIND_PIN.get(pinning.kind)?.label) ??
+                  (pinning && data?.pins?.[pinning.kind]?.label) ??
+                  "App id"
+                }
+              >
+                <Input
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </Field>
+              {pinError ? (
+                <p
+                  role="alert"
+                  className="mt-2 text-sm font-medium text-destructive"
+                >
+                  {pinError}
+                </p>
+              ) : null}
+            </form>
+          </DialogBody>
+          <DialogActionBar>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={pinSaving}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" form="pin-form" loading={pinSaving}>
+              Pin
+            </Button>
+          </DialogActionBar>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={deleting !== null}

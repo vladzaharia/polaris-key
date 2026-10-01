@@ -14,14 +14,20 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
-## Do not store a real App Store Connect key yet (P5-02)
+## Storing a real App Store Connect key (P5-02, P5-02f)
 
-- [ ] **Wait for the operator-owned `appleId` pin before PUTting any `asc-api-key`.** Until it lands,
-      the connector acts on whatever `appleId` the repo's `.pkey/distribution` names, so a repo
-      writer could aim an operator's team key (and the irreversible `release` /
-      `phased-release/complete` controls) at another app the key can see (THREAT-MODEL residual
-      "a manifest-chosen app"). The pin is a lead follow-up in progress; this row is ticked when it
-      merges. The same applies to a Google Play service account once P5-03 lands.
+- [x] **Wait for the operator-owned `appleId` pin before PUTting any `asc-api-key`.** Done
+      2026-10-01: the pin landed with P5-02f (lead). The connector now runs only while the key's
+      pin equals the `appleId` in `.pkey/distribution`; a key without a pin, or a manifest naming
+      another app, leaves it inert and every control refused (THREAT-MODEL, "Closed: a
+      manifest-chosen app"). When you store the real key, **pin it to the product's app**: the
+      Secrets tab asks for the App Store Connect app id with the key, or send `"pin": "<Apple ID>"`
+      on the `PUT`. Check the number against App Store Connect (App Information → Apple ID) before
+      saving, and again before any re-pin.
+- [ ] **A Google Play service account waits for the same pin in P5-03.** Do not store a real
+      `google-service-account` until P5-03's connector adds its `packageName` entry to
+      `OUTLET_CREDENTIAL_PINS` and checks it in its setup (the mechanism is generic; see the doc
+      comment in `core/outletCredentials.ts`).
 
 ## Before djdl's next `.pkey` push (from v0.5.0)
 

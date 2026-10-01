@@ -6,7 +6,9 @@
  * In order, and why:
  *
  *   1. **Configured?** The product must declare an `app-store`/`testflight` outlet with an
- *      `appleId` and hold an `asc-api-key` and an `asc-webhook-secret` credential. Otherwise the
+ *      `appleId`, hold an `asc-api-key` PINNED to that `appleId` (P5-02f: a manifest naming
+ *      another app than the operator pinned mirrors nothing) and an `asc-webhook-secret`
+ *      credential. Otherwise the
  *      route answers `null` — Core's service not-found shape — exactly as it does with
  *      Distribution off: a product without the connector looks like one without Distribution. (A
  *      product with it answers step 2's 401, so its existence is not hidden.)

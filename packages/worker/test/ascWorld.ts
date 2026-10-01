@@ -2,8 +2,9 @@
  * Shared world for the App Store Connect connector suites (P5-02): the djdl release fixture
  * (Release + Distribution on, v1.0.0 and v1.1.0 synced), an `ios` build of v1.1.0 with build
  * number 42, `app-store` and `testflight` outlets for app 1234567890, an `asc-api-key` credential
- * whose `.p8` is generated here, an `asc-webhook-secret`, and the fake ASC server. No real key,
- * app or account anywhere.
+ * whose `.p8` is generated here, pinned by the operator to that app (P5-02f; `pin` overrides it,
+ * `pin: null` stores the key unpinned), an `asc-webhook-secret`, and the fake ASC server. No real
+ * key, app or account anywhere.
  */
 
 import { createHmac, generateKeyPairSync } from "node:crypto";
@@ -71,6 +72,7 @@ export async function putCredential(
   id: string,
   kind: "asc-api-key" | "asc-webhook-secret",
   value: Record<string, unknown>,
+  pin?: string,
 ): Promise<void> {
   const r = await putOutletCredential(w.env, w.db, {
     product: SLUG,
@@ -78,6 +80,7 @@ export async function putCredential(
     kind,
     outletId: null,
     value,
+    ...(pin !== undefined ? { pin } : {}),
     expiresAt: null,
     actor: "admin-1",
     now: NOW,
@@ -86,7 +89,13 @@ export async function putCredential(
 }
 
 export async function ascWorld(
-  opts: { apiKey?: boolean; secret?: boolean; outlets?: boolean } = {},
+  opts: {
+    apiKey?: boolean;
+    secret?: boolean;
+    outlets?: boolean;
+    /** The operator's pin on the `asc-api-key` (default: the outlets' app; `null`: none). */
+    pin?: string | null;
+  } = {},
 ): Promise<AscWorld> {
   const db = makeTestDb();
   await seedReleaseProduct(db);
@@ -118,11 +127,17 @@ export async function ascWorld(
   }
   const w = { env, db };
   if (opts.apiKey !== false)
-    await putCredential(w, "asc", "asc-api-key", {
-      keyId: "ABC123DEFG",
-      issuerId: "69a6de7f-0000-47e3-e053-5b8c7c11a4d1",
-      p8: ascP8(),
-    });
+    await putCredential(
+      w,
+      "asc",
+      "asc-api-key",
+      {
+        keyId: "ABC123DEFG",
+        issuerId: "69a6de7f-0000-47e3-e053-5b8c7c11a4d1",
+        p8: ascP8(),
+      },
+      opts.pin === null ? undefined : (opts.pin ?? APPLE_ID),
+    );
   if (opts.secret !== false)
     await putCredential(w, "asc-webhook", "asc-webhook-secret", {
       secret: WEBHOOK_SECRET,
