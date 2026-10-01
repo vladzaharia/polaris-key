@@ -13,6 +13,14 @@
  *     PUT  …/distribution/access                               set (and claim) one deliverable's
  *     POST …/distribution/access/revert                        hand the `app` row back to the
  *                                                              manifest
+ *     GET  …/distribution/availability?release=<id>            one release per outlet (P2b-03),
+ *                                                              derived records included
+ *     GET  …/distribution/submissions[?release=<id>]           submission states (P2b-03)
+ *     GET  …/distribution/keys                                 the key inventory + CI observations
+ *     PUT  …/distribution/keys                                 upsert one entry by purpose and
+ *                                                              fingerprint (adopts an observation)
+ *     DELETE …/distribution/keys/<purpose>/<sha256>            remove an entry or dismiss an
+ *                                                              observation
  *
  * Narrative-only (the console's API is not in the wire spec). Every write is audited with the
  * session's subject. The session, CSRF, rate-limit and platform-admin gates run in
@@ -21,7 +29,8 @@
  * The outlets themselves are manifest-owned (`.pkey/distribution`); only the capability override
  * is the operator's, and only in the narrowing direction — `capabilities.ts` explains why. The
  * rollout verbs are the same implementation CI reaches (`rollouts.ts`); delivery access is
- * `access.ts`.
+ * `access.ts`; availability, submissions and the key inventory are `availability.ts` — the first
+ * two read-only here (CI and, later, connectors write them), the inventory operator-owned.
  */
 
 import { ErrorCode } from "../../core/errors.js";
@@ -64,6 +73,20 @@ import {
   rolloutRecord,
   type RolloutVerb,
 } from "./rollouts.js";
+import {
+  AVAILABILITY_STATES,
+  KEY_PURPOSES,
+  SUBMISSION_STATES,
+  availabilityFor,
+  deleteKey,
+  findRelease,
+  inventory,
+  isKeyPurpose,
+  observations,
+  shortFingerprint,
+  submissionsFor,
+  upsertKey,
+} from "./availability.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 
 /** The console's view of one outlet. */
@@ -104,6 +127,9 @@ export async function handleDistributionAdmin(
   const slug = product.slug;
   if (rest[0] === "rollouts") return handleRolloutsAdmin(ctx);
   if (rest[0] === "access") return handleAccessAdmin(ctx);
+  if (rest[0] === "availability" || rest[0] === "submissions")
+    return handleAvailabilityAdmin(ctx);
+  if (rest[0] === "keys") return handleKeysAdmin(ctx);
   if (rest[0] !== "outlets") return null;
 
   if (rest.length === 1) {
@@ -350,4 +376,132 @@ async function handleAccessAdmin(
       : `Set the ${deliverable} delivery access of ${slug} from ${before} to ${body.mode}`,
   );
   return adminJson(await accessView(ctx));
+}
+
+// ── Availability and submissions (P2b-03) ────────────────────────────────────────────────────
+
+/** Read-only: CI reports them today, store connectors later (P5-02 to P5-04). */
+async function handleAvailabilityAdmin(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response | null> {
+  const { req, db, product, rest, hooks } = ctx;
+  if (rest.length !== 1) return null;
+  if (req.method !== "GET")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const release = new URL(req.url).searchParams.get("release");
+  const read = { db, product: product.slug, hooks };
+
+  if (rest[0] === "submissions") {
+    return adminJson({
+      states: SUBMISSION_STATES,
+      submissions: await submissionsFor(read, release ?? undefined, {
+        includeRemoved: true,
+      }),
+    });
+  }
+
+  if (!release)
+    return err(422, ErrorCode.BadRequest, "release is required", {
+      fields: ["release"],
+    });
+  const catalog = hooks.releaseCatalog();
+  const found = catalog ? await findRelease(catalog, release) : null;
+  if (!found) return adminNotFound();
+  const removed = new Set(
+    (await listOutlets(db, product.slug))
+      .filter((o) => o.removed_at !== null)
+      .map((o) => o.outlet_id),
+  );
+  return adminJson({
+    releaseId: found.releaseId,
+    deliverableId: found.deliverableId,
+    states: AVAILABILITY_STATES,
+    availability: (
+      await availabilityFor(read, release, { includeRemoved: true })
+    ).map((r) => ({ ...r, outletRemoved: removed.has(r.outletId) })),
+  });
+}
+
+// ── The key inventory (P2b-03) ───────────────────────────────────────────────────────────────
+
+async function keysView(
+  ctx: Pick<ServiceContext, "db" | "product">,
+): Promise<Record<string, unknown>> {
+  return {
+    purposes: KEY_PURPOSES,
+    keys: await inventory(ctx.db, ctx.product.slug),
+    observations: await observations(ctx.db, ctx.product.slug),
+  };
+}
+
+async function handleKeysAdmin(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response | null> {
+  const { req, db, product, session, now, rest } = ctx;
+  const slug = product.slug;
+
+  if (rest.length === 1) {
+    if (req.method === "GET") return adminJson(await keysView(ctx));
+    if (req.method !== "PUT")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const body = await readBody(req);
+    const result = await upsertKey(
+      db,
+      slug,
+      {
+        purpose: body.purpose,
+        sha256: body.sha256,
+        outlet: body.outlet,
+        notes: body.notes,
+        registered: body.registered,
+      },
+      now,
+    );
+    if (!result.ok)
+      return err(result.status, ErrorCode.BadRequest, result.message, {
+        reason: result.reason,
+        ...(result.fields ? { fields: result.fields } : {}),
+      });
+    const k = result.key;
+    const label = `${k.purpose} key ${shortFingerprint(k.sha256)}`;
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "distribution.key.upsert",
+      { kind: "key", id: `${k.purpose}:${k.sha256}` },
+      (result.created
+        ? `Added the ${label} to the inventory`
+        : result.adopted
+          ? `Adopted the CI-observed ${label} into the inventory`
+          : `Updated the ${label}`) +
+        (k.registered
+          ? " (registered for Android developer verification)"
+          : ""),
+    );
+    return adminJson({ key: k, ...(await keysView(ctx)) });
+  }
+
+  if (rest.length !== 3) return null;
+  if (req.method !== "DELETE")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const purpose = rest[1] as string;
+  const sha256 = rest[2] as string;
+  if (!isKeyPurpose(purpose)) return adminNotFound();
+  const removed = await deleteKey(db, slug, purpose, sha256);
+  if (!removed) return adminNotFound();
+  const observation = removed.source === "ci";
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    observation ? "distribution.key.dismiss" : "distribution.key.delete",
+    { kind: "key", id: `${purpose}:${sha256}` },
+    observation
+      ? `Dismissed the CI-observed ${purpose} key ${shortFingerprint(sha256)}`
+      : `Removed the ${purpose} key ${shortFingerprint(sha256)} from the inventory`,
+  );
+  return adminJson(await keysView(ctx));
 }
