@@ -15,7 +15,7 @@ import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust.js";
 import { dispatchService } from "./core/registry.js";
-import { SERVICES } from "./mount.js";
+import { BYTE_ROUTES, SERVICES } from "./mount.js";
 import { handleAdmin } from "./admin/index.js";
 import { handleDocs } from "./docs.js";
 // The root customer portal is a PLATFORM surface implemented by the Identity service: one
@@ -26,6 +26,7 @@ import { handleGithubWebhook } from "./githubWebhook.js";
 import { notFound } from "./core/errors.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
+import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "discovery",
@@ -43,6 +44,11 @@ export async function dispatch(
   db: Db,
 ): Promise<Response> {
   const url = new URL(req.url);
+  // The bytes host (P2-01) reaches ONLY its byte-route allowlist — never the console, the
+  // portal, `/docs` or a product route. With `BLOB_ORIGIN` unset this is always false, and
+  // everything below runs exactly as it did before the bytes host existed.
+  if (isBytesHost(url, env))
+    return dispatchBytesHost(req, env, db, BYTE_ROUTES);
   const route = matchRoute(url.pathname);
   const now = Math.floor(Date.now() / 1000);
 

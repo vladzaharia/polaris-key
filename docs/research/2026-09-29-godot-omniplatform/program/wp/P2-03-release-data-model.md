@@ -92,6 +92,10 @@ every later release, distribution and wire v4 package names its tables.
 - `TABLE_OWNERS` entries under `release`; regenerate `reference/data-model.mdx`. Update
   `services/release/truth-store.md` and add the terms deliverable, build, artifact role, promote,
   pin and yank to `start/concepts.md` (README §3.1: "the first implementing PR").
+- **Wave-1 sync:** **Fold P0-02's floors.** `release_channel_floors` rows move into `release_channel_policy.min_supported` and the two candidate-filter columns (`stable_tag_pattern`, `ignore_tags_json`) are inherited. Floor rows that cannot be cleared today become clearable: a floor on a manual channel later removed from the manifest returns 404 at the floor endpoint, and a `beta` floor recorded before a `channel_workflow` was configured returns 422.
+- **Wave-1 sync:** **Bare-tag/`v`-tag ambiguity.** When both `v1.2.0` and `1.2.0` exist, `latest` picks the later-published one, but the appcast enclosure (`/release/dl/1.2.0/…`) looks up `tags/v1.2.0` first, so the DMG can come from a different release than the item's Sparkle signature. Resolve the enclosure by release id, not by re-deriving the tag, or refuse the ambiguity.
+- **Wave-1 sync:** **Store status for big repos.** `releaseStoreStatements` treats a floor release it did not see as gone; for a repo above 1,000 releases the store row can say `blocked` while the live route still serves the floor via its tag lookup. Make the store row agree.
+- **Wave-1 sync:** **ignoreTags length.** `release.schema.json` `ignoreTags` `maxLength: 255` counts code points while the validator's `value.length` counts UTF-16 units; align them when the schema is next touched (rule 9).
 
 **Out** (and where it belongs instead):
 

@@ -579,6 +579,11 @@ describe("R11-05 product scoping", () => {
       // 0018_index_assertion.sql — a single-row deploy-time assertion about the SCHEMA, which
       // is platform-wide by definition. It holds no tenant data of any kind.
       "schema_index_assertion",
+      // 0026_blob_store.sql — content-addressed objects are SHARED: one stored blob can be
+      // referenced by several products, so the row is keyed by its storage key alone. Tenancy
+      // lives in `blob_refs`, which IS product-first (checked below by this same loop), and
+      // every byte route asks `hasRef(db, product, key)` before serving.
+      "blob_objects",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

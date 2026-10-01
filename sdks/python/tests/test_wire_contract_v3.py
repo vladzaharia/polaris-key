@@ -1,3 +1,4 @@
+# @pkey-feature core.verify core.cache core.sync
 """Wire contract v3 regression suite — every audit PoC, inverted, re-expressed against v3.
 
 This is the direct heir of ``test_wire_contract_v2.py``. Each test asserts that an attack

@@ -1,3 +1,4 @@
+// @pkey-feature ui.kit
 // Copy-mapping tests for the drop-in login/gate UI. SwiftUI view rendering can't be unit-tested
 // headlessly, so the gate-state → copy mapping is factored into the pure
 // `PolarisCopy.message(for:allowedRange:)` (see PolarisTheme.swift). These tests pin that

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/parity/manifest.schema.json",
+  "title": "Polaris Key SDK parity manifest (<sdk>/parity.json)",
+  "description": "One SDK's declaration, per registry feature, of `implemented`, `na` or `planned` (PARITY §3.1). tools/parity-check.ts validates it against this schema and against conformance/parity/features.json: every registry id must appear, an implemented entry needs a test tagged `@pkey-feature <id>` under testRoots, an N/A must be one the registry allows, and a planned entry names an open work package or is unowned with a note.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sdk", "runtimes", "testRoots", "features"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "sdk": {
+      "description": "The SDK id, as listed in the registry's `sdks`.",
+      "$ref": "#/$defs/slug"
+    },
+    "runtimes": {
+      "description": "The runtimes this SDK runs on (registry `runtimes` ids).",
+      "type": "array",
+      "items": { "$ref": "#/$defs/slug" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "traits": {
+      "description": "SDK-wide traits (registry `traits` ids), e.g. `headless`.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/slug" },
+      "uniqueItems": true
+    },
+    "testRoots": {
+      "description": "Repo-relative directories or files the checker scans for `@pkey-feature` tags.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9._/-]+$" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "features": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
+      },
+      "additionalProperties": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "reason": {
+      "enum": ["runtime", "outlet", "product", "dependency", "version"]
+    },
+    "note": { "type": "string", "minLength": 1 },
+    "except": {
+      "description": "Runtimes on which this SDK declares the feature N/A while the rest of the entry's status holds elsewhere.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["runtime", "reason"],
+        "properties": {
+          "runtime": { "$ref": "#/$defs/slug" },
+          "reason": { "$ref": "#/$defs/reason" },
+          "note": { "$ref": "#/$defs/note" }
+        }
+      }
+    },
+    "entry": {
+      "oneOf": [
+        {
+          "title": "implemented",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "const": "implemented" },
+            "except": { "$ref": "#/$defs/except" },
+            "note": { "$ref": "#/$defs/note" }
+          }
+        },
+        {
+          "title": "na",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "runtime", "reason"],
+          "properties": {
+            "status": { "const": "na" },
+            "runtime": {
+              "description": "The runtime(s) or trait whose allowed N/A justifies this SDK-wide N/A. The runtimes named must cover every runtime the manifest lists (each with an allowed runtime/reason pair), unless one is a trait the manifest lists; a feature N/A on only some runtimes is `implemented` or `planned` with `except`.",
+              "oneOf": [
+                { "$ref": "#/$defs/slug" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/slug" },
+                  "minItems": 1,
+                  "uniqueItems": true
+                }
+              ]
+            },
+            "reason": { "$ref": "#/$defs/reason" },
+            "note": { "$ref": "#/$defs/note" }
+          }
+        },
+        {
+          "title": "planned, owned",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "wp"],
+          "properties": {
+            "status": { "const": "planned" },
+            "wp": {
+              "description": "The work package that closes the gap.",
+              "type": "string",
+              "pattern": "^[A-Z][A-Za-z0-9]*-[0-9]{2}$"
+            },
+            "except": { "$ref": "#/$defs/except" },
+            "note": { "$ref": "#/$defs/note" }
+          }
+        },
+        {
+          "title": "planned, unowned",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "unowned", "note"],
+          "properties": {
+            "status": { "const": "planned" },
+            "unowned": { "const": true },
+            "except": { "$ref": "#/$defs/except" },
+            "note": { "$ref": "#/$defs/note" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "$schema": "../../conformance/parity/manifest.schema.json",
+  "sdk": "node",
+  "runtimes": ["node"],
+  "traits": ["headless"],
+  "testRoots": [
+    "packages/sdk-node/test",
+    "conformance/runners/node",
+    "tools/gen-mirrors.test.ts"
+  ],
+  "features": {
+    "core.verify": {
+      "status": "implemented",
+      "note": "Verification is client-core's, which the Node SDK consumes directly; the Node runner drives it."
+    },
+    "core.cache": { "status": "implemented" },
+    "core.bundle": { "status": "implemented" },
+    "core.discover": { "status": "implemented" },
+    "core.sync": { "status": "implemented" },
+    "core.local": { "status": "implemented" },
+    "core.headers": {
+      "status": "planned",
+      "wp": "P1b-04",
+      "note": "Sends win32/x64 where other SDKs send other spellings."
+    },
+    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.caps": { "status": "planned", "wp": "P1b-10" },
+    "core.store": {
+      "status": "planned",
+      "wp": "P1b-09",
+      "note": "Falls back to a 0600 file when the keyring addon cannot load, without a surfaced degraded state."
+    },
+    "license.gate": { "status": "implemented" },
+    "license.activate": { "status": "implemented" },
+    "license.enroll": { "status": "implemented" },
+    "license.deactivate": { "status": "implemented" },
+    "license.entitlements": { "status": "implemented" },
+    "license.channels": { "status": "planned", "wp": "P1b-07" },
+    "license.reregister": { "status": "planned", "wp": "P1b-06" },
+    "config.resolve": { "status": "implemented" },
+    "config.list": { "status": "implemented" },
+    "config.secret": { "status": "implemented" },
+    "config.schema": { "status": "planned", "wp": "P1b-07" },
+    "config.mint": { "status": "planned", "wp": "P1b-08" },
+    "config.mirror": {
+      "status": "implemented",
+      "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
+    },
+    "devices.fingerprint": {
+      "status": "planned",
+      "wp": "P1b-09",
+      "note": "Two Windows components vanish without wmic; the Linux anchor depends on privilege."
+    },
+    "devices.facts": { "status": "implemented" },
+    "devices.register": { "status": "implemented" },
+    "devices.manage": { "status": "implemented" },
+    "devices.report": { "status": "implemented" },
+    "identity.oidc": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No browser sign-in in the Node SDK, and no work package ports it."
+    },
+    "identity.devicecode": {
+      "status": "planned",
+      "wp": "P1b-08",
+      "note": "The Electron desktop host bridge implements it; the Node SDK does not."
+    },
+    "release.changelog": { "status": "implemented" },
+    "release.download": { "status": "implemented" },
+    "release.record": { "status": "planned", "wp": "P3-04" },
+    "update.check": { "status": "implemented" },
+    "update.feed": { "status": "planned", "wp": "P3-04" },
+    "update.decide": { "status": "planned", "wp": "P3-04" },
+    "update.driver": {
+      "status": "planned",
+      "unowned": true,
+      "note": "Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it)."
+    },
+    "update.bootguard": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them."
+    },
+    "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "packs.plan": { "status": "planned", "wp": "P4-06" },
+    "packs.index": { "status": "planned", "wp": "P4-06" },
+    "packs.apply.full": { "status": "planned", "wp": "P4-06" },
+    "packs.apply.file": { "status": "planned", "wp": "P4-06" },
+    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
+    "packs.apply.delta": { "status": "planned", "wp": "P4-06" },
+    "packs.state": { "status": "planned", "wp": "P4-06" },
+    "packs.handlers": { "status": "planned", "wp": "P4-06" },
+    "packs.provides": { "status": "planned", "wp": "P4-20" },
+    "packs.transport.apple": {
+      "status": "na",
+      "runtime": "node",
+      "reason": "runtime"
+    },
+    "packs.transport.play": {
+      "status": "na",
+      "runtime": "node",
+      "reason": "runtime"
+    },
+    "packs.transport.steam": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner."
+    },
+    "packs.transport.msix": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No work package owns the MSIX optional-package transport (P5-08 Out)."
+    },
+    "packs.transport.flatpak": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
+    },
+    "ui.stages": { "status": "planned", "wp": "P1-09" },
+    "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
+    "commerce.receipt": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+    }
+  }
+}

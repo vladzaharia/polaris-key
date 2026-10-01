@@ -1,3 +1,4 @@
+// @pkey-feature core.store
 // KeychainStore file-handling regressions: R4-09 (created world-readable, then chmod'd, with
 // both calls error-swallowed), R4-10 (no symlink guard on either the read or the write path) and
 // R4-12 (a swallowed device-id write mints a fresh random id — and burns a seat — on every
