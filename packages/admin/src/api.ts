@@ -119,16 +119,27 @@ export interface OutletCredentialInfo {
   lastError: string | null;
 }
 
+/** A kind's operator-owned pin (P5-02f): the `meta` field it is kept under and its label. */
+export interface OutletCredentialPinSpec {
+  field: string;
+  label: string;
+}
+
 export interface OutletCredentialsResponse {
   ok: true;
   kinds: OutletCredentialKind[];
+  /** Kind → its pin, for the kinds that carry one (an `asc-api-key`'s app id). */
+  pins?: Record<string, OutletCredentialPinSpec>;
   credentials: OutletCredentialInfo[];
 }
 
 export interface PutOutletCredentialBody {
   kind: OutletCredentialKind;
-  /** The kind's value object; a Google key may be its JSON file as a string. */
-  value: Record<string, unknown> | string;
+  /** The kind's value object; a Google key may be its JSON file as a string. Omitted with `pin`
+   *  alone, to re-pin a stored credential without its value. */
+  value?: Record<string, unknown> | string;
+  /** The operator's pin: the one store app the credential may be used for (P5-02f). */
+  pin?: string;
   outletId?: string | null;
   expiresAt?: number | null;
 }
