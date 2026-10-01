@@ -85,7 +85,8 @@ export interface PortalArtifact {
   arch: string | null;
   sizeBytes: number | null;
   sha256: string | null;
-  access: "public" | "authenticated" | "licensed" | string;
+  /** Distribution's delivery access for the release's deliverable (P2b-04). */
+  access: "public" | "authenticated" | "licensed" | "entitled" | string;
   canDownload: boolean;
 }
 

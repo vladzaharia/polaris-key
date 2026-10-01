@@ -1,15 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import type { ServicesResponse } from "../src/api.js";
+import type { RolloutsResponse, ServicesResponse } from "../src/api.js";
 import { resetCache } from "../src/context.js";
 
 const services = vi.fn<(slug: string) => Promise<ServicesResponse>>();
+const rollouts = vi.fn<(slug: string) => Promise<RolloutsResponse>>();
 
 vi.mock("../src/api.js", async () => {
   const actual =
     await vi.importActual<typeof import("../src/api.js")>("../src/api.js");
-  return { ...actual, api: { services: (slug: string) => services(slug) } };
+  return {
+    ...actual,
+    api: {
+      services: (slug: string) => services(slug),
+      rollouts: (slug: string) => rollouts(slug),
+    },
+  };
 });
+
+const EMPTY_ROLLOUTS: RolloutsResponse = {
+  rollouts: [],
+  effect: { reachesDevices: false, note: "" },
+};
 
 const { Distribution } = await import("../src/views/Distribution.js");
 
@@ -30,13 +42,16 @@ function state(on: Partial<Record<string, boolean>>): ServicesResponse {
 }
 
 /**
- * The Distribution overview (P2b-01): the release ← distribution ← update chain, and which Core
- * descriptor hook answers for this product. Read-only — there is no Distribution admin API yet.
+ * The Distribution overview: the release ← distribution ← update chain, which Core descriptor
+ * hook answers for this product, and (P2b-04) the outlet rollouts, read-only, with the caveat
+ * that a halt does not reach devices until the signed feed carries it.
  */
 describe("Distribution — overview", () => {
   beforeEach(() => {
     resetCache();
     services.mockReset();
+    rollouts.mockReset();
+    rollouts.mockResolvedValue(EMPTY_ROLLOUTS);
   });
   afterEach(cleanup);
 
@@ -45,7 +60,7 @@ describe("Distribution — overview", () => {
       state({ release: true, distribution: true, update: true }),
     );
     render(<Distribution slug="djdl" />);
-    const table = await screen.findByRole("table");
+    const table = (await screen.findAllByRole("table")).at(-1)!;
     for (const hook of ["releaseCatalog", "delivery", "outletCapabilities"]) {
       const row = within(table).getByText(hook).closest("tr")!;
       expect(within(row).getByText("answering")).toBeTruthy();
@@ -58,10 +73,42 @@ describe("Distribution — overview", () => {
     // can still say it — the view must report what the hooks would actually answer.
     services.mockResolvedValue(state({ distribution: true }));
     render(<Distribution slug="djdl" />);
-    const table = await screen.findByRole("table");
+    const table = (await screen.findAllByRole("table")).at(-1)!;
     const catalog = within(table).getByText("releaseCatalog").closest("tr")!;
     expect(within(catalog).getByText("null")).toBeTruthy();
     const delivery = within(table).getByText("delivery").closest("tr")!;
     expect(within(delivery).getByText("answering")).toBeTruthy();
+  });
+
+  it("lists outlet rollouts and says a halt does not stop devices yet (P2b-04)", async () => {
+    services.mockResolvedValue(
+      state({ release: true, distribution: true, update: true }),
+    );
+    rollouts.mockResolvedValue({
+      rollouts: [
+        {
+          deliverableId: "app",
+          outletId: "direct",
+          channel: "stable",
+          releaseId: "v1.4.0",
+          rolloutBp: 2500,
+          state: "halted",
+          mirrored: false,
+          source: "ci",
+          startedAt: 1,
+          updatedAt: 2,
+          updatedBy: "ci:static:tok",
+        },
+      ],
+      effect: { reachesDevices: false, note: "" },
+    });
+    render(<Distribution slug="djdl" />);
+    const row = (await screen.findByText("v1.4.0")).closest("tr")!;
+    expect(within(row).getByText("25%")).toBeTruthy();
+    expect(within(row).getByText("halted")).toBeTruthy();
+    expect(
+      screen.getByText(/does not stop devices yet/, { selector: "p" }),
+    ).toBeTruthy();
+    expect(screen.getByText(/yank it or pin the channel/)).toBeTruthy();
   });
 });
