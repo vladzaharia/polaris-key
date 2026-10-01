@@ -1,16 +1,16 @@
 # P5-05 Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding
 
-| Field       | Value                                                                                                                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P5: Distribution connectors and native plugins                                                                                                                                                                                        |
-| Size        | 2–3 engineer-weeks                                                                                                                                                                                                                    |
-| Depends on  | [P3-10](P3-10-godot-updater.md), [S-01](S-01-apple-background-assets.md)                                                                                                                                                              |
-| Unblocks    | [P5-08](P5-08-platform-pack-transports.md), [P6-01](P6-01-commerce-bridge.md), [P6-02](P6-02-trust-tiers.md)                                                                                                                          |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                    |
-| Plan mode   | no                                                                                                                                                                                                                                    |
-| Gates       | `ci:macos` with the Xcode 26 SDK (the Swift job runs `macos-15` today); `parity.json` for Godot (and Swift if it adopts the target)                                                                                                   |
-| Human input | Apple developer account (Team ID, an App ID with the App Groups capability, sandbox in-app purchase products in App Store Connect, a Sandbox Apple Account); test devices on iOS 17.4+ and iOS 26; TestFlight access for the test app |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                             |
+| Field       | Value                                                                                                                                                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P5: Distribution connectors and native plugins                                                                                                                                                                                           |
+| Size        | 2–3 engineer-weeks                                                                                                                                                                                                                       |
+| Depends on  | [P3-10](P3-10-godot-updater.md), [S-01](S-01-apple-background-assets.md)                                                                                                                                                                 |
+| Unblocks    | [P5-08](P5-08-platform-pack-transports.md), [P6-01](P6-01-commerce-bridge.md), [P6-02](P6-02-trust-tiers.md)                                                                                                                             |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                                                                       |
+| Gates       | `ci:macos` with the Xcode 26 SDK (the Swift job runs `macos-15` today); `parity.json` for Godot (and Swift if it adopts the target)                                                                                                      |
+| Human input | Apple developer account (Team ID, an App ID with the App Groups capability, sandbox in-app purchase products in App Store Connect, a Sandbox Apple Account); test devices on iOS 17.4+ and iOS 26.4+; TestFlight access for the test app |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                |
 
 ## Goal
 
@@ -56,11 +56,17 @@ Group that S-01 proved are added to the exported Xcode project by a repeatable s
 **In:**
 
 - A new SwiftPM library target, proposed name `PolarisKeyPlatform`, in `sdks/swift/`:
-  - `distributor`: `AppDistributor.current` behind `#available(iOS 17.4, *)`, returning the raw
+  - `distributor`: `AppDistributor.current` behind `#available(iOS 17.4, *)`, raced against a
+    deadline (proposed 2 s; a timeout returns `unavailable`, which means no evidence, because the
+    call never resolved in 100 s on the iOS 26.5 simulator:
+    [notes/S-06](../../notes/S-06-outlet-signals.md) §1 and rule 5), with the `web` case matched
+    only behind `#available(iOS 17.5, *)` (the case does not exist in 17.4). It returns the raw
     signal (`appStore`, `testFlight`, `marketplace:<bundleID>`, `web`, `other`, or `unavailable`),
-    read at every launch;
+    read at every launch and never cached;
   - `appTransaction`: environment, `originalAppVersion`, `appTransactionID` and the JWS
-    representation for server verification;
+    representation for server verification. This is for commerce only: outlet detection does not
+    call it (on macOS the `_MASReceipt` receipt, its `ProductionSandbox` marker and the signing
+    leaf are enough, notes/S-06 §2);
   - `assetPacks` (iOS/macOS 26+): ensure (single and batch), status stream, `localVersion`,
     `checkForUpdates`, `remove`, and `url(for:)` resolved off the main thread and never persisted;
   - `store`: product lookup, purchase with an `appAccountToken`, `currentEntitlements`, the
@@ -97,15 +103,41 @@ Group that S-01 proved are added to the exported Xcode project by a repeatable s
 - **No `.gdip`.** Engine-header-linked iOS plugins break across Godot minors (notes/E4 §2.2); the
   GDExtension C interface is the ABI-stable route.
 - **Floors.** The Swift package declares iOS 17.0 and macOS 14 (`Package.swift`), while
-  `AppDistributor` needs 17.4 and managed Background Assets needs 26.0. Guard with `#available` and
-  return `unavailable`; do not raise the package floor. Compiling `AssetPackManager` needs the
+  `AppDistributor` needs 17.4 and the managed Background Assets part needs **26.4**: the class is
+  26.0, but `getLocalStatusOfAssetPackWithIdentifier:`, `assetPackIsAvailableLocallyWithIdentifier:`
+  and `ensureLocalAvailabilityOfAssetPack:requireLatestVersion:` are 26.4 (notes/S-01 §Environment,
+  API availability). Guard with `#available(iOS 26.4, *)` and return `unavailable` below it, so
+  26.0–26.3 devices take the `pkey-cdn` fallback; do not raise the package floor. On iOS 27 and
+  later, get packs from `getManifestWithCompletionHandler:` (`#available(iOS 27, *)`) instead of
+  the deprecated `getAllAssetPacks`/`getAssetPack(withID:)`. Compiling `AssetPackManager` needs the
   Xcode 26 SDK, which is why the CI job moves to `macos-26`.
 - **Sideload builds ship no extensions.** Free Apple IDs get 3 apps and 10 App IDs a week and each
   extension uses one (report §4.1). The facade reports Background Assets as unsupported with
   reason `outlet` in such builds.
 - **Background Assets rules.** Resolve `url(for:)` fresh on every launch and never persist it; the
-  extension must not carry the device token or fingerprint (notes/E9 §7.1); the self-hosted managed
-  protocol is undocumented, so only Apple-hosted packs are supported.
+  extension must not carry the device token or fingerprint (notes/E9 §7.1). Only Apple-hosted packs
+  are supported: self-hosted managed packs would use the manifest `ba-package download-manifest`
+  writes, but `pkey-cdn` already covers non-store outlets (notes/S-01).
+- **S-01 recipe and lessons** ([notes/S-01](../../notes/S-01.md) §Recommendation). The patch is
+  `prototype/apple-ba/patch/patch_ba.rb` (Ruby `xcodeproj` 1.27, in place and idempotent): target
+  type `com.apple.product-type.extensionkit-extension`, id `<app id>.BackgroundDownload`, a
+  `StoreDownloaderExtension`, `EXExtensionPointIdentifier =
+com.apple.background-asset-downloader-extension`, versions copied from the app, App Group on both
+  targets, embed into `$(EXTENSIONS_FOLDER_PATH)`. The extension's `IPHONEOS_DEPLOYMENT_TARGET` is
+  the higher of the app's and 26.0, and the app keeps its own floor: copying an app floor below 26
+  (Godot's default export writes 15.0) fails the build, because `StoreDownloaderExtension` and
+  `AssetPack` are iOS 26 (measured, notes/S-01 §Results 1). Build the shim at the app's floor, not
+  at 26.4, and guard every Background Assets call. In the binding: never touch `sharedManager` unless
+  the `BA*` Info.plist keys are present (it traps); `url(for:)` returns a path for files that do not
+  exist, so check existence; after `ensure` fails, re-check `getLocalStatus` and treat `downloaded`
+  as ready (the simulator reports "Couldn't communicate with a helper application" after complete
+  downloads); an update replaces the file at the same path while an open mount keeps the old
+  bytes, so apply updates at the next launch; give the xcframework its own bundle id (an id equal
+  to the app's blocks install).
+- **Simulator.** The official 4.7.2 iOS template's simulator `libgodot.a` is x86_64 only. CI on
+  Apple Silicon needs Rosetta or an arm64 simulator slice built from the same tag (`scons
+platform=ios target=template_release arch=arm64 simulator=yes`, about 6 minutes), and the
+  Compatibility renderer (the simulator template has no Metal or Vulkan).
 - **StoreKit.** Set `appAccountToken` from the value P6-01 issues; `finish()` only after the server
   has recorded the transaction. TestFlight and sandbox report `originalAppVersion` as `1.0`
   (notes/E1 §F2); do not use it there.
@@ -129,8 +161,10 @@ Group that S-01 proved are added to the exported Xcode project by a repeatable s
 
 ## Acceptance criteria
 
-- [ ] `swift test` covers each module against fakes, including `unavailable` below iOS 17.4 and
-      below 26.0.
+- [ ] `swift test` covers each module against fakes, including `unavailable` below iOS 17.4 and,
+      for Background Assets, below 26.4 (a 26.0–26.3 fake reports `unavailable`),
+      `unavailable` when a fake `DistributorSource` never resolves within the deadline, and no
+      `web` result below iOS 17.5.
 - [ ] The xcframework builds for `ios-arm64` and the simulator in CI on `macos-26`.
 - [ ] Headless Godot tests show every `PKeyApple` call returns `Unsupported` (reason `runtime`) on
       desktop and (reason `dependency`) when the class is missing.

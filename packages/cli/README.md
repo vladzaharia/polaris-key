@@ -83,7 +83,7 @@ Manifest: invalid
 Modules: license, config, release, update
 Required secrets: OIDC_CLIENT_SECRET
 warning product/modules/config: Config is enabled without an activation method.
-error release//: Releases are enabled, so .pkey/release.yaml or release.json is required.
+error release/: Releases are enabled, so .pkey/release.yaml or release.json is required.
 ```
 
 The full code list is at [Manifest validation codes](/docs/reference/validation-codes/).
@@ -92,7 +92,9 @@ The full code list is at [Manifest validation codes](/docs/reference/validation-
 
 Runs `validate` first, always. Pass **both** `--base-url` and `--product` to additionally
 fetch `GET <base-url>/<product>/.well-known/polaris.json` and report whether discovery
-answers and which signing keys it exposes — a fast way to confirm a repo-linked product is
+answers (`Remote discovery: ok <url>`), which services it advertises as enabled
+(`Services enabled: license, config`, or `none`), and which signing keys it exposes
+(`Signing keys exposed: …`) — a fast way to confirm a repo-linked product is
 actually live before wiring an SDK to it. Omit either flag and the remote check is skipped
 with a note, and `doctor`'s exit code is `validate`'s; a failed _remote_ check (a non-2xx
 response) overrides that and exits `1` on its own, since "the product isn't answering" is a

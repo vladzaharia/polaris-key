@@ -53,7 +53,7 @@ any-older-version advantage of chunk sync over pairwise deltas was argued, not m
 
 **In:**
 
-- Download `Diceroll-<v>-desktop.pck` from five to ten tagged releases with `gh release download`
+- Download `Diceroll-<v>-desktop.pck` from five to ten tagged releases (five existed when S-03 ran) with `gh release download`
   (skip the rolling `channels` release). Record version, engine, size and entry count of each.
 - If time allows, a second texture family: the PCK inside the web zip or the Android APK.
 - Generalise `chunk_rerun.py` from one pair to a version list and to the pairs above.
@@ -85,7 +85,7 @@ any-older-version advantage of chunk sync over pairwise deltas was argued, not m
 - The request weight and run rule are the planner's (CONTENT §8.1: 16 KiB default). Report the
   choice at 64 KiB too, since high-latency and background sessions raise it.
 - Keep "first install" separate: a full download plus recording the seed index (CONTENT §8.1).
-- The desktop PCK is one ~73 MB container of everything. Where useful, also slice it by the
+- The desktop PCK is one ~85 MB container of everything (measured by S-03; notes/A4 §2.1 estimated ~73 MB). Where useful, also slice it by the
   proposed pack prefixes (notes/A4 §2.3 stages: `ui`, `core3d`, `audio`, `foes`, `nature`,
   `extra`) to estimate per-pack results; say that this is an estimate.
 

@@ -17,7 +17,7 @@ this page or fails the freshness gate.
 | --- | --- | --- |
 | `products` | 0001_init.sql | `slug`, `name`, `signing_kid`, `signing_pub`, `compat_min`, `compat_max`, `default_max_offline_days`, `default_device_limit`, `admin_group`, `branding_json`, `created_at`, `modified_at`, `release_source (0003)`, `status (0006)`, `deleted_at (0006)`, `fingerprint_policy_json (0010)`, `fingerprint_policy_source (0010)`, `auto_issue_json (0011)`, `auto_issue_source (0011)`, `services_json (0019)`, `services_source (0020)`, `compat_source (0022)`, `web_origins_json (0024)` |
 | `product_keys` | 0003_keyvault.sql | `product`, `kid`, `alg`, `public_b64url`, `enc_private_json`, `status`, `created_at`, `rotated_at`, `revoked_at (0021)` |
-| `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at` |
+| `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at`, `usage (0025)` |
 | `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)` |
 | `device_fingerprints` | 0010_fingerprint.sql | `product`, `device_id`, `hwid`, `components_json`, `anchor_hash`, `status`, `first_seen`, `last_seen`, `last_drift_at`, `last_drift_count` |
 | `device_facts` | 0010_fingerprint.sql | `product`, `device_id`, `os_name`, `os_version`, `os_build`, `kernel`, `cpu_model`, `cpu_cores`, `ram_mb`, `machine_model`, `locale`, `timezone`, `runtime_name`, `runtime_version`, `probes_json`, `updated_at` |
@@ -43,18 +43,23 @@ this page or fails the freshness gate.
 | `product_schema` | 0001_init.sql | `product`, `catalog_version`, `catalog_json`, `active`, `created_at` |
 | `profiles` | 0001_init.sql | `product`, `id`, `name`, `description`, `payload_json`, `modified_by`, `modified_at` |
 | `edge_mint_config` | 0001_init.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `auth_page_template`, `audience (0003)` |
+| `edge_mint_approvals` | 0025_b_edge_mint_approvals.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `open_registration_acknowledged`, `license_enabled`, `identity_enabled`, `oidc_provider`, `oidc_issuer`, `oidc_client_id`, `oidc_group_role_map_json`, `approved_at`, `approved_by` |
 
 ## release
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
 | `release_config` | 0001_init.sql | `product`, `gh_owner`, `gh_repo`, `gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`, `artifact_policy_json (0006)`, `metadata_access (0007)`, `artifacts_access (0007)`, `access_source (0022)`, `operator_policy_json (0022)`, `ignore_tags_json (0023)`, `stable_tag_pattern (0023)` |
-| `release_metadata` | 0007_backend_contracts.sql | `product`, `release_id`, `version`, `title`, `notes`, `commit_sha`, `source_url`, `metadata_access`, `artifacts_access`, `published_at`, `metadata_json`, `created_at`, `modified_at` |
-| `release_artifacts` | 0007_backend_contracts.sql | `product`, `release_id`, `artifact_id`, `name`, `kind`, `platform`, `arch`, `content_type`, `size_bytes`, `sha256`, `source_url`, `storage_key`, `sparkle_signature`, `access`, `metadata_json`, `created_at` |
+| `release_metadata` | 0007_backend_contracts.sql | `product`, `release_id`, `version`, `title`, `notes`, `commit_sha`, `source_url`, `metadata_access`, `artifacts_access`, `published_at`, `metadata_json`, `created_at`, `modified_at`, `deliverable_id (0027)`, `seq (0027)`, `channel (0027)` |
+| `release_artifacts` | 0007_backend_contracts.sql | `product`, `release_id`, `artifact_id`, `name`, `kind`, `platform`, `arch`, `content_type`, `size_bytes`, `sha256`, `source_url`, `storage_key`, `sparkle_signature`, `access`, `metadata_json`, `created_at`, `build_id (0027)`, `role (0027)`, `locations_json (0027)` |
 | `release_channels` | 0007_backend_contracts.sql | `product`, `channel`, `release_id`, `policy_json`, `created_at`, `modified_at` |
 | `release_channel_floors` | 0023_release_resolution.sql | `product`, `channel`, `version`, `release_id`, `raised_at`, `lowered_by`, `lowered_at` |
 | `release_health` | 0007_backend_contracts.sql | `product`, `subject_kind`, `subject_id`, `status`, `details_json` |
 | `release_download_tokens` | 0016_drop_dead_pii.sql (rebuilt 0016) | `product`, `token_hash`, `release_id`, `artifact_id`, `device_id`, `scope_json`, `expires_at`, `used_at`, `created_at`, `REFERENCES` |
+| `release_deliverables` | 0027_a_release_model.sql | `product`, `deliverable_id`, `kind`, `pack_type`, `def_json`, `def_source`, `created_at`, `modified_at` |
+| `release_builds` | 0027_a_release_model.sql | `product`, `release_id`, `build_id`, `platform`, `arch`, `format`, `build_number`, `variant_json`, `requires_json`, `min_os`, `created_at`, `modified_at` |
+| `release_channel_policy` | 0027_a_release_model.sql | `product`, `deliverable_id`, `channel`, `pointer_release_id`, `pinned`, `includes_json`, `min_supported`, `critical`, `source`, `created_at`, `modified_at`, `modified_by` |
+| `release_yanks` | 0027_a_release_model.sql | `product`, `release_id`, `reason`, `at`, `by` |
 
 ## identity
 

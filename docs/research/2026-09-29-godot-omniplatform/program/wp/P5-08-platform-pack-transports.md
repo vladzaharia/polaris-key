@@ -58,7 +58,8 @@ availability of those packs feeds readiness holds. This package closes the progr
 - **CLI and Action** (`packages/cli`), proposed commands:
   - `pkey transport apple-ba package --deliverable <packId> --release <v>`: writes the marker,
     generates `Manifest.json` (asset-pack id, download policy from the pack's `delivery`,
-    `fileSelectors`), runs `xcrun ba-package` (macOS or the Linux tools);
+    `fileSelectors`), runs `xcrun ba-package` on macOS (Apple's Linux tools sit behind a developer sign-in and are
+    unverified; S-01 hand-off);
   - `pkey transport apple-ba upload`: `POST /v1/backgroundAssets` (first time),
     `/v1/backgroundAssetVersions`, `/v1/backgroundAssetUploadFiles`, the part uploads and the commit,
     with CI's own ASC key (never the Worker's);
@@ -68,15 +69,29 @@ availability of those packs feeds readiness holds. This package closes the progr
   - `pkey transport steam-depot vdf`: app and depot build VDFs for a content-only build of the pack's
     depot on a branch, with `setlive` for named branches only;
   - each ends by calling `pkey distribution report` with the transport's availability.
-- **Asset-pack ids** carry the content level: `<pack>.c<contentApi>` (e.g. `foes.c3`), because a
-  live asset-pack version switches every installed app version (CONTENT §6.6).
+- **Asset-pack ids** carry the content level: `<pack>-c<contentApi>` (e.g. `foes-c3`; a dotted
+  pack id `diceroll.foes` maps to `diceroll-foes-c3`), because a live asset-pack version switches
+  every installed app version (CONTENT §6.6). App Store Connect accepts only alphanumerics and
+  hyphens, and an archived id can never be reused (notes/S-01 §5); validate with
+  `^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$` and at most 64 characters before the first upload.
+  The mapping is lossy (`diceroll.foes` and `diceroll-foes` both become `diceroll-foes-c3`), and a
+  collision would upload a new version into another pack's asset pack, permanently. Pack ids follow
+  P2-03's deliverable grammar `^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$`, so only `.` is rewritten to `-`
+  (anything else outside `[a-z0-9-]` is rejected as defence in depth). That grammar admits ids such
+  as `x-.foes` whose mapping has a double hyphen (`x--foes-c3`), which the regex rejects. Resolution
+  maps every `apple-ba` pack id of the product at once and fails with a typed error, before any
+  upload, when a mapped id collides with another pack's, fails the regex, or exceeds 64 characters
+  after the `-c<contentApi>` suffix. The first upload records the ASC asset-pack resource id against the pack
+  id, and later uploads refuse when the asset pack found by identifier is not that one (notes/S-01
+  §Recommendation; `asc/upload_pack.mjs --expect-resource`).
 - **Distribution:** link P5-02's `apple-ba` availability rows to pack releases through the uploaded
   asset-pack id and version; move P4-14's `dist_readiness` from `blocked` to `ready` when the new
   level's packs reach `READY_FOR_DISTRIBUTION`; list asset packs for levels no longer live as
   retire candidates, with the 200-pack and 200 GB quotas shown.
 - **Godot transports** in `addons/polaris_key/content/transports/`: `apple_ba.gd` (ensure,
   progress, fresh `url(for:)` path each launch), `play_pad.gd` (fetch, confirmation dialog on large
-  cellular downloads, absolute pack path), `steam.gd` (GodotSteam when present: install dir, DLC
+  cellular downloads, absolute pack path: `assetsPath() + "/<pack>.pck"`, re-read every launch, per
+  S-05 §4.2), `steam.gd` (GodotSteam when present: install dir, DLC
   installed, build id, beta name; read the marker from the depot; never write there). Each verifies
   the marker, then every file against the files index, before handing the pack to the handler.
 - `parity.json` for Godot: `packs.transport.apple`, `packs.transport.play`, `packs.transport.steam`.
@@ -90,7 +105,8 @@ availability of those packs feeds readiness holds. This package closes the progr
 - `msix-optional` and `flatpak-ext` transports: no work package owns them yet.
 - Paid-pack gating on stores (StoreKit, Billing, Steam DLC ownership) (→ [P6-01](P6-01-commerce-bridge.md)).
 - The native plugins themselves (→ [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md)).
-- Self-hosted managed Background Assets: the protocol is undocumented (notes/E1 §E7).
+- Self-hosted managed Background Assets: `pkey-cdn` covers non-store outlets (notes/E1 §E7,
+  notes/S-01).
 
 ## Design notes
 
@@ -103,7 +119,14 @@ availability of those packs feeds readiness holds. This package closes the progr
   with scripts never reaches `apple-ba`, `play-pad` or a Steam depot of a store build.
 - **Apple quotas and switching.** One live App Store version per asset pack; a new version switches
   every installed app version. Retire old `contentApi` packs promptly; whether the ASC API can
-  archive them is unverified, so the first cut lists candidates for the operator.
+  archive them was unverified before S-01: archiving is `PATCH /v1/backgroundAssets/{id}`
+  `{archived: true}` and is irreversible, so the first cut lists candidates for the operator.
+- **S-01 upload facts.** Start from `prototype/apple-ba/asc/upload_pack.mjs` (request shapes from
+  the ASC OpenAPI 4.5 spec). App Store review of a pack version is a `reviewSubmissionItems` item
+  with a `backgroundAssetVersion` relationship; external TestFlight review of a pack has no API
+  (`betaAppReviewSubmissions` relates only to builds), so it is an operator step in the UI.
+  `ba-package` output is not byte-reproducible (packaging time in the archive root and manifest):
+  hash the pack's inputs, never the `.aar`. Updates are whole-pack on the wire (notes/S-01 §3).
 - **PAD pins.** PAD packs change only with a new AAB; a `compatible` pack delivered by PAD is
   effectively pinned on Play. Its availability is the AAB's: take it from P5-03's Play mirror when
   present, otherwise from the CI report (P5-03 is not a declared dependency).
@@ -128,9 +151,12 @@ availability of those packs feeds readiness holds. This package closes the progr
 
 - [ ] `pnpm --filter @polaris-key/cli test` covers the Background Assets manifest, the Gradle
       modules (including texture suffixes) and the VDFs against golden files, and the upload
-      sequence against a fake ASC server.
+      sequence against a fake ASC server. The fake-server tests include a product whose pack ids
+      `x.foes` and `x-foes` map to the same asset-pack id, a pack id `x-.foes` that maps to a double
+      hyphen, and a 62-character pack id; each fails with a typed error before any request, and an upload whose found asset
+      pack is not the recorded resource id is refused.
 - [ ] Worker tests show a `BACKGROUND_ASSET_VERSION_APP_STORE_RELEASE_STATE_UPDATED` to
-      `READY_FOR_DISTRIBUTION` for `foes.c4` moves readiness to `ready` for the app release that
+      `READY_FOR_DISTRIBUTION` for `foes-c4` moves readiness to `ready` for the app release that
       needs level 4, and a `REJECTED` state leaves it `blocked`.
 - [ ] Headless Godot tests show each transport refuses a pack whose marker or file hash does not
       match, and returns `Unsupported` when its plugin is absent.
@@ -150,5 +176,5 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
 
 - `pkey transport …` commands and the Action inputs Diceroll's CI uses in D-05.
 - The `apple_ba`, `play_pad` and `steam` transports behind P4-08's transport interface.
-- The asset-pack id convention `<pack>.c<contentApi>`.
+- The asset-pack id convention `<pack>-c<contentApi>`.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P5-08 done`.

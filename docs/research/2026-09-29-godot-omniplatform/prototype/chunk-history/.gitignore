@@ -1,0 +1,5 @@
+# Downloaded Diceroll release assets and every derived output (recipes, indexes, bundles, deltas).
+# Private inputs: never commit them.
+data/
+out/
+__pycache__/

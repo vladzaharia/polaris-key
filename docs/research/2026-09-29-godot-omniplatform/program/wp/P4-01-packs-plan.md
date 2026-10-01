@@ -106,6 +106,19 @@ them once is cheaper than reconciling five PRs.
    `requires` (`engine`, `contentApi: {<appDeliverable>: range}`, `features`, `packs`). Release
    level: `deliverable`, `kind`, `version`, `seq`, `type`, `formatVersion`, `entitlement`,
    `provenance`. Reserve `chunks`, `provides`, `removes`.
+
+   **Files-index encoding (S-03; decide here).** The `files` reference above has no codec, so the
+   index is fetched as raw JSON. On the real 6,733-entry Diceroll desktop PCK, `pkey-files/1` is
+   1.37 MB raw and 0.34 MB as one zstd frame. Raw, it is 64% of the bytes of an N−1 per-entry delta
+   set and of the `file` strategy
+   ([notes/S-03 §4.5](../../notes/S-03-chunk-size-real-history.md#45-reading-the-tables)). Item 5's
+   per-entry `blob {sha256, bytes, codec}` would make the raw index larger still. Decide whether
+   `files` becomes `{format, layout, sha256, bytes, codec, size, gaps?}`. That shape follows item
+   4's rule, with `sha256`/`bytes` over the stored frame and `size` decoded. The decision changes
+   what every SDK's `file` and per-entry-delta paths download and parse, and it needs
+   `releaseRecordCases` and apply vectors. [P4-03](P4-03-ci-patch-artifacts.md) then stores the
+   index as frozen here.
+
 3. **Size.** Records obey the 65,536-byte decoded payload cap unless P3-01 changed it. Per-file
    detail therefore lives in hash-pinned side objects (the files index, per-file delta
    descriptors), never inline. State the worst case for the Diceroll-sized pack (625 entries).

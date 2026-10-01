@@ -7,6 +7,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  approveEdgeMintRecipe,
   seedProductSecret,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
@@ -28,6 +29,7 @@ import {
   setServices,
 } from "../src/repo.js";
 import { loadProduct } from "../src/core/products.js";
+import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleMintToken } from "../src/services/config/mint.js";
@@ -1019,6 +1021,95 @@ describe("admin api", () => {
     ]);
   });
 
+  it("the setup checklist flags an edge-mint recipe awaiting approval and a secret not marked edge-mint (P0-12)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      `INSERT INTO edge_mint_config
+         (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template)
+       VALUES ('djdl','music','ES256','MUSIC_KEY',NULL,'{}',3600,NULL,NULL)`,
+    );
+    // Configured, but as a GENERAL secret: the recipe could not sign with it.
+    await seedProductSecret(db, "djdl", "MUSIC_KEY", "pem");
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    type Setup = {
+      healthy: boolean;
+      missing: string[];
+      modules: Array<{
+        id: string;
+        status: string;
+        pendingApproval?: string[];
+      }>;
+      nextActions: Array<{ id: string }>;
+    };
+    const setup = async (): Promise<Setup> => {
+      const res = await dispatch(
+        mkReq("GET", "/api/products/djdl", { cookie }),
+        env,
+        db,
+        "/api/products/djdl",
+      );
+      return ((await res.json()) as { product: { setup: Setup } }).product
+        .setup;
+    };
+
+    let s = await setup();
+    expect(s.healthy).toBe(false);
+    expect(s.missing).toContain("edge mint: MUSIC_KEY is not marked edge-mint");
+    expect(s.missing).toContain("edge mint: recipe music awaits approval");
+    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
+      status: "needs-secret",
+      pendingApproval: ["music"],
+    });
+    expect(s.nextActions.map((a) => a.id)).toEqual(
+      expect.arrayContaining(["secret-usage:MUSIC_KEY", "edge-mint:music"]),
+    );
+
+    // Marked edge-mint: only the approval is left.
+    await seedProductSecret(db, "djdl", "MUSIC_KEY", "pem", "edge-mint");
+    s = await setup();
+    expect(s.modules.find((m) => m.id === "edgeMint")?.status).toBe(
+      "needs-approval",
+    );
+    expect(s.missing).not.toContain(
+      "edge mint: MUSIC_KEY is not marked edge-mint",
+    );
+
+    // Approved: the module is configured and the checklist item is gone.
+    await approveEdgeMintRecipe(db, "djdl", "music");
+    s = await setup();
+    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
+      status: "configured",
+      pendingApproval: [],
+    });
+    expect(s.nextActions.map((a) => a.id)).not.toContain("edge-mint:music");
+
+    // Anonymous enrolment makes the mint public: an approval without the acknowledgement no
+    // longer counts, and the recipe is back on the checklist.
+    await db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({ enabled: true, tierId: "free", mode: "anonymous" }),
+    );
+    s = await setup();
+    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
+      status: "needs-approval",
+      pendingApproval: ["music"],
+    });
+    await approveEdgeMintRecipe(db, "djdl", "music", {
+      acknowledgeOpenRegistration: true,
+    });
+    s = await setup();
+    expect(s.modules.find((m) => m.id === "edgeMint")?.status).toBe(
+      "configured",
+    );
+  });
+
   it("keys/rotate stages a new key, then break-glass activation retires the old key", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
@@ -1460,5 +1551,104 @@ describe("admin services enablement", () => {
     expect((await call(w, "GET", "/whatever")).status).toBe(404);
     expect((await call(w, "DELETE", "")).status).toBe(405);
     expect((await call(w, "GET", "/revert")).status).toBe(405);
+  });
+});
+
+describe("admin product setup: Sparkle warning", () => {
+  const SPARKLE =
+    "release: Sparkle public key not configured; appcasts may be unsigned";
+
+  async function warningsFor(opts: {
+    update: boolean;
+    policy: string | null;
+    withDmg?: boolean;
+  }): Promise<string[]> {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const services: ServicesMap = {
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: true },
+      update: { enabled: opts.update },
+      identity: { enabled: false },
+    };
+    await setServices(
+      db,
+      "djdl",
+      serializeServices({ services }),
+      "manifest",
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO release_config
+         (product, gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub,
+          artifact_policy_json)
+       VALUES ('djdl', 'acme', 'djdl', 42, 'djdl', NULL, ?)`,
+      opts.policy,
+    );
+    if (opts.withDmg) {
+      await db.run(
+        `INSERT INTO release_metadata
+           (product, release_id, version, metadata_access, artifacts_access, published_at,
+            created_at, modified_at)
+         VALUES ('djdl', 'rel_1', '1.0.0', 'public', 'public', ?, ?, ?)`,
+        NOW,
+        NOW,
+        NOW,
+      );
+      await db.run(
+        `INSERT INTO release_artifacts
+           (product, release_id, artifact_id, name, kind, access, created_at)
+         VALUES ('djdl', 'rel_1', 'a1', 'djdl-arm64.dmg', 'dmg', 'public', ?)`,
+        NOW,
+      );
+    }
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const res = await dispatch(
+      mkReq("GET", "/api/products/djdl", { cookie }),
+      env,
+      db,
+      "/api/products/djdl",
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      product: { setup: { warnings: string[] } };
+    };
+    return body.product.setup.warnings;
+  }
+
+  it("warns when Update is on and the product ships DMGs (default policy)", async () => {
+    expect(await warningsFor({ update: true, policy: null })).toEqual([
+      SPARKLE,
+    ]);
+  });
+
+  it("does not warn when Update is off", async () => {
+    expect(await warningsFor({ update: false, policy: null })).toEqual([]);
+  });
+
+  it("does not warn for a product that requires no DMG and has none", async () => {
+    expect(
+      await warningsFor({
+        update: true,
+        policy: JSON.stringify({ requireDmg: false }),
+      }),
+    ).toEqual([]);
+  });
+
+  it("warns when requireDmg is false but the latest release carries a DMG", async () => {
+    expect(
+      await warningsFor({
+        update: true,
+        policy: JSON.stringify({ requireDmg: false }),
+        withDmg: true,
+      }),
+    ).toEqual([SPARKLE]);
   });
 });

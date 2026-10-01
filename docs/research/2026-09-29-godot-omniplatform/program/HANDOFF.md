@@ -18,19 +18,19 @@ resource, and record the date and the person.
 
 ### P0-08 (unknown-slug tolerance)
 
-- [ ] Deploy to production a build containing P0-08; note the deploy in its PR description.
-- [ ] Only after that: allow P0-09 and P2b-01 to ship a new slug.
+- [x] Deploy to production a build containing P0-08; note the deploy in its PR description. — done 2026-09-30 (v0.3.0)
+- [x] Only after that: allow P0-09 and P2b-01 to ship a new slug. — unblocked 2026-09-30
 
 ### D1 migrations (P0-01, P0-02, P0-05, P2-01)
 
 Exercised only against the in-memory test D1. Apply to staging, then production, in number order.
 
-- [ ] `0022_*` (P0-01 operator ownership).
-- [ ] `0023_release_resolution.sql` plus `0023_release_resolution_stable_tag_pattern.sql` and
+- [x] `0022_*` (P0-01 operator ownership). — production, v0.3.0
+- [x] `0023_release_resolution.sql` plus `0023_release_resolution_stable_tag_pattern.sql` and
       `0023_release_resolution_ignore_tags.sql` (P0-02; one bare `ALTER` per file, swaps the
       `(product, version)` unique index for a non-unique one).
-- [ ] `0024_product_web_origins.sql` (P0-05).
-- [ ] `0026_blob_store.sql` (P2-01; `blob_objects`, `blob_refs`). `0025` is not used yet.
+- [x] `0024_product_web_origins.sql` (P0-05). — production, v0.3.0
+- [x] `0026_blob_store.sql` (P2-01; `blob_objects`, `blob_refs`). Production, v0.4.0, together with P0-12's `0025_a`/`0025_b`.
 
 ### P2-01 (blob store; Cloudflare)
 
@@ -49,9 +49,9 @@ Exercised only against the in-memory test D1. Apply to staging, then production,
 
 ### P2-01 (dl.plrs.im isolation; run from outside)
 
-- [ ] `curl -sI https://dl.plrs.im/manage` answers 404 with `X-Content-Type-Options: nosniff` and
+- [x] `curl -sI https://dl.plrs.im/manage` answers 404 with `X-Content-Type-Options: nosniff` and
       `Content-Security-Policy: sandbox; ...`.
-- [ ] The same for `https://dl.plrs.im./manage` (trailing dot).
+- [x] The same for `https://dl.plrs.im./manage` (trailing dot). — both verified 2026-09-30 after v0.4.0: 404, JSON, `CSP: sandbox; default-src 'none'; frame-ancestors 'none'`, `nosniff`.
 - [ ] Console session cookies are host-only: a browser signed in to `key.plrs.im` sends no cookie to
       `dl.plrs.im`.
 - [ ] Repeat for `dl-staging.plrs.im` and `dl-dev.plrs.im`.

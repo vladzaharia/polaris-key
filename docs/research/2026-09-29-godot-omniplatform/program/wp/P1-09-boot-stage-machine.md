@@ -44,7 +44,7 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   `conformance/runners/node/corpusV2.test.ts` (how a matrix is consumed).
 - `packages/client-core/src/{index.ts,gate.ts}` and `package.json` (subpath exports).
 - `sdks/python/tests/test_gate_matrix.py`, `sdks/swift/Tests/PolarisKeyTests/GateMatrixTests.swift`
-  (how the other runners load a matrix), `sdks/swift/Package.swift:107` (the Swift mirror).
+  (how the other runners load a matrix), `sdks/swift/Package.swift:111` (the Swift mirror).
 - `packages/docs/scripts/gen-reference.mjs` (the corpus page lists every family).
 
 ## Scope
@@ -55,7 +55,9 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   file format, the rows, the SDK order below, and the decisions for the human.
 - **Corpus:** `buildStageMatrixV1()` in `tools/sign-corpus.ts` writing
   `conformance/corpus/v2/stage-matrix.json` (`stageMatrixVersion: 1`, unsigned, like
-  `gate-matrix.json`), mirrored into the Swift and Godot mirrors, guarded by `--check`.
+  `gate-matrix.json`), mirrored into the Swift mirror and guarded by `--check`. The Godot mirror
+  (`GODOT_V2_RESOURCES`) does not exist until [P1-01](P1-01-godot-scaffold.md) adds it. If P1-01
+  lands first, the file joins that mirror here; otherwise P1-01 mirrors it.
 - **`client-core`:** `src/stages.ts` (`BootStage`, `BootEvent`, `BootState`,
   `initialBootState(opts)`, `bootTransition(state, event) -> {state, emits}`), exported from the
   barrel and as `@polaris-key/client-core/stages`; unit tests.
@@ -64,6 +66,10 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   (`PolarisKeyCore/Stages.swift`, `StageMatrixTests.swift` over `Resources/v2/`).
 - Docs: the corpus pages (`build/wire/corpus.md`, `contribute/corpus.md`), `gen-reference.mjs`
   for the new family, then `pnpm --filter @polaris-key/docs gen`.
+- **Parity:** [P1b-01](P1b-01-parity-registry.md) has landed, and its four manifests list
+  `ui.stages` as `planned` under this package. Mark it `implemented` in each, with
+  `@pkey-feature ui.stages` tags ([`plans/P1-09.md`](../plans/P1-09.md) §5); otherwise
+  `pnpm parity:check` rule 4 fails once this package is `done`.
 
 **Out** (and where it belongs instead):
 
@@ -72,16 +78,19 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
 - Renderers: React `<PolarisBoot>` and SwiftUI `PolarisBootView` (report §8 item 6; not owned by
   any work package yet), a terminal renderer for Node and Python (optional).
 - Implementing the boot guard (slots, staged swaps, restarts) (→ [P3-10](P3-10-godot-updater.md));
-  its rows are decided here (decision 5).
+  the launch-decision rows are pinned here, and the confirmation rows come from
+  [P3-02](P3-02-wire-v4-contract-corpus.md) (decision 5).
 - Pack rows for `fetch`/`mount` (size disclosure, cellular choice, pause, ordered mounts)
-  (→ [P4-08](P4-08-godot-packs.md) with [P4-04](P4-04-content-corpus-v1.md)).
+  (→ planned by [P4-01](P4-01-packs-plan.md) and emitted by
+  [P4-04](P4-04-content-corpus-v1.md); [P4-08](P4-08-godot-packs.md) implements the Godot host
+  side).
 - The update decision itself (→ P3's `update-matrix.json`); here `decide` takes its result as an
   input.
-- `sdks/*/parity.json` entries (after [P1b-01](P1b-01-parity-registry.md)).
 
 ## Design notes
 
-**Proposed shape** (the plan confirms or changes each name):
+**Proposed shape** (the plan confirms or changes each name; where they differ,
+[`plans/P1-09.md`](../plans/P1-09.md) §2 supersedes this list):
 
 - **Stages:** `shell`, `guard`, `sync`, `gate`, `decide`, `fetch`, `mount`, `ready`,
   `background`; terminal outcomes `ready`, `blocked`, `offline`, `error`, and `waiting` while the
@@ -153,19 +162,26 @@ proposes moving them to a follow-up and marking `ui.stages` `planned` for those 
 ## Acceptance criteria
 
 - [ ] The approved plan is merged before the first code commit.
-- [ ] `conformance/corpus/v2/stage-matrix.json` and its Swift and Godot mirrors are generated,
-      byte-identical, and `pnpm gen:corpus -- --check` fails if any of them changes.
-- [ ] `mise exec node@22 -- pnpm --filter @polaris-key/client-core test` and the Node runner pass
-      every row, asserting the stage sequence, the emitted events and the outcome.
+- [ ] `conformance/corpus/v2/stage-matrix.json` and its Swift mirror (and the Godot mirror, if
+      P1-01 has landed) are generated, byte-identical, and `pnpm gen:corpus -- --check` fails if
+      any of them changes.
+- [ ] The Node runner (`pnpm conformance`) passes every row, asserting the stage sequence, the
+      emitted events and the outcome, and every probe of the file's `accepts` table
+      ([`plans/P1-09.md`](../plans/P1-09.md) §4.1).
+- [ ] `mise exec node@22 -- pnpm --filter @polaris-key/client-core test` passes the unit
+      properties the corpus cannot express ([`plans/P1-09.md`](../plans/P1-09.md) §9): purity,
+      that an ignored event returns its input object, that malformed events are ignored, the
+      defaults, and that the gate's pass set equals `isUsable`. The rows and probes run in the
+      Node runner, not the `client-core` suite, as `bundleCases` do.
 - [ ] `( cd sdks/python && .venv/bin/python -m pytest -q tests/test_stage_matrix.py )` and
-      `( cd sdks/swift && swift test --filter StageMatrixTests )` pass every row.
+      `( cd sdks/swift && swift test --filter StageMatrixTests )` pass every row and every probe.
 - [ ] `bootTransition` is pure: no I/O, no clock, no randomness (a unit test calls it twice with
       the same input and compares).
 - [ ] `pnpm --filter @polaris-key/docs gen:check` passes and the corpus page lists
       `stage-matrix.json`.
 - [ ] The green gate passes (`AGENTS.md`), Python and Swift included.
-- [ ] Parity manifests mark `ui.stages` implemented for Node, React, Python and Swift (once P1b-01
-      has landed).
+- [ ] Parity manifests mark `ui.stages` implemented for Node, React, Python and Swift, and
+      `mise exec node@22 -- pnpm parity:check` passes.
 
 ## Verify
 
@@ -176,6 +192,7 @@ mise exec node@22 -- pnpm conformance
 ( cd sdks/python && .venv/bin/python -m pytest -q )
 ( cd sdks/swift && swift build && swift test )
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
+mise exec node@22 -- pnpm parity:check
 ```
 
 ## Hand-off
@@ -183,7 +200,11 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 - `@polaris-key/client-core/stages` (`bootTransition`, the stage, event and outcome names) and
   `stage-matrix.json`: P1-10 ports them to GDScript under the same names in snake_case and loads
   the Godot mirror in its runner.
-- P3-10 (guard rows) and P4-08 (pack rows) extend the same file under their own plans.
+- Later rows for P3-10 (boot confirmation) and P4-08 (packs) extend the same file. Neither package
+  is plan-mode, so [`plans/P1-09.md`](../plans/P1-09.md) §4.5 routes the extensions through
+  P3-01 and P3-02, and through P4-01 and P4-04. P3-02 and P4-04 are plan-mode and gated on the
+  corpus and all SDKs. P3-10 then implements only the host side of the confirmation rows, and
+  P4-06, P4-07 and P4-08 only the host side of the pack rows.
 - Renderers other than Godot are unowned; record that in the plan so the lead can schedule them.
 - Set the status with
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1-09 done`.

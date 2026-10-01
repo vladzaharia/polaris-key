@@ -65,9 +65,22 @@ authorised per request because a hash is never a secret
   object of the release is present with matching size and hash (checked through Core's blob refs);
   `embedded` per (app release, outlet) from the builds' `embeds`, read through the hook.
 - **Byte serving** of every pack object role through P2b-04's blob route: `GET` and `HEAD`, single
-  `Range`, `If-Range` on the strong `ETag`, `Repr-Digest: sha-256=:…:` (RFC 9530),
+  `Range` (a multi-range request gets the full 200; clients never send one, S-02), `If-Range` on
+  the strong `ETag` evaluated by the Worker, `Repr-Digest: sha-256=:…:` (RFC 9530),
   `Cache-Control: public, max-age=31536000, immutable, no-transform` for ungated objects, and CORS
-  exposure of `ETag, Content-Range, Repr-Digest` for `web`.
+  for `web`. CORS is P0-05's, not new code:
+  - bytes-host CORS is `core/cors.ts`, applied by `dispatchBytesHost` (`core/bytesHost.ts`
+    answers `OPTIONS` through `corsPreflight`). Its allow list already includes `Range`,
+    `If-Range` and `If-None-Match`, next to `Authorization` and the `X-PKey-*` headers that gated
+    delivery needs. Its expose list already has `ETag`, `Content-Range`, `Accept-Ranges`,
+    `Content-Length` and `Repr-Digest`. Keep both as they are.
+  - `Access-Control-Max-Age` stays `600`, chosen so that removing an origin takes effect soon.
+    Raise it only for the bytes host and only on purpose, recording the origin-removal
+    trade-off and that WebKit caps the preflight cache at 600 s anyway (Chromium at 7200 s).
+
+  A single `Range` is CORS-safelisted, but `If-Range` is not. Chromium 145 and WebKit 26
+  preflight every such request ([notes/S-02](../../notes/S-02.md) §4.4, §6 point 1).
+
 - **Gated delivery.** `dist_access` for a pack deliverable with `entitlement`: its objects are
   uploaded to and served from the gated prefix only; each request is authorised by device token
   and the licence's entitlement flag; responses are `private, no-store`. The public path never
@@ -117,6 +130,8 @@ authorised per request because a hash is never a secret
 - [ ] `GET` with `Range: bytes=100-199` returns 206 with the right bytes; `If-Range` with a wrong
       `ETag` returns the full object; `HEAD` returns size, `ETag` and `Repr-Digest`; no response
       carries `Content-Encoding`.
+- [ ] A multi-range request returns the full 200. A cross-origin `OPTIONS` preflight asking for
+      `range, if-range` returns 204 with those headers allowed.
 - [ ] A gated object: 401 without a device token, 403 without the flag, 200 with it and
       `Cache-Control: private, no-store`; the same hash on the public path returns 404.
 - [ ] A transport other than the three v1 ones is stored and reported unsupported.

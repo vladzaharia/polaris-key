@@ -91,7 +91,7 @@ function manifestValidationCodes() {
   unique.sort((a, b) => a[0].localeCompare(b[0]) || a[3].localeCompare(b[3]));
   return page(
     "Manifest validation codes",
-    "Every error and warning validateManifestDocuments can emit, extracted from the validator source.",
+    "Every error and warning validateManifestDocuments and validateIngestDocuments can emit, extracted from the validator source.",
     `The \`.pkey/\` validator (\`@polaris-key/manifest\`) aggregates ALL problems instead of
 stopping at the first; \`pkey validate\` and the console's link/resync surfaces show these
 codes with their JSON-pointer paths. ${unique.length} distinct emit sites.
@@ -260,7 +260,12 @@ const TABLE_OWNERS = {
     "blob_refs",
   ],
   license: ["licenses", "keys_index", "tiers", "license_profiles"],
-  config: ["product_schema", "profiles", "edge_mint_config"],
+  config: [
+    "product_schema",
+    "profiles",
+    "edge_mint_config",
+    "edge_mint_approvals",
+  ],
   release: [
     "release_config",
     "release_metadata",
@@ -269,6 +274,10 @@ const TABLE_OWNERS = {
     "release_channel_floors",
     "release_health",
     "release_download_tokens",
+    "release_deliverables",
+    "release_builds",
+    "release_channel_policy",
+    "release_yanks",
   ],
   identity: [
     "oidc_config",
