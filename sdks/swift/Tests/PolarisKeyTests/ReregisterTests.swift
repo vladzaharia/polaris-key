@@ -93,7 +93,7 @@ final class ReregisterTests: XCTestCase {
     // ── The path-selection rule ──────────────────────────────────────────────────────────
 
     func testALicensedDeviceUsesLicenseToken() {
-        for source: TokenSource? in [.activate, .enroll, .reacquire, nil] {
+        for source: TokenSource? in [.activate, .enroll, .signin, .reacquire, nil] {
             XCTAssertEqual(
                 chooseReacquireRoute(licenseEnabled: true, source: source), .licenseToken)
         }
@@ -213,5 +213,63 @@ final class ReregisterTests: XCTestCase {
         XCTAssertTrue(state.lastSyncUnauthorized)
         let stored = await store.getToken()
         XCTAssertEqual(stored, "pkeyt_reg1")
+    }
+
+    // ── Edge-mint ────────────────────────────────────────────────────────────────────────
+
+    private let mintPath = "/djdl/config/mint/recipe-a/token"
+
+    /// The mint answers 200 to a bearer in `good` and 401 to anything else.
+    private func routeMint(accepting good: Set<String>) async {
+        let ok = Set(good.map { "Bearer \($0)" })
+        let expiresAt = nowSec() + 3600
+        await server.route(mintPath) { req in
+            ok.contains(req.headers["authorization"] ?? "")
+                ? StubServer.Reply(body: #"{"token":"edge_minted","expiresAt":\#(expiresAt)}"#)
+                : StubServer.Reply(status: 401, body: #"{"error":{"code":"unauthorized"}}"#)
+        }
+    }
+
+    /// The edge-mint's own single re-acquire goes through the facade's one §5 closure, so it
+    /// takes the same route a document fetch's would: a licence-less device has no
+    /// license/token to take.
+    func testAnEdgeMint401OnARegisteredDeviceReregistersOnceThenRetries() async throws {
+        await routeMint(accepting: ["pkeyt_reg2"])
+        await routeRegister(["pkeyt_reg1", "pkeyt_reg2"])
+        let (c, store) = try await client(services: [.license, .config])
+        guard case .ok = await c.register() else { return XCTFail("register") }
+
+        let minted = try await c.config.mintToken("recipe-a")
+        XCTAssertEqual(minted.token, "edge_minted")
+        let registers = await server.requests(forPath: registerPath)
+        XCTAssertEqual(registers.count, 2, "register() plus exactly one re-register")
+        XCTAssertNil(registers.last?.headers["authorization"], "re-register sends no bearer")
+        let tokens = await count(tokenPath)
+        XCTAssertEqual(tokens, 0)
+        let mints = await server.requests(forPath: mintPath)
+        XCTAssertEqual(
+            mints.map { $0.headers["authorization"] }, ["Bearer pkeyt_reg1", "Bearer pkeyt_reg2"])
+        let stored = await store.getToken()
+        XCTAssertEqual(stored, "pkeyt_reg2")
+    }
+
+    func testAnEdgeMint401WhoseReregisterIsRefusedFailsAfterOneAttempt() async throws {
+        await routeMint(accepting: [])
+        await routeRegister(["pkeyt_reg1", nil])
+        let (c, _) = try await client(services: [.license, .config])
+        guard case .ok = await c.register() else { return XCTFail("register") }
+
+        do {
+            _ = try await c.config.mintToken("recipe-a")
+            XCTFail("expected unauthorized")
+        } catch let error as PolarisError {
+            XCTAssertEqual(error.code, "unauthorized")
+        }
+        let registers = await count(registerPath)
+        let tokens = await count(tokenPath)
+        let mints = await count(mintPath)
+        XCTAssertEqual(registers, 2, "register() plus the one refused attempt")
+        XCTAssertEqual(tokens, 0)
+        XCTAssertEqual(mints, 1, "no retry after a failed attempt")
     }
 }

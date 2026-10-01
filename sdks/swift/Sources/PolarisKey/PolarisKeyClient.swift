@@ -144,20 +144,18 @@ public actor PolarisKeyClient {
         self.product = options.core.productSlug
         let core = try CoreContext(options: options.core)
         self.core = core
+        // An edge-mint 401 gets the same single re-acquire a document fetch does, through the
+        // same closure, so a registered-without-licence device re-registers there too (§5).
         self.config = ConfigClient(
             core: core, options: options.config,
-            reacquire: { token in
-                // An edge-mint 401 gets the same single re-acquire a document fetch does, on the
-                // route the license module owns.
-                guard case .ok(let next, _) = await LicenseEndpoints.reacquireToken(
-                    core, token: token)
-                else { return nil }
-                return next
-            })
+            reacquire: PolarisKeyClient.reacquire(
+                core: core, fingerprintEnabled: options.license.fingerprint))
         // A completed device-code sign-in raises the same acquisition event activation does: a
         // signed-in device holds a licensed token exactly as an activated one does.
         self.identity = IdentityClient(core: core) {
-            await PolarisKeyClient.syncAfterAcquisition(core: core, probes: options.probes)
+            await PolarisKeyClient.syncAfterAcquisition(
+                core: core, probes: options.probes,
+                fingerprintEnabled: options.license.fingerprint)
         }
         self.probes = options.probes
         self.fingerprintEnabled = options.license.fingerprint

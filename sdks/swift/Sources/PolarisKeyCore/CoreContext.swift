@@ -197,7 +197,7 @@ public enum RegisterResult: Sendable, Equatable {
 
 /// How the current device token was obtained in this process.
 public enum TokenSource: String, Sendable, Equatable {
-    case activate, enroll, register, reacquire
+    case activate, enroll, register, signin, reacquire
 }
 
 /// The two routes the §5 single re-acquire can take.
@@ -1057,6 +1057,23 @@ public actor CoreContext {
         }
         reacquireInFlight = task
         return await task.value
+    }
+
+    /// The single re-acquire for an authenticated call made OUTSIDE a sync pass (an edge-mint).
+    /// One attempt per call, never a loop: the caller retries its request once with the
+    /// returned token and fails on a second 401. It does not touch the sync pass's budget.
+    ///
+    /// It takes the SAME route a document fetch's 401 would — `reacquire` is the facade's one
+    /// §5 closure, which applies `chooseReacquireRoute` to the token's source: the rule is about
+    /// the device token, not about which call presented it, and a licence-less device has no
+    /// `license/token` route to take.
+    ///
+    /// Returns the new token, or nil when there is none to replace or the attempt failed.
+    public func reacquireOutsideSync(_ reacquire: ReacquireFn) async -> String? {
+        guard let current = tokenValue else { return nil }
+        guard let next = await reacquire(current, tokenSourceValue) else { return nil }
+        try? await setToken(next.token, source: next.source)
+        return next.token
     }
 
     /// Verify a freshly arrived document and stage it: artifact + ETag in the record, payload in
