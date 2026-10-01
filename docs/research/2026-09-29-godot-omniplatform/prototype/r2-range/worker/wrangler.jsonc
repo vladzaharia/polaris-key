@@ -1,6 +1,11 @@
 // Path B probe Worker (S-02). No account id and no secrets live here: `wrangler login` or
 // CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID in the environment pick the account, and the
 // upload token is a secret (`wrangler secret put PROBE_PUT_TOKEN`), or `.dev.vars` locally.
+//
+// The top level is what `wrangler dev` uses locally (miniflare's R2, nothing leaves the machine).
+// A live run deploys with `--env live`, which binds the throwaway bucket `pk-s02-probe` instead:
+// live probes never write to the shared `polaris-key-blobs-dev` bucket (whose blobs/ and
+// bundles/ prefixes P2-01 age-locks), and teardown is deleting that bucket (note §8, H8).
 {
   "name": "pk-r2-probe",
   "main": "src/index.js",
@@ -10,4 +15,10 @@
     { "binding": "BUCKET", "bucket_name": "polaris-key-blobs-dev" },
   ],
   "vars": { "CACHE_FILL_ON_RANGE": "1", "WORKERS_CACHE": "0" },
+  "env": {
+    "live": {
+      "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "pk-s02-probe" }],
+      "vars": { "CACHE_FILL_ON_RANGE": "1", "WORKERS_CACHE": "0" },
+    },
+  },
 }

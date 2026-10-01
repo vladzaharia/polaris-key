@@ -26,13 +26,15 @@
 //   OPTIONS *            CORS preflight (Allow-Origin from CORS_ORIGIN, default "*"), so browser
 //                        probes can send Range and If-Range cross-origin
 //
-// Keys must be [s02/]blobs/sha256/<64 hex> or [s02/]bundles/sha256/<64 hex> (the optional s02/
-// prefix keeps spike objects apart in a shared dev bucket, so teardown is one prefix delete); uploads are verified against that
-// hash by R2 itself (put's `sha256` option), so the ETag this Worker derives from the key is true.
+// Keys must be s02/blobs/sha256/<64 hex> or s02/bundles/sha256/<64 hex>. The s02/ prefix is
+// mandatory for reads, put and mpu alike: the Worker can never write into the real blobs/ or
+// bundles/ prefixes (which P2-01 puts under a 180-day age lock), and teardown is one prefix
+// delete. Uploads are verified against that hash by R2 itself (put's `sha256` option), so the
+// ETag this Worker derives from the key is true.
 //
 // This is spike code, not the production route (P2b-04 owns that). It has no gating.
 
-const KEY_RE = /^(?:s02\/)?(blobs|bundles)\/sha256\/([0-9a-f]{64})$/;
+const KEY_RE = /^s02\/(blobs|bundles)\/sha256\/([0-9a-f]{64})$/;
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const SEEN = [];
 const SEEN_HEADERS = [
@@ -463,7 +465,7 @@ async function put(request, env, key) {
   if (request.method !== "PUT") return text(405, "PUT only");
   if (!authorised(request, env)) return text(403, "uploads disabled");
   const m = KEY_RE.exec(key);
-  if (!m) return text(400, "key must be blobs|bundles/sha256/<hex>");
+  if (!m) return text(400, "key must be s02/(blobs|bundles)/sha256/<hex>");
   const obj = await env.BUCKET.put(key, request.body, {
     sha256: m[2],
     httpMetadata: {
@@ -483,7 +485,7 @@ async function mpu(request, env, url, key) {
   if (request.method !== "POST") return text(405, "POST only");
   if (!authorised(request, env)) return text(403, "uploads disabled");
   if (!KEY_RE.test(key))
-    return text(400, "key must be blobs|bundles/sha256/<hex>");
+    return text(400, "key must be s02/(blobs|bundles)/sha256/<hex>");
   const op = url.searchParams.get("op");
   if (op === "create") {
     const up = await env.BUCKET.createMultipartUpload(key, {
