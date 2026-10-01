@@ -38,7 +38,7 @@ import {
   touchDeviceMetadata,
   validateDeviceToken,
 } from "../../core/devices.js";
-import { signDoc } from "../../core/signing.js";
+import { isStrictJsonError, signDoc } from "../../core/signing.js";
 
 // The payload resolution and the envelope stamper moved to `core/documents.ts` when offline
 // bundles landed (§7): a bundle carries a config document alongside (or instead of) a license
@@ -111,12 +111,21 @@ export async function handleConfigDocument(
   if (req.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers: { etag } });
   }
-  const jws = await signDoc(
-    doc,
-    product.signingKeyPem,
-    product.signingKid,
-    "pkey-config+jws",
-  );
+  let jws: string;
+  try {
+    jws = await signDoc(
+      doc,
+      product.signingKeyPem,
+      product.signingKid,
+      "pkey-config+jws",
+    );
+  } catch (e) {
+    // The catalog prune drops a flagged config or secret value before this point, so only a
+    // value the prune cannot see reaches the guard (plans/P3-01.md §2.2). Refuse with the
+    // route's nested body, never an unhandled throw.
+    if (!isStrictJsonError(e)) throw e;
+    return wireError(500, ErrorCode.DocumentNotRepresentable);
+  }
   return new Response(jws, {
     status: 200,
     headers: {

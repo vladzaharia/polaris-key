@@ -84,6 +84,8 @@ class ErrorCode:
     METHOD_NOT_ALLOWED: Final = "method_not_allowed"
     MISCONFIGURED: Final = "misconfigured"
     REGISTRATION_CLOSED: Final = "registration_closed"
+    VALUE_NOT_REPRESENTABLE: Final = "value_not_representable"
+    DOCUMENT_NOT_REPRESENTABLE: Final = "document_not_representable"
     DEVICE_LIMIT: Final = "device_limit"
     LICENSE_DISABLED: Final = "license_disabled"
     LICENSE_EXPIRED: Final = "license_expired"
@@ -167,6 +169,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "method_not_allowed",
     "misconfigured",
     "registration_closed",
+    "value_not_representable",
+    "document_not_representable",
     "device_limit",
     "license_disabled",
     "license_expired",
@@ -252,6 +256,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "method_not_allowed": "wire",
         "misconfigured": "wire",
         "registration_closed": "wire",
+        "value_not_representable": "wire",
+        "document_not_representable": "wire",
         "device_limit": "wire",
         "license_disabled": "wire",
         "license_expired": "wire",

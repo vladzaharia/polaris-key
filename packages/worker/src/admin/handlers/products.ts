@@ -72,6 +72,10 @@ import {
   readBody,
 } from "../lib/respond.js";
 import { productView } from "../lib/shape.js";
+import {
+  catalogRepresentabilityResponse,
+  WriteChecks,
+} from "../lib/writeChecks.js";
 import { handleOutletCredentials } from "./outletCredentials.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
@@ -210,6 +214,12 @@ export async function handleProducts(
     return adminJson({ product: await productView(env, db, row) });
   if (req.method === "PATCH") {
     const body = await readBody(req);
+    // plans/P3-01.md §2.2: the default offline-day count becomes `graceUntil`, so it takes the
+    // bundle mint's rule, an integer from 1 to 365.
+    const refused = new WriteChecks()
+      .offlineDays("defaultMaxOfflineDays", body.defaultMaxOfflineDays)
+      .response();
+    if (refused) return refused;
     // R11-02 part 2: `limit > 0` in licenseCore means a 0/negative limit reads as UNLIMITED.
     if (
       typeof body.defaultDeviceLimit === "number" &&
@@ -313,6 +323,15 @@ async function manualCreate(
       fields: ["slug"],
     });
 
+  // plans/P3-01.md §2.2: the signing kid is the JWS header `kid` and the trust manifest's
+  // `keys[].kid`, so it takes the manifest's `KID_RE`; the default offline-day count becomes
+  // `graceUntil`, so it takes the bundle mint's 1–365 rule.
+  const refused = new WriteChecks()
+    .kid("signingKid", body.signingKid)
+    .offlineDays("defaultMaxOfflineDays", body.defaultMaxOfflineDays)
+    .response();
+  if (refused) return refused;
+
   // A schema is now required so the product gets a real, usable catalog. If none is supplied,
   // seed the empty catalog (still mints a signing key).
   const supplied = body.schema;
@@ -324,6 +343,10 @@ async function manualCreate(
         fields: [compiled.message],
       });
     catalogObj = { schemaVersion: 1, entries: compiled.catalog.entries };
+    // A catalog default is a config value the document carries (the catalog prune would drop a
+    // flagged one at signing; refusing it here tells the operator now).
+    const unrepresentable = catalogRepresentabilityResponse(catalogObj);
+    if (unrepresentable) return unrepresentable;
   }
 
   // Mint + seal the per-product Ed25519 signing key under the platform KEK.

@@ -35,6 +35,7 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // product's client secret. Imported from the shared package rather than through Release, whose
 // `manifest.ts` merely re-exports it — a service may not import a sibling.
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
+import { representabilityIssue } from "@polaris-key/catalog";
 import {
   hashKey,
   platformOidcConfig,
@@ -523,8 +524,12 @@ export async function applyProvisioning(
         const parsed = parseJsonColumn<ManagedEntry["value"]>(
           h.entitlement_value_json,
         );
-        // A hook row we cannot parse is a hook we do not trust: skip it entirely.
-        if (parsed === undefined) continue;
+        // A hook row we cannot parse is a hook we do not trust: skip it entirely. So is one
+        // whose value no signed document could carry (plans/P3-01.md §2.2): the manifest
+        // validator refuses such a value at sync, so only a row stored before it lands here,
+        // and the signer guard would otherwise refuse this licence's documents.
+        if (parsed === undefined || representabilityIssue(parsed) !== null)
+          continue;
         value = parsed;
       }
       payload.entitlements[h.entitlement_key] = {
@@ -536,10 +541,15 @@ export async function applyProvisioning(
     if (h.secret_key && h.secret_url_template) {
       // Global replace: a template may reference {claim} more than once, and leaving a
       // literal placeholder in a "secret" ships a broken URL to the client (R8-06).
-      const url = h.secret_url_template.replaceAll(
-        "{claim}",
-        encodeURIComponent(String(claimVal)),
-      );
+      // `encodeURIComponent` throws on a lone surrogate, which a provider's claim may carry;
+      // such a hook is skipped like any other it cannot honour, rather than failing sign-in.
+      let encodedClaim: string;
+      try {
+        encodedClaim = encodeURIComponent(String(claimVal));
+      } catch {
+        continue;
+      }
+      const url = h.secret_url_template.replaceAll("{claim}", encodedClaim);
       // Host allowlist (defense against templated-secret injection). Fails CLOSED: a missing
       // or malformed allowlist drops the secret rather than emitting any host (R8-06).
       const allowed = parseJsonColumn<string[]>(h.allowed_hosts_json);
@@ -1302,17 +1312,26 @@ function mapClaims(payload: Record<string, unknown>): OidcIdentity {
   // Only a VERIFIED email is trusted: this value is persisted on the license, signed into the
   // config document's identity profile, and is what the portal auto-links accounts on. An
   // unverified claim is attacker-chosen, so we store nothing rather than that (R8-05b).
-  const email =
+  //
+  // Both are signed into the licence document's profile, so a value no signed document could
+  // carry (a lone surrogate, plans/P3-01.md §2.2) is stored as null rather than refused: the
+  // provider chose it, the user cannot fix it, and sign-in should still succeed.
+  const verifiedEmail =
     payload.email_verified === true && typeof payload.email === "string"
       ? payload.email
       : undefined;
-  const name =
+  const email =
+    verifiedEmail !== undefined && representabilityIssue(verifiedEmail) === null
+      ? verifiedEmail
+      : undefined;
+  const rawName =
     (typeof payload.name === "string" && payload.name) ||
     [payload.given_name, payload.family_name]
       .filter((s) => typeof s === "string")
       .join(" ")
       .trim() ||
     (email ?? "");
+  const name = representabilityIssue(rawName) === null ? rawName : "";
   return {
     // No String() coercion: a non-string `sub` is a type-confusion hazard (123 vs "123"), and
     // an empty one collapses every such identity onto a single license row (R8-05a). The

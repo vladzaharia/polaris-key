@@ -29,7 +29,7 @@ import { bearer } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import { ErrorCode, methodNotAllowed, wireError } from "../../core/errors.js";
 import { deviceMetadata, touchDeviceMetadata } from "../../core/devices.js";
-import { signDoc } from "../../core/signing.js";
+import { isStrictJsonError, signDoc } from "../../core/signing.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
 import { requireLicensedDevice } from "./auth.js";
 import { docProfile } from "./authz.js";
@@ -143,12 +143,20 @@ export async function handleLicenseDocument(
   if (req.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers: { etag } });
   }
-  const jws = await signDoc(
-    doc,
-    product.signingKeyPem,
-    product.signingKid,
-    "pkey-license+jws",
-  );
+  let jws: string;
+  try {
+    jws = await signDoc(
+      doc,
+      product.signingKeyPem,
+      product.signingKid,
+      "pkey-license+jws",
+    );
+  } catch (e) {
+    // A stored value no v4 verifier would accept (plans/P3-01.md §2.2): refuse with the
+    // route's nested body, never an unhandled throw.
+    if (!isStrictJsonError(e)) throw e;
+    return wireError(500, ErrorCode.DocumentNotRepresentable);
+  }
   return new Response(jws, {
     status: 200,
     headers: {

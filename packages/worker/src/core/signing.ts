@@ -102,27 +102,6 @@ export function isStrictJsonError(e: unknown): e is StrictJsonError {
   return e instanceof StrictJsonError;
 }
 
-/**
- * Log a guard refusal with the product and `typ` (plans/P3-01.md §2.2), never the document: the
- * value that tripped the guard may be a secret. The operator finds it with
- * `check:representable` or in the console.
- */
-export function logNotRepresentable(
-  product: string,
-  typ: string,
-  e: StrictJsonError,
-): void {
-  console.error(
-    JSON.stringify({
-      event: "document_not_representable",
-      product,
-      typ,
-      part: e.part,
-      message: e.message,
-    }),
-  );
-}
-
 export async function signDoc(
   doc: unknown,
   signingKeyPem: string,

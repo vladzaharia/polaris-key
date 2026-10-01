@@ -17,8 +17,8 @@ import type { TrustManifestDoc } from "@polaris-key/protocol";
 // have to name one `iss` or an SDK that pins it cannot accept all three.
 import { ISSUER } from "@polaris-key/protocol/core";
 import { loadPublicSigningKeys } from "./products.js";
-import { isStrictJsonError, logNotRepresentable, signDoc } from "./signing.js";
-import { wireError } from "./errors.js";
+import { isStrictJsonError, signDoc } from "./signing.js";
+import { ErrorCode, wireError } from "./errors.js";
 
 const TRUST_CACHE_SECONDS = 300;
 
@@ -121,8 +121,7 @@ export async function handleTrustManifest(
   } catch (e) {
     // A stored kid no v4 verifier would accept (plans/P3-01.md §2.2): refuse, never throw.
     if (!isStrictJsonError(e)) throw e;
-    logNotRepresentable(product.slug, "pkey-trust+jws", e);
-    return wireError(500, "document_not_representable");
+    return wireError(500, ErrorCode.DocumentNotRepresentable);
   }
   return new Response(jws, {
     status: 200,
