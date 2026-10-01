@@ -769,9 +769,13 @@ device-code holder's poll activates it, so no license row is created or changed 
 The opt-in names the license by the device's own bearer token, which must belong to the device
 the flow was started for and sit on an anonymous, usable enrolled license (PoCs:
 `R8-oidc.test.ts` › `ATTACK (claim, P1-07)`, `ATTACK (migrate, P1-07)` and the `P1-07:` cases).
-What remains is a human decision: a player who accepts a stranger's identity on the device, and
-attaches, hands that stranger the license. The device shows the name and verified e-mail before
-anything happens, which is the control.
+For a party holding _someone else's_ user code, what remains is a human decision: a player who
+accepts a stranger's identity on the device, and attaches, hands that stranger the license. The
+device shows the name and verified e-mail before anything happens, which is the control. That
+control assumes the device-code holder is the player. Under the open R1-07 ("Remote phishing"
+below) it is not: the flow's starter holds the device code and its own device's token, so the
+starter, not the victim who signed in, makes the attach decision. See "What the opt-in attach
+adds under R1-07" there.
 
 Four controls make that true. The first and the fourth are the ones that matter:
 
@@ -841,6 +845,30 @@ page. The callback binds the victim's license to the flow, whose device id is th
 and the attacker's own `/device/poll`, with their own device code, returns a device token on the
 victim's license (PoC: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own
 flow…`, which asserts the gap).
+
+**What the opt-in attach adds under R1-07 (P1-07).** The attach is decided by the device-code
+holder, and here that is the starter. If the starter's device is on an anonymous enrolled
+license, the starter polls with `confirmIdentity` and its own bearer, is told the license is
+`attachable`, and sends `attachLicense: true`. The victim is asked nothing. Compared with the
+plain R1-07 poll, which authorizes one starter device on the victim's license through
+`authorizeDevice` and its seat check:
+
+- **Claim** (the victim has no license yet): the victim's identity takes over the starter's
+  anonymous row in place, with every device already on it. Those devices were admitted by that
+  row's own seat check, and they now hold the victim's entitlements.
+- **Migrate** (the victim already has a license): `moveDevices` re-points _every_ device on the
+  starter's anonymous license at the victim's license, with `seat_no = NULL` and without
+  `authorizeDevice`. Bounded since P1-07 review: the attach is offered (`attachable`) only while
+  the seat-holding devices on both licenses together fit the victim's license's device limit.
+  So the migrate cannot take the victim past that limit. It can still fill the victim's free
+  seats with the starter's devices, so the victim's own next device then gets `device_limit`
+  until the owner removes them. This is a read before the move, like `authorizeDevice`'s
+  pre-count, not a seat claim; a concurrent activation can race it.
+
+PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
+migrate)` assert the gap; `P1-07 (R1-07 bound)` asserts the seat-limit refusal. Binding the
+callback to the confirming browser (below) closes all of it, because the device-code holder is
+then again the person who signed in.
 
 So the confirmation page and its CSRF token protect only flows the attacker did _not_ start
 (cross-site forgery against someone else's flow, above). Typing the user code does not close

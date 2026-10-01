@@ -61,6 +61,7 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 // The latter is the exact behavioural equivalent of the pre-split core function, so it is what
 // these tests assert against.
 import { requireLicensedDevice } from "../../src/services/license/auth.js";
+import { authorizeDevice } from "../../src/core/authz.js";
 import {
   countActiveDevices,
   getDevice,
@@ -1539,6 +1540,133 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     expect(
       ((await again.json()) as { license: { id: string } }).license.id,
     ).toBe(victimLicense);
+  });
+
+  // ── P1-07 under R1-07: the flow's STARTER makes the attach decision ─────────────────────
+  //
+  // Everything above bounds a party holding someone else's user code. R1-07 is the other way
+  // round and is still open: the starter confirms its own flow and phishes the authorize URL,
+  // and the victim's sign-in completes the starter's flow. The starter holds the device code
+  // AND its own device's token, so the opt-in is reachable without any decision by the victim.
+  // In the helper below the enrolled device and the device code are the starter's, and the
+  // identity is the phished victim's.
+
+  const PHISHED = {
+    sub: "victim-sub",
+    email: "victim@corp.com",
+    name: "Victim",
+    groups: ["family"],
+    claims: {} as Record<string, unknown>,
+  };
+
+  /** The phished victim already has a licence holding one of their own devices. */
+  async function victimLicenceWithOwnDevice(): Promise<string> {
+    const pre = await activateFromIdentity(ctx.db, ctx.product, PHISHED, NOW);
+    const victimLicence = (pre as { licenseId: string }).licenseId;
+    const authorized = await authorizeDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      (await getLicense(ctx.db, "djdl", victimLicence))!,
+      "victim-own-device",
+      NOW,
+    );
+    expect("error" in authorized).toBe(false);
+    return victimLicence;
+  }
+
+  it("OPEN (R1-07 / R8-03, P1-07 claim): the starter who phished its own flow also accepts the attach — the victim's identity takes over the starter's anonymous row", async () => {
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(PHISHED);
+    const shown = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      starterToken,
+    );
+    expect(shown.body).toMatchObject({ status: "confirm", attachable: true });
+    // GAP (R1-07): nothing on the victim's side was asked. The starter accepts for them.
+    const done = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      starterToken,
+    );
+    expect(done.body.status).toBe("ready");
+    expect(done.body.attached).toBe("claimed");
+    const row = await getLicense(ctx.db, "djdl", starterLicence);
+    expect(row?.sub).toBe(PHISHED.sub);
+    expect((await getLicenseBySub(ctx.db, "djdl", PHISHED.sub))?.id).toBe(
+      starterLicence,
+    );
+    // What it adds over the plain R1-07 poll: every device already on the starter's row now
+    // holds the victim's entitlements. Those devices were admitted by that row's own seat check.
+    expect(await countActiveDevices(ctx.db, "djdl", starterLicence)).toBe(1);
+  });
+
+  it("OPEN (R1-07 / R8-03, P1-07 migrate): the starter's attach moves every device on its anonymous licence onto the victim's, while they fit the victim's seat limit", async () => {
+    const victimLicence = await victimLicenceWithOwnDevice();
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(PHISHED);
+    await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      starterToken,
+    );
+    const done = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      starterToken,
+    );
+    expect(done.body.status).toBe("ready");
+    expect(done.body.attached).toBe("migrated");
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      victimLicence,
+    );
+    expect(await countActiveDevices(ctx.db, "djdl", starterLicence)).toBe(0);
+    expect(await countActiveDevices(ctx.db, "djdl", victimLicence)).toBe(2);
+    expect((await getLicense(ctx.db, "djdl", starterLicence))?.status).toBe(
+      "disabled",
+    );
+  });
+
+  it("P1-07 (R1-07 bound): the attach is not offered when the migrate would push the destination licence past its seat limit", async () => {
+    // One seat per licence: the victim's own device fills theirs, the starter's fills its own.
+    await ctx.db.run(
+      "UPDATE tiers SET policy_device_limit = 1 WHERE product = 'djdl' AND id = 'pro'",
+    );
+    const victimLicence = await victimLicenceWithOwnDevice();
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(PHISHED);
+    const shown = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      starterToken,
+    );
+    expect(shown.body).toMatchObject({ status: "confirm", attachable: false });
+    // Sending the attach anyway is answered with the identity again; nothing moves.
+    const forced = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      starterToken,
+    );
+    expect(forced.body).toMatchObject({
+      status: "confirm",
+      attachable: false,
+    });
+    expect(forced.body.token).toBeUndefined();
+    await expectNoMerge(starterLicence);
+    expect(await countActiveDevices(ctx.db, "djdl", victimLicence)).toBe(1);
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      starterLicence,
+    );
   });
 });
 

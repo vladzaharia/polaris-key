@@ -57,13 +57,19 @@ import {
   appendAudit,
   claimEnrolledLicense,
   getLicense,
+  countActiveDevices,
   getLicenseBySub,
   getTier,
   insertLicense,
   moveDevices,
+  seatActiveSince,
 } from "../../core/data.js";
 import { allowsOidcDefault } from "../../core/fingerprint.js";
-import { authorizeDevice, tierExpiresAt } from "../../core/authz.js";
+import {
+  authorizeDevice,
+  licenseDeviceLimit,
+  tierExpiresAt,
+} from "../../core/authz.js";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { createBrowserSession } from "./browserSession.js";
 
@@ -1607,13 +1613,22 @@ function shownIdentity(identity: OidcIdentity): {
 
 /** The licence `token` holds for `deviceId` when it is one the opt-in may attach: a live token
  *  OF THAT DEVICE (`validateDeviceToken` with the device id), on an anonymous enrolled licence
- *  (`origin = 'enroll'`, no subject) that is usable now. Anything else attaches nothing. */
+ *  (`origin = 'enroll'`, no subject) that is usable now. Anything else attaches nothing.
+ *
+ *  When `identity` already has a usable licence, the attach is a migrate, and `moveDevices`
+ *  re-points EVERY device on the anonymous licence at it without `authorizeDevice`'s seat
+ *  check. Under R1-07 (the flow's starter phishes the authorize URL) the starter makes this
+ *  decision, not the identity's owner, so it is offered only while every seat-holding device
+ *  on both licences still fits the destination's limit: the migrate can never push the
+ *  victim's licence past it, nor lock the victim's own next device out with `device_limit`.
+ *  Like the pre-count in `authorizeDevice`, this is a read, not a claim. */
 async function attachableLicense(
   env: Env,
   db: Db,
   product: Product,
   token: string | null,
   deviceId: string,
+  identity: OidcIdentity,
   now: number,
 ): Promise<string | null> {
   if (!token) return null;
@@ -1624,7 +1639,26 @@ async function attachableLicense(
   const license = valid.license;
   if (!license || license.origin !== "enroll" || license.sub !== null)
     return null;
-  return licenseUsable(license, now) ? license.id : null;
+  if (!licenseUsable(license, now)) return null;
+  const destination = await getLicenseBySub(db, product.slug, identity.sub);
+  if (destination && licenseUsable(destination, now)) {
+    const since = seatActiveSince(now);
+    const limit = await licenseDeviceLimit(db, product, destination, now);
+    const moving = await countActiveDevices(
+      db,
+      product.slug,
+      license.id,
+      since,
+    );
+    const held = await countActiveDevices(
+      db,
+      product.slug,
+      destination.id,
+      since,
+    );
+    if (limit <= 0 || moving + held > limit) return null;
+  }
+  return license.id;
 }
 
 async function pollAuthFlow(
@@ -1678,6 +1712,7 @@ async function pollAuthFlow(
         product,
         ask.token,
         deviceId,
+        identity,
         now,
       );
       // The decision is honoured only once the device has been shown the identity, and an

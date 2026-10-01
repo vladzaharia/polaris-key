@@ -4430,12 +4430,15 @@ paths:
         The device shows the identity; after the player accepts it ON THE DEVICE, the next poll
         sends `attachLicense: true` (or `false` to sign in without attaching) with the same
         bearer. Only then does the Worker claim the anonymous licence for the identity (no licence
-        yet) or migrate the device onto the identity's licence and retire the anonymous one, and
-        `ready` reports `attached`. The bearer must be a live token of the device the flow was
-        started for, on an anonymous, usable enrolled licence; a decision sent before the device
-        was shown the identity, or an attach with nothing attachable, is answered with `confirm`
-        again and changes nothing. A user-code holder cannot reach any of this: it needs the
-        device code.
+        yet), or move every device on the anonymous licence onto the identity's licence and
+        retire the anonymous one, and `ready` reports `attached`. The bearer must be a live token
+        of the device the flow was started for, on an anonymous, usable enrolled licence; a
+        migrate is attachable only while every seat-holding device on both licences fits the
+        identity licence's device limit. A decision sent before the device was shown the
+        identity, or an attach with nothing attachable, is answered with `confirm` again and
+        changes nothing. A user-code holder cannot reach any of this: it needs the device code.
+        The flow's starter can, which is why the open R1-07 (no browser binding) also covers
+        this decision.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: Authorization
@@ -6268,14 +6271,16 @@ components:
           type: boolean
           description: >
             On `confirm`: the poll's bearer is a live token of the flow's device on an anonymous,
-            usable enrolled licence, so `attachLicense: true` would attach it.
+            usable enrolled licence, so `attachLicense: true` would attach it. When the identity
+            already has a licence, also that moving the anonymous licence's devices onto it keeps
+            it within its device limit.
         attached:
           type: string
           enum: [claimed, migrated]
           description: >
             On `ready` after `attachLicense: true`: the anonymous licence became the identity's
-            (`claimed`), or the device moved onto the identity's licence and the anonymous one
-            was retired (`migrated`).
+            (`claimed`), or every device on it moved onto the identity's licence and the
+            anonymous one was retired (`migrated`).
     SlowDown:
       type: object
       description: >

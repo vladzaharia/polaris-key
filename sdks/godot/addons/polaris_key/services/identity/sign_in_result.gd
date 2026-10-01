@@ -34,7 +34,7 @@ var kind: StringName = KIND_ERROR
 ## the IdP verified it). Empty otherwise.
 var identity: Dictionary = {}
 ## On `ok` after the player accepted attaching: `claimed` (the anonymous licence became the
-## account's) or `migrated` (the device moved onto the account's licence). "" otherwise.
+## account's) or `migrated` (every device on it moved onto the account's licence). "" otherwise.
 var attached := ""
 ## On `ok`: false when the store could not write the token (it is still held for this session).
 var stored := false

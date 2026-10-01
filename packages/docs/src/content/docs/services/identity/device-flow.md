@@ -200,18 +200,25 @@ code:
 
    Nothing has been minted or merged. `attachable` says whether the bearer is a live token of the
    device the flow was started for, on an anonymous (`origin = enroll`, no subject), usable
-   enrolled license.
+   enrolled license. When the identity already has a license, it is also `false` if moving the
+   anonymous license's devices would take that license past its device limit.
 
 2. The device shows the identity. After the player accepts it **on the device**, the next poll
    sends `"attachLicense": true` with the same bearer (or `false` to sign in without attaching).
    With `true`, an identity that has no license yet takes the anonymous license over in place
-   (`"attached": "claimed"`); an identity that already has a usable license gets the device moved
-   onto it and the anonymous license retired (`"attached": "migrated"`). Then `ready` as usual.
+   (`"attached": "claimed"`, with every device already on it); an identity that already has a
+   usable license gets every device on the anonymous license moved onto it and the anonymous
+   license retired (`"attached": "migrated"`). Then `ready` as usual.
 
 A decision sent before the device was shown the identity, or `attachLicense: true` with nothing
 attachable, is answered with `confirm` again and changes nothing. The decision poll counts
 against the `interval` like any other. A user-code holder cannot reach any of this: the only
 surface that completes a device-code flow is this one, and it needs the device code.
+
+The device-code holder is whoever started the flow, so the decision is only as good as the
+binding between the device and the person who signed in. Until the browser that confirms a flow
+is bound to its callback (the open R1-07), a starter who phishes the authorize URL to someone
+else also makes this decision for them; see "Remote phishing" in `docs/security/THREAT-MODEL.md`.
 
 ## Lifetime and rate limits
 

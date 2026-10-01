@@ -690,6 +690,20 @@ holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). F
   `OPEN (R1-07 / R8-03): the starter confirms its own flow…`. Fix direction (unowned): bind a
   `viaDeviceCode` flow's callback to the browser that confirmed it, e.g. a `__Host-`
   `SameSite=Lax` cookie set on the confirmation `303` and required by `handleAuthCallback`.
+- **P1-07's opt-in attach is reachable by the starter (P1-07 review).** The attach is decided by
+  the device-code holder, which under R1-07 is the starter, not the victim who signed in. A
+  starter whose own device sits on an anonymous enrolled license polls with `confirmIdentity` and
+  its own bearer, then `attachLicense: true`, and the victim is asked nothing. Claim (the victim
+  has no license): the victim's identity takes over the starter's anonymous row, with every device
+  on it. Migrate (the victim has a license): `moveDevices` re-points every device on the starter's
+  anonymous license at the victim's, with `seat_no = NULL` and outside `authorizeDevice`'s seat
+  check, where the plain R1-07 poll authorizes one device through it. Bounded in the same review:
+  a migrate is `attachable` only while the seat-holding devices on both licenses fit the victim
+  license's device limit, so it cannot push the victim past the limit. It can still fill the
+  victim's free seats, so the victim's next device gets `device_limit` until they remove the
+  starter's. PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)`, `OPEN (R1-07 / R8-03,
+P1-07 migrate)` (the gap) and `P1-07 (R1-07 bound)` (the refusal). The browser binding above
+  closes it.
 
 The two R8-02 PoCs that asserted the residual now assert the fix
 (`test/attack/R8-oidc.test.ts`), a third (`› holding only the user code, an attacker reads the
