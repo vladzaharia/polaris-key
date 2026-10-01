@@ -53,7 +53,7 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `release_config` | 0001_init.sql | `product`, `gh_owner`, `gh_repo`, `gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`, `artifact_policy_json (0006)`, `metadata_access (0007)`, `artifacts_access (0007)`, `access_source (0022)`, `operator_policy_json (0022)`, `ignore_tags_json (0023)`, `stable_tag_pattern (0023)` |
+| `release_config` | 0001_init.sql | `product`, `gh_owner`, `gh_repo`, `gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`, `artifact_policy_json (0006)`, `metadata_access (0007)`, `artifacts_access (0007)`, `access_source (0022)`, `operator_policy_json (0022)`, `ignore_tags_json (0023)`, `stable_tag_pattern (0023)`, `release_keys_json (0044)` |
 | `release_metadata` | 0007_backend_contracts.sql | `product`, `release_id`, `version`, `title`, `notes`, `commit_sha`, `source_url`, `metadata_access`, `artifacts_access`, `published_at`, `metadata_json`, `created_at`, `modified_at`, `deliverable_id (0027)`, `seq (0027)`, `channel (0027)` |
 | `release_artifacts` | 0007_backend_contracts.sql | `product`, `release_id`, `artifact_id`, `name`, `kind`, `platform`, `arch`, `content_type`, `size_bytes`, `sha256`, `source_url`, `storage_key`, `sparkle_signature`, `access`, `metadata_json`, `created_at`, `build_id (0027)`, `role (0027)`, `locations_json (0027)` |
 | `release_channels` | 0007_backend_contracts.sql | `product`, `channel`, `release_id`, `policy_json`, `created_at`, `modified_at` |
@@ -64,6 +64,7 @@ this page or fails the freshness gate.
 | `release_builds` | 0027_a_release_model.sql | `product`, `release_id`, `build_id`, `platform`, `arch`, `format`, `build_number`, `variant_json`, `requires_json`, `min_os`, `created_at`, `modified_at` |
 | `release_channel_policy` | 0027_a_release_model.sql | `product`, `deliverable_id`, `channel`, `pointer_release_id`, `pinned`, `includes_json`, `min_supported`, `critical`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `release_yanks` | 0027_a_release_model.sql | `product`, `release_id`, `reason`, `at`, `by` |
+| `release_records` | 0044_release_records_update_feeds.sql | `product`, `deliverable_id`, `release_id`, `seq`, `kind`, `record_sha256`, `kid`, `jws`, `ingested_at` |
 
 ## distribution
 
@@ -78,6 +79,14 @@ this page or fails the freshness gate.
 | `dist_keys` | 0039_distribution_availability_keys.sql | `product`, `purpose`, `fingerprint_sha256`, `outlet_id`, `notes`, `registered_at`, `source`, `observed_json`, `created_at`, `modified_at` |
 | `dist_connector_objects` | 0041_distribution_connectors.sql | `product`, `connector`, `object_type`, `object_id`, `outlet_id`, `release_id`, `build_id`, `store_state`, `state`, `ref_json`, `detail_json`, `terminal`, `first_seen_at`, `updated_at`, `polled_at` |
 | `dist_connector_events` | 0041_distribution_connectors.sql | `product`, `connector`, `event_id`, `event_type`, `instance_type`, `instance_id`, `outcome`, `payload_json`, `received_at` |
+
+## update
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `update_feed_state` | 0044_release_records_update_feeds.sql | `product`, `channel`, `seq`, `content_sha256` |
+| `update_feed_ceiling` | 0044_release_records_update_feeds.sql | `product`, `set_at` |
+| `update_feed_docs` | 0044_release_records_update_feeds.sql | `product`, `channel`, `selector_key`, `seq`, `content_sha256`, `jws`, `signed_at` |
 
 ## identity
 
