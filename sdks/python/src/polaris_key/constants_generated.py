@@ -102,6 +102,7 @@ class ErrorCode:
     NETWORK_ERROR: Final = "network-error"
     SERVER_ERROR: Final = "server-error"
     CANCELLED: Final = "cancelled"
+    SIGN_IN_UNAVAILABLE: Final = "sign-in-unavailable"
 
 
 #: Every ``ErrorCode`` value, in source order.
@@ -163,6 +164,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "network-error",
     "server-error",
     "cancelled",
+    "sign-in-unavailable",
 )
 
 
@@ -226,6 +228,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "network-error": "client",
         "server-error": "client",
         "cancelled": "client",
+        "sign-in-unavailable": "client",
     }
 )
 

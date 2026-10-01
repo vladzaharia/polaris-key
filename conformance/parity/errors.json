@@ -344,6 +344,12 @@
       "kind": "client",
       "service": "identity",
       "description": "Python: a device-code sign-in wait was cancelled by the host."
+    },
+    {
+      "code": "sign-in-unavailable",
+      "kind": "client",
+      "service": "identity",
+      "description": "Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own."
     }
   ]
 }

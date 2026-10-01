@@ -64,6 +64,7 @@ export const ErrorCode = {
   networkError: "network-error",
   serverError: "server-error",
   cancelled: "cancelled",
+  signInUnavailable: "sign-in-unavailable",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -126,6 +127,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "network-error",
   "server-error",
   "cancelled",
+  "sign-in-unavailable",
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. */
@@ -190,6 +192,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "network-error": "client",
   "server-error": "client",
   cancelled: "client",
+  "sign-in-unavailable": "client",
 };
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */

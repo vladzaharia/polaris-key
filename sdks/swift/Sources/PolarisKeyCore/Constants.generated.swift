@@ -66,6 +66,7 @@ public enum ErrorCode {
     public static let networkError = "network-error"
     public static let serverError = "server-error"
     public static let cancelled = "cancelled"
+    public static let signInUnavailable = "sign-in-unavailable"
 }
 
 /// Every `ErrorCode` value, in source order.
@@ -127,6 +128,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "network-error",
     "server-error",
     "cancelled",
+    "sign-in-unavailable",
 ]
 
 /// The registry: every error code and its kind (`wire` or `client`).
@@ -188,6 +190,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "network-error": "client",
     "server-error": "client",
     "cancelled": "client",
+    "sign-in-unavailable": "client",
 ]
 
 /// Every feature id in the parity registry (conformance/parity/features.json).
