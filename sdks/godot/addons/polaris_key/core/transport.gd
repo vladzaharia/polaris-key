@@ -24,6 +24,7 @@ extends RefCounted
 const MAX_REDIRECTS := 5
 const BODY_LIMIT := 512 * 1024
 const LOOPBACK_HOSTS := ["localhost", "127.0.0.1", "[::1]"]
+const REDIRECT_STATUSES := [301, 302, 303, 307, 308]
 
 const _METHODS := {
 	"GET": HTTPClient.METHOD_GET,
@@ -177,13 +178,13 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 	var status: int = res[1]
 	var response_headers := _headers(res[2])
 	match result:
-		HTTPRequest.RESULT_SUCCESS:
-			return PKeyResult.success({"status": status, "headers": response_headers, "body": res[3], "url": url})
-		HTTPRequest.RESULT_REDIRECT_LIMIT_REACHED:
+		HTTPRequest.RESULT_SUCCESS, HTTPRequest.RESULT_REDIRECT_LIMIT_REACHED:
+			# 4.7 reports a refused redirect as REDIRECT_LIMIT_REACHED; 4.4 hands 303 and 307 back as
+			# a plain success. Either way a redirect status with a Location is followed here.
 			var location: String = response_headers.get("location", "")
-			if location == "":
-				return PKeyResult.success({"status": status, "headers": response_headers, "body": res[3], "url": url})
-			return PKeyResult.success({"status": status, "headers": response_headers, "body": PackedByteArray(), "url": url, "redirect": location})
+			if REDIRECT_STATUSES.has(status) and location != "":
+				return PKeyResult.success({"status": status, "headers": response_headers, "body": PackedByteArray(), "url": url, "redirect": location})
+			return PKeyResult.success({"status": status, "headers": response_headers, "body": res[3], "url": url})
 		HTTPRequest.RESULT_TIMEOUT:
 			return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": result})
 		HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
