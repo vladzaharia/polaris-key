@@ -185,21 +185,21 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
 
 ## Acceptance criteria
 
-- [ ] The resolution table test passes, including "iOS falls back to the newest release with an iOS
+- [x] The resolution table test passes, including "iOS falls back to the newest release with an iOS
       build" and "beta includes stable".
-- [ ] After a yank, `/update/version`, the appcast and `/release/dl/latest/…` stop offering the
+- [x] After a yank, `/update/version`, the appcast and `/release/dl/latest/…` stop offering the
       release; after a pin, all three and `/release/builds/stable/…` serve the pinned release.
-- [ ] CI routes refuse a token without `release:promote` or `release:yank`; admin and CI changes
+- [x] CI routes refuse a token without `release:promote` or `release:yank`; admin and CI changes
       write audit rows; an operator change survives a resync.
-- [ ] The blob route refuses a hash no artifact of this product references, and serves 206, 304 and
+- [x] The blob route refuses a hash no artifact of this product references, and serves 206, 304 and
       416 correctly from the R2 fake.
-- [ ] With caching, a download miss makes at most one GitHub API call, and a following Range
+- [x] With caching, a download miss makes at most one GitHub API call, and a following Range
       request makes none (fetch-counting test).
-- [ ] `routeCoverage` passes with the new paths; `docs gen:check` is clean.
-- [ ] The green gate passes (`AGENTS.md`), including `test/attack/R6-release.test.ts`.
-- [ ] A throw inside a registered byte route or `loadProduct` answers a JSON 500 with `X-Content-Type-Options: nosniff` and the sandbox CSP on the bytes host (test).
-- [ ] `blobResponse` ignores a caller-supplied `host: "bytes"` on a console-host request; a locked key with no stored checksum answers not-found; a gated response carries `no-transform`.
-- [ ] With Release off for a product, the three release byte routes answer the bytes host's flat not-found (test).
+- [x] `routeCoverage` passes with the new paths; `docs gen:check` is clean.
+- [x] The green gate passes (`AGENTS.md`), including `test/attack/R6-release.test.ts`.
+- [x] A throw inside a registered byte route or `loadProduct` answers a JSON 500 with `X-Content-Type-Options: nosniff` and the sandbox CSP on the bytes host (test).
+- [x] `blobResponse` ignores a caller-supplied `host: "bytes"` on a console-host request; a locked key with no stored checksum answers not-found; a gated response carries `no-transform`.
+- [x] With Release off for a product, the three release byte routes answer the bytes host's flat not-found (test).
 
 ## Verify
 
