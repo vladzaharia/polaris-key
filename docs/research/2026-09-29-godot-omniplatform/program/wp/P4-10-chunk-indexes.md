@@ -131,7 +131,12 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
   in `.pkey/release`. If this package makes chunking configurable there, it is a rule-9 change:
   validator rule, mutation-table entry in `packages/shared-manifest/test/schema-parity.test.ts`,
   JSON schema, regenerated `validation-codes.mdx`.
-- **Bundles** target 4–16 MiB (CONTENT §2) and hold unique chunks in first-use order; duplicate
+- **Bundles** target 4–16 MiB (CONTENT §2), and S-02 confirmed the range. The default target
+  is 4 MiB, as in the A7 vectors; 16 MiB is the cap. The request count comes from the chunk layout
+  (29 runs for the real v1→v2 update, whatever the bundle size). The bundle size bounds what a
+  cold edge fill or a failed `If-Range` costs, because both move the whole bundle. Clients never
+  use multi-range ([notes/S-02](../../notes/S-02.md) §6). Bundles hold unique chunks in first-use
+  order; duplicate
   records point at one location. The plan must choose between:
   - fresh bundles per release (what the A7 vectors do; trivial GC), or
   - bundles shared across releases of **one** deliverable, where a new release's bundles hold only
