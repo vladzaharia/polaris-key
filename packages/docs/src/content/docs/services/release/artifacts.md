@@ -185,6 +185,12 @@ nothing — when:
 - an `r2` key is not stored with that file's hash and size, or the product neither just
   uploaded it nor already references it.
 
+These checks read the store before the batch is written, so the batch repeats the ones another
+writer can invalidate in between: it writes the release only while it has no other descriptor
+(or this same one), no other release of its version has appeared, and an explicit `seq` is
+still above the maximum. When two submissions race, the first to commit wins whole; the other
+writes nothing and is refused with the reason the checks give against the store as it now is.
+
 A refused `pkey-release.json` marks its release `degraded` in release health, with the
 reason, and is not fetched again until the asset or the product's declaration (its
 `deliverables.app` and manual channels) changes. A refusal that depends on other rows

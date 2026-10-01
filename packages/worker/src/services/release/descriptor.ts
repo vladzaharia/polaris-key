@@ -81,6 +81,7 @@ import {
   stmtUpsertBuild,
   type BuildInput,
 } from "./model.js";
+import { guardStatement, RELEASE_DESCRIBED_BY_SQL } from "./guard.js";
 import {
   artifactContentType,
   artifactKind,
@@ -621,16 +622,45 @@ export async function planDescriptorIngest(
     source,
     at: now,
   } satisfies DescriptorMarker);
+  const releaseStmt = stmtUpsertDescribedRelease(product, planned.release, {
+    notes: d.notes ?? github?.body ?? null,
+    sourceUrl: github?.html_url ?? null,
+    metadataAccess,
+    artifactsAccess,
+    markerJson,
+    descriptorSha256,
+    now,
+  });
+  // A NEW release's row is inserted only if what made it new still holds when the batch runs:
+  // no other release of this version has appeared, and an explicit seq is still above the
+  // deliverable's maximum. (A row of this id that appeared meanwhile — the sync's — takes the
+  // ON CONFLICT path, which has its own condition.) When it does not hold, nothing of the ingest
+  // is written: the tail is guarded on this descriptor's marker.
+  const explicitSeq = existing === null && d.seq !== undefined;
   const head: DbStatement[] = [
     stmtEnsureAppDeliverable(product, now),
-    stmtUpsertDescribedRelease(product, planned.release, {
-      notes: d.notes ?? github?.body ?? null,
-      sourceUrl: github?.html_url ?? null,
-      metadataAccess,
-      artifactsAccess,
-      markerJson,
-      now,
-    }),
+    existing
+      ? releaseStmt
+      : guardStatement(
+          releaseStmt,
+          `(EXISTS (SELECT 1 FROM release_metadata WHERE product = ? AND release_id = ?)
+             OR (NOT EXISTS (SELECT 1 FROM release_metadata
+                              WHERE product = ? AND deliverable_id = ? AND version = ?)${
+                                explicitSeq
+                                  ? `
+                 AND (SELECT COALESCE(MAX(seq), 0) FROM release_metadata
+                       WHERE product = ? AND deliverable_id = ?) < ?`
+                                  : ""
+                              }))`,
+          [
+            product,
+            releaseId,
+            product,
+            d.deliverable,
+            d.version,
+            ...(explicitSeq ? [product, d.deliverable, d.seq!] : []),
+          ],
+        ),
   ];
   const tail: DbStatement[] = [
     ...planned.builds.map((b) => stmtUpsertBuild(b, now)),
@@ -710,6 +740,17 @@ export async function planDescriptorIngest(
   }
   for (const ref of planned.blobRefs) tail.push(stmtRecordRef(ref, now));
 
+  // Every row after the head is written only while THIS descriptor is the release's: if another
+  // one was ingested between this plan's read and its batch, the head wrote nothing (see
+  // `stmtUpsertDescribedRelease`) and so does everything here — the first to commit wins, whole.
+  const ownTail = tail.map((stmt) =>
+    guardStatement(stmt, RELEASE_DESCRIBED_BY_SQL, [
+      product,
+      releaseId,
+      descriptorSha256,
+    ]),
+  );
+
   return {
     ok: true,
     releaseId,
@@ -717,7 +758,7 @@ export async function planDescriptorIngest(
     descriptorSha256,
     planned,
     head,
-    tail,
+    tail: ownTail,
     seq: existing?.seq != null || d.seq === undefined ? null : d.seq,
   };
 }
@@ -725,6 +766,12 @@ export async function planDescriptorIngest(
 /**
  * The release row. A new row gets everything; an existing one (the sync's) gets only the
  * descriptor-owned facts — the marker, the channel, the provenance commit — and keeps its seq.
+ *
+ * The update is conditional on the row as it is when the batch runs: it applies only while the
+ * release has no ingested descriptor, or has this very one. A different descriptor ingested
+ * after this ingest read the store (two CI submissions racing, or CI racing the GitHub sync)
+ * makes it a no-op, and with it every row of the ingest (`RELEASE_DESCRIBED_BY_SQL` guards the
+ * tail). The CI path reads the marker back and reports the loss as `release_exists`.
  */
 function stmtUpsertDescribedRelease(
   product: string,
@@ -735,6 +782,7 @@ function stmtUpsertDescribedRelease(
     metadataAccess: string;
     artifactsAccess: string;
     markerJson: string;
+    descriptorSha256: string;
     now: number;
   },
 ): DbStatement {
@@ -752,7 +800,10 @@ function stmtUpsertDescribedRelease(
             commit_sha = COALESCE(excluded.commit_sha, release_metadata.commit_sha),
             metadata_json = json_set(COALESCE(release_metadata.metadata_json, '{}'),
                                      '$.descriptor', json(?)),
-            modified_at = excluded.modified_at`,
+            modified_at = excluded.modified_at
+          WHERE COALESCE(json_extract(release_metadata.metadata_json, '$.descriptor.status'), '')
+                  <> 'ingested'
+             OR json_extract(release_metadata.metadata_json, '$.descriptor.sha256') = ?`,
     params: [
       product,
       r.releaseId,
@@ -771,6 +822,7 @@ function stmtUpsertDescribedRelease(
       ...seqParams,
       r.channel,
       extra.markerJson,
+      extra.descriptorSha256,
     ],
   };
 }
@@ -835,7 +887,7 @@ export async function ingestReleaseDescriptor(
       github = null; // reported as github_release_not_found below
     }
   }
-  const plan = await planDescriptorIngest(db, {
+  const input = {
     product,
     descriptor,
     source: opts.source,
@@ -844,11 +896,40 @@ export async function ingestReleaseDescriptor(
     app,
     github,
     promoted: new Set(opts.promoted ?? []),
-  });
+  };
+  const plan = await planDescriptorIngest(db, input);
   if (!plan.ok) return plan;
   const dryRun = opts.dryRun === true;
-  if (!dryRun && plan.outcome !== "unchanged")
+  if (!dryRun && plan.outcome !== "unchanged") {
     await db.batch([...plan.head, ...plan.tail]);
+    // The batch writes nothing when the store changed under the plan in a way that would have
+    // refused it — a different descriptor for this release ingested, another release of this
+    // version created, or an explicit seq overtaken — after the plan read the store (the head's
+    // conditions). Read back whose marker it is; on a loss, the same checks run again against
+    // the store as it is now name the reason.
+    const stored = await db.first<{
+      status: string | null;
+      sha256: string | null;
+    }>(
+      `SELECT json_extract(metadata_json, '$.descriptor.status') AS status,
+              json_extract(metadata_json, '$.descriptor.sha256') AS sha256
+         FROM release_metadata WHERE product = ? AND release_id = ?`,
+      product,
+      plan.releaseId,
+    );
+    if (
+      stored?.status !== "ingested" ||
+      stored.sha256 !== plan.descriptorSha256
+    ) {
+      const again = await planDescriptorIngest(db, input);
+      if (!again.ok) return again;
+      return refuse(
+        "release_exists",
+        `${plan.releaseId} changed while this descriptor was being checked; submit it again.`,
+        { status: 409 },
+      );
+    }
+  }
   return {
     ok: true,
     releaseId: plan.releaseId,

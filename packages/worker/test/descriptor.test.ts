@@ -25,7 +25,12 @@ import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import { resyncRepo } from "../src/services/release/resync.js";
-import { syncReleaseStore } from "../src/services/release/sync.js";
+import {
+  releaseStoreSyncStatements,
+  syncReleaseStore,
+} from "../src/services/release/sync.js";
+import { getReleaseConfig } from "../src/services/release/config.js";
+import { guardStatement } from "../src/services/release/guard.js";
 import {
   ingestReleaseDescriptor,
   MAX_DESCRIPTOR_FETCHES_PER_SYNC,
@@ -1483,5 +1488,341 @@ describe("the GitHub path: pkey-release.json during the truth-store sync", () =>
     await syncReleaseStore(envFor(), db, SLUG, NOW + 120, fetchImpl);
     expect(assetFetches()).toBe(3);
     expect(await meta()).toMatchObject({ status: "ingested" });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// 4. Concurrent writers: a plan applied after someone else's commit
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+/** A Db whose next `batch` first runs `before` — another writer committing between this
+ *  writer's read and its batch. */
+function interleaved(db: Db, before: () => Promise<unknown>): Db {
+  let pending: (() => Promise<unknown>) | null = before;
+  return {
+    all: (sql, ...p) => db.all(sql, ...p),
+    first: (sql, ...p) => db.first(sql, ...p),
+    run: (sql, ...p) => db.run(sql, ...p),
+    runChanges: (sql, ...p) => db.runChanges(sql, ...p),
+    batch: async (stmts) => {
+      const run = pending;
+      pending = null;
+      if (run) await run();
+      return db.batch(stmts);
+    },
+  };
+}
+
+async function planSync(db: Db, fetchImpl: FetchImpl, now: number) {
+  const cfg = await getReleaseConfig(db, SLUG);
+  return releaseStoreSyncStatements(envFor(), db, cfg!, now, fetchImpl);
+}
+
+describe("a stale plan never overwrites a described release", () => {
+  it("a sync planned before a CI descriptor was ingested keeps the descriptor's builds (mapped)", async () => {
+    // The reviewer's repro: plan the sync, ingest the descriptor, then apply the plan.
+    const raced = await ciSetup();
+    const plan = await planSync(raced.db, raced.fetchImpl, NOW);
+    expect(await raced.ingest(descriptor())).toMatchObject({
+      ok: true,
+      outcome: "created",
+    });
+    await raced.db.batch(plan);
+
+    const builds = await listBuilds(raced.db, SLUG, "v1.2.3");
+    expect(builds.map((b) => [b.build_id, b.build_number])).toEqual([
+      ["macos", "4021"],
+      ["web", null],
+    ]);
+    // Exactly what the same two writers leave in the other order (CI, then the sync).
+    const ordered = await ciSetup();
+    expect(await ordered.ingest(descriptor())).toMatchObject({ ok: true });
+    await ordered.db.batch(await planSync(ordered.db, ordered.fetchImpl, NOW));
+    expect(await dump(raced.db)).toEqual(await dump(ordered.db));
+
+    // And a later sync leaves it that way.
+    await syncReleaseStore(
+      envFor(),
+      raced.db,
+      SLUG,
+      NOW + 200,
+      raced.fetchImpl,
+    );
+    expect(await listBuilds(raced.db, SLUG, "v1.2.3")).toEqual(builds);
+  });
+
+  it("the same holds for a release the sync had already recorded and classified", async () => {
+    const raced = await ciSetup();
+    await syncReleaseStore(envFor(), raced.db, SLUG, NOW, raced.fetchImpl);
+    const plan = await planSync(raced.db, raced.fetchImpl, NOW + 50);
+    expect(await raced.ingest(descriptor())).toMatchObject({
+      ok: true,
+      outcome: "enriched",
+    });
+    await raced.db.batch(plan);
+
+    const ordered = await ciSetup();
+    await syncReleaseStore(envFor(), ordered.db, SLUG, NOW, ordered.fetchImpl);
+    expect(await ordered.ingest(descriptor())).toMatchObject({ ok: true });
+    await ordered.db.batch(
+      await planSync(ordered.db, ordered.fetchImpl, NOW + 50),
+    );
+    expect(await dump(raced.db)).toEqual(await dump(ordered.db));
+    expect(
+      (await listBuilds(raced.db, SLUG, "v1.2.3")).map((b) => [
+        b.build_id,
+        b.build_number,
+      ]),
+    ).toEqual([
+      ["macos", "4021"],
+      ["web", null],
+    ]);
+  });
+
+  it("the same holds for a sync planned without a map (a resync removing it, sniffed)", async () => {
+    // A resync that drops the map plans the release as `sniffed` from the manifest it just
+    // parsed, while CI ingests a descriptor against the declaration still persisted.
+    const raced = await ciSetup();
+    await syncReleaseStore(envFor(), raced.db, SLUG, NOW, raced.fetchImpl);
+    const cfg = (await getReleaseConfig(raced.db, SLUG))!;
+    const plan = await releaseStoreSyncStatements(
+      envFor(),
+      raced.db,
+      cfg,
+      NOW + 50,
+      raced.fetchImpl,
+      { app: null },
+    );
+    expect(await raced.ingest(descriptor())).toMatchObject({ ok: true });
+    await raced.db.batch(plan);
+
+    const ordered = await ciSetup();
+    await syncReleaseStore(envFor(), ordered.db, SLUG, NOW, ordered.fetchImpl);
+    expect(await ordered.ingest(descriptor())).toMatchObject({ ok: true });
+    await ordered.db.batch(
+      await releaseStoreSyncStatements(
+        envFor(),
+        ordered.db,
+        cfg,
+        NOW + 50,
+        ordered.fetchImpl,
+        { app: null },
+      ),
+    );
+    expect(await dump(raced.db)).toEqual(await dump(ordered.db));
+    const byName = new Map(
+      (await listReleaseArtifacts(raced.db, SLUG, "v1.2.3")).map((a) => [
+        a.name,
+        a,
+      ]),
+    );
+    expect(byName.get("Diceroll-1.2.3-macos.dmg")).toMatchObject({
+      build_id: "macos",
+      platform: "macos",
+      arch: "universal",
+    });
+    expect(byName.get("Diceroll-1.2.3-macos.dmg.sig")).toMatchObject({
+      build_id: "macos",
+      role: "signature",
+    });
+  });
+});
+
+describe("concurrent descriptor ingests: the first to commit wins, whole", () => {
+  function respin(): Record<string, any> {
+    const d = descriptor();
+    d.title = "Diceroll 1.2.3 (respin)";
+    d.builds[0].buildNumber = "5000";
+    return d;
+  }
+
+  it("two different CI descriptors for a new release: the later batch is refused and writes nothing", async () => {
+    const { db, webKey, fetchImpl } = await ciSetup();
+    const ingest = (on: Db, d: unknown) =>
+      ingestReleaseDescriptor(on, envFor(), SLUG, d, {
+        source: "ci",
+        now: NOW + 100,
+        promoted: [webKey],
+        fetchImpl,
+      });
+    let other: Awaited<ReturnType<typeof ingest>> | undefined;
+    const late = await ingest(
+      interleaved(db, async () => {
+        other = await ingest(db, respin());
+      }),
+      descriptor(),
+    );
+    expect(other).toMatchObject({ ok: true, outcome: "created" });
+    expect(late).toMatchObject({
+      ok: false,
+      reason: "release_exists",
+      status: 409,
+    });
+
+    // Exactly the rows of the winner alone.
+    const alone = await ciSetup();
+    expect(await alone.ingest(respin())).toMatchObject({ ok: true });
+    expect(await dump(db)).toEqual(await dump(alone.db));
+    expect(
+      (await listBuilds(db, SLUG, "v1.2.3")).find(
+        (b) => b.build_id === "macos",
+      )!.build_number,
+    ).toBe("5000");
+  });
+
+  it("the same descriptor twice, concurrently: both succeed, and the rows are one ingest's", async () => {
+    const { db, webKey, fetchImpl } = await ciSetup();
+    const ingest = (on: Db) =>
+      ingestReleaseDescriptor(on, envFor(), SLUG, descriptor(), {
+        source: "ci",
+        now: NOW + 100,
+        promoted: [webKey],
+        fetchImpl,
+      });
+    let other: Awaited<ReturnType<typeof ingest>> | undefined;
+    const late = await ingest(
+      interleaved(db, async () => {
+        other = await ingest(db);
+      }),
+    );
+    expect(other).toMatchObject({ ok: true, outcome: "created" });
+    expect(late).toMatchObject({ ok: true, outcome: "created" });
+    const alone = await ciSetup();
+    expect(await alone.ingest(descriptor())).toMatchObject({ ok: true });
+    expect(await dump(db)).toEqual(await dump(alone.db));
+  });
+
+  async function race(first: Record<string, any>, late: Record<string, any>) {
+    const { db, webKey, fetchImpl } = await ciSetup([]);
+    const ingest = (on: Db, d: unknown) =>
+      ingestReleaseDescriptor(on, envFor(), SLUG, d, {
+        source: "ci",
+        now: NOW + 100,
+        promoted: [webKey],
+        fetchImpl,
+      });
+    let won: Awaited<ReturnType<typeof ingest>> | undefined;
+    const lost = await ingest(
+      interleaved(db, async () => {
+        won = await ingest(db, first);
+      }),
+      late,
+    );
+    const alone = await ciSetup([]);
+    expect(await alone.ingest(first)).toMatchObject({ ok: true });
+    return { won, lost, db, alone: alone.db };
+  }
+
+  it("two releases of one version under different ids: the later is refused release_exists, writing nothing", async () => {
+    const tagged = r2Descriptor("1.3.0");
+    tagged.tag = "v1.3.0";
+    const { won, lost, db, alone } = await race(r2Descriptor("1.3.0"), tagged);
+    expect(won).toMatchObject({ ok: true, releaseId: "app@1.3.0" });
+    expect(lost).toMatchObject({
+      ok: false,
+      reason: "release_exists",
+      status: 409,
+    });
+    expect(await dump(db)).toEqual(await dump(alone));
+  });
+
+  it("an explicit seq overtaken by a concurrent release is refused seq_not_increasing, not a failed batch", async () => {
+    const first = r2Descriptor("1.5.0");
+    first.seq = 10;
+    const late = r2Descriptor("1.4.0");
+    late.seq = 10;
+    const { won, lost, db, alone } = await race(first, late);
+    expect(won).toMatchObject({ ok: true });
+    expect(lost).toMatchObject({ ok: false, reason: "seq_not_increasing" });
+    expect(await dump(db)).toEqual(await dump(alone));
+  });
+
+  it("a sync that planned to ingest the attached descriptor loses to a CI descriptor committed first, and still applies", async () => {
+    const setup = async () => {
+      const db = makeTestDb();
+      await seedLinked(db);
+      const webKey = await storeBlob(db, WEB_SHA, WEB_BYTES.length);
+      const { fetchImpl } = github([withDescriptorAsset()], {
+        assets: { 200: JSON.stringify(attachedDescriptor()) },
+      });
+      const ingest = () =>
+        ingestReleaseDescriptor(db, envFor(), SLUG, descriptor(), {
+          source: "ci",
+          now: NOW + 100,
+          promoted: [webKey],
+          fetchImpl,
+        });
+      return { db, fetchImpl, ingest };
+    };
+    const raced = await setup();
+    const plan = await planSync(raced.db, raced.fetchImpl, NOW);
+    // The plan carries the attached descriptor's ingest (build number 77 everywhere).
+    expect(plan.some((s) => s.params.includes("77"))).toBe(true);
+    expect(await raced.ingest()).toMatchObject({
+      ok: true,
+      outcome: "created",
+    });
+    await raced.db.batch(plan);
+
+    const [meta] = await listReleaseMetadata(raced.db, SLUG);
+    expect(JSON.parse(meta!.metadata_json!).descriptor).toMatchObject({
+      status: "ingested",
+      source: "ci",
+    });
+    expect(
+      (await listBuilds(raced.db, SLUG, "v1.2.3")).map((b) => [
+        b.build_id,
+        b.build_number,
+      ]),
+    ).toEqual([
+      ["macos", "4021"],
+      ["web", null],
+    ]);
+    // What CI first, then an ordinary sync, would have left.
+    const ordered = await setup();
+    expect(await ordered.ingest()).toMatchObject({ ok: true });
+    await ordered.db.batch(await planSync(ordered.db, ordered.fetchImpl, NOW));
+    expect(await dump(raced.db)).toEqual(await dump(ordered.db));
+  });
+});
+
+describe("guardStatement", () => {
+  const guard = "EXISTS (SELECT 1 WHERE ? = 1)";
+  it("turns INSERT … VALUES into INSERT … SELECT … WHERE, the guard's params after the values'", () => {
+    const g = guardStatement(
+      {
+        sql: "INSERT INTO t (a, b) VALUES (?, NULL) ON CONFLICT(a) DO NOTHING",
+        params: ["x"],
+      },
+      guard,
+      [1],
+    );
+    expect(g.sql).toBe(
+      `INSERT INTO t (a, b) SELECT ?, NULL WHERE ${guard} ON CONFLICT(a) DO NOTHING`,
+    );
+    expect(g.params).toEqual(["x", 1]);
+  });
+
+  it("appends to an UPDATE/DELETE WHERE, and refuses a shape it cannot guard soundly", () => {
+    const g = guardStatement(
+      { sql: "DELETE FROM t WHERE a = ?", params: ["x"] },
+      guard,
+      [1],
+    );
+    expect(g.sql).toBe(`DELETE FROM t WHERE a = ?\n   AND ${guard}`);
+    expect(g.params).toEqual(["x", 1]);
+    for (const sql of [
+      "UPDATE t SET b = 1 WHERE a = ? OR a = ?",
+      "UPDATE t SET b = ?",
+      "INSERT INTO t (a) SELECT ?",
+      "SELECT ?",
+    ])
+      expect(() =>
+        guardStatement(
+          { sql, params: sql.includes("OR") ? ["x", "y"] : ["x"] },
+          guard,
+          [1],
+        ),
+      ).toThrow();
   });
 });

@@ -176,6 +176,15 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
     was judged against. It is fetched again when either changes. Refusals that hang on other rows
     (`release_exists`, `r2_object_missing`, `r2_ref_not_owned`) are fetched again on every sync,
     within the per-sync cap.
+  - Both writers plan from a read and apply a batch later, so every statement re-checks at write
+    time what another writer can change in between (`services/release/guard.ts`). The sync's
+    `sniffed`/`mapped` artifact upserts and the map's build upserts do nothing to a release that
+    has an ingested descriptor by then. The ingest's head writes a new release only while no other
+    release of its version exists and an explicit `seq` is still above the maximum. It updates an
+    existing row only while it has no ingested descriptor, or has this one. Every tail statement
+    runs only while the release carries this descriptor's marker. Two racing submissions
+    therefore resolve as first-commit-wins. The CI path reads the marker back and reports a loss
+    as the refusal that a fresh plan gives.
 
 ## Steps
 
