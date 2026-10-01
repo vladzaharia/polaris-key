@@ -55,6 +55,12 @@ import { manifestDeliverableStatements } from "../src/services/release/deliverab
 import { resyncRepo } from "../src/services/release/resync.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { recordRef } from "../src/core/blobs.js";
+import { handleAdmin } from "../src/admin/index.js";
+import {
+  ADMIN_COOKIE,
+  CSRF_HEADER,
+  issueSession,
+} from "../src/admin/session.js";
 
 installDigestStream();
 
@@ -958,5 +964,138 @@ describe("publisher policy ingest", () => {
         : githubStub()(input);
     const res = await resyncRepo(env, db, SLUG, NOW + 10, failing);
     expect(res).toMatchObject({ ok: false });
+  });
+});
+
+// ── The operator path (admin API, narrative-only) ──────────────────────────────────────────
+
+async function adminCall(
+  method: string,
+  resource: string,
+  body?: unknown,
+  opts: { csrf?: boolean } = {},
+): Promise<Response> {
+  const { token, session } = await issueSession(
+    env,
+    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    NOW,
+  );
+  const full = `/api/products/${SLUG}/${resource}`;
+  return handleAdmin(
+    new Request(`${CONSOLE}/manage${full}`, {
+      method,
+      headers: {
+        cookie: `${ADMIN_COOKIE}=${token}`,
+        ...(opts.csrf === false ? {} : { [CSRF_HEADER]: session.csrf }),
+        "content-type": "application/json",
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    }),
+    env,
+    db,
+    full,
+    { now: NOW },
+  );
+}
+
+describe("operator path: policy claim and static tokens", () => {
+  it("reads and claims the policy; the claim is audited and wins over resync", async () => {
+    const got = await adminCall("GET", "ci-publisher");
+    expect(await got.json()).toMatchObject({ policy: { source: "manifest" } });
+    const res = await adminCall("PUT", "ci-publisher", {
+      environment: "prod",
+      scopes: ["release:publish", "release:yank"],
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      policy: {
+        source: "admin",
+        environment: "prod",
+        scopes: ["release:publish", "release:yank"],
+      },
+    });
+    const audit = await db.all<{ action: string; actor_sub: string }>(
+      "SELECT action, actor_sub FROM audit WHERE action = 'ci.publisher.claim'",
+    );
+    expect(audit).toEqual([{ action: "ci.publisher.claim", actor_sub: "u1" }]);
+    // The repo's OIDC token for the old environment no longer satisfies it.
+    const { res: tok, body } = await exchange();
+    expect(tok.status).toBe(403);
+    expect(body.claim).toBe("environment");
+  });
+
+  it("refuses bad claim fields and unknown scopes", async () => {
+    for (const body of [
+      { workflow: "release.yml" },
+      { environment: "a/b" },
+      { scopes: ["release:everything"] },
+      { scopes: [] },
+      { repositoryId: -1 },
+      { repository: "no-slash" },
+    ]) {
+      const res = await adminCall("PUT", "ci-publisher", body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+    }
+  });
+
+  it("issues a static token once, lists it without a value, and revokes it", async () => {
+    const res = await adminCall("POST", "ci-tokens", {
+      scopes: ["release:publish"],
+      expiresInDays: 30,
+      label: "buildkite",
+    });
+    expect(res.status).toBe(201);
+    const issued = (await res.json()) as Record<string, any>;
+    expect(issued.token).toMatch(/^pkeyci_/);
+    expect(issued.expiresAt).toBe(NOW + 30 * 86400);
+    // The token works against the uploads route.
+    expect((await ticketFor(issued.token)).res.status).toBe(200);
+
+    const list = await adminCall("GET", "ci-tokens");
+    const text = await list.text();
+    expect(text).toContain(issued.tokenId);
+    expect(text).not.toContain(issued.token);
+    expect(text).not.toContain("token_hash");
+
+    const revoke = await adminCall("DELETE", `ci-tokens/${issued.tokenId}`);
+    expect(revoke.status).toBe(200);
+    expect((await ticketFor(issued.token)).res.status).toBe(401);
+    expect(
+      (await adminCall("DELETE", `ci-tokens/${issued.tokenId}`)).status,
+    ).toBe(404);
+    const actions = (
+      await db.all<{ action: string }>(
+        "SELECT action FROM audit WHERE action LIKE 'ci.token.%'",
+      )
+    ).map((a) => a.action);
+    expect(actions).toEqual(["ci.token.issue", "ci.token.revoke"]);
+  });
+
+  it("caps a static token at 90 days and needs known scopes", async () => {
+    for (const body of [
+      { scopes: ["release:publish"], expiresInDays: 91 },
+      { scopes: ["release:publish"], expiresInDays: 0 },
+      { scopes: ["release:publish"] },
+      { scopes: ["nope"], expiresInDays: 1 },
+      { scopes: ["release:publish"], expiresInDays: 1, label: "x".repeat(101) },
+    ]) {
+      expect(
+        (await adminCall("POST", "ci-tokens", body)).status,
+        JSON.stringify(body),
+      ).toBe(400);
+    }
+    expect(
+      await db.all("SELECT * FROM ci_tokens WHERE kind = 'static'"),
+    ).toHaveLength(0);
+  });
+
+  it("mutations need the CSRF header", async () => {
+    const res = await adminCall(
+      "POST",
+      "ci-tokens",
+      { scopes: ["release:publish"], expiresInDays: 1 },
+      { csrf: false },
+    );
+    expect(res.status).toBe(403);
   });
 });
