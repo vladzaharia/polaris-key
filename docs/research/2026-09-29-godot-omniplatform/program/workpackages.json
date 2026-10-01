@@ -691,7 +691,7 @@
       "optional": false,
       "refs": ["README §9.1 #23–#27", "notes/E9 §5 §6 §12", "PARITY §8"],
       "brief": "wp/P1b-09-fingerprint-storage-fixes.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P1b-10",
