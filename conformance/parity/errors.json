@@ -367,13 +367,25 @@
       "code": "server-error",
       "kind": "client",
       "service": "identity",
-      "description": "Node, Python, Swift: a device-code sign-in poll answered 5xx. Transient: the wait polls again at the same interval."
+      "description": "Node, Python, Swift, Godot: a device-code sign-in poll answered 5xx. Transient: the wait polls again at the same interval."
     },
     {
       "code": "cancelled",
       "kind": "client",
       "service": "identity",
-      "description": "Python: a device-code sign-in wait was cancelled by the host."
+      "description": "Python, Godot: a device-code sign-in wait was cancelled by the host."
+    },
+    {
+      "code": "sign-in-expired",
+      "kind": "client",
+      "service": "identity",
+      "description": "Godot: a device-code sign-in ended because its code expired: the client's expires_at passed (no poll is sent after it) or the server answered `timeout`. Begin again."
+    },
+    {
+      "code": "sign-in-denied",
+      "kind": "client",
+      "service": "identity",
+      "description": "Godot: a device-code sign-in poll answered the generic `error` state: the sign-in failed or was refused, and the server never says why. Begin again."
     },
     {
       "code": "sign-in-unavailable",

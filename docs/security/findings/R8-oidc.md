@@ -672,10 +672,14 @@ change:
   yields only the identity's own license (`getLicenseBySub`) or a new one under the existing
   group-map / `oidcDefault` policy. The browser-redirect flow carries no device id and never
   merged. PoCs, asserting the fix: `test/attack/R8-oidc.test.ts` › `R8-02 / P1-06 a user-code
-holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). Follow-up owned
-  by P1-07: an opt-in "attach this device's anonymous license to my account", applied only at
-  `/auth/device/poll` by the device-code holder after the player has seen the signed-in identity
-  on the device and accepted it.
+holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). Follow-up, done
+  in P1-07: an opt-in "attach this device's anonymous license to my account", applied only at
+  `/auth/device/poll` by the device-code holder after the device was shown the signed-in identity
+  (`confirm`) and the player accepted it, for the license the flow's own device holds a token on.
+  The callback now stores the identity and activates nothing for a device-code flow; the poll
+  activates it. PoCs: `ATTACK (claim, P1-07)`, `ATTACK (migrate, P1-07)` and the `P1-07:` cases
+  in the same describe block. The `ready` answer also names the signed-in identity, so the
+  residual mis-binding above is visible on the device.
 - **Not closed by P1-06: the flow's starter.** Everything above bounds a party holding _someone
   else's_ user code. The party that started a flow can still confirm it themselves — GET the page
   for its own user code, read the CSRF token, POST it with no `Origin` — and receive the IdP
@@ -686,6 +690,32 @@ holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). F
   `OPEN (R1-07 / R8-03): the starter confirms its own flow…`. Fix direction (unowned): bind a
   `viaDeviceCode` flow's callback to the browser that confirmed it, e.g. a `__Host-`
   `SameSite=Lax` cookie set on the confirmation `303` and required by `handleAuthCallback`.
+- **P1-07's opt-in attach is reachable by the starter (P1-07 review).** The attach is decided by
+  the device-code holder, which under R1-07 is the starter, not the victim who signed in. A
+  starter whose own device sits on an anonymous enrolled license polls with `confirmIdentity` and
+  its own bearer, then `attachLicense: true`, and the victim is asked nothing. Claim (the victim
+  has no license): the victim's identity takes over the starter's anonymous row, with every device
+  on it. Migrate (the victim has a license): `moveDevices` re-points every device on the starter's
+  anonymous license at the victim's, with `seat_no = NULL` and outside `authorizeDevice`'s seat
+  check, where the plain R1-07 poll authorizes one device through it. Bounded in the same review:
+  a migrate is `attachable` only while every authorized device on the starter's license (dormant
+  ones included: `moveDevices` moves them, and a moved dormant device returns without claiming a
+  seat) plus the victim's seat-holding devices fit the device limit the victim's license will
+  carry after the activation rewrites its tier and overrides to the victim's mapped tier and
+  provisioning (not a larger tier it still stores). The security review bounded the claim the
+  same way: a claim is `attachable` only while every authorized device on the starter's row
+  (dormant ones too, whose seats the starter can refill) fits the limit the row will carry on
+  the victim's tier, which may be smaller than the enroll tier it is on. So neither arm can push
+  the victim past the limit. It can still fill the
+  victim's free seats, so the victim's next device gets `device_limit` until they remove the
+  starter's. The attach also never commits when the mint would be refused: the merge runs before
+  the mint and nothing undoes it, so on a tier with fingerprint mode `strict` (a device-code poll
+  presents no fingerprint, so its mint always answers `fingerprint_required`) nothing is
+  `attachable`. Without that check a starter turned a flow the Worker refuses into a claim or
+  migrate onto the victim's strict licence. PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07
+claim)`, `OPEN (R1-07 / R8-03, P1-07 migrate)` (the gap), `P1-07 (R1-07 bound)`, `… bound, dormant devices`, `… bound, claim` (two) and `… bound,
+  migrate` (the seat refusal) and `P1-07 (R1-07, claim on a strict tier)` / `… migrate on a strict tier` (the mint
+  refusal). The browser binding above closes it.
 
 The two R8-02 PoCs that asserted the residual now assert the fix
 (`test/attack/R8-oidc.test.ts`), a third (`› holding only the user code, an attacker reads the

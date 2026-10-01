@@ -248,24 +248,24 @@ export async function validateOutletCredential<K extends OutletCredentialKind>(
  * kind listed here carries one operator-owned value, the **pin**, and a connector runs only when
  * the manifest's identity field equals it (`checkOutletCredentialPin`):
  *
- *   - **Where it lives.** In `meta_json` under `field` (`appleId` for `asc-api-key`), beside the
- *     kind's display metadata. It is not secret and not sealed; it is written only by the Core
- *     admin handler, through `putOutletCredential` (`pin` in the PUT body, alongside a value) or
- *     `pinOutletCredential` (a PUT with `pin` and no value: re-pinning never needs the key
- *     material again). The reach test keeps both writers to that handler.
+ *   - **Where it lives.** In `meta_json` under `field` (`appleId` for `asc-api-key`, `packageName`
+ *     for `google-service-account`), beside the kind's display metadata. It is not secret and not
+ *     sealed; it is written only by the Core admin handler, through `putOutletCredential` (`pin`
+ *     in the PUT body, alongside a value) or `pinOutletCredential` (a PUT with `pin` and no
+ *     value: re-pinning never needs the key material again). The reach test keeps both writers to that handler.
  *   - **Required where used, not at write.** A credential may be stored before it is pinned (and
  *     rows from before P5-02f have none); a rotation that omits `pin` keeps the stored one. A
  *     connector treats a missing pin exactly as a wrong one: inert, with the reason shown.
  *   - **Audited.** Every change of a pin is its own `outlet_credential.pin` audit row (old and
  *     new value) written by the admin handler, apart from the `outlet_credential.set` row.
  *
- * Reuse by other connectors (P5-03 Google Play, P5-04 Microsoft Store): add one entry here — e.g.
- * `"google-service-account": { field: "packageName", pattern: /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/, … }`
- * for the Play app's package name — and call `checkOutletCredentialPin(info, identity.packageName)`
- * in that connector's setup before it opens anything, refusing every control and webhook when it
- * is not `ok`. Nothing else in this module, the admin handler or the console form changes: the PUT
- * body's `pin`, the list's `pins` map, the audit row and the console's re-pin action are all keyed
- * by this table.
+ * Reuse by other connectors (P5-04 Microsoft Store next): add one entry here — as P5-03 did for
+ * the Play app's package name (`google-service-account`, field `packageName`) — and call
+ * `checkOutletCredentialPin(info, identity.<field>)` in that connector's setup before it opens
+ * anything, refusing every control and webhook when it is not `ok`. Nothing else in this module or
+ * the admin handler changes: the PUT body's `pin`, the list's `pins` map, the audit row and the
+ * console's re-pin action are all keyed by this table. The console's create form gives the kind
+ * its `pin` entry (`OutletCredentials.tsx`, `KINDS`) so the pin is required with the key.
  */
 export interface OutletCredentialPinSpec {
   /** The `meta_json` field the pin is stored under, named after the outlet identity field it is
@@ -288,6 +288,16 @@ export const OUTLET_CREDENTIAL_PINS: Readonly<
     label: "App Store Connect app id (Apple ID)",
     message:
       "pin must be the App Store Connect app id (the app's numeric Apple ID)",
+  },
+  // A Google Play service account can be invited to every app of a developer account (P5-03).
+  // The Android package-name rule, with the 255-character cap the manifest and the Play setup
+  // apply: the pin is compared byte-for-byte with the outlet identity's `packageName`.
+  "google-service-account": {
+    field: "packageName",
+    pattern: /^(?=.{1,255}$)[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/,
+    label: "Google Play package name",
+    message:
+      "pin must be the Google Play app's package name (an Android application id such as com.example.game)",
   },
 };
 

@@ -6,8 +6,10 @@
 // The human half happens between steps, server-side and unrecorded: the player opens the
 // verification URI's complete form (the QR payload), confirms the code on the RFC 8628 page, and
 // signs in at the IdP, which the scenario mocks (`../idp.ts`). The callback runs for real —
-// token exchange, ID-token verification, nonce binding, `activateFromIdentity` — so a device-code
-// sign-in is recorded yielding the signed-in identity's OWN licence and nothing merged (P1-06).
+// token exchange, ID-token verification, nonce binding — and stores the verified identity; the
+// `ready` poll then runs `activateFromIdentity` (P1-07 defers it to `/device/poll`), so a
+// device-code sign-in is recorded yielding the signed-in identity's OWN licence, nothing merged
+// (P1-06), and the `identity` the device shows the player.
 
 import { expect } from "vitest";
 import { dispatchWith } from "../../../src/dispatch.js";
@@ -183,7 +185,7 @@ export const devicecodeHappy: Scenario = {
       const r = new TranscriptRecorder({
         id: "devicecode-happy",
         description:
-          "Device-code sign-in (RFC 8628). beginSignIn() posts this device's id and name and hands the host the user code and both verification URIs (the complete one is the QR payload) — never the device code. pollSignIn() asks once per call: pending; a poll one second after the last is told to slow_down (429, with the interval); pending again at the interval. Between polls the player confirms the code on the user-code page and signs in at the (mocked) IdP. The next poll is ready: the client stores the device token and runs the same forced sync activation does. The licence is the signed-in identity's own — the device-code callback merges nothing (P1-06).",
+          "Device-code sign-in (RFC 8628). beginSignIn() posts this device's id and name and hands the host the user code and both verification URIs (the complete one is the QR payload) — never the device code. pollSignIn() asks once per call: pending; a poll one second after the last is told to slow_down (429, with the interval); pending again at the interval. Between polls the player confirms the code on the user-code page and signs in at the (mocked) IdP. The next poll is ready, naming the signed-in identity for the device to show: the client stores the device token and runs the same forced sync activation does. The licence is the signed-in identity's own — the device-code callback merges nothing (P1-06), and without the opt-in the poll attaches nothing (P1-07).",
         features: ["identity.devicecode"],
         requires: ["core.store", "core.sync"],
         product: PRODUCT,

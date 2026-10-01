@@ -1,0 +1,113 @@
+{
+  "$comment": "Google Play Developer API (androidpublisher v3) payloads for package gg.acme.djdl, in the shapes the API reference documents (notes/E2 §A1; developers.google.com/android-publisher/api-ref/rest/v3/edits, …/edits.tracks, the staged-rollout examples on developers.google.com/android-publisher/tracks). Built for P5-03 before any Play developer account, service account or app exists: no value here came from a real account. test/playFake.ts serves `edits.tracks.list.tracks` as the app's live state; the other entries pin the request and response shapes the connector must send and accept. Re-record against a real app with the first service account (the brief's Verify section) and keep these in step.",
+  "token": {
+    "access_token": "ya29.test-only-access-token",
+    "expires_in": 3599,
+    "token_type": "Bearer"
+  },
+  "edits.insert": {
+    "id": "17781293802398422551",
+    "expiryTimeSeconds": "1790003600"
+  },
+  "edits.tracks.list": {
+    "kind": "androidpublisher#tracksListResponse",
+    "tracks": [
+      {
+        "track": "production",
+        "releases": [
+          {
+            "name": "1.1.0",
+            "versionCodes": ["110", "111"],
+            "status": "inProgress",
+            "userFraction": 0.05,
+            "inAppUpdatePriority": 2,
+            "releaseNotes": [
+              { "language": "en-US", "text": "Faster startup, fewer crashes." }
+            ]
+          },
+          {
+            "name": "1.0.0",
+            "versionCodes": ["100"],
+            "status": "completed",
+            "releaseNotes": [{ "language": "en-US", "text": "First release." }]
+          }
+        ]
+      },
+      {
+        "track": "beta",
+        "releases": [
+          {
+            "name": "1.1.0",
+            "versionCodes": ["110", "111"],
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "track": "alpha",
+        "releases": []
+      },
+      {
+        "track": "qa",
+        "releases": [
+          {
+            "name": "1.2.0-rc.1",
+            "versionCodes": ["120"],
+            "status": "draft"
+          },
+          {
+            "name": "1.1.0",
+            "versionCodes": ["111"],
+            "status": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "edits.tracks.patch.request": {
+    "track": "production",
+    "releases": [
+      {
+        "versionCodes": ["99"],
+        "userFraction": 0.05,
+        "status": "inProgress"
+      }
+    ]
+  },
+  "edits.tracks.patch": {
+    "track": "production",
+    "releases": [
+      {
+        "versionCodes": ["99"],
+        "userFraction": 0.05,
+        "status": "inProgress"
+      }
+    ]
+  },
+  "edits.commit": {
+    "id": "17781293802398422551",
+    "expiryTimeSeconds": "1790003600"
+  },
+  "edits.delete": null,
+  "error.editInvalidated": {
+    "error": {
+      "code": 400,
+      "message": "This Edit has been deleted.",
+      "status": "FAILED_PRECONDITION",
+      "errors": [
+        {
+          "message": "This Edit has been deleted.",
+          "domain": "androidpublisher",
+          "reason": "editDeleted"
+        }
+      ]
+    }
+  },
+  "error.rateLimited": {
+    "error": {
+      "code": 429,
+      "message": "Quota exceeded for quota metric 'Queries' and limit 'Queries per minute'.",
+      "status": "RESOURCE_EXHAUSTED"
+    }
+  }
+}
