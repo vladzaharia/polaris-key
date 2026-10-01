@@ -52,6 +52,7 @@ export async function handleUpdateRoutes(
         updateParams(req, "appcast"),
         undefined,
         await appcastAccess(ctx),
+        ctx.waitUntil,
       );
     }
     if (rest[0] === "version") {
@@ -95,6 +96,7 @@ export async function handleUpdateRoutes(
       updateParams(req, "channelAppcast", channel),
       undefined,
       await appcastAccess(ctx),
+      ctx.waitUntil,
     );
   }
 

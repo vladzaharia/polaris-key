@@ -1181,11 +1181,31 @@ tuple":
   memo.
 
 The cost lands on GitHub's storage egress and on Worker CPU and duration, not on the D1 or KV
-quotas. Accepted for now; what removes it is publish-time verification (P3-03), which takes the
-DMG read off the unauthenticated request path. Finishing the stream and the memo write under
+quotas. Accepted for now; what removes it is publish-time verification, which takes the DMG read
+off the unauthenticated request path. Finishing the stream and the memo write under
 `ctx.waitUntil` would close the abort case only (not the concurrency window, and only within
 the post-response `waitUntil` budget). Tests: `releaseSparkleStream.test.ts` → "memoises a
 final negative verdict for a day, so the next request does not fetch".
+
+**The bound is per address, not per attacker (cross-reference R10-04b).** The ~60 GiB/min figure
+is what one IP can drive through the 30/min `release` bucket. That bucket is keyed by
+`clientIp`, which has no IPv6 /64 grouping (unlike the OIDC buckets' `clientNetwork`), and one
+host holds a whole /64, so an attacker rotating addresses inside it multiplies the figure; the
+residual above is therefore not bounded per attacker at all.
+
+**P3-03 (the stopgap, and the verifier's edges).** The appcast still verifies at request time
+(the signed feed's CI-signed records are the v4 path; the appcast is unchanged), so the stopgap
+the paragraph above describes is in: `verifySparkleSignature` runs the stream tail and the memo
+write under the request's `waitUntil` (`handleUpdate` passes `ServiceContext.waitUntil`), which
+closes the abort case within the `waitUntil` budget; the concurrency window and the per-address
+bound remain. Three edges are closed with it: the listed asset size is passed through and a body
+of any other length (a truncated clean EOF, a wrong-but-2xx body) is `incomplete`, never a
+memoised `"0"` that would drop a security update from the appcast for a day; `S >= L`, an
+undecodable point and a small-order key or `R` are refused before `fetchAssetStream`, so a
+malformed key or signature opens no GitHub download; and both memo writes swallow a KV failure,
+so a completed verification never becomes a 500. Tests: `releaseSparkleStream.test.ts` → "a body
+shorter or longer than the listed asset size…", "a malformed key or signature opens no
+download", "a failing KV put…", "finishes the stream and the memo under waitUntil…".
 
 ## R10-15 — unbounded `.sig` read
 

@@ -729,7 +729,11 @@ describe("handleRelease", () => {
     const rel = release({
       tag_name: "v1.2.3",
       assets: [
-        asset("djdl-arm64.dmg", 100, 4096),
+        asset(
+          "djdl-arm64.dmg",
+          100,
+          dmgBytes.length,
+        ) /* the listed size is the served one (P3-03) */,
         asset("djdl-arm64.dmg.sig", 101),
       ],
     });
