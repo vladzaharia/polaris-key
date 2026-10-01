@@ -62,9 +62,17 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
 - `PKeySignInResult.kind`: `ok`, `timeout`, `expired`, `cancelled`, `denied` (poll `error`),
   `device-mismatch` (401), `rate-limited`, `error`. With Identity off or unconfigured,
   `begin_sign_in` returns `service-unavailable` before any request (D-21, as in every SDK).
+  _Correction (implementation):_ as in sdk-node (P1b-08), every 429 on a poll is a `slow_down`
+  (the returned interval, else the current one plus five seconds), so `rate-limited` is the start
+  refused 429; `timeout` is the server's `timeout` state and `expired` the client's `expires_at`;
+  `service-unavailable` is its own kind. A start that fails also emits `sign_in_finished`. The
+  lower-level `request_sign_in`, `poll_sign_in` and `wait_for_sign_in` exist for hosts that pace
+  the flow themselves and for the transcript replays.
 - On `ready`: store the `pkeyt_` token through the token manager with the in-memory token source
   `identity` (P1-03), then `await PolarisKey.sync(true)` so the licence and config documents
-  arrive at once.
+  arrive at once. _Correction (implementation):_ the token manager's source for a sign-in is
+  `signin` (`PKeyTokenManager.SOURCE_SIGNIN`, P1b-06's `TokenSource`, the same string sdk-node
+  uses); there is no `identity` source.
 - `ui/qr/`: a QR encoder (byte mode, error-correction level M, versions 1–10, all eight masks
   scored per the standard) returning a module matrix, and `PKeyQrRect extends TextureRect`
   (nearest filtering, a four-module quiet zone, theme colours).
@@ -84,6 +92,15 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
   tests extending `R8-oidc.test.ts` › `R8-02 / P1-06 a user-code holder cannot claim…`. It also
   needs a Godot half: a confirmation step in `PolarisKey.identity`, which P1-10's dialog
   renders. The lead decides whether the server half stays here or moves to its own package.
+  _Correction (implementation; the lead kept the server half here):_ the callback now stores the
+  verified identity and activates nothing for a device-code flow; `/device/poll` activates it.
+  Otherwise the claim case could not exist (the callback would already have minted a fresh
+  licence for an identity with none). A poll with `confirmIdentity: true` answers
+  `{status: "confirm", identity, attachable}` without minting; after the player accepts,
+  `attachLicense: true|false` with the device's own bearer completes it, and `ready` reports
+  `attached`. Every device-code `ready` also carries `identity` (name, verified e-mail), which is
+  what "show the signed-in identity after ready" reads. Godot: `begin_sign_in(name, true)`,
+  `sign_in_confirm`, `accept_sign_in(attach)`.
 
 **Out** (and where it belongs instead):
 
@@ -114,7 +131,10 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
   `addons/polaris_key/third_party/qr/` with its licence file and pinned version, or write the
   encoder above (about 400 lines). Either way the fixture tests below decide. Record the choice
   in the PR; a vendored licence must ship inside the addon folder (Asset Store rule, notes/E4
-  §1.1).
+  §1.1). _Correction (implementation):_ written, not vendored (`ui/qr/qr_encoder.gd`, about 330
+  lines, no licence to carry). The reference encoder is Nayuki's qrcodegen 1.8.0: segno 1.6.6
+  appends a 0x00 codeword where ISO/IEC 18004 §7.4.10 adds no padding bits, so its byte-mode
+  symbols differ from a conforming encoder's whenever pad codewords exist.
 - **Strict tiers:** device-code sign-in sends no fingerprint, so a `strict` tier fails on this
   path. The README (P1-12) says so; do not work around it client-side.
 - **Store policy:** signing in through an external browser is fine on iOS and Android; unlocking
