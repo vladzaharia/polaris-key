@@ -205,9 +205,7 @@ export async function withFetch<T>(
   }
 }
 
-export async function audits(
-  db: Db,
-): Promise<
+export async function audits(db: Db): Promise<
   Array<{
     action: string;
     actor_sub: string;
@@ -240,9 +238,7 @@ export async function availability(db: Db): Promise<
   );
 }
 
-export async function submissions(
-  db: Db,
-): Promise<
+export async function submissions(db: Db): Promise<
   Array<{
     release_id: string;
     outlet_id: string;
