@@ -41,7 +41,8 @@ import {
   reacquireToken,
 } from "../src/license/endpoints.js";
 import { reportSnapshot } from "../src/core/telemetry.js";
-import { SDK_NAME, SDK_VERSION } from "../src/version.js";
+import { SDK_VERSION } from "../src/version.js";
+import { canonicalArch, canonicalPlatform } from "@polaris-key/client-core";
 
 /** One canned response. `text` (rather than `json`) is how the malformed-body pins are fed. */
 interface Canned {
@@ -443,6 +444,7 @@ describe("reportSnapshot — POST /<p>/devices/report", () => {
   });
 });
 
+// @pkey-feature core.headers
 describe("every call carries the Core metadata headers + a deadline (R4-08)", () => {
   /** The seven `X-PKey-*` headers §5 requires on every product-scoped request. */
   const METADATA_HEADERS = [
@@ -478,9 +480,13 @@ describe("every call carries the Core metadata headers + a deadline (R4-08)", ()
       expect(h.get("x-pkey-version")).toBe("1.2.3");
       // Derived from the host version when the caller names no channel.
       expect(h.get("x-pkey-channel")).toBe("stable");
-      expect(h.get("x-pkey-platform")).toBe(platform());
-      expect(h.get("x-pkey-arch")).toBe(arch());
-      expect(h.get("x-pkey-sdk")).toBe(SDK_NAME);
+      // The canonical WIRE-CONTRACT-V3 §5.2 values (every CI host maps both), and the short
+      // SDK id rather than the package name.
+      expect(canonicalPlatform(platform())).not.toBeNull();
+      expect(canonicalArch(arch())).not.toBeNull();
+      expect(h.get("x-pkey-platform")).toBe(canonicalPlatform(platform()));
+      expect(h.get("x-pkey-arch")).toBe(canonicalArch(arch()));
+      expect(h.get("x-pkey-sdk")).toBe("node");
       expect(h.get("x-pkey-sdk-version")).toBe(SDK_VERSION);
     },
   );

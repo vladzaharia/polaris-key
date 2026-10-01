@@ -95,8 +95,8 @@ export function collectFacts(
   const probes = opts.probes?.length ? runProbes(opts.probes) : undefined;
   return {
     os: {
-      // Short family (`darwin`/`win32`/`linux`), matching X-PKey-Platform. The detailed
-      // version lives here rather than being crammed into that header.
+      // Short Node-style family (`darwin`/`win32`/`linux`), as every SDK reports it here. This
+      // is not the X-PKey-Platform value, which is canonical (WIRE-CONTRACT-V3 §5.2).
       name: platform(),
       version: release(),
       ...(build ? { build } : {}),
