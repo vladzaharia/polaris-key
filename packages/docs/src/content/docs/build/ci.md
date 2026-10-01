@@ -126,6 +126,18 @@ editor's `yaml-language-server: $schema=` header can point at a local copy.
 5. **Submit.** The Worker verifies every uploaded object, checks the descriptor against your
    declaration, and only then writes the release.
 
+**Build metadata.** For an `ios` build whose format is `ipa`, and an `android` build whose
+format is `apk`, the step reads the facts the
+[storefront feeds](/docs/services/distribution/feeds/#build-metadata) need from inside the
+payload and records them in the descriptor:
+
+- from an IPA: the bundle id, the versions, the minimum OS, the entitlements and the privacy
+  strings;
+- from an APK: the package, the version code and name, the SDK levels, the ABIs and the signer.
+
+If a payload cannot be read, the step prints a warning and the build is published without
+metadata.
+
 **`meta`** supplies what a file cannot: per build id, a `buildNumber` (a string, or a whole number
 written as one), a `minOS`, and a `requires` object. An unknown build id or field is an error,
 because it is almost always a typo.
@@ -192,6 +204,27 @@ fingerprint is not in the product's key inventory is flagged and exits 1. See
 [Availability, submissions and keys](/docs/services/distribution/availability/). The rollout
 commands need `distribution:rollout`, which an operator adds deliberately; see
 [Rollouts and halts](/docs/services/distribution/rollouts/).
+
+## Storefront feeds
+
+The AltStore, Obtainium, Scoop and Flathub feeds need nothing from CI beyond the publish: the
+Worker renders them from the release. The F-Droid repository is the exception, because it is
+signed with a repo key the Worker never holds:
+
+```yaml
+- run:
+    node pkey.mjs feeds fdroid --product your-product --channel stable --out fdroid
+    --keystore fdroid.keystore --alias repo
+  env:
+    PKEY_FDROID_KS_PASS: ${{ secrets.FDROID_KS_PASS }}
+```
+
+The command builds `index-v2.json`, `entry.json` and a diff from the channel's releases, signs
+`entry.jar` with `apksigner` (from `$ANDROID_HOME/build-tools`, or `--apksigner`), checks the
+signer against the `fdroid-repo` key in the product's key inventory, then uploads and registers
+the files. It needs `distribution:feeds`, which an operator adds deliberately. Without
+`--keystore` it writes the unsigned files and stops. See
+[Storefront feeds](/docs/services/distribution/feeds/#the-f-droid-repository).
 
 ## Other CI systems
 
