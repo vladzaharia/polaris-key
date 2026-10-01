@@ -33,6 +33,8 @@ export {
   CHANNEL_NAME_PATTERN,
   PR_CHANNEL_PATTERN,
   PR_NUMBER_MAX_DIGITS,
+  PLATFORM_SPELLINGS,
+  ARCH_SPELLINGS,
 } from "./core.js";
 export type {
   JSONValue,
@@ -50,6 +52,8 @@ export type {
   PolarisErrorCode,
   PolarisErrorBody,
   BuildChannel,
+  ClientPlatform,
+  ClientArch,
 } from "./core.js";
 
 export type {

@@ -88,14 +88,12 @@ export class ConfigClient {
     return resolveSource(this.context(), key);
   }
 
-  /** The catalog entries for a settings UI: every remote entry MINUS the `hidden` ones, each
-   *  marked `{ key, value, enforced }`. (`hidden` keys are still APPLIED by `getConfig`; they
-   *  are merely withheld from this enumeration.) */
+  /** The catalog entries for a settings UI (WIRE-CONTRACT-V3 §2.2.1 rule 4): every document
+   *  entry MINUS the `hidden` ones, each marked `{ key, value, enforced }` with its resolved
+   *  value. (`hidden` keys are still APPLIED by `getConfig`; they are merely withheld from this
+   *  enumeration.) A key only a local override or the environment supplies is not listed. */
   listUserConfig(): UserConfigEntry[] {
-    return listUserEntries(this.doc?.config).map((entry) => ({
-      ...entry,
-      value: this.getConfig(entry.key, entry.value),
-    }));
+    return listUserEntries(this.context());
   }
 
   /** A managed secret's value, or null. Secrets are never enumerated. */
