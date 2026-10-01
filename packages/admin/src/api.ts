@@ -136,9 +136,11 @@ export interface EdgeMintRecipe extends EdgeMintRecipeFields {
    *  public now (open registration, anonymous enrolment or an OIDC default tier) and the
    *  approval was given without acknowledging that; `license` means License was turned off
    *  since, so device licences are no longer checked; `identity` means sign-in now trusts a
-   *  different identity provider or group map than the approval recorded. A manifest push
-   *  that causes any of these three deletes the approval instead (the recipe reads `pending`;
-   *  the audit log says why), so `changed` for them is seen after an operator's own edit. */
+   *  different identity provider or group map than the approval recorded. The next push or
+   *  console edit of the product's services or License policy deletes such an approval before
+   *  it writes (the recipe then reads `pending`; the audit log says why), so `changed` for these
+   *  three lasts only until then — after an operator's own edit, or a push that was cut off
+   *  before its own sweep. */
   changedFields: (
     | keyof EdgeMintRecipeFields
     | "registration"

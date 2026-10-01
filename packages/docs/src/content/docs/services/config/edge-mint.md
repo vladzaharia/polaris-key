@@ -174,18 +174,21 @@ Each of the three conditions above is checked on every mint, so a widening refus
 check against the product _as it stands_ is not enough on its own: a push that widens issuance
 (opens enrolment, turns License off, aims sign-in at an issuer the pusher controls) and a second
 push that reverts it would leave the approval applying again, while the licences and device
-tokens handed out in between keep working. So the manifest ingest also **deletes** every approval
-the product has widened: resync sweeps before its first write and after its last (also when the
-push is refused or fails part-way, since the earlier writes are not rolled back), and audits each
-dropped approval as `config.mint.invalidate`; linking a product deletes every approval row under
-its slug. After the revert the recipe is `pending`, and it mints again only when an operator
-re-approves it.
+tokens handed out in between keep working. So every writer of those settings first **deletes**
+every approval the product has already widened, and audits each dropped approval as
+`config.mint.invalidate`: resync sweeps before its first write, and the console sweeps before
+every edit or revert of the product's services or License device policy. Resync also sweeps after
+its last write (also when the push is refused or throws part-way, since the earlier writes are not
+rolled back); a push whose Worker is cut off before that is caught by the next push or console
+edit, before it writes. Linking a product deletes every approval row under its slug. After the
+revert the recipe is `pending`, and it mints again only when an operator re-approves it.
 
 Before re-approving, review the audit log from the `config.mint.invalidate` entry on, and disable
 the licences and devices you did not intend: a re-approval drops nothing that was issued while the
 approval was widened. A change to a recipe field is not swept — a changed recipe signs nothing
 meanwhile — so reverting it restores the approval. An operator's own console edit that widens the
-product is swept at the next link or resync; until then the per-mint check refuses.
+product is swept at the next push or console edit, so turning it back off leaves the recipe
+`pending` too; until then the per-mint check refuses.
 
 What this does not cover: the approval trusts the identity provider itself. Anyone that provider
 signs in with a mapped group — including an account its administrator adds later — is covered, as

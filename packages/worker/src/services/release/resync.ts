@@ -83,7 +83,11 @@ async function readManifestFile(
  * transaction, and a push refused half-way (a bad catalog, a tier still in use) — or one that
  * THROWS half-way (a D1 constraint in the final batch) — can already have written `services_json`
  * or `auto_issue_json`. The sweep therefore runs in a `finally`: a repo writer must not be able to
- * skip it by making the ingest fail after the widening writes.
+ * skip it by making the ingest fail after the widening writes. A `finally` does not run when the
+ * Worker is KILLED after those writes (CPU limit, a cancelled webhook), so this is not the
+ * guarantee: every writer of an approval input sweeps BEFORE it writes — `applyRepoManifest`, and
+ * the console's services and License-policy edits (`core/servicesAdmin.ts`,
+ * `services/license/admin/policy.ts`) — so no revert can be the first thing to look.
  */
 export async function resyncRepo(
   env: Env,

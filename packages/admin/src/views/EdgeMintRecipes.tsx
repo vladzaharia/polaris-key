@@ -54,9 +54,9 @@ import {
  * And so is License: the mint checks a device's licence only while License is on, so turning it
  * off (`license`) would let a device whose licence was disabled mint again.
  *
- * A manifest push that widens any of these three does not just leave the recipe `changed`: the
- * ingest deletes the approval (audited as `config.mint.invalidate`), so reverting the push
- * cannot bring it back. The recipe then reads `pending`, and whatever was issued while it was
+ * A widening of any of these three does not just leave the recipe `changed`: the next push or
+ * console edit of the services or License policy deletes the approval before it writes (audited
+ * as `config.mint.invalidate`), so reverting the widening cannot bring it back. The recipe then reads `pending`, and whatever was issued while it was
  * widened needs reviewing before it is re-approved.
  */
 

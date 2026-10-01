@@ -216,10 +216,16 @@ under the victim product.
   in is the other route to a device token, and the manifest writes the OIDC provider, issuer,
   client id and `groupRoleMap` that decide who a sign-in licenses. The approval records them (and
   whether Identity was on); while Identity is on, any change widens it. A widened approval stops
-  matching at once (every mint re-checks), **and the ingest deletes it**: link and resync drop every
-  approval the product has widened, before the first write and after the last (in a `finally`, so
-  a push that makes the ingest throw half-way — say, a duplicated recipe id — still triggers it),
-  and audit it as `config.mint.invalidate`. So a push that aims sign-in at an issuer the pusher controls, opens
+  matching at once (every mint re-checks), **and it is deleted before anything can revert the
+  widening**: every writer of an approval input sweeps the approvals the product has ALREADY
+  widened before it writes — resync before its first write, and the console before every write of
+  `services_json` or `auto_issue_json` (the services and License-policy PATCH and revert) — and
+  audits each drop as `config.mint.invalidate`. The guarantee rests on that pre-write sweep. Resync
+  also sweeps after its last write, in a `finally`, so a push that throws half-way (say, a
+  duplicated recipe id) is caught at once; but a `finally` does not run when the Worker is killed
+  after the push's un-batched writes (a CPU-heavy manual-channel regex, a cancelled webhook), nor
+  does it see an approve that races it — the next push or console edit drops those before it
+  writes. So a push that aims sign-in at an issuer the pusher controls, opens
   enrolment or turns License off, followed by a push that reverts it, leaves the recipe `pending`
   rather than approved; it mints again only when an operator re-approves it. Recipe-field changes
   are not swept (a changed recipe signs nothing meanwhile), so reverting one restores the
@@ -230,9 +236,10 @@ under the victim product.
   operator reviews the audit log from the `config.mint.invalidate` row on and disables what they
   did not intend; (2) an approval trusts the identity provider itself — anyone that IdP signs in
   with a mapped group (including accounts its administrator adds later) is covered, which is the
-  IdP weakness below, not something the approval can close; (3) an operator's own console edit
-  that widens the product is not swept until the next link or resync — the per-mint check still
-  refuses while it lasts.
+  IdP weakness below, not something the approval can close; (3) a widening that no sweep has seen
+  yet (an operator's own console edit, or a push killed before its post-write sweep) lasts until
+  the next push or console edit drops the approval — the per-mint check refuses while it lasts,
+  but anonymous enrolments or sign-ins it allows in the meantime are issued, and fall under (1).
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -300,9 +307,11 @@ currently holds:
    it matches only if the OIDC provider, issuer, client id and group map are the ones it recorded.
    All three are checked on every mint, not only when approving, so a widening after an approval
    (by push or by operator) makes the recipe `404` at once. A widening a manifest push causes is
-   also permanent: link and resync delete the widened approval (`config.mint.invalidate` in the
-   audit log), including when the push fails or throws after its widening writes, so a later push that reverts the widening leaves the recipe `pending` until an
-   operator re-approves it. What a re-approval cannot undo is what was issued while the approval
+   also permanent: every writer of an approval input — resync, and the console's services and
+   License-policy edits — deletes the widened approval before it writes (`config.mint.invalidate`
+   in the audit log), so a later push or console edit that reverts the widening leaves the recipe
+   `pending` until an operator re-approves it, even when the widening push threw or its Worker was
+   killed before its own post-write sweep. What a re-approval cannot undo is what was issued while the approval
    was widened — the operator reviews and disables it — and what an approval cannot bound is the
    IdP it trusts: whoever that IdP signs in with a mapped group is covered (§3). The only
    approvals not given by an operator are the upgrade backfill's (approved by `migration`), which

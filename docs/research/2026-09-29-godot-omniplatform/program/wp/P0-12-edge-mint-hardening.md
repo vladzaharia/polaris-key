@@ -107,7 +107,14 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   approval `productWidening` reports (public without acknowledgement, License turned off,
   sign-in trust changed) before its first write and after its last (the last in a `finally`, so a
   push that throws after its widening writes cannot skip it — fourth review), auditing each as
-  `config.mint.invalidate`; link deletes every approval row under the slug. The rule moved to
+  `config.mint.invalidate`; link deletes every approval row under the slug. _Fifth review:_ a
+  `finally` does not run when the Worker is killed after resync's un-batched
+  `setAutoIssuePolicy`/`setServices` writes (CPU limit from a manual-channel regex, a cancelled
+  webhook), and an approve can race the post-write sweep. So the console sweeps too, before every
+  write of an approval input — `core/servicesAdmin.ts` (services PATCH and revert) and
+  `services/license/admin/policy.ts` (License policy PATCH with `autoIssue`, and revert); the
+  ingest is the only writer of `oidc_config`. The guarantee rests on this pre-write sweep by every
+  writer, not on the `finally`. The rule moved to
   `core/edgeMintApproval.ts` because the ingest (Release) may not import Config. Recipe-field
   changes are not swept. Residual (THREAT-MODEL §3): what was issued while widened survives a
   re-approval — the operator reviews the audit log first.
@@ -203,6 +210,11 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
 - [x] Test (fourth review): a push that enables anonymous autoIssue and then throws (duplicated
       recipe id) still drops and audits the approval; a console revert of the enrolment does not
       let a stranger enrolled in between mint, and neither does a later clean resync.
+- [x] Test (fifth review): with a widening left by a killed ingest (written directly, no sweep),
+      each console writer of an approval input — License policy PATCH and revert, services PATCH
+      and revert — drops and audits the approval before it writes; a stranger enrolled in between
+      gets `404` after the console closes enrolment and after a clean resync. A console edit that
+      widens nothing keeps the approval.
 - [x] Test: the per-device bucket returns `429` after 30 mints in a minute from one device.
 - [x] Test: discovery `config.mint.available` is false while every recipe is pending.
 - [x] `THREAT-MODEL.md` and `services/config/edge-mint.md` describe both conditions; `gen:check`,
