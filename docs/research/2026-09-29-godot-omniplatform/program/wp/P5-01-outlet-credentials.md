@@ -175,20 +175,20 @@ JWT-bearer exchange and a sealed token cache beside it.
 
 ## Acceptance criteria
 
-- [ ] `outletCredentials.test.ts` covers: write-only PUT (value never echoed, never in `GET`),
+- [x] `outletCredentials.test.ts` covers: write-only PUT (value never echoed, never in `GET`),
       DELETE, audit rows for set, delete and every open, per-kind validation (a `.p8` that is not
       P-256 PKCS#8 is rejected at write), `meta_json` without secret fields.
-- [ ] A sealed outlet credential copied into `product_secrets` does not open; an edge-mint recipe
+- [x] A sealed outlet credential copied into `product_secrets` does not open; an edge-mint recipe
       naming an outlet credential id answers `misconfigured`.
-- [ ] `outletCredentialReach.test.ts` fails when a file under `src/services/config/` imports
+- [x] `outletCredentialReach.test.ts` fails when a file under `src/services/config/` imports
       `core/outletCredentials`.
-- [ ] `GET /manage/api/products/kek` counts the new table, and the reseal sweep re-seals its rows.
-- [ ] Deleting a product deletes its outlet credentials.
-- [ ] `edgeMint.test.ts` and the GitHub App tests pass unmodified; `ascToken` produces a token that
+- [x] `GET /manage/api/products/kek` counts the new table, and the reseal sweep re-seals its rows.
+- [x] Deleting a product deletes its outlet credentials.
+- [x] `edgeMint.test.ts` and the GitHub App tests pass unmodified; `ascToken` produces a token that
       verifies with the public key and has `exp - iat ≤ 1200`; `googleAccessToken` caches and
       re-uses a token, and refreshes it after expiry.
-- [ ] The data-model page is regenerated and `gen:check` passes; the threat model names the asset.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd`.
+- [x] The data-model page is regenerated and `gen:check` passes; the threat model names the asset.
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
 
 ## Verify
 
