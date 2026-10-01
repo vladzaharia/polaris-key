@@ -1,0 +1,644 @@
+> Research note for [Godot on Polaris Key](../README.md), 2026-09-30. A working paper kept for its
+> evidence and sources; the README synthesis is the cross-checked position. Scratch paths in the
+> original run are rewritten to `prototype/` where the code was kept.
+
+# S-07 - Re-check of the dated platform policies before connector work
+
+Research date: 2026-09-30 (the research itself is dated 2026-09-29/30). Web research plus one small
+re-runnable harness; no account, credential, device or store was touched. Evidence tags as in the
+other notes: [V] primary source read raw, [M] measured by the harness, [S] summary or secondary, [I]
+inference.
+
+## 1. Question
+
+Does each dated policy, fee, deadline and API fact that the research relies on (18 rows, listed in
+[S-07's brief](../program/wp/S-07-policy-recheck.md)) still match its primary source, and what should
+the connector work packages (P5-02, P5-03, P5-04, P6-01), the feed work (P2b-05), the pack work
+(P4-03, P4-08) and Diceroll's first steps (D-01) do differently?
+
+## 2. Short answer
+
+- **17 of 18 rows are unchanged.** Every quoted wording was found again on its primary page
+  (128 checks over 53 sources, all passing on the final run).
+- **One row changed, in one clause: row 8.** On 2026-09-17 Google told US developers in the external
+  content links programme that they now have until **2026-12-01** to report successful downloads and
+  pay the fees. Reporting for the other US programme transactions still starts 2026-10-01.
+- **Four "not verified" gaps in the research are closed** with primary text: the Japan and Brazil
+  business terms (row 5), Steam's rule that in-game purchases go through the Steam Wallet (row 15),
+  the Play Developer Reporting API metric names (row 17) and the Microsoft Store submission API
+  status and rollout values (row 18).
+- **Two sources moved or were rewritten.** Apple's DMA page cited in E1 is now a soft 404; the same
+  facts are on `support/apps-in-the-eu/` and in the 2026-08-18 news post (row 4). Flathub rewrote
+  its generative-AI policy twice in September (2026-09-04 and 2026-09-21); the wording the research
+  relies on is present verbatim after the second rewrite (row 12).
+- **Could not verify:** one clause, the "EEA external offers 2025-08-19" date in row 8 (the Play page
+  shows no date; only a search summary gave it). Several Play, Apple and Steam pages print no date
+  of their own; that is recorded per row.
+- **Two pages were edited during the spike itself** (the harness caught both on a re-run about
+  twelve hours after the first pass, so the research is drifting by the hour at this date): the
+  Android developer verification overview dropped its list of stores and countries (they remain
+  in the guide, FAQ and the March blog post), and the Play service-fee page was reworded to put
+  Australia and Japan (from 2026-09-30) beside the EEA, UK and US. Neither changes a fact; both
+  changed the quoted wording, and the harness now quotes the new wording.
+- **Date-critical items are now in the past or a day away.** Android developer verification
+  enforcement starts today (2026-09-30). Google Play's Billing Library 8+ and target API 36
+  deadlines passed on 2026-08-31 (extension to 2026-11-01 available). Apple's EU terms and the
+  US Play fee reporting start tomorrow (2026-10-01).
+
+## 3. Method
+
+Environment: macOS (Darwin 27.0.0), Node v22.13.1 through `mise exec node@22`, run 2026-09-30
+(final full harness run 22:50 UTC) from a residential network (IP geolocation not recorded). No login, no
+API key, no cookies, nothing posted anywhere.
+
+1. Fetched each primary page raw with `curl`/`fetch` and read it, using the raw formats the brief
+   asks for: Apple's DocC JSON (`developer.apple.com/tutorials/data/documentation/...`), the Flathub
+   documentation repository's Markdown, the winget-pkgs `doc/*.md` files, Microsoft Learn HTML
+   (with its `ms.date` and `updated_at` metadata) and Google's public API discovery document.
+2. Turned every "unchanged" or "changed" verdict into a quoted string, then encoded the quotes as a
+   checklist in `prototype/policy-recheck/` so the rows can be re-run: `checks.mjs` holds the 18
+   rows, `recheck.mjs` fetches, extracts text, normalises whitespace and smart quotes, and requires
+   each quote (or pattern, or a small structural test) to be present. Exit code 1 means "a human must
+   re-read", never "the fact is false".
+3. Where a summariser and the raw page could disagree, the raw page won (the E9 method).
+4. Limits of a PASS. The harness proves that the quoted text is still present; it does not prove that
+   nothing changed. Added text is caught only by changelog guards (row 8 `us-update` after
+   2026-09-17, row 9 Billing Library releases after 9.1.x, row 12 Flathub commits after 2026-09-21,
+   row 16 App Store Connect API versions after 4.5). The one change this spike found, the 2026-09-17
+   row 8 entry, was an addition, so it would have passed a quote-only harness built earlier. The
+   stored text hashes are not compared against any committed baseline. Exit code 2 means bad
+   `--rows` usage and nothing was checked; `--rows` accepts ranges such as `1-5,12,14`.
+
+Measured commands:
+
+```sh
+cd docs/research/2026-09-29-godot-omniplatform/prototype/policy-recheck
+mise exec node@22 -- node --test lib.test.mjs          # 8 offline tests, all pass
+mise exec node@22 -- node recheck.mjs                  # 18/18 rows pass, 128 checks over 53 sources
+mise exec node@22 -- node recheck.mjs --rows 4,6,16    # what P5-02 re-runs
+mise exec node@22 -- node recheck.mjs --rows 1-5,12,14 # what P2b-03 and P2b-05 re-run (ranges allowed)
+```
+
+Two harness lessons, both [M]:
+
+- Google's documentation sites localise by client IP when no `Accept-Language` header is sent (the
+  first run received Hebrew and Hindi pages, and 3 rows failed for that reason alone). The harness
+  sends `Accept-Language: en-US,en;q=0.9`; a person re-reading a page from another country should
+  add `?hl=en`.
+- Apple's news page, the EU/Japan/Brazil support pages, the DPLA and the Steam partner
+  documentation are readable without a login, so "could not verify: partner-only page" did not
+  apply to any row.
+
+Label used per row below: **measured** = the document was fetched and the wording checked by the
+harness this session. Everything that would need a device, an account or a store console is listed
+in section 8 as **unmeasured**; no row was answered by emulation, because these are documents, not
+behaviours.
+
+## 4. Results by row
+
+Retrieval date for every source: 2026-09-30. "Page date" is the page's own date or metadata; "none
+shown" means the page prints no date.
+
+### Row 1 - Android developer verification: dates and scope
+
+- Verdict: **unchanged.** Label: measured [V][M]. Affects D-01, P2b-03, P2b-05, P5-06.
+- `https://developer.android.com/developer-verification` (page date: none shown). **Wording
+  changed during the spike, facts did not.** The first pass (earlier 2026-09-30) read: "Next
+  milestone: September 30, 2026. These protections begin for users installing apps from
+  participating stores (Google Play, HONOR App Market, OPPO App Market, Galaxy Store, Palm Store,
+  V-Appstore, GetApps) in Brazil, Indonesia, Singapore, and Thailand, on certified devices running
+  Android 7+. In 2027, we'll expand this globally to all apps on certified devices." The re-run
+  (22:50 UTC) reads: "Effective September 30, 2026 ... Protections begin for users installing apps
+  from participating stores in select regions on certified Android devices. We'll continue rolling
+  out user protections globally in 2027." The store and country lists moved off the overview; the
+  guide, FAQ and blog below still carry them.
+- Blog, "Android developer verification: rolling out to all developers" (March 2026,
+  `android-developers.googleblog.com/2026/03/android-developer-verification-rolling-out-to-all-developers.html`):
+  "The user side protections will first go live in Brazil, Indonesia, Singapore, and Thailand this
+  September, before expanding globally in 2027." and "September 30, 2026: Apps must be registered
+  by verified developers in order to be installed and updated on certified Android devices in
+  Brazil, Indonesia, Singapore, and Thailand. Unregistered apps can be sideloaded with ADB or
+  advanced flow."
+- `.../guides` (page date: Last updated 2026-08-18 UTC): "Starting September 30, 2026, these new
+  developer verification protections go live for users in Brazil, Indonesia, Singapore, and
+  Thailand." It adds that "The verification capability will soon be expanded to all third-party
+  Android app stores."
+- `.../guides/faq` (per-answer dates, latest 2026-07-15): "The September 30, 2026 deadline only
+  applies to the specific participating stores. If you distribute your app through other stores, or
+  if users sideload your app directly, these new verification requirements won't apply to your app
+  yet." and "enforcement will only apply to mobile and tablet form factors in the selected regions".
+- Refinements the research did not have: enforcement is limited to mobile and tablet form factors;
+  a Play developer's apps must be registered on all form factors; ADB installs are exempt.
+
+### Row 2 - Registration mechanics
+
+- Verdict: **unchanged.** Label: measured [V][M]. Affects D-01, P2b-03.
+- `.../guides/faq`: "The $25 fee for the Full Distribution account in the ADC helps cover
+  administrative costs"; "We are waiving the fee for developers who qualify for a Limited
+  Distribution account."; the advanced flow has "a one-time, one-day wait" and the page answers
+  "Why is there a 24-hour waiting period to enable the advanced flow?".
+- `.../guides/developer-console-api` (page date: Last updated 2026-09-04 UTC): "Service Accounts,
+  Workload Identity Federation, and API keys cannot be used to authenticate API requests." and
+  "applications must use the OAuth 2.0 Web Server flow"; key ownership: the API returns a
+  `verificationToken` that goes in `adi-registration.properties` inside the app's assets folder, and
+  the APK is then signed with the key being registered. Scope
+  `https://www.googleapis.com/auth/androiddeveloperconsole`.
+- `.../guides/limited-distribution`: "Share apps with up to 20 devices that end-users have
+  explicitly authorized." and "This account is free." Limited accounts can migrate to full but not
+  the other way round (FAQ, 2026-06-08).
+- Extra facts worth keeping: a package name already claimed needs the key with more than 50% of
+  known installs, otherwise a justification that Google reviews in up to 24 hours; a lost signing
+  key cannot be re-registered; multiple keys per package are allowed; Play App Signing apps are
+  claimed automatically.
+
+### Row 3 - F-Droid: developer-signed packages and F-Droid 2.0
+
+- Verdict: **unchanged;** upgraded from secondary sources to [V]. Label: measured. Affects P2b-05,
+  D-03.
+- `https://f-droid.org/en/news/` lists "F-Droid 2.0: A New Chapter for Android Freedom, Posted on
+  Sep 24, 2026" and "There's always a path, Posted on Sep 18, 2026".
+- `https://f-droid.org/en/2026/09/18/twif.html`: "we've unlocked a new way to add developer signed
+  packages to apps for which we already provide packages signed by us." The third path "adds the
+  upstream signed package alongside ours ... we modify our own package with a lower versionCode so
+  they don't conflict"; metadata auto-updates work. It is a path for apps F-Droid already ships,
+  not something a self-hosted repo needs. The 2.0 post says it is rolling out "over the coming
+  weeks after 14 test releases".
+
+### Row 4 - Apple EU unified terms from 2026-10-01
+
+- Verdict: **unchanged; the cited URL moved.** Label: measured [V][M]. Affects P2b-05, P5-02, D-05.
+- `https://developer.apple.com/news/` (post dated August 18, 2026): "The Core Technology Fee, a
+  per-install fee for developers who achieve extraordinary scale, will be replaced by the Core
+  Technology Commission, a simple 5% commission on digital transactions in apps distributed outside
+  the App Store. The new terms also eliminate the Initial Acquisition Fee and Store Services Fee."
+  Same day: "Attachment 14 of the Apple Developer Program License Agreement has been added to
+  specify updated terms for apps in the European Union".
+- DPLA (`support/terms/apple-developer-program-license-agreement/`, page date: none shown):
+  "This Attachment is effective as of October 1, 2026, or the date on which You sign this Agreement
+  including this Attachment 14, whichever is later."
+- `support/apps-in-the-eu/` (none shown): "Companies are no longer required to have a legal entity or
+  be established in the EU to operate an alternative app marketplace or use Web Distribution."
+  Marketplace page: "subject to a 5% Core Technology Commission (CTC)".
+- **Moved:** E1 cites `.../support/dma-and-apps-in-the-european-union/`; it now returns HTTP 200
+  with the title "Page Not Found". The harness keeps that URL as a canary. Use
+  `support/apps-in-the-eu/`, `support/alternative-app-marketplace-in-the-eu/` and
+  `support/web-distribution-eu/` instead.
+
+### Row 5 - Japan, Brazil, AltStore PAL
+
+- Verdict: **unchanged; the "business terms not verified" gap is closed.** Label: measured [V][M].
+  Affects P2b-05, README section 4.1.
+- Japan (`support/app-distribution-in-japan/`): "Now with iOS 26.2 and later, developers with apps
+  in Japan can also distribute apps on alternative app marketplaces". Brazil
+  (`support/app-distribution-in-brazil/`): "iOS 26.5 introduces new options for developers with apps
+  in Brazil." News posts: Japan 2025-12-17, Brazil 2026-06-18 (DPLA Attachment 12 for both).
+- Terms now read from the pages, [V] (the 404s the research hit were wrong URLs):
+
+  | Term                                                        | Japan | Brazil |
+  | ----------------------------------------------------------- | ----- | ------ |
+  | App Store commission, digital goods (incl. alt. payments)   | 21%   | 21%    |
+  | Reduced (small business, subscriptions after year one)      | 10%   | 10%    |
+  | Apple payment processing fee (Apple IAP only)               | 5%    | 5%     |
+  | Store services commission, out-of-app offers                | 15%   | 15%    |
+  | Core Technology Commission (marketplace or distributed app) | 5%    | 5%     |
+
+  The EU differs: 26% IAP, 20% alternative payment processing, 15% store services, 5% CTC.
+  Apple IAP is not available to an app distributed on an alternative marketplace in Japan (Japan
+  page: "App Store functionality like Apple In-App Purchase is not available").
+
+- `https://faq.altstore.io/developers/distribute-with-altstore-pal.md`: "AltStore PAL is an
+  official alternative app marketplace for Notarized apps available for users in the EU, Japan, and
+  Brazil."
+
+### Row 6 - App Review Guidelines (June 8, 2026) and the DPLA
+
+- Verdict: **unchanged.** Label: measured [V][M]. Affects P4-03, P4-08, P6-01, D-05.
+- `developer.apple.com/app-store/review/guidelines/`: "Last Updated: June 8, 2026". Quotes found
+  verbatim:
+  - 2.5.2: "Apps should be self-contained in their bundles, and may not read or write data outside the
+    designated container area, nor may they download, install, or execute code which introduces or
+    changes features or functionality of the app, including other apps."
+  - 3.1.1: "Apps may not use their own mechanisms to unlock content or functionality, such as license
+    keys, augmented reality markers, QR codes, cryptocurrencies and cryptocurrency wallets, etc."
+  - 3.1.3(b): "including consumable items in multi-platform games, provided those items are also
+    available as in-app purchases within the app."
+  - 4.2.3(ii): "If your app needs to download additional resources in order to function on initial
+    launch, disclose the size of the download and prompt users before doing so."
+  - 2.2: "apps using TestFlight cannot be distributed to testers in exchange for compensation of any
+    kind". TestFlight help: "Your build becomes unavailable for testers after 90 days."
+  - 2.4.5(iv): "They may not download or install standalone apps, kexts, additional code, or
+    resources to add functionality or significantly change the app from what we see during the
+    review process." and (vii): "They must use the Mac App Store to distribute updates; other update
+    mechanisms are not allowed."
+  - 4.7 (HTML5 and JavaScript mini apps and mini games may be offered "not embedded in the binary")
+    is still third-party software offered in an app, not a route for first-party packs.
+- DPLA 3.3.1(B), verbatim: "Interpreted code may be downloaded to an Application but only so long
+  as such code: (a) does not change the primary purpose of the Application by providing features or
+  functionality that are inconsistent with the intended and advertised purpose of the Application
+  (b) does not bypass signing, sandbox, or other security features of the OS; and (c) for
+  Applications distributed on the App Store, does not create a store or storefront for other
+  Applications." DPLA Schedule 2 adds: "You may not use the In-App Purchase API to send any software
+  updates to Your Application or otherwise add any additional executable code to Your Application."
+  (an IAP item must already exist in the app, be streamed after purchase, or be downloaded "solely
+  as data").
+- The DPLA page prints no revision date; the news feed dates the last Attachment 14 revision
+  2026-08-18 and shows no later guideline revision than June 8, 2026 (checked through the
+  2026-09-18 post).
+
+### Row 7 - Play Device and Network Abuse; REQUEST_INSTALL_PACKAGES
+
+- Verdict: **unchanged.** Label: measured [V][M]. Affects P4-03, P4-08, P5-06, D-01.
+- `support.google.com/googleplay/android-developer/answer/9888379` (page date: none shown): "An app
+  distributed via Google Play may not modify, replace, or update itself using any method other than
+  Google Play's update mechanism. Likewise, an app may not download executable code (such as dex,
+  JAR, .so files) from a source other than Google Play. This restriction does not apply to code
+  that runs in a virtual machine or an interpreter where either provides indirect access to Android
+  APIs (such as JavaScript in a webview or browser)." And: "Apps or third-party code, like SDKs,
+  with interpreted languages (JavaScript, Python, Lua, etc.) loaded at run time (for example, not
+  packaged with the app) must not allow potential violations of Google Play policies."
+- `.../answer/12085295` (none shown; policy enforced from July 11, 2022): "Apps targeting API level
+  26 or newer must hold this permission in order to use Intent.ACTION_INSTALL_PACKAGE or the
+  PackageInstaller API." Permitted uses are browsing, communication attachments, file management,
+  enterprise device management, backup and restore, and device migration; "Where the use of the
+  permission is not directly related to the core purpose of the app" is invalid.
+- Consequence for Godot: GDScript loaded from a downloaded PCK is interpreted code, which Play
+  exempts only if it cannot violate Play policy; a downloaded `.so` (GDExtension) or dex is
+  forbidden. This is the same conclusion as before.
+
+### Row 8 - Play fee programmes
+
+- Verdict: **changed in one clause; rest unchanged; one clause could not be verified.** Label:
+  measured [V][M]. Affects P6-01.
+- **Changed.** `.../answer/15582165` (latest entry 2026-09-17): "On July 22, 2026, we are providing
+  notice that developers enrolled in the external content links and alternative billing programs in
+  the US will need to report transactions and pay the relevant service fees starting on October 1,
+  2026." and "On September 17, 2026, we notified developers enrolled in external content links that
+  they now have until December 1, 2026 to report successful download and pay the relevant service
+  fees." The page also says "On March 4, 2026, we entered a new settlement agreement with Epic and
+  the parties have asked the US District Court to enter a revised Modified Injunction. More details
+  will be provided in the coming months." Injunction date "October 29, 2025" and the programmes
+  "(as launched on December 9, 2025)" are unchanged.
+- Unchanged: blog post dated 24 June 2026 (`.../2026/06/play-expanded-billing.html`): "This starts on
+  June 30, 2026, beginning with the United States, European Economic Area, and United Kingdom.",
+  "the service fee starts at 10% on your first $1M (USD) in annual earnings", "the billing fee is
+  set at 5%", programme rate cards "become available" on September 30, 2026.
+- The staggered schedule is now [V] (`.../answer/16954621`, "As announced on March 4, 2026, these
+  changes will be rolled out in a staggered schedule."):
+
+  | Date       | Service fee changes and expanded billing choice | New Apps and Games programmes |
+  | ---------- | ----------------------------------------------- | ----------------------------- |
+  | 2026-06-30 | EEA, UK, US                                     | (none)                        |
+  | 2026-09-30 | AU, JP                                          | AU, EEA, JP, UK, US           |
+  | 2026-12-31 | KR                                              | KR                            |
+  | 2027-09-30 | Rest of World                                   | Rest of World                 |
+
+- Fee table (`.../answer/112622`, re-read 22:50 UTC: "For transactions with users in Australia, the
+  European Economic Area, Japan, United Kingdom, or United States ... (June 30, 2026 for the EEA,
+  UK, and US; September 30, 2026 for Australia and Japan)", so Australia and Japan joined the same
+  table today; the first pass quoted the EEA, UK and US heading only): first $1M of annual
+  earnings 10% plus 5% billing fee; standard 20% (new installs) or 25% (existing installs) plus 5%
+  billing fee, or 20% for external web links on existing installs; auto-renewing subscriptions 10%;
+  Games Level Up or Apps Experience programmes 15% new, 20% existing, 15% for external links. Other
+  markets keep 15% on the first $1M and 30% above, until their rollout date.
+- **Could not verify:** "EEA external offers 2025-08-19". `.../answer/16505463` describes the
+  updated programme but prints no date; only a search summary gave 2025-08-19 [S]. It is
+  historical and does not change any brief.
+
+### Row 9 - Play Billing Library
+
+- Verdict: **unchanged (wording clarified).** Label: measured [V][M]. Affects P5-06, P6-01, D-05.
+- `developer.android.com/google/play/billing/release-notes` (page date: Last updated 2026-09-01
+  UTC): "By Aug 31, 2026, all new apps and updates to existing apps must use Billing Library version
+  8 or later. If you need more time to update your app, you can request an extension until Nov 1,
+  2026." Latest listed: "Google Play Billing Library 9.1.0 Release (2026-06-18)", which adds the
+  billing-choice APIs (`getBillingChoiceInfoAsync`, `showBillingProgramInformationDialog`).
+- `.../deprecation-faq` (page date: Last updated 2026-09-09 UTC), table of "New app and update
+  deadline / Extension deadline": version 7 August 31, 2026 / November 1, 2026; version 8 August 31,
+  2027 / November 1, 2027; version 9 August 31, 2028 / November 1, 2028.
+- The research's "version 7 must be migrated by 2026-08-31" is the same fact read from the other
+  end: from that date **8 or later is the minimum**. Today the deadline has passed and only the
+  extension (to 2026-11-01) remains.
+
+### Row 10 - Target API level and 16 KB pages
+
+- Verdict: **unchanged.** Label: measured [V][M]. Affects P5-06, D-01, D-03.
+- `.../answer/11926878` (page date: none shown): "New apps and app updates must target Android 16
+  (API level 36) or higher to be submitted to Google Play" (Wear OS and Automotive: API 35; TV and
+  XR: API 34) and "You will be able to request an extension to November 1, 2026 if you need more
+  time to update your app."
+- `developer.android.com/guide/practices/page-sizes` (page date: Last updated 2026-09-16 UTC):
+  "Starting February 1, 2027, if your app updates don't support 16 KB memory page sizes, you won't
+  be able to release these updates." and "NDK version r28 and higher compile 16 KB-aligned by
+  default." The 2027-02-01 date is the current one; earlier dates in circulation are superseded.
+
+### Row 11 - Microsoft Store CLI, Action and Store Policies 7.20
+
+- Verdict: **unchanged; one date refined.** Label: measured [V][M]. Affects P5-04.
+- `learn.microsoft.com/.../msstore-dev-cli/overview` (`ms.date` 2026-09-08, `updated_at`
+  2026-09-28): "App update operations through Microsoft Store Developer CLI is currently supported
+  for free products only. Paid products will be supported in a future release." and "Create one
+  submission for the app in Partner Center, including the age ratings questionnaire."
+- `.../msstore-dev-cli/github-actions` (`ms.date` 2026-08-30): "App update operations through GitHub
+  actions is currently supported for free products only."
+- `.../store-policies` (`ms.date` 2026-09-14): "Document version: 7.20 / Publish date: September 15,
+  2026 / Effective date: October 22, 2026". 10.2.2: "Your product must not attempt to fundamentally
+  change or extend its described functionality or introduce features or functionality that are in
+  violation of Store Policies through any form of dynamic inclusion of code." 10.2.5: "such
+  products and in-product offerings must be installed and updated only through the Store." 10.2.9:
+  "Non-gaming products may submit an HTTPS-enabled download URL (direct link) to the product's
+  installer binaries." 10.8.1: games must "use the Microsoft Store in-product purchase APIs for the
+  purchase of digital goods and services."
+- Refinement: the research said "v7.20 (2026-09-14)"; the page's publish date is 2026-09-15 (the
+  metadata date is 2026-09-14) and the **effective date is 2026-10-22**, which is later than the
+  research's wording implies.
+
+### Row 12 - Flathub generative-AI policy
+
+- Verdict: **unchanged, but the page is volatile.** Label: measured [V][M]. Affects P2b-05.
+- Read from the source repository (`flathub-infra/documentation`,
+  `docs/02-for-app-authors/02-requirements.md`, raw) and the rendered page
+  `docs.flathub.org/docs/for-app-authors/requirements`: "Flathub manifests must not contain
+  AI-generated or AI-assisted content. Disclosure does not exempt manifests from this restriction."
+  and "AI tools or agents must not open or automate Flathub submission pull requests, or generate
+  their commit messages, descriptions, review comments, or replies." plus "Submitters must disclose
+  any AI-generated code, documentation, packaging, or other material they know or reasonably
+  believe is included in the application or its Flathub packaging."
+- Page history (GitHub commits API): `43e6e1579e` 2026-09-04 "Replace blanket AI ban with
+  disclosure-based policy (#641)"; `f7406088ba` 2026-09-21 "Restore explicit LLM ban for manifests".
+  So the wording the research read on 2026-09-29 is the post-2026-09-21 text. The harness fails if
+  the file changes after 2026-09-21.
+- New in this reading: disclosure of AI-generated application code or packaging is required, not
+  only a ban on manifests. Nothing was opened, commented on or automated on Flathub.
+
+### Row 13 - Downloaded scripts in packs, per store
+
+- Verdict: **unchanged.** Label: measured (derived from rows 6, 7, 11 plus one new Apple quote).
+  Affects P4-03, P4-08, P3-01 outlet capabilities.
+- New quote, Apple's Notarization Review Guidelines (Japan page): "Security. Apps cannot enable
+  distribution of malware or of suspicious or unwanted software. They cannot download executable
+  code, read outside of the container, or direct users to lower the security on their system or
+  device."
+
+  | Channel                      | Data-only PCK | Scripts (`.gd`) in a downloaded pack                                                                              | Basis           |
+  | ---------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------- | --------------- |
+  | App Store (iOS, macOS)       | allowed       | not safe: DPLA 3.3.1(B) allows interpreted code within limits, 2.5.2 is the stricter reading App Review may apply | rows 6          |
+  | Mac App Store                | allowed       | not allowed (2.4.5(iv))                                                                                           | row 6           |
+  | iOS alternative distribution | allowed       | not allowed (notarization: "cannot download executable code")                                                     | row 13          |
+  | Google Play                  | allowed       | exempt only if it cannot violate Play policy; native `.so` or dex forbidden                                       | row 7           |
+  | Microsoft Store (MSIX)       | allowed       | not allowed where it changes described functionality (10.2.2); games update through the Store (10.2.5)            | row 11          |
+  | Steam, itch, direct, Flathub | allowed       | not checked in this pass (no store rule was in scope)                                                             | rows 12, 15 (I) |
+
+  The data-only rule stays the recommended default for every store build; scripts belong behind the
+  `downloadedScripts` capability on channels with no store rule (I).
+
+### Row 14 - winget URL validation
+
+- Verdict: **unchanged, with a refinement.** Label: measured [V][M]. Affects P2b-04, P2b-05.
+- `microsoft/winget-pkgs` `doc/Validation.md` (last commit 2026-08-12): "Installer URLs use HTTPS
+  (not plain HTTP)."; "The URL does not use a URL shortener or redirect service."; "If a redirect is
+  used, the final destination URL is from an approved domain."; failure cause "Using a redirect URL
+  rather than the final resolved URL."; labels `Validation-Domain`, `Validation-Unapproved-URL`,
+  `Validation-Indirect-URL`; hash: "the hash of the downloaded file is compared against the
+  InstallerSha256 value in the manifest".
+- `doc/ValidationFailureGuide.md`: `Validation-Indirect-URL` "The installer URL uses a redirect
+  rather than pointing directly to the publisher's server." `doc/Policies.md`: "The preference for
+  WinGet manifests is to use unique URLs per version of a package to avoid the hash-mismatch
+  errors."
+- Refinement: a redirect chain is not literally banned as long as the final domain is the
+  publisher's, but the guide's fix is always "use the final URL". Treat a redirecting installer URL
+  as a rejection.
+
+### Row 15 - Steam commerce
+
+- Verdict: **unchanged; upgraded from secondary to [V].** Label: measured [V][M]. Affects P6-01.
+- `partner.steamgames.com/doc/features/microtransactions` (readable without a login; page date: none
+  shown): "For any in-game purchases, you'll need to use the microtransaction API so Steam customers
+  can only make purchases from the Steam Wallet."
+- `.../doc/store/application/dlc` (none shown): "Steam supports both free and paid downloadable
+  content (DLC) that can be registered via CD key or purchased from the Steam store."
+- Consequence: inside a Steam build, no Polaris commerce bridge that takes money elsewhere; unlock
+  by Steam ownership (`CheckAppOwnership`) or the microtransaction API.
+
+### Row 16 - App Store Connect API, webhooks, Background Assets
+
+- Verdict: **unchanged.** Label: measured [V][M]. Affects P5-02, P5-08, S-01.
+- `.../documentation/appstoreconnectapi/app-store-connect-api-release-notes`: newest listed version
+  is 4.5 (4.5 notes: app performance overview, subscriptions for organizations, Game Center
+  moderation, Korea age rating override; no webhook changes; no date printed).
+- `WebhookEventType` has **exactly 12** values, read from the DocC JSON: `APP_STORE_VERSION_APP_VERSION_STATE_UPDATED`,
+  `BETA_FEEDBACK_CRASH_SUBMISSION_CREATED`, `BETA_FEEDBACK_SCREENSHOT_SUBMISSION_CREATED`,
+  `ALTERNATIVE_DISTRIBUTION_PACKAGE_VERSION_CREATED`, `ALTERNATIVE_DISTRIBUTION_PACKAGE_AVAILABLE_UPDATED`,
+  `ALTERNATIVE_DISTRIBUTION_TERRITORY_AVAILABILITY_UPDATED`, `BACKGROUND_ASSET_VERSION_APP_STORE_RELEASE_STATE_UPDATED`,
+  `BACKGROUND_ASSET_VERSION_EXTERNAL_BETA_RELEASE_STATE_UPDATED`, `BACKGROUND_ASSET_VERSION_INTERNAL_BETA_RELEASE_CREATED`,
+  `BACKGROUND_ASSET_VERSION_STATE_UPDATED`, `BUILD_BETA_DETAIL_EXTERNAL_BUILD_STATE_UPDATED`,
+  `BUILD_UPLOAD_STATE_UPDATED`. None covers phased release, review submissions or internal
+  TestFlight build state.
+- ASC Help "Manage webhooks": "A webhook can only apply to one app, and you can create up to ten
+  webhooks per app."
+- ASC Help "Apple-hosted asset pack size limits": asset pack total 200 GB; asset pack count 200;
+  "These limits are shared across all platforms offered for your app."
+
+### Row 17 - Play Developer Reporting API metric sets
+
+- Verdict: **unchanged; names now verified.** Label: measured [V][M] (Google's discovery document,
+  `revision` 20260928, no credentials needed). Affects P5-03, P6-03.
+- Resources `vitals.crashrate` and `vitals.anrrate`, each with `get` (`GET v1beta1/{+name}`) and
+  `query` (`POST v1beta1/{+name}:query`); singleton names `apps/{app}/crashRateMetricSet` and
+  `apps/{app}/anrRateMetricSet`. OAuth scope `https://www.googleapis.com/auth/playdeveloperreporting`;
+  the calling user needs "View app information (read-only)".
+- Metrics: `crashRate`, `crashRate7dUserWeighted`, `crashRate28dUserWeighted`,
+  `userPerceivedCrashRate`, `userPerceivedCrashRate7dUserWeighted`,
+  `userPerceivedCrashRate28dUserWeighted`, `distinctUsers`; for ANRs the same with `anr`. Definition:
+  crash rate is the "Percentage of distinct users in the aggregation period that experienced at least
+  one crash"; the user-perceived variant counts crashes "while they were actively using your app".
+  Dimensions include `versionCode`, `apiLevel`, `deviceModel`, `countryCode`. DAILY is
+  `America/Los_Angeles` only; HOURLY is `UTC` and has no 7-day or 28-day weighted metrics. Each set
+  reports `freshnessInfo` per aggregation period, so the poller can read how far behind it is. Also
+  present: `anomalies.list` and `vitals.errors.counts`.
+
+### Row 18 - Microsoft Store submission API for MSIX
+
+- Verdict: **unchanged; the "not fetched" gap is closed.** Label: measured [V][M]. Affects P5-04.
+- Pages `windows/uwp/monetize/manage-app-submissions` (`updated_at` 2026-03-10),
+  `manage-flights` (2022-10-20), `manage-flight-submissions` (2025-06-10) and
+  `create-and-manage-submissions-using-windows-store-services` (2026-03-09).
+- Submission `status` values (15, in this order): `None`, `Canceled`, `PendingCommit`,
+  `CommitStarted`, `CommitFailed`, `PendingPublication`, `Publishing`, `Published`, `PublishFailed`,
+  `PreProcessing`, `PreProcessingFailed`, `Certification`, `CertificationFailed`, `Release`,
+  `ReleaseFailed`. After commit, "This value should change from CommitStarted to either
+  PreProcessing if the request succeeds or to CommitFailed if there are errors in the request."
+- `packageRollout`: `isPackageRollout`, `packageRolloutPercentage`, `packageRolloutStatus` (one of
+  `PackageRolloutNotStarted`, `PackageRolloutInProgress`, `PackageRolloutComplete`,
+  `PackageRolloutStopped`) and `fallbackSubmissionId` (assigned by Partner Center, ignored if sent).
+  Methods on `.../submissions/{submissionId}`: `/packagerollout`, `/updatepackagerolloutpercentage`,
+  `/haltpackagerollout`, `/finalizepackagerollout`; the same four exist under
+  `.../flights/{flightId}/submissions/{submissionId}/`. Flights: `GET|POST|DELETE
+.../flights[/{flightId}]`, `GET .../listflights`. `targetPublishMode` is `Immediate`, `Manual` or
+  `SpecificDate`.
+- Limits that matter to a read-only connector: "This API cannot be used with apps or add-ons that
+  use mandatory app updates and Store-managed consumable add-ons" (409). Pricing Version 2 is
+  narrower: the page opens with "You can't use this API with apps or add-ons that are on Pricing
+  Version 2", then says "the API will return an unknown tier for the pricing part. You can continue
+  using this API to update modules other than Pricing and availability." So only the pricing module
+  is unreadable; status, rollouts and flights still read. "You cannot use the Microsoft Store submission API to
+  create an app in Partner Center", and the first submission, with the age-ratings questionnaire,
+  is created in Partner Center. Tokens last 60 minutes. Editing an API-created submission in Partner
+  Center breaks API control of it.
+
+## 5. What changed, what could not be verified
+
+| Kind                            | Rows and detail                                                                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Changed                         | Row 8: US external-content-links download reporting and fees moved to 2026-12-01 (notice 2026-09-17); Epic settlement of 2026-03-04 awaits court |
+| Source moved                    | Row 4: Apple's DMA page is a soft 404; use `apps-in-the-eu`                                                                                      |
+| Volatile source                 | Row 12: Flathub policy rewritten 2026-09-04 and 2026-09-21                                                                                       |
+| Gap closed (was "not verified") | Rows 5, 15, 17, 18                                                                                                                               |
+| Detail added                    | Rows 1 (form factors), 2 (key-selection rule), 9 (8 or later is the floor), 11 (effective 2026-10-22), 14 (final URL rule)                       |
+| Could not verify                | Row 8: "EEA external offers 2025-08-19" (no page date; search summary only)                                                                      |
+| No page date printed            | Apple support pages, the DPLA, Google Play policy and help pages, the Play target-API page, Steam docs, ASC DocC and Help pages                  |
+
+## 6. Recommendation and concrete defaults
+
+Proceed with every dependent package; none is blocked by a changed fact. Defaults to use where a
+device or account measurement is still outstanding:
+
+- **D-01.** Register every key that signs a shipping APK or AAB now. Play App Signing keys are
+  claimed automatically; register the sideload and F-Droid-repo keys through a full-distribution
+  Android Developer Console account ($25) or through the Play Console if one exists. A limited
+  account (free, 20 devices) is for testing, not for a public sideload channel. Enforcement today
+  applies only to the listed stores in four countries; direct sideloads and other stores are not
+  enforced until 2027, but register anyway.
+- **P2b-03.** Keep `registered` as a manual flag with the console's three states (Registered, Not
+  registered, Draft). Do not build the console API integration in this phase: it needs a per-user
+  OAuth refresh token (no service accounts), which is a new credential kind for P5-01 to model
+  first.
+- **P2b-05.** AltStore PAL source: available in the EU, Japan and Brazil, 5% CTC in each. F-Droid:
+  self-hosted repo is unaffected by the "third path"; it matters only if the game is ever submitted
+  to official F-Droid. Flathub: render checker JSON deterministically, never automate PRs. winget:
+  serve installer bytes at the final, versioned, HTTPS publisher URL with no redirect.
+- **P5-02.** Handle exactly 12 event types; expect up to 10 webhooks per app; poll for phased
+  release, review submissions and internal TestFlight state; plan asset packs against 200 GB and 200
+  packs per app.
+- **P5-03.** Poll `vitals.crashrate` and `vitals.anrrate` with `versionCode` as a dimension and
+  `userPerceivedCrashRate` and `userPerceivedAnrRate` as the halt signals (they exclude background
+  crashes); use the daily set with `America/Los_Angeles` and read `freshnessInfo` before deciding.
+  Use hourly (UTC) only for a fast canary and do not expect weighted metrics there. Pick thresholds
+  as configuration, not constants.
+- **P5-04.** Read-only is safe: the API needs the app to have a first Partner Center submission and
+  refuses (409) apps with mandatory updates or Store-managed consumables; treat only that as "not
+  readable". On a Pricing Version 2 app only the pricing module is unknown; status, rollouts and
+  flights still read, so ignore pricing and pin it with a fixture. Free products only for CLI and Action updates.
+- **P5-06, P6-01, D-05.** Billing Library 8 or later is the floor; bundle 9.1.0 unless the Godot
+  plugin pins 8.x (8.3.0 is the last 8.x listed). Target API 36 and 16 KB page alignment (NDK r28+)
+  apply to every AAR update; 16 KB blocks updates from 2027-02-01. For fees, model the four
+  rollout dates in section 4 row 8 as data, not code.
+- **P6-01.** Steam builds sell only through Steam. Apple iOS unlocks need IAP parity for anything
+  also sold elsewhere (3.1.3(b)). On Play, new-install and existing-install rates differ; keep the
+  transaction date and first-install date if a report ever needs them.
+- **P4-03 and P4-08.** Keep packs data-only on store builds (section 4 row 13).
+
+Which rows each package re-runs at its start if more than a month has passed (all through
+`prototype/policy-recheck/recheck.mjs --rows ...`):
+
+| Package        | Rows         |
+| -------------- | ------------ |
+| D-01           | 1, 2, 7, 10  |
+| P2b-03, P2b-05 | 1-5, 12, 14  |
+| P5-02          | 4, 6, 16     |
+| P5-03          | 8, 9, 17     |
+| P5-04          | 11, 18       |
+| P6-01          | 8, 9, 15     |
+| P4-03, P4-08   | 6, 7, 11, 13 |
+
+## 7. Work-package briefs that changed in this branch
+
+All edits are text pointers or verified facts; no decision moved.
+
+| Brief                                                                                           | Edit                                                                                               |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| [D-01](../program/wp/D-01-diceroll-now.md)                                                      | "if it exists" replaced by the note and rows 1, 2, 7, 10                                           |
+| [D-05](../program/wp/D-05-diceroll-after-p6.md)                                                 | Billing Library floor (8 or later, 9.1.0 preferred) and note pointer                               |
+| [P2b-05](../program/wp/P2b-05-storefront-feeds.md)                                              | Rows 1-5, 12, 14 summary; deterministic Flathub renderer; winget final-URL rule                    |
+| [P4-03](../program/wp/P4-03-ci-patch-artifacts.md), [P4-08](../program/wp/P4-08-godot-packs.md) | Row 13 pointer: data-only stays the safe reading on every store                                    |
+| [P5-02](../program/wp/P5-02-asc-connector.md)                                                   | Rows 4, 6, 16 confirmed, with the numbers                                                          |
+| [P5-03](../program/wp/P5-03-play-connector.md)                                                  | "Reporting API names are unverified" replaced by the verified names                                |
+| [P5-04](../program/wp/P5-04-msstore-connector.md)                                               | Full status list, rollout values, 409 and Pricing Version 2 caveats, Store Policies effective date |
+| [P6-01](../program/wp/P6-01-commerce-bridge.md)                                                 | Row 8 changed clause (2026-12-01), Billing Library floor                                           |
+
+Briefs listed in the S-07 hand-off that needed no text change: P2b-03, P5-06.
+
+## 8. Unmeasured (needs a human-held account, device or store console)
+
+- **Enforcement behaviour of Android developer verification.** What a certified device in Brazil,
+  Indonesia, Singapore or Thailand shows for an unregistered package from Play or a participating
+  store, and how the advanced flow looks, needs such a device or a Play-certified emulator image in
+  a supported region. Unmeasured; row 1 is a document check only.
+- **Registration in the Android Developer Console** (identity check, $25 payment, D-U-N-S wait of up
+  to 28 days for organisations, the `adi-registration.properties` round trip) needs a Google account
+  and payment. Unmeasured.
+- **Partner Center, ASC and Play Console API behaviour** (real 409 on a Pricing Version 2 app, real
+  `freshnessInfo` lag, real webhook delivery) needs credentials. Unmeasured; connectors use
+  fixtures until then.
+- **Apple review and Play review outcomes for a Godot pack** (2.5.2 versus DPLA 3.3.1(B) in
+  practice) can only be observed by submitting. Unmeasured.
+- **Whether AltStore PAL's Japan and Brazil availability works for this account** needs an Apple
+  developer account. Unmeasured.
+- **Partner-only Steam pages** were not needed; the public pages answered row 15.
+
+## 9. Proposed README edits (not applied; for the lead to route)
+
+1. **§4.1 and §12, Apple:** replace the DMA-page source with `support/apps-in-the-eu/` and the
+   2026-08-18 news post; state that "no EU entity needed" is now sourced from `apps-in-the-eu`.
+2. **§4.1, Japan and Brazil:** replace "business terms not verified" with the table in row 5 (21%
+   App Store commission, 5% processing fee, 15% store services commission, 5% CTC; Apple IAP is not
+   available to an app distributed on an alternative marketplace).
+3. **§1, §3.10, §12, Play fees:** add the staggered rollout table (2026-06-30, 2026-09-30,
+   2026-12-31, 2027-09-30) and the 2026-12-01 external-content-links download reporting date; drop
+   "per secondary sources".
+4. **§4.2 and E2 §A4, Billing Library:** say "since 2026-08-31 new apps and updates must use
+   version 8 or later (extension 2026-11-01); 9.1.0 is the latest listed".
+5. **§3.8, Play:** replace "metric-set and metric names not verified" with the names in row 17.
+6. **§3.8 and §4.4, Microsoft Store:** add the effective date 2026-10-22 for Store Policies 7.20 and
+   the 409 and Pricing Version 2 caveats.
+7. **§4.5 and §12, Flathub:** record that the policy changed twice in September and now also
+   requires disclosure of AI-generated application material.
+8. **§3.10 and §4.7, Steam:** cite the microtransaction page as a primary source.
+9. **§1 and §12 "Policy drift":** point at `prototype/policy-recheck/` as the re-run mechanism and
+   drop the wording that says these facts were "read through a summarising fetch tool".
+
+## 10. Sources
+
+Retrieved 2026-09-30; every URL is in `prototype/policy-recheck/checks.mjs` with its quotes.
+
+- Android: `developer.android.com/developer-verification`, `/guides`, `/guides/faq`,
+  `/guides/developer-console-api`, `/guides/limited-distribution`;
+  `developer.android.com/google/play/billing/release-notes`, `/deprecation-faq`;
+  `developer.android.com/guide/practices/page-sizes`.
+- Google Play help: `support.google.com/googleplay/android-developer/answer/` 9888379, 12085295,
+  15582165, 112622, 16954621, 17161464, 16505463, 11926878; blog post
+  `android-developers.googleblog.com/2026/06/play-expanded-billing.html`; API discovery document
+  `playdeveloperreporting.googleapis.com/$discovery/rest?version=v1beta1` (revision 20260928);
+  `developers.google.com/play/developer/reporting`.
+- F-Droid: `f-droid.org/en/news/`, `/en/2026/09/18/twif.html`,
+  `/en/2026/09/24/f-droid-2.0-a-new-chapter-for-android-freedom.html`.
+- Apple: `developer.apple.com/news/`; `support/apps-in-the-eu/`;
+  `support/alternative-app-marketplace-in-the-eu/`; `support/web-distribution-eu/`;
+  `support/app-distribution-in-japan/`; `support/app-distribution-in-brazil/`;
+  `support/terms/apple-developer-program-license-agreement/`;
+  `app-store/review/guidelines/`; TestFlight overview and ASC Help pages under
+  `help/app-store-connect/`; DocC JSON under `tutorials/data/documentation/appstoreconnectapi/`.
+- AltStore: `faq.altstore.io/developers/distribute-with-altstore-pal.md`.
+- Microsoft: `learn.microsoft.com/en-us/windows/apps/publish/` (`msstore-dev-cli/overview`,
+  `msstore-dev-cli/github-actions`, `store-policies`) and
+  `learn.microsoft.com/en-us/windows/uwp/monetize/` (`create-and-manage-submissions-using-windows-store-services`,
+  `manage-app-submissions`, `manage-flights`, `manage-flight-submissions`, `get-app-data`).
+- Flathub: `docs.flathub.org/docs/for-app-authors/requirements` and the repository
+  `github.com/flathub-infra/documentation` (`docs/02-for-app-authors/02-requirements.md`, commits
+  `43e6e1579e` and `f7406088ba`).
+- winget: `github.com/microsoft/winget-pkgs` `doc/Validation.md`, `doc/ValidationFailureGuide.md`,
+  `doc/Policies.md`.
+- Steam: `partner.steamgames.com/doc/features/microtransactions`,
+  `partner.steamgames.com/doc/store/application/dlc`.
+- Secondary [S] (row 8 only): a search summary for the 2025-08-19 EEA external offers date.
+- Code: `prototype/policy-recheck/` (`checks.mjs`, `recheck.mjs`, `lib.mjs`, `lib.test.mjs`,
+  `README.md`).

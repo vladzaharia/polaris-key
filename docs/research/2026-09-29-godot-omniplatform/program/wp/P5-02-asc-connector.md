@@ -39,8 +39,10 @@ built and tested against recorded payloads and a fake ASC server before any real
 
 - `AGENTS.md`; this brief's dependencies' hand-offs (P5-01 accessor and `ascToken`; P2b-03's
   availability and submission writers and state enum).
-- [S-07](S-07-policy-recheck.md) rows 4, 6 and 16 (Apple terms, guidelines, ASC API facts), if it
-  has run.
+- [S-07](S-07-policy-recheck.md) rows 4, 6 and 16 (Apple terms, guidelines, ASC API facts), read in
+  [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) (re-checked 2026-09-30: all three unchanged; exactly 12 `WebhookEventType`s, up to
+  ten webhooks per app, API 4.5 latest listed, 200 GB and 200 asset packs). Re-run them with
+  `prototype/policy-recheck/recheck.mjs --rows 4,6,16` if more than a month has passed.
 - notes/E1 §A1 (endpoints, the 12 `WebhookEventType`s, `x-apple-signature`, payload envelope,
   gaps, rate limits) and §E5 (Background Asset versions and states).
 - `packages/worker/src/githubWebhook.ts`: HMAC check (`verifySignature`, line 58) and delivery
