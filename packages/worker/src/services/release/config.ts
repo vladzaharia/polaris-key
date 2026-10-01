@@ -43,6 +43,9 @@ export interface ReleaseConfigRow {
   stable_tag_pattern?: string | null;
   /** `release.ignoreTags` as a JSON array (0023). NULL ⇒ none. */
   ignore_tags_json?: string | null;
+  /** `release.releaseKeys` as `[{kid, publicKey}]` (0044, P3-03). NULL ⇒ none declared, so no
+   *  record is accepted. Never a product signing key (`release_key_is_product_key` at sync). */
+  release_keys_json?: string | null;
 }
 
 /** A release config that has the GitHub coordinates needed to talk to the API. */

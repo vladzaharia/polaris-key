@@ -5,12 +5,14 @@
  * because publishing is "into release" — a product with Release off does not have them.
  *
  *   POST /<p>/release/publish/token    GitHub OIDC JWT in → `{token, expiresAt, scopes}`
- *   POST /<p>/release/publish/uploads  `pkeyci_` + release:publish, `{objects:[{sha256,size}]}` →
- *                                      a ticket, R2 temporary credentials for
- *                                      `staging/<p>/<ticketId>/`, which objects are `present`,
- *                                      and `nextSeq`
- *   POST /<p>/release/publish/submit   `pkeyci_` + release:publish, `{ticket, descriptor, dryRun?}`
- *                                      → verify every staged object, promote it, ingest
+ *   POST /<p>/release/publish/uploads  `pkeyci_` + release:publish, `{objects:[{sha256,size}],
+ *                                      releases?:[{deliverable,version}]}` → a ticket, R2
+ *                                      temporary credentials for `staging/<p>/<ticketId>/`, which
+ *                                      objects are `present`, `nextSeq`, and (P3-03) each named
+ *                                      release's `seq` in `seqs`
+ *   POST /<p>/release/publish/submit   `pkeyci_` + release:publish, `{ticket, descriptor, record?,
+ *                                      dryRun?}` → verify every staged object, check the
+ *                                      CI-signed release record (P3-03), promote, ingest
  *
  * Binaries never transit the Worker: CI PUTs them to R2 with the ticket's credentials, and the
  * Worker only verifies and promotes (`core/blobs.ts`). The credential store, the OIDC checks and
@@ -29,11 +31,15 @@
  *     and its staged copy must verify (present, right size, right SHA-256). A failure here
  *     promotes nothing.
  *  3. The descriptor is planned as a dry run, with the verified objects treated as promoted —
- *     so every descriptor refusal also happens before anything is promoted. `dryRun: true` stops
- *     here. A dry run may precede the uploads (P2-06's `--dry-run` uploads nothing): a ticket
+ *     so every descriptor refusal also happens before anything is promoted. Then the release
+ *     record, when the submit carries one (`records.ts`, `release_record_rejected`): it must be
+ *     the descriptor, signed by a declared release key, with the release's `seq`. `dryRun: true`
+ *     stops here. A dry run may precede the uploads (P2-06's `--dry-run` uploads nothing): a ticket
  *     object not yet staged is then judged as if it were, and listed in `unverified`.
  *  4. The ticket is claimed (atomically, one submit), the objects promoted, and the descriptor
- *     ingested with them as `promoted`. A failure gives the claim back, so CI can fix and resend.
+ *     ingested with them as `promoted`, with the record in the same batch. A failure gives the
+ *     claim back, so CI can fix and resend. A record is never rewritten: a re-run whose release
+ *     already holds one keeps it (`record.stored: false`).
  *
  * One descriptor per submit, by design: a path that planned several in one batch would have to
  * plan them in publication order with `seqFloor` (P2-04 hand-off (c)); submit never does.
@@ -68,15 +74,34 @@ import {
 import { appendAudit } from "../../core/data.js";
 import { randomId } from "../../core/platform.js";
 import { MAX_DESCRIPTOR_BYTES } from "@polaris-key/manifest";
-import { ingestReleaseDescriptor, type IngestResult } from "./descriptor.js";
+import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
+import {
+  ingestReleaseDescriptor,
+  readAppDeliverable,
+  type IngestResult,
+} from "./descriptor.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
+import { getReleaseConfig } from "./config.js";
+import {
+  checkReleaseRecord,
+  getRecordForRelease,
+  RELEASE_RECORD_REJECTED,
+  stmtInsertReleaseRecord,
+  type RecordCheck,
+} from "./records.js";
 
 /** The token request carries one JWT. */
 const MAX_TOKEN_BODY_BYTES = 16 * 1024;
 /** A ticket request: up to 256 `{sha256, size, gated}` entries. */
 const MAX_UPLOADS_BODY_BYTES = 64 * 1024;
-/** A submit: the descriptor plus the ticket and a flag. */
-const MAX_SUBMIT_BODY_BYTES = MAX_DESCRIPTOR_BYTES + 4 * 1024;
+/** A submit: the descriptor, the release record (P3-03), the ticket and a flag. */
+const MAX_SUBMIT_BODY_BYTES =
+  MAX_DESCRIPTOR_BYTES + MAX_RECORD_JWS_BYTES + 4 * 1024;
+/** At most this many releases per ticket request's `releases` (P3-03). */
+const MAX_TICKET_RELEASES = 16;
+/** `@polaris-key/manifest`'s deliverable and version shapes, for the `releases` entries. */
+const DELIVERABLE_ID_RE = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
+const VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 
 /**
  * Budgets on the token exchange (both fail closed: it mints credentials). The per-IP one is
@@ -236,7 +261,11 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
   const objects = parseTicketObjects(body.objects);
   if ("error" in objects)
     return refusal(400, ErrorCode.BadRequest, "bad_objects", objects.error);
+  const releases = parseTicketReleases(body.releases);
+  if ("error" in releases)
+    return refusal(400, ErrorCode.BadRequest, "bad_releases", releases.error);
 
+  const nextSeq = await nextSeqByDeliverable(ctx);
   const issued = await issueUploadTicket(env, db, {
     product: product.slug,
     holder,
@@ -272,8 +301,73 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
       target: targets[i],
       present: owned.has(targets[i]!),
     })),
-    nextSeq: await nextSeqByDeliverable(ctx),
+    nextSeq,
+    seqs: await seqsFor(ctx, releases, nextSeq),
   });
+}
+
+/** `releases` (P3-03): the releases CI is about to publish, so it can sign each one's `seq`. */
+function parseTicketReleases(
+  raw: unknown,
+): { deliverable: string; version: string }[] | { error: string } {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw) || raw.length > MAX_TICKET_RELEASES)
+    return {
+      error: `releases must be an array of at most ${MAX_TICKET_RELEASES} {deliverable, version} entries`,
+    };
+  const out: { deliverable: string; version: string }[] = [];
+  for (const entry of raw) {
+    const e = entry as { deliverable?: unknown; version?: unknown } | null;
+    if (
+      !e ||
+      typeof e !== "object" ||
+      typeof e.deliverable !== "string" ||
+      e.deliverable.length > 64 ||
+      !DELIVERABLE_ID_RE.test(e.deliverable) ||
+      typeof e.version !== "string" ||
+      !VERSION_RE.test(e.version)
+    )
+      return {
+        error:
+          "each releases entry must be {deliverable, version} with a deliverable id and a version",
+      };
+    out.push({ deliverable: e.deliverable, version: e.version });
+  }
+  return out;
+}
+
+/**
+ * Each named release's `seq`: the stored one when the release exists (the GitHub sync may have
+ * created it first, and P2-04's ingest refuses any other), else the next one for its
+ * deliverable — counting the new releases named before it in the same request. A re-run asks
+ * again and gets the stored value, so it stays idempotent; two publishes racing for one new
+ * `seq` meet at ingest (`seq_not_increasing`) and CI retries with a new ticket.
+ */
+async function seqsFor(
+  ctx: ServiceContext,
+  releases: readonly { deliverable: string; version: string }[],
+  nextSeq: Record<string, number>,
+): Promise<{ deliverable: string; version: string; seq: number }[]> {
+  const out: { deliverable: string; version: string; seq: number }[] = [];
+  const next = { ...nextSeq };
+  for (const r of releases) {
+    const row = await ctx.db.first<{ seq: number | null }>(
+      `SELECT seq FROM release_metadata
+        WHERE product = ? AND deliverable_id = ? AND version = ? AND seq IS NOT NULL
+        ORDER BY seq DESC LIMIT 1`,
+      ctx.product.slug,
+      r.deliverable,
+      r.version,
+    );
+    if (row?.seq != null) {
+      out.push({ ...r, seq: row.seq });
+      continue;
+    }
+    const seq = next[r.deliverable] ?? 1;
+    next[r.deliverable] = seq + 1;
+    out.push({ ...r, seq });
+  }
+  return out;
 }
 
 /** Each deliverable's highest seq + 1 at issue time (`app` always present). */
@@ -372,6 +466,16 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       ErrorCode.BadRequest,
       "bad_body",
       "descriptor must be a release descriptor object",
+    );
+  if (
+    body.record !== undefined &&
+    (typeof body.record !== "string" || body.record === "")
+  )
+    return refusal(
+      400,
+      ErrorCode.BadRequest,
+      "bad_body",
+      "record must be the compact JWS of the release record (pkey-release+jws)",
     );
   const dryRun = body.dryRun === true;
 
@@ -483,6 +587,21 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     },
   );
   if (!plan.ok) return ingestRefusal(plan);
+
+  // 3b. The release record (P3-03), before anything is promoted or stored.
+  let record: Extract<RecordCheck, { ok: true }> | null = null;
+  if (body.record !== undefined) {
+    const checked = await checkReleaseRecord(db, {
+      product: product.slug,
+      jws: body.record,
+      descriptor: plan.descriptor,
+      cfg: await getReleaseConfig(db, product.slug),
+      app: await readAppDeliverable(db, product.slug),
+      seq: plan.seq,
+    });
+    if (!checked.ok) return recordRefusal(checked);
+    record = checked;
+  }
   if (dryRun)
     return json({
       ok: true,
@@ -492,6 +611,7 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       descriptorSha256: plan.descriptorSha256,
       planned: plan.planned,
       unverified,
+      ...(record ? { record: { sha256: record.sha256, kid: record.kid } } : {}),
     });
 
   // 4. Claim, promote, ingest.
@@ -532,16 +652,53 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       );
     }
   }
+  const checkedRecord = record;
   const result = await ingestReleaseDescriptor(
     db,
     env,
     product.slug,
     body.descriptor,
-    { source: "ci", now, promoted: needed.keys() },
+    {
+      source: "ci",
+      now,
+      promoted: needed.keys(),
+      ...(checkedRecord
+        ? {
+            extraStatements: (p) => [
+              stmtInsertReleaseRecord({
+                product: product.slug,
+                releaseId: p.releaseId,
+                deliverableId: p.deliverableId,
+                descriptorSha256: p.descriptorSha256,
+                check: checkedRecord,
+                now,
+              }),
+            ],
+          }
+        : {}),
+    },
   );
   if (!result.ok) {
     await releaseUploadTicket(db, ticket.ticketHash, now);
     return ingestRefusal(result);
+  }
+  // The record, as stored: this one, the release's earlier one (never rewritten), or none —
+  // the release's seq moved under the plan (a race), which the CLI fixes by asking again.
+  let storedRecord: { sha256: string; stored: boolean } | null = null;
+  if (checkedRecord) {
+    const row = await getRecordForRelease(db, product.slug, result.releaseId);
+    if (!row)
+      return refusal(
+        409,
+        RELEASE_RECORD_REJECTED,
+        "seq",
+        `${result.releaseId} was stored with another seq than the record's; ask the upload route for its seq and publish again.`,
+        { retryable: true },
+      );
+    storedRecord = {
+      sha256: row.record_sha256,
+      stored: row.record_sha256 === checkedRecord.sha256,
+    };
   }
 
   // The staged copies are spent; the bucket's one-day rule would take them anyway.
@@ -564,7 +721,22 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       target_kind: "release",
       target_id: result.releaseId,
       parent_id: null,
-      summary: `Published ${result.releaseId} (${result.outcome}) through trusted publishing`,
+      summary: `Published ${result.releaseId} (${result.outcome}) through trusted publishing${storedRecord?.stored ? ` with release record ${storedRecord.sha256.slice(0, 12)}` : ""}`,
+    });
+    await bumpReleaseGeneration(env, product.slug, now);
+  } else if (storedRecord?.stored) {
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: ciActor(holder),
+      actor_name: "CI",
+      actor_email: null,
+      action: "release.record",
+      target_kind: "release",
+      target_id: result.releaseId,
+      parent_id: null,
+      summary: `Stored release record ${storedRecord.sha256.slice(0, 12)} for ${result.releaseId}`,
     });
     await bumpReleaseGeneration(env, product.slug, now);
   }
@@ -574,5 +746,16 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     releaseId: result.releaseId,
     outcome: result.outcome,
     descriptorSha256: result.descriptorSha256,
+    ...(storedRecord ? { record: storedRecord } : {}),
   });
+}
+
+/** `release_record_rejected` with its reason (`records.ts`); `seq` is an ordering conflict. */
+function recordRefusal(r: Extract<RecordCheck, { ok: false }>): Response {
+  return errorResponse(
+    r.reason === "seq" ? 409 : 400,
+    "release_record_rejected",
+    r.message,
+    { reason: r.reason },
+  );
 }

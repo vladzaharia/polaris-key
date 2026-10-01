@@ -201,8 +201,11 @@ export async function handleReleaseAdmin(
     commit_sha: null,
     changed_paths_json: null,
     updated_json: JSON.stringify(result.updated),
-    errors_json: null,
-    message: null,
+    // P3-03: parts the sync refused while applying the rest (`release_key_is_product_key`).
+    errors_json: result.refused ? JSON.stringify(result.refused) : null,
+    message: result.refused
+      ? result.refused.map((r) => `${r.code}: ${r.message}`).join("; ")
+      : null,
   });
   await audit(
     db,
@@ -213,7 +216,12 @@ export async function handleReleaseAdmin(
     { kind: "product", id: slug },
     `Resynced ${slug} from its linked repo`,
   );
-  return adminJson({ ok: true, slug, updated: result.updated });
+  return adminJson({
+    ok: true,
+    slug,
+    updated: result.updated,
+    ...(result.refused ? { refused: result.refused } : {}),
+  });
 }
 
 /**
