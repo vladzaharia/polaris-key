@@ -10307,6 +10307,85 @@ var FORMATS = {
 };
 var SUPPORTED_FORMATS = Object.keys(FORMATS);
 
+// ../shared-catalog/dist/representable.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var MAX_VALUE_DEPTH = 32;
+function escapePointer(key) {
+  return key.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+function hasLoneSurrogate(s) {
+  for (let k = 0; k < s.length; k++) {
+    const u = s.charCodeAt(k);
+    if (u >= 55296 && u <= 56319) {
+      const n = s.charCodeAt(k + 1);
+      if (n >= 56320 && n <= 57343) {
+        k++;
+        continue;
+      }
+      return true;
+    }
+    if (u >= 56320 && u <= 57343)
+      return true;
+  }
+  return false;
+}
+function numberInWireRange(n) {
+  if (!Number.isFinite(n))
+    return false;
+  if (n === 0)
+    return true;
+  const token = String(Math.abs(n));
+  const m = /^([0-9]+)(?:\.([0-9]+))?(?:e([+-])([0-9]+))?$/.exec(token);
+  if (!m)
+    return false;
+  const int = m[1];
+  const digits = int + (m[2] ?? "");
+  const first = digits.search(/[1-9]/);
+  const exp = (m[3] === "-" ? -1 : 1) * Number(m[4] ?? "0");
+  const power = int.length - 1 - first + exp;
+  return power >= -307 && power <= 307;
+}
+function representabilityIssue(value) {
+  return walk(value, "", 0);
+}
+function walk(value, path6, depth) {
+  if (typeof value === "string") {
+    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path6 } : null;
+  }
+  if (typeof value === "number") {
+    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path6 };
+  }
+  if (value === null || typeof value !== "object")
+    return null;
+  if (depth + 1 > MAX_VALUE_DEPTH)
+    return { rule: "too-deep", path: path6 };
+  if (Array.isArray(value)) {
+    for (let k = 0; k < value.length; k++) {
+      const issue = walk(value[k], `${path6}/${k}`, depth + 1);
+      if (issue)
+        return issue;
+    }
+    return null;
+  }
+  const seen = /* @__PURE__ */ new Map();
+  for (const [name, member] of Object.entries(value)) {
+    const memberPath = `${path6}/${escapePointer(name)}`;
+    if (hasLoneSurrogate(name))
+      return { rule: "lone-surrogate", path: memberPath };
+    if (name.includes("\0"))
+      return { rule: "nul-in-member-name", path: memberPath };
+    const nfc = name.normalize("NFC");
+    const earlier = seen.get(nfc);
+    if (earlier !== void 0 && earlier !== name)
+      return { rule: "equivalent-member-names", path: memberPath };
+    seen.set(nfc, name);
+    const issue = walk(member, memberPath, depth + 1);
+    if (issue)
+      return issue;
+  }
+  return null;
+}
+
 // ../shared-protocol/dist/config.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -12710,6 +12789,46 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       }
     }
   }
+  const productIssue = representabilityIssue(productRoot);
+  if (productIssue) {
+    add2(
+      errors,
+      "product",
+      `${productIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${productIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`
+    );
+  }
+  const schemaIssue = representabilityIssue(manifest.schema);
+  if (schemaIssue) {
+    add2(
+      errors,
+      "schema",
+      `${schemaIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${schemaIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`
+    );
+  }
+  const releaseIssue = representabilityIssue(manifest.release);
+  if (releaseIssue) {
+    add2(
+      errors,
+      "release",
+      `${releaseIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${releaseIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`
+    );
+  }
+  const distributionIssue = representabilityIssue(manifest.distribution);
+  if (distributionIssue) {
+    add2(
+      errors,
+      "distribution",
+      `${distributionIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${distributionIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`
+    );
+  }
   return {
     ok: errors.length === 0,
     errors,
@@ -14704,17 +14823,17 @@ var SIDECARS = [
 ];
 async function scanDir(dir) {
   const out = [];
-  async function walk(d) {
+  async function walk2(d) {
     const entries = await readdir(d, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
       const full = path3.join(d, e.name);
-      if (e.isDirectory()) await walk(full);
+      if (e.isDirectory()) await walk2(full);
       else if (e.isFile()) out.push({ path: full, name: e.name });
     }
   }
   try {
-    await walk(dir);
+    await walk2(dir);
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`--dir ${dir} does not exist.`);
