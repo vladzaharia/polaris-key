@@ -28,6 +28,10 @@
  *     P2b-03's) and `outletCapabilities` (P2b-02, `capabilities.ts`).
  *   - its admin surface (`admin.ts`) lists the outlets, narrows their capabilities, controls
  *     outlet rollouts and sets delivery access per deliverable.
+ *   - P5-02 gave it store connectors (`connectors/`): the App Store Connect webhook
+ *     (`/distribution/hooks/asc`), a poller on the connector cron (`scheduled`) and operator
+ *     controls under the admin surface. They write availability, submissions and mirrored
+ *     rollouts through the same writers CI and the console use.
  *
  * It reads Release only through `ctx.hooks.releaseCatalog()` — never by import. The boundary
  * test allows exactly one cross-service edge (`update → release`) and this service is not it.
@@ -36,6 +40,7 @@
 import type { HookContext, OutletCapabilities } from "../../core/hooks.js";
 import type {
   DiscoveryContext,
+  ScheduledServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { ParsedManifest } from "@polaris-key/manifest";
@@ -46,6 +51,7 @@ import { defaultCapabilities, effectiveCapabilities } from "./capabilities.js";
 import { delivery } from "./delivery.js";
 import { accessIngestStatements } from "./access.js";
 import { handleDistributionRoutes } from "./routes.js";
+import { pollConnectors } from "./connectors/index.js";
 import {
   getOutlet,
   manifestIngestStatements as outletIngestStatements,
@@ -80,6 +86,21 @@ function manifestIngest(
   now: number,
 ): DbStatement[] {
   return outletIngestStatements(parsed, product, now);
+}
+
+/**
+ * The connector cron (P5-02): every store connector's poll for this product. A connector that
+ * is not set up for the product skips itself before any call. A connector's error is collected
+ * and thrown after every connector ran, so the cron invocation records it.
+ */
+async function scheduled(
+  ctx: ScheduledServiceContext,
+): Promise<Record<string, unknown>> {
+  const outcomes = await pollConnectors(ctx);
+  const errors = outcomes.filter((o) => o.error);
+  if (errors.length)
+    throw new Error(errors.map((o) => `${o.connector}: ${o.error}`).join("; "));
+  return { connectors: outcomes };
 }
 
 export const distributionService: ServiceDescriptor = {
@@ -136,6 +157,8 @@ export const distributionService: ServiceDescriptor = {
   manifestIngestAlways: accessIngestStatements,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
+  /** The store-connector poll, on the connector cron (`connectors/`). */
+  scheduled,
 };
 
 export { DISTRIBUTION_BYTE_ROUTES } from "./bytes.js";

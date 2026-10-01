@@ -660,7 +660,7 @@ own key could also publish that key as the expected one.
 ### Outlet credentials (P5-01)
 
 **What they are.** The keys a store connector authenticates with (A11): an App Store Connect API
-key (`.p8`), the App Store Server Notifications webhook secret, a Google service-account key, a
+key (`.p8`), the App Store Connect webhook secret, a Google service-account key, a
 Partner Center client secret. Each is worth as much as the release channel (A3) — whoever holds
 one can ship to that store as the operator.
 
@@ -714,11 +714,144 @@ credential. The admin plane (A4) can overwrite a credential (but not read one ba
 bug in the Distribution service could misuse an opened value or a cached token; the audit row per
 open is the detection, and because token caches are checked first, opens stay at tens a day per
 credential, so that signal is not buried. A path that needs the raw value on every request —
-verifying an inbound App Store notification against `asc-webhook-secret` (P5-02) — opens it every
-time, and each open is two D1 writes; such a path must authenticate or rate-limit the request
-before the open, or it becomes an unauthenticated write amplifier (the R1-04 class). Least privilege per store (App Manager team key; one-app Play service account; Partner
+verifying an inbound App Store Connect webhook against `asc-webhook-secret` (P5-02) — opens it
+every time, and each open is two D1 writes; such a path must authenticate or rate-limit the request
+before the open, or it becomes an unauthenticated write amplifier (the R1-04 class). P5-02 does
+both what it can before the open: the signature header's shape is checked, and the delivery is
+rate-limited per product, fail closed (next section). That bounds the amplification; it does not
+keep the signal quiet: anyone can send a well-formed header, so `asc-webhook-secret` can be made
+to log up to 60 opens a minute per product, and its "tens a day" baseline does not hold under
+attack (next section, Residual). Least privilege per store (App Manager team key; one-app Play service account; Partner
 Center Manager role) is documented for operators in `admin/secrets-and-keys.md` but cannot be
 verified by the Worker.
+
+### Store connectors: App Store Connect (P5-02)
+
+**What it is.** `services/distribution/connectors/asc/` keeps a product's App Store and TestFlight
+state in Distribution: availability and submissions (`source = asc`), the phased release mirrored
+into `dist_rollouts` (`mirrored = 1`), and Background Asset version states as connector objects
+(`dist_connector_objects`, unresolved until P5-08 maps asset packs to pack releases). Three entry
+points: Apple's signed webhook `POST /<p>/distribution/hooks/asc`, a poller on a 15-minute cron
+(`CONNECTOR_POLL_CRON`), and operator controls in the console (`…/distribution/connectors/asc/…`:
+phased release pause/resume/complete, release a held version, the TestFlight public link,
+register the webhook). It authenticates to Apple with the `asc-api-key` outlet credential (P5-01)
+and verifies Apple with `asc-webhook-secret`; it never writes a credential.
+
+**Webhook forgery.** `x-apple-signature: hmacsha256=<hex>` is HMAC-SHA256 over the raw body with
+the product's own `asc-webhook-secret`, compared in constant time. A missing header, another
+scheme (`sha256=`, `hmacsha1=`, upper case) or a short MAC is refused 401 before anything is
+opened or counted; a body over 64 KiB is 413. The secret is per product, so a secret leaked from
+one product forges nothing for another. Even a valid signature is only a HINT: the handler never
+writes what the payload says. It re-reads the instance from the App Store Connect API with the
+product's own key and writes only what that GET says — a forged or replayed payload can at worst
+make the Worker re-read a real object.
+
+**Cross-app writes (ownership fails closed).** The `asc-api-key` the brief asks for is a team key,
+so it can read every app in the team, and the instance a signed payload names can be any of them.
+Before storing or writing anything, every path proves the object is the outlet's app: the GET asks
+for `include=app` (the real API puts relationship `data` in a response only when the relationship
+is included) and an absent or different `app` is treated as foreign — no connector object, no
+availability, outcome `ignored`. App Store versions, builds and build uploads carry `app`
+themselves; a beta detail is proven through its build; a Background Asset version or release
+through the chain release → version → asset, with `backgroundAssets/{id}?include=app` as the
+check, each link read from the primary data of its own GET. A build upload that cannot be proven
+writes nothing, whatever its state, and is never followed into the build it names. The poller's
+lists are app-scoped by their endpoint (`/v1/apps/{appleId}/…`, `/v1/builds?filter[app]=…`); a
+reconciled object that is gone or no longer provable is retired (`terminal = 1`), never updated.
+The state-changing controls hold to the same rule before they write, because a team key's write
+to another app's version (releasing it, completing its phased release) cannot be undone by a later
+re-read: `release` and `phased-release/*` act only on a stored version whose `ascAppId` is the
+app the setup names now (a row stored while the outlet named another app is invisible to them),
+and first re-read it with `include=app`, sending nothing unless Apple answers that it is this
+app's version of that release; `testflight/public-link` proves its beta group with
+`betaGroups/{id}?include=app`. The test fake (`test/ascFake.ts`) answers relationships the same way, so a test cannot pass on
+data the real API would not send.
+
+**Replay.** Deliveries are deduplicated on `data.id`: a KV marker (7 days, like the GitHub
+webhook) and the `dist_connector_events` primary key. A redelivery answers 200 `{duplicate: true}`
+and makes no API call and no write.
+
+**Lost follow-ups.** The webhook answers before it re-reads the instance. A follow-up that fails
+records `failed` on the event row and drops the KV marker; one cut off before it records anything
+leaves `received`. The poll tick re-drives both (`poll.ts` step 4): up to 5 events a tick, received
+in the last 24 hours, `received` ones only 5 minutes on, each re-read through the same ownership
+chain as the webhook, the row's outcome moved to what that read came to. An older event waits for
+a manual redelivery (Apple allows one resend per delivery, notes/E1 §A1), which the dropped
+marker lets through. A delivery the route REFUSED (401, 413, 429) was never stored and is not
+re-driven, and Apple does not retry it on its own: notes/E1 documents only the manual resend. App
+Store versions, builds and phased release still come back on the next 15-minute tick, because the
+poller lists them; a Background Asset version or release that the refused delivery named first
+does not, since nothing lists them — it is read when Apple sends its next event for it, or when an
+operator resends the delivery from App Store Connect.
+
+**Write amplification.** Each secret open is an audit row and a D1 write (P5-01), so deliveries
+are rate-limited per product (`ascWebhook`, 60 a minute) BEFORE the open, and the limiter fails
+CLOSED: with the limiter down the route answers 429 rather than letting an unsigned flood write.
+Unknown products, products without the connector, and Distribution-off products answer Core's
+not-found shape before any of this, byte-identical to an unknown connector. A product that has
+the connector set up answers 401 to an unsigned request instead, so the route does tell a prober
+which products run it; that is not treated as a secret (the product's App Store listing says as
+much), but it is what makes the residual below targetable.
+
+**SSRF.** The client sends requests only to `https://api.appstoreconnect.apple.com/v1/…`. Paths
+are built from segments that must match `^[A-Za-z0-9][A-Za-z0-9-]*$` (so a payload's
+`instance.id` of `../../users` is refused), the instance type must be one the event may name, and
+a JSON:API `links.next` is followed only when it names the same origin and `/v1/`. The bearer
+token therefore cannot be sent to a host a payload, a manifest or an operator chooses.
+
+**Errors carry no bodies.** An ASC failure becomes `AscError` with the method, path and HTTP
+status only; that line is what reaches `outlet_credentials.last_error`, the cron's thrown
+aggregate and a control's `store_refused` refusal.
+
+**Blast radius of a stolen App Manager key.** Apple's App Manager role covers metadata, TestFlight
+(groups, testers, public links), App Store versions, phased release and release requests, review
+submissions and — through the API — build uploads; it does NOT sign: an `.ipa` must still be
+signed with a distribution certificate the key cannot create or export, and App Review still sees
+every App Store version. A thief could pause or complete a phased release, release a held
+version early, open a public TestFlight link, change metadata, or upload a build signed with
+certificates they already hold. Mitigations: the key is custodied by P5-01 (sealed, platform-admin
+writes only, every open audited); the connector itself never uploads and never submits for
+review; App Store Connect's own activity log is the second record; rotate by revoking the key in
+Users and Access and PUTting a new one (the version marker drops cached tokens). Least privilege
+(App Manager, not Admin; a separate Developer-role key for CI uploads) is the operator's choice,
+documented in `services/distribution/app-store-connect.md`.
+
+**The mirror is not an access control.** A phased release reaches only devices with automatic
+updates on, and anyone can download the version by hand, so `dist_rollouts` rows with
+`source = asc` are informative for the feed (P3-03) and the console; nothing may gate a download
+on them. A mirrored row refuses direct edits (`rollout_mirrored`); the connector overwrites any
+operator rollout on the same (deliverable, outlet, channel) and audits that it did. Only one
+writer may own that row, or the audit signal drowns: a replaced or removed version's phased
+release is not mirrored, an older release never takes the row from a newer one, and of a
+Universal Purchase app's platforms only one (iOS when present) writes a release's rows — the same
+rule keeps the whole-release TestFlight row on the newest build — so a tick over unchanged store
+state writes no row and no audit entry.
+
+**Controls.** Each is a platform-admin console action (session, CSRF, rate limit), proves the
+object is the outlet's app first (above), sends exactly one documented request (two for webhook registration: create, then ping), writes one audit row
+with the session's subject, and re-reads the object. "Register webhook" sends the stored secret
+to Apple once; the secret is generated server-side by the Core admin handler
+(`PUT …/outlet-credentials/<id>` with `generate: true`) and never returned to anyone.
+
+**Residual.** The `ascWebhook` bucket is per product and counted before the signature is
+verified, so forged and genuine deliveries share it. Anyone who finds a product that runs the connector
+(the 401 above) can, without the secret:
+
+- **starve genuine deliveries** — about one well-formed `hmacsha256=<64 hex>` request a second
+  keeps the bucket full, and every genuine Apple delivery for that product in that minute is
+  answered 429 and lost (see Lost follow-ups for what the poller recovers and what it does not);
+- **write up to 60 audited opens a minute per product** — each forged request opens the secret
+  once (`outlet_credential.use` audit row plus the `last_used_at` write), about 86,400 a day,
+  which buries the per-open detection signal the P5-01 section relies on for that credential.
+  The `asc-api-key` opens are not affected (its token cache is checked first).
+
+Neither reveals or forges anything, and the poller keeps App Store versions, builds and phased
+release current regardless. An operator seeing either should rotate nothing (the secret is not
+at risk) and can block the source at the edge. Whoever holds a product's `asc-webhook-secret` can
+also make the Worker spend API budget re-reading objects (bounded by the rate limit and Apple's
+per-key hourly limit, which the poller reads from `X-Rate-Limit` and backs off from). Raw event payloads are stored for 30 days, capped
+at 16 KiB each; beta-feedback events can name testers, so `dist_connector_events` is personal data
+under the same retention reasoning as `audit`.
 
 ### The device-code user-code page (P1-06)
 
@@ -1092,7 +1225,8 @@ release channel or artifact type is added; a service gains a route, a table or a
 descriptor hook gains a method that writes or a new provider, or a method that returns bytes
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
-offered (P3-03), or a reader of `dist_availability` does, or anything but the console's key
+offered (P3-03), or a reader of `dist_availability` does, a store connector is added, gains a
+control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, or starts uploading or submitting (P5-02), or anything but the console's key
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to

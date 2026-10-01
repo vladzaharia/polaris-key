@@ -97,7 +97,7 @@ Four kinds exist today:
 | Kind                         | Value                                                     | Least privilege                                                                    |
 | ---------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | App Store Connect API key    | key ID, issuer ID and the `.p8` file (a P-256 PKCS#8 key) | A **team** key with the **App Manager** role — not Admin.                          |
-| App Store webhook secret     | the shared secret for App Store Server Notifications      | Used only to verify Apple's webhook calls.                                         |
+| App Store webhook secret     | the shared secret App Store Connect signs webhooks with   | Used only to verify Apple's webhook calls; let the Worker generate it.             |
 | Google service account       | the service account's JSON key file                       | Invite the account to **one app** in Play Console with release permissions only.   |
 | Microsoft Partner Center app | tenant ID, client ID, client secret and seller ID         | An Entra app added to Partner Center with the **Manager** role, not Account admin. |
 
@@ -112,7 +112,11 @@ The rules, all enforced by the Worker rather than by the console:
   with `{kind, value, outletId?, expiresAt?}` seals and stores the value and echoes the **id
   only**. Saving to an existing id of the same kind rotates it in place (and clears its health);
   saving a different kind to an existing id is refused (409) — delete it first. No `.pkey/`
-  manifest, resync or service can write one.
+  manifest, resync or service can write one. For an App Store webhook secret, send
+  `{kind: "asc-webhook-secret", generate: true}` instead of a value: the Worker generates 32 random
+  bytes and stores them without ever returning them, and the
+  [App Store Connect connector](/docs/services/distribution/app-store-connect/)'s "register
+  webhook" control hands them to Apple.
 - **Metadata only on read.** `GET …/outlet-credentials` lists each credential's kind, outlet,
   non-secret identifiers (key ID, issuer ID, client email, tenant, client and seller IDs), when it
   was created and by whom, when it was last used, and the last result a connector reported. There

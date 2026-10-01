@@ -25,11 +25,15 @@
 //    at the very end, so the invocation is still recorded as failed.
 
 import { pruneCiCredentials } from "./core/publisher.js";
+import { loadProductPublic } from "./core/products.js";
+import { runScheduledServices } from "./core/registry.js";
+import { SERVICES } from "./mount.js";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { D1Db } from "./db/d1.js";
 import {
   listAllProductSlugs,
+  listProducts,
   pruneAudit,
   releaseDormantSeats,
 } from "./repo.js";
@@ -239,6 +243,61 @@ export async function runScheduledMaintenance(
 }
 
 /**
+ * The two cron triggers in `wrangler.toml` (`[triggers] crons`). `handleScheduled` dispatches on
+ * `event.cron`: the connector cron runs the store-connector poll (P5-02), anything else the
+ * nightly maintenance sweep — so an unknown trigger can only ever cause maintenance, which is
+ * idempotent, never an unplanned burst of store API calls. `test/scheduled.test.ts` asserts the
+ * two constants are exactly `wrangler.toml`'s list.
+ */
+export const MAINTENANCE_CRON = "17 3 * * *";
+export const CONNECTOR_POLL_CRON = "*/15 * * * *";
+
+/**
+ * One connector-poll tick (P5-02): every live product's ENABLED services' `scheduled` hooks
+ * (`core/registry.ts` `runScheduledServices` — Distribution's store connectors today), each
+ * product fault-isolated like the maintenance steps. Soft-deleted products are not polled: their
+ * outlets ship nothing. A product whose signing key will not load is skipped (`loadProductPublic`
+ * answers null), exactly as every request path skips it.
+ */
+export async function runConnectorPolls(
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<MaintenanceReport & { results: Record<string, unknown> }> {
+  const report: MaintenanceReport & { results: Record<string, unknown> } = {
+    counts: {},
+    failures: {},
+    results: {},
+  };
+  let slugs: string[] = [];
+  try {
+    slugs = (await listProducts(db)).map((p) => p.slug);
+  } catch (e) {
+    report.failures.products = e instanceof Error ? e.message : String(e);
+  }
+  for (const slug of slugs) {
+    try {
+      const product = await loadProductPublic(db, slug);
+      if (!product) continue;
+      const { results, failures } = await runScheduledServices(SERVICES, {
+        env,
+        db,
+        product,
+        now,
+      });
+      report.results[slug] = results;
+      report.counts[`poll:${slug}`] = Object.keys(results).length;
+      for (const [service, message] of Object.entries(failures))
+        report.failures[`poll:${slug}:${service}`] = message;
+    } catch (e) {
+      report.failures[`poll:${slug}`] =
+        e instanceof Error ? e.message : String(e);
+    }
+  }
+  return report;
+}
+
+/**
  * The `scheduled()` entry point. Throws if any step failed, so the invocation is recorded as
  * errored rather than disappearing into a green dashboard.
  *
@@ -253,13 +312,18 @@ export async function handleScheduled(
   env: Env,
   /** Override the binding — the tests drive the real handler against in-memory SQLite. */
   db: Db = new D1Db(env.DB),
+  /** `ScheduledController.cron`: which trigger fired (see `CONNECTOR_POLL_CRON`). */
+  cron?: string,
 ): Promise<MaintenanceReport> {
   const now = Math.floor(Date.now() / 1000);
-  const report = await runScheduledMaintenance(db, now);
+  const poll = cron === CONNECTOR_POLL_CRON;
+  const report = poll
+    ? await runConnectorPolls(env, db, now)
+    : await runScheduledMaintenance(db, now);
   const failed = Object.entries(report.failures);
   if (failed.length > 0) {
     throw new Error(
-      `scheduled maintenance: ${failed.length} step(s) failed — ` +
+      `${poll ? "connector poll" : "scheduled maintenance"}: ${failed.length} step(s) failed — ` +
         failed.map(([name, message]) => `${name}: ${message}`).join("; "),
     );
   }

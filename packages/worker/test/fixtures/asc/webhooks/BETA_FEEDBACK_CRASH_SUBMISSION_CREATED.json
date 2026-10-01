@@ -1,0 +1,21 @@
+{
+  "data": {
+    "type": "betaFeedbackCrashSubmissionCreated",
+    "id": "5f1c1e3a-0005-4b8e-9d2a-000000000005",
+    "version": 1,
+    "attributes": {
+      "timestamp": "2026-09-30T17:00:00.000Z"
+    },
+    "relationships": {
+      "instance": {
+        "data": {
+          "type": "betaFeedbackCrashSubmissions",
+          "id": "fbc-1"
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/betaFeedbackCrashSubmissions/fbc-1"
+        }
+      }
+    }
+  }
+}

@@ -59,7 +59,7 @@ switched on by a migration, so its stored state keeps serving while its manifest
   carries them, a halt is recorded and shown but does not stop legacy feeds; see
   [Rollouts and halts](/docs/services/distribution/rollouts/).
 - **Availability and submissions** per release and outlet — reported from CI with
-  `pkey distribution report` until store connectors exist, and derived for self-hosted outlets —
+  `pkey distribution report`, written by store connectors, and derived for self-hosted outlets —
   and the operator-owned **signing-key inventory**; see
   [Availability, submissions and keys](/docs/services/distribution/availability/).
 - **A discovery fragment** advertising the canonical byte URLs; `configured` is `true` once the
@@ -170,8 +170,9 @@ in Core, in their own sealed table, and Distribution is the only service that ca
 tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, and keyed by a
 non-secret version of the credential, so the cache is checked first and a credential is opened
 only when a fresh token is needed. Operators set them on the Secrets tab — see
-[Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). No connector uses them
-yet; the App Store, Play and Microsoft Store connectors arrive in later packages.
+[Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). The first connector is
+the [App Store Connect connector](/docs/services/distribution/app-store-connect/); Play and the
+Microsoft Store follow.
 
 ## Vocabulary
 

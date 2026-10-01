@@ -2889,6 +2889,110 @@ paths:
         "409": { $ref: "#/components/responses/CiRefusal" }
         "422": { $ref: "#/components/responses/CiRefusal" }
 
+  /{product}/distribution/hooks/asc:
+    post:
+      operationId: ascWebhook
+      tags: [distribution]
+      summary: App Store Connect webhook notifications (Apple → Worker)
+      description: >
+        P5-02. Called by App Store Connect, never by a client: the connector registers it
+        (`POST /v1/webhooks`, all 12 `WebhookEventType`s) from the console. The body is Apple's
+        thin JSON:API envelope; `x-apple-signature: hmacsha256=<hex>` is HMAC-SHA256 over the raw
+        body with the product's `asc-webhook-secret` outlet credential, compared in constant time.
+        A missing header or another scheme is 401 before anything is opened; deliveries are
+        rate-limited per product BEFORE the secret is opened (429 `rate_limited`). A `data.id`
+        seen in the last 7 days answers 200 `{ok, duplicate: true}` and changes nothing. The
+        webhook is a hint: the instance it names (an App Store version, build upload, build beta
+        detail or Background Asset version/release) is re-read from the App Store Connect API
+        and only what the API says is written — availability, submissions and the phased-release
+        mirror (`source: asc`). Beta feedback, alternative-distribution events and Apple's ping
+        are stored raw (200); an unknown event type answers 204 and is stored as `ignored`. The
+        product must declare an `app-store` or `testflight` outlet with an `appleId` and hold
+        `asc-api-key` and `asc-webhook-secret` credentials; otherwise — like with Distribution
+        off — the answer is the service not-found shape. No CORS. Errors are LEGACY FLAT.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: x-apple-signature
+          in: header
+          required: true
+          schema: { type: string, pattern: "^hmacsha256=[0-9a-fA-F]{64}$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data:
+                  type: object
+                  required: [id, type]
+                  properties:
+                    id:
+                      {
+                        type: string,
+                        description: "The delivery id; the dedupe key.",
+                      }
+                    type:
+                      type: string
+                      description: "The event type in Apple's camel-case spelling (`appStoreVersionAppVersionStateUpdated`)."
+                    version: { type: integer }
+                    attributes: { type: object }
+                    relationships:
+                      type: object
+                      description: "`instance` names the object, as `{data: {type, id}}` or — Background Asset events — `{type, id, links}`."
+            examples:
+              appVersionState:
+                summary: test/fixtures/asc/webhooks/APP_STORE_VERSION_APP_VERSION_STATE_UPDATED.json
+                value:
+                  data:
+                    type: appStoreVersionAppVersionStateUpdated
+                    id: 5f1c1e3a-0001-4b8e-9d2a-000000000001
+                    version: 1
+                    attributes:
+                      newValue: READY_FOR_DISTRIBUTION
+                      oldValue: PENDING_DEVELOPER_RELEASE
+                      timestamp: "2026-09-30T17:00:00.000Z"
+                    relationships:
+                      instance:
+                        data: { type: appStoreVersions, id: asv-110 }
+      responses:
+        "200":
+          description: "Accepted (the follow-up read runs after the response), stored, or a duplicate."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+                  duplicate: { type: boolean, const: true }
+        "204":
+          {
+            description: "An event type this build does not know; stored as `ignored`.",
+          }
+        "400":
+          description: "Not a webhook payload (`reason: bad_body`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: Missing, malformed or wrong `x-apple-signature`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413":
+          description: Body over 64 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many deliveries for this product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+
   /{product}/release/channels/{channel}/promote:
     post:
       operationId: ciPromoteChannel

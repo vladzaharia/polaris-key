@@ -8,7 +8,11 @@ import { handleScheduled } from "./scheduled.js";
 export { RateLimitDO } from "./rateLimitDo.js";
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(
+    req: Request,
+    env: Env,
+    ctx?: ExecutionContext,
+  ): Promise<Response> {
     // R1-09: EVERY response leaving this worker goes through `secureResponse`, which adds
     // HSTS and — for any `text/html` body that did not set its own policy — the strict
     // script-free CSP. Handlers that set a policy themselves (the SPA shells) keep it. This
@@ -16,7 +20,9 @@ export default {
     // than something each handler has to remember, and it is what currently covers the two
     // identity OIDC pages (device-authorization + "you're signed in"), which set no headers of
     // their own.
-    return secureResponse(await dispatch(req, env, new D1Db(env.DB)));
+    // `ctx` lets a handler answer first and finish afterwards (P5-02: a store webhook's
+    // follow-up API read), through `ServiceContext.waitUntil`.
+    return secureResponse(await dispatch(req, env, new D1Db(env.DB), ctx));
   },
 
   /**
@@ -32,10 +38,13 @@ export default {
    * instead of arriving as a detached unhandled rejection.
    */
   async scheduled(
-    _event: ScheduledController,
+    event: ScheduledController,
     env: Env,
     _ctx: ExecutionContext,
   ): Promise<void> {
-    await handleScheduled(env);
+    // Two crons (P5-02): the nightly maintenance sweep and the 15-minute store-connector poll.
+    // `handleScheduled` dispatches on `event.cron`; anything that is not the connector cron is
+    // the sweep, so a trigger added without code still runs maintenance, never a poll.
+    await handleScheduled(env, undefined, event.cron);
   },
 } satisfies ExportedHandler<Env>;

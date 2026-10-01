@@ -1,0 +1,23 @@
+{
+  "data": {
+    "type": "buildUploadStateUpdated",
+    "id": "5f1c1e3a-0002-4b8e-9d2a-000000000002",
+    "version": 1,
+    "attributes": {
+      "newState": "COMPLETE",
+      "oldState": "PROCESSING",
+      "timestamp": "2026-09-30T17:00:00.000Z"
+    },
+    "relationships": {
+      "instance": {
+        "data": {
+          "type": "buildUploads",
+          "id": "bup-110-42"
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/buildUploads/bup-110-42"
+        }
+      }
+    }
+  }
+}
