@@ -176,7 +176,9 @@ export interface ReleaseRecordCheck {
  * from (plans/P3-01.md §2.5's error map): `feed-rejected` (with the step as `detail`),
  * `feed-rollback`, `record-rejected`, `record-mismatch`, `network-error` or the Worker's own wire
  * code. The options refusals (`not-configured`, `invalid-options`) and step 1's
- * `service-unavailable` are this class too, with a null `detail`.
+ * `service-unavailable` are this class too, with a null `detail`. Core's own refusals before the
+ * update client runs — the D-21 gate (`service-unavailable` when the product runs no Update or
+ * Release service) and `local-only` — are the plain `PolarisError` every sub-client raises.
  */
 export class UpdateError extends PolarisError {
   readonly detail: string | null;
