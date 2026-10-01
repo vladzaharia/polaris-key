@@ -110,7 +110,10 @@ per artifact, and so mislabels Steam, itch and sideload builds
   inherited from an MSIX parent process). A signal with no identity condition in the note's
   table is diagnostic only and never counts: `ITCHIO_APP=1` names no product (any child of an
   itch-launched process inherits it), so `itch.appEnv` is recorded but never moves or keeps an
-  outlet, and `itch.receipt` is the only itch signal that counts. The ids come from the
+  outlet, and `itch.receipt` is the only itch signal that counts. The receipt's `game.id` is a
+  JSON number, which Godot's `JSON` parses as a float, so compare `str(int(game.id))` with the
+  stamp's `itchGameId` string (and likewise compare the Steam app id as a decimal string). The
+  ids come from the
   stamp: [P1-11](P1-11-godot-export-plugin.md)'s export plugin writes the product's outlet
   identities (Steam app id, itch game id, Flatpak app id, snap name, cask token, MSIX package
   family name, bundle or application id) into `build.json` (from its `polaris_key/outlet_ids`

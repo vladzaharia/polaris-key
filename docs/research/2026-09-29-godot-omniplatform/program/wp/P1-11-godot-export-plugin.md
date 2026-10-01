@@ -83,11 +83,15 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   has no YAML parser, and `.pkey/` sits at the product repo root, which need not be the Godot
   project root. Turning the manifest into this JSON is P2b-02's job: its
   `pkey distribution outlet-ids --outlet <id>` prints exactly this object, so CI runs
-  `PKEY_OUTLET_IDS="$(pkey distribution outlet-ids --outlet steam)"` before the export. An
+  `PKEY_OUTLET_IDS="$(pkey distribution outlet-ids --outlet steam)"` before the export; that
+  command prints every value as a JSON string, numeric ids included. An
   `_get_export_option_warning` fires when the value is not a JSON object, has a key outside the
-  seven above, or has a non-string value (the export still runs, without the bad keys). A
-  `bundleId` given in the option and different from the preset's is a warning too, and the
-  preset's value wins. An absent id is simply left out, so the object is `{}` at minimum.
+  seven above, or has a non-string value (the export still runs, without the bad keys). That
+  warning shows only in the editor's export dialog, so `_export_begin` runs the same check on the
+  value `get_or_env` returned and calls `push_warning` (naming `PKEY_OUTLET_IDS` when the
+  environment supplied it) for each problem, which a headless `--export-release` prints to the
+  log. A `bundleId` given in the option and different from the preset's is a warning too, and
+  the preset's value wins. An absent id is simply left out, so the object is `{}` at minimum.
 - `core/build_stamp.gd` (`PKeyBuildStamp`) and `PolarisKey.build_info()`: read the stamp with
   `FileAccess` (data added by `add_file` is not imported); when absent, fall back to
   `application/config/version`, no outlet, the dock's editor channel, and the runtime
@@ -159,8 +163,10 @@ Godot form of the build identity that `pkey build-info` writes for other build s
       keys appear in `outletIds` unchanged; with `PKEY_OUTLET_IDS` set to a different object, the
       environment's keys appear instead; a `.pkey/distribution.yaml` beside the project changes
       nothing.
-- [ ] The export dialog warns when `polaris_key/outlet_ids` is not a JSON object or has an unknown
-      key.
+- [ ] The export dialog warns when `polaris_key/outlet_ids` is not a JSON object, has an unknown
+      key or has a non-string value; a headless export with
+      `PKEY_OUTLET_IDS='{"itchGameId":1001}'` prints a `push_warning` naming `PKEY_OUTLET_IDS`
+      and leaves `itchGameId` out of the stamp.
 - [ ] On the release template, `OS.has_feature("pkey_outlet_steam")` and
       `OS.has_feature("pkey_channel_beta")` are true, and `PolarisKey.build_info()` returns the
       stamp.
