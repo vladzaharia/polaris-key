@@ -10,6 +10,11 @@ THE CACHE IS MEMORY ONLY. A minted token is a live credential for someone else's
 is never written to the cache file or the keyring, and it dies with the process. Within one
 process it is reused until ``expiresAt`` minus a 30-second margin. Mirrors
 ``@polaris-key/node``'s ``config/mint.ts``.
+
+A CACHED TOKEN IS BOUND TO THE DEVICE TOKEN IT WAS MINTED WITH. A hit counts only while the
+client still holds that same device token, so ``license.deactivate()``, a cleared or revoked
+token, or a different identity signing in all invalidate it: the call then takes the normal
+path, which refuses with ``unauthorized`` before any request when no token is held.
 """
 
 from __future__ import annotations
@@ -17,7 +22,7 @@ from __future__ import annotations
 import re
 import threading
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 import httpx
 
@@ -45,10 +50,11 @@ class MintedToken:
 
 class MintCache:
     """The per-client, per-recipe memory cache. The lock makes two threads that ask for the
-    same recipe at once make one request."""
+    same recipe at once make one request. Each entry is ``(device_token, minted)``: the device
+    token that was presented for it."""
 
     def __init__(self) -> None:
-        self.tokens: Dict[str, MintedToken] = {}
+        self.tokens: Dict[str, Tuple[str, MintedToken]] = {}
         self.lock = threading.Lock()
 
 
@@ -65,22 +71,31 @@ def mint_token(
             f'"{recipe_id}" is not an edge-mint recipe id (lowercase letters, digits and "-").',
         )
     with cache.lock:
+        current = tokens.current if tokens is not None else None
         held = cache.tokens.get(recipe_id)
-        if held is not None and ctx.now() < held.expiresAt - MINT_REUSE_MARGIN_SECONDS:
-            return held
+        if held is not None:
+            device_token, minted = held
+            if (
+                current is not None
+                and device_token == current
+                and ctx.now() < minted.expiresAt - MINT_REUSE_MARGIN_SECONDS
+            ):
+                return minted
         cache.tokens.pop(recipe_id, None)
-        minted = _mint_once(ctx, tokens, recipe_id)
-        cache.tokens[recipe_id] = minted
+        device_token, minted = _mint_once(ctx, tokens, recipe_id)
+        cache.tokens[recipe_id] = (device_token, minted)
         return minted
 
 
 def _mint_once(
     ctx: "CoreContext", tokens: Optional["TokenManager"], recipe_id: str
-) -> MintedToken:
-    token = tokens.current if tokens is not None else None
-    res = _get(ctx, token, recipe_id)
+) -> Tuple[str, MintedToken]:
+    """One mint (with the single re-acquire), and the device token that was presented for it."""
+    presented = tokens.current if tokens is not None else None
+    res = _get(ctx, presented, recipe_id)
     if res.status_code == 401 and tokens is not None and tokens.reacquire():
-        res = _get(ctx, tokens.current, recipe_id)
+        presented = tokens.current
+        res = _get(ctx, presented, recipe_id)
     if res.status_code == 200:
         try:
             b = res.json()
@@ -92,7 +107,9 @@ def _mint_once(
             raise PolarisError(
                 "bad_response", "edge-mint answered without a token and its expiry."
             )
-        return MintedToken(token=tok, expiresAt=exp)
+        # ``_get`` refused locally when no token was presented, so it is a string here.
+        assert presented is not None
+        return presented, MintedToken(token=tok, expiresAt=exp)
     try:
         body = res.json()
     except ValueError:

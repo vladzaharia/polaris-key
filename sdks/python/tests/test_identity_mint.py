@@ -6,6 +6,8 @@ cannot show, because a recorded conversation has no clock between its requests.
 * a failed poll is retried at the SAME interval, never faster;
 * the prompt's expiry, ``timeout`` and ``cancel`` all stop polling;
 * a second ``mint_token`` inside the lifetime makes no request, and nothing minted is stored;
+* a cached token is bound to the device token it was minted with: after ``deactivate()`` the
+  next mint is ``unauthorized`` without a request, and a different device token re-mints;
 * a disabled service refuses before any request.
 
 The clock is ``time.time`` driven by a fake ``time.sleep``, so every wait is exact and
@@ -310,6 +312,36 @@ def test_a_second_mint_inside_the_lifetime_makes_no_request(clock) -> None:
     # Memory only: the store never sees a minted token.
     assert c.core.store.get_token() == "pkeyt_device"
     assert "m1" not in repr(c.core.store.read_cache())
+
+
+def test_deactivate_drops_the_cached_minted_token(clock) -> None:
+    plane = Plane(
+        clock,
+        {
+            MINT: [minted("m1", T0 + 600)],
+            f"/{PRODUCT}/license/deauthorize": [httpx.Response(200, json={"ok": True})],
+        },
+    )
+    c = make(plane, ["license", "config"], token="pkeyt_device")
+    assert c.config.mint_token("musickit").token == "m1"
+    c.license.deactivate()
+    assert len(plane.at(MINT)) == 1
+    with pytest.raises(PolarisError) as e:
+        c.config.mint_token("musickit")
+    assert e.value.code == "unauthorized"
+    assert len(plane.at(MINT)) == 1
+
+
+def test_a_different_device_token_re_mints(clock) -> None:
+    plane = Plane(clock, {MINT: [minted("m1", T0 + 600), minted("m2", T0 + 600)]})
+    c = make(plane, ["license", "config"], token="pkeyt_device")
+    assert c.config.mint_token("musickit").token == "m1"
+    c._tokens.set("pkeyt_other")
+    assert c.config.mint_token("musickit").token == "m2"
+    assert [x["authorization"] for x in plane.calls] == [
+        "Bearer pkeyt_device",
+        "Bearer pkeyt_other",
+    ]
 
 
 def test_mint_refuses_before_any_request_when_config_is_off(clock) -> None:
