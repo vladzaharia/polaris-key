@@ -31,7 +31,7 @@
       "wp": "P1b-07",
       "note": "entitledChannels() exists but is untested and returns [] when the entitlement is absent, where the Worker returns [\"stable\"]; P1b-07 settles the semantics."
     },
-    "license.reregister": { "status": "planned", "wp": "P1b-06" },
+    "license.reregister": { "status": "implemented" },
     "config.resolve": { "status": "implemented" },
     "config.list": { "status": "implemented" },
     "config.secret": { "status": "implemented" },

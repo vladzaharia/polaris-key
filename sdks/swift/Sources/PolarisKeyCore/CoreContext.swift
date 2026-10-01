@@ -184,6 +184,61 @@ public enum RegisterResult: Sendable, Equatable {
     case error(message: String)
 }
 
+// ── The §5 re-acquire route (P1b-06) ───────────────────────────────────────────────────────
+//
+// §5's parenthesis: "Registered-without-license devices re-register instead; same
+// single-attempt rule." `POST /<p>/license/token` needs a LICENSED device (and the route does
+// not exist at all when License is off), so a config-only product's registered device would
+// lose its credential for good on its first 401. `chooseReacquireRoute` picks
+// `POST /<p>/devices/register` for such a device; `reacquireOnce`'s budget is shared, so it is
+// still one network call per pass whichever route is taken. A wrong guess is safe: register
+// answers a licensed device `registration_closed`, license/token answers a licence-less one
+// 401, and either way the single attempt is spent and the hard-401 path applies.
+
+/// How the current device token was obtained in this process.
+public enum TokenSource: String, Sendable, Equatable {
+    case activate, enroll, register, reacquire
+}
+
+/// The two routes the §5 single re-acquire can take.
+public enum ReacquireRoute: String, Sendable, Equatable {
+    case licenseToken = "license-token"
+    case devicesRegister = "devices-register"
+}
+
+/// Pick the route for the §5 single re-acquire (the same rule in every SDK):
+///
+///   * License disabled for the product ⇒ `devicesRegister` (license/token does not exist);
+///   * the token was minted by `register()` (or re-registered) in this process ⇒
+///     `devicesRegister`;
+///   * otherwise ⇒ `licenseToken`, as before.
+///
+/// There is deliberately NO restart heuristic ("no verified licence document and no bundle ⇒
+/// register"). After a restart a licensed device whose cache is empty is indistinguishable from
+/// a licence-less one, and the recorded `sync-errors` transcript pins that state to
+/// `POST /license/token`. Telling them apart needs the token source persisted, which is a
+/// client-core store-contract change and therefore plan-mode.
+public func chooseReacquireRoute(licenseEnabled: Bool, source: TokenSource?) -> ReacquireRoute {
+    if !licenseEnabled { return .devicesRegister }
+    if source == .register { return .devicesRegister }
+    return .licenseToken
+}
+
+/// A re-acquired token and how it was obtained (which becomes the token's new source).
+public struct Reacquired: Sendable, Equatable {
+    public let token: String
+    public let source: TokenSource
+
+    public init(token: String, source: TokenSource) {
+        self.token = token
+        self.source = source
+    }
+}
+
+/// The §5 single re-acquire: given the current token and its in-process source, mint a new one
+/// or answer nil. INJECTED into `CoreContext.sync` so Core does not depend on the license module.
+public typealias ReacquireFn = @Sendable (_ current: String, _ source: TokenSource?) async -> Reacquired?
+
 public actor CoreContext {
     // ── Immutable configuration ──────────────────────────────────────────────────────────
     // `nonisolated` throughout: these never change after construction, so making a sub-client
@@ -214,6 +269,9 @@ public actor CoreContext {
     // ── Live state ───────────────────────────────────────────────────────────────────────
     private var deviceIdValue = ""
     private var tokenValue: String?
+    /// In memory only: persisting it would change client-core's store contract (CacheRecordV3),
+    /// so after a restart the source is unknown and `chooseReacquireRoute` keys on License alone.
+    private var tokenSourceValue: TokenSource?
     private var discoveredServices: ServicesMap?
     private var discoveryDocumentValue: ProductDiscoveryDocument?
     /// Tier 2 — REPLACED, never merged into, on every successful verification (§1 rule 2).
@@ -260,17 +318,23 @@ public actor CoreContext {
     public func start() async throws {
         deviceIdValue = try await store.getDeviceId()
         tokenValue = try await store.getToken()
+        tokenSourceValue = nil
         loadCache(await store.readCache())
     }
 
     // ── Identity + credential ────────────────────────────────────────────────────────────
     public var deviceId: String { deviceIdValue }
     public var token: String? { tokenValue }
+    /// How the current token was obtained in this process; nil when it was loaded from the store
+    /// (a restart), its origin was not given, or there is none.
+    public var tokenSource: TokenSource? { tokenSourceValue }
 
     /// The last persistence failure, for a host application that wants to surface it.
     public var lastStoreError: StoreError? { lastStoreErrorValue }
 
-    public func setToken(_ token: String) async throws {
+    /// Store `token`. `source` is how it was obtained; nil means unknown, which routes a later
+    /// re-acquire exactly as after a restart.
+    public func setToken(_ token: String, source: TokenSource? = nil) async throws {
         do {
             try await store.setToken(token)
         } catch let error as StoreError {
@@ -278,12 +342,14 @@ public actor CoreContext {
             throw error
         }
         tokenValue = token
+        tokenSourceValue = source
     }
 
     /// Wipe every credential and artifact, in memory and on disk. Throws if the local wipe could
     /// not be completed — the caller needs to know the credential is still there.
     public func clearAll() async throws {
         tokenValue = nil
+        tokenSourceValue = nil
         record = nil
         loaded = LoadedCache()
         manifestKeys = [:]
@@ -683,6 +749,20 @@ public actor CoreContext {
     /// No `Authorization` header is sent even when a stale token is held: a client re-registering
     /// is asking for a FRESH credential, not authenticating with the old one.
     public func registerDevice(fingerprint: HardwareFingerprint? = nil) async -> RegisterResult {
+        let result = await requestDeviceRegistration(fingerprint: fingerprint)
+        guard case .ok(let token, _) = result else { return result }
+        do { try await setToken(token, source: .register) } catch {
+            return .error(message: "could not persist the device token: \(error)")
+        }
+        return result
+    }
+
+    /// The registration request alone, without storing the token. `registerDevice` stores it;
+    /// the §5 re-register on 401 lets `reacquireOnce` store it instead, so the one request is
+    /// identical on both paths: the fingerprint when given, never a bearer.
+    public func requestDeviceRegistration(fingerprint: HardwareFingerprint? = nil) async
+        -> RegisterResult
+    {
         var extra: [String: String] = [:]
         var body: Data?
         if let fingerprint, let encoded = try? JSONEncoder().encode(
@@ -704,9 +784,6 @@ public actor CoreContext {
         case 200:
             guard let ok = try? JSONDecoder().decode(RegisterBody.self, from: response.body)
             else { return .error(message: "malformed register response") }
-            do { try await setToken(ok.token) } catch {
-                return .error(message: "could not persist the device token: \(error)")
-            }
             return .ok(token: ok.token, deviceId: ok.deviceId)
         case 403:
             return .registrationClosed
@@ -821,13 +898,14 @@ public actor CoreContext {
     ///
     /// - Parameters:
     ///   - reacquire: the §5 single re-acquire. INJECTED rather than imported so Core does not
-    ///     depend on the license module: for a registered-without-licence device the mint path
-    ///     is `POST /devices/register`, and the same single-attempt rule applies to it.
+    ///     depend on the license module: the facade composes `chooseReacquireRoute` with
+    ///     `POST /license/token` and `POST /devices/register`, and the single-attempt rule here
+    ///     applies to whichever it takes.
     ///   - report: the telemetry body builder, called only if the pass warrants a report.
     @discardableResult
     public func sync(
         force: Bool = false,
-        reacquire: (@Sendable (String) async -> String?)? = nil,
+        reacquire: ReacquireFn? = nil,
         report: (@Sendable () async -> Void)? = nil
     ) async -> SyncResult {
         // §5 — nothing to authenticate with means nothing to fetch. Returning here is what makes
@@ -902,7 +980,7 @@ public actor CoreContext {
     private func syncDocument(
         _ slice: DocumentSlice,
         force: Bool,
-        reacquire: (@Sendable (String) async -> String?)?,
+        reacquire: ReacquireFn?,
         allowReacquire: Bool = true
     ) async -> DocOutcome {
         guard let token = tokenValue else { return .skipped }
@@ -966,16 +1044,15 @@ public actor CoreContext {
     /// records `lastSyncUnauthorized` and gates `revoked` on a routine token rotation.
     ///
     /// Returns true when a NEW token is in hand and the caller should retry its fetch once.
-    private func reacquireOnce(_ reacquire: @escaping @Sendable (String) async -> String?) async
-        -> Bool
-    {
+    private func reacquireOnce(_ reacquire: @escaping ReacquireFn) async -> Bool {
         if let inFlight = reacquireInFlight { return await inFlight.value }
         if reacquireSpent { return false }
         guard let current = tokenValue else { return false }
         reacquireSpent = true
+        let source = tokenSourceValue
         let task = Task { () -> Bool in
-            guard let next = await reacquire(current) else { return false }
-            try? await self.setToken(next)
+            guard let next = await reacquire(current, source) else { return false }
+            try? await self.setToken(next.token, source: next.source)
             return true
         }
         reacquireInFlight = task

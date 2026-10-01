@@ -90,6 +90,17 @@ listUserConfig,schemaVersion}`. `client.{status,isLicensed,config,activate,enrol
 sync,deactivate,importBundle,syncState}` are convenience passthroughs for the calls a host
 makes before it knows which service it is talking to.
 
+A 401 on a document gets exactly **one** re-acquire per `sync()` pass, then one retry of the
+failed fetch. A licensed device rotates its token with `POST /<product>/license/token`. A
+registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint when
+fingerprinting is enabled, and no `Authorization` header). Both documents share the attempt, so
+two parallel 401s make one call. A refusal (403 `registration_closed`, 404, 429) spends the
+attempt and the hard 401 is recorded. After a restart the token's origin is not persisted, so a
+product with License on uses `license/token`. Under the `requires-identity` policy a native
+device cannot re-register (that needs a browser session) and lands on the hard 401.
+
 ### Capabilities
 
 `client.capabilities()` reports which services the product runs. Resolution is: a discovery
