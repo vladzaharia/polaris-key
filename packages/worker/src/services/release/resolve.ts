@@ -36,6 +36,7 @@
 
 import {
   APP_DELIVERABLE_ID,
+  BUILT_IN_CHANNELS,
   compileManualChannelRegex,
   DEFAULT_STABLE_TAG_PATTERN,
 } from "@polaris-key/manifest";
@@ -610,8 +611,35 @@ async function loadCandidates(
 }
 
 /**
+ * The channels a product can serve: the built-ins, its manual rules, and any channel a release
+ * of it was published to. The one definition of "a declared channel" — the policy routes
+ * (`resolvePolicyChannel`), the admin view and the storefront feeds all ask this.
+ */
+export async function knownChannels(
+  db: Db,
+  product: string,
+  cfg: Pick<ReleaseConfigRow, "manual_channels_json"> | null,
+): Promise<string[]> {
+  const manual = parseManualChannels(cfg?.manual_channels_json);
+  const published = await db.all<{ channel: string }>(
+    `SELECT DISTINCT channel FROM release_metadata
+      WHERE product = ? AND channel IS NOT NULL ORDER BY channel ASC`,
+    product,
+  );
+  const out = new Set<string>(BUILT_IN_CHANNELS);
+  for (const m of manual) out.add(m.name);
+  for (const p of published) {
+    const c = canonicalChannel(p.channel, manual);
+    if (c) out.add(c);
+  }
+  return [...out];
+}
+
+/**
  * The releases of `deliverable` that `channel` may serve, newest first (`channelCandidates`), as
- * release rows. Null when the deliverable or the channel name does not exist.
+ * release rows. Null when the deliverable does not exist or the channel is not one the product
+ * declares (`knownChannels`): a well-formed but undeclared name (`nope`) is null, not an empty
+ * list, so no feed, repository or cache entry can be minted for it.
  */
 export async function resolveChannelReleases(
   db: Db,
@@ -631,6 +659,8 @@ export async function resolveChannelReleases(
   if (isVersionSelector(rawChannel)) return null;
   const channel = canonicalChannel(rawChannel, manual);
   if (!channel) return null;
+  if (!(await knownChannels(db, product, config)).includes(channel))
+    return null;
   const loaded = await loadCandidates(db, product, deliverable, manual);
   if (!loaded) return { channel, releases: [] };
   const byId = new Map(loaded.rows.map((r) => [r.release_id, r]));

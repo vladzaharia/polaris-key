@@ -1592,6 +1592,81 @@ describe("F-Droid: register and relay", () => {
 
 // ── The descriptor ingest keeps the metadata ─────────────────────────────────────────────────
 
+// ── Undeclared channels ──────────────────────────────────────────────────────────────────────
+
+describe("storefront feeds: a well-formed channel the product never declared", () => {
+  let cache: FakeCache;
+  beforeEach(() => {
+    cache = new FakeCache();
+    vi.stubGlobal("caches", { default: cache });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const publicPaths = [
+    "altstore/nope/source.json",
+    "altstore-pal/nope/source.json",
+    "obtainium/nope.json",
+    "scoop/nope.json",
+    "flathub/nope.json",
+    "fdroid/nope/repo/entry.jar",
+    "fdroid/nope/repo/index-v2.json",
+    "fdroid/nope/repo/Diceroll-1.1.0-android.apk",
+  ];
+
+  it("every public feed route is not-found, and nothing is cached for it", async () => {
+    const w = await setup();
+    for (const p of publicPaths) expect((await get(w, p)).status, p).toBe(404);
+    expect(cache.entries.size).toBe(0);
+  });
+
+  it("the CI routes refuse it: GET and POST feeds/fdroid/nope are unknown_channel", async () => {
+    const w = await setup();
+    const inputs = await get(w, "feeds/fdroid/nope", {
+      headers: { authorization: `Bearer ${FEEDER}` },
+    });
+    expect(inputs.status).toBe(404);
+    const res = await registerRepo(w, "nope");
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as any).reason).toBe("unknown_channel");
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM dist_feed_files WHERE product = ? AND channel = 'nope'",
+        SLUG,
+      ),
+    ).toBeNull();
+    expect((await get(w, "fdroid/nope/repo/entry.jar")).status).toBe(404);
+  });
+
+  it("the relay serves nothing for it even where rows exist", async () => {
+    const w = await setup();
+    expect((await registerRepo(w, "stable")).status).toBe(200);
+    // Rows keyed by an undeclared channel (as a pre-fix register would have left them).
+    await w.db.run(
+      `INSERT INTO dist_feed_files
+         (product, feed, channel, path, sha256, size, content_type, updated_at)
+       SELECT product, feed, 'nope', path, sha256, size, content_type, updated_at
+         FROM dist_feed_files WHERE product = ? AND channel = 'stable'`,
+      SLUG,
+    );
+    expect((await get(w, "fdroid/stable/repo/entry.jar")).status).toBe(200);
+    for (const path of Object.keys(REPO_FILES))
+      expect((await get(w, `fdroid/nope/repo/${path}`)).status, path).toBe(404);
+  });
+
+  it("a declared manual channel with no releases is an empty feed, not a not-found", async () => {
+    const w = await setup();
+    await w.db.run(
+      "UPDATE release_config SET manual_channels_json = ? WHERE product = ?",
+      JSON.stringify([{ name: "nightly", regex: "^v.*-nightly$" }]),
+      SLUG,
+    );
+    expect((await get(w, "altstore/nightly/source.json")).status).toBe(200);
+    expect((await get(w, "altstore/nope/source.json")).status).toBe(404);
+  });
+});
+
 describe("build metadata", () => {
   it("is stored as the descriptor carried it and read back through the catalog", async () => {
     const w = await setup();

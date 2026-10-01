@@ -62,9 +62,12 @@ import {
 } from "./model.js";
 import {
   canonicalChannel,
+  knownChannels,
   parsesInScheme,
   versionSchemeOf,
 } from "./resolve.js";
+
+export { knownChannels };
 import type { ReleaseMetadataRow } from "./store.js";
 
 // ── Actors and results ───────────────────────────────────────────────────────────────────────
@@ -186,28 +189,6 @@ export function policyView(
 }
 
 // ── Lookups ──────────────────────────────────────────────────────────────────────────────────
-
-/** The channels a product can serve: the built-ins, its manual rules, and any channel a release
- *  of it was published to. */
-export async function knownChannels(
-  db: Db,
-  product: string,
-  cfg: Pick<ReleaseConfigRow, "manual_channels_json"> | null,
-): Promise<string[]> {
-  const manual = parseManualChannels(cfg?.manual_channels_json);
-  const published = await db.all<{ channel: string }>(
-    `SELECT DISTINCT channel FROM release_metadata
-      WHERE product = ? AND channel IS NOT NULL ORDER BY channel ASC`,
-    product,
-  );
-  const out = new Set<string>(["stable", "beta"]);
-  for (const m of manual) out.add(m.name);
-  for (const p of published) {
-    const c = canonicalChannel(p.channel, manual);
-    if (c) out.add(c);
-  }
-  return [...out];
-}
 
 /**
  * Resolve a route's channel segment to the canonical channel a policy row is keyed by, or a

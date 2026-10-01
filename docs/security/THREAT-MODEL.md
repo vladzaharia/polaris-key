@@ -735,9 +735,13 @@ the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK 
   requests per minute per IP limit (which fails open) remains a backstop, not the bound. A new
   release can take up to five minutes to appear in a feed; a hold, a yank, a report and an
   access change apply on the next request.
-- **Residual.** A `distribution:feeds` token can replace a channel's repository with any validly
-  shaped files whose bytes it holds itself, and none of them can be a non-public deliverable's
-  object. A client that pinned the fingerprint rejects an index signed by another key, but
+- **Residual.** A `distribution:feeds` token can replace the repository of a channel the product
+  already declares (a built-in, a manual rule, or a channel a release was published to:
+  `knownChannels`) with any validly shaped files whose bytes it holds itself, and none of them
+  can be a non-public deliverable's object. It cannot create a repository: a well-formed channel
+  name the product never declared is `unknown_channel` (404) at registration, and every feed
+  route, the relay included, is not-found for it, so no file is served and no answer is cached
+  under it. A client that pinned the fingerprint rejects an index signed by another key, but
   the token can still break the repository: it can register a stale index or a broken one. That is
   denial of service and a rollback to versions that were listed before, not code execution, since
   the APKs stay pinned by SHA-256 and Android verifies their signatures. The scope is opt-in for
