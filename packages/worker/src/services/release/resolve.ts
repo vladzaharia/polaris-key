@@ -283,19 +283,12 @@ function targetBuild(
  */
 export function resolveCandidates(input: ResolveInput): Resolved | null {
   const { scheme, selector, target } = input;
-  const byId = new Map(input.releases.map((r) => [r.releaseId, r]));
   const servesTarget = (c: Candidate) =>
     !hasTarget(target) || targetBuild(c, target) !== null;
 
   // Order: the scheme when every release in play parses, else `seq` (publication order) alone,
   // so the order is total whatever mix of tags a channel holds (the `newestOf` rule, P0-02).
-  const order = (set: readonly Candidate[]) => {
-    const allParse = set.every((c) => parsesInScheme(scheme, c.version));
-    return (a: Candidate, b: Candidate): number => {
-      const v = allParse ? compareVersions(scheme, a.version, b.version) : 0;
-      return v !== 0 ? v : (a.seq ?? -1) - (b.seq ?? -1);
-    };
-  };
+  const order = (set: readonly Candidate[]) => orderOver(scheme, set);
   const newest = (set: readonly Candidate[]): Candidate | null => {
     if (set.length === 0) return null;
     const cmp = order(set);
@@ -317,7 +310,39 @@ export function resolveCandidates(input: ResolveInput): Resolved | null {
       : null;
   }
 
-  const channel = selector.channel;
+  const { candidates, pinned } = channelMembers(input, selector.channel);
+  const pick = newest(candidates.filter(servesTarget));
+  if (!pick) return null;
+  return {
+    release: pick,
+    build: targetBuild(pick, target),
+    via: pinned ? "pinned" : "newest",
+  };
+}
+
+/** The scheme order over `set` (see `resolveCandidates`): > 0 when `a` is newer. */
+function orderOver(
+  scheme: VersionScheme,
+  set: readonly Candidate[],
+): (a: Candidate, b: Candidate) => number {
+  const allParse = set.every((c) => parsesInScheme(scheme, c.version));
+  return (a: Candidate, b: Candidate): number => {
+    const v = allParse ? compareVersions(scheme, a.version, b.version) : 0;
+    return v !== 0 ? v : (a.seq ?? -1) - (b.seq ?? -1);
+  };
+}
+
+/**
+ * Rules 1–4 for one channel, with no per-platform filter: the releases the channel may serve
+ * (members of its closure plus its pointer, yanks removed except a pinned pointer, at or below a
+ * pinned pointer), unordered, and whether the channel is pinned.
+ */
+function channelMembers(
+  input: Omit<ResolveInput, "selector" | "target">,
+  channel: string,
+): { candidates: Candidate[]; pinned: boolean } {
+  const { scheme } = input;
+  const byId = new Map(input.releases.map((r) => [r.releaseId, r]));
   const closure = channelClosure(channel, input.policies);
   const isApp = input.deliverable === APP_DELIVERABLE_ID;
   const stableRe =
@@ -368,17 +393,29 @@ export function resolveCandidates(input: ResolveInput): Resolved | null {
 
   if (pinned && pointer) {
     // Rule 4: at or below the pointer — in the same order the channel uses.
-    const cmp = order([...candidates, pointer]);
+    const cmp = orderOver(scheme, [...candidates, pointer]);
     candidates = candidates.filter((c) => cmp(c, pointer) <= 0);
   }
 
-  const pick = newest(candidates.filter(servesTarget));
-  if (!pick) return null;
-  return {
-    release: pick,
-    build: targetBuild(pick, target),
-    via: pinned ? "pinned" : "newest",
-  };
+  return { candidates, pinned };
+}
+
+/**
+ * Every release one channel may serve, NEWEST FIRST in the channel's own order (P2b-05's
+ * storefront feeds list the history, not just the head). Rules 1–4 of `resolveCandidates`, no
+ * per-platform filter: a feed filters by its own outlet's build afterwards.
+ */
+export function channelCandidates(
+  input: Omit<ResolveInput, "selector" | "target">,
+  channel: string,
+): Candidate[] {
+  const { candidates } = channelMembers(input, channel);
+  const cmp = orderOver(input.scheme, candidates);
+  return [...candidates].sort(
+    (a, b) =>
+      cmp(b, a) ||
+      (a.releaseId < b.releaseId ? -1 : a.releaseId > b.releaseId ? 1 : 0),
+  );
 }
 
 // ── The D1 shell ─────────────────────────────────────────────────────────────────────────────
@@ -472,6 +509,49 @@ export async function resolveBuild(
     selector = { type: "channel", channel };
   }
 
+  const loaded = await loadCandidates(db, product, deliverable, manual);
+  if (!loaded) return null;
+  const { rows, buildsByRelease, input } = loaded;
+  const resolved = resolveCandidates({
+    ...input,
+    stableTagPattern: config?.stable_tag_pattern ?? null,
+    ignoreTags: parseIgnoreTags(config?.ignore_tags_json),
+    selector,
+    target: {
+      ...(opts.platform !== undefined ? { platform: opts.platform } : {}),
+      ...(opts.arch !== undefined ? { arch: opts.arch } : {}),
+      ...(opts.buildId !== undefined ? { buildId: opts.buildId } : {}),
+    },
+  });
+  if (!resolved) return null;
+  const release = rows.find(
+    (r) => r.release_id === resolved.release.releaseId,
+  ) as ReleaseMetadataRow;
+  const build = resolved.build
+    ? ((buildsByRelease.get(release.release_id) ?? []).find(
+        (b) => b.build_id === resolved.build?.buildId,
+      ) ?? null)
+    : null;
+  return { release, build, via: resolved.via, channel };
+}
+
+/** Everything resolution reads for one deliverable, as rows and as the pure core's input. */
+interface LoadedCandidates {
+  rows: ReleaseMetadataRow[];
+  buildsByRelease: Map<string, ReleaseBuildRow[]>;
+  input: Omit<
+    ResolveInput,
+    "selector" | "target" | "stableTagPattern" | "ignoreTags"
+  >;
+}
+
+async function loadCandidates(
+  db: Db,
+  product: string,
+  deliverable: ReleaseDeliverableRow,
+  manual: readonly ManualChannel[],
+): Promise<LoadedCandidates | null> {
+  const deliverableId = deliverable.deliverable_id;
   const rows = await db.all<ReleaseMetadataRow>(
     "SELECT * FROM release_metadata WHERE product = ? AND deliverable_id = ?",
     product,
@@ -515,32 +595,57 @@ export async function resolveBuild(
     })),
   }));
 
-  const resolved = resolveCandidates({
-    deliverable: deliverableId,
-    scheme: versionSchemeOf(deliverable),
-    selector,
-    releases: candidates,
-    yanked: new Set(yanks.map((y) => y.release_id)),
-    policies: new Map(policies.map((p) => [p.channel, policyView(p)])),
-    manualChannels: manual,
-    stableTagPattern: config?.stable_tag_pattern ?? null,
-    ignoreTags: parseIgnoreTags(config?.ignore_tags_json),
-    target: {
-      ...(opts.platform !== undefined ? { platform: opts.platform } : {}),
-      ...(opts.arch !== undefined ? { arch: opts.arch } : {}),
-      ...(opts.buildId !== undefined ? { buildId: opts.buildId } : {}),
+  return {
+    rows,
+    buildsByRelease,
+    input: {
+      deliverable: deliverableId,
+      scheme: versionSchemeOf(deliverable),
+      releases: candidates,
+      yanked: new Set(yanks.map((y) => y.release_id)),
+      policies: new Map(policies.map((p) => [p.channel, policyView(p)])),
+      manualChannels: manual,
     },
-  });
-  if (!resolved) return null;
-  const release = rows.find(
-    (r) => r.release_id === resolved.release.releaseId,
-  ) as ReleaseMetadataRow;
-  const build = resolved.build
-    ? ((buildsByRelease.get(release.release_id) ?? []).find(
-        (b) => b.build_id === resolved.build?.buildId,
-      ) ?? null)
-    : null;
-  return { release, build, via: resolved.via, channel };
+  };
+}
+
+/**
+ * The releases of `deliverable` that `channel` may serve, newest first (`channelCandidates`), as
+ * release rows. Null when the deliverable or the channel name does not exist.
+ */
+export async function resolveChannelReleases(
+  db: Db,
+  product: string,
+  deliverableId: string,
+  rawChannel: string,
+  cfg?: ReleaseConfigRow | null,
+): Promise<{ channel: string; releases: ReleaseMetadataRow[] } | null> {
+  const deliverable = await db.first<ReleaseDeliverableRow>(
+    "SELECT * FROM release_deliverables WHERE product = ? AND deliverable_id = ?",
+    product,
+    deliverableId,
+  );
+  if (!deliverable) return null;
+  const config = cfg === undefined ? await getReleaseConfig(db, product) : cfg;
+  const manual = parseManualChannels(config?.manual_channels_json);
+  if (isVersionSelector(rawChannel)) return null;
+  const channel = canonicalChannel(rawChannel, manual);
+  if (!channel) return null;
+  const loaded = await loadCandidates(db, product, deliverable, manual);
+  if (!loaded) return { channel, releases: [] };
+  const byId = new Map(loaded.rows.map((r) => [r.release_id, r]));
+  const ordered = channelCandidates(
+    {
+      ...loaded.input,
+      stableTagPattern: config?.stable_tag_pattern ?? null,
+      ignoreTags: parseIgnoreTags(config?.ignore_tags_json),
+    },
+    channel,
+  );
+  return {
+    channel,
+    releases: ordered.map((c) => byId.get(c.releaseId) as ReleaseMetadataRow),
+  };
 }
 
 // ── The legacy routes' view of the same policy ───────────────────────────────────────────────

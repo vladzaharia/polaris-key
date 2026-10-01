@@ -61,7 +61,7 @@ this page or fails the freshness gate.
 | `release_health` | 0007_backend_contracts.sql | `product`, `subject_kind`, `subject_id`, `status`, `details_json` |
 | `release_download_tokens` | 0016_drop_dead_pii.sql (rebuilt 0016) | `product`, `token_hash`, `release_id`, `artifact_id`, `device_id`, `scope_json`, `expires_at`, `used_at`, `created_at`, `REFERENCES` |
 | `release_deliverables` | 0027_a_release_model.sql | `product`, `deliverable_id`, `kind`, `pack_type`, `def_json`, `def_source`, `created_at`, `modified_at` |
-| `release_builds` | 0027_a_release_model.sql | `product`, `release_id`, `build_id`, `platform`, `arch`, `format`, `build_number`, `variant_json`, `requires_json`, `min_os`, `created_at`, `modified_at` |
+| `release_builds` | 0027_a_release_model.sql | `product`, `release_id`, `build_id`, `platform`, `arch`, `format`, `build_number`, `variant_json`, `requires_json`, `min_os`, `created_at`, `modified_at`, `metadata_json (0043)` |
 | `release_channel_policy` | 0027_a_release_model.sql | `product`, `deliverable_id`, `channel`, `pointer_release_id`, `pinned`, `includes_json`, `min_supported`, `critical`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `release_yanks` | 0027_a_release_model.sql | `product`, `release_id`, `reason`, `at`, `by` |
 
@@ -78,6 +78,7 @@ this page or fails the freshness gate.
 | `dist_keys` | 0039_distribution_availability_keys.sql | `product`, `purpose`, `fingerprint_sha256`, `outlet_id`, `notes`, `registered_at`, `source`, `observed_json`, `created_at`, `modified_at` |
 | `dist_connector_objects` | 0041_distribution_connectors.sql | `product`, `connector`, `object_type`, `object_id`, `outlet_id`, `release_id`, `build_id`, `store_state`, `state`, `ref_json`, `detail_json`, `terminal`, `first_seen_at`, `updated_at`, `polled_at` |
 | `dist_connector_events` | 0041_distribution_connectors.sql | `product`, `connector`, `event_id`, `event_type`, `instance_type`, `instance_id`, `outcome`, `payload_json`, `received_at` |
+| `dist_feed_files` | 0043_storefront_feeds.sql | `product`, `feed`, `channel`, `path`, `sha256`, `size`, `content_type`, `updated_at` |
 
 ## identity
 

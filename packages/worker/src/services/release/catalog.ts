@@ -37,7 +37,11 @@ import {
 import type { ReleaseArtifactRow, ReleaseMetadataRow } from "./store.js";
 import { getReleaseConfig, readAccessMode } from "./config.js";
 import { entitledSelectorFor } from "./access.js";
-import { isVersionSelector, resolveBuild } from "./resolve.js";
+import {
+  isVersionSelector,
+  resolveBuild,
+  resolveChannelReleases,
+} from "./resolve.js";
 import { installScript, openSource, parseLocations } from "./source.js";
 
 type ReleaseRow = Pick<
@@ -62,7 +66,23 @@ function buildRecord(b: ReleaseBuildRow): CatalogBuild {
     format: b.format,
     buildNumber: b.build_number,
     minOs: b.min_os,
+    metadata: parseObject(b.metadata_json),
   };
+}
+
+/** A JSON object column; anything unreadable or not an object reads as `null`. */
+function parseObject(
+  json: string | null | undefined,
+): Record<string, unknown> | null {
+  if (!json) return null;
+  try {
+    const v: unknown = JSON.parse(json);
+    return v && typeof v === "object" && !Array.isArray(v)
+      ? (v as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function sourceRecord(a: ReleaseArtifactRow): CatalogSourceArtifact {
@@ -179,6 +199,32 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
         reason: y.reason,
         at: y.at,
       }));
+    },
+
+    async channelReleases(deliverableId: string, channel: string) {
+      const yanked = new Set(
+        (await listYanks(db, slug)).map((y) => y.release_id),
+      );
+      const res = await resolveChannelReleases(
+        db,
+        slug,
+        deliverableId,
+        channel,
+        await config(),
+      );
+      if (!res) return null;
+      return {
+        channel: res.channel,
+        releases: res.releases.map((r) => ({
+          deliverableId: r.deliverable_id,
+          releaseId: r.release_id,
+          version: r.version,
+          seq: r.seq,
+          channel: r.channel,
+          publishedAt: r.published_at,
+          yanked: yanked.has(r.release_id),
+        })),
+      };
     },
 
     async metadataAccess() {

@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 138 distinct emit sites.
+codes with their JSON-pointer paths. 139 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -81,6 +81,7 @@ the offending value, or the allowed set.
 | `invalid_outlet_id` | error | distribution | `/outlets/${id}` | outlet ids must match $\{OUTLET_ID_PATTERN.source\}. |
 | `invalid_outlet_id` | error | distribution | `/outlets` | outlets must be an object of at most $\{MAX_OUTLETS\} entries keyed by outlet id. |
 | `invalid_outlet_identity` | error | distribution | `/outlets/${id}/${field}` | outlets.$\{id\}.$\{field\} $\{problem\}. |
+| `invalid_outlet_identity` | error | distribution | `/outlets/${id}/scoop` | outlets.$\{id\}.scoop describes a Windows install, so platforms must include windows. |
 | `invalid_outlet_identity` | error | distribution | `/outlets/${id}` | each outlet must be an object (write $\{id\}: \{\} for an outlet with no identity fields). |
 | `invalid_payload` | error | product | `/licensing/profiles/${i}/payload` | Profile payload must be an object. |
 | `invalid_probe_id` | error | product | `/fingerprint/probes/${i}/id` | Probe ids must match ^[A-Za-z0-9._:-]\{1,64\}$. |
@@ -159,7 +160,7 @@ the offending value, or the allowed set.
 `validateReleaseDescriptor` (`@polaris-key/manifest`, P2-04) checks a release descriptor
 (`pkey-release.json`) against its own shape and the product's declared artifact map. Every
 problem is an error; the Worker reports them under the ingest refusal reason
-`invalid_descriptor`. 51 distinct emit sites.
+`invalid_descriptor`. 52 distinct emit sites.
 
 | Code | Path | Message |
 | --- | --- | --- |
@@ -172,6 +173,7 @@ problem is an error; the Worker reports them under the ingest refusal reason
 | `invalid_artifact_location` | `/builds/${bi}/artifacts/${ai}/locations/${li}/url` | an external location's url must be https:// without credentials. |
 | `invalid_artifact_location` | `/builds/${bi}/artifacts/${ai}/locations/${li}` | a location's provider must be one of $\{LOCATION_PROVIDERS.join(", ")\}. |
 | `invalid_artifact_location` | `/builds/${bi}/artifacts/${ai}/locations/${li}` | a store location carries no bytes: no key, asset or url. |
+| `invalid_build_metadata` | `/builds/${bi}/metadata` | $\{problem\}. |
 | `invalid_build_payload` | `/builds/${bi}/artifacts` | build $\{b.id\} must carry exactly one $\{entry.role\} file (it has $\{declared.length\}). |
 | `invalid_descriptor_artifact` | `/builds/${bi}/artifacts/${ai}/contentType` | contentType must be a lower-case type/subtype. |
 | `invalid_descriptor_artifact` | `/builds/${bi}/artifacts/${ai}/locations` | locations must be an array of 1 to $\{MAX_ARTIFACT_LOCATIONS\} locations. |

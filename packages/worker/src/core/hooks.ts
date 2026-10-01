@@ -88,6 +88,13 @@ export interface CatalogBuild {
   format: string | null;
   buildNumber: string | null;
   minOs: string | null;
+  /**
+   * The descriptor's `builds[].metadata` (P2b-05): an IPA's bundle identifier, versions and
+   * permissions, or an APK's package name, version code, ABIs and signer — what CI extracted, in
+   * `@polaris-key/manifest`'s `IosBuildMetadata` / `AndroidBuildMetadata` shape. `null` when the
+   * descriptor carried none (and on every row it did not write).
+   */
+  metadata: Record<string, unknown> | null;
 }
 
 /** One file of a build (or of a release, for rows the GitHub sync wrote). A RECORD, not bytes. */
@@ -236,6 +243,17 @@ export interface ReleaseCatalog {
   channelPolicies(deliverableId?: string): Promise<CatalogChannelPolicy[]>;
   /** Every yank, newest first. */
   yanks(): Promise<CatalogYank[]>;
+  /**
+   * Every release of `deliverableId` that `channel` may serve, NEWEST FIRST in the channel's own
+   * order (P2b-05): Release's resolution rules — membership in the channel or a channel it
+   * includes, yanks removed except a pinned pointer, at or below a pinned pointer — with no
+   * per-platform filter. `null` when the deliverable or the channel name does not exist; `[]`
+   * when it exists and serves nothing. The storefront feeds list this history.
+   */
+  channelReleases(
+    deliverableId: string,
+    channel: string,
+  ): Promise<{ channel: string; releases: CatalogRelease[] } | null>;
   /**
    * The product's METADATA access mode (`release_config.metadata_access`, which Release keeps:
    * the changelog, the version check, the installer), or `null` when the product has no release

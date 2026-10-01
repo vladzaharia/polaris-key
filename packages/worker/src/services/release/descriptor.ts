@@ -604,6 +604,7 @@ export async function planDescriptorIngest(
       buildNumber: b.buildNumber ?? null,
       minOs: b.minOS ?? null,
       requiresJson: b.requires ? JSON.stringify(b.requires) : null,
+      metadataJson: b.metadata ? JSON.stringify(b.metadata) : null,
     });
     for (const a of b.artifacts) {
       const asset = assets.get(a.name);
