@@ -45,8 +45,8 @@ where it names a file like `docs/RUNBOOK.md` it means the latter.
 
 `src/core/` is the always-on substrate: the product registry, the device principal, trust and
 signing, discovery, rate limiting, the error taxonomy, audit, and manifest-ingest dispatch. Each
-`src/services/<slug>/` is one opt-in service — `license`, `config`, `release`, `update`,
-`identity`.
+`src/services/<slug>/` is one opt-in service — `license`, `config`, `release`, `distribution`,
+`update`, `identity`.
 
 A service module may import:
 
@@ -60,7 +60,12 @@ Everything else is refused, and in particular one service may not import another
 The **one** sanctioned exception is `services/update → services/release`: Update renders a feed
 over Release's truth store, which is a hard dependency by design. Every other cross-service need
 goes through a Core-mediated interface — a hook on `ServiceDescriptor` that Core calls and the
-service answers, never a direct import between services.
+service answers, never a direct import between services. The chain release ← distribution ←
+update is not a licence to import along it: Distribution reads Release, and Update reads
+Distribution, only through the **descriptor hooks** in `core/hooks.ts` (`releaseCatalog`,
+`delivery`, `outletCapabilities`). Core builds them per request from the registry and the
+product's enablement, and each answers `null` — without running the provider's code — while the
+service that provides it is off. Hooks are read-only, and each has exactly one provider.
 
 ### Enforcement: `boundaries.test.ts`
 
@@ -106,6 +111,7 @@ file carrying a GENERATED banner:
 | `packages/sdk-react/src/core/services.generated.ts`             | the React SDK                     |
 | `sdks/python/src/polaris_key/_services.py`                      | the Python SDK                    |
 | `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift` | the Swift SDK                     |
+| `sdks/godot/addons/polaris_key/core/services_generated.gd`      | the Godot SDK                     |
 
 `pnpm gen:services -- --check` regenerates in memory and fails on any difference; it runs in the
 green gate, in CI and in the pre-commit hook. The console and the SDKs get their own generated
@@ -113,7 +119,7 @@ files rather than importing the manifest package because they must not depend on
 parser.
 
 What is **not** generated is real code — directories, descriptors, views, docs pages — and the
-coherence error codes, which stay literal (`update_requires_release`) because the rule-9 parity
+coherence error codes, which stay literal (`update_requires_distribution`) because the rule-9 parity
 test reads codes from validator source. For each of those an assertion test names what a new
 row is missing, so the drift gate, not a reviewer's memory, produces the list below.
 
@@ -135,7 +141,9 @@ work down the list until it passes.
 5. **Coherence.** For each `requires` edge `<a> → <b>`, add a literal `<a>_requires_<b>` to
    `validateServices` in `packages/worker/src/core/services.ts` and to the manifest validator
    (`packages/shared-manifest/src/index.ts`) with its rule-9 mutation-table entry, and a
-   message to the console's `SERVICE_ERROR_MESSAGES`.
+   message to the console's `SERVICE_ERROR_MESSAGES`. An edge that is removed takes its code,
+   its mutation entry and its message with it (P2b-01 retired `update_requires_release` this
+   way when `update → release` became `update → distribution`).
 6. **Manifest schema.** Add the slug (and any new legacy module name) to
    `$defs.modules.properties` in `packages/shared-manifest/schemas/v1/product.schema.json`.
 7. **Migrations and `TABLE_OWNERS`.** Any tables the service owns get a D1 migration and an

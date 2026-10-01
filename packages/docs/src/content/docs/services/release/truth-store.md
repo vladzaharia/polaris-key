@@ -68,9 +68,31 @@ content-sniffing risk on that origin, not just a cosmetic one.
 
 Each artifact also carries a **role** (`payload`, `signature`, `checksum`, and the chunked and
 delta roles later packages use), filled from the kind on ingest: a `.sig` is a `signature`, a
-`.sha256` a `checksum`, anything else a `payload`. `build_id`, `sha256`, `storage_key` and
-`locations_json` (hash-pinned places the bytes can be fetched from) belong to the release
-descriptor, not to the sync, and stay `NULL` for a release without one.
+`.sha256` a `checksum`, anything else a `payload`.
+
+That is the classification for a product that declares no **artifact map**. A product that
+declares one (`deliverables.app.artifacts` in `.pkey/release`) has every file classified by the
+map instead: the file an entry matches is that build's payload, with the entry's platform and
+arch, its `.sig` and `.sha256` sidecars join the same build, `build_id` names the build, and
+`sha256` is GitHub's own digest of the bytes. A file no entry matches has no build, platform or
+arch — under a map nothing is sniffed. See
+[Artifacts](/docs/services/release/artifacts/#declared-artifacts-and-release-descriptors).
+
+A release with an ingested **release descriptor** belongs to the descriptor: its `build_id`,
+`role`, `sha256`, `storage_key` and `locations_json` (hash-pinned places the bytes can be
+fetched from), its builds, and its classification are the descriptor's, and the sync refreshes
+only the GitHub-derived serving columns. The map does not apply to it: a GitHub file the
+descriptor does not name, recorded by a later sync, joins no build and takes the role its name
+implies. `release_metadata.metadata_json.descriptor` records
+the ingested descriptor's hash (or why a `pkey-release.json` was refused), and survives every
+resync.
+
+A sync is planned from a read and applied later, in one batch, so a descriptor can be ingested
+in between — CI publishing while a release webhook's sync is in flight. Every statement the
+sync planned for an undescribed release re-checks, when it runs, whether the release has an
+ingested descriptor by then, and if so writes what it would have written for a described
+release: the map's builds are not written and no file's classification is touched. A stale
+plan never overwrites a described release.
 
 ### `release_channels`
 
@@ -131,7 +153,7 @@ seeing.
 The GitHub sync records what a GitHub release says. These four tables record what it cannot:
 which deliverable a release belongs to, its per-platform builds, how an operator has steered a
 channel, and which releases are withdrawn. The release descriptor, the release routes, the
-distribution catalog and the signed release record are their writers and readers; the GitHub
+`releaseCatalog` hook Distribution reads through, and the signed release record are their writers and readers; the GitHub
 sync only keeps them consistent.
 
 | Table                    | One row per              | Written by                   |

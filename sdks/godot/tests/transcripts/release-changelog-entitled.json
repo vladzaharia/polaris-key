@@ -1,0 +1,83 @@
+{
+  "transcriptVersion": 1,
+  "id": "release-changelog-entitled",
+  "description": "The changelog under the entitled access mode (D-13), for an activated client. The client forwards the device token it holds as a bearer on the changelog read, and the Worker serves the entries because the licence is usable.",
+  "features": ["release.changelog"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_0HQyWUj4PvVvdOxCk1y7P2agwTFP60EWIgafTd_vDuI",
+    "version": "1.0.0",
+    "services": ["license", "config", "release"]
+  },
+  "steps": [
+    {
+      "action": "changelog",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/release/changelog",
+              "headers": { "authorization": "Bearer {token}" },
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "entries": [
+                  {
+                    "version": "1.2.0",
+                    "tag": "v1.2.0",
+                    "date": "2023-11-10T00:00:00Z",
+                    "summary": "Faster sync.",
+                    "url": "https://github.com/acme/djdl/releases/tag/v1.2.0"
+                  },
+                  {
+                    "version": "1.1.0",
+                    "tag": "v1.1.0",
+                    "date": "2023-11-01T00:00:00Z",
+                    "summary": null,
+                    "url": "https://github.com/acme/djdl/releases/tag/v1.1.0"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "entries": [
+          {
+            "version": "1.2.0",
+            "tag": "v1.2.0",
+            "date": "2023-11-10T00:00:00Z",
+            "summary": "Faster sync.",
+            "url": "https://github.com/acme/djdl/releases/tag/v1.2.0"
+          },
+          {
+            "version": "1.1.0",
+            "tag": "v1.1.0",
+            "date": "2023-11-01T00:00:00Z",
+            "summary": null,
+            "url": "https://github.com/acme/djdl/releases/tag/v1.1.0"
+          }
+        ]
+      }
+    }
+  ]
+}

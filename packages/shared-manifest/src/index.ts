@@ -208,6 +208,42 @@ export interface ManifestRelease {
   ignoreTags: string[];
   artifactPolicy: ManifestReleaseArtifactPolicy | null;
   access: ManifestReleaseAccessPolicy;
+  /**
+   * `deliverables.app` (P2-04): the declared app deliverable. `null` when the document declares
+   * no `deliverables` block — the implicit `app` deliverable, classified by legacy filename
+   * sniffing. Its `versioning.stableTagPattern`/`ignoreTags` are NOT repeated here: they are
+   * normalized into the two fields above, whichever spelling declared them.
+   */
+  app: ManifestAppDeliverable | null;
+}
+
+/** One `deliverables.app.artifacts[]` entry: a build, and the file name that is its payload. */
+export interface ManifestArtifactEntry {
+  /** The build id (`macos`, `win-zip`, …). */
+  id: string;
+  platform: ReleasePlatform;
+  arch: ReleaseArch;
+  format: string;
+  /** The role the matched file plays in its build; `payload` unless declared. */
+  role: ArtifactRole;
+  /** An anchored, case-sensitive glob over the file name (`*`, `?`). */
+  match: string;
+}
+
+/** A channel the deliverable declares: the channels whose releases it also offers. */
+export interface ManifestDeliverableChannel {
+  includes: string[];
+}
+
+/** `deliverables.app` — the app deliverable's declaration, persisted as its `def_json`. */
+export interface ManifestAppDeliverable {
+  kind: "app";
+  versioning: {
+    scheme: VersionScheme;
+    buildNumber: BuildNumberSource | null;
+  };
+  channels: Record<string, ManifestDeliverableChannel>;
+  artifacts: ManifestArtifactEntry[];
 }
 
 /** The protocol's `SecretDelivery`, re-exported under the manifest's historical name — one
@@ -272,12 +308,13 @@ export type ParseManifestResult =
  *
  * The three interesting legacy rows:
  *
- *   `releases` -> release + update. The old module meant "this product distributes software",
- *   which the suite splits into the truth store (Release) and the feed (Update, D-05). Mapping
- *   it to Release alone would silently take the appcast and `/version` away from every product
- *   that already serves them, on the very change that is supposed to preserve behaviour. It
- *   also can never produce an `update_requires_release` violation, because Release comes with
- *   it by construction.
+ *   `releases` -> release + distribution + update. The old module meant "this product
+ *   distributes software", which the suite splits into the truth store (Release), delivery
+ *   (Distribution) and the feed (Update, D-05; README §3.2). Mapping it to Release alone would
+ *   silently take the appcast and `/version` away from every product that already serves them,
+ *   on the very change that is supposed to preserve behaviour. It also can never produce a
+ *   `distribution_requires_release` or `update_requires_distribution` violation, because the
+ *   whole chain comes with it by construction.
  *
  *   `oidc` -> identity. A rename, not a change of meaning (D-14).
  *
@@ -286,7 +323,7 @@ export type ParseManifestResult =
  */
 const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
 
-/** What a manifest that declares nothing runs: licensing + settings distribution, which is
+/** What a manifest that declares nothing runs: licensing + settings delivery, which is
  *  today's behaviour for every product (design spec §2.2). The table's `defaultEnabled`. */
 const DEFAULT_ENABLED: readonly ServiceSlug[] = DEFAULT_ENABLED_SERVICES;
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
@@ -482,6 +519,96 @@ export function isIgnoreTag(value: unknown): value is string {
     !/[\u0000-\u0020\u007f]/.test(value)
   );
 }
+
+// ── Deliverables and the artifact map (P2-04) ─────────────────────────────────
+//
+// `.pkey/release` `deliverables.app` declares the app deliverable: its version scheme, its
+// channels' `includes`, and an `artifacts` map that classifies every release file by
+// declaration instead of by filename. A release document without `deliverables` keeps the
+// implicit `app` deliverable and legacy filename sniffing.
+
+/** How a deliverable's versions are ordered (README §3.4). */
+export const VERSION_SCHEMES = ["semver", "semver+build", "4part"] as const;
+export type VersionScheme = (typeof VERSION_SCHEMES)[number];
+/** Where a build's build number comes from: the release descriptor, or nowhere. */
+export const BUILD_NUMBER_SOURCES = ["descriptor", "none"] as const;
+export type BuildNumberSource = (typeof BUILD_NUMBER_SOURCES)[number];
+
+/**
+ * A canonical channel name (the protocol's `CHANNEL_NAME_PATTERN`, P0-04): lower-case letters,
+ * digits and `-`. The names a deliverable's `channels` block declares, and the channel a
+ * descriptor publishes to, are stored as written, so only canonical names are accepted there.
+ */
+export const CANONICAL_CHANNEL_PATTERN: RegExp = CANONICAL_CHANNEL_RE;
+/** Accepted request aliases (the protocol's `CHANNEL_ALIASES` keys, P0-04). Never stored. */
+export const CHANNEL_ALIAS_NAMES: readonly string[] =
+  Object.keys(CHANNEL_ALIASES);
+/** The two channels every product has without declaring them. */
+export const BUILT_IN_CHANNELS: readonly string[] = ["stable", "beta"];
+/** A canonical, non-alias channel name. */
+export function isCanonicalChannelName(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    CANONICAL_CHANNEL_PATTERN.test(value) &&
+    !CHANNEL_ALIAS_NAMES.includes(value)
+  );
+}
+
+/** An artifact-map entry id, which is also the id of the build it declares. */
+export const ARTIFACT_ENTRY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+/** A build format: the file type (`dmg`, `zip`, `tar.gz`, `apk`, `ipa`, `exe`, `msix`, …). */
+export const ARTIFACT_FORMAT_PATTERN = /^[a-z0-9][a-z0-9.+-]{0,31}$/;
+export const MAX_ARTIFACT_MATCH_LENGTH = 128;
+export const MAX_ARTIFACT_ENTRIES = 64;
+export const MAX_DELIVERABLE_CHANNELS = 32;
+
+/**
+ * A well-formed artifact `match` glob: 1–128 characters (code points), no control characters.
+ * `*` matches any run of characters (including none), `?` exactly one, and every other
+ * character itself; the match is anchored at both ends and case-sensitive.
+ */
+export function isArtifactMatch(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    [...value].length <= MAX_ARTIFACT_MATCH_LENGTH &&
+    !/[\u0000-\u001f\u007f]/.test(value)
+  );
+}
+
+/**
+ * Does `name` match the artifact glob `glob`? Linear-time wildcard matching with one backtrack
+ * point (the last `*`), deliberately NOT a compiled RegExp: a glob of many `*` compiled to
+ * `.*.*.*…` backtracks polynomially, and both the glob and the file names are repo-controlled.
+ * Every character other than `*` and `?` is literal, which is the "escape everything else"
+ * compile rule without a regex to escape into. Matching is over code points.
+ */
+export function matchesArtifactGlob(glob: string, name: string): boolean {
+  const p = [...glob];
+  const s = [...name];
+  let pi = 0;
+  let si = 0;
+  let star = -1;
+  let mark = 0;
+  while (si < s.length) {
+    const c = p[pi];
+    if (c !== undefined && c !== "*" && (c === "?" || c === s[si])) {
+      pi++;
+      si++;
+    } else if (c === "*") {
+      star = pi++;
+      mark = si;
+    } else if (star !== -1) {
+      pi = star + 1;
+      si = ++mark;
+    } else {
+      return false;
+    }
+  }
+  while (p[pi] === "*") pi++;
+  return pi === p.length;
+}
+
 /** `provisioning[].allowedHosts` entries — a host, optionally with a port. */
 const HOST_RE = /^[A-Za-z0-9._-]{1,253}(?::[0-9]{1,5})?$/;
 /**
@@ -1320,11 +1447,11 @@ function validateDocuments(
       }
       // The candidate filter for stable/latest: compiled under the manual-channel safety rule
       // (anchored, capped, must compile) so a pattern the validator accepts is one the
-      // worker's resolver keeps rather than silently falling back to the default.
+      // worker's resolver keeps rather than silently falling back to the default. The same
+      // two fields may instead be spelled under `deliverables.app.versioning` (P2-04).
       if (
         relRoot.stableTagPattern !== undefined &&
-        (typeof relRoot.stableTagPattern !== "string" ||
-          compileManualChannelRegex(relRoot.stableTagPattern) === null)
+        !isTagPattern(relRoot.stableTagPattern)
       ) {
         add(
           errors,
@@ -1335,10 +1462,7 @@ function validateDocuments(
         );
       }
       if (relRoot.ignoreTags !== undefined) {
-        if (
-          !Array.isArray(relRoot.ignoreTags) ||
-          relRoot.ignoreTags.length > MAX_IGNORE_TAGS
-        ) {
+        if (!isIgnoreTagList(relRoot.ignoreTags)) {
           add(
             errors,
             "release",
@@ -1360,6 +1484,7 @@ function validateDocuments(
           }
         }
       }
+      validateDeliverables(errors, warnings, relRoot);
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
         add(
           errors,
@@ -1747,17 +1872,31 @@ function validateDocuments(
     );
   }
 
-  // Update renders a feed over Release's truth store (D-05). With Release off there are no
-  // releases, channels or artifacts to render, so the feed would answer every client with an
-  // empty document rather than an error — a silent failure, which is why this is an error and
-  // not a warning. `releases`/`release`+`update` manifests cannot trip it (see MODULE_SERVICES).
-  if (modules.includes("update") && !modules.includes("release")) {
+  // The chain is release ← distribution ← update (README §3.2): truth, then delivery, then
+  // decision. Both edges are errors, not warnings: each describes a service that would answer
+  // with an empty document rather than an error — a silent failure. The legacy `releases`
+  // module enables all three by construction, so it trips neither (see MODULE_SERVICES).
+  //
+  // Distribution delivers what Release says exists; with Release off there is nothing to
+  // deliver.
+  if (modules.includes("distribution") && !modules.includes("release")) {
+    add(
+      errors,
+      "product",
+      "/modules/distribution",
+      "distribution_requires_release",
+      "The distribution service delivers release artifacts, so release must be enabled too.",
+    );
+  }
+  // Update tells a device what to do next over what Distribution has delivered. This edge
+  // subsumes the retired `update_requires_release`: Distribution itself requires Release.
+  if (modules.includes("update") && !modules.includes("distribution")) {
     add(
       errors,
       "product",
       "/modules/update",
-      "update_requires_release",
-      "The update service renders a feed over release data, so release must be enabled too.",
+      "update_requires_distribution",
+      "The update service serves a feed over distribution's delivery state, so distribution must be enabled too.",
     );
   }
 
@@ -1830,6 +1969,399 @@ function validateDocuments(
     enabledModules: modules,
     requiredSecrets,
   };
+}
+
+/** A `stableTagPattern` value: a string the manual-channel safety rule compiles. One rule for
+ *  both spellings (the release root, P0-02, and `deliverables.app.versioning`, P2-04). */
+function isTagPattern(value: unknown): boolean {
+  return typeof value === "string" && compileManualChannelRegex(value) !== null;
+}
+
+/** An `ignoreTags` value's shape (each entry is then checked with `isIgnoreTag`). */
+function isIgnoreTagList(value: unknown): value is unknown[] {
+  return Array.isArray(value) && value.length <= MAX_IGNORE_TAGS;
+}
+
+/** The names a deliverable's `includes` may refer to: the built-ins, the manual channels and the
+ *  deliverable's own declared channels. */
+function knownChannelNames(
+  relRoot: Record<string, unknown>,
+  declared: Iterable<string>,
+): Set<string> {
+  const known = new Set<string>(BUILT_IN_CHANNELS);
+  if (Array.isArray(relRoot.manualChannels)) {
+    for (const m of relRoot.manualChannels) {
+      if (isRecord(m) && typeof m.name === "string") known.add(m.name);
+    }
+  }
+  for (const name of declared) known.add(name);
+  return known;
+}
+
+/**
+ * `deliverables` (P2-04, README §3.4/§3.12). Only the `app` deliverable is implemented; a `pack`
+ * entry is reported as a warning and ignored until P4-02. Absent ⇒ the implicit `app`
+ * deliverable with legacy filename sniffing, so every existing release document stays valid.
+ */
+function validateDeliverables(
+  errors: ValidationMessage[],
+  warnings: ValidationMessage[],
+  relRoot: Record<string, unknown>,
+): void {
+  const raw = relRoot.deliverables;
+  if (raw === undefined) return;
+  if (!isRecord(raw)) {
+    add(
+      errors,
+      "release",
+      "/release/deliverables",
+      "invalid_deliverable_id",
+      "release.deliverables must be an object keyed by deliverable id.",
+    );
+    return;
+  }
+  for (const [id, def] of Object.entries(raw)) {
+    if (!isDeliverableId(id)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/${id}`,
+        "invalid_deliverable_id",
+        `deliverable ids must match ${DELIVERABLE_ID_PATTERN.source} and be at most ${MAX_DELIVERABLE_ID_LENGTH} characters.`,
+      );
+      continue;
+    }
+    const kind = isRecord(def) ? def.kind : undefined;
+    if (!isRecord(def) || !isOneOf(kind, DELIVERABLE_KINDS)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/${id}/kind`,
+        "invalid_deliverable_kind",
+        `each deliverable must be an object whose kind is one of ${DELIVERABLE_KINDS.join(", ")}.`,
+      );
+      continue;
+    }
+    if ((kind === "app") !== (id === APP_DELIVERABLE_ID)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/${id}/kind`,
+        "invalid_deliverable_kind",
+        `the deliverable named ${APP_DELIVERABLE_ID} is the product's application (kind: app), and no other deliverable may be kind app.`,
+      );
+      continue;
+    }
+    if (kind === "pack") {
+      add(
+        warnings,
+        "release",
+        `/release/deliverables/${id}`,
+        "pack_deliverables_not_supported",
+        `pack deliverables are not supported yet; ${id} is ignored.`,
+      );
+      continue;
+    }
+    validateAppDeliverable(errors, relRoot, def);
+  }
+}
+
+function validateAppDeliverable(
+  errors: ValidationMessage[],
+  relRoot: Record<string, unknown>,
+  def: Record<string, unknown>,
+): void {
+  // ── versioning ──
+  const versioning = def.versioning;
+  if (versioning !== undefined && !isRecord(versioning)) {
+    add(
+      errors,
+      "release",
+      `/release/deliverables/app/versioning`,
+      "invalid_version_scheme",
+      "deliverables.app.versioning must be an object.",
+    );
+  } else if (isRecord(versioning)) {
+    if (
+      versioning.scheme !== undefined &&
+      !isOneOf(versioning.scheme, VERSION_SCHEMES)
+    ) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/versioning/scheme`,
+        "invalid_version_scheme",
+        `versioning.scheme must be one of ${VERSION_SCHEMES.join(", ")}.`,
+      );
+    }
+    if (
+      versioning.buildNumber !== undefined &&
+      !isOneOf(versioning.buildNumber, BUILD_NUMBER_SOURCES)
+    ) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/versioning/buildNumber`,
+        "invalid_version_scheme",
+        `versioning.buildNumber must be one of ${BUILD_NUMBER_SOURCES.join(", ")}.`,
+      );
+    }
+    if (
+      versioning.stableTagPattern !== undefined &&
+      !isTagPattern(versioning.stableTagPattern)
+    ) {
+      add(
+        errors,
+        "release",
+        "/release/deliverables/app/versioning/stableTagPattern",
+        "invalid_stable_tag_pattern",
+        `deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+      );
+    }
+    if (versioning.ignoreTags !== undefined) {
+      if (!isIgnoreTagList(versioning.ignoreTags)) {
+        add(
+          errors,
+          "release",
+          "/release/deliverables/app/versioning/ignoreTags",
+          "invalid_ignore_tags",
+          `deliverables.app.versioning.ignoreTags must be an array of at most ${MAX_IGNORE_TAGS} exact tag names.`,
+        );
+      } else {
+        for (const [i, tag] of versioning.ignoreTags.entries()) {
+          if (!isIgnoreTag(tag)) {
+            add(
+              errors,
+              "release",
+              `/release/deliverables/app/versioning/ignoreTags/${i}`,
+              "invalid_ignore_tags",
+              `deliverables.app.versioning.ignoreTags entries must be non-empty tag names of at most ${MAX_IGNORE_TAG_LENGTH} characters with no spaces or control characters.`,
+            );
+          }
+        }
+      }
+    }
+    // P0-02 spelled these two at the release root; that spelling stays valid, but a document
+    // must pick one. Both at once would make one of them silently win.
+    const nested =
+      versioning.stableTagPattern !== undefined ||
+      versioning.ignoreTags !== undefined;
+    const legacy =
+      relRoot.stableTagPattern !== undefined ||
+      relRoot.ignoreTags !== undefined;
+    if (nested && legacy) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/versioning`,
+        "conflicting_versioning",
+        "stableTagPattern and ignoreTags are declared both at the release root and under deliverables.app.versioning; keep one spelling.",
+      );
+    }
+  }
+
+  // ── channels ──
+  const channels = def.channels;
+  if (channels !== undefined) {
+    if (
+      !isRecord(channels) ||
+      Object.keys(channels).length > MAX_DELIVERABLE_CHANNELS
+    ) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/channels`,
+        "invalid_channel_includes",
+        `deliverables.app.channels must be an object of at most ${MAX_DELIVERABLE_CHANNELS} channels.`,
+      );
+    } else {
+      const known = knownChannelNames(relRoot, Object.keys(channels));
+      const graph = new Map<string, string[]>();
+      for (const [name, decl] of Object.entries(channels)) {
+        if (!isCanonicalChannelName(name)) {
+          add(
+            errors,
+            "release",
+            `/release/deliverables/app/channels/${name}`,
+            "invalid_channel",
+            `deliverables.app.channels names must be canonical (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`,
+          );
+        }
+        if (!isRecord(decl)) {
+          add(
+            errors,
+            "release",
+            `/release/deliverables/app/channels/${name}`,
+            "invalid_channel_includes",
+            "each channel must be an object such as { includes: [stable] }.",
+          );
+          continue;
+        }
+        if (decl.includes === undefined) continue;
+        if (!Array.isArray(decl.includes)) {
+          add(
+            errors,
+            "release",
+            `/release/deliverables/app/channels/${name}/includes`,
+            "invalid_channel_includes",
+            "includes must be an array of channel names.",
+          );
+          continue;
+        }
+        const edges: string[] = [];
+        for (const [i, inc] of decl.includes.entries()) {
+          if (typeof inc !== "string" || !known.has(inc)) {
+            add(
+              errors,
+              "release",
+              `/release/deliverables/app/channels/${name}/includes/${i}`,
+              "invalid_channel_includes",
+              "includes may only name stable, beta, a manual channel or another declared channel.",
+            );
+          } else if (!isCanonicalChannelName(inc)) {
+            // Stored as written (release_channel_policy.includes_json), so only canonical names:
+            // a manual channel P0-04 tolerates with a warning (Nightly.2) or an alias (staging)
+            // is still refused here.
+            add(
+              errors,
+              "release",
+              `/release/deliverables/app/channels/${name}/includes/${i}`,
+              "invalid_channel_includes",
+              `includes names must be canonical (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`,
+            );
+          } else edges.push(inc);
+        }
+        graph.set(name, edges);
+      }
+      const cycle = findIncludesCycle(graph);
+      if (cycle) {
+        add(
+          errors,
+          "release",
+          `/release/deliverables/app/channels/${cycle}`,
+          "invalid_channel_includes",
+          `channel ${cycle} includes itself through its includes chain.`,
+        );
+      }
+    }
+  }
+
+  // ── artifacts: the declared map ──
+  const artifacts = def.artifacts;
+  if (artifacts === undefined) return;
+  if (!Array.isArray(artifacts) || artifacts.length > MAX_ARTIFACT_ENTRIES) {
+    add(
+      errors,
+      "release",
+      `/release/deliverables/app/artifacts`,
+      "invalid_artifact_entry",
+      `deliverables.app.artifacts must be an array of at most ${MAX_ARTIFACT_ENTRIES} entries.`,
+    );
+    return;
+  }
+  const seen = new Set<string>();
+  for (const [i, entry] of artifacts.entries()) {
+    if (!isRecord(entry)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/artifacts/${i}`,
+        "invalid_artifact_entry",
+        "each artifact entry must be an object { id, platform, arch, format, role?, match }.",
+      );
+      continue;
+    }
+    if (
+      typeof entry.id !== "string" ||
+      !ARTIFACT_ENTRY_ID_PATTERN.test(entry.id)
+    ) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/artifacts/${i}/id`,
+        "invalid_artifact_entry",
+        `artifacts[].id must match ${ARTIFACT_ENTRY_ID_PATTERN.source}.`,
+      );
+    } else if (seen.has(entry.id)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/artifacts/${i}/id`,
+        "duplicate_artifact_id",
+        `artifact id ${entry.id} is declared twice; each entry declares one build.`,
+      );
+    } else seen.add(entry.id);
+    if (!isOneOf(entry.platform, RELEASE_PLATFORMS)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/artifacts/${i}/platform`,
+        "invalid_artifact_platform",
+        `artifacts[].platform must be one of ${RELEASE_PLATFORMS.join(", ")}.`,
+      );
+    }
+    if (!isOneOf(entry.arch, RELEASE_ARCHES)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/artifacts/${i}/arch`,
+        "invalid_artifact_arch",
+        `artifacts[].arch must be one of ${RELEASE_ARCHES.join(", ")}.`,
+      );
+    }
+    if (
+      typeof entry.format !== "string" ||
+      !ARTIFACT_FORMAT_PATTERN.test(entry.format)
+    ) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/artifacts/${i}/format`,
+        "invalid_artifact_entry",
+        `artifacts[].format must match ${ARTIFACT_FORMAT_PATTERN.source} (installer versus portable is a format: zip, exe, msi, …).`,
+      );
+    }
+    if (entry.role !== undefined && !isOneOf(entry.role, ARTIFACT_ROLES)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/artifacts/${i}/role`,
+        "invalid_artifact_role",
+        `artifacts[].role must be one of ${ARTIFACT_ROLES.join(", ")}.`,
+      );
+    }
+    if (!isArtifactMatch(entry.match)) {
+      add(
+        errors,
+        "release",
+        `/release/deliverables/app/artifacts/${i}/match`,
+        "invalid_artifact_match",
+        `artifacts[].match must be a file-name glob (* and ?) of 1 to ${MAX_ARTIFACT_MATCH_LENGTH} characters with no control characters.`,
+      );
+    }
+  }
+}
+
+/** The first channel on an `includes` cycle (a self-include counts), or null. */
+function findIncludesCycle(graph: Map<string, string[]>): string | null {
+  const state = new Map<string, 1 | 2>(); // 1 = on the stack, 2 = done
+  const visit = (node: string): string | null => {
+    const s = state.get(node);
+    if (s === 1) return node;
+    if (s === 2) return null;
+    state.set(node, 1);
+    for (const next of graph.get(node) ?? []) {
+      const hit = visit(next);
+      if (hit) return hit;
+    }
+    state.set(node, 2);
+    return null;
+  };
+  for (const node of [...graph.keys()].sort()) {
+    const hit = visit(node);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 /** `file/pointer: message`, or `file: message` for a whole-document problem (pointer "/"). */
@@ -1955,6 +2487,18 @@ export function parseManifest(
 
 function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
   const provider = asRecord(rel.provider);
+  // The tag filters may be spelled at the root (P0-02) or under `deliverables.app.versioning`
+  // (P2-04); validation refuses both at once, so at most one of the two is set. Either way they
+  // persist to the same `release_config` columns.
+  const app = normalizeAppDeliverable(rel.deliverables);
+  const versioning = asRecord(
+    asRecord(asRecord(rel.deliverables)[APP_DELIVERABLE_ID]).versioning,
+  );
+  const filters =
+    versioning.stableTagPattern !== undefined ||
+    versioning.ignoreTags !== undefined
+      ? versioning
+      : rel;
   return {
     ghOwner: String(rel.ghOwner ?? provider.owner ?? ""),
     ghRepo: String(rel.ghRepo ?? provider.repo ?? ""),
@@ -1965,13 +2509,84 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     sparkleEd25519Pub: String(rel.sparkleEd25519Pub ?? ""),
     manualChannels: normalizeManualChannels(rel.manualChannels),
     stableTagPattern:
-      typeof rel.stableTagPattern === "string" &&
-      compileManualChannelRegex(rel.stableTagPattern) !== null
-        ? rel.stableTagPattern
+      typeof filters.stableTagPattern === "string" &&
+      compileManualChannelRegex(filters.stableTagPattern) !== null
+        ? filters.stableTagPattern
         : null,
-    ignoreTags: normalizeIgnoreTags(rel.ignoreTags),
+    ignoreTags: normalizeIgnoreTags(filters.ignoreTags),
     artifactPolicy: normalizeArtifactPolicy(rel.artifactPolicy),
     access: normalizeReleaseAccess(rel.access),
+    app,
+  };
+}
+
+/**
+ * Read back a persisted app declaration (`release_deliverables.def_json`, which resync writes
+ * from `ManifestRelease.app`). `null` for NULL, unparseable or non-app JSON — the implicit app
+ * deliverable, with legacy sniffing.
+ */
+export function parseManifestAppDeliverable(
+  defJson: string | null | undefined,
+): ManifestAppDeliverable | null {
+  if (!defJson) return null;
+  try {
+    return normalizeAppDeliverable({
+      [APP_DELIVERABLE_ID]: JSON.parse(defJson),
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `deliverables.app`, as validated. `null` when the document has no `deliverables` block, or one
+ * without an `app` entry (packs alone are ignored until P4-02): the implicit app deliverable.
+ */
+function normalizeAppDeliverable(raw: unknown): ManifestAppDeliverable | null {
+  const def = asRecord(raw)[APP_DELIVERABLE_ID];
+  if (!isRecord(def) || def.kind !== "app") return null;
+  const versioning = asRecord(def.versioning);
+  const channels: Record<string, ManifestDeliverableChannel> = {};
+  for (const [name, decl] of Object.entries(asRecord(def.channels))) {
+    if (!isCanonicalChannelName(name) || !isRecord(decl)) continue;
+    channels[name] = {
+      includes: (arrayAt(decl, "includes") ?? []).filter(
+        isCanonicalChannelName,
+      ),
+    };
+  }
+  const artifacts: ManifestArtifactEntry[] = [];
+  for (const entry of arrayAt(def, "artifacts") ?? []) {
+    if (
+      !isRecord(entry) ||
+      typeof entry.id !== "string" ||
+      !isOneOf(entry.platform, RELEASE_PLATFORMS) ||
+      !isOneOf(entry.arch, RELEASE_ARCHES) ||
+      typeof entry.format !== "string" ||
+      !isArtifactMatch(entry.match)
+    )
+      continue;
+    artifacts.push({
+      id: entry.id,
+      platform: entry.platform,
+      arch: entry.arch,
+      format: entry.format,
+      role: isOneOf(entry.role, ARTIFACT_ROLES) ? entry.role : "payload",
+      match: entry.match,
+    });
+  }
+  return {
+    kind: "app",
+    versioning: {
+      scheme: isOneOf(versioning.scheme, VERSION_SCHEMES)
+        ? versioning.scheme
+        : "semver",
+      buildNumber: isOneOf(versioning.buildNumber, BUILD_NUMBER_SOURCES)
+        ? versioning.buildNumber
+        : null,
+    },
+    channels,
+    artifacts,
   };
 }
 
@@ -2758,3 +3373,6 @@ function add(
 ): void {
   list.push({ file, path, code, message });
 }
+
+// The release descriptor (P2-04): its contract, validator and helpers.
+export * from "./descriptor.js";

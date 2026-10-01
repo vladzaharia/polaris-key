@@ -5,6 +5,7 @@ export {
   DEFAULT_ENV_PREFIX,
   type ConfigClientOptions,
   type ConfigSource,
+  type ProductCatalog,
   type MintedToken,
   type UserConfigEntry,
 } from "./client.js";

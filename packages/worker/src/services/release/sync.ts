@@ -41,6 +41,8 @@ import {
 } from "./store.js";
 import { semverOfTag } from "./channels.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
+import type { ManifestAppDeliverable } from "@polaris-key/manifest";
+import { ingestGithubDescriptors, readAppDeliverable } from "./descriptor.js";
 
 // ── The platform-facing façade ───────────────────────────────────────────────
 
@@ -78,6 +80,15 @@ export { getReleaseConfig } from "./config.js";
  * already holds: when the list was read to its end, the builder marks any of them that GitHub no
  * longer publishes as `absentUpstream` (P0-03). A capped read hands it `null` instead.
  *
+ * Release descriptors (P2-04): a release carrying a `pkey-release.json` with no ingested
+ * descriptor yet is ingested in the same pass (`ingestGithubDescriptors`, a bounded number per
+ * sync), and the product's declared artifact map — `app`, when the caller has just parsed it,
+ * else the persisted declaration — replaces filename sniffing for every other release. Each
+ * described release's row goes in that release's own publication-order slot among the store's
+ * upserts (so `seq` stays publication order, and an explicit `seq` is checked against the value
+ * the batch will have reached there), and its builds and files go LAST (after the rows they
+ * enrich).
+ *
  * Returns `[]` — never throws, never partially applies — when the product has no GitHub
  * coordinates or GitHub is unavailable. The truth store is a CACHE of upstream state; failing a
  * whole manifest resync (which may be carrying a security-relevant change to tiers or OIDC)
@@ -90,11 +101,16 @@ export async function releaseStoreSyncStatements(
   cfg: ReleaseConfigRow,
   now: number,
   fetchImpl: FetchImpl,
+  opts: { app?: ManifestAppDeliverable | null } = {},
 ): Promise<DbStatement[]> {
   if (!isResolved(cfg)) return [];
   try {
     const floors = await listChannelFloors(db, cfg.product);
     const stored = await listStoredReleaseIds(db, cfg.product);
+    const app =
+      opts.app !== undefined
+        ? opts.app
+        : await readAppDeliverable(db, cfg.product);
     const token = await installationToken(env, cfg, now, fetchImpl);
     const listing = await listReleasePages(
       token,
@@ -111,15 +127,34 @@ export async function releaseStoreSyncStatements(
       listing.releases,
       fetchImpl,
     );
-    return releaseStoreStatements(
-      cfg.product,
+    const descriptors = await ingestGithubDescriptors(
+      db,
       cfg,
+      token,
       listing.releases,
-      now,
-      floors,
       held,
-      listing.complete ? stored : null,
+      app,
+      now,
+      fetchImpl,
     );
+    return [
+      ...releaseStoreStatements(
+        cfg.product,
+        cfg,
+        listing.releases,
+        now,
+        floors,
+        held,
+        listing.complete ? stored : null,
+        {
+          app,
+          described: descriptors.described,
+          refused: descriptors.refused,
+          describedRows: descriptors.rows,
+        },
+      ),
+      ...descriptors.tail,
+    ];
   } catch {
     // No log line: the worker carries no logging sink by design. The absence of a `releases`
     // entry in the sync result — and `release_health`'s unchanged `checked_at` — is the signal.

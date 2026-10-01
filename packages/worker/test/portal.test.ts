@@ -89,6 +89,7 @@ async function enableReleaseService(db: Db, slug: string): Promise<void> {
         license: { enabled: true },
         config: { enabled: true },
         release: { enabled: true },
+        distribution: { enabled: true },
         update: { enabled: false },
         identity: { enabled: false },
       },

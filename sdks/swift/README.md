@@ -15,15 +15,16 @@ Polaris Key is a suite of opt-in services over an always-on Core, and on Apple p
 division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
 a product with no license service does not carry the gate.
 
-| Product              | Contents                                                                                       | Depends on                      |
-| -------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------- |
-| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity — the one-import path | Core, License, Config, Identity |
-| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles        | —                               |
-| `PolarisKeyLicense`  | the gate, activation, entitlements                                                             | Core                            |
-| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint                               | Core                            |
-| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                 | Core                            |
-| `PolarisKeyUpdate`   | Sparkle wiring. **macOS only**                                                                 | Core, Sparkle ≥ 2.9.6           |
-| `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                             | Core, License, Config           |
+| Product              | Contents                                                                                      | Depends on                               |
+| -------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import | Core, License, Config, Identity, Release |
+| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles       | —                                        |
+| `PolarisKeyLicense`  | the gate, activation, entitlements                                                            | Core                                     |
+| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch           | Core                                     |
+| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                | Core                                     |
+| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                              | Core                                     |
+| `PolarisKeyUpdate`   | Sparkle wiring. **macOS only**                                                                | Core, Sparkle ≥ 2.9.6                    |
+| `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                            | Core, License, Config                    |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -86,17 +87,36 @@ try await client.deactivate()
 ```
 
 The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
-isEntitled,entitlements,profile,deactivate}` and `client.config.{config,configSource,secret,
-listUserConfig,schemaVersion,mintToken}` and `client.identity.{beginSignIn,pollSignIn,
-waitForSignIn}`. `client.{status,isLicensed,config,activate,enroll,register,
-sync,deactivate,importBundle,syncState}` are convenience passthroughs for the calls a host
-makes before it knows which service it is talking to.
+isEntitled,entitlements,entitledChannels,profile,deactivate}`, `client.config.{config,
+configSource,secret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
+`client.identity.{beginSignIn,pollSignIn,waitForSignIn}` and `client.release.{changelog,
+installURL,downloadURL(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,config,
+activate,enroll,register,report,sync,deactivate,importBundle,syncState}` are convenience
+passthroughs for the calls a host makes before it knows which service it is talking to.
+
+`client.report()` posts the telemetry snapshot now (`sync()` already reports after each pass);
+it answers `false` rather than throwing when no credential is held or the server refused.
+`client.config.fetchSchema()` returns the catalog's bytes, or `nil` on any failure — it is
+unsigned and diagnostic. `client.release` throws `service-unavailable` when the product does not
+run Release, forwards the device token when one is held, and throws a 401/403 with the refusal
+body's own code (`unauthorized`, `channel_not_allowed`, …).
+
+A 401 on a document gets exactly **one** re-acquire per `sync()` pass, then one retry of the
+failed fetch. A licensed device rotates its token with `POST /<product>/license/token`. A
+registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint when
+fingerprinting is enabled, and no `Authorization` header). Both documents share the attempt, so
+two parallel 401s make one call. A refusal (403 `registration_closed`, 404, 429) spends the
+attempt and the hard 401 is recorded. After a restart the token's origin is not persisted, so a
+product with License on uses `license/token`. Under the `requires-identity` policy a native
+device cannot re-register (that needs a browser session) and lands on the hard 401.
 
 ### Capabilities
 
 `client.capabilities()` reports which services the product runs. Resolution is: a discovery
 document loaded this session (`await client.discover()`) > `expectedServices` > the suite
-default (license + config; release/update/identity off). It is **fail-closed** (D-21): a
+default (license + config; release/distribution/update/identity off). It is **fail-closed** (D-21): a
 service the discovery document omits reads as disabled, never as "unknown, assume on".
 
 A product with the license service disabled gates `not-applicable` — `isLicensed()` is `true`
@@ -181,7 +201,7 @@ third-party token through an operator-approved recipe (`GET /<product>/config/mi
 with the device token) and returns a `MintedToken(token:expiresAt:)`. It is cached **in memory
 only** — never in the cache file or the keychain — and reused until 30 seconds before
 `expiresAt`, and only while the client still holds the device token it was minted with —
-`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire and one retry. Failures throw
+`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures throw
 `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`)
 before any request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.
@@ -196,6 +216,37 @@ before any request, `unauthorized` (no token, or still 401), or the Worker's `no
 - `Store` is a protocol; supply your own to back the token/cache differently. Its mutating
   methods `throw`, so a failed keychain write or an unwritable config dir surfaces as a typed
   `StoreError` instead of vanishing.
+
+**The keychain.** The token goes to the data-protection keychain with
+`kSecAttrAccessibleAfterFirstUnlock`. A macOS process without the entitlement it needs (an
+unsigned CLI, a test bundle) has its writes refused with `errSecMissingEntitlement` and keeps
+using the file-based login keychain, which ignores the accessibility attribute. Its reads of the
+data-protection keychain answer "not found" rather than that error, so `status()` follows a "not
+found" with a delete of a sentinel item that never exists, which does answer
+`errSecMissingEntitlement`. Reads try the data-protection keychain
+first and migrate a legacy item into it when it is available; `clearToken()` deletes from both.
+iOS always uses the data-protection keychain.
+
+**Store status.** `await client.storeStatus()` returns a `StoreStatus` (`backend`, `degraded`), or
+`nil` for a host store that does not implement `status()` (the protocol's default). The default
+store reports `.keychain`, degraded by `.legacyKeychain` on an unentitled macOS process (and on an entitled one whose
+token has not yet been migrated out of the legacy keychain) and by
+`.keyringError` when the keychain refuses; `InMemoryStore` reports `.memory`.
+
+**Directories.** `CoreOptions` takes `dataDir`, `cacheDir` and `stateDir` (bases; `<product>` is
+appended), and `core.dirs` holds the resolved `ProductDirs`. Nothing is created until something
+uses one, and the config directory has not moved.
+
+| Base   | macOS                                     | iOS                                       |
+| ------ | ----------------------------------------- | ----------------------------------------- |
+| config | `~/.config`                               | Application Support (unchanged)           |
+| data   | `<Application Support>/polaris-key/data`  | `<Application Support>/polaris-key/data`  |
+| cache  | `<Caches>/polaris-key`                    | `<Caches>/polaris-key`                    |
+| state  | `<Application Support>/polaris-key/state` | `<Application Support>/polaris-key/state` |
+
+Application Support and Caches come from `FileManager` (the container's inside a sandbox).
+`ProductDirs.excludeFromBackup(_:)` sets `isExcludedFromBackup` on an existing directory (plus a
+`CACHEDIR.TAG` on macOS) and never throws.
 
 ### What the cache holds
 
@@ -296,6 +347,12 @@ anchor beside the real one.
 The channel names are WIRE-CONTRACT-V3 §5.1's: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and a
 product's manual channels. `Semver.channelForVersion` derives the default `X-PKey-Channel` from
 the build version: `0.0.0-beta*` and the legacy `0.0.0-staging*` builds are now `.beta`.
+
+**Behaviour note (P1b-07):** `client.license.entitledChannels()` now answers `["stable"]` when
+the licence carries no `channels` entitlement (or a non-array one), where it used to answer `[]`.
+That is the Worker's own answer and every other SDK's; Sparkle's `allowedChannels(from:)` already
+treated an empty grant as stable only, so the updater's behaviour does not change. The list is
+the raw grants: `staging` is not rewritten to `beta`.
 
 **Source note (P0-04):** `enum Channel` gained `case beta`, and `case staging` is deprecated
 (`staging` is the legacy spelling of `beta`; `channelForVersion` no longer returns it). An

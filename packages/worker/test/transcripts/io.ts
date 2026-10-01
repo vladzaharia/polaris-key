@@ -2,10 +2,12 @@
 //
 //   conformance/transcripts/<id>.json                          the canonical files
 //   sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/    the generator-owned Swift mirror
+//   sdks/godot/tests/transcripts/                              the generator-owned Godot mirror
 //
-// The Swift test target cannot reach up the monorepo at test time, so — exactly as
-// `tools/sign-corpus.ts` does for `Resources/v2/` — the generator writes a byte-identical copy
-// into the test bundle and the drift check covers the copy like the source.
+// Neither the Swift test target nor an exported Godot pack (which reads only `res://`) can reach
+// up the monorepo at test time, so — exactly as `tools/sign-corpus.ts` does for the corpus — the
+// generator writes a byte-identical copy into each and the drift check covers the copies like
+// the source.
 //
 // Serialization is `JSON.stringify` then Prettier's JSON printer with the repo's (default)
 // options, the same pipeline the corpus uses, so `pnpm format` never disagrees with a file the
@@ -37,6 +39,13 @@ export const SWIFT_TRANSCRIPTS_DIR = join(
   "Resources",
   "transcripts",
 );
+export const GODOT_TRANSCRIPTS_DIR = join(
+  REPO_ROOT,
+  "sdks",
+  "godot",
+  "tests",
+  "transcripts",
+);
 
 /** The environment variable that switches the Worker test from CHECK to WRITE. */
 export const WRITE_FLAG = "PKEY_WRITE_TRANSCRIPTS";
@@ -50,14 +59,19 @@ export interface Drift {
   problem: "missing" | "stale" | "unexpected";
 }
 
-/** Compare (or write) every rendered transcript in both locations. Files in either directory
- *  that no scenario produces are drift too: a deleted scenario must take its file with it. */
+/** Compare (or write) every rendered transcript in every location. Files in any of the
+ *  directories that no scenario produces are drift too: a deleted scenario must take its file
+ *  with it. */
 export function reconcile(
   rendered: Map<string, string>,
   write: boolean,
 ): Drift[] {
   const drift: Drift[] = [];
-  for (const dir of [TRANSCRIPTS_DIR, SWIFT_TRANSCRIPTS_DIR]) {
+  for (const dir of [
+    TRANSCRIPTS_DIR,
+    SWIFT_TRANSCRIPTS_DIR,
+    GODOT_TRANSCRIPTS_DIR,
+  ]) {
     if (write) mkdirSync(dir, { recursive: true });
     const present = existsSync(dir)
       ? readdirSync(dir).filter((f) => f.endsWith(".json"))

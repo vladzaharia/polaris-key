@@ -50,6 +50,49 @@ export interface CacheRecordV3 {
 }
 
 /**
+ * Where a token store keeps the token. Stable identifiers, shared with every SDK's
+ * `storeStatus()` / `store_status()` surface (P1b-09 plan §2.3).
+ */
+export const STORE_BACKENDS = [
+  /** An OS credential store: Secret Service, Credential Manager, the macOS login keychain
+   *  through a keyring library. */
+  "keyring",
+  /** The Apple Keychain through Security.framework. */
+  "keychain",
+  /** An Android Keystore key wrapping the token. */
+  "keystore",
+  /** A 0600 file. */
+  "file",
+  /** Nothing persists (tests). */
+  "memory",
+  /** Browser storage (Godot web). */
+  "indexeddb",
+  /** A host store that fits none of these. */
+  "custom",
+] as const;
+export type StoreBackend = (typeof STORE_BACKENDS)[number];
+
+/** Why a store is weaker than this platform's best option. Stable identifiers. */
+export const STORE_DEGRADED_REASONS = [
+  /** The OS keyring cannot be loaded, or its pinned store is absent; the token is in a file. */
+  "keyring-unavailable",
+  /** The keyring loaded but an operation failed, now or in the write that left the token in
+   *  a file. */
+  "keyring-error",
+  /** macOS: no data-protection keychain entitlement; the file-based keychain is used. */
+  "legacy-keychain",
+  /** Storage may be evicted or may not survive a restart. */
+  "not-persistent",
+] as const;
+export type StoreDegradedReason = (typeof STORE_DEGRADED_REASONS)[number];
+
+/** What `Store.status()` reports. `detail` is human text and never contains the token. */
+export interface StoreStatus {
+  backend: StoreBackend;
+  degraded?: { reason: StoreDegradedReason; detail?: string };
+}
+
+/**
  * The credential + cache surface a host provides. Writes to the cache are Core-mediated
  * read-modify-write of the WHOLE record; service modules never write it directly (§4.1).
  */
@@ -61,4 +104,7 @@ export interface Store {
   readCache(): Promise<CacheRecordV3 | null>;
   writeCache(rec: CacheRecordV3): Promise<void>;
   clearCache(): Promise<void>;
+  /** Where the token lives now, and why if that is weaker than this platform's best option.
+   *  Optional; never throws; `detail` is human text and never contains the token. */
+  status?(): Promise<StoreStatus>;
 }

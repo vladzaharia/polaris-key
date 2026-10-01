@@ -51,8 +51,8 @@ render-prop.
 
 ## Capabilities (D-21)
 
-`PolarisState.capabilities` is a `Record<ServiceSlug, { enabled: boolean }>` over the five
-services (`license`, `config`, `release`, `update`, `identity`). It is **fail-closed**:
+`PolarisState.capabilities` is a `Record<ServiceSlug, { enabled: boolean }>` over the six
+services (`license`, `config`, `release`, `distribution`, `update`, `identity`). It is **fail-closed**:
 
 | situation                       | what the client believes                         |
 | ------------------------------- | ------------------------------------------------ |
@@ -69,16 +69,17 @@ that renders children straight through (D-08).
 Two axes, and they compose — a **transport** entry says how you talk to the control plane, a
 **service** entry says what you are talking to.
 
-| entry                         | contents                                                           |
-| ----------------------------- | ------------------------------------------------------------------ |
-| `@polaris-key/react`          | everything                                                         |
-| `@polaris-key/react/core`     | mode-agnostic types + the shared state model (no React)            |
-| `@polaris-key/react/browser`  | the browser adapter + discovery client                             |
-| `@polaris-key/react/desktop`  | the desktop adapter + the `PolarisBridge` IPC contract             |
-| `@polaris-key/react/license`  | `useLicense`, `useLicenseGate`, `<LicenseGate>`, `<DeviceManager>` |
-| `@polaris-key/react/config`   | `useManagedConfig`, `<ConfigPanel>`                                |
-| `@polaris-key/react/identity` | `usePolarisAuth`, `<PolarisLogin>`, `<PolarisLogout>`              |
-| `@polaris-key/react/update`   | `useLatestVersion`, `<UpdatePrompt>`                               |
+| entry                         | contents                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| `@polaris-key/react`          | everything                                                                            |
+| `@polaris-key/react/core`     | mode-agnostic types + the shared state model (no React)                               |
+| `@polaris-key/react/browser`  | the browser adapter + discovery client                                                |
+| `@polaris-key/react/desktop`  | the desktop adapter + the `PolarisBridge` IPC contract                                |
+| `@polaris-key/react/license`  | `useLicense`, `useLicenseGate`, `useImportBundle`, `<LicenseGate>`, `<DeviceManager>` |
+| `@polaris-key/react/config`   | `useManagedConfig`, `<ConfigPanel>`                                                   |
+| `@polaris-key/react/identity` | `usePolarisAuth`, `<PolarisLogin>`, `<PolarisLogout>`                                 |
+| `@polaris-key/react/update`   | `useLatestVersion`, `<UpdatePrompt>`                                                  |
+| `@polaris-key/react/release`  | `useChangelog`                                                                        |
 
 ## Components
 
@@ -100,16 +101,18 @@ All five are assembled from the exported primitives (`MessageScreen`, `Button`, 
 
 ## Hooks
 
-| Hook                     | Returns                                                                    |
-| ------------------------ | -------------------------------------------------------------------------- |
-| `useLicense()`           | `{ gate, status, usable, loading, enabled, activation, highWaterMark, … }` |
-| `useManagedConfig()`     | `{ config, get(key, fallback), listUserConfig, getConfigSource, enabled }` |
-| `usePolarisAuth()`       | profile + auth actions + `supportsOidcLogin` / `supportsKeyEntry`          |
-| `useLatestVersion(opts)` | `{ latest, updateAvailable, busy, error, enabled, check }`                 |
-| `useEntitlement(name)`   | `boolean`                                                                  |
-| `useCapabilities()`      | the service map + `has(slug)`                                              |
-| `useLicenseGate()`       | headless gate (`screen`, `state`, `theme`, `retry`) for a fully custom UI  |
-| `usePolarisKey()`        | **deprecated** — the whole-client surface; prefer the per-service hooks    |
+| Hook                     | Returns                                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------------------- |
+| `useLicense()`           | `{ gate, status, usable, loading, enabled, activation, highWaterMark, entitledChannels, … }` |
+| `useImportBundle()`      | `{ importBundle(jws), busy, error, activation }` — offline bundles (§7)                      |
+| `useChangelog(opts)`     | `{ entries, busy, error, enabled, reload }` — the Release changelog                          |
+| `useManagedConfig()`     | `{ config, get(key, fallback), listUserConfig, getConfigSource, enabled }`                   |
+| `usePolarisAuth()`       | profile + auth actions + `supportsOidcLogin` / `supportsKeyEntry`                            |
+| `useLatestVersion(opts)` | `{ latest, updateAvailable, busy, error, enabled, check }`                                   |
+| `useEntitlement(name)`   | `boolean`                                                                                    |
+| `useCapabilities()`      | the service map + `has(slug)`                                                                |
+| `useLicenseGate()`       | headless gate (`screen`, `state`, `theme`, `retry`) for a fully custom UI                    |
+| `usePolarisKey()`        | **deprecated** — the whole-client surface; prefer the per-service hooks                      |
 
 `busy` and `error` are **per service**: a config refresh no longer greys out the sign-out
 button, and an identity failure no longer reads as a license failure. `usePolarisKey()` still
@@ -130,7 +133,31 @@ additionally withheld from the user-facing list (`listUserConfig`) but still app
 not inherit the privileged process's, so env layering resolves in `@polaris-key/node` on the desktop
 side and nowhere at all in the browser.
 
-## Desktop bridge contract (protocol v2)
+## Adapter verbs beyond the gate
+
+Both adapters implement the same verbs, so a hook never branches on transport:
+
+| verb                                           | browser                                        | desktop                             |
+| ---------------------------------------------- | ---------------------------------------------- | ----------------------------------- |
+| `entitledChannels()`                           | the `channels` grants, or `["stable"]`         | the same, off the bridge's document |
+| `fetchSchema()` → catalog or `null`            | `GET /<p>/config/schema`                       | the bridge's `fetchSchema`          |
+| `changelog()`, `installUrl()`, `downloadUrl()` | `GET /<p>/release/changelog`; URLs built here  | `invoke("release", …)`              |
+| `importBundle(jws)`                            | verified in-page, kept in IndexedDB            | the bridge's `importBundle` (v3)    |
+| `report()`                                     | throws `report-unsupported` (no device bearer) | `invoke("devices", "report")`       |
+
+A refused release read throws `release-refused`; `error.wireCode` carries the refusal body's own
+code (`unauthorized`, `channel_not_allowed`, …), which is what the other SDKs report as their
+error code. A refused bundle throws `bundle-rejected` with the §7 step as `wireCode` and writes
+nothing.
+
+**Offline bundles in a browser.** A browser has no hardware fingerprint, so the browser adapter
+mints a random device id once and keeps it in IndexedDB (`adapter.offlineDeviceId()` reads it:
+mint the bundle against that id). Pass the product's pinned keys as `trust: { pinnedKeys }` —
+a bundle verifies against those only. The imported artifacts are re-verified from IndexedDB on
+every load, so editing storage can remove an activation but never invent one; an authenticated
+session supersedes the bundle, and `signOut()` wipes it.
+
+## Desktop bridge contract (protocol v3)
 
 Implement `PolarisBridge` (from `@polaris-key/react/desktop`) in your Electron/Tauri preload,
 delegating each method to `@polaris-key/node`. `BridgeState` mirrors `PolarisKeyClient.getSyncState()`
@@ -140,13 +167,16 @@ field for field, so the state method is a straight passthrough:
 import type { PolarisBridge } from "@polaris-key/react/desktop";
 
 const bridge: PolarisBridge = {
-  version: 2,
+  version: 3,
   getSyncState: () => client.getSyncState(),
   refresh: async () => (await client.sync(), client.getSyncState()),
   beginSignIn: () => /* start loopback OIDC */,
   pollSignIn: (flowId) => /* poll it */,
   submitKey: (key) => /* client.license.activate(key) */,
   signOut: () => client.license.deactivate(),
+  // Protocol v3: offline bundles, verified and cached in the privileged process.
+  importBundle: (jws) => client.importBundle(jws),
+  fetchSchema: () => client.config.fetchSchema(),
   // The versioned escape hatch: any sub-client verb, without growing this interface for it.
   invoke: (service, method, args) => /* dispatch to client[service][method](args) */,
   on: (event, cb) => /* subscribe to host-side state changes */,
@@ -156,7 +186,8 @@ const bridge: PolarisBridge = {
 
 `BridgeState` additionally carries `capabilities` (the product's `services` map) and `config`
 (the config document's entries — v3 split them off the license document). Omit `invoke` and the
-device/update capabilities simply report as unsupported.
+device, update, release and telemetry capabilities simply report as unsupported; a v2 host
+without `importBundle` reports bundle import as `bundle-import-unsupported`.
 
 ## Theming
 

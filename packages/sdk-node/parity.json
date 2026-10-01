@@ -23,34 +23,26 @@
       "wp": "P1b-04",
       "note": "Sends win32/x64 where other SDKs send other spellings."
     },
-    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
-    "core.store": {
-      "status": "planned",
-      "wp": "P1b-09",
-      "note": "Falls back to a 0600 file when the keyring addon cannot load, without a surfaced degraded state."
-    },
+    "core.store": { "status": "implemented" },
     "license.gate": { "status": "implemented" },
     "license.activate": { "status": "implemented" },
     "license.enroll": { "status": "implemented" },
     "license.deactivate": { "status": "implemented" },
     "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "planned", "wp": "P1b-07" },
-    "license.reregister": { "status": "planned", "wp": "P1b-06" },
+    "license.channels": { "status": "implemented" },
+    "license.reregister": { "status": "implemented" },
     "config.resolve": { "status": "implemented" },
     "config.list": { "status": "implemented" },
     "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "planned", "wp": "P1b-07" },
+    "config.schema": { "status": "implemented" },
     "config.mint": { "status": "implemented" },
     "config.mirror": {
       "status": "implemented",
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
     },
-    "devices.fingerprint": {
-      "status": "planned",
-      "wp": "P1b-09",
-      "note": "Two Windows components vanish without wmic; the Linux anchor depends on privilege."
-    },
+    "devices.fingerprint": { "status": "implemented" },
     "devices.facts": { "status": "implemented" },
     "devices.register": { "status": "implemented" },
     "devices.manage": { "status": "implemented" },

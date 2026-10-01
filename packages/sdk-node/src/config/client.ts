@@ -14,6 +14,7 @@
 
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { ProductCatalog } from "@polaris-key/catalog";
 import {
   listUserEntries,
   resolveSource,
@@ -27,7 +28,7 @@ import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import { MintCache, mintToken, type MintedToken } from "./mint.js";
 
-export type { ConfigSource, UserConfigEntry, MintedToken };
+export type { ConfigSource, ProductCatalog, UserConfigEntry, MintedToken };
 
 /** Env-var prefix for config overrides. A key's env var is
  *  `${envPrefix}${key.replaceAll(".", "__")}` — `run.concurrency` →
@@ -109,6 +110,29 @@ export class ConfigClient {
   }
 
   /**
+   * `GET /<p>/config/schema` — the product's active config catalog, parsed.
+   *
+   * Unsigned, unauthenticated and DIAGNOSTIC: nothing security-relevant is ever read from it
+   * (the values a client acts on arrive in the signed config document), so every failure — a
+   * refusal, a network error, a body that is not a catalog, local-only mode, a product that
+   * does not run Config (D-21: not even probed) — answers `null`. It never throws.
+   */
+  async fetchSchema(): Promise<ProductCatalog | null> {
+    if (!this.ctx.enabled("config")) return null;
+    try {
+      const res = await this.ctx.fetcher()(this.ctx.url("config/schema"), {
+        headers: this.ctx.headers({ accept: "application/json" }),
+        signal: this.ctx.deadline(),
+      });
+      if (!res.ok) return null;
+      const body: unknown = await res.json();
+      return isCatalog(body) ? body : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Mint a third-party token through the product's edge-mint recipe `recipeId`
    * (`GET /<p>/config/mint/<recipeId>/token`, authenticated with the device token).
    *
@@ -130,4 +154,12 @@ export class ConfigClient {
   get enabled(): boolean {
     return this.ctx.enabled("config");
   }
+}
+
+/** The catalog's outer shape — enough to hand it back typed. The entries are the product's own
+ *  data; the client does not validate them, because nothing it decides depends on them. */
+function isCatalog(v: unknown): v is ProductCatalog {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  const c = v as Record<string, unknown>;
+  return typeof c.schemaVersion === "number" && Array.isArray(c.entries);
 }

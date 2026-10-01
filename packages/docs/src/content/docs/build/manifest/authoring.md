@@ -29,11 +29,11 @@ next to `schema.json`. The files are the **manifest baseline**: they describe in
 defaults. Runtime admin changes such as secrets, license/device overrides, live service toggles,
 and operator policy overrides live separately in Polaris Key and are preserved across resync.
 
-| File        | Base name                 | Maps to                                                                                                                    | What it carries                                                                                                          |
-| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                        |
-| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**) |
-| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `edge_mint_config` rows                                                                 | release provider coordinates + channel/install/appcast/edge-mint settings (required only when releases are enabled)      |
+| File        | Base name                 | Maps to                                                                                                                    | What it carries                                                                                                                                                |
+| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                                                              |
+| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**)                                       |
+| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `release_deliverables` + `edge_mint_config` rows                                        | release provider coordinates + channel/install/appcast/edge-mint settings + the app deliverable and its artifact map (required only when releases are enabled) |
 
 In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
 (the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
@@ -97,7 +97,8 @@ tier/license/device live at [The config catalog](/docs/services/config/catalog/)
 
 ## Enabled services: `modules` + `devices.registration`
 
-Polaris Key is five opt-in services — **license, config, release, update, identity** — over an
+Polaris Key is six opt-in services — **license, config, release, distribution, update,
+identity** — over an
 always-on Core substrate (see [Concepts & terminology](/docs/start/concepts/)). `.pkey/product` declares which of them the
 product runs, and that declaration is persisted verbatim into `products.services_json`, the
 single authority every other surface projects from. It used to be validated and then thrown
@@ -113,6 +114,7 @@ child row.
     "license": { "enabled": true },
     "config": { "enabled": true },
     "release": { "enabled": true },
+    "distribution": { "enabled": true },
     "update": { "enabled": true },
     "identity": { "enabled": true },
   },
@@ -140,19 +142,24 @@ pinned to a value nobody wrote.
 slugs at ingest and only slugs are stored, so a manifest in the field does not have to be
 rewritten on the day the server learns the new words, and one block may mix both spellings:
 
-| Declared    | Enables              | Note                                                                                                                                          |
-| ----------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `licensing` | `license`            | rename                                                                                                                                        |
-| `releases`  | `release` + `update` | the old module meant "distributes software"; mapping it to `release` alone would take the appcast away from every product already serving one |
-| `oidc`      | `identity`           | rename                                                                                                                                        |
-| `edgeMint`  | `config`             | edge-minting is a secret-**delivery** capability of Config, not a unit of its own                                                             |
+| Declared    | Enables                               | Note                                                                                                                                          |
+| ----------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `licensing` | `license`                             | rename                                                                                                                                        |
+| `releases`  | `release` + `distribution` + `update` | the old module meant "distributes software"; mapping it to `release` alone would take the appcast away from every product already serving one |
+| `oidc`      | `identity`                            | rename                                                                                                                                        |
+| `edgeMint`  | `config`                              | edge-minting is a secret-**delivery** capability of Config, not a unit of its own                                                             |
 
 **Validation at ingest.** `parseManifest` aggregates every error before it refuses, and a refusal
 applies nothing:
 
-- `update_requires_release` — **error**. Update renders a feed over Release's truth store, so
-  Update on with Release off would answer every client with an empty document rather than an
-  error. A `releases` manifest can never trip this: the mapping brings Release with it.
+- `distribution_requires_release` — **error**. Distribution delivers what Release says exists,
+  so Distribution on with Release off has nothing to deliver.
+- `update_requires_distribution` — **error**. Update's feed tells a device what to do next over
+  what Distribution delivered, so Update on with Distribution off would answer every client with
+  an empty document rather than an error. A `releases` manifest can never trip either rule: the
+  mapping brings the whole chain with it. A manifest naming `release` and `update` without
+  `distribution` does trip this one. (These two replaced `update_requires_release`, which they
+  imply.)
 - `invalid_registration_policy` — **error**. An unrecognised `devices.registration` is refused
   rather than coerced; silently falling back to a default would answer "requires-license" with
   "open" for the one manifest that most meant it.
@@ -238,6 +245,87 @@ A tier can tighten fingerprint enforcement for itself:
 ```
 
 See [Privacy](/docs/users/privacy/) for exactly what a fingerprint contains and how long it is kept.
+
+## Release deliverables: `deliverables.app` and the artifact map
+
+A `.pkey/release` document may declare the product's **app deliverable** and an **artifact
+map** that says what every file of a release is. Without the block the product keeps the
+implicit `app` deliverable and its release files are classified by filename, as before (a
+`.dmg` is macOS, `-arm64` is arm64, and an `.apk`, `.ipa`, `.exe` or `.pck` is just `other`).
+With it, files are classified **by declaration, not by sniffing**:
+
+```yaml
+# .pkey/release.yaml
+release:
+  provider: { type: github, owner: vladzaharia, repo: diceroll }
+  deliverables:
+    app:
+      kind: app
+      versioning:
+        scheme: semver # or semver+build, 4part
+        stableTagPattern: "v\\d+\\.\\d+\\.\\d+"
+        ignoreTags: [channels, packs]
+        buildNumber: descriptor # or none
+      channels:
+        beta: { includes: [stable] } # beta also offers every stable release
+      artifacts:
+        - {
+            id: macos,
+            platform: macos,
+            arch: universal,
+            format: dmg,
+            match: "Diceroll-*-macos.dmg",
+          }
+        - {
+            id: win-zip,
+            platform: windows,
+            arch: x86_64,
+            format: zip,
+            match: "Diceroll-*-windows-x86_64.zip",
+          }
+        - {
+            id: apk,
+            platform: android,
+            arch: any,
+            format: apk,
+            match: "Diceroll-*-android.apk",
+          }
+        - {
+            id: web,
+            platform: web,
+            arch: wasm32,
+            format: zip,
+            match: "Diceroll-*-web.zip",
+          }
+```
+
+- **`kind`** is required. `app` is the only deliverable implemented; any other id must be
+  `kind: pack`, which is accepted with the warning `pack_deliverables_not_supported` and
+  ignored until pack deliverables land.
+- **`versioning.stableTagPattern`** and **`versioning.ignoreTags`** are the same two fields
+  the release root already accepts (same rules, same `release_config` columns). Spell them in
+  one place: declaring them both at the root and here is `conflicting_versioning`.
+- **`channels`** keys are canonical channel names (lower-case letters, digits, `-`; not the
+  aliases `staging` or `latest`). `includes` may name `stable`, `beta`, a manual channel or
+  another declared channel, by its canonical name, and may not loop
+  (`invalid_channel_includes`). A manual channel whose name is not canonical (`Nightly.2`)
+  cannot be included.
+- **`artifacts`**: each entry is one **build**. `id` is the build id; `platform` is one of
+  `macos`, `ios`, `android`, `windows`, `linux`, `web`; `arch` one of `arm64`, `x86_64`,
+  `universal`, `armv7`, `wasm32`, `any`; `format` is the file type. `role` defaults to
+  `payload`. Installer versus portable is a **format** (`zip` versus `exe`/`msi`), not a role.
+  `match` is an anchored, case-sensitive glob: `*` is any run of characters, `?` exactly one,
+  everything else literal, at most 128 characters.
+- A file named `<payload>.sig` or `<payload>.sha256` is that build's signature or checksum.
+  An entry that matches two files of one release classifies neither (it is ambiguous), and a
+  file no entry matches has no build.
+
+Resync writes the declaration to `release_deliverables.def_json` (and each channel's
+`includes` to its channel policy, unless an operator owns that channel). The map also defines
+what a **release descriptor** may say about a release: see
+[Artifacts](/docs/services/release/artifacts/#declared-artifacts-and-release-descriptors).
+Every rule above has a code on
+[Manifest validation codes](/docs/reference/validation-codes/).
 
 ## Registering + re-syncing a product
 

@@ -8,7 +8,11 @@
 // enumeration a settings UI needs on top of it: override-only keys included, `hidden` excluded,
 // effective values resolved.
 
-import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
+import {
+  CHANNEL_STABLE,
+  type JSONValue,
+  type ManagedEntry,
+} from "@polaris-key/protocol/core";
 import {
   licenseState,
   resolveSource,
@@ -181,4 +185,14 @@ export function listUserConfig(state: PolarisState): UserConfigEntry[] {
 /** Read an entitlement boolean off a snapshot. */
 export function readEntitled(state: PolarisState, name: string): boolean {
   return state.entitlements[name] === true;
+}
+
+/** The channels the licence grants, off a snapshot: the `channels` entitlement's string values
+ *  in order, as granted, or `["stable"]` when it is absent or not an array. The Worker's own
+ *  answer (`entitledChannels` in core/entitlements.ts) and every SDK's; raw grants, never
+ *  alias-rewritten — whether a grant COVERS a channel is the entitlement rule's question. */
+export function readEntitledChannels(state: PolarisState): string[] {
+  const value = state.entitlements["channels"];
+  if (!Array.isArray(value)) return [CHANNEL_STABLE];
+  return value.filter((v): v is string => typeof v === "string");
 }

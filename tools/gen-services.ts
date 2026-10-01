@@ -16,7 +16,7 @@
 // file. `client-core` is deliberately not a target: touching it is plan mode, and nothing here
 // needs it.
 //
-// WHAT IS NOT GENERATED. Coherence error CODES (`update_requires_release`) stay literal in both
+// WHAT IS NOT GENERATED. Coherence error CODES (`update_requires_distribution`) stay literal in both
 // validators: the rule-9 parity test extracts codes from validator SOURCE, so a code built from
 // table data would vanish from its sweep. Views, descriptors, docs pages and accent CSS are real
 // code. For each of those an assertion test names what a new row is missing instead; see the
@@ -322,7 +322,26 @@ DEFAULT_ENABLED_SERVICES: Tuple[str, ...] = ${tuple(defaults)}
 `;
 }
 
-const SWIFT_KEYWORDS = new Set([
+/** GDScript (the Godot SDK): a `PKeyServices` class of two constant arrays. */
+export function renderGdscript(table: ServiceTable): string {
+  const slugs = table.services.map((r) => r.slug);
+  const defaults = table.services
+    .filter((r) => r.defaultEnabled)
+    .map((r) => r.slug);
+  const list = (xs: string[]): string => `[${xs.map(q).join(", ")}]`;
+  return `${banner("#")}class_name PKeyServices
+extends RefCounted
+## The opt-in Polaris Key services, generated from the service table.
+
+## The opt-in services, in canonical order. Core is not a service — it is always on.
+const SLUGS := ${list(slugs)}
+
+## What a product runs when it has never said otherwise, in canonical order.
+const DEFAULT_ENABLED := ${list(defaults)}
+`;
+}
+
+export const SWIFT_KEYWORDS = new Set([
   "associatedtype",
   "class",
   "deinit",
@@ -453,6 +472,10 @@ export const TARGETS: readonly Target[] = [
   {
     path: "sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift",
     render: renderSwift,
+  },
+  {
+    path: "sdks/godot/addons/polaris_key/core/services_generated.gd",
+    render: renderGdscript,
   },
 ];
 

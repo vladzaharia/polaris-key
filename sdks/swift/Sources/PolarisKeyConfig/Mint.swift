@@ -43,10 +43,6 @@ extension MintedToken: CustomStringConvertible, CustomDebugStringConvertible, Cu
 /// A cached token is reused until this many seconds before its `expiresAt`.
 public let MINT_REUSE_MARGIN_SECONDS = 30
 
-/// The single re-acquire, injected by the facade: the ROUTE (`POST /license/token`, or
-/// re-registration for a licence-less device) belongs to another module.
-public typealias ReacquireToken = @Sendable (String) async -> String?
-
 enum MintEndpoint {
     /// The router's recipe-id alphabet (`MINT_ID` in the Worker's `services/config/routes.ts`):
     /// a traversal or an encoded separator can never reach the recipe lookup, so an id outside it
@@ -60,7 +56,7 @@ enum MintEndpoint {
 
     /// One mint (with the single re-acquire), and the device token that was presented for it.
     static func mint(
-        _ core: CoreContext, recipeId: String, reacquire: ReacquireToken?
+        _ core: CoreContext, recipeId: String, reacquire: ReacquireFn?
     ) async throws -> (deviceToken: String, minted: MintedToken) {
         guard let token = await core.token else {
             throw PolarisError(
@@ -69,8 +65,9 @@ enum MintEndpoint {
         }
         var presented = token
         var response = try await get(core, token: presented, recipeId: recipeId)
-        if response.status == 401, let reacquire, let next = await reacquire(token) {
-            try? await core.setToken(next)
+        if response.status == 401, let reacquire,
+            let next = await core.reacquireOutsideSync(reacquire)
+        {
             presented = next
             response = try await get(core, token: presented, recipeId: recipeId)
         }

@@ -35,7 +35,7 @@
  * store" and answers not-found. Nothing in this file reads `env`.
  */
 
-import type { Db } from "../db/types.js";
+import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
 import { notFound } from "./errors.js";
 import { isBytesHost } from "./bytesHostname.js";
@@ -549,6 +549,48 @@ export async function recordRef(
     ref.refId,
     now,
   );
+}
+
+/**
+ * `recordRef` as a statement, for a caller that writes the ref in ITS batch — the release
+ * descriptor ingest (P2-04) writes a release, its builds, its artifacts and their refs
+ * atomically. The same rule applies: the CALLER has established that `product` may hold it.
+ */
+export function stmtRecordRef(ref: BlobRef, now: number): DbStatement {
+  return {
+    sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(product, storage_key, ref_kind, ref_id) DO NOTHING`,
+    params: [ref.product, ref.storageKey, ref.refKind, ref.refId, now],
+  };
+}
+
+/**
+ * The recorded objects among `storageKeys`, with the hash and size `promote` verified — internal
+ * bookkeeping like `storedKeys` (never a tenant-facing answer), for a caller that must check a
+ * claim about the bytes against what was actually stored.
+ */
+export async function storedObjects(
+  db: Db,
+  storageKeys: readonly string[],
+): Promise<Map<string, { sha256: string; size: number }>> {
+  const out = new Map<string, { sha256: string; size: number }>();
+  const unique = [...new Set(storageKeys)];
+  for (let i = 0; i < unique.length; i += IN_CHUNK) {
+    const chunk = unique.slice(i, i + IN_CHUNK);
+    const rows = await db.all<{
+      storage_key: string;
+      sha256: string;
+      size: number;
+    }>(
+      `SELECT storage_key, sha256, size FROM blob_objects
+        WHERE storage_key IN (${chunk.map(() => "?").join(", ")})`,
+      ...chunk,
+    );
+    for (const r of rows)
+      out.set(r.storage_key, { sha256: r.sha256, size: r.size });
+  }
+  return out;
 }
 
 /**

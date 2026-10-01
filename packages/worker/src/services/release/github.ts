@@ -33,6 +33,12 @@ export interface ReleaseAsset {
   size: number;
   content_type: string;
   browser_download_url: string;
+  /**
+   * GitHub's own digest of the uploaded bytes, `sha256:<hex>` (P2-04). Computed by GitHub, so
+   * it is the bytes' hash, not the uploader's claim. Absent on assets uploaded before GitHub
+   * began recording digests, and in older API responses.
+   */
+  digest?: string | null;
 }
 
 export interface Release {
@@ -43,7 +49,21 @@ export interface Release {
   html_url: string;
   prerelease: boolean;
   draft: boolean;
+  /**
+   * True for a GitHub immutable release (P2-04): its tag and assets can no longer change after
+   * publication. Descriptor ingest requires it wherever GitHub is the source of bytes; absent
+   * (an older API response, or a repo without immutable releases) counts as mutable.
+   */
+  immutable?: boolean;
   assets: ReleaseAsset[];
+}
+
+/** The lower-case hex SHA-256 in a GitHub asset `digest` (`sha256:<hex>`), or null. */
+export function assetSha256(
+  asset: Pick<ReleaseAsset, "digest">,
+): string | null {
+  const m = /^sha256:([0-9a-fA-F]{64})$/.exec(asset.digest ?? "");
+  return m ? m[1]!.toLowerCase() : null;
 }
 
 /** Thrown internally; callers map this to a 404 response. */

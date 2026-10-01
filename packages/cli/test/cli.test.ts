@@ -108,6 +108,7 @@ describe("@polaris-key/cli", () => {
       "license",
       "config",
       "release",
+      "distribution",
       "update",
     ]);
   });
@@ -117,7 +118,11 @@ describe("@polaris-key/cli", () => {
     expect(normalizeModules("licensing,config")).toEqual(["license", "config"]);
     expect(normalizeModules("config, license")).toEqual(["license", "config"]);
     expect(normalizeModules("oidc,identity")).toEqual(["identity"]);
-    expect(normalizeModules("releases")).toEqual(["release", "update"]);
+    expect(normalizeModules("releases")).toEqual([
+      "release",
+      "distribution",
+      "update",
+    ]);
     for (const name of Object.keys(MODULE_SERVICES))
       expect(() => normalizeModules(name)).not.toThrow();
     expect(() => normalizeModules("licence")).toThrow(

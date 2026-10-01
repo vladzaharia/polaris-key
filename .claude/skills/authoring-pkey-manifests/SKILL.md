@@ -54,14 +54,28 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `web_origins_json`) plus
       `oidc_config`, `profiles`, `tiers`, `provisioning_config`.
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
-      channels, install/appcast settings, edge-mint recipes. Maps to `release_config` and
-      `edge_mint_config`.
+      channels, install/appcast settings, edge-mint recipes, and the app deliverable with its
+      artifact map. Maps to `release_config`, `release_deliverables` and `edge_mint_config`.
 - [ ] If the repo publishes tags that are not app releases (rolling `channels`, content `packs`,
       …), say so in `release`: `stableTagPattern` (an anchored regex, ≤ 80 characters, same
       safety rule as `manualChannels[].regex`) narrows which tags may become stable/latest, and
       `ignoreTags` lists exact tag names that never resolve on a moving channel. Undeclared, any
       semver tag with an optional leading `v` is a candidate, and the highest semver wins — not
-      the newest by creation order.
+      the newest by creation order. The same two fields may instead sit under
+      `deliverables.app.versioning`; never in both places (`conflicting_versioning`).
+- [ ] If the product ships more than a CLI and a DMG (Windows, Linux, Android, iOS, web, a
+      universal binary…), declare the files instead of relying on name sniffing:
+      `deliverables.app` with `kind: app`, optional `versioning` (`scheme`: `semver` |
+      `semver+build` | `4part`; `buildNumber`: `descriptor` | `none`), `channels`
+      (`beta: { includes: [stable] }`; canonical names only, no `staging`/`latest`, no cycles),
+      and `artifacts[]`, one entry per build: `{ id, platform, arch, format, role?, match }`.
+      `platform` ∈ macos/ios/android/windows/linux/web, `arch` ∈
+      arm64/x86_64/universal/armv7/wasm32/any, `role` defaults to `payload` (installer versus
+      portable is a `format`, never a role), `match` is an anchored case-sensitive glob (`*`,
+      `?`, ≤ 128 chars). `<payload>.sig`/`.sha256` join their build automatically. A
+      `kind: pack` entry only warns (`pack_deliverables_not_supported`) until packs land. CI may
+      then attach a release descriptor (`pkey-release.json`, `release-descriptor.schema.json`)
+      whose builds must match this map.
 - [ ] The base name selects the role; the extension is a pure format preference, tried
       `.json` → `.yaml` → `.yml` and resolved **per document**, so `product.yaml` may sit next to
       `schema.json`.
@@ -70,7 +84,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 
 ### 4. Pick module names (both vocabularies parse)
 
-- [ ] Canonical service slugs: `license`, `config`, `release`, `update`, `identity`. Every entry
+- [ ] Canonical service slugs: `license`, `config`, `release`, `distribution`, `update`,
+      `identity`. Every entry
       is `{ "enabled": <boolean> }`; anything other than literal `true` counts as off.
 - [ ] The pre-suite vocabulary is still accepted and translated at ingest — only slugs are
       stored, and one block may mix both spellings (table below).
@@ -80,13 +95,17 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       else `requires-identity` if Identity is, else `open`. Undeclared is stored as _absent_, so a
       product that later turns License off moves to the derived `open` rather than staying pinned.
 
-| Declared    | Enables              | Why                                                                                  |
-| ----------- | -------------------- | ------------------------------------------------------------------------------------ |
-| `licensing` | `license`            | rename                                                                               |
-| `config`    | `config`             | unchanged                                                                            |
-| `releases`  | `release` + `update` | the old module meant "distributes software" — the suite splits truth store from feed |
-| `oidc`      | `identity`           | rename                                                                               |
-| `edgeMint`  | `config`             | edge-minting is a secret-**delivery** capability of Config, not a unit of its own    |
+| Declared    | Enables                               | Why                                                                                         |
+| ----------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `licensing` | `license`                             | rename                                                                                      |
+| `config`    | `config`                              | unchanged                                                                                   |
+| `releases`  | `release` + `distribution` + `update` | the old module meant "distributes software" — the suite splits truth, delivery and the feed |
+| `oidc`      | `identity`                            | rename                                                                                      |
+| `edgeMint`  | `config`                              | edge-minting is a secret-**delivery** capability of Config, not a unit of its own           |
+
+- [ ] Release, Distribution and Update are a chain — **release ← distribution ← update**. Naming
+      the slugs directly means naming all three you need: `update` needs `distribution`, and
+      `distribution` needs `release`. The legacy `releases` name enables all three at once.
 
 `pkey init --modules` takes either vocabulary (service slugs or the old names above) and always
 scaffolds the `modules` block in service slugs. The slugs and the legacy mapping are the service
@@ -104,8 +123,9 @@ table, `tools/services.json`.
 
 - [ ] `pkey validate` — parses `.pkey/`, runs the authoritative TypeScript validator, and prints
       the enabled modules, required secrets, warnings, then errors. Exit code 0 means valid.
-- [ ] Fix every `error`. Common ones: `update_requires_release` (Update on with Release off — the
-      feed would answer every client with an empty document), `invalid_registration_policy` (an
+- [ ] Fix every `error`. Common ones: `update_requires_distribution` (Update on with Distribution
+      off — the feed would answer every client with an empty document),
+      `distribution_requires_release` (Distribution on with Release off — nothing to deliver), `invalid_registration_policy` (an
       unrecognised value is refused, never coerced), `reserved_slug`.
 - [ ] Read the `warning` lines too. `config_without_activation` is a warning at ingest (a
       config-only product is legitimate) but the enablement API applies the same code as a hard

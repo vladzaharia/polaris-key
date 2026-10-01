@@ -25,9 +25,10 @@ gate-matrix-only runner); the ones a contributor touches most:
 - **Swift** — `sdks/swift/Tests/PolarisKeyTests/`: `ConformanceTests.swift`,
   `GateMatrixTests.swift`, `FingerprintConformanceTests.swift`, `StageMatrixTests.swift`,
   and more.
-- **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers the JWS cases today (P1-02 adds
-  the rest), run by `sdks/godot/tools/run_tests.sh` on an editor and an exported release
-  template.
+- **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers every `cases.json` family and
+  the `fingerprint.json` device ids (the gate and stage matrices follow with the licence client
+  and the boot stage machine), run by `sdks/godot/tools/run_tests.sh` on an editor and an
+  exported release template.
 - **The Worker** — two slices. `packages/worker/test/fingerprintCorpus.test.ts` covers the
   fingerprint/device-id vectors: the Worker recomputes a submitted device's `hwid` server-side
   rather than trusting the client's copy, so it has to agree with what every SDK computes
@@ -45,12 +46,12 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 Four files, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
-| File                | Contents                                                                                         |
-| ------------------- | ------------------------------------------------------------------------------------------------ |
-| `cases.json`        | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles.    |
-| `gate-matrix.json`  | The client gate's decision table — every input combination and the state it must produce.        |
-| `fingerprint.json`  | Hardware-fingerprint and device-id derivation vectors.                                           |
-| `stage-matrix.json` | The boot stage machine (client boot behaviour, outside the wire contract): rows and guard cases. |
+| File                | Contents                                                                                                                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cases.json`        | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles.                                                                                                                   |
+| `gate-matrix.json`  | The client gate's decision table — every input combination and the state it must produce.                                                                                                                       |
+| `fingerprint.json`  | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`. |
+| `stage-matrix.json` | The boot stage machine (client boot behaviour, outside the wire contract): rows and guard cases.                                                                                                                |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the
@@ -138,10 +139,12 @@ serves the recorded responses and asserts each request.
 | Recorder and scenarios | `packages/worker/test/transcripts/` (`recorder.ts`, `determinism.ts`, `scenarios/`)     |
 | Drift check            | `packages/worker/test/transcripts.test.ts`, wrapped by `pnpm gen:transcripts`           |
 | Swift mirror           | `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` (generator-owned, like `v2/`) |
+| Godot mirror           | `sdks/godot/tests/transcripts/` (generator-owned; an exported pack reads only `res://`) |
 | Node replayer          | `conformance/runners/node/transcripts.test.ts` over `transcriptReplay.ts`               |
 | React replayer         | `packages/sdk-react/test/transcripts.test.ts` (the same engine; discovery only)         |
 | Python replayer        | `sdks/python/tests/test_transcripts.py` over `transcript_replay.py`                     |
 | Swift replayer         | `sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift` over `TranscriptReplay.swift`  |
+| Godot replayer         | `sdks/godot/tests/suite_transcripts.gd` over `support/transcript_replay.gd`             |
 
 **Recording.** A scenario seeds a product, builds each request exactly as a wire-contract client
 would, sends it through `dispatchWith` (the router with the request clock injected), asserts
@@ -164,7 +167,7 @@ each feature it proves needs a test tagged `@pkey-feature <id>` that replays
 `conformance/transcripts`.
 
 ```sh
-pnpm gen:transcripts            # re-record every scenario, write the files and the Swift mirror
+pnpm gen:transcripts            # re-record every scenario, write the files and both mirrors
 pnpm gen:transcripts -- --check # the drift guard — exit 1 if anything is stale
 ```
 

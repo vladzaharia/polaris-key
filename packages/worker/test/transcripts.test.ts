@@ -1,8 +1,9 @@
 // The HTTP transcripts (P1b-03, PARITY §4.2): record every scenario through the real router and
-// hold `conformance/transcripts/*.json` (and its Swift mirror) to what the Worker answers today.
+// hold `conformance/transcripts/*.json` (and its Swift and Godot mirrors) to what the Worker
+// answers today.
 //
 //   pnpm --filter @polaris-key/worker test            # CHECK: fails when a file is stale
-//   pnpm gen:transcripts                              # WRITE: regenerates both locations
+//   pnpm gen:transcripts                              # WRITE: regenerates every location
 //   pnpm gen:transcripts -- --check                   # CHECK, on its own
 //
 // A Worker change that alters a recorded response fails this file until the transcripts are
@@ -47,8 +48,8 @@ describe("HTTP transcripts", () => {
 
   it(
     write
-      ? "writes conformance/transcripts and the Swift mirror"
-      : "conformance/transcripts and the Swift mirror are fresh",
+      ? "writes conformance/transcripts and the Swift and Godot mirrors"
+      : "conformance/transcripts and the Swift and Godot mirrors are fresh",
     () => {
       expect(rendered.size).toBe(SCENARIOS.length);
       const drift = reconcile(rendered, write);

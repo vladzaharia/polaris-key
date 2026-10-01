@@ -47,6 +47,7 @@ import { manifestIssuerRefusal } from "./linkRepo.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSyncStatements } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
+import { manifestDeliverableStatements } from "./deliverables.js";
 import { serializeServices } from "../../core/services.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 
@@ -492,6 +493,13 @@ async function applyRepoManifest(
   stmts.push(stmtDeleteOrphanEdgeMintApprovals(slug));
   updated.push("edgeMint");
 
+  // The app deliverable's declaration (P2-04): `release_deliverables.def_json` and the channels'
+  // `includes`. Before the truth store below, which classifies by the same declaration.
+  if (rel) {
+    stmts.push(...manifestDeliverableStatements(slug, rel.app, now));
+    updated.push("deliverables");
+  }
+
   // ── release truth store: the same pass, one extra GitHub read (P2.T2) ───────
   //
   // `release_metadata`/`release_artifacts`/`release_channels`/`release_health` have existed as
@@ -504,12 +512,14 @@ async function applyRepoManifest(
   // access modes the store records.
   const syncedCfg = rel ? await getReleaseConfig(db, slug) : cfg;
   if (syncedCfg) {
+    // The map just parsed, not the persisted one: this batch is what persists it.
     const storeStmts = await releaseStoreSyncStatements(
       env,
       db,
       syncedCfg,
       now,
       fetchImpl,
+      rel ? { app: rel.app } : {},
     );
     if (storeStmts.length > 0) {
       stmts.push(...storeStmts);

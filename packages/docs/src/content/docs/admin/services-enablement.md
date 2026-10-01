@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-Which of the five opt-in services a product runs is the single most consequential switch in the
+Which of the six opt-in services a product runs is the single most consequential switch in the
 console: everything else in [the tour](/docs/admin/console-tour/) — which nav sections exist,
 which routes the worker mounts, what a product's discovery document advertises, what the portal
 offers — is a **projection** of this one setting. It lives on the Platform section's **Services**
@@ -28,6 +28,7 @@ The response, and the shape a `PATCH` body partially updates:
     "license": { "enabled": true },
     "config": { "enabled": true },
     "release": { "enabled": false },
+    "distribution": { "enabled": false },
     "update": { "enabled": false },
     "identity": { "enabled": false }
   },
@@ -37,9 +38,9 @@ The response, and the shape a `PATCH` body partially updates:
 }
 ```
 
-- `services` — the five slugs. A `PATCH` may send any subset; an omitted slug keeps its current
-  value rather than reverting to a default, so a console build that only knows about three
-  services can never accidentally turn off the two it has never heard of.
+- `services` — the six slugs. A `PATCH` may send any subset; an omitted slug keeps its current
+  value rather than reverting to a default, so a console build that only knows about some of the
+  services can never accidentally turn off the ones it has never heard of.
 - `registration` — the **declared** device-registration policy, or `null` when the product rides
   the derived default. Sending `null` explicitly clears a previous declaration.
 - `effectiveRegistration` — what the wire actually enforces right now, whether declared or
@@ -52,8 +53,11 @@ The response, and the shape a `PATCH` body partially updates:
 The Services card collects every toggle and the registration select into one form behind a
 single **Save services** button, rather than writing on each flip. That's a direct consequence
 of how the server validates: it checks the **set**, not each flag in isolation (see _Coherence
-errors_ below). Turning Release off while Update is also on is a coherent two-step change, and a
-card that PATCHed on every flip would reject the first step and never let you reach the second.
+errors_ below). Turning Distribution off while Update is also on is a coherent two-step change,
+and a card that PATCHed on every flip would reject the first step and never let you reach the
+second. Release, Distribution and Update form a chain — **Release ← Distribution ← Update** — so
+turning the feed on for a product means turning all three on, and turning Release off means
+turning the other two off with it.
 
 ## Manifest vs admin ownership
 
@@ -83,12 +87,13 @@ produce the same incoherent state:
 
 | Code                             | Meaning                                                                                                                                                                              | Rendered against                          |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
-| `update_requires_release`        | Update is a feed rendered over Release's truth store; Update can't be on with Release off.                                                                                           | The Update toggle                         |
+| `distribution_requires_release`  | Distribution delivers what Release says exists; Distribution can't be on with Release off.                                                                                           | The Distribution toggle                   |
+| `update_requires_distribution`   | Update is a feed over what Distribution delivers; Update can't be on with Distribution off. (It replaced `update_requires_release`, which it and the rule above together imply.)     | The Update toggle                         |
 | `registration_requires_identity` | Registration is declared `requires-identity`, but Identity is off — there is no login to stand behind it, so no device could ever register.                                          | Identity toggle + the registration select |
 | `config_without_activation`      | Config is on, License is off, and registration is declared `requires-license` — that closes the only mint path such a product has, so its devices could never obtain a token at all. | Config toggle + the registration select   |
 
-Leaving `registration` **derived** rather than explicitly declared sidesteps the second and third
-of these by construction: a derived value is read off the very enablement set being validated,
+Leaving `registration` **derived** rather than explicitly declared sidesteps the last two of
+these by construction: a derived value is read off the very enablement set being validated,
 so it can never itself be incoherent. That's also why the Services card's help text calls the
 derived option "recommended."
 
@@ -115,6 +120,17 @@ of greying out (see [the disabled-service screen](/docs/admin/console-tour/#when
 and the customer portal stops offering whatever that service backed. Read
 [The service model](/docs/start/service-model/) for the four projections and the full coherence
 rule set this page's table is drawn from.
+
+## When Distribution was added
+
+Distribution arrived as the sixth service after the others were in production. Migration `0033`
+turned it on for every product that already had Release on — admin-owned rows included, because
+Distribution did not exist when the operator claimed the row, and every Release product already
+serves downloads that later move into Distribution. A product whose `.pkey/product` names the
+slugs `release` and `update` directly (rather than the legacy `releases` module) fails its next
+push with `update_requires_distribution` until the manifest adds `distribution: { enabled: true }`;
+the stored set keeps serving in the meantime. The **Distribution** nav section appears only while
+Distribution is on.
 
 ## Reference
 

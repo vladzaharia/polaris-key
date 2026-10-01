@@ -218,7 +218,7 @@ export class IdentityClient {
       case "ready": {
         if (!isString(body.token))
           return { status: "error", message: "ready without a token." };
-        await this.tokens.set(body.token);
+        await this.tokens.set(body.token, "signin");
         await this.onAcquired();
         return { status: "ready" };
       }

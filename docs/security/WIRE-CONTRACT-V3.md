@@ -226,6 +226,39 @@ One set of channel names serves the licence build gate, the `entitled` release c
   - `requires-license` — the endpoint returns `403 registration_closed`; activation/enrollment are the only mint paths (today's behavior).
 - **Device management:** `GET/PATCH/DELETE /<p>/devices[/:id]` (self-only for PATCH/DELETE) and `POST /<p>/devices/report` (facts/probes telemetry; best-effort, errors swallowed client-side) are Core surfaces available under every policy.
 
+### 6.1 Hardware fingerprint components
+
+A native SDK MAY present a fingerprint with activation, enrolment and registration. Each
+component is read on the device, omitted when unreadable (never substituted), and hashed as
+`base64url(sha256("pkey-hw:<product>:<component>:<raw>"))[0..22]` (`fingerprintVersion` 1).
+The Worker drops unknown names, recomputes `hwid`, and matches component-wise.
+
+| Component              | macOS                             | Windows                                 | Linux                            | iOS                   |
+| ---------------------- | --------------------------------- | --------------------------------------- | -------------------------------- | --------------------- |
+| `machineUuid` (anchor) | `IOPlatformUUID`                  | registry `MachineGuid`                  | rule 2                           | `identifierForVendor` |
+| `boardSerial`          | `IOPlatformSerialNumber`          | `Win32_BaseBoard.SerialNumber` (rule 1) | not read                         | not read              |
+| `cpuModel`             | CPU brand `:` logical cores       | same                                    | same                             | not read              |
+| `primaryMac`           | lowest non-internal, non-zero MAC | same                                    | same                             | not read              |
+| `bootVolumeUuid`       | boot volume UUID                  | `vol C:` serial                         | `findmnt -no UUID /`             | not read              |
+| `ramBucket`            | rule 3                            | rule 3                                  | rule 3                           | rule 3                |
+| `machineModel`         | `hw.model`                        | `Win32_ComputerSystem.Model` (rule 1)   | `/sys/class/dmi/id/product_name` | `hw.machine`          |
+
+The table is informative except where it cites a rule. `cpuModel` and `primaryMac` are read
+differently by different SDKs today; only stability within one SDK is promised for them.
+
+1. **Windows CIM** (`windowsCim`, `windowsCimCommand`). One PowerShell call, with stdin on the
+   null device, prints `{"boardSerial": …, "machineModel": …}` for the last instance of each
+   class, with non-ASCII escaped. The parser strips one leading U+FEFF, requires a JSON object,
+   and keeps a value only if it is a string that is non-empty after trimming ASCII whitespace
+   (U+0009–U+000D, U+0020, and nothing else) at both ends. It keeps vendor placeholders verbatim
+   and ignores other keys. Anything else yields neither component. **[C]**
+2. **Linux anchor** (`linuxAnchor`). The first of `/etc/machine-id` and `/var/lib/dbus/machine-id`
+   whose content, trimmed of ASCII whitespace as in rule 1, is non-empty and not
+   `uninitialized`. No DMI file is read; a host where neither file qualifies has no anchor. The
+   same value is the device id's raw input on Linux. **[C]**
+3. **RAM bucket** (`ramBuckets`). `g = floor(bytes / 2^30)`. Omitted when `g = 0`, otherwise the
+   largest power of two not above `g`, in decimal. Divide before any logarithm. **[C]**
+
 ## 7. Offline bundles (`pkey-bundle+jws`)
 
 Air-gapped activation (D-12) — classic request-code flow:
@@ -290,7 +323,7 @@ Pre-launch, no live clients: v3 replaces v2 in one movement — no dual-accept w
 
 ## 10. Divergence & hardening ledger (seeded from v2 §6)
 
-All v2 divergence classes (alg confusion, oversize, duplicate keys, alphabet strictness, typ separation, freshness profiles, trust substitution, clock floor) carry into corpus v2 unchanged. New classes introduced by v3, each with corpus coverage: per-type anti-replay floors (§3), config-document-without-license issuance (§2.2), registration-policy token minting (§6), bundle all-or-nothing import (§7), bundle payload cap (§1), gate `not-applicable`/`activation` semantics (§5), channel vocabulary and aliases (§5.1, gate-matrix). Implementations must not add local tolerances beyond this document; any observed divergence gets a corpus case before a fix.
+All v2 divergence classes (alg confusion, oversize, duplicate keys, alphabet strictness, typ separation, freshness profiles, trust substitution, clock floor) carry into corpus v2 unchanged. New classes introduced by v3, each with corpus coverage: per-type anti-replay floors (§3), config-document-without-license issuance (§2.2), registration-policy token minting (§6), bundle all-or-nothing import (§7), bundle payload cap (§1), gate `not-applicable`/`activation` semantics (§5), channel vocabulary and aliases (§5.1, gate-matrix), fingerprint component derivations (§6.1, `fingerprint.json`). Implementations must not add local tolerances beyond this document; any observed divergence gets a corpus case before a fix.
 
 **Declared representation limit: U+0000 in decoded strings.** Some client platforms have a native string type that cannot hold U+0000. GDScript's `String` is one: Godot 4.4 drops the character and 4.7 replaces it. Such a platform is conformant only under this rule.
 

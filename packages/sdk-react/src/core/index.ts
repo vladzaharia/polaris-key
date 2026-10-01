@@ -30,7 +30,11 @@ export {
   type DeviceInfo,
   type UserConfigEntry,
   type VersionCheck,
+  type ChangelogEntry,
+  type DownloadUrlOptions,
+  type ImportBundleResult,
 } from "./types.js";
+export type { ProductCatalog } from "@polaris-key/catalog";
 
 export {
   SERVICE_SLUGS,
@@ -57,6 +61,7 @@ export {
   flattenEntries,
   readConfig,
   readEntitled,
+  readEntitledChannels,
   resolveConfig,
   resolveConfigValue,
   configSource,

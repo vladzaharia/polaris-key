@@ -100,14 +100,14 @@
    *
    * PLACEHOLDER PALETTE. The real per-service brand tokens ship with the brand-package rollout
    * (docs/superpowers/plans/2026-06-30-polaris-brand-rollout.md), which restyles this structure
-   * rather than replacing it — these six hues exist so the wiring is testable now and so the
+   * rather than replacing it — these seven hues exist so the wiring is testable now and so the
    * later swap is a value change, not a refactor.
    *
    * Contrast: every value below clears 4.5:1 against BOTH themes' page, card, and sidebar
    * surfaces, so an accent may carry body text. Light-theme accents are much darker than their
    * dark-theme counterparts for the same reason the base indigo is (56% vs 68%): they are read
    * against near-white, not near-black. `--pk-primary-foreground` needs no override — the base
-   * pairing (near-black on the dark accents, white on the light ones) clears 4.5:1 on all six,
+   * pairing (near-black on the dark accents, white on the light ones) clears 4.5:1 on all seven,
    * which is the constraint that fixed the lightness of each.
    */
   [data-service="core"] {
@@ -125,6 +125,10 @@
   [data-service="release"] {
     --pk-primary: 268 90% 76%; /* violet — Release */
     --pk-ring: 268 90% 78%;
+  }
+  [data-service="distribution"] {
+    --pk-primary: 22 92% 62%; /* orange — Distribution */
+    --pk-ring: 22 92% 64%;
   }
   [data-service="update"] {
     --pk-primary: 152 64% 52%; /* green — Update */
@@ -153,6 +157,10 @@
   .light [data-service="release"] {
     --pk-primary: 268 66% 50%;
     --pk-ring: 268 66% 50%;
+  }
+  .light [data-service="distribution"] {
+    --pk-primary: 20 88% 34%;
+    --pk-ring: 20 88% 34%;
   }
   .light [data-service="update"] {
     --pk-primary: 158 74% 26%;

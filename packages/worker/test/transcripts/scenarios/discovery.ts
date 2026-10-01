@@ -19,6 +19,7 @@ const DEFAULT_MAP = {
   license: true,
   config: true,
   release: false,
+  distribution: false,
   update: false,
   identity: false,
 };

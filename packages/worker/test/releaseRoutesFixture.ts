@@ -207,6 +207,7 @@ export async function enableServices(
         license: { enabled: true },
         config: { enabled: true },
         release: { enabled: release },
+        distribution: { enabled: release },
         update: { enabled: release },
         identity: { enabled: false },
       },

@@ -6,9 +6,11 @@ import {
   ARTIFACT_ROLES,
   compileManualChannelRegex,
   DELIVERABLE_KINDS,
+  isArtifactMatch,
   isDeliverableId,
   isIgnoreTag,
   isReservedChannelName,
+  matchesArtifactGlob,
   MAX_IGNORE_TAG_LENGTH,
   MAX_DELIVERABLE_ID_LENGTH,
   RELEASE_ARCHES,
@@ -22,6 +24,7 @@ import {
   MAX_MANIFEST_DEPTH,
   normalizeAutoIssue,
   parseManifest,
+  parseManifestAppDeliverable,
   validateIngestDocuments,
   validateManifestDocuments,
   webOriginProblem,
@@ -741,13 +744,13 @@ describe("module vocabulary → service slugs", () => {
     ).toEqual(["license"]);
   });
 
-  it("maps releases → release AND update", () => {
+  it("maps releases → release, distribution AND update", () => {
     // The old module meant "this product distributes software", which the suite splits into
-    // the truth store and the feed (D-05). Mapping it to release alone would silently take
-    // the appcast and /version away from every product already serving them.
+    // the truth store, delivery and the feed (D-05, README §3.2). Mapping it to release alone
+    // would silently take the appcast and /version away from every product already serving them.
     expect(
       validate({ modules: { releases: { enabled: true } } }).enabledModules,
-    ).toEqual(["release", "update"]);
+    ).toEqual(["release", "distribution", "update"]);
   });
 
   it("maps oidc → identity", () => {
@@ -772,12 +775,20 @@ describe("module vocabulary → service slugs", () => {
           license: { enabled: true },
           config: { enabled: true },
           release: { enabled: true },
+          distribution: { enabled: true },
           update: { enabled: true },
           identity: { enabled: true },
         },
         oidc: { provider: "platform" },
       }).enabledModules,
-    ).toEqual(["license", "config", "release", "update", "identity"]);
+    ).toEqual([
+      "license",
+      "config",
+      "release",
+      "distribution",
+      "update",
+      "identity",
+    ]);
   });
 
   it("collapses a mixed-vocabulary block instead of double-counting", () => {
@@ -790,7 +801,7 @@ describe("module vocabulary → service slugs", () => {
           release: { enabled: true },
         },
       }).enabledModules,
-    ).toEqual(["license", "release", "update"]);
+    ).toEqual(["license", "release", "distribution", "update"]);
   });
 
   it("reports in canonical order whatever order the manifest used", () => {
@@ -840,6 +851,7 @@ describe("parseManifest carries the enablement set", () => {
       license: { enabled: true },
       config: { enabled: false },
       release: { enabled: false },
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     });
@@ -853,73 +865,96 @@ describe("parseManifest carries the enablement set", () => {
       license: { enabled: true },
       config: { enabled: true },
       release: { enabled: false },
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     });
   });
 
-  it("turns a legacy releases manifest into release + update", () => {
+  it("turns a legacy releases manifest into release + distribution + update", () => {
     const res = parse({ modules: { releases: { enabled: true } } });
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.manifest.services.release.enabled).toBe(true);
+    expect(res.manifest.services.distribution.enabled).toBe(true);
     expect(res.manifest.services.update.enabled).toBe(true);
   });
 });
 
-describe("update_requires_release", () => {
+describe("the release ← distribution ← update chain", () => {
   const validate = (modules: Record<string, unknown>) =>
     validateManifestDocuments({
       product: { ...PRODUCT, modules },
       schema: catalogWithSecretDelivery(),
       release: release().release,
     });
+  const codes = (modules: Record<string, unknown>) =>
+    validate(modules).errors.map((e) => e.code);
 
-  it("refuses update declared without release", () => {
-    // Update renders a feed over Release's truth store; alone it would answer every client
-    // with an empty document rather than an error — a silent failure.
-    const res = validate({
-      config: { enabled: true },
-      update: { enabled: true },
-    });
-    expect(res.ok).toBe(false);
-    expect(res.errors.map((e) => e.code)).toContain("update_requires_release");
+  it("refuses distribution declared without release", () => {
+    // Distribution delivers what Release says exists; alone it has nothing to deliver.
+    expect(codes({ distribution: { enabled: true } })).toContain(
+      "distribution_requires_release",
+    );
   });
 
-  it("accepts update alongside release", () => {
+  it("refuses update declared without distribution", () => {
+    // Update serves a feed over what Distribution delivered. Release alone is not enough.
     const res = validate({
       release: { enabled: true },
       update: { enabled: true },
     });
-    expect(res.errors.map((e) => e.code)).not.toContain(
-      "update_requires_release",
-    );
+    expect(res.ok).toBe(false);
+    expect(res.errors.map((e) => e.code)).toEqual([
+      "update_requires_distribution",
+    ]);
   });
 
-  it("accepts release without update", () => {
-    const res = validate({ release: { enabled: true } });
-    expect(res.ok).toBe(true);
+  it("refuses update alone with update_requires_distribution, never update_requires_release", () => {
+    // The retired code is subsumed (README §3.2): it must never be emitted again.
+    const got = codes({ config: { enabled: true }, update: { enabled: true } });
+    expect(got).toContain("update_requires_distribution");
+    expect(got).not.toContain("update_requires_release");
+  });
+
+  it("accepts the whole chain", () => {
+    const res = validate({
+      release: { enabled: true },
+      distribution: { enabled: true },
+      update: { enabled: true },
+    });
+    expect(res.errors).toEqual([]);
+  });
+
+  it("accepts release alone, and release + distribution", () => {
+    expect(validate({ release: { enabled: true } }).ok).toBe(true);
+    expect(
+      validate({
+        release: { enabled: true },
+        distribution: { enabled: true },
+      }).ok,
+    ).toBe(true);
   });
 
   it("cannot be tripped by the legacy releases module", () => {
-    // `releases` maps to both, so the mapping can never produce its own violation.
+    // `releases` maps to all three, so the mapping can never produce its own violation.
     const res = validate({ releases: { enabled: true } });
     expect(res.ok).toBe(true);
-    expect(res.enabledModules).toEqual(["release", "update"]);
+    expect(res.enabledModules).toEqual(["release", "distribution", "update"]);
   });
 
   it("surfaces through parseManifest as a hard failure", () => {
     const res = parseManifest({
       product: JSON.stringify({
         ...PRODUCT,
-        modules: { update: { enabled: true } },
+        modules: { release: { enabled: true }, update: { enabled: true } },
       }),
       schema: JSON.stringify(catalogWithSecretDelivery()),
       release: JSON.stringify(release()),
     });
     expect(res.ok).toBe(false);
     if (res.ok) return;
-    expect(res.errors.join("\n")).toContain("release must be enabled too");
+    expect(res.errors.join("\n")).toContain("distribution must be enabled too");
   });
 });
 
@@ -1626,4 +1661,194 @@ describe("release model vocabulary (P2-03)", () => {
   ])("rejects the deliverable id %j", (id) =>
     expect(isDeliverableId(id)).toBe(false),
   );
+});
+
+describe("deliverables and the artifact map (P2-04)", () => {
+  const parseWith = (fields: Record<string, unknown>) =>
+    parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify({
+        release: { ...(release().release as object), ...fields },
+      }),
+    });
+
+  it("a document without deliverables keeps the implicit app (legacy sniffing)", () => {
+    const res = parseWith({});
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.app).toBeNull();
+  });
+
+  it("normalises the app declaration with its defaults", () => {
+    const res = parseWith({
+      deliverables: {
+        app: {
+          kind: "app",
+          channels: { beta: { includes: ["stable"] } },
+          artifacts: [
+            {
+              id: "macos",
+              platform: "macos",
+              arch: "universal",
+              format: "dmg",
+              match: "Acme-*.dmg",
+            },
+          ],
+        },
+        "acme.core3d": { kind: "pack", type: "godot.pck" },
+      },
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.app).toEqual({
+      kind: "app",
+      versioning: { scheme: "semver", buildNumber: null },
+      channels: { beta: { includes: ["stable"] } },
+      artifacts: [
+        {
+          id: "macos",
+          platform: "macos",
+          arch: "universal",
+          format: "dmg",
+          role: "payload",
+          match: "Acme-*.dmg",
+        },
+      ],
+    });
+  });
+
+  it("persists either spelling of the tag filters into the same fields", () => {
+    const nested = parseWith({
+      deliverables: {
+        app: {
+          kind: "app",
+          versioning: {
+            stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
+            ignoreTags: ["packs"],
+          },
+        },
+      },
+    });
+    const legacy = parseWith({
+      stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
+      ignoreTags: ["packs"],
+      deliverables: { app: { kind: "app" } },
+    });
+    for (const res of [nested, legacy]) {
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.manifest.release?.stableTagPattern).toBe(
+        "v\\d+\\.\\d+\\.\\d+",
+      );
+      expect(res.manifest.release?.ignoreTags).toEqual(["packs"]);
+    }
+  });
+
+  it("refuses both spellings at once", () => {
+    const res = parseWith({
+      stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
+      deliverables: {
+        app: { kind: "app", versioning: { ignoreTags: ["packs"] } },
+      },
+    });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors.join("\n")).toContain("keep one spelling");
+  });
+
+  it("a pack deliverable is a warning, not an error", () => {
+    const res = validateManifestDocuments({
+      product: { ...PRODUCT, modules: { releases: true } },
+      schema: catalogWithSecretDelivery(),
+      release: {
+        release: {
+          ...(release().release as object),
+          deliverables: { "acme.ui": { kind: "pack" } },
+        },
+      },
+    });
+    expect(res.errors).toEqual([]);
+    expect(res.warnings.map((w) => w.code)).toEqual([
+      "pack_deliverables_not_supported",
+    ]);
+  });
+
+  it("includes may name a manual channel, and a cycle is refused", () => {
+    const manual = [{ name: "nightly", regex: "v.*-nightly" }];
+    const ok = parseWith({
+      manualChannels: manual,
+      deliverables: {
+        app: { kind: "app", channels: { beta: { includes: ["nightly"] } } },
+      },
+    });
+    expect(ok.ok).toBe(true);
+    const self = parseWith({
+      deliverables: {
+        app: { kind: "app", channels: { beta: { includes: ["beta"] } } },
+      },
+    });
+    expect(self.ok).toBe(false);
+  });
+
+  it("includes names are canonical: a tolerated manual name or an alias is refused, never stored", () => {
+    for (const name of ["Nightly.2", "staging"]) {
+      const res = parseWith({
+        manualChannels: [{ name, regex: "v.*-x" }],
+        deliverables: {
+          app: { kind: "app", channels: { beta: { includes: [name] } } },
+        },
+      });
+      expect(res.ok).toBe(false);
+      if (res.ok) return;
+      expect(res.errors.join("\n")).toContain(
+        "/release/deliverables/app/channels/beta/includes/0: includes names must be canonical",
+      );
+    }
+    // A stored declaration from before the rule loses the name rather than serving it.
+    expect(
+      parseManifestAppDeliverable(
+        JSON.stringify({
+          kind: "app",
+          channels: { beta: { includes: ["stable", "Nightly.2", "staging"] } },
+        }),
+      )?.channels,
+    ).toEqual({ beta: { includes: ["stable"] } });
+  });
+});
+
+describe("matchesArtifactGlob", () => {
+  it("anchors, is case-sensitive, and treats every other character literally", () => {
+    const g = "Diceroll-*-macos.dmg";
+    expect(matchesArtifactGlob(g, "Diceroll-1.2.3-macos.dmg")).toBe(true);
+    expect(matchesArtifactGlob(g, "Diceroll--macos.dmg")).toBe(true);
+    expect(matchesArtifactGlob(g, "diceroll-1.2.3-macos.dmg")).toBe(false);
+    expect(matchesArtifactGlob(g, "Diceroll-1.2.3-macos.dmg.sig")).toBe(false);
+    expect(matchesArtifactGlob(g, "xDiceroll-1.2.3-macos.dmg")).toBe(false);
+    // `.` is not a regex wildcard, and regex metacharacters are plain text.
+    expect(matchesArtifactGlob("a.zip", "abzip")).toBe(false);
+    expect(matchesArtifactGlob("a(b)+[c].zip", "a(b)+[c].zip")).toBe(true);
+  });
+
+  it("? is exactly one character (one code point)", () => {
+    expect(matchesArtifactGlob("v?.zip", "v1.zip")).toBe(true);
+    expect(matchesArtifactGlob("v?.zip", "v.zip")).toBe(false);
+    expect(matchesArtifactGlob("v?.zip", "v12.zip")).toBe(false);
+    expect(matchesArtifactGlob("v?.zip", "v\u{1F680}.zip")).toBe(true);
+  });
+
+  it("stays linear on a pathological glob", () => {
+    const glob = `${"*a".repeat(60)}b`;
+    const name = "a".repeat(255);
+    const t0 = performance.now();
+    expect(matchesArtifactGlob(glob, name)).toBe(false);
+    expect(performance.now() - t0).toBeLessThan(50);
+  });
+
+  it("validates a glob's shape", () => {
+    expect(isArtifactMatch("*.dmg")).toBe(true);
+    expect(isArtifactMatch("")).toBe(false);
+    expect(isArtifactMatch("a\nb")).toBe(false);
+    expect(isArtifactMatch("x".repeat(129))).toBe(false);
+  });
 });

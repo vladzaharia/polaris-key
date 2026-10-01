@@ -9,6 +9,7 @@ public enum ServiceSlug: String, Sendable, Codable, Equatable, CaseIterable {
     case license
     case config
     case release
+    case distribution
     case update
     case identity
 
@@ -16,7 +17,7 @@ public enum ServiceSlug: String, Sendable, Codable, Equatable, CaseIterable {
     public var isDefaultEnabled: Bool {
         switch self {
         case .license, .config: return true
-        case .release, .update, .identity: return false
+        case .release, .distribution, .update, .identity: return false
         }
     }
 }

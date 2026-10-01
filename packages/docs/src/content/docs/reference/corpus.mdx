@@ -7,8 +7,9 @@ description: "The case families every SDK verifies identically, generated from t
     Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
 
 One generator (`tools/sign-corpus.ts`) signs every vector, and every language runner
-verifies them: Node, Python, Swift, React (the gate matrix) and Godot (`jwsCases`, from an
-editor and an exported release template). `pnpm gen:corpus -- --check` is the CI drift gate,
+verifies them: Node, Python, Swift, React (the gate matrix) and Godot (every `cases.json`
+family and the `fingerprint.json` device ids, from an editor and an exported release
+template). `pnpm gen:corpus -- --check` is the CI drift gate,
 over the source and both generator-owned mirrors (the Swift test resources and the Godot
 `res://` mirror at `sdks/godot/tests/corpus/v2/`). Corpus v1 is deleted — v2 is the
 only corpus. `corpusVersion 2`,
@@ -30,6 +31,8 @@ only corpus. `corpusVersion 2`,
 ## Gate matrix (`gate-matrix.json`): 38 rows
 
 ## Fingerprint corpus (`fingerprint.json`): 6 vectors, 4 device-id derivations, component order `machineUuid` → `boardSerial` → `cpuModel` → `primaryMac` → `bootVolumeUuid` → `ramBucket` → `machineModel`
+
+Source-rule sections (WIRE-CONTRACT-V3 §6.1): `windowsCim` 17, `linuxAnchor` 10, `ramBuckets` 13, plus the pinned `windowsCimCommand`.
 
 ## Stage matrix (`stage-matrix.json`): 56 rows, 7 guard cases
 

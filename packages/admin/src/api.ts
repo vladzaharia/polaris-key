@@ -421,8 +421,10 @@ export interface UpdateServicesBody {
  * they name the exact toggle the operator just moved.
  */
 export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
-  update_requires_release:
-    "Update is a feed over Release’s truth store — enable Release first, or turn Update off.",
+  distribution_requires_release:
+    "Distribution delivers what Release says exists — enable Release first, or turn Distribution off.",
+  update_requires_distribution:
+    "Update is a feed over what Distribution delivers — enable Distribution first, or turn Update off.",
   registration_requires_identity:
     "Registration is set to “requires-identity”, but Identity is off; no device could ever register.",
   config_without_activation:
@@ -836,7 +838,7 @@ export class ApiError extends Error {
     /**
      * Stable COHERENCE codes, distinct from `fields`. A field name says "this input was
      * malformed"; an `errors` entry says "these inputs are individually fine and jointly
-     * impossible" — `update_requires_release` names no single toggle, it names a relationship.
+     * impossible" — `update_requires_distribution` names no single toggle, it names a relationship.
      * Only the endpoints that validate a whole object against rules (services, so far) send it.
      */
     public readonly errors?: string[],

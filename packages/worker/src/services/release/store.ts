@@ -70,13 +70,31 @@ export async function latestReleaseHasDmg(
  *
  * The product's implicit `app` deliverable is created (never modified) first in the batch, so
  * every release the sync writes belongs to a deliverable that exists.
+ *
+ * ── PLANNED FROM A READ, APPLIED LATER (P2-04) ──────────────────────────────────────────────
+ *
+ * The statements are built from what the sync read and run later, in the caller's batch. A
+ * release descriptor ingested in between (P2-02's CI submit racing a webhook's sync) owns its
+ * release by the time they run, so no statement may trust the plan's "undescribed": the
+ * metadata upsert carries `metadata_json.descriptor` over as it is at write time, the map's
+ * build upserts are guarded on the release still being undescribed (`guard.ts`), the stale-build
+ * DELETE skips described releases, and the `sniffed`/`mapped` artifact upserts fall back to
+ * exactly what `described` would write (`ArtifactSyncMode`).
  */
 
-import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
+import {
+  APP_DELIVERABLE_ID,
+  type ManifestAppDeliverable,
+} from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db, DbStatement } from "../../core/platform.js";
 import { archOf } from "./assets.js";
-import type { Release, ReleaseAsset } from "./github.js";
+import { assetSha256, type Release, type ReleaseAsset } from "./github.js";
+import {
+  classifyByMap,
+  hasArtifactMap,
+  type ClassifiedFile,
+} from "./artifactMap.js";
 import { compareSemver, parseSemver } from "../../core/entitlements.js";
 import {
   classifyChannel,
@@ -89,7 +107,29 @@ import {
   type ManualChannel,
 } from "./channels.js";
 import { artifactPolicy, type ReleaseConfigRow } from "./config.js";
-import { NEXT_SEQ_SQL, roleOfKind, stmtEnsureAppDeliverable } from "./model.js";
+import {
+  NEXT_SEQ_SQL,
+  roleOfKind,
+  stmtEnsureAppDeliverable,
+  stmtUpsertBuild,
+} from "./model.js";
+import { guardStatement, RELEASE_DESCRIBED_SQL } from "./guard.js";
+
+/** What the truth-store sync needs to know about classification (P2-04). */
+export interface StoreClassificationOptions {
+  /** The declared app deliverable; its `artifacts` map, when non-empty, replaces sniffing. */
+  app?: ManifestAppDeliverable | null;
+  /** Releases with an ingested descriptor, which owns their builds and classification. */
+  described?: ReadonlySet<string>;
+  /** Releases whose `pkey-release.json` was refused, with the reason (degrades their health). */
+  refused?: ReadonlyMap<string, string>;
+  /**
+   * The release rows of descriptors ingested in this pass, by release id. Each is emitted in
+   * that release's own publication-order slot, just before the store's upsert of the same row,
+   * so a new described release takes its `seq` in publication order like any other (P2-03).
+   */
+  describedRows?: ReadonlyMap<string, readonly DbStatement[]>;
+}
 
 // ── Row shapes ───────────────────────────────────────────────────────────────
 
@@ -235,16 +275,22 @@ export async function listReleaseHealth(
 }
 
 /**
- * Every release id the store holds for a product. The truth-store sync hands these to
- * `releaseStoreStatements` so it can mark a release that has gone from upstream (P0-03) without
- * the statement builder touching the database.
+ * Every release id the store holds for a product that GitHub is upstream of. The truth-store
+ * sync hands these to `releaseStoreStatements` so it can mark a release that has gone from
+ * upstream (P0-03) without the statement builder touching the database. A release CI published
+ * through a descriptor with no GitHub release behind it (P2-04: `source_url` NULL, descriptor
+ * source `ci`) was never upstream, so its absence from the list means nothing.
  */
 export async function listStoredReleaseIds(
   db: Db,
   product: string,
 ): Promise<string[]> {
   const rows = await db.all<{ release_id: string }>(
-    "SELECT release_id FROM release_metadata WHERE product = ? ORDER BY release_id ASC",
+    `SELECT release_id FROM release_metadata
+      WHERE product = ?
+        AND NOT (source_url IS NULL
+                 AND COALESCE(json_extract(metadata_json, '$.descriptor.source'), '') = 'ci')
+      ORDER BY release_id ASC`,
     product,
   );
   return rows.map((r) => r.release_id);
@@ -406,12 +452,12 @@ export async function clearChannelFloor(
  * tightening, never a downgrade. The `entitled` check itself lives on the device-facing routes,
  * where the token exists.
  */
-function storeAccess(mode: ReleaseAccess): string {
+export function storeAccess(mode: ReleaseAccess): string {
   return mode === "entitled" ? "licensed" : mode;
 }
 
 /** Classify an asset by name: what a consumer is looking at, not what the uploader called it. */
-function artifactKind(name: string): string {
+export function artifactKind(name: string): string {
   const lower = name.toLowerCase();
   if (lower.endsWith(".sig")) return "signature";
   if (lower.endsWith(".sha256")) return "checksum";
@@ -432,7 +478,7 @@ function artifactPlatform(kind: string, name: string): string | null {
 }
 
 /** The Content-Type this gateway would serve the artifact as — never the uploader's (R6-04). */
-function artifactContentType(kind: string): string {
+export function artifactContentType(kind: string): string {
   return kind === "dmg"
     ? "application/x-apple-diskimage"
     : "application/octet-stream";
@@ -449,6 +495,12 @@ function publishedAtSeconds(iso: string | null): number | null {
  * existing row keeps them, except that a NULL `seq` (a row pre-P2-03 code wrote) is filled.
  * `row.seq` is ignored — the next seq is computed inside the statement, from the rows already
  * written earlier in the same batch, so the batch's statement order IS the publication order.
+ *
+ * The descriptor's facts survive a resync (P2-04): `metadata_json.descriptor` (the ingested
+ * descriptor's hash, or a refusal) is carried over into the rewritten `metadata_json`, and a
+ * `commit_sha` the descriptor recorded is kept when GitHub has none to offer. Both are decided
+ * inside the statement, against the row as it is at that moment, so a descriptor ingested
+ * between this sync's read and its batch is never lost.
  */
 function stmtUpsertMetadata(
   row: Omit<ReleaseMetadataRow, "seq" | "channel">,
@@ -469,7 +521,13 @@ function stmtUpsertMetadata(
             metadata_access = excluded.metadata_access,
             artifacts_access = excluded.artifacts_access,
             published_at = excluded.published_at,
-            metadata_json = excluded.metadata_json,
+            metadata_json = CASE
+              WHEN json_extract(release_metadata.metadata_json, '$.descriptor') IS NULL
+                THEN excluded.metadata_json
+              ELSE json_set(excluded.metadata_json, '$.descriptor',
+                            json(json_extract(release_metadata.metadata_json, '$.descriptor')))
+            END,
+            commit_sha = COALESCE(excluded.commit_sha, release_metadata.commit_sha),
             modified_at = excluded.modified_at`,
     params: [
       row.product,
@@ -493,48 +551,164 @@ function stmtUpsertMetadata(
 }
 
 /**
- * GitHub-derived columns only (see the header). `sha256`, `storage_key`, `metadata_json`,
- * `build_id` and `locations_json` are inserted as the sync found them (NULL) and never updated;
- * `role` is filled when NULL and never overwritten.
+ * How the sync classifies a release's files (P2-04):
+ *
+ *   `sniffed`    no artifact map: name sniffing, exactly as before P2-04. GitHub-derived columns
+ *                only; `sha256`, `storage_key`, `metadata_json` and `locations_json` are
+ *                inserted as found (NULL) and never updated; `role` is filled when NULL and never
+ *                overwritten. The one addition: a file a REMOVED map had put in a build
+ *                (`build_id` set on a release with no descriptor) leaves it, and its role is
+ *                re-sniffed — a no-op for every release that never had a map.
+ *   `mapped`     the product declares a map and the release has no descriptor: the map is the
+ *                truth, so `build_id`, `role`, `platform` and `arch` follow it on every sync, and
+ *                `sha256` is filled from GitHub's digest when it is still NULL.
+ *   `described`  the release has an ingested descriptor, which owns its classification: only
+ *                the GitHub-derived serving columns (name, size, URL, access) are refreshed.
+ *
+ * THE MODE IS RE-CHECKED WHEN THE STATEMENT RUNS. The sync picks `sniffed` or `mapped` from what
+ * it read, and its batch lands later; a descriptor ingested in between (P2-02's CI submit, racing
+ * the webhook's sync) owns the release by then. So every `sniffed`/`mapped` statement asks the
+ * store, at write time, whether the release is described — and if it is, it writes exactly what
+ * the `described` statement would have: a new file goes in with no build and its kind's role
+ * (and not at all when the descriptor already holds a file of that name), and an existing row
+ * keeps every column the descriptor owns. A stale plan can never overwrite a described release.
  */
-function stmtUpsertArtifact(row: ReleaseArtifactRow): DbStatement {
-  return {
-    sql: `INSERT INTO release_artifacts
-            (product, release_id, artifact_id, name, kind, platform, arch, content_type,
-             size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
-             metadata_json, created_at, build_id, role, locations_json)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-          ON CONFLICT(product, release_id, artifact_id) DO UPDATE SET
-            name = excluded.name,
-            kind = excluded.kind,
-            platform = excluded.platform,
-            arch = excluded.arch,
-            content_type = excluded.content_type,
+export type ArtifactSyncMode = "sniffed" | "mapped" | "described";
+
+/** Refreshed in every mode: the GitHub-derived serving columns. */
+const ARTIFACT_SERVING_SET = `name = excluded.name,
             size_bytes = excluded.size_bytes,
             source_url = excluded.source_url,
-            access = excluded.access,
-            role = COALESCE(release_artifacts.role, excluded.role)`,
-    params: [
-      row.product,
-      row.release_id,
-      row.artifact_id,
-      row.name,
-      row.kind,
-      row.platform,
-      row.arch,
-      row.content_type,
-      row.size_bytes,
-      row.sha256,
-      row.source_url,
-      row.storage_key,
-      row.sparkle_signature,
-      row.access,
-      row.metadata_json,
-      row.created_at,
-      row.build_id,
-      row.role,
-      row.locations_json,
+            access = excluded.access`;
+
+/** The columns `sniffed`/`mapped` also assign, and what to; a described release keeps its own. */
+const ARTIFACT_CLASSIFYING_SET: Record<
+  Exclude<ArtifactSyncMode, "described">,
+  readonly (readonly [column: string, value: string])[]
+> = {
+  sniffed: [
+    ["kind", "excluded.kind"],
+    ["platform", "excluded.platform"],
+    ["arch", "excluded.arch"],
+    ["content_type", "excluded.content_type"],
+    [
+      "role",
+      `CASE WHEN release_artifacts.build_id IS NULL
+                        THEN COALESCE(release_artifacts.role, excluded.role)
+                        ELSE excluded.role END`,
     ],
+    ["build_id", "NULL"],
+  ],
+  mapped: [
+    ["kind", "excluded.kind"],
+    ["platform", "excluded.platform"],
+    ["arch", "excluded.arch"],
+    ["content_type", "excluded.content_type"],
+    ["build_id", "excluded.build_id"],
+    ["role", "excluded.role"],
+    ["sha256", "COALESCE(release_artifacts.sha256, excluded.sha256)"],
+  ],
+};
+
+/** The conflicting row's release has an ingested descriptor (correlated; no params). */
+const CONFLICT_ROW_DESCRIBED_SQL = `EXISTS (
+                 SELECT 1 FROM release_metadata d
+                  WHERE d.product = release_artifacts.product
+                    AND d.release_id = release_artifacts.release_id
+                    AND json_extract(d.metadata_json, '$.descriptor.status') = 'ingested')`;
+
+function artifactConflictSet(mode: ArtifactSyncMode): string {
+  if (mode === "described") return ARTIFACT_SERVING_SET;
+  const classifying = ARTIFACT_CLASSIFYING_SET[mode].map(
+    ([column, value]) =>
+      `${column} = CASE WHEN ${CONFLICT_ROW_DESCRIBED_SQL}
+              THEN release_artifacts.${column}
+              ELSE ${value} END`,
+  );
+  return [ARTIFACT_SERVING_SET, ...classifying].join(",\n            ");
+}
+
+/** The columns whose inserted value differs between a described release and the others. */
+const MODE_DEPENDENT_COLUMNS = new Set<keyof ReleaseArtifactRow>([
+  "platform",
+  "arch",
+  "sha256",
+  "build_id",
+  "role",
+]);
+
+const ARTIFACT_COLUMNS = [
+  "product",
+  "release_id",
+  "artifact_id",
+  "name",
+  "kind",
+  "platform",
+  "arch",
+  "content_type",
+  "size_bytes",
+  "sha256",
+  "source_url",
+  "storage_key",
+  "sparkle_signature",
+  "access",
+  "metadata_json",
+  "created_at",
+  "build_id",
+  "role",
+  "locations_json",
+] as const satisfies readonly (keyof ReleaseArtifactRow)[];
+
+/**
+ * In `described` mode a file is not inserted when the release already has a row of that NAME
+ * under another id: the descriptor recorded it (an `r2`-only file is keyed by its name, not by
+ * a GitHub asset id), and a second row would list it twice.
+ *
+ * In `sniffed`/`mapped` mode `asDescribed` is the row `described` mode would insert for the same
+ * file, and the statement inserts it — under the same name rule — instead of `row` when the
+ * release turns out to be described by the time it runs (see `ArtifactSyncMode`).
+ */
+function stmtUpsertArtifact(
+  row: ReleaseArtifactRow,
+  mode: ArtifactSyncMode = "sniffed",
+  asDescribed: ReleaseArtifactRow | null = null,
+): DbStatement {
+  const nameTaken = `EXISTS (
+              SELECT 1 FROM release_artifacts
+               WHERE product = ? AND release_id = ? AND name = ? AND artifact_id <> ?)`;
+  const nameParams = [row.product, row.release_id, row.name, row.artifact_id];
+  let values: string;
+  let params: unknown[];
+  if (mode === "described") {
+    values = `SELECT ${ARTIFACT_COLUMNS.map(() => "?").join(",")}
+          WHERE NOT ${nameTaken}`;
+    params = [...ARTIFACT_COLUMNS.map((c) => row[c]), ...nameParams];
+  } else {
+    if (!asDescribed)
+      throw new Error("stmtUpsertArtifact: sniffed/mapped need asDescribed");
+    const select: string[] = [];
+    params = [];
+    for (const c of ARTIFACT_COLUMNS) {
+      if (MODE_DEPENDENT_COLUMNS.has(c)) {
+        select.push("CASE WHEN g.described THEN ? ELSE ? END");
+        params.push(asDescribed[c], row[c]);
+      } else {
+        select.push("?");
+        params.push(row[c]);
+      }
+    }
+    values = `SELECT ${select.join(",\n                 ")}
+            FROM (SELECT ${RELEASE_DESCRIBED_SQL} AS described) AS g
+           WHERE NOT (g.described AND ${nameTaken})`;
+    params.push(row.product, row.release_id, ...nameParams);
+  }
+  return {
+    sql: `INSERT INTO release_artifacts
+            (${ARTIFACT_COLUMNS.join(", ")})
+          ${values}
+          ON CONFLICT(product, release_id, artifact_id) DO UPDATE SET
+            ${artifactConflictSet(mode)}`,
+    params: params as DbStatement["params"],
   };
 }
 
@@ -617,6 +791,41 @@ function floorStatement(
 }
 
 /**
+ * The releases the store records from a listing — the published ones plus the `held` floor
+ * releases the list did not reach — in publication order, the same order 0027_h's backfill
+ * numbers `seq` in: an undated release first (SQLite sorts NULL low), then by date, ties by tag.
+ * `releaseStoreStatements` upserts the rows in exactly this order, so it is also the order in
+ * which new releases take their `seq`; the descriptor ingest (P2-04) plans explicit seqs against
+ * it.
+ */
+export function releasesInPublicationOrder(
+  releases: readonly Release[],
+  held: readonly Release[] = [],
+): Release[] {
+  const published = releases.filter((r) => !r.draft);
+  return [
+    ...published,
+    ...held.filter(
+      (h) => !h.draft && !published.some((p) => p.tag_name === h.tag_name),
+    ),
+  ]
+    .map((release) => ({
+      release,
+      at: publishedAtSeconds(release.published_at),
+    }))
+    .sort(
+      (a, b) =>
+        (a.at ?? -Infinity) - (b.at ?? -Infinity) ||
+        (a.release.tag_name < b.release.tag_name
+          ? -1
+          : a.release.tag_name > b.release.tag_name
+            ? 1
+            : 0),
+    )
+    .map((x) => x.release);
+}
+
+/**
  * The statements that make the truth store agree with a fetched GitHub release list.
  *
  * Returned rather than executed so the caller can put them in ITS batch: `resyncRepo` already
@@ -627,7 +836,9 @@ function floorStatement(
  * `release_metadata(product, release_id)`, which D1 enforces per statement inside a batch, so
  * every metadata row is emitted before anything that references it — and the `app` deliverable
  * before everything. The metadata rows themselves go out oldest first, (published_at,
- * release_id), because each new one takes the next `seq` in statement order (P2-03).
+ * release_id), because each new one takes the next `seq` in statement order (P2-03). A release
+ * whose descriptor this pass ingested (`opts.describedRows`) has its descriptor row emitted in
+ * that same slot, so an explicit or computed `seq` never jumps ahead of an older new release.
  *
  * ABSENT UPSTREAM (P0-03). `storedReleaseIds` is what the store held before this sync, and the
  * caller passes it ONLY when `releases` is the whole upstream list (the paginated read reached a
@@ -652,7 +863,10 @@ export function releaseStoreStatements(
    */
   held: Release[] = [],
   storedReleaseIds: readonly string[] | null = null,
+  /** How files are classified, and what the descriptor ingest has already decided (P2-04). */
+  opts: StoreClassificationOptions = {},
 ): DbStatement[] {
+  const map = hasArtifactMap(opts.app) ? opts.app : null;
   const policy = artifactPolicy(cfg);
   const candidates = resolutionPolicy(cfg);
   const metadataAccess = storeAccess(policy.access.metadata);
@@ -660,37 +874,25 @@ export function releaseStoreStatements(
   // Drafts are not published software. They are visible to the installation token and invisible
   // to everyone the portal serves, so ingesting them would list a release nobody can download.
   const published = releases.filter((r) => !r.draft);
-  const recorded = [
-    ...published,
-    ...held.filter(
-      (h) => !h.draft && !published.some((p) => p.tag_name === h.tag_name),
-    ),
-  ];
+  const inPublishOrder = releasesInPublicationOrder(releases, held);
 
   const metadata: DbStatement[] = [];
   const artifacts: DbStatement[] = [];
+  const builds: DbStatement[] = [];
   const health: DbStatement[] = [];
+  /** `release_id` + NUL + `build_id` of every build the map classified, across the listing. */
+  const mappedBuildKeys: string[] = [];
+  const undescribedReleaseIds: string[] = [];
 
-  // Publication order, the same order 0027_h's backfill numbers `seq` in: an undated release
-  // first (SQLite sorts NULL low), then by date, ties by tag.
-  const inPublishOrder = recorded
-    .map((release) => ({
-      release,
-      at: publishedAtSeconds(release.published_at),
-    }))
-    .sort(
-      (a, b) =>
-        (a.at ?? -Infinity) - (b.at ?? -Infinity) ||
-        (a.release.tag_name < b.release.tag_name
-          ? -1
-          : a.release.tag_name > b.release.tag_name
-            ? 1
-            : 0),
-    )
-    .map((x) => x.release);
+  // A described release's row that has no slot here (none should) still goes before anything
+  // that references it.
+  const slotted = new Set(inPublishOrder.map((r) => r.tag_name));
+  for (const [releaseId, rows] of opts.describedRows ?? [])
+    if (!slotted.has(releaseId)) metadata.push(...rows);
 
   for (const release of inPublishOrder) {
     const releaseId = release.tag_name;
+    metadata.push(...(opts.describedRows?.get(releaseId) ?? []));
     metadata.push(
       stmtUpsertMetadata({
         product,
@@ -713,13 +915,72 @@ export function releaseStoreStatements(
         deliverable_id: APP_DELIVERABLE_ID,
       }),
     );
+    const described = opts.described?.has(releaseId) ?? false;
+    const mode: ArtifactSyncMode = described
+      ? "described"
+      : map
+        ? "mapped"
+        : "sniffed";
+    // A described release is never classified by the map: the descriptor owns its builds, so a
+    // GitHub file it does not name is inserted in no build (`build_id` NULL, role from its kind),
+    // exactly as the descriptor's own ingest leaves such a file. Taking the map's build here would
+    // point the new row at a build the descriptor never wrote, and nothing would prune it.
+    const classified =
+      map && !described
+        ? classifyByMap(
+            map,
+            release.assets.map((a) => a.name),
+          )
+        : null;
     for (const asset of release.assets) {
+      const row = (m: ArtifactSyncMode) =>
+        artifactRow(
+          product,
+          releaseId,
+          asset,
+          artifactsAccess,
+          now,
+          m === "described"
+            ? null
+            : (classified?.files.get(asset.name) ?? null),
+          m,
+        );
       artifacts.push(
         stmtUpsertArtifact(
-          artifactRow(product, releaseId, asset, artifactsAccess, now),
+          row(mode),
+          mode,
+          mode === "described" ? null : row("described"),
         ),
       );
     }
+    // The map's builds, for a release the descriptor does not own. They follow the map: a build
+    // the map no longer yields is deleted below (nothing references `release_builds`). Each is
+    // written only if the release is still undescribed when the batch runs: a descriptor
+    // ingested after this sync read the store owns the builds (and their build numbers) by then.
+    if (!described) undescribedReleaseIds.push(releaseId);
+    if (classified) {
+      for (const entry of classified.builds) {
+        mappedBuildKeys.push(`${releaseId}\u0000${entry.id}`);
+        builds.push(
+          guardStatement(
+            stmtUpsertBuild(
+              {
+                product,
+                releaseId,
+                buildId: entry.id,
+                platform: entry.platform,
+                arch: entry.arch,
+                format: entry.format,
+              },
+              now,
+            ),
+            `NOT ${RELEASE_DESCRIBED_SQL}`,
+            [product, releaseId],
+          ),
+        );
+      }
+    }
+    const refused = opts.refused?.get(releaseId);
     health.push(
       stmtUpsertHealth({
         product,
@@ -727,16 +988,46 @@ export function releaseStoreStatements(
         subject_id: releaseId,
         // "Has anything to download at all" is the only judgement this pass can make honestly:
         // whether the RIGHT assets are present is a per-product policy question, and answering
-        // it is `checkReleaseHealth`'s job (it fetches sidecars and checks the Sparkle key).
-        status: release.assets.length > 0 ? "healthy" : "degraded",
+        // it is `checkReleaseHealth`'s job (it fetches sidecars and checks the Sparkle key). A
+        // refused `pkey-release.json` (P2-04) degrades the release, with the reason.
+        status: refused
+          ? "degraded"
+          : release.assets.length > 0
+            ? "healthy"
+            : "degraded",
         checked_at: now,
-        details_json: JSON.stringify({ assetCount: release.assets.length }),
+        details_json: JSON.stringify({
+          assetCount: release.assets.length,
+          ...(refused ? { descriptor: { refused } } : {}),
+        }),
       }),
     );
   }
+  // Builds a listed release no longer has under the map (the map changed or was removed, or a
+  // file left). ONE statement per sync, map or not. A release that has an ingested descriptor by
+  // the time this runs is skipped by the subquery — the descriptor owns its builds — even when
+  // it was ingested after this sync read the store.
+  {
+    builds.push({
+      sql: `DELETE FROM release_builds
+             WHERE product = ?
+               AND release_id IN (SELECT value FROM json_each(?))
+               AND release_id NOT IN (
+                 SELECT release_id FROM release_metadata
+                  WHERE product = ?
+                    AND json_extract(metadata_json, '$.descriptor.status') = 'ingested')
+               AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))`,
+      params: [
+        product,
+        JSON.stringify(undescribedReleaseIds),
+        product,
+        JSON.stringify(mappedBuildKeys),
+      ],
+    });
+  }
 
   if (storedReleaseIds) {
-    const upstream = new Set(recorded.map((r) => r.tag_name));
+    const upstream = new Set(inPublishOrder.map((r) => r.tag_name));
     for (const releaseId of storedReleaseIds) {
       if (upstream.has(releaseId)) continue;
       health.push(
@@ -827,6 +1118,7 @@ export function releaseStoreStatements(
   return [
     stmtEnsureAppDeliverable(product, now),
     ...metadata,
+    ...builds,
     ...artifacts,
     ...channels,
     ...floorStmts,
@@ -840,24 +1132,32 @@ function artifactRow(
   asset: ReleaseAsset,
   access: string,
   now: number,
+  classified: ClassifiedFile | null = null,
+  mode: ArtifactSyncMode = "sniffed",
 ): ReleaseArtifactRow {
   const kind = artifactKind(asset.name);
+  // Under a map (P2-04), the declaration is the truth and an unmatched file has no platform or
+  // arch at all; sniffing runs only for a product that declares no map.
+  const sniffed = mode === "sniffed";
   return {
     product,
     release_id: releaseId,
     artifact_id: String(asset.id),
     name: asset.name,
     kind,
-    platform: artifactPlatform(kind, asset.name),
+    platform: sniffed
+      ? artifactPlatform(kind, asset.name)
+      : (classified?.platform ?? null),
     // Read from the NAME, because GitHub carries no arch metadata — and read through the SAME
     // helper the download matcher uses, so the store can never disagree with what is servable.
-    arch: archOf(asset.name),
+    arch: sniffed ? archOf(asset.name) : (classified?.arch ?? null),
     content_type: artifactContentType(kind),
     size_bytes: asset.size,
     // The published `.sha256` sidecar is a separate asset; fetching every one of them during a
     // sync would be an unbounded number of subrequests against the installation quota. The
     // download route reads it on demand (`?checksum=sha256`), which is where it is needed.
-    sha256: null,
+    // Under a map, GitHub's own digest of the bytes is recorded when it has one (P2-04).
+    sha256: sniffed ? null : assetSha256(asset),
     // GitHub's own URL, and only ever GitHub's. This is the value the portal's
     // `/download/<token>` redirects to, and the reason that redirect is host-validated (R6-12).
     source_url: asset.browser_download_url,
@@ -866,9 +1166,10 @@ function artifactRow(
     access,
     metadata_json: null,
     created_at: now,
-    // The descriptor's (P2-04). A legacy release has no build; its role comes from the kind.
-    build_id: null,
-    role: roleOfKind(kind),
+    // A legacy release has no build, and its role comes from the kind; under a map, both come
+    // from the declaration (an unmatched file is in no build).
+    build_id: classified?.buildId ?? null,
+    role: classified?.role ?? roleOfKind(kind),
     locations_json: null,
   };
 }

@@ -39,14 +39,20 @@ from .core.models import (
     DocProfile,
     LicenseDoc,
 )
-from .core.store import Store
+from .core.store import Store, StoreStatus
 from .core.sync import SyncDeps, SyncResult, sync as run_sync
 from .core.telemetry import build_snapshot, report_snapshot
-from .core.token import TokenManager
+from .core.token import (
+    Reacquired,
+    TokenManager,
+    TokenSource,
+    choose_reacquire_route,
+)
 from .core.trust import TrustManager
 from .devices.client import (
     DeviceManagementUnsupportedError,
     DevicesClient,
+    RegisterOk,
     RegisterResult,
 )
 from .devices.facts import ProbeDeclaration
@@ -123,6 +129,9 @@ class PolarisKeyClient:
         channel: Optional[str] = None,
         store: Optional[Store] = None,
         config_dir: Optional[str] = None,
+        data_dir: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        state_dir: Optional[str] = None,
         client: Optional[httpx.Client] = None,
         trust_refresh: bool = True,
         request_timeout: Optional[float] = DEFAULT_REQUEST_TIMEOUT_SECONDS,
@@ -148,6 +157,9 @@ class PolarisKeyClient:
             channel=channel,
             store=store,
             config_dir=config_dir,
+            data_dir=data_dir,
+            cache_dir=cache_dir,
+            state_dir=state_dir,
             client=client,
             trust_refresh=trust_refresh,
             request_timeout=request_timeout,
@@ -156,10 +168,11 @@ class PolarisKeyClient:
         )
         self._trust = TrustManager(self.core)
         self._cache = CacheManager(self.core, self._trust)
-        # The re-acquire path is INJECTED so Core does not depend on the license module;
-        # §5's single-attempt rule lives in `TokenManager` and the ROUTE lives in
-        # `license/endpoints.py`.
-        self._tokens = TokenManager(self.core, self.core.store, _reacquire)
+        # The re-acquire path is INJECTED so Core does not depend on the license or devices
+        # modules; §5's single-attempt rule lives in `TokenManager`, the route CHOICE in
+        # `choose_reacquire_route`, and the two routes in `license/endpoints.py` and
+        # `devices/client.py`.
+        self._tokens = TokenManager(self.core, self.core.store, self._reacquire)
         self._probes: List[ProbeDeclaration] = list(probes or [])
 
         self.devices = DevicesClient(
@@ -350,6 +363,19 @@ class PolarisKeyClient:
     def is_licensed(self, now: Optional[int] = None) -> bool:
         return self.license.is_licensed(now)
 
+    def store_status(self) -> Optional[StoreStatus]:
+        """Where the token store keeps the token, and why if that is weaker than this
+        platform's best option (P1b-09, R4-11). ``None`` when the store does not report (a
+        host store without ``status()``). Never raises."""
+        status = getattr(self.core.store, "status", None)
+        if not callable(status):
+            return None
+        try:
+            result = status()
+        except Exception:
+            return None
+        return result if isinstance(result, StoreStatus) else None
+
     def get_config(self, key: str, fallback: Any = None) -> Any:
         return self.config.get_config(key, fallback)
 
@@ -411,8 +437,21 @@ class PolarisKeyClient:
     def deactivate(self) -> None:
         self.license.deactivate()
 
+    def _reacquire(
+        self, ctx: CoreContext, current: str, source: Optional[TokenSource]
+    ) -> Optional[Reacquired]:
+        """The §5 single re-acquire, wired into ``TokenManager``.
 
-def _reacquire(ctx: CoreContext, current: str) -> Optional[str]:
-    """§5's single ``POST /<p>/license/token`` attempt, wired into ``TokenManager``."""
-    r = reacquire_token(ctx, current)
-    return r.token if isinstance(r, ActivationOk) else None
+        ``POST /<p>/license/token`` for a licensed device, or ``POST /<p>/devices/register``
+        (keyless, no bearer) for a registered-without-licence device or a product with
+        License off. ``None`` means the one attempt failed (403 ``registration_closed``,
+        401, 404, 429 or transport) and the hard-401 path applies.
+        """
+        route = choose_reacquire_route(
+            license_enabled=ctx.enabled("license"), source=source
+        )
+        if route == "devices-register":
+            r = self.devices.request_registration()
+            return Reacquired(r.token, "register") if isinstance(r, RegisterOk) else None
+        a = reacquire_token(ctx, current)
+        return Reacquired(a.token, "reacquire") if isinstance(a, ActivationOk) else None

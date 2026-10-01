@@ -21,7 +21,7 @@
 // meant every activation path had to remember to, and a config-only product had no way to say
 // "there is no licence here, sync anyway".
 
-import type { JSONValue } from "@polaris-key/protocol/core";
+import { CHANNEL_STABLE, type JSONValue } from "@polaris-key/protocol/core";
 import type {
   ActivationSource,
   DocProfile,
@@ -116,6 +116,22 @@ export class LicenseClient {
     return out;
   }
 
+  /**
+   * The channels this licence grants: the `channels` entitlement's string values, in order, as
+   * granted — or `["stable"]` when the entitlement is absent or not an array. This is the
+   * Worker's own answer (`entitledChannels` in core/entitlements.ts), and the same list every
+   * SDK returns for the same document.
+   *
+   * The grants are RAW: `staging` is not rewritten to `beta` here. Whether a grant covers a
+   * channel is the entitlement rule's question (WIRE-CONTRACT-V3 §5.1 rule 4, `channelEntitled`),
+   * not this list's; `stable` is the floor every licence holds whether or not it is listed.
+   */
+  entitledChannels(): string[] {
+    const value = this.doc?.entitlements["channels"]?.value;
+    if (!Array.isArray(value)) return [CHANNEL_STABLE];
+    return value.filter((v): v is string => typeof v === "string");
+  }
+
   /** The signed greeting block, or null. Signed so it cannot be spoofed locally. */
   getProfile(): DocProfile | null {
     return this.doc?.profile ?? null;
@@ -133,18 +149,21 @@ export class LicenseClient {
   /** Obtain a licence with no key and no sign-in, when the product offers a free tier. */
   async enroll(): Promise<ActivationResult> {
     const r = await enroll(this.ctx, this.fingerprint());
-    if (r.kind === "ok") await this.acquire(r.token);
+    if (r.kind === "ok") await this.acquire(r.token, "enroll");
     return r;
   }
 
   async activateWithKey(key: string): Promise<ActivationResult> {
     const r = await activateWithKey(this.ctx, key, this.fingerprint());
-    if (r.kind === "ok") await this.acquire(r.token);
+    if (r.kind === "ok") await this.acquire(r.token, "activate");
     return r;
   }
 
-  private async acquire(token: string): Promise<void> {
-    await this.tokens.set(token);
+  private async acquire(
+    token: string,
+    source: "activate" | "enroll",
+  ): Promise<void> {
+    await this.tokens.set(token, source);
     await this.onAcquired("token");
   }
 

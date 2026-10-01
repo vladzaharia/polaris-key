@@ -15,39 +15,39 @@
 // the same reason.
 
 import { createHash, randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import {
+  defaultFingerprintIo,
+  readLinuxAnchor,
+  type FingerprintIo,
+} from "./fingerprint.js";
 
-function rawDeviceId(): string | null {
-  try {
-    if (process.platform === "darwin") {
-      const out = execFileSync(
-        "ioreg",
-        ["-rd1", "-c", "IOPlatformExpertDevice"],
-        { encoding: "utf8" },
-      );
-      const m = out.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/);
-      return m?.[1] ?? null;
-    }
-    if (process.platform === "win32") {
-      const out = execFileSync(
-        "reg",
-        [
-          "query",
-          "HKLM\\SOFTWARE\\Microsoft\\Cryptography",
-          "/v",
-          "MachineGuid",
-        ],
-        { encoding: "utf8" },
-      );
-      const m = out.match(/MachineGuid\s+REG_SZ\s+([A-Za-z0-9-]+)/);
-      return m?.[1] ?? null;
-    }
-    const id = readFileSync("/etc/machine-id", "utf8").trim();
-    return id || readFileSync("/var/lib/dbus/machine-id", "utf8").trim();
-  } catch {
-    return null;
+/**
+ * The raw OS identifier the device id hashes, or null when none is readable. On Linux this is
+ * rule 2 of WIRE-CONTRACT-V3 §6.1 — the same anchor the fingerprint's `machineUuid` uses: the
+ * first of `/etc/machine-id` and `/var/lib/dbus/machine-id` that is non-empty after trimming
+ * and not `uninitialized`. (Before P1b-09 a MISSING `/etc/machine-id` skipped the dbus file and
+ * minted a random id, and two empty files hashed `""`, so every such host shared one id.)
+ *
+ * Exported for tests; `platform` and `io` are injectable so any OS's branch runs on any host.
+ */
+export function rawDeviceId(
+  platform: NodeJS.Platform = process.platform,
+  io: FingerprintIo = defaultFingerprintIo,
+): string | null {
+  if (platform === "darwin") {
+    const out = io.run("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"]);
+    return out?.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/)?.[1] ?? null;
   }
+  if (platform === "win32") {
+    const out = io.run("reg", [
+      "query",
+      "HKLM\\SOFTWARE\\Microsoft\\Cryptography",
+      "/v",
+      "MachineGuid",
+    ]);
+    return out?.match(/MachineGuid\s+REG_SZ\s+([A-Za-z0-9-]+)/)?.[1] ?? null;
+  }
+  return readLinuxAnchor(io)?.value ?? null;
 }
 
 /** The device-id formula itself, split out from the hardware read so it can be pinned by the

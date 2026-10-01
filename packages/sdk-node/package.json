@@ -58,12 +58,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/protocol": "workspace:*"
   },
   "optionalDependencies": {
-    "@napi-rs/keyring": "^1.1.6"
+    "@napi-rs/keyring": "^2.1.0"
   },
   "peerDependencies": {
     "commander": "^12.0.0 || ^13.0.0 || ^14.0.0",

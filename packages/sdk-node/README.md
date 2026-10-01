@@ -14,8 +14,8 @@ corpus the Python and Swift SDKs run.
 pnpm add @polaris-key/node
 ```
 
-Node 22+. The OS keyring is an **optional** dependency (`@napi-rs/keyring`); without it the
-token falls back to a `0600` file under the config dir.
+Node 22+. The OS keyring is an **optional** dependency (`@napi-rs/keyring` ^2.1); without it the
+token falls back to a `0600` file under the config dir, and `await client.storeStatus()` says so.
 
 ## Quick start
 
@@ -53,17 +53,25 @@ await client.sync();
 
 ## Shape
 
-| Surface           | Subpath                      | What it owns                                                                                                        |
-| ----------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `client.core`     | `@polaris-key/node/core`     | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import           |
-| `client.license`  | `@polaris-key/node/license`  | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile                                     |
-| `client.config`   | `@polaris-key/node/config`   | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `mintToken` (edge-mint)                          |
-| `client.devices`  | `@polaris-key/node/devices`  | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas |
-| `client.identity` | `@polaris-key/node/identity` | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                     |
-| `client.release`  | `@polaris-key/node/release`  | `changelog` / `installUrl` / `downloadUrl`                                                                          |
-| `client.update`   | `@polaris-key/node/update`   | `check` (version) / `appcastUrl` (from discovery)                                                                   |
-| —                 | `@polaris-key/node/local`    | The transportless profile: every network-requiring call refuses                                                     |
-| —                 | `@polaris-key/node/cli`      | Framework-agnostic commands + commander/yargs adapters                                                              |
+| Surface           | Subpath                      | What it owns                                                                                                             |
+| ----------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `client.core`     | `@polaris-key/node/core`     | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                |
+| `client.license`  | `@polaris-key/node/license`  | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                     |
+| `client.config`   | `@polaris-key/node/config`   | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint) |
+| `client.devices`  | `@polaris-key/node/devices`  | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas      |
+| `client.identity` | `@polaris-key/node/identity` | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                          |
+| `client.release`  | `@polaris-key/node/release`  | `changelog` / `installUrl` / `downloadUrl`                                                                               |
+| `client.update`   | `@polaris-key/node/update`   | `check` (version) / `appcastUrl` (from discovery)                                                                        |
+| —                 | `@polaris-key/node/local`    | The transportless profile: every network-requiring call refuses                                                          |
+| —                 | `@polaris-key/node/cli`      | Framework-agnostic commands + commander/yargs adapters                                                                   |
+
+`client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
+or `["stable"]` when the licence carries none — the Worker's own answer, and every SDK's for the
+same document. `client.config.fetchSchema()` returns the product's catalog (`ProductCatalog`) or
+`null` on any failure; it is unsigned and diagnostic, so it never throws. `client.release`
+refuses with `service-unavailable` when the product does not run Release, forwards the device
+token when one is held, and surfaces a 401/403 by the refusal body's own code
+(`unauthorized`, `channel_not_allowed`, …).
 
 Pure verification logic is **not** re-exported here. `verifyLicenseDoc`, `licenseState`,
 `mergeTrust`, `verifyBundle`, `compareSemver` and friends live in `@polaris-key/client-core`; there is
@@ -80,12 +88,54 @@ one implementation, and every JS host consumes it.
 | `channel`          | Override `X-PKey-Channel` (default derived from `version`): `stable`, `beta`, `pr`/`pr-<n>`, `dev` or a manual name; `staging` is accepted.  |
 | `trustRefresh`     | Refresh the trust manifest on Core's own cadence inside `sync()` (default true).                                                             |
 | `store`            | A `Store` (default `KeyringStore`; `InMemoryStore` for tests).                                                                               |
-| `configDir`        | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                                                     |
+| `configDir`        | Config base; `<product>` is appended. Holds the token file, device id and cache (default `$XDG_CONFIG_HOME` or `~/.config`, on every OS).    |
+| `dataDir`          | Data base; `<product>` is appended. Default in the table below.                                                                              |
+| `cacheDir`         | Cache base; `<product>` is appended. Default in the table below.                                                                             |
+| `stateDir`         | State base; `<product>` is appended. Default in the table below.                                                                             |
 | `requestTimeoutMs` | Per-request deadline (default 15000; `0` disables).                                                                                          |
 | `expectedServices` | What this build expects the product to run — the capability fallback when discovery has not been fetched.                                    |
 
 Per-service inputs ride their own bags: `config: { localOverrides, envPrefix, env }`,
 `license: { fingerprint }`, `devices: { probes, fingerprint }`.
+
+### Directories
+
+`client.core.dirs` holds the four resolved directories (`config`, `data`, `cache`, `state`),
+each already ending in `<product>`. Nothing is created until something uses one; the config
+directory is where it has always been.
+
+| Base   | Linux and other POSIX                                         | macOS                                             | Windows                            |
+| ------ | ------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
+| config | `$XDG_CONFIG_HOME` or `~/.config`                             | same as Linux                                     | same as Linux (`~\.config`)        |
+| data   | `$XDG_DATA_HOME/polaris-key` or `~/.local/share/polaris-key`  | `~/Library/Application Support/polaris-key/data`  | `%LOCALAPPDATA%\polaris-key\data`  |
+| cache  | `$XDG_CACHE_HOME/polaris-key` or `~/.cache/polaris-key`       | `~/Library/Caches/polaris-key`                    | `%LOCALAPPDATA%\polaris-key\cache` |
+| state  | `$XDG_STATE_HOME/polaris-key` or `~/.local/state/polaris-key` | `~/Library/Application Support/polaris-key/state` | `%LOCALAPPDATA%\polaris-key\state` |
+
+The XDG variables count only when set, non-empty and absolute. `resolveDirs()` is the pure
+resolver; `excludeFromBackup(dir)` marks an existing directory (`CACHEDIR.TAG` on POSIX, plus
+`tmutil addexclusion` on macOS; `not-applicable` on Windows) and never throws.
+
+### Token store status
+
+`await client.storeStatus()` returns `{ backend, degraded? }`, or `null` for a host store
+without `status()`. The default `KeyringStore` reports `keyring`, or `file` with a reason:
+
+- `keyring-unavailable`: `@napi-rs/keyring` cannot load (including inside a Node
+  single-executable build, which cannot load the native addon), or, on Linux, there is no
+  Secret Service. Linux entries are pinned to the Secret Service, never the in-memory kernel
+  keyring, so a headless host keeps its token in the `0600` file across reboots.
+- `keyring-error`: the keyring loaded but failed, or an earlier write fell back to the file (the
+  next token write moves it to the keyring).
+
+The CLI `status` command prints the same as a `Token store:` line.
+
+### Linux and containers
+
+The fingerprint anchor and the device id read `/etc/machine-id`, else
+`/var/lib/dbus/machine-id`; DMI files are never read, so root and non-root agree. A container
+with neither file has no anchor and cannot enrol without a licence key: mount the host's
+`/etc/machine-id` read-only, or create one and keep it in a volume. Never bake one into an
+image.
 
 ## Capabilities, fail-closed
 
@@ -107,6 +157,15 @@ half-life re-ask → verification through client-core with per-type anti-replay 
 read-modify-write of the cache record → the clock floor → best-effort telemetry to
 `POST /<product>/devices/report`. A 401 gets exactly **one** `POST /<product>/license/token`
 re-acquire for the whole pass, then one retry of the failed fetch.
+
+A registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `devices.register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
+`Authorization` header). It shares the single-attempt budget, so two parallel 401s still make one
+call. A refusal (403 `registration_closed`, 404, 429) spends the attempt and the hard 401 is
+recorded. After a restart the token's origin is not persisted, so a product with License on uses
+`license/token`. Under the `requires-identity` policy a native device cannot re-register (that
+needs a browser session) and lands on the hard 401.
 
 `client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
 lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
@@ -162,7 +221,7 @@ device token) and resolves `{ token, expiresAt }`. The result is cached **in mem
 in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, so asking on
 every API call costs one mint per lifetime. A cached token counts only while the client still
 holds the device token it was minted with: `deactivate()`, a cleared token or a different sign-in
-drops it. A 401 gets the usual single re-acquire and one retry.
+drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry.
 Failures throw `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id
 outside `[a-z0-9-]`) before any request, `unauthorized` (no token, or still 401), or the Worker's
 `not_found` / `rate_limited` / `misconfigured`.

@@ -67,6 +67,9 @@
       "release": {
         "enabled": false
       },
+      "distribution": {
+        "enabled": false
+      },
       "update": {
         "enabled": false
       },
@@ -155,6 +158,11 @@
           "builds": "https://key.plrs.im/full/release/builds/{selector}/{buildId}",
           "blobs": "https://key.plrs.im/full/release/blobs/sha256/{sha256}"
         }
+      },
+      "distribution": {
+        "enabled": true,
+        "configured": false,
+        "endpoints": {}
       },
       "update": {
         "enabled": true,
@@ -246,6 +254,9 @@
         }
       },
       "release": {
+        "enabled": false
+      },
+      "distribution": {
         "enabled": false
       },
       "update": {
