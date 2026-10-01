@@ -21,7 +21,14 @@ sdks/godot/
   addons/polaris_key/         the addon (the only directory a release ships)
     plugin.cfg, plugin.gd     editor shell
     polaris_key.gd            the PolarisKey autoload: configure, start, discover, capabilities,
-                              sync, get_sync_state, import_bundle, status; three signals
+                              sync, get_sync_state, import_bundle, status; three signals;
+                              the `devices` sub-object
+    services/devices.gd       PKeyDevices (PolarisKey.devices): fingerprint, register, list,
+                              rename, deauthorize, report (also after every sync)
+    core/fingerprint.gd       PKeyFingerprint: per-platform readers as pure parsers over captured
+                              output, hashing, the desktop device-id raw source
+    core/host_io.gd           PKeyHostIo: every side effect the readers perform (replaceable)
+    core/facts.gd             PKeyFacts: DeviceFacts, declared probes, the engine and outlet keys
     core/options.gd           PKeyOptions (a Resource): product, base_url, version, pins, …
     core/core.gd              PKeyCore: wiring, request(), sync state; PolarisKey.core
     core/b64url.gd            PKeyB64Url: strict (wire) and lenient (trust-set keys) base64url
@@ -41,13 +48,17 @@ sdks/godot/
     support/test_context.gd   PKeyTestContext: check() and info()
     support/fake_server.gd    a TCPServer on 127.0.0.1 the core and transcript tests talk to
     support/transcript_replay.gd  replays conformance/transcripts against the fake server
-    suite_<name>.gd           one suite per file (core/ holds suite_core's groups)
+    support/fake_host.gd      a PKeyHostIo over fixtures/devices-captures.json (any platform)
+    suite_<name>.gd           one suite per file (core/ and devices/ hold their suites' groups);
+                              suite_platform reads THIS machine's fingerprint
+    fixtures/                 hand-maintained captures (identifiers replaced by fake values)
     corpus/v2/                GENERATED mirror of conformance/corpus/v2/ — never edit
     transcripts/              GENERATED mirror of conformance/transcripts/ — never edit
     vectors/                  hand-generated SHA-512 and Ed25519 vectors (byte-for-byte)
   tools/
     run_tests.sh              the one entry point, locally and in CI
-    fetch_godot.sh            CI: download and hash-check the official Linux binaries
+    fetch_godot.sh            CI: download and hash-check the official editor (Linux, macOS,
+                              Windows) and the Linux template
     godot.sha512              upstream SHA-512 pins for those downloads
 ```
 
@@ -68,9 +79,11 @@ PKEY_TEST_SUITES=ed25519 sdks/godot/tools/run_tests.sh bench 20 # one suite, wit
 - `PKEY_TEST_SUITES` defaults to `ci`; `PKEY_TEST_TIMEOUT` is per step, default 300 s.
 - Logs land in `build/logs/<step>.log` (`build/` is git-ignored).
 
-CI (`.github/workflows/ci.yml`, job `godot`) runs two legs: the 4.7.2 editor plus the official
-4.7.2 `linux_release.x86_64` template, and the 4.4.1 editor (the floor). Both must print the same
-corpus SHA-256.
+CI (`.github/workflows/ci.yml`, job `godot`) runs two Linux legs: the 4.7.2 editor plus the
+official 4.7.2 `linux_release.x86_64` template, and the 4.4.1 editor (the floor). Both must print
+the same corpus SHA-256. Two editor smoke legs on `windows-latest` and `macos-14` run the
+`platform` and `devices` suites, so the Windows and macOS readers find their anchor on a real
+machine.
 
 ## The runner protocol
 

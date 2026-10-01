@@ -8,7 +8,8 @@ extends RefCounted
 ##   request(method, path, body, auth)  every service client's HTTP call (a PKeyResult)
 ##   tokens.set_reacquire(callable)     the 401 re-acquire (P1-03)
 ##   add_post_sync_hook(callable)       telemetry after each sync (P1-05)
-##   PKeyDeviceId.set_raw_source(...)   desktop device-id sources (P1-05)
+##   PKeyDeviceId.set_raw_source(...)   replaces the device-id raw source (default: P1-05's
+##                                      desktop sources, PKeyFingerprint.device_id_raw)
 
 ## A store operation failed: {op, path, error, message}.
 signal store_error(err: Dictionary)
@@ -85,6 +86,8 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 
 ## Offline load: device id, token, and the verified cache. No network. A coroutine.
 func start() -> PKeyResult:
+	if not store.has_device_id():
+		await PKeyDeviceId.prepare()
 	device_id = store.get_device_id()
 	if device_id == "":
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The store has no device id.", last_store_error)

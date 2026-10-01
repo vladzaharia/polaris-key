@@ -37,6 +37,8 @@ const HTTP_ERROR := &"http-error"
 const INVALID_RESPONSE := &"invalid-response"
 const STORE_FAILED := &"store-failed"
 const NO_TOKEN := &"no-token"
+## Device management (rename, deauthorize) needs a device token this client does not hold.
+const DEVICE_MANAGEMENT_UNSUPPORTED := &"device-management-unsupported"
 ## The four §7 bundle steps (PKeyBundle).
 const BUNDLE_JWS_REJECTED := &"bundle-jws-rejected"
 const BUNDLE_CLAIMS_REJECTED := &"bundle-claims-rejected"

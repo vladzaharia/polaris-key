@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # fetch_godot.sh <version> <dir> [--template]
 #
-# Puts the official Godot <version> Linux x86_64 editor at <dir>/godot and, with --template, the
-# official linux_release.x86_64 export template at <dir>/linux_release.x86_64. Every download is
-# checked against its upstream SHA-512 in tools/godot.sha512 before use; an unpinned file is
-# refused. Does nothing when <dir> already holds the binaries (a CI cache hit).
+# Puts the official Godot <version> editor for this host at <dir>/godot and, with --template
+# (Linux only), the official linux_release.x86_64 export template at
+# <dir>/linux_release.x86_64. Every download is checked against its upstream SHA-512 in
+# tools/godot.sha512 before use; an unpinned file is refused. Does nothing when <dir> already
+# holds the binaries (a CI cache hit).
+#
+# Hosts: Linux x86_64 (the binary itself), macOS (Godot.app, with <dir>/godot a wrapper that
+# execs it) and Windows under Git Bash (the console build, with <dir>/godot a wrapper that execs
+# it, so stdout reaches the log).
 #
 # The template comes from the full .tpz (1.28 GB): only templates/linux_release.x86_64 is
 # extracted and the archive is deleted, so the cache holds one 73 MB binary. A Range fetch of the
@@ -53,16 +58,49 @@ fetch() {
   fi
 }
 
-if [ "$need_editor" = 1 ]; then
-  editor="Godot_v${VERSION}-stable_linux.x86_64"
-  fetch "$editor.zip"
-  unzip -q -o "$WORK/$editor.zip" "$editor" -d "$WORK"
-  mv "$WORK/$editor" "$DIR/godot"
+# wrap <target>: <dir>/godot becomes a script that execs <target> with its arguments.
+wrap() {
+  printf '#!/usr/bin/env bash\nexec "%s" "$@"\n' "$1" >"$DIR/godot"
   chmod +x "$DIR/godot"
-  rm -f "$WORK/$editor.zip"
+}
+
+if [ "$need_editor" = 1 ]; then
+  case "$(uname -s)" in
+    Linux)
+      editor="Godot_v${VERSION}-stable_linux.x86_64"
+      fetch "$editor.zip"
+      unzip -q -o "$WORK/$editor.zip" "$editor" -d "$WORK"
+      mv "$WORK/$editor" "$DIR/godot"
+      chmod +x "$DIR/godot"
+      rm -f "$WORK/$editor.zip"
+      ;;
+    Darwin)
+      editor="Godot_v${VERSION}-stable_macos.universal"
+      fetch "$editor.zip"
+      rm -rf "$DIR/Godot.app"
+      unzip -q -o "$WORK/$editor.zip" -d "$DIR"
+      rm -f "$WORK/$editor.zip"
+      wrap "$DIR/Godot.app/Contents/MacOS/Godot"
+      ;;
+    MINGW* | MSYS* | CYGWIN*)
+      editor="Godot_v${VERSION}-stable_win64"
+      fetch "$editor.exe.zip"
+      unzip -q -o "$WORK/$editor.exe.zip" -d "$DIR"
+      rm -f "$WORK/$editor.exe.zip"
+      wrap "$DIR/${editor}_console.exe"
+      ;;
+    *)
+      echo "fetch_godot: no editor download for $(uname -s)" >&2
+      exit 1
+      ;;
+  esac
 fi
 
 if [ "$need_template" = 1 ]; then
+  if [ "$(uname -s)" != Linux ]; then
+    echo "fetch_godot: --template fetches the Linux template; run it on Linux" >&2
+    exit 1
+  fi
   tpz="Godot_v${VERSION}-stable_export_templates.tpz"
   fetch "$tpz"
   unzip -q -o -j "$WORK/$tpz" "templates/linux_release.x86_64" -d "$WORK"

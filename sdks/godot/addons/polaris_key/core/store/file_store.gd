@@ -52,6 +52,10 @@ func clear_token() -> bool:
 	return _remove(TOKEN_FILE)
 
 
+func has_device_id() -> bool:
+	return _device_id != "" or FileAccess.file_exists(path_of(DEVICE_FILE))
+
+
 ## Write-once: an existing well-formed id is returned as stored. Without one, an id is derived
 ## from PKeyDeviceId's raw source and written; a failed write is surfaced (`failed`) and the id
 ## is kept in memory for this session. A malformed stored id is surfaced and left in place.
