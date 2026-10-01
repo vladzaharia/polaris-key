@@ -1,3 +1,4 @@
+@tool
 class_name PKeyTransport
 extends RefCounted
 ## HTTP for the SDK, on `HTTPRequest` nodes that live under the host (the autoload). The rules

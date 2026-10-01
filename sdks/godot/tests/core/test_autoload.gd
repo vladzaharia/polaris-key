@@ -15,6 +15,7 @@ func _opts(product := "djdl", version := "1.0.0") -> PKeyOptions:
 	o.product = product
 	o.version = version
 	o.store = PKeyMemoryStore.new()
+	o.build_stamp_path = ""
 	return o
 
 

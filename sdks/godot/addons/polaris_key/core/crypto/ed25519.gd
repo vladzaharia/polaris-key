@@ -1,3 +1,4 @@
+@tool
 # Ed25519 signature VERIFY in pure GDScript — optimized variant.
 #
 # Port of the SUPERCOP "ref10" structure (via orlp/ed25519, public domain / zlib):
