@@ -1,4 +1,4 @@
-// Per-document claim validation — wire contract v3 §2–§3.
+// Per-document claim validation — wire contract v3 §2–§3, with v4's integer claims (§3).
 //
 // Cryptographic verification is the frozen `JWSVerifier` path (encoded-length caps, strict
 // base64url, duplicate-key rejection, verify-before-parse, `kid` selected only from the
@@ -61,10 +61,11 @@ public struct VerifyOptions: Sendable {
 /// the claims that exist only on it. The shared envelope is NOT repeated here.
 public struct DocTypeSpec<T: DocClaims>: Sendable {
     public let typ: JwsTyp
-    /// Per-document claim validation, run only after the envelope passes.
-    public let validate: @Sendable (T) -> Bool
+    /// Per-document claim validation, run only after the envelope passes, with the verified
+    /// payload's non-wire-integer pointers (WIRE-CONTRACT-V4 §3).
+    public let validate: @Sendable (T, NonWireIntegers) -> Bool
 
-    public init(typ: JwsTyp, validate: @escaping @Sendable (T) -> Bool) {
+    public init(typ: JwsTyp, validate: @escaping @Sendable (T, NonWireIntegers) -> Bool) {
         self.typ = typ
         self.validate = validate
     }
@@ -72,7 +73,7 @@ public struct DocTypeSpec<T: DocClaims>: Sendable {
 
 /// `pkey-license+jws` — grants. `entitlements` is the sole carrier of grant data (D-20), and
 /// `Codable` already asserts its shape by requiring a `[String: ManagedEntry]`.
-public let LICENSE_DOC = DocTypeSpec<LicenseDoc>(typ: .license) { doc in
+public let LICENSE_DOC = DocTypeSpec<LicenseDoc>(typ: .license) { doc, _ in
     !doc.licenseId.isEmpty
 }
 
@@ -85,15 +86,23 @@ public let LICENSE_DOC = DocTypeSpec<LicenseDoc>(typ: .license) { doc in
 /// `TrustManifestDoc.schemaVersion`, which IS a wire version and IS allow-listed, in Trust.swift.)
 /// What is enforceable, and what R2-08's payload actually violated, is the SHAPE: `Codable`
 /// requiring an `Int` rejects `"4"`, and this rejects a non-positive one.
-public let CONFIG_DOC = DocTypeSpec<ConfigDoc>(typ: .config) { doc in
-    doc.schemaVersion >= 1
+public let CONFIG_DOC = DocTypeSpec<ConfigDoc>(typ: .config) { doc, nonWire in
+    // V4 §3: an integer claim decided from its token, minimum 1.
+    wireInteger(doc.schemaVersion, pointer: "/schemaVersion", min: 1, in: nonWire)
 }
 
 /// The shared envelope every per-service document carries (§2 / §3). Checked in one place so
 /// license and config can never drift apart on `iss`, `aud`, device binding, the grace ceiling,
 /// or the freshness split.
-private func validateEnvelope<T: DocClaims>(_ doc: T, _ opts: VerifyOptions, _ now: Int) -> Bool {
+private func validateEnvelope<T: DocClaims>(
+    _ doc: T, _ opts: VerifyOptions, _ now: Int, _ nonWire: NonWireIntegers
+) -> Bool {
     guard doc.aud == opts.expectedAud else { return false }
+    // V4 §3: every timestamp is an integer claim, decided from its token, minimum 0.
+    guard wireInteger(doc.issuedAt, pointer: "/issuedAt", min: 0, in: nonWire),
+        wireInteger(doc.expiresAt, pointer: "/expiresAt", min: 0, in: nonWire),
+        wireInteger(doc.graceUntil, pointer: "/graceUntil", min: 0, in: nonWire)
+    else { return false }
     // The issuer is the fixed `key.plrs.im`, never derived from the base URL — an
     // attacker-controlled host must not be able to name its own issuer (§8).
     guard doc.iss == opts.expectedIss else { return false }
@@ -123,12 +132,13 @@ public func verifyDoc<T: DocClaims>(
     // `JWSVerifier`; it never JSON-parses an unauthenticated payload. `typ` closes
     // cross-protocol replay — a trust manifest, or the *other* document type, presented here.
     guard
-        let doc = JWSVerifier.verifyDecoding(
-            T.self, jws, trust: options.trust, typ: spec.typ, requireTyp: true)
+        let verified = JWSVerifier.verify(
+            jws, trust: options.trust, typ: spec.typ, requireTyp: true),
+        let doc = try? JSONDecoder().decode(T.self, from: verified.payload)
     else { return nil }
     let now = options.now ?? Int(Date().timeIntervalSince1970)
-    guard validateEnvelope(doc, options, now) else { return nil }
-    guard spec.validate(doc) else { return nil }
+    guard validateEnvelope(doc, options, now, verified.nonWireIntegers) else { return nil }
+    guard spec.validate(doc, verified.nonWireIntegers) else { return nil }
     return doc
 }
 

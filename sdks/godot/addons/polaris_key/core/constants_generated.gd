@@ -87,10 +87,14 @@ class ErrorCode:
 	const STORE_FAILED := "store-failed"
 	const NO_TOKEN := "no-token"
 	const MINT_UNAVAILABLE := "mint-unavailable"
+	const FEED_REJECTED := "feed-rejected"
+	const FEED_ROLLBACK := "feed-rollback"
+	const RECORD_REJECTED := "record-rejected"
+	const RECORD_MISMATCH := "record-mismatch"
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "internal_error", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "internal_error", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -169,6 +173,10 @@ const ERROR_CODE_KINDS := {
 	"store-failed": "client",
 	"no-token": "client",
 	"mint-unavailable": "client",
+	"feed-rejected": "client",
+	"feed-rollback": "client",
+	"record-rejected": "client",
+	"record-mismatch": "client",
 }
 
 
@@ -315,6 +323,126 @@ class StoreDegradedReason:
 const STORE_DEGRADED_REASON_VALUES := ["keyring-unavailable", "keyring-error", "legacy-keychain", "not-persistent"]
 
 
+## The 17 outlet kinds, in `OUTLET_KINDS` order (README §3.1, plans/P3-01.md §2.9). `unknown` is a detection result, not a kind, and is not listed.
+class OutletKind:
+	const DIRECT := "direct"
+	const APP_STORE := "app-store"
+	const TESTFLIGHT := "testflight"
+	const ALTSTORE := "altstore"
+	const ALTSTORE_PAL := "altstore-pal"
+	const PLAY := "play"
+	const PLAY_TESTING := "play-testing"
+	const OBTAINIUM := "obtainium"
+	const FDROID_REPO := "fdroid-repo"
+	const MS_STORE := "ms-store"
+	const APP_INSTALLER := "app-installer"
+	const STEAM := "steam"
+	const ITCH := "itch"
+	const FLATHUB := "flathub"
+	const SNAP := "snap"
+	const WINGET := "winget"
+	const WEB := "web"
+
+
+## Every `OutletKind` value, in source order.
+const OUTLET_KIND_VALUES := ["direct", "app-store", "testflight", "altstore", "altstore-pal", "play", "play-testing", "obtainium", "fdroid-repo", "ms-store", "app-installer", "steam", "itch", "flathub", "snap", "winget", "web"]
+
+
+## How sure outlet detection is, strongest first (`OUTLET_CONFIDENCES`, plans/P3-01.md §2.9).
+class OutletConfidence:
+	const ATTESTED := "attested"
+	const DECLARED := "declared"
+	const HEURISTIC := "heuristic"
+	const STAMP := "stamp"
+
+
+## Every `OutletConfidence` value, in source order.
+const OUTLET_CONFIDENCE_VALUES := ["attested", "declared", "heuristic", "stamp"]
+
+
+## How a `direct` install was put on the device, where that changes who updates it (`OUTLET_SUBKINDS`, plans/P3-01.md §2.9).
+class OutletSubkind:
+	const HOMEBREW := "homebrew"
+	const NPM := "npm"
+	const PNPM := "pnpm"
+	const NPX := "npx"
+	const SCOOP := "scoop"
+	const CHOCOLATEY := "chocolatey"
+	const FLATPAK := "flatpak"
+	const APPIMAGE := "appimage"
+
+
+## Every `OutletSubkind` value, in source order.
+const OUTLET_SUBKIND_VALUES := ["homebrew", "npm", "pnpm", "npx", "scoop", "chocolatey", "flatpak", "appimage"]
+
+
+## The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed.
+class UpdateAction:
+	const NONE := "none"
+	const CODE_READY := "code-ready"
+	const BINARY := "binary"
+	const STORE := "store"
+	const PLATFORM := "platform"
+	const BLOCKED := "blocked"
+
+
+## Every `UpdateAction` value, in source order.
+const UPDATE_ACTION_VALUES := ["none", "code-ready", "binary", "store", "platform", "blocked"]
+
+
+## Why the update decision is `none` (`NONE_REASONS`, plans/P3-01.md §2.8).
+class UpdateNoneReason:
+	const UP_TO_DATE := "up-to-date"
+	const BEHIND := "behind"
+	const NOT_AVAILABLE := "not-available"
+	const HALTED := "halted"
+	const OUT_OF_BUCKET := "out-of-bucket"
+	const STALE := "stale"
+	const SKIPPED := "skipped"
+	const NO_METHOD := "no-method"
+	const NO_BUILD := "no-build"
+	const UNKNOWN_VERSION := "unknown-version"
+
+
+## Every `UpdateNoneReason` value, in source order.
+const UPDATE_NONE_REASON_VALUES := ["up-to-date", "behind", "not-available", "halted", "out-of-bucket", "stale", "skipped", "no-method", "no-build", "unknown-version"]
+
+
+## Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed.
+class UpdateBlockedReason:
+	const APP_FLOOR := "app-floor"
+
+
+## Every `UpdateBlockedReason` value, in source order.
+const UPDATE_BLOCKED_REASON_VALUES := ["app-floor"]
+
+
+## How a `binary` decision installs the new build (`BINARY_METHODS`, plans/P3-01.md §2.8).
+class BinaryMethod:
+	const NATIVE := "native"
+	const DOWNLOAD := "download"
+	const SIDECAR_PCK := "sidecar-pck"
+
+
+## Every `BinaryMethod` value, in source order.
+const BINARY_METHOD_VALUES := ["native", "download", "sidecar-pck"]
+
+
+## The update telemetry event names on the unsigned `devices/report` (plans/P3-01.md §2.10). The shapes and the Worker allowlist are P6-03's.
+class UpdateEvent:
+	const UPDATE_OFFERED := "update_offered"
+	const UPDATE_DOWNLOADED := "update_downloaded"
+	const UPDATE_APPLIED := "update_applied"
+	const UPDATE_CONFIRMED := "update_confirmed"
+	const UPDATE_REVERTED := "update_reverted"
+	const PACK_FAILED := "pack_failed"
+	const BOOT_ROLLED_BACK := "boot_rolled_back"
+
+
+## Every `UpdateEvent` value, in source order.
+const UPDATE_EVENT_VALUES := ["update_offered", "update_downloaded", "update_applied", "update_confirmed", "update_reverted", "pack_failed", "boot_rolled_back"]
+
+
 ## The `X-PKey-*` request header names (wire contract v3 §5).
 class HeaderName:
 	const ARCH := "X-PKey-Arch"
@@ -344,7 +472,7 @@ class ServiceSlug:
 const SERVICE_SLUG_VALUES := ["license", "config", "release", "distribution", "update", "identity"]
 
 ## The wire contract version (`@polaris-key/protocol/core`).
-const PROTOCOL_VERSION := 3
+const PROTOCOL_VERSION := 4
 
 ## `corpusVersion` of conformance/corpus/v2/cases.json.
 const CORPUS_VERSION := 2
@@ -354,6 +482,24 @@ const GATE_MATRIX_VERSION := 2
 
 ## `fingerprintVersion` of conformance/corpus/v2/fingerprint.json.
 const FINGERPRINT_VERSION := 1
+
+## `stageMatrixVersion` of conformance/corpus/v2/stage-matrix.json.
+const STAGE_MATRIX_VERSION := 2
+
+## `updateMatrixVersion` of conformance/corpus/v2/update-matrix.json.
+const UPDATE_MATRIX_VERSION := 1
+
+## `outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json.
+const OUTLET_MATRIX_VERSION := 1
+
+## Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
+const MAX_WIRE_INTEGER := 9007199254740991
+
+## Wire contract v4 limit `MAX_JSON_DEPTH` (`@polaris-key/protocol/core`).
+const MAX_JSON_DEPTH := 64
+
+## Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`).
+const MAX_RECORD_JWS_BYTES := 88844
 
 ## Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 const CHANNEL_ALIASES := {

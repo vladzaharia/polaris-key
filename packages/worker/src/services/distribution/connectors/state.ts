@@ -1,12 +1,12 @@
 /**
- * Connector-agnostic state (P5-02): the two tables of migration 0040 and the writers a store
+ * Connector-agnostic state (P5-02): the two tables of migration 0041 and the writers a store
  * connector uses to reach `dist_availability`, `dist_submissions` and `dist_rollouts`.
  *
  *   - `dist_connector_objects` — the store objects a connector tracks (`upsertObject`), which the
  *     poller reconciles and where an object no release claims yet waits (`release_id` NULL).
  *   - `dist_connector_events` — every webhook delivery that passed its signature check, stored raw
  *     with its outcome (`recordEvent`); the poll tick re-drives one whose follow-up failed or was
- *     cut off (`eventsToRedrive`) and prunes old rows (`pruneEvents`).
+ *     cut off (`eventsToRedrive`); the nightly sweep prunes old rows (`pruneEvents`).
  *
  * A connector writes availability and submissions through P2b-03's own writers with a
  * `connectorWriter` (`source` = the connector kind, actor `connector:<kind>`), and mirrors a
@@ -296,7 +296,8 @@ export type ConnectorEventOutcome =
  *  what a valid-but-hostile signer could store. */
 export const MAX_STORED_PAYLOAD = 16 * 1024;
 
-/** How long a stored event is kept before the poll tick prunes it. */
+/** How long a stored event is kept before the nightly maintenance sweep prunes it
+ *  (`scheduled.ts`, for every product including soft-deleted and Distribution-off ones). */
 export const CONNECTOR_EVENT_RETENTION_SECONDS = 30 * 24 * 60 * 60;
 
 export interface ConnectorEventRow {

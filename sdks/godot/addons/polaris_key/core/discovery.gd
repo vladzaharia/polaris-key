@@ -76,3 +76,54 @@ static func _nonempty(v: Variant) -> bool:
 
 static func _invalid(message: String) -> Dictionary:
 	return {"kind": "invalid", "message": message}
+
+
+## The absolute appcast URL in Update's published fragment (sdk-node `appcastUrlFrom`), or ""
+## when the manifest has no enabled Update fragment with an `endpoints.appcast` http(s) URL. The
+## host is never string-built here: §R1 moved these paths, and the document is the product's own
+## statement of where its feed lives. `arch` is a query parameter (`?arch=`, form-encoded as
+## URLSearchParams does); a channel other than `stable` is a PATH segment, the stable feed's
+## sibling (`…/update/<channel>/appcast.xml`). The caller passes a canonical channel name.
+static func appcast_url_from(manifest: Variant, channel := "", arch := "") -> String:
+	if not (manifest is Dictionary) or not (manifest.get("services") is Dictionary):
+		return ""
+	var update = manifest["services"].get("update")
+	if not (update is Dictionary) or not PKeyClaims.is_true(update.get("enabled")):
+		return ""
+	var endpoints = update.get("endpoints")
+	var base = endpoints.get("appcast") if endpoints is Dictionary else null
+	if not _nonempty(base) or not (base.begins_with("https://") or base.begins_with("http://")):
+		return ""
+	var url: String = base
+	var fragment := ""
+	var at := url.find("#")
+	if at >= 0:
+		fragment = url.substr(at)
+		url = url.substr(0, at)
+	var query := ""
+	var q := url.find("?")
+	if q >= 0:
+		query = url.substr(q + 1)
+		url = url.substr(0, q)
+	if channel != "" and channel != PKeyConstants.CHANNEL_STABLE and url.ends_with("/appcast.xml"):
+		url = url.trim_suffix("/appcast.xml") + "/%s/appcast.xml" % PKeyUri.component(channel)
+	if arch != "":
+		query = _set_param(query, "arch", PKeyUri.form(arch))
+	return url + ("?" + query if query != "" else "") + fragment
+
+
+## URLSearchParams.set over a raw query: the first `name` pair takes the value, later ones go,
+## and a missing one is appended. Other pairs are kept as written (the Worker publishes none).
+static func _set_param(query: String, name: String, encoded: String) -> String:
+	var out := PackedStringArray()
+	var done := false
+	for pair in query.split("&", false):
+		if pair.get_slice("=", 0) == name:
+			if not done:
+				out.append("%s=%s" % [name, encoded])
+				done = true
+			continue
+		out.append(pair)
+	if not done:
+		out.append("%s=%s" % [name, encoded])
+	return "&".join(out)

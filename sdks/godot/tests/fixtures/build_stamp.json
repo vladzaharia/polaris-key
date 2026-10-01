@@ -1,0 +1,21 @@
+{
+  "arch": "arm64",
+  "build": 7,
+  "channel": "beta",
+  "debug": false,
+  "embeddedPacks": [],
+  "engine": "godot-4.7",
+  "engineVersion": "4.7.2-stable (official)",
+  "outlet": "itch",
+  "outletIds": {
+    "itchGameId": "1000",
+    "unknownKey": "dropped",
+    "steamAppId": 480
+  },
+  "packSources": "embedded",
+  "pkeyBuild": 1,
+  "platform": "macos",
+  "product": "djdl",
+  "sdkVersion": "0.1.0",
+  "version": "1.2.3"
+}

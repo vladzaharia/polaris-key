@@ -53,14 +53,17 @@ static func hash(msg: PackedByteArray) -> PackedByteArray:
 	var kk: PackedInt64Array = PackedInt64Array(K)
 	var w: PackedInt64Array = PackedInt64Array()
 	w.resize(80)
-	var h0: int = IV[0]
-	var h1: int = IV[1]
-	var h2: int = IV[2]
-	var h3: int = IV[3]
-	var h4: int = IV[4]
-	var h5: int = IV[5]
-	var h6: int = IV[6]
-	var h7: int = IV[7]
+	# A local copy: on 4.4 two threads reading one const Array race (it hands elements out
+	# through a single shared slot), so thread-reachable code never indexes or iterates one.
+	var iv := PackedInt64Array(IV)
+	var h0: int = iv[0]
+	var h1: int = iv[1]
+	var h2: int = iv[2]
+	var h3: int = iv[3]
+	var h4: int = iv[4]
+	var h5: int = iv[5]
+	var h6: int = iv[6]
+	var h7: int = iv[7]
 	var blk: int = 0
 	while blk < nw:
 		var base: int = nw - 1 - blk

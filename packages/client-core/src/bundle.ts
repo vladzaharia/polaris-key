@@ -30,7 +30,7 @@ import { verifyJws, type TrustSet } from "@polaris-key/jws";
 import { MAX_BUNDLE_BYTES, type BundleDoc } from "@polaris-key/protocol/core";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
-import { CLOCK_SKEW_SECONDS } from "./claims.js";
+import { CLOCK_SKEW_SECONDS, isWireInteger } from "./claims.js";
 import { verifyConfigDoc, verifyLicenseDoc } from "./verify.js";
 import { mergeTrust, verifyTrustManifest } from "./trust.js";
 
@@ -141,9 +141,10 @@ export async function inspectBundle(
   if (bundle.aud !== opts.product) return refuse("bundle-claims-rejected");
   if (bundle.deviceId !== opts.deviceId)
     return refuse("bundle-claims-rejected");
+  // V4 §3: integer claims decided from the token, minimum 0.
   if (
-    typeof bundle.issuedAt !== "number" ||
-    typeof bundle.expiresAt !== "number"
+    !isWireInteger(bundle.issuedAt, "/issuedAt", 0, verified.nonWireIntegers) ||
+    !isWireInteger(bundle.expiresAt, "/expiresAt", 0, verified.nonWireIntegers)
   ) {
     return refuse("bundle-claims-rejected");
   }

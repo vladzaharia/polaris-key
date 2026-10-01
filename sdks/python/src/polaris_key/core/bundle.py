@@ -34,6 +34,7 @@ from .models import (
     TYP_BUNDLE,
     ConfigDoc,
     LicenseDoc,
+    _wire_int,
 )
 from .store import CacheRecord, ImportedBundle
 from .trust import merge_trust, verify_trust_manifest
@@ -177,8 +178,9 @@ def inspect_bundle(
     # `graceUntil`.
     bundle_id = bundle.get("bundleId")
     trust_jws = bundle.get("trust")
-    issued_at = bundle.get("issuedAt")
-    expires_at = bundle.get("expiresAt")
+    # V4 §3: integer claims, minimum 0.
+    issued_at = _wire_int(bundle.get("issuedAt"), 0)
+    expires_at = _wire_int(bundle.get("expiresAt"), 0)
     if not isinstance(bundle_id, str) or bundle_id == "":
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
     if not isinstance(trust_jws, str):
@@ -187,9 +189,7 @@ def inspect_bundle(
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
     if bundle.get("deviceId") != device_id:
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
-    if isinstance(issued_at, bool) or not isinstance(issued_at, int):
-        return BundleRefused(BUNDLE_CLAIMS_REJECTED)
-    if isinstance(expires_at, bool) or not isinstance(expires_at, int):
+    if issued_at is None or expires_at is None:
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
     if issued_at > now + CLOCK_SKEW_SECONDS:
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
@@ -199,12 +199,14 @@ def inspect_bundle(
     docs_raw = bundle.get("docs")
     if not isinstance(docs_raw, dict):
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
+    # V4 §3 presence: each of ``license`` and ``config`` is absent or a string; a present
+    # ``null`` is refused (Node and Godot always did), never read as absent.
+    if "license" in docs_raw and not isinstance(docs_raw["license"], str):
+        return BundleRefused(BUNDLE_CLAIMS_REJECTED)
+    if "config" in docs_raw and not isinstance(docs_raw["config"], str):
+        return BundleRefused(BUNDLE_CLAIMS_REJECTED)
     license_jws = docs_raw.get("license")
     config_jws = docs_raw.get("config")
-    if license_jws is not None and not isinstance(license_jws, str):
-        return BundleRefused(BUNDLE_CLAIMS_REJECTED)
-    if config_jws is not None and not isinstance(config_jws, str):
-        return BundleRefused(BUNDLE_CLAIMS_REJECTED)
     # A bundle carrying NEITHER document is vacuous (§7): it can grant nothing and
     # configure nothing, so importing it would write an `importedBundle` marker with no
     # content behind it — an install that looks provisioned and is not. Refused here, at

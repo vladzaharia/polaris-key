@@ -26,7 +26,8 @@
 -- (at most 16 KiB of it) with what was done with it: `applied`, `stored` (an event with no state
 -- effect: beta feedback, alternative distribution, a ping), `ignored` (an event type this build
 -- does not know), `unresolved` or `failed`. Redelivery is deduplicated in KV first (7 days, like
--- the GitHub webhook); the primary key is the second line. The poll tick prunes rows older than
+-- the GitHub webhook); the primary key is the second line. The nightly maintenance sweep
+-- (`scheduled.ts`, every product including deleted ones) prunes rows older than
 -- `CONNECTOR_EVENT_RETENTION_SECONDS`.
 CREATE TABLE IF NOT EXISTS dist_connector_objects (
   product       TEXT NOT NULL REFERENCES products(slug),

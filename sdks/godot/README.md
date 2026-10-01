@@ -9,21 +9,30 @@ The addon's Core (P1-02) is offline-capable: strict base64url and JSON, the 13-s
 licence and config claims, the trust manifest, the clock floor, the verified cache, the file
 store, bundle import, discovery and capabilities, an HTTP transport that never leaks the bearer,
 and `sync()`, behind the `PolarisKey` autoload. The service clients build on `PolarisKey.core`;
-`PolarisKey.config` (P1-04) is the first, and licence, devices, identity and update follow in
-later work packages.
+`PolarisKey.config` (P1-04), `license` (P1-03), `devices` (P1-05), `update` and `release` (P1-08)
+are in; identity follows in a later work package.
 
 ## Layout
 
 ```text
 sdks/godot/
   project.godot               main loop = PKeyTestRunner; flush_stdout_on_print
-  export_presets.cfg          one preset, "Conformance (Linux)": the test pack
+  export_presets.cfg          one preset, "Conformance (Linux)": the test pack (and its
+                              polaris_key/* stamp options)
+  polaris_key.tres            the harness's PKeyOptions, as the setup dock writes it (product
+                              pkey-harness, editor channel dev)
   parity.json                 the Godot parity manifest (conformance/parity/)
   addons/polaris_key/         the addon (the only directory a release ships)
-    plugin.cfg, plugin.gd     editor shell
+    plugin.cfg, plugin.gd     editor shell: the autoload, the export plugin, the setup dock
+    export/export_plugin.gd   PKeyExportPlugin: the build stamp and the pkey_* feature tags
+    editor/setup_dock.tscn    the setup dock (setup_dock.gd); editor/setup_check.gd is
+                              PKeySetupCheck, its editor-free logic (pins, Check, Save)
+    core/build_stamp.gd       PKeyBuildStamp: res://.polaris_key/build.json, its reader, the
+                              editor fallback and the export-side checks
     polaris_key.gd            the PolarisKey autoload: configure, start, discover, capabilities,
-                              sync, get_sync_state, import_bundle, status; three signals;
-                              the `devices` and `license` sub-objects
+                              sync, get_sync_state, import_bundle, status, build_info; three
+                              signals;
+                              the `devices`, `license`, `update` and `release` sub-objects
     services/devices.gd       PKeyDevices (PolarisKey.devices): fingerprint, register, list,
                               rename, deauthorize, report (also after every sync)
     services/license.gd       PKeyLicense (PolarisKey.license): the gate, activate_with_key,
@@ -31,6 +40,13 @@ sdks/godot/
                               401 re-acquire it installs into Core (license/token or
                               devices/register, P1b-06's rule)
     services/license/         PKeyActivationResult (both error spellings), PKeyLicenseEndpoints
+    services/update.gd        PKeyUpdate (PolarisKey.update): check -> PKeyVersionCheck
+                              (services/update/), update_available(check), appcast_url
+    services/release.gd       PKeyRelease (PolarisKey.release): changelog -> PKeyChangelogResult
+                              of PKeyChangelogEntry (services/release/), install_url,
+                              download_url
+    core/uri.gd               PKeyUri: encodeURIComponent and URLSearchParams encoding, byte for
+                              byte as sdk-node (String.uri_encode() is not)
     core/channel.gd           PKeyChannel: the §5.1 channel vocabulary, the header this SDK sends
     core/fingerprint.gd       PKeyFingerprint: per-platform readers as pure parsers over captured
                               output, hashing, the desktop device-id raw source
@@ -61,11 +77,16 @@ sdks/godot/
     support/fake_server.gd    a TCPServer on 127.0.0.1 the core and transcript tests talk to
     support/transcript_replay.gd  replays conformance/transcripts against the fake server
     support/fake_host.gd      a PKeyHostIo over fixtures/devices-captures.json (any platform)
-    suite_<name>.gd           one suite per file (core/, config/ and devices/ hold their suites'
-                              groups); suite_platform reads THIS machine's fingerprint
+    suite_<name>.gd           one suite per file (core/, config/, devices/, update/ and
+                              build_stamp/ hold
+                              their suites' groups); suite_platform reads THIS machine's
+                              fingerprint; suite_export_stamps (outside `ci`) reads the ZIP
+                              exports run_tests.sh makes
     config/catalog.json       the mirror fixture; catalog_generated.gd is GENERATED from it by
                               `pnpm gen:mirrors -- --lang gdscript` (a tools test keeps it fresh)
-    fixtures/                 hand-maintained captures (identifiers replaced by fake values)
+    fixtures/                 hand-maintained captures (identifiers replaced by fake values);
+                              release-urls.json holds sdk-node's URL outputs, which
+                              packages/sdk-node/test/godotUrlVectors.test.ts keeps true
     corpus/v2/                GENERATED mirror of conformance/corpus/v2/ — never edit
     transcripts/              GENERATED mirror of conformance/transcripts/ — never edit
     vectors/                  hand-generated SHA-512 and Ed25519 vectors (byte-for-byte)
@@ -75,6 +96,48 @@ sdks/godot/
                               Windows) and the Linux template
     godot.sha512              upstream SHA-512 pins for those downloads
 ```
+
+## Build stamp and setup dock (P1-11)
+
+Every export carries `res://.polaris_key/build.json` (`pkeyBuild: 1`, no timestamps, sorted keys,
+so two exports of one preset are byte-identical): product, version, build, outlet, channel,
+engine, engineVersion, platform, arch, packSources, embeddedPacks, debug, sdkVersion and
+outletIds. The export plugin adds per-preset options, each overridable from CI with
+`get_or_env`, so a headless `--export-release` stamps exactly what CI says:
+
+| Option                     | Environment          | Default                                                                                                                                     |
+| -------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `polaris_key/outlet`       | `PKEY_BUILD_OUTLET`  | `direct` on the desktop, `play`, `app-store`, `web`                                                                                         |
+| `polaris_key/channel`      | `PKEY_BUILD_CHANNEL` | `stable` (stamped canonically: `staging` as `beta`)                                                                                         |
+| `polaris_key/build_number` | `PKEY_BUILD_NUMBER`  | `0`                                                                                                                                         |
+| `polaris_key/outlet_ids`   | `PKEY_OUTLET_IDS`    | `{}`: a JSON object of `steamAppId`, `itchGameId`, `flatpakId`, `snapName`, `caskToken`, `msixFamilyName`, `bundleId`, every value a string |
+
+```sh
+PKEY_OUTLET_IDS="$(pkey distribution outlet-ids --outlet steam)" \
+PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
+  godot --headless --export-release "Linux" build/game.x86_64
+```
+
+- The plugin never reads `.pkey/distribution` (it may be YAML, and `.pkey/` sits at the product
+  repo root). `bundleId` comes from the preset (`application/bundle_identifier`,
+  `package/unique_name`) and wins over the option's.
+- `_get_export_features` adds `pkey_outlet_<id>` and `pkey_channel_<channel>`, `-` mapped to `_`
+  (`pkey_outlet_app_store`). Custom feature tags do not exist in the editor.
+- An export plugin cannot fail an export: an unknown outlet, a channel outside the vocabulary, a
+  non-semver `application/config/version` and a bad `outlet_ids` value are dialog warnings, and
+  at export a `push_warning` (naming `PKEY_OUTLET_IDS` when the environment supplied it) that a
+  headless log shows. `PolarisKey.configure()` refuses a non-semver version and a malformed
+  stamped channel.
+- `PolarisKey.build_info()` returns the stamp, or in the editor the fallback: the project version,
+  build 0, no outlet, the editor channel from `res://polaris_key.tres`, this platform and arch.
+  The core sends the stamped channel as `X-PKey-Channel` (over `default_channel`) and reports the
+  stamped outlet. `PKeyOptions.build_stamp_path = ""` ignores the stamp (the tests do).
+- The setup dock (right dock; `add_dock` on 4.6+, `add_control_to_dock` on 4.4) edits
+  `res://polaris_key.tres`: product, base URL, pinned keys pasted from `pkey trust` (its Godot
+  line is `const PINNED_TRUST_KEYS := {...}`), editor channel. "Check" verifies the live trust
+  manifest against the pasted pins and lists each kid with a SHA-256 fingerprint. "Fill from
+  discovery" only pre-fills candidates; "Save" needs the box confirming the pins match
+  `pkey trust` or the console.
 
 ## Licence notes
 
@@ -158,6 +221,18 @@ those strings against the generator's `expect.docNulReplaced`.
 
 - **4.4 syntax is the floor.** Typed dictionaries are fine; `@abstract` and variadic arguments are
   not. Do not add `config/features` to `project.godot`, which would pin the project to one engine.
+- **Scripts the editor runs are `@tool`.** In the editor a non-tool script's static variables
+  and `_static_init` never run (a `static var` reads null) and a loaded non-tool Resource is a
+  placeholder whose methods fail. The export plugin and the dock reach `PKeyChannel`,
+  `PKeySemver`, `PKeyJson`, `PKeyB64Url`, `PKeyTransport`, `PKeyJws`, `PKeyEd25519` and
+  `PKeyOptions`, so those carry `@tool`; a new static-state script on that path needs it too.
+- **Thread-reachable code never indexes or iterates a `const` Array.** On 4.4.1 a read-only
+  Array hands each element out through one shared slot, so two threads reading the same constant
+  get each other's values (a two-thread loop over a 16-element constant: about 1 read in 40,000
+  wrong; 4.7.2: none). It made offloaded document verifies fail about one time in 70 (the
+  scalar reduction reads the constant `L`), which surfaced as a flaky `ci` set on the 4.4 floor.
+  Convert first (`PackedInt64Array(L)`, `PackedStringArray(PATHS)`): the conversion is safe.
+  The `ed25519` suite runs the crypto on two threads to keep it that way.
 - **Commit every `.uid` with its script.** The first import writes it; `run_tests.sh` fails on an
   untracked one.
 - **Never reformat the crypto files.** A negative shift in a constant expression is a parse error in
@@ -171,21 +246,55 @@ those strings against the generator's `expect.docNulReplaced`.
 
 ## Measured pitfalls
 
-| Behaviour                         | 4.7.2                                                                 | 4.4.1                                                        | Consequence                                                         |
-| --------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
-| `--import` with a parse error     | exit 0, prints nothing                                                | exit 0, prints the error                                     | watch the log; never `\|\| true`                                    |
-| runner fails to load              | macOS: modal alert, the run hangs; Linux: exit 1 (`Invalid MainLoop`) | macOS: SIGABRT, exit 134; Linux: exit 1 (`Invalid MainLoop`) | watchdog and timeout                                                |
-| runtime error in a suite          | editor aborts it; template continues silently                         | editor aborts it                                             | explicit and coverage checks                                        |
-| `\u0000` in JSON                  | U+FFFD, plus a "Unicode parsing error" line                           | dropped                                                      | the §10 rule in `PKeyJson`                                          |
-| `--export-pack`                   | works with no templates installed                                     | same                                                         | CI needs only the template binary                                   |
-| redirect with `max_redirects = 0` | `RESULT_REDIRECT_LIMIT_REACHED`                                       | 303 and 307 come back as `RESULT_SUCCESS`                    | follow any 3xx with a `Location`                                    |
-| lone surrogate `\ud800` in JSON   | rejected                                                              | rejected                                                     | JS accepts it: divergence for P3-02                                 |
-| slim container without fontconfig | `ERROR: Unable to load fontconfig` on every run                       | same                                                         | the watchdog ignores generic errors                                 |
-| `HTTPRequest.timeout`             | a Timer on process delta: a long frame before the request spends it   | same                                                         | `PKeyTransport` times out on the wall clock, one budget per request |
+| Behaviour                             | 4.7.2                                                                      | 4.4.1                                                        | Consequence                                                                 |
+| ------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `--import` with a parse error         | exit 0, prints nothing                                                     | exit 0, prints the error                                     | watch the log; never `\|\| true`                                            |
+| runner fails to load                  | macOS: modal alert, the run hangs; Linux: exit 1 (`Invalid MainLoop`)      | macOS: SIGABRT, exit 134; Linux: exit 1 (`Invalid MainLoop`) | watchdog and timeout                                                        |
+| runtime error in a suite              | editor aborts it; template continues silently                              | editor aborts it                                             | explicit and coverage checks                                                |
+| `\u0000` in JSON                      | U+FFFD, plus a "Unicode parsing error" line                                | dropped                                                      | the §10 rule in `PKeyJson`                                                  |
+| `--export-pack`                       | works with no templates installed                                          | same                                                         | CI needs only the template binary                                           |
+| redirect with `max_redirects = 0`     | `RESULT_REDIRECT_LIMIT_REACHED`                                            | 303 and 307 come back as `RESULT_SUCCESS`                    | follow any 3xx with a `Location`                                            |
+| lone surrogate `\ud800` in JSON       | rejected                                                                   | rejected                                                     | JS accepts it: divergence for P3-02                                         |
+| slim container without fontconfig     | `ERROR: Unable to load fontconfig` on every run                            | same                                                         | the watchdog ignores generic errors                                         |
+| non-tool script in the editor         | static vars and `_static_init` skipped; a loaded Resource is a placeholder | not measured (the `@tool` fix is green there)                | `@tool` on what the export plugin and dock reach                            |
+| two threads reading one `const` Array | correct                                                                    | wrong values now and then (shared read slot)                 | convert to a packed array first; never index a constant off the main thread |
+| `HTTPRequest.timeout`                 | a Timer on process delta: a long frame before the request spends it        | same                                                         | `PKeyTransport` times out on the wall clock, one budget per request         |
 
 So every `run_tests.sh` step fails on `SCRIPT ERROR`, `Parse Error`, `Failed to load script`,
 `Cannot get class` or `Invalid MainLoop` in its log, on its timeout, on a non-zero exit, and (for
 runs) without a final `PKEY-TEST SUMMARY … failed=0`.
+
+## Update and release (`PolarisKey.update`, `PolarisKey.release`)
+
+```gdscript
+PolarisKey.update.update_available.connect(_on_update)   # fires only when this build is behind
+var check := await PolarisKey.update.check()             # or check("beta"); a PKeyVersionCheck
+if check.ok and check.update_available: print(check.version, " ", check.url)
+var notes := await PolarisKey.release.changelog()        # notes.entries: Array[PKeyChangelogEntry]
+var url := PolarisKey.release.download_url("1.2.3", "diceroll", "x86_64", true)  # ?checksum=sha256
+```
+
+- Today's v3 check, the same as sdk-node's and Python's, and no more: the outlet-aware decision,
+  the signed feed and installing builds are P3-08 and P3-10. In P1 the answer is informational on
+  every outlet; a Steam, itch or store build must not act on it by itself.
+- `update_available` compares `PKeyOptions.version` (the game's, never the SDK's) with
+  PKeySemver, the gate's own semver, so a pre-release sorts below its release.
+- `check("")` sends no `?channel=`. Any other value must be a channel name: an alias goes out
+  canonically (`staging` as `beta`, `latest` as `stable`), `pr<n>` as `pr-<n>`, and a malformed
+  one (`1.2.3`) is refused as `invalid-options` without a request. `appcast_url` follows the same
+  rule and returns "" for a malformed channel.
+- A 403 keeps the body's code (`channel_not_allowed`; `forbidden` when it names none); any other
+  status is `not_found`; a check that got no answer keeps the transport's code. The changelog maps
+  a 401 or 403 by its body's code in either spelling (`download_auth_required` stays itself). The
+  bearer is forwarded only when one is held.
+- With the service off (discovery this session, else `expected_services`), `check` and
+  `changelog` answer `service-unavailable` without a request, and `install_url`, `download_url`
+  and `appcast_url` return "". `update` and `release` exist before `configure()`, so a signal
+  connected early survives it.
+- There is no throttle: the caller decides when to check (P1-10's DECIDE stage checks once per
+  boot). A periodic caller must not let a failed check consume its interval.
+- `download_url` only builds the URL. Fetching it needs the transport's credential-safe redirects
+  and no gzip (gzip breaks `Range`); that is P3-10's.
 
 ## Config (`PolarisKey.config`)
 

@@ -40,10 +40,10 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | done   |
 | [P1-06](wp/P1-06-rfc8628-page.md) ✋      | Serve an RFC 8628 user-code page for device-code sign-in                                   | P0-13                                    | implementer    | 0.5–0.75 | done   |
 | [P1-07](wp/P1-07-godot-identity.md) ✋    | Godot identity: device-code sign-in with a QR code                                         | P1-02, P1-06                             | godot-engineer | 0.75–1   | todo   |
-| [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | todo   |
+| [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | done   |
 | [P1-09](wp/P1-09-boot-stage-machine.md) ⚑ | Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`    | —                                        | sdk-porter     | 1–1.5    | done   |
 | [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                       | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | todo   |
-| [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                        | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | todo   |
+| [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                        | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | done   |
 | [P1-12](wp/P1-12-godot-release.md) ✋     | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)        | P1-05, P1-08, P1-10, P1-11, P0-05        | godot-engineer | 0.5–0.75 | todo   |
 
 ## P1b: SDK parity
@@ -143,7 +143,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | Id                                               | Title                                                                                                            | Depends on                                      | Role        | Weeks | Status |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------- | ----- | ------ |
 | [P5-01](wp/P5-01-outlet-credentials.md)          | Outlet-credential custody and shared JWT signing (ES256, RS256)                                                  | P2b-01                                          | implementer | 1–1.5 | done   |
-| [P5-02](wp/P5-02-asc-connector.md) ✋            | App Store Connect connector: webhooks, TestFlight, phased release, Background Assets states                      | P5-01, P2b-03, P2b-04, S-07                     | implementer | 2     | todo   |
+| [P5-02](wp/P5-02-asc-connector.md) ✋            | App Store Connect connector: webhooks, TestFlight, phased release, Background Assets states                      | P5-01, P2b-03, P2b-04, S-07                     | implementer | 2     | done   |
 | [P5-03](wp/P5-03-play-connector.md) ✋           | Google Play connector: tracks, staged rollout, halt, update priority, Reporting API                              | P5-01, P2b-03, P2b-04, S-07                     | implementer | 1.5–2 | todo   |
 | [P5-04](wp/P5-04-msstore-connector.md) ✋        | Microsoft Store status connector                                                                                 | P5-01, P2b-03, S-07                             | implementer | 0.5–1 | todo   |
 | [P5-05](wp/P5-05-apple-plugin-package.md) ✋     | Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding | P3-10, S-01                                     | implementer | 2–3   | todo   |

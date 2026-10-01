@@ -27,7 +27,6 @@ import type { FetchImpl } from "./asc/client.js";
 import type { ConnectorControl } from "./asc/controls.js";
 import { ascConnector } from "./asc/index.js";
 import { playConnector } from "./play/index.js";
-import { pruneEvents } from "./state.js";
 
 /** What a poll is given: one product, outside any request. */
 export interface ConnectorContext {
@@ -83,7 +82,9 @@ export function connectorOf(kind: string): DistributionConnector | null {
 
 /**
  * One poll tick for one product: every connector, fault-isolated (one connector's throw is its
- * own `error`, never another's), then a bounded prune of old webhook events.
+ * own `error`, never another's). Old webhook events are pruned by the nightly maintenance sweep
+ * (`scheduled.ts`, step `connectorEvents:<product>`), which reaches every product — deleted and
+ * Distribution-off ones included — and not here.
  */
 export async function pollConnectors(
   ctx: ConnectorContext,
@@ -101,7 +102,6 @@ export async function pollConnectors(
       });
     }
   }
-  await pruneEvents(ctx.db, ctx.product.slug, ctx.now);
   return out;
 }
 

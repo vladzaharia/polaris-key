@@ -2,6 +2,8 @@ extends RefCounted
 # Ed25519 vectors (vectors/ed25519.json: RFC 8032 plus edge cases, verdicts from Node/OpenSSL)
 # through both verifiers, PKeyEd25519 and PKeyEd25519Ref. Timing is INFO only.
 # args: [bench <iterations>] adds a timing loop on two vectors (S-04).
+# Also: the scalar code, SHA-512 and whole verify jobs on two worker threads at once (4.4.1 races
+# two threads reading one const Array, which once made offloaded document verifies fail).
 
 const VECTORS := "res://tests/vectors/ed25519.json"
 const FLOOR := 26
@@ -34,7 +36,46 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 		t.check("%s coverage" % impl_name, evaluated == cases.size() and evaluated >= FLOOR, "%d/%d evaluated, floor %d" % [evaluated, cases.size(), FLOOR])
 		if bench_iters > 0:
 			_bench(t, impl_name, impl, cases, bench_iters)
+	_threads(t, cases)
 	return true
+
+
+## Two WorkerThreadPool tasks run the same work at once and compare every result with the one
+## computed alone first. Before the fix, 4.4.1 got about 2% of the sc_reduce results wrong.
+func _threads(t: PKeyTestContext, cases: Array) -> void:
+	if not OS.has_feature("threads"):
+		t.info("threads: no thread support in this build; skipped")
+		return
+	var c: Dictionary = cases[1]
+	var sig: PackedByteArray = String(c["sig"]).hex_decode()
+	var msg: PackedByteArray = String(c["msg"]).hex_decode()
+	var key := PKeyEd25519.prepare_key(String(c["pk"]).hex_decode())
+	var h := PackedByteArray()
+	h.resize(64)
+	for i in 64:
+		h[i] = (i * 37 + 11) & 255
+	var work := {
+		"sc_reduce": func() -> Variant: return PKeyEd25519.sc_reduce(h),
+		"Ref.reduce": func() -> Variant: return PKeyEd25519Ref.reduce(h),
+		"s_is_canonical": func() -> Variant: return PKeyEd25519.s_is_canonical(sig),
+		"sha512": func() -> Variant: return PKeySha512.hash(msg),
+		"verify job": _job_ok.bind(sig, msg, key),
+	}
+	for name in work:
+		var f: Callable = work[name]
+		var want = f.call()
+		if name == "verify job" and not t.check("threads: the vector verifies alone", want == true):
+			continue
+		var iters := 30 if name == "verify job" else 1500
+		var bad := [0, 0]
+		var started := Time.get_ticks_usec()
+		var ids := []
+		for slot in 2:
+			ids.append(WorkerThreadPool.add_task(_spin.bind(f, want, iters, bad, slot), false, "pkey-test %s" % name))
+		for id in ids:
+			WorkerThreadPool.wait_for_task_completion(id)
+		t.check("threads: %s on two threads matches the single-thread result" % name, bad == [0, 0],
+				"wrong results per thread %s of %d, %.0f ms" % [str(bad), iters, (Time.get_ticks_usec() - started) / 1000.0])
 
 
 func _bench(t: PKeyTestContext, impl_name: String, impl, cases: Array, iters: int) -> void:
@@ -59,3 +100,15 @@ func _bench(t: PKeyTestContext, impl_name: String, impl, cases: Array, iters: in
 			total += x
 		t.info("%s bench %s (msg %d B) x%d: min %.2f ms, median %.2f ms, mean %.2f ms" % [
 			impl_name, c["name"], msg.size(), iters, times[0], times[times.size() / 2], total / times.size()])
+
+
+func _job_ok(sig: PackedByteArray, msg: PackedByteArray, key: Array) -> Variant:
+	var job := PKeyEd25519Job.new(sig, msg, key)
+	job.run()
+	return job.ok
+
+
+func _spin(f: Callable, want: Variant, iters: int, bad: Array, slot: int) -> void:
+	for i in iters:
+		if f.call() != want:
+			bad[slot] += 1

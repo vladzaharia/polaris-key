@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/polaris_key/core/options.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+product = "pkey-harness"
+base_url = "https://key.plrs.im"
+default_channel = "dev"

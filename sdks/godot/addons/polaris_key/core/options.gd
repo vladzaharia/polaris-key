@@ -1,3 +1,4 @@
+@tool
 class_name PKeyOptions
 extends Resource
 ## Everything `PolarisKey.configure()` needs, as an inspector-editable Resource. Keep the game's
@@ -18,7 +19,8 @@ const CONFIG_ENV_NEVER := 2
 ## The game's version, sent as X-PKey-Version and gated on by the server. Empty: the project's
 ## `application/config/version`. Must be semver; `configure` refuses anything else.
 @export var version := ""
-## X-PKey-Channel until the build stamp (P1-11) supplies one (WIRE-CONTRACT-V3 §5.1): `stable`,
+## X-PKey-Channel until the build stamp (P1-11) supplies one (WIRE-CONTRACT-V3 §5.1), so in
+## practice the editor channel (the setup dock writes it): `stable`,
 ## `beta`, `pr-<n>`, `dev` or a manual channel the product declares (`^[a-z0-9][a-z0-9-]{0,63}$`).
 ## Aliases are sent as their canonical name (`staging` as `beta`, `latest` as `stable`);
 ## `configure` refuses anything malformed. Empty: derived from the version (`stable`, or
@@ -66,6 +68,9 @@ const CONFIG_ENV_NEVER := 2
 var store: PKeyStore = null
 ## A Callable returning epoch seconds, replacing the system clock (tests and replays).
 var now_source: Callable = Callable()
+## Where the build stamp is read (PKeyBuildStamp). "" means no stamp (tests that must not see
+## the exported one). Not exported.
+var build_stamp_path := PKeyBuildStamp.PATH
 
 
 ## The version to send: `version`, else the project's `application/config/version`.

@@ -112,6 +112,11 @@ optional. A bad value is `invalid_outlet_identity`.
 
 - **Numeric ids** (`appleId`, `steam.appId`, `itch.gameId`) accept a positive integer or a
   string of digits with no leading zero, and are stored as the digit string either way.
+- **`appleId` must match the operator's pin.** The App Store Connect connector runs only while
+  this `appleId` equals the app id a platform admin pinned on the product's `asc-api-key`
+  credential. Changing it stops the connector until they re-pin (see
+  [Pinning the app](/docs/services/distribution/app-store-connect/#pinning-the-app)): the
+  manifest can describe the app, but not choose which app the operator's key works on.
 - **`artifact`** must name an `id` in `.pkey/release`'s `deliverables.app.artifacts` —
   otherwise `unknown_artifact_ref`.
 - **`tracks` and `branches`** keys must be declared channels — `stable`, `beta`, a manual

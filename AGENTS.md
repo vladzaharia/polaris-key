@@ -38,7 +38,7 @@ tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-
 actions/publish/     the polaris-key/publish GitHub Action (committed dist/ bundle of the CLI)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
-                     security/ (threat model, wire contract v3, audit + findings)
+                     security/ (threat model, wire contract v4, audit + findings)
                      superpowers/ (design specs + implementation plans, historical)
 ```
 
@@ -125,7 +125,8 @@ The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corp
 ## Hard rules
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
-gate-matrix.json,fingerprint.json,stage-matrix.json,headers.json,config-matrix.json}` and the
+gate-matrix.json,fingerprint.json,stage-matrix.json,headers.json,config-matrix.json,
+update-matrix.json,outlet-matrix.json}` and the
 generator-owned mirrors at
 `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output.
 Regenerate with `pnpm gen:corpus` and commit the result in the same change.
@@ -138,11 +139,15 @@ recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) th
 same change, and the SDK replayers then show which SDKs must follow.
 
 **2. A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** The constant lives in
-`packages/shared-protocol/src/core.ts` and is currently **3**. The signed document set is
-license / config / trust / bundle (`pkey-license+jws`, `pkey-config+jws`, `pkey-trust+jws`,
-`pkey-bundle+jws`), sharing one envelope (`iss` + `aud` + `deviceId` + `issuedAt` / `expiresAt` /
-`graceUntil`). Changing the encoding is a deliberate, all-languages event: contract → catalog →
-corpus → SDKs, in that order, and a feature is not done until all five implementations pass.
+`packages/shared-protocol/src/core.ts` and is currently **4**; the normative spec is
+`docs/security/WIRE-CONTRACT-V4.md`. The signed document set is licence / config / trust /
+bundle / feed / release (`pkey-license+jws`, `pkey-config+jws`, `pkey-trust+jws`,
+`pkey-bundle+jws`, `pkey-feed+jws`, `pkey-release+jws`). Licence and config documents share one
+envelope (`iss` + `aud` + `deviceId` + `issuedAt` / `expiresAt` / `graceUntil`). The trust
+manifest and the feed are device-less. A release record is signed by a CI-held release key,
+never a product key, and verified only against the keys the app pins. Changing the encoding is
+a deliberate, all-languages event: contract → catalog → corpus → SDKs, in that order, and a
+feature is not done until all five implementations pass.
 
 **3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Five families:
 
@@ -222,7 +227,7 @@ origin and no `llms.txt`. An agent reads this file and the repo, not the deploye
   carry now lives under `packages/docs/src/content/docs/contribute/`.
 - **`README.md`** — what the platform is, the frozen wire contract, architecture at a glance.
 - **`docs/`** — operator material (`RUNBOOK`, `DEPLOYMENT`, `PRIVACY`), `docs/security/` (threat
-  model, wire contract v3, audit + findings), and `docs/superpowers/` (historical specs and
+  model, wire contract v4, audit + findings), and `docs/superpowers/` (historical specs and
   plans — read the specs' **closeouts**, not the plans, for shipped state).
 - **`packages/docs/src/content/docs/`** — the published site: `start/`, `users/`, `services/`,
   `build/`, `admin/`, `agents/`, `reference/`, `contribute/`. Long-form adopter and authoring

@@ -90,7 +90,7 @@ describe("error-code registry (core.errors)", () => {
     expect(ERROR_CODE_KINDS["bridge-missing"]).toBe("client");
     expect(Object.keys(ERROR_CODE_KINDS)).toEqual([...ERROR_CODE_VALUES]);
     expect(BarrelErrorCode).toBe(ErrorCode);
-    expect(PROTOCOL_VERSION).toBe(3);
+    expect(PROTOCOL_VERSION).toBe(4);
   });
 
   it("the package root re-exports every generated constant", () => {

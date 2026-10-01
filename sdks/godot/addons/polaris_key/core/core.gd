@@ -22,6 +22,8 @@ var base_url := ""
 var version := ""
 var channel := ""
 var sdk_version := ""
+## The build stamp (PKeyBuildStamp.read), or null for a build without one.
+var build_stamp = null
 var local_only := false
 var trust_refresh := true
 var store: PKeyStore
@@ -62,6 +64,12 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	var channel = PKeyChannel.header_for(opts.default_channel, v)
 	if channel == null:
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "default_channel must be a channel name (stable, beta, pr-<n>, dev or a manual channel matching %s), got '%s'." % [PKeyConstants.CHANNEL_NAME_PATTERN, opts.default_channel])
+	# The build stamp's channel wins over default_channel (P1-11); a malformed one is refused.
+	var stamp = PKeyBuildStamp.read(opts.build_stamp_path)
+	if stamp != null and stamp["channel"] != "":
+		channel = PKeyChannel.header_for(stamp["channel"], v)
+		if channel == null:
+			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "The build stamp (%s) names a malformed channel '%s'; fix polaris_key/channel or PKEY_BUILD_CHANNEL and export again." % [opts.build_stamp_path, stamp["channel"]])
 	for s in opts.expected_services:
 		if not PKeyServices.SLUGS.has(s):
 			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "expected_services names an unknown service '%s'." % s)
@@ -71,6 +79,7 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	core.base_url = base.detail
 	core.version = v
 	core.channel = channel
+	core.build_stamp = stamp
 	core.sdk_version = p_sdk_version
 	core.local_only = opts.local_only
 	core.trust_refresh = opts.trust_refresh
@@ -244,6 +253,19 @@ func refresh_trust() -> String:
 		return ""
 	clock.raise(issued)
 	return jws
+
+
+## The build stamp, or the fallback for a build without one (PKeyBuildStamp.fallback: this
+## Core's channel and version, no outlet).
+func build_info() -> Dictionary:
+	if build_stamp != null:
+		return build_stamp.duplicate(true)
+	return PKeyBuildStamp.fallback(channel, product, version)
+
+
+## The stamped outlet, or "" (never detected at run time here; that is P3-11's).
+func outlet() -> String:
+	return build_stamp["outlet"] if build_stamp != null else ""
 
 
 # ── Sync, bundles, state ───────────────────────────────────────────────────────────────────

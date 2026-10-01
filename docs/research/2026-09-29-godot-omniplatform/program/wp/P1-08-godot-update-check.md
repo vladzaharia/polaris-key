@@ -49,9 +49,11 @@ decision, the signed feed and in-game installation are wire v4 work, not this.
   `PKeyVersionCheck` (`version`, `tag`, `url`, `update_available`); signal
   `update_available(check)`; `appcast_url(channel := "", arch := "") -> String` (empty when
   discovery is not loaded or Update is off).
-- `services/release.gd` (`PolarisKey.release`): `await changelog() -> Array[PKeyChangelogEntry]`
-  (`version`, `tag`, `date`, `summary`, `url`), `install_url()`,
-  `download_url(version, binary, arch, checksum := false) -> String`.
+- `services/release.gd` (`PolarisKey.release`): `await changelog() -> PKeyChangelogResult` (a
+  PKeyResult whose `entries` is `Array[PKeyChangelogEntry]`: `version`, `tag`, `date`, `summary`,
+  `url`), `install_url()`,
+  `download_url(version, binary, arch, checksum := false, dmg := false) -> String` (both ""
+  with Release off).
 - The bearer token is forwarded when one is held (`entitled` access mode needs it); a 403 maps
   to the body's code (default `forbidden`); any other failure to `not_found`; a disabled service
   to `service-unavailable` before any request.
@@ -77,8 +79,9 @@ decision, the signed feed and in-game installation are wire v4 work, not this.
 - **Appcast URL:** a channel feed is a path segment (`/update/<channel>/appcast.xml`), `arch` is a
   query parameter; take the base from discovery, never string-build the host (as
   `appcastUrlFrom` does). It exists for parity; Godot has no Sparkle.
-- **Download URL:** `release/dl/<version>/<binary>-<arch>`, each segment URI-encoded
-  (`String.uri_encode()`), `?checksum=sha256` when asked. The server requires an arch suffix
+- **Download URL:** `release/dl/<version>/<binary>-<arch>`, each segment encoded as JS
+  `encodeURIComponent` does (`PKeyUri.component`; `String.uri_encode()` also encodes `!'()*`, so it
+  is not byte-identical to Node), `?checksum=sha256` when asked. The server requires an arch suffix
   (`arm64|aarch64|x86_64|amd64`). Only the URL is built here: fetching it needs P1-02's
   credential-safe redirects and `accept_gzip = false`, which is P3-10's job.
 - **No throttle in the SDK.** A caller decides when to check (P1-10's `DECIDE` stage checks once
@@ -96,20 +99,20 @@ decision, the signed feed and in-game installation are wire v4 work, not this.
 
 ## Acceptance criteria
 
-- [ ] `check()` against the fake server returns `update_available == true` when the served version
+- [x] `check()` against the fake server returns `update_available == true` when the served version
       is newer than `PKeyOptions.version` (including a pre-release ordering case) and `false`
       when equal or older, and emits `update_available` only in the first case.
-- [ ] A 403 `{"error":{"code":"channel_not_allowed"}}` returns a result with that code; a 404
+- [x] A 403 `{"error":{"code":"channel_not_allowed"}}` returns a result with that code; a 404
       returns `not_found`; with Update disabled in discovery, `check()` returns
       `service-unavailable` and the fake server records no request.
-- [ ] `appcast_url("beta", "arm64")` equals Node's `appcastUrlFrom` for the same discovery
+- [x] `appcast_url("beta", "arm64")` equals Node's `appcastUrlFrom` for the same discovery
       document; it is empty before discovery.
-- [ ] `download_url("1.2.3", "diceroll", "x86_64", true)` equals Node's `downloadUrl` output
+- [x] `download_url("1.2.3", "diceroll", "x86_64", true)` equals Node's `downloadUrl` output
       byte for byte, including encoding.
-- [ ] `changelog()` returns an empty array for a body without `entries`, and forwards the bearer
+- [x] `changelog()` returns an empty array for a body without `entries`, and forwards the bearer
       token when one is held.
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
-- [ ] `sdks/godot/parity.json` marks `update.check`, `release.changelog` and `release.download`
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job.
+- [x] `sdks/godot/parity.json` marks `update.check`, `release.changelog` and `release.download`
       implemented, with test tags (once P1b-01 has landed).
 
 ## Verify

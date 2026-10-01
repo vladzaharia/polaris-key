@@ -459,7 +459,7 @@
       "optional": false,
       "refs": ["notes/A2 §9.6", "PARITY §5.5"],
       "brief": "wp/P1-08-godot-update-check.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-09",
@@ -510,7 +510,7 @@
       "optional": false,
       "refs": ["README §5.9", "README §3.4 pkey build-info"],
       "brief": "wp/P1-11-godot-export-plugin.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-12",
@@ -1600,7 +1600,7 @@
       "optional": false,
       "refs": ["README §3.8", "notes/E1"],
       "brief": "wp/P5-02-asc-connector.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-03",

@@ -67,7 +67,7 @@ built and tested against recorded payloads and a fake ASC server before any real
   constant-time compare, dedupe on `data.id` (7 days in KV), 2xx fast, then fetch the instance with
   the API and write state. Unknown event types answer 204 and are logged.
   _Correction (implementation):_ the Worker writes no runtime log (R12), so "logged" is a row in
-  the new `dist_connector_events` table (migration 0040, with `dist_connector_objects`), outcome
+  the new `dist_connector_events` table (migration 0041, with `dist_connector_objects`), outcome
   `ignored`. "2xx fast, then fetch" uses `ExecutionContext.waitUntil`, threaded to services as
   `ServiceContext.waitUntil`; without it (tests) the follow-up runs inline.
 - Mapping of all 12 event types (below), of `AppVersionState` and the legacy `AppStoreVersionState`,
@@ -147,6 +147,13 @@ built and tested against recorded payloads and a fake ASC server before any real
   `dist_rollouts` directly (`rollouts.ts` `mirrorRollout`), no check needed.
 - **Threat model:** webhook forgery (HMAC), replay (dedupe), SSRF (fixed host), and the blast
   radius of a stolen App Manager key (metadata and release control, not signing).
+  _Correction (lead follow-up P5-02f):_ the brief missed a fifth threat, the confused deputy of a
+  manifest-owned `appleId` steering an operator-owned team key. P5-02 shipped it as a documented
+  residual; P5-02f closed it with an operator-owned pin on the `asc-api-key` (`pin` on the
+  credential PUT, kept in `meta_json`, audited `outlet_credential.pin`). The connector is inert,
+  every control refused (409 `credential_pin_missing` / `credential_pin_mismatch`) and the webhook
+  not-found unless the chosen key's pin equals the manifest's `appleId`
+  (`connectors/asc/setup.ts` `resolveAscSetup`, `test/ascPin.test.ts`).
 
 ## Steps
 
