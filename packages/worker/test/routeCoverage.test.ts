@@ -102,6 +102,14 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/report", ["post"]],
   // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
   ["/{product}/distribution/hooks/asc", ["post"]],
+  // P2b-05: the storefront feeds, the F-Droid relay and its CI route.
+  ["/{product}/distribution/altstore/{channel}/source.json", ["get"]],
+  ["/{product}/distribution/altstore-pal/{channel}/source.json", ["get"]],
+  ["/{product}/distribution/obtainium/{channel}.json", ["get"]],
+  ["/{product}/distribution/fdroid/{channel}/repo/{path}", ["get"]],
+  ["/{product}/distribution/scoop/{channel}.json", ["get"]],
+  ["/{product}/distribution/flathub/{channel}.json", ["get"]],
+  ["/{product}/distribution/feeds/fdroid/{channel}", ["get", "post"]],
   ["/{product}/update/appcast.xml", ["get"]],
   ["/{product}/update/{channel}/appcast.xml", ["get"]],
   ["/{product}/update/version", ["get"]],
@@ -250,6 +258,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/report",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
+  // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/feeds/fdroid/{channel}",
 ]);
 
 /** Every product path the router serves, from the three tables above. */
@@ -274,6 +284,7 @@ function concrete(template: string): string {
     name: "acme.dmg",
     sha256: "a".repeat(64),
     outlet: "direct",
+    path: "entry.jar",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

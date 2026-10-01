@@ -37,18 +37,26 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | POST | `/{product}/devices/register` | core | Keyless device registration (policy-gated) |
 | POST | `/{product}/devices/report` | core | Report device facts (software snapshot + declared probes) |
 | GET | `/{product}/devices` | core | List the devices sharing this device's seat pool |
+| GET | `/{product}/distribution/altstore-pal/{channel}/source.json` | distribution | AltStore PAL source for one channel |
+| GET | `/{product}/distribution/altstore/{channel}/source.json` | distribution | AltStore Classic / SideStore source for one channel |
 | GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
 | GET | `/{product}/distribution/builds/{selector}/{buildId}` | distribution | Download the payload of a declared build |
 | GET | `/{product}/distribution/dl/{version}/{asset}` | distribution | Download a release artifact |
+| GET | `/{product}/distribution/fdroid/{channel}/repo/{path}` | distribution | F-Droid repository relay (one channel's repository) |
+| GET | `/{product}/distribution/feeds/fdroid/{channel}` | distribution | The F-Droid generator's inputs (CI) |
+| POST | `/{product}/distribution/feeds/fdroid/{channel}` | distribution | Register the F-Droid repository files CI signed and uploaded (CI) |
 | GET | `/{product}/distribution/files/{releaseId}/{name}` | distribution | Download one exact file of one release |
+| GET | `/{product}/distribution/flathub/{channel}.json` | distribution | Flathub x-checker-data JSON for one channel |
 | POST | `/{product}/distribution/hooks/asc` | distribution | App Store Connect webhook notifications (Apple → Worker) |
 | GET | `/{product}/distribution/install.sh` | distribution | The curl-pipe install script |
+| GET | `/{product}/distribution/obtainium/{channel}.json` | distribution | Obtainium app config for one channel |
 | POST | `/{product}/distribution/report` | distribution | Report availability, a submission state or a signing key (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/complete` | distribution | Complete an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/halt` | distribution | Halt an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/pause` | distribution | Pause an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/resume` | distribution | Resume an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}` | distribution | Start an outlet rollout, or set its percentage (CI) |
+| GET | `/{product}/distribution/scoop/{channel}.json` | distribution | Scoop app manifest for one channel |
 | GET | `/{product}/identity/auth/callback` | identity | OIDC redirect URI |
 | POST | `/{product}/identity/auth/device/poll` | identity | Poll the device-code flow |
 | POST | `/{product}/identity/auth/device/start` | identity | Begin the device-code flow |
