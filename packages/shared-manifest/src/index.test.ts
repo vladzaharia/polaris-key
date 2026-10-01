@@ -9,6 +9,7 @@ import {
   isArtifactMatch,
   isDeliverableId,
   isIgnoreTag,
+  isReservedChannelName,
   matchesArtifactGlob,
   MAX_IGNORE_TAG_LENGTH,
   MAX_DELIVERABLE_ID_LENGTH,
@@ -1371,6 +1372,104 @@ describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
       tiered({ policyDeviceLimit: 5, policyExpiryDays: 30 }),
     );
     expect(res.warnings.map((w) => w.code)).not.toContain("tier_ignored_field");
+  });
+});
+
+describe("channel names (P0-04, WIRE-CONTRACT-V3 §5.1)", () => {
+  const docs = (opts: {
+    tierChannels?: string[];
+    manual?: string[];
+    artifactChannels?: string[];
+  }) => ({
+    product: {
+      ...PRODUCT,
+      licensing: {
+        tiers: [
+          {
+            id: "standard",
+            ...(opts.tierChannels ? { channels: opts.tierChannels } : {}),
+          },
+        ],
+      },
+    },
+    schema: { schemaVersion: 1, catalog: [] },
+    release: {
+      release: {
+        ghOwner: "acme",
+        ghRepo: "desktop",
+        binaryName: "acme",
+        ...(opts.manual
+          ? {
+              manualChannels: opts.manual.map((name) => ({
+                name,
+                regex: "v.*-x",
+              })),
+            }
+          : {}),
+        ...(opts.artifactChannels
+          ? { artifactPolicy: { channels: opts.artifactChannels } }
+          : {}),
+      },
+    },
+  });
+  const codes = (res: ReturnType<typeof validateManifestDocuments>) =>
+    res.warnings.map((w) => `${w.code} ${w.path}`);
+
+  it("warns on a non-canonical manual name and artifactPolicy channel", () => {
+    const res = validateManifestDocuments(
+      docs({ manual: ["Nightly"], artifactChannels: ["Beta.2"] }),
+    );
+    expect(res.ok).toBe(true);
+    expect(codes(res)).toEqual([
+      "noncanonical_channel_name /release/artifactPolicy/channels/0",
+      "noncanonical_channel_name /release/manualChannels/0/name",
+    ]);
+  });
+
+  it("warns on manual names a built-in takes over, but not on staging", () => {
+    const res = validateManifestDocuments(
+      docs({ manual: ["pr42", "dev", "staging", "nightly"] }),
+    );
+    expect(res.ok).toBe(true);
+    expect(codes(res)).toEqual([
+      "reserved_channel_name /release/manualChannels/0/name",
+      "reserved_channel_name /release/manualChannels/1/name",
+    ]);
+  });
+
+  it("accepts the valid grants staging, dev and pr; warns on a hyphenless pr grant", () => {
+    expect(
+      codes(
+        validateManifestDocuments(
+          docs({ tierChannels: ["stable", "beta", "staging", "dev", "pr"] }),
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      codes(
+        validateManifestDocuments(
+          docs({ tierChannels: ["pr-42", "pr42", "Beta"] }),
+        ),
+      ),
+    ).toEqual([
+      "noncanonical_channel_name /licensing/tiers/0/channels/1",
+      "noncanonical_channel_name /licensing/tiers/0/channels/2",
+    ]);
+  });
+
+  it("isReservedChannelName reads the protocol constants", () => {
+    for (const name of [
+      "stable",
+      "latest",
+      "beta",
+      "pr",
+      "dev",
+      "pr-42",
+      "pr42",
+    ])
+      expect(isReservedChannelName(name), name).toBe(true);
+    for (const name of ["staging", "nightly", "prod", "pr-", "Beta"])
+      expect(isReservedChannelName(name), name).toBe(false);
   });
 });
 

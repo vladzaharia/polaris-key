@@ -155,17 +155,17 @@ entitlement`.
 
 ## Acceptance criteria
 
-- [ ] `program/plans/P0-04.md` exists and is merged before the first code commit.
-- [ ] Worker test: `X-PKey-Channel: beta` with `channels: ["stable","beta"]` → licence document 200;
+- [x] `program/plans/P0-04.md` exists and is merged before the first code commit.
+- [x] Worker test: `X-PKey-Channel: beta` with `channels: ["stable","beta"]` → licence document 200;
       with `["stable"]` → 403 `channel_not_allowed`; with `["stable","staging"]` → 200.
-- [ ] Worker test: `X-PKey-Channel: staging` with `["stable","beta"]` → 200; a malformed header → 403.
-- [ ] Worker test: `/update/staging/appcast.xml` resolves like `beta` unless a manual channel
+- [x] Worker test: `X-PKey-Channel: staging` with `["stable","beta"]` → 200; a malformed header → 403.
+- [x] Worker test: `/update/staging/appcast.xml` resolves like `beta` unless a manual channel
       `staging` exists.
-- [ ] Every new `gate-matrix.json` row passes in the Node runner, `sdks/python` and `sdks/swift`;
+- [x] Every new `gate-matrix.json` row passes in the Node runner, `sdks/python` and `sdks/swift`;
       `pnpm gen:corpus -- --check` is clean, mirror included.
-- [ ] `channelForVersion("0.0.0-beta.3")` is `beta` in `client-core`, Python and Swift.
-- [ ] The green gate passes (`AGENTS.md`), including Python and Swift.
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] `channelForVersion("0.0.0-beta.3")` is `beta` in `client-core`, Python and Swift.
+- [x] The green gate passes (`AGENTS.md`), including Python and Swift.
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
 ## Verify
 

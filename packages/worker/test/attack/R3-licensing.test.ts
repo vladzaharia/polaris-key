@@ -268,6 +268,40 @@ describe("R3-01 build gate is attacker-controlled", () => {
     ).toBe(200);
   });
 
+  it("P0-04: an unknown well-formed channel header is refused unless granted by that name", async () => {
+    // WIRE-CONTRACT-V3 §5.1 rule 3: a well-formed name the gate does not know is checked as a
+    // grant of exactly that name, never coerced to `stable` (R3-01) nor to a family (R3-13).
+    const { key: plainKey } = await seedLicenseWithKey(h.db, "djdl", {
+      id: "lic_djdl_plain",
+      channels: ["stable", "staging", "beta", "pr"],
+    });
+    const plainToken = await activate(h, plainKey, "dev-plain");
+    for (const claimed of ["nightly", "prod", "staging-2"]) {
+      const res = await licenseDoc(h, plainToken, {
+        "x-pkey-version": "9.9.9",
+        "x-pkey-channel": claimed,
+      });
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({
+        error: { code: "channel_not_allowed", reason: "channel-not-entitled" },
+      });
+    }
+
+    const { key: nightlyKey } = await seedLicenseWithKey(h.db, "djdl", {
+      id: "lic_djdl_nightly",
+      channels: ["stable", "nightly"],
+    });
+    const nightlyToken = await activate(h, nightlyKey, "dev-nightly");
+    expect(
+      (
+        await licenseDoc(h, nightlyToken, {
+          "x-pkey-version": "9.9.9",
+          "x-pkey-channel": "nightly",
+        })
+      ).status,
+    ).toBe(200);
+  });
+
   it("FIXED (R3-07): 0.0.0-pr-N is the pr channel to the worker, as it already was to the SDK", async () => {
     // Was: gate.ts  /^0\.0\.0-pr\d+/     → "0.0.0-pr-42" is "stable"
     //      sdk semver /^0\.0\.0-pr-?\d+/ → "0.0.0-pr-42" is "pr"

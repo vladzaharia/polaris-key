@@ -53,7 +53,7 @@ pulling the barrel (`sideEffects: false`, so an unused subpath costs nothing eit
 | `@polaris-key/client-core/bundle` | `verifyBundle`, `inspectBundle`, `MAX_BUNDLE_BYTES`                                                                       | offline activation bundle verification, all-or-nothing, in wire-contract §7's numbered order |
 | `@polaris-key/client-core/gate`   | `licenseState`, `isUsable`                                                                                                | the license gate state machine over a cached document + the clock floor                      |
 | `@polaris-key/client-core/config` | `resolveValue`, `resolveSource`, `listUserEntries`                                                                        | layered config resolution                                                                    |
-| `@polaris-key/client-core/semver` | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                         | client-side semver + channel helpers, mirroring the Worker's `gate.ts`                       |
+| `@polaris-key/client-core/semver` | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                         | client-side semver + the build-channel family (WIRE-CONTRACT-V3 §5.1)                        |
 | `@polaris-key/client-core/claims` | `CLOCK_SKEW_SECONDS`, `MAX_GRACE_SECONDS`, `REFRESH_MARGIN_SECONDS`                                                       | the shared claim-validation constants every implementation must agree on                     |
 | `@polaris-key/client-core/clock`  | `highWaterMark`, `effectiveNow`                                                                                           | the monotonic clock floor: `max(issuedAt)` over every re-verified artifact                   |
 | `@polaris-key/client-core/errors` | `PolarisError`                                                                                                            | the one error type, carrying the server's machine-readable code                              |
@@ -146,10 +146,13 @@ all fail closed by returning `null` (or a tagged refusal), so a call site that f
 
 ### Semver (`semver.ts`)
 
-`parseSemver`/`compareSemver`/`channelForVersion`/`isDevBuild` mirror the Worker's `gate.ts`
-byte for byte (pinned by the conformance corpus), so a client-side "is this build too old"
-check and the server's build-gate enforcement can never drift into disagreeing about the same
-version string.
+`parseSemver`/`compareSemver` order versions exactly as the Worker does (pinned by the
+conformance corpus), so a client-side "is this build too old" check and the server's build gate
+cannot disagree about the same version string. `channelForVersion` matches the Worker's function
+of the same name (WIRE-CONTRACT-V3 §5.1 rule 2): `dev`, `beta` (for `0.0.0-beta*` and the legacy
+`0.0.0-staging*`), `pr` or `stable`. It returns the coarse family an SDK sends as
+`X-PKey-Channel`; only the Worker narrows a PR build to `pr-<n>`. Clients never compute the
+build gate itself: they record the Worker's 403.
 
 ### Stages (`stages.ts`)
 

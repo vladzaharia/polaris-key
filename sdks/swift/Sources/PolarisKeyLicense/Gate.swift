@@ -15,11 +15,12 @@
 // And one ORDERING changed: the activation guard now runs BEFORE the unsigned `blocked` hint.
 // An unactivated device that also happens to be running a blocked build is `needs-activation` —
 // telling a user their build is too new when they have not licensed it yet buries the action
-// they can actually take. Pinned by gate-matrix v2's last row.
+// they can actually take. Pinned by gate-matrix v2's activation-precedes-blocked row.
 //
 // Everything below those guards is the v2 state machine, unchanged. That is deliberate and the
-// corpus enforces it: gate-matrix v2 carries v1's fifteen rows verbatim under the smallest
-// possible shim, so a v3 gate that changes any v2 decision goes red.
+// corpus enforces it: gate-matrix v2 carries v1's rows verbatim under the smallest possible
+// shim (fourteen of them; P0-04 retired the pre-R3-01 dev-bypass row, a server-gate decision),
+// so a v3 gate that changes any v2 decision goes red.
 
 import Foundation
 import PolarisKeyCore

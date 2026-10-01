@@ -145,10 +145,10 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
   - The nested spelling `deliverables.app.versioning.{stableTagPattern, ignoreTags}` reports
     the existing `invalid_stable_tag_pattern` / `invalid_ignore_tags`, not a new
     `invalid_tag_pattern`: one rule and one code for both spellings.
-  - P0-04's `CHANNEL_NAME_PATTERN` and `CHANNEL_ALIASES` have not landed in
-    `@polaris-key/protocol`, so `@polaris-key/manifest` carries `CANONICAL_CHANNEL_PATTERN` and
-    `CHANNEL_ALIAS_NAMES` with the same values; a non-canonical channel key is the existing
-    `invalid_channel`. Switch to the protocol constants when P0-04 merges.
+  - `@polaris-key/manifest` exports `CANONICAL_CHANNEL_PATTERN` and `CHANNEL_ALIAS_NAMES`,
+    derived from P0-04's `CHANNEL_NAME_PATTERN` and `CHANNEL_ALIASES` in
+    `@polaris-key/protocol`; a non-canonical or alias channel key in `deliverables.app.channels`
+    is the existing `invalid_channel` (an error, since these names are stored as written).
   - `match` is matched by a linear wildcard matcher (`matchesArtifactGlob`), not a compiled
     RegExp: `*`-heavy globs compile to polynomially backtracking patterns, and both sides are
     repo-controlled.

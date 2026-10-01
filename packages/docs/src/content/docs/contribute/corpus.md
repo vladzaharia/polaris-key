@@ -28,11 +28,14 @@ gate-matrix-only runner); the ones a contributor touches most:
 - **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers the JWS cases today (P1-02 adds
   the rest), run by `sdks/godot/tools/run_tests.sh` on an editor and an exported release
   template.
-- **The Worker** — `packages/worker/test/fingerprintCorpus.test.ts`, the fingerprint/device-id
-  slice only. The Worker recomputes a submitted device's `hwid` server-side rather than trusting
-  the client's copy, so it has to agree with what every SDK computes client-side — that is the
-  one corpus file it is a runner for, not the full set: it is a signer for license, config, and
-  trust documents in production, not an independent verifier of pre-signed ones.
+- **The Worker** — two slices. `packages/worker/test/fingerprintCorpus.test.ts` covers the
+  fingerprint/device-id vectors: the Worker recomputes a submitted device's `hwid` server-side
+  rather than trusting the client's copy, so it has to agree with what every SDK computes
+  client-side. `packages/worker/test/gateMatrixCorpus.test.ts` replays every `gate-matrix.json`
+  row through the server's own `checkBuildGate`, which makes the server the oracle for the
+  build-gate ports the Node, Python and Swift runners carry. It is not a runner for the signed
+  cases: it is a signer for license, config, and trust documents in production, not an
+  independent verifier of pre-signed ones.
 
 Node, Python, and Swift each assert byte-identical verify outcomes against the whole corpus;
 the Worker's slice is narrower but no less load-bearing, since a drifted `hwid` formula would
@@ -106,7 +109,11 @@ Each case family in `tools/sign-corpus.ts` is an array returned by its own `asyn
 The gate matrix is different: it is hand-authored, and its carried rows — the fifteen inlined
 from corpus v1 when v1 was deleted — are **frozen**. Nothing may be edited there to make a gate
 change pass. A genuinely new decision is a new row appended in `buildGateMatrixV2`, so the diff
-shows exactly what changed rather than rewriting history that was already pinned.
+shows exactly what changed rather than rewriting history that was already pinned. A carried row
+can be retired only by an approved plan, through `RETIRED_CARRIED_ROWS`, which names the plan,
+the reason and a successor row; the frozen array itself is never edited, and the generator
+refuses to run if a retired name is not a carried row or its successor is not emitted. P0-04
+retired one (the pre-R3-01 dev-build bypass).
 
 The stage matrix is hand-authored too, and **append-only** in the same way. `buildStageMatrixV1`
 writes literal rows (each an ordered list of host events with the exact emits each produces),

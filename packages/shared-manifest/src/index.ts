@@ -1,5 +1,14 @@
 import { type ProductCatalog } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
+import {
+  CHANNEL_ALIASES,
+  CHANNEL_BETA,
+  CHANNEL_DEV,
+  CHANNEL_NAME_PATTERN,
+  CHANNEL_PR,
+  CHANNEL_STABLE,
+  PR_CHANNEL_PATTERN,
+} from "@polaris-key/protocol/core";
 import { parse as parseYaml } from "yaml";
 
 import {
@@ -391,6 +400,41 @@ export function compileManualChannelRegex(source: string): RegExp | null {
     return null;
   }
 }
+/** The canonical channel alphabet (WIRE-CONTRACT-V3 §5.1 rule 1); `CHANNEL_RE` is wider. */
+const CANONICAL_CHANNEL_RE = new RegExp(CHANNEL_NAME_PATTERN);
+/** A PR channel, hyphen optional (`pr-42`, `pr42`). */
+const PR_CHANNEL_RE = new RegExp(PR_CHANNEL_PATTERN);
+/**
+ * The built-in names a manual channel cannot take: `stable`, `beta`, `pr` and `dev`, the aliases
+ * other than `staging` (which defers to a declared manual channel, §5.1 rule 6), and every name
+ * matching `PR_CHANNEL_PATTERN`. Built from the protocol constants, not a second list.
+ */
+const RESERVED_CHANNEL_NAMES: ReadonlySet<string> = new Set([
+  CHANNEL_STABLE,
+  CHANNEL_BETA,
+  CHANNEL_PR,
+  CHANNEL_DEV,
+  ...Object.entries(CHANNEL_ALIASES)
+    .filter(([, canonical]) => canonical !== CHANNEL_BETA)
+    .map(([alias]) => alias),
+]);
+/**
+ * True when a declared manual channel `name` would be taken over by a built-in: Release matches
+ * `stable`/`latest`/`beta`/`pr-<n>` first, and at the licence gate a grant of `dev`, `pr` or a
+ * PR-shaped name means the pseudo-channel, the PR family or a PR build (WIRE-CONTRACT-V3 §5.1).
+ * `staging` is not reserved. Shared by the validator and the console's channel picker.
+ */
+export function isReservedChannelName(name: string): boolean {
+  return RESERVED_CHANNEL_NAMES.has(name) || PR_CHANNEL_RE.test(name);
+}
+/** Passes `CHANNEL_RE` but not the canonical alphabet: unreachable on the feed routes. */
+function isNoncanonicalChannelName(name: unknown): name is string {
+  return (
+    typeof name === "string" &&
+    CHANNEL_RE.test(name) &&
+    !CANONICAL_CHANNEL_RE.test(name)
+  );
+}
 /**
  * The candidate filter used when `release.stableTagPattern` is undeclared: a semver 2.0 tag with
  * an optional leading `v` (`v1.2.3`, `1.2.3-rc.1`, `v2.0.0+build.5`). Written UNANCHORED because
@@ -490,13 +534,14 @@ export const BUILD_NUMBER_SOURCES = ["descriptor", "none"] as const;
 export type BuildNumberSource = (typeof BUILD_NUMBER_SOURCES)[number];
 
 /**
- * A canonical channel name (P0-04's `CHANNEL_NAME_PATTERN`): lower-case letters, digits and `-`.
- * The names a deliverable's `channels` block declares, and the channel a descriptor publishes
- * to, are stored as written, so only canonical names are accepted there.
+ * A canonical channel name (the protocol's `CHANNEL_NAME_PATTERN`, P0-04): lower-case letters,
+ * digits and `-`. The names a deliverable's `channels` block declares, and the channel a
+ * descriptor publishes to, are stored as written, so only canonical names are accepted there.
  */
-export const CANONICAL_CHANNEL_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
-/** Accepted request aliases (P0-04's `CHANNEL_ALIASES` keys). Never stored. */
-export const CHANNEL_ALIAS_NAMES: readonly string[] = ["staging", "latest"];
+export const CANONICAL_CHANNEL_PATTERN: RegExp = CANONICAL_CHANNEL_RE;
+/** Accepted request aliases (the protocol's `CHANNEL_ALIASES` keys, P0-04). Never stored. */
+export const CHANNEL_ALIAS_NAMES: readonly string[] =
+  Object.keys(CHANNEL_ALIASES);
 /** The two channels every product has without declaring them. */
 export const BUILT_IN_CHANNELS: readonly string[] = ["stable", "beta"];
 /** A canonical, non-alias channel name. */
@@ -1014,6 +1059,25 @@ function validateDocuments(
       CHANNEL_RE,
       "Tier channels must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.",
     );
+    if (Array.isArray(record.channels)) {
+      for (const [j, name] of record.channels.entries()) {
+        // A hyphenless PR grant (`pr42`) is never matched: the gate reads the build as `pr-42`.
+        if (
+          isNoncanonicalChannelName(name) ||
+          (typeof name === "string" &&
+            PR_CHANNEL_RE.test(name) &&
+            !name.startsWith("pr-"))
+        ) {
+          add(
+            warnings,
+            "product",
+            `/licensing/tiers/${i}/channels/${j}`,
+            "noncanonical_channel_name",
+            "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V3 §5.1).",
+          );
+        }
+      }
+    }
     for (const bound of ["minVersion", "maxVersion"] as const) {
       constrained(
         errors,
@@ -1293,6 +1357,19 @@ function validateDocuments(
         CHANNEL_RE,
         "artifactPolicy.channels must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.",
       );
+      if (Array.isArray(artifactPolicy.channels)) {
+        for (const [j, name] of artifactPolicy.channels.entries()) {
+          if (isNoncanonicalChannelName(name)) {
+            add(
+              warnings,
+              "release",
+              `/release/artifactPolicy/channels/${j}`,
+              "noncanonical_channel_name",
+              "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1).",
+            );
+          }
+        }
+      }
       constrainedList(
         errors,
         "release",
@@ -1334,6 +1411,22 @@ function validateDocuments(
                 `${at}/name`,
                 "invalid_manual_channel",
                 "manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.",
+              );
+            } else if (isNoncanonicalChannelName(raw.name)) {
+              add(
+                warnings,
+                "release",
+                `${at}/name`,
+                "noncanonical_channel_name",
+                "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1).",
+              );
+            } else if (isReservedChannelName(raw.name)) {
+              add(
+                warnings,
+                "release",
+                `${at}/name`,
+                "reserved_channel_name",
+                "This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1).",
               );
             }
             if (
