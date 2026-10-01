@@ -36,6 +36,8 @@ they are compiled into shipped app bundles and published curl lines. Removed v2 
 | POST | `/{product}/identity/auth/device/start` | identity | Begin the device-code flow |
 | GET | `/{product}/identity/auth/device/verify` | identity | The device-authorization page (side-effect-free GET) |
 | POST | `/{product}/identity/auth/device/verify` | identity | Confirm the device authorization (CSRF from the GET) |
+| GET | `/{product}/identity/auth/device` | identity | The RFC 8628 user-code page (entry form, or confirmation for `?user_code=`) |
+| POST | `/{product}/identity/auth/device` | identity | Look a typed code up, or confirm it (CSRF from the confirmation page) |
 | POST | `/{product}/identity/auth/logout` | identity | End the browser session |
 | GET | `/{product}/identity/auth/poll` | identity | Poll a browser sign-in flow |
 | GET | `/{product}/identity/auth/start` | identity | Begin browser OIDC (PKCE) — 302 to the IdP |

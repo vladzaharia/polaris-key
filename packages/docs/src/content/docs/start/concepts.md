@@ -173,7 +173,8 @@ _capability_ of Config, not a unit of its own, so declaring it turns Config on.
 - **claim / migrate** — the two merge outcomes when a signed-in identity meets an auto-issued
   license. _Claim_: the identity is attached to the same row, so devices and local state
   survive. _Migrate_: the identity already had a license, so the enrolled row's devices move
-  onto it and the enrolled row is retired.
+  onto it and the enrolled row is retired. No sign-in route merges today; see
+  [claim and migrate](/docs/services/license/enrollment/#claim-and-migrate).
 - **re-licensing** — changing a license's `tier_id`. Running clients pick up the new
   entitlements on their next license-document refresh; nothing is pushed. A downgrade below the
   active device count **grandfathers** existing devices and refuses new activations until the

@@ -1630,10 +1630,17 @@ describe("R9-12 escapeHtml coverage", () => {
     // now a POST form carrying a CSRF token, so a GET can neither mutate the flow nor leak
     // `state` via the Location header. Assert the escaping invariant on the new markup —
     // both attribute interpolations remain double-quoted and escapeHtml-wrapped.
+    //
+    // CHANGED again by P1-06: the page renderer is shared by `/device/verify` and the RFC 8628
+    // user-code page, so the action is a parameter and the form may carry extra hidden fields
+    // (the user code). Every one of those interpolations is still double-quoted and escaped.
     expect(src).toContain(
-      '<form method="post" action="${escapeHtml(url.toString())}">',
+      '<form method="post" action="${escapeHtml(action)}">',
     );
     expect(src).toContain('name="csrf" value="${escapeHtml(csrf)}"');
+    expect(src).toContain(
+      '<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">',
+    );
   });
 
   it("REFUTED (today): portal email escapes into a double-quoted href / text node", () => {
