@@ -317,6 +317,9 @@ const TABLE_OWNERS = {
     "schema_index_assertion",
     "blob_objects",
     "blob_refs",
+    "ci_publishers",
+    "ci_tokens",
+    "ci_upload_tickets",
   ],
   license: ["licenses", "keys_index", "tiers", "license_profiles"],
   config: [

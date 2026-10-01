@@ -4,6 +4,7 @@
 // the platform-product registry queries (products table) are the only intentionally
 // unscoped ones, and they are gated on PLATFORM_ADMIN before they're reached.
 
+import { stmtRevokeProductCiTokens } from "../core/publisher.js";
 import type { Db } from "../db/types.js";
 import type {
   KeyRow,
@@ -102,6 +103,9 @@ export async function deleteProduct(
       sql: "DELETE FROM outlet_credentials WHERE product = ?",
       params: [slug],
     },
+    // P2-02: no CI credential outlives its product (`lookupCiToken` also refuses a deleted
+    // product's tokens; this makes the revocation visible in the token list too).
+    stmtRevokeProductCiTokens(slug, now),
   ]);
 }
 

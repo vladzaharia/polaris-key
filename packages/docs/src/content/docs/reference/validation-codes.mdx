@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 115 distinct emit sites.
+codes with their JSON-pointer paths. 118 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -101,6 +101,9 @@ the offending value, or the allowed set.
 | `invalid_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be non-empty simple identifiers. |
 | `invalid_tier_label` | error | product | `/licensing/tiers/${i}/label` | Tier label |
 | `invalid_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId must be a tier identifier. |
+| `invalid_trusted_publisher_environment` | error | release | `/release/publishing/trustedPublisher/environment` | publishing.trustedPublisher.environment must be a GitHub environment name of at most 100 characters (letters, digits, space, . _ -). |
+| `invalid_trusted_publisher_workflow` | error | release | `/release/publishing/trustedPublisher/workflow` | publishing.trustedPublisher.workflow must be a workflow path like .github/workflows/release.yml. |
+| `invalid_trusted_publisher_workflow` | error | release | `/release/publishing/trustedPublisher` | publishing.trustedPublisher must be an object with a workflow (.github/workflows/\<file>.yml). |
 | `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning/buildNumber` | versioning.buildNumber must be one of $\{BUILD_NUMBER_SOURCES.join(", ")\}. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning/scheme` | versioning.scheme must be one of $\{VERSION_SCHEMES.join(", ")\}. |

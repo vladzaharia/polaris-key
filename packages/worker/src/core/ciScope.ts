@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 /**
- * Scope checks for CI-authenticated routes (P2-05; the token store is P2-02's).
+ * Scope checks for CI-authenticated routes (P2-05; the token store is P2-02's `core/publisher.ts`).
  *
  * A CI job presents `Authorization: Bearer pkeyci_…`. The answer is one of:
  *
@@ -19,21 +19,15 @@ import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { bearer } from "../http.js";
 import { errorResponse, ErrorCode } from "./errors.js";
-import { lookupCiToken, type CiPrincipal } from "./ciTokens.js";
+import { lookupCiToken } from "./ciTokens.js";
+import {
+  CI_TOKEN_PREFIX,
+  type CiPrincipal,
+  type CiScope,
+} from "./ciVocabulary.js";
 
-export type { CiPrincipal } from "./ciTokens.js";
-
-/** Every CI token starts with this; anything else is not a CI credential. */
-export const CI_TOKEN_PREFIX = "pkeyci_";
-
-/** The scope vocabulary so far (P2-02 design notes; later packages add theirs). */
-export const CI_SCOPES = [
-  "release:publish",
-  "release:promote",
-  "release:yank",
-  "distribution:report",
-] as const;
-export type CiScope = (typeof CI_SCOPES)[number];
+export type { CiPrincipal, CiScope } from "./ciVocabulary.js";
+export { CI_SCOPES, CI_TOKEN_PREFIX } from "./ciVocabulary.js";
 
 /** The audit actor for a CI principal (`modified_by`, `audit.actor_sub`). */
 export function ciActor(principal: CiPrincipal): string {

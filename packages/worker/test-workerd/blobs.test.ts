@@ -147,6 +147,7 @@ describe("verifyStaged + promote on R2", R2_LANE, () => {
       {
         db,
         now: NOW,
+        product: "blobs-a",
       },
     );
     expect(res).toMatchObject({ ok: true, alreadyStored: false });
@@ -168,6 +169,43 @@ describe("verifyStaged + promote on R2", R2_LANE, () => {
     expect(await hasRef(db, "blobs-b", blobKey(h))).toBe(false);
   });
 
+  // P2-02 wave-1 sync: the `alreadyStored` path on the real binding. In workerd the staged
+  // body is locked by `putVerified`'s `pipeThrough(FixedLengthStream)` when R2 refuses the
+  // create-only put, so the cancel that follows must not throw or leave the promote hanging.
+  it("a second product's promote of bytes already stored succeeds as alreadyStored", async () => {
+    const db = new D1Db(env.DB);
+    await seedProduct(env, db, "stored-a", { schemaVersion: 1, entries: [] });
+    await seedProduct(env, db, "stored-b", { schemaVersion: 1, entries: [] });
+    const bytes = randomBytes(2 * MiB + 17);
+    const h = await hexSha256(bytes);
+    const fromA = stagingKey("stored-a", "ta", h);
+    const fromB = stagingKey("stored-b", "tb", h);
+    await bucket().put(fromA, bytes, { sha256: h });
+    await bucket().put(fromB, bytes);
+    const expected = { sha256: h, size: bytes.length };
+
+    const first = await promote(bucket(), fromA, blobKey(h), expected, {
+      db,
+      now: NOW,
+      product: "stored-a",
+    });
+    expect(first).toMatchObject({ ok: true, alreadyStored: false });
+    const second = await promote(bucket(), fromB, blobKey(h), expected, {
+      db,
+      now: NOW + 1,
+      product: "stored-b",
+    });
+    expect(second).toMatchObject({ ok: true, alreadyStored: true });
+    // And a promote FOR the other product from this one's prefix is refused before any I/O.
+    expect(
+      await promote(bucket(), fromA, blobKey(h), expected, {
+        db,
+        now: NOW + 2,
+        product: "stored-b",
+      }),
+    ).toEqual({ ok: false, reason: "bad_key" });
+  });
+
   it("never writes the target when the staged bytes are wrong", async () => {
     const db = new D1Db(env.DB);
     const bytes = randomBytes(4096);
@@ -179,7 +217,7 @@ describe("verifyStaged + promote on R2", R2_LANE, () => {
       from,
       blobKey(claimed),
       { sha256: claimed, size: bytes.length },
-      { db, now: NOW },
+      { db, now: NOW, product: "djdl" },
     );
     expect(res).toEqual({ ok: false, reason: "digest_mismatch" });
     expect(await bucket().head(blobKey(claimed))).toBeNull();

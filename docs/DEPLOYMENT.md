@@ -311,6 +311,58 @@ curl -s https://key.plrs.im/<slug>/.well-known/polaris.json | grep -o '"builds":
 # "builds":"https://dl.plrs.im/<slug>/release/builds/{selector}/{buildId}"
 ```
 
+### Trusted publishing: the R2 parent token (P2-02)
+
+CI never uploads through the Worker. `POST /<p>/release/publish/uploads` hands a CI job R2
+**temporary credentials** that can only `PutObject` and `HeadObject` under
+`staging/<product>/<ticketId>/`, and the Worker mints them **locally** — an HS256 JWT signed with
+the secret of a parent R2 API token, per Cloudflare's "temporary credentials, local signing".
+Nothing is fetched at mint time and the parent secret never leaves the Worker. Until the three
+secrets below exist in an environment, the uploads route answers 404 there and nothing else
+changes (`/publish/token` and `/publish/submit` still answer, but a submit needs a ticket).
+
+For each environment, create one R2 API token (dashboard → R2 → Manage R2 API tokens):
+
+- permission **Object Read & Write**, applied to **that environment's bucket only**
+  (`polaris-key-blobs-<env>`), no account-wide scope and no admin permission — a temporary
+  credential can never exceed its parent, so the parent's scope is the outer bound;
+- no TTL, or a long one with a rotation reminder: revoking the parent instantly kills every
+  temporary credential minted from it.
+
+Then set three Worker secrets (the bucket name is already a `[vars]` entry, `BLOBS_BUCKET_NAME`):
+
+```sh
+cd packages/worker
+npx wrangler secret put R2_ACCOUNT_ID --env prod                # the 32-hex account id
+npx wrangler secret put R2_PARENT_ACCESS_KEY_ID --env prod      # the token's Access Key ID
+npx wrangler secret put R2_PARENT_SECRET_ACCESS_KEY --env prod  # its Secret Access Key
+```
+
+Write all three in one `wrangler secret bulk` if you prefer; two `put`s deploy two versions, and
+the intermediate one simply keeps answering 404 on the uploads route.
+
+What the minted credential may do is fixed in code (`core/publisher.ts`,
+`UPLOAD_CREDENTIAL_ACTIONS`): `PutObject` and `HeadObject` on one prefix. No `GetObject`, no
+listing, no `CopyObject`/`UploadPartCopy` (a copy could carry another product's object, with its
+stored checksum, into the ticket prefix) and no multipart (a multipart object's stored checksum is
+not its SHA-256). CI must upload each object as **one** PUT with `x-amz-checksum-sha256`.
+
+After the first deploy with the secrets, confirm against real R2 (the test suite models R2's
+documented rules; it cannot reach an account):
+
+```sh
+# With a ticket's credentials exported as AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_SESSION_TOKEN
+# and ENDPOINT=https://<account>.r2.cloudflarestorage.com, BUCKET=polaris-key-blobs-<env>:
+aws s3api put-object --endpoint-url "$ENDPOINT" --bucket "$BUCKET"   --key "<prefix><sha256>" --body file.bin --checksum-algorithm SHA256       # 200
+aws s3api get-object --endpoint-url "$ENDPOINT" --bucket "$BUCKET"   --key "<prefix><sha256>" /dev/null                                          # 403 AccessDenied
+aws s3api copy-object --endpoint-url "$ENDPOINT" --bucket "$BUCKET"   --key "<prefix>x" --copy-source "$BUCKET/blobs/sha256/<any>"                # 403 AccessDenied
+aws s3api put-object --endpoint-url "$ENDPOINT" --bucket "$BUCKET"   --key "staging/<other-product>/x/y" --body file.bin                         # 403 AccessDenied
+aws s3api create-multipart-upload --endpoint-url "$ENDPOINT" --bucket "$BUCKET"   --key "<prefix>m"                                                           # 403 AccessDenied
+```
+
+The GitHub OIDC side needs nothing from the operator: the issuer and its JWKS are GitHub's and
+fixed in code. A product opts in from its own `.pkey/release` (`publishing.trustedPublisher`).
+
 ## 4. Worker secrets
 
 Generate local secret material:
