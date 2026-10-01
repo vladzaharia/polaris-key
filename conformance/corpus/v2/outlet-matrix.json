@@ -1,0 +1,1605 @@
+{
+  "outletMatrixVersion": 1,
+  "description": "Outlet kinds, capabilities and detection (plans/P3-01.md §2.9; WIRE-CONTRACT-V4 §11, client behaviour outside the wire contract). `kinds` is the capability default and platform list per kind (and `unknown`); `platformNarrowing` and `subkinds` narrow it, booleans by AND, `binaryUpdates` to the narrower of none < store < self, and `commerce` only to `none`. `signals` lists the 25 detection signals in vocabulary order with their confidence (null for a diagnostic signal) and evidence (`verified`; no SDK branches on it). Each row runs `detectOutlet({stamp, signals})` and expects `{kind, confidence, source, subkind}`; the generator recomputes every row with its own reference. A runner asserts its compiled tables against `kinds`, `platformNarrowing`, `subkinds` and `platformData.listingUrlPrefixes`.",
+  "kinds": {
+    "direct": {
+      "binaryUpdates": "self",
+      "codeUpdates": true,
+      "dataUpdates": true,
+      "channelSwitch": true,
+      "commerce": "own",
+      "downloadedScripts": true,
+      "platforms": ["macos", "windows", "linux", "android", "ios"]
+    },
+    "app-store": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "store-iap",
+      "downloadedScripts": false,
+      "platforms": ["ios", "macos"]
+    },
+    "testflight": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "store-iap",
+      "downloadedScripts": false,
+      "platforms": ["ios", "macos"]
+    },
+    "altstore": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["ios"]
+    },
+    "altstore-pal": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["ios"]
+    },
+    "play": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "store-iap",
+      "downloadedScripts": false,
+      "platforms": ["android"]
+    },
+    "play-testing": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "store-iap",
+      "downloadedScripts": false,
+      "platforms": ["android"]
+    },
+    "obtainium": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["android"]
+    },
+    "fdroid-repo": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["android"]
+    },
+    "ms-store": {
+      "binaryUpdates": "store",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "store-iap",
+      "downloadedScripts": false,
+      "platforms": ["windows"]
+    },
+    "app-installer": {
+      "binaryUpdates": "none",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["windows"]
+    },
+    "steam": {
+      "binaryUpdates": "none",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "steam",
+      "downloadedScripts": false,
+      "platforms": ["windows", "macos", "linux"]
+    },
+    "itch": {
+      "binaryUpdates": "none",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["windows", "macos", "linux"]
+    },
+    "flathub": {
+      "binaryUpdates": "none",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["linux"]
+    },
+    "snap": {
+      "binaryUpdates": "none",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["linux"]
+    },
+    "winget": {
+      "binaryUpdates": "none",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": false,
+      "platforms": ["windows"]
+    },
+    "web": {
+      "binaryUpdates": "none",
+      "codeUpdates": false,
+      "dataUpdates": true,
+      "channelSwitch": false,
+      "commerce": "own",
+      "downloadedScripts": true,
+      "platforms": ["web"]
+    },
+    "unknown": {
+      "binaryUpdates": "none",
+      "codeUpdates": false,
+      "dataUpdates": false,
+      "channelSwitch": false,
+      "commerce": "none",
+      "downloadedScripts": false,
+      "platforms": ["macos", "ios", "android", "windows", "linux", "web"]
+    }
+  },
+  "platformNarrowing": {
+    "ios": {
+      "direct": {
+        "binaryUpdates": "store",
+        "codeUpdates": false,
+        "downloadedScripts": false
+      }
+    }
+  },
+  "subkinds": {
+    "homebrew": { "binaryUpdates": "none", "codeUpdates": false },
+    "npm": { "binaryUpdates": "none", "codeUpdates": false },
+    "pnpm": { "binaryUpdates": "none", "codeUpdates": false },
+    "npx": { "binaryUpdates": "none", "codeUpdates": false },
+    "scoop": { "binaryUpdates": "none", "codeUpdates": false },
+    "chocolatey": { "binaryUpdates": "none", "codeUpdates": false },
+    "flatpak": { "binaryUpdates": "none", "codeUpdates": false },
+    "appimage": {}
+  },
+  "vocabulary": {
+    "kinds": [
+      "direct",
+      "app-store",
+      "testflight",
+      "altstore",
+      "altstore-pal",
+      "play",
+      "play-testing",
+      "obtainium",
+      "fdroid-repo",
+      "ms-store",
+      "app-installer",
+      "steam",
+      "itch",
+      "flathub",
+      "snap",
+      "winget",
+      "web"
+    ],
+    "confidence": ["attested", "declared", "heuristic", "stamp"],
+    "signals": [
+      "ios.appDistributor",
+      "ios.bundleIdRewrite",
+      "ios.provisioningProfile",
+      "macos.masReceipt",
+      "macos.receiptSandbox",
+      "macos.signingLeaf",
+      "macos.homebrewCask",
+      "macos.homebrewFormula",
+      "windows.packageIdentity",
+      "windows.signatureKind",
+      "windows.appInstallerUri",
+      "windows.externalLocation",
+      "windows.pathConvention",
+      "linux.flatpakInfo",
+      "linux.snapEnv",
+      "linux.appImageEnv",
+      "steam.libraryManifest",
+      "steam.appIdEnv",
+      "steam.appIdFile",
+      "itch.receipt",
+      "itch.appEnv",
+      "android.installSource",
+      "android.installerMismatch",
+      "web.displayMode",
+      "node.packageManager"
+    ],
+    "subkinds": [
+      "homebrew",
+      "npm",
+      "pnpm",
+      "npx",
+      "scoop",
+      "chocolatey",
+      "flatpak",
+      "appimage"
+    ],
+    "verified": ["measured", "emulated", "source", "unmeasured"]
+  },
+  "signals": [
+    {
+      "signal": "ios.appDistributor",
+      "confidence": "attested",
+      "verified": "source",
+      "note": "the device run is unmeasured"
+    },
+    {
+      "signal": "ios.bundleIdRewrite",
+      "confidence": "declared",
+      "verified": "source"
+    },
+    {
+      "signal": "ios.provisioningProfile",
+      "confidence": "heuristic",
+      "verified": "unmeasured"
+    },
+    {
+      "signal": "macos.masReceipt",
+      "confidence": "attested",
+      "verified": "measured"
+    },
+    {
+      "signal": "macos.receiptSandbox",
+      "confidence": "attested",
+      "verified": "measured",
+      "note": "one app"
+    },
+    {
+      "signal": "macos.signingLeaf",
+      "confidence": "attested",
+      "verified": "measured"
+    },
+    {
+      "signal": "macos.homebrewCask",
+      "confidence": "heuristic",
+      "verified": "measured"
+    },
+    {
+      "signal": "macos.homebrewFormula",
+      "confidence": "heuristic",
+      "verified": "measured",
+      "note": "the realpath reading"
+    },
+    {
+      "signal": "windows.packageIdentity",
+      "confidence": "attested",
+      "verified": "source"
+    },
+    {
+      "signal": "windows.signatureKind",
+      "confidence": "attested",
+      "verified": "source"
+    },
+    {
+      "signal": "windows.appInstallerUri",
+      "confidence": "attested",
+      "verified": "source"
+    },
+    {
+      "signal": "windows.externalLocation",
+      "confidence": "attested",
+      "verified": "source",
+      "note": "needs a device"
+    },
+    {
+      "signal": "windows.pathConvention",
+      "confidence": "heuristic",
+      "verified": "unmeasured"
+    },
+    {
+      "signal": "linux.flatpakInfo",
+      "confidence": "attested",
+      "verified": "measured",
+      "note": "a foreign Flatpak too"
+    },
+    {
+      "signal": "linux.snapEnv",
+      "confidence": "declared",
+      "verified": "emulated",
+      "note": "and source"
+    },
+    {
+      "signal": "linux.appImageEnv",
+      "confidence": "declared",
+      "verified": "emulated"
+    },
+    {
+      "signal": "steam.libraryManifest",
+      "confidence": "declared",
+      "verified": "measured",
+      "note": "macOS only"
+    },
+    {
+      "signal": "steam.appIdEnv",
+      "confidence": "heuristic",
+      "verified": "measured",
+      "note": "macOS only"
+    },
+    {
+      "signal": "steam.appIdFile",
+      "confidence": null,
+      "verified": "measured",
+      "note": "refuted as a dev-mode signal"
+    },
+    {
+      "signal": "itch.receipt",
+      "confidence": "declared",
+      "verified": "emulated",
+      "note": "and source"
+    },
+    { "signal": "itch.appEnv", "confidence": null, "verified": "source" },
+    {
+      "signal": "android.installSource",
+      "confidence": "declared",
+      "verified": "measured",
+      "note": "every installer but Play; the digest read on one variant"
+    },
+    {
+      "signal": "android.installerMismatch",
+      "confidence": "declared",
+      "verified": "measured"
+    },
+    {
+      "signal": "web.displayMode",
+      "confidence": "heuristic",
+      "verified": "measured"
+    },
+    {
+      "signal": "node.packageManager",
+      "confidence": "heuristic",
+      "verified": "measured"
+    }
+  ],
+  "platformData": {
+    "listingUrlPrefixes": {
+      "app-store": ["https://apps.apple.com/", "itms-apps://apps.apple.com/"],
+      "testflight": ["https://testflight.apple.com/join/"],
+      "play": [
+        "https://play.google.com/store/apps/details?id=",
+        "market://details?id="
+      ],
+      "play-testing": [
+        "https://play.google.com/apps/testing/",
+        "https://play.google.com/store/apps/details?id=",
+        "market://details?id="
+      ],
+      "ms-store": [
+        "https://apps.microsoft.com/detail/",
+        "ms-windows-store://pdp/?productid="
+      ]
+    },
+    "playStoreCertSha256s": [],
+    "altStorePalMarketplaceIds": [],
+    "playPackages": ["com.android.vending"],
+    "obtainiumPackages": [
+      "dev.imranr.obtainium",
+      "dev.imranr.obtainium.fdroid"
+    ],
+    "fdroidClientPackages": [
+      "org.fdroid.fdroid",
+      "com.looker.droidify",
+      "com.machiav3lli.fdroid"
+    ],
+    "systemInstallerPackages": [
+      "com.google.android.packageinstaller",
+      "com.android.packageinstaller"
+    ],
+    "macosStoreLeaves": {
+      "Apple Mac OS Application Signing": "app-store",
+      "TestFlight Beta Distribution": "testflight"
+    },
+    "deadlineMs": 2000
+  },
+  "rows": [
+    {
+      "name": "1. stamp only — direct",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {},
+      "expect": {
+        "kind": "direct",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "2. stamp only — steam",
+      "stamp": {
+        "outletKind": "steam",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {},
+      "expect": {
+        "kind": "steam",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "3. no stamp and no evidence",
+      "stamp": null,
+      "signals": {},
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "4. no stamp: a heuristic never selects",
+      "stamp": null,
+      "signals": {
+        "steam.appIdEnv": { "appId": "3166810", "clientLaunch": true }
+      },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "5. the macOS receipt overrides a direct stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "macos.masReceipt": true,
+        "macos.signingLeaf": "Apple Mac OS Application Signing"
+      },
+      "expect": {
+        "kind": "app-store",
+        "confidence": "attested",
+        "source": "macos.masReceipt",
+        "subkind": null
+      }
+    },
+    {
+      "name": "6. the macOS TestFlight receipt",
+      "stamp": null,
+      "signals": {
+        "macos.masReceipt": true,
+        "macos.receiptSandbox": true,
+        "macos.signingLeaf": "TestFlight Beta Distribution"
+      },
+      "expect": {
+        "kind": "testflight",
+        "confidence": "attested",
+        "source": "macos.masReceipt",
+        "subkind": null
+      }
+    },
+    {
+      "name": "7. a store leaf that disagrees with the receipt",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "macos.masReceipt": true,
+        "macos.signingLeaf": "TestFlight Beta Distribution"
+      },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "8. a Developer ID leaf vetoes an app-store stamp",
+      "stamp": {
+        "outletKind": "app-store",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "macos.signingLeaf": "Developer ID Application" },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "9. a Developer ID leaf leaves a steam stamp",
+      "stamp": {
+        "outletKind": "steam",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "macos.signingLeaf": "Developer ID Application" },
+      "expect": {
+        "kind": "steam",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "10. no leaf vetoes a testflight stamp",
+      "stamp": {
+        "outletKind": "testflight",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "macos.signingLeaf": "none" },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "11. a Homebrew cask restricts a direct stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "macos.homebrewCask": "diceroll" },
+      "expect": {
+        "kind": "direct",
+        "confidence": "heuristic",
+        "source": "macos.homebrewCask",
+        "subkind": "homebrew"
+      }
+    },
+    {
+      "name": "12. a cask with another token does not count",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "macos.homebrewCask": "other" },
+      "expect": {
+        "kind": "direct",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "13. the Steam library moves a direct stamp to steam",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "steam.libraryManifest": "3166810" },
+      "expect": {
+        "kind": "steam",
+        "confidence": "declared",
+        "source": "steam.libraryManifest",
+        "subkind": null
+      }
+    },
+    {
+      "name": "14. the Steam environment with this app id",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "steam.appIdEnv": { "appId": "3166810", "clientLaunch": true }
+      },
+      "expect": {
+        "kind": "steam",
+        "confidence": "heuristic",
+        "source": "steam.appIdEnv",
+        "subkind": null
+      }
+    },
+    {
+      "name": "15. the Steam environment with another app id",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "steam.appIdEnv": { "appId": "480", "clientLaunch": true } },
+      "expect": {
+        "kind": "direct",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "16. `steam_appid.txt` is diagnostic only",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "steam.appIdFile": "3166810" },
+      "expect": {
+        "kind": "direct",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "17. a heuristic never widens: AppImage on a steam stamp",
+      "stamp": {
+        "outletKind": "steam",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "linux.appImageEnv": {
+          "appImage": "/home/a/Diceroll.AppImage",
+          "appDir": "/tmp/.mount_DicerX1",
+          "exePath": "/tmp/.mount_DicerX1/usr/bin/diceroll"
+        }
+      },
+      "expect": {
+        "kind": "steam",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "18. the itch receipt moves a direct stamp to itch",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "itch.receipt": "1001" },
+      "expect": {
+        "kind": "itch",
+        "confidence": "declared",
+        "source": "itch.receipt",
+        "subkind": null
+      }
+    },
+    {
+      "name": "19. `ITCHIO_APP` is diagnostic only",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "itch.appEnv": true },
+      "expect": {
+        "kind": "direct",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "20. Flatpak info with this id overrides a direct stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "linux.flatpakInfo": "gg.vlad.Diceroll" },
+      "expect": {
+        "kind": "flathub",
+        "confidence": "attested",
+        "source": "linux.flatpakInfo",
+        "subkind": null
+      }
+    },
+    {
+      "name": "21. Flatpak info keeps a direct + flatpak stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": "flatpak",
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "linux.flatpakInfo": "gg.vlad.Diceroll" },
+      "expect": {
+        "kind": "direct",
+        "confidence": "attested",
+        "source": "linux.flatpakInfo",
+        "subkind": "flatpak"
+      }
+    },
+    {
+      "name": "22. a foreign Flatpak is no Flathub evidence",
+      "stamp": {
+        "outletKind": "steam",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "linux.flatpakInfo": "com.valvesoftware.Steam",
+        "steam.libraryManifest": "3166810"
+      },
+      "expect": {
+        "kind": "steam",
+        "confidence": "declared",
+        "source": "steam.libraryManifest",
+        "subkind": null
+      }
+    },
+    {
+      "name": "23. the snap name restricts a direct stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "linux.snapEnv": { "name": "diceroll", "revision": "42" } },
+      "expect": {
+        "kind": "snap",
+        "confidence": "declared",
+        "source": "linux.snapEnv",
+        "subkind": null
+      }
+    },
+    {
+      "name": "24. a local snap revision vetoes a snap stamp",
+      "stamp": {
+        "outletKind": "snap",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "linux.snapEnv": { "name": "diceroll", "revision": "x1" } },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "25. AppImage with APPDIR around the executable",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "linux.appImageEnv": {
+          "appImage": "/home/a/Diceroll.AppImage",
+          "appDir": "/tmp/.mount_DicerX1",
+          "exePath": "/tmp/.mount_DicerX1/usr/bin/diceroll"
+        }
+      },
+      "expect": {
+        "kind": "direct",
+        "confidence": "declared",
+        "source": "linux.appImageEnv",
+        "subkind": "appimage"
+      }
+    },
+    {
+      "name": "26. Android Play, no recorded digest: declared",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "android.installSource": {
+          "installer": "com.android.vending",
+          "initiator": "com.android.vending",
+          "initiatorCertSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "android.installerMismatch": false
+      },
+      "expect": {
+        "kind": "play",
+        "confidence": "declared",
+        "source": "android.installSource",
+        "subkind": null
+      }
+    },
+    {
+      "name": "27. Android: the shell claiming Play vetoes a play stamp",
+      "stamp": {
+        "outletKind": "play",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "android.installSource": {
+          "installer": "com.android.vending",
+          "initiator": "com.android.shell",
+          "initiatorCertSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "android.installerMismatch": true
+      },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "28. Android: Obtainium",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "android.installSource": {
+          "installer": "dev.imranr.obtainium",
+          "initiator": "dev.imranr.obtainium",
+          "initiatorCertSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "android.installerMismatch": false
+      },
+      "expect": {
+        "kind": "obtainium",
+        "confidence": "declared",
+        "source": "android.installSource",
+        "subkind": null
+      }
+    },
+    {
+      "name": "29. Android: the F-Droid client",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "android.installSource": {
+          "installer": "org.fdroid.fdroid",
+          "initiator": "org.fdroid.fdroid",
+          "initiatorCertSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "android.installerMismatch": false
+      },
+      "expect": {
+        "kind": "fdroid-repo",
+        "confidence": "declared",
+        "source": "android.installSource",
+        "subkind": null
+      }
+    },
+    {
+      "name": "30. Android: a browser download confirms direct",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "android.installSource": {
+          "installer": "com.google.android.packageinstaller",
+          "initiator": "com.google.android.packageinstaller",
+          "initiatorCertSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "android.installerMismatch": false
+      },
+      "expect": {
+        "kind": "direct",
+        "confidence": "declared",
+        "source": "android.installSource",
+        "subkind": null
+      }
+    },
+    {
+      "name": "31. iOS: App Store overrides a direct stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "ios.appDistributor": "appStore" },
+      "expect": {
+        "kind": "app-store",
+        "confidence": "attested",
+        "source": "ios.appDistributor",
+        "subkind": null
+      }
+    },
+    {
+      "name": "32. iOS: TestFlight with no stamp",
+      "stamp": null,
+      "signals": { "ios.appDistributor": "testFlight" },
+      "expect": {
+        "kind": "testflight",
+        "confidence": "attested",
+        "source": "ios.appDistributor",
+        "subkind": null
+      }
+    },
+    {
+      "name": "33. iOS: a timeout is no evidence",
+      "stamp": {
+        "outletKind": "app-store",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "ios.appDistributor": "timeout" },
+      "expect": {
+        "kind": "app-store",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "34. iOS: web distribution is direct",
+      "stamp": null,
+      "signals": { "ios.appDistributor": "web" },
+      "expect": {
+        "kind": "direct",
+        "confidence": "attested",
+        "source": "ios.appDistributor",
+        "subkind": null
+      }
+    },
+    {
+      "name": "35. iOS: an AltStore rewrite moves an app-store stamp",
+      "stamp": {
+        "outletKind": "app-store",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "ios.bundleIdRewrite": {
+          "runtimeBundleId": "gg.vlad.diceroll.ABCDE12345",
+          "altBundleIdentifier": "gg.vlad.diceroll"
+        }
+      },
+      "expect": {
+        "kind": "altstore",
+        "confidence": "declared",
+        "source": "ios.bundleIdRewrite",
+        "subkind": null
+      }
+    },
+    {
+      "name": "36. iOS: a provisioning profile vetoes an app-store stamp",
+      "stamp": {
+        "outletKind": "app-store",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "ios.provisioningProfile": true },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "37. iOS: a marketplace other than AltStore PAL",
+      "stamp": {
+        "outletKind": "app-store",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "ios.appDistributor": "marketplace:com.example" },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "38. Windows: Store signature with this family name",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "windows.packageIdentity": "Diceroll_abc123",
+        "windows.signatureKind": "Store"
+      },
+      "expect": {
+        "kind": "ms-store",
+        "confidence": "attested",
+        "source": "windows.signatureKind",
+        "subkind": null
+      }
+    },
+    {
+      "name": "39. Windows: an inherited identity is ignored",
+      "stamp": {
+        "outletKind": "steam",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "windows.packageIdentity": "Other_xyz",
+        "windows.signatureKind": "Store"
+      },
+      "expect": {
+        "kind": "steam",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "40. Windows: an App Installer URI",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "windows.packageIdentity": "Diceroll_abc123",
+        "windows.signatureKind": "Developer",
+        "windows.appInstallerUri": "https://dl.example/diceroll.appinstaller"
+      },
+      "expect": {
+        "kind": "app-installer",
+        "confidence": "attested",
+        "source": "windows.appInstallerUri",
+        "subkind": null
+      }
+    },
+    {
+      "name": "41. Windows: a Developer signature vetoes an ms-store stamp",
+      "stamp": {
+        "outletKind": "ms-store",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "windows.packageIdentity": "Diceroll_abc123",
+        "windows.signatureKind": "Developer"
+      },
+      "expect": {
+        "kind": "unknown",
+        "confidence": null,
+        "source": null,
+        "subkind": null
+      }
+    },
+    {
+      "name": "42. Windows: a sparse package keeps the stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "windows.packageIdentity": "Diceroll_abc123",
+        "windows.signatureKind": "Developer",
+        "windows.externalLocation": "C:\\Games\\Diceroll"
+      },
+      "expect": {
+        "kind": "direct",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    },
+    {
+      "name": "43. Windows: a WinGet path restricts direct to winget",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "windows.pathConvention": "winget" },
+      "expect": {
+        "kind": "winget",
+        "confidence": "heuristic",
+        "source": "windows.pathConvention",
+        "subkind": null
+      }
+    },
+    {
+      "name": "44. Windows: a Scoop path",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "windows.pathConvention": "scoop" },
+      "expect": {
+        "kind": "direct",
+        "confidence": "heuristic",
+        "source": "windows.pathConvention",
+        "subkind": "scoop"
+      }
+    },
+    {
+      "name": "45. Node: npx",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "node.packageManager": { "manager": "npx", "packageMatch": true }
+      },
+      "expect": {
+        "kind": "direct",
+        "confidence": "heuristic",
+        "source": "node.packageManager",
+        "subkind": "npx"
+      }
+    },
+    {
+      "name": "46. web: display mode confirms the web stamp",
+      "stamp": {
+        "outletKind": "web",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "web.displayMode": "standalone" },
+      "expect": {
+        "kind": "web",
+        "confidence": "heuristic",
+        "source": "web.displayMode",
+        "subkind": null
+      }
+    },
+    {
+      "name": "47. a Homebrew formula restricts a direct stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": { "macos.homebrewFormula": "diceroll" },
+      "expect": {
+        "kind": "direct",
+        "confidence": "heuristic",
+        "source": "macos.homebrewFormula",
+        "subkind": "homebrew"
+      }
+    },
+    {
+      "name": "48. Android: an installer mismatch leaves a direct stamp",
+      "stamp": {
+        "outletKind": "direct",
+        "subkind": null,
+        "outletIds": {
+          "steamAppId": "3166810",
+          "itchGameId": "1001",
+          "flatpakId": "gg.vlad.Diceroll",
+          "snapName": "diceroll",
+          "caskToken": "diceroll",
+          "homebrewFormula": "diceroll",
+          "msixFamilyName": "Diceroll_abc123",
+          "bundleId": "gg.vlad.diceroll"
+        }
+      },
+      "signals": {
+        "android.installSource": {
+          "installer": "com.android.vending",
+          "initiator": "com.android.shell",
+          "initiatorCertSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "android.installerMismatch": true
+      },
+      "expect": {
+        "kind": "direct",
+        "confidence": "stamp",
+        "source": "stamp",
+        "subkind": null
+      }
+    }
+  ]
+}

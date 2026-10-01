@@ -4,10 +4,11 @@
 // deterministic, so re-signing is reproducible — `--check` re-emits in memory and fails if a
 // committed file drifted.
 //
-// ONE corpus, from two committed test keys and fixed clocks:
+// ONE corpus, from four committed test keys (two product keys, two release keys) and fixed clocks:
 //
-//   conformance/corpus/v2/  wire contract v3 (docs/security/WIRE-CONTRACT-V3.md). Consumed by
-//                           conformance/runners/node/corpusV2.test.ts via
+//   conformance/corpus/v2/  wire contract v4 (docs/security/WIRE-CONTRACT-V4.md; v3's documents
+//                           are unchanged, so the directory and `corpusVersion: 2` stay). Consumed
+//                           by conformance/runners/node/corpusV2.test.ts via
 //                           @polaris-key/client-core and by the Python runner. Two
 //                           generator-owned mirrors keep the path `…/v2/` one-for-one:
 //                           the Swift test bundle's `Resources/v2/` (the Swift suite) and
@@ -15,12 +16,14 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
-// Six files: `cases.json` (signed vectors), `gate-matrix.json` (§5), `fingerprint.json` (the
-// hardware-hash formulas), `stage-matrix.json` (the boot stage machine of
-// `@polaris-key/client-core/stages`, client boot behaviour outside the wire contract, read by
-// conformance/runners/node/stageMatrix.test.ts and the Python and Swift runners),
-// `headers.json` (the client metadata header values, §5.2) and `config-matrix.json` (config
-// resolution and environment values, §2.2.1).
+// Eight files: `cases.json` (signed vectors, the v4 feed and release-record families
+// included), `gate-matrix.json` (§5), `fingerprint.json` (the hardware-hash formulas),
+// `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`, client boot
+// behaviour outside the wire contract, read by conformance/runners/node/stageMatrix.test.ts and
+// the Python, Swift and Godot runners; version 2 adds boot confirmation), `headers.json` (the
+// client metadata header values, §5.2), `config-matrix.json` (config resolution and environment
+// values, §2.2.1), `update-matrix.json` (the update decision, plans/P3-01.md §2.8) and
+// `outlet-matrix.json` (outlet kinds, capabilities and detection, plans/P3-01.md §2.9).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
 // `CARRIED_MATRIX_ROWS` below before deletion. Fourteen are still emitted; one, the pre-R3-01
@@ -29,7 +32,7 @@
 //   pnpm gen:corpus            # write the corpus
 //   pnpm gen:corpus -- --check # CI drift guard (exit 1 if any file is stale)
 
-import { createHash } from "node:crypto";
+import { createHash, createPublicKey, verify as nodeVerify } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -42,9 +45,11 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   signJws,
+  base64UrlDecode,
   base64UrlEncodeBytes,
   importSigningKey,
 } from "@polaris-key/jws";
+import { ED25519_TORSION_SUBGROUP, ed25519 } from "@noble/curves/ed25519.js";
 import { format } from "prettier";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -98,6 +103,21 @@ const KEYS: CorpusKey[] = [
     publicKeyRaw: "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
     privateKeyPkcs8Pem:
       "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----",
+  },
+  // Wire contract v4 §2.4: the CI-held RELEASE keys that sign `pkey-release+jws` records,
+  // generated once with `crypto.generateKeyPairSync("ed25519")`. Never a product key, never in
+  // a feed case's trust; the 2027 key is the rotation.
+  {
+    kid: "djdl-release-test-2026",
+    publicKeyRaw: "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE",
+    privateKeyPkcs8Pem:
+      "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIMPC/pYWRN17C6MFlFHhktg/TQgXNUydx+PQtkD9KTBs\n-----END PRIVATE KEY-----",
+  },
+  {
+    kid: "djdl-release-test-2027",
+    publicKeyRaw: "TOde4jqFFVbzka-bES32oJRK6Whg1kqa16Jk7y3d2Lo",
+    privateKeyPkcs8Pem:
+      "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIIwJqSkvipky0ygUQh67CbUmFH5641YiVLQRAdtWfA3g\n-----END PRIVATE KEY-----",
   },
 ];
 
@@ -223,6 +243,8 @@ const V2_FINGERPRINT_OUT = join(V2_DIR, "fingerprint.json");
 const V2_STAGE_MATRIX_OUT = join(V2_DIR, "stage-matrix.json");
 const V2_HEADERS_OUT = join(V2_DIR, "headers.json");
 const V2_CONFIG_MATRIX_OUT = join(V2_DIR, "config-matrix.json");
+const V2_UPDATE_MATRIX_OUT = join(V2_DIR, "update-matrix.json");
+const V2_OUTLET_MATRIX_OUT = join(V2_DIR, "outlet-matrix.json");
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
 
@@ -231,7 +253,9 @@ type TypV3 =
   | "pkey-license+jws"
   | "pkey-config+jws"
   | "pkey-trust+jws"
-  | "pkey-bundle+jws";
+  | "pkey-bundle+jws"
+  | "pkey-feed+jws"
+  | "pkey-release+jws";
 
 /** §8 — the ISSUER is host-neutral. `key.plrs.im` remains the serving HOST and is no longer
  *  a valid `iss`; `license-iss-v2-host-rejected` pins exactly that. */
@@ -883,8 +907,12 @@ async function buildJwsCases(): Promise<JwsCaseV2[]> {
     expect: { verify: "fail" },
   });
 
-  // §10: annotate every U+0000 string in each pinned document (one case today).
-  return cases.map((c) => ({ ...c, expect: annotateNul(c.expect) }));
+  // §10: annotate every U+0000 string in each pinned document (one case today). Wire contract
+  // v4's 44 vectors follow the existing 36, which stay byte-identical (plans/P3-01.md §4.3).
+  const v4 = await buildJwsCasesV4();
+  return [...cases, ...v4].map((c) =>
+    placeNonWire({ ...c, expect: annotateNul(c.expect) }),
+  );
 }
 
 // ── §3 per-document claim vectors ────────────────────────────────────────────
@@ -1074,7 +1102,11 @@ async function envelopeCases(
 }
 
 async function buildLicenseDocCases(): Promise<DocCaseV2[]> {
-  return envelopeCases("license", "pkey-license+jws", licenseDoc);
+  return [
+    ...(await envelopeCases("license", "pkey-license+jws", licenseDoc)),
+    // Wire contract v4 §3: the licence claim cases, after the family's last case.
+    ...(await buildLicenseDocCasesV4()).map(placeNonWire),
+  ];
 }
 
 async function buildConfigDocCases(): Promise<DocCaseV2[]> {
@@ -1129,6 +1161,8 @@ async function buildConfigDocCases(): Promise<DocCaseV2[]> {
       ),
       expect: { accept: false },
     },
+    // Wire contract v4 §3: the config claim cases, after the family's last case.
+    ...(await buildConfigDocCasesV4()).map(placeNonWire),
   ];
 }
 
@@ -1331,6 +1365,8 @@ async function buildTrustCasesV2(): Promise<TrustCaseV2[]> {
         trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
       },
     },
+    // Wire contract v4 §3: the trust-manifest claim cases, after the family's last case.
+    ...(await buildTrustCasesV4()).map(placeNonWire),
   ];
 }
 
@@ -1707,11 +1743,15 @@ async function buildBundleCases(): Promise<BundleCase[]> {
       bundleJws: await sign(docOfExactBytes(MAX_BUNDLE_BYTES + 1, bundle())),
       expect: { imports: false, reason: "bundle-jws-rejected" },
     },
+    // Wire contract v4 §3: the bundle claim cases, after the family's last case.
+    ...(await buildBundleCasesV4()).map(placeNonWire),
   ];
 }
 
 async function buildV2(): Promise<unknown> {
-  return {
+  // Wire contract v4: the record vectors first, because every feed pins one by its hash.
+  RECORDS = await buildRecordVectors();
+  const corpus = {
     corpusVersion: 2,
     keys: KEYS,
     jwsCases: await buildJwsCases(),
@@ -1720,7 +1760,11 @@ async function buildV2(): Promise<unknown> {
     trustCases: await buildTrustCasesV2(),
     clockFloorCases: await buildClockFloorCasesV2(),
     bundleCases: await buildBundleCases(),
+    feedCases: await buildFeedCases(),
+    releaseRecordCases: await buildReleaseRecordCases(RECORDS),
   };
+  checkCorpusV4(corpus as unknown as Record<string, AnyCase[]>);
+  return corpus;
 }
 
 // ── gate-matrix v2 (§5) ──────────────────────────────────────────────────────
@@ -2465,7 +2509,7 @@ function gateMatrixV2(): {
 // pinned as data. Unsigned, like the gate matrix: it pins a reducer, not a signature. The rows,
 // `accepts` and `probes` are literal data built with small step helpers. Nothing here imports
 // `client-core`: a golden file that shares code with the implementation it checks cannot catch
-// a bug in that shared code. `buildStageMatrixV1` self-checks the rows before writing, so a row
+// a bug in that shared code. `buildStageMatrix` self-checks the rows before writing, so a row
 // that contradicts the vocabulary, the `accepts` table or its own stage list fails
 // `gen:corpus`.
 //
@@ -3642,19 +3686,22 @@ function checkStageMatrix(
         fail(`no row takes the gate cell ${cls} after sync ${sync}`);
 }
 
-function buildStageMatrixV1(): unknown {
+function buildStageMatrix(): unknown {
   const rows = stageRows();
   checkStageMatrix(rows, STAGE_GUARD_CASES);
+  checkConfirmCases();
   return {
-    stageMatrixVersion: 1,
+    stageMatrixVersion: 2,
     description:
-      "The boot stage machine (client boot behaviour, outside the wire contract), owned by `@polaris-key/client-core/stages` and ported to every SDK. Each row starts from `initialBootState(init)` (an omitted option takes its default: allowOffline true, allowGrace true, requiredPacks []) and feeds `bootTransition` its steps in order; each step lists the exact emits that event produces, `stage_changed` first. `expect.stages` is every stage entered, in order, and its last entry is the final stage; `expect.outcome` is the final outcome. Events are dotted, emits snake_case, payload keys camelCase and payload values kebab-case. An event the current stage does not accept, or a malformed one, is ignored: the state comes back unchanged with no emits. `accepts` lists what each stage accepts (`gate:waiting` is the gate while it waits for the player), and a runner sends every probe at the initial state and after every step of every row, asserting an unchanged state and no emits exactly when the probe's type is not accepted there. `guardCases` pin `bootGuardAction`, which rolls back at `maxFailedBoots`. Append-only: a change to the vocabulary, to `accepts` or to an existing row's expectation bumps `stageMatrixVersion`.",
+      "The boot stage machine (client boot behaviour, outside the wire contract), owned by `@polaris-key/client-core/stages` and ported to every SDK. Each row starts from `initialBootState(init)` (an omitted option takes its default: allowOffline true, allowGrace true, requiredPacks []) and feeds `bootTransition` its steps in order; each step lists the exact emits that event produces, `stage_changed` first. `expect.stages` is every stage entered, in order, and its last entry is the final stage; `expect.outcome` is the final outcome. Events are dotted, emits snake_case, payload keys camelCase and payload values kebab-case. An event the current stage does not accept, or a malformed one, is ignored: the state comes back unchanged with no emits. `accepts` lists what each stage accepts (`gate:waiting` is the gate while it waits for the player), and a runner sends every probe at the initial state and after every step of every row, asserting an unchanged state and no emits exactly when the probe's type is not accepted there. `guardCases` pin `bootGuardAction`, which rolls back at `maxFailedBoots`. Version 2 (plans/P3-01.md §2.10) adds boot confirmation: `confirmCases` pin `bootConfirmation(outcome)`, one per outcome (`now` for waiting, blocked and offline; `after-ok-seconds` for ready, confirmed once the outcome has been `ready` for `bootOkSeconds` with the process alive, or by the game's `confirmBoot()`; `never` for running and error), and a confirmed launch resets `failedBoots` to 0. Append-only: a change to the vocabulary, to `accepts` or to an existing row's expectation bumps `stageMatrixVersion`.",
     maxFailedBoots: STAGE_MAX_FAILED_BOOTS,
-    vocabulary: STAGE_VOCABULARY,
+    bootOkSeconds: STAGE_BOOT_OK_SECONDS,
+    vocabulary: { ...STAGE_VOCABULARY, confirmations: STAGE_CONFIRMATIONS },
     accepts: STAGE_ACCEPTS,
     probes: STAGE_PROBES,
     rows,
     guardCases: STAGE_GUARD_CASES,
+    confirmCases: STAGE_CONFIRM_CASES,
   };
 }
 
@@ -6201,6 +6248,6315 @@ function buildConfigMatrix(): unknown {
   return file;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// Wire contract v4 (docs/security/WIRE-CONTRACT-V4.md, plans/P3-01.md §2–§4)
+// ══════════════════════════════════════════════════════════════════════════════════════════
+//
+// Everything below restates the v4 rules as literals and reference implementations, written
+// from the plan and importing nothing it checks: the strict verifier's vectors, the feed and
+// record families, the per-claim integer cases, `update-matrix.json`, `outlet-matrix.json`
+// and the stage matrix's confirmation cases. Each builder recomputes its own expectations and
+// throws when a hand-written expectation disagrees, so a row that contradicts the plan fails
+// `gen:corpus` instead of shipping.
+
+/** V4 §3: the largest integer claim, 2^53 − 1. */
+const MAX_WIRE_INTEGER_REF = 9007199254740991;
+/** The v4 feed clocks, beside `V3_ISSUED`. */
+const FEED_ISSUED = V3_ISSUED;
+const FEED_EXPIRES = FEED_ISSUED + 900;
+const FEED_NOW = FEED_ISSUED + 100;
+const FEED_TTL_REF = 900;
+const MAX_FEED_TTL_REF = 3600;
+const ROLLOUT_BUCKETS_REF = 10000;
+/** The release keys (V4 §2.4). Records are signed by these two, never by a product key. */
+const REL_KID = "djdl-release-test-2026";
+const REL2_KID = "djdl-release-test-2027";
+
+// ── Raw tokens and raw bytes ─────────────────────────────────────────────────────────────────
+// `JSON.stringify` cannot write `7.0`, `17e8` or `9007199254740993`, so a vector that needs one
+// carries the string `raw(token)` and `rawJson` splices the token in after serialising.
+
+const RAW_RE = /"@@raw:([^"@]*)@@"/g;
+const raw = (token: string): string => `@@raw:${token}@@`;
+const rawJson = (value: unknown): string =>
+  JSON.stringify(value).replace(RAW_RE, "$1");
+const headerText = (typ: TypV3, kid: string): string =>
+  JSON.stringify({ alg: "EdDSA", typ, kid });
+const utf8Bytes = (s: string): Uint8Array<ArrayBuffer> =>
+  new TextEncoder().encode(s);
+
+/** Sign raw header and payload BYTES — the UTF-8 and BOM vectors, which text cannot hold. */
+async function signRawBytes(
+  header: Uint8Array,
+  payload: Uint8Array,
+  kid: string,
+): Promise<string> {
+  const signingInput = `${base64UrlEncodeBytes(header)}.${base64UrlEncodeBytes(payload)}`;
+  const key = await importSigningKey(pem(kid));
+  const sig = await crypto.subtle.sign(
+    { name: "Ed25519" },
+    key,
+    utf8Bytes(signingInput),
+  );
+  return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(sig))}`;
+}
+
+/** Sign a payload given as JSON TEXT (with any raw tokens already spliced in). */
+const signText = (text: string, kid: string, typ: TypV3): Promise<string> =>
+  signRawSegments(headerText(typ, kid), text, kid);
+
+// ── Ed25519 constructions (V4 §1.1), on @noble/curves — vectors only, never a verifier ────────
+
+const ED_L = 2n ** 252n + 27742317777372353535851937790883648493n;
+const ED_P = 2n ** 255n - 19n;
+const EdPoint = ed25519.Point;
+
+function leToBig(bytes: Uint8Array): bigint {
+  let n = 0n;
+  for (let k = bytes.length - 1; k >= 0; k--) n = (n << 8n) | BigInt(bytes[k]!);
+  return n;
+}
+function bigToLe(n: bigint, length: number): Uint8Array {
+  const out = new Uint8Array(length);
+  for (let k = 0; k < length; k++, n >>= 8n) out[k] = Number(n & 0xffn);
+  return out;
+}
+const hexBytes = (hex: string): Uint8Array =>
+  Uint8Array.from(hex.match(/../g)!.map((b) => parseInt(b, 16)));
+const bytesHex = (b: Uint8Array): string =>
+  Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+function sha512(...parts: Uint8Array[]): Uint8Array {
+  const h = createHash("sha512");
+  for (const p of parts) h.update(p);
+  return new Uint8Array(h.digest());
+}
+const sha256Hex = (input: string | Uint8Array): string =>
+  createHash("sha256").update(input).digest("hex");
+
+/** The secret scalar of a committed PKCS#8 key: SHA-512 of the seed, clamped (RFC 8032). */
+function secretScalar(kid: string): bigint {
+  const der = Buffer.from(
+    pem(kid)
+      .replace(/-----[^-]+-----/g, "")
+      .replace(/\s+/g, ""),
+    "base64",
+  );
+  const h = sha512(new Uint8Array(der.subarray(der.length - 32)));
+  h[0]! &= 248;
+  h[31]! &= 127;
+  h[31]! |= 64;
+  return leToBig(h.subarray(0, 32));
+}
+
+/** A deterministic nonce for the hand-built signatures: SHA-512 of a label, mod L. */
+const nonce = (label: string, counter: number): bigint =>
+  leToBig(sha512(utf8Bytes(`pkey-corpus-v4-r:${label}:${counter}`))) % ED_L;
+
+/** `k = H(R ‖ A ‖ M) mod L` over the ASCII signing input. */
+const challenge = (rEnc: Uint8Array, aEnc: Uint8Array, input: string): bigint =>
+  leToBig(sha512(rEnc, aEnc, utf8Bytes(input))) % ED_L;
+
+/** Assemble a compact JWS from text segments and a hand-built `R ‖ S`. */
+function assembleJws(
+  header: string,
+  payload: string,
+  rEnc: Uint8Array,
+  s: bigint,
+): string {
+  const input = `${base64UrlEncodeBytes(utf8Bytes(header))}.${base64UrlEncodeBytes(utf8Bytes(payload))}`;
+  const sig = new Uint8Array(64);
+  sig.set(rEnc, 0);
+  sig.set(bigToLe(s, 32), 32);
+  return `${input}.${base64UrlEncodeBytes(sig)}`;
+}
+
+/** Sign `payload` as `kid` (header) with the hand-held scalar `a` of key `aEnc`, using `rEnc`
+ *  (and its scalar `r`, or 0 for a non-point / identity `R`). Optionally grind the nonce until
+ *  `k mod 8` satisfies `want` — the order-8 and mixed-order constructions. */
+function handSign(opts: {
+  kid: string;
+  payload: string;
+  aEnc: Uint8Array;
+  a: bigint;
+  label: string;
+  rEnc?: Uint8Array;
+  kMod8?: "zero" | "nonzero";
+}): { jws: string; k: bigint; s: bigint } {
+  const header = headerText("pkey-license+jws", opts.kid);
+  const input = (): string =>
+    `${base64UrlEncodeBytes(utf8Bytes(header))}.${base64UrlEncodeBytes(utf8Bytes(opts.payload))}`;
+  for (let counter = 0; counter < 512; counter++) {
+    let r = 0n;
+    let rEnc = opts.rEnc;
+    if (!rEnc) {
+      r = nonce(opts.label, counter);
+      rEnc = EdPoint.BASE.multiply(r).toBytes();
+    }
+    const k = challenge(rEnc, opts.aEnc, input());
+    if (opts.kMod8 === "zero" && k % 8n !== 0n) continue;
+    if (opts.kMod8 === "nonzero" && k % 8n === 0n) continue;
+    const s = (r + k * opts.a) % ED_L;
+    return { jws: assembleJws(header, opts.payload, rEnc, s), k, s };
+  }
+  throw new Error(`handSign: could not grind ${opts.label}`);
+}
+
+/** The small-order encodings, restated (V4 §1.1 check 3). */
+const SMALL_ORDER_REF = [
+  "0100000000000000000000000000000000000000000000000000000000000000",
+  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+  "0000000000000000000000000000000000000000000000000000000000000000",
+  "0000000000000000000000000000000000000000000000000000000000000080",
+  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
+  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",
+];
+const IDENTITY_ENC = hexBytes(SMALL_ORDER_REF[0]!);
+/** The identity with y = p + 1, a non-canonical encoding (check 2). */
+const IDENTITY_Y_P_PLUS_1 = bigToLe(ED_P + 1n, 32);
+/** x = 0 with the sign bit set: `01 00…00 80` (check 2). */
+const NEGATIVE_ZERO_ENC = hexBytes(
+  "0100000000000000000000000000000000000000000000000000000000000080",
+);
+const ORDER8_ENC = hexBytes(SMALL_ORDER_REF[6]!);
+
+/** Self-checks of the constructions (plans/P3-01.md §4.9). */
+function checkEd25519Tables(): void {
+  const fail = (m: string): never => {
+    throw new Error(`ed25519: ${m}`);
+  };
+  const torsion = new Set(ED25519_TORSION_SUBGROUP);
+  if (torsion.size !== 8 || !SMALL_ORDER_REF.every((h) => torsion.has(h)))
+    fail("the small-order table differs from noble's torsion subgroup");
+  for (const h of SMALL_ORDER_REF)
+    if (!EdPoint.fromHex(h).isSmallOrder()) fail(`${h} is not small order`);
+  const t8 = EdPoint.fromHex(SMALL_ORDER_REF[6]!);
+  if (t8.multiplyUnsafe(4n).equals(EdPoint.ZERO))
+    fail("the order-8 point has order 4");
+  if (!t8.multiplyUnsafe(8n).equals(EdPoint.ZERO))
+    fail("the order-8 point is not order 8");
+  if (leToBig(IDENTITY_Y_P_PLUS_1) !== ED_P + 1n) fail("y = p + 1 encoding");
+  const pinA = base64UrlDecode(pub(PIN_KID));
+  if (
+    bytesHex(EdPoint.BASE.multiply(secretScalar(PIN_KID) % ED_L).toBytes()) !==
+    bytesHex(pinA)
+  )
+    fail("the PIN key's scalar does not reproduce its public key");
+}
+
+// ── The generator's own JSON token scan (V4 §1.2, §3) ─────────────────────────────────────────
+
+/** The RFC 6901 pointer → token of every number in `text` (assumed to be well-formed JSON). */
+function refNumberTokens(text: string): Map<string, string> {
+  const tokens = new Map<string, string>();
+  let i = 0;
+  const ws = (): void => {
+    while (i < text.length && " \t\n\r".includes(text[i]!)) i++;
+  };
+  const str = (): string => {
+    // Delegate unescaping to JSON.parse on the exact literal (it is valid JSON by assumption).
+    const start = i;
+    i++;
+    while (text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+    i++;
+    return JSON.parse(text.slice(start, i)) as string;
+  };
+  const value = (pointer: string): void => {
+    ws();
+    const c = text[i];
+    if (c === "{") {
+      i++;
+      ws();
+      if (text[i] === "}") {
+        i++;
+        return;
+      }
+      for (;;) {
+        ws();
+        const name = str();
+        ws();
+        i++; // ':'
+        value(`${pointer}/${pointerToken(name)}`);
+        ws();
+        if (text[i++] === "}") return;
+      }
+    }
+    if (c === "[") {
+      i++;
+      ws();
+      if (text[i] === "]") {
+        i++;
+        return;
+      }
+      for (let k = 0; ; k++) {
+        value(`${pointer}/${k}`);
+        ws();
+        if (text[i++] === "]") return;
+      }
+    }
+    if (c === '"') {
+      str();
+      return;
+    }
+    const m = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/.exec(
+      text.slice(i),
+    );
+    if (m) {
+      tokens.set(pointer, m[0]);
+      i += m[0].length;
+      return;
+    }
+    for (const lit of ["true", "false", "null"])
+      if (text.startsWith(lit, i)) {
+        i += lit.length;
+        return;
+      }
+    throw new Error(`refNumberTokens: not JSON at ${i}`);
+  };
+  value("");
+  return tokens;
+}
+
+const PLAIN_INTEGER_REF = /^-?(0|[1-9][0-9]*)$/;
+/** V4 §3: a token that cannot be a wire integer (a fraction, an exponent, or > 2^53 − 1). */
+function refIsNonWire(token: string): boolean {
+  if (!PLAIN_INTEGER_REF.test(token)) return true;
+  const v = BigInt(token);
+  return v > BigInt(MAX_WIRE_INTEGER_REF) || v < -BigInt(MAX_WIRE_INTEGER_REF);
+}
+/** The payload's non-wire-integer pointers, sorted in JavaScript's default string order. */
+const refNonWire = (text: string): string[] =>
+  [...refNumberTokens(text)]
+    .filter(([, t]) => refIsNonWire(t))
+    .map(([p]) => p)
+    .sort();
+
+/** The decoded payload text of a compact JWS (or null when it is not one). */
+function payloadTextOf(jws: string): string | null {
+  const parts = jws.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(
+      base64UrlDecode(parts[1]!),
+    );
+  } catch {
+    return null;
+  }
+}
+
+// ── The generator's own claim checks, for all six typs ────────────────────────────────────────
+// One integer check, three switchable halves: the token rule, the 2^53 − 1 bound, and the
+// claim's minimum (§2.2 "Minimums", one literal table below). `off` switches one half off at
+// one pointer, which is how §4.9's per-claim self-check proves a case breaks that claim alone.
+
+interface ClaimCtx {
+  tokens: Map<string, string>;
+  off: ReadonlySet<string>;
+}
+const ctxOf = (text: string, off: Iterable<string> = []): ClaimCtx => ({
+  tokens: refNumberTokens(text),
+  off: new Set(off),
+});
+
+/** §2.2 "Minimums": the 21 integer-claim paths (`*` is any index or member). */
+const INTEGER_CLAIM_MINIMUMS: Readonly<Record<string, Record<string, number>>> =
+  {
+    envelope: { "/issuedAt": 0, "/expiresAt": 0, "/graceUntil": 0 },
+    config: { "/schemaVersion": 1 },
+    trust: { "/schemaVersion": 1, "/issuedAt": 0, "/expiresAt": 0 },
+    bundle: { "/issuedAt": 0, "/expiresAt": 0 },
+    feed: {
+      "/schemaVersion": 1,
+      "/seq": 1,
+      "/issuedAt": 0,
+      "/expiresAt": 1,
+      "/app/targets/*/release/seq": 1,
+      "/app/targets/*/outlets/*/live/seq": 1,
+      "/app/targets/*/outlets/*/rollout/bp": 0,
+    },
+    record: {
+      "/schemaVersion": 1,
+      "/seq": 1,
+      "/issuedAt": 0,
+      "/minSupportedSeq": 1,
+      "/builds/*/artifacts/*/size": 0,
+    },
+  };
+/** A concrete pointer's path (`/app/targets/0/release/seq` → `/app/targets/*\/release/seq`). */
+function claimPathOf(family: string, pointer: string): string | null {
+  const parts = pointer.split("/");
+  for (const path of Object.keys(INTEGER_CLAIM_MINIMUMS[family]!)) {
+    const want = path.split("/");
+    if (want.length !== parts.length) continue;
+    if (want.every((w, k) => w === "*" || w === parts[k])) return path;
+  }
+  return null;
+}
+function minimumOf(family: string, pointer: string): number {
+  const path = claimPathOf(family, pointer);
+  if (path === null) throw new Error(`no minimum for ${family} ${pointer}`);
+  return INTEGER_CLAIM_MINIMUMS[family]![path]!;
+}
+
+function refInt(
+  ctx: ClaimCtx,
+  family: string,
+  value: unknown,
+  pointer: string,
+): boolean {
+  const token = ctx.tokens.get(pointer);
+  if (typeof value !== "number" || token === undefined) return false;
+  const min = minimumOf(family, pointer);
+  const plain = PLAIN_INTEGER_REF.test(token);
+  if (!plain && !ctx.off.has(`token:${pointer}`)) return false;
+  const big = plain ? BigInt(token) : null;
+  const over =
+    big !== null
+      ? big > BigInt(MAX_WIRE_INTEGER_REF)
+      : value > MAX_WIRE_INTEGER_REF;
+  if (over && !ctx.off.has(`bound:${pointer}`)) return false;
+  const under = big !== null ? big < BigInt(min) : value < min;
+  if (under && !ctx.off.has(`min:${pointer}`)) return false;
+  return true;
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const hasOwn = (o: object, k: string): boolean =>
+  Object.prototype.hasOwnProperty.call(o, k);
+
+interface EnvelopeOpts {
+  expectedAud: string;
+  deviceId: string;
+  now: number;
+  checkFreshness?: boolean;
+  lastAcceptedIssuedAt?: number;
+}
+
+/** V3 §3's envelope and the licence or config claims, with V4 §3's integer rule. */
+function refDocClaims(
+  typ: TypV3,
+  doc: unknown,
+  ctx: ClaimCtx,
+  o: EnvelopeOpts,
+): boolean {
+  if (!isObj(doc)) return false;
+  if (doc.aud !== o.expectedAud || doc.iss !== ISSUER_V3) return false;
+  if (doc.deviceId !== o.deviceId) return false;
+  const e = "envelope";
+  if (!refInt(ctx, e, doc.issuedAt, "/issuedAt")) return false;
+  if (!refInt(ctx, e, doc.expiresAt, "/expiresAt")) return false;
+  if (!refInt(ctx, e, doc.graceUntil, "/graceUntil")) return false;
+  const [iat, exp, grace] = [
+    doc.issuedAt,
+    doc.expiresAt,
+    doc.graceUntil,
+  ] as number[];
+  if (o.lastAcceptedIssuedAt !== undefined && iat! <= o.lastAcceptedIssuedAt)
+    return false;
+  if (grace! < exp! || grace! > iat! + MAX_GRACE_SECONDS) return false;
+  if (o.checkFreshness !== false) {
+    if (iat! > o.now + CLOCK_SKEW || exp! <= o.now - CLOCK_SKEW) return false;
+  }
+  if (typ === "pkey-license+jws") {
+    if (typeof doc.licenseId !== "string" || doc.licenseId === "") return false;
+    if (!isObj(doc.entitlements)) return false;
+    if (hasOwn(doc, "profile") && !isObj(doc.profile)) return false;
+    return true;
+  }
+  if (!refInt(ctx, "config", doc.schemaVersion, "/schemaVersion")) return false;
+  return isObj(doc.config) && isObj(doc.secrets);
+}
+
+/** V3 §1 / §2.3's trust-manifest claims; the keys and the substitution rule. */
+function refTrustClaims(
+  doc: unknown,
+  ctx: ClaimCtx,
+  o: { pinned: Record<string, string>; now: number; checkFreshness?: boolean },
+): Record<string, string> | null {
+  if (!isObj(doc)) return null;
+  const t = "trust";
+  if (
+    !refInt(ctx, t, doc.schemaVersion, "/schemaVersion") ||
+    doc.schemaVersion !== 1
+  )
+    return null;
+  if (doc.aud !== AUD_V3 || doc.iss !== ISSUER_V3) return null;
+  if (!refInt(ctx, t, doc.issuedAt, "/issuedAt")) return null;
+  if (!refInt(ctx, t, doc.expiresAt, "/expiresAt")) return null;
+  if (o.checkFreshness !== false) {
+    if ((doc.issuedAt as number) > o.now + CLOCK_SKEW) return null;
+    if ((doc.expiresAt as number) <= o.now - CLOCK_SKEW) return null;
+  }
+  if (!Array.isArray(doc.keys)) return null;
+  const out: Record<string, string> = {};
+  for (const key of doc.keys) {
+    if (
+      !isObj(key) ||
+      typeof key.kid !== "string" ||
+      typeof key.publicKey !== "string"
+    )
+      return null;
+    if (hasOwn(o.pinned, key.kid) && o.pinned[key.kid] !== key.publicKey)
+      return null;
+    if (key.status === "revoked") continue;
+    if (key.alg !== "EdDSA" || key.kty !== "OKP" || key.crv !== "Ed25519")
+      continue;
+    out[key.kid] = key.publicKey;
+  }
+  return out;
+}
+
+/** V3 §7 step 2: the bundle's own claims, and the `docs` shapes (V4 §3 presence). */
+function refBundleClaims(
+  doc: unknown,
+  ctx: ClaimCtx,
+  o: { now: number; deviceId: string },
+): boolean {
+  if (!isObj(doc)) return false;
+  if (typeof doc.bundleId !== "string" || doc.bundleId === "") return false;
+  if (typeof doc.trust !== "string") return false;
+  if (doc.aud !== AUD_V3 || doc.deviceId !== o.deviceId) return false;
+  if (!refInt(ctx, "bundle", doc.issuedAt, "/issuedAt")) return false;
+  if (!refInt(ctx, "bundle", doc.expiresAt, "/expiresAt")) return false;
+  if ((doc.issuedAt as number) > o.now + CLOCK_SKEW) return false;
+  if (o.now > (doc.expiresAt as number) + CLOCK_SKEW) return false;
+  if (!isObj(doc.docs)) return false;
+  const docs = doc.docs;
+  for (const k of ["license", "config"])
+    if (hasOwn(docs, k) && typeof docs[k] !== "string") return false;
+  return hasOwn(docs, "license") || hasOwn(docs, "config");
+}
+
+// ── Versions (plans/P3-01.md §2.8), the generator's own comparator ───────────────────────────
+
+const REF_SEMVER_RE =
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+const REF_FOUR_PART_RE = /^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){3}$/;
+const REF_SCHEMES = ["semver", "semver+build", "4part"] as const;
+
+function refParseVersion(
+  scheme: string,
+  v: unknown,
+): { core: string[]; pre: string[] | null; build: string | null } | null {
+  if (typeof v !== "string") return null;
+  if (scheme === "4part") {
+    if (!REF_FOUR_PART_RE.test(v)) return null;
+    return { core: v.split("."), pre: null, build: null };
+  }
+  if (scheme !== "semver" && scheme !== "semver+build") return null;
+  const m = REF_SEMVER_RE.exec(v);
+  if (!m) return null;
+  return {
+    core: [m[1]!, m[2]!, m[3]!],
+    pre: m[4] === undefined ? null : m[4].split("."),
+    build: m[5] ?? null,
+  };
+}
+
+/** Unbounded integers as digit strings: strip leading zeros, then length, then ASCII. */
+function refCmpDigits(a: string, b: string): number {
+  const x = a.replace(/^0+(?=.)/, "");
+  const y = b.replace(/^0+(?=.)/, "");
+  if (x.length !== y.length) return x.length < y.length ? -1 : 1;
+  return x === y ? 0 : x < y ? -1 : 1;
+}
+
+function refCompareVersions(
+  scheme: string,
+  a: unknown,
+  b: unknown,
+): number | null {
+  const pa = refParseVersion(scheme, a);
+  const pb = refParseVersion(scheme, b);
+  if (!pa || !pb) return null;
+  for (let k = 0; k < pa.core.length; k++) {
+    const c = refCmpDigits(pa.core[k]!, pb.core[k]!);
+    if (c !== 0) return c;
+  }
+  if (scheme === "4part") return 0;
+  let c = 0;
+  if (pa.pre === null && pb.pre !== null) c = 1;
+  else if (pa.pre !== null && pb.pre === null) c = -1;
+  else if (pa.pre !== null && pb.pre !== null) {
+    const n = Math.min(pa.pre.length, pb.pre.length);
+    for (let k = 0; k < n && c === 0; k++) {
+      const x = pa.pre[k]!;
+      const y = pb.pre[k]!;
+      const xn = /^[0-9]+$/.test(x);
+      const yn = /^[0-9]+$/.test(y);
+      if (xn && yn) c = refCmpDigits(x, y);
+      else if (xn !== yn) c = xn ? -1 : 1;
+      else c = x === y ? 0 : x < y ? -1 : 1;
+    }
+    if (c === 0 && pa.pre.length !== pb.pre.length)
+      c = pa.pre.length < pb.pre.length ? -1 : 1;
+  }
+  if (c !== 0 || scheme !== "semver+build") return c;
+  const na = pa.build !== null && /^[0-9]+$/.test(pa.build) ? pa.build : null;
+  const nb = pb.build !== null && /^[0-9]+$/.test(pb.build) ? pb.build : null;
+  if (na === null && nb === null) return 0;
+  if (na === null) return -1;
+  if (nb === null) return 1;
+  return refCmpDigits(na, nb);
+}
+
+// ── Outlet kinds and capabilities (plans/P3-01.md §2.9), restated as literals ────────────────
+
+const REF_OUTLET_KINDS = [
+  "direct",
+  "app-store",
+  "testflight",
+  "altstore",
+  "altstore-pal",
+  "play",
+  "play-testing",
+  "obtainium",
+  "fdroid-repo",
+  "ms-store",
+  "app-installer",
+  "steam",
+  "itch",
+  "flathub",
+  "snap",
+  "winget",
+  "web",
+] as const;
+const REF_RELEASE_PLATFORMS = [
+  "macos",
+  "ios",
+  "android",
+  "windows",
+  "linux",
+  "web",
+];
+const REF_OUTLET_ID_RE = /^[a-z][a-z0-9-]{0,63}$/;
+const REF_BINARY_ORDER = ["none", "store", "self"];
+
+interface RefCaps {
+  binaryUpdates: string;
+  codeUpdates: boolean;
+  dataUpdates: boolean;
+  channelSwitch: boolean;
+  commerce: string;
+  downloadedScripts: boolean;
+}
+const refCaps = (
+  binaryUpdates: string,
+  codeUpdates: boolean,
+  dataUpdates: boolean,
+  channelSwitch: boolean,
+  commerce: string,
+  downloadedScripts: boolean,
+): RefCaps => ({
+  binaryUpdates,
+  codeUpdates,
+  dataUpdates,
+  channelSwitch,
+  commerce,
+  downloadedScripts,
+});
+/** §2.9's table, row for row; `platforms` is each kind's list (`unknown`: every platform). */
+const REF_KIND_TABLE: Record<string, RefCaps & { platforms: string[] }> = {
+  direct: {
+    ...refCaps("self", true, true, true, "own", true),
+    platforms: ["macos", "windows", "linux", "android", "ios"],
+  },
+  "app-store": {
+    ...refCaps("store", false, true, false, "store-iap", false),
+    platforms: ["ios", "macos"],
+  },
+  testflight: {
+    ...refCaps("store", false, true, false, "store-iap", false),
+    platforms: ["ios", "macos"],
+  },
+  altstore: {
+    ...refCaps("store", false, true, false, "own", false),
+    platforms: ["ios"],
+  },
+  "altstore-pal": {
+    ...refCaps("store", false, true, false, "own", false),
+    platforms: ["ios"],
+  },
+  play: {
+    ...refCaps("store", false, true, false, "store-iap", false),
+    platforms: ["android"],
+  },
+  "play-testing": {
+    ...refCaps("store", false, true, false, "store-iap", false),
+    platforms: ["android"],
+  },
+  obtainium: {
+    ...refCaps("store", false, true, false, "own", false),
+    platforms: ["android"],
+  },
+  "fdroid-repo": {
+    ...refCaps("store", false, true, false, "own", false),
+    platforms: ["android"],
+  },
+  "ms-store": {
+    ...refCaps("store", false, true, false, "store-iap", false),
+    platforms: ["windows"],
+  },
+  "app-installer": {
+    ...refCaps("none", false, true, false, "own", false),
+    platforms: ["windows"],
+  },
+  steam: {
+    ...refCaps("none", false, true, false, "steam", false),
+    platforms: ["windows", "macos", "linux"],
+  },
+  itch: {
+    ...refCaps("none", false, true, false, "own", false),
+    platforms: ["windows", "macos", "linux"],
+  },
+  flathub: {
+    ...refCaps("none", false, true, false, "own", false),
+    platforms: ["linux"],
+  },
+  snap: {
+    ...refCaps("none", false, true, false, "own", false),
+    platforms: ["linux"],
+  },
+  winget: {
+    ...refCaps("none", false, true, false, "own", false),
+    platforms: ["windows"],
+  },
+  web: {
+    ...refCaps("none", false, true, false, "own", true),
+    platforms: ["web"],
+  },
+  unknown: {
+    ...refCaps("none", false, false, false, "none", false),
+    platforms: [...REF_RELEASE_PLATFORMS],
+  },
+};
+const REF_PLATFORM_NARROWING: Record<
+  string,
+  Record<string, Partial<RefCaps>>
+> = {
+  ios: {
+    direct: {
+      binaryUpdates: "store",
+      codeUpdates: false,
+      downloadedScripts: false,
+    },
+  },
+};
+const REF_SUBKINDS = [
+  "homebrew",
+  "npm",
+  "pnpm",
+  "npx",
+  "scoop",
+  "chocolatey",
+  "flatpak",
+  "appimage",
+];
+const REF_PACKAGE_MANAGED: Partial<RefCaps> = {
+  binaryUpdates: "none",
+  codeUpdates: false,
+};
+const REF_SUBKIND_NARROWING: Record<string, Partial<RefCaps>> = {
+  homebrew: REF_PACKAGE_MANAGED,
+  npm: REF_PACKAGE_MANAGED,
+  pnpm: REF_PACKAGE_MANAGED,
+  npx: REF_PACKAGE_MANAGED,
+  scoop: REF_PACKAGE_MANAGED,
+  chocolatey: REF_PACKAGE_MANAGED,
+  flatpak: REF_PACKAGE_MANAGED,
+  appimage: {},
+};
+const REF_LISTING_PREFIXES: Record<string, string[]> = {
+  "app-store": ["https://apps.apple.com/", "itms-apps://apps.apple.com/"],
+  testflight: ["https://testflight.apple.com/join/"],
+  play: [
+    "https://play.google.com/store/apps/details?id=",
+    "market://details?id=",
+  ],
+  "play-testing": [
+    "https://play.google.com/apps/testing/",
+    "https://play.google.com/store/apps/details?id=",
+    "market://details?id=",
+  ],
+  "ms-store": [
+    "https://apps.microsoft.com/detail/",
+    "ms-windows-store://pdp/?productid=",
+  ],
+};
+const REF_CONFIDENCES = ["attested", "declared", "heuristic", "stamp"];
+const CAP_BOOLS = [
+  "codeUpdates",
+  "dataUpdates",
+  "channelSwitch",
+  "downloadedScripts",
+] as const;
+
+/** Narrow `caps` by one narrowing: booleans AND, `binaryUpdates` the narrower, `commerce`
+ *  becomes `none` only when told `none`; nothing widens. */
+function refNarrow(
+  caps: RefCaps,
+  n: Record<string, unknown> | undefined,
+): RefCaps {
+  if (!n) return caps;
+  const out = { ...caps };
+  for (const k of CAP_BOOLS)
+    if (typeof n[k] === "boolean") out[k] = out[k] && (n[k] as boolean);
+  if (
+    typeof n.binaryUpdates === "string" &&
+    REF_BINARY_ORDER.includes(n.binaryUpdates)
+  ) {
+    if (
+      REF_BINARY_ORDER.indexOf(n.binaryUpdates) <
+      REF_BINARY_ORDER.indexOf(out.binaryUpdates)
+    )
+      out.binaryUpdates = n.binaryUpdates;
+  }
+  if (n.commerce === "none") out.commerce = "none";
+  return out;
+}
+
+function refEffectiveCapabilities(
+  kind: string,
+  o: {
+    platform: string;
+    subkind?: string | null;
+    server?: Record<string, unknown>;
+  },
+): RefCaps {
+  const base = REF_KIND_TABLE[kind] ?? REF_KIND_TABLE.unknown!;
+  const { platforms: _p, ...caps0 } = base;
+  let caps: RefCaps = caps0;
+  caps = refNarrow(caps, REF_PLATFORM_NARROWING[o.platform]?.[kind]);
+  caps = refNarrow(
+    caps,
+    o.subkind ? REF_SUBKIND_NARROWING[o.subkind] : undefined,
+  );
+  caps = refNarrow(caps, o.server);
+  return caps;
+}
+
+// ── The feed's and the record's claims (V4 §2.3, §2.4), the generator's own ──────────────────
+
+const REF_CHANNEL_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const REF_CHANNEL_ALIASES: Record<string, string> = {
+  staging: "beta",
+  latest: "stable",
+};
+const REF_FEED_PLATFORM_RE = /^[a-z][a-z0-9-]{0,63}$/;
+const REF_BUILD_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const REF_DELIVERABLE_RE = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
+const REF_RECORD_VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
+const REF_SHA256_RE = /^[0-9a-f]{64}$/;
+const REF_SALT_RE = /^[0-9a-f]{32}$/;
+
+function refFeedClaimsOk(
+  doc: Record<string, unknown>,
+  ctx: ClaimCtx,
+  aud: string,
+): boolean {
+  const f = "feed";
+  if (
+    !refInt(ctx, f, doc.schemaVersion, "/schemaVersion") ||
+    doc.schemaVersion !== 1
+  )
+    return false;
+  if (doc.iss !== ISSUER_V3 || doc.aud !== aud) return false;
+  if (typeof doc.channel !== "string" || !REF_CHANNEL_RE.test(doc.channel))
+    return false;
+  if (!isObj(doc.selector)) return false;
+  const sel = doc.selector;
+  if (hasOwn(sel, "platform") && typeof sel.platform !== "string") return false;
+  if (!refInt(ctx, f, doc.seq, "/seq")) return false;
+  if (!refInt(ctx, f, doc.issuedAt, "/issuedAt")) return false;
+  if (!refInt(ctx, f, doc.expiresAt, "/expiresAt")) return false;
+  const [iat, exp] = [doc.issuedAt as number, doc.expiresAt as number];
+  if (!(iat < exp) || exp > iat + MAX_FEED_TTL_REF) return false;
+  if (!isObj(doc.app)) return false;
+  const app = doc.app;
+  if (app.deliverable !== "app") return false;
+  const scheme = app.versionScheme;
+  if (
+    typeof scheme !== "string" ||
+    !(REF_SCHEMES as readonly string[]).includes(scheme)
+  )
+    return false;
+  const ver = (v: unknown): boolean => refParseVersion(scheme, v) !== null;
+  if (!Array.isArray(app.targets)) return false;
+  const seen = new Set<string>();
+  for (const [i, t] of app.targets.entries()) {
+    const at = `/app/targets/${i}`;
+    if (!isObj(t)) return false;
+    if (
+      typeof t.platform !== "string" ||
+      !REF_FEED_PLATFORM_RE.test(t.platform)
+    )
+      return false;
+    if (seen.has(t.platform)) return false;
+    seen.add(t.platform);
+    if (hasOwn(sel, "platform") && t.platform !== sel.platform) return false;
+    const r = t.release;
+    if (
+      !isObj(r) ||
+      typeof r.sha256 !== "string" ||
+      !REF_SHA256_RE.test(r.sha256)
+    )
+      return false;
+    if (!refInt(ctx, f, r.seq, `${at}/release/seq`) || !ver(r.version))
+      return false;
+    if (!hasOwn(t, "floor")) return false;
+    if (t.floor !== null) {
+      if (!isObj(t.floor) || !ver(t.floor.minVersion)) return false;
+      const c = refCompareVersions(scheme, t.floor.minVersion, r.version);
+      if (c === null || c > 0) return false;
+    }
+    if (typeof t.critical !== "boolean") return false;
+    if (!isObj(t.outlets)) return false;
+    for (const [id, e] of Object.entries(t.outlets)) {
+      const ep = `${at}/outlets/${pointerToken(id)}`;
+      if (!REF_OUTLET_ID_RE.test(id) || !isObj(e)) return false;
+      if (
+        typeof e.kind !== "string" ||
+        !REF_OUTLET_ID_RE.test(e.kind) ||
+        e.kind === "unknown"
+      )
+        return false;
+      if (!hasOwn(e, "live")) return false;
+      if (e.live !== null) {
+        if (!isObj(e.live) || !ver(e.live.version)) return false;
+        if (!refInt(ctx, f, e.live.seq, `${ep}/live/seq`)) return false;
+      }
+      if (typeof e.halted !== "boolean") return false;
+      if (hasOwn(e, "rollout")) {
+        const ro = e.rollout;
+        if (!isObj(ro) || !refInt(ctx, f, ro.bp, `${ep}/rollout/bp`))
+          return false;
+        if ((ro.bp as number) > ROLLOUT_BUCKETS_REF) return false;
+        if (typeof ro.salt !== "string" || !REF_SALT_RE.test(ro.salt))
+          return false;
+      }
+      if (hasOwn(e, "listingUrl")) {
+        const url = e.listingUrl;
+        if (typeof url !== "string") return false;
+        if ((REF_OUTLET_KINDS as readonly string[]).includes(e.kind)) {
+          const bytes = utf8Bytes(url);
+          if (bytes.length < 1 || bytes.length > 2048) return false;
+          if (bytes.some((b) => b < 0x21 || b > 0x7e)) return false;
+          if (
+            !(REF_LISTING_PREFIXES[e.kind] ?? []).some((p) => url.startsWith(p))
+          )
+            return false;
+        }
+      }
+      if (hasOwn(e, "capabilities")) {
+        const c = e.capabilities;
+        if (!isObj(c)) return false;
+        if (
+          hasOwn(c, "binaryUpdates") &&
+          !REF_BINARY_ORDER.includes(c.binaryUpdates as string)
+        )
+          return false;
+        for (const k of CAP_BOOLS)
+          if (hasOwn(c, k) && typeof c[k] !== "boolean") return false;
+        if (
+          hasOwn(c, "commerce") &&
+          !["own", "store-iap", "steam", "none"].includes(c.commerce as string)
+        )
+          return false;
+      }
+    }
+  }
+  return true;
+}
+
+/** Client steps 4–6 (plans/P3-01.md §2.5): claims, channel binding, selector. */
+function refFeedClaims(
+  doc: unknown,
+  ctx: ClaimCtx,
+  o: { aud: string; channel: string; platform?: string },
+): "claims" | "channel" | "selector" | null {
+  if (!isObj(doc) || !refFeedClaimsOk(doc, ctx, o.aud)) return "claims";
+  const claim = doc.channel as string;
+  if (claim === "latest") return "channel";
+  if (claim !== o.channel && claim !== REF_CHANNEL_ALIASES[o.channel])
+    return "channel";
+  const sel = doc.selector as Record<string, unknown>;
+  if (Object.keys(sel).some((k) => k !== "platform")) return "selector";
+  if (
+    hasOwn(sel, "platform") &&
+    o.platform !== undefined &&
+    sel.platform !== o.platform
+  )
+    return "selector";
+  return null;
+}
+
+/** Client step 14 (plans/P3-01.md §2.4). */
+function refRecordClaims(doc: unknown, ctx: ClaimCtx, aud: string): boolean {
+  if (!isObj(doc)) return false;
+  const r = "record";
+  if (
+    !refInt(ctx, r, doc.schemaVersion, "/schemaVersion") ||
+    doc.schemaVersion !== 1
+  )
+    return false;
+  if (doc.aud !== aud) return false;
+  if (
+    typeof doc.deliverable !== "string" ||
+    utf8Bytes(doc.deliverable).length > 64 ||
+    !REF_DELIVERABLE_RE.test(doc.deliverable)
+  )
+    return false;
+  if (typeof doc.kind !== "string" || doc.kind === "") return false;
+  if (
+    typeof doc.version !== "string" ||
+    !REF_RECORD_VERSION_RE.test(doc.version)
+  )
+    return false;
+  if (!refInt(ctx, r, doc.seq, "/seq")) return false;
+  if (!refInt(ctx, r, doc.issuedAt, "/issuedAt")) return false;
+  if (
+    hasOwn(doc, "minSupportedSeq") &&
+    !refInt(ctx, r, doc.minSupportedSeq, "/minSupportedSeq")
+  )
+    return false;
+  for (const k of ["tag", "channel", "title", "notes"])
+    if (hasOwn(doc, k) && typeof doc[k] !== "string") return false;
+  if (hasOwn(doc, "provenance")) {
+    const p = doc.provenance;
+    if (!isObj(p)) return false;
+    for (const k of ["commit", "workflowRun"])
+      if (hasOwn(p, k) && typeof p[k] !== "string") return false;
+  }
+  if (!hasOwn(doc, "builds")) return doc.kind !== "app";
+  if (
+    !Array.isArray(doc.builds) ||
+    doc.builds.length < 1 ||
+    doc.builds.length > 64
+  )
+    return false;
+  const ids = new Set<string>();
+  for (const [i, b] of doc.builds.entries()) {
+    if (!isObj(b) || typeof b.id !== "string" || !REF_BUILD_ID_RE.test(b.id))
+      return false;
+    if (ids.has(b.id)) return false;
+    ids.add(b.id);
+    for (const k of ["platform", "arch", "format"])
+      if (typeof b[k] !== "string" || b[k] === "") return false;
+    for (const k of ["buildNumber", "minOS"])
+      if (hasOwn(b, k) && typeof b[k] !== "string") return false;
+    if (hasOwn(b, "requires") && !isObj(b.requires)) return false;
+    if (!Array.isArray(b.artifacts) || b.artifacts.length > 32) return false;
+    let payloads = 0;
+    for (const [j, a] of b.artifacts.entries()) {
+      if (!isObj(a)) return false;
+      if (typeof a.name !== "string" || a.name === "") return false;
+      if (typeof a.role !== "string" || a.role === "") return false;
+      if (a.role === "payload") payloads++;
+      if (typeof a.sha256 !== "string" || !REF_SHA256_RE.test(a.sha256))
+        return false;
+      if (!refInt(ctx, r, a.size, `/builds/${i}/artifacts/${j}/size`))
+        return false;
+      if (hasOwn(a, "contentType") && typeof a.contentType !== "string")
+        return false;
+    }
+    if (payloads > 1) return false;
+  }
+  return true;
+}
+
+// ── A reference JWS verifier (V4 §1.1–§1.2), to recompute every new verdict ─────────────────
+
+function refPointOk(enc: Uint8Array): boolean {
+  if (enc.length !== 32) return false;
+  if ((leToBig(enc) & (2n ** 255n - 1n)) >= ED_P) return false;
+  const hex = bytesHex(enc);
+  if (hex === bytesHex(NEGATIVE_ZERO_ENC)) return false;
+  if (
+    hex === "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  )
+    return false;
+  return !SMALL_ORDER_REF.includes(hex);
+}
+
+/** Decode one segment's bytes as strict JSON text (rules 1–2), or null. */
+function refSegmentText(seg: string): string | null {
+  if (!/^[A-Za-z0-9_-]*$/.test(seg)) return null;
+  let bytes: Uint8Array;
+  try {
+    bytes = base64UrlDecode(seg);
+  } catch {
+    return null;
+  }
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      bytes,
+    );
+  } catch {
+    return null;
+  }
+  if (text.charCodeAt(0) === 0xfeff) return null;
+  const parsed = refParseStrict(text);
+  if (!parsed.ok || !isObj(parsed.value)) return null;
+  return text;
+}
+
+/** The whole of `verifyJws` under V4, from first principles: caps, strict JSON, `alg`, `typ`,
+ *  `kid`, the byte pre-checks and a cofactorless verify (node:crypto). */
+function refVerifyJws(
+  jws: string,
+  trust: Record<string, string>,
+  typ: TypV3 | undefined,
+  maxPayloadBytes = 65536,
+): { kid: string; text: string; payload: Record<string, unknown> } | null {
+  const parts = jws.split(".");
+  if (parts.length !== 3) return null;
+  const [h, p, s] = parts as [string, string, string];
+  const cap = Math.max(65536, maxPayloadBytes);
+  if (h.length > Math.ceil((1024 * 4) / 3) + 4) return null;
+  if (p.length > Math.ceil((cap * 4) / 3) + 4) return null;
+  const ht = refSegmentText(h);
+  if (ht === null || utf8Bytes(ht).length > 1024) return null;
+  const header = JSON.parse(ht) as Record<string, unknown>;
+  if (header.alg !== "EdDSA") return null;
+  if (typ !== undefined && header.typ !== typ) return null;
+  if (typeof header.kid !== "string" || !hasOwn(trust, header.kid)) return null;
+  const key = base64UrlDecode(trust[header.kid]!);
+  if (!/^[A-Za-z0-9_-]*$/.test(s)) return null;
+  const sig = base64UrlDecode(s);
+  if (key.length !== 32 || sig.length !== 64) return null;
+  if (leToBig(sig.subarray(32)) >= ED_L) return null;
+  if (!refPointOk(key) || !refPointOk(sig.subarray(0, 32))) return null;
+  let ok = false;
+  try {
+    const pk = createPublicKey({
+      key: { kty: "OKP", crv: "Ed25519", x: trust[header.kid]! },
+      format: "jwk",
+    });
+    ok = nodeVerify(null, utf8Bytes(`${h}.${p}`), pk, sig);
+  } catch {
+    ok = false;
+  }
+  if (!ok) return null;
+  const pt = refSegmentText(p);
+  if (pt === null || utf8Bytes(pt).length > cap) return null;
+  return {
+    kid: header.kid,
+    text: pt,
+    payload: JSON.parse(pt) as Record<string, unknown>,
+  };
+}
+
+// ── §4.3 the new `jwsCases` ──────────────────────────────────────────────────────────────────
+
+interface JwsCaseV4Extra {
+  /** V4 §4.1: the payload's non-wire-integer pointers, beside `expect`. */
+  nonWireIntegers?: string[];
+}
+
+/** The 44 vectors appended after `bundle-payload-over-cap`, in §4.3's order. */
+async function buildJwsCasesV4(): Promise<(JwsCaseV2 & JwsCaseV4Extra)[]> {
+  checkEd25519Tables();
+  const LIC: TypV3 = "pkey-license+jws";
+  const TRUST = { [PIN_KID]: pub(PIN_KID) };
+  const out: (JwsCaseV2 & JwsCaseV4Extra)[] = [];
+  const add = (c: JwsCaseV2 & JwsCaseV4Extra): void => {
+    out.push(c);
+  };
+  const lic = (
+    id: string,
+    extra: Record<string, unknown> = {},
+  ): Record<string, unknown> =>
+    licenseDoc({ licenseId: `lic_${id.replaceAll("-", "_")}`, ...extra });
+  const pinA = base64UrlDecode(pub(PIN_KID));
+  const pinScalar = secretScalar(PIN_KID) % ED_L;
+
+  // §1.1 check 1: S + L.
+  {
+    const jws = await signAs(lic("sig-s-plus-l"), PIN_KID, LIC);
+    const [h, p, s] = jws.split(".") as [string, string, string];
+    const sig = base64UrlDecode(s);
+    const sBig = leToBig(sig.subarray(32));
+    const sPrime = sBig + ED_L;
+    if (sPrime < ED_L || sPrime % ED_L !== sBig % ED_L || sPrime >= 2n ** 256n)
+      throw new Error("sig-s-plus-l: S' must be ≥ L and ≡ S (mod L)");
+    const out64 = new Uint8Array(sig);
+    out64.set(bigToLe(sPrime, 32), 32);
+    add({
+      id: "sig-s-plus-l",
+      description:
+        "V4 §1.1 check 1: a genuine signature with S replaced by S + L. The equation still holds mod L, so only `S < L` refuses it (every backend measured already does).",
+      jws: `${h}.${p}.${base64UrlEncodeBytes(out64)}`,
+      trust: TRUST,
+      typ: LIC,
+      expect: { verify: "fail" },
+    });
+  }
+  // R vectors under the pinned key, with S = k·a so the equation holds over each R encoding.
+  for (const [id, rEnc, what] of [
+    [
+      "sig-r-identity",
+      IDENTITY_ENC,
+      "R is the canonical identity and S = k·a: RFC 8032-valid, accepted by all four backends, refused by check 3 (a small-order R)",
+    ],
+    [
+      "sig-r-non-canonical",
+      IDENTITY_Y_P_PLUS_1,
+      "R is the identity encoded with y = p + 1, a non-canonical encoding (check 2)",
+    ],
+    [
+      "sig-r-negative-zero",
+      NEGATIVE_ZERO_ENC,
+      "R is `01 00…00 80`, x = 0 with the sign bit set (check 2)",
+    ],
+  ] as const) {
+    const { jws } = handSign({
+      kid: PIN_KID,
+      payload: JSON.stringify(lic(id)),
+      aEnc: pinA,
+      a: pinScalar,
+      label: id,
+      rEnc,
+    });
+    add({
+      id,
+      description: `V4 §1.1: ${what}.`,
+      jws,
+      trust: TRUST,
+      typ: LIC,
+      expect: { verify: "fail" },
+    });
+  }
+  // A vectors: each brings its own one-key trust.
+  const keyVector = async (
+    id: string,
+    kid: string,
+    aEnc: Uint8Array,
+    a: bigint,
+    kMod8: "zero" | "nonzero" | undefined,
+    verdict: "ok" | "fail",
+    what: string,
+  ): Promise<void> => {
+    const doc = lic(id);
+    const { jws, k } = handSign({
+      kid,
+      payload: JSON.stringify(doc),
+      aEnc,
+      a,
+      label: id,
+      kMod8,
+    });
+    if (kMod8 === "zero" && k % 8n !== 0n) throw new Error(`${id}: k mod 8`);
+    if (kMod8 === "nonzero" && k % 8n === 0n) throw new Error(`${id}: k mod 8`);
+    add({
+      id,
+      description: `V4 §1.1: ${what}.`,
+      jws,
+      trust: { [kid]: base64UrlEncodeBytes(aEnc) },
+      typ: LIC,
+      expect:
+        verdict === "ok" ? { verify: "ok", kid, doc } : { verify: "fail" },
+    });
+  };
+  await keyVector(
+    "pubkey-small-order-identity",
+    "corpus-small-order-identity",
+    IDENTITY_ENC,
+    0n,
+    undefined,
+    "fail",
+    "A is the identity, R = [r]B and S = r, so [S]B = R + [k]A for every k: refused by check 3",
+  );
+  await keyVector(
+    "pubkey-small-order-order8",
+    "corpus-small-order-order8",
+    ORDER8_ENC,
+    0n,
+    "zero",
+    "fail",
+    "A is an order-8 point and the nonce is ground until k ≡ 0 (mod 8), so [k]A is the identity and S = r verifies cofactorlessly: refused by check 3",
+  );
+  await keyVector(
+    "pubkey-non-canonical",
+    "corpus-non-canonical",
+    IDENTITY_Y_P_PLUS_1,
+    0n,
+    undefined,
+    "fail",
+    "A is the identity encoded with y = p + 1 (check 2). OpenSSL decodes it and accepts; CryptoKit and Godot refuse",
+  );
+  await keyVector(
+    "pubkey-negative-zero",
+    "corpus-negative-zero",
+    NEGATIVE_ZERO_ENC,
+    0n,
+    undefined,
+    "fail",
+    "A is `01 00…00 80` (check 2)",
+  );
+  {
+    const a0 = nonce("mixed-order-key", 0);
+    const mixed = EdPoint.BASE.multiply(a0).add(
+      EdPoint.fromHex(SMALL_ORDER_REF[6]!),
+    );
+    if (mixed.isSmallOrder() || mixed.isTorsionFree())
+      throw new Error("mixed-order key");
+    const aEnc = mixed.toBytes();
+    await keyVector(
+      "pubkey-mixed-order-cofactored-only",
+      "corpus-mixed-order",
+      aEnc,
+      a0,
+      "nonzero",
+      "fail",
+      "A = A₀ + T₈ with k ≢ 0 (mod 8): only a cofactored equation accepts, and the equation is cofactorless (check 4)",
+    );
+    await keyVector(
+      "valid-pubkey-mixed-order",
+      "corpus-mixed-order",
+      aEnc,
+      a0,
+      "zero",
+      "ok",
+      "A = A₀ + T₈ with k ≡ 0 (mod 8): the cofactorless equation holds, and no prime-subgroup check is made, so it verifies (check 4)",
+    );
+  }
+
+  // §1.2 vectors on text.
+  const header = headerText(LIC, PIN_KID);
+  const baseText = JSON.stringify(lic("json"));
+  /** The licence payload with `"x":<raw>` spliced in before the closing brace. */
+  const withX = (rawValue: string): string =>
+    `${baseText.slice(0, -1)},"x":${rawValue}}`;
+  const textCase = async (
+    id: string,
+    payload: string,
+    verdict: "ok" | "fail",
+    what: string,
+    o: { hdr?: string; doc?: unknown } = {},
+  ): Promise<void> => {
+    const jws = await signRawSegments(o.hdr ?? header, payload, PIN_KID);
+    const nonWire = verdict === "ok" ? refNonWire(payload) : [];
+    add({
+      id,
+      description: what,
+      jws,
+      trust: TRUST,
+      typ: LIC,
+      ...(nonWire.length > 0 ? { nonWireIntegers: nonWire } : {}),
+      expect:
+        verdict === "ok"
+          ? o.doc !== undefined
+            ? { verify: "ok", kid: PIN_KID, doc: o.doc }
+            : { verify: "ok", kid: PIN_KID }
+          : { verify: "fail" },
+    });
+  };
+  await textCase(
+    "json-lone-high-surrogate",
+    withX('"\\ud800"'),
+    "fail",
+    "V4 §1.2 rule 5: a lone high-surrogate escape in a value. JavaScript and Python decode it to an unpaired code unit; Godot refuses it.",
+  );
+  await textCase(
+    "json-lone-low-surrogate",
+    withX('"\\udc00"'),
+    "fail",
+    "Rule 5: a lone low-surrogate escape in a value.",
+  );
+  await textCase(
+    "json-reversed-surrogate-pair",
+    withX('"\\udc00\\ud800"'),
+    "fail",
+    "Rule 5: a low surrogate followed by a high one is two lone surrogates, not a pair.",
+  );
+  await textCase(
+    "json-lone-surrogate-in-key",
+    `${baseText.slice(0, -1)},"\\ud800":1}`,
+    "fail",
+    "Rule 5: a lone surrogate in a member name.",
+  );
+  {
+    const doc = { ...lic("json"), x: "\u{1F4BB}" };
+    await textCase(
+      "valid-surrogate-pair-escape",
+      withX('"\\ud83d\\udcbb"'),
+      "ok",
+      "Rule 5 must not over-reject: the escaped pair `\\ud83d\\udcbb` decodes to U+1F4BB.",
+      { doc },
+    );
+  }
+  await textCase(
+    "json-raw-control-char-payload",
+    withX('"a\u0001b"'),
+    "fail",
+    "Rule 4: a raw U+0001 inside a payload string (RFC 8259 already forbids it; Swift's JSONDecoder accepted it).",
+  );
+  await textCase(
+    "json-raw-control-char-header",
+    baseText,
+    "fail",
+    "Rule 4 in the HEADER: a raw U+001F in an extra header member, parsed before the signature (Swift's lazy decoding never looked at it).",
+    {
+      hdr: `{"alg":"EdDSA","typ":"${LIC}","kid":"${PIN_KID}","x":"a\u001fb"}`,
+    },
+  );
+  await textCase(
+    "json-raw-nul-byte",
+    withX('"a\u0000b"'),
+    "fail",
+    "Rule 4: a raw 0x00 byte inside a payload string.",
+  );
+  await textCase(
+    "json-nul-escape-in-key",
+    `${baseText.slice(0, -1)},"a\\u0000b":1}`,
+    "fail",
+    "Rule 7: U+0000 in a member name, closing V3 §10's open entry. Godot cannot represent it.",
+  );
+  // Byte vectors.
+  const bytesCase = async (
+    id: string,
+    hdr: Uint8Array,
+    payload: Uint8Array,
+    what: string,
+  ): Promise<void> => {
+    add({
+      id,
+      description: what,
+      jws: await signRawBytes(hdr, payload, PIN_KID),
+      trust: TRUST,
+      typ: LIC,
+      expect: { verify: "fail" },
+    });
+  };
+  const H = utf8Bytes(header);
+  const P = utf8Bytes(baseText);
+  const withBytes = (b: number[]): Uint8Array =>
+    Uint8Array.from([
+      ...utf8Bytes(baseText.slice(0, -1) + ',"x":"'),
+      ...b,
+      ...utf8Bytes('"}'),
+    ]);
+  const BOM = [0xef, 0xbb, 0xbf];
+  await bytesCase(
+    "json-invalid-utf8",
+    H,
+    withBytes([0xff]),
+    "Rule 1: byte 0xFF inside a string, never valid UTF-8.",
+  );
+  await bytesCase(
+    "json-utf8-encoded-surrogate",
+    H,
+    withBytes([0xed, 0xa0, 0x80]),
+    "Rule 1: ED A0 80, a UTF-8-encoded surrogate (CESU-8).",
+  );
+  await bytesCase(
+    "json-overlong-utf8",
+    H,
+    withBytes([0xc0, 0xaf]),
+    "Rule 1: C0 AF, an overlong encoding of `/`.",
+  );
+  await bytesCase(
+    "json-leading-bom-payload",
+    H,
+    Uint8Array.from([...BOM, ...P]),
+    "Rule 2: a byte order mark before the payload.",
+  );
+  await bytesCase(
+    "json-leading-bom-header",
+    Uint8Array.from([...BOM, ...H]),
+    P,
+    "Rule 2: a byte order mark before the header.",
+  );
+  await bytesCase(
+    "json-two-leading-boms-payload",
+    H,
+    Uint8Array.from([...BOM, ...BOM, ...P]),
+    "Rule 2: two byte order marks before the payload; Godot stripped both.",
+  );
+  await bytesCase(
+    "json-two-leading-boms-header",
+    Uint8Array.from([...BOM, ...BOM, ...H]),
+    P,
+    "Rule 2: two byte order marks before the header.",
+  );
+  await textCase(
+    "json-nan-literal",
+    withX("NaN"),
+    "fail",
+    "Rule 3: a bare `NaN`, which Python's json.loads accepts without parse_constant.",
+  );
+  await textCase(
+    "json-infinity-literal",
+    withX("Infinity"),
+    "fail",
+    "Rule 3: a bare `Infinity`.",
+  );
+  await textCase(
+    "json-negative-infinity-literal",
+    withX("-Infinity"),
+    "fail",
+    "Rule 3: a bare `-Infinity`.",
+  );
+  await textCase(
+    "json-trailing-comma-payload",
+    `${baseText.slice(0, -1)},}`,
+    "fail",
+    "Rule 3: a comma before the payload's closing brace.",
+  );
+  await textCase(
+    "json-trailing-comma-header",
+    baseText,
+    "fail",
+    "Rule 3 in the header, parsed before the signature.",
+    {
+      hdr: `{"alg":"EdDSA","typ":"${LIC}","kid":"${PIN_KID}",}`,
+    },
+  );
+  await textCase(
+    "json-number-overflow",
+    withX("1e400"),
+    "fail",
+    "Rule 8: `1e400` in an unused member — out of range (Node and Python read infinity, Swift throws).",
+  );
+  await textCase(
+    "json-number-underflow",
+    withX("1e-400"),
+    "fail",
+    "Rule 8: `1e-400`, which rounds to zero.",
+  );
+  await textCase(
+    "json-number-subnormal",
+    withX("5e-324"),
+    "fail",
+    "Rule 8: `5e-324`, a subnormal that Godot reads as 0.",
+  );
+  await textCase(
+    "json-number-exponent-wrap",
+    withX("1e4294967297"),
+    "fail",
+    "Rule 8: an exponent of ten significant digits, more than six, is out of range outright; Godot read it as 10.",
+  );
+  await textCase(
+    "valid-number-integral-spellings",
+    withX("[7.0,7e0,0.0,-0.0,7.0000000000000001,1700000000.00000001]"),
+    "ok",
+    "Rule 8 keeps these: they are values in an unused member. Only an integer claim refuses such spellings (V4 §3). No `doc`: Python reads them as floats.",
+  );
+  await textCase(
+    "valid-number-forms",
+    withX("[7,-0,7.5,1e-7,1e+21,1e-307,9.99e307,0e5]"),
+    "ok",
+    "Every number form rule 8 keeps. No `doc`: Godot's last bits differ.",
+  );
+  const nest = (levels: number): string =>
+    `${"[".repeat(levels)}${"]".repeat(levels)}`;
+  await textCase(
+    "valid-depth-64",
+    withX(nest(63)),
+    "ok",
+    "Rule 9: 64 levels, counting the top-level object as level 1. No `doc`.",
+  );
+  await textCase(
+    "json-depth-65",
+    withX(nest(64)),
+    "fail",
+    "Rule 9: 65 levels.",
+  );
+  await textCase(
+    "valid-canonically-equivalent-member-names",
+    withX('{"\\u00e9":1,"e\\u0301":2}'),
+    "ok",
+    "Rule 6: sibling names U+00E9 and U+0065 U+0301 are two names, compared by scalar value. Swift's String equality refused them. No `doc`: Swift's JSONValue keeps the first (a V4 §10 representation limit).",
+  );
+  {
+    const doc = { ...lic("json"), x: { "a\\u0000": 1 } };
+    await textCase(
+      "valid-escaped-backslash-before-u0000-in-key",
+      withX('{"a\\\\u0000":1}'),
+      "ok",
+      "Rule 7 must not fire: the member name is `a`, a backslash and `u0000`, not U+0000.",
+      { doc },
+    );
+  }
+  {
+    const doc = { ...lic("json"), x: { "\uffff": "\uffff" } };
+    await textCase(
+      "valid-noncharacter-escape",
+      withX('{"\\uffff":"\\uffff"}'),
+      "ok",
+      "`\\uffff` as a value and as a member name: noncharacters are ordinary characters, and no verifier applies RFC 7493 §2.1's ban.",
+      { doc },
+    );
+  }
+  // §2: the two new typs at the wrong call site.
+  add({
+    id: "typ-feed-as-license",
+    description:
+      "A genuine channel feed (`pkey-feed+jws`) presented at a licence call site: the shared product key signs both, so only the `typ` separates them (V4 §2).",
+    jws: await signAs(feedPayload(), PIN_KID, "pkey-feed+jws"),
+    trust: TRUST,
+    typ: LIC,
+    expect: { verify: "fail" },
+  });
+  add({
+    id: "typ-license-as-feed",
+    description:
+      "A genuine licence document presented at a feed call site (`typ: pkey-feed+jws`).",
+    jws: await signAs(lic("typ-license-as-feed"), PIN_KID, LIC),
+    trust: TRUST,
+    typ: "pkey-feed+jws",
+    expect: { verify: "fail" },
+  });
+
+  if (out.length !== 44) throw new Error(`jwsCases v4: ${out.length} != 44`);
+  // Recompute every verdict with the reference verifier.
+  for (const c of out) {
+    const v = refVerifyJws(c.jws, c.trust, c.typ, c.maxPayloadBytes);
+    if ((v !== null) !== (c.expect.verify === "ok"))
+      throw new Error(`jwsCases v4: the reference disagrees on ${c.id}`);
+    if (
+      v !== null &&
+      c.expect.doc !== undefined &&
+      !canonicalEqual(JSON.parse(v.text) as Json, c.expect.doc as Json)
+    )
+      throw new Error(`jwsCases v4: ${c.id}'s doc is not its payload`);
+  }
+  return out;
+}
+
+// ── §4.3 the 28 v3 claim cases ───────────────────────────────────────────────────────────────
+// Each is its family's control case with the one change named, re-signed by the control's key,
+// and appended after the family's last case so every existing case stays byte-identical.
+
+type WithNonWire<T> = T & { nonWireIntegers?: string[] };
+
+/** Attach the payload's non-wire pointers when the case is built to pass `verifyJws`. */
+function withNonWire<T extends object>(c: T, jws: string): WithNonWire<T> {
+  const text = payloadTextOf(jws);
+  const nonWire = text === null ? [] : refNonWire(text);
+  return nonWire.length > 0 ? { ...c, nonWireIntegers: nonWire } : c;
+}
+
+/** Insert `nonWireIntegers` right before `expect`, so the member sits beside it. */
+function placeNonWire<T extends object>(c: T): T {
+  if (!("nonWireIntegers" in c)) return c;
+  const src = c as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(src)) {
+    if (k === "nonWireIntegers") continue;
+    if (k === "expect") out.nonWireIntegers = src.nonWireIntegers;
+    out[k] = v;
+  }
+  return out as T;
+}
+
+const BIG_OVER = "9007199254740993";
+
+async function buildLicenseDocCasesV4(): Promise<WithNonWire<DocCaseV2>[]> {
+  const typ: TypV3 = "pkey-license+jws";
+  const common = {
+    trust: { [PIN_KID]: pub(PIN_KID) },
+    typ,
+    expectedAud: AUD_V3,
+    expectedIss: ISSUER_V3,
+    deviceId: DEVICE_V3,
+    now: V3_NOW,
+  };
+  const sign = (over: Record<string, unknown>): Promise<string> =>
+    signText(rawJson(licenseDoc(over)), PIN_KID, typ);
+  const mk = async (
+    id: string,
+    description: string,
+    over: Record<string, unknown>,
+    accept: boolean,
+    extra: Partial<DocCaseV2> = {},
+  ): Promise<WithNonWire<DocCaseV2>> => {
+    const jws = await sign(over);
+    return withNonWire(
+      { ...common, ...extra, id, description, jws, expect: { accept } },
+      jws,
+    );
+  };
+  const base = licenseDoc();
+  return [
+    await mk(
+      "license-issued-at-near-integer",
+      "V4 §3: the `issuedAt` token `1700000000.00000001` denotes no integer, but binary64 rounding makes it one in Node, Swift and Godot. Only the token rule refuses it.",
+      { issuedAt: raw("1700000000.00000001") },
+      false,
+    ),
+    await mk(
+      "license-expires-at-near-integer",
+      "V4 §3: the `expiresAt` token `1700003600.00000001`.",
+      { expiresAt: raw("1700003600.00000001") },
+      false,
+    ),
+    await mk(
+      "license-grace-until-near-integer",
+      "V4 §3: the `graceUntil` token `1702592000.00000001`.",
+      { graceUntil: raw("1702592000.00000001") },
+      false,
+    ),
+    await mk(
+      "license-issued-at-over-max",
+      "V4 §3: only `issuedAt` (9007199254740993) is above 2^53 − 1; every other claim is in range at this `now`. JavaScript reads it as 2^53.",
+      {
+        issuedAt: raw(BIG_OVER),
+        expiresAt: 9007199254740950,
+        graceUntil: 9007199254740960,
+      },
+      false,
+      { now: 9007199254740900 },
+    ),
+    await mk(
+      "license-grace-until-over-max",
+      "V4 §3: only `graceUntil` (9007199254826400) is above 2^53 − 1.",
+      {
+        issuedAt: 9007199254740000,
+        expiresAt: 9007199254740900,
+        graceUntil: 9007199254826400,
+      },
+      false,
+      { now: 9007199254740000 },
+    ),
+    await mk(
+      "license-member-shapes-ignored",
+      "V4 §3 'Members outside the claims': an entry with `state: \"future\"` and a fractional `updatedAt`, an entry with no `value`, an entry that is `5`, and a profile with no `firstName` and a fractional `activatedAt` decide nothing. Swift's synthesized decoders refused these.",
+      {
+        entitlements: {
+          "license.tier": {
+            state: "future",
+            value: "pro",
+            updatedAt: 1699990000.5,
+          },
+          channels: { state: "enforced", updatedAt: 1699990000 },
+          "app.minVersion": (base.entitlements as Record<string, unknown>)[
+            "app.minVersion"
+          ],
+          polarisVpn: 5,
+        },
+        profile: {
+          name: "Grace Hopper",
+          email: "grace@example.com",
+          activatedAt: 1690000000.5,
+        },
+      },
+      true,
+    ),
+    await mk(
+      "license-profile-null",
+      "V4 §3 presence: a present `profile: null` is refused (Python and Swift read it as absent).",
+      { profile: null },
+      false,
+    ),
+    await mk(
+      "license-issued-at-negative-reload-path",
+      "V4 §3 minimums: `issuedAt` −1 is a plain integer token below its minimum, 0. On the reload path nothing else refuses it.",
+      { issuedAt: -1, expiresAt: 3599, graceUntil: 2591999 },
+      false,
+      { checkFreshness: false },
+    ),
+    await mk(
+      "license-expires-at-negative-reload-path",
+      "V4 §3 minimums: `expiresAt` −1, with the control's `issuedAt` and `graceUntil`, on the reload path.",
+      { expiresAt: -1 },
+      false,
+      { checkFreshness: false },
+    ),
+  ];
+}
+
+async function buildConfigDocCasesV4(): Promise<WithNonWire<DocCaseV2>[]> {
+  const typ: TypV3 = "pkey-config+jws";
+  const common = {
+    trust: { [PIN_KID]: pub(PIN_KID) },
+    typ,
+    expectedAud: AUD_V3,
+    expectedIss: ISSUER_V3,
+    deviceId: DEVICE_V3,
+    now: V3_NOW,
+  };
+  const mk = async (
+    id: string,
+    description: string,
+    schemaVersion: unknown,
+  ): Promise<WithNonWire<DocCaseV2>> => {
+    const jws = await signText(
+      rawJson(configDoc({ schemaVersion })),
+      PIN_KID,
+      typ,
+    );
+    return withNonWire(
+      { ...common, id, description, jws, expect: { accept: false } },
+      jws,
+    );
+  };
+  return [
+    await mk(
+      "config-schema-version-near-integer",
+      "V4 §3: the `schemaVersion` token `4.0000000000000001`.",
+      raw("4.0000000000000001"),
+    ),
+    await mk(
+      "config-schema-version-over-max",
+      "V4 §3: `schemaVersion` 9007199254740993, above 2^53 − 1.",
+      raw(BIG_OVER),
+    ),
+    await mk(
+      "config-schema-version-zero",
+      "V4 §3 minimums: `schemaVersion` 0, below its minimum, 1.",
+      0,
+    ),
+  ];
+}
+
+async function buildTrustCasesV4(): Promise<WithNonWire<TrustCaseV2>[]> {
+  const pinned = PINNED_V3;
+  const now = V3_ISSUED + 100;
+  const keys = [
+    keyEntry(PIN_KID, pub(PIN_KID), "active"),
+    keyEntry(ALT_KID, pub(ALT_KID), "staged"),
+  ];
+  const refused = { accepted: false, trust: { [PIN_KID]: pub(PIN_KID) } };
+  const mk = async (
+    id: string,
+    description: string,
+    over: Record<string, unknown>,
+    o: {
+      now?: number;
+      checkFreshness?: boolean;
+      expect?: TrustCaseV2["expect"];
+      drop?: string[];
+    } = {},
+  ): Promise<WithNonWire<TrustCaseV2>> => {
+    const doc: Record<string, unknown> = {
+      ...trustManifestV3({ keys }),
+      ...over,
+    };
+    for (const k of o.drop ?? []) delete doc[k];
+    const jws = await signText(rawJson(doc), PIN_KID, "pkey-trust+jws");
+    const c: TrustCaseV2 = {
+      id,
+      description,
+      pinned,
+      before: {},
+      manifestJws: jws,
+      now: o.now ?? now,
+      ...(o.checkFreshness === undefined
+        ? {}
+        : { checkFreshness: o.checkFreshness }),
+      expect: o.expect ?? refused,
+    };
+    return withNonWire(c, jws);
+  };
+  return [
+    await mk(
+      "trust-schema-version-near-integer",
+      "V4 §3: the `schemaVersion` token `1.0000000000000001`, which every v3 SDK read as 1.",
+      { schemaVersion: raw("1.0000000000000001") },
+    ),
+    await mk(
+      "trust-schema-version-boolean",
+      "V4 §3: `schemaVersion: true` — Python's `True in frozenset({1})` held.",
+      { schemaVersion: true },
+    ),
+    await mk(
+      "trust-issued-at-near-integer",
+      "V4 §3: the `issuedAt` token `1700000000.00000001`.",
+      { issuedAt: raw("1700000000.00000001") },
+    ),
+    await mk(
+      "trust-expires-at-near-integer",
+      "V4 §3: the `expiresAt` token `1700000300.00000001`.",
+      { expiresAt: raw("1700000300.00000001") },
+    ),
+    await mk(
+      "trust-issued-at-over-max",
+      "V4 §3: only `issuedAt` (9007199254740993) is above 2^53 − 1 at this `now`.",
+      { issuedAt: raw(BIG_OVER), expiresAt: 9007199254740950 },
+      { now: 9007199254740900 },
+    ),
+    await mk(
+      "trust-expires-at-over-max",
+      "V4 §3: `expiresAt` 9007199254740993.",
+      { expiresAt: raw(BIG_OVER) },
+    ),
+    await mk(
+      "trust-member-shapes-ignored",
+      "V4 §3 'Members outside the claims': no `jwksUrl` and no `cacheSeconds`, a key with no `status`, and a key whose `alg` is `1` (skipped). Swift's synthesized decoders refused the manifest.",
+      {
+        keys: [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          {
+            kid: ALT_KID,
+            alg: "EdDSA",
+            kty: "OKP",
+            crv: "Ed25519",
+            publicKey: pub(ALT_KID),
+          },
+          {
+            kid: "future-2026",
+            alg: 1,
+            kty: "OKP",
+            crv: "Ed25519",
+            publicKey: FOREIGN_PUB,
+            status: "active",
+          },
+        ],
+      },
+      {
+        drop: ["jwksUrl", "cacheSeconds"],
+        expect: {
+          accepted: true,
+          trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+          issuedAt: V3_ISSUED,
+        },
+      },
+    ),
+    await mk(
+      "trust-issued-at-negative",
+      "V4 §3 minimums: `issuedAt` −1 with the control's `expiresAt`.",
+      { issuedAt: -1, expiresAt: V3_ISSUED + 300 },
+    ),
+    await mk(
+      "trust-expires-at-negative-reload-path",
+      "V4 §3 minimums: `expiresAt` −1, on the reload path, where freshness does not refuse it first.",
+      { expiresAt: -1 },
+      { checkFreshness: false },
+    ),
+  ];
+}
+
+async function buildBundleCasesV4(): Promise<WithNonWire<BundleCase>[]> {
+  const DAY = 86400;
+  const innerTrust = await signAs(
+    trustManifestV3({
+      keys: [
+        keyEntry(PIN_KID, pub(PIN_KID), "active"),
+        keyEntry(ALT_KID, pub(ALT_KID), "staged"),
+      ],
+    }),
+    PIN_KID,
+    "pkey-trust+jws",
+  );
+  const innerLicense = await signAs(licenseDoc(), PIN_KID, "pkey-license+jws");
+  const innerConfig = await signAs(configDoc(), ALT_KID, "pkey-config+jws");
+  const bundle = (over: Record<string, unknown>): Record<string, unknown> => ({
+    bundleId: "01JBUNDLE0000000000000001",
+    aud: AUD_V3,
+    deviceId: DEVICE_V3,
+    issuedAt: V3_ISSUED,
+    expiresAt: V3_ISSUED + 30 * DAY,
+    docs: { license: innerLicense, config: innerConfig },
+    trust: innerTrust,
+    ...over,
+  });
+  const common = {
+    pinned: PINNED_V3,
+    expectedAud: AUD_V3,
+    deviceId: DEVICE_V3,
+    now: V3_NOW,
+    maxPayloadBytes: MAX_BUNDLE_BYTES,
+  };
+  const mk = async (
+    id: string,
+    description: string,
+    over: Record<string, unknown>,
+    now = V3_NOW,
+  ): Promise<WithNonWire<BundleCase>> => {
+    const jws = await signText(
+      rawJson(bundle(over)),
+      PIN_KID,
+      "pkey-bundle+jws",
+    );
+    return withNonWire(
+      {
+        ...common,
+        now,
+        id,
+        description,
+        bundleJws: jws,
+        expect: { imports: false, reason: "bundle-claims-rejected" },
+      } as BundleCase,
+      jws,
+    );
+  };
+  return [
+    await mk(
+      "bundle-issued-at-near-integer",
+      "V4 §3: the bundle's `issuedAt` token `1700000000.00000001`.",
+      { issuedAt: raw("1700000000.00000001") },
+    ),
+    await mk(
+      "bundle-expires-at-near-integer",
+      "V4 §3: the bundle's `expiresAt` token `1702592000.00000001`.",
+      { expiresAt: raw("1702592000.00000001") },
+    ),
+    await mk(
+      "bundle-issued-at-over-max",
+      "V4 §3: only the bundle's `issuedAt` (9007199254740993) is above 2^53 − 1 at this `now`.",
+      { issuedAt: raw(BIG_OVER), expiresAt: 9007199254740950 },
+      9007199254740900,
+    ),
+    await mk(
+      "bundle-expires-at-over-max",
+      "V4 §3: the bundle's `expiresAt` 9007199254740993.",
+      { expiresAt: raw(BIG_OVER) },
+    ),
+    await mk(
+      "bundle-docs-license-null",
+      "V4 §3 presence: `docs: {license: null, config: …}`. Python and Swift read the null as absent and imported the config; every bundle member failure is `bundle-claims-rejected`.",
+      { docs: { license: null, config: innerConfig } },
+    ),
+    await mk(
+      "bundle-trust-not-string",
+      "`trust: 5`. Swift decoded the bundle inside its signature step and answered `bundle-jws-rejected`; the member check is step 2 everywhere.",
+      { trust: 5 },
+    ),
+    await mk(
+      "bundle-issued-at-negative",
+      "V4 §3 minimums: the bundle's `issuedAt` −1.",
+      { issuedAt: -1 },
+    ),
+  ];
+}
+
+// ── Release records (V4 §2.4) — the fixtures every feed pin and update-matrix row names ───────
+
+/** One artifact, with a deterministic digest and size. */
+function artifact(
+  id: string,
+  version: string,
+  ext: string,
+  role = "payload",
+  index = 0,
+): Record<string, unknown> {
+  return {
+    name: `diceroll-${version}-${id}.${ext}`,
+    role,
+    sha256: sha256Hex(`pkey-corpus-artifact:${version}:${id}:${role}`),
+    size: 10_000_000 + index * 1_000_003,
+  };
+}
+
+/** `R15`'s builds (plans/P3-01.md §4.6), each with one `payload` artifact unless stated. */
+function r15Builds(
+  version: string,
+  only?: string[],
+): Record<string, unknown>[] {
+  const b = (
+    i: number,
+    id: string,
+    platform: string,
+    arch: string,
+    format: string,
+    o: {
+      buildNumber?: boolean;
+      role?: string;
+      none?: boolean;
+      requires?: Record<string, unknown>;
+    } = {},
+  ): Record<string, unknown> => ({
+    id,
+    platform,
+    arch,
+    format,
+    ...(o.buildNumber === false ? {} : { buildNumber: String(150 + i) }),
+    ...(o.requires ? { requires: o.requires } : {}),
+    artifacts: o.none
+      ? []
+      : [artifact(id, version, format, o.role ?? "payload", i)],
+  });
+  const all = [
+    b(0, "macos-dmg", "macos", "universal", "dmg"),
+    b(1, "win-chunks", "windows", "x86_64", "zip", { role: "chunk-bundle" }),
+    b(2, "win-exe", "windows", "x86_64", "exe"),
+    b(3, "win-pck", "windows", "any", "pck", {
+      requires: { engine: "godot-4.7", minBinary: "1.4.0" },
+    }),
+    b(4, "win-zip", "windows", "x86_64", "zip"),
+    b(5, "linux-arm64", "linux", "arm64", "tar.gz", { buildNumber: false }),
+    b(6, "linux-x64", "linux", "x86_64", "tar.gz"),
+    b(7, "aab", "android", "any", "aab", { none: true }),
+    b(8, "apk", "android", "any", "apk"),
+    b(9, "ipa", "ios", "arm64", "ipa"),
+    b(10, "web", "web", "wasm32", "zip"),
+  ];
+  return only ? all.filter((x) => only.includes(x.id as string)) : all;
+}
+
+const RECORD_ISSUED = V3_ISSUED - 10_000;
+
+function recordDoc(
+  over: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const version = (over.version as string | undefined) ?? "1.5.0";
+  return {
+    schemaVersion: 1,
+    aud: AUD_V3,
+    deliverable: "app",
+    kind: "app",
+    version,
+    seq: 15,
+    issuedAt: RECORD_ISSUED,
+    tag: `v${version}`,
+    channel: "stable",
+    title: `Diceroll ${version}`,
+    builds: r15Builds(typeof version === "string" ? version : "1.5.0"),
+    ...over,
+  };
+}
+
+interface RecordVector {
+  name: string;
+  doc: Record<string, unknown>;
+  jws: string;
+  sha256: string;
+}
+
+/** The record vectors the feeds and update-matrix rows pin, by name. */
+async function buildRecordVectors(): Promise<Map<string, RecordVector>> {
+  const out = new Map<string, RecordVector>();
+  const add = async (
+    name: string,
+    doc: Record<string, unknown>,
+  ): Promise<void> => {
+    const jws = await signAs(doc, REL_KID, "pkey-release+jws");
+    out.set(name, { name, doc, jws, sha256: sha256Hex(jws) });
+  };
+  await add("R15", recordDoc());
+  await add(
+    "RB",
+    recordDoc({ version: "1.5.0+46", seq: 16, builds: r15Builds("1.5.0+46") }),
+  );
+  await add(
+    "R4",
+    recordDoc({ version: "1.5.0.0", builds: r15Builds("1.5.0.0") }),
+  );
+  await add(
+    "R16b",
+    recordDoc({
+      version: "1.6.0-beta.2",
+      seq: 16,
+      channel: "beta",
+      builds: r15Builds("1.6.0-beta.2", ["macos-dmg"]),
+    }),
+  );
+  await add("R15max", recordDoc({ seq: MAX_WIRE_INTEGER_REF }));
+  return out;
+}
+
+// ── §4.5 `releaseRecordCases` ────────────────────────────────────────────────────────────────
+
+interface RecordCase {
+  id: string;
+  description: string;
+  jws: string;
+  releaseKeys: Record<string, string>;
+  productTrust: Record<string, string>;
+  expectedAud: string;
+  expectedHash: string;
+  pin?: { deliverable: string; version: string; seq: number };
+  nonWireIntegers?: string[];
+  expect:
+    | { verify: "ok"; kind: string; doc?: unknown }
+    | { verify: "fail"; step: "hash" | "jws" | "claims" | "cross-check" };
+}
+
+/** V4 §2.5 steps 12–15, from first principles. */
+function refVerifyRecordCase(c: RecordCase): RecordCase["expect"] {
+  const body = c.jws;
+  if (utf8Bytes(body).length > 88844 || /[^\x00-\x7f]/.test(body))
+    return { verify: "fail", step: "hash" };
+  if (sha256Hex(body) !== c.expectedHash)
+    return { verify: "fail", step: "hash" };
+  const parts = body.split(".");
+  let kid: unknown;
+  try {
+    kid = (
+      JSON.parse(
+        new TextDecoder().decode(base64UrlDecode(parts[0] ?? "")),
+      ) as Record<string, unknown>
+    ).kid;
+  } catch {
+    return { verify: "fail", step: "jws" };
+  }
+  if (typeof kid !== "string" || !hasOwn(c.releaseKeys, kid))
+    return { verify: "fail", step: "jws" };
+  const key = c.releaseKeys[kid]!;
+  if (Object.values(c.productTrust).includes(key))
+    return { verify: "fail", step: "jws" };
+  const v = refVerifyJws(body, { [kid]: key }, "pkey-release+jws");
+  if (!v) return { verify: "fail", step: "jws" };
+  if (!refRecordClaims(v.payload, ctxOf(v.text), c.expectedAud))
+    return { verify: "fail", step: "claims" };
+  if (c.pin) {
+    const d = v.payload;
+    if (d.kind !== "app" || d.deliverable !== c.pin.deliverable)
+      return { verify: "fail", step: "cross-check" };
+    if (d.version !== c.pin.version || d.seq !== c.pin.seq)
+      return { verify: "fail", step: "cross-check" };
+  }
+  return { verify: "ok", kind: v.payload.kind as string };
+}
+
+async function buildReleaseRecordCases(
+  records: Map<string, RecordVector>,
+): Promise<RecordCase[]> {
+  const RK = { [REL_KID]: pub(REL_KID) };
+  const PT = { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) };
+  const PIN = { deliverable: "app", version: "1.5.0", seq: 15 };
+  const cases: RecordCase[] = [];
+  const mk = async (
+    id: string,
+    description: string,
+    o: {
+      doc?: Record<string, unknown>;
+      text?: string;
+      jws?: string;
+      kid?: string;
+      typ?: TypV3;
+      releaseKeys?: Record<string, string>;
+      expectedHash?: string;
+      pin?: RecordCase["pin"] | null;
+      expect: RecordCase["expect"];
+    },
+  ): Promise<void> => {
+    const kid = o.kid ?? REL_KID;
+    const jws =
+      o.jws ??
+      (o.text !== undefined
+        ? await signText(o.text, kid, o.typ ?? "pkey-release+jws")
+        : await signAs(o.doc ?? recordDoc(), kid, o.typ ?? "pkey-release+jws"));
+    const c: RecordCase = {
+      id,
+      description,
+      jws,
+      releaseKeys: o.releaseKeys ?? RK,
+      productTrust: PT,
+      expectedAud: AUD_V3,
+      expectedHash: o.expectedHash ?? sha256Hex(jws),
+      ...(o.pin === null ? {} : { pin: o.pin ?? PIN }),
+      expect: o.expect,
+    };
+    // A case built to pass `verifyJws` (its own keys, typ and cap) carries its non-wire pointers.
+    const kidOk =
+      hasOwn(c.releaseKeys, kid) &&
+      !Object.values(PT).includes(c.releaseKeys[kid]!);
+    const v = kidOk
+      ? refVerifyJws(jws, { [kid]: c.releaseKeys[kid]! }, "pkey-release+jws")
+      : null;
+    const nonWire = v ? refNonWire(v.text) : [];
+    cases.push(
+      placeNonWire(nonWire.length > 0 ? { ...c, nonWireIntegers: nonWire } : c),
+    );
+  };
+  const ok = (kind = "app"): RecordCase["expect"] => ({ verify: "ok", kind });
+  const fail = (
+    step: "hash" | "jws" | "claims" | "cross-check",
+  ): RecordCase["expect"] => ({ verify: "fail", step });
+  const r15 = records.get("R15")!;
+  const rd = (over: Record<string, unknown>): Record<string, unknown> =>
+    recordDoc(over);
+  const builds = r15Builds("1.5.0");
+  const withBuild0 = (
+    patch: (b: Record<string, unknown>) => Record<string, unknown>,
+  ): Record<string, unknown>[] =>
+    builds.map((b, i) => (i === 0 ? patch(structuredClone(b)) : b));
+  const artifact0 = (
+    patch: Record<string, unknown>,
+  ): Record<string, unknown>[] =>
+    withBuild0((b) => ({
+      ...b,
+      artifacts: [
+        { ...(b.artifacts as Record<string, unknown>[])[0], ...patch },
+      ],
+    }));
+
+  await mk(
+    "record-valid-app",
+    "The control: R15, signed by the pinned release key, its hash the pin, cross-checked against `{app, 1.5.0, 15}`.",
+    {
+      jws: r15.jws,
+      expect: { verify: "ok", kind: "app", doc: r15.doc },
+    },
+  );
+  await mk(
+    "record-valid-rotation-second-key",
+    "A record signed by the 2027 release key while both are pinned: two keys are valid at once during a rotation.",
+    {
+      kid: REL2_KID,
+      releaseKeys: { ...RK, [REL2_KID]: pub(REL2_KID) },
+      expect: ok(),
+    },
+  );
+  await mk(
+    "record-valid-unknown-arch-build",
+    "A `riscv64` build: an unknown arch is allowed and never eligible.",
+    {
+      doc: rd({
+        builds: [
+          ...builds,
+          {
+            id: "linux-riscv64",
+            platform: "linux",
+            arch: "riscv64",
+            format: "tar.gz",
+            artifacts: [
+              artifact("linux-riscv64", "1.5.0", "tar.gz", "payload", 11),
+            ],
+          },
+        ],
+      }),
+      expect: ok(),
+    },
+  );
+  await mk(
+    "record-valid-store-only-build",
+    "A store-only build (`aab`, `artifacts: []`) verifies; it is never installed.",
+    {
+      doc: rd({ builds: r15Builds("1.5.0", ["aab", "apk"]) }),
+      expect: ok(),
+    },
+  );
+  await mk(
+    "record-valid-build-number-absent",
+    "`buildNumber` is optional and absent here.",
+    {
+      doc: rd({ builds: r15Builds("1.5.0", ["linux-arm64"]) }),
+      expect: ok(),
+    },
+  );
+  await mk(
+    "record-valid-non-payload-build",
+    "A build whose one file is a `chunk-bundle` verifies (P2-04 accepts it) and is never eligible.",
+    {
+      doc: rd({ builds: r15Builds("1.5.0", ["win-chunks", "win-zip"]) }),
+      expect: ok(),
+    },
+  );
+  await mk(
+    "record-valid-4part-version",
+    "`1.5.0.0`: the record's claims name no scheme; the pin's version parses under the feed's.",
+    {
+      jws: records.get("R4")!.jws,
+      pin: { deliverable: "app", version: "1.5.0.0", seq: 15 },
+      expect: ok(),
+    },
+  );
+  await mk(
+    "record-valid-content-reserved",
+    "A reserved `content` member (P4-01) is ignored.",
+    {
+      doc: rd({
+        content: {
+          contentApi: 1,
+          pins: [],
+          holds: [],
+          expects: [],
+          packChannels: {},
+        },
+      }),
+      expect: ok(),
+    },
+  );
+  await mk(
+    "record-valid-kind-pack-verify-only",
+    "`kind: pack` verifies when no pin asks for an app (verify only).",
+    {
+      doc: rd({ kind: "pack", deliverable: "core3d", builds: undefined }),
+      pin: null,
+      expect: ok("pack"),
+    },
+  );
+  await mk(
+    "record-valid-kind-revocation-verify-only",
+    "`kind: revocation`, reserved (P4-13), verifies and is never acted on.",
+    {
+      doc: rd({ kind: "revocation", builds: undefined }),
+      pin: null,
+      expect: ok("revocation"),
+    },
+  );
+  await mk(
+    "record-valid-kind-unknown-verify-only",
+    "An unknown kind verifies; the cross-check refuses it where an app record is expected.",
+    {
+      doc: rd({ kind: "future", builds: undefined }),
+      pin: null,
+      expect: ok("future"),
+    },
+  );
+  await mk(
+    "record-hash-mismatch",
+    "Step 12: the body's SHA-256 is not the pin (another valid record).",
+    {
+      jws: r15.jws,
+      expectedHash: records.get("RB")!.sha256,
+      expect: fail("hash"),
+    },
+  );
+  {
+    const [h, , s] = r15.jws.split(".") as [string, string, string];
+    const tampered = `${h}.${encSeg({ ...r15.doc, seq: 99 })}.${s}`;
+    await mk(
+      "record-hash-checked-before-signature",
+      "Step 12 runs before any Ed25519 work: a tampered body whose signature is also bad fails at `hash`.",
+      {
+        jws: tampered,
+        expectedHash: r15.sha256,
+        expect: fail("hash"),
+      },
+    );
+  }
+  await mk(
+    "record-hash-pin-uppercase",
+    "The pin is lowercase hex; an uppercase pin is no match.",
+    {
+      jws: r15.jws,
+      expectedHash: r15.sha256.toUpperCase(),
+      expect: fail("hash"),
+    },
+  );
+  await mk(
+    "record-rotation-old-key-dropped",
+    "Signed by the 2026 key after it left the pinned set.",
+    {
+      releaseKeys: { [REL2_KID]: pub(REL2_KID) },
+      expect: fail("jws"),
+    },
+  );
+  await mk(
+    "record-release-key-is-product-key",
+    "A product key pinned as a release key: refused at `jws` because its bytes are in the product trust set (V4 §2.4).",
+    {
+      kid: PIN_KID,
+      releaseKeys: { [PIN_KID]: pub(PIN_KID) },
+      expect: fail("jws"),
+    },
+  );
+  await mk(
+    "record-duplicate-key",
+    "A payload that declares `version` twice: strict JSON refuses it at `jws`.",
+    {
+      text: JSON.stringify(recordDoc()).replace(
+        '"version":"1.5.0"',
+        '"version":"1.5.0","version":"1.6.0"',
+      ),
+      expect: fail("jws"),
+    },
+  );
+  await mk(
+    "record-build-requires-null",
+    "V4 §3 presence: `requires: null` on one build.",
+    {
+      doc: rd({ builds: withBuild0((b) => ({ ...b, requires: null })) }),
+      expect: fail("claims"),
+    },
+  );
+  const tokenCase = async (
+    id: string,
+    description: string,
+    over: Record<string, unknown>,
+    pin: RecordCase["pin"] | null = PIN,
+  ): Promise<void> =>
+    mk(id, description, {
+      text: rawJson(recordDoc(over)),
+      pin,
+      expect: fail("claims"),
+    });
+  await tokenCase(
+    "record-schema-version-near-integer",
+    'V4 §3: `"schemaVersion":1.0000000000000001`.',
+    { schemaVersion: raw("1.0000000000000001") },
+  );
+  await tokenCase(
+    "record-issued-at-near-integer",
+    "V4 §3: the `issuedAt` token `1700000000.00000001`.",
+    { issuedAt: raw("1700000000.00000001") },
+  );
+  await tokenCase(
+    "record-seq-over-max",
+    "V4 §3: `seq` 9007199254740993, no pin.",
+    { seq: raw(BIG_OVER) },
+    null,
+  );
+  await tokenCase(
+    "record-min-supported-seq-over-max",
+    "V4 §3: `minSupportedSeq` 9007199254740993.",
+    { minSupportedSeq: raw(BIG_OVER) },
+  );
+  await mk(
+    "record-deliverable-trailing-newline",
+    'Whole-string patterns: `deliverable` `"app\\n"`, no pin.',
+    { doc: rd({ deliverable: "app\n" }), pin: null, expect: fail("claims") },
+  );
+  await mk("record-issued-at-negative", "V4 §3 minimums: `issuedAt` −1.", {
+    doc: rd({ issuedAt: -1 }),
+    expect: fail("claims"),
+  });
+  await mk(
+    "record-build-id-non-ascii",
+    "`BUILD_ID_PATTERN` is ASCII: a build id `macos-arm64-é` is refused, so uniqueness and the tie-break compare bytes in every SDK.",
+    {
+      doc: rd({
+        builds: withBuild0((b) => ({ ...b, id: "macos-arm64-\u00e9" })),
+      }),
+      expect: fail("claims"),
+    },
+  );
+  await mk("record-wrong-aud", "A record scoped to another product.", {
+    doc: rd({ aud: "other-product" }),
+    expect: fail("claims"),
+  });
+  await mk("record-schema-version-2", "`schemaVersion: 2`.", {
+    doc: rd({ schemaVersion: 2 }),
+    expect: fail("claims"),
+  });
+  await mk(
+    "record-version-bad-chars",
+    "A version outside P2-04's `VERSION_RE` (a space).",
+    { doc: rd({ version: "1.5.0 beta" }), expect: fail("claims") },
+  );
+  await tokenCase("record-seq-not-integer", 'V4 §3: `"seq":15.5`.', {
+    seq: raw("15.5"),
+  });
+  await mk("record-builds-missing", "`kind: app` with no `builds`.", {
+    doc: rd({ builds: undefined }),
+    expect: fail("claims"),
+  });
+  await mk("record-duplicate-build-id", "Two builds with one id.", {
+    doc: rd({ builds: [...builds, builds[0]] }),
+    expect: fail("claims"),
+  });
+  await mk("record-build-platform-null", "`platform: null` on a build.", {
+    doc: rd({ builds: withBuild0((b) => ({ ...b, platform: null })) }),
+    expect: fail("claims"),
+  });
+  await mk("record-build-two-payloads", "A build with two `payload` files.", {
+    doc: rd({
+      builds: withBuild0((b) => ({
+        ...b,
+        artifacts: [
+          ...(b.artifacts as unknown[]),
+          artifact("macos-dmg-2", "1.5.0", "dmg", "payload", 12),
+        ],
+      })),
+    }),
+    expect: fail("claims"),
+  });
+  await mk(
+    "record-artifact-sha256-uppercase",
+    "An artifact digest in uppercase hex.",
+    {
+      doc: rd({
+        builds: artifact0({
+          sha256: (
+            builds[0]!.artifacts as Record<string, string>[]
+          )[0]!.sha256!.toUpperCase(),
+        }),
+      }),
+      expect: fail("claims"),
+    },
+  );
+  await mk("record-build-number-not-string", "`buildNumber: 46`, a number.", {
+    doc: rd({ builds: withBuild0((b) => ({ ...b, buildNumber: 46 })) }),
+    expect: fail("claims"),
+  });
+  await mk(
+    "record-min-supported-seq-zero",
+    "V4 §3 minimums: `minSupportedSeq` 0.",
+    { doc: rd({ minSupportedSeq: 0 }), expect: fail("claims") },
+  );
+  await mk(
+    "record-version-mismatches-pin",
+    "Step 15: the record's version is not the pin's.",
+    {
+      doc: rd({ version: "1.5.1", builds: r15Builds("1.5.1") }),
+      expect: fail("cross-check"),
+    },
+  );
+  await mk(
+    "record-seq-mismatches-pin",
+    "Step 15: the record's `seq` is not the pin's.",
+    { doc: rd({ seq: 16 }), expect: fail("cross-check") },
+  );
+  await mk(
+    "record-kind-pack-refused-as-app",
+    "Step 15: a reserved kind is verified, then refused where an app record is expected.",
+    {
+      doc: rd({ kind: "pack", builds: undefined }),
+      expect: fail("cross-check"),
+    },
+  );
+  await mk(
+    "record-signed-by-product-key",
+    "A record signed by the PRODUCT key: its kid is not among the pinned release keys.",
+    { kid: PIN_KID, expect: fail("jws") },
+  );
+  await mk("record-wrong-typ", "A genuine record signed as `pkey-feed+jws`.", {
+    typ: "pkey-feed+jws",
+    expect: fail("jws"),
+  });
+  await mk("record-artifact-size-over-max", "V4 §3: `size` 9007199254740992.", {
+    doc: rd({ builds: artifact0({ size: 9007199254740992 }) }),
+    expect: fail("claims"),
+  });
+  await tokenCase(
+    "record-artifact-size-integral-fraction",
+    'V4 §3: `"size":1024.0` at `/builds/0/artifacts/0/size`.',
+    { builds: artifact0({ size: raw("1024.0") }) },
+  );
+  await tokenCase(
+    "record-seq-integral-fraction",
+    'V4 §3: `"seq":15.0`, with the pin\'s `seq` 15.',
+    { seq: raw("15.0") },
+  );
+  await tokenCase(
+    "record-min-supported-seq-near-integer",
+    'V4 §3: `"minSupportedSeq":3.0000000000000001`.',
+    { minSupportedSeq: raw("3.0000000000000001") },
+  );
+  await tokenCase(
+    "record-issued-at-over-max",
+    "V4 §3: `issuedAt` 9007199254740993.",
+    { issuedAt: raw(BIG_OVER) },
+  );
+  await mk(
+    "record-version-trailing-newline",
+    'Whole-string patterns: `version` `"1.5.0\\n"`, no pin.',
+    {
+      doc: rd({ version: "1.5.0\n", builds: builds }),
+      pin: null,
+      expect: fail("claims"),
+    },
+  );
+  await mk("record-seq-zero", "V4 §3 minimums: `seq` 0, no pin.", {
+    doc: rd({ seq: 0 }),
+    pin: null,
+    expect: fail("claims"),
+  });
+  await mk(
+    "record-artifact-size-negative",
+    'V4 §3 minimums: `"size":-1` at `/builds/0/artifacts/0/size`.',
+    { doc: rd({ builds: artifact0({ size: -1 }) }), expect: fail("claims") },
+  );
+
+  if (cases.length !== 49)
+    throw new Error(`releaseRecordCases: ${cases.length} != 49`);
+  for (const c of cases) {
+    const want = refVerifyRecordCase(c);
+    const got = c.expect;
+    if (
+      want.verify !== got.verify ||
+      (want.verify === "fail" &&
+        got.verify === "fail" &&
+        want.step !== got.step)
+    )
+      throw new Error(
+        `releaseRecordCases: the reference answers ${JSON.stringify(want)} for ${c.id}`,
+      );
+    if (want.verify === "ok" && got.verify === "ok" && want.kind !== got.kind)
+      throw new Error(`releaseRecordCases: kind of ${c.id}`);
+  }
+  return cases;
+}
+
+// ── The channel feed (V4 §2.3) ───────────────────────────────────────────────────────────────
+
+/** The record vectors, built once per run before any feed (feeds pin their hashes). */
+let RECORDS: Map<string, RecordVector> | null = null;
+const record = (name: string): RecordVector => {
+  const r = RECORDS?.get(name);
+  if (!r) throw new Error(`record vector ${name} not built`);
+  return r;
+};
+
+const LIVE = (version: string, seq: number): Record<string, unknown> => ({
+  version,
+  seq,
+});
+const APP_STORE_URL = "https://apps.apple.com/app/id1234567890";
+const ROLLOUT_SALT = "00112233445566778899aabbccddeeff";
+
+function pinOf(name: string): Record<string, unknown> {
+  const r = record(name);
+  return { sha256: r.sha256, seq: r.doc.seq, version: r.doc.version };
+}
+
+/** `FC`, the feed the `feedCases` start from: a macOS and a Windows target pinning R15. */
+function feedPayload(): Record<string, unknown> {
+  const target = (
+    platform: string,
+    outlets: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    platform,
+    release: pinOf("R15"),
+    floor: null,
+    critical: false,
+    outlets,
+  });
+  return {
+    schemaVersion: 1,
+    iss: ISSUER_V3,
+    aud: AUD_V3,
+    channel: "stable",
+    selector: {},
+    seq: 7,
+    issuedAt: FEED_ISSUED,
+    expiresAt: FEED_EXPIRES,
+    app: {
+      deliverable: "app",
+      versionScheme: "semver",
+      targets: [
+        target("macos", {
+          direct: { kind: "direct", live: LIVE("1.5.0", 15), halted: false },
+          "app-store": {
+            kind: "app-store",
+            live: LIVE("1.4.0", 14),
+            halted: false,
+            listingUrl: APP_STORE_URL,
+          },
+        }),
+        target("windows", {
+          direct: { kind: "direct", live: LIVE("1.5.0", 15), halted: false },
+          steam: { kind: "steam", live: LIVE("1.5.0", 15), halted: false },
+        }),
+      ],
+    },
+  };
+}
+
+interface FeedCase {
+  id: string;
+  description: string;
+  jws: string;
+  trust: Record<string, string>;
+  expectedAud: string;
+  channel: string;
+  platform: string;
+  now: number;
+  checkFreshness: boolean;
+  floors?: Record<string, { seq: number; issuedAt: number }>;
+  nonWireIntegers?: string[];
+  expect:
+    | { verify: "ok"; seq: number; issuedAt: number; doc?: unknown }
+    | {
+        verify: "fail";
+        reason:
+          | "jws"
+          | "claims"
+          | "channel"
+          | "selector"
+          | "freshness"
+          | "not-newer"
+          | "rollback";
+      };
+}
+
+/** V4 §2.5 steps 3–8, from first principles. */
+function refVerifyFeedCase(c: FeedCase): FeedCase["expect"] {
+  const v = refVerifyJws(c.jws, c.trust, "pkey-feed+jws");
+  if (!v) return { verify: "fail", reason: "jws" };
+  const r = refFeedClaims(v.payload, ctxOf(v.text), {
+    aud: c.expectedAud,
+    channel: c.channel,
+    platform: c.platform,
+  });
+  if (r) return { verify: "fail", reason: r };
+  const d = v.payload as {
+    channel: string;
+    seq: number;
+    issuedAt: number;
+    expiresAt: number;
+  };
+  if (c.checkFreshness) {
+    if (d.issuedAt > c.now + CLOCK_SKEW || d.expiresAt <= c.now - CLOCK_SKEW)
+      return { verify: "fail", reason: "freshness" };
+  }
+  const floor = c.floors?.[d.channel];
+  if (floor) {
+    if (d.seq < floor.seq) return { verify: "fail", reason: "rollback" };
+    if (d.seq === floor.seq && d.issuedAt <= floor.issuedAt)
+      return { verify: "fail", reason: "not-newer" };
+  }
+  return { verify: "ok", seq: d.seq, issuedAt: d.issuedAt };
+}
+
+/** Leaf pointers where two JSON values differ (for the one-property twin check). */
+function leafDiff(a: unknown, b: unknown, at = ""): string[] {
+  if (isObj(a) && isObj(b)) {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    return [...keys].flatMap((k) =>
+      leafDiff(a[k], b[k], `${at}/${pointerToken(k)}`),
+    );
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    const n = Math.max(a.length, b.length);
+    return Array.from({ length: n }, (_, k) =>
+      leafDiff(a[k], b[k], `${at}/${k}`),
+    ).flat();
+  }
+  return JSON.stringify(a) === JSON.stringify(b) ? [] : [at];
+}
+
+async function buildFeedCases(): Promise<FeedCase[]> {
+  const TRUST = { [PIN_KID]: pub(PIN_KID) };
+  const cases: FeedCase[] = [];
+  const base = feedPayload();
+  type Patch = (d: Record<string, any>) => void;
+  const mk = async (
+    id: string,
+    description: string,
+    o: {
+      patch?: Patch;
+      doc?: Record<string, unknown>;
+      text?: (d: Record<string, unknown>) => string;
+      kid?: string;
+      /** A header kid other than the signing key's (an unknown kid). */
+      headerKid?: string;
+      typ?: TypV3;
+      trust?: Record<string, string>;
+      channel?: string;
+      now?: number;
+      checkFreshness?: boolean;
+      floors?: FeedCase["floors"];
+      /** The one property under test (a pointer prefix); the twin is `FC` with it reverted. */
+      prop?: string;
+      withDoc?: boolean;
+      expect: "ok" | Exclude<FeedCase["expect"], { verify: "ok" }>["reason"];
+    },
+  ): Promise<void> => {
+    const doc = o.doc ?? structuredClone(base);
+    o.patch?.(doc);
+    const kid = o.kid ?? PIN_KID;
+    const typ = o.typ ?? "pkey-feed+jws";
+    const text = o.text ? o.text(doc) : JSON.stringify(doc);
+    const jws = await signRawSegments(
+      headerText(typ, o.headerKid ?? kid),
+      text,
+      kid,
+    );
+    const trust = o.trust ?? TRUST;
+    const parsed = JSON.parse(text) as Record<string, number>;
+    const c: FeedCase = {
+      id,
+      description,
+      jws,
+      trust,
+      expectedAud: AUD_V3,
+      channel: o.channel ?? "stable",
+      platform: "macos",
+      now: o.now ?? FEED_NOW,
+      checkFreshness: o.checkFreshness ?? true,
+      ...(o.floors ? { floors: o.floors } : {}),
+      expect:
+        o.expect === "ok"
+          ? {
+              verify: "ok",
+              seq: parsed.seq!,
+              issuedAt: parsed.issuedAt!,
+              ...(o.withDoc ? { doc: JSON.parse(text) } : {}),
+            }
+          : { verify: "fail", reason: o.expect },
+    };
+    const v = refVerifyJws(jws, trust, "pkey-feed+jws");
+    const nonWire = v ? refNonWire(v.text) : [];
+    if (o.prop !== undefined) {
+      const diff = leafDiff(base, doc);
+      if (
+        diff.length === 0 ||
+        !diff.every((p) => p === o.prop || p.startsWith(`${o.prop}/`))
+      )
+        throw new Error(
+          `feedCases ${id}: differs from FC outside ${o.prop}: ${diff.join(", ")}`,
+        );
+    }
+    cases.push(
+      placeNonWire(nonWire.length > 0 ? { ...c, nonWireIntegers: nonWire } : c),
+    );
+  };
+  const t0 = (d: Record<string, any>): Record<string, any> => d.app.targets[0];
+  const direct0 = (d: Record<string, any>): Record<string, any> =>
+    t0(d).outlets.direct;
+  const raws = (d: Record<string, unknown>): string => rawJson(d);
+
+  // Left column of §4.4.
+  await mk(
+    "feed-valid",
+    "The control: FC, signed by the product key, fresh, on its own channel.",
+    { expect: "ok", withDoc: true },
+  );
+  await mk(
+    "feed-valid-platform-selector",
+    "A per-platform document (`selector: {platform: macos}`), which the Worker serves when the channel-wide one exceeds 65 536 bytes.",
+    {
+      patch: (d) => {
+        d.selector = { platform: "macos" };
+        d.app.targets = [d.app.targets[0]];
+      },
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-valid-alias-channel",
+    "A request for `latest` answered with the canonical `stable`: the claim is the canonical channel.",
+    { channel: "latest", expect: "ok" },
+  );
+  await mk(
+    "feed-valid-rotated-key",
+    "Signed by `djdl-test-2026`, which the effective trust set holds (pins ∪ manifest keys).",
+    {
+      kid: ALT_KID,
+      trust: { ...TRUST, [ALT_KID]: pub(ALT_KID) },
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-valid-reload-path-expired",
+    "An expired feed on the reload path (`checkFreshness: false`): it still verifies, and keeps its floor.",
+    {
+      now: FEED_EXPIRES + CLOCK_SKEW + 1000,
+      checkFreshness: false,
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-valid-unknown-fields-ignored",
+    "Reserved `packSets` and unknown members at every level are ignored.",
+    {
+      patch: (d) => {
+        d.packSets = [];
+        d.extra = { any: true };
+        d.app.extra = 1;
+        t0(d).extra = "x";
+        direct0(d).extra = null;
+      },
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-valid-at-cap",
+    "A feed payload of exactly 65 536 bytes (no `doc`).",
+    { doc: docOfExactBytes(65536, base), expect: "ok" },
+  );
+  await mk(
+    "feed-valid-semver-build",
+    "`semver+build`, the pin `1.5.0+46` (RB).",
+    {
+      patch: (d) => {
+        d.app.versionScheme = "semver+build";
+        for (const t of d.app.targets) {
+          t.release = pinOf("RB");
+          for (const e of Object.values<Record<string, any>>(t.outlets))
+            if (e.live?.version === "1.5.0") e.live = LIVE("1.5.0+46", 16);
+        }
+      },
+      expect: "ok",
+    },
+  );
+  const to4part = (d: Record<string, any>): void => {
+    d.app.versionScheme = "4part";
+    for (const t of d.app.targets) {
+      t.release = pinOf("R4");
+      for (const e of Object.values<Record<string, any>>(t.outlets))
+        if (e.live) e.live = LIVE(`${e.live.version}.0`, e.live.seq);
+    }
+  };
+  await mk("feed-valid-4part", "`4part`, the pin `1.5.0.0` (R4).", {
+    patch: to4part,
+    expect: "ok",
+  });
+  await mk(
+    "feed-valid-unknown-kind-ignored",
+    "An entry of kind `epic`, outside the 17: allowed, never matched, and its `listingUrl` is only type-checked.",
+    {
+      patch: (d) => {
+        t0(d).outlets["epic-store"] = {
+          kind: "epic",
+          live: null,
+          halted: false,
+          listingUrl: "https://store.epicgames.com/p/diceroll",
+        };
+      },
+      prop: "/app/targets/0/outlets/epic-store",
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-valid-floors-per-target",
+    "Each target carries its own platform's floor: macOS `1.5.0`, Windows null.",
+    {
+      patch: (d) => {
+        t0(d).floor = { minVersion: "1.5.0" };
+      },
+      prop: "/app/targets/0/floor",
+      expect: "ok",
+    },
+  );
+  const atMax = (d: Record<string, any>): void => {
+    d.seq = MAX_WIRE_INTEGER_REF;
+    t0(d).release = pinOf("R15max");
+    direct0(d).live = LIVE("1.5.0", MAX_WIRE_INTEGER_REF);
+  };
+  await mk(
+    "feed-valid-seq-at-max",
+    "`seq`, the macOS pin's `seq` and its `direct` live `seq` all at 2^53 − 1.",
+    { patch: atMax, expect: "ok" },
+  );
+  await mk(
+    "feed-valid-seq-ceiling-recovery",
+    "The `seq` ceiling recovery (V4 §4): a feed at 2^53 − 1 with a newer `issuedAt` than the committed one at the ceiling is accepted.",
+    {
+      patch: atMax,
+      floors: {
+        stable: { seq: MAX_WIRE_INTEGER_REF, issuedAt: FEED_ISSUED - 1000 },
+      },
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-seq-equal-newer-issued",
+    "Equal `seq`, newer `issuedAt`: a re-signing of the same content, accepted.",
+    {
+      floors: { stable: { seq: 7, issuedAt: FEED_ISSUED - 1000 } },
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-seq-higher-older-issued",
+    "A higher `seq` with an older `issuedAt`: `seq` is primary.",
+    {
+      floors: { stable: { seq: 6, issuedAt: FEED_ISSUED + 500 } },
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-expires-within-skew",
+    "`now = expiresAt + 299`: inside the skew, still fresh.",
+    { now: FEED_EXPIRES + CLOCK_SKEW - 1, expect: "ok" },
+  );
+  await mk("feed-wrong-typ", "FC signed as `pkey-license+jws`.", {
+    typ: "pkey-license+jws",
+    expect: "jws",
+  });
+  await mk(
+    "feed-signed-by-release-key",
+    "FC signed by a RELEASE key: release keys are a separate input and never in a feed's trust set.",
+    { kid: REL_KID, expect: "jws" },
+  );
+  await mk("feed-unknown-kid", "FC under a kid the trust set does not hold.", {
+    headerKid: "pkey-test-unknown-2026",
+    expect: "jws",
+  });
+  await mk(
+    "feed-expired-network",
+    "On the network path at `now = expiresAt + 300`: stale.",
+    { now: FEED_EXPIRES + CLOCK_SKEW, expect: "freshness" },
+  );
+  await mk("feed-future-dated", "`issuedAt` 301 s ahead of `now`.", {
+    patch: (d) => {
+      d.issuedAt = FEED_NOW + CLOCK_SKEW + 1;
+      d.expiresAt = d.issuedAt + FEED_TTL_REF;
+    },
+    expect: "freshness",
+  });
+  await mk(
+    "feed-seq-equal-same-issued",
+    "The committed feed again (equal `seq` and `issuedAt`): `not-newer`, kept silently.",
+    {
+      floors: { stable: { seq: 7, issuedAt: FEED_ISSUED } },
+      expect: "not-newer",
+    },
+  );
+  await mk(
+    "feed-seq-equal-older-issued",
+    "Equal `seq`, older `issuedAt`: an older signing from a cache, `not-newer`.",
+    {
+      floors: { stable: { seq: 7, issuedAt: FEED_ISSUED + 500 } },
+      expect: "not-newer",
+    },
+  );
+  await mk("feed-seq-rollback", "A lower `seq` than the floor: `rollback`.", {
+    floors: { stable: { seq: 8, issuedAt: FEED_ISSUED - 1000 } },
+    expect: "rollback",
+  });
+  await mk(
+    "feed-wrong-channel",
+    "A request for `stable` answered with `beta`.",
+    {
+      patch: (d) => void (d.channel = "beta"),
+      prop: "/channel",
+      expect: "channel",
+    },
+  );
+  await mk(
+    "feed-selector-other-platform",
+    "A Windows document served to a macOS client.",
+    {
+      patch: (d) => {
+        d.selector = { platform: "windows" };
+        d.app.targets = [d.app.targets[1]];
+      },
+      expect: "selector",
+    },
+  );
+  await mk(
+    "feed-selector-unknown-key",
+    "A selector key a v4 client does not know (P4 may add keys).",
+    {
+      patch: (d) => void (d.selector = { contentApi: "2" }),
+      prop: "/selector",
+      expect: "selector",
+    },
+  );
+  await mk(
+    "feed-schema-version-near-integer",
+    'V4 §3: `"schemaVersion":1.0000000000000001`.',
+    {
+      patch: (d) => void (d.schemaVersion = raw("1.0000000000000001")),
+      text: raws,
+      prop: "/schemaVersion",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-expires-at-near-integer",
+    "V4 §3: the `expiresAt` token `1700000900.00000001`.",
+    {
+      patch: (d) => void (d.expiresAt = raw("1700000900.00000001")),
+      text: raws,
+      prop: "/expiresAt",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-expires-at-over-max",
+    "V4 §3: only `expiresAt` (9007199254740993) is above 2^53 − 1.",
+    {
+      patch: (d) => {
+        d.issuedAt = 9007199254740000;
+        d.expiresAt = raw(BIG_OVER);
+      },
+      text: raws,
+      now: 9007199254740100,
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-outlet-live-missing",
+    "V4 §3 presence: an entry with no `live` member (null is allowed, missing is not).",
+    {
+      patch: (d) => void delete direct0(d).live,
+      prop: "/app/targets/0/outlets/direct/live",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-listing-url-non-ascii",
+    "An `app-store` `listingUrl` of 1 038 characters and 2 049 bytes: lengths count bytes, and the URL must be printable ASCII.",
+    {
+      patch: (d) =>
+        void (t0(d).outlets["app-store"].listingUrl =
+          `https://apps.apple.com/app/${"\u00e9".repeat(1011)}`),
+      prop: "/app/targets/0/outlets/app-store/listingUrl",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-target-version-trailing-newline",
+    'Whole-string patterns: the pin\'s `version` `"1.5.0\\n"`.',
+    {
+      patch: (d) => void (t0(d).release.version = "1.5.0\n"),
+      prop: "/app/targets/0/release/version",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-channel-trailing-newline",
+    'Whole-string patterns: `"channel":"stable\\n"` (a lenient match would fail at `channel` instead).',
+    {
+      patch: (d) => void (d.channel = "stable\n"),
+      prop: "/channel",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-rollout-salt-trailing-newline",
+    "Whole-string patterns: the `direct` entry's rollout `salt` followed by `\\n`.",
+    {
+      patch: (d) =>
+        void (direct0(d).rollout = { bp: 5000, salt: `${ROLLOUT_SALT}\n` }),
+      prop: "/app/targets/0/outlets/direct/rollout",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-alias-staging-beta-floor-applies",
+    "A request for `staging` answered with the canonical `beta` meets `floors.beta`: the floor is keyed by the claim, never by the requested name.",
+    {
+      patch: (d) => void (d.channel = "beta"),
+      channel: "staging",
+      floors: { beta: { seq: 9, issuedAt: FEED_ISSUED } },
+      expect: "rollback",
+    },
+  );
+  await mk("feed-target-seq-zero", "V4 §3 minimums: the pin's `seq` 0.", {
+    patch: (d) => void (t0(d).release.seq = 0),
+    prop: "/app/targets/0/release/seq",
+    expect: "claims",
+  });
+  await mk("feed-rollout-bp-negative", 'V4 §3 minimums: `"bp":-1`.', {
+    patch: (d) => void (direct0(d).rollout = { bp: -1, salt: ROLLOUT_SALT }),
+    prop: "/app/targets/0/outlets/direct/rollout",
+    expect: "claims",
+  });
+  await mk(
+    "feed-target-platform-non-ascii",
+    "`FEED_PLATFORM_PATTERN` is ASCII: a second target whose platform is `macoś` (its twin `freebsd`, an unknown ASCII platform, verifies).",
+    {
+      patch: (d) =>
+        void d.app.targets.push({
+          ...structuredClone(t0(d)),
+          platform: "maco\u015b",
+        }),
+      prop: "/app/targets/2",
+      expect: "claims",
+    },
+  );
+  // Right column of §4.4.
+  await mk("feed-wrong-aud", "A feed scoped to another product.", {
+    patch: (d) => void (d.aud = "other-product"),
+    prop: "/aud",
+    expect: "claims",
+  });
+  await mk("feed-wrong-iss", "A foreign `iss`.", {
+    patch: (d) => void (d.iss = "https://evil.example"),
+    prop: "/iss",
+    expect: "claims",
+  });
+  await mk("feed-schema-version-2", "`schemaVersion: 2`.", {
+    patch: (d) => void (d.schemaVersion = 2),
+    prop: "/schemaVersion",
+    expect: "claims",
+  });
+  await mk(
+    "feed-ttl-over-max",
+    "`expiresAt = issuedAt + 3601`, past `MAX_FEED_TTL_SECONDS`.",
+    {
+      patch: (d) => void (d.expiresAt = d.issuedAt + MAX_FEED_TTL_REF + 1),
+      prop: "/expiresAt",
+      expect: "claims",
+    },
+  );
+  await mk("feed-expires-not-after-issued", "`expiresAt = issuedAt`.", {
+    patch: (d) => void (d.expiresAt = d.issuedAt),
+    prop: "/expiresAt",
+    expect: "claims",
+  });
+  await mk("feed-target-bad-sha256", "A pin that is not 64 lowercase hex.", {
+    patch: (d) => void (t0(d).release.sha256 = t0(d).release.sha256.slice(1)),
+    prop: "/app/targets/0/release/sha256",
+    expect: "claims",
+  });
+  await mk("feed-duplicate-platform-target", "Two targets for one platform.", {
+    patch: (d) => void (d.app.targets[1].platform = "macos"),
+    prop: "/app/targets/1/platform",
+    expect: "claims",
+  });
+  await mk(
+    "feed-target-outside-selector",
+    "`selector.platform` is macOS but a target is Windows.",
+    {
+      patch: (d) => void (d.selector = { platform: "macos" }),
+      prop: "/selector",
+      expect: "claims",
+    },
+  );
+  await mk("feed-rollout-bp-over-max", "`bp` 10 001, past 10 000.", {
+    patch: (d) =>
+      void (direct0(d).rollout = {
+        bp: ROLLOUT_BUCKETS_REF + 1,
+        salt: ROLLOUT_SALT,
+      }),
+    prop: "/app/targets/0/outlets/direct/rollout",
+    expect: "claims",
+  });
+  await mk(
+    "feed-floor-not-in-scheme",
+    "A target floor `1.5` that does not parse under `semver`.",
+    {
+      patch: (d) => void (t0(d).floor = { minVersion: "1.5" }),
+      prop: "/app/targets/0/floor",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-floor-above-target",
+    "A floor `1.6.0` above the pin `1.5.0`.",
+    {
+      patch: (d) => void (t0(d).floor = { minVersion: "1.6.0" }),
+      prop: "/app/targets/0/floor",
+      expect: "claims",
+    },
+  );
+  await mk("feed-seq-zero", "V4 §3 minimums: `seq` 0.", {
+    patch: (d) => void (d.seq = 0),
+    prop: "/seq",
+    expect: "claims",
+  });
+  await mk("feed-seq-fraction", 'V4 §3: `"seq":7.5`.', {
+    patch: (d) => void (d.seq = 7.5),
+    prop: "/seq",
+    expect: "claims",
+  });
+  await mk(
+    "feed-seq-integral-fraction",
+    'V4 §3: `"seq":7.0`, an integer claim\'s token.',
+    {
+      patch: (d) => void (d.seq = raw("7.0")),
+      text: raws,
+      prop: "/seq",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-seq-near-integer",
+    'V4 §3: `"seq":7.0000000000000001`, which Node, Swift and Godot read as 7.',
+    {
+      patch: (d) => void (d.seq = raw("7.0000000000000001")),
+      text: raws,
+      prop: "/seq",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-target-seq-near-integer",
+    "V4 §3: the pin's `seq` token `15.0000000000000001`, at `/app/targets/0/release/seq`.",
+    {
+      patch: (d) => void (t0(d).release.seq = raw("15.0000000000000001")),
+      text: raws,
+      prop: "/app/targets/0/release/seq",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-rollout-bp-exponent",
+    'V4 §3: `"bp":25e2`, at `/app/targets/0/outlets/direct/rollout/bp`.',
+    {
+      patch: (d) =>
+        void (direct0(d).rollout = { bp: raw("25e2"), salt: ROLLOUT_SALT }),
+      text: raws,
+      prop: "/app/targets/0/outlets/direct/rollout",
+      expect: "claims",
+    },
+  );
+  await mk("feed-seq-over-max", "V4 §3: `seq` 9007199254740992.", {
+    patch: (d) => void (d.seq = 9007199254740992),
+    prop: "/seq",
+    expect: "claims",
+  });
+  await mk(
+    "feed-target-seq-over-max",
+    "V4 §3: the pin's `seq` 9007199254740993, which JavaScript reads as 2^53.",
+    {
+      patch: (d) => void (t0(d).release.seq = raw(BIG_OVER)),
+      text: raws,
+      prop: "/app/targets/0/release/seq",
+      expect: "claims",
+    },
+  );
+  await mk("feed-live-seq-over-max", "V4 §3: a live `seq` 18014398509481984.", {
+    patch: (d) => void (direct0(d).live.seq = 18014398509481984),
+    prop: "/app/targets/0/outlets/direct/live/seq",
+    expect: "claims",
+  });
+  await mk("feed-version-scheme-unknown", "`versionScheme: calver`.", {
+    patch: (d) => void (d.app.versionScheme = "calver"),
+    prop: "/app/versionScheme",
+    expect: "claims",
+  });
+  await mk(
+    "feed-target-version-not-in-scheme",
+    "`4part` with a pin `1.5.0` (every live version is four-part).",
+    {
+      patch: (d) => {
+        to4part(d);
+        t0(d).release.version = "1.5.0";
+      },
+      expect: "claims",
+    },
+  );
+  await mk("feed-outlet-kind-missing", "An entry with no `kind`.", {
+    patch: (d) => void delete direct0(d).kind,
+    prop: "/app/targets/0/outlets/direct/kind",
+    expect: "claims",
+  });
+  await mk(
+    "feed-outlet-kind-literal-unknown",
+    "An entry of kind `unknown`, a detection result that nothing can declare.",
+    {
+      patch: (d) => void (direct0(d).kind = "unknown"),
+      prop: "/app/targets/0/outlets/direct/kind",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-listing-url-foreign-host",
+    "`https://apps.apple.com.example/…`: the prefix is compared byte for byte, `/` included.",
+    {
+      patch: (d) =>
+        void (t0(d).outlets["app-store"].listingUrl =
+          "https://apps.apple.com.example/app/id1234567890"),
+      prop: "/app/targets/0/outlets/app-store/listingUrl",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-listing-url-on-kind-without-prefixes",
+    "An `altstore` entry carrying a `listingUrl`: AltStore sources are code-delivery paths, so the kind has no prefixes.",
+    {
+      patch: (d) =>
+        void (t0(d).outlets.altstore = {
+          kind: "altstore",
+          live: null,
+          halted: false,
+          listingUrl: "https://apps.apple.com/app/id1234567890",
+        }),
+      prop: "/app/targets/0/outlets/altstore",
+      expect: "claims",
+    },
+  );
+  {
+    const prefix = `${APP_STORE_URL}?x=`;
+    await mk(
+      "feed-valid-listing-url-at-max",
+      "An `app-store` `listingUrl` of exactly 2 048 ASCII bytes.",
+      {
+        patch: (d) =>
+          void (t0(d).outlets["app-store"].listingUrl =
+            prefix + "a".repeat(2048 - prefix.length)),
+        prop: "/app/targets/0/outlets/app-store/listingUrl",
+        expect: "ok",
+      },
+    );
+    await mk(
+      "feed-listing-url-over-max",
+      "2 049 ASCII bytes under the `app-store` prefix.",
+      {
+        patch: (d) =>
+          void (t0(d).outlets["app-store"].listingUrl =
+            prefix + "a".repeat(2049 - prefix.length)),
+        prop: "/app/targets/0/outlets/app-store/listingUrl",
+        expect: "claims",
+      },
+    );
+  }
+  await mk(
+    "feed-issued-at-near-integer",
+    "V4 §3: the `issuedAt` token `1700000000.00000001`.",
+    {
+      patch: (d) => void (d.issuedAt = raw("1700000000.00000001")),
+      text: raws,
+      prop: "/issuedAt",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-live-seq-near-integer",
+    "V4 §3: the first target's `direct` live `seq` token `15.0000000000000001`.",
+    {
+      patch: (d) => void (direct0(d).live.seq = raw("15.0000000000000001")),
+      text: raws,
+      prop: "/app/targets/0/outlets/direct/live/seq",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-target-floor-missing",
+    "V4 §3 presence: a target with no `floor` member.",
+    {
+      patch: (d) => void delete t0(d).floor,
+      prop: "/app/targets/0/floor",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-outlet-rollout-null",
+    "V4 §3 presence: `rollout: null` (an optional member is absent or typed).",
+    {
+      patch: (d) => void (direct0(d).rollout = null),
+      prop: "/app/targets/0/outlets/direct/rollout",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-outlet-id-trailing-newline",
+    'Whole-string patterns: an outlet key `"direct\\n"` of kind `direct`.',
+    {
+      patch: (d) => {
+        const outlets = t0(d).outlets;
+        t0(d).outlets = {
+          "direct\n": outlets.direct,
+          "app-store": outlets["app-store"],
+        };
+      },
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-target-sha256-trailing-newline",
+    "Whole-string patterns: the pin's `sha256` followed by `\\n`.",
+    {
+      patch: (d) => void (t0(d).release.sha256 += "\n"),
+      prop: "/app/targets/0/release/sha256",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-valid-manual-staging-beta-floor-ignored",
+    "A product with a manual `staging` channel: the claim is `staging`, so `floors.beta` does not apply (a runner that resolved `staging` itself would fail here).",
+    {
+      patch: (d) => void (d.channel = "staging"),
+      channel: "staging",
+      floors: { beta: { seq: 9, issuedAt: FEED_ISSUED } },
+      expect: "ok",
+    },
+  );
+  await mk(
+    "feed-channel-latest-claim",
+    "A request for `latest` answered with the claim `latest`, which is never canonical (it always resolves to `stable`).",
+    {
+      patch: (d) => void (d.channel = "latest"),
+      channel: "latest",
+      expect: "channel",
+    },
+  );
+  await mk(
+    "feed-live-seq-zero",
+    "V4 §3 minimums: the first target's `direct` live `seq` 0.",
+    {
+      patch: (d) => void (direct0(d).live.seq = 0),
+      prop: "/app/targets/0/outlets/direct/live/seq",
+      expect: "claims",
+    },
+  );
+  await mk(
+    "feed-issued-at-negative",
+    "V4 §3 minimums: `issuedAt` −1 (`expiresAt` 899) on the reload path; on the network path the freshness window refuses it first.",
+    {
+      patch: (d) => {
+        d.issuedAt = -1;
+        d.expiresAt = 899;
+      },
+      checkFreshness: false,
+      expect: "claims",
+    },
+  );
+
+  if (cases.length !== 77) throw new Error(`feedCases: ${cases.length} != 77`);
+  for (const c of cases) {
+    const want = refVerifyFeedCase(c);
+    const got = c.expect;
+    if (
+      want.verify !== got.verify ||
+      (want.verify === "fail" &&
+        got.verify === "fail" &&
+        want.reason !== got.reason) ||
+      (want.verify === "ok" &&
+        got.verify === "ok" &&
+        (want.seq !== got.seq || want.issuedAt !== got.issuedAt))
+    )
+      throw new Error(
+        `feedCases: the reference answers ${JSON.stringify(want)} for ${c.id}`,
+      );
+    for (const k of Object.keys(c.floors ?? {}))
+      if (!REF_CHANNEL_RE.test(k) || k === "latest")
+        throw new Error(`feedCases ${c.id}: floor key ${k}`);
+  }
+  return cases;
+}
+
+// ── The update decision (plans/P3-01.md §2.8), the generator's reference ─────────────────────
+
+interface RefInput {
+  now: number;
+  feed: Record<string, any>;
+  record: Record<string, any> | null;
+  installed: {
+    version: string;
+    binaryVersion: string;
+    buildNumber: string | null;
+    platform: string;
+    arch: string;
+    format: string | null;
+    engine: string | null;
+  };
+  outlet: { id: string | null; kind: string };
+  subkind: string | null;
+  staged: { version: string; channel: string } | null;
+  skipVersion: string | null;
+  bucket: number | null;
+  methods: string[];
+}
+
+/** One build's eligibility for self-installation (§2.8 "Eligible builds"). A build whose
+ *  `requires.engine` is not a string, or whose `requires.minBinary` does not parse, is never
+ *  eligible. */
+function refEligible(
+  b: Record<string, any>,
+  inp: RefInput,
+  scheme: string,
+): boolean {
+  const payloads = (b.artifacts as Record<string, unknown>[]).filter(
+    (a) => a.role === "payload",
+  );
+  if (payloads.length !== 1) return false;
+  if (b.platform !== inp.installed.platform) return false;
+  if (
+    b.arch !== inp.installed.arch &&
+    b.arch !== "universal" &&
+    b.arch !== "any"
+  )
+    return false;
+  const req = b.requires;
+  if (isObj(req)) {
+    if (hasOwn(req, "engine") && typeof req.engine !== "string") return false;
+    if (
+      hasOwn(req, "minBinary") &&
+      refParseVersion(scheme, req.minBinary) === null
+    )
+      return false;
+  }
+  return true;
+}
+
+const ARCH_RANK = (b: Record<string, any>, arch: string): number =>
+  b.arch === arch ? 0 : b.arch === "universal" ? 1 : 2;
+
+function refPickBuild(
+  builds: Record<string, any>[],
+  arch: string,
+): Record<string, any> | null {
+  const sorted = [...builds].sort((x, y) => {
+    const r = ARCH_RANK(x, arch) - ARCH_RANK(y, arch);
+    if (r !== 0) return r;
+    return x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+  });
+  return sorted[0] ?? null;
+}
+
+function refDecideUpdate(inp: RefInput): Record<string, unknown> {
+  const feed = inp.feed;
+  const scheme = feed.app.versionScheme as string;
+  const cmp = (a: string, b: string): number | null =>
+    refCompareVersions(scheme, a, b);
+  const discard = (action: string): boolean =>
+    inp.staged !== null && action !== "code-ready";
+  const none = (reason: string): Record<string, unknown> => ({
+    action: "none",
+    reason,
+    behind: reason === "behind",
+    discardStaged: discard("none"),
+  });
+  const blocked = (): Record<string, unknown> => ({
+    action: "blocked",
+    reason: "app-floor",
+    discardStaged: discard("blocked"),
+  });
+
+  // 1. Stale.
+  if (inp.now >= (feed.expiresAt as number) + CLOCK_SKEW)
+    return {
+      action: "none",
+      reason: "stale",
+      behind: false,
+      discardStaged: false,
+    };
+  // 2. Unknown version.
+  const run = inp.installed.version;
+  const bin = inp.installed.binaryVersion ?? run;
+  if (
+    refParseVersion(scheme, run) === null ||
+    refParseVersion(scheme, bin) === null
+  )
+    return none("unknown-version");
+  // 3. Setup.
+  const target = (feed.app.targets as Record<string, any>[]).find(
+    (t) => t.platform === inp.installed.platform,
+  );
+  let entry: Record<string, any> | null = null;
+  if (target && inp.outlet.kind !== "unknown") {
+    const outlets = target.outlets as Record<string, Record<string, any>>;
+    const byId = inp.outlet.id !== null ? outlets[inp.outlet.id] : undefined;
+    if (byId && byId.kind === inp.outlet.kind) entry = byId;
+    else {
+      const ofKind = Object.values(outlets).filter(
+        (e) => e.kind === inp.outlet.kind,
+      );
+      if (ofKind.length === 1) entry = ofKind[0]!;
+    }
+  }
+  const caps = refEffectiveCapabilities(inp.outlet.kind, {
+    platform: inp.installed.platform,
+    subkind: inp.subkind,
+    server: entry?.capabilities,
+  });
+  const belowFloor =
+    !!target && target.floor !== null && cmp(bin, target.floor.minVersion)! < 0;
+  // 4. The offer.
+  let offer: Record<string, any> | null = null;
+  if (entry) {
+    if (caps.binaryUpdates === "self") {
+      offer =
+        entry.live !== null &&
+        entry.live.seq === target!.release.seq &&
+        inp.record !== null
+          ? target!.release
+          : null;
+    } else offer = entry.live;
+  }
+  if (!offer) return belowFloor ? blocked() : none("not-available");
+  // 5. Behind.
+  if (cmp(offer.version, run)! < 0) return none("behind");
+  // 6. Up to date.
+  const newerRun = cmp(offer.version, run)! > 0;
+  const newerBin = cmp(offer.version, bin)! > 0;
+  if (!newerRun && !(belowFloor && newerBin))
+    return belowFloor ? blocked() : none("up-to-date");
+  // 7. Halted.
+  if (entry!.halted) return belowFloor ? blocked() : none("halted");
+  // 8. Rollout.
+  if (hasOwn(entry!, "rollout") && !belowFloor && !target!.critical) {
+    const bp = entry!.rollout.bp as number;
+    if (!(inp.bucket !== null && inp.bucket < bp)) return none("out-of-bucket");
+  }
+  const short = { version: offer.version, seq: offer.seq };
+  const critical = target!.critical as boolean;
+  // 9. Platform.
+  if (caps.binaryUpdates === "none")
+    return {
+      action: "platform",
+      release: short,
+      mandatory: belowFloor,
+      critical,
+      discardStaged: discard("platform"),
+    };
+  // 10. Store.
+  if (caps.binaryUpdates === "store")
+    return {
+      action: "store",
+      release: short,
+      listingUrl: entry!.listingUrl ?? null,
+      mandatory: belowFloor,
+      critical,
+      discardStaged: discard("store"),
+    };
+  // 11. Self-updating outlets.
+  const full = { version: offer.version, seq: offer.seq, sha256: offer.sha256 };
+  const notSkipped = offer.version !== inp.skipVersion;
+  if (
+    !belowFloor &&
+    newerRun &&
+    caps.codeUpdates &&
+    inp.staged !== null &&
+    inp.staged.channel === feed.channel &&
+    inp.staged.version === offer.version &&
+    notSkipped
+  )
+    return {
+      action: "code-ready",
+      release: full,
+      critical,
+      discardStaged: false,
+    };
+  const builds = ((inp.record?.builds ?? []) as Record<string, any>[]).filter(
+    (b) => refEligible(b, inp, scheme),
+  );
+  const codePacks = builds.filter((b) => {
+    if (b.format !== "pck") return false;
+    const req = isObj(b.requires) ? b.requires : {};
+    if (
+      typeof req.engine !== "string" ||
+      inp.installed.engine === null ||
+      req.engine !== inp.installed.engine
+    )
+      return false;
+    if (!hasOwn(req, "minBinary")) return true;
+    const c = cmp(bin, req.minBinary as string);
+    return c !== null && c >= 0;
+  });
+  const binaries = builds.filter(
+    (b) =>
+      b.format !== "pck" &&
+      (inp.installed.format === null || b.format === inp.installed.format),
+  );
+  const binary = (
+    method: string,
+    build: Record<string, any>,
+  ): Record<string, unknown> => ({
+    action: "binary",
+    method,
+    release: full,
+    build: build.id,
+    mandatory: belowFloor,
+    critical,
+    prestage: [],
+    discardStaged: discard("binary"),
+  });
+  if (
+    !belowFloor &&
+    newerRun &&
+    caps.codeUpdates &&
+    inp.methods.includes("sidecar-pck") &&
+    notSkipped &&
+    codePacks.length > 0
+  )
+    return binary("sidecar-pck", refPickBuild(codePacks, inp.installed.arch)!);
+  const pick = refPickBuild(binaries, inp.installed.arch);
+  for (const method of ["native", "download"])
+    if (newerBin && inp.methods.includes(method) && pick)
+      return binary(method, pick);
+  if (belowFloor) return blocked();
+  if (!notSkipped) return none("skipped");
+  if (!pick) return none("no-build");
+  return none("no-method");
+}
+
+/** §2.8: no v4 answer stops play. */
+function refBootDecision(d: Record<string, unknown>): string {
+  if (d.action === "none") return "none";
+  if (d.action === "platform" && d.mandatory === false) return "none";
+  return "optional";
+}
+
+function refResolveUpdateOutlet(o: {
+  host: unknown;
+  stamp: Record<string, unknown> | null;
+  detected: Record<string, unknown> | null;
+}): { id: string | null; kind: string; subkind: string | null } {
+  const kinds: readonly string[] = REF_OUTLET_KINDS;
+  if (o.host !== null && o.host !== undefined) {
+    if (typeof o.host === "string") {
+      if (!kinds.includes(o.host)) throw new Error("invalid-options");
+      return { id: o.host, kind: o.host, subkind: null };
+    }
+    const h = o.host as Record<string, unknown>;
+    if (typeof h.kind !== "string" || !kinds.includes(h.kind))
+      throw new Error("invalid-options");
+    if (typeof h.id !== "string" || !REF_OUTLET_ID_RE.test(h.id))
+      throw new Error("invalid-options");
+    if (
+      h.subkind !== undefined &&
+      h.subkind !== null &&
+      !REF_SUBKINDS.includes(h.subkind as string)
+    )
+      throw new Error("invalid-options");
+    return {
+      id: h.id,
+      kind: h.kind,
+      subkind: (h.subkind as string | undefined) ?? null,
+    };
+  }
+  const s = o.stamp ?? {};
+  const rawKind = hasOwn(s, "outletKind") ? s.outletKind : s.outlet;
+  const kind =
+    typeof rawKind === "string" && kinds.includes(rawKind) ? rawKind : null;
+  const id =
+    typeof s.outlet === "string" && REF_OUTLET_ID_RE.test(s.outlet)
+      ? s.outlet
+      : null;
+  const sub =
+    typeof s.outletSubkind === "string" &&
+    REF_SUBKINDS.includes(s.outletSubkind)
+      ? s.outletSubkind
+      : null;
+  if (o.detected) {
+    const dk = o.detected.kind as string;
+    const ds = (o.detected.subkind as string | null) ?? null;
+    return dk === kind
+      ? { id, kind: dk, subkind: ds }
+      : { id: null, kind: dk, subkind: ds };
+  }
+  if (kind !== null) return { id, kind, subkind: sub };
+  return { id: null, kind: "unknown", subkind: null };
+}
+
+function refBucket(
+  salt: string,
+  installId: string,
+): { sha256: string; first4: string; u32: number; bucket: number } {
+  const digest = createHash("sha256")
+    .update(Buffer.from(salt, "utf8"))
+    .update(Buffer.from(installId, "utf8"))
+    .digest();
+  const u32 = digest.readUInt32BE(0);
+  return {
+    sha256: digest.toString("hex"),
+    first4: digest.subarray(0, 4).toString("hex"),
+    u32,
+    bucket: u32 % 10000,
+  };
+}
+
+// ── §4.6 `update-matrix.json` ────────────────────────────────────────────────────────────────
+
+/** `F`: six targets in `RELEASE_PLATFORMS` order, each pinning R15 (plans/P3-01.md §4.6). */
+function matrixFeed(): Record<string, any> {
+  const e = (
+    kind: string,
+    live: Record<string, unknown>,
+    extra: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    kind,
+    live,
+    halted: false,
+    ...extra,
+  });
+  const L15 = LIVE("1.5.0", 15);
+  const L14 = LIVE("1.4.0", 14);
+  const appStore = e("app-store", L14, { listingUrl: APP_STORE_URL });
+  const t = (
+    platform: string,
+    outlets: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    platform,
+    release: pinOf("R15"),
+    floor: null,
+    critical: false,
+    outlets,
+  });
+  return {
+    schemaVersion: 1,
+    iss: ISSUER_V3,
+    aud: AUD_V3,
+    channel: "stable",
+    selector: {},
+    seq: 7,
+    issuedAt: FEED_ISSUED,
+    expiresAt: FEED_EXPIRES,
+    app: {
+      deliverable: "app",
+      versionScheme: "semver",
+      targets: [
+        t("macos", {
+          direct: e("direct", L15),
+          "app-store": structuredClone(appStore),
+          steam: e("steam", L15),
+        }),
+        t("ios", {
+          direct: e("direct", L15),
+          "app-store": structuredClone(appStore),
+          testflight: e("testflight", L15),
+          altstore: e("altstore", L15),
+          "altstore-beta": e("altstore", L14),
+        }),
+        t("android", {
+          direct: e("direct", L15),
+          play: e("play", L14),
+          obtainium: e("obtainium", L15),
+        }),
+        t("windows", {
+          direct: e("direct", L15),
+          steam: e("steam", L15),
+          "ms-store": e("ms-store", L14),
+        }),
+        t("linux", {
+          direct: e("direct", L15),
+          steam: e("steam", L15),
+          flathub: e("flathub", L14),
+        }),
+        t("web", { web: e("web", L15) }),
+      ],
+    },
+  };
+}
+
+function rescheme(
+  feed: Record<string, any>,
+  scheme: string,
+  pin: string,
+  map: (v: string, seq: number) => [string, number],
+): void {
+  feed.app.versionScheme = scheme;
+  for (const t of feed.app.targets) {
+    t.release = pinOf(pin);
+    for (const en of Object.values<Record<string, any>>(t.outlets))
+      if (en.live) {
+        const [v, s] = map(en.live.version, en.live.seq);
+        en.live = LIVE(v, s);
+      }
+  }
+}
+
+function matrixFeedB(): Record<string, any> {
+  const f = matrixFeed();
+  rescheme(f, "semver+build", "RB", (v, s) =>
+    v === "1.5.0" ? ["1.5.0+46", 16] : [v, s],
+  );
+  return f;
+}
+function matrixFeed4(): Record<string, any> {
+  const f = matrixFeed();
+  rescheme(f, "4part", "R4", (v, s) => [`${v}.0`, s]);
+  return f;
+}
+function matrixFeedBeta(): Record<string, any> {
+  return {
+    ...matrixFeed(),
+    channel: "beta",
+    app: {
+      deliverable: "app",
+      versionScheme: "semver",
+      targets: [
+        {
+          platform: "macos",
+          release: pinOf("R16b"),
+          floor: null,
+          critical: false,
+          outlets: {
+            direct: {
+              kind: "direct",
+              live: LIVE("1.6.0-beta.2", 16),
+              halted: false,
+            },
+          },
+        },
+      ],
+    },
+  };
+}
+
+function baseInput(): RefInput {
+  return {
+    now: FEED_NOW,
+    feed: matrixFeed(),
+    record: structuredClone(record("R15").doc),
+    installed: {
+      version: "1.4.0",
+      binaryVersion: "1.4.0",
+      buildNumber: "140",
+      platform: "macos",
+      arch: "arm64",
+      format: null,
+      engine: "godot-4.7",
+    },
+    outlet: { id: "direct", kind: "direct" },
+    subkind: null,
+    staged: null,
+    skipVersion: null,
+    bucket: null,
+    methods: ["download"],
+  };
+}
+
+/** The delta rule (§4.6), as functions. */
+const D = {
+  W: (i: RefInput): void => {
+    i.installed.platform = "windows";
+    i.installed.arch = "x86_64";
+    i.installed.format = "zip";
+    i.methods = ["sidecar-pck", "download"];
+  },
+  installed:
+    (v: string) =>
+    (i: RefInput): void => {
+      i.installed.version = v;
+      i.installed.binaryVersion = v;
+    },
+  version:
+    (v: string) =>
+    (i: RefInput): void =>
+      void (i.installed.version = v),
+  binary:
+    (v: string) =>
+    (i: RefInput): void =>
+      void (i.installed.binaryVersion = v),
+  platform:
+    (p: string, arch?: string) =>
+    (i: RefInput): void => {
+      i.installed.platform = p;
+      if (arch) i.installed.arch = arch;
+    },
+  format:
+    (f: string) =>
+    (i: RefInput): void =>
+      void (i.installed.format = f),
+  outlet:
+    (id: string | null, kind?: string) =>
+    (i: RefInput): void =>
+      void (i.outlet = { id, kind: kind ?? (id as string) }),
+  subkind:
+    (s: string) =>
+    (i: RefInput): void =>
+      void (i.subkind = s),
+  methods:
+    (...m: string[]) =>
+    (i: RefInput): void =>
+      void (i.methods = m),
+  staged:
+    (version: string, channel: string) =>
+    (i: RefInput): void =>
+      void (i.staged = { version, channel }),
+  skip:
+    (v: string) =>
+    (i: RefInput): void =>
+      void (i.skipVersion = v),
+  bucket:
+    (n: number | null) =>
+    (i: RefInput): void =>
+      void (i.bucket = n),
+  now:
+    (t: number) =>
+    (i: RefInput): void =>
+      void (i.now = t),
+  engine:
+    (e: string) =>
+    (i: RefInput): void =>
+      void (i.installed.engine = e),
+  recordNull: (i: RefInput): void => void (i.record = null),
+  floor:
+    (platform: string, v: string) =>
+    (i: RefInput): void => {
+      i.feed.app.targets.find(
+        (t: Record<string, any>) => t.platform === platform,
+      ).floor = { minVersion: v };
+    },
+  /** An entry change on the decided platform (`installed.platform`). */
+  entry:
+    (id: string, patch: Record<string, unknown>) =>
+    (i: RefInput): void => {
+      const t = i.feed.app.targets.find(
+        (x: Record<string, any>) => x.platform === i.installed.platform,
+      );
+      Object.assign(t.outlets[id], patch);
+    },
+  rollout:
+    (bp: number) =>
+    (i: RefInput): void => {
+      const t = i.feed.app.targets.find(
+        (x: Record<string, any>) => x.platform === i.installed.platform,
+      );
+      t.outlets.direct.rollout = { bp, salt: ROLLOUT_SALT };
+    },
+  critical: (i: RefInput): void => {
+    i.feed.app.targets.find(
+      (x: Record<string, any>) => x.platform === i.installed.platform,
+    ).critical = true;
+  },
+  feedRecord:
+    (feed: () => Record<string, any>, rec: string) =>
+    (i: RefInput): void => {
+      i.feed = feed();
+      i.record = structuredClone(record(rec).doc);
+    },
+};
+
+type Delta = (i: RefInput) => void;
+/** The plan's expected decision, in its own terms; every given member must match. */
+interface Want {
+  action: string;
+  reason?: string;
+  method?: string;
+  build?: string;
+  release?: string;
+  mandatory?: boolean;
+  critical?: boolean;
+  discardStaged?: boolean;
+  listingUrl?: string | null;
+  boot: "none" | "optional";
+}
+
+function updateRowsSpec(): { name: string; deltas: Delta[]; want: Want }[] {
+  const { W } = D;
+  const row = (
+    name: string,
+    deltas: Delta[],
+    want: Want,
+  ): { name: string; deltas: Delta[]; want: Want } => ({ name, deltas, want });
+  const o = "optional" as const;
+  const n = "none" as const;
+  const r6 = [D.floor("macos", "1.5.0")];
+  const r26 = [D.platform("ios"), D.outlet("app-store"), D.installed("1.3.0")];
+  const r45 = [D.outlet(null, "unknown")];
+  return [
+    row("none — up to date", [D.installed("1.5.0")], {
+      action: "none",
+      reason: "up-to-date",
+      boot: n,
+    }),
+    row(
+      "none — behind: the channel head is older, nothing is downgraded",
+      [D.installed("1.6.0-beta.1")],
+      { action: "none", reason: "behind", boot: n },
+    ),
+    row(
+      "none — behind suppresses the floor",
+      [D.installed("1.6.0"), D.binary("1.3.0"), D.floor("macos", "1.4.0")],
+      { action: "none", reason: "behind", boot: n },
+    ),
+    row("binary — download a newer release on `direct` (universal build)", [], {
+      action: "binary",
+      method: "download",
+      build: "macos-dmg",
+      boot: o,
+    }),
+    row(
+      "binary — native when the host has a native updater",
+      [D.methods("native", "download")],
+      { action: "binary", method: "native", build: "macos-dmg", boot: o },
+    ),
+    row("binary — mandatory below this platform's floor", r6, {
+      action: "binary",
+      method: "download",
+      build: "macos-dmg",
+      mandatory: true,
+      boot: o,
+    }),
+    row(
+      "binary — the floor is judged against the binary, not the running code",
+      [W, D.version("1.5.0"), D.binary("1.3.0"), D.floor("windows", "1.4.0")],
+      {
+        action: "binary",
+        method: "download",
+        build: "win-zip",
+        mandatory: true,
+        boot: o,
+      },
+    ),
+    row("binary — sidecar-pck: same engine, the binary meets minBinary", [W], {
+      action: "binary",
+      method: "sidecar-pck",
+      build: "win-pck",
+      boot: o,
+    }),
+    row(
+      "binary — an engine change: the binary supersedes code",
+      [W, D.engine("godot-4.6")],
+      { action: "binary", method: "download", build: "win-zip", boot: o },
+    ),
+    row(
+      "binary — minBinary not met: the binary supersedes code",
+      [W, D.version("1.3.5"), D.binary("1.3.0")],
+      { action: "binary", method: "download", build: "win-zip", boot: o },
+    ),
+    row(
+      "binary — a mandatory update never takes the code path",
+      [W, D.floor("windows", "1.5.0")],
+      {
+        action: "binary",
+        method: "download",
+        build: "win-zip",
+        mandatory: true,
+        boot: o,
+      },
+    ),
+    row(
+      "code-ready — the staged release is the target on the same channel",
+      [W, D.staged("1.5.0", "stable")],
+      { action: "code-ready", discardStaged: false, boot: o },
+    ),
+    row(
+      "binary — staged code from another channel is discarded",
+      [W, D.staged("1.5.0", "beta")],
+      { action: "binary", method: "sidecar-pck", discardStaged: true, boot: o },
+    ),
+    row(
+      "binary — a stale staged release is discarded",
+      [W, D.staged("1.4.5", "stable")],
+      { action: "binary", method: "sidecar-pck", discardStaged: true, boot: o },
+    ),
+    row(
+      "binary — the skipped version is still offered as a download",
+      [W, D.skip("1.5.0")],
+      { action: "binary", method: "download", build: "win-zip", boot: o },
+    ),
+    row(
+      "none — the skipped version with no other method",
+      [W, D.methods("sidecar-pck"), D.skip("1.5.0")],
+      { action: "none", reason: "skipped", boot: n },
+    ),
+    row("none — no method this host can perform", [D.methods()], {
+      action: "none",
+      reason: "no-method",
+      boot: n,
+    }),
+    row(
+      "blocked — below the floor with no method: a prompt, and play goes on",
+      [D.methods(), D.floor("macos", "1.5.0")],
+      { action: "blocked", reason: "app-floor", boot: o },
+    ),
+    row(
+      "none — halted, and the staged update is discarded",
+      [W, D.entry("direct", { halted: true }), D.staged("1.5.0", "stable")],
+      { action: "none", reason: "halted", discardStaged: true, boot: n },
+    ),
+    row(
+      "blocked — halted below the floor",
+      [D.entry("direct", { halted: true }), D.floor("macos", "1.5.0")],
+      { action: "blocked", reason: "app-floor", boot: o },
+    ),
+    row("none — out of the rollout bucket", [D.rollout(2500), D.bucket(6871)], {
+      action: "none",
+      reason: "out-of-bucket",
+      boot: n,
+    }),
+    row(
+      "binary — inside the rollout bucket",
+      [D.rollout(7000), D.bucket(6871)],
+      { action: "binary", method: "download", build: "macos-dmg", boot: o },
+    ),
+    row(
+      "none — a bucket equal to bp is out",
+      [D.rollout(6871), D.bucket(6871)],
+      { action: "none", reason: "out-of-bucket", boot: n },
+    ),
+    row(
+      "binary — a critical release bypasses the rollout",
+      [D.rollout(2500), D.bucket(6871), D.critical],
+      { action: "binary", method: "download", critical: true, boot: o },
+    ),
+    row(
+      "binary — below the floor bypasses the rollout",
+      [D.rollout(2500), D.bucket(6871), D.floor("macos", "1.5.0")],
+      { action: "binary", method: "download", mandatory: true, boot: o },
+    ),
+    row("store — a newer release is live on the App Store", r26, {
+      action: "store",
+      release: "1.4.0",
+      listingUrl: APP_STORE_URL,
+      boot: o,
+    }),
+    row(
+      "none — the App Store has nothing newer",
+      [D.platform("ios"), D.outlet("app-store"), D.installed("1.4.0")],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "store — mandatory, and the store's release clears the floor",
+      [...r26, D.floor("ios", "1.4.0")],
+      { action: "store", release: "1.4.0", mandatory: true, boot: o },
+    ),
+    row(
+      "store — mandatory although the store's release is still below the floor",
+      [...r26, D.floor("ios", "1.5.0")],
+      { action: "store", release: "1.4.0", mandatory: true, boot: o },
+    ),
+    row(
+      "blocked — below the floor, and the store has nothing newer",
+      [
+        D.platform("ios"),
+        D.outlet("app-store"),
+        D.installed("1.4.0"),
+        D.floor("ios", "1.5.0"),
+      ],
+      { action: "blocked", reason: "app-floor", boot: o },
+    ),
+    row(
+      "store — store builds never self-update code",
+      [
+        D.platform("macos"),
+        D.outlet("app-store"),
+        D.installed("1.3.0"),
+        D.methods("sidecar-pck", "download"),
+        D.staged("1.4.0", "stable"),
+      ],
+      { action: "store", release: "1.4.0", discardStaged: true, boot: o },
+    ),
+    row(
+      "platform — Steam has a newer release",
+      [D.platform("linux", "x86_64"), D.outlet("steam")],
+      { action: "platform", release: "1.5.0", boot: n },
+    ),
+    row(
+      "platform — mandatory through Steam",
+      [
+        D.platform("linux", "x86_64"),
+        D.outlet("steam"),
+        D.floor("linux", "1.5.0"),
+      ],
+      { action: "platform", release: "1.5.0", mandatory: true, boot: o },
+    ),
+    row(
+      "platform — web reloads",
+      [D.platform("web", "wasm32"), D.outlet("web")],
+      { action: "platform", release: "1.5.0", boot: n },
+    ),
+    row(
+      "none — the outlet has no entry for this platform",
+      [D.platform("linux", "x86_64"), D.outlet("itch")],
+      { action: "none", reason: "not-available", boot: n },
+    ),
+    row(
+      "none — no target for the platform",
+      [
+        (i) =>
+          void (i.feed.app.targets = i.feed.app.targets.filter(
+            (t: Record<string, any>) => t.platform !== "android",
+          )),
+        D.platform("android", "arm64"),
+        D.outlet("obtainium"),
+      ],
+      { action: "none", reason: "not-available", boot: n },
+    ),
+    row(
+      "binary — another platform's floor does not apply",
+      [W, D.floor("macos", "1.5.0")],
+      { action: "binary", method: "sidecar-pck", build: "win-pck", boot: o },
+    ),
+    row("none — no record for a self-updating outlet", [D.recordNull], {
+      action: "none",
+      reason: "not-available",
+      boot: n,
+    }),
+    row(
+      "none — a stale feed freezes, and the staged update is kept",
+      [D.now(1700001200), W, D.staged("1.5.0", "stable")],
+      { action: "none", reason: "stale", discardStaged: false, boot: n },
+    ),
+    row(
+      "none — a stale feed never blocks below the floor",
+      [D.now(1700001200), D.floor("macos", "1.5.0")],
+      { action: "none", reason: "stale", boot: n },
+    ),
+    row("binary — one second before stale", [D.now(1700001199)], {
+      action: "binary",
+      method: "download",
+      boot: o,
+    }),
+    row(
+      "binary — server narrowing turns code updates off",
+      [W, D.entry("direct", { capabilities: { codeUpdates: false } })],
+      { action: "binary", method: "download", build: "win-zip", boot: o },
+    ),
+    row(
+      "store — the server cannot widen an App Store build to self",
+      [
+        ...r26,
+        D.entry("app-store", { capabilities: { binaryUpdates: "self" } }),
+      ],
+      { action: "store", release: "1.4.0", boot: o },
+    ),
+    row(
+      "platform — a Homebrew install is updated by brew",
+      [D.subkind("homebrew")],
+      { action: "platform", release: "1.5.0", boot: n },
+    ),
+    row("none — an unknown outlet is never offered an update", r45, {
+      action: "none",
+      reason: "not-available",
+      boot: n,
+    }),
+    row(
+      "blocked — an unknown outlet below the floor",
+      [...r45, D.floor("macos", "1.5.0")],
+      { action: "blocked", reason: "app-floor", boot: o },
+    ),
+    row(
+      "binary — format gating picks the installed format",
+      [D.platform("windows", "x86_64"), D.format("exe")],
+      { action: "binary", method: "download", build: "win-exe", boot: o },
+    ),
+    row(
+      "binary — the arm64 build on an arm64 Linux device",
+      [D.platform("linux", "arm64")],
+      { action: "binary", method: "download", build: "linux-arm64", boot: o },
+    ),
+    row(
+      "none — no build for the device's arch",
+      [D.platform("linux", "armv7")],
+      { action: "none", reason: "no-build", boot: n },
+    ),
+    row(
+      "binary — a prerelease target on beta",
+      [D.feedRecord(matrixFeedBeta, "R16b"), D.installed("1.5.0")],
+      {
+        action: "binary",
+        method: "download",
+        build: "macos-dmg",
+        release: "1.6.0-beta.2",
+        boot: o,
+      },
+    ),
+    row(
+      "none — an installed version that does not parse",
+      [D.installed("1.5")],
+      { action: "none", reason: "unknown-version", boot: n },
+    ),
+    row(
+      "store — iOS web distribution opens its page, never installs itself or loads code",
+      [D.platform("ios", "arm64"), D.outlet("direct")],
+      { action: "store", release: "1.5.0", listingUrl: null, boot: o },
+    ),
+    row(
+      "none — a rollout with no bucket is out",
+      [D.rollout(7000), D.bucket(null)],
+      { action: "none", reason: "out-of-bucket", boot: n },
+    ),
+    row(
+      "binary — a store-only build is never installed",
+      [D.platform("android", "arm64"), D.outlet("direct")],
+      { action: "binary", method: "download", build: "apk", boot: o },
+    ),
+    row(
+      "binary — a build with no payload file is never installed",
+      [W, D.methods("download")],
+      { action: "binary", method: "download", build: "win-zip", boot: o },
+    ),
+    row(
+      "store — an AltStore beta source reads its own entry",
+      [
+        D.platform("ios"),
+        D.outlet("altstore-beta", "altstore"),
+        D.installed("1.3.0"),
+      ],
+      { action: "store", release: "1.4.0", listingUrl: null, boot: o },
+    ),
+    row(
+      "none — two entries of the detected kind, and no id to choose",
+      [D.platform("ios"), D.outlet(null, "altstore"), D.installed("1.3.0")],
+      { action: "none", reason: "not-available", boot: n },
+    ),
+    row(
+      "store — the one entry of the detected kind",
+      [D.platform("ios"), D.outlet(null, "app-store"), D.installed("1.3.0")],
+      { action: "store", release: "1.4.0", boot: o },
+    ),
+    row(
+      "binary — `semver+build`: a higher build number is newer",
+      [D.feedRecord(matrixFeedB, "RB"), D.installed("1.5.0+45")],
+      { action: "binary", method: "download", build: "macos-dmg", boot: o },
+    ),
+    row(
+      "none — `semver+build`: the same build is up to date",
+      [D.feedRecord(matrixFeedB, "RB"), D.installed("1.5.0+46")],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "binary — `semver+build`: no build metadata is older",
+      [D.feedRecord(matrixFeedB, "RB"), D.installed("1.5.0")],
+      { action: "binary", method: "download", build: "macos-dmg", boot: o },
+    ),
+    row(
+      "binary — `4part`: parts compare numerically",
+      [D.feedRecord(matrixFeed4, "R4"), D.installed("1.4.9.9")],
+      { action: "binary", method: "download", build: "macos-dmg", boot: o },
+    ),
+    row(
+      "none — `4part`: 1.10 is newer than 1.5, so the device is behind",
+      [D.feedRecord(matrixFeed4, "R4"), D.installed("1.10.0.0")],
+      { action: "none", reason: "behind", boot: n },
+    ),
+    row(
+      "none — `4part`: a three-part version does not parse",
+      [D.feedRecord(matrixFeed4, "R4"), D.installed("1.5.0")],
+      { action: "none", reason: "unknown-version", boot: n },
+    ),
+    row(
+      "none — `seq` values compare exactly at 2^53 − 1",
+      [
+        (i) => {
+          const t = i.feed.app.targets[0];
+          t.release = pinOf("R15max");
+          t.outlets.direct.live = LIVE("1.5.0", MAX_WIRE_INTEGER_REF - 1);
+          i.record = structuredClone(record("R15max").doc);
+        },
+      ],
+      { action: "none", reason: "not-available", boot: n },
+    ),
+  ];
+}
+
+function buildUpdateMatrixV1(): unknown {
+  const fail = (m: string): never => {
+    throw new Error(`update-matrix: ${m}`);
+  };
+  const vocabulary = {
+    actions: ["none", "code-ready", "binary", "store", "platform", "blocked"],
+    noneReasons: [
+      "up-to-date",
+      "behind",
+      "not-available",
+      "halted",
+      "out-of-bucket",
+      "stale",
+      "skipped",
+      "no-method",
+      "no-build",
+      "unknown-version",
+    ],
+    blockedReasons: ["app-floor"],
+    methods: ["native", "download", "sidecar-pck"],
+    boot: ["none", "optional", "required"],
+    schemes: [...REF_SCHEMES],
+  };
+  const versionSpec: [string, string, string, number | null, string][] = [
+    ["semver", "1.2.3", "1.2.4", -1, "patch"],
+    ["semver", "1.10.0", "1.9.0", 1, "numeric, not text"],
+    ["semver", "1.0.0-alpha", "1.0.0", -1, "a prerelease is lower"],
+    [
+      "semver",
+      "1.0.0-alpha.1",
+      "1.0.0-alpha.beta",
+      -1,
+      "numeric below non-numeric",
+    ],
+    [
+      "semver",
+      "1.0.0-9",
+      "1.0.0-10a",
+      -1,
+      "the same, where text order would say otherwise",
+    ],
+    [
+      "semver",
+      "1.0.0-alpha.10",
+      "1.0.0-alpha.9",
+      1,
+      "numeric prerelease identifiers",
+    ],
+    ["semver", "1.2.3+45", "1.2.3+9", 0, "build metadata ignored"],
+    [
+      "semver",
+      "99999999999999999999.0.0",
+      "99999999999999999998.0.0",
+      1,
+      "exact beyond 2^53",
+    ],
+    ["semver", "01.2.3", "1.2.3", null, "a leading zero does not parse"],
+    ["semver", "1.2", "1.2.0", null, "two parts do not parse"],
+    [
+      "semver+build",
+      "1.2.3+45",
+      "1.2.3+9",
+      1,
+      "numeric build metadata breaks the tie",
+    ],
+    ["semver+build", "1.2.3", "1.2.3+0", -1, "no metadata is lower"],
+    [
+      "semver+build",
+      "1.2.3+build.5",
+      "1.2.3",
+      0,
+      "non-numeric metadata counts as none",
+    ],
+    ["semver+build", "1.2.4", "1.2.3+99", 1, "SemVer first"],
+    [
+      "semver+build",
+      "1.2.3-rc.1+50",
+      "1.2.3+1",
+      -1,
+      "a prerelease stays lower",
+    ],
+    ["4part", "1.10.0.0", "1.9.0.0", 1, "numeric parts"],
+    ["4part", "1.2.3.4", "1.2.3.4", 0, "equal"],
+    ["4part", "1.2.3", "1.2.3.0", null, "three parts do not parse"],
+    ["4part", "1.02.3.4", "1.2.3.4", null, "a leading zero does not parse"],
+    ["4part", "1.2.3.4-beta", "1.2.3.4", null, "no prerelease in 4part"],
+    [
+      "semver",
+      "1.0.0-a..b",
+      "1.0.0-a.0.b",
+      null,
+      "an empty prerelease identifier does not parse",
+    ],
+    [
+      "semver",
+      "1.0.0-01",
+      "1.0.0-1",
+      null,
+      "a numeric prerelease identifier with a leading zero does not parse",
+    ],
+    [
+      "semver+build",
+      "1.2.3+",
+      "1.2.3",
+      null,
+      "empty build metadata does not parse",
+    ],
+    [
+      "semver",
+      "1.2.3\n",
+      "1.2.3",
+      null,
+      "a trailing U+000A does not parse (whole-string match)",
+    ],
+    ["4part", "1.2.3.4\n", "1.2.3.4", null, "the same under 4part"],
+  ];
+  const versionCases = versionSpec.map(([scheme, a, b, expect, name], k) => {
+    const got = refCompareVersions(scheme, a, b);
+    if (got !== expect)
+      fail(`version case ${k + 1} computes ${got}, the plan says ${expect}`);
+    return { name: `${k + 1}. ${name}`, scheme, a, b, expect };
+  });
+  for (const k of [23, 24]) {
+    const c = versionCases[k]!;
+    if (refParseVersion(c.scheme, c.a.replace(/\n$/, "")) === null)
+      fail(`version case ${k + 1} without the terminator must parse`);
+  }
+
+  const everything = {
+    binaryUpdates: "self",
+    codeUpdates: true,
+    dataUpdates: true,
+    channelSwitch: true,
+    commerce: "own",
+    downloadedScripts: true,
+  };
+  const capSpec: [
+    string,
+    string,
+    string,
+    string | null,
+    Record<string, unknown>,
+    Partial<RefCaps>,
+  ][] = [
+    ["direct defaults", "direct", "macos", null, {}, {}],
+    [
+      "the server narrows codeUpdates",
+      "direct",
+      "macos",
+      null,
+      { codeUpdates: false },
+      { codeUpdates: false },
+    ],
+    [
+      "the server cannot widen app-store to self",
+      "app-store",
+      "macos",
+      null,
+      { binaryUpdates: "self" },
+      {},
+    ],
+    [
+      "the server narrows self to none",
+      "direct",
+      "macos",
+      null,
+      { binaryUpdates: "none" },
+      { binaryUpdates: "none" },
+    ],
+    [
+      "the server sets commerce: none, which applies",
+      "direct",
+      "macos",
+      null,
+      { commerce: "none" },
+      { commerce: "none" },
+    ],
+    [
+      "the server sets commerce: store-iap on direct, which is ignored",
+      "direct",
+      "macos",
+      null,
+      { commerce: "store-iap" },
+      {},
+    ],
+    [
+      "subkind homebrew on direct",
+      "direct",
+      "macos",
+      "homebrew",
+      {},
+      { binaryUpdates: "none", codeUpdates: false },
+    ],
+    [
+      "unknown stays restrictive under a server that allows everything",
+      "unknown",
+      "macos",
+      null,
+      everything,
+      {},
+    ],
+    [
+      "a server true over a false default (web codeUpdates) is ignored",
+      "web",
+      "web",
+      null,
+      { codeUpdates: true },
+      {},
+    ],
+    [
+      "direct on ios: store, no code, no downloaded scripts",
+      "direct",
+      "ios",
+      null,
+      everything,
+      { binaryUpdates: "store", codeUpdates: false, downloadedScripts: false },
+    ],
+  ];
+  const capabilityCases = capSpec.map(
+    ([name, kind, platform, subkind, server, delta], k) => {
+      const { platforms: _p, ...defaults } = REF_KIND_TABLE[kind]!;
+      const expect = { ...defaults, ...delta };
+      const got = refEffectiveCapabilities(kind, { platform, subkind, server });
+      if (JSON.stringify(got) !== JSON.stringify(expect))
+        fail(`capability case ${k + 1}: ${JSON.stringify(got)}`);
+      return {
+        name: `${k + 1}. ${name}`,
+        kind,
+        platform,
+        subkind,
+        server,
+        expect,
+      };
+    },
+  );
+
+  const outletSpec: [
+    string,
+    unknown,
+    Record<string, unknown> | null,
+    Record<string, unknown> | null,
+    [string | null, string, string | null],
+  ][] = [
+    [
+      "the host wins",
+      { id: "altstore-beta", kind: "altstore" },
+      { outlet: "direct", outletKind: "direct" },
+      null,
+      ["altstore-beta", "altstore", null],
+    ],
+    [
+      "a bare kind is its own id",
+      "steam",
+      null,
+      null,
+      ["steam", "steam", null],
+    ],
+    [
+      "the stamp's id and kind",
+      null,
+      { outlet: "direct", outletKind: "direct" },
+      null,
+      ["direct", "direct", null],
+    ],
+    [
+      "a product outlet id of a kind",
+      null,
+      { outlet: "itch-beta", outletKind: "itch" },
+      null,
+      ["itch-beta", "itch", null],
+    ],
+    [
+      "no outletKind, so the id is the kind",
+      null,
+      { outlet: "steam" },
+      null,
+      ["steam", "steam", null],
+    ],
+    [
+      "a kind outside the 17",
+      null,
+      { outlet: "epic-store", outletKind: "epic" },
+      null,
+      [null, "unknown", null],
+    ],
+    ["nothing configured", null, null, null, [null, "unknown", null]],
+    [
+      "the stamp's subkind",
+      null,
+      { outlet: "direct", outletKind: "direct", outletSubkind: "flatpak" },
+      null,
+      ["direct", "direct", "flatpak"],
+    ],
+    [
+      "detection moved the kind",
+      null,
+      { outlet: "direct", outletKind: "direct" },
+      {
+        kind: "steam",
+        confidence: "declared",
+        source: "steam.libraryManifest",
+        subkind: null,
+      },
+      [null, "steam", null],
+    ],
+    [
+      "detection confirmed the kind and added a subkind",
+      null,
+      { outlet: "direct", outletKind: "direct" },
+      {
+        kind: "direct",
+        confidence: "heuristic",
+        source: "macos.homebrewCask",
+        subkind: "homebrew",
+      },
+      ["direct", "direct", "homebrew"],
+    ],
+    [
+      "detection with no stamp",
+      null,
+      null,
+      {
+        kind: "app-store",
+        confidence: "attested",
+        source: "ios.appDistributor",
+        subkind: null,
+      },
+      [null, "app-store", null],
+    ],
+    [
+      "an id outside OUTLET_ID_PATTERN",
+      null,
+      { outlet: "Direct Build", outletKind: "direct" },
+      null,
+      [null, "direct", null],
+    ],
+  ];
+  const outletCases = outletSpec.map(
+    ([name, host, stamp, detected, [id, kind, subkind]], k) => {
+      const expect = { id, kind, subkind };
+      const got = refResolveUpdateOutlet({ host, stamp, detected });
+      if (JSON.stringify(got) !== JSON.stringify(expect))
+        fail(`outlet case ${k + 1}: ${JSON.stringify(got)}`);
+      return { name: `${k + 1}. ${name}`, host, stamp, detected, expect };
+    },
+  );
+
+  const bucketSpec: [string, string, string, string, number, number][] = [
+    ["corpus device", ROLLOUT_SALT, "dev_7c1e2d", "36cae637", 919266871, 6871],
+    [
+      "top bit set",
+      ROLLOUT_SALT,
+      "device-fixture-01",
+      "c654abc5",
+      3327437765,
+      7765,
+    ],
+    [
+      "another salt",
+      "0123456789abcdef0123456789abcdef",
+      "dev_7c1e2d",
+      "1cfbabd6",
+      486255574,
+      5574,
+    ],
+    [
+      "top bit, small bucket",
+      ROLLOUT_SALT,
+      "dev_probe_1",
+      "fd307c32",
+      4247813170,
+      3170,
+    ],
+    ["bucket 0", ROLLOUT_SALT, "dev_probe_9167", "8ee96360", 2397660000, 0],
+    [
+      "bucket 9999",
+      ROLLOUT_SALT,
+      "dev_probe_3276",
+      "d456100f",
+      3562409999,
+      9999,
+    ],
+  ];
+  const bucketVectors = bucketSpec.map(
+    ([name, salt, installId, first4, u32, bucket]) => {
+      const got = refBucket(salt, installId);
+      if (got.first4 !== first4 || got.u32 !== u32 || got.bucket !== bucket)
+        fail(`bucket vector ${name}: ${JSON.stringify(got)}`);
+      return { name, salt, installId, sha256: got.sha256, first4, u32, bucket };
+    },
+  );
+
+  const used = {
+    actions: new Set<string>(),
+    none: new Set<string>(),
+    blocked: new Set<string>(),
+    methods: new Set<string>(),
+    schemes: new Set<string>(),
+    classes: new Set<string>(),
+  };
+  const rows = updateRowsSpec().map((spec, k) => {
+    const input = baseInput();
+    for (const d of spec.deltas) d(input);
+    const decision = refDecideUpdate(input);
+    const boot = refBootDecision(decision);
+    const where = `row ${k + 1} (${spec.name})`;
+    const w = spec.want;
+    if (decision.action !== w.action)
+      fail(`${where}: ${decision.action} != ${w.action}`);
+    for (const key of [
+      "reason",
+      "method",
+      "build",
+      "mandatory",
+      "critical",
+      "discardStaged",
+      "listingUrl",
+    ] as const)
+      if (w[key] !== undefined && decision[key] !== w[key])
+        fail(`${where}: ${key} ${String(decision[key])} != ${String(w[key])}`);
+    if (
+      w.release !== undefined &&
+      (decision.release as Record<string, unknown>).version !== w.release
+    )
+      fail(`${where}: release`);
+    if (boot !== w.boot) fail(`${where}: boot ${boot} != ${w.boot}`);
+    if (boot === "required") fail(`${where}: no v4 row answers required`);
+    // Every row's feed passes the feed claims, and its record the record claims and the pin.
+    const feedText = JSON.stringify(input.feed);
+    if (
+      refFeedClaims(input.feed, ctxOf(feedText), {
+        aud: AUD_V3,
+        channel: input.feed.channel,
+      }) !== null
+    )
+      fail(`${where}: its feed fails the claims`);
+    if (input.record) {
+      if (
+        !refRecordClaims(
+          input.record,
+          ctxOf(JSON.stringify(input.record)),
+          AUD_V3,
+        )
+      )
+        fail(`${where}: its record fails the claims`);
+      const target = input.feed.app.targets.find(
+        (t: Record<string, any>) => t.platform === input.installed.platform,
+      );
+      if (target) {
+        const named = [...RECORDS!.values()].find(
+          (r) => r.sha256 === target.release.sha256,
+        );
+        if (
+          !named ||
+          JSON.stringify(named.doc) !== JSON.stringify(input.record)
+        )
+          fail(`${where}: the record is not the pin's`);
+      }
+    }
+    used.actions.add(decision.action as string);
+    if (decision.action === "none") used.none.add(decision.reason as string);
+    if (decision.action === "blocked")
+      used.blocked.add(decision.reason as string);
+    if (decision.action === "binary")
+      used.methods.add(decision.method as string);
+    used.schemes.add(input.feed.app.versionScheme);
+    used.classes.add(
+      refEffectiveCapabilities(input.outlet.kind, {
+        platform: input.installed.platform,
+        subkind: input.subkind,
+      }).binaryUpdates,
+    );
+    return {
+      name: `${k + 1}. ${spec.name}`,
+      input,
+      expect: { decision, boot },
+    };
+  });
+  if (rows.length !== 65) fail(`${rows.length} rows, not 65`);
+  for (const [list, set] of [
+    [vocabulary.actions, used.actions],
+    [vocabulary.noneReasons, used.none],
+    [vocabulary.blockedReasons, used.blocked],
+    [vocabulary.methods, used.methods],
+    [vocabulary.schemes, used.schemes],
+    [REF_BINARY_ORDER, used.classes],
+  ] as const)
+    for (const v of list) if (!set.has(v)) fail(`${v} is produced by no row`);
+  for (const reserved of ["packs", "content-floor", "revoked-content"])
+    if (
+      Object.values(vocabulary).some((l) => (l as string[]).includes(reserved))
+    )
+      fail(`reserved ${reserved} in a vocabulary`);
+
+  return {
+    updateMatrixVersion: 1,
+    description:
+      "The update decision (plans/P3-01.md §2.8; WIRE-CONTRACT-V4 §11, client behaviour outside the wire contract). `versionCases` pin `compareVersions(scheme, a, b)` (null when either side does not parse); `capabilityCases` pin `effectiveCapabilities(kind, {platform, subkind, server})`; `outletCases` pin `resolveUpdateOutlet({host, stamp, detected})` (a host value that is invalid raises `invalid-options`, so none is listed); `bucketVectors` pin `rolloutBucket(salt, installId)`, the first four bytes of SHA-256(UTF-8(salt) ‖ UTF-8(installId)) read big-endian, mod 10000; each row's `input` is a complete `UpdateDecisionInput` with the decoded feed and record, and `expect` is the `decideUpdate` decision, compared by value, and its `bootDecision`. The generator recomputes every case and row with its own reference implementation. A runner also asserts its compiled tables against `outlet-matrix.json`.",
+    vocabulary,
+    versionCases,
+    capabilityCases,
+    outletCases,
+    bucketVectors,
+    rows,
+  };
+}
+
+// ── §4.7 `outlet-matrix.json` ────────────────────────────────────────────────────────────────
+
+/** The 25 signals in vocabulary order, with S-06's confidence and evidence (§4.7). */
+const REF_SIGNALS: {
+  signal: string;
+  confidence: string | null;
+  verified: string;
+  note?: string;
+}[] = [
+  {
+    signal: "ios.appDistributor",
+    confidence: "attested",
+    verified: "source",
+    note: "the device run is unmeasured",
+  },
+  { signal: "ios.bundleIdRewrite", confidence: "declared", verified: "source" },
+  {
+    signal: "ios.provisioningProfile",
+    confidence: "heuristic",
+    verified: "unmeasured",
+  },
+  { signal: "macos.masReceipt", confidence: "attested", verified: "measured" },
+  {
+    signal: "macos.receiptSandbox",
+    confidence: "attested",
+    verified: "measured",
+    note: "one app",
+  },
+  { signal: "macos.signingLeaf", confidence: "attested", verified: "measured" },
+  {
+    signal: "macos.homebrewCask",
+    confidence: "heuristic",
+    verified: "measured",
+  },
+  {
+    signal: "macos.homebrewFormula",
+    confidence: "heuristic",
+    verified: "measured",
+    note: "the realpath reading",
+  },
+  {
+    signal: "windows.packageIdentity",
+    confidence: "attested",
+    verified: "source",
+  },
+  {
+    signal: "windows.signatureKind",
+    confidence: "attested",
+    verified: "source",
+  },
+  {
+    signal: "windows.appInstallerUri",
+    confidence: "attested",
+    verified: "source",
+  },
+  {
+    signal: "windows.externalLocation",
+    confidence: "attested",
+    verified: "source",
+    note: "needs a device",
+  },
+  {
+    signal: "windows.pathConvention",
+    confidence: "heuristic",
+    verified: "unmeasured",
+  },
+  {
+    signal: "linux.flatpakInfo",
+    confidence: "attested",
+    verified: "measured",
+    note: "a foreign Flatpak too",
+  },
+  {
+    signal: "linux.snapEnv",
+    confidence: "declared",
+    verified: "emulated",
+    note: "and source",
+  },
+  { signal: "linux.appImageEnv", confidence: "declared", verified: "emulated" },
+  {
+    signal: "steam.libraryManifest",
+    confidence: "declared",
+    verified: "measured",
+    note: "macOS only",
+  },
+  {
+    signal: "steam.appIdEnv",
+    confidence: "heuristic",
+    verified: "measured",
+    note: "macOS only",
+  },
+  {
+    signal: "steam.appIdFile",
+    confidence: null,
+    verified: "measured",
+    note: "refuted as a dev-mode signal",
+  },
+  {
+    signal: "itch.receipt",
+    confidence: "declared",
+    verified: "emulated",
+    note: "and source",
+  },
+  { signal: "itch.appEnv", confidence: null, verified: "source" },
+  {
+    signal: "android.installSource",
+    confidence: "declared",
+    verified: "measured",
+    note: "every installer but Play; the digest read on one variant",
+  },
+  {
+    signal: "android.installerMismatch",
+    confidence: "declared",
+    verified: "measured",
+  },
+  { signal: "web.displayMode", confidence: "heuristic", verified: "measured" },
+  {
+    signal: "node.packageManager",
+    confidence: "heuristic",
+    verified: "measured",
+  },
+];
+const REF_VERIFIED = ["measured", "emulated", "source", "unmeasured"];
+const MAC_STORE_LEAVES: Record<string, string> = {
+  "Apple Mac OS Application Signing": "app-store",
+  "TestFlight Beta Distribution": "testflight",
+};
+const REF_PLATFORM_DATA = {
+  listingUrlPrefixes: REF_LISTING_PREFIXES,
+  playStoreCertSha256s: [] as string[],
+  altStorePalMarketplaceIds: [] as string[],
+  playPackages: ["com.android.vending"],
+  obtainiumPackages: ["dev.imranr.obtainium", "dev.imranr.obtainium.fdroid"],
+  fdroidClientPackages: [
+    "org.fdroid.fdroid",
+    "com.looker.droidify",
+    "com.machiav3lli.fdroid",
+  ],
+  systemInstallerPackages: [
+    "com.google.android.packageinstaller",
+    "com.android.packageinstaller",
+  ],
+  macosStoreLeaves: MAC_STORE_LEAVES,
+  deadlineMs: 2000,
+};
+
+interface Evidence {
+  signal: string;
+  confidence: string | null;
+  names?: { kind: string; subkind: string | null };
+  vetoes?: string[];
+}
+
+/** `detectOutlet({stamp, signals})` (plans/P3-01.md §2.9), the generator's reference. */
+function refDetectOutlet(
+  stamp: {
+    outletKind: string;
+    subkind: string | null;
+    outletIds: Record<string, string>;
+  } | null,
+  signals: Record<string, any>,
+): {
+  kind: string;
+  confidence: string | null;
+  source: string | null;
+  subkind: string | null;
+} {
+  const UNKNOWN = {
+    kind: "unknown",
+    confidence: null,
+    source: null,
+    subkind: null,
+  };
+  const ids = stamp?.outletIds ?? {};
+  const has = (s: string): boolean => hasOwn(signals, s);
+  const v = (s: string): any => signals[s];
+  const identityHolds = (s: string): boolean => {
+    switch (s) {
+      case "ios.bundleIdRewrite":
+        return v(s)?.altBundleIdentifier === ids.bundleId;
+      case "macos.receiptSandbox":
+        return v("macos.masReceipt") === true;
+      case "macos.homebrewCask":
+        return v(s) === ids.caskToken;
+      case "macos.homebrewFormula":
+        return v(s) === ids.homebrewFormula;
+      case "windows.packageIdentity":
+        return v(s) === ids.msixFamilyName;
+      case "windows.signatureKind":
+      case "windows.appInstallerUri":
+      case "windows.externalLocation":
+        return (
+          has("windows.packageIdentity") &&
+          v("windows.packageIdentity") === ids.msixFamilyName
+        );
+      case "linux.flatpakInfo":
+        return v(s) === ids.flatpakId;
+      case "linux.snapEnv":
+        return v(s)?.name === ids.snapName;
+      case "linux.appImageEnv":
+        return (
+          typeof v(s)?.exePath === "string" &&
+          typeof v(s)?.appDir === "string" &&
+          v(s).exePath.startsWith(v(s).appDir)
+        );
+      case "steam.libraryManifest":
+        return v(s) === ids.steamAppId;
+      case "steam.appIdEnv":
+        return v(s)?.appId === ids.steamAppId;
+      case "itch.receipt":
+        return v(s) === ids.itchGameId;
+      case "android.installSource":
+        return v(s)?.installer === v(s)?.initiator;
+      case "node.packageManager":
+        return v(s)?.packageMatch === true;
+      default:
+        return true;
+    }
+  };
+  // 1. Filter.
+  const evidence: Evidence[] = [];
+  for (const { signal, confidence } of REF_SIGNALS) {
+    if (!has(signal) || confidence === null || !identityHolds(signal)) continue;
+    const value = v(signal);
+    const e: Evidence = { signal, confidence };
+    const name = (kind: string, subkind: string | null = null): void =>
+      void (e.names = { kind, subkind });
+    switch (signal) {
+      case "ios.appDistributor":
+        if (value === "appStore") name("app-store");
+        else if (value === "testFlight") name("testflight");
+        else if (value === "web") name("direct");
+        else if (
+          typeof value === "string" &&
+          value.startsWith("marketplace:")
+        ) {
+          if (
+            REF_PLATFORM_DATA.altStorePalMarketplaceIds.includes(
+              value.slice(12),
+            )
+          )
+            name("altstore-pal");
+          else e.vetoes = ["app-store", "testflight"];
+        }
+        break;
+      case "ios.bundleIdRewrite":
+        name("altstore");
+        break;
+      case "ios.provisioningProfile":
+        if (value === true) e.vetoes = ["app-store"];
+        break;
+      case "macos.masReceipt":
+        if (value === true)
+          name(v("macos.receiptSandbox") === true ? "testflight" : "app-store");
+        break;
+      case "macos.signingLeaf":
+        if (hasOwn(MAC_STORE_LEAVES, value)) name(MAC_STORE_LEAVES[value]!);
+        else e.vetoes = ["app-store", "testflight"];
+        break;
+      case "macos.homebrewCask":
+      case "macos.homebrewFormula":
+        name("direct", "homebrew");
+        break;
+      case "windows.signatureKind":
+        if (value === "Store") name("ms-store");
+        else if (value === "Developer" || value === "Enterprise")
+          e.vetoes = ["ms-store"];
+        break;
+      case "windows.appInstallerUri":
+        if (value !== null) name("app-installer");
+        break;
+      case "windows.pathConvention":
+        if (value === "winget") name("winget");
+        else if (value === "scoop" || value === "chocolatey")
+          name("direct", value);
+        break;
+      case "linux.flatpakInfo":
+        if (stamp?.outletKind === "direct" && stamp.subkind === "flatpak")
+          name("direct", "flatpak");
+        else name("flathub");
+        break;
+      case "linux.snapEnv":
+        if (
+          typeof value.revision === "string" &&
+          value.revision.startsWith("x")
+        )
+          e.vetoes = ["snap"];
+        else name("snap");
+        break;
+      case "linux.appImageEnv":
+        name("direct", "appimage");
+        break;
+      case "steam.libraryManifest":
+      case "steam.appIdEnv":
+        name("steam");
+        break;
+      case "itch.receipt":
+        name("itch");
+        break;
+      case "android.installSource": {
+        const installer = value.installer as string | null;
+        if (
+          installer !== null &&
+          REF_PLATFORM_DATA.playPackages.includes(installer)
+        ) {
+          name("play");
+          if (
+            REF_PLATFORM_DATA.playStoreCertSha256s.includes(
+              value.initiatorCertSha256,
+            )
+          )
+            e.confidence = "attested";
+        } else if (
+          installer !== null &&
+          REF_PLATFORM_DATA.obtainiumPackages.includes(installer)
+        )
+          name("obtainium");
+        else if (
+          installer !== null &&
+          REF_PLATFORM_DATA.fdroidClientPackages.includes(installer)
+        )
+          name("fdroid-repo");
+        else if (
+          installer === null ||
+          installer === "com.android.shell" ||
+          REF_PLATFORM_DATA.systemInstallerPackages.includes(installer)
+        )
+          name("direct");
+        break;
+      }
+      case "android.installerMismatch":
+        if (value === true) e.vetoes = ["play", "play-testing"];
+        break;
+      case "web.displayMode":
+        name("web");
+        break;
+      case "node.packageManager":
+        name("direct", value.manager);
+        break;
+      default:
+        break;
+    }
+    evidence.push(e);
+  }
+  const vetoed = (kind: string): boolean =>
+    evidence.some((e) => e.vetoes?.includes(kind));
+  // 2. Attested naming.
+  const attested = evidence.filter(
+    (e) => e.confidence === "attested" && e.names,
+  );
+  if (attested.length > 0) {
+    const kinds = new Set(attested.map((e) => e.names!.kind));
+    if (kinds.size > 1) return UNKNOWN;
+    const first = attested[0]!;
+    if (vetoed(first.names!.kind)) return UNKNOWN;
+    return {
+      kind: first.names!.kind,
+      confidence: "attested",
+      source: first.signal,
+      subkind: first.names!.subkind,
+    };
+  }
+  // 3. The stamp.
+  if (!stamp) return UNKNOWN;
+  const cur = {
+    kind: stamp.outletKind,
+    confidence: "stamp",
+    source: "stamp",
+    subkind: stamp.subkind,
+  };
+  // 4. Vetoes.
+  if (vetoed(cur.kind)) return UNKNOWN;
+  // 5. Restricting signals.
+  const width = (kind: string, subkind: string | null): number =>
+    REF_BINARY_ORDER.indexOf(
+      refNarrow(
+        refEffectiveCapabilities(kind, { platform: "" }),
+        subkind ? REF_SUBKIND_NARROWING[subkind] : undefined,
+      ).binaryUpdates,
+    );
+  for (const conf of ["declared", "heuristic"])
+    for (const e of evidence) {
+      if (e.confidence !== conf || !e.names) continue;
+      if (width(e.names.kind, e.names.subkind) > width(cur.kind, cur.subkind))
+        continue;
+      const subkind =
+        e.names.subkind ?? (e.names.kind === cur.kind ? cur.subkind : null);
+      return {
+        kind: e.names.kind,
+        confidence: conf,
+        source: e.signal,
+        subkind,
+      };
+    }
+  return cur;
+}
+
+function buildOutletMatrixV1(): unknown {
+  const fail = (m: string): never => {
+    throw new Error(`outlet-matrix: ${m}`);
+  };
+  const IDS = {
+    steamAppId: "3166810",
+    itchGameId: "1001",
+    flatpakId: "gg.vlad.Diceroll",
+    snapName: "diceroll",
+    caskToken: "diceroll",
+    homebrewFormula: "diceroll",
+    msixFamilyName: "Diceroll_abc123",
+    bundleId: "gg.vlad.diceroll",
+  };
+  const st = (outletKind: string, subkind: string | null = null) => ({
+    outletKind,
+    subkind,
+    outletIds: IDS,
+  });
+  const and = (
+    installer: string | null,
+    initiator: string | null,
+  ): Record<string, unknown> => ({
+    "android.installSource": {
+      installer,
+      initiator,
+      initiatorCertSha256: "0".repeat(64),
+    },
+    "android.installerMismatch": installer !== initiator,
+  });
+  const appImage = {
+    "linux.appImageEnv": {
+      appImage: "/home/a/Diceroll.AppImage",
+      appDir: "/tmp/.mount_DicerX1",
+      exePath: "/tmp/.mount_DicerX1/usr/bin/diceroll",
+    },
+  };
+  const ID = "Diceroll_abc123";
+  type Exp = [string, string | null, string | null, string | null];
+  const U: Exp = ["unknown", null, null, null];
+  const spec: [
+    string,
+    ReturnType<typeof st> | null,
+    Record<string, unknown>,
+    Exp,
+  ][] = [
+    [
+      "stamp only — direct",
+      st("direct"),
+      {},
+      ["direct", "stamp", "stamp", null],
+    ],
+    ["stamp only — steam", st("steam"), {}, ["steam", "stamp", "stamp", null]],
+    ["no stamp and no evidence", null, {}, U],
+    [
+      "no stamp: a heuristic never selects",
+      null,
+      { "steam.appIdEnv": { appId: "3166810", clientLaunch: true } },
+      U,
+    ],
+    [
+      "the macOS receipt overrides a direct stamp",
+      st("direct"),
+      {
+        "macos.masReceipt": true,
+        "macos.signingLeaf": "Apple Mac OS Application Signing",
+      },
+      ["app-store", "attested", "macos.masReceipt", null],
+    ],
+    [
+      "the macOS TestFlight receipt",
+      null,
+      {
+        "macos.masReceipt": true,
+        "macos.receiptSandbox": true,
+        "macos.signingLeaf": "TestFlight Beta Distribution",
+      },
+      ["testflight", "attested", "macos.masReceipt", null],
+    ],
+    [
+      "a store leaf that disagrees with the receipt",
+      st("direct"),
+      {
+        "macos.masReceipt": true,
+        "macos.signingLeaf": "TestFlight Beta Distribution",
+      },
+      U,
+    ],
+    [
+      "a Developer ID leaf vetoes an app-store stamp",
+      st("app-store"),
+      { "macos.signingLeaf": "Developer ID Application" },
+      U,
+    ],
+    [
+      "a Developer ID leaf leaves a steam stamp",
+      st("steam"),
+      { "macos.signingLeaf": "Developer ID Application" },
+      ["steam", "stamp", "stamp", null],
+    ],
+    [
+      "no leaf vetoes a testflight stamp",
+      st("testflight"),
+      { "macos.signingLeaf": "none" },
+      U,
+    ],
+    [
+      "a Homebrew cask restricts a direct stamp",
+      st("direct"),
+      { "macos.homebrewCask": "diceroll" },
+      ["direct", "heuristic", "macos.homebrewCask", "homebrew"],
+    ],
+    [
+      "a cask with another token does not count",
+      st("direct"),
+      { "macos.homebrewCask": "other" },
+      ["direct", "stamp", "stamp", null],
+    ],
+    [
+      "the Steam library moves a direct stamp to steam",
+      st("direct"),
+      { "steam.libraryManifest": "3166810" },
+      ["steam", "declared", "steam.libraryManifest", null],
+    ],
+    [
+      "the Steam environment with this app id",
+      st("direct"),
+      { "steam.appIdEnv": { appId: "3166810", clientLaunch: true } },
+      ["steam", "heuristic", "steam.appIdEnv", null],
+    ],
+    [
+      "the Steam environment with another app id",
+      st("direct"),
+      { "steam.appIdEnv": { appId: "480", clientLaunch: true } },
+      ["direct", "stamp", "stamp", null],
+    ],
+    [
+      "`steam_appid.txt` is diagnostic only",
+      st("direct"),
+      { "steam.appIdFile": "3166810" },
+      ["direct", "stamp", "stamp", null],
+    ],
+    [
+      "a heuristic never widens: AppImage on a steam stamp",
+      st("steam"),
+      appImage,
+      ["steam", "stamp", "stamp", null],
+    ],
+    [
+      "the itch receipt moves a direct stamp to itch",
+      st("direct"),
+      { "itch.receipt": "1001" },
+      ["itch", "declared", "itch.receipt", null],
+    ],
+    [
+      "`ITCHIO_APP` is diagnostic only",
+      st("direct"),
+      { "itch.appEnv": true },
+      ["direct", "stamp", "stamp", null],
+    ],
+    [
+      "Flatpak info with this id overrides a direct stamp",
+      st("direct"),
+      { "linux.flatpakInfo": "gg.vlad.Diceroll" },
+      ["flathub", "attested", "linux.flatpakInfo", null],
+    ],
+    [
+      "Flatpak info keeps a direct + flatpak stamp",
+      st("direct", "flatpak"),
+      { "linux.flatpakInfo": "gg.vlad.Diceroll" },
+      ["direct", "attested", "linux.flatpakInfo", "flatpak"],
+    ],
+    [
+      "a foreign Flatpak is no Flathub evidence",
+      st("steam"),
+      {
+        "linux.flatpakInfo": "com.valvesoftware.Steam",
+        "steam.libraryManifest": "3166810",
+      },
+      ["steam", "declared", "steam.libraryManifest", null],
+    ],
+    [
+      "the snap name restricts a direct stamp",
+      st("direct"),
+      { "linux.snapEnv": { name: "diceroll", revision: "42" } },
+      ["snap", "declared", "linux.snapEnv", null],
+    ],
+    [
+      "a local snap revision vetoes a snap stamp",
+      st("snap"),
+      { "linux.snapEnv": { name: "diceroll", revision: "x1" } },
+      U,
+    ],
+    [
+      "AppImage with APPDIR around the executable",
+      st("direct"),
+      appImage,
+      ["direct", "declared", "linux.appImageEnv", "appimage"],
+    ],
+    [
+      "Android Play, no recorded digest: declared",
+      st("direct"),
+      and("com.android.vending", "com.android.vending"),
+      ["play", "declared", "android.installSource", null],
+    ],
+    [
+      "Android: the shell claiming Play vetoes a play stamp",
+      st("play"),
+      and("com.android.vending", "com.android.shell"),
+      U,
+    ],
+    [
+      "Android: Obtainium",
+      st("direct"),
+      and("dev.imranr.obtainium", "dev.imranr.obtainium"),
+      ["obtainium", "declared", "android.installSource", null],
+    ],
+    [
+      "Android: the F-Droid client",
+      st("direct"),
+      and("org.fdroid.fdroid", "org.fdroid.fdroid"),
+      ["fdroid-repo", "declared", "android.installSource", null],
+    ],
+    [
+      "Android: a browser download confirms direct",
+      st("direct"),
+      and(
+        "com.google.android.packageinstaller",
+        "com.google.android.packageinstaller",
+      ),
+      ["direct", "declared", "android.installSource", null],
+    ],
+    [
+      "iOS: App Store overrides a direct stamp",
+      st("direct"),
+      { "ios.appDistributor": "appStore" },
+      ["app-store", "attested", "ios.appDistributor", null],
+    ],
+    [
+      "iOS: TestFlight with no stamp",
+      null,
+      { "ios.appDistributor": "testFlight" },
+      ["testflight", "attested", "ios.appDistributor", null],
+    ],
+    [
+      "iOS: a timeout is no evidence",
+      st("app-store"),
+      { "ios.appDistributor": "timeout" },
+      ["app-store", "stamp", "stamp", null],
+    ],
+    [
+      "iOS: web distribution is direct",
+      null,
+      { "ios.appDistributor": "web" },
+      ["direct", "attested", "ios.appDistributor", null],
+    ],
+    [
+      "iOS: an AltStore rewrite moves an app-store stamp",
+      st("app-store"),
+      {
+        "ios.bundleIdRewrite": {
+          runtimeBundleId: "gg.vlad.diceroll.ABCDE12345",
+          altBundleIdentifier: "gg.vlad.diceroll",
+        },
+      },
+      ["altstore", "declared", "ios.bundleIdRewrite", null],
+    ],
+    [
+      "iOS: a provisioning profile vetoes an app-store stamp",
+      st("app-store"),
+      { "ios.provisioningProfile": true },
+      U,
+    ],
+    [
+      "iOS: a marketplace other than AltStore PAL",
+      st("app-store"),
+      { "ios.appDistributor": "marketplace:com.example" },
+      U,
+    ],
+    [
+      "Windows: Store signature with this family name",
+      st("direct"),
+      { "windows.packageIdentity": ID, "windows.signatureKind": "Store" },
+      ["ms-store", "attested", "windows.signatureKind", null],
+    ],
+    [
+      "Windows: an inherited identity is ignored",
+      st("steam"),
+      {
+        "windows.packageIdentity": "Other_xyz",
+        "windows.signatureKind": "Store",
+      },
+      ["steam", "stamp", "stamp", null],
+    ],
+    [
+      "Windows: an App Installer URI",
+      st("direct"),
+      {
+        "windows.packageIdentity": ID,
+        "windows.signatureKind": "Developer",
+        "windows.appInstallerUri": "https://dl.example/diceroll.appinstaller",
+      },
+      ["app-installer", "attested", "windows.appInstallerUri", null],
+    ],
+    [
+      "Windows: a Developer signature vetoes an ms-store stamp",
+      st("ms-store"),
+      { "windows.packageIdentity": ID, "windows.signatureKind": "Developer" },
+      U,
+    ],
+    [
+      "Windows: a sparse package keeps the stamp",
+      st("direct"),
+      {
+        "windows.packageIdentity": ID,
+        "windows.signatureKind": "Developer",
+        "windows.externalLocation": "C:\\Games\\Diceroll",
+      },
+      ["direct", "stamp", "stamp", null],
+    ],
+    [
+      "Windows: a WinGet path restricts direct to winget",
+      st("direct"),
+      { "windows.pathConvention": "winget" },
+      ["winget", "heuristic", "windows.pathConvention", null],
+    ],
+    [
+      "Windows: a Scoop path",
+      st("direct"),
+      { "windows.pathConvention": "scoop" },
+      ["direct", "heuristic", "windows.pathConvention", "scoop"],
+    ],
+    [
+      "Node: npx",
+      st("direct"),
+      { "node.packageManager": { manager: "npx", packageMatch: true } },
+      ["direct", "heuristic", "node.packageManager", "npx"],
+    ],
+    [
+      "web: display mode confirms the web stamp",
+      st("web"),
+      { "web.displayMode": "standalone" },
+      ["web", "heuristic", "web.displayMode", null],
+    ],
+    [
+      "a Homebrew formula restricts a direct stamp",
+      st("direct"),
+      { "macos.homebrewFormula": "diceroll" },
+      ["direct", "heuristic", "macos.homebrewFormula", "homebrew"],
+    ],
+    [
+      "Android: an installer mismatch leaves a direct stamp",
+      st("direct"),
+      and("com.android.vending", "com.android.shell"),
+      ["direct", "stamp", "stamp", null],
+    ],
+  ];
+  const seen = new Set<string>();
+  const rows = spec.map(
+    ([name, stamp, signals, [kind, confidence, source, subkind]], k) => {
+      const expect = { kind, confidence, source, subkind };
+      const got = refDetectOutlet(stamp, signals);
+      if (JSON.stringify(got) !== JSON.stringify(expect))
+        fail(`row ${k + 1} (${name}) computes ${JSON.stringify(got)}`);
+      for (const s of Object.keys(signals)) seen.add(s);
+      return { name: `${k + 1}. ${name}`, stamp, signals, expect };
+    },
+  );
+  if (rows.length !== 48) fail(`${rows.length} rows, not 48`);
+  for (const { signal } of REF_SIGNALS)
+    if (!seen.has(signal)) fail(`${signal} is in no row`);
+  const kinds: Record<string, unknown> = {};
+  for (const k of [...REF_OUTLET_KINDS, "unknown"]) {
+    const row = REF_KIND_TABLE[k];
+    if (!row) fail(`no kind row for ${k}`);
+    for (const p of row!.platforms)
+      if (!REF_RELEASE_PLATFORMS.includes(p)) fail(`${k}: platform ${p}`);
+    kinds[k] = row;
+  }
+  for (const [k, prefixes] of Object.entries(REF_LISTING_PREFIXES)) {
+    if (REF_KIND_TABLE[k]?.binaryUpdates !== "store")
+      fail(`listing prefixes on a non-store kind ${k}`);
+    for (const p of prefixes)
+      if (p.startsWith("https://") && !/^https:\/\/[^/]+\//.test(p))
+        fail(`${p} has no / after its host`);
+  }
+  for (const s of REF_SIGNALS)
+    if (!REF_VERIFIED.includes(s.verified)) fail(`${s.signal}: verified`);
+  const counts = REF_VERIFIED.map(
+    (x) => REF_SIGNALS.filter((s) => s.verified === x).length,
+  ).join(",");
+  if (counts !== "13,3,7,2") fail(`evidence counts ${counts}`);
+  return {
+    outletMatrixVersion: 1,
+    description:
+      "Outlet kinds, capabilities and detection (plans/P3-01.md §2.9; WIRE-CONTRACT-V4 §11, client behaviour outside the wire contract). `kinds` is the capability default and platform list per kind (and `unknown`); `platformNarrowing` and `subkinds` narrow it, booleans by AND, `binaryUpdates` to the narrower of none < store < self, and `commerce` only to `none`. `signals` lists the 25 detection signals in vocabulary order with their confidence (null for a diagnostic signal) and evidence (`verified`; no SDK branches on it). Each row runs `detectOutlet({stamp, signals})` and expects `{kind, confidence, source, subkind}`; the generator recomputes every row with its own reference. A runner asserts its compiled tables against `kinds`, `platformNarrowing`, `subkinds` and `platformData.listingUrlPrefixes`.",
+    kinds,
+    platformNarrowing: REF_PLATFORM_NARROWING,
+    subkinds: REF_SUBKIND_NARROWING,
+    vocabulary: {
+      kinds: [...REF_OUTLET_KINDS],
+      confidence: REF_CONFIDENCES,
+      signals: REF_SIGNALS.map((s) => s.signal),
+      subkinds: REF_SUBKINDS,
+      verified: REF_VERIFIED,
+    },
+    signals: REF_SIGNALS,
+    platformData: REF_PLATFORM_DATA,
+    rows,
+  };
+}
+
+// ── §4.8 the stage matrix, version 2: boot confirmation ─────────────────────────────────────
+
+const STAGE_BOOT_OK_SECONDS = 10;
+const STAGE_CONFIRMATIONS = ["now", "after-ok-seconds", "never"];
+const STAGE_CONFIRM_CASES = [
+  { outcome: "running", expect: "never" },
+  { outcome: "waiting", expect: "now" },
+  { outcome: "ready", expect: "after-ok-seconds" },
+  { outcome: "blocked", expect: "now" },
+  { outcome: "offline", expect: "now" },
+  { outcome: "error", expect: "never" },
+];
+
+// ── §4.9 self-checks over the assembled corpus ───────────────────────────────────────────────
+
+type AnyCase = Record<string, any>;
+
+/** The seven JWS families of §4.1: where each keeps its JWS, its keys, its `typ` and its cap. */
+const JWS_FAMILIES: Record<
+  string,
+  (c: AnyCase) => {
+    jws: string;
+    keys: Record<string, string>;
+    typ: TypV3 | undefined;
+    cap: number;
+  }
+> = {
+  jwsCases: (c) => ({
+    jws: c.jws,
+    keys: c.trust,
+    typ: c.typ,
+    cap: c.maxPayloadBytes ?? 65536,
+  }),
+  licenseDocCases: (c) => ({
+    jws: c.jws,
+    keys: c.trust,
+    typ: c.typ,
+    cap: 65536,
+  }),
+  configDocCases: (c) => ({
+    jws: c.jws,
+    keys: c.trust,
+    typ: c.typ,
+    cap: 65536,
+  }),
+  trustCases: (c) => ({
+    jws: c.manifestJws,
+    keys: c.pinned,
+    typ: "pkey-trust+jws",
+    cap: 65536,
+  }),
+  bundleCases: (c) => ({
+    jws: c.bundleJws,
+    keys: c.pinned,
+    typ: "pkey-bundle+jws",
+    cap: MAX_BUNDLE_BYTES,
+  }),
+  feedCases: (c) => ({
+    jws: c.jws,
+    keys: c.trust,
+    typ: "pkey-feed+jws",
+    cap: 65536,
+  }),
+  releaseRecordCases: (c) => ({
+    jws: c.jws,
+    keys: c.releaseKeys,
+    typ: "pkey-release+jws",
+    cap: 65536,
+  }),
+};
+
+/** Each family's claim step, from the generator's own claim checks, with `off` switched off. */
+function claimStep(family: string, c: AnyCase, off: string[]): boolean {
+  const { jws } = JWS_FAMILIES[family]!(c);
+  const text = payloadTextOf(jws)!;
+  const doc = JSON.parse(text) as unknown;
+  const ctx = ctxOf(text, off);
+  switch (family) {
+    case "licenseDocCases":
+    case "configDocCases":
+      return refDocClaims(c.typ, doc, ctx, c as EnvelopeOpts);
+    case "trustCases":
+      return (
+        refTrustClaims(doc, ctx, {
+          pinned: c.pinned,
+          now: c.now,
+          checkFreshness: c.checkFreshness,
+        }) !== null
+      );
+    case "bundleCases":
+      return refBundleClaims(doc, ctx, { now: c.now, deviceId: c.deviceId });
+    case "feedCases":
+      return (
+        refFeedClaims(doc, ctx, {
+          aud: c.expectedAud,
+          channel: c.channel,
+          platform: c.platform,
+        }) === null
+      );
+    case "releaseRecordCases":
+      return refRecordClaims(doc, ctx, c.expectedAud);
+    default:
+      throw new Error(family);
+  }
+}
+
+/** §4.9 "per claim": the 21 paths, each with its token case, its bound case (null where §4.3
+ *  lists the bound as implied) and its minimum case (null where §2.2 names the check that
+ *  implies it). The licence cases stand for the envelope licence and config share. */
+const PER_CLAIM: [string, string, string, string | null, string | null][] = [
+  [
+    "licenseDocCases",
+    "/issuedAt",
+    "license-issued-at-near-integer",
+    "license-issued-at-over-max",
+    "license-issued-at-negative-reload-path",
+  ],
+  [
+    "licenseDocCases",
+    "/expiresAt",
+    "license-expires-at-near-integer",
+    null,
+    "license-expires-at-negative-reload-path",
+  ],
+  [
+    "licenseDocCases",
+    "/graceUntil",
+    "license-grace-until-near-integer",
+    "license-grace-until-over-max",
+    null,
+  ],
+  [
+    "configDocCases",
+    "/schemaVersion",
+    "config-schema-version-near-integer",
+    "config-schema-version-over-max",
+    "config-schema-version-zero",
+  ],
+  [
+    "trustCases",
+    "/schemaVersion",
+    "trust-schema-version-near-integer",
+    null,
+    null,
+  ],
+  [
+    "trustCases",
+    "/issuedAt",
+    "trust-issued-at-near-integer",
+    "trust-issued-at-over-max",
+    "trust-issued-at-negative",
+  ],
+  [
+    "trustCases",
+    "/expiresAt",
+    "trust-expires-at-near-integer",
+    "trust-expires-at-over-max",
+    "trust-expires-at-negative-reload-path",
+  ],
+  [
+    "bundleCases",
+    "/issuedAt",
+    "bundle-issued-at-near-integer",
+    "bundle-issued-at-over-max",
+    "bundle-issued-at-negative",
+  ],
+  [
+    "bundleCases",
+    "/expiresAt",
+    "bundle-expires-at-near-integer",
+    "bundle-expires-at-over-max",
+    null,
+  ],
+  [
+    "feedCases",
+    "/schemaVersion",
+    "feed-schema-version-near-integer",
+    null,
+    null,
+  ],
+  [
+    "feedCases",
+    "/seq",
+    "feed-seq-near-integer",
+    "feed-seq-over-max",
+    "feed-seq-zero",
+  ],
+  [
+    "feedCases",
+    "/issuedAt",
+    "feed-issued-at-near-integer",
+    null,
+    "feed-issued-at-negative",
+  ],
+  [
+    "feedCases",
+    "/expiresAt",
+    "feed-expires-at-near-integer",
+    "feed-expires-at-over-max",
+    null,
+  ],
+  [
+    "feedCases",
+    "/app/targets/0/release/seq",
+    "feed-target-seq-near-integer",
+    "feed-target-seq-over-max",
+    "feed-target-seq-zero",
+  ],
+  [
+    "feedCases",
+    "/app/targets/0/outlets/direct/live/seq",
+    "feed-live-seq-near-integer",
+    "feed-live-seq-over-max",
+    "feed-live-seq-zero",
+  ],
+  [
+    "feedCases",
+    "/app/targets/0/outlets/direct/rollout/bp",
+    "feed-rollout-bp-exponent",
+    null,
+    "feed-rollout-bp-negative",
+  ],
+  [
+    "releaseRecordCases",
+    "/schemaVersion",
+    "record-schema-version-near-integer",
+    null,
+    null,
+  ],
+  [
+    "releaseRecordCases",
+    "/seq",
+    "record-seq-integral-fraction",
+    "record-seq-over-max",
+    "record-seq-zero",
+  ],
+  [
+    "releaseRecordCases",
+    "/issuedAt",
+    "record-issued-at-near-integer",
+    "record-issued-at-over-max",
+    "record-issued-at-negative",
+  ],
+  [
+    "releaseRecordCases",
+    "/minSupportedSeq",
+    "record-min-supported-seq-near-integer",
+    "record-min-supported-seq-over-max",
+    "record-min-supported-seq-zero",
+  ],
+  [
+    "releaseRecordCases",
+    "/builds/0/artifacts/0/size",
+    "record-artifact-size-integral-fraction",
+    "record-artifact-size-over-max",
+    "record-artifact-size-negative",
+  ],
+];
+/** Cases built to break an integer claim's token or bound beyond the per-claim table. */
+const EXTRA_BREAKERS = [
+  "feed-seq-fraction",
+  "feed-seq-integral-fraction",
+  "record-seq-not-integer",
+];
+
+const FAMILY_CLAIM_KEYS: Record<string, string[]> = {
+  licenseDocCases: ["envelope"],
+  configDocCases: ["envelope", "config"],
+  trustCases: ["trust"],
+  bundleCases: ["bundle"],
+  feedCases: ["feed"],
+  releaseRecordCases: ["record"],
+};
+
+function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
+  const fail = (m: string): never => {
+    throw new Error(`corpus v4 self-check: ${m}`);
+  };
+  const byId = new Map<string, [string, AnyCase]>();
+  // Ids are unique in every family.
+  for (const family of Object.keys(JWS_FAMILIES).concat("clockFloorCases")) {
+    const ids = new Set<string>();
+    for (const c of corpus[family]!) {
+      if (ids.has(c.id)) fail(`duplicate id ${c.id} in ${family}`);
+      ids.add(c.id);
+      byId.set(c.id, [family, c]);
+    }
+  }
+  const counts: Record<string, number> = {
+    jwsCases: 80,
+    licenseDocCases: 25,
+    configDocCases: 21,
+    trustCases: 20,
+    bundleCases: 16,
+    feedCases: 77,
+    releaseRecordCases: 49,
+  };
+  for (const [family, n] of Object.entries(counts))
+    if (corpus[family]!.length !== n)
+      fail(`${family} has ${corpus[family]!.length} cases, not ${n}`);
+
+  // §4.1: `nonWireIntegers` is the generator's scan exactly where the JWS is built to pass.
+  for (const [family, view] of Object.entries(JWS_FAMILIES))
+    for (const c of corpus[family]!) {
+      const { jws, keys, typ, cap } = view(c);
+      const v = refVerifyJws(jws, keys, typ, cap);
+      const want = v ? refNonWire(v.text) : [];
+      const got = c.nonWireIntegers;
+      if (want.length === 0 && got !== undefined)
+        fail(`${c.id} carries nonWireIntegers it must not`);
+      if (want.length > 0 && JSON.stringify(got) !== JSON.stringify(want))
+        fail(
+          `${c.id}: nonWireIntegers ${JSON.stringify(got)} != ${JSON.stringify(want)}`,
+        );
+      if (got !== undefined) {
+        const keysOrder = Object.keys(c);
+        if (
+          keysOrder.indexOf("nonWireIntegers") !==
+          keysOrder.indexOf("expect") - 1
+        )
+          fail(`${c.id}: nonWireIntegers must sit right before expect`);
+      }
+    }
+
+  // Per claim: token, bound and minimum cases break their path alone.
+  const breakers = new Set(EXTRA_BREAKERS);
+  for (const [family, pointer, token, bound, min] of PER_CLAIM) {
+    for (const [kind, id] of [
+      ["token", token],
+      ["bound", bound],
+      ["min", min],
+    ] as const) {
+      if (id === null) continue;
+      const hit = byId.get(id);
+      if (!hit || hit[0] !== family) fail(`${id} is not a ${family} case`);
+      const c = hit![1];
+      const text = payloadTextOf(JWS_FAMILIES[family]!(c).jws)!;
+      const scan = refNonWire(text);
+      if (kind === "min") {
+        if (scan.length !== 0)
+          fail(`${id}: a minimum case's scan must be empty`);
+        const t = refNumberTokens(text).get(pointer);
+        if (t === undefined || !PLAIN_INTEGER_REF.test(t))
+          fail(`${id}: no plain integer at ${pointer}`);
+      } else {
+        breakers.add(id);
+        if (JSON.stringify(scan) !== JSON.stringify([pointer]))
+          fail(`${id}: its scan is ${JSON.stringify(scan)}, not [${pointer}]`);
+      }
+      if (claimStep(family, c, [])) fail(`${id}: the claim checks accept it`);
+      if (!claimStep(family, c, [`${kind}:${pointer}`]))
+        fail(`${id}: it fails beyond ${kind} at ${pointer}`);
+    }
+  }
+  // No other case of the six families has a non-wire number at an integer claim.
+  for (const family of Object.keys(FAMILY_CLAIM_KEYS))
+    for (const c of corpus[family]!) {
+      if (breakers.has(c.id)) continue;
+      const text = payloadTextOf(JWS_FAMILIES[family]!(c).jws);
+      if (text === null) continue;
+      let pointers: string[];
+      try {
+        pointers = refNonWire(text);
+      } catch {
+        continue; // not JSON at all
+      }
+      for (const p of pointers)
+        if (FAMILY_CLAIM_KEYS[family]!.some((k) => claimPathOf(k, p) !== null))
+          fail(`${c.id} has a non-wire integer claim at ${p}`);
+    }
+
+  // Every feed pin names a record vector, except the cases built to mismatch.
+  const hashes = new Set([...RECORDS!.values()].map((r) => r.sha256));
+  for (const c of corpus.feedCases!) {
+    const doc = JSON.parse(payloadTextOf(c.jws)!) as Record<string, any>;
+    for (const t of doc.app?.targets ?? [])
+      if (
+        !hashes.has(t.release?.sha256) &&
+        ![
+          "feed-target-bad-sha256",
+          "feed-target-sha256-trailing-newline",
+        ].includes(c.id)
+      )
+        fail(`${c.id}: a pin names no record vector`);
+  }
+
+  // The non-ASCII cases and their ASCII twins.
+  {
+    const c = byId.get("record-build-id-non-ascii")![1];
+    const text = payloadTextOf(c.jws)!;
+    const doc = JSON.parse(text);
+    const id = doc.builds[0].id as string;
+    if (REF_BUILD_ID_RE.test(id))
+      fail("record-build-id-non-ascii passes BUILD_ID_PATTERN");
+    doc.builds[0].id = id.replace(/[^\x00-\x7f]/g, "e");
+    if (!refRecordClaims(doc, ctxOf(JSON.stringify(doc)), AUD_V3))
+      fail("record-build-id-non-ascii's twin fails");
+  }
+  {
+    const c = byId.get("feed-target-platform-non-ascii")![1];
+    const doc = JSON.parse(payloadTextOf(c.jws)!);
+    const p = doc.app.targets[2].platform as string;
+    if (REF_FEED_PLATFORM_RE.test(p))
+      fail("feed-target-platform-non-ascii passes FEED_PLATFORM_PATTERN");
+    doc.app.targets[2].platform = "freebsd";
+    if (
+      refFeedClaims(doc, ctxOf(JSON.stringify(doc)), {
+        aud: AUD_V3,
+        channel: "stable",
+        platform: "macos",
+      }) !== null
+    )
+      fail("feed-target-platform-non-ascii's twin (freebsd) fails");
+  }
+  // Each trailing-newline value fails its whole-string pattern and passes without the terminator.
+  for (const [value, ok] of [
+    ["1.5.0\n", (v: string) => refParseVersion("semver", v) !== null],
+    ["direct\n", (v: string) => REF_OUTLET_ID_RE.test(v)],
+    ["stable\n", (v: string) => REF_CHANNEL_RE.test(v)],
+    [`${record("R15").sha256}\n`, (v: string) => REF_SHA256_RE.test(v)],
+    [`${ROLLOUT_SALT}\n`, (v: string) => REF_SALT_RE.test(v)],
+    ["1.5.0\n", (v: string) => REF_RECORD_VERSION_RE.test(v)],
+    ["app\n", (v: string) => REF_DELIVERABLE_RE.test(v)],
+  ] as const)
+    if (ok(value) || !ok(value.slice(0, -1)))
+      fail(`trailing newline ${JSON.stringify(value)}`);
+  // The listing-URL lengths.
+  const url = (id: string): string =>
+    (JSON.parse(payloadTextOf(byId.get(id)![1].jws)!) as Record<string, any>)
+      .app.targets[0].outlets["app-store"].listingUrl;
+  const nonAscii = url("feed-listing-url-non-ascii");
+  if (!([...nonAscii].length <= 2048 && utf8Bytes(nonAscii).length > 2048))
+    fail("feed-listing-url-non-ascii lengths");
+  if (utf8Bytes(url("feed-listing-url-over-max")).length !== 2049)
+    fail("feed-listing-url-over-max length");
+  if (utf8Bytes(url("feed-valid-listing-url-at-max")).length !== 2048)
+    fail("feed-valid-listing-url-at-max length");
+  // The number and depth vectors break exactly the rule they name.
+  for (const id of [
+    "json-number-overflow",
+    "json-number-underflow",
+    "json-number-subnormal",
+    "json-number-exponent-wrap",
+  ]) {
+    const x = /"x":([^}]*)\}$/.exec(payloadTextOf(byId.get(id)![1].jws)!)![1]!;
+    if (refNumberInRange(x)) fail(`${id}: ${x} is in range`);
+  }
+  for (const id of ["valid-number-forms", "valid-number-integral-spellings"]) {
+    const text = payloadTextOf(byId.get(id)![1].jws)!;
+    for (const t of refNumberTokens(text).values())
+      if (!refNumberInRange(t)) fail(`${id}: ${t} out of range`);
+  }
+}
+
+/** The stage matrix's self-check gains "every outcome has one confirm case" (§4.8). */
+function checkConfirmCases(): void {
+  const outcomes = STAGE_VOCABULARY.outcomes;
+  const listed = STAGE_CONFIRM_CASES.map((c) => c.outcome);
+  if (
+    JSON.stringify([...listed].sort()) !==
+      JSON.stringify([...outcomes].sort()) ||
+    new Set(listed).size !== listed.length
+  )
+    throw new Error(
+      "stage-matrix: every outcome needs exactly one confirm case",
+    );
+  for (const c of STAGE_CONFIRM_CASES)
+    if (!STAGE_CONFIRMATIONS.includes(c.expect))
+      throw new Error(`stage-matrix: confirm ${c.outcome}`);
+}
+
 /** Reconcile one generated/source file against its on-disk copy. In `--check` mode a drift
  *  is fatal (returns true so the caller can exit 1); otherwise it's written. */
 function reconcile(path: string, content: string, check: boolean): boolean {
@@ -6234,7 +12590,7 @@ async function main(): Promise<void> {
   });
 
   // ── corpus v2 (wire contract v3) ───────────────────────────────────────────
-  // Six files in one directory so a runner can point at `corpus/v2/` and find everything
+  // Eight files in one directory so a runner can point at `corpus/v2/` and find everything
   // it needs, and so `--check` guards the whole set. The `fingerprint.json` formulas are
   // unchanged across the wire revisions (`fingerprintVersion` stays 1) and deliberately NOT
   // rebranded — the `pkey-hw:`/`pkey-device:` prefixes are hash domains baked into every
@@ -6246,7 +12602,7 @@ async function main(): Promise<void> {
   const v2GateMatrix = await format(JSON.stringify(buildGateMatrixV2()), {
     parser: "json",
   });
-  const v2StageMatrix = await format(JSON.stringify(buildStageMatrixV1()), {
+  const v2StageMatrix = await format(JSON.stringify(buildStageMatrix()), {
     parser: "json",
   });
   // Client metadata header values (§5.2) and config resolution (§2.2.1): unsigned behaviour
@@ -6255,6 +12611,15 @@ async function main(): Promise<void> {
     parser: "json",
   });
   const v2ConfigMatrix = await format(JSON.stringify(buildConfigMatrix()), {
+    parser: "json",
+  });
+  // Wire contract v4's two decision tables (plans/P3-01.md §4.6, §4.7): unsigned client
+  // behaviour, recomputed by the generator's reference implementations, mirrored like the rest.
+  // `buildV2` above has built the record vectors their rows pin.
+  const v2UpdateMatrix = await format(JSON.stringify(buildUpdateMatrixV1()), {
+    parser: "json",
+  });
+  const v2OutletMatrix = await format(JSON.stringify(buildOutletMatrixV1()), {
     parser: "json",
   });
 
@@ -6267,6 +12632,8 @@ async function main(): Promise<void> {
     [basename(V2_STAGE_MATRIX_OUT), v2StageMatrix],
     [basename(V2_HEADERS_OUT), v2Headers],
     [basename(V2_CONFIG_MATRIX_OUT), v2ConfigMatrix],
+    [basename(V2_UPDATE_MATRIX_OUT), v2UpdateMatrix],
+    [basename(V2_OUTLET_MATRIX_OUT), v2OutletMatrix],
   ]);
   let stale = false;
   for (const dir of CORPUS_TARGETS) {
