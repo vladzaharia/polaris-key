@@ -281,6 +281,65 @@ describe("build and file routes", () => {
     );
   });
 
+  it("an artifact whose only location is a gated/ key answers not-found to an anonymous request", async () => {
+    // Gated content is authorised per request (THREAT-MODEL §3), and that check is P2b-04 /
+    // P4-05's. Until it exists, a `public` product's access mode must not stand in for it.
+    const s = await setup();
+    const bytes = ASSET_BYTES[201]!;
+    const hex = sha256Hex(bytes);
+    const key = blobKey(hex, { gated: true });
+    const put = await putVerified(asR2(s.r2), key, bytes, {
+      sha256: hex,
+      size: bytes.length,
+    });
+    expect(put.ok).toBe(true);
+    await recordObject(
+      s.db,
+      {
+        storageKey: key,
+        sha256: hex,
+        size: bytes.length,
+        kind: "blob",
+        gated: true,
+      },
+      NOW,
+    );
+    await recordRef(
+      s.db,
+      {
+        product: SLUG,
+        storageKey: key,
+        refKind: "artifact",
+        refId: `${SLUG}:g`,
+      },
+      NOW,
+    );
+    const set = stmtSetArtifactModel({
+      product: SLUG,
+      releaseId: "v1.1.0",
+      artifactId: "201",
+      buildId: "cli-arm64",
+      role: "payload",
+      sha256: hex,
+      storageKey: key,
+      locationsJson: JSON.stringify([{ provider: "r2", key }]),
+    });
+    await s.db.run(set.sql, ...set.params);
+    s.gh.calls.api.length = 0;
+
+    for (const origin of [BYTES, CONSOLE]) {
+      for (const p of [
+        "/release/builds/stable/cli-arm64",
+        "/release/builds/1.1.0/cli-arm64",
+        "/release/files/v1.1.0/djdl-arm64",
+      ]) {
+        const res = await get(s, `${origin}/${SLUG}${p}`);
+        expect(res.status, `${origin}${p}`).toBe(404);
+        expect(new Uint8Array(await res.arrayBuffer())).not.toEqual(bytes);
+      }
+    }
+  });
+
   it("?deliverable= and an unknown build or selector answer not-found", async () => {
     const s = await setup();
     for (const p of [

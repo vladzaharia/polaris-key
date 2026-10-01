@@ -263,17 +263,22 @@ async function serveArtifact(
       // product must hold a ref to it (a ref is earned per product, THREAT-MODEL §3).
       if (!env.BLOBS || !artifact.sha256 || !loc.key) continue;
       const parsed = parseKey(loc.key);
+      // A `gated/` key is entitlement-gated content, authorised PER REQUEST (THREAT-MODEL §3) —
+      // and that per-request check (P2b-04 / P4-05) does not exist yet. The product-wide access
+      // mode is not it: under a `public` product it would hand gated bytes to anyone. So these
+      // routes fail closed on a gated location until that check lands (P2-05 review).
       if (
         !parsed ||
         parsed.area !== "locked" ||
         parsed.kind !== "blob" ||
+        parsed.gated ||
         parsed.sha256 !== artifact.sha256
       )
         continue;
       if (!(await hasRef(db, product.slug, loc.key))) continue;
       const res = await blobResponse(req, env.BLOBS, loc.key, {
         sha256: artifact.sha256,
-        gated: !publicMode || parsed.gated,
+        gated: !publicMode,
         env,
         ...(artifact.content_type
           ? { contentType: artifact.content_type }
@@ -284,10 +289,7 @@ async function serveArtifact(
         await res.body?.cancel().catch(() => undefined);
         continue;
       }
-      return withCache(
-        res,
-        parsed.gated ? PRIVATE_BYTES_CACHE : effectiveCache,
-      );
+      return withCache(res, effectiveCache);
     }
 
     if (loc.provider === "github") {
