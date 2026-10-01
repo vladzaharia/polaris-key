@@ -2723,7 +2723,8 @@ paths:
         writes nothing. Requires a `pkeyci_` token with `distribution:report` (in the default
         CI grant). No CORS. Errors are LEGACY FLAT with a machine-readable `reason`
         (`unknown_outlet`, `unknown_release`, `unknown_build` 404; `invalid_state`,
-        `unknown_purpose`, `invalid_fingerprint`, `invalid_body` 422; `bad_body` 400).
+        `unknown_purpose`, `invalid_fingerprint`, `invalid_body` 422; `too_many_observations`
+        409, past 64 unreviewed key observations; `bad_body` 400).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -2885,6 +2886,7 @@ paths:
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }
         "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
         "422": { $ref: "#/components/responses/CiRefusal" }
 
   /{product}/release/channels/{channel}/promote:
@@ -5043,7 +5045,8 @@ components:
         `unknown_channel`, `unknown_deliverable`, `unknown_release`, `unknown_outlet`,
         `unknown_build`, `no_rollout` (404); `bad_body` (400); `bad_release`, `bad_reason`,
         `invalid_body`, `invalid_state`, `unknown_purpose`, `invalid_fingerprint` (422);
-        `release_yanked`, `invalid_transition`, `rollout_mirrored`, `stale_release` (409).
+        `release_yanked`, `invalid_transition`, `rollout_mirrored`, `stale_release`,
+        `too_many_observations` (409).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/FlatError" }

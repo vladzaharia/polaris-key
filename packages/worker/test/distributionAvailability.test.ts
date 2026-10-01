@@ -36,6 +36,7 @@ import { SERVICES } from "../src/mount.js";
 import { loadProduct } from "../src/core/products.js";
 import {
   AVAILABILITY_STATES,
+  MAX_KEY_OBSERVATIONS,
   SUBMISSION_STATES,
 } from "../src/services/distribution/availability.js";
 import {
@@ -782,6 +783,30 @@ describe("the key inventory", () => {
     ]);
     expect(audit[1]!.summary).toMatch(/Adopted/);
     expect(audit[2]!.summary).toMatch(/registered for Android developer/);
+  });
+
+  it("caps unreviewed observations; a known fingerprint is still recorded past the cap", async () => {
+    const w = await setup();
+    for (let i = 0; i < MAX_KEY_OBSERVATIONS; i++)
+      await w.db.run(
+        `INSERT INTO dist_keys
+           (product, purpose, fingerprint_sha256, source, created_at, modified_at)
+         VALUES (?, 'release', ?, 'ci', ?, ?)`,
+        SLUG,
+        i.toString(16).padStart(64, "0"),
+        NOW,
+        NOW,
+      );
+    const res = await report(w, keyReport({ sha256: FP_B }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ reason: "too_many_observations" });
+    expect(await count(w, "dist_keys")).toBe(MAX_KEY_OBSERVATIONS);
+    // An existing observation is refreshed, not counted again.
+    const again = await report(
+      w,
+      keyReport({ purpose: "release", sha256: "0".repeat(64) }),
+    );
+    expect(again.status).toBe(200);
   });
 
   it("the console refuses a malformed entry", async () => {

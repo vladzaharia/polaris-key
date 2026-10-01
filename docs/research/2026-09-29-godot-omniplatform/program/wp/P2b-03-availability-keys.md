@@ -157,3 +157,40 @@ mise exec node@22 -- pnpm typecheck
   availability in the feed), P4-05, P4-14 and the P5 connectors use.
 - `dist_keys` purposes feed P2b-05's F-Droid fingerprint and P3-03's `release` entries.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P2b-03 done`.
+
+## Corrections from the code (P2b-03 implementation)
+
+The code is the fact; where this brief and the code disagreed, the implementation followed the
+code and the correction is recorded here.
+
+- **Derived availability is keyed on the outlet KIND as well as the transport.** "Outlets whose
+  transport is `pkey-cdn`, `embedded` or `web`" alone would make every store outlet `live`: P2b-02
+  resolves every outlet's transport to `transports.default`, which is `pkey-cdn`, so an
+  `app-store` outlet with no transport override is `pkey-cdn` too, against the second acceptance
+  row. Derivation therefore needs a self-hosted kind (`DERIVED_OUTLET_KINDS`: `direct`, `web`,
+  `altstore`, `obtainium`, `fdroid-repo`, `app-installer`) AND a transport in
+  `pkey-cdn | embedded | web`. "Matching build": the build an outlet's `artifact` identity names;
+  `web` builds on a `web` outlet; a `direct` outlet's `platforms`; otherwise any build (a
+  platform-less pack variant matches everywhere). "Stored or GitHub location": the build's
+  payload resolves (`releaseCatalog.resolve({kind:"file"})`) to an R2 or GitHub location. A
+  release with no build rows is matched by its artifacts as one per-release record. A yanked
+  release derives nothing.
+- **The hook signature changed.** `Delivery.availability` was `(deliverableId, releaseId?)` in
+  P2b-01's skeleton; it is now `availability(releaseId)` as this brief specifies (release ids are
+  unique per product), with `submissions(releaseId)` and `keys({purpose?})` beside it.
+  `AvailabilityRecord` gained `buildId`, `platformRef`, `detail`, `source`, `derived`,
+  `updatedAt`, and `since` became nullable (a derived record's release may have no publication
+  time). No consumer existed yet.
+- **Where a CI-observed mismatch lives.** `observed_json` on an inventory entry records the last
+  CI report OF THAT FINGERPRINT. A report whose fingerprint matches no entry cannot be stored on
+  an entry without changing it, so it is stored as its own `dist_keys` row with `source = 'ci'`
+  (an observation): `keys()` never returns observations and flags every entry of the purpose; an
+  operator adopts (PUT) or dismisses (DELETE) it. Observations are capped at 64 per product
+  (409 `too_many_observations`), because the CI routes have no rate limit.
+- **No CHECK constraints on the vocabularies** (states, purposes, sources): P5 connectors map onto
+  and may grow them, and a CHECK change is a SQLite table rebuild. Enforced on write in code;
+  read fail-closed (an unknown availability state reads `pending`, never `live`).
+- **CLI scope, slightly wider.** Besides `rollout|halt|resume`, the CLI also exposes `pause` and
+  `complete` — the same plumbing over P2b-04's two remaining verb routes. A key report the
+  inventory does not hold exits 1 so the signing job fails visibly.
+- **Migration number** is `0039` (pre-assigned by the lead).

@@ -1,0 +1,174 @@
+---
+sidebar:
+  order: 4
+title: "Availability, submissions and keys"
+description: "Whether a release is available on each outlet and where it stands in a store's review, reported from CI until store connectors exist; derived availability for self-hosted outlets; and the operator-owned signing-key inventory."
+---
+
+"Is it in the App Store yet?" is a question about one release on one outlet. Distribution keeps
+two answers per release and outlet — **availability** (is the build there?) and the
+**submission** state (where is it in the store's review?) — and, per product, a **key inventory**
+of the signing keys a download is checked against.
+
+Until the store connectors exist, CI reports what each store says with
+`pkey distribution report`. Self-hosted outlets need no report: their availability follows from
+what Release already knows.
+
+## Availability
+
+One record per (release, build, outlet), in `dist_availability`. A record without a build
+(`buildId` empty) is about the whole release: a store that ships one binary per release, or a
+report that does not know the build.
+
+| State        | Meaning                                                    |
+| ------------ | ---------------------------------------------------------- |
+| `pending`    | known to the outlet, nothing happening yet                 |
+| `processing` | the store is processing the upload                         |
+| `in-review`  | in the store's review                                      |
+| `approved`   | approved, not yet live                                     |
+| `live`       | players can get it from this outlet                        |
+| `rejected`   | refused by the store                                       |
+| `removed`    | was available, no longer is (pulled, delisted, superseded) |
+
+A state can move backwards — a rejection after review, a removal after going live. The record
+keeps the **current** state, with `since` (when it entered that state); every change is in the
+audit log as `distribution.availability.report`.
+
+Store-assigned ids — an App Store Connect build id, a Play version code, a Steam depot manifest —
+arrive after signing, so they never live on the release. A report carries them in
+`platformRef`, stored on the availability record.
+
+### Derived availability for self-hosted outlets
+
+An outlet Polaris Key hosts itself shows `live` **without a report**. That is an outlet whose kind
+is `direct`, `web`, `altstore`, `obtainium`, `fdroid-repo` or `app-installer`, and whose
+transport for the release's deliverable is `pkey-cdn`, `embedded` or `web`. It shows `live` for
+every build of the release that:
+
+- the outlet carries — the build its identity names (`artifact`) when it names one; `web`
+  builds on a `web` outlet; the listed `platforms` on a `direct` outlet that lists them; any build
+  otherwise, and a platform-independent pack variant everywhere;
+- has its payload stored by Polaris Key or located on GitHub.
+
+A yanked release derives nothing. Derived records carry `source: "derived"` and `derived: true`.
+
+Every other kind — `app-store`, `testflight`, `play`, `steam`, `itch`, … — shows **nothing until
+it is reported**, whatever its transport: every outlet's default transport is `pkey-cdn`, so the
+transport alone cannot tell a store from our own CDN.
+
+A stored record wins. A report for (release, build, outlet) replaces the derived record for
+that build, and a per-release report replaces every derived record on that outlet — so a CI job
+can mark a self-hosted build `removed`.
+
+## Submissions
+
+One record per (release, outlet), in `dist_submissions`:
+
+| State                       | Meaning                                                |
+| --------------------------- | ------------------------------------------------------ |
+| `prepared`                  | the store listing or version exists, not yet submitted |
+| `submitted`                 | submitted for review                                   |
+| `in-review`                 | under review                                           |
+| `approved`                  | approved                                               |
+| `rejected`                  | rejected                                               |
+| `pending-developer-release` | approved, waiting for a manual release                 |
+| `released`                  | released to players                                    |
+| `cancelled`                 | withdrawn                                              |
+
+`submittedAt` is set when the record enters `submitted`, `reviewedAt` when it enters `approved` or
+`rejected`. Changes are audited as `distribution.submission.report`.
+
+## Reporting from CI
+
+```sh
+# Availability of one build (or omit --build for the whole release).
+pkey distribution report availability --product your-product --outlet app-store \
+  --release v1.4.0 --build ios --state in-review --platform-ref '{"ascBuildId":"abc-123"}'
+
+# By version instead of release id (--deliverable defaults to the app).
+pkey distribution report submission --product your-product --outlet app-store \
+  --version 1.4.0 --state submitted
+
+# The fingerprint this job signed with.
+pkey distribution report key --product your-product --purpose android-app-signing \
+  --sha256 "$SIGNING_CERT_SHA256" --outlet play   # colons and upper case are accepted
+```
+
+The commands use the same credential as `pkey release publish` — see
+[Publishing from CI](/docs/build/ci/). They need the `distribution:report` scope, which the
+default grant includes. `--since` (epoch seconds) backdates the state change; without it the
+time is now, or unchanged while the state is. `--platform-ref` and `--detail` take a JSON object;
+omitting `--platform-ref` keeps the stored one.
+
+Every report is checked before anything is written: the outlet must be one the product declares
+(and has not removed), the release and build must exist, and the state must be in the type's
+vocabulary. A refused report writes nothing. The route underneath is
+`POST /<product>/distribution/report`; refusals use the platform's flat shape with a `reason`
+(`unknown_outlet`, `unknown_release`, `unknown_build`, `invalid_state`, `unknown_purpose`,
+`invalid_fingerprint`, `invalid_body`; and `too_many_observations` once a product holds 64 key
+observations nobody has reviewed).
+
+Reports are **semi-trusted**. A wrong report can make the matrix and feeds show a wrong state, but
+it cannot ship code and cannot change a key. Once a store's connector exists it writes these
+records too (`source` is then `asc`, `play` or `ms-store`), and it decides per outlet whether a CI
+report may still overwrite it.
+
+## The key inventory
+
+Per product, the signing keys by **purpose**, each with the lower-case hex SHA-256 fingerprint of
+its certificate (of the raw public key for Ed25519):
+
+| Purpose               | Key                                                              |
+| --------------------- | ---------------------------------------------------------------- |
+| `android-app-signing` | the key Play (or your own pipeline) signs the installed APK with |
+| `android-upload`      | the upload key Play verifies uploads against                     |
+| `android-sideload`    | the key a sideloaded or Obtainium APK is signed with             |
+| `fdroid-repo`         | the self-hosted F-Droid repository's index key                   |
+| `sparkle-ed25519`     | the Sparkle EdDSA key macOS updates are signed with              |
+| `release`             | the CI release key the signed update feed is signed with         |
+| `msix-publisher`      | the MSIX publisher certificate                                   |
+
+The inventory is **operator-owned**. Its fingerprints are what players, the download page,
+F-Droid clients and AppVerifier check a download against, which makes it the independent check
+on a compromised pipeline: nothing CI says can change it.
+
+- **A CI key report** (`pkey distribution report key`) that matches an entry records, on that
+  entry, when and by whom it was last seen. One that matches **no** entry for its purpose is kept
+  as an **observation**, flagged, and changes nothing: every entry of that purpose shows
+  `flagged`, and the command exits 1 so the job fails visibly. An operator then **adopts** the
+  observation (a deliberate rotation becomes an entry) or **dismisses** it.
+- **Android developer verification.** Each entry carries a `registered` flag: the operator's record
+  that the key is registered with Google for developer verification (enforced regionally from
+  2026-09-30). Registration itself happens in Google's console; Polaris Key only records it.
+
+Every operator change is audited (`distribution.key.upsert`, `distribution.key.delete`,
+`distribution.key.dismiss`), and every CI report too (`distribution.key.observed`,
+`distribution.key.mismatch`).
+
+## The console API
+
+Narrative-only (not in the wire spec), under `/manage/api/products/<slug>/distribution`:
+
+| Method   | Path                         | Does                                                                                                                                             |
+| -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`    | `availability?release=<id>`  | the release on every outlet: stored and derived records, records on removed outlets flagged `outletRemoved`                                      |
+| `GET`    | `submissions[?release=<id>]` | submission records, newest first                                                                                                                 |
+| `GET`    | `keys`                       | `{ purposes, keys, observations }` — the inventory and the CI observations outside it                                                            |
+| `PUT`    | `keys`                       | `{ purpose, sha256, outlet?, notes?, registered? }` — add or update an entry by purpose and fingerprint (adopting an observation); `null` clears |
+| `DELETE` | `keys/<purpose>/<sha256>`    | remove an entry, or dismiss an observation                                                                                                       |
+
+Availability and submissions are read-only in the console: CI reports them today, and the store
+connectors will.
+
+## Reading it from another service
+
+Distribution's `delivery` descriptor hook answers `availability(releaseId)`,
+`submissions(releaseId)` and `keys({ purpose? })` — live outlets only, and the inventory without
+observations. With Distribution off the hook is `null` and the report route is not found.
+
+## See also
+
+- [Rollouts and halts](/docs/services/distribution/rollouts/) — the other CI control, with its own
+  opt-in scope.
+- [Distribution: outlets, transports and listing](/docs/build/manifest/distribution/) — declaring
+  the outlets these records are about.

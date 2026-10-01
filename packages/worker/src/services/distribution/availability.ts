@@ -138,6 +138,12 @@ const SERVING_PROVIDERS = new Set(["r2", "github"]);
 /** A report's `since` may run ahead of the server clock by at most this much (skew). */
 const MAX_SINCE_SKEW_SECONDS = 300;
 const MAX_NOTES_LENGTH = 500;
+/**
+ * The most CI observations (fingerprints outside the inventory) a product keeps. A report that
+ * would add one more is refused (409 `too_many_observations`) — still a visible failure in the
+ * job — so a leaked report token cannot grow `dist_keys` without bound. An operator clears them.
+ */
+export const MAX_KEY_OBSERVATIONS = 64;
 
 function isOneOf<T extends string>(list: readonly T[], v: unknown): v is T {
   return typeof v === "string" && (list as readonly string[]).includes(v);
@@ -1006,6 +1012,18 @@ async function reportKey(
     purpose,
     sha256,
   );
+  if (!existing) {
+    const n = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM dist_keys WHERE product = ? AND source = 'ci'",
+      product,
+    );
+    if ((n?.n ?? 0) >= MAX_KEY_OBSERVATIONS)
+      return refuse(
+        409,
+        "too_many_observations",
+        `${product} already holds ${MAX_KEY_OBSERVATIONS} unreviewed key observations; an operator must adopt or dismiss them first`,
+      );
+  }
   // The only column a CI report writes on an existing row is `observed_json` (and an
   // observation row's `modified_at`); an operator entry's purpose, outlet, notes and registration
   // are never touched. A fingerprint not in the inventory becomes an observation row.
