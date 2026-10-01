@@ -34,6 +34,14 @@ extends Resource
 ## Where the file store keeps `<product>/{device, token, managed.json}`.
 @export var store_root := "user://pkey"
 
+## Send a hashed hardware fingerprint when registering (PolarisKey.devices). Off: the server
+## records the device `unverified` (a `strict` tier refuses it). Raw values never leave the device.
+@export var fingerprint_enabled := true
+## Product-declared companion-app probes answered in the device report, each a Dictionary
+## {id, label?, macos?, windows?, linux?} naming a path to test on that OS. Nothing else is ever
+## enumerated.
+@export var probes: Array[Dictionary] = []
+
 ## A PKeyStore to use instead of the file store (tests, a platform secure store). Not exported.
 var store: PKeyStore = null
 ## A Callable returning epoch seconds, replacing the system clock (tests and replays).
