@@ -22,6 +22,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import {
+  ARTIFACT_ROLES,
+  BUILD_NUMBER_SOURCES,
+  CHANNEL_ALIAS_NAMES,
+  RELEASE_ARCHES,
+  RELEASE_PLATFORMS,
+  VERSION_SCHEMES,
   validateIngestDocuments,
   validateManifestDocuments,
 } from "../src/index.js";
@@ -178,6 +184,32 @@ function base(): Docs {
           allowAmbiguousAssets: false,
         },
         access: { metadata: "public", artifacts: "licensed" },
+        // P2-04: the declared app deliverable. Its tag filters stay at the root above (the
+        // legacy spelling); `conflicting_versioning` is what declaring them here too would be.
+        deliverables: {
+          app: {
+            kind: "app",
+            versioning: { scheme: "semver", buildNumber: "descriptor" },
+            channels: { beta: { includes: ["stable"] }, nightly: {} },
+            artifacts: [
+              {
+                id: "macos",
+                platform: "macos",
+                arch: "universal",
+                format: "dmg",
+                match: "Acme-*-macos.dmg",
+              },
+              {
+                id: "win-zip",
+                platform: "windows",
+                arch: "x86_64",
+                format: "zip",
+                role: "payload",
+                match: "Acme-*-windows-x86_64.zip",
+              },
+            ],
+          },
+        },
       },
       // NOTE: at the release-document ROOT, not inside the `release` wrapper — the validator
       // reads edgeMint from `manifest.release` directly (it does not unwrap through
@@ -229,6 +261,8 @@ type Mutation = {
 const p = (d: Docs) => d.product as Record<string, any>;
 const rel = (d: Docs) => (d.release as Record<string, any>).release;
 const mint = (d: Docs) => (d.release as Record<string, any>).edgeMint[0];
+const app = (d: Docs) => rel(d).deliverables.app;
+const entry = (d: Docs) => app(d).artifacts[0];
 
 /** One entry per validator error code (asserted complete against the source below). */
 const MUTATIONS: Mutation[] = [
@@ -724,6 +758,179 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) => (rel(d).access.artifacts = "entitled"),
   },
+  // ── deliverables and the artifact map (P2-04) ──
+  {
+    code: "invalid_deliverable_id",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).deliverables["Bad_Id"] = { kind: "pack" }),
+  },
+  {
+    code: "invalid_deliverable_id",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).deliverables = ["app"]),
+  },
+  {
+    code: "invalid_deliverable_kind",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (app(d).kind = "game"),
+  },
+  {
+    code: "invalid_deliverable_kind",
+    file: "release",
+    schema: "rejects",
+    // `app` is the application; a pack may not take its name.
+    mutate: (d) => (app(d).kind = "pack"),
+  },
+  {
+    code: "invalid_deliverable_kind",
+    file: "release",
+    schema: "rejects",
+    // ...and no other id may be kind app.
+    mutate: (d) => (rel(d).deliverables["acme.tools"] = { kind: "app" }),
+  },
+  {
+    // A warning: the document stays valid and the pack is ignored until P4-02.
+    code: "pack_deliverables_not_supported",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) =>
+      (rel(d).deliverables["acme.core3d"] = {
+        kind: "pack",
+        type: "godot.pck",
+      }),
+  },
+  {
+    code: "invalid_version_scheme",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (app(d).versioning.scheme = "calver"),
+  },
+  {
+    code: "invalid_version_scheme",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (app(d).versioning.buildNumber = "tag"),
+  },
+  {
+    code: "invalid_stable_tag_pattern",
+    file: "release",
+    schema: "accepts",
+    // The nested spelling runs the same rule (validator-only half: it must COMPILE).
+    mutate: (d) => {
+      delete rel(d).stableTagPattern;
+      delete rel(d).ignoreTags;
+      app(d).versioning.stableTagPattern = "v(unclosed";
+    },
+  },
+  {
+    code: "invalid_ignore_tags",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => {
+      delete rel(d).stableTagPattern;
+      delete rel(d).ignoreTags;
+      app(d).versioning.ignoreTags = ["has space"];
+    },
+  },
+  {
+    code: "conflicting_versioning",
+    file: "release",
+    schema: "accepts",
+    // The root already declares stableTagPattern and ignoreTags (the P0-02 spelling).
+    mutate: (d) => (app(d).versioning.ignoreTags = ["packs"]),
+  },
+  {
+    code: "invalid_channel",
+    file: "release",
+    schema: "rejects",
+    // Stored as written, so only canonical names: no upper case, no alias.
+    mutate: (d) => (app(d).channels["Beta.2"] = {}),
+  },
+  {
+    code: "invalid_channel",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (app(d).channels.staging = { includes: ["stable"] }),
+  },
+  {
+    code: "invalid_channel_includes",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (app(d).channels.beta.includes = ["ghost"]),
+  },
+  {
+    code: "invalid_channel_includes",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => {
+      app(d).channels.beta.includes = ["nightly"];
+      app(d).channels.nightly = { includes: ["beta"] };
+    },
+  },
+  {
+    code: "invalid_channel_includes",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (app(d).channels.beta.includes = "stable"),
+  },
+  {
+    code: "invalid_artifact_entry",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => delete entry(d).format,
+  },
+  {
+    code: "invalid_artifact_entry",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (entry(d).id = "Mac OS"),
+  },
+  {
+    code: "invalid_artifact_entry",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (app(d).artifacts = { macos: {} }),
+  },
+  {
+    code: "duplicate_artifact_id",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (app(d).artifacts[1].id = "macos"),
+  },
+  {
+    code: "invalid_artifact_platform",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (entry(d).platform = "darwin"),
+  },
+  {
+    code: "invalid_artifact_arch",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (entry(d).arch = "amd64"),
+  },
+  {
+    code: "invalid_artifact_role",
+    file: "release",
+    schema: "rejects",
+    // README §3.12's `portable` is a FORMAT (zip versus exe/msi), not a role.
+    mutate: (d) => (app(d).artifacts[1].role = "portable"),
+  },
+  {
+    code: "invalid_artifact_match",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (entry(d).match = ""),
+  },
+  {
+    code: "invalid_artifact_match",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (entry(d).match = "*".repeat(129)),
+  },
   {
     code: "invalid_edge_mint_id",
     file: "release",
@@ -866,6 +1073,79 @@ describe("valid manifests pass both validators", () => {
       schema: true,
       release: true,
     });
+  });
+
+  it("the nested versioning spelling, and a Diceroll-shaped artifact map (README §3.12)", () => {
+    const docs = base();
+    delete rel(docs).stableTagPattern;
+    delete rel(docs).ignoreTags;
+    rel(docs).deliverables = {
+      app: {
+        kind: "app",
+        versioning: {
+          scheme: "semver",
+          stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
+          ignoreTags: ["channels", "packs"],
+          buildNumber: "descriptor",
+        },
+        channels: { beta: { includes: ["stable"] } },
+        artifacts: [
+          ["macos", "macos", "universal", "dmg", "Diceroll-*-macos.dmg"],
+          [
+            "win-zip",
+            "windows",
+            "x86_64",
+            "zip",
+            "Diceroll-*-windows-x86_64.zip",
+          ],
+          [
+            "linux-x64",
+            "linux",
+            "x86_64",
+            "tar.gz",
+            "Diceroll-*-linux-x86_64.tar.gz",
+          ],
+          ["apk", "android", "any", "apk", "Diceroll-*-android.apk"],
+          [
+            "ipa-sideload",
+            "ios",
+            "arm64",
+            "ipa",
+            "Diceroll-*-ios-sideload.ipa",
+          ],
+          ["web", "web", "wasm32", "zip", "Diceroll-*-web.zip"],
+        ].map(([id, platform, arch, format, match]) => ({
+          id,
+          platform,
+          arch,
+          format,
+          match,
+        })),
+      },
+    };
+    expect(tsCodes(docs)).toEqual([]);
+    expect(
+      validateRelease(docs.release),
+      JSON.stringify(validateRelease.errors),
+    ).toBe(true);
+  });
+
+  it("the schema's vocabularies are exactly the validator's constants", () => {
+    const schema = JSON.parse(
+      readFileSync(join(schemasDir, "release.schema.json"), "utf8"),
+    );
+    const entry = schema.$defs.artifactEntry.properties;
+    expect(entry.platform.enum).toEqual([...RELEASE_PLATFORMS]);
+    expect(entry.arch.enum).toEqual([...RELEASE_ARCHES]);
+    expect(entry.role.enum).toEqual([...ARTIFACT_ROLES]);
+    const app = schema.$defs.appDeliverable.properties;
+    expect(app.versioning.properties.scheme.enum).toEqual([...VERSION_SCHEMES]);
+    expect(app.versioning.properties.buildNumber.enum).toEqual([
+      ...BUILD_NUMBER_SOURCES,
+    ]);
+    expect(app.channels.propertyNames.not.enum).toEqual([
+      ...CHANNEL_ALIAS_NAMES,
+    ]);
   });
 
   it("the real djdl fixtures in products/", () => {

@@ -6,8 +6,10 @@ import {
   ARTIFACT_ROLES,
   compileManualChannelRegex,
   DELIVERABLE_KINDS,
+  isArtifactMatch,
   isDeliverableId,
   isIgnoreTag,
+  matchesArtifactGlob,
   MAX_IGNORE_TAG_LENGTH,
   MAX_DELIVERABLE_ID_LENGTH,
   RELEASE_ARCHES,
@@ -1527,4 +1529,169 @@ describe("release model vocabulary (P2-03)", () => {
   ])("rejects the deliverable id %j", (id) =>
     expect(isDeliverableId(id)).toBe(false),
   );
+});
+
+describe("deliverables and the artifact map (P2-04)", () => {
+  const parseWith = (fields: Record<string, unknown>) =>
+    parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify({
+        release: { ...(release().release as object), ...fields },
+      }),
+    });
+
+  it("a document without deliverables keeps the implicit app (legacy sniffing)", () => {
+    const res = parseWith({});
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.app).toBeNull();
+  });
+
+  it("normalises the app declaration with its defaults", () => {
+    const res = parseWith({
+      deliverables: {
+        app: {
+          kind: "app",
+          channels: { beta: { includes: ["stable"] } },
+          artifacts: [
+            {
+              id: "macos",
+              platform: "macos",
+              arch: "universal",
+              format: "dmg",
+              match: "Acme-*.dmg",
+            },
+          ],
+        },
+        "acme.core3d": { kind: "pack", type: "godot.pck" },
+      },
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.app).toEqual({
+      kind: "app",
+      versioning: { scheme: "semver", buildNumber: null },
+      channels: { beta: { includes: ["stable"] } },
+      artifacts: [
+        {
+          id: "macos",
+          platform: "macos",
+          arch: "universal",
+          format: "dmg",
+          role: "payload",
+          match: "Acme-*.dmg",
+        },
+      ],
+    });
+  });
+
+  it("persists either spelling of the tag filters into the same fields", () => {
+    const nested = parseWith({
+      deliverables: {
+        app: {
+          kind: "app",
+          versioning: {
+            stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
+            ignoreTags: ["packs"],
+          },
+        },
+      },
+    });
+    const legacy = parseWith({
+      stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
+      ignoreTags: ["packs"],
+      deliverables: { app: { kind: "app" } },
+    });
+    for (const res of [nested, legacy]) {
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.manifest.release?.stableTagPattern).toBe(
+        "v\\d+\\.\\d+\\.\\d+",
+      );
+      expect(res.manifest.release?.ignoreTags).toEqual(["packs"]);
+    }
+  });
+
+  it("refuses both spellings at once", () => {
+    const res = parseWith({
+      stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
+      deliverables: {
+        app: { kind: "app", versioning: { ignoreTags: ["packs"] } },
+      },
+    });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors.join("\n")).toContain("keep one spelling");
+  });
+
+  it("a pack deliverable is a warning, not an error", () => {
+    const res = validateManifestDocuments({
+      product: { ...PRODUCT, modules: { releases: true } },
+      schema: catalogWithSecretDelivery(),
+      release: {
+        release: {
+          ...(release().release as object),
+          deliverables: { "acme.ui": { kind: "pack" } },
+        },
+      },
+    });
+    expect(res.errors).toEqual([]);
+    expect(res.warnings.map((w) => w.code)).toEqual([
+      "pack_deliverables_not_supported",
+    ]);
+  });
+
+  it("includes may name a manual channel, and a cycle is refused", () => {
+    const manual = [{ name: "nightly", regex: "v.*-nightly" }];
+    const ok = parseWith({
+      manualChannels: manual,
+      deliverables: {
+        app: { kind: "app", channels: { beta: { includes: ["nightly"] } } },
+      },
+    });
+    expect(ok.ok).toBe(true);
+    const self = parseWith({
+      deliverables: {
+        app: { kind: "app", channels: { beta: { includes: ["beta"] } } },
+      },
+    });
+    expect(self.ok).toBe(false);
+  });
+});
+
+describe("matchesArtifactGlob", () => {
+  it("anchors, is case-sensitive, and treats every other character literally", () => {
+    const g = "Diceroll-*-macos.dmg";
+    expect(matchesArtifactGlob(g, "Diceroll-1.2.3-macos.dmg")).toBe(true);
+    expect(matchesArtifactGlob(g, "Diceroll--macos.dmg")).toBe(true);
+    expect(matchesArtifactGlob(g, "diceroll-1.2.3-macos.dmg")).toBe(false);
+    expect(matchesArtifactGlob(g, "Diceroll-1.2.3-macos.dmg.sig")).toBe(false);
+    expect(matchesArtifactGlob(g, "xDiceroll-1.2.3-macos.dmg")).toBe(false);
+    // `.` is not a regex wildcard, and regex metacharacters are plain text.
+    expect(matchesArtifactGlob("a.zip", "abzip")).toBe(false);
+    expect(matchesArtifactGlob("a(b)+[c].zip", "a(b)+[c].zip")).toBe(true);
+  });
+
+  it("? is exactly one character (one code point)", () => {
+    expect(matchesArtifactGlob("v?.zip", "v1.zip")).toBe(true);
+    expect(matchesArtifactGlob("v?.zip", "v.zip")).toBe(false);
+    expect(matchesArtifactGlob("v?.zip", "v12.zip")).toBe(false);
+    expect(matchesArtifactGlob("v?.zip", "v\u{1F680}.zip")).toBe(true);
+  });
+
+  it("stays linear on a pathological glob", () => {
+    const glob = `${"*a".repeat(60)}b`;
+    const name = "a".repeat(255);
+    const t0 = performance.now();
+    expect(matchesArtifactGlob(glob, name)).toBe(false);
+    expect(performance.now() - t0).toBeLessThan(50);
+  });
+
+  it("validates a glob's shape", () => {
+    expect(isArtifactMatch("*.dmg")).toBe(true);
+    expect(isArtifactMatch("")).toBe(false);
+    expect(isArtifactMatch("a\nb")).toBe(false);
+    expect(isArtifactMatch("x".repeat(129))).toBe(false);
+  });
 });

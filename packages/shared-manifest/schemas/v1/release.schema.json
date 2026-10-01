@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/release.schema.json",
   "title": "Polaris Key release manifest (.pkey/release)",
-  "description": "The release document of a .pkey/ manifest: GitHub provider coordinates, channel/appcast/install settings, artifact policy, access modes, and edge-mint recipes. Required only when the release service is enabled. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
+  "description": "The release document of a .pkey/ manifest: GitHub provider coordinates, channel/appcast/install settings, artifact policy, access modes, deliverables with the declared artifact map, and edge-mint recipes. Required only when the release service is enabled. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
   "type": "object",
   "properties": {
     "release": {
@@ -46,6 +46,9 @@
     },
     "access": {
       "$ref": "#/$defs/access"
+    },
+    "deliverables": {
+      "$ref": "#/$defs/deliverables"
     },
     "edgeMint": {
       "type": "array",
@@ -97,6 +100,9 @@
         },
         "access": {
           "$ref": "#/$defs/access"
+        },
+        "deliverables": {
+          "$ref": "#/$defs/deliverables"
         },
         "edgeMint": {
           "type": "array",
@@ -267,6 +273,134 @@
         "maxLength": 255,
         "pattern": "^[^\\u0000-\\u0020\\u007f]+$"
       }
+    },
+    "deliverables": {
+      "description": "The product's deliverables (P2-04, README §3.4). `app` is the product's application; any other id is a pack (kind: pack), accepted with the warning pack_deliverables_not_supported and ignored until P4-02. Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 64,
+        "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
+      },
+      "properties": {
+        "app": {
+          "$ref": "#/$defs/appDeliverable"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/packDeliverable"
+      }
+    },
+    "packDeliverable": {
+      "description": "A pack deliverable. Not supported yet: the validator warns (pack_deliverables_not_supported) and ignores it.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "pack"
+        }
+      },
+      "required": ["kind"]
+    },
+    "appDeliverable": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "app"
+        },
+        "versioning": {
+          "type": "object",
+          "properties": {
+            "scheme": {
+              "description": "How versions are ordered. Default semver.",
+              "enum": ["semver", "semver+build", "4part"]
+            },
+            "stableTagPattern": {
+              "$ref": "#/$defs/stableTagPattern"
+            },
+            "ignoreTags": {
+              "$ref": "#/$defs/ignoreTags"
+            },
+            "buildNumber": {
+              "description": "Where each build's build number comes from.",
+              "enum": ["descriptor", "none"]
+            }
+          }
+        },
+        "channels": {
+          "description": "Channels this deliverable declares, by canonical name. includes names the channels whose releases it also offers (beta: { includes: [stable] } makes beta a superset of stable); the validator additionally refuses an unknown channel or an includes cycle, which JSON Schema cannot express.",
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+            "not": {
+              "enum": ["staging", "latest"]
+            }
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "includes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "artifacts": {
+          "description": "The declared artifact map: each entry is one build, and match names its file. A file named <payload>.sig or <payload>.sha256 is that build's signature or checksum.",
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/artifactEntry"
+          }
+        }
+      },
+      "required": ["kind"]
+    },
+    "artifactEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The build id; unique within the map (the validator checks uniqueness).",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "platform": {
+          "enum": ["macos", "ios", "android", "windows", "linux", "web"]
+        },
+        "arch": {
+          "description": "universal and any match every architecture.",
+          "enum": ["arm64", "x86_64", "universal", "armv7", "wasm32", "any"]
+        },
+        "format": {
+          "description": "The file type (dmg, zip, tar.gz, apk, ipa, exe, msix, …). Installer versus portable is a format, not a role.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.+-]{0,31}$"
+        },
+        "role": {
+          "description": "What the matched file is for in its build. Default payload.",
+          "enum": [
+            "payload",
+            "files-index",
+            "chunk-index",
+            "chunk-bundle",
+            "delta",
+            "signature",
+            "checksum"
+          ]
+        },
+        "match": {
+          "description": "An anchored, case-sensitive file-name glob: * matches any run of characters, ? exactly one.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        }
+      },
+      "required": ["id", "platform", "arch", "format", "match"]
     }
   }
 }
