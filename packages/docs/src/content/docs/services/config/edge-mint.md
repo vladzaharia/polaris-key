@@ -321,7 +321,8 @@ nothing.
 
 `client.config.mintToken(recipeId)` (`mint_token` in Python) in the Node, Python and Swift SDKs
 calls the token route with the device bearer, caches the result in memory only until
-`expiresAt` minus 30 seconds, applies the usual single re-acquire on a 401, and validates the
+`expiresAt` minus 30 seconds (and only while the client still holds the device token it was
+minted with, so `deactivate()` or a different sign-in drops it), applies the usual single re-acquire on a 401, and validates the
 recipe id against the router's alphabet before sending anything.
 `conformance/transcripts/edge-mint.json` pins the conversation.
 

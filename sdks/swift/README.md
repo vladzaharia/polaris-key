@@ -170,7 +170,8 @@ signed-in identity's **own** licence; it does not attach a licence this device a
 third-party token through an operator-approved recipe (`GET /<product>/config/mint/<id>/token`,
 with the device token) and returns a `MintedToken(token:expiresAt:)`. It is cached **in memory
 only** — never in the cache file or the keychain — and reused until 30 seconds before
-`expiresAt`. A 401 gets the usual single re-acquire and one retry. Failures throw
+`expiresAt`, and only while the client still holds the device token it was minted with —
+`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire and one retry. Failures throw
 `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`)
 before any request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.
