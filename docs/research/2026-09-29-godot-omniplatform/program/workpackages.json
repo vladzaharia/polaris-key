@@ -1617,7 +1617,7 @@
       "optional": false,
       "refs": ["README §3.8", "notes/E2"],
       "brief": "wp/P5-03-play-connector.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-04",
