@@ -33,6 +33,27 @@ from __future__ import annotations
 from ._version import DIST_NAME, SDK_NAME, SDK_VERSION, __version__
 from .client import DeviceInfo, PolarisKeyClient, SyncState
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
+from .constants_generated import (
+    ErrorCode,
+    ERROR_CODE_VALUES,
+    ERROR_CODE_KINDS,
+    Feature,
+    FEATURE_VALUES,
+    UnsupportedReason,
+    UNSUPPORTED_REASON_VALUES,
+    Platform,
+    PLATFORM_VALUES,
+    Arch,
+    ARCH_VALUES,
+    HeaderName,
+    HEADER_NAME_VALUES,
+    ServiceSlug,
+    SERVICE_SLUG_VALUES,
+    PROTOCOL_VERSION,
+    CORPUS_VERSION,
+    GATE_MATRIX_VERSION,
+    FINGERPRINT_VERSION,
+)
 from .core.bundle import (
     BUNDLE_CLAIMS_REJECTED,
     BUNDLE_JWS_REJECTED,
@@ -258,4 +279,24 @@ __all__ = [
     "DEFAULT_BASE",
     "DEFAULT_REQUEST_TIMEOUT_SECONDS",
     "normalize_base_url",
+    # generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts)
+    "ErrorCode",
+    "ERROR_CODE_VALUES",
+    "ERROR_CODE_KINDS",
+    "Feature",
+    "FEATURE_VALUES",
+    "UnsupportedReason",
+    "UNSUPPORTED_REASON_VALUES",
+    "Platform",
+    "PLATFORM_VALUES",
+    "Arch",
+    "ARCH_VALUES",
+    "HeaderName",
+    "HEADER_NAME_VALUES",
+    "ServiceSlug",
+    "SERVICE_SLUG_VALUES",
+    "PROTOCOL_VERSION",
+    "CORPUS_VERSION",
+    "GATE_MATRIX_VERSION",
+    "FINGERPRINT_VERSION",
 ]

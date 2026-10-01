@@ -82,9 +82,35 @@ export {
   type ProductDiscoveryDocument,
   type ProductDiscoveryTrust,
   type ServiceFragment,
-  type ServiceSlug,
   type ServicesMap,
 } from "./discovery.js";
+
+// ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──
+// Error codes, header names, enums, feature ids and versions, spelled identically (up to
+// casing) in every SDK. `ServiceSlug` is exported from here as a value and a type; it is the same
+// union the discovery module uses.
+export {
+  ErrorCode,
+  ERROR_CODE_VALUES,
+  ERROR_CODE_KINDS,
+  type ErrorCodeKind,
+  Feature,
+  FEATURE_VALUES,
+  UnsupportedReason,
+  UNSUPPORTED_REASON_VALUES,
+  Platform,
+  PLATFORM_VALUES,
+  Arch,
+  ARCH_VALUES,
+  HeaderName,
+  HEADER_NAME_VALUES,
+  ServiceSlug,
+  SERVICE_SLUG_VALUES,
+  PROTOCOL_VERSION,
+  CORPUS_VERSION,
+  GATE_MATRIX_VERSION,
+  FINGERPRINT_VERSION,
+} from "./constants.generated.js";
 
 export { SDK_NAME, SDK_VERSION } from "./version.js";
 
