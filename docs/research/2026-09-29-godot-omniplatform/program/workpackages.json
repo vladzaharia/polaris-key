@@ -791,7 +791,7 @@
         "authoring-pkey-manifests skill"
       ],
       "brief": "wp/P2-04-release-descriptor.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-05",
