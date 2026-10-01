@@ -291,6 +291,74 @@ the per-sync fetch limit. Once a release has a descriptor, the
 descriptor owns its builds and classification; later syncs refresh only the serving columns
 (name, size, GitHub URL, access).
 
+**Title, notes and publication date.** A descriptor's `title`, `notes` and `publishedAt` are
+written when it creates a release. Where the release also exists on GitHub under the same tag,
+every truth-store sync rewrites those three columns from the GitHub release, so GitHub's text is
+what the changelog, the portal and the appcast show (edit the release notes on GitHub, not in the
+descriptor). A release CI published to the blob store with no GitHub release keeps the
+descriptor's values, because no sync touches it. This is deliberate: two sources for the same
+prose would drift, and GitHub's is the one an author can correct after publishing.
+
+## Trusted publishing
+
+CI publishes a release without a long-lived secret in the product's repository (README §3.4, the
+npm/PyPI trusted-publishing model). The flow is three POSTs, all in the release namespace, so a
+product with Release off does not have them:
+
+1. **`POST /<product>/release/publish/token`** with `{"token": "<GitHub Actions OIDC JWT>"}`.
+   Request the OIDC token with the audience `https://key.plrs.im/<product>/release/publish` (the
+   origin you call, then the product and route). If the token's claims satisfy the product's
+   **publisher policy**, the answer is a `pkeyci_` token valid for 30 minutes with the policy's
+   scopes. Each OIDC token can be exchanged once.
+2. **`POST /<product>/release/publish/uploads`** with the `pkeyci_` token (`release:publish`) and
+   `{"objects": [{"sha256": "…", "size": n}, …]}`. The answer is a one-shot `ticket`, R2
+   temporary `credentials` (S3 endpoint, bucket, access key, secret, session token) that can only
+   PUT and HEAD under `staging/<product>/<ticketId>/`, each object's staging `key`, whether it is
+   already `present` (this product already references it, so skip the upload), and `nextSeq`
+   (each deliverable's highest `seq` + 1). Upload each object that is not present as **one** PUT
+   with `x-amz-checksum-sha256`; multipart is not granted.
+3. **`POST /<product>/release/publish/submit`** with the token and
+   `{"ticket": "…", "descriptor": {…}, "dryRun": false}`. Every `r2` location the product does
+   not already reference must be an object of the ticket whose staged copy has the descriptor's
+   size and SHA-256; the descriptor is then checked exactly as ingest checks it. Only when all of
+   that passes is the ticket redeemed, the objects promoted into the blob store and the release
+   written. `dryRun: true` stops before writing anything. A failed submit gives the ticket back,
+   so you can fix an upload and submit again; a refusal carrying `"retryable": true` (a lost
+   race with another writer, or a transient promote failure) may simply be sent again, and every
+   other refusal is final. One descriptor per submit.
+
+**The publisher policy.** A product opts in from `.pkey/release`:
+
+```yaml
+publishing:
+  trustedPublisher:
+    workflow: .github/workflows/release.yml
+    environment: release # the default
+```
+
+Link and resync turn that into the policy, adding the linked repository's **numeric** id and
+owner id from GitHub (never from the manifest, so a recycled repository name cannot inherit the
+policy). A token is accepted only when all of these hold: the `repository_id` and
+`repository_owner_id` match; `job_workflow_ref` is this repository's declared workflow at the ref
+that triggered the run (a reusable workflow in another repository does not count); the job runs
+in the declared environment; `ref_protected` is `true`; the runner is GitHub-hosted; and the
+event is `push`, `release` or `workflow_dispatch`. The last three are fixed by the platform.
+`ref_protected` is true only when a branch or tag **ruleset** covers the ref, so a tag-triggered
+release needs a tag ruleset, and the environment should require reviewers if not every writer
+may publish.
+
+The default scopes are `release:publish`, `release:promote` and `distribution:report`;
+`release:yank` is opt-in. Scopes are an operator setting, never a manifest one: in the console's
+admin API an operator can read the policy (`GET /manage/api/products/<slug>/ci-publisher`),
+claim and edit it (`PUT`, which also stops resync from changing it), and issue, list and revoke
+**static** `pkeyci_` tokens for a CI that is not GitHub (`/manage/api/products/<slug>/ci-tokens`;
+shown once, expiring at most 90 days out). Every one of those writes is audited.
+
+Errors use the platform's flat shape with a machine-readable `reason`
+(`policy_mismatch` names the failing `claim`). The routes are in the
+[route reference](/docs/reference/routes/); the security model is
+`docs/security/THREAT-MODEL.md`, "Trusted publishing (P2-02)".
+
 ## Changelog
 
 ```

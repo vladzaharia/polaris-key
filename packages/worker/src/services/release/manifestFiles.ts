@@ -10,8 +10,18 @@
  * per document independently, so a repo may hold `product.yaml` next to `schema.json`.
  */
 
-/** The manifest documents a repo may carry. */
-export type ManifestFileName = "schema" | "product" | "release";
+import {
+  MANIFEST_DOCUMENTS,
+  type ManifestDocumentName,
+} from "@polaris-key/manifest";
+
+/** The manifest documents a repo may carry (`MANIFEST_DOCUMENTS` in @polaris-key/manifest).
+ *  `distribution` is P2b-02's: optional, and the implicit `direct` outlet when absent. */
+export type ManifestFileName = ManifestDocumentName;
+
+/** Every document, in the order the ingest paths read them. */
+export const MANIFEST_FILE_NAMES: readonly ManifestFileName[] =
+  MANIFEST_DOCUMENTS;
 
 /** The manifest directory. */
 export const MANIFEST_DIR = ".pkey";
@@ -29,6 +39,7 @@ export const MANIFEST_FILES: Record<ManifestFileName, string[]> = {
   schema: manifestPaths("schema"),
   product: manifestPaths("product"),
   release: manifestPaths("release"),
+  distribution: manifestPaths("distribution"),
 };
 
 /**

@@ -110,6 +110,9 @@ binding = "BLOBS"
 bucket_name = "polaris-key-blobs-prod"
 [env.prod.vars]
 BLOB_ORIGIN = "https://dl.plrs.im"
+# P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
+# same bucket as the BLOBS binding above; the S3 API names buckets, the binding does not).
+BLOBS_BUCKET_NAME = "polaris-key-blobs-prod"
 [[env.prod.send_email]]
 name = "EMAIL"
 allowed_sender_addresses = ["noreply@plrs.im"]
@@ -136,6 +139,9 @@ binding = "BLOBS"
 bucket_name = "polaris-key-blobs-staging"
 [env.staging.vars]
 BLOB_ORIGIN = "https://dl-staging.plrs.im"
+# P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
+# same bucket as the BLOBS binding above; the S3 API names buckets, the binding does not).
+BLOBS_BUCKET_NAME = "polaris-key-blobs-staging"
 
 [env.dev]
 [[env.dev.routes]]
@@ -159,7 +165,12 @@ binding = "BLOBS"
 bucket_name = "polaris-key-blobs-dev"
 [env.dev.vars]
 BLOB_ORIGIN = "https://dl-dev.plrs.im"
+# P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
+# same bucket as the BLOBS binding above; the S3 API names buckets, the binding does not).
+BLOBS_BUCKET_NAME = "polaris-key-blobs-dev"
 
+# Trusted publishing (P2-02; optional — without them /release/publish/uploads answers 404):
+#   R2_ACCOUNT_ID, R2_PARENT_ACCESS_KEY_ID, R2_PARENT_SECRET_ACCESS_KEY (docs/DEPLOYMENT.md).
 # Required secrets (set with `wrangler secret put <NAME> --env <env>`):
 #   KEY_HASH_PEPPER, ADMIN_SESSION_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY,
 #   GITHUB_WEBHOOK_SECRET, PLATFORM_ADMIN_GROUP, PLATFORM_KEK,

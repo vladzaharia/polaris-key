@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SqliteDb } from "../src/db/sqlite.js";
 import type { ServiceHooks } from "../src/core/hooks.js";
+import type { ManifestIngest } from "../src/core/registry.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(here, "..", "migrations");
@@ -33,3 +34,7 @@ export const NO_HOOKS: ServiceHooks = {
   delivery: () => null,
   outletCapabilities: async () => null,
 };
+
+/** A manifest ingest that writes nothing for any service — for a test that builds a service
+ *  context by hand (Core builds the real one from the registry, `manifestIngestFor`). */
+export const NO_INGEST: ManifestIngest = () => ({ slugs: [], statements: [] });

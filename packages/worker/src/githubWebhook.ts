@@ -5,6 +5,8 @@ import type { Db } from "./db/types.js";
 import { errorResponse, json } from "./core/errors.js";
 import { pk } from "./kv.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
+import { manifestIngestFor } from "./core/registry.js";
+import { SERVICES } from "./mount.js";
 import {
   getReleaseConfig,
   isManifestPath,
@@ -335,7 +337,14 @@ export async function handleGithubWebhook(
       });
       continue;
     }
-    const result = await resyncRepo(env, db, product.slug, now, fetchImpl);
+    const result = await resyncRepo(
+      env,
+      db,
+      product.slug,
+      now,
+      fetchImpl,
+      manifestIngestFor(SERVICES),
+    );
     if (result.ok) {
       await upsertProductSyncState(db, {
         product: product.slug,

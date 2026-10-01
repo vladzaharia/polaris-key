@@ -753,7 +753,7 @@
       "optional": false,
       "refs": ["README §3.4 publishing", "notes/E5 §2", "notes/E7"],
       "brief": "wp/P2-02-trusted-publisher.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-03",
@@ -882,7 +882,7 @@
       "optional": false,
       "refs": ["README §3.8", "README §3.12"],
       "brief": "wp/P2b-02-distribution-manifest.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2b-03",

@@ -2,7 +2,8 @@
 
 /**
  * The Worker's JWT signers: ES256 (ECDSA P-256 / SHA-256) and RS256 (RSASSA-PKCS1-v1_5 /
- * SHA-256), hand-rolled over WebCrypto (P5-01).
+ * SHA-256), hand-rolled over WebCrypto (P5-01), and HS256 (HMAC-SHA-256) for the R2 temporary
+ * credentials P2-02's upload tickets mint (`core/publisher.ts`).
  *
  * Before this file the Worker carried two copies of the RS256 path — `rsaToPkcs8` + `signRs256`
  * in `services/config/mint.ts`, and `toPkcs8` + `signAppJwt` in `services/release/githubApp.ts`
@@ -102,7 +103,7 @@ export async function importRs256PrivateKey(pem: string): Promise<CryptoKey> {
 
 /** `b64url(header) + "." + b64url(payload)`, with the header in the pinned key order. */
 function signingInput(
-  alg: "ES256" | "RS256",
+  alg: "ES256" | "RS256" | "HS256",
   payload: Record<string, unknown>,
   kid: string | undefined,
 ): string {
@@ -145,6 +146,31 @@ export async function signJwtRs256(
   const key = await importRs256PrivateKey(pem);
   const sig = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
+    key,
+    toAB(new TextEncoder().encode(input)),
+  );
+  return input + "." + b64url(new Uint8Array(sig));
+}
+
+/**
+ * Sign an HS256 JWT with a shared secret (the raw UTF-8 bytes of `secret` are the HMAC key).
+ * Header `{alg:"HS256", typ:"JWT"}`. Used for R2 temporary credentials (P2-02): R2 verifies the
+ * JWT with the parent access key's secret, so the secret never leaves the Worker.
+ */
+export async function signJwtHs256(
+  payload: Record<string, unknown>,
+  secret: string,
+): Promise<string> {
+  const input = signingInput("HS256", payload, undefined);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    toAB(new TextEncoder().encode(secret)),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign(
+    "HMAC",
     key,
     toAB(new TextEncoder().encode(input)),
   );

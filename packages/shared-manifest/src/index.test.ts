@@ -1852,3 +1852,75 @@ describe("matchesArtifactGlob", () => {
     expect(isArtifactMatch("x".repeat(129))).toBe(false);
   });
 });
+
+describe("publishing.trustedPublisher (P2-02)", () => {
+  const parseWith = (publishing: unknown) =>
+    parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify({
+        release: { ...(release().release as object), publishing },
+      }),
+    });
+
+  it("is null when undeclared", () => {
+    const res = parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify(release()),
+    });
+    expect(res.ok && res.manifest.release?.trustedPublisher).toBeNull();
+  });
+
+  it("normalizes the workflow and defaults the environment to release", () => {
+    const res = parseWith({
+      trustedPublisher: { workflow: ".github/workflows/release.yml" },
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.trustedPublisher).toEqual({
+      workflow: ".github/workflows/release.yml",
+      environment: "release",
+    });
+  });
+
+  it("refuses a workflow outside .github/workflows and a malformed environment", () => {
+    for (const [publishing, code] of [
+      [
+        { trustedPublisher: { workflow: "release.yml" } },
+        "trustedPublisher/workflow",
+      ],
+      [{ trustedPublisher: "x" }, "/publishing/trustedPublisher:"],
+      ["x", "/publishing/trustedPublisher:"],
+      [
+        {
+          trustedPublisher: {
+            workflow: ".github/workflows/r.yml",
+            environment: "a/b",
+          },
+        },
+        "trustedPublisher/environment",
+      ],
+    ] as const) {
+      const res = parseWith(publishing);
+      expect(res.ok, JSON.stringify(publishing)).toBe(false);
+      if (!res.ok) expect(res.errors.join("\n")).toContain(code);
+    }
+  });
+
+  it("has no field for the repository ids or the platform-fixed checks", () => {
+    // Unknown keys are tolerated, but nothing reads them: a repo cannot loosen its own policy.
+    const res = parseWith({
+      trustedPublisher: {
+        workflow: ".github/workflows/release.yml",
+        repositoryId: 1,
+        refProtected: false,
+        runner: "self-hosted",
+      },
+    });
+    expect(res.ok && res.manifest.release?.trustedPublisher).toEqual({
+      workflow: ".github/workflows/release.yml",
+      environment: "release",
+    });
+  });
+});

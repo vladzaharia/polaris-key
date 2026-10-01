@@ -20,7 +20,11 @@ import type { Product } from "./products.js";
 import type { Db, DbStatement } from "../db/types.js";
 import type { AdminSession } from "../admin/session.js";
 import { ErrorCode, json } from "./errors.js";
-import type { ServiceSlug, ServicesMap } from "./services.js";
+import {
+  SERVICE_SLUGS,
+  type ServiceSlug,
+  type ServicesMap,
+} from "./services.js";
 import {
   buildHooks,
   type DescriptorHooks,
@@ -60,10 +64,18 @@ export interface ServiceContext {
    * is off. Never constructed by a caller: `dispatchService` and the admin API build it.
    */
   hooks: ServiceHooks;
+  /**
+   * Core's manifest-ingest pipeline, bound to the registry (P2b-02): the statements every enabled
+   * service's `manifestIngest` contributes to an ingest batch. Handed to the one service that
+   * runs an ingest (Release's resync, behind its admin route) so it can put them in ITS batch
+   * without ever seeing — or importing — the services that answer. Built by Core like `hooks`.
+   */
+  ingest: ManifestIngest;
 }
 
-/** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks`. */
-export type ServiceRequest = Omit<ServiceContext, "hooks">;
+/** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks` and
+ *  `ingest`. */
+export type ServiceRequest = Omit<ServiceContext, "hooks" | "ingest">;
 
 /**
  * What a service is given when Core assembles `/.well-known/polaris.json`.
@@ -132,8 +144,16 @@ export interface ServiceDescriptor extends DescriptorHooks {
    * worker goes through the `Db` abstraction so the same code runs on D1 and on the in-memory
    * SQLite the tests use. A descriptor that emitted real D1 statements could not be tested and
    * could not be batched with the rest of the ingest.
+   *
+   * Run by Core (`manifestIngestStatements`) for ENABLED services only, inside the link or
+   * resync batch; `now` is that ingest's epoch. Statements only, so a hook cannot read: write
+   * it as an idempotent upsert, and never touch a column an operator owns.
    */
-  manifestIngest?(parsed: ParsedManifest, product: string): DbStatement[];
+  manifestIngest?(
+    parsed: ParsedManifest,
+    product: string,
+    now: number,
+  ): DbStatement[];
   /**
    * May this caller be given a device credential? (wire v3 §6, spec §2.3.)
    *
@@ -189,6 +209,7 @@ export async function dispatchService(
   if (!descriptor) return serviceNotFound();
   const res = await descriptor.handle({
     ...ctx,
+    ingest: manifestIngestFor(registry),
     hooks: buildHooks(registry, services, {
       env: ctx.env,
       db: ctx.db,
@@ -223,4 +244,63 @@ export async function authorizeRegistration(
   const descriptor = registry.get(slug);
   if (!descriptor?.authorizeRegistration) return false;
   return descriptor.authorizeRegistration(ctx);
+}
+
+/**
+ * Core's manifest-ingest pipeline (P2b-02): what a link or resync hands every service.
+ *
+ * `services` is the enablement the ingest has just settled on — for a link, the manifest's own
+ * set; for a resync, the product's stored set AFTER the manifest's write, so an operator who
+ * turned a service off live keeps its ingest from running even though the manifest says on.
+ */
+export type ManifestIngest = (
+  parsed: ParsedManifest,
+  product: string,
+  services: ServicesMap,
+  now: number,
+) => ManifestIngestResult;
+
+/** What the ingest pipeline produced: the statements, and which services contributed any. */
+export interface ManifestIngestResult {
+  /** The services whose hook returned at least one statement, in canonical order. */
+  slugs: ServiceSlug[];
+  statements: DbStatement[];
+}
+
+/**
+ * Every ENABLED service's `manifestIngest` statements, in canonical `SERVICE_SLUGS` order (so a
+ * batch is the same whatever order `mount.ts` registers in). A disabled service's hook never
+ * runs — the same fail-closed rule as `dispatchService` and the descriptor hooks — and a service
+ * that implements none contributes nothing. Statements only: the caller puts them in its own
+ * batch, so the service rows land atomically with the rest of the ingest.
+ *
+ * This is the registry comment's promised pattern, made real. Release keeps its own ingest
+ * (`services/release/{linkRepo,resync}.ts`) as it is; it runs this beside it, and so never
+ * imports the services that answer (AGENTS rule 6).
+ */
+export function manifestIngestStatements(
+  registry: ServiceRegistry,
+  parsed: ParsedManifest,
+  product: string,
+  services: ServicesMap,
+  now: number,
+): ManifestIngestResult {
+  const out: ManifestIngestResult = { slugs: [], statements: [] };
+  for (const slug of SERVICE_SLUGS) {
+    if (!services[slug]?.enabled) continue;
+    const ingest = registry.get(slug)?.manifestIngest;
+    if (!ingest) continue;
+    const statements = ingest(parsed, product, now);
+    if (statements.length === 0) continue;
+    out.slugs.push(slug);
+    out.statements.push(...statements);
+  }
+  return out;
+}
+
+/** {@link manifestIngestStatements}, bound to one registry: what the composition root hands an
+ *  ingest path (the webhook, the admin link and resync routes). */
+export function manifestIngestFor(registry: ServiceRegistry): ManifestIngest {
+  return (parsed, product, services, now) =>
+    manifestIngestStatements(registry, parsed, product, services, now);
 }

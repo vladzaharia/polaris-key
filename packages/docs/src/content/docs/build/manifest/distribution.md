@@ -1,0 +1,221 @@
+---
+sidebar:
+  order: 3
+title: "Distribution: outlets, transports and listing"
+description: "The optional fourth .pkey/ file — where a product is distributed, its store identities, which transport carries each deliverable, and its store listing."
+---
+
+`.pkey/release` says **what exists**. The optional fourth file, `.pkey/distribution.{json,yaml,yml}`,
+says **how it reaches devices and outlets**: the product's **outlets** with their store
+identities, the **transport** each deliverable uses on each outlet, and the store **listing**.
+The [Distribution service](/docs/services/distribution/) reads it; nothing else does.
+
+| File             | Base name                      | Required when | Maps to                            |
+| ---------------- | ------------------------------ | ------------- | ---------------------------------- |
+| **distribution** | `distribution.{json,yaml,yml}` | never         | `dist_outlets` + `dist_transports` |
+
+**No file is fine.** With Distribution enabled and no document, the product has one implicit
+outlet, `direct`, served by `pkey-cdn` — so a product that only ships its own downloads needs
+nothing here. A document with no `outlets` block means the same; `outlets: {}` declares none.
+
+The document is validated whenever it is present (even with Distribution off), by `pkey
+validate` and by every link and resync, with the same 64 KiB and 32-level caps as the other
+three files. Errors carry the document name `distribution` and a JSON pointer, for example
+`distribution/outlets/itch/gameId`.
+
+## A worked example
+
+Diceroll's distribution, after the omni-platform research's §3.12 sketch:
+
+```yaml
+# yaml-language-server: $schema=../node_modules/@polaris-key/manifest/schemas/v1/distribution.schema.json
+outlets: # identities only — capabilities are operator-owned
+  direct:
+    platforms: [macos, windows, linux]
+    homebrewCask: diceroll
+  app-store:
+    appleId: "1234567890"
+    bundleId: gg.vlad.diceroll
+  testflight:
+    bundleId: gg.vlad.diceroll
+  altstore:
+    artifact: ipa-sideload # an id in .pkey/release's artifact map
+  altstore-beta:
+    kind: altstore # an id that is not itself a kind needs one
+    artifact: ipa-sideload
+    listing: { subtitle: Beta builds }
+  play:
+    packageName: gg.vlad.diceroll
+    tracks: { stable: production, beta: beta }
+  obtainium:
+    artifact: apk
+  steam:
+    appId: 480
+    branches: { beta: beta }
+  itch:
+    target: vladzaharia/diceroll
+    gameId: 1001
+  web: {}
+transports:
+  default: pkey-cdn
+  packs:
+    app-store: apple-ba
+    play: embedded
+    steam: steam-depot
+listing:
+  name: Diceroll
+  subtitle: A cozy dice-rolling roguelite
+  tintColor: "#3b1f1f"
+```
+
+## Outlets
+
+`outlets` is keyed by **outlet id**: lower-case, starting with a letter, at most 64 characters
+(`^[a-z][a-z0-9-]{0,63}$`), at most 32 outlets. Each outlet has a **kind**:
+
+`direct`, `app-store`, `testflight`, `altstore`, `altstore-pal`, `play`, `play-testing`,
+`obtainium`, `fdroid-repo`, `ms-store`, `app-installer`, `steam`, `itch`, `flathub`, `snap`,
+`winget`, `web`.
+
+An id that is itself a kind may omit `kind` (`steam:` is a `steam` outlet), and an explicit
+`kind` there must repeat the id: `app-store: { kind: web }` fails with `outlet_kind_mismatch`.
+Any other id needs one — `altstore-beta: { kind: altstore }` — or validation fails with
+`unknown_outlet_kind`. An outlet with no identity fields is written `web: {}`.
+
+Because capabilities default per kind, a kind change on an outlet that already exists is applied
+only when it does not widen those defaults (for example `web` to `altstore`). A widening change
+(`altstore` to `direct`) is held: the outlet keeps its old kind and the rest of the push applies.
+Declare a new outlet id for the wider kind, so copies already installed through the old one keep
+what they had.
+
+### Identity fields per kind
+
+Each kind reads only its own fields; any other key on the entry is ignored. Every field is
+optional. A bad value is `invalid_outlet_identity`.
+
+| Kind                       | Fields                                                                  |
+| -------------------------- | ----------------------------------------------------------------------- |
+| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token) |
+| `app-store`, `testflight`  | `appleId` (numeric), `bundleId` (reverse-DNS)                           |
+| `altstore`                 | `artifact`, `bundleId`                                                  |
+| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                 |
+| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)        |
+| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                               |
+| `ms-store`                 | `productId` (12 characters), `packageFamilyName`                        |
+| `app-installer`            | `packageFamilyName`                                                     |
+| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                  |
+| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)              |
+| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                       |
+| `snap`                     | `name`                                                                  |
+| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                           |
+| `web`                      | none                                                                    |
+
+- **Numeric ids** (`appleId`, `steam.appId`, `itch.gameId`) accept a positive integer or a
+  string of digits with no leading zero, and are stored as the digit string either way.
+- **`artifact`** must name an `id` in `.pkey/release`'s `deliverables.app.artifacts` —
+  otherwise `unknown_artifact_ref`.
+- **`tracks` and `branches`** keys must be declared channels — `stable`, `beta`, a manual
+  channel, or one of `deliverables.app.channels` — otherwise `unknown_channel_ref`.
+- **`packageFamilyName`** is the MSIX `<Name>_<PublisherId>`, the publisher id being 13
+  characters. The Microsoft Store and App Installer entries may differ: a Store-signed and a
+  self-signed package can have different publisher ids.
+
+Three fields exist only so an installed copy can recognise its own launcher (runtime outlet
+detection, notes/S-06 rule 4): `itch.gameId` (the receipt's numeric `game.id` — `target` is
+not it), `packageFamilyName`, and `direct.homebrewCask`.
+
+## Transports
+
+How each deliverable's bytes arrive on each outlet:
+
+| Transport       | Outlet kinds that may carry it |
+| --------------- | ------------------------------ |
+| `pkey-cdn`      | any                            |
+| `embedded`      | any                            |
+| `apple-ba`      | `app-store`, `testflight`      |
+| `play-pad`      | `play`, `play-testing`         |
+| `steam-depot`   | `steam`                        |
+| `msix-optional` | `ms-store`, `app-installer`    |
+| `flatpak-ext`   | `flathub`                      |
+| `web`           | `web`                          |
+
+For each deliverable on each outlet, the first of these that applies wins:
+
+1. `transports.deliverables.<deliverableId>.<outletId>` — a per-deliverable override; the
+   deliverable must be declared in `.pkey/release` (`app` always is), or
+   `unknown_deliverable_ref`;
+2. `transports.packs.<outletId>` — for pack deliverables only;
+3. `transports.default` — applies to every outlet, so only `pkey-cdn` or `embedded`;
+4. `pkey-cdn`.
+
+A transport map may only name declared outlets (`unknown_outlet_ref`), and only a transport
+that outlet's kind can carry (`transport_not_allowed`). The resolved pairs are stored in
+`dist_transports`, one row per declared deliverable per live outlet.
+
+## Listing
+
+Store-page metadata, every field optional: `name`, `subtitle`, `category`, `developerName`
+(one line each, at most 200 characters), `description` (at most 4000, newlines allowed),
+`iconUrl`, `headerUrl`, `website` (https URLs), `screenshots` (up to 16 https URLs) and
+`tintColor` (`#rrggbb`). An outlet may carry its own `listing`, merged over the document's for
+that outlet. A malformed listing is `invalid_listing`.
+
+## Capabilities are not here
+
+What an install from an outlet may do — `binaryUpdates`, `codeUpdates`, `dataUpdates`,
+`channelSwitch`, `commerce`, `downloadedScripts` — defaults per outlet kind and is changed only
+by an operator, and only to narrow it. A `capabilities` key **anywhere** in the file is an error,
+`capabilities_not_manifest_writable`, not silently ignored: a repo must not be able to widen
+what an installed copy may do by pushing a line of YAML (the same reasoning that keeps
+`requireSparkleSignature` out of `.pkey/release`). See
+[Outlet capabilities](/docs/services/distribution/#outlet-capabilities).
+
+## Link and resync
+
+Link and resync read the file with the other three and apply it in the same batch, through
+Distribution's own ingest hook, only while Distribution is enabled for the product:
+
+- every declared outlet is upserted into `dist_outlets` — kind, identity and merged listing.
+  A row changes (and its `modified_at` moves) only when one of those does, so resyncing the same
+  manifest twice is a no-op. An existing outlet's kind changes only when that narrows its
+  capability defaults (see above);
+- an outlet the file no longer declares gets `removed_at`; its row is never deleted, because
+  availability history refers to it. Declaring it again clears `removed_at`;
+- `dist_transports` is replaced with the resolved pairs — one per live outlet for each
+  deliverable that Release ingests. Pack deliverables are ignored for now, so today that means
+  only `app`, and at most 32 rows;
+- the operator-owned capability columns are never written.
+
+## Outlet ids for a Godot export
+
+A Godot export plugin cannot read YAML, and `.pkey/` need not sit inside the Godot project, so
+the CLI converts the build's outlet into the JSON the export stamps into the build:
+
+```sh
+PKEY_OUTLET_IDS="$(pkey distribution outlet-ids --outlet steam)"
+```
+
+It prints one compact JSON object, keys sorted, **every value a string**:
+
+| Key              | From                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| `steamAppId`     | `steam.appId`                                                             |
+| `itchGameId`     | `itch.gameId`                                                             |
+| `flatpakId`      | `flathub.appId`                                                           |
+| `snapName`       | `snap.name`                                                               |
+| `caskToken`      | `direct.homebrewCask`                                                     |
+| `msixFamilyName` | the build's own `ms-store` or `app-installer` entry's `packageFamilyName` |
+
+For each key the build's own entry is used when it has that kind, otherwise the entry whose id
+is the kind (`steam`, `itch`, …). With no `.pkey/distribution` at all it prints `{}` and exits 0
+for any `--outlet`; with a file, the manifest must validate and declare the outlet, or the
+command exits non-zero.
+
+## Editor support
+
+`schemas/v1/distribution.schema.json` ships in `@polaris-key/manifest` with the other schemas;
+wire it for `**/.pkey/distribution.{json,yaml,yml}` as described in
+[JSON Schema & editor setup](/docs/build/manifest/json-schema/). The cross-document checks
+(`unknown_artifact_ref`, `unknown_channel_ref`, `unknown_deliverable_ref`, `unknown_outlet_ref`,
+and `transport_not_allowed` inside a transport map) are validator-only: an editor will not flag
+them, `pkey validate` will.

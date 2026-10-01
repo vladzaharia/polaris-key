@@ -352,18 +352,29 @@ export type PromoteResult =
  * staging object is left for the one-day lifecycle rule (P2-02 may delete it sooner).
  *
  * Idempotent: promoting an object that is already stored succeeds with `alreadyStored` once
- * the stored object's own checksum is confirmed to be the expected one.
+ * the stored object's own checksum is confirmed to be the expected one. `alreadyStored` is
+ * bookkeeping for the caller and must never reach a tenant: whether another product already
+ * stored the same bytes is a cross-tenant existence oracle (THREAT-MODEL §3).
+ *
+ * `record.product` is the product the caller is promoting FOR (P2-02's earn-a-ref rule): a
+ * staging key under any other product's prefix is refused with `bad_key`, so a ref can only be
+ * earned from the product's own uploads.
  */
 export async function promote(
   bucket: R2Bucket,
   fromStagingKey: string,
   targetKey: string,
   expected: Expected,
-  record: { db: Db; now: number },
+  record: { db: Db; now: number; product: string },
 ): Promise<PromoteResult> {
   const from = parseKey(fromStagingKey);
   const to = parseKey(targetKey);
-  if (!from || from.area !== "staging" || from.sha256 !== expected.sha256)
+  if (
+    !from ||
+    from.area !== "staging" ||
+    from.sha256 !== expected.sha256 ||
+    from.product !== record.product
+  )
     return { ok: false, reason: "bad_key" };
   if (!to || to.area !== "locked") return { ok: false, reason: "bad_key" };
   const named = namedHash(to);

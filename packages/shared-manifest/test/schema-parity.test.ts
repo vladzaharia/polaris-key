@@ -29,6 +29,10 @@ import {
   RELEASE_PLATFORMS,
   VERSION_SCHEMES,
   LOCATION_PROVIDERS,
+  OUTLET_IDENTITY_FIELDS,
+  OUTLET_KINDS,
+  TRANSPORTS,
+  TRANSPORT_OUTLET_KINDS,
   parseManifest,
   validateIngestDocuments,
   validateManifestDocuments,
@@ -53,11 +57,17 @@ const validateSchemaDoc = ajv.compile(
 const validateRelease = ajv.compile(
   JSON.parse(readFileSync(join(schemasDir, "release.schema.json"), "utf8")),
 );
+const validateDistributionDoc = ajv.compile(
+  JSON.parse(
+    readFileSync(join(schemasDir, "distribution.schema.json"), "utf8"),
+  ),
+);
 
 type Docs = {
   product: Record<string, unknown> | undefined;
   schema?: unknown;
   release?: unknown;
+  distribution?: unknown;
 };
 
 /** A rich, fully-valid manifest exercising every block the validator knows. */
@@ -189,6 +199,13 @@ function base(): Docs {
           allowAmbiguousAssets: false,
         },
         access: { metadata: "public", artifacts: "licensed" },
+        // P2-02: the trusted publisher (only the workflow and environment are manifest fields).
+        publishing: {
+          trustedPublisher: {
+            workflow: ".github/workflows/release.yml",
+            environment: "release",
+          },
+        },
         // P2-04: the declared app deliverable. Its tag filters stay at the root above (the
         // legacy spelling); `conflicting_versioning` is what declaring them here too would be.
         deliverables: {
@@ -212,6 +229,21 @@ function base(): Docs {
                 role: "payload",
                 match: "Acme-*-windows-x86_64.zip",
               },
+              // P2b-02: the two builds the distribution document's sideload outlets name.
+              {
+                id: "apk",
+                platform: "android",
+                arch: "any",
+                format: "apk",
+                match: "Acme-*-android.apk",
+              },
+              {
+                id: "ipa-sideload",
+                platform: "ios",
+                arch: "arm64",
+                format: "ipa",
+                match: "Acme-*-ios-sideload.ipa",
+              },
             ],
           },
         },
@@ -230,6 +262,71 @@ function base(): Docs {
         },
       ],
     },
+    // P2b-02: a Diceroll-shaped `.pkey/distribution` (README §3.12) — every outlet kind, a
+    // non-kind id (`altstore-beta`), the three detection-only fields, both numeric-id spellings,
+    // transports at all three levels, and a listing with a per-outlet override.
+    distribution: {
+      apiVersion: "pkey.dev/v1",
+      outlets: {
+        direct: {
+          platforms: ["macos", "windows", "linux"],
+          homebrewCask: "acme",
+        },
+        "app-store": { appleId: "1234567890", bundleId: "com.acme.desktop" },
+        testflight: { bundleId: "com.acme.desktop" },
+        altstore: { artifact: "ipa-sideload", bundleId: "com.acme.desktop" },
+        "altstore-beta": {
+          kind: "altstore",
+          artifact: "ipa-sideload",
+          listing: { subtitle: "Beta builds" },
+        },
+        "altstore-pal": {
+          artifact: "ipa-sideload",
+          marketplaceId: "com.acme.marketplace",
+        },
+        play: {
+          packageName: "com.acme.desktop",
+          tracks: { stable: "production", beta: "beta" },
+        },
+        "play-testing": { packageName: "com.acme.desktop" },
+        obtainium: { artifact: "apk" },
+        "fdroid-repo": { artifact: "apk", packageName: "com.acme.desktop" },
+        "ms-store": {
+          productId: "9NBLGGH4NNS1",
+          packageFamilyName: "Acme.Desktop_abcdefghjkmnp",
+        },
+        "app-installer": { packageFamilyName: "Acme.Desktop_1a2b3c4d5e6f7" },
+        steam: { appId: 480, branches: { beta: "beta", nightly: "nightly" } },
+        itch: { target: "acme/desktop", gameId: "1001" },
+        flathub: { appId: "com.acme.Desktop" },
+        snap: { name: "acme-desktop" },
+        winget: { packageIdentifier: "Acme.Desktop" },
+        web: {},
+      },
+      transports: {
+        default: "pkey-cdn",
+        packs: {
+          "app-store": "apple-ba",
+          play: "play-pad",
+          steam: "steam-depot",
+          flathub: "flatpak-ext",
+          "ms-store": "msix-optional",
+        },
+        deliverables: { app: { web: "web", direct: "embedded" } },
+      },
+      listing: {
+        name: "Acme",
+        subtitle: "A cozy desktop",
+        description: "Line one.\nLine two.",
+        iconUrl: "https://acme.example/icon.png",
+        headerUrl: "https://acme.example/header.png",
+        tintColor: "#3b1f1f",
+        category: "games",
+        screenshots: ["https://acme.example/1.png"],
+        website: "https://acme.example",
+        developerName: "Acme Inc.",
+      },
+    },
   };
 }
 
@@ -244,6 +341,7 @@ function schemaAccepts(docs: Docs): {
   product: boolean;
   schema: boolean;
   release: boolean;
+  distribution: boolean;
 } {
   return {
     product: validateProduct(docs.product) === true,
@@ -251,13 +349,16 @@ function schemaAccepts(docs: Docs): {
       docs.schema === undefined || validateSchemaDoc(docs.schema) === true,
     release:
       docs.release === undefined || validateRelease(docs.release) === true,
+    distribution:
+      docs.distribution === undefined ||
+      validateDistributionDoc(docs.distribution) === true,
   };
 }
 
 type Mutation = {
   code: string;
   /** Which document the schema check targets. */
-  file: "product" | "schema" | "release";
+  file: "product" | "schema" | "release" | "distribution";
   /** Can JSON Schema express this rule? "accepts" documents validator-only rules. */
   schema: "rejects" | "accepts";
   mutate: (d: Docs) => void;
@@ -268,9 +369,33 @@ const rel = (d: Docs) => (d.release as Record<string, any>).release;
 const mint = (d: Docs) => (d.release as Record<string, any>).edgeMint[0];
 const app = (d: Docs) => rel(d).deliverables.app;
 const entry = (d: Docs) => app(d).artifacts[0];
+const dist = (d: Docs) => d.distribution as Record<string, any>;
+const outlet = (d: Docs, id: string) => dist(d).outlets[id];
 
 /** One entry per validator error code (asserted complete against the source below). */
 const MUTATIONS: Mutation[] = [
+  {
+    code: "invalid_trusted_publisher_workflow",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) =>
+      (rel(d).publishing.trustedPublisher.workflow = "../../evil.yml"),
+  },
+  {
+    // A workflow path outside .github/workflows is the same code: the manifest names a file
+    // GitHub's job_workflow_ref could never carry.
+    code: "invalid_trusted_publisher_workflow",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => delete rel(d).publishing.trustedPublisher.workflow,
+  },
+  {
+    code: "invalid_trusted_publisher_environment",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) =>
+      (rel(d).publishing.trustedPublisher.environment = "prod;rm -rf"),
+  },
   {
     code: "invalid_api_version",
     file: "product",
@@ -1074,6 +1199,306 @@ const MUTATIONS: Mutation[] = [
     // trip knows that :443 is https's default and a browser would never send it.
     mutate: (d) => (p(d).web.origins[0] = "https://app.acme.example:443"),
   },
+
+  // ── .pkey/distribution (P2b-02) ──
+  {
+    code: "invalid_distribution",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (d.distribution = ["direct"]),
+  },
+  {
+    code: "invalid_api_version",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).apiVersion = "pkey.dev/v2"),
+  },
+  {
+    code: "invalid_outlet_id",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).outlets["Steam_Main"] = { kind: "steam" }),
+  },
+  {
+    code: "invalid_outlet_id",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).outlets = ["direct"]),
+  },
+  {
+    code: "unknown_outlet_kind",
+    file: "distribution",
+    schema: "rejects",
+    // An id that is not itself a kind must say which kind it is.
+    mutate: (d) => (dist(d).outlets["mystery-store"] = {}),
+  },
+  {
+    code: "unknown_outlet_kind",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "altstore-beta").kind = "altstore-classic"),
+  },
+  {
+    code: "outlet_kind_mismatch",
+    file: "distribution",
+    schema: "rejects",
+    // An id that IS a kind cannot be re-kinded: that would swap the App Store outlet's store
+    // capability defaults for the self-hosted ones.
+    mutate: (d) => (outlet(d, "app-store").kind = "web"),
+  },
+  {
+    code: "outlet_kind_mismatch",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).outlets.steam = { kind: "direct" }),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).outlets.web = "yes"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "app-store").bundleId = "not a bundle id"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "play").packageName = "1acme"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "steam").appId = "0480"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    // A Flatpak id on steam is the wrong kind of appId: `appId` is numeric there.
+    mutate: (d) => (outlet(d, "steam").appId = "com.acme.Desktop"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    // ...and a numeric one on flathub.
+    mutate: (d) => (outlet(d, "flathub").appId = 480),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    // itch.gameId (notes/S-06): the receipt's numeric game id, never the butler slug.
+    mutate: (d) => (outlet(d, "itch").gameId = "acme/desktop"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "itch").gameId = -3),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "itch").target = "desktop"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    // packageFamilyName (notes/S-06): <Name>_<PublisherId>, a 13-character publisher id.
+    mutate: (d) =>
+      (outlet(d, "ms-store").packageFamilyName = "Acme.Desktop_abc"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (outlet(d, "app-installer").packageFamilyName = "Acme.Desktop"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    // direct.homebrewCask (notes/S-06): lower-case letters, digits, -, . and @ only.
+    mutate: (d) => (outlet(d, "direct").homebrewCask = "Acme Desktop"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "direct").platforms = ["macos", "amiga"]),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "ms-store").productId = "9NBL"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "snap").name = "Acme_Desktop"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "winget").packageIdentifier = "AcmeDesktop"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "altstore-pal").marketplaceId = "-bad"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "app-store").appleId = 1.5),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "obtainium").artifact = "Not An Id"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "play").tracks = { stable: "" }),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "steam").branches = ["beta"]),
+  },
+  {
+    code: "unknown_artifact_ref",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (outlet(d, "altstore").artifact = "ipa-appstore"),
+  },
+  {
+    code: "unknown_channel_ref",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (outlet(d, "play").tracks.canary = "internal"),
+  },
+  {
+    code: "unknown_channel_ref",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (outlet(d, "steam").branches.events = "events"),
+  },
+  {
+    code: "unknown_deliverable_ref",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) =>
+      (dist(d).transports.deliverables["acme.levels"] = { steam: "embedded" }),
+  },
+  {
+    code: "invalid_transport",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).transports.packs.steam = "carrier-pigeon"),
+  },
+  {
+    code: "invalid_transport",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).transports = "pkey-cdn"),
+  },
+  {
+    code: "invalid_transport",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).transports.default = "bittorrent"),
+  },
+  {
+    code: "transport_not_allowed",
+    file: "distribution",
+    schema: "accepts",
+    // apple-ba is App Store / TestFlight only; which kind an outlet id has is a cross-reference.
+    mutate: (d) => (dist(d).transports.packs.play = "apple-ba"),
+  },
+  {
+    code: "transport_not_allowed",
+    file: "distribution",
+    schema: "rejects",
+    // `default` applies to every outlet, so it is limited to the transports any outlet carries.
+    mutate: (d) => (dist(d).transports.default = "steam-depot"),
+  },
+  {
+    code: "unknown_outlet_ref",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (dist(d).transports.packs["epic-store"] = "pkey-cdn"),
+  },
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.iconUrl = "http://acme.example/icon.png"),
+  },
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.tintColor = "red"),
+  },
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.name = "two\nlines"),
+  },
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (dist(d).listing.screenshots = ["https://a.example/1.png", 7]),
+  },
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "altstore-beta").listing = { subtitle: 3 }),
+  },
+  {
+    code: "capabilities_not_manifest_writable",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "steam").capabilities = { codeUpdates: true }),
+  },
+  {
+    code: "capabilities_not_manifest_writable",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).capabilities = { direct: { commerce: "own" } }),
+  },
+  {
+    code: "capabilities_not_manifest_writable",
+    file: "distribution",
+    schema: "rejects",
+    // A kind-less id goes through the explicit-kind branch of the schema; still refused.
+    mutate: (d) =>
+      (outlet(d, "altstore-beta").capabilities = { downloadedScripts: true }),
+  },
 ];
 
 describe("valid manifests pass both validators", () => {
@@ -1084,6 +1509,7 @@ describe("valid manifests pass both validators", () => {
       product: true,
       schema: true,
       release: true,
+      distribution: true,
     });
   });
 
@@ -1123,6 +1549,7 @@ describe("valid manifests pass both validators", () => {
       product: true,
       schema: true,
       release: true,
+      distribution: true,
     });
   });
 
@@ -1199,6 +1626,56 @@ describe("valid manifests pass both validators", () => {
     ]);
   });
 
+  it("the distribution schema's vocabularies are exactly the validator's constants", () => {
+    const schema = JSON.parse(
+      readFileSync(join(schemasDir, "distribution.schema.json"), "utf8"),
+    );
+    expect(schema.$defs.outletKind.enum).toEqual([...OUTLET_KINDS]);
+    expect(Object.keys(schema.properties.outlets.properties)).toEqual([
+      ...OUTLET_KINDS,
+    ]);
+    expect(schema.$defs.transport.enum).toEqual([...TRANSPORTS]);
+    expect(schema.$defs.transports.properties.default.enum).toEqual(
+      TRANSPORTS.filter((t) => TRANSPORT_OUTLET_KINDS[t] === null),
+    );
+    expect(schema.$defs.platforms.items.enum).toEqual([...RELEASE_PLATFORMS]);
+    for (const kind of OUTLET_KINDS) {
+      const props = schema.$defs[`outlet_${kind}`].properties;
+      // An id that is itself a kind may only repeat it (outlet_kind_mismatch).
+      expect(props.kind, kind).toEqual({ const: kind });
+      expect(schema.properties.outlets.properties[kind], kind).toEqual({
+        $ref: `#/$defs/outlet_${kind}`,
+      });
+      const fields = Object.keys(props).filter(
+        (k) => k !== "kind" && k !== "listing" && k !== "capabilities",
+      );
+      expect(fields, kind).toEqual([...OUTLET_IDENTITY_FIELDS[kind]]);
+    }
+  });
+
+  it("a minimal distribution document, and none at all", () => {
+    for (const distribution of [
+      undefined,
+      {},
+      { listing: { name: "Acme" } },
+      { outlets: {} },
+      { outlets: { "itch-demo": { kind: "itch", gameId: 1001 } } },
+    ]) {
+      const docs = base();
+      docs.distribution = distribution;
+      expect(tsCodes(docs), JSON.stringify(distribution)).toEqual([]);
+      expect(schemaAccepts(docs).distribution).toBe(true);
+    }
+  });
+
+  it("a distribution document is validated with the distribution service off", () => {
+    const docs = base();
+    delete p(docs).modules.distribution;
+    delete p(docs).modules.update;
+    outlet(docs, "steam").capabilities = { codeUpdates: true };
+    expect(tsCodes(docs)).toContain("capabilities_not_manifest_writable");
+  });
+
   it("the real djdl fixtures in products/", () => {
     const product = JSON.parse(
       readFileSync(join(repoRoot, "products", "djdl", "product.json"), "utf8"),
@@ -1221,7 +1698,11 @@ describe("valid manifests pass both validators", () => {
 
 describe("every validator code has a mutation, and the schemas catch what they claim", () => {
   it("the mutation table covers every code the validator source emits", () => {
-    const source = readFileSync(join(here, "..", "src", "index.ts"), "utf8");
+    // `.pkey/distribution`'s rules live in their own module (P2b-02) but are part of the same
+    // validator, so both sources are swept.
+    const source = ["index.ts", "distribution.ts"]
+      .map((f) => readFileSync(join(here, "..", "src", f), "utf8"))
+      .join("\n");
     // Codes appear as the 4th argument of add(...) and the 5th of the constrained/bounded
     // helpers; both shapes put the code as the first "snake_case" string literal after the
     // path argument. Prettier keeps these calls stable enough for a literal sweep.

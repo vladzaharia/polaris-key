@@ -212,6 +212,13 @@ export type IngestResult =
       message: string;
       /** The validator's findings, for `invalid_descriptor`. */
       errors?: DescriptorError[];
+      /**
+       * The store changed between this ingest's read and its write (another submit or the GitHub
+       * sync won a race) and a fresh check found nothing wrong: the same request may succeed if
+       * sent again. Set only on that lost-race `release_exists` (P2-04 hand-off (a)); the CI
+       * client treats it as retryable, every other refusal as final.
+       */
+      retryable?: true;
     };
 
 export interface IngestOptions {
@@ -225,6 +232,14 @@ export interface IngestOptions {
    * keys a descriptor may name.
    */
   promoted?: Iterable<string>;
+  /**
+   * `dryRun` only (P2-02's submit with `dryRun: true`, and its own pre-check): objects verified in
+   * THIS product's staging prefix that the submit would promote, by target key. Planned as if
+   * already promoted — stored with this hash and size, and earned by this release — so a dry
+   * run judges the descriptor exactly as the real submit will, without writing anything.
+   * Ignored without `dryRun`.
+   */
+  pendingPromotion?: ReadonlyMap<string, { sha256: string; size: number }>;
   /** The tagged GitHub release, when the caller already holds it (the sync). */
   githubRelease?: Release | null;
   fetchImpl?: FetchImpl;
@@ -319,6 +334,8 @@ interface PlanInput {
   app: ManifestAppDeliverable | null;
   github: Release | null;
   promoted: ReadonlySet<string>;
+  /** See `IngestOptions.pendingPromotion` (already filtered to dry runs by the caller). */
+  pendingPromotion?: ReadonlyMap<string, { sha256: string; size: number }>;
   /**
    * The highest `seq` the deliverable will hold when this release's row is written, counting
    * rows written earlier in the same batch (the sync: every new release published before this
@@ -535,13 +552,14 @@ export async function planDescriptorIngest(
     const stored = await storedObjects(db, keys);
     const owned = await referencedKeys(db, product, keys);
     for (const { key, a } of r2Keys) {
-      const obj = stored.get(key);
+      const pending = input.pendingPromotion?.get(key);
+      const obj = stored.get(key) ?? pending;
       if (!obj || obj.sha256 !== a.sha256 || obj.size !== a.size)
         return refuse(
           "r2_object_missing",
           `${key} is not a stored object with ${a.name}'s sha256 and size.`,
         );
-      if (!input.promoted.has(key) && !owned.has(key))
+      if (!input.promoted.has(key) && !owned.has(key) && !pending)
         return refuse(
           "r2_ref_not_owned",
           `${key} was neither promoted for this release nor already referenced by ${product}.`,
@@ -902,6 +920,9 @@ export async function ingestReleaseDescriptor(
     app,
     github,
     promoted: new Set(opts.promoted ?? []),
+    ...(opts.dryRun === true && opts.pendingPromotion
+      ? { pendingPromotion: opts.pendingPromotion }
+      : {}),
   };
   const plan = await planDescriptorIngest(db, input);
   if (!plan.ok) return plan;
@@ -930,11 +951,14 @@ export async function ingestReleaseDescriptor(
     ) {
       const again = await planDescriptorIngest(db, input);
       if (!again.ok) return again;
-      return refuse(
-        "release_exists",
-        `${plan.releaseId} changed while this descriptor was being checked; submit it again.`,
-        { status: 409 },
-      );
+      return {
+        ...refuse(
+          "release_exists",
+          `${plan.releaseId} changed while this descriptor was being checked; submit it again.`,
+          { status: 409 },
+        ),
+        retryable: true,
+      };
     }
   }
   return {

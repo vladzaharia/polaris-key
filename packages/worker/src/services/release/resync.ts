@@ -41,15 +41,23 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { fetchRepoFile } from "./github.js";
+import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
-import { MANIFEST_FILES } from "./manifestFiles.js";
+import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSyncStatements } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
-import { serializeServices } from "../../core/services.js";
+import { parseServices, serializeServices } from "../../core/services.js";
+import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
+import {
+  getPublisherPolicy,
+  manifestPublisherChanged,
+  stmtDeleteManifestPublisher,
+  stmtUpsertManifestPublisher,
+} from "../../core/publisher.js";
+import { randomId } from "../../core/platform.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
@@ -97,11 +105,12 @@ export async function resyncRepo(
   slug: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
+  ingest?: ManifestIngest,
 ): Promise<ResyncResult> {
   let result: ResyncResult;
   let dropped: string[];
   try {
-    result = await applyRepoManifest(env, db, slug, now, fetchImpl);
+    result = await applyRepoManifest(env, db, slug, now, fetchImpl, ingest);
   } finally {
     // Every manifest-owned input to an approval that this push got to write is written by now:
     // `services_json` and `auto_issue_json` by the un-batched writes, `oidc_config` in the batch.
@@ -130,6 +139,7 @@ async function applyRepoManifest(
   slug: string,
   now: number,
   fetchImpl: FetchImpl,
+  ingest: ManifestIngest | undefined,
 ): Promise<ResyncResult> {
   const product = await getProduct(db, slug);
   if (!product) return { ok: false, error: "unknown product" };
@@ -165,7 +175,7 @@ async function applyRepoManifest(
 
   const files: Record<string, string> = {};
   try {
-    for (const name of ["schema", "product", "release"] as const) {
+    for (const name of MANIFEST_FILE_NAMES) {
       const text = await readManifestFile(
         token,
         owner,
@@ -221,6 +231,38 @@ async function applyRepoManifest(
     if ((stored?.issuer ?? "") !== nextOidc.issuer) {
       const refusal = manifestIssuerRefusal(env, nextOidc.issuer);
       if (refusal) return { ok: false, error: refusal };
+    }
+  }
+
+  // P2-02 — the trusted-publisher policy. Resolved BEFORE the first write for the same reason the
+  // issuer gate is: a GitHub failure here must refuse the push, not leave half a manifest
+  // applied. An operator-claimed policy (`source = 'admin'`) is never touched — no lookup, no
+  // write (`stmtUpsertManifestPublisher` is also guarded inside the statement).
+  const currentPublisher = await getPublisherPolicy(db, slug);
+  const publisherClaimed = currentPublisher?.source === "admin";
+  let nextPublisher: {
+    repositoryId: number;
+    repositoryOwnerId: number;
+    repository: string;
+    workflow: string;
+    environment: string;
+  } | null = null;
+  const declaredPublisher = manifest.release?.trustedPublisher ?? null;
+  if (declaredPublisher && !publisherClaimed) {
+    try {
+      const identity = await getRepoIdentity(token, owner, repo, fetchImpl);
+      nextPublisher = {
+        repositoryId: identity.id,
+        repositoryOwnerId: identity.ownerId,
+        repository: identity.fullName,
+        workflow: declaredPublisher.workflow,
+        environment: declaredPublisher.environment,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        error: `could not resolve the repository's ids for publishing.trustedPublisher: ${err instanceof Error ? err.message : "github lookup failed"}`,
+      };
     }
   }
 
@@ -493,11 +535,50 @@ async function applyRepoManifest(
   stmts.push(stmtDeleteOrphanEdgeMintApprovals(slug));
   updated.push("edgeMint");
 
+  // The trusted-publisher policy (P2-02): manifest-owned rows follow the manifest — written when
+  // declared, dropped when not — and a change is audited. A claimed row is left exactly as the
+  // operator set it, whatever the manifest says.
+  if (!publisherClaimed) {
+    stmts.push(
+      nextPublisher
+        ? stmtUpsertManifestPublisher({ product: slug, ...nextPublisher, now })
+        : stmtDeleteManifestPublisher(slug),
+    );
+    if (manifestPublisherChanged(currentPublisher, nextPublisher)) {
+      updated.push("publisher");
+      stmts.push(
+        auditStatement(
+          slug,
+          now,
+          `manifest:${owner}/${repo}`,
+          nextPublisher
+            ? `Trusted publisher set from the manifest: ${nextPublisher.repository} ${nextPublisher.workflow} (environment ${nextPublisher.environment})`
+            : "Trusted publisher removed: the manifest no longer declares publishing.trustedPublisher",
+        ),
+      );
+    }
+  }
+
   // The app deliverable's declaration (P2-04): `release_deliverables.def_json` and the channels'
   // `includes`. Before the truth store below, which classifies by the same declaration.
   if (rel) {
     stmts.push(...manifestDeliverableStatements(slug, rel.app, now));
     updated.push("deliverables");
+  }
+
+  // ── the services' own manifest rows (P2b-02): Core's ingest pipeline ─────────
+  //
+  // Every ENABLED service's `manifestIngest` (Distribution's outlets and transports today), in
+  // this same batch. Enablement is the product's STORED set as `setServices` above left it — not
+  // the manifest's — so a service an operator turned off live does not have its rows rewritten by
+  // a push that still says on. Release never imports the services that answer (AGENTS rule 6):
+  // the pipeline is handed down from the composition root.
+  if (ingest) {
+    const stored = await getProduct(db, slug);
+    const services = parseServices(stored?.services_json).services;
+    const serviceRows = ingest(manifest, slug, services, now);
+    stmts.push(...serviceRows.statements);
+    updated.push(...serviceRows.slugs);
   }
 
   // ── release truth store: the same pass, one extra GitHub read (P2.T2) ───────
@@ -536,4 +617,21 @@ async function applyRepoManifest(
 
   if (droppedBefore.length > 0) updated.push("edgeMintApprovals");
   return { ok: true, updated };
+}
+
+/** The audit row for a manifest-driven publisher change, in the resync's batch. */
+function auditStatement(
+  product: string,
+  now: number,
+  actor: string,
+  summary: string,
+): DbStatement {
+  return {
+    sql: `INSERT INTO audit
+            (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
+             target_id, parent_id, summary)
+          VALUES (?, ?, ?, ?, 'Manifest resync', NULL, 'ci.publisher.manifest', 'ci_publisher',
+                  ?, NULL, ?)`,
+    params: [product, randomId("aud"), now, actor, product, summary],
+  };
 }

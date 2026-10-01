@@ -22,7 +22,7 @@ fallback between two: an interim design renamed it, and the dual-read that renam
 every miss cost a second GitHub round trip and made "which file is actually live" a question you
 had to trace through a fallback chain. Both were withdrawn.
 
-The directory holds up to **three independent files**. The base name (no extension) selects the
+The directory holds up to **four independent files**. The base name (no extension) selects the
 role; the extension is a pure format preference, tried in the fixed order **`.json`, then
 `.yaml`, then `.yml`**, resolved per document independently — so a repo may keep `product.yaml`
 next to `schema.json`. The files are the **manifest baseline**: they describe intended product
@@ -34,6 +34,11 @@ and operator policy overrides live separately in Polaris Key and are preserved a
 | **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                                                              |
 | **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**)                                       |
 | **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `release_deliverables` + `edge_mint_config` rows                                        | release provider coordinates + channel/install/appcast/edge-mint settings + the app deliverable and its artifact map (required only when releases are enabled) |
+
+The fourth, optional file — **distribution** (`distribution.{json,yaml,yml}`, mapping to
+`dist_outlets` + `dist_transports`) — declares the product's outlets, their store identities,
+the transport per deliverable and the store listing. It has its own page:
+[Distribution: outlets, transports and listing](/docs/build/manifest/distribution/).
 
 In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
 (the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
@@ -327,6 +332,35 @@ what a **release descriptor** may say about a release: see
 Every rule above has a code on
 [Manifest validation codes](/docs/reference/validation-codes/).
 
+## Trusted publishing: `publishing.trustedPublisher`
+
+To let a GitHub Actions workflow publish releases without a stored secret, name it in
+`.pkey/release` (P2-02):
+
+```yaml
+publishing:
+  trustedPublisher:
+    workflow: .github/workflows/release.yml # as GitHub's job_workflow_ref spells it
+    environment: release # optional; the default
+```
+
+- `workflow` is required: a path under `.github/workflows/` ending in `.yml` or `.yaml`
+  (`invalid_trusted_publisher_workflow`).
+- `environment` is a GitHub environment name: letters, digits, space, `.`, `_`, `-`, at most
+  100 characters, no leading or trailing space (`invalid_trusted_publisher_environment`).
+- Nothing else is a field. Link and resync add the repository's numeric id and owner id from
+  GitHub; the checks that the ref is protected, the runner is GitHub-hosted and the event is
+  `push`, `release` or `workflow_dispatch` are fixed; the scopes (default `release:publish`,
+  `release:promote`, `distribution:report`) are an operator setting. A repository cannot
+  loosen its own policy.
+- The ref the workflow runs on must be covered by a branch or tag ruleset, or GitHub reports
+  `ref_protected: false` and the exchange is refused. Give the environment required reviewers
+  unless every writer may publish.
+- While the policy is manifest-owned, every resync re-applies it (and removing the block removes
+  it). An operator who claims it in the console's admin API owns it from then on.
+
+The flow CI follows is on [Artifacts](/docs/services/release/artifacts/#trusted-publishing).
+
 ## Registering + re-syncing a product
 
 There are three ways the catalog reaches D1. Repo-link is the normal product setup path;
@@ -374,7 +408,7 @@ re-sync. A re-sync updates the manifest baseline from `.pkey/`: product metadata
 enablement + registration policy, fingerprint and auto-issue policy, catalog shape, OIDC
 baseline, release baseline, profiles, tiers, provisioning, and edge-mint recipes. The three
 operator-claimable blocks (`services_source`, `fingerprint_policy_source`, `auto_issue_source`)
-are skipped while an admin owns them. So the flow is:
+are skipped while an admin owns them, and so is the trusted-publisher policy once claimed. So the flow is:
 
 1. Edit `.pkey/schema` in the product repo (add a key, tighten a schema, change a
    `managementDefault`); bump `schemaVersion` only on an incompatible shape change.

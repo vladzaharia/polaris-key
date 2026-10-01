@@ -2169,6 +2169,243 @@ paths:
         "404": { $ref: "#/components/responses/CiRefusal" }
         "422": { $ref: "#/components/responses/CiRefusal" }
 
+  /{product}/release/publish/token:
+    post:
+      operationId: ciPublishToken
+      tags: [release]
+      summary: Exchange a GitHub Actions OIDC token for a pkeyci_ token (trusted publishing)
+      description: >
+        P2-02. The trusted-publisher exchange (README §3.4). The body carries the job's GitHub
+        Actions OIDC token, requested with the audience `<origin>/<product>/release/publish`
+        (for example `https://key.plrs.im/diceroll/release/publish`). The Worker verifies it —
+        RS256 only, issuer exactly `https://token.actions.githubusercontent.com`, JWKS cached
+        in KV, `exp`/`nbf` with 60 s skew — and then the product's publisher policy, every
+        check required: numeric `repository_id` and `repository_owner_id` equal the linked
+        repository's; `job_workflow_ref` is `<owner>/<repo>/<workflow>@<ref>` for the declared
+        workflow at the triggering ref; `environment` equals the declared one (default
+        `release`); `ref_protected` is `"true"` (a tag-triggered release needs a tag ruleset);
+        `runner_environment` is `github-hosted`; `event_name` is `push`, `release` or
+        `workflow_dispatch`. The exchange is single-use per OIDC `jti`. On success it returns a
+        `pkeyci_` token valid for 30 minutes with the policy's scopes (default
+        `release:publish`, `release:promote`, `distribution:report`; `release:yank` is opt-in).
+        Rate-limited per IP on every request, and per product only once a token has passed
+        the signature, audience and policy checks, so no outsider can spend the product's
+        budget (both fail closed). No CORS. Errors are LEGACY FLAT with
+        a `reason`: `invalid_oidc_token`, `oidc_token_replayed` (401);
+        `publisher_not_configured`, `policy_mismatch` with the failing `claim` (403);
+        `bad_body` (400); `rate_limited` (429).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  {
+                    type: string,
+                    description: The GitHub Actions OIDC token (a JWT).,
+                  }
+      responses:
+        "200":
+          description: A short-lived, scoped CI token. Shown once; only its peppered hash is stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expiresAt, scopes]
+                properties:
+                  token: { type: string, pattern: "^pkeyci_" }
+                  expiresAt: { type: integer, description: Epoch seconds. }
+                  scopes: { type: array, items: { type: string } }
+              examples:
+                issued:
+                  summary: test/publishRoutes.test.ts
+                  value:
+                    token: pkeyci_Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0Z2FycGx5d2FsZG8
+                    expiresAt: 1700001800
+                    scopes:
+                      [distribution:report, release:promote, release:publish]
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiRefusal" }
+        "403": { $ref: "#/components/responses/CiRefusal" }
+        "429": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/publish/uploads:
+    post:
+      operationId: ciPublishUploads
+      tags: [release]
+      summary: Obtain an upload ticket and R2 temporary credentials (trusted publishing)
+      description: >
+        P2-02. Requires a `pkeyci_` token with `release:publish`. The body lists the objects CI
+        intends to upload (`sha256`, `size`, optional `gated` for `gated/blobs/…`; at most 256,
+        each one single-part, at most 5 GiB less 5 MiB). The answer is a one-shot ticket
+        (expiring with the token, at most an hour), R2 temporary credentials scoped to
+        `staging/<product>/<ticketId>/` with `PutObject` and `HeadObject` only — no read, list,
+        copy or multipart — and, per object, its staging `key` and whether it is `present`:
+        already referenced by THIS product, so CI may skip the upload. `present` never reflects
+        another product's copy. `nextSeq` is each deliverable's highest seq + 1 at issue time.
+        Upload each object with `x-amz-checksum-sha256` so R2 records its digest. The route
+        answers 404 until the environment's parent R2 token (`R2_ACCOUNT_ID`,
+        `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`, `BLOBS_BUCKET_NAME`) and the
+        `BLOBS` binding exist. No CORS. `bad_objects` and `bad_body` are 400.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [objects]
+              properties:
+                objects:
+                  type: array
+                  minItems: 1
+                  maxItems: 256
+                  items:
+                    type: object
+                    required: [sha256, size]
+                    properties:
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      size: { type: integer, minimum: 0, maximum: 5363466240 }
+                      gated: { type: boolean }
+      responses:
+        "200":
+          description: The ticket, the credentials, the staging keys and `nextSeq`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [ticket, expiresAt, credentials, prefix, objects, nextSeq]
+                properties:
+                  ticket: { type: string, pattern: "^pkeyup_" }
+                  expiresAt: { type: integer }
+                  credentials:
+                    type: object
+                    required:
+                      [
+                        endpoint,
+                        bucket,
+                        accessKeyId,
+                        secretAccessKey,
+                        sessionToken,
+                      ]
+                    properties:
+                      endpoint: { type: string }
+                      bucket: { type: string }
+                      accessKeyId: { type: string }
+                      secretAccessKey: { type: string }
+                      sessionToken: { type: string }
+                  prefix: { type: string }
+                  objects:
+                    type: array
+                    items:
+                      type: object
+                      required: [sha256, key, present]
+                      properties:
+                        sha256: { type: string }
+                        size: { type: integer }
+                        gated: { type: boolean }
+                        key:
+                          {
+                            type: string,
+                            description: The staging key to PUT to.,
+                          }
+                        target:
+                          {
+                            type: string,
+                            description: The blob-store key a submit promotes it to.,
+                          }
+                        present: { type: boolean }
+                  nextSeq:
+                    type: object
+                    additionalProperties: { type: integer }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/publish/submit:
+    post:
+      operationId: ciPublishSubmit
+      tags: [release]
+      summary: Submit a release descriptor against an upload ticket (trusted publishing)
+      description: >
+        P2-02. Requires a `pkeyci_` token with `release:publish` and the ticket that token
+        obtained. Every `r2` location the product does not already reference must be an object
+        of the ticket, and its staged copy must verify (present, exact size, exact SHA-256);
+        the descriptor is then checked exactly as P2-04's ingest checks it, all before anything
+        is promoted. `dryRun: true` stops there and writes nothing. Otherwise the ticket is
+        redeemed (once), the objects are promoted into the blob store, and the descriptor is
+        ingested. A failure gives the ticket back. The answer is the same whether or not the
+        bytes were already stored (no cross-tenant signal). One descriptor per submit.
+        Refusals are LEGACY FLAT with a `reason`: `staged_object_missing`,
+        `staged_object_mismatch`, `object_not_in_ticket`, the descriptor ingest's reasons
+        (`invalid_descriptor`, `seq_not_increasing`, `release_exists`, …) with their statuses;
+        `invalid_ticket`, `ticket_expired` (403); `ticket_redeemed` (409); `promote_failed`
+        (409). A body carrying `retryable: true` (the lost-race `release_exists`, a
+        `promote_failed`) may be sent again; every other refusal is final. A descriptor's
+        `title`, `notes` and `publishedAt` are the release's until a GitHub release with the
+        same tag is synced, after which GitHub's are shown. No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket, descriptor]
+              properties:
+                ticket: { type: string, pattern: "^pkeyup_" }
+                descriptor:
+                  type: object
+                  description: A release descriptor (`release-descriptor.schema.json` in `@polaris-key/manifest`).
+                dryRun: { type: boolean }
+      responses:
+        "200":
+          description: Ingested (or, with `dryRun`, the plan).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, dryRun, releaseId, outcome, descriptorSha256]
+                properties:
+                  ok: { type: boolean, const: true }
+                  dryRun: { type: boolean }
+                  releaseId: { type: string }
+                  outcome:
+                    { type: string, enum: [created, enriched, unchanged] }
+                  descriptorSha256: { type: string }
+                  planned:
+                    {
+                      type: [object, "null"],
+                      description: "`dryRun` only: the rows that would be written.",
+                    }
+              examples:
+                created:
+                  summary: test/publishRoutes.test.ts
+                  value:
+                    {
+                      ok: true,
+                      dryRun: false,
+                      releaseId: app@1.3.0,
+                      outcome: created,
+                      descriptorSha256: "6f1c…",
+                    }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiRefusal" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+
   # ── update ────────────────────────────────────────────────────────────────────
   /{product}/update/appcast.xml:
     get:
