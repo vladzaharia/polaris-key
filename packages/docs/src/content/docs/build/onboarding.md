@@ -96,7 +96,11 @@ until the next resync re-applies the manifest.
 3. In Settings, set every required product secret shown by setup health. For djdl this
    includes the OIDC client secret and the Apple MusicKit edge-mint private key. These are
    write-only admin/API values stored sealed in `product_secrets`; they are not Worker
-   secrets and are never echoed back.
+   secrets and are never echoed back. Set the MusicKit key with usage **Edge-mint signing
+   key** (a general secret cannot sign: the token route answers `500 misconfigured`), then
+   approve the `applemusic` recipe in the **Edge-mint recipes** card on the Secrets view.
+   Until it is approved the token route answers `404`, like an unknown recipe. See
+   [Edge-mint](/docs/services/config/edge-mint/#two-operator-conditions).
 4. Verify the Core surfaces answer and the services map says what you declared:
 
    ```sh

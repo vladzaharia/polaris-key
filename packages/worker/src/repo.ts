@@ -61,6 +61,12 @@ export interface ProductSecretRow {
   product: string;
   name: string;
   enc_value_json: string;
+  /**
+   * What the secret may be used for (P0-12, migration 0025): NULL = general, `'edge-mint'` = an
+   * operator marked it as edge-mint signing material. Set only through the admin API. On a
+   * write, `undefined` leaves an existing row's usage alone (a new row is general).
+   */
+  usage?: string | null;
   created_at: number;
   modified_at: number;
 }
@@ -430,20 +436,29 @@ export async function getProductSecret(
   );
 }
 
+/**
+ * Seal-and-store a product secret. `row.usage === undefined` keeps the stored usage of an
+ * existing row (re-uploading a rotated key must not silently change what it may sign), and a
+ * new row is general; any other value (including `null` = general) is written as given.
+ */
 export async function upsertProductSecret(
   db: Db,
   row: ProductSecretRow,
 ): Promise<void> {
+  const setUsage = row.usage !== undefined;
   await db.run(
-    `INSERT INTO product_secrets (product, name, enc_value_json, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO product_secrets (product, name, enc_value_json, usage, created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, name) DO UPDATE SET
-       enc_value_json = excluded.enc_value_json, modified_at = excluded.modified_at`,
+       enc_value_json = excluded.enc_value_json, modified_at = excluded.modified_at,
+       usage = CASE WHEN ? THEN excluded.usage ELSE product_secrets.usage END`,
     row.product,
     row.name,
     row.enc_value_json,
+    row.usage ?? null,
     row.created_at,
     row.modified_at,
+    setUsage ? 1 : 0,
   );
 }
 
@@ -658,6 +673,23 @@ export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
       e.ttlSeconds,
       e.audience ?? null,
     ],
+  };
+}
+
+/**
+ * Drop the edge-mint approvals whose recipe id the product no longer declares (P0-12). Pushed
+ * into the link/resync batch AFTER the `edge_mint_config` re-insert, so the sub-select sees the
+ * manifest's new recipe set. The ingest path only ever DELETES approvals: an approval is an
+ * operator decision and is written by the Config admin API alone, never from a manifest.
+ */
+export function stmtDeleteOrphanEdgeMintApprovals(
+  product: string,
+): DbStatement {
+  return {
+    sql: `DELETE FROM edge_mint_approvals
+           WHERE product = ?
+             AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)`,
+    params: [product, product],
   };
 }
 
