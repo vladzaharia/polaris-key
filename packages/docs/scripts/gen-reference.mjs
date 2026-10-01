@@ -352,6 +352,9 @@ const TABLE_OWNERS = {
     "dist_transports",
     "dist_rollouts",
     "dist_access",
+    "dist_availability",
+    "dist_submissions",
+    "dist_keys",
   ],
   identity: [
     "oidc_config",

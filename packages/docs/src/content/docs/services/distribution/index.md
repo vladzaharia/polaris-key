@@ -58,6 +58,10 @@ switched on by a migration, so its stored state keeps serving while its manifest
 - **Outlet rollouts and halts**, controlled from CI and the console. Until the signed feed
   carries them, a halt is recorded and shown but does not stop legacy feeds; see
   [Rollouts and halts](/docs/services/distribution/rollouts/).
+- **Availability and submissions** per release and outlet — reported from CI with
+  `pkey distribution report` until store connectors exist, and derived for self-hosted outlets —
+  and the operator-owned **signing-key inventory**; see
+  [Availability, submissions and keys](/docs/services/distribution/availability/).
 - **A discovery fragment** advertising the canonical byte URLs; `configured` is `true` once the
   product has a release configuration:
 
@@ -96,7 +100,7 @@ gates. Distribution consumes one and provides two:
 | Hook                 | Provided by  | Read by            | Answers                                                                                                                                                                |
 | -------------------- | ------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `releaseCatalog`     | Release      | Distribution       | deliverables, releases, builds, artifact records, channel policy, yanks; resolution, the metadata access mode, the installer and GitHub-held bytes for the byte routes |
-| `delivery`           | Distribution | Update, the portal | the default transport, availability, outlet rollouts, delivery access and delivery URLs                                                                                |
+| `delivery`           | Distribution | Update, the portal | the default transport, availability and submissions, outlet rollouts, delivery access, delivery URLs and the key inventory                                             |
 | `outletCapabilities` | Distribution | Update             | what one declared outlet permits: its kind's default, narrowed by an operator                                                                                          |
 
 Every accessor **fails closed**: while the providing service is off for the product it answers

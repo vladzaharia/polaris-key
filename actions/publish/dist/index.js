@@ -15122,6 +15122,181 @@ ${CHANNEL_USAGE}`);
   return body;
 }
 
+// src/distribution.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var DISTRIBUTION_CI_USAGE = "Usage: pkey distribution report availability --product <slug> --outlet <id> (--release <id> | --version <v> [--deliverable id])\n              [--build <id>] --state <state> [--since <epoch>] [--platform-ref <json>] [--detail <json>]\n       pkey distribution report submission --product <slug> --outlet <id> (--release <id> | --version <v> [--deliverable id])\n              --state <state> [--since <epoch>] [--detail <json>]\n       pkey distribution report key --product <slug> --purpose <purpose> --sha256 <hex> [--outlet <id>]\n       pkey distribution rollout --product <slug> --outlet <id> --channel <c> --release <id> --bp <0-10000> [--deliverable id]\n       pkey distribution pause|resume|halt|complete --product <slug> --outlet <id> --channel <c> [--release <id>] [--deliverable id]";
+var ROLLOUT_COMMANDS = [
+  "rollout",
+  "pause",
+  "resume",
+  "halt",
+  "complete"
+];
+async function clientFor2(opts) {
+  const token = await resolveCiToken({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    env: opts.env,
+    out: opts.stdout,
+    log: opts.stderr,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep
+  });
+  return ciClient({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    token,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    log: opts.stderr
+  });
+}
+function normalizeFingerprint2(raw) {
+  const hex2 = raw.replace(/[\s:]/g, "").toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(hex2))
+    throw new Error(
+      `--sha256 must be a SHA-256 fingerprint: 64 hex characters, colons allowed (got ${JSON.stringify(raw)}).`
+    );
+  return hex2;
+}
+function jsonObjectFlag(name, raw) {
+  if (raw === void 0) return void 0;
+  let v;
+  try {
+    v = JSON.parse(raw);
+  } catch {
+    throw new Error(`--${name} must be a JSON object (got ${raw}).`);
+  }
+  if (v !== null && (typeof v !== "object" || Array.isArray(v)))
+    throw new Error(`--${name} must be a JSON object (got ${raw}).`);
+  return v;
+}
+function epochFlag(raw) {
+  if (raw === void 0) return void 0;
+  const n = Number(raw);
+  if (!Number.isSafeInteger(n) || n <= 0)
+    throw new Error(`--since must be epoch seconds (got ${raw}).`);
+  return n;
+}
+function reportBody(opts) {
+  if (opts.type === "key") {
+    if (!opts.purpose || !opts.sha256)
+      throw new Error(
+        `pkey distribution report key needs --purpose and --sha256.
+${DISTRIBUTION_CI_USAGE}`
+      );
+    return {
+      type: "key",
+      purpose: opts.purpose,
+      sha256: normalizeFingerprint2(opts.sha256),
+      ...opts.outlet ? { outlet: opts.outlet } : {}
+    };
+  }
+  if (!opts.outlet || !opts.state)
+    throw new Error(
+      `pkey distribution report ${opts.type} needs --outlet and --state.
+${DISTRIBUTION_CI_USAGE}`
+    );
+  if (Boolean(opts.releaseId) === Boolean(opts.version))
+    throw new Error(
+      `Give exactly one of --release or --version.
+${DISTRIBUTION_CI_USAGE}`
+    );
+  if (opts.releaseId && opts.deliverable)
+    throw new Error("--deliverable goes with --version, not --release.");
+  if (opts.type === "submission" && (opts.buildId || opts.platformRef))
+    throw new Error(
+      "A submission report takes no --build or --platform-ref (a submission is per release)."
+    );
+  const since = epochFlag(opts.since);
+  const platformRef = jsonObjectFlag("platform-ref", opts.platformRef);
+  const detail = jsonObjectFlag("detail", opts.detail);
+  return {
+    type: opts.type,
+    outlet: opts.outlet,
+    ...opts.releaseId ? { releaseId: opts.releaseId } : {},
+    ...opts.version ? { version: opts.version } : {},
+    ...opts.deliverable ? { deliverable: opts.deliverable } : {},
+    ...opts.buildId ? { buildId: opts.buildId } : {},
+    state: opts.state,
+    ...since !== void 0 ? { since } : {},
+    ...platformRef !== void 0 ? { platformRef } : {},
+    ...detail !== void 0 ? { detail } : {}
+  };
+}
+async function reportDistribution(opts) {
+  const payload = reportBody(opts);
+  const client = await clientFor2(opts);
+  const what = opts.type === "key" ? `Reporting the ${String(payload.purpose)} key` : `Reporting ${opts.type} on ${opts.outlet}`;
+  const body = await client.postJson("distribution/report", {
+    what,
+    body: payload
+  });
+  if (opts.type === "key") {
+    const key = body.key ?? {};
+    if (key.match === true) {
+      opts.stdout.write(
+        `The ${String(key.purpose)} key ${String(key.sha256)} is in the key inventory.
+`
+      );
+      return { body, ok: true };
+    }
+    opts.stderr.write(
+      `The ${String(key.purpose)} key ${String(key.sha256)} is NOT in the product's key inventory. Polaris Key flagged it for an operator; the inventory is unchanged. If the key was rotated on purpose, an operator adopts it in the console (Distribution → Keys).
+`
+    );
+    return { body, ok: false };
+  }
+  const rec = body[opts.type] ?? {};
+  const target = `${String(rec.releaseId)}${rec.buildId ? `/${String(rec.buildId)}` : ""}`;
+  opts.stdout.write(
+    `Reported ${opts.type} of ${target} on ${String(rec.outletId)}: ${String(rec.state)}
+`
+  );
+  return { body, ok: true };
+}
+async function driveRollout(opts) {
+  if (!opts.outlet || !opts.channel)
+    throw new Error(
+      `--outlet and --channel are required.
+${DISTRIBUTION_CI_USAGE}`
+    );
+  let bp;
+  if (opts.command === "rollout") {
+    if (!opts.releaseId || opts.bp === void 0)
+      throw new Error(
+        `pkey distribution rollout needs --release and --bp.
+${DISTRIBUTION_CI_USAGE}`
+      );
+    bp = Number(opts.bp);
+    if (!Number.isInteger(bp) || bp < 0 || bp > 1e4)
+      throw new Error(
+        `--bp must be an integer from 0 to 10000 (basis points; 2500 = 25%), got ${opts.bp}.`
+      );
+  }
+  const client = await clientFor2(opts);
+  const base = `distribution/rollouts/${encodeURIComponent(opts.outlet)}/${encodeURIComponent(opts.channel)}`;
+  const path6 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
+  const body = await client.postJson(path6, {
+    what: opts.command === "rollout" ? `Rolling out ${opts.releaseId} on ${opts.outlet}/${opts.channel}` : `${opts.command[0].toUpperCase()}${opts.command.slice(1)} on ${opts.outlet}/${opts.channel}`,
+    body: {
+      ...opts.releaseId ? { releaseId: opts.releaseId } : {},
+      ...opts.deliverable ? { deliverable: opts.deliverable } : {},
+      ...bp !== void 0 ? { bp } : {}
+    }
+  });
+  const r = body.rollout ?? {};
+  opts.stdout.write(
+    `${String(r.deliverableId)} ${String(r.releaseId)} on ${String(r.outletId)}/${String(r.channel)}: ${String(r.state)} at ${Number(r.rolloutBp) / 100}%
+`
+  );
+  if (opts.command === "halt")
+    opts.stderr.write(
+      "Note: until the signed feed carries halts, legacy feeds keep serving; yank or pin to stop downloads now.\n"
+    );
+  return body;
+}
+
 // src/schemas.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { mkdir as mkdir2, readdir as readdir2, readFile as readFile3, writeFile as writeFile3 } from "node:fs/promises";
@@ -15172,7 +15347,7 @@ async function runPkey(argv2, io = {}) {
       case "validate":
         return await cmdValidate(cwd, stdout);
       case "distribution":
-        return await cmdDistribution(parsed, cwd, stdout, stderr);
+        return await cmdDistribution(parsed, cwd, stdout, stderr, ci);
       case "doctor":
         return await cmdDoctor(parsed, cwd, stdout);
       case "bundle":
@@ -15282,10 +15457,13 @@ function located(manifest, cwd, msg) {
   }[msg.file];
   return `${msg.file}${msg.path}${file ? ` (${path5.relative(cwd, file)})` : ""}`;
 }
-var DISTRIBUTION_USAGE = "Usage: pkey distribution outlet-ids --outlet <id>";
-async function cmdDistribution(parsed, cwd, stdout, stderr) {
-  if (parsed.positional[0] !== "outlet-ids")
-    throw new Error(DISTRIBUTION_USAGE);
+var DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>
+${DISTRIBUTION_CI_USAGE}`;
+async function cmdDistribution(parsed, cwd, stdout, stderr, ci) {
+  const sub = parsed.positional[0];
+  if (sub === "report" || ROLLOUT_COMMANDS.includes(sub))
+    return cmdDistributionCi(parsed, stdout, stderr, ci);
+  if (sub !== "outlet-ids") throw new Error(DISTRIBUTION_USAGE);
   const outlet = flagString(parsed, "outlet");
   if (!outlet) throw new Error(DISTRIBUTION_USAGE);
   if (!await findDistributionFile(cwd)) {
@@ -15312,6 +15490,53 @@ async function cmdDistribution(parsed, cwd, stdout, stderr) {
   }
   stdout.write(`${JSON.stringify(ids)}
 `);
+  return 0;
+}
+async function cmdDistributionCi(parsed, stdout, stderr, ci) {
+  const [sub, type] = parsed.positional;
+  const product = flagString(parsed, "product");
+  if (!product) throw new Error(DISTRIBUTION_CI_USAGE);
+  const common = {
+    product,
+    baseUrl: flagString(parsed, "base-url"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep
+  };
+  if (sub === "report") {
+    if (type !== "availability" && type !== "submission" && type !== "key")
+      throw new Error(DISTRIBUTION_CI_USAGE);
+    const result = await reportDistribution({
+      ...common,
+      type,
+      outlet: flagString(parsed, "outlet"),
+      releaseId: flagString(parsed, "release"),
+      version: flagString(parsed, "version"),
+      deliverable: flagString(parsed, "deliverable"),
+      buildId: flagString(parsed, "build"),
+      state: flagString(parsed, "state"),
+      since: flagString(parsed, "since"),
+      platformRef: flagString(parsed, "platform-ref"),
+      detail: flagString(parsed, "detail"),
+      purpose: flagString(parsed, "purpose"),
+      sha256: flagString(parsed, "sha256")
+    });
+    return result.ok ? 0 : 1;
+  }
+  const outlet = flagString(parsed, "outlet");
+  const channel = flagString(parsed, "channel");
+  if (!outlet || !channel) throw new Error(DISTRIBUTION_CI_USAGE);
+  await driveRollout({
+    ...common,
+    command: sub,
+    outlet,
+    channel,
+    releaseId: flagString(parsed, "release"),
+    deliverable: flagString(parsed, "deliverable"),
+    bp: flagString(parsed, "bp")
+  });
   return 0;
 }
 async function cmdDoctor(parsed, cwd, stdout) {
@@ -15529,6 +15754,14 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
   pkey release unpin --channel c --product slug [--deliverable id]
   pkey release yank releaseId --reason text --product slug
+  pkey distribution report availability|submission --product slug --outlet id
+              (--release id | --version v [--deliverable id]) --state s [--build id]
+              [--since epoch] [--platform-ref json] [--detail json]
+  pkey distribution report key --product slug --purpose p --sha256 hex [--outlet id]
+  pkey distribution rollout --product slug --outlet id --channel c --release id --bp n
+              [--deliverable id]
+  pkey distribution pause|resume|halt|complete --product slug --outlet id --channel c
+              [--release id] [--deliverable id]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -15537,6 +15770,15 @@ them, uploads what Polaris Key does not already hold, and submits the release de
 --meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. The CI commands
 exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret
 is stored in the repository. See /docs/build/ci/.
+
+pkey distribution report tells Polaris Key what a store says until its connector exists:
+availability (pending, processing, in-review, approved, live, rejected, removed) and the
+submission state (prepared, submitted, in-review, approved, rejected,
+pending-developer-release, released, cancelled) of a release on an outlet. report key
+sends the SHA-256 fingerprint the job signed with (colons allowed); one that is not in the
+product's key inventory is flagged for an operator and the command exits 1. rollout, pause,
+resume, halt and complete drive the outlet rollout; --bp is basis points (2500 = 25%), and
+they need a token an operator granted distribution:rollout.
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.
