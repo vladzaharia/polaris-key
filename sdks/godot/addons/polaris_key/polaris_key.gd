@@ -14,8 +14,10 @@ extends Node
 ## `core` is the PKeyCore every service client builds on.
 ##
 ## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
-## `config_changed(keys)` fires after start, each sync and each bundle import) and `devices`
-## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync).
+## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
+## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync) and
+## `identity` (PKeyIdentity: device-code sign-in with a QR code; a `ready` stores the token and
+## runs a forced sync).
 
 const SDK_VERSION := "0.1.0"
 
@@ -32,6 +34,8 @@ var devices: PKeyDevices = null
 var last_store_error: Dictionary = {}
 ## Managed config. Usable before `configure()` (every key falls back).
 var config := PKeyConfig.new()
+## Device-code sign-in. Present before `configure()` (`is_available()` is false until then).
+var identity := PKeyIdentity.new()
 
 var _timer: Timer = null
 var _syncing := false
@@ -52,6 +56,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state
+	identity.attach(core, self)
+	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	return PKeyResult.success()
 
 
