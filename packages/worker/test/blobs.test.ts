@@ -264,7 +264,11 @@ describe("promote and the blob tables", () => {
 
   it("verifies, copies, then records a blob_objects row", async () => {
     r2.seed(from, BODY);
-    const res = await promote(asR2(r2), from, to, expected, { db, now: NOW });
+    const res = await promote(asR2(r2), from, to, expected, {
+      db,
+      now: NOW,
+      product: "djdl",
+    });
     expect(res).toMatchObject({ ok: true, key: to, alreadyStored: false });
     expect(r2.has(to)).toBe(true);
     const row = await db.first<Record<string, unknown>>(
@@ -288,7 +292,7 @@ describe("promote and the blob tables", () => {
       from,
       to,
       { sha256: HEX, size: OTHER.length },
-      { db, now: NOW },
+      { db, now: NOW, product: "djdl" },
     );
     expect(res).toEqual({ ok: false, reason: "digest_mismatch" });
     expect(r2.putAttempts).not.toContain(to);
@@ -298,7 +302,11 @@ describe("promote and the blob tables", () => {
 
   it("never writes the target when the staged object is missing or mis-sized", async () => {
     expect(
-      await promote(asR2(r2), from, to, expected, { db, now: NOW }),
+      await promote(asR2(r2), from, to, expected, {
+        db,
+        now: NOW,
+        product: "djdl",
+      }),
     ).toEqual({
       ok: false,
       reason: "missing",
@@ -310,7 +318,7 @@ describe("promote and the blob tables", () => {
         from,
         to,
         { sha256: HEX, size: 1 },
-        { db, now: NOW },
+        { db, now: NOW, product: "djdl" },
       ),
     ).toEqual({ ok: false, reason: "size_mismatch" });
     expect(r2.putAttempts).toEqual([]);
@@ -320,26 +328,54 @@ describe("promote and the blob tables", () => {
     r2.seed(from, BODY);
     const wrongTarget = blobKey("c".repeat(64));
     expect(
-      await promote(asR2(r2), from, wrongTarget, expected, { db, now: NOW }),
+      await promote(asR2(r2), from, wrongTarget, expected, {
+        db,
+        now: NOW,
+        product: "djdl",
+      }),
     ).toEqual({ ok: false, reason: "bad_key" });
-    expect(await promote(asR2(r2), to, to, expected, { db, now: NOW })).toEqual(
-      { ok: false, reason: "bad_key" },
-    );
+    expect(
+      await promote(asR2(r2), to, to, expected, {
+        db,
+        now: NOW,
+        product: "djdl",
+      }),
+    ).toEqual({ ok: false, reason: "bad_key" });
     expect(
       await promote(asR2(r2), from, stagingKey("djdl", "t2", HEX), expected, {
         db,
         now: NOW,
+        product: "djdl",
       }),
     ).toEqual({ ok: false, reason: "bad_key" });
     expect(r2.putAttempts).toEqual([]);
   });
 
+  it("refuses a staging key under another product's prefix (P2-02, earn-a-ref)", async () => {
+    // `from` is djdl's upload; promoting it FOR `other` must not earn `other` anything.
+    r2.seed(from, BODY);
+    expect(
+      await promote(asR2(r2), from, to, expected, {
+        db,
+        now: NOW,
+        product: "other",
+      }),
+    ).toEqual({ ok: false, reason: "bad_key" });
+    expect(r2.putAttempts).toEqual([]);
+    expect(await isStored(db, to)).toBe(false);
+  });
+
   it("is idempotent: a second promote of the same bytes is alreadyStored", async () => {
     r2.seed(from, BODY);
-    await promote(asR2(r2), from, to, expected, { db, now: NOW });
+    await promote(asR2(r2), from, to, expected, {
+      db,
+      now: NOW,
+      product: "djdl",
+    });
     const again = await promote(asR2(r2), from, to, expected, {
       db,
       now: NOW + 5,
+      product: "djdl",
     });
     expect(again).toMatchObject({ ok: true, alreadyStored: true });
     const rows = await db.all("SELECT * FROM blob_objects");
@@ -351,7 +387,11 @@ describe("promote and the blob tables", () => {
       gated: true,
     });
     r2.seed(from, BODY);
-    await promote(asR2(r2), from, dkey, expected, { db, now: NOW });
+    await promote(asR2(r2), from, dkey, expected, {
+      db,
+      now: NOW,
+      product: "djdl",
+    });
     expect(
       await db.first(
         "SELECT kind, gated FROM blob_objects WHERE storage_key = ?",
@@ -421,7 +461,11 @@ describe("promote and the blob tables", () => {
 
   it("hasRef is per product: another product's ref does not count", async () => {
     r2.seed(from, BODY);
-    await promote(asR2(r2), from, to, expected, { db, now: NOW });
+    await promote(asR2(r2), from, to, expected, {
+      db,
+      now: NOW,
+      product: "djdl",
+    });
     await recordRef(
       db,
       { product: "other", storageKey: to, refKind: "artifact", refId: "a1" },
@@ -460,7 +504,11 @@ describe("promote and the blob tables", () => {
 
   it("an object with a ref cannot be deleted from blob_objects (the GC invariant)", async () => {
     r2.seed(from, BODY);
-    await promote(asR2(r2), from, to, expected, { db, now: NOW });
+    await promote(asR2(r2), from, to, expected, {
+      db,
+      now: NOW,
+      product: "djdl",
+    });
     await recordRef(
       db,
       { product: "djdl", storageKey: to, refKind: "artifact", refId: "a" },
