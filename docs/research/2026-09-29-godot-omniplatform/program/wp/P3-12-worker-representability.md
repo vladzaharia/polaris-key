@@ -168,7 +168,7 @@ sooner.
       each of its two warning columns, in a local D1, and nothing on a clean one.
 - [x] The Worker's capability table, `OUTLET_CAPABILITY_DEFAULTS` and `outlet-matrix.json#/kinds`
       are equal, and a stored override wider than a narrowed default reads back narrowed.
-- [ ] The green gate passes (`AGENTS.md`), including schema-parity (rule 9), the generated-reference
+- [x] The green gate passes (`AGENTS.md`), including schema-parity (rule 9), the generated-reference
       gate, the constants gate and the workerd smoke job.
 
 ## Verify
