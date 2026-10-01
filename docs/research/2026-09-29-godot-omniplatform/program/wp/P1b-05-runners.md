@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                |
 | ----------- | ---------------------------------------------------------------------------------------------------- |
 | Phase       | P1b: SDK parity                                                                                      |
-| Size        | 1–1.25 engineer-weeks                                                                                |
+| Size        | 0.75–1 engineer-weeks                                                                                |
 | Depends on  | [P0-04](P0-04-channel-unification.md)                                                                |
 | Unblocks    | [P4-18](P4-18-web-dcz.md)                                                                            |
 | Role        | `pkey-implementer`                                                                                   |

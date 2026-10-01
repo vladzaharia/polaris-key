@@ -545,15 +545,15 @@ Readings:
 
 ## Briefs changed in this branch
 
-| Brief  | Change                                                                                                                                                                                                                |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1-02  | Design note: the off-thread threshold, `WorkerThreadPool` running inline on no-threads web, and the slice budget. WebCrypto first on web is recorded as an open decision for the lead; the Out item stands until then |
-| P1-10  | Design note: low-end stage budgets (native and web) and the 250 ms progress / ≥ 10 s (≥ 30 s sliced web) timeout rule                                                                                                 |
-| P4-08  | Design note: the per-device throughput planning figures and the 50 MB native / 25 MB web inline ceilings                                                                                                              |
-| P4-11  | Design note: the same figures for the SDK chunk-sync progress UX                                                                                                                                                      |
-| P1b-05 | New Part D (Goal, Scope, Steps, Acceptance, Verify, Size): Firefox 155.0 on Linux, WebKit 26.6 on macOS. A Linux WebKit job is Out until the unowned `shared-jws` fallback exists                                     |
-| P4-18  | The WebKit/Gecko precondition is met through the WASM path                                                                                                                                                            |
-| X-02   | The WebKitGTK Ed25519 crash: choose the fallback by size (or always on Linux), not by feature detection                                                                                                               |
+| Brief  | Change                                                                                                                                                                                                                                                 |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P1-02  | Design note: the off-thread threshold, `WorkerThreadPool` running inline on no-threads web, and the slice budget. WebCrypto first on web is recorded as an open decision for the lead; the Out item stands until then                                  |
+| P1-10  | Design note: low-end stage budgets (native and web) and the 250 ms progress / ≥ 10 s (≥ 30 s sliced web) timeout rule                                                                                                                                  |
+| P4-08  | Design note: the per-device throughput planning figures and the 50 MB native / 25 MB web inline ceilings                                                                                                                                               |
+| P4-11  | Design note: the same figures for the SDK chunk-sync progress UX                                                                                                                                                                                       |
+| P1b-05 | New Part D (Goal, Scope, Steps, Acceptance, Verify): Firefox 155.0 on Linux, WebKit 26.6 on macOS. A Linux WebKit job is Out until the unowned `shared-jws` fallback exists. The Size row is generated from the graph, so the lead bumps it (hand-off) |
+| P4-18  | The WebKit/Gecko precondition is met through the WASM path                                                                                                                                                                                             |
+| X-02   | The WebKitGTK Ed25519 crash: choose the fallback by size (or always on Linux), not by feature detection                                                                                                                                                |
 
 This spike's own brief gains one design note: the official iOS template's simulator slice is
 x86_64 only, and `ios-sim-retarget.py` works around it.
@@ -593,6 +593,9 @@ x86_64 only, and `ios-sim-retarget.py` works around it.
   §5.2 and P1-02's Out list.
 - Lead: assign the size-aware Ed25519 fallback in `shared-jws`/`client-core` for GCrypt-backed
   WebKit (Recommendation 4). It is unowned, and a Linux WebKit runner waits on it.
+- Lead: Part D adds work to P1b-05. In `workpackages.json`, set P1b-05 `estimateWeeks` to
+  `[1, 1.25]` and retitle it to include Firefox and WebKit. Then run `check.mjs --sync-briefs` and
+  regenerate INDEX.md. The brief's Size row is generated, so it still reads 0.75–1 until then.
 - File the WebKitGTK/libgcrypt Ed25519 ≥ 64 KiB crash upstream, with `browser/gtk.html` as the
   reproduction.
 
