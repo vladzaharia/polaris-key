@@ -60,7 +60,8 @@ def test_ed25519_prechecks_refuse_small_order_keys_and_r() -> None:
 @pytest.mark.parametrize(
     "text",
     [b'{"a":NaN}', b'{"a":1e400}', b'{"a":"\\ud800"}', b'{"a\\u0000b":1}', b"[1]",
-     b"\xef\xbb\xbf{}", b'{"a":' + b"[" * 64 + b"]" * 64 + b"}"],
+     b"\xef\xbb\xbf{}", b'{"a":' + b"[" * 64 + b"]" * 64 + b"}",
+     b'{"a":0e1000000}', b'{"a":-0.0e1234567}', b'{"a":0,"b":0E+1234567}'],
 )
 def test_strict_json_refusals(text: bytes) -> None:
     with pytest.raises(Exception):
@@ -68,4 +69,4 @@ def test_strict_json_refusals(text: bytes) -> None:
 
 
 def test_strict_json_keeps_values() -> None:
-    assert _parse_strict_json(b'{"a":[7.0,1e-7,0e5],"\\u00e9":1,"e\\u0301":2}')["a"][0] == 7.0
+    assert _parse_strict_json(b'{"a":[7.0,1e-7,0e5,0e999999],"\\u00e9":1,"e\\u0301":2}')["a"][0] == 7.0

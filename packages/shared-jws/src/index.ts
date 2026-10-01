@@ -226,9 +226,9 @@ export function numberTokenInRange(token: string): boolean {
   const int = m[1]!;
   const digits = int + (m[2] ?? "");
   const first = digits.search(/[1-9]/);
-  if (first === -1) return true;
   const expDigits = (m[4] ?? "0").replace(/^0+/, "");
   if (expDigits.length > 6) return false;
+  if (first === -1) return true;
   const exp = (m[3] === "-" ? -1 : 1) * Number(expDigits || "0");
   const power = int.length - 1 - first + exp;
   return power >= -307 && power <= 307;

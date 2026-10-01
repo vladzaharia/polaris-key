@@ -68,9 +68,9 @@ func run(t: PKeyTestContext) -> void:
 	# Numbers are float64 exactly as in JS, inside WIRE-CONTRACT-V4 §1.2 rule 8's range.
 	var big := PKeyJson.parse("9007199254740991")
 	t.check("json reads 2^53 - 1 exactly", big["ok"] and big["value"] is float and int(big["value"]) == 9007199254740991 and big["value"] == float("9007199254740991"), str(big))
-	for out_of_range in ["1e400", "[-1e400, 1E-400]", "5e-324", "1e4294967297", "1e308", "1e-308"]:
+	for out_of_range in ["1e400", "[-1e400, 1E-400]", "5e-324", "1e4294967297", "1e308", "1e-308", "0e1000000", "-0.0e1234567"]:
 		t.check("json refuses %s (rule 8)" % out_of_range, not PKeyJson.parse(out_of_range)["ok"])
-	for in_range in ["7", "-0", "7.0", "7e0", "1e-7", "1e+21", "1e-307", "9.99e307", "0e5"]:
+	for in_range in ["7", "-0", "7.0", "7e0", "1e-7", "1e+21", "1e-307", "9.99e307", "0e5", "0e999999"]:
 		t.check("json keeps %s (rule 8)" % in_range, PKeyJson.parse(in_range)["ok"])
 	# V4 §3: the pointers of the number tokens that cannot be wire integers.
 	var nw := PKeyJson.parse("{\"seq\":7,\"b\":7.0,\"a/b\":[1,17e8,9007199254740991,9007199254740992],\"t~\":{\"x\":-0,\"y\":1.5}}")

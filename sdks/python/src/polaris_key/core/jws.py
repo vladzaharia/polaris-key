@@ -143,11 +143,11 @@ def _number_in_range(token: str) -> bool:
     int_part, frac = m.group(1), m.group(2) or ""
     digits = int_part + frac
     first = next((k for k, c in enumerate(digits) if c != "0"), -1)
-    if first == -1:
-        return True
     exp_digits = (m.group(4) or "0").lstrip("0")
     if len(exp_digits) > 6:
         return False
+    if first == -1:
+        return True
     exp = int(exp_digits or "0") * (-1 if m.group(3) == "-" else 1)
     power = len(int_part) - 1 - first + exp
     return -307 <= power <= 307

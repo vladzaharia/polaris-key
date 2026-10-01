@@ -137,6 +137,8 @@ describe("scanStrictJson (WIRE-CONTRACT-V4 §1.2)", () => {
     ["1e-400", '{"a":1e-400}'],
     ["5e-324", '{"a":5e-324}'],
     ["an exponent of ten digits", '{"a":1e4294967297}'],
+    ["zero with a seven-digit exponent", '{"a":0e1000000}'],
+    ["negative zero with a seven-digit exponent", '{"a":-0.0e1234567}'],
     ["a top-level array", "[1]"],
     ["a top-level scalar", "42"],
     ["a leading BOM", '\ufeff{"a":1}'],
@@ -191,9 +193,19 @@ describe("scanStrictJson (WIRE-CONTRACT-V4 §1.2)", () => {
       "1e-307",
       "9.99e307",
       "0e5",
+      "0e999999",
     ])
       expect(numberTokenInRange(t)).toBe(true);
-    for (const t of ["1e308", "1e-308", "5e-324", "1e400", "1e4294967297"])
+    for (const t of [
+      "1e308",
+      "1e-308",
+      "5e-324",
+      "1e400",
+      "1e4294967297",
+      "0e1000000",
+      "-0.0e1234567",
+      "0e-0001000000",
+    ])
       expect(numberTokenInRange(t)).toBe(false);
     for (const t of ["7", "-0", "0", "9007199254740991", "-9007199254740991"])
       expect(isNonWireIntegerToken(t)).toBe(false);
