@@ -36,7 +36,12 @@ purchase.
 - `AGENTS.md`; P5-01 (`openOutletCredential`, `signJwtEs256`), P5-02 and P5-03 hand-offs (the Play
   client is reused here).
 - [S-07](S-07-policy-recheck.md) rows 8, 9 and 15 (Play fee programmes, Billing Library, Steam
-  commerce), if it has run.
+  commerce), read in [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) (re-checked 2026-09-30). One clause changed: US developers in the
+  external content links programme now have until 2026-12-01 to report successful downloads and
+  pay the fees (notice of 2026-09-17); reporting for other US programme transactions still starts
+  2026-10-01. Billing Library 8 or later is required since 2026-08-31. The Play service-fee
+  table and billing choice also apply to Australia and Japan from 2026-09-30 (beside the EEA, UK
+  and US); Korea follows on 2026-12-31 and the rest of the world on 2027-09-30.
 - notes/E1 §F1–§F3 (App Store Server API, Notifications V2, the 23 types, `x5c` chains,
   `appAccountToken`), notes/E2 §E4 (server verification, acknowledgement within 3 days, RTDN over
   Pub/Sub push with an OIDC JWT), notes/E3 §B3 (Steam DLC and ownership).

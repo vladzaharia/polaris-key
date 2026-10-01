@@ -91,7 +91,7 @@ function manifestValidationCodes() {
   unique.sort((a, b) => a[0].localeCompare(b[0]) || a[3].localeCompare(b[3]));
   return page(
     "Manifest validation codes",
-    "Every error and warning validateManifestDocuments can emit, extracted from the validator source.",
+    "Every error and warning validateManifestDocuments and validateIngestDocuments can emit, extracted from the validator source.",
     `The \`.pkey/\` validator (\`@polaris-key/manifest\`) aggregates ALL problems instead of
 stopping at the first; \`pkey validate\` and the console's link/resync surfaces show these
 codes with their JSON-pointer paths. ${unique.length} distinct emit sites.

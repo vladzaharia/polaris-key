@@ -34,8 +34,13 @@ the table out of there would close a cycle. The table is built once at module sc
 the two dispatchers that need it: the public router and the admin API. Descriptors are stateless
 route tables, so rebuilding the map per request would be work on every cold path for no benefit.
 
-Adding a service is therefore **one entry in `mount.ts`, one slug in `router.ts`'s
-`SERVICE_NAMESPACES`, and a directory** — nothing in Core learns the new name.
+Adding a service is nonetheless a **multi-file change**, because the name is enumerated in more
+places than the composition root. In the Worker: an entry in `mount.ts`, a slug in `router.ts`'s
+`SERVICE_NAMESPACES`, the service's directory, and — in Core — `core/services.ts` (the
+`ServiceSlug` union, `SERVICE_SLUGS` and the defaults) and `core/discovery.ts` (the discovery
+fragment). Beyond the Worker, the manifest package's service list, the console's service
+enablement views and every SDK's discovery and capability list carry the slug too. Core's
+_dispatch_ still learns no names — the enumerations above are static tables, not routing.
 
 ## The service descriptor, as shipped
 

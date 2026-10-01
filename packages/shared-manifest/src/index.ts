@@ -871,13 +871,38 @@ function validateDocuments(
       );
     }
     if (record.maxOfflineDays !== undefined) {
-      add(
-        warnings,
-        "product",
-        `/licensing/tiers/${i}/maxOfflineDays`,
-        "tier_ignored_field",
-        "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace.",
-      );
+      // The tier normaliser reads policyExpiryDays, then expiryDays, then maxOfflineDays (each
+      // only when it is a number), so the message says "sets the licence expiry" only when
+      // maxOfflineDays is the one that wins. Each branch keeps a literal message so the docs
+      // generator can extract it.
+      if (typeof record.maxOfflineDays !== "number") {
+        add(
+          warnings,
+          "product",
+          `/licensing/tiers/${i}/maxOfflineDays`,
+          "tier_ignored_field",
+          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry.",
+        );
+      } else if (
+        typeof record.policyExpiryDays === "number" ||
+        typeof record.expiryDays === "number"
+      ) {
+        add(
+          warnings,
+          "product",
+          `/licensing/tiers/${i}/maxOfflineDays`,
+          "tier_ignored_field",
+          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace.",
+        );
+      } else {
+        add(
+          warnings,
+          "product",
+          `/licensing/tiers/${i}/maxOfflineDays`,
+          "tier_ignored_field",
+          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace.",
+        );
+      }
     }
     // Enforcement strength is an enum, and a typo'd value must be an authoring error — the
     // admin PATCH path (services/license/admin/policy.ts) already rejects these, so this

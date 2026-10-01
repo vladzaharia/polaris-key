@@ -616,6 +616,64 @@ export interface DeviceDto {
   facts?: DeviceFactsDto | null;
 }
 
+/** One row of Platform → Devices: the license view's device without fingerprint/facts, plus the
+ *  license it holds (null = license-free) and the seat it occupies. */
+export interface ProductDeviceDto {
+  deviceId: string;
+  status: string;
+  firstSeen: number;
+  lastSeen: number;
+  ua?: string;
+  label?: string;
+  platform?: string;
+  arch?: string;
+  appVersion?: string;
+  sdkName?: string;
+  sdkVersion?: string;
+  licenseId: string | null;
+  seatNo: number | null;
+}
+
+/** A single device, with the hardware binding and software facts the list omits. */
+export interface ProductDeviceDetail extends ProductDeviceDto {
+  fingerprint: DeviceFingerprintDto | null;
+  facts: DeviceFactsDto | null;
+}
+
+export type ProductDeviceStatusFilter = "authorized" | "deauthorized" | "all";
+
+export interface ProductDeviceQuery {
+  status?: ProductDeviceStatusFilter;
+  platform?: string;
+  licensed?: boolean;
+  q?: string;
+  limit?: number;
+  /** Opaque: the previous page's `nextCursor`. */
+  cursor?: string | null;
+}
+
+export interface ProductDevicePage {
+  devices: ProductDeviceDto[];
+  nextCursor: string | null;
+}
+
+export interface DeviceCount {
+  value: string | null;
+  count: number;
+}
+
+export interface ProductDeviceSummary {
+  total: number;
+  byStatus: DeviceCount[];
+  /** Authorized devices only, as are the breakdowns below. */
+  licensed: { licensed: number; licenseFree: number };
+  byPlatform: DeviceCount[];
+  byArch: DeviceCount[];
+  bySdkName: DeviceCount[];
+  /** Top 20 by count. */
+  byAppVersion: DeviceCount[];
+}
+
 export type FingerprintMode = "off" | "lenient" | "normal" | "strict";
 
 export interface FingerprintProbeDto {
@@ -688,7 +746,7 @@ export interface MintBundleBody {
    *  and let enablement decide rather than asserting a preference the operator never made. */
   includeConfig?: boolean;
   /** REQUIRED when the License service is enabled — there is no authenticated device here to
-   *  infer a licence from, and guessing would silently mint the wrong grant. */
+   *  infer a license from, and guessing would silently mint the wrong grant. */
   licenseId?: string;
 }
 
@@ -1065,6 +1123,34 @@ export const api = {
   resetDeviceFingerprint: (slug: string, id: string, deviceId: string) =>
     call<{ ok: true; deviceId: string }>(
       `${p(slug)}/license/licenses/${enc(id)}/devices/${enc(deviceId)}/fingerprint/reset`,
+      { method: "POST" },
+    ),
+
+  // ── devices, product-wide (Core) ─────────────────────────────────────────────
+  productDevices: (slug: string, query: ProductDeviceQuery = {}) => {
+    const search = new URLSearchParams();
+    if (query.status) search.set("status", query.status);
+    if (query.platform) search.set("platform", query.platform);
+    if (query.licensed !== undefined)
+      search.set("licensed", String(query.licensed));
+    if (query.q) search.set("q", query.q);
+    if (query.limit) search.set("limit", String(query.limit));
+    if (query.cursor) search.set("cursor", query.cursor);
+    const qs = search.toString();
+    return call<ProductDevicePage>(`${p(slug)}/devices${qs ? `?${qs}` : ""}`);
+  },
+  productDeviceSummary: (slug: string) =>
+    call<ProductDeviceSummary>(`${p(slug)}/devices/summary`),
+  productDevice: (slug: string, deviceId: string) =>
+    call<ProductDeviceDetail>(`${p(slug)}/devices/${enc(deviceId)}`),
+  deauthorizeProductDevice: (slug: string, deviceId: string) =>
+    call<{ ok: true; deviceId: string }>(
+      `${p(slug)}/devices/${enc(deviceId)}/deauthorize`,
+      { method: "POST" },
+    ),
+  resetProductDeviceFingerprint: (slug: string, deviceId: string) =>
+    call<{ ok: true; deviceId: string }>(
+      `${p(slug)}/devices/${enc(deviceId)}/fingerprint/reset`,
       { method: "POST" },
     ),
 

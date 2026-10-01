@@ -1628,8 +1628,10 @@ paths:
           in: path
           required: true
           description: >
-            A selector, not necessarily a semver: `latest`, `stable`, a pinned `1.2.3` /
-            `v1.2.3`, `beta`, `pr-42`, or an operator-defined channel name. Pinned selectors
+            A selector, not necessarily a semver: `latest`, `stable`, a pinned bare `1.2.3`
+            (looked up as the `v1.2.3` tag, then as `1.2.3` if that 404s; a `v`-prefixed
+            selector is not accepted), `beta`, `pr-42`, or an operator-defined channel name.
+            Pinned selectors
             get `max-age=86400, immutable`; moving ones `max-age=120`.
           schema: { type: string }
         - name: asset
@@ -1858,7 +1860,7 @@ paths:
         - name: channel
           in: query
           required: false
-          description: "Channel to check (default stable): stable, beta, pr-<n>, a manifest-declared manual channel, or a pinned X.Y.Z."
+          description: "Channel to check (default stable): stable, beta, pr-<n>, or a manifest-declared manual channel."
           schema: { type: string, pattern: "^[a-z0-9-]+$" }
       responses:
         "200":

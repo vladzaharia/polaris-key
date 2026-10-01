@@ -19,8 +19,8 @@ field table at `packages/docs/src/content/docs/reference/config-entry.mdx`.
 
 - [ ] **`config`** — a plaintext client setting. Rides the config document, resolved through the
       client precedence chain, overridable unless management says otherwise.
-- [ ] **`secret`** — redacted in admin UIs, delivered to the OS keyring rather than the plaintext
-      config map. Set `"secret": true` alongside.
+- [ ] **`secret`** — redacted in admin UIs, delivered in the `secrets` map of the signed config
+      document (cached in the SDK's 0600 file; only the device token is in the OS keyring). Set `"secret": true` alongside.
 - [ ] **`flag`** — an entitlement. Flags ride the **license** document only and are read with
       `isEntitled` / `getEntitlements`; they are not "managed config". A config-only product has
       no flags in play.
@@ -86,7 +86,7 @@ The env override for a key is `PKEY_CONFIG_` + the key with dots → `__`
 ### 5. Choose `delivery` (secret kinds only)
 
 - [ ] `serverOnly` — never leaves the worker.
-- [ ] `clientScoped` — delivered to the device keyring.
+- [ ] `clientScoped` — delivered to the device in the signed config document.
 - [ ] `edgeMint` — minted on demand at `/<product>/config/mint/<id>/{token,auth}`. Edge-minting
       is a Config **capability**, not a service; the recipe (alg, claims template, key, audience)
       lives in `.pkey/release`.

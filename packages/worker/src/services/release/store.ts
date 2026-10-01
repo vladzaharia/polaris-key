@@ -1,6 +1,31 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
+ * Whether the truth store's newest release carries a `.dmg` artifact. The "ships DMGs"
+ * predicate (`shipsDmgs`) needs this for the console's setup state, which reads the store
+ * rather than calling GitHub the way release health does.
+ */
+export async function latestReleaseHasDmg(
+  db: Db,
+  product: string,
+): Promise<boolean> {
+  const row = await db.first<{ n: number }>(
+    `SELECT 1 AS n
+       FROM release_artifacts a
+      WHERE a.product = ? AND a.kind = 'dmg'
+        AND a.release_id = (
+          SELECT release_id FROM release_metadata
+           WHERE product = ?
+           ORDER BY COALESCE(published_at, 0) DESC, version DESC
+           LIMIT 1)
+      LIMIT 1`,
+    product,
+    product,
+  );
+  return row != null;
+}
+
+/**
  * The release truth store — `release_metadata` / `release_artifacts` / `release_channels` /
  * `release_health` (design spec §5.2, "Release truth store goes live").
  *

@@ -122,7 +122,12 @@ collision.
 2. Resolve each key through the client precedence chain: a remote `enforced`/`hidden` value always
    wins; otherwise a local override, then an environment variable, then the remote `default`, then
    the schema's own fallback. See [Management states](/docs/services/config/management-states/).
-3. Store `secret`-kind values in the OS keyring, never in plaintext application storage.
+3. Treat `secret`-kind values as secrets. The SDKs keep the **device token** in the OS keyring
+   (Node, Python and Swift; a headless host falls back to a `0600` file), but a `secret` value
+   itself arrives inside the signed config document and rides the SDK's offline cache — a
+   `0600` `managed.json` under the config directory — with the rest of that document. It is not
+   copied into the keyring for you. A host application that wants a value in the keyring or
+   another vault must move it there itself, and never write it to plaintext application storage.
 4. Re-fetch on the document's own schedule. Config's ETag is computed independently of License's,
    so a settings change never forces a license re-download and a re-licensing never forces a
    settings re-fetch.

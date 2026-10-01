@@ -39,8 +39,10 @@ built and tested against recorded payloads and a fake ASC server before any real
 
 - `AGENTS.md`; this brief's dependencies' hand-offs (P5-01 accessor and `ascToken`; P2b-03's
   availability and submission writers and state enum).
-- [S-07](S-07-policy-recheck.md) rows 4, 6 and 16 (Apple terms, guidelines, ASC API facts), if it
-  has run.
+- [S-07](S-07-policy-recheck.md) rows 4, 6 and 16 (Apple terms, guidelines, ASC API facts), read in
+  [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) (re-checked 2026-09-30: all three unchanged; exactly 12 `WebhookEventType`s, up to
+  ten webhooks per app, API 4.5 latest listed, 200 GB and 200 asset packs). Re-run them with
+  `prototype/policy-recheck/recheck.mjs --rows 4,6,16` if more than a month has passed.
 - notes/E1 §A1 (endpoints, the 12 `WebhookEventType`s, `x-apple-signature`, payload envelope,
   gaps, rate limits) and §E5 (Background Asset versions and states).
 - `packages/worker/src/githubWebhook.ts`: HMAC check (`verifySignature`, line 58) and delivery
@@ -109,6 +111,12 @@ built and tested against recorded payloads and a fake ASC server before any real
   `READY_FOR_DISTRIBUTION` and legacy `READY_FOR_SALE` → `live`; `PENDING_DEVELOPER_RELEASE` →
   `approved-held`; `WAITING_FOR_REVIEW`/`IN_REVIEW` → submission `in-review`; `REJECTED`,
   `METADATA_REJECTED`, `INVALID_BINARY` → `rejected`; `REPLACED_WITH_NEW_VERSION` → `superseded`.
+- **Background Asset states** (ASC OpenAPI 4.5, notes/S-01 §4): version `AWAITING_UPLOAD`,
+  `PROCESSING`, `FAILED`, `COMPLETE` (with `stateDetails` errors/warnings); internal beta release
+  `READY_FOR_TESTING`, `SUPERSEDED`; external beta release `READY_FOR_BETA_SUBMISSION` …
+  `READY_FOR_TESTING`, `SUPERSEDED`; App Store release `PREPARE_FOR_SUBMISSION` …
+  `READY_FOR_DISTRIBUTION`, `SUPERSEDED`. Map them with the vocabulary above; their durations are
+  still unmeasured (S-01 hand-off).
 - **Linking.** ASC ids (app, build, version, asset pack, asset-pack version) go into
   `platform_ref_json`; they are store-assigned after signing, so they never enter a release record
   (README §3.3). A Background Asset state that no pack release claims yet is stored unresolved and

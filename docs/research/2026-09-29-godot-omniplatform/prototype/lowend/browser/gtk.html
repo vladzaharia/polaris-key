@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>start</title>
+<script type="module">
+  // WebCrypto Ed25519 at growing message sizes; reports through document.title for gtkprobe.py.
+  const sizes = (
+    new URLSearchParams(location.search).get("sizes") ||
+    "1024,32768,65000,65472,65504,87474,349618"
+  )
+    .split(",")
+    .map(Number);
+  const res = [];
+  const say = (s) => (document.title = s);
+  const corpus = new URLSearchParams(location.search).get("corpus");
+  if (corpus) {
+    // Verify only, over the corpus-derived inputs (no signing in the browser).
+    const unhex = (h) =>
+      new Uint8Array(h.match(/../g).map((x) => parseInt(x, 16)));
+    const v = (
+      await (await fetch("/lowend/project/vectors/ed25519_bench.json")).json()
+    ).find((x) => x.name === corpus);
+    say("STEP importKey " + v.name);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      unhex(v.pk),
+      { name: "Ed25519" },
+      false,
+      ["verify"],
+    );
+    say("STEP verify " + v.name);
+    try {
+      const t = performance.now();
+      const ok = await crypto.subtle.verify(
+        { name: "Ed25519" },
+        key,
+        unhex(v.sig),
+        new TextEncoder().encode(v.signingInput),
+      );
+      say(
+        `DONE ${v.name}:${v.bytes}:${ok}:${(performance.now() - t).toFixed(2)}ms`,
+      );
+    } catch (e) {
+      say(`DONE ${v.name}:${e.name}`);
+    }
+  } else
+    try {
+      say("STEP generateKey");
+      const k = await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+        "sign",
+        "verify",
+      ]);
+      res.push("keygen ok");
+      say("STEP exportKey");
+      const raw = await crypto.subtle.exportKey("raw", k.publicKey);
+      say("STEP importKey");
+      const key = await crypto.subtle.importKey(
+        "raw",
+        raw,
+        { name: "Ed25519" },
+        false,
+        ["verify"],
+      );
+      res.push("import ok");
+      for (const n of sizes) {
+        say("RUN " + n);
+        const m = new Uint8Array(n).fill(0x61);
+        try {
+          say("STEP sign " + n);
+          const s = await crypto.subtle.sign(
+            { name: "Ed25519" },
+            k.privateKey,
+            m,
+          );
+          say("STEP verify " + n);
+          const t = performance.now();
+          const ok = await crypto.subtle.verify({ name: "Ed25519" }, key, s, m);
+          res.push(`${n}:${ok}:${(performance.now() - t).toFixed(2)}ms`);
+        } catch (e) {
+          res.push(`${n}:${e.name}`);
+        }
+        say("PART " + res.join(" "));
+      }
+    } catch (e) {
+      res.push("error " + e.name + ": " + e.message);
+    }
+  if (!corpus) say("DONE " + res.join(" ") + " secure=" + isSecureContext);
+</script>

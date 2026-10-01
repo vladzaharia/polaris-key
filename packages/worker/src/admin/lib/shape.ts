@@ -21,6 +21,8 @@ import {
   getPortalProductSettings,
   portalProductSettingsView,
 } from "../../services/identity/portal/repo.js";
+import { shipsDmgs } from "../../services/release/config.js";
+import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { countKeysByLicense } from "../repo.js";
 import {
   approvalMismatch,
@@ -56,6 +58,7 @@ interface ReleaseSetupRow {
   gh_installation_id: number | null;
   binary_name: string | null;
   sparkle_ed25519_pub: string | null;
+  artifact_policy_json: string | null;
 }
 
 /**
@@ -180,6 +183,7 @@ export async function productView(
     db,
     p.slug,
     Boolean(signingPublicKey),
+    services.services.update.enabled,
     {
       slug: p.slug,
       registration: services.effectiveRegistration,
@@ -230,6 +234,7 @@ async function productSetupView(
   db: Db,
   product: string,
   signingConfigured: boolean,
+  updateEnabled: boolean,
   /** The product policy an edge-mint approval is checked against (`approvalMismatch`): an
    *  approval that no longer applies does not count as approved here either. */
   mintPolicy: MintPolicyProduct,
@@ -251,7 +256,8 @@ async function productSetupView(
         : "changed",
   }));
   const release = await db.first<ReleaseSetupRow>(
-    `SELECT gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub
+    `SELECT gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub,
+            artifact_policy_json
       FROM release_config WHERE product = ?`,
     product,
   );
@@ -359,8 +365,15 @@ async function productSetupView(
         ...(release.binary_name ? [] : ["binary name"]),
       ]
     : [];
+  // The Sparkle warning is only meaningful when Update renders appcasts for DMGs: the product
+  // has Update enabled AND ships DMGs (same predicate as release health).
+  const latestHasDmg =
+    release && updateEnabled ? await latestReleaseHasDmg(db, product) : false;
   const warnings =
-    release && !release.sparkle_ed25519_pub
+    release &&
+    updateEnabled &&
+    shipsDmgs(release.artifact_policy_json, latestHasDmg) &&
+    !release.sparkle_ed25519_pub
       ? ["release: Sparkle public key not configured; appcasts may be unsigned"]
       : [];
   const syncMissing =
