@@ -24,6 +24,7 @@ export const LICENSED: ServicesMap = {
   license: { enabled: true },
   config: { enabled: true },
   release: { enabled: false },
+  distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: false },
 };
@@ -33,6 +34,7 @@ export const CONFIG_ONLY: ServicesMap = {
   license: { enabled: false },
   config: { enabled: true },
   release: { enabled: false },
+  distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: false },
 };

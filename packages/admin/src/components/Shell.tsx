@@ -16,6 +16,7 @@ import {
   MonitorSmartphone,
   RefreshCw,
   Rocket,
+  Truck,
   Settings,
   SlidersHorizontal,
   Sun,
@@ -75,6 +76,8 @@ const TAB_ICONS: Partial<Record<Tab, LucideIcon>> = {
   profiles: FileStack,
   // release
   releases: Rocket,
+  // distribution
+  distribution: Truck,
   // update
   updates: RefreshCw,
   // identity

@@ -36,13 +36,13 @@ pkey validate      # exit 0, no error lines
 
 Deep page: [Service enablement](/docs/admin/services-enablement/)
 
-| #   | Step                          | Detail                                                                                                                                                                                               |
-| --- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Choose the path               | Manifest baseline (edit `.pkey/product`'s `modules` and push) or a live console toggle in **Product → Services**                                                                                     |
-| 2   | Know the ownership cost       | A live toggle claims the column: `services_source` flips `manifest` → `admin`, and later resyncs skip the block. "Revert to manifest" hands ownership back and changes nothing until the next resync |
-| 3   | Satisfy coherence             | The set is validated as a set: `update_requires_release`, `registration_requires_identity`, `config_without_activation`. Each is a relationship between two toggles, so no single flag can be blamed |
-| 4   | Check registration policy     | `devices.registration` is optional; undeclared derives `requires-license` → `requires-identity` → `open` from the enabled services                                                                   |
-| 5   | Confirm the projections agree | Route mounting, discovery, the console nav and portal capabilities all read `services_json`; a disabled service 404s rather than 403s                                                                |
+| #   | Step                          | Detail                                                                                                                                                                                                                                     |
+| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Choose the path               | Manifest baseline (edit `.pkey/product`'s `modules` and push) or a live console toggle in **Product → Services**                                                                                                                           |
+| 2   | Know the ownership cost       | A live toggle claims the column: `services_source` flips `manifest` → `admin`, and later resyncs skip the block. "Revert to manifest" hands ownership back and changes nothing until the next resync                                       |
+| 3   | Satisfy coherence             | The set is validated as a set: `distribution_requires_release`, `update_requires_distribution`, `registration_requires_identity`, `config_without_activation`. Each is a relationship between two toggles, so no single flag can be blamed |
+| 4   | Check registration policy     | `devices.registration` is optional; undeclared derives `requires-license` → `requires-identity` → `open` from the enabled services                                                                                                         |
+| 5   | Confirm the projections agree | Route mounting, discovery, the console nav and portal capabilities all read `services_json`; a disabled service 404s rather than 403s                                                                                                      |
 
 ```sh
 curl -s https://key.plrs.im/<product>/.well-known/polaris.json | jq .services

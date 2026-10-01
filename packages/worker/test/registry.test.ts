@@ -26,6 +26,7 @@ import {
   dispatchService,
   type RegistrationAuthContext,
   type ServiceContext,
+  type ServiceRequest,
   type ServiceDescriptor,
   type ServiceRegistry,
 } from "../src/core/registry.js";
@@ -51,7 +52,7 @@ function makeProduct(): Product {
   };
 }
 
-function makeCtx(env: Env, rest: string[] = ["document"]): ServiceContext {
+function makeCtx(env: Env, rest: string[] = ["document"]): ServiceRequest {
   return {
     req: new Request("https://key.plrs.im/djdl/license/document") as Request,
     env,

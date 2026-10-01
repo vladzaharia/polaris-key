@@ -19,9 +19,10 @@ What Core owns:
 - **discovery** — the one public document that describes a product honestly;
 - **rate limiting**, the **error taxonomy**, **audit**, and **manifest-ingest dispatch**.
 
-Everything else is one of the five opt-in services — [License](/docs/services/license/),
+Everything else is one of the six opt-in services — [License](/docs/services/license/),
 [Config](/docs/services/config/), [Release](/docs/services/release/),
-[Update](/docs/services/update/), [Identity](/docs/services/identity/) — addressed under
+[Distribution](/docs/services/distribution/), [Update](/docs/services/update/),
+[Identity](/docs/services/identity/) — addressed under
 `/<product>/<slug>/…` and mounted through a registry Core owns.
 
 ## The core routes
@@ -64,7 +65,7 @@ rest off). Half-honouring a typo is how a typo turns into a silently disabled se
 
 ## What a product that enables nothing still gets
 
-The degenerate case is the useful test of "always on". With all five flags off, a product still:
+The degenerate case is the useful test of "always on". With all six flags off, a product still:
 
 - resolves — `loadProduct` finds the row and opens its sealed signing key;
 - serves discovery, JWKS, and a signed trust manifest;

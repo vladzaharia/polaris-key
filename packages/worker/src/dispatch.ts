@@ -140,7 +140,7 @@ async function dispatchProductRoute(
   // Services first: `dispatchService` checks THIS product's enablement before the
   // descriptor is consulted, so a service a product has not enabled never runs a line of
   // its own code and is indistinguishable from one that does not exist (see
-  // `core/registry.ts`). Everything below is a core route — all five services are carved.
+  // `core/registry.ts`). Everything below is a core route — every service is carved.
   if (route.kind === "service") {
     return dispatchService(SERVICES, route.slug, product.services, {
       req,
@@ -155,7 +155,7 @@ async function dispatchProductRoute(
 
   switch (route.kind) {
     case "discovery":
-      return handleDiscovery(req, env, db, product, SERVICES);
+      return handleDiscovery(req, env, db, product, SERVICES, now);
     case "devices":
       return handleDevices(req, env, db, product, now, route.deviceId);
     case "report":

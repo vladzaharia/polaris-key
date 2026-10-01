@@ -189,6 +189,60 @@ that publish deltas (P4-03, P4-17) own the fix: product-scoped or content-named 
 granting a delta ref only under the earn-a-ref rule above, so a squatted key is never served
 under the victim product.
 
+### Service boundaries and the descriptor hooks (P2b-01)
+
+**The `distribution` service.** The sixth opt-in service, between Release and Update in the chain
+release ← distribution ← update (`distribution_requires_release`, `update_requires_distribution`,
+enforced by `validateServices` and the manifest validator; `update_requires_release` is retired as
+implied). In P2b-01 it has **no routes** (`handle` returns `null`, so every
+`/<p>/distribution/…` path is the same not-found a disabled service gives), no tables, no secrets
+and no admin handler. Its attack surface is the discovery fragment (`{enabled, configured:false,
+endpoints:{}}`) and the two hooks below. Everything that will make it valuable to an attacker —
+byte serving, outlet credentials, rollouts — arrives in later packages (P2b-02 to P2b-04, P5-01)
+and reopens this section.
+
+**Descriptor hooks are a read-only, fail-closed boundary.** A service may import only Core and
+itself (`boundaries.test.ts`; the one exception is still `update → release`). Cross-service reads
+go through `core/hooks.ts`: `releaseCatalog` (Release), `delivery` and `outletCapabilities`
+(Distribution). Invariants (tests: `test/hooks.test.ts`, `test/boundaries.test.ts`):
+
+- **Enablement first.** Core builds the accessors per request from the registry and the map the
+  request was dispatched on, and each checks the **providing** service's flag before calling it:
+  while it is off the accessor returns `null` and the provider's code never runs (a spy proves
+  it). The same holds in the discovery context and the admin context — the admin API reaches a
+  disabled service's own settings on purpose, but not another disabled service's data through
+  a hook.
+- **One provider per hook.** Zero or several providers make the accessor `null`, never "first
+  wins", so which service answers cannot depend on `mount.ts` order.
+- **Read-only.** The hook types return plain records and readers; nothing takes or returns a
+  `DbStatement`. A hook that wrote would let one service change another's tables, which is an
+  import in disguise. Reviewers: a hook method that writes, or that returns a row type rather
+  than a Core record, is a boundary violation even though no test can see it.
+- **Product-scoped.** Every reader is built for one product and queries only that product's
+  rows (`releaseCatalog` reads by `product = ?`, test-pinned). A consumer must never pass a
+  product slug into a hook.
+
+**The rollback hazard, and why it is closed.** A newer worker writes `"distribution"` into
+`products.services_json`. Before P0-08, an older worker that met an unknown slug discarded the
+**whole** record and fell back to the defaults — License + Config on, Release, Update and
+Identity **off** — so rolling back past this release would have silently switched off every
+product's downloads, feeds and sign-in. P0-08 (in production since v0.3.0) made `parseServices`
+carry a well-formed unknown slug through untouched and keep every slug it knows; this package
+must not ship to an environment whose previous build lacks it. The `0033` backfill turns
+Distribution on wherever Release is on — admin-owned rows included, since Distribution did not
+exist when the operator claimed the row — guarded by `json_valid` and by the key being absent, so
+it never touches an unreadable row or overrides an explicit `false`.
+
+**Manifest drift.** A repo whose `.pkey/product` names `release` + `update` without
+`distribution` (djdl's own shape) fails its next push with `update_requires_distribution`. That
+is fail-closed: the refusal applies nothing, the stored (backfilled) set keeps serving, and the
+console shows the error.
+
+**Router.** `distribution` joined the service namespaces, so a manual release channel named
+`distribution` lost the `/<p>/distribution/appcast.xml` alias (its canonical
+`/<p>/update/distribution/appcast.xml` still works). A future service slug always shadows a
+channel of the same name; that is the safe direction (a channel can never shadow a service).
+
 ### The device-code user-code page (P1-06)
 
 **What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
@@ -516,7 +570,8 @@ operator; and denial of service originating from Cloudflare's own network contro
 
 Revisit this document when any of the following changes: a new tenant that is not first-party is
 onboarded; the portal gains write capability beyond device disconnect and key claim; a second
-release channel or artifact type is added; a byte route is added to `BYTE_ROUTES`, a type to
+release channel or artifact type is added; a service gains a route, a table or a secret, or a
+descriptor hook gains a method that writes or a new provider; a byte route is added to `BYTE_ROUTES`, a type to
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the

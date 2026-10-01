@@ -21,6 +21,11 @@ import type { Db, DbStatement } from "../db/types.js";
 import type { AdminSession } from "../admin/session.js";
 import { ErrorCode, json } from "./errors.js";
 import type { ServiceSlug, ServicesMap } from "./services.js";
+import {
+  buildHooks,
+  type DescriptorHooks,
+  type ServiceHooks,
+} from "./hooks.js";
 
 /** Everything a service handler is given. `rest` is the path AFTER `/<product>/<service>`,
  *  already split — the service owns its own sub-routing from there.
@@ -49,7 +54,16 @@ export interface ServiceContext {
    * rewrite exists to prevent.
    */
   alias?: boolean;
+  /**
+   * Read-only access to the other services' state (`core/hooks.ts`), built by Core from the
+   * registry and THIS product's enablement. An accessor returns `null` when its providing service
+   * is off. Never constructed by a caller: `dispatchService` and the admin API build it.
+   */
+  hooks: ServiceHooks;
 }
+
+/** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks`. */
+export type ServiceRequest = Omit<ServiceContext, "hooks">;
 
 /**
  * What a service is given when Core assembles `/.well-known/polaris.json`.
@@ -69,6 +83,8 @@ export interface DiscoveryContext {
   env: Env;
   db: Db;
   base: string;
+  /** The same read-only hooks a request gets (`core/hooks.ts`), gated on this product. */
+  hooks: ServiceHooks;
 }
 
 /**
@@ -96,7 +112,7 @@ export interface RegistrationAuthContext {
  * an alias table, or a redirect, and centralising that decision is what keeps the not-found
  * response byte-identical whether a service is disabled, absent, or simply has no such route.
  */
-export interface ServiceDescriptor {
+export interface ServiceDescriptor extends DescriptorHooks {
   slug: ServiceSlug;
   /** Handle a product-scoped request. `null` = no route matched inside this service. */
   handle(ctx: ServiceContext): Promise<Response | null>;
@@ -132,6 +148,9 @@ export interface ServiceDescriptor {
    * an open door.
    */
   authorizeRegistration?(ctx: RegistrationAuthContext): Promise<boolean>;
+  // The descriptor hooks — `releaseCatalog?`, `delivery?`, `outletCapabilities?` — come from
+  // `DescriptorHooks` (`core/hooks.ts`): read-only views one service offers the others, through
+  // Core, under the same fail-closed enablement gate as `authorizeRegistration`.
 }
 
 export type ServiceRegistry = Map<ServiceSlug, ServiceDescriptor>;
@@ -163,12 +182,20 @@ export async function dispatchService(
   registry: ServiceRegistry,
   slug: ServiceSlug,
   services: ServicesMap,
-  ctx: ServiceContext,
+  ctx: ServiceRequest,
 ): Promise<Response> {
   if (!services[slug]?.enabled) return serviceNotFound();
   const descriptor = registry.get(slug);
   if (!descriptor) return serviceNotFound();
-  const res = await descriptor.handle(ctx);
+  const res = await descriptor.handle({
+    ...ctx,
+    hooks: buildHooks(registry, services, {
+      env: ctx.env,
+      db: ctx.db,
+      product: ctx.product,
+      now: ctx.now,
+    }),
+  });
   return res ?? serviceNotFound();
 }
 

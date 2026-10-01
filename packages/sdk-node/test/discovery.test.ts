@@ -6,7 +6,7 @@
 // This document is the ONE authority a product publishes about itself. v2's `modules` object
 // let four surfaces each re-infer enablement from row presence, so the document could claim a
 // capability whose routes 404ed — or deny one that answered. v3 replaces it with a top-level
-// `services` map keyed by the five slugs, and the SDK gates its sub-clients on the parse of
+// `services` map keyed by the service slugs, and the SDK gates its sub-clients on the parse of
 // that map (D-21). Everything below therefore protects one of two properties:
 //
 //   * the FIXTURES ARE THE WORKER'S REAL EMISSION. `packages/worker/src/core/discovery.ts`
@@ -42,6 +42,7 @@ const NONE = {
   license: { enabled: false },
   config: { enabled: false },
   release: { enabled: false },
+  distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: false },
 } as const;
@@ -49,7 +50,7 @@ const NONE = {
 /**
  * The Worker's emission, verbatim in shape: `handleDiscovery` builds exactly these top-level
  * keys, and each service fragment is that service's own `discoveryFragment` (license/config
- * shown; release/update/identity default to the `DISABLED` singleton `{enabled:false}`).
+ * shown; release/distribution/update/identity default to the `DISABLED` singleton `{enabled:false}`).
  */
 function workerDoc(
   overrides: Record<string, unknown> = {},
@@ -113,6 +114,7 @@ function workerDoc(
         mint: { available: false },
       },
       release: { enabled: false },
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     },
@@ -321,7 +323,7 @@ describe("discoverProduct — the typed stable fields", () => {
 // boolean, and an unreadable `services` value rejects the document instead of degrading to the
 // permissive default.
 describe("discoverProduct — the v3 services map (D-21)", () => {
-  it("expands a partial map into all five slugs, absent ⇒ disabled", async () => {
+  it("expands a partial map into all six slugs, absent ⇒ disabled", async () => {
     const res = await parse(
       workerDoc({
         services: {
@@ -342,11 +344,13 @@ describe("discoverProduct — the v3 services map (D-21)", () => {
       config: { enabled: true },
       release: { enabled: false },
       // Never mentioned by the document at all — and therefore OFF.
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     });
     expect(Object.keys(res.manifest.services).sort()).toEqual([
       "config",
+      "distribution",
       "identity",
       "license",
       "release",

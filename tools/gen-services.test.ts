@@ -26,14 +26,14 @@ function withRow(extra: Partial<ServiceRow> = {}): ServiceTable {
     services: [
       ...TABLE.services,
       {
-        slug: "distribution",
-        label: "Distribution",
-        summary: "Content packs.",
+        slug: "telemetry",
+        label: "Telemetry",
+        summary: "A hypothetical seventh service.",
         defaultEnabled: false,
         requires: [],
         legacyModules: [],
-        console: { accent: "distribution", icon: "Boxes" },
-        docs: "/docs/services/distribution/",
+        console: { accent: "telemetry", icon: "Activity" },
+        docs: "/docs/services/telemetry/",
         ...extra,
       },
     ],
@@ -41,29 +41,31 @@ function withRow(extra: Partial<ServiceRow> = {}): ServiceTable {
 }
 
 describe("tools/services.json", () => {
-  it("is valid and lists the five services in canonical order", () => {
+  it("is valid and lists the six services in canonical order", () => {
     expect(validateTable(TABLE)).toEqual([]);
     expect(TABLE.services.map((r) => r.slug)).toEqual([
       "license",
       "config",
       "release",
+      "distribution",
       "update",
       "identity",
     ]);
   });
 
-  it("maps the legacy module vocabulary exactly as the manifest always has", () => {
+  it("maps the legacy module vocabulary onto the services it always meant", () => {
     expect(Object.fromEntries(legacyModuleMap(TABLE))).toEqual({
       licensing: ["license"],
       edgeMint: ["config"],
-      releases: ["release", "update"],
+      // P2b-01: the old module meant "this product distributes software", now three services.
+      releases: ["release", "distribution", "update"],
       oidc: ["identity"],
     });
   });
 });
 
 describe("validateTable", () => {
-  it("accepts a sixth row", () => {
+  it("accepts a seventh row", () => {
     expect(validateTable(withRow())).toEqual([]);
   });
 
@@ -72,12 +74,16 @@ describe("validateTable", () => {
     [{ slug: "Bad_Slug" }, ".slug: must match"],
     [{ slug: "core", docs: "/docs/services/core/" }, '"core" is reserved'],
     [{ requires: ["nope"] }, 'unknown slug "nope"'],
-    [{ requires: ["distribution"] }, "cannot require itself"],
+    [{ requires: ["telemetry"] }, "cannot require itself"],
     [{ legacyModules: ["config"] }, "is a service slug"],
     [{ console: { accent: "key", icon: "Boxes" } }, 'duplicate "key"'],
+    [
+      { console: { accent: "distribution", icon: "Boxes" } },
+      'duplicate "distribution"',
+    ],
     [{ console: { accent: "core", icon: "Boxes" } }, "platform section"],
-    [{ console: { accent: "dist", icon: "boxes" } }, "lucide-react icon"],
-    [{ docs: "/docs/distribution/" }, "/docs/services/distribution/"],
+    [{ console: { accent: "tele", icon: "boxes" } }, "lucide-react icon"],
+    [{ docs: "/docs/telemetry/" }, "/docs/services/telemetry/"],
     [{ defaultEnabled: "yes" as unknown as boolean }, "must be a boolean"],
     [{ label: "" }, ".label: must be a non-empty string"],
   ] as [Partial<ServiceRow>, string][])("rejects %j", (extra, message) => {
@@ -102,20 +108,33 @@ describe("renderers", () => {
     }
   });
 
-  it("a sixth row reaches every language", async () => {
-    const table = withRow({ requires: ["release"], legacyModules: ["packs"] });
+  it("a seventh row reaches every language", async () => {
+    const table = withRow({
+      requires: ["release"],
+      legacyModules: ["beacons"],
+    });
     const manifest = renderManifestTs(table);
-    expect(manifest).toContain('"identity" | "distribution"');
-    expect(manifest).toContain('"distribution": ["release"]');
-    expect(manifest).toContain('packs: ["distribution"]');
-    expect(renderAdminTs(table)).toContain('accent: "distribution"');
+    expect(manifest).toContain('"identity" | "telemetry"');
+    expect(manifest).toContain('"telemetry": ["release"]');
+    expect(manifest).toContain('beacons: ["telemetry"]');
+    expect(renderAdminTs(table)).toContain('accent: "telemetry"');
     expect(renderPython(table)).toContain(
-      '("license", "config", "release", "update", "identity", "distribution")',
+      '("license", "config", "release", "distribution", "update", "identity", "telemetry")',
     );
-    expect(renderSwift(table)).toContain("    case distribution\n");
+    expect(renderSwift(table)).toContain("    case telemetry\n");
     expect(renderSwift(table)).toContain(
-      "case .release, .update, .identity, .distribution: return false",
+      "case .release, .distribution, .update, .identity, .telemetry: return false",
     );
+  });
+
+  it("the real table renders distribution between release and update (P2b-01)", () => {
+    const manifest = renderManifestTs(TABLE);
+    expect(manifest).toContain('"distribution": ["release"]');
+    expect(manifest).toContain('"update": ["distribution"]');
+    expect(manifest).toContain(
+      'releases: ["release", "distribution", "update"]',
+    );
+    expect(renderSwift(TABLE)).toContain("    case distribution\n");
   });
 
   it("defaults are generated from defaultEnabled", () => {
@@ -175,8 +194,8 @@ describe("gen:services --check", () => {
 
 describe("the service table, as the parity registry sees it", () => {
   it("conformance/parity/features.schema.json accepts every table slug as a feature's service", () => {
-    // The registry may name a service ahead of its table row (P2b-01's `distribution`), so this
-    // is a subset check, not equality: a row the registry cannot name is what it catches.
+    // The registry may name a service ahead of its table row (as it named `distribution` before
+    // P2b-01 added the row), so this is a subset check, not equality: a row the registry cannot name is what it catches.
     const schema = JSON.parse(
       readFileSync(
         join(

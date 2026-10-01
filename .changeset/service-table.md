@@ -10,8 +10,9 @@ language's slug constants are generated from it (`pnpm gen:services`; `-- --chec
 gate). No wire shape changes: the discovery document is byte-identical.
 
 - `@polaris-key/manifest` additionally exports `DEFAULT_ENABLED_SERVICES`, `MODULE_SERVICES`,
-  `SERVICE_REQUIRES` and the `LegacyModule` type, generated from the table. `ServiceSlug`,
-  `SERVICE_SLUGS` and `ProductModule` are unchanged.
+  `SERVICE_REQUIRES` and the `LegacyModule` type, generated from the table. The table itself
+  leaves `ServiceSlug`, `SERVICE_SLUGS` and `ProductModule` unchanged; the `distribution-service`
+  changeset adds the sixth slug.
 - `@polaris-key/cli`: `pkey init --modules` accepts the service slugs (`license`, `config`,
   `release`, `update`, `identity`) as well as the legacy module names, and the scaffold now
   writes the `modules` block in service slugs, one line per service. `normalizeModules` returns

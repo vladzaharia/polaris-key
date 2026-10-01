@@ -47,9 +47,9 @@ function servicesWhere(enabled: (slug: ServiceSlug) => boolean): ServicesMap {
 
 /**
  * What a client believes when it has neither a discovery document nor a stated expectation:
- * licensing + settings distribution, which is what every product ran before the suite existed
- * (the table's `defaultEnabled` rows). Distribution and identity are OFF, so their sub-clients
- * refuse until something says otherwise — the fail-closed half of D-21 applied to the genuinely
+ * licensing + settings delivery, which is what every product ran before the suite existed
+ * (the table's `defaultEnabled` rows). Release, Distribution, Update and Identity are OFF, so
+ * their sub-clients refuse until something says otherwise — the fail-closed half of D-21 applied to the genuinely
  * new surfaces.
  */
 export const DEFAULT_SERVICES: ServicesMap = servicesWhere((slug) =>

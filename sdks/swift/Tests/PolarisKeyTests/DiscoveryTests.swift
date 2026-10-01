@@ -75,7 +75,10 @@ final class DiscoveryTests: XCTestCase {
         XCTAssertEqual(doc.trust?.pinnedKeys, ["kid-1": "AAA"])
         XCTAssertEqual(
             doc.servicesMap,
-            [.license: true, .config: true, .release: false, .update: true, .identity: false])
+            [
+                .license: true, .config: true, .release: false, .distribution: false, .update: true,
+                .identity: false,
+            ])
         XCTAssertEqual(
             doc.services[.license]?.endpoints["document"],
             "https://key.example/djdl/license/document")
@@ -101,7 +104,10 @@ final class DiscoveryTests: XCTestCase {
         guard let doc = document(parse(json)) else { return XCTFail("should parse") }
         XCTAssertEqual(
             doc.servicesMap,
-            [.license: true, .config: false, .release: false, .update: false, .identity: false])
+            [
+                .license: true, .config: false, .release: false, .distribution: false,
+                .update: false, .identity: false,
+            ])
     }
 
     /// `enabled` must be a real BOOLEAN. A truthy string ("false"!) reading as on is the classic
@@ -149,7 +155,7 @@ final class DiscoveryTests: XCTestCase {
     }
 
     /// The precedence: a discovery document loaded this session > `expectedServices` > the suite
-    /// default (license + config; release/update/identity OFF).
+    /// default (license + config; release/distribution/update/identity OFF).
     func testCapabilityPrecedence() async throws {
         let suiteDefault = try core(transport: ExplodingTransport())
         let defaultMap = await suiteDefault.services()

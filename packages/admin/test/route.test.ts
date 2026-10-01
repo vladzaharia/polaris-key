@@ -27,6 +27,7 @@ const ALL_ON: ServiceState = {
   license: { enabled: true },
   config: { enabled: true },
   release: { enabled: true },
+  distribution: { enabled: true },
   update: { enabled: true },
   identity: { enabled: true },
 };
@@ -242,13 +243,14 @@ describe("SECTIONS", () => {
       license: ["licenses", "tiers", "fingerprints"],
       config: ["config", "profiles"],
       release: ["releases"],
+      distribution: ["distribution"],
       update: ["updates"],
       identity: ["identity"],
     });
   });
 
   it("carries the D-17 accent tokens, with License as `key` and Identity as `id`", () => {
-    // The brand registry names License `key` and Identity `id`; the other three take their slug
+    // The brand registry names License `key` and Identity `id`; the others take their slug
     // and the always-on substrate gets the new `core` accent. These strings are the CSS contract
     // (`[data-service="…"]` in styles.css), so a rename here is a silent theming regression.
     expect(Object.fromEntries(SECTIONS.map((s) => [s.key, s.accent]))).toEqual({
@@ -256,6 +258,7 @@ describe("SECTIONS", () => {
       license: "key",
       config: "config",
       release: "release",
+      distribution: "distribution",
       update: "update",
       identity: "id",
     });
@@ -268,6 +271,7 @@ describe("SECTIONS", () => {
         license: "license",
         config: "config",
         release: "release",
+        distribution: "distribution",
         update: "update",
         identity: "identity",
       },
@@ -295,9 +299,21 @@ describe("enablement filtering", () => {
       "platform",
       "license",
       "config",
+      "distribution",
       "update",
       "identity",
     ]);
+    // Distribution's section exists only while Distribution is on (P2b-01).
+    expect(visibleSections(withOff("distribution")).map((s) => s.key)).toEqual([
+      "platform",
+      "license",
+      "config",
+      "release",
+      "update",
+      "identity",
+    ]);
+    expect(isTabEnabled("distribution", withOff("distribution"))).toBe(false);
+    expect(isTabEnabled("distribution", ALL_ON)).toBe(true);
   });
 
   it("keeps the platform section for a product that runs NOTHING", () => {
@@ -308,6 +324,7 @@ describe("enablement filtering", () => {
       "license",
       "config",
       "release",
+      "distribution",
       "update",
       "identity",
     );

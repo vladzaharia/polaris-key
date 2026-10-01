@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 86 distinct emit sites.
+codes with their JSON-pointer paths. 87 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -16,6 +16,7 @@ the offending value, or the allowed set.
 | Code | Severity | Document | Path | Message |
 | --- | --- | --- | --- | --- |
 | `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
+| `distribution_requires_release` | error | product | `/modules/distribution` | The distribution service delivers release artifacts, so release must be enabled too. |
 | `duplicate_profile_id` | error | product | `/licensing/profiles/${i}/id` | Profile ids must be unique. |
 | `duplicate_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be unique. |
 | `invalid_admin_group` | error | product | `/product/adminGroup` | product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
@@ -100,4 +101,4 @@ the offending value, or the allowed set.
 | `unknown_auto_issue_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId references unknown tier $\{autoIssue.tierId\}. |
 | `unknown_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier references unknown profile $\{profile\}. |
 | `unsupported_release_provider` | error | release | `/release/provider/type` | Only github is implemented. |
-| `update_requires_release` | error | product | `/modules/update` | The update service renders a feed over release data, so release must be enabled too. |
+| `update_requires_distribution` | error | product | `/modules/update` | The update service serves a feed over distribution's delivery state, so distribution must be enabled too. |

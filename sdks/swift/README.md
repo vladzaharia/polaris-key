@@ -107,7 +107,7 @@ device cannot re-register (that needs a browser session) and lands on the hard 4
 
 `client.capabilities()` reports which services the product runs. Resolution is: a discovery
 document loaded this session (`await client.discover()`) > `expectedServices` > the suite
-default (license + config; release/update/identity off). It is **fail-closed** (D-21): a
+default (license + config; release/distribution/update/identity off). It is **fail-closed** (D-21): a
 service the discovery document omits reads as disabled, never as "unknown, assume on".
 
 A product with the license service disabled gates `not-applicable` — `isLicensed()` is `true`

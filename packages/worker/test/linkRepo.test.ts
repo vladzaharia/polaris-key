@@ -584,7 +584,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
   // instant with a product but no enablement set), and never over an operator's live edit.
   describe("service enablement persistence", () => {
     // Legacy module vocabulary + a release block: `licensing` -> license, `releases` ->
-    // release + update, `oidc` -> identity, `config` stays config.
+    // release + distribution + update, `oidc` -> identity, `config` stays config.
     const MODULES_PRODUCT_JSON = JSON.stringify({
       slug: "acme",
       name: "Acme",
@@ -622,6 +622,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         license: { enabled: true },
         config: { enabled: true },
         release: { enabled: true },
+        distribution: { enabled: true },
         update: { enabled: true },
         identity: { enabled: true },
       });
@@ -648,6 +649,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         license: { enabled: true },
         config: { enabled: true },
         release: { enabled: false },
+        distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: false },
       });
@@ -705,6 +707,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
           license: { enabled: true },
           config: { enabled: false },
           release: { enabled: false },
+          distribution: { enabled: false },
           update: { enabled: false },
           identity: { enabled: false },
         }),
