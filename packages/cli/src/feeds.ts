@@ -145,6 +145,7 @@ export function buildFdroidIndex(
   let added = Number.POSITIVE_INFINITY;
   let lastUpdated = 0;
   let preferredSigner: string | undefined;
+  const apkNames = new Set<string>();
   for (const v of inputs.versions) {
     const m = v.metadata ?? {};
     const where = `${v.releaseId} (${v.apk.name})`;
@@ -152,6 +153,13 @@ export function buildFdroidIndex(
       problems.push(
         `${where}: the file name must be [A-Za-z0-9_~.-] for the relay to serve it`,
       );
+    // The relay finds an APK by its file name, so two listed releases sharing one would make
+    // every client but the newest release's download the wrong bytes and refuse the install.
+    if (apkNames.has(v.apk.name))
+      problems.push(
+        `${where}: another listed release has the same APK file name; the relay serves APKs by name, so give each release's APK a distinct name (put the version in it)`,
+      );
+    apkNames.add(v.apk.name);
     if (!v.apk.sha256 || v.apk.size === null)
       problems.push(`${where}: the APK has no recorded sha256 and size`);
     if (
@@ -706,7 +714,9 @@ export async function buildFdroidFeed(
     return result;
   }
 
-  // Upload what the product does not hold yet, then register the whole set.
+  // Upload every file that is not already one of this channel's registered feed files, then
+  // register the whole set. `present` alone is not enough: it means the product holds a ref of
+  // ANY kind, and the register route skips the upload only for a registered feed file.
   const all = await Promise.all(
     Object.entries(written).map(async ([p, file]) => {
       const bytes = await readFile(file);
@@ -729,8 +739,9 @@ export async function buildFdroidFeed(
   mask(opts.env, out, ticket.ticket);
   mask(opts.env, out, ticket.credentials.secretAccessKey);
   mask(opts.env, out, ticket.credentials.sessionToken);
+  const registered = new Set(inputs.files.map((f) => `${f.sha256}:${f.size}`));
   for (const o of ticket.objects) {
-    if (o.present) continue;
+    if (o.present && registered.has(`${o.sha256}:${o.size}`)) continue;
     const f = unique.get(o.sha256);
     if (!f)
       throw new Error(

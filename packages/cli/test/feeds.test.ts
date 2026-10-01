@@ -11,7 +11,14 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, readdirSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -47,6 +54,12 @@ const FIXTURES = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "fixtures",
   "build-metadata",
+);
+/** The F-Droid documents' golden files (`UPDATE_FEED_GOLDENS=1` rewrites them). */
+const GOLDENS = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "fixtures",
+  "feeds",
 );
 const KEY_SHA256 =
   "f7cdd36513816f0cd9fce4caf4879bdfef2e39086de99f6a0cce603fcfde448a";
@@ -216,6 +229,40 @@ describe("the index", () => {
     expect(() => buildFdroidIndex(inputs({ versions: [bare] }), T)).toThrow(
       /no APK metadata/,
     );
+    // Two releases with one APK file name: the relay serves by name, so one would be wrong.
+    const sameName = (x: (typeof v)[number]) => ({
+      ...x,
+      apk: { ...x.apk, name: "app-release.apk" },
+    });
+    expect(() =>
+      buildFdroidIndex(
+        inputs({ versions: [sameName(v[0]!), v[1]!, sameName(v[2]!)] }),
+        T,
+      ),
+    ).toThrow(
+      /v1\.0\.0 \(app-release\.apk\): another listed release has the same APK file name/,
+    );
+  });
+
+  it("index-v2.json, entry.json and the diff match the golden files byte for byte", () => {
+    const previous = buildFdroidIndex(
+      inputs({ versions: inputs().versions.slice(1) }),
+      T - 1000,
+    );
+    const repo = buildRepoFiles(inputs(), T, { previous });
+    for (const [file, golden] of [
+      ["index-v2.json", "fdroid-index-v2-beta.json"],
+      ["entry.json", "fdroid-entry-beta.json"],
+      [`diff/${T - 1000}.json`, "fdroid-diff-beta.json"],
+    ] as const) {
+      const body = repo.files.get(file)!;
+      const target = path.join(GOLDENS, golden);
+      if (process.env.UPDATE_FEED_GOLDENS === "1") {
+        mkdirSync(GOLDENS, { recursive: true });
+        writeFileSync(target, body);
+      }
+      expect(body.toString(), file).toBe(readFileSync(target, "utf8"));
+    }
   });
 
   it("an empty channel is still a valid repository", () => {
@@ -410,6 +457,51 @@ describe("pkey feeds fdroid", () => {
     // No keystore: written, not signed, not uploaded.
     expect(result.signed).toBe(false);
     expect(server.to("/release/publish/uploads")).toHaveLength(0);
+  });
+
+  it("skips the upload only for a registered feed file, not for any object the product holds", async () => {
+    const cwd = await tempDir();
+    const jar = await readFile(path.join(FIXTURES, "signed-entry.jar"));
+    // entry.jar (the fake signer's fixed bytes) is already this channel's registered entry.jar.
+    const server = serverWithInputs(
+      inputs({
+        files: [{ path: "entry.jar", sha256: sha(jar), size: jar.length }],
+      }),
+    );
+    const io = capture();
+    const run = (srv: typeof server) =>
+      buildFdroidFeed({
+        cwd,
+        product: SLUG,
+        channel: "beta",
+        out: "repo",
+        baseUrl: BASE,
+        keystore: path.join(FIXTURES, "test.keystore"),
+        alias: "pkey",
+        env: { PKEY_CI_TOKEN: CI_TOKEN, PKEY_FDROID_KS_PASS: "testpass" },
+        stdout: io.stdout,
+        stderr: io.stderr,
+        fetchImpl: srv.fetchImpl,
+        sleep: instant,
+        now: () => T,
+        sign: fakeSign,
+      });
+    // Every object is `present` (the product holds a ref of SOME kind to each), but only
+    // entry.jar is a registered feed file, so the other two are still uploaded: the register
+    // route takes no other ref as proof of holding the bytes.
+    const first = await run(server);
+    const shas = (
+      await Promise.all(Object.values(first.written).map((f) => readFile(f)))
+    ).map((b) => sha(b));
+    const second = serverWithInputs(
+      inputs({
+        files: [{ path: "entry.jar", sha256: sha(jar), size: jar.length }],
+      }),
+    );
+    for (const h of shas) second.present.add(h);
+    const result = await run(second);
+    expect(result.registered).toBe(true);
+    expect(result.uploaded.sort()).toEqual(["entry.json", "index-v2.json"]);
   });
 
   it("refuses a jar signed by a key the inventory does not name", async () => {
