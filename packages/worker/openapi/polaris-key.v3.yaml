@@ -2908,8 +2908,10 @@ paths:
         mirror (`source: asc`). Beta feedback, alternative-distribution events and Apple's ping
         are stored raw (200); an unknown event type answers 204 and is stored as `ignored`. The
         product must declare an `app-store` or `testflight` outlet with an `appleId` and hold
-        `asc-api-key` and `asc-webhook-secret` credentials; otherwise — like with Distribution
-        off — the answer is the service not-found shape. No CORS. Errors are LEGACY FLAT.
+        an `asc-api-key` credential that the operator has PINNED to that same `appleId`, and an
+        `asc-webhook-secret`; otherwise — like with Distribution off — the answer is the service
+        not-found shape, so a manifest naming another app than the pinned one mirrors nothing.
+        No CORS. Errors are LEGACY FLAT.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: x-apple-signature
