@@ -10,10 +10,11 @@
  * could offer what the download refused (notes/A1 §1.6–§1.7).
  *
  * Ownership follows P0-01's rule. The `app` row is MANIFEST-owned by default: `.pkey/release`
- * `access.artifacts` (or `public`, its default, when the manifest has no release block — the
- * value `release_config` always took) reaches it through Distribution's `manifestIngestAlways`
+ * `access.artifacts` reaches it through Distribution's `manifestIngestAlways`
  * on every link and resync, WHATEVER Distribution's enablement: switching Distribution on runs
- * no ingest, so the row must already be the manifest's answer by then. An operator who sets a mode (`PUT …/distribution/access`) claims the row
+ * no ingest, so the row must already be the manifest's answer by then. A manifest with no release
+ * block only seeds a missing row as `public` (the value `release_config` took on link) and
+ * never rewrites an existing one. An operator who sets a mode (`PUT …/distribution/access`) claims the row
  * (`source = 'admin'`) and the ingest skips it until `POST …/distribution/access/revert` hands it
  * back. `entitled` has no manifest spelling, so without the claim the next push would downgrade
  * it. A pack row has no manifest spelling at all; it is operator-owned from the start.
@@ -154,19 +155,33 @@ export async function revertAccess(
 }
 
 /**
- * The ingest statement for the `app` row: the manifest's `release.access.artifacts`, upserted
- * unless an operator owns the row. A manifest with no release block gets `public` — the default
- * `release_config.artifacts_access` takes on link (`linkRepo`), so the row always matches what
- * the column it replaces would have said. Idempotent: the row moves only when the mode actually
- * changes. A value outside the four modes cannot pass the manifest validator; if one ever did,
- * it is written as `entitled`, never skipped (a skipped write would leave a looser row in force).
+ * The ingest statement for the `app` row. With a release block: the manifest's
+ * `release.access.artifacts`, upserted unless an operator owns the row; idempotent, the row
+ * moves only when the mode actually changes. Without one: a SEED only — `public` for a product
+ * that has no row yet (the default `release_config.artifacts_access` took on link), and nothing
+ * at all for one that has. Dropping `.pkey/release` never rewrites an existing row, exactly as
+ * resync never touched `artifacts_access` without a release block: an upsert there would turn a
+ * `licensed` product public on the next push (and, while Release is off, the moment an operator
+ * turns it back on). A value outside the four modes cannot pass the manifest validator; if one
+ * ever did, it is written as `entitled`, never skipped (a skipped write would leave a looser row
+ * in force).
  */
 export function accessIngestStatements(
   parsed: ParsedManifest,
   product: string,
   now: number,
 ): DbStatement[] {
-  const declared: unknown = parsed.release?.access.artifacts ?? "public";
+  if (!parsed.release) {
+    return [
+      {
+        sql: `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
+              VALUES (?, ?, 'public', NULL, 'manifest', ?)
+              ON CONFLICT (product, deliverable_id) DO NOTHING`,
+        params: [product, APP_DELIVERABLE_ID, now],
+      },
+    ];
+  }
+  const declared: unknown = parsed.release.access.artifacts;
   const mode: ReleaseAccess = isAccessMode(declared) ? declared : "entitled";
   return [
     {

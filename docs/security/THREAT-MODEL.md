@@ -519,16 +519,19 @@ the `0038` migration copied it into each product's `app` row with its owner, and
 `artifactPolicy` fails closed to `entitled` when no delivery access is supplied, never back to
 the old column.
 
-- **Ownership.** The `app` row is manifest-owned (`.pkey/release` `access.artifacts`, or `public`
-  when the manifest has no release block — the default `release_config` took) until an operator
-  sets it, which claims it; the ingest skips a claimed row, so `entitled` (no manifest spelling)
+- **Ownership.** The `app` row is manifest-owned (`.pkey/release` `access.artifacts`) until an
+  operator sets it, which claims it. A manifest with no release block only seeds a missing row
+  as `public` (the default `release_config` took on link) and never rewrites an existing one, so
+  dropping `.pkey/release` cannot open a `licensed` product — whether the push leaves its
+  services on or turns them off for an operator to turn back on ("dropping .pkey/release never
+  loosens…"). The ingest skips a claimed row, so `entitled` (no manifest spelling)
   survives a push. A pack row is operator-only. `update/settings` refuses `artifactsAccess` by
   name.
 - **Turning Distribution on cannot loosen access.** Enabling a service in the console
   (`core/servicesAdmin.ts`) runs no ingest, so the `app` row must already be right at that
   moment. Distribution writes it through `manifestIngestAlways` (`core/registry.ts`), the one
   ingest hook Core runs WHATEVER the service's enablement: every link and resync of a
-  Release-only product keeps the row equal to its manifest, so a `licensed` manifest is
+  Release-only product keeps the row equal to its manifest's release block, so a `licensed` manifest is
   `licensed` the instant Distribution answers, and a mode tightened while Distribution was off
   is the one in force when it comes back (`test/distributionDelivery.test.ts`, "turning
   Distribution on…"). The hook may write only records that do nothing on their own; no request

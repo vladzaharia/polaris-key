@@ -116,10 +116,11 @@ migration copied every product's value into its `app` row.
 
 ### Who owns it
 
-The `app` row follows `.pkey/release` `access.artifacts` (`public` when the manifest has no
-release block, the default the old column took): Distribution's ingest writes it on every link
-and resync, even while Distribution is off, so the row is already right when an operator turns
-Distribution on. An operator who sets a mode claims the row, and resyncs skip it until
+The `app` row follows `.pkey/release` `access.artifacts`: Distribution's ingest writes it on
+every link and resync, even while Distribution is off, so the row is already right when an
+operator turns Distribution on. A manifest with no release block only seeds a missing row as
+`public` (the default the old column took on link); it never rewrites an existing one, so
+dropping `.pkey/release` leaves a `licensed` product `licensed`, as the old column did. An operator who sets a mode claims the row, and resyncs skip it until
 it is handed back — the same rule as every other operator-owned setting, and the reason an
 `entitled` mode, which no manifest can express, survives a push. A pack's row has no manifest
 spelling; it is operator-owned from the start.

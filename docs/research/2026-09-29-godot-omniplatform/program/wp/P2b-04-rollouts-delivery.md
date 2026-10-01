@@ -213,7 +213,9 @@ Recorded where the code (or a dependency's state) disagreed with the text above.
 - **Delivery access cannot open on enablement.** Turning a service on in the console runs no
   ingest, so Distribution's `app` row is written through a new Core registry hook,
   `manifestIngestAlways`, that runs on every link and resync whatever the service's enablement
-  (`public` when the manifest has no release block, the default `release_config` took). With
+  (a manifest with no release block only seeds a missing row as `public`, the default
+  `release_config` took on link, and never rewrites an existing row — resync never touched
+  `artifacts_access` without one, and an upsert would open a `licensed` product). With
   no row at all, `accessModeOf` reads `entitled`, never `public`. Without both, a Release-only
   product whose manifest said `licensed` served its bytes to anyone the moment an operator
   enabled Distribution.

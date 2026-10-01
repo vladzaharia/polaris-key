@@ -458,7 +458,10 @@ describe("an operator's `entitled` in dist_access gates every surface the same w
 // ── 3b. Turning Distribution on never opens downloads ──────────────────────────────────────────
 
 /** The services PATCH the console sends: Distribution (and Update) switched on live, no ingest. */
-async function enableDistributionInConsole(w: World): Promise<void> {
+async function enableDistributionInConsole(
+  w: World,
+  alsoRelease = false,
+): Promise<void> {
   const { token, session } = await issueSession(
     w.env,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
@@ -475,6 +478,7 @@ async function enableDistributionInConsole(w: World): Promise<void> {
       },
       body: JSON.stringify({
         services: {
+          ...(alsoRelease ? { release: { enabled: true } } : {}),
           distribution: { enabled: true },
           update: { enabled: true },
         },
@@ -516,6 +520,39 @@ async function ingestWithDistributionOff(w: World, mode: string) {
       release: { enabled: true },
       distribution: { enabled: false },
       update: { enabled: false },
+      identity: { enabled: false },
+    },
+    NOW,
+  );
+  for (const st of out.statements) await w.db.run(st.sql, ...st.params);
+}
+
+/** A parsed manifest with no `.pkey/release` at all: the repo dropped its release block. */
+function manifestWithoutRelease() {
+  const p = parseManifest({
+    schema: JSON.stringify({ schemaVersion: 1, entries: [] }),
+    product: JSON.stringify({ slug: SLUG, name: "D" }),
+  });
+  if (!p.ok) throw new Error(JSON.stringify(p));
+  expect(p.manifest.release).toBeFalsy();
+  return p.manifest;
+}
+
+/** Run Core's ingest pipeline for `manifest` with the given services on. */
+async function ingestManifest(
+  w: World,
+  manifest: ReturnType<typeof manifestWithoutRelease>,
+  on: { release: boolean; distribution: boolean },
+) {
+  const out = manifestIngestFor(SERVICES)(
+    manifest,
+    SLUG,
+    {
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: on.release },
+      distribution: { enabled: on.distribution },
+      update: { enabled: on.distribution },
       identity: { enabled: false },
     },
     NOW,
@@ -572,6 +609,40 @@ describe("turning Distribution on in the console never opens a licensed product'
     await w.db.run("DELETE FROM dist_access WHERE product = ?", SLUG);
     await enableDistributionInConsole(w);
     expect(await accessModeOf(w.db, SLUG, "app")).toBe("entitled");
+    await expectAnonymousRefused(w);
+  });
+});
+
+describe("dropping .pkey/release never loosens an existing delivery access", () => {
+  it("operator-owned services stay on: a licensed product stays licensed after the push", async () => {
+    // Services owned by the operator, so the push leaves Release and Distribution on and
+    // release_config in place — the row must not fall back to the link-time `public`.
+    const w = await setup();
+    await ingestWithDistributionOff(w, "licensed");
+    expect(await accessModeOf(w.db, SLUG, "app")).toBe("licensed");
+    await ingestManifest(w, manifestWithoutRelease(), {
+      release: true,
+      distribution: true,
+    });
+    expect(
+      await w.db.first(
+        "SELECT mode, source FROM dist_access WHERE product = ? AND deliverable_id = 'app'",
+        SLUG,
+      ),
+    ).toEqual({ mode: "licensed", source: "manifest" });
+    await expectAnonymousRefused(w);
+  });
+
+  it("manifest-owned services: the push turns them off, the operator turns them back on, still licensed", async () => {
+    const w = await setup();
+    await ingestWithDistributionOff(w, "licensed");
+    await services(w, { release: false, distribution: false });
+    await ingestManifest(w, manifestWithoutRelease(), {
+      release: false,
+      distribution: false,
+    });
+    expect(await accessModeOf(w.db, SLUG, "app")).toBe("licensed");
+    await enableDistributionInConsole(w, true);
     await expectAnonymousRefused(w);
   });
 });
@@ -642,7 +713,7 @@ describe("dist_access", () => {
     expect(await row()).toMatchObject({ mode: "entitled", source: "admin" });
   });
 
-  it("a manifest with no release block writes the app row as public, the release_config default", async () => {
+  it("a manifest with no release block seeds a missing app row as public and never rewrites one", async () => {
     const db = makeTestDb();
     await seedProduct(db, SLUG);
     const p = parseManifest({
@@ -651,9 +722,40 @@ describe("dist_access", () => {
     });
     if (!p.ok) throw new Error(JSON.stringify(p));
     expect(p.manifest.release).toBeFalsy();
-    for (const s of accessIngestStatements(p.manifest, SLUG, 10))
-      await db.run(s.sql, ...s.params);
-    expect(await accessModeOf(db, SLUG, "app")).toBe("public");
+    const apply = async (at: number) => {
+      for (const s of accessIngestStatements(p.manifest, SLUG, at))
+        await db.run(s.sql, ...s.params);
+    };
+    const row = () =>
+      db.first<{ mode: string; source: string; modified_at: number }>(
+        "SELECT mode, source, modified_at FROM dist_access WHERE product = ? AND deliverable_id = 'app'",
+        SLUG,
+      );
+    // No row yet: the link-time default, the value release_config took.
+    await apply(10);
+    expect(await row()).toEqual({
+      mode: "public",
+      source: "manifest",
+      modified_at: 10,
+    });
+    // A manifest-owned licensed row (an earlier push with a release block) is left alone.
+    await db.run(
+      "UPDATE dist_access SET mode = 'licensed', modified_at = 20 WHERE product = ?",
+      SLUG,
+    );
+    await apply(30);
+    expect(await row()).toEqual({
+      mode: "licensed",
+      source: "manifest",
+      modified_at: 20,
+    });
+    // So is an operator's claim.
+    await db.run(
+      "UPDATE dist_access SET mode = 'entitled', source = 'admin' WHERE product = ?",
+      SLUG,
+    );
+    await apply(40);
+    expect(await row()).toMatchObject({ mode: "entitled", source: "admin" });
   });
 
   it("admin: GET shows the app mode, PUT validates and audits, revert only for the app", async () => {
