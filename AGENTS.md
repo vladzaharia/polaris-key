@@ -121,11 +121,11 @@ gate-matrix.json,fingerprint.json}` and the generator-owned mirrors at
 Regenerate with `pnpm gen:corpus` and commit the result in the same change.
 `pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,
 and on a stray JSON file in any of them. Never weaken a runner to make a change "pass". The same
-holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Swift mirror at
-`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` are recorded by the Worker's scenario
-tests (`packages/worker/test/transcripts/`) through `pnpm gen:transcripts`; a Worker change that
-alters a recorded response regenerates them in the same change, and the SDK replayers then show
-which SDKs must follow.
+holds for the HTTP transcripts: `conformance/transcripts/*.json` and their mirrors at
+`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` and `sdks/godot/tests/transcripts/` are
+recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) through
+`pnpm gen:transcripts`; a Worker change that alters a recorded response regenerates them in the
+same change, and the SDK replayers then show which SDKs must follow.
 
 **2. A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** The constant lives in
 `packages/shared-protocol/src/core.ts` and is currently **3**. The signed document set is
