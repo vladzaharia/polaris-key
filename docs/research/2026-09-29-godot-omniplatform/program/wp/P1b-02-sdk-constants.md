@@ -150,18 +150,18 @@ Today:
 
 ## Acceptance criteria
 
-- [ ] `mise exec node@22 -- pnpm gen:constants -- --check` exits 0, and exits 1 after a hand edit
+- [x] `mise exec node@22 -- pnpm gen:constants -- --check` exits 0, and exits 1 after a hand edit
       to any output.
-- [ ] The source test fails when a new `errorResponse(…, "new_code")` appears without an
+- [x] The source test fails when a new `errorResponse(…, "new_code")` appears without an
       `errors.json` entry (a fixture shows this).
-- [ ] The four outputs compile: `pnpm typecheck`, `pytest`, `swift build`.
-- [ ] Each SDK's registry test passes and fails on an unregistered literal (shown by a fixture or in
+- [x] The four outputs compile: `pnpm typecheck`, `pytest`, `swift build`.
+- [x] Each SDK's registry test passes and fails on an unregistered literal (shown by a fixture or in
       the PR).
-- [ ] `reference/error-codes.mdx` lists the client codes; `pnpm --filter @polaris-key/docs gen:check`
+- [x] `reference/error-codes.mdx` lists the client codes; `pnpm --filter @polaris-key/docs gen:check`
       passes.
-- [ ] `core.errors` is `implemented` in the four manifests, and `pnpm parity:check` passes.
-- [ ] CI runs `pnpm gen:constants -- --check`; `AGENTS.md` and `waves.md` list it.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `core.errors` is `implemented` in the four manifests, and `pnpm parity:check` passes.
+- [x] CI runs `pnpm gen:constants -- --check`; `AGENTS.md` and `waves.md` list it.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
