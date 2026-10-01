@@ -513,6 +513,18 @@ export const RELEASE_ARCHES = [
 ] as const;
 export type ReleaseArch = (typeof RELEASE_ARCHES)[number];
 
+/** Android ABIs a release descriptor's `metadata.nativecode` may name (P2b-05). */
+export const ANDROID_ABIS = [
+  "arm64-v8a",
+  "armeabi-v7a",
+  "armeabi",
+  "x86",
+  "x86_64",
+  "riscv64",
+  "mips",
+  "mips64",
+] as const;
+
 /** What an artifact is FOR within its build (`release_artifacts.role`). */
 export const ARTIFACT_ROLES = [
   "payload",

@@ -132,6 +132,18 @@ export interface ManifestOutletIdentity {
   platforms?: string[];
   /** `direct`: the Homebrew cask token. */
   homebrewCask?: string;
+  /**
+   * `direct` covering Windows: what the Scoop manifest P2b-05 renders installs — `bin`, the
+   * executables (paths inside the archive) Scoop shims onto PATH, and `shortcuts`, Start-menu
+   * entries as `[target, name]` pairs.
+   */
+  scoop?: ManifestScoop;
+}
+
+/** `direct.scoop` (P2b-05). */
+export interface ManifestScoop {
+  bin?: string | string[];
+  shortcuts?: [string, string][];
 }
 export type OutletIdentityField = keyof ManifestOutletIdentity;
 
@@ -139,7 +151,7 @@ export type OutletIdentityField = keyof ManifestOutletIdentity;
 export const OUTLET_IDENTITY_FIELDS: Readonly<
   Record<OutletKind, readonly OutletIdentityField[]>
 > = {
-  direct: ["platforms", "homebrewCask"],
+  direct: ["platforms", "homebrewCask", "scoop"],
   "app-store": ["appleId", "bundleId"],
   testflight: ["appleId", "bundleId"],
   altstore: ["artifact", "bundleId"],
@@ -179,6 +191,12 @@ const WINGET_ID_RE =
 /** A Homebrew cask token: lower-case letters, digits, `-`, `.` and `@`. */
 export const HOMEBREW_CASK_PATTERN = /^[a-z0-9][a-z0-9.@-]{0,99}$/;
 const MAX_CHANNEL_MAP_ENTRIES = 32;
+/** A relative path inside a Windows archive: no drive, no leading separator, no `..`. */
+export const SCOOP_PATH_PATTERN =
+  /^(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[A-Za-z0-9 ._()+-]{1,128}(?:[\\/][A-Za-z0-9 ._()+-]{1,128}){0,7}$/;
+/** A Start-menu shortcut name: one line, at most 100 characters, no path separators. */
+const SCOOP_SHORTCUT_NAME_RE = /^[^\u0000-\u001f\u007f\\/:*?"<>|]{1,100}$/;
+const MAX_SCOOP_ENTRIES = 16;
 
 /** Field checks: `null` = well-formed, otherwise what is wrong ("must …"). */
 type FieldCheck = (value: unknown) => string | null;
@@ -279,8 +297,53 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
         HOMEBREW_CASK_PATTERN,
         "a Homebrew cask token (lower-case letters, digits, -, . and @)",
       );
+    case "scoop":
+      return scoopCheck;
   }
 }
+
+const scoopPath = (v: unknown): boolean =>
+  typeof v === "string" && SCOOP_PATH_PATTERN.test(v);
+
+const scoopCheck: FieldCheck = (v) => {
+  const shape =
+    "must be { bin?: a relative path or a list of at most 16, shortcuts?: at most 16 [target, name] pairs }";
+  if (
+    !isRecord(v) ||
+    Object.keys(v).some((k) => k !== "bin" && k !== "shortcuts")
+  )
+    return shape;
+  const bin = v.bin;
+  if (
+    bin !== undefined &&
+    !scoopPath(bin) &&
+    !(
+      Array.isArray(bin) &&
+      bin.length > 0 &&
+      bin.length <= MAX_SCOOP_ENTRIES &&
+      bin.every(scoopPath)
+    )
+  )
+    return shape;
+  const shortcuts = v.shortcuts;
+  if (
+    shortcuts !== undefined &&
+    !(
+      Array.isArray(shortcuts) &&
+      shortcuts.length <= MAX_SCOOP_ENTRIES &&
+      shortcuts.every(
+        (s) =>
+          Array.isArray(s) &&
+          s.length === 2 &&
+          scoopPath(s[0]) &&
+          typeof s[1] === "string" &&
+          SCOOP_SHORTCUT_NAME_RE.test(s[1]),
+      )
+    )
+  )
+    return shape;
+  return null;
+};
 
 // ── Listing ─────────────────────────────────────────────────────────────────────────────────
 
@@ -597,6 +660,21 @@ function validateOutlet(
     }
   }
 
+  if (
+    kind === "direct" &&
+    entry.scoop !== undefined &&
+    Array.isArray(entry.platforms) &&
+    !entry.platforms.includes("windows")
+  ) {
+    add(
+      errors,
+      "distribution",
+      `/outlets/${id}/scoop`,
+      "invalid_outlet_identity",
+      `outlets.${id}.scoop describes a Windows install, so platforms must include windows.`,
+    );
+  }
+
   if (entry.listing !== undefined) {
     const problem = listingProblem(entry.listing);
     if (problem) {
@@ -876,11 +954,25 @@ function normalizeIdentity(
     // Numeric ids are stored as their decimal digits whichever way they were written, so every
     // consumer (`dist_outlets.identity_json`, `pkey distribution outlet-ids`) sees one spelling.
     if (typeof value === "number") out[field] = String(value);
+    else if (field === "scoop") out[field] = structuredCloneScoop(value);
     else if (Array.isArray(value)) out[field] = [...value];
     else if (isRecord(value)) out[field] = sortedRecord(value);
     else out[field] = value;
   }
   return out as ManifestOutletIdentity;
+}
+
+/** A validated `scoop` value, copied with a fixed key order (`bin`, then `shortcuts`). */
+function structuredCloneScoop(v: unknown): ManifestScoop {
+  const r = v as Record<string, unknown>;
+  const out: ManifestScoop = {};
+  if (typeof r.bin === "string") out.bin = r.bin;
+  else if (Array.isArray(r.bin)) out.bin = [...(r.bin as string[])];
+  if (Array.isArray(r.shortcuts))
+    out.shortcuts = (r.shortcuts as [string, string][]).map(
+      ([t, n]) => [t, n] as [string, string],
+    );
+  return out;
 }
 
 function normalizeListing(raw: unknown): ManifestListing | null {

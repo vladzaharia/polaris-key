@@ -120,6 +120,9 @@
         "requires": {
           "type": "object"
         },
+        "metadata": {
+          "description": "Facts pkey release publish read out of the payload (P2b-05), for the storefront feeds. Only ios and android builds carry it, each in its platform's shape."
+        },
         "artifacts": {
           "description": "Empty for a store-only build.",
           "type": "array",
@@ -129,7 +132,163 @@
           }
         }
       },
-      "required": ["id", "platform", "arch", "format", "artifacts"]
+      "required": ["id", "platform", "arch", "format", "artifacts"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "platform": {
+                "const": "ios"
+              }
+            },
+            "required": ["platform"]
+          },
+          "then": {
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/iosMetadata"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "platform": {
+                "const": "android"
+              }
+            },
+            "required": ["platform"]
+          },
+          "then": {
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/androidMetadata"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "platform": {
+                "enum": ["ios", "android"]
+              }
+            },
+            "required": ["platform"]
+          },
+          "else": {
+            "not": {
+              "required": ["metadata"]
+            }
+          }
+        }
+      ]
+    },
+    "iosMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bundleIdentifier": {
+          "type": "string",
+          "maxLength": 155,
+          "pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
+        },
+        "buildVersion": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
+        },
+        "minOSVersion": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$"
+        },
+        "appPermissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "entitlements": {
+              "type": "array",
+              "maxItems": 256,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$"
+              }
+            },
+            "privacy": {
+              "type": "object",
+              "maxProperties": 64,
+              "propertyNames": {
+                "pattern": "^NS[A-Za-z0-9]{1,100}UsageDescription$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 1000,
+                "pattern": "^[^\\u0000]*$"
+              }
+            }
+          },
+          "required": ["entitlements", "privacy"]
+        }
+      },
+      "required": [
+        "bundleIdentifier",
+        "version",
+        "buildVersion",
+        "appPermissions"
+      ]
+    },
+    "androidMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "packageName": {
+          "type": "string",
+          "maxLength": 255,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
+        },
+        "versionCode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2100000000
+        },
+        "versionName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "minSdk": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "nativecode": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "arm64-v8a",
+              "armeabi-v7a",
+              "armeabi",
+              "x86",
+              "x86_64",
+              "riscv64",
+              "mips",
+              "mips64"
+            ]
+          }
+        },
+        "signerSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": ["packageName", "versionCode", "versionName", "signerSha256"]
     },
     "artifact": {
       "type": "object",
