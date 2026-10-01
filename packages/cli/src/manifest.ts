@@ -1,17 +1,22 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  DEFAULT_ENABLED_SERVICES,
+  MODULE_SERVICES,
+  SERVICE_SLUGS,
   validateIngestDocuments,
+  type ProductModule,
   type ServiceSlug,
 } from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 
-export type ProductModule =
-  | "licensing"
-  | "config"
-  | "releases"
-  | "oidc"
-  | "edgeMint";
+/**
+ * What `--modules` (and `InitOptions.modules`) may name: a Polaris Key service slug or one of the
+ * legacy module names (`licensing`, `releases`, `oidc`, `edgeMint`) the `.pkey/product` `modules:`
+ * block still accepts. Both vocabularies come from the generated service table
+ * (`tools/services.json`), via `@polaris-key/manifest`.
+ */
+export type { ProductModule };
 
 export interface ValidationMessage {
   file: "product" | "schema" | "release";
@@ -35,9 +40,8 @@ export interface ValidationResult {
   errors: ValidationMessage[];
   warnings: ValidationMessage[];
   /**
-   * The enabled set, reported in Polaris Key SERVICE-SLUG vocabulary (`license`, `config`,
-   * `release`, `update`, `identity`) whichever vocabulary the manifest wrote — the validator
-   * translates. `--modules` still takes the module names below; only the report is normalised.
+   * The enabled set, reported in Polaris Key SERVICE-SLUG vocabulary (`SERVICE_SLUGS`, in
+   * canonical order) whichever vocabulary the manifest wrote — the validator translates.
    */
   enabledModules: ServiceSlug[];
   requiredSecrets: string[];
@@ -47,7 +51,8 @@ export interface InitOptions {
   cwd: string;
   slug: string;
   name: string;
-  modules: ProductModule[];
+  /** Services to enable, in either vocabulary; the scaffold writes canonical service slugs. */
+  modules: readonly ProductModule[];
   adminGroup?: string;
   releaseOwner?: string;
   releaseRepo?: string;
@@ -69,29 +74,39 @@ const SCHEMA_BASE = "../node_modules/@polaris-key/manifest/schemas/v1";
 const PRODUCT_FILES = ["product.json", "product.yaml", "product.yml"];
 const SCHEMA_FILES = ["schema.json", "schema.yaml", "schema.yml"];
 const RELEASE_FILES = ["release.json", "release.yaml", "release.yml"];
-const MODULES: ProductModule[] = [
-  "licensing",
-  "config",
-  "releases",
-  "oidc",
-  "edgeMint",
+/** Every name `--modules` accepts: the service slugs, then the legacy module names. */
+const MODULES: readonly ProductModule[] = [
+  ...SERVICE_SLUGS,
+  ...(Object.keys(MODULE_SERVICES) as ProductModule[]).filter(
+    (name) => !(SERVICE_SLUGS as readonly string[]).includes(name),
+  ),
 ];
 
-export function normalizeModules(raw: string | undefined): ProductModule[] {
-  if (!raw) return ["licensing", "config"];
+/** The service slugs a list of module names enables, in canonical order. */
+function servicesOf(modules: readonly ProductModule[]): ServiceSlug[] {
+  const on = new Set<ServiceSlug>();
+  for (const name of modules)
+    for (const slug of MODULE_SERVICES[name]) on.add(slug);
+  return SERVICE_SLUGS.filter((slug) => on.has(slug));
+}
+
+/**
+ * Parse `--modules`: a comma list in either vocabulary (`license,config` or `licensing,config`),
+ * returned as the service slugs it enables, in canonical order. Absent means the table's defaults.
+ */
+export function normalizeModules(raw: string | undefined): ServiceSlug[] {
+  if (!raw) return [...DEFAULT_ENABLED_SERVICES];
   const parsed = raw
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  const out: ProductModule[] = [];
   for (const item of parsed) {
     if (!isProductModule(item))
       throw new Error(
         `Unknown module "${item}". Expected one of ${MODULES.join(", ")}.`,
       );
-    if (!out.includes(item)) out.push(item);
   }
-  return out;
+  return servicesOf(parsed as ProductModule[]);
 }
 
 export async function loadManifest(cwd: string): Promise<LoadedManifest> {
@@ -144,18 +159,19 @@ export async function initManifest(opts: InitOptions): Promise<InitResult> {
   const rootDir = path.join(opts.cwd, ".pkey");
   await mkdir(rootDir, { recursive: true });
   const files: string[] = [];
+  const services = servicesOf(opts.modules);
   const productPath = path.join(rootDir, "product.yaml");
-  await writeNewFile(productPath, productYaml(opts), opts.force);
+  await writeNewFile(productPath, productYaml(opts, services), opts.force);
   files.push(productPath);
   // Always written: ingest requires .pkey/schema even when Config is off.
   const schemaPath = path.join(rootDir, "schema.yaml");
   await writeNewFile(
     schemaPath,
-    schemaYaml(opts.modules.includes("config")),
+    schemaYaml(services.includes("config")),
     opts.force,
   );
   files.push(schemaPath);
-  if (opts.modules.includes("releases")) {
+  if (services.includes("release")) {
     const releasePath = path.join(rootDir, "release.yaml");
     await writeNewFile(releasePath, releaseYaml(opts), opts.force);
     files.push(releasePath);
@@ -207,12 +223,13 @@ const value = client.config.getConfig("your.config.key", "fallback");
 const secret = client.config.getSecret("your.secret.key");`;
 }
 
-function productYaml(opts: InitOptions): string {
-  const moduleLines = MODULES.map(
-    (module) =>
-      `  ${module}:\n    enabled: ${opts.modules.includes(module) ? "true" : "false"}`,
+function productYaml(opts: InitOptions, services: ServiceSlug[]): string {
+  // Canonical service slugs, every one of them, so the scaffold shows what can be turned on.
+  const moduleLines = SERVICE_SLUGS.map(
+    (slug) =>
+      `  ${slug}:\n    enabled: ${services.includes(slug) ? "true" : "false"}`,
   );
-  const oidc = opts.modules.includes("oidc")
+  const oidc = services.includes("identity")
     ? `\noidc:\n  provider: platform\n  groupRoleMap: {}\n`
     : "";
   return `# yaml-language-server: $schema=${SCHEMA_BASE}/product.schema.json
@@ -336,7 +353,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isProductModule(value: string): value is ProductModule {
-  return (MODULES as string[]).includes(value);
+  return (MODULES as readonly string[]).includes(value);
 }
 
 function quoteYaml(value: string): string {

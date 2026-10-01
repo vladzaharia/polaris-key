@@ -28,6 +28,7 @@ files):
 ```sh
 pnpm build
 pnpm gen:corpus -- --check
+pnpm gen:services -- --check
 pnpm parity:check
 pnpm typecheck
 pnpm test
@@ -51,7 +52,8 @@ knowing:
   generation workerd forbids. The `test:workerd` and `typecheck:workerd` pair is the smoke job
   that catches it.
 
-The `.husky/pre-commit` hook runs only `pnpm gen:corpus -- --check` and `pnpm typecheck`. It is
+The `.husky/pre-commit` hook runs only `pnpm gen:corpus -- --check`, `pnpm gen:services -- --check`
+and `pnpm typecheck`. It is
 deliberately lightweight. A green hook is not a green gate.
 
 ## The hard rules, in one line each

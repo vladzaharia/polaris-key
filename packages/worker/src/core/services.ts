@@ -1,7 +1,7 @@
 /**
  * Per-product service enablement — the single authority (design spec §2.2).
  *
- * Polaris Key is a suite of opt-in services (License, Config, Release, Update, Identity) over an
+ * Polaris Key is a suite of opt-in services (the rows of `tools/services.json`) over an
  * always-on Core substrate. `products.services_json` records which of them a product runs, and
  * every consumer — route mounting, the discovery document, the admin setup view, portal
  * capabilities — becomes a projection of THIS, instead of each re-inferring enablement from
@@ -13,25 +13,21 @@
  */
 
 import type { RegistrationPolicy } from "@polaris-key/protocol/core";
+import {
+  DEFAULT_ENABLED_SERVICES,
+  SERVICE_SLUGS,
+  type ServiceSlug,
+} from "@polaris-key/manifest";
 
 export type { RegistrationPolicy };
 
-/** The five opt-in services. Core is not a service — it is always on. */
-export type ServiceSlug =
-  | "license"
-  | "config"
-  | "release"
-  | "update"
-  | "identity";
-
-/** Canonical order. Iterate this rather than `Object.keys` so output is stable. */
-export const SERVICE_SLUGS: readonly ServiceSlug[] = [
-  "license",
-  "config",
-  "release",
-  "update",
-  "identity",
-];
+/**
+ * The opt-in services come from the generated service table (`tools/services.json`, written into
+ * `@polaris-key/manifest` by `pnpm gen:services`). Core is not a service — it is always on.
+ * `SERVICE_SLUGS` is the canonical order: iterate it rather than `Object.keys` so output is
+ * stable. Re-exported so the rest of the worker keeps importing them from here.
+ */
+export { SERVICE_SLUGS, type ServiceSlug };
 
 /** Per-service state. Only `enabled` today; the object shape leaves room for per-service
  *  settings without a second column. */
@@ -40,29 +36,27 @@ export type ServicesMap = Record<ServiceSlug, { enabled: boolean }>;
 /** Who owns `services_json`. `manifest` => resync reapplies; `admin` => operator-claimed. */
 export type ServicesSource = "manifest" | "admin";
 
+/** A map with every slug set from `enabled`, in canonical order. */
+function servicesWhere(enabled: (slug: ServiceSlug) => boolean): ServicesMap {
+  const out = {} as ServicesMap;
+  for (const slug of SERVICE_SLUGS) out[slug] = { enabled: enabled(slug) };
+  return out;
+}
+
 /**
- * What a product runs when it has never said otherwise: licensing + settings distribution,
- * which is exactly what every product does today. Distribution (release/update) and identity
- * are opt-in because they need coordinates (a linked repo, an IdP) a default cannot invent.
+ * What a product runs when it has never said otherwise: the table's `defaultEnabled` rows —
+ * licensing + settings distribution, which is exactly what every product does today.
+ * Distribution (release/update) and identity are opt-in because they need coordinates (a
+ * linked repo, an IdP) a default cannot invent.
  */
-export const DEFAULT_SERVICES: ServicesMap = {
-  license: { enabled: true },
-  config: { enabled: true },
-  release: { enabled: false },
-  update: { enabled: false },
-  identity: { enabled: false },
-};
+export const DEFAULT_SERVICES: ServicesMap = servicesWhere((slug) =>
+  DEFAULT_ENABLED_SERVICES.includes(slug),
+);
 
 /** A fresh copy of the defaults — the exported constant is never handed out to callers who
  *  might mutate it. */
 function defaults(): ServicesMap {
-  return {
-    license: { ...DEFAULT_SERVICES.license },
-    config: { ...DEFAULT_SERVICES.config },
-    release: { ...DEFAULT_SERVICES.release },
-    update: { ...DEFAULT_SERVICES.update },
-    identity: { ...DEFAULT_SERVICES.identity },
-  };
+  return servicesWhere((slug) => DEFAULT_SERVICES[slug].enabled);
 }
 
 function isServiceSlug(value: string): value is ServiceSlug {

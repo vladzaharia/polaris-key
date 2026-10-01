@@ -8,6 +8,7 @@ import {
   Settings2,
   Undo2,
   UserRound,
+  type LucideIcon,
 } from "lucide-react";
 import {
   ApiError,
@@ -18,6 +19,11 @@ import {
   type ServicesResponse,
 } from "../../api.js";
 import { invalidate, useResource } from "../../context.js";
+import {
+  SERVICE_SLUGS,
+  SERVICE_TABLE,
+  type ServiceIconName,
+} from "../../services.generated.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Badge,
@@ -60,6 +66,18 @@ import {
  * message is rendered beside the control instead, and stays until the set changes.
  */
 
+/**
+ * Each service's lucide icon, keyed by the name the service table gives it. Typed on
+ * `ServiceIconName`, so a table row naming an icon not imported here is a type error.
+ */
+const SERVICE_ICONS: Record<ServiceIconName, LucideIcon> = {
+  KeyRound,
+  Settings2,
+  Package,
+  RefreshCw,
+  UserRound,
+};
+
 interface ServiceRow {
   slug: ServiceSlug;
   label: string;
@@ -67,43 +85,16 @@ interface ServiceRow {
   icon: React.ReactNode;
 }
 
-const SERVICE_ROWS: ServiceRow[] = [
-  {
-    slug: "license",
-    label: "License",
-    description:
-      "Licenses, keys, tiers, device seats, and the signed license document.",
-    icon: <KeyRound aria-hidden className="size-4 text-primary" />,
-  },
-  {
-    slug: "config",
-    label: "Config",
-    description:
-      "The managed config catalog, profiles, overrides, and secret delivery.",
-    icon: <Settings2 aria-hidden className="size-4 text-primary" />,
-  },
-  {
-    slug: "release",
-    label: "Release",
-    description:
-      "The truth store: repo sync, channels, artifacts, and release health.",
-    icon: <Package aria-hidden className="size-4 text-primary" />,
-  },
-  {
-    slug: "update",
-    label: "Update",
-    description:
-      "The feed over Release’s truth store — appcasts, /version, and eligibility.",
-    icon: <RefreshCw aria-hidden className="size-4 text-primary" />,
-  },
-  {
-    slug: "identity",
-    label: "Identity",
-    description:
-      "OIDC sign-in, browser sessions, and the customer portal for this product.",
-    icon: <UserRound aria-hidden className="size-4 text-primary" />,
-  },
-];
+/** One row per service, in canonical order — label, text and icon from the generated table. */
+const SERVICE_ROWS: ServiceRow[] = SERVICE_TABLE.map((row) => {
+  const Icon = SERVICE_ICONS[row.icon];
+  return {
+    slug: row.slug,
+    label: row.label,
+    description: row.summary,
+    icon: <Icon aria-hidden className="size-4 text-primary" />,
+  };
+});
 
 /** The sentinel for "no declared policy" — Radix Select has no concept of an empty value. */
 const DERIVED = "__derived__";
@@ -491,13 +482,9 @@ function SourceBadge({ source }: { source: string }): React.ReactElement {
 }
 
 function emptyEnablement(): Record<ServiceSlug, boolean> {
-  return {
-    license: false,
-    config: false,
-    release: false,
-    update: false,
-    identity: false,
-  };
+  return Object.fromEntries(
+    SERVICE_SLUGS.map((slug) => [slug, false]),
+  ) as Record<ServiceSlug, boolean>;
 }
 
 function readEnablement(data: ServicesResponse): Record<ServiceSlug, boolean> {
@@ -516,7 +503,7 @@ function ServicesSkeleton(): React.ReactElement {
         <Skeleton className="h-4 w-80" />
       </CardHeader>
       <CardContent className="space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {SERVICE_SLUGS.map((_, i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
       </CardContent>

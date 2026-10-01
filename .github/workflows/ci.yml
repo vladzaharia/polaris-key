@@ -40,6 +40,9 @@ jobs:
       # re-record identically through the Worker router. `pnpm test` runs the same check inside
       # the worker suite; this step names it, so a stale transcript is legible at a glance.
       - run: pnpm gen:transcripts -- --check
+      # Service-table drift: every language's generated service constants must match
+      # tools/services.json (tools/gen-services.ts regenerates in memory; exit 1 on any difference).
+      - run: pnpm gen:services -- --check
       # Mirror drift: a `pnpm gen:mirrors -- --check` gate is intentionally omitted.
       # tools/gen-mirrors.ts supports --check, but it REQUIRES --catalog <path> and
       # --out-dir <dir> (no defaults) and no product currently emits typed mirrors

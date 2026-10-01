@@ -1,6 +1,6 @@
 ---
 title: "Monorepo layout"
-description: "The package map, the Worker's core/ and services/ split, the boundary test that enforces it, and mount.ts as the composition root."
+description: "The package map, the Worker's core/ and services/ split, the boundary test that enforces it, mount.ts as the composition root, the service table, and the checklist for adding a service."
 sidebar:
   order: 3
 ---
@@ -78,16 +78,81 @@ what stops the cheaper answer — a direct import — from being taken next time
 
 ## `mount.ts`: the composition root
 
-`src/mount.ts` holds one map, `SERVICES`, built once at module scope from the five service
+`src/mount.ts` holds one map, `SERVICES`, built once at module scope from the service
 descriptors. It is deliberately not inside `core/`: Core owns dispatch and knows nothing about
 which services exist — `core/registry.ts` takes a registry as a parameter rather than importing
-one — and knowing the five names is the composition root's job, not Core's.
+one — and importing the descriptors is the composition root's job, not Core's.
 
-Adding a service is a multi-file change. The two edits that wire it into dispatch are outside
-Core: one entry in `mount.ts`'s map, and its slug in `router.ts`'s `SERVICE_NAMESPACES` set. But
-the slug is also enumerated in Core's static tables (`core/services.ts`, `core/discovery.ts`),
-the manifest package, the console, and each SDK's discovery list. Core's dispatch never learns
-the name; its enumerations do.
+The service _names_ are not declared here either. They are rows of the service table, below;
+`router.ts`'s `SERVICE_NAMESPACES`, the discovery document and Core's enablement map all iterate
+the generated `SERVICE_SLUGS`, and a test fails until every row has its `mount.ts` entry.
+
+## The service table
+
+`tools/services.json` is the one declaration of the opt-in services: one row per slug, in
+canonical order, carrying the label, the console summary, `defaultEnabled`, the coherence
+`requires` edges, the legacy `.pkey/product` module names that enable it, the console accent
+token and icon, and the docs path. Core is not a service and has no row.
+
+`pnpm gen:services` (`tools/gen-services.ts`) writes every language's constants from it, each
+file carrying a GENERATED banner:
+
+| Generated file                                                  | Read by                           |
+| --------------------------------------------------------------- | --------------------------------- |
+| `packages/shared-manifest/src/services.generated.ts`            | the manifest package, Worker, CLI |
+| `packages/admin/src/services.generated.ts`                      | the console                       |
+| `packages/sdk-node/src/services.generated.ts`                   | the Node SDK                      |
+| `packages/sdk-react/src/core/services.generated.ts`             | the React SDK                     |
+| `sdks/python/src/polaris_key/_services.py`                      | the Python SDK                    |
+| `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift` | the Swift SDK                     |
+
+`pnpm gen:services -- --check` regenerates in memory and fails on any difference; it runs in the
+green gate, in CI and in the pre-commit hook. The console and the SDKs get their own generated
+files rather than importing the manifest package because they must not depend on a manifest
+parser.
+
+What is **not** generated is real code — directories, descriptors, views, docs pages — and the
+coherence error codes, which stay literal (`update_requires_release`) because the rule-9 parity
+test reads codes from validator source. For each of those an assertion test names what a new
+row is missing, so the drift gate, not a reviewer's memory, produces the list below.
+
+## Adding a service
+
+Follow the steps in order. After step 2, `pnpm test` fails with a message per missing piece;
+work down the list until it passes.
+
+1. **Confirm the production Worker tolerates unknown slugs.** A newer build writes the new slug
+   into `products.services_json`; an older build must carry it through rather than reset the
+   record (P0-08). Confirm the production deploy includes that before the first slug ships.
+2. **Add the row** to `tools/services.json` and run `pnpm gen:services`. Commit the generated
+   files with it.
+3. **Directory and descriptor.** Create `packages/worker/src/services/<slug>/` with an
+   `index.ts` exporting its `ServiceDescriptor` (`slug: "<slug>"`). `boundaries.test.ts` scans
+   it from then on.
+4. **`mount.ts`.** Import the descriptor and add it to `SERVICES` in table order
+   (`serviceTable.test.ts` checks keys and order).
+5. **Coherence.** For each `requires` edge `<a> → <b>`, add a literal `<a>_requires_<b>` to
+   `validateServices` in `packages/worker/src/core/services.ts` and to the manifest validator
+   (`packages/shared-manifest/src/index.ts`) with its rule-9 mutation-table entry, and a
+   message to the console's `SERVICE_ERROR_MESSAGES`.
+6. **Manifest schema.** Add the slug (and any new legacy module name) to
+   `$defs.modules.properties` in `packages/shared-manifest/schemas/v1/product.schema.json`.
+7. **Migrations and `TABLE_OWNERS`.** Any tables the service owns get a D1 migration and an
+   entry in `TABLE_OWNERS` (`packages/docs/scripts/gen-reference.mjs`); regenerate the reference
+   pages.
+8. **OpenAPI and `routeCoverage`.** Add the slug to the discovery document's
+   `services.required` in `packages/worker/openapi/polaris-key.v3.yaml` (in table order), and
+   every new route to the spec and to `routeCoverage.test.ts` (rule 10).
+9. **Console.** A `SECTIONS` entry in `packages/admin/src/route.ts` with the table's accent, its
+   views and `Tab` values, `TAB_ICONS` in `components/Shell.tsx`, the dark and `.light`
+   `[data-service="<accent>"]` rules in `styles.css`, and the row's icon in `ServicesCard`'s
+   `SERVICE_ICONS` (a type error until it is there).
+10. **Docs.** A `packages/docs/src/content/docs/services/<slug>/` section with an `index` page,
+    and its entry under "Services" in `packages/docs/astro.config.mjs`, in table order.
+11. **Parity and SDKs.** The feature registry (`conformance/parity/features.json`) must accept
+    the slug as a feature's `service`; SDK sub-clients for the service follow their own work.
+12. **Skills and agent files.** Update `AGENTS.md`'s repo notes and the
+    `authoring-pkey-manifests` skill if the manifest vocabulary changed.
 
 ## One worker, one deployment
 
