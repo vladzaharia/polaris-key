@@ -57,6 +57,12 @@ AltStore makes an update live the moment it reads the source. Each one has a str
 SHA-256 of the body), so a client revalidates cheaply. Browser tools such as source browsers get
 CORS only through the product's `web.origins` allowlist; no feed route answers with a wildcard.
 
+The Worker keeps each rendered feed in its cache for the same five minutes, so a new release can
+take up to five minutes to appear. A rollout change (a halt, a pause, a completion), a yank, an
+availability report, an outlet change or a new F-Droid registration takes effect on the next
+request, and so does making the app non-public. A feed lists at most the 20 newest qualifying
+versions, and looks for them among the 100 newest releases of the channel.
+
 ## Build metadata
 
 Some feeds need facts that are inside the archive. AltStore checks a source's `appPermissions`
@@ -130,8 +136,8 @@ the repo key.
 
 The relay then serves **only registered files**, using the content type the Worker chose for
 each extension, never a type sent by CI. Every answer carries `nosniff` and a sandbox CSP. An APK
-that the index names is a `302` to its immutable delivery URL. The relay finds an APK by its file
-name, so each listed release's APK needs a distinct name (put the version in it, as in
+that the registered `index-v2.json` names, and that the channel's feed still selects, is a `302`
+to its immutable delivery URL. The relay finds an APK by its file name, so each listed release's APK needs a distinct name (put the version in it, as in
 `Diceroll-1.2.0-android.apk`); `pkey feeds fdroid` refuses a set where two releases share one.
 Anything else, including a path that fails the safe-path check, is not-found. So is a registered
 file once a non-public deliverable's release carries the same bytes.
