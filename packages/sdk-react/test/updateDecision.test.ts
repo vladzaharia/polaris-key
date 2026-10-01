@@ -400,6 +400,91 @@ describe("BrowserAdapter.decideUpdate() — the slices across a reload", () => {
   });
 });
 
+describe("BrowserAdapter.decideUpdate() — the effective clock", () => {
+  // plans/P3-01.md §2.5: `now` is max(system, highWaterMark) (V3 §4.2), so winding the system
+  // clock back cannot revive an expired feed (§2.3). The floor here comes from a re-verified
+  // imported config document dated after the feed's expiresAt + 300.
+  const FLOOR = 1_700_002_000;
+
+  async function storeWithFloor(
+    cache: Record<string, unknown> = {},
+  ): Promise<ReturnType<typeof memoryStore>> {
+    const config = await signCompact(
+      {
+        iss: "key.plrs.im",
+        aud: PRODUCT,
+        deviceId: "dev_1",
+        issuedAt: FLOOR,
+        expiresAt: FLOOR + 3_600,
+        graceUntil: FLOOR + 7_200,
+        schemaVersion: 1,
+        config: {},
+        secrets: {},
+      },
+      productKey,
+      "pkey-config+jws",
+    );
+    return memoryStore({
+      deviceId: "dev_1",
+      cache: {
+        v: 3,
+        docs: { config },
+        importedBundle: { bundleId: "b", importedAt: FLOOR },
+        ...cache,
+      },
+    } as OfflineRecord);
+  }
+
+  async function settled(a: BrowserAdapter): Promise<void> {
+    for (let i = 0; i < 100 && a.snapshot().phase === "loading"; i++)
+      await new Promise((r) => setTimeout(r, 0));
+  }
+
+  it("a rewound system clock under the floor refuses the expired feed: feed-rejected {freshness}", async () => {
+    const srv = server();
+    srv.feedBody = (await signedPair()).feedJws;
+    const a = adapterFor(srv, await storeWithFloor());
+    await settled(a);
+    expect(a.snapshot().highWaterMark).toBe(FLOOR);
+    const err = (await a.decideUpdate().catch((e) => e)) as PolarisError;
+    expect(err).toBeInstanceOf(PolarisError);
+    expect(err.code).toBe("feed-rejected");
+    expect(err.detail).toBe("freshness");
+  });
+
+  it("the committed feed decides none {stale} at the effective clock", async () => {
+    const srv = server();
+    const pair = await signedPair();
+    srv.feedBody = null;
+    const a = adapterFor(
+      srv,
+      await storeWithFloor({
+        feeds: { stable: pair.feedJws },
+        releaseRecords: { [pair.hash]: pair.recordJws },
+      }),
+    );
+    await settled(a);
+    const check = await a.decideUpdate();
+    expect(check).toMatchObject({
+      channel: "stable",
+      feed: "committed",
+      decision: { action: "none", reason: "stale" },
+    });
+  });
+
+  it("without the floor the same feed is fresh at the system clock", async () => {
+    const srv = server();
+    const pair = await signedPair();
+    srv.feedBody = pair.feedJws;
+    srv.records.set(pair.hash, new Response(pair.recordJws, { status: 200 }));
+    const check = await adapterFor(
+      srv,
+      memoryStore({ deviceId: "dev_1" }),
+    ).decideUpdate();
+    expect(check).toMatchObject({ feed: "network", errors: [] });
+  });
+});
+
 describe("desktop decideUpdate() — the host decides", () => {
   function desktop(invoke?: PolarisBridge["invoke"], update = true) {
     const caps = update ? services("update") : services();

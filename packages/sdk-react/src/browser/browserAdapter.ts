@@ -52,6 +52,7 @@ import type {
 import {
   CACHE_VERSION,
   compareSemver,
+  effectiveNow,
   highWaterMark,
   isValidHostOutlet,
   resolveUpdateOutlet,
@@ -860,7 +861,9 @@ export class BrowserAdapter implements PolarisAdapter {
         discovery: this.discovery,
         trust: this.pinned,
         releaseKeys: u.pinnedReleaseKeys,
-        now: this.clock(),
+        // §2.5: the effective clock, max(system, highWaterMark) (V3 §4.2), so winding the
+        // system clock back cannot revive an expired feed (§2.3).
+        now: effectiveNow(this.clock(), this.store.get().highWaterMark),
         installId: record?.deviceId ?? null,
         installed: {
           version: this.version ?? "",
