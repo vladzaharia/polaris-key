@@ -188,7 +188,7 @@ registry:
 | `cases.json`                      | JWS, documents, trust manifests, clock floor, offline bundles                                        | ✓ (v2)               | —              |
 | `gate-matrix.json`                | the licence gate                                                                                     | ✓                    | —              |
 | `fingerprint.json`                | fingerprint components and device-id derivation                                                      | ✓                    | —              |
-| `headers.json`                    | platform, arch, SDK and engine header values per runtime input (fixes README §9.1 #17)               | new                  | P1b            |
+| `headers.json`                    | platform, arch and SDK header values per runtime spelling (fixes README §9.1 #17)                    | new                  | P1b            |
 | `config-matrix.json`              | config precedence: enforced, default, local override, environment, hidden                            | new                  | P1b            |
 | `feedCases`, `releaseRecordCases` | `pkey-feed+jws` and `pkey-release+jws` (app, pack and revocation kinds, delegation)                  | new, in `cases.json` | P3 (wire v4)   |
 | `update-matrix.json`              | the update decision: floors, rollout bucket, outlet capabilities, `blocked(...)`, pre-staging        | new                  | P3             |
@@ -285,7 +285,7 @@ C#** target every row, minus the N/As listed.
 | `core.discover` | discovery and capabilities, fail-closed                     | transcripts        | ✓    | ✓     | ✓      | ✓     | —                           |
 | `core.sync`     | sync, `ETag`/`304`, backoff, refresh loop, change events    | transcripts        | ✓    | ✓     | ✓      | ✓     | —                           |
 | `core.local`    | local-only client (no network)                              | unit               | ✓    | ✗     | ✓      | ✓     | —                           |
-| `core.headers`  | canonical platform/arch/SDK/engine header values            | `headers.json`     | ◐    | ◐     | ◐      | ◐     | —                           |
+| `core.headers`  | canonical platform, arch and SDK header values              | `headers.json`     | ◐    | ◐     | ◐      | ◐     | —                           |
 | `core.errors`   | shared error codes                                          | generated registry | ◐    | ◐     | ◐      | ◐     | —                           |
 | `core.caps`     | `supports()` and capability telemetry                       | unit + parity gate | ○    | ○     | ○      | ○     | —                           |
 | `core.store`    | secure token store, surfaced failure, no silent downgrade   | unit               | ◐ ¹  | N/A   | ◐ ²    | ◐ ³   | web: `runtime` (no keyring) |

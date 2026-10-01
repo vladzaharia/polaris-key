@@ -155,7 +155,9 @@ The rows the binding consists of, written only once a seat is granted:
 
 - The `devices` row — upserted, preserving `first_seen`, the user's label, per-device overrides
   and the reported snapshot, and folding in the request's `X-PKey-Platform`, `X-PKey-Arch`,
-  `X-PKey-Version`, `X-PKey-SDK` and `X-PKey-SDK-Version`.
+  `X-PKey-Version`, `X-PKey-SDK` and `X-PKey-SDK-Version`. Platform, arch and SDK are stored as
+  their canonical WIRE-CONTRACT-V3 §5.2 values, with an older SDK's spelling mapped (`darwin` →
+  `macos`, `x64` → `x86_64`, `@polaris-key/node` → `node`) and an empty header ignored.
 - The token: minted, hashed, stored on the device row. Any previous token record is deleted from
   KV, so a re-activation invalidates the old credential immediately.
 - The fingerprint row — `verified`, with the **server-recomputed** hwid and the anchor hash. If

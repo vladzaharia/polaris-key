@@ -23,6 +23,8 @@ tools/sign-corpus.ts  →  conformance/corpus/v2/cases.json
                          conformance/corpus/v2/gate-matrix.json
                          conformance/corpus/v2/fingerprint.json
                          conformance/corpus/v2/stage-matrix.json
+                         conformance/corpus/v2/headers.json
+                         conformance/corpus/v2/config-matrix.json
                       →  sdks/swift/Tests/PolarisKeyTests/Resources/v2/   (Swift mirror)
                       →  sdks/godot/tests/corpus/v2/                      (Godot mirror)
 ```
@@ -47,14 +49,16 @@ into the v2 generator before deletion. Fourteen are still carried; the fifteenth
 the dev-build bypass R3-01 removed, was retired by an approved plan (P0-04), and its successor
 row pins the opt-in bypass instead.
 
-## The four files
+## The six files
 
-| File                | What it pins                                                                                                                                                                                       | Contract section                              |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `cases.json`        | Six case families covering verification end to end, plus the two test keys                                                                                                                         | §1–§4, §7                                     |
-| `gate-matrix.json`  | Every gate transition, as pure input/expected-status rows                                                                                                                                          | §5                                            |
-| `fingerprint.json`  | Component order, per-component and composite digest lengths, the device-id derivations, and the three source rules (`windowsCim` with the pinned `windowsCimCommand`, `linuxAnchor`, `ramBuckets`) | Fingerprint v1, §6.1                          |
-| `stage-matrix.json` | The boot stage machine: rows of host events with the exact emits each produces, and guard cases                                                                                                    | client boot behaviour, not a contract section |
+| File                 | What it pins                                                                                                                                                                                       | Contract section                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `cases.json`         | Six case families covering verification end to end, plus the two test keys                                                                                                                         | §1–§4, §7                                     |
+| `gate-matrix.json`   | Every gate transition, as pure input/expected-status rows                                                                                                                                          | §5                                            |
+| `fingerprint.json`   | Component order, per-component and composite digest lengths, the device-id derivations, and the three source rules (`windowsCim` with the pinned `windowsCimCommand`, `linuxAnchor`, `ramBuckets`) | Fingerprint v1, §6.1                          |
+| `stage-matrix.json`  | The boot stage machine: rows of host events with the exact emits each produces, and guard cases                                                                                                    | client boot behaviour, not a contract section |
+| `headers.json`       | Each runtime spelling of a platform or arch and its canonical `X-PKey-Platform` / `X-PKey-Arch` value, or none (`platformCases`, `archCases`)                                                      | §5.2                                          |
+| `config-matrix.json` | Config precedence, the environment variable name, the strict environment value and the user-visible list (`resolveCases`, `envValueCases`, `listCases`), with each no-environment answer           | §2.2.1                                        |
 
 ### The case families in `cases.json`
 
@@ -108,6 +112,25 @@ The Node, Python and Swift gate-matrix runners each carry a **port** of the serv
 (WIRE-CONTRACT-V3 §5.1), built from that SDK's own semver and channel helpers; the Worker runner
 replays the same rows through the real gate, so a port that drifts, or a doctored `expect`,
 fails on the server side too.
+
+`headers.json` has a runner in every SDK and one in the Worker:
+`conformance/runners/node/headers.test.ts` (through `client-core`'s `canonicalPlatform` and
+`canonicalArch`, which React shares), `packages/sdk-react/test/headers.test.ts` (the `web` rows
+against the captured request), `sdks/python/tests/test_headers.py`,
+`sdks/swift/Tests/PolarisKeyTests/HeadersTests.swift`, the `platformCases`/`archCases` section
+of `sdks/godot/tests/suite_conformance.gd`, and `packages/worker/test/headersCorpus.test.ts`,
+which runs every row through the normaliser that stores the headers. Each runner also asserts
+that its generated `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` table equals the rows.
+
+`config-matrix.json` has one runner per SDK: `conformance/runners/node/configMatrix.test.ts`
+(`client-core`'s `resolveValue`, `resolveSource` and `listUserEntries`),
+`packages/sdk-react/test/configMatrix.test.ts` (every row against its no-environment answer,
+`expectNoEnv` where present), `sdks/python/tests/test_config_matrix.py`,
+`sdks/swift/Tests/PolarisKeyTests/ConfigMatrixTests.swift` and
+`sdks/godot/tests/config/test_matrix.gd` (with the environment layer on and off). Two declared
+representation limits (WIRE-CONTRACT-V3 §10) touch only parsed values, never verdicts: Swift
+keeps the first of two canonically equivalent member names, and Godot's number reader is not
+correctly rounded.
 
 `fingerprint.json` has its own runners alongside these — `conformance/runners/node/fingerprint.test.ts`,
 `sdks/python/tests/test_fingerprint_conformance.py`,
@@ -170,9 +193,10 @@ Worth stating plainly, so it is not over-trusted:
 
 - It pins **verification**, not signing. There is exactly one signer, so agreement among
   signers is not a question the corpus is asked.
-- It pins the **client-side** contract, plus one server function: the build gate, which the
-  Worker replays over `gate-matrix.json`. Other server behaviour reaches it only through the
-  artifacts the generator mints in the server's shape.
+- It pins the **client-side** contract, plus two server functions: the build gate, which the
+  Worker replays over `gate-matrix.json`, and the client metadata normaliser, which it runs over
+  `headers.json`. Other server behaviour reaches it only through the artifacts the generator
+  mints in the server's shape.
 - It is a set of vectors, not a proof. A rule with no case is a rule the implementations may
   quietly disagree about — which is exactly how the divergence ledger got its first entries.
 
