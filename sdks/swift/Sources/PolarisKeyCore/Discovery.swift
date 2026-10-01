@@ -4,7 +4,7 @@
 //
 // The v2 document had a `modules` object each surface re-derived its own way, so it could claim
 // a capability was on while its routes 404ed. v3 replaces it with a top-level `services` map
-// keyed by the five service slugs, every entry a projection of ONE authority (the product's
+// keyed by the service slugs, every entry a projection of ONE authority (the product's
 // `services_json`), and a disabled service is `{"enabled": false}` and NOTHING ELSE — there is
 // no endpoint list to read a disabled service's shape out of.
 //
@@ -27,14 +27,9 @@
 
 import Foundation
 
-/// The five opt-in services. Core is not a service — it is always on.
-public enum ServiceSlug: String, Sendable, Codable, Equatable, CaseIterable {
-    case license
-    case config
-    case release
-    case update
-    case identity
-}
+// `ServiceSlug` — the opt-in services, in canonical order, with `isDefaultEnabled` — is GENERATED
+// from the service table (tools/services.json) into `ServiceSlug.generated.swift` by
+// `pnpm gen:services`. Core is not a service — it is always on.
 
 /// Per-service state as the SDK consumes it.
 public typealias ServicesMap = [ServiceSlug: Bool]
@@ -43,14 +38,13 @@ public typealias ServicesMap = [ServiceSlug: Bool]
 /// licensing + settings distribution, which is what every product ran before the suite existed.
 /// Release, update and identity are OFF, so their sub-clients refuse until something says
 /// otherwise — the fail-closed half of D-21 applied to the genuinely new surfaces.
-public let DEFAULT_SERVICES: ServicesMap = [
-    .license: true, .config: true, .release: false, .update: false, .identity: false,
-]
+/// The service table's `defaultEnabled` rows.
+public let DEFAULT_SERVICES: ServicesMap = Dictionary(
+    uniqueKeysWithValues: ServiceSlug.allCases.map { ($0, $0.isDefaultEnabled) })
 
 /// Everything off. The starting point for both `servicesFromList` and the discovery parser.
-public let NO_SERVICES: ServicesMap = [
-    .license: false, .config: false, .release: false, .update: false, .identity: false,
-]
+public let NO_SERVICES: ServicesMap = Dictionary(
+    uniqueKeysWithValues: ServiceSlug.allCases.map { ($0, false) })
 
 /// Turn a host's `expectedServices` list into a full map — everything unlisted is off.
 public func servicesFromList(_ slugs: [ServiceSlug]) -> ServicesMap {

@@ -64,7 +64,7 @@
       "family": "core",
       "title": "Verified cache; construct and load offline",
       "service": "core",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }, { "kind": "unit" }],
+      "proof": [{ "kind": "transcript" }, { "kind": "unit" }],
       "allowedNa": []
     },
     {
@@ -82,7 +82,7 @@
       "family": "core",
       "title": "Discovery and capabilities, fail-closed",
       "service": "core",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": []
     },
     {
@@ -90,7 +90,7 @@
       "family": "core",
       "title": "Sync, ETag/304, backoff, refresh loop, change events",
       "service": "core",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": []
     },
     {
@@ -164,7 +164,7 @@
       "family": "license",
       "title": "Activate with a key (+ fingerprint)",
       "service": "license",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": []
     },
     {
@@ -172,7 +172,7 @@
       "family": "license",
       "title": "Keyless enrolment",
       "service": "license",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": [
         {
           "runtime": "web",
@@ -191,7 +191,7 @@
       "family": "license",
       "title": "Remote best-effort, local wipe mandatory",
       "service": "license",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": []
     },
     {
@@ -216,7 +216,7 @@
       "family": "license",
       "title": "Re-register on 401 for licence-less devices",
       "service": "license",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": [
         {
           "runtime": "web",
@@ -258,7 +258,7 @@
       "family": "config",
       "title": "getSecret",
       "service": "config",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": [
         {
           "runtime": "web",
@@ -339,7 +339,7 @@
       "family": "devices",
       "title": "Keyless registration",
       "service": "core",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": [
         {
           "runtime": "web",
@@ -358,7 +358,7 @@
       "family": "devices",
       "title": "List, rename, deauthorise",
       "service": "core",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": [
         {
           "runtime": "web",
@@ -372,7 +372,7 @@
       "family": "devices",
       "title": "Telemetry (allowlisted keys)",
       "service": "core",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": [
         {
           "runtime": "web",
@@ -439,7 +439,7 @@
       "family": "release",
       "title": "Today's version check",
       "service": "update",
-      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "proof": [{ "kind": "transcript" }],
       "allowedNa": []
     },
     {

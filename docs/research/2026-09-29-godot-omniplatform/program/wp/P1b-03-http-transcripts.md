@@ -38,7 +38,7 @@ as re-register-on-401 went unnoticed (README §9.1 #14). P1b-06, P1b-07 and P1b-
   [§4.2](../../PARITY.md#42-http-transcripts-flows-the-corpus-cannot-express),
   [§11](../../PARITY.md#11-open-questions) Q2.
 - `docs/security/WIRE-CONTRACT-V3.md` §5 (transport, 401 rule, headers) and §6 (device principal).
-- `packages/worker/src/index.ts:68-153` (`dispatch`), `packages/worker/test/helpers.ts`
+- `packages/worker/src/dispatch.ts` (`dispatch`; it moved out of `index.ts`), `packages/worker/test/helpers.ts`
   (`makeTestDb`), `test/seed.ts` (`TEST_KID`, `makeEnv`, `seedProduct`, `mkReq`), `test/e2e.test.ts`
   (the richest existing flow), `test/kvMock.ts`, `test/rlMock.ts`, `test/oidcEdge.test.ts:30-45`
   (how the IdP is mocked).
@@ -53,9 +53,9 @@ as re-register-on-401 went unnoticed (README §9.1 #14). P1b-06, P1b-07 and P1b-
 
 **In:**
 
-- **A router seam.** Export `dispatchWith(req, env, db, now)` from `packages/worker/src/index.ts`.
-  Today `dispatch` builds `new D1Db(env.DB)` and reads `Date.now()` inline (`index.ts:72-73`); the
-  production `fetch` keeps doing exactly that through the new function.
+- **A router seam.** Export `dispatchWith(req, env, db, now)` from `packages/worker/src/dispatch.ts`
+  (where `dispatch` lives now; `index.ts` builds `new D1Db(env.DB)` and calls it). `dispatch` read
+  `Date.now()` inline; it now reads it and hands it to `dispatchWith`, so production is unchanged.
 - **A recorder and scenarios** under `packages/worker/test/transcripts/`. Each scenario seeds a
   product, drives a conversation through `dispatchWith` with `makeTestDb()`, asserts the server
   behaviour as an ordinary test, and returns the recording.
@@ -187,20 +187,57 @@ replays `discovery-*` here and gains more when it implements more (P1b-07). Whet
    with the features they prove.
 5. Update `AGENTS.md`, `waves.md` and `contribute/corpus.md`; run the green gate.
 
+## Implementation notes (recorded by P1b-03 where the code disagreed with this brief)
+
+- **`dispatch` lives in `src/dispatch.ts`**, not `index.ts`; `dispatchWith` is exported from there.
+- **The format gained `requires` (and an optional per-step `note`).** `features` is what a
+  transcript proves; `requires` is what it presupposes. An SDK replays a transcript when every
+  `features` id is `implemented` and no `requires` id is `na`. Every device-token transcript
+  requires `core.store`, which React declares `na` on `web` and `desktop-bridge`, so React replays
+  exactly `discovery-*` by data rather than by an exception list; `parity:check` rule 6 uses the
+  same rule. Body `subset` recurses into objects. The format is documented in
+  `packages/worker/test/transcripts/format.ts`.
+- **Swift needed a clock seam.** The recorded documents expire an hour after a fixed instant and
+  Swift read `Date()` directly, so `CoreOptions` gained an optional `clock` (default: the wall
+  clock) that `CoreContext` reads everywhere it used `Date()`. Node pins `Date` with Vitest fake
+  timers and Python pins `time.time`.
+- **The transcripts use a one-key catalog, not the real djdl catalog.** The Worker stamps catalog
+  DEFAULTS with the request time (`catalogDefaultPayload` in `core/payload.ts`: `updatedAt: now`),
+  and the config ETag hashes them, so for any catalog that declares a default the config document
+  never answers 304. Reported as a follow-up; the transcript catalog declares no default.
+- **`sync-errors`' 401 leg needs a state change mid-step.** `POST /license/token` applies the same
+  check as `GET /license/document`, so one server state cannot 401 the document and rotate the
+  token. The scenario disables the licence for the document fetch and re-enables it before the
+  re-acquire; each answer is the Worker's real one.
+- **`discovery-failure`'s 5xx is the runtime's.** Discovery has no Worker-generated 5xx, so the
+  scenario makes D1 throw and records the bare `500` an uncaught exception produces. `sync-errors`'
+  5xx is the Worker's own `500 catalog_unavailable` on the config document.
+- **Swift skips `telemetry-report`:** its manifest keeps `devices.report` `planned` for P1b-07
+  (telemetry only inside `sync()`, whose report exchanges every sync transcript does check).
+- **Registry:** the nine transcript proofs now recorded drop their `P1b-03` marker. `config.secret`,
+  `devices.manage` and `update.check` also carried `P1b-03`, but no transcript in this brief's set
+  records them; they now show as "transcripts (not recorded)" with no owner (follow-up).
+- **Fingerprints:** activation, enrolment and registration bodies are held to the SHAPE
+  `{fingerprint: {components: {}, hwid: ""}}` (enrolment requires one). Node and Python replay
+  with a fixed fingerprint; Swift collects its own for activation and enrolment and passes a fixed
+  one to `core.registerDevice` (the facade's `register()` always collects).
+
 ## Acceptance criteria
 
-- [ ] `conformance/transcripts/` holds the eight transcripts listed under Scope, and the Swift mirror
+- [x] `conformance/transcripts/` holds the eight transcripts listed under Scope, and the Swift mirror
       matches byte for byte.
-- [ ] `mise exec node@22 -- pnpm gen:transcripts -- --check` exits 0; changing one Worker response
+- [x] `mise exec node@22 -- pnpm gen:transcripts -- --check` exits 0; changing one Worker response
       body makes it and `pnpm --filter @polaris-key/worker test` fail (shown in the PR).
-- [ ] Two consecutive `pnpm gen:transcripts` runs produce identical files.
-- [ ] Node, Python and Swift replay every transcript except `register-reregister-401`, which their
-      manifests keep `planned` for P1b-06; React replays `discovery-*`.
-- [ ] A replayer fails when the SDK sends an extra request, omits one, or drops a required header
+- [x] Two consecutive `pnpm gen:transcripts` runs produce identical files.
+- [x] Node, Python and Swift replay every transcript except `register-reregister-401`, which their
+      manifests keep `planned` for P1b-06 (and Swift `telemetry-report`, `devices.report` being
+      `planned` for P1b-07); React replays `discovery-*`.
+- [x] A replayer fails when the SDK sends an extra request, omits one, or drops a required header
       (a unit test per SDK uses a doctored transcript).
-- [ ] `pnpm parity:check` enforces `transcript` proofs, and its tests cover the new rule.
-- [ ] `parity.json` manifests are updated for every SDK this changes.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd` after the `dispatchWith` change.
+- [x] `pnpm parity:check` enforces `transcript` proofs, and its tests cover the new rule.
+- [x] `parity.json` manifests are updated for every SDK this changes (no status changed: every
+      replayed feature was already `implemented`).
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd` after the `dispatchWith` change.
 
 ## Verify
 

@@ -2,7 +2,7 @@
 sidebar:
   order: 3
 title: "The truth store"
-description: "release_metadata, release_artifacts, release_channels, and release_health — populated by resync, read by the portal and entitled gating."
+description: "release_metadata, release_artifacts, release_channels, and release_health — populated by resync and GitHub release events, read by the portal and entitled gating."
 ---
 
 What versions a product has published, what each one contains, what each channel currently
@@ -22,12 +22,15 @@ independent paths to it, not one reading from the other.
 
 ## The four tables, plus one
 
-| Table               | One row per                             | Written by |
-| ------------------- | --------------------------------------- | ---------- |
-| `release_metadata`  | published GitHub release                | resync     |
-| `release_artifacts` | release asset                           | resync     |
-| `release_channels`  | channel name                            | resync     |
-| `release_health`    | release or channel, as a health subject | resync     |
+| Table               | One row per                             | Written by                |
+| ------------------- | --------------------------------------- | ------------------------- |
+| `release_metadata`  | published GitHub release                | resync, `release` webhook |
+| `release_artifacts` | release asset                           | resync, `release` webhook |
+| `release_channels`  | channel name                            | resync, `release` webhook |
+| `release_health`    | release or channel, as a health subject | resync, `release` webhook |
+
+A GitHub `release` delivery re-runs only this half of a resync — see
+[Release events refresh the truth store](/docs/services/release/github-sync/#release-events-refresh-the-truth-store).
 
 A floor table, `release_channel_floors`, sits beside them. A sync raises it and an operator
 lowers it (see [below](#release_channel_floors)). Four more tables, the
@@ -197,6 +200,12 @@ webhook fires. Nothing is ever `DELETE`d. Two reasons, one structural and one de
   row says, and the artifact URL the row holds is GitHub's own, which will 404 on its own
   once the asset is actually gone. A stale row costs nothing and simplifies the write path;
   a wrongly-deleted row would break a foreign key it doesn't need to.
+
+What the sync does record is that the release is gone. When it has read the release list to
+its end (no unread page under the 10-page cap) and a stored release is not among the published
+ones — deleted, or unpublished back to a draft — that release's `release_health` subject is
+written `degraded` with `{"absentUpstream": true}`. A capped read marks nothing. A release
+that reappears upstream gets its ordinary health row back on the next sync.
 
 `release_artifacts.source_url` is always GitHub's own `browser_download_url` and nothing
 else — never a value derived from the uploader's filename or content, and never anything

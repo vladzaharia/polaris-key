@@ -90,8 +90,10 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
 
 - `release` webhook events that refresh the store between pushes (→ [P0-03](P0-03-release-webhook.md)).
 - Version schemes other than semver (`semver+build`, `4part`), deliverables, `seq`, yanks, pins
-  and operator channel policy (→ P2-03). The floor table is a stop-gap P2-03 folds into
-  `release_channel_policy.min_supported`.
+  and operator channel policy (→ P2-03). _Superseded by P2-03:_ the floor table stays release's
+  own anti-rollback high-water mark and is **not** folded into
+  `release_channel_policy.min_supported` (the device floor); see P2-03's "Two different floors"
+  note.
 - Per-platform resolution and caching resolution to cut GitHub quota (→ P2-05).
 - Accepting a `v1.2.3` _selector_ is not planned; correcting the OpenAPI text that promises it
   belongs to [P0-11](P0-11-docs-drift.md).
@@ -165,6 +167,7 @@ mise exec node@22 -- pnpm typecheck
 
 P0-03 relies on a sync that is safe to run on every `release` event (full pagination, no unique
 conflict, floors raised). P2-03 inherits `stable_tag_pattern`, `ignore_tags_json` and the
-`release_channel_floors` rows (migrating them into `release_channel_policy`), and the single
+`release_channel_floors` rows (kept as their own table, not migrated into `release_channel_policy`, per
+P2-03's "Two different floors" decision), and the single
 resolution function. P2-05 builds per-platform resolution and caching on the same function.
 When done: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-02 done`.

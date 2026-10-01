@@ -38,6 +38,8 @@ Run these before opening a PR — they are what CI runs (`.github/workflows/ci.y
 ```sh
 pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
+pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
+pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -69,11 +71,12 @@ pnpm test:all                    # turbo test + Python pytest + Swift swift test
 ## Pre-commit hooks
 
 `pnpm install` runs the `prepare` script, which sets up [husky](https://typicode.github.io/husky/)
-git hooks automatically — no manual step. The committed `.husky/pre-commit` hook runs two
+git hooks automatically — no manual step. The committed `.husky/pre-commit` hook runs three
 fast, fail-early guards before every commit:
 
 ```sh
 pnpm gen:corpus -- --check       # conformance drift gate
+pnpm gen:services -- --check     # service-table drift gate
 pnpm typecheck
 ```
 

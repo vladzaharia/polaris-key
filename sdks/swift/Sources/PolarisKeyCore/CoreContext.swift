@@ -57,6 +57,11 @@ public struct CoreOptions: Sendable {
     /// unreachable. Naming the expectation here is how a config-only or release-enabled product
     /// gets the right answer with no round trip at all.
     public let expectedServices: [ServiceSlug]?
+    /// The system clock, epoch SECONDS. Defaults to the wall clock. Every claim check, every gate
+    /// comparison and every `lastVerifiedAt` stamp reads it — never `Date()` directly — so a
+    /// host that replays recorded traffic (the HTTP transcripts, P1b-03) can run the client at
+    /// the instant the traffic was signed. The §4.2 floor still applies on top of it.
+    public let clock: (@Sendable () -> Int)?
 
     public init(
         productSlug: String,
@@ -69,7 +74,8 @@ public struct CoreOptions: Sendable {
         configDir: URL? = nil,
         transport: (any PolarisTransport)? = nil,
         requestTimeoutSeconds: Double = 15,
-        expectedServices: [ServiceSlug]? = nil
+        expectedServices: [ServiceSlug]? = nil,
+        clock: (@Sendable () -> Int)? = nil
     ) {
         self.productSlug = productSlug
         self.baseUrl = baseUrl
@@ -82,6 +88,7 @@ public struct CoreOptions: Sendable {
         self.transport = transport
         self.requestTimeoutSeconds = requestTimeoutSeconds
         self.expectedServices = expectedServices
+        self.clock = clock
     }
 }
 
@@ -196,6 +203,11 @@ public actor CoreContext {
     /// True when the transport refuses to dial (§7.3). Surfaced so the facade can decline to
     /// start a refresh timer that could only ever throw.
     public nonisolated let localOnly: Bool
+    /// The system clock (epoch seconds) — `CoreOptions.clock`, else the wall clock.
+    public nonisolated let systemClock: @Sendable () -> Int
+    /// The same clock in MILLIseconds, keeping the wall clock's sub-second precision for
+    /// `lastVerifiedAt` when no clock was injected.
+    private nonisolated let systemClockMillis: @Sendable () -> Int
 
     private let expectedServices: [ServiceSlug]?
 
@@ -233,6 +245,13 @@ public actor CoreContext {
         self.localOnly = transport is NoNetworkTransport
         self.requestTimeoutSeconds = options.requestTimeoutSeconds
         self.expectedServices = options.expectedServices
+        if let clock = options.clock {
+            self.systemClock = clock
+            self.systemClockMillis = { clock() * 1000 }
+        } else {
+            self.systemClock = { Int(Date().timeIntervalSince1970) }
+            self.systemClockMillis = { Int(Date().timeIntervalSince1970 * 1000) }
+        }
     }
 
     /// Load device id + token + cached artifacts, re-verifying everything. NO NETWORK — an
@@ -282,7 +301,7 @@ public actor CoreContext {
 
     /// The time every gate comparison and every network-path claim check runs at.
     public func now(_ systemNow: Int? = nil) -> Int {
-        clock.effectiveNow(systemNow ?? Int(Date().timeIntervalSince1970))
+        clock.effectiveNow(systemNow ?? systemClock())
     }
 
     // ── Trust (§1) ───────────────────────────────────────────────────────────────────────
@@ -303,7 +322,7 @@ public actor CoreContext {
             jws,
             options: VerifyTrustManifestOptions(
                 pinned: pinnedTrust, expectedAud: product,
-                now: Int(Date().timeIntervalSince1970),
+                now: systemClock(),
                 lastTrustIssuedAt: manifest?.issuedAt, checkFreshness: checkFreshness))
         guard let doc = result.doc else { return false }
         // PRUNE (§1 rule 2): the discovered set is REPLACED, so a kid the server stops
@@ -599,7 +618,7 @@ public actor CoreContext {
     public func importBundle(
         _ jws: String, now importedAt: Int? = nil
     ) async throws -> ImportBundleResult {
-        let stamp = importedAt ?? Int(Date().timeIntervalSince1970)
+        let stamp = importedAt ?? systemClock()
         let inspection = inspectBundle(
             jws,
             options: BundleOptions(
@@ -1006,7 +1025,7 @@ public actor CoreContext {
     /// Mark the last verification time from a successful authenticated exchange (including a
     /// 304 — content unchanged still means freshness renewed, §5).
     private func markVerified() {
-        loaded.lastVerifiedAt = Int(Date().timeIntervalSince1970 * 1000)
+        loaded.lastVerifiedAt = systemClockMillis()
     }
 }
 

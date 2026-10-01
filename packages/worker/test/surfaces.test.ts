@@ -20,7 +20,7 @@ import { handleJwks } from "../src/core/trust.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { SERVICES } from "../src/mount.js";
-import { serializeServices } from "../src/core/services.js";
+import { SERVICE_SLUGS, serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
@@ -208,13 +208,8 @@ describe("worker surfaces", () => {
     });
 
     // ── Services: one fragment per slug, contributed by the service that owns it ──
-    expect(Object.keys(body.services)).toEqual([
-      "license",
-      "config",
-      "release",
-      "update",
-      "identity",
-    ]);
+    // (The exact bytes, key order included, are pinned by discoveryGolden.test.ts.)
+    expect(Object.keys(body.services)).toEqual([...SERVICE_SLUGS]);
     expect(body.services.license).toEqual({
       enabled: true,
       endpoints: {

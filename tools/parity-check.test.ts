@@ -10,6 +10,7 @@ import {
   PROGRAM_PATH,
   REGISTRY_PATH,
   REGISTRY_SCHEMA_PATH,
+  TRANSCRIPTS_DIR,
 } from "./parity-check.js";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -111,6 +112,8 @@ interface Fixture {
   manifest?: Json;
   tests?: Record<string, string>;
   program?: Json | null;
+  /** conformance/transcripts/<name>.json → content. */
+  transcripts?: Record<string, Json>;
 }
 
 function fixture(over: Fixture = {}): string {
@@ -124,6 +127,8 @@ function fixture(over: Fixture = {}): string {
   for (const [name, text] of Object.entries(over.tests ?? TESTS))
     write(root, `sdks/demo/tests/${name}`, text);
   if (over.program !== null) write(root, PROGRAM_PATH, over.program ?? PROGRAM);
+  for (const [name, content] of Object.entries(over.transcripts ?? {}))
+    write(root, `${TRANSCRIPTS_DIR}/${name}.json`, content);
   return root;
 }
 
@@ -188,8 +193,55 @@ describe("rule 2 — an implemented entry has a tagged test", () => {
       tests: { ...TESTS, "verify.test.ts": `// @pkey-feature demo.verify\n` },
     });
     expect(violations).toEqual([
-      '[rule 2] demo: demo.verify is proven by corpus mini.json, but no file tagged @pkey-feature demo.verify loads "mini"',
+      '[rule 2] demo: demo.verify is proven by corpus mini.json, but no file tagged @pkey-feature demo.verify loads it (a string literal naming "mini.json")',
     ]);
+  });
+
+  it("does not count a prose mention of the corpus file as loading it", () => {
+    const { violations } = run({
+      tests: {
+        ...TESTS,
+        "verify.test.ts": `// @pkey-feature demo.verify\n// Covers the edge cases, like mini.json does.\n`,
+      },
+    });
+    expect(violations).toHaveLength(1);
+  });
+
+  it("accepts the load calls each runner actually makes", () => {
+    for (const load of [
+      `readFileSync(v2("mini.json"))`,
+      `CORPUS_DIR / 'mini.json'`,
+      `join(here, "corpus/v2/mini.json")`,
+      `Bundle.module.url(forResource: "mini", withExtension: "json")`,
+    ])
+      expect(
+        run({
+          tests: {
+            ...TESTS,
+            "verify.test.ts": `// @pkey-feature demo.verify\n${load}\n`,
+          },
+        }).violations,
+        load,
+      ).toEqual([]);
+  });
+
+  it("requires a family proof's runner to name the family as well as the file", () => {
+    const r = registry();
+    (r.features as Json[])[0]!.proof = [
+      { kind: "corpus", file: "mini.json", family: "cases" },
+    ];
+    const bare = run({ registry: r });
+    expect(bare.violations).toEqual([
+      '[rule 2] demo: demo.verify is proven by corpus mini.json#cases, but no file tagged @pkey-feature demo.verify loads it (a string literal naming "mini.json" and the family cases)',
+    ]);
+    const named = run({
+      registry: r,
+      tests: {
+        ...TESTS,
+        "verify.test.ts": `// @pkey-feature demo.verify\nconst { cases } = load("mini.json");\n`,
+      },
+    });
+    expect(named.violations).toEqual([]);
   });
 
   it("does not count a corpus basename that is only a prefix of another word", () => {
@@ -404,6 +456,134 @@ describe("rule 5 — a tag names a registry feature", () => {
     });
     expect(violations).toEqual([
       "[rule 5] sdks/demo/tests/empty.py:1: @pkey-feature names no feature id",
+    ]);
+  });
+});
+
+// ── Rule 6 ─────────────────────────────────────────────────────────────────────────────────
+
+/** The fixture registry plus `demo.sync`, a feature proven by transcripts. */
+function withSync(proof: Json = { kind: "transcript" }): Json {
+  const r = registry();
+  (r.features as Json[]).push({
+    id: "demo.sync",
+    family: "demo",
+    title: "Sync",
+    service: "core",
+    proof: [proof],
+    allowedNa: [],
+  });
+  return r;
+}
+
+const SYNC_TRANSCRIPT = {
+  sync: { id: "sync", features: ["demo.sync"], requires: [] as string[] },
+};
+const TAGGED_ONLY = `// @pkey-feature demo.sync\nit("syncs against a hand-written fake", () => {});\n`;
+const REPLAYER = `// @pkey-feature demo.sync\n// Replays conformance/transcripts/ through the SDK.\n`;
+
+describe("rule 6 — a transcript that applies has a tagged replayer", () => {
+  it("fails when the only tagged test does not replay conformance/transcripts", () => {
+    const { violations } = run({
+      registry: withSync(),
+      manifest: withEntry("demo.sync", { status: "implemented" }),
+      tests: { ...TESTS, "sync.test.ts": TAGGED_ONLY },
+      transcripts: SYNC_TRANSCRIPT,
+    });
+    expect(violations).toEqual([
+      "[rule 6] demo: sync applies here, but no test tagged @pkey-feature demo.sync replays conformance/transcripts",
+    ]);
+  });
+
+  it("passes when a tagged test replays conformance/transcripts", () => {
+    const result = run({
+      registry: withSync(),
+      manifest: withEntry("demo.sync", { status: "implemented" }),
+      tests: { ...TESTS, "sync.test.ts": REPLAYER },
+      transcripts: SYNC_TRANSCRIPT,
+    });
+    expect(result.violations).toEqual([]);
+    expect(result.unrecorded).toEqual([]);
+  });
+
+  it("does not apply while the SDK has not implemented a feature the transcript proves", () => {
+    const { violations } = run({
+      registry: withSync(),
+      manifest: withEntry("demo.sync", { status: "planned", wp: "P9-01" }),
+      transcripts: SYNC_TRANSCRIPT,
+    });
+    expect(violations).toEqual([]);
+  });
+
+  it("does not apply where a feature the transcript requires is na", () => {
+    const m = webOnly(withEntry("demo.sync", { status: "implemented" }));
+    (m.features as Json)["demo.secret"] = {
+      status: "na",
+      runtime: "web",
+      reason: "runtime",
+    };
+    const needsSecret = {
+      sync: { id: "sync", features: ["demo.sync"], requires: ["demo.secret"] },
+    };
+    const tests = { ...TESTS, "sync.test.ts": TAGGED_ONLY };
+    expect(
+      run({
+        registry: withSync(),
+        manifest: m,
+        tests,
+        transcripts: needsSecret,
+      }).violations,
+    ).toEqual([]);
+    // …and applies again once the requirement is merely planned.
+    (m.features as Json)["demo.secret"] = { status: "planned", wp: "P9-01" };
+    expect(
+      run({
+        registry: withSync(),
+        manifest: m,
+        tests,
+        transcripts: needsSecret,
+      }).violations,
+    ).toEqual([
+      "[rule 6] demo: sync applies here, but no test tagged @pkey-feature demo.sync replays conformance/transcripts",
+    ]);
+  });
+
+  it("fails a malformed transcript, an unknown feature, and a feature with no transcript proof", () => {
+    const { violations } = run({
+      registry: withSync(),
+      manifest: withEntry("demo.sync", { status: "planned", wp: "P9-01" }),
+      transcripts: {
+        renamed: { id: "other", features: ["demo.sync"], requires: [] },
+        unknown: { id: "unknown", features: ["demo.nope"], requires: [] },
+        unproven: { id: "unproven", features: ["demo.secret"], requires: [] },
+        badreq: { id: "badreq", features: ["demo.sync"], requires: ["demo.x"] },
+      },
+    });
+    expect(violations).toEqual([
+      '[rule 6] conformance/transcripts/badreq.json: requires unknown feature "demo.x"',
+      '[rule 6] conformance/transcripts/renamed.json: needs "id": "renamed", a non-empty "features" list and a "requires" list',
+      '[rule 6] conformance/transcripts/unknown.json: names unknown feature "demo.nope"',
+      "[rule 6] conformance/transcripts/unproven.json: lists demo.secret, whose registry entry has no transcript proof",
+      // demo.secret is implemented, so the (invalid) transcript still demands a replayer.
+      "[rule 6] demo: unproven applies here, but no test tagged @pkey-feature demo.secret replays conformance/transcripts",
+    ]);
+  });
+
+  it("lists an unrecorded transcript proof, and warns when its owner is done", () => {
+    const open = run({
+      registry: withSync({ kind: "transcript", wp: "P9-01" }),
+      manifest: withEntry("demo.sync", { status: "planned", wp: "P9-01" }),
+    });
+    expect(open.violations).toEqual([]);
+    expect(open.warnings).toEqual([]);
+    expect(open.unrecorded).toEqual([{ feature: "demo.sync", wp: "P9-01" }]);
+
+    const closed = run({
+      registry: withSync({ kind: "transcript", wp: "P9-02" }),
+      manifest: withEntry("demo.sync", { status: "planned", wp: "P9-01" }),
+    });
+    expect(closed.warnings).toEqual([
+      "[rule 6] demo.sync: its transcript proof names P9-02, which is done, but no transcript lists demo.sync",
     ]);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { matchRoute, type Route } from "../src/router.js";
+import { SERVICE_SLUGS } from "../src/core/services.js";
 
 describe("matchRoute — platform + manage + portal (matched before product slugs)", () => {
   it("matches the manage SPA + API + auth routes", () => {
@@ -66,7 +67,7 @@ describe("matchRoute — product-scoped routes", () => {
 // resolve to ONE kind carrying the slug and the remaining segments, and the service's descriptor
 // routes them from there — which is what lets a product turn a service off and have its whole
 // surface disappear rather than answer 403 per path.
-describe("matchRoute — service namespaces (all five)", () => {
+describe("matchRoute — service namespaces (every table slug)", () => {
   const serviceCases: Array<[string, string, string[]]> = [
     ["/djdl/license/activate", "license", ["activate"]],
     ["/djdl/license/enroll", "license", ["enroll"]],
@@ -118,6 +119,16 @@ describe("matchRoute — service namespaces (all five)", () => {
     ],
     ["/djdl/identity/auth/device/poll", "identity", ["auth", "device", "poll"]],
   ];
+
+  it.each(SERVICE_SLUGS.map((slug) => [slug]))(
+    "routes the %s namespace to its service (SERVICE_NAMESPACES covers the table)",
+    (slug) => {
+      expect(
+        matchRoute(`/djdl/${slug}/anything`),
+        `router.ts SERVICE_NAMESPACES does not dispatch "${slug}"`,
+      ).toEqual({ kind: "service", slug, product: "djdl", rest: ["anything"] });
+    },
+  );
 
   it.each(serviceCases)("routes %s -> %s %j", (path, slug, rest) => {
     expect(matchRoute(path)).toEqual({

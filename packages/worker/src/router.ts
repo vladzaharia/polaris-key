@@ -28,7 +28,7 @@
 // is therefore no second handler to keep in step and no way for the two to answer differently;
 // the `alias` flag exists so a route table can be asserted on, not so a handler can branch.
 
-import type { ServiceSlug } from "./core/services.js";
+import { SERVICE_SLUGS, type ServiceSlug } from "./core/services.js";
 
 /**
  * The service slugs the core router dispatches through the registry today.
@@ -38,13 +38,9 @@ import type { ServiceSlug } from "./core/services.js";
  * through to some other matcher. That is why the set is checked before the channel-appcast
  * pattern below: a product may not have a release channel called `license`.
  */
-const SERVICE_NAMESPACES: ReadonlySet<string> = new Set<ServiceSlug>([
-  "license",
-  "config",
-  "release",
-  "update",
-  "identity",
-]);
+const SERVICE_NAMESPACES: ReadonlySet<string> = new Set<ServiceSlug>(
+  SERVICE_SLUGS,
+);
 
 export type Route =
   | { kind: "adminSpa" }
