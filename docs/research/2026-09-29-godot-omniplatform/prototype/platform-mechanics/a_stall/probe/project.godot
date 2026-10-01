@@ -1,0 +1,17 @@
+config_version=5
+
+[application]
+
+config/name="s05stall"
+run/main_scene="res://probe.tscn"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

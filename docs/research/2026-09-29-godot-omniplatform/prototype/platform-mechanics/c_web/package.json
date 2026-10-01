@@ -1,0 +1,9 @@
+{
+  "name": "s05-web-harness",
+  "private": true,
+  "type": "module",
+  "description": "S-05 (c) web multi-pack harness (research code, not part of the workspace)",
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

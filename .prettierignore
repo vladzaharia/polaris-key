@@ -10,7 +10,7 @@ packages/docs/.astro/
 docs/research/2026-09-29-godot-omniplatform/prototype/vectors/
 # Local outputs of the research experiments (all git-ignored by their own .gitignore, which Prettier
 # does not read): content vector sets (byte-exact, drift-checked by regenerating), the patching
-# exports and generated projects, and the toolchains, fetched sources and npm installs their READMEs
+# exports and generated projects, the platform-mechanics packs, exports, logs and template copies, and the toolchains, fetched sources and npm installs their READMEs
 # put next to them.
 docs/research/2026-09-29-godot-omniplatform/prototype/content/vectors/
 docs/research/2026-09-29-godot-omniplatform/prototype/content/npm/
@@ -38,3 +38,12 @@ docs/research/2026-09-29-godot-omniplatform/prototype/lowend/project/lib/
 docs/research/2026-09-29-godot-omniplatform/prototype/lowend/build/
 docs/research/2026-09-29-godot-omniplatform/prototype/lowend/results/
 docs/research/2026-09-29-godot-omniplatform/prototype/policy-recheck/out/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/out/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/logs/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/tpl/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/build/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/e_velopack/launcher/target/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/e_velopack/releases/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/export/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/profiles/
+docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/node_modules/
