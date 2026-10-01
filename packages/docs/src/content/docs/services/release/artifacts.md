@@ -207,10 +207,15 @@ window is bounded (a licence, tier or the product's compatibility range sets a m
 maximum) such a version is refused with `version_blocked` rather than waved through. This
 applies to `/release/dl`, `/release/builds` and `/release/files` alike.
 
+`/release/files` checks the release's stored version as that one fixed release, never as a
+selector. A release tagged `latest`, `stable`, `beta`, `pr-5` or a manual channel's name stores
+that word as its version; it is window-checked like any pinned version, so under a bounded
+window it is refused with `version_blocked` rather than treated as the moving channel it spells.
+
 A blob URL names a hash, not a release, and a hash is no secret: signed manifests publish it.
 Under `entitled`, `/release/blobs` therefore serves an object only if at least one release of
 this product with an artifact of that digest passes the same check `/release/files` applies to
-that release's version. Otherwise it answers that release's refusal (`version_blocked`, say),
+that release's stored version. Otherwise it answers that release's refusal (`version_blocked`, say),
 or the plain not-found when no release artifact carries the hash at all.
 
 A client that already handles the nested shape for license documents needs nothing new to

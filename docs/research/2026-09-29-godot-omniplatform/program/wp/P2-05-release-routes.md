@@ -194,6 +194,17 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
   that `sha256` (index `idx_release_artifacts_sha256`) passes `enforceReleaseAccess` for its
   version; otherwise it answers the first refusal, or the flat not-found when no release
   artifact carries the hash (a pack-object-only ref, until P2b-04 / P4-05).
+- **Security round.** The file and blob routes passed a release's STORED version to
+  `enforceReleaseAccess` as a route selector. The sync stores `versionFromTag(tag)`, so a release
+  tagged `latest` or `stable` classified as the moving stable channel (no window check), and
+  `beta`, `pr-N` or a manual channel's name as that moving channel: a capped, stable-only licence
+  downloaded a rolling prerelease by file and by hash. `ReleaseParams.fixedVersion` now carries a
+  fixed release's stored version; `entitledSelectorFor` always pins it (stable channel, version
+  window-checked) and `enforceReleaseAccess` refuses it under a bounded window when it is not
+  semver, an empty one included. `computeFile` joins the release row, so an artifact whose row
+  is missing is never served on a check that saw no version. The audit found no other call site
+  that passes a stored version (`/release/dl`, `/release/builds`, appcasts and the version
+  check all pass the request's own selector).
 
 ## Steps
 

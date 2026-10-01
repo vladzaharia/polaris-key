@@ -470,10 +470,18 @@ artifacts, and a `beta` grant opens the `staging` alias of it: `staging` is the 
 `compareSemver` calls an unparseable version equal to both bounds, so a pinned version that is not
 semver (a four-part `1.2.3.4`, a tag like `2.0.0.1`) is refused with `version_blocked` whenever the
 window is bounded, on `/release/dl`, `/release/builds` and `/release/files` alike (P2-05).
+A route that serves one stored release (`/release/files`, and each release `/release/blobs`
+checks) passes that release's STORED version as a fixed, pinned version (`fixedVersion`), never
+as a route selector: the sync stores the tag minus its `v`, so a release tagged `latest`,
+`stable`, `beta`, `pr-5` or a manual channel's name stores that word, and read as a selector it
+would be a moving channel with no window check. As a fixed version it is window-checked and, not
+being semver, refused whenever the window is bounded (P2-05 security round). Like a pinned
+selector it is checked as the stable channel: under an unbounded window a stable-only licence can
+still fetch a prerelease by exact file, as it can by pinned version on `/release/dl`.
 `/release/blobs` names a hash rather than a release, so the gateway's decision there proves only
 a usable licence; under `entitled` a blob is served only if a release of this product whose
-artifact carries that digest passes the `/release/files` check for its version, and a hash no
-release artifact carries answers not-found (P2-05).
+artifact carries that digest passes the `/release/files` check for its stored version, and a hash
+no release artifact carries answers not-found (P2-05).
 
 ## 6. What the licensing enforcement actually promises
 
