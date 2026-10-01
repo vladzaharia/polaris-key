@@ -757,6 +757,63 @@ describe("licensing", () => {
     expect(okRes.status).toBe(200);
   });
 
+  // ── One channel vocabulary (P0-04, WIRE-CONTRACT-V3 §5.1) ──
+
+  async function docWithChannel(
+    id: string,
+    channels: string[],
+    header: string,
+  ): Promise<Response> {
+    const { key } = await seedLicenseWithKey(db, "djdl", { id, channels });
+    const token = await activate(env, db, product, key, `dev-${id}`);
+    return handleLicenseDocument(
+      mkReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-version": "1.0.0",
+        "x-pkey-channel": header,
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+  }
+
+  it("X-PKey-Channel: beta — 200 with [stable, beta], 403 with [stable], 200 with [stable, staging]", async () => {
+    expect(
+      (await docWithChannel("lic_beta", ["stable", "beta"], "beta")).status,
+    ).toBe(200);
+
+    const refused = await docWithChannel("lic_stable", ["stable"], "beta");
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({
+      error: { code: "channel_not_allowed", reason: "channel-not-entitled" },
+    });
+
+    // A legacy `staging` grant covers `beta` (§5.1 rule 4).
+    expect(
+      (await docWithChannel("lic_staging", ["stable", "staging"], "beta"))
+        .status,
+    ).toBe(200);
+  });
+
+  it("X-PKey-Channel: staging is the beta channel; a malformed header is refused", async () => {
+    expect(
+      (await docWithChannel("lic_beta2", ["stable", "beta"], "staging"))
+        .status,
+    ).toBe(200);
+
+    const malformed = await docWithChannel(
+      "lic_all",
+      ["stable", "staging", "beta"],
+      "STAGING",
+    );
+    expect(malformed.status).toBe(403);
+    expect(await malformed.json()).toMatchObject({
+      error: { code: "channel_not_allowed", reason: "channel-not-entitled" },
+    });
+  });
+
   it("an admin maxVersion narrower than the product compat_max blocks a too-new build", async () => {
     // Product compat window is 0.0.0..99.0.0; admin caps at 2.0.0 (tighter wins).
     const { key } = await seedLicenseWithKey(db, "djdl", {

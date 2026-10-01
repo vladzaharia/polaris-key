@@ -7,6 +7,12 @@ import {
   isDevBuild,
   parseSemver,
 } from "../src/core/gate.js";
+import {
+  channelEntitled,
+  impliedChannel,
+  isChannelName,
+  normalizeChannelHeader,
+} from "../src/core/channels.js";
 
 // Convenience: an enforced entitlement entry.
 const ent = (value: ManagedEntry["value"]): ManagedEntry => ({
@@ -91,7 +97,9 @@ describe("compareSemver", () => {
 describe("channelForVersion", () => {
   it("maps the special 0.0.0-* prefixes", () => {
     expect(channelForVersion("0.0.0-dev+abc")).toBe("dev");
-    expect(channelForVersion("0.0.0-staging.1")).toBe("staging");
+    // P0-04: `staging` is the legacy spelling of `beta` (WIRE-CONTRACT-V3 §5.1 rule 2).
+    expect(channelForVersion("0.0.0-staging.1")).toBe("beta");
+    expect(channelForVersion("0.0.0-beta.3")).toBe("beta");
     expect(channelForVersion("0.0.0-pr42.1")).toBe("pr");
     expect(channelForVersion("0.0.0-pr7")).toBe("pr");
   });
@@ -351,7 +359,9 @@ describe("checkBuildGate — the declared channel cannot loosen the build's own 
   });
 
   it("an unrecognised channel declaration is refused, not coerced to stable", () => {
-    for (const channelHeader of ["staging-2", "STAGING", "beta", "nonsense"]) {
+    // Malformed (`STAGING`, `Beta.2`) is refused outright; well-formed but ungranted
+    // (`staging-2`, `nonsense`) must be granted by name (§5.1 rules 3–4).
+    for (const channelHeader of ["staging-2", "STAGING", "Beta.2", "nonsense"]) {
       const r = checkBuildGate({
         version: "1.2.3",
         channelHeader,
@@ -361,6 +371,16 @@ describe("checkBuildGate — the declared channel cannot loosen the build's own 
       expect(r.ok).toBe(false);
       expect(r.reason).toBe("channel-not-entitled");
     }
+  });
+
+  it("a beta header is the alias case: a legacy staging grant covers it (P0-04)", () => {
+    const r = checkBuildGate({
+      version: "1.2.3",
+      channelHeader: "beta",
+      entitlements: { channels: ent(["stable", "staging", "pr"]) },
+      ...win,
+    });
+    expect(r).toEqual({ ok: true });
   });
 
   it("ordinary words beginning with `pr` are no longer read as the pr channel (R3-13)", () => {
@@ -375,5 +395,148 @@ describe("checkBuildGate — the declared channel cannot loosen the build's own 
           ...win,
         }).ok,
       ).toBe(false);
+  });
+});
+
+// ── The channel vocabulary (WIRE-CONTRACT-V3 §5.1, P0-04) ───────────────────────────────────
+
+describe("isChannelName (§5.1 rule 1)", () => {
+  it.each([
+    ["stable", true],
+    ["beta", true],
+    ["pr-42", true],
+    ["nightly", true],
+    ["0day", true],
+    ["a".repeat(64), true],
+    ["a".repeat(65), false],
+    ["-beta", false],
+    ["Beta", false],
+    ["beta.2", false],
+    ["beta_2", false],
+    ["", false],
+  ])("%s → %s", (name, ok) => {
+    expect(isChannelName(name)).toBe(ok);
+  });
+});
+
+describe("impliedChannel (§5.1 rule 2)", () => {
+  it.each([
+    ["0.0.0-dev", "dev"],
+    ["0.0.0-dev+abc123", "dev"],
+    ["0.0.0-beta.3", "beta"],
+    ["0.0.0-staging.1", "beta"],
+    ["0.0.0-pr-42+sha", "pr-42"],
+    ["0.0.0-pr42.1", "pr-42"],
+    ["0.0.0-pr-1234567", "pr-1234567"],
+    ["0.0.0-pr-12345678", "pr"],
+    ["0.0.0-prfoo", "stable"],
+    ["2.0.0-beta.1", "stable"],
+    ["1.2.3", "stable"],
+  ])("%s → %s", (version, channel) => {
+    expect(impliedChannel(version)).toBe(channel);
+  });
+});
+
+describe("normalizeChannelHeader (§5.1 rule 3)", () => {
+  it.each([
+    ["stable", "1.2.3", "stable"],
+    ["latest", "1.2.3", "stable"],
+    ["beta", "1.2.3", "beta"],
+    ["staging", "1.2.3", "beta"],
+    ["dev", "1.2.3", "dev"],
+    ["pr", "1.2.3", "pr"],
+    ["pr", "0.0.0-pr-42+sha", "pr-42"],
+    ["pr", "0.0.0-pr42", "pr-42"],
+    ["pr", "0.0.0-pr-12345678", "pr"],
+    ["pr-7", "1.2.3", "pr-7"],
+    ["pr7", "1.2.3", "pr-7"],
+    ["pr-12345678", "1.2.3", "pr"],
+    ["nightly", "1.2.3", "nightly"],
+    ["staging-2", "1.2.3", "staging-2"],
+    ["STAGING", "1.2.3", null],
+    ["Beta.2", "1.2.3", null],
+    ["beta_2", "1.2.3", null],
+    ["", "1.2.3", null],
+  ])("%s on %s → %s", (header, version, channel) => {
+    expect(normalizeChannelHeader(header, version)).toBe(channel);
+  });
+});
+
+describe("channelEntitled (§5.1 rule 4)", () => {
+  it.each([
+    [[], "stable", true],
+    [["stable"], "beta", false],
+    [["stable", "beta"], "beta", true],
+    [["stable", "staging"], "beta", true],
+    [["stable", "beta"], "staging", false], // a `beta` grant never covers a manual `staging`
+    [["stable", "staging"], "staging", true],
+    [["stable", "pr"], "pr-42", true],
+    [["stable", "pr"], "pr", true],
+    [["stable", "pr-42"], "pr-42", true],
+    [["stable", "pr-42"], "pr-7", false],
+    [["stable", "pr-42"], "pr", false],
+    [["stable", "beta"], "dev", false],
+    [["stable", "dev"], "dev", true],
+    [["stable", "nightly"], "nightly", true],
+    [["stable", "beta"], "nightly", false],
+    [["stable", "manual"], "nightly", false], // no literal `manual` family (P0-04 §2.4)
+  ])("%j covers %s → %s", (granted, channel, ok) => {
+    expect(channelEntitled(granted as string[], channel)).toBe(ok);
+  });
+});
+
+describe("checkBuildGate — the channel vocabulary (P0-04)", () => {
+  const win = { compatMin: "0.0.0", compatMax: "99.0.0" };
+  const pre = { compatMin: "0.0.0-0", compatMax: "99.0.0" };
+  const gate = (
+    version: string,
+    channelHeader: string | undefined,
+    channels: string[] | undefined,
+    window = win,
+  ) =>
+    checkBuildGate({
+      version,
+      ...(channelHeader === undefined ? {} : { channelHeader }),
+      entitlements: channels ? { channels: ent(channels) } : {},
+      ...window,
+    }).reason ?? "ok";
+
+  it("beta, latest, manual names and per-PR grants work at the gate", () => {
+    expect(gate("2.0.0", "beta", ["stable", "beta"])).toBe("ok");
+    expect(gate("2.0.0", "beta", ["stable", "staging"])).toBe("ok");
+    expect(gate("2.0.0", "staging", ["stable", "beta"])).toBe("ok");
+    expect(gate("2.0.0", "latest", undefined)).toBe("ok");
+    expect(gate("2.0.0", "nightly", ["stable", "nightly"])).toBe("ok");
+    expect(gate("2.0.0", "pr-42", ["stable", "pr"])).toBe("ok");
+    expect(gate("2.0.0", "pr-42", ["stable", "pr-42"])).toBe("ok");
+    expect(gate("0.0.0-pr-42+sha", "pr", ["stable", "pr-42"], pre)).toBe("ok");
+  });
+
+  it("refuses what the grant does not name", () => {
+    expect(gate("2.0.0", "beta", ["stable"])).toBe("channel-not-entitled");
+    expect(gate("2.0.0", "nightly", ["stable", "beta"])).toBe(
+      "channel-not-entitled",
+    );
+    expect(gate("2.0.0", "pr-7", ["stable", "pr-42"])).toBe(
+      "channel-not-entitled",
+    );
+    expect(gate("2.0.0", "dev", ["stable", "beta"])).toBe(
+      "channel-not-entitled",
+    );
+    expect(gate("0.0.0-pr-42+sha", "stable", undefined, pre)).toBe(
+      "channel-not-entitled",
+    );
+  });
+
+  it("a 0.0.0-beta build implies beta (the one tightening)", () => {
+    expect(gate("0.0.0-beta.3", undefined, ["stable", "beta"], pre)).toBe("ok");
+    expect(gate("0.0.0-beta.3", undefined, ["stable"], pre)).toBe(
+      "channel-not-entitled",
+    );
+    expect(gate("0.0.0-staging.1", undefined, ["stable", "beta"], pre)).toBe(
+      "ok",
+    );
+    // With a compat floor of `0.0.0`, every `0.0.0-*` build is refused first by version.
+    expect(gate("0.0.0-beta.3", undefined, ["stable"])).toBe("version-too-old");
   });
 });
