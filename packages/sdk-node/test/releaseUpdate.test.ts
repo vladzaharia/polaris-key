@@ -171,20 +171,21 @@ describe("ReleaseClient — the truth store's public face (§R1)", () => {
     c.close();
   });
 
-  it("surfaces a 401 by the refusal body's own code, nested or flat", async () => {
-    // `entitled` answers the nested v3 shape; `authenticated`/`licensed` keep the flat v2 one.
-    // Either way the host learns WHY, not merely that it failed (release-changelog transcript).
-    for (const [body, code] of [
-      [{ error: { code: "unauthorized" } }, "unauthorized"],
-      [{ error: "download_auth_required" }, "download_auth_required"],
-      [{}, "unauthorized"],
-    ] as const) {
+  // `entitled` answers the nested v3 shape; `authenticated`/`licensed` keep the flat v2 one.
+  // Either way the host learns WHY, not merely that it failed (release-changelog transcript).
+  it.each([
+    [{ error: { code: "unauthorized" } }, "unauthorized"],
+    [{ error: "download_auth_required" }, "download_auth_required"],
+    [{}, "unauthorized"],
+  ])(
+    "surfaces a 401 by the refusal body's own code (%j → %s)",
+    async (body, code) => {
       const mock = mockFetch({ "/release/changelog": () => json(body, 401) });
       const c = await client(mock);
       await expect(c.release.changelog()).rejects.toMatchObject({ code });
       c.close();
-    }
-  });
+    },
+  );
 
   it("maps any other non-OK status to a PolarisError rather than a raw Response", async () => {
     const mock = mockFetch({ "/release/changelog": () => json({}, 500) });
