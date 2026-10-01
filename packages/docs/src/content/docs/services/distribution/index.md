@@ -124,6 +124,10 @@ stored on the outlet's row (`capabilities_source = 'admin'`) and survives every 
 hands the outlet back to its kind's default. Reading back clamps too: a stored value wider than
 today's default is ignored, so the answer can only ever be narrower than the table.
 
+The kind those defaults are looked up by is guarded as well. An id that is itself a kind cannot
+be given another one (`outlet_kind_mismatch`). An existing outlet with a custom id takes a new
+kind from a push only when that does not widen the defaults; otherwise it keeps its kind.
+
 The console API (narrative-only, not in the wire spec), every write audited:
 
 | Method | Path                                                                              | Does                                                      |

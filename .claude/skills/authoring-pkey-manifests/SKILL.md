@@ -79,7 +79,9 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       whose builds must match this map.
 - [ ] **`distribution`** (optional; P2b-02) — where the product is distributed: `outlets` keyed
       by outlet id (an id that is itself a kind such as `steam`, `play`, `app-store` needs no
-      `kind`; `altstore-beta` needs `kind: altstore`), each with its kind's store identity
+      `kind`, and any `kind` it does give must repeat the id — `outlet_kind_mismatch`;
+      `altstore-beta` needs `kind: altstore`, and once linked it can change kind only to one
+      that narrows its capability defaults), each with its kind's store identity
       fields (`bundleId`, `packageName`, `steam.appId`, `itch.gameId`, `packageFamilyName`,
       `homebrewCask`, …); `transports` (`default` — `pkey-cdn` or `embedded` —, `packs.<outlet>`,
       `deliverables.<id>.<outlet>`); and `listing`. Maps to `dist_outlets` and `dist_transports`.

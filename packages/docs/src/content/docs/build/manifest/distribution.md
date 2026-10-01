@@ -77,9 +77,16 @@ listing:
 `obtainium`, `fdroid-repo`, `ms-store`, `app-installer`, `steam`, `itch`, `flathub`, `snap`,
 `winget`, `web`.
 
-An id that is itself a kind may omit `kind` (`steam:` is a `steam` outlet). Any other id needs
-one — `altstore-beta: { kind: altstore }` — or validation fails with `unknown_outlet_kind`. An
-outlet with no identity fields is written `web: {}`.
+An id that is itself a kind may omit `kind` (`steam:` is a `steam` outlet), and an explicit
+`kind` there must repeat the id: `app-store: { kind: web }` fails with `outlet_kind_mismatch`.
+Any other id needs one — `altstore-beta: { kind: altstore }` — or validation fails with
+`unknown_outlet_kind`. An outlet with no identity fields is written `web: {}`.
+
+Because capabilities default per kind, a kind change on an outlet that already exists is applied
+only when it does not widen those defaults (for example `web` to `altstore`). A widening change
+(`altstore` to `direct`) is held: the outlet keeps its old kind and the rest of the push applies.
+Declare a new outlet id for the wider kind, so copies already installed through the old one keep
+what they had.
 
 ### Identity fields per kind
 
@@ -170,10 +177,13 @@ Distribution's own ingest hook, only while Distribution is enabled for the produ
 
 - every declared outlet is upserted into `dist_outlets` — kind, identity and merged listing.
   A row changes (and its `modified_at` moves) only when one of those does, so resyncing the same
-  manifest twice is a no-op;
+  manifest twice is a no-op. An existing outlet's kind changes only when that narrows its
+  capability defaults (see above);
 - an outlet the file no longer declares gets `removed_at`; its row is never deleted, because
   availability history refers to it. Declaring it again clears `removed_at`;
-- `dist_transports` is replaced with the resolved pairs;
+- `dist_transports` is replaced with the resolved pairs — one per live outlet for each
+  deliverable that Release ingests. Pack deliverables are ignored for now, so today that means
+  only `app`, and at most 32 rows;
 - the operator-owned capability columns are never written.
 
 ## Outlet ids for a Godot export

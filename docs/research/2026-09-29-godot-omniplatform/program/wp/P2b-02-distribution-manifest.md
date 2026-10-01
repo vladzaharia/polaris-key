@@ -101,7 +101,12 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
 - **Outlet ids and kinds.** Ids match `^[a-z][a-z0-9-]{0,63}$`. `kind` defaults to the id when the
   id is a known kind (`direct`, `app-store`, `testflight`, `altstore`, `altstore-pal`, `play`,
   `play-testing`, `obtainium`, `fdroid-repo`, `ms-store`, `app-installer`, `steam`, `itch`,
-  `flathub`, `snap`, `winget`, `web`), so `altstore-beta` needs `kind: altstore`.
+  `flathub`, `snap`, `winget`, `web`), so `altstore-beta` needs `kind: altstore`. An explicit
+  `kind` on an id that is itself a kind must equal the id (`outlet_kind_mismatch`, added in
+  review: re-kinding `app-store` to `web` would swap in the self-hosted capability defaults), and
+  the ingest changes an existing outlet's kind only when that narrows its defaults. Transport
+  routes cover only the deliverables Release ingests (today `app`), which bounds the rows an
+  ingest writes.
 - **Identity fields per kind** (proposed): `app-store`/`testflight` `appleId`, `bundleId`;
   `altstore`/`altstore-pal` `artifact`, `bundleId`, `marketplaceId` (PAL only); `play`/`play-testing`
   `packageName`, `tracks {<channel>: <track>}`; `obtainium`/`fdroid-repo` `artifact`,

@@ -337,10 +337,21 @@ class. So (tests: `shared-manifest` parity mutations, `test/distributionOutlets.
 - **Narrow-only at the API.** `PUT …/capabilities` refuses any value wider than the kind's
   compiled default (`binaryUpdates` self > store > none, a boolean to false, `commerce` to
   `none`), and an unknown key.
-- **Clamped on read.** The hook re-checks every stored override field against the current
-  default and ignores any that would widen, so a stale row, a later kind change or a D1 console
-  edit can only make the answer narrower. An unknown kind, an undeclared outlet and a removed
-  outlet all answer `null` — never a permissive default.
+- **The kind is guarded, because the defaults are keyed by it.** The manifest owns an outlet's
+  `kind`, so re-kinding was the one indirect way to widen. An id that is itself a kind is that
+  kind: `app-store: { kind: web }` fails validation (`outlet_kind_mismatch`; the schema pins
+  `kind` to the id). A custom id (`altstore-beta`) may pick any kind when first declared — a new
+  outlet id has no installed copies yet — but once its row exists, the ingest lets it take a new
+  kind only when every default capability of the new kind is equal or narrower than the old
+  (`kindsNarrowableTo`, the same order `narrows` uses; `commerce` only to itself or `none`).
+  Otherwise the row keeps its kind and the rest of the push applies; a removed row coming back
+  is held the same way. Widening needs a new outlet id, so copies installed through the old one
+  keep what they had.
+- **Clamped on read.** The hook re-checks every stored override field against the default of
+  the row's kind and ignores any that would widen, so a stale row or a D1 console edit can only
+  make the override narrower. (The clamp bounds the override, not the kind; the kind is guarded
+  above.) An unknown kind, an undeclared outlet and a removed outlet all answer `null` — never a
+  permissive default.
 
 **The ingest pipeline is a Core-mediated write path, not a hook.** `manifestIngestStatements`
 (`core/registry.ts`) runs each **enabled** service's `manifestIngest` and puts the statements in
@@ -350,6 +361,16 @@ for its resync route) and never imports Distribution (rule 6). Resync gates on t
 **stored** enablement after the manifest's write, so a service an operator turned off live keeps
 its rows. A `manifestIngest` returns statements only, so it cannot read — it must be idempotent
 SQL and must not name an operator-owned column; reviewers check both.
+
+**The ingest's cost is bounded for untrusted input (the R10 class).** Every row Distribution
+writes comes from one push to a third party's repo and lands in the shared D1 batch, so its count
+is bounded by the validator, not by the push: at most 32 outlets (`MAX_OUTLETS`), and transport
+routes only for the deliverables Release actually ingests — today only `app`, because packs are
+ignored (`pack_deliverables_not_supported`). Routing every declared pack would have let a 64 KiB
+`release.yaml` of `{kind: pack}` entries multiply into ~90,000 statements. A link or resync
+therefore writes at most 32 outlet upserts, one removal sweep, one transport delete and 32
+transport inserts (`test/distributionOutlets.test.ts`, "the ingest's cost is bounded"). When
+packs are ingested (P4-02), the pack count must be bounded before they are routed.
 
 **Residual risk.** Identity and listing fields are manifest-owned and written verbatim (validated
 patterns, https-only URLs, no control characters); a repo writer can point a listing's `iconUrl`
