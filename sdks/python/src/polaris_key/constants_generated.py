@@ -137,6 +137,8 @@ class ErrorCode:
     NETWORK_ERROR: Final = "network-error"
     SERVER_ERROR: Final = "server-error"
     CANCELLED: Final = "cancelled"
+    SIGN_IN_EXPIRED: Final = "sign-in-expired"
+    SIGN_IN_DENIED: Final = "sign-in-denied"
     SIGN_IN_UNAVAILABLE: Final = "sign-in-unavailable"
     INVALID_OPTIONS: Final = "invalid-options"
     NOT_CONFIGURED: Final = "not-configured"
@@ -220,6 +222,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "network-error",
     "server-error",
     "cancelled",
+    "sign-in-expired",
+    "sign-in-denied",
     "sign-in-unavailable",
     "invalid-options",
     "not-configured",
@@ -305,6 +309,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "network-error": "client",
         "server-error": "client",
         "cancelled": "client",
+        "sign-in-expired": "client",
+        "sign-in-denied": "client",
         "sign-in-unavailable": "client",
         "invalid-options": "client",
         "not-configured": "client",
