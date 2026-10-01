@@ -23,7 +23,7 @@
       "wp": "P1b-04",
       "note": "Sends win32/x64 where other SDKs send other spellings."
     },
-    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
       "status": "planned",

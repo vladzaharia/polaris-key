@@ -37,6 +37,10 @@ from .client import DeviceInfo, PolarisKeyClient, SyncState
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .config.mint import MintedToken
 from .identity.client import IdentityClient, SignInPoll, SignInPrompt, SignInResult
+# Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts), imported wholesale through
+# the generated ``__all__`` so a constant the generator gains reaches the package root unedited.
+from . import constants_generated as _constants_generated
+from .constants_generated import *  # noqa: F401,F403
 from .core.bundle import (
     BUNDLE_CLAIMS_REJECTED,
     BUNDLE_JWS_REJECTED,
@@ -298,4 +302,6 @@ __all__ = [
     "DEFAULT_BASE",
     "DEFAULT_REQUEST_TIMEOUT_SECONDS",
     "normalize_base_url",
+    # generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts)
+    *_constants_generated.__all__,
 ]

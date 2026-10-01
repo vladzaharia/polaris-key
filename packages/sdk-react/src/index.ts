@@ -169,11 +169,18 @@ export {
   type DeviceInfo,
   type UserConfigEntry,
   type VersionCheck,
-  type ServiceSlug,
   type ServicesMap,
   type ServiceBusyMap,
   type ServiceErrorMap,
 } from "./core/index.js";
+
+// ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──
+// Error codes, header names, enums, feature ids, versions and the channel vocabulary, spelled
+// identically (up to casing) in every SDK. Re-exported wholesale so a constant the generator gains
+// (a new enum, P0-04's channel constants) reaches the package root without editing this file;
+// test/errorCodes.test.ts checks every generated export is reachable from here. `ServiceSlug` is
+// exported as a value and a type; it is the same union the discovery module uses.
+export * from "./constants.generated.js";
 
 // ── Wire types (re-exported for convenience; the protocol package is the source) ──
 export type {

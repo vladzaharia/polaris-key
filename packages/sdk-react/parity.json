@@ -31,7 +31,7 @@
       "note": "No local-only client in React; P1b-07 leaves it unowned."
     },
     "core.headers": { "status": "planned", "wp": "P1b-04" },
-    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
       "status": "na",

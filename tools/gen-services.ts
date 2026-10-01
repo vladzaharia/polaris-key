@@ -322,7 +322,7 @@ DEFAULT_ENABLED_SERVICES: Tuple[str, ...] = ${tuple(defaults)}
 `;
 }
 
-const SWIFT_KEYWORDS = new Set([
+export const SWIFT_KEYWORDS = new Set([
   "associatedtype",
   "class",
   "deinit",

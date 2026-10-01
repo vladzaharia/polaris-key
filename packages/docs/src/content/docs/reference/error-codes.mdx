@@ -1,6 +1,6 @@
 ---
 title: "Wire error codes"
-description: "The PolarisErrorCode taxonomy (protocol) and the worker's ErrorCode enum."
+description: "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode enum, and the client codes the SDKs raise."
 ---
 
 {/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
@@ -9,6 +9,10 @@ description: "The PolarisErrorCode taxonomy (protocol) and the worker's ErrorCod
 Wire-v3 errors are nested — `{"error":{"code":…}}` — and the not-found body is ONE
 shape for "no such product", "service not enabled", and "no such route" (hide-don't-reveal).
 14 protocol codes; the worker enum maps each to its response site.
+
+Every code, wire and client, is registered in `conformance/parity/errors.json`
+(53 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
 
@@ -43,3 +47,33 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 | `enroll_disabled` | `ErrorCode.EnrollDisabled` |
 | `enroll_claimed` | `ErrorCode.EnrollClaimed` |
 | `license_disabled` | `ErrorCode.LicenseDisabled` |
+
+## Client codes (`conformance/parity/errors.json`)
+
+Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
+
+| Code | Service | Meaning |
+| --- | --- | --- |
+| `service-unavailable` | `core` | The product does not run the service this sub-client speaks to. |
+| `service-disabled` | `core` | React: the product's discovery document has this service turned off. |
+| `local-only` | `core` | This client is local-only; the call would have opened a network connection. |
+| `insecure-base-url` | `core` | The base URL would carry the device bearer token in the clear (plain http to a non-loopback host). |
+| `bundle-jws-rejected` | `core` | Offline bundle import, step 1: the bundle's signature, `typ` or size cap failed. |
+| `bundle-claims-rejected` | `core` | Offline bundle import, step 2: `aud`, `deviceId`, the import window or the carried documents failed. |
+| `bundle-trust-rejected` | `core` | Offline bundle import, step 3: the inner trust manifest failed against the pinned keys. |
+| `inner-doc-rejected` | `core` | Offline bundle import, step 4: a carried document failed against the effective trust set. |
+| `bundle` | `core` | Swift: the offline bundle import failed before a refusal step could be named. |
+| `transport` | `core` | Swift: the transport returned something that is not an HTTP response. |
+| `network` | `core` | React: the request failed, or the server answered with an unexpected status. |
+| `refresh-failed` | `core` | React: refreshing the session or documents failed. |
+| `sync-failed` | `core` | Boot stage machine: sync returned an unusable answer and boot cannot continue, so it stops in the error stage. |
+| `fetch-failed` | `core` | Boot stage machine: fetching required content failed and required packs are still missing, so boot stops in the error stage. |
+| `bridge-missing` | `core` | React desktop: the host bridge the adapter talks through is not installed. |
+| `unknown` | `core` | React desktop: the host bridge threw something that carries no code. |
+| `device-management-unsupported` | `core` | Remote device management needs a credential or backend this client does not have. |
+| `device_list_failed` | `core` | Python, Swift: listing the fleet's devices failed. |
+| `device_rename_failed` | `core` | Python, Swift: renaming a device failed. |
+| `device_deauthorize_failed` | `core` | Python, Swift: deauthorizing another device failed. |
+| `key-entry-unsupported` | `license` | React: this transport cannot accept a typed licence key. |
+| `sign-in-failed` | `identity` | React: sign-in or activation did not complete. |
+| `sign-out-failed` | `identity` | React: sign-out did not complete. |
