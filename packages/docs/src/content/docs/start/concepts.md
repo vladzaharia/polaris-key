@@ -205,7 +205,7 @@ Note that **profile** is already taken twice — the reusable managed-payload ba
 ## Config model
 
 - **config / secret / flag** — the three `ConfigKind`s of a catalog entry. `config` → plaintext
-  client setting; `secret` → redacted, delivered to the OS keyring; `flag` → an entitlement.
+  client setting; `secret` → redacted, delivered in the signed config document (the SDK caches it in a `0600` file; only the device token is in the OS keyring); `flag` → an entitlement.
 - **management state** — per-value enforcement, one of:
   - **default** — the server suggests a value; the client (user/local override or environment)
     may override it.

@@ -83,8 +83,11 @@ descriptors. It is deliberately not inside `core/`: Core owns dispatch and knows
 which services exist — `core/registry.ts` takes a registry as a parameter rather than importing
 one — and knowing the five names is the composition root's job, not Core's.
 
-Adding a service is two edits, both outside Core: one entry in `mount.ts`'s map, and its slug in
-`router.ts`'s `SERVICE_NAMESPACES` set. Core never learns the name.
+Adding a service is a multi-file change. The two edits that wire it into dispatch are outside
+Core: one entry in `mount.ts`'s map, and its slug in `router.ts`'s `SERVICE_NAMESPACES` set. But
+the slug is also enumerated in Core's static tables (`core/services.ts`, `core/discovery.ts`),
+the manifest package, the console, and each SDK's discovery list. Core's dispatch never learns
+the name; its enumerations do.
 
 ## One worker, one deployment
 

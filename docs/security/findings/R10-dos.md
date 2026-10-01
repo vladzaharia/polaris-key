@@ -1199,7 +1199,7 @@ wrong value, and callers already fail closed on the throw.
 | R10-05 addendum: appcast DMG read (P0-10)    | partial | `releaseSparkleStream.test.ts` (verdict memo); abort and concurrent-miss residual accepted, removed by P3-03              |
 | R10-15 uncapped `.sig` read                  | yes     | `R10-dos.test.ts` → `R10-15 sidecar text assets are size-capped` (4 tests)                                                |
 
-`pnpm --filter @polaris-key/worker test` → **736 passed / 39 files**. Typecheck and prettier
+`pnpm --filter @polaris-key/worker test` → **736 passed / 39 files** at the time of this review (the suite has since grown; it was 1283 passed / 63 files when P0-11 last ran it). Typecheck and prettier
 clean on every file touched.
 
 ## Reported, not fixed (owned by other lanes)

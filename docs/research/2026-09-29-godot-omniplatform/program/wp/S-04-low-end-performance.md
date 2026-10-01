@@ -95,6 +95,9 @@ never run ([notes/A7 §13](../../notes/A7-xlang-content.md#13-limits)). The resu
   `localhost` for Android Chrome). Use a single-threaded Godot web build so COOP/COEP are not
   needed.
 - Treat Playwright's WebKit on Linux as a proxy for WebKitGTK, and say so.
+- The official 4.7.2 `ios.zip` simulator slice is x86_64 only. To run the iOS engine in an arm64
+  simulator, retarget the device `libgodot.a` (`prototype/lowend/ios-sim-retarget.py`). The
+  simulator times the host, so it checks correctness only.
 
 ## Steps
 

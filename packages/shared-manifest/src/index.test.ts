@@ -1333,6 +1333,19 @@ describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
     );
   });
 
+  it("words the maxOfflineDays warning by whether it actually wins", () => {
+    const msg = (tier: Record<string, unknown>) =>
+      validateManifestDocuments(tiered(tier)).warnings.find(
+        (w) => w.path === "/licensing/tiers/0/maxOfflineDays",
+      )?.message;
+    expect(msg({ maxOfflineDays: 14 })).toContain("sets the licence expiry");
+    expect(msg({ maxOfflineDays: 14, policyExpiryDays: 30 })).not.toContain(
+      "sets the licence expiry",
+    );
+    expect(msg({ maxOfflineDays: 14, expiryDays: 30 })).toContain("wins");
+    expect(msg({ maxOfflineDays: "14" })).toContain("not a number");
+  });
+
   it("stays silent for the keys the normaliser reads", () => {
     const res = validateManifestDocuments(
       tiered({ policyDeviceLimit: 5, policyExpiryDays: 30 }),

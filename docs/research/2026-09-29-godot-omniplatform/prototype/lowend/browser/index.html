@@ -1,0 +1,145 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>S-04 browser matrix</title>
+<style>
+  body {
+    font:
+      14px/1.4 system-ui,
+      sans-serif;
+    margin: 16px;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 11px;
+  }
+</style>
+<h1>S-04 browser matrix</h1>
+<p id="st">starting</p>
+<pre id="log"></pre>
+<script type="module">
+  // Runs the whole browser matrix with no driver, so a phone can load it directly:
+  //   caps (OPFS, DecompressionStream, Cache.put 206), WebCrypto Ed25519 (page and worker),
+  //   the 75 content cases with several primitive combos, and the throughput bench.
+  // Results go to window.__result and are POSTed to /results/<tag> (server.mjs with RESULTS_DIR).
+  // Query: ?tag=<name>&large=1&combos=set:sha:zstd:range,...&skip=Ed25519,caps,suite,bench (second word of a step)&edmax=<bytes>
+  const q = new URLSearchParams(location.search);
+  const st = document.getElementById("st"),
+    logEl = document.getElementById("log");
+  const log = (s) => {
+    logEl.textContent += s + "\n";
+    console.log("[s04]", s);
+  };
+  const w = new Worker("/runners/browser/worker.mjs", { type: "module" });
+  let seq = 0;
+  const pending = new Map();
+  w.onmessage = (e) => {
+    const p = pending.get(e.data.id);
+    pending.delete(e.data.id);
+    e.data.ok ? p.res(e.data.value) : p.rej(new Error(e.data.error));
+  };
+  w.onerror = (e) => log("worker error: " + (e.message || e));
+  const call = (op, args) =>
+    new Promise((res, rej) => {
+      const id = ++seq;
+      pending.set(id, { res, rej });
+      w.postMessage({ id, op, args });
+    });
+  const skip = new Set((q.get("skip") || "").split(","));
+  const step = async (name, fn) => {
+    if (skip.has(name.split(" ")[1]) || skip.has(name))
+      return { skipped: true };
+    st.textContent = name + "…";
+    const t = performance.now();
+    try {
+      const v = await fn();
+      log(
+        `${name}: ${JSON.stringify(v).slice(0, 400)} (${(performance.now() - t).toFixed(0)} ms)`,
+      );
+      return v;
+    } catch (e) {
+      log(`${name}: ERROR ${e.message || e}`);
+      return { error: String(e.message || e) };
+    }
+  };
+  // WebCrypto Ed25519 on the page itself (the worker probe repeats it off the main thread).
+  const pageEd = async () => {
+    try {
+      const k = await crypto.subtle.generateKey({ name: "Ed25519" }, false, [
+        "sign",
+        "verify",
+      ]);
+      const m = new TextEncoder().encode("s04");
+      const s = await crypto.subtle.sign({ name: "Ed25519" }, k.privateKey, m);
+      return {
+        available: true,
+        roundTrip: await crypto.subtle.verify(
+          { name: "Ed25519" },
+          k.publicKey,
+          s,
+          m,
+        ),
+      };
+    } catch (e) {
+      return { available: false, error: `${e.name}: ${e.message}` };
+    }
+  };
+  const out = {
+    tag: q.get("tag") || "browser",
+    userAgent: navigator.userAgent,
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    deviceMemory: navigator.deviceMemory ?? null,
+    secure: isSecureContext,
+    startedAt: new Date().toISOString(),
+  };
+  out.pageEd25519 = await step("page Ed25519", pageEd);
+  out.workerCaps = await step("worker caps", () => call("caps"));
+  out.ed25519 = await step("worker Ed25519", () =>
+    call("ed25519", q.get("edmax") ? { maxBytes: +q.get("edmax") } : {}),
+  );
+  const combos = (
+    q.get("combos") ||
+    "small:webcrypto:custom:range,small:hashwasm:custom:norange,small:noble:bokuweb:range"
+  ).split(",");
+  out.suites = {};
+  for (const c of combos) {
+    const [set, sha, z, rg] = c.split(":");
+    const r = await step("suite " + c, () =>
+      call("suite", { set, sha, z, range: rg === "range" }),
+    );
+    const failed = (r.logs || [])
+      .map((l) => /^(?:VECTOR INTEGRITY )?FAIL (\S+)/.exec(l)?.[1])
+      .filter(Boolean);
+    out.suites[c] = {
+      n: r.n,
+      pass: r.n - r.bad,
+      bad: r.bad,
+      ms: r.ms,
+      error: r.error,
+      failed,
+    };
+  }
+  out.bench = {
+    small: await step("bench small", () =>
+      call("lowbench", { set: "small", z: "custom" }),
+    ),
+  };
+  if (q.get("large") === "1")
+    out.bench.large = await step("bench large", () =>
+      call("lowbench", { set: "large", z: "custom" }),
+    );
+  out.finishedAt = new Date().toISOString();
+  window.__result = out;
+  try {
+    const r = await fetch("/results/" + encodeURIComponent(out.tag), {
+      method: "POST",
+      body: JSON.stringify(out),
+    });
+    log("posted: " + r.status);
+  } catch (e) {
+    log("post failed: " + e);
+  }
+  st.textContent = "done";
+  window.__done = true;
+</script>

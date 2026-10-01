@@ -38,10 +38,16 @@ for that one lookup — the portal doesn't keep a copy of it afterward.
 ## Downloading releases
 
 For products that distribute software through Polaris Key, a Downloads section lists released
-versions and their files. Choosing one gets you a **one-time download link** — it works once, so
-if you need the file again later, come back to the portal for a fresh link rather than reusing
-an old one. Some files are open to anyone signed in; others need a currently usable license, and
-are marked as such if you don't have one.
+versions and their files. Signature and checksum files that accompany a download are not
+listed; only the files you would actually install are. Choosing one gets you a **one-time
+download link** — it works once, so if you need the file again later, come back to the portal
+for a fresh link rather than reusing an old one.
+
+Downloads today need you to be **signed in** and to hold a **license for that product** linked
+to your account. Some files need that license to be currently usable, and are marked as such
+if it isn't. There are no anonymous downloads through the portal, and the link only ever
+redirects to the file's GitHub release-download address — a file hosted anywhere else is shown
+as unavailable rather than offered.
 
 ## Managing your devices
 

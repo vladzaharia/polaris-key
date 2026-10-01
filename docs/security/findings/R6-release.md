@@ -768,7 +768,7 @@ was about).
 **Follow-up (P0-10): streaming verification.** `fetchAssetBytes` read the whole DMG with
 `res.arrayBuffer()` before checking its size, against a 256 MiB cap inside a 128 MB isolate, so a
 large DMG was an uncatchable out-of-memory crash rather than a clean 404. It is replaced by
-`fetchAssetStream` plus `streamingEd25519Verify` (`services/release/ed25519Stream.ts`): the
+`fetchAssetStream` plus `streamingEd25519Check` (`services/release/ed25519Stream.ts`): the
 SHA-512 of `R || A || M` is computed incrementally (`node:crypto`) as the body streams, and the
 PureEdDSA equation is finished with `@noble/curves` (pinned `2.4.0`, a new Worker runtime
 dependency: a T6 supply-chain surface, accepted because it is audited and dependency-free apart

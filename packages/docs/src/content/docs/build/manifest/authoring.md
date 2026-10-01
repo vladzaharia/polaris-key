@@ -57,7 +57,7 @@ validate` warns with `tier_ignored_field` for either.
 The schema file is a `ProductCatalog`: a `schemaVersion` (bumped on incompatible shape
 changes; it matches the signed doc's `schemaVersion`) and an `entries` array. Each entry is a
 `ConfigEntry` (`packages/shared-catalog/src/types.ts`) — a dotted `key`, a `kind`
-(`config` plaintext setting · `secret` OS-keyring-delivered · `flag` entitlement),
+(`config` plaintext setting · `secret` redacted, delivered in the config document · `flag` entitlement),
 grouping/label/description for settings UIs, a Draft-07 JSON-Schema `schema` the value
 validates against, a `default`, and — on `config`/`secret` keys — a `managementDefault`
 (`default` · `enforced` · `hidden`) seeding the state a freshly-minted key gets:

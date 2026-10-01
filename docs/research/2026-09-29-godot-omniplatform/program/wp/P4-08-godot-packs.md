@@ -38,6 +38,11 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 
 ## Read first
 
+- [S-07](S-07-policy-recheck.md) row 13, read in [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) (re-checked 2026-09-30): the data-only
+  rule for packs on store builds is still the safe reading on every store: App Review 2.5.2 is
+  stricter than DPLA 3.3.1(B), Play exempts interpreted code only if it cannot violate Play policy,
+  and Microsoft Store 10.2.2 bans dynamic code that changes described functionality. Scripts in
+  downloaded packs stay off store builds and need the `downloadedScripts` capability elsewhere.
 - `AGENTS.md`; the approved `program/plans/P4-01.md` (formats, marker, `packSetId`, facet).
 - [notes/A6](../../notes/A6-godot-patching.md) §2.2 (PCK rebuild), §2.4 (GDDL delta decode, the
   trailer and private-namespace bake), [§2.7](../../notes/A6-godot-patching.md#27-mount-semantics)
@@ -108,6 +113,13 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 
 ## Design notes
 
+- **Throughput for planning ([S-04](../../notes/S-04-low-end-performance.md)).** Plan chunk sync (the CPU part, output MB/s) at
+  about 20 MB/s natively on an A53-class phone (range 16–30, derived) and 12 MB/s for the web
+  build there (emulated), about 40 MB/s on mid-range, and 250 MB/s or more on desktop and current
+  phones (measured 324–369 natively, 120–260 on desktop web). File rebuild and verified delta run
+  at 0.5–0.8× that.
+  - Sync payloads up to 50 MB natively, or 25 MB on web, inline at boot.
+  - Above 50 MB, sync in the background with progress and keep the old content playable.
 - **Never overwrite a mounted pack.** Overwriting corrupts reads (118 of 625 files correct) and can
   return another file's bytes; a same-session remount serves stale cached resources (A6 §2.7).
   Always write a new path and switch at the next boot.
