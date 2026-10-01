@@ -2059,14 +2059,14 @@ Entitlements protect _delivery_ (gated blobs, edge-mint, server-side features), 
 `prototype/` is a Godot 4.7 project (engine 4.7.2-stable, `ed1daf0bf`). Its `README.md` explains how
 to run it.
 
-| Path                                             | What                                                                                                                                                        |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `addons/polaris_key/crypto/sha512.gd`            | `PKSha512`, FIPS 180-4                                                                                                                                      |
-| `addons/polaris_key/crypto/ed25519_fast.gd`      | `PKEd25519Fast`, ref10-style, ~7 ms per verify (release template)                                                                                           |
-| `addons/polaris_key/crypto/ed25519_tweetnacl.gd` | `PKEd25519Ref`, TweetNaCl port, test cross-check                                                                                                            |
-| `addons/polaris_key/jws.gd`                      | `PKJws`, the `shared-jws` 13-step verify order                                                                                                              |
-| `tests/`                                         | suites for SHA-512, Ed25519, JWS (corpus), platform identity, profiling, an HTTP probe; a CLI runner                                                        |
-| `vectors/`                                       | RFC 8032 + Node-signed Ed25519 vectors, SHA-512 vectors, and generators for the corpus-derived vector files (regenerate with `node vectors/gen_corpus.mjs`) |
+| Path                                             | What                                                                                                                                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `addons/polaris_key/crypto/sha512.gd`            | `PKSha512`, FIPS 180-4                                                                                                                                                                                                                           |
+| `addons/polaris_key/crypto/ed25519_fast.gd`      | `PKEd25519Fast`, ref10-style, ~7 ms per verify (release template)                                                                                                                                                                                |
+| `addons/polaris_key/crypto/ed25519_tweetnacl.gd` | `PKEd25519Ref`, TweetNaCl port, test cross-check                                                                                                                                                                                                 |
+| `addons/polaris_key/jws.gd`                      | `PKJws`, the `shared-jws` 13-step verify order                                                                                                                                                                                                   |
+| `tests/`                                         | suites for SHA-512, Ed25519, JWS (corpus), platform identity, profiling, an HTTP probe; a CLI runner                                                                                                                                             |
+| `vectors/`                                       | RFC 8032 + Node-signed Ed25519 vectors, SHA-512 vectors, and generators for the corpus-derived vector files (since P1-01 the verifier and vectors live in `sdks/godot`; `pnpm gen:corpus` writes the Godot mirror, and `gen_corpus.mjs` is gone) |
 
 It is research code: not wired into the green gate, not a published SDK, no `sdks/godot/` yet.
 Moving it to `sdks/godot/` is the first task of P1.

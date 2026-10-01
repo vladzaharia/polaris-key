@@ -75,6 +75,10 @@ them once is cheaper than reconciling five PRs.
   constants, error codes, feature ids) that P4-02 to P4-09 quote verbatim.
 - Annotated JSON examples: a `godot.pck` pack release with two texture variants, a `files.tree`
   pack release, an app release carrying `content`, a marker, and one `plan-matrix.json` row.
+- **The pack rows of the stage machine** (from [P1-09's plan §8](../plans/P1-09.md)): the rows for a
+  `true` `canPlayOffline`, the `accepts` change that lets `offline` accept `play-offline`, fetch
+  consent and progress, and the bump to `stageMatrixVersion: 2`. P4-04 emits them and updates the
+  machine in every port that exists by then; P4-06, P4-07 and P4-08 implement only the host side.
 - Status changes in `workpackages.json` (`planning`, then `awaiting-approval`).
 
 **Out** (and where it belongs instead):
@@ -245,6 +249,8 @@ them once is cheaper than reconciling five PRs.
 - [ ] Every new manifest rule has a named error code and a `rejects`/`accepts` classification.
 - [ ] One names table covers every identifier downstream briefs will quote, and every name that
       P3-01 reserved (`kind: pack`, `content`, the record hash) is used as P3-01 defined it.
+- [ ] The plan names the pack rows of `stage-matrix.json` (`canPlayOffline`, `play-offline` in
+      `accepts`, fetch consent and progress) and the move to `stageMatrixVersion: 2`.
 - [ ] `workpackages.json` shows `awaiting-approval`; `node check.mjs` and prettier pass.
 
 ## Verify

@@ -118,7 +118,7 @@ The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corp
 ## Hard rules
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
-gate-matrix.json,fingerprint.json}` and the generator-owned mirrors at
+gate-matrix.json,fingerprint.json,stage-matrix.json}` and the generator-owned mirrors at
 `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output.
 Regenerate with `pnpm gen:corpus` and commit the result in the same change.
 `pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,

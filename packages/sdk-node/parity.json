@@ -79,7 +79,7 @@
     "update.bootguard": {
       "status": "planned",
       "unowned": true,
-      "note": "P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them."
+      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
     "outlet.detect": { "status": "planned", "wp": "P3-11" },
     "packs.plan": { "status": "planned", "wp": "P4-06" },
@@ -116,7 +116,7 @@
       "unowned": true,
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
-    "ui.stages": { "status": "planned", "wp": "P1-09" },
+    "ui.stages": { "status": "implemented" },
     "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
     "commerce.receipt": {
       "status": "planned",

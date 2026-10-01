@@ -19,10 +19,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 23 | 3 | 23 | 7 |
-| React | `web`, `desktop-bridge` | 16 | 12 | 22 | 6 |
-| Python | `python` | 23 | 3 | 23 | 7 |
-| Swift | `macos`, `ios` | 23 | 3 | 24 | 6 |
+| Node | `node` | 24 | 3 | 22 | 7 |
+| React | `web`, `desktop-bridge` | 17 | 12 | 21 | 6 |
+| Python | `python` | 24 | 3 | 22 | 7 |
+| Swift | `macos`, `ios` | 24 | 3 | 23 | 6 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 0 | 0 | 53 | 3 |
 
 ## Core
@@ -112,7 +112,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` (P1-09) | planned (P1-09) | planned (P1-09) | planned (P1-09) | planned (P1-09) | planned (P1-10) | — |
+| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` (P1-09) | ✓ | ✓ | ✓ | ✓ | planned (P1-10) | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | planned (P1-10) | headless: runtime |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts (P6-01) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P6-01) | — |
 
@@ -124,7 +124,7 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | --- | --- | --- |
 | Node | `identity.oidc` | No browser sign-in in the Node SDK, and no work package ports it. |
 | Node | `update.driver` | Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it). |
-| Node | `update.bootguard` | P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them. |
+| Node | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | Node | `packs.transport.steam` | P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner. |
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Node | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
@@ -133,17 +133,17 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | React | `core.local` | No local-only client in React; P1b-07 leaves it unowned. |
 | React | `config.mint` | P1b-08 ports edge-mint to Node, Python and Swift only. |
 | React | `update.driver` | No updater hand-off in React, and no work package adds one. |
-| React | `update.bootguard` | P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them. |
+| React | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | React | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
 | Python | `identity.oidc` | No browser sign-in in the Python SDK, and no work package ports it. |
 | Python | `update.driver` | Only appcast_url() today; the Velopack hand-off has no work package (P3-06 excludes it). |
-| Python | `update.bootguard` | P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them. |
+| Python | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | Python | `packs.transport.steam` | P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner. |
 | Python | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Python | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
 | Python | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
 | Swift | `identity.oidc` | Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in. |
-| Swift | `update.bootguard` | P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them. |
+| Swift | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | Swift | `packs.transport.apple` | P5-05 builds the Apple plugin package and P5-08 wires the transport for Godot only; no package adopts it in the Swift SDK. |
 | Swift | `packs.transport.steam` | P5-08 covers Godot only; macOS Swift apps have no Steam-depot transport owner. |
 | Swift | `ui.kit` | PolarisLoginView only; no work package builds the rest of the Swift kit. |

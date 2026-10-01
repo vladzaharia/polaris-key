@@ -62,6 +62,11 @@ repo's own docs say there are four SDKs, which is wrong once Godot passes the co
   `docs/PRIVACY.md` (the fingerprint heading, if P1-05 did not), `.husky/pre-commit`'s comment,
   the docs-site pages listed there, and the code comments in `client-core`, `sdk-node`, Python
   and Swift.
+- **Engine legs 4.5 and 4.6** (left by P1-01, which runs 4.7.2 with a release template and the
+  4.4.1 floor): add a CI leg per engine in the `godot` job (editor plus matching release template
+  where one is pinned), pin their SHA-512 in `tools/godot.sha512`, and run `tools/run_tests.sh` on
+  each before the README states a tested range. The README's "tested matrix" lists exactly the
+  engines that ran green.
 - `.github/workflows/release-godot.yml`, on tags `godot-v*`: validate the semver tag; fail unless
   tag, `plugin.cfg` and `SDK_VERSION` agree; run `tools/run_tests.sh` on the editor and the
   release template; zip `addons/polaris_key/` as `polaris-key-godot-vX.Y.Z.zip`; run
@@ -121,6 +126,8 @@ repo's own docs say there are four SDKs, which is wrong once Godot passes the co
 - [ ] A dry run of `release-godot.yml` produces `polaris-key-godot-vX.Y.Z.zip` containing only
       `addons/polaris_key/**`, every `.gd` with its `.uid`, `LICENSE` and `README.md`.
 - [ ] The workflow fails when the tag, `plugin.cfg` and `SDK_VERSION` disagree (shown in the PR).
+- [ ] The `godot` CI job has green 4.5 and 4.6 legs beside 4.4.1 and 4.7.2, and the README's tested
+      range names only engines that ran.
 - [ ] The clean-install smoke test passes on Godot 4.4 and 4.7.2: import and plugin enable log no
       errors, and the autoload `PolarisKey` and the dock appear.
 - [ ] `/docs/build/sdks/godot/` builds and renders the README;

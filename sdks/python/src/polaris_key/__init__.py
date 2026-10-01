@@ -15,7 +15,8 @@ Every subpackage is importable on its own, so a config-only daemon can
 ``from polaris_key.config import ConfigClient`` without pulling the licence module:
 
     ``polaris_key.core``     device principal, credential, trust, cache, clock floor, sync,
-                         telemetry, offline bundles, and the frozen wire crypto
+                         telemetry, offline bundles, the boot stage machine, and the
+                         frozen wire crypto
     ``polaris_key.license``  activation + the gate
     ``polaris_key.config``   the signed config document + layered resolution
     ``polaris_key.devices``  registration, the roster, fingerprint/facts/device-id, the stores
@@ -112,6 +113,22 @@ from .core.semver import (
     is_dev_build,
     parse_semver,
 )
+from .core.stages import (
+    BOOT_EMIT_TYPES,
+    BOOT_EVENT_TYPES,
+    BOOT_GUARD_ACTIONS,
+    BOOT_OUTCOMES,
+    BOOT_STAGES,
+    MAX_FAILED_BOOTS,
+    BootEmit,
+    BootEvent,
+    BootOptions,
+    BootState,
+    BootTransition,
+    boot_guard_action,
+    boot_transition,
+    initial_boot_state,
+)
 from .core.store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle, Store
 from .core.sync import DocOutcome, SyncResult
 from .core.token import TokenManager
@@ -203,6 +220,21 @@ __all__ = [
     "AllowedRange",
     "effective_now",
     "high_water_mark",
+    # boot stage machine
+    "BOOT_STAGES",
+    "BOOT_OUTCOMES",
+    "BOOT_EVENT_TYPES",
+    "BOOT_EMIT_TYPES",
+    "BOOT_GUARD_ACTIONS",
+    "MAX_FAILED_BOOTS",
+    "BootEvent",
+    "BootEmit",
+    "BootOptions",
+    "BootState",
+    "BootTransition",
+    "initial_boot_state",
+    "boot_transition",
+    "boot_guard_action",
     # semver
     "parse_semver",
     "compare_semver",
