@@ -308,4 +308,5 @@ are skipped while an admin owns them. So the flow is:
 When you author a typed mirror for a product that wants compile-time config types, regenerate
 it from the catalog with
 `pnpm gen:mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (and add `--check`
-in product-specific CI) — see `CONTRIBUTING.md`.
+in product-specific CI) — see `CONTRIBUTING.md`. `--lang` picks the targets (`ts`, `python` and
+`swift` by default, plus `gdscript` for a Godot game's `catalog_generated.gd`).
