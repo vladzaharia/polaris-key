@@ -12,6 +12,8 @@
 // It reads, through `wrangler d1 execute --json`:
 //
 //   - with `representabilityIssue`, the 8 JSON columns and the 12 text columns of COLUMNS;
+//     the one catalog column (`product_schema.catalog_json`) also with `catalogKeyIssue`,
+//     because each entry key is a member name in the documents that carry it;
 //   - with rule 8's range, `tiers.policy_device_limit`;
 //   - as warnings that do not block a deploy, `licenses.max_offline_days` and
 //     `products.default_max_offline_days` when not an integer from 1 to 365.
@@ -34,13 +36,18 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { numberInWireRange, representabilityIssue } from "@polaris-key/catalog";
+import {
+  catalogKeyIssue,
+  numberInWireRange,
+  representabilityIssue,
+} from "@polaris-key/catalog";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PAGE = 500;
 
 /**
- * Every column the check reads, by table. `json` columns are parsed and walked, `text` columns
+ * Every column the check reads, by table. `json` columns are parsed and walked, `catalog`
+ * columns too and their entry keys checked as the member names they become, `text` columns
  * are one string each, `number` columns take rule 8's range, `warn` columns the 1–365 rule.
  * `key` names the row in a report.
  */
@@ -55,10 +62,10 @@ export const TABLES = [
   { table: "devices", key: ["product", "device_id"], json: ["overrides_json"] },
   { table: "profiles", key: ["product", "id"], json: ["payload_json"] },
   {
-    // Only the active catalog's defaults reach a document.
+    // Only the active catalog's defaults and keys reach a document.
     table: "product_schema",
     key: ["product", "catalog_version"],
-    json: ["catalog_json"],
+    catalog: ["catalog_json"],
     where: "active = 1",
   },
   {
@@ -90,9 +97,12 @@ export const TABLES = [
 
 /** The 21 checked columns and the 2 warning columns, as `table.column`. */
 export const CHECKED_COLUMNS = TABLES.flatMap((t) =>
-  [...(t.json ?? []), ...(t.text ?? []), ...(t.number ?? [])].map(
-    (c) => `${t.table}.${c}`,
-  ),
+  [
+    ...(t.json ?? []),
+    ...(t.catalog ?? []),
+    ...(t.text ?? []),
+    ...(t.number ?? []),
+  ].map((c) => `${t.table}.${c}`),
 );
 export const WARNING_COLUMNS = TABLES.flatMap((t) =>
   (t.warn ?? []).map((w) => `${t.table}.${w.column}`),
@@ -130,6 +140,10 @@ export function inspectValue(kind, raw) {
   } catch {
     return { rule: "invalid-json", path: "" };
   }
+  // A catalog: its entry keys are member names in every document that carries them
+  // (`config.<key>`, …), which a walk of the catalog as a value sees only as strings.
+  if (kind === "catalog")
+    return catalogKeyIssue(value) ?? representabilityIssue(value);
   return representabilityIssue(value);
 }
 
@@ -145,7 +159,11 @@ export function pageSql(spec, afterRowid) {
   const cols = [
     "rowid AS __rowid",
     ...spec.key.map((k) => `${quote(k)} AS ${quote(`key:${k}`)}`),
-    ...[...(spec.json ?? []), ...(spec.text ?? [])].map(
+    ...[
+      ...(spec.json ?? []),
+      ...(spec.catalog ?? []),
+      ...(spec.text ?? []),
+    ].map(
       (c) =>
         `CASE WHEN ${quote(c)} IS NULL THEN NULL ELSE hex(${quote(c)}) END AS ${quote(`hex:${c}`)}`,
     ),
@@ -166,6 +184,7 @@ export function inspectRows(spec, rows, issues, warnings) {
     const key = Object.fromEntries(spec.key.map((k) => [k, row[`key:${k}`]]));
     for (const [kind, columns] of [
       ["json", spec.json ?? []],
+      ["catalog", spec.catalog ?? []],
       ["text", spec.text ?? []],
     ]) {
       for (const column of columns) {

@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_VALUE_DEPTH,
+  catalogKeyIssue,
   numberInWireRange,
   representabilityIssue,
 } from "./representable.js";
@@ -172,5 +173,56 @@ describe("validateEntryValue runs representability first", () => {
 
   it("accepts a clean value", () => {
     expect(catalog.validateKeyValue("app.blob", { é: 1 }).ok).toBe(true);
+  });
+});
+
+describe("catalogKeyIssue: catalog keys are member names in the documents", () => {
+  const nfc = "\u00e9";
+  const nfd = "e\u0301";
+  const entry = (key: string, kind = "config") => ({
+    key,
+    kind,
+    schema: { type: "string" },
+    default: "x",
+  });
+
+  it("a walk of the catalog as a value misses what the projection catches", () => {
+    const pair = { entries: [entry(nfc), entry(nfd)] };
+    expect(representabilityIssue(pair)).toBeNull();
+    expect(catalogKeyIssue(pair)).toEqual({
+      rule: "equivalent-member-names",
+      path: "/entries/1/key",
+    });
+    const nul = { entries: [entry("a\u0000b")] };
+    expect(representabilityIssue(nul)).toBeNull();
+    expect(catalogKeyIssue(nul)).toEqual({
+      rule: "nul-in-member-name",
+      path: "/entries/0/key",
+    });
+  });
+
+  it("flags a lone surrogate in a key", () => {
+    expect(
+      catalogKeyIssue({ entries: [entry("ok"), entry("a\ud800")] }),
+    ).toEqual({ rule: "lone-surrogate", path: "/entries/1/key" });
+  });
+
+  it("NFC-equivalent keys of different kinds land in different objects", () => {
+    expect(
+      catalogKeyIssue({ entries: [entry(nfc), entry(nfd, "secret")] }),
+    ).toBeNull();
+    expect(
+      catalogKeyIssue({ entries: [entry(nfc, "flag"), entry(nfd, "flag")] }),
+    ).toEqual({ rule: "equivalent-member-names", path: "/entries/1/key" });
+  });
+
+  it("accepts ordinary keys, an identical repeat, and shapes that are not a catalog", () => {
+    expect(
+      catalogKeyIssue({ entries: [entry("ui.theme"), entry("a:b-c_d")] }),
+    ).toBeNull();
+    expect(catalogKeyIssue({ entries: [entry(nfc), entry(nfc)] })).toBeNull();
+    expect(catalogKeyIssue(null)).toBeNull();
+    expect(catalogKeyIssue({ entries: "x" })).toBeNull();
+    expect(catalogKeyIssue({ entries: [null, { key: 3 }] })).toBeNull();
   });
 });

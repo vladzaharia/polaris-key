@@ -65,7 +65,8 @@ pnpm check:representable                 # --env prod --remote polaris_key_prod 
 pnpm check:representable -- --json       # the same, machine-readable
 ```
 
-It reads 21 columns (8 JSON, 12 text, `tiers.policy_device_limit`) and prints one `FLAGGED`
+It reads 21 columns (8 JSON, 12 text, `tiers.policy_device_limit`; the active catalog's entry
+keys are checked as the member names they become) and prints one `FLAGGED`
 line per value, naming the table, column, row key and JSON pointer, then exits 1. Fix every
 flagged value in the console (licence, tier, profile or product editors) or in the product's
 `.pkey/` manifest and resync, then run the check again until it exits 0. Do not deploy while

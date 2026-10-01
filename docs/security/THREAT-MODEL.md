@@ -1291,10 +1291,16 @@ guard with P3-12, each of which extends this section.
   catalog defaults, provisioning entitlement values and edge-mint claims templates. The admin
   product, tier and licence handlers take the manifest's own patterns (`KID_RE`, `ID_RE`,
   `CHANNEL_RE`, `SEMVER_RE`), `MAX_WIRE_INTEGER` and the 1–365 offline-day rule, and refuse
-  unsignable free text (a licence name or email, a tier label). OIDC sign-in stores a
+  unsignable free text (a licence name or email, a tier label). A catalog entry key is a member
+  name in every document that carries it (`config.<key>`, `secrets.<key>`,
+  `entitlements.<key>`), and neither `new Catalog(...)` nor the prune checks keys, so the
+  console's catalog publish and manual product create also apply the member-name rules to the
+  keys (`catalogKeyIssue`: a lone surrogate, U+0000, two keys of one kind equal after NFC) and
+  the manifest's `ID_RE`. OIDC sign-in stores a
   provider's unsignable name or email as null and skips an unsignable provisioning hook, rather
   than letting a third party's claim deny the user their documents. **Residual:** values stored
-  before P3-12 are caught only by `pnpm check:representable`, which an operator runs against
+  before P3-12 (catalog keys included) are caught only by `pnpm check:representable`, which an
+  operator runs against
   production D1 before the first deploy (RUNBOOK, "Representability check"); skipped, a flagged
   entitlement makes that licence's documents answer 500, and the check cannot open a sealed
   secret, which the prune drops at signing instead. A stored value that only fails a pattern

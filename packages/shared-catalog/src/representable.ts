@@ -143,3 +143,42 @@ export function describeRepresentabilityIssue(
 ): string {
   return `${label}${issue.path} is not representable in a signed document (${issue.rule})`;
 }
+
+/**
+ * The member-name projection of a catalog (`{ entries: [{ key, kind, … }] }`, the shape of
+ * `product_schema.catalog_json`): the first representability issue among its entry keys, with
+ * the pointer `/entries/<i>/key`, or `null`.
+ *
+ * A catalog key is a string VALUE inside the catalog but a MEMBER NAME in every document that
+ * carries it (`config.<key>`, `secrets.<key>`, `entitlements.<key>` for a flag), so walking the
+ * catalog with `representabilityIssue` sees only half of it. This applies the member-name rules
+ * to the keys: a lone surrogate, U+0000, and two keys of the same kind that differ but are equal
+ * after NFC (they land in the same document object). Anything that is not a catalog shape
+ * answers `null`; the catalog's own validation refuses it.
+ */
+export function catalogKeyIssue(
+  catalog: unknown,
+): RepresentabilityIssue | null {
+  if (catalog === null || typeof catalog !== "object") return null;
+  const entries = (catalog as { entries?: unknown }).entries;
+  if (!Array.isArray(entries)) return null;
+  const seen = new Map<string, Map<string, string>>();
+  for (let i = 0; i < entries.length; i++) {
+    const entry: unknown = entries[i];
+    if (entry === null || typeof entry !== "object") continue;
+    const { key, kind } = entry as { key?: unknown; kind?: unknown };
+    if (typeof key !== "string") continue;
+    const path = `/entries/${i}/key`;
+    if (hasLoneSurrogate(key)) return { rule: "lone-surrogate", path };
+    if (key.includes("\u0000")) return { rule: "nul-in-member-name", path };
+    const bucket = String(kind);
+    let names = seen.get(bucket);
+    if (!names) seen.set(bucket, (names = new Map()));
+    const nfc = key.normalize("NFC");
+    const earlier = names.get(nfc);
+    if (earlier !== undefined && earlier !== key)
+      return { rule: "equivalent-member-names", path };
+    names.set(nfc, key);
+  }
+  return null;
+}

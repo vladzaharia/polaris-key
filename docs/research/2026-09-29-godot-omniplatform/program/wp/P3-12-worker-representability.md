@@ -141,9 +141,17 @@ sooner.
   through the platform (`binaryUpdates: none`), so `web → altstore` widens and is no longer the
   example of a narrowing kind change; `test/distributionOutlets.test.ts` uses `direct → altstore`.
 - **Also checked at write**, beyond the inventory: the console's catalog publish and manual
-  product create refuse a catalog whose defaults no document could carry (the catalog prune
-  would drop such a default at signing anyway), and an OIDC provisioning hook whose claim
-  `encodeURIComponent` cannot encode (a lone surrogate) is skipped instead of failing sign-in.
+  product create refuse a catalog whose defaults or entry keys no document could carry, and an
+  OIDC provisioning hook whose claim `encodeURIComponent` cannot encode (a lone surrogate) is
+  skipped instead of failing sign-in. The prune would drop an unsignable default at signing,
+  but it checks no key, and `new Catalog(...)` applies no key rule: an entry key is a member
+  name in `config.<key>`, `secrets.<key>` and `entitlements.<key>`, so a key holding U+0000
+  would make the signer guard refuse every config document of the product, and two keys equal
+  after NFC would sign a document Swift reads differently. Both write paths therefore run
+  `catalogKeyIssue` (shared-catalog: lone surrogate, U+0000, two keys of one kind equal after
+  NFC; `422 value_not_representable`) and the manifest's own `ID_RE` on every key
+  (`422 bad_request`), and `check:representable` applies `catalogKeyIssue` to the active
+  `product_schema.catalog_json` row (found in review).
 - **`check:representable` reads only the active catalog** (`product_schema` rows with
   `active = 1`), the only one whose defaults reach a document, and reports a JSON column that
   does not parse as a warning, not a blocker (the Worker ignores such a column).

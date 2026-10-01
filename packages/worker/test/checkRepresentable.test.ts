@@ -5,7 +5,8 @@
  * The real migrations are applied to a throwaway store, a clean product is seeded and must
  * produce nothing, then one bad row per table is added so that every one of the 21 checked
  * columns holds a value the signer guard would trip on, and both warning columns hold a day
- * count outside 1–365. The check must flag exactly the 21 and warn on exactly the 2.
+ * count outside 1–365. The check must flag exactly the 21 and warn on exactly the 2. A last
+ * case seeds catalogs whose values are clean but whose entry keys could not be member names.
  *
  * Text columns get their lone surrogate as raw WTF-8 bytes (`CAST(X'…' AS TEXT)`), which is
  * how a storage layer that does not replace one keeps it; JSON columns get it as the ASCII
@@ -222,5 +223,47 @@ describe("check:representable on a local D1", () => {
     expect(run.status).toBe(1);
     expect(run.out.issues).toHaveLength(21);
     expect(run.out.warnings).toHaveLength(2);
+  }, 60_000);
+
+  it("flags a catalog whose entry keys could not be member names, though every value is clean", () => {
+    // A catalog key is a string VALUE in catalog_json but a MEMBER NAME in `config.<key>`, so a
+    // walk of the catalog as a value would pass both of these rows.
+    const product = (slug: string) =>
+      `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
+         default_max_offline_days, default_device_limit, created_at, modified_at)
+       VALUES ('${slug}', '${slug}', '${slug}-1', 'pub', '0.0.0', '99.0.0', 30, 5, 1, 1)`;
+    const schema = (slug: string, keys: string[]) =>
+      `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
+       VALUES ('${slug}', 1, '{"schemaVersion":1,"entries":[${keys
+         .map((k, i) => `{"key":"${k}","kind":"config","default":${i}}`)
+         .join(",")}]}', 1, 1)`;
+    sql(
+      [
+        product("nfcpair"),
+        schema("nfcpair", ["\\u00e9", "e\\u0301"]),
+        product("nulkey"),
+        schema("nulkey", ["app.ok", "a\\u0000b"]),
+      ].join(";\n"),
+    );
+
+    const keyed = local().issues.filter(
+      (i) =>
+        i.table === "product_schema" &&
+        ["nfcpair", "nulkey"].includes(String(i.key.product)),
+    );
+    expect(
+      keyed.map((i) => ({
+        product: i.key.product,
+        rule: i.rule,
+        path: (i as Finding & { path: string }).path,
+      })),
+    ).toEqual([
+      {
+        product: "nfcpair",
+        rule: "equivalent-member-names",
+        path: "/entries/1/key",
+      },
+      { product: "nulkey", rule: "nul-in-member-name", path: "/entries/1/key" },
+    ]);
   }, 60_000);
 });

@@ -311,6 +311,57 @@ describe("free text a signed document carries refuses a lone surrogate (422 valu
   });
 });
 
+describe("catalog keys are member names in every document that carries them", () => {
+  // A key is a string VALUE inside the catalog but a MEMBER NAME in `config.<key>`,
+  // `secrets.<key>` and `entitlements.<key>`. `new Catalog(...)` applies no key rule and the
+  // prune checks values, so both catalog write paths check the keys themselves.
+  let w: AdminWorld;
+  beforeEach(async () => {
+    w = await adminWorld();
+  });
+
+  const NFC = "\u00e9";
+  const NFD = "e\u0301";
+  const withKeys = (...keys: string[]) => ({
+    schemaVersion: 1,
+    entries: keys.map((key) => ({ ...CATALOG.entries[1], key, default: "x" })),
+  });
+  const publish = (catalog: unknown) =>
+    call(w, "PUT", `/api/products/${SLUG}/config/catalog`, { catalog });
+  const create = (schema: unknown) =>
+    call(w, "POST", "/api/products", { slug: "acme", schema });
+
+  for (const [path, send] of [
+    ["catalog publish", publish],
+    ["manual product create", create],
+  ] as const) {
+    it(`${path}: two keys equal after NFC (Swift would keep one of them)`, async () => {
+      const res = await send(withKeys(NFC, NFD));
+      expectCode(res, "value_not_representable", "catalog/entries/1/key");
+      expect(String(res.body.message)).toContain("equivalent-member-names");
+    });
+
+    it(`${path}: U+0000 in a key (the signer guard would refuse every config document)`, async () => {
+      const res = await send(withKeys("app.ok", "app\u0000x"));
+      expectCode(res, "value_not_representable", "catalog/entries/1/key");
+      expect(String(res.body.message)).toContain("nul-in-member-name");
+    });
+
+    it(`${path}: a key outside the manifest's ID_RE`, async () => {
+      expectCode(
+        await send(withKeys("app.ok", "app label")),
+        "bad_request",
+        "catalog/entries/1/key",
+      );
+    });
+
+    it(`${path}: ordinary keys are stored`, async () => {
+      const res = await send(withKeys("app.ok", "app:other_key-2"));
+      expect(res.status, JSON.stringify(res.body)).toBeLessThan(300);
+    });
+  }
+});
+
 describe("the admin handlers take the manifest's own rules (422 bad_request)", () => {
   let w: AdminWorld;
   beforeEach(async () => {

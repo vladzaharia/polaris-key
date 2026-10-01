@@ -19,7 +19,7 @@
  * signs, and is refused the next time a write touches it.
  */
 
-import { representabilityIssue } from "@polaris-key/catalog";
+import { catalogKeyIssue, representabilityIssue } from "@polaris-key/catalog";
 import { CHANNEL_RE, ID_RE, KID_RE, SEMVER_RE } from "@polaris-key/manifest";
 import { MAX_WIRE_INTEGER } from "@polaris-key/protocol/core";
 import { ErrorCode } from "../../core/errors.js";
@@ -116,16 +116,42 @@ export class WriteChecks {
   }
 }
 
-/** A whole catalog (manual create, catalog publish): `null`, or the `422` naming the entry. */
+/**
+ * A whole catalog (manual create, catalog publish): `null`, or the `422` naming the entry.
+ *
+ * Two halves, because an entry key is a string VALUE inside the catalog but a MEMBER NAME in
+ * every document that carries it (`config.<key>`, `secrets.<key>`, `entitlements.<key>`):
+ *
+ *   - `catalogKeyIssue` applies the member-name rules to the keys (a lone surrogate, U+0000,
+ *     two keys of one kind equal after NFC) and `representabilityIssue` walks the rest (a
+ *     default) — either answers `422 value_not_representable`;
+ *   - every key must then match the manifest validator's own `ID_RE` (`entries[i].key`), so a
+ *     console write cannot store a key a `.pkey/schema` could not declare — `422 bad_request`.
+ *
+ * `new Catalog(...)` applies no key rule of its own, so without this a console write could
+ * store a key the signer guard refuses (U+0000) or one Swift reads differently from every
+ * other verifier (an NFC pair), and no prune would catch it: the prune checks values.
+ */
 export function catalogRepresentabilityResponse(
   catalog: unknown,
 ): Response | null {
-  const issue = representabilityIssue(catalog);
-  if (!issue) return null;
-  return err(
-    422,
-    ErrorCode.ValueNotRepresentable,
-    `a catalog value cannot be carried by a signed document (${issue.rule})`,
-    { fields: [`catalog${issue.path}`] },
-  );
+  const issue = catalogKeyIssue(catalog) ?? representabilityIssue(catalog);
+  if (issue)
+    return err(
+      422,
+      ErrorCode.ValueNotRepresentable,
+      `a catalog value cannot be carried by a signed document (${issue.rule})`,
+      { fields: [`catalog${issue.path}`] },
+    );
+  const entries = (catalog as { entries?: unknown } | null)?.entries;
+  if (!Array.isArray(entries)) return null;
+  const bad: string[] = [];
+  entries.forEach((entry: unknown, i) => {
+    const key = (entry as { key?: unknown } | null)?.key;
+    if (typeof key !== "string" || !ID_RE.test(key))
+      bad.push(`catalog/entries/${i}/key`);
+  });
+  return bad.length > 0
+    ? err(422, ErrorCode.BadRequest, "validation failed", { fields: bad })
+    : null;
 }

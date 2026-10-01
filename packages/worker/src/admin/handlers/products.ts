@@ -343,8 +343,8 @@ async function manualCreate(
         fields: [compiled.message],
       });
     catalogObj = { schemaVersion: 1, entries: compiled.catalog.entries };
-    // A catalog default is a config value the document carries (the catalog prune would drop a
-    // flagged one at signing; refusing it here tells the operator now).
+    // A catalog default is a config value the document carries, and each key a member name in
+    // it: refuse an unsignable default or key, and a key the manifest's ID_RE would refuse.
     const unrepresentable = catalogRepresentabilityResponse(catalogObj);
     if (unrepresentable) return unrepresentable;
   }

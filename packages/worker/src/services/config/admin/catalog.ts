@@ -57,8 +57,10 @@ export async function handleCatalog(
         fields: [e instanceof Error ? e.message : "invalid catalog"],
       });
     }
-    // plans/P3-01.md §2.2: a catalog default is a config value the document carries. The
-    // catalog prune would drop a flagged one at signing; refusing it here tells the operator.
+    // plans/P3-01.md §2.2: a catalog default is a config value the document carries and each
+    // key is a member name in it. The prune would drop a flagged default at signing but checks
+    // no key, so an unsignable key (U+0000, an NFC pair) or one the manifest's ID_RE refuses
+    // is refused here.
     const unrepresentable = catalogRepresentabilityResponse({
       entries: catalog.entries,
     });

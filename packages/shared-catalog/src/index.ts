@@ -9,6 +9,7 @@ export type {
 export { Catalog, type ValidationResult } from "./catalog.js";
 export {
   representabilityIssue,
+  catalogKeyIssue,
   describeRepresentabilityIssue,
   hasLoneSurrogate,
   numberInWireRange,
