@@ -10313,7 +10313,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-3GN7FVLA.js
+// ../shared-protocol/dist/chunk-HRUAEMNZ.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var FINGERPRINT_TOLERANCE = {
   off: Number.POSITIVE_INFINITY,
