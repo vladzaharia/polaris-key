@@ -5,7 +5,7 @@
  *
  *   - `dist_availability` / `dist_submissions`: written by CI (`POST /<p>/distribution/report`,
  *     a `pkeyci_` token with `distribution:report`) until the store connectors exist (P5-02 to
- *     P5-04), which will write them too. Read through the `delivery` hook and the console.
+ *     P5-04), which will write them too. Read through the `delivery` hook and in the console UI.
  *   - `dist_keys`: OPERATOR-owned (the console's PUT and DELETE). CI may only report the
  *     fingerprint it signed with; see "The key inventory" below.
  *
