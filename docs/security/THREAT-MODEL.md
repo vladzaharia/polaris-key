@@ -746,7 +746,7 @@ writes what the payload says. It re-reads the instance from the App Store Connec
 product's own key and writes only what that GET says — a forged or replayed payload can at worst
 make the Worker re-read a real object.
 
-**Cross-app writes (ownership fails closed).** The `asc-api-key` the brief asks for is a team key,
+**Cross-app writes (ownership fails closed, against the app the manifest names).** The `asc-api-key` the brief asks for is a team key,
 so it can read every app in the team, and the instance a signed payload names can be any of them.
 Before storing or writing anything, every path proves the object is the outlet's app: the GET asks
 for `include=app` (the real API puts relationship `data` in a response only when the relationship
@@ -766,6 +766,28 @@ and first re-read it with `include=app`, sending nothing unless Apple answers th
 app's version of that release; `testflight/public-link` proves its beta group with
 `betaGroups/{id}?include=app`. The test fake (`test/ascFake.ts`) answers relationships the same way, so a test cannot pass on
 data the real API would not send.
+
+**Who picks "the outlet's app".** Every check above compares against `appleId`, which the setup
+reads from `dist_outlets.identity_json`. That column is manifest-owned (migration 0036: every
+resync rewrites it), so it comes from `.pkey/distribution`, and whoever can push that file picks
+the app. The credential is the other way round: an operator stores the `asc-api-key`, it is a
+team key, and the operator docs suggest one key may serve several products. The ownership checks
+therefore stop a payload, a webhook or a stale row from reaching another app. They do NOT stop a
+repo writer of product Q, the actor P2b-02 already treats as a third party, from setting Q's
+`appleId` to any other app the team key can see. The next resync then makes the connector, with
+the operator's key:
+
+- mirror that app's versions, builds, phased release and held state into Q's tables, Q's
+  console view and Q's `delivery()` availability;
+- register the webhook (the `webhook` control) on that app;
+- point the console controls at that app's versions. The repo writer also publishes Q's
+  releases, so they can publish one whose version string matches the other app's
+  `PENDING_DEVELOPER_RELEASE` version. A platform admin who then presses `release` or
+  `phased-release/complete` on Q releases or completes the other app's version, which cannot be
+  undone.
+
+It is a confused deputy over every app the key can see, and nothing in the Worker closes it
+today; see Residual for the operator-side mitigations and the code fix it waits on.
 
 **Replay.** Deliveries are deduplicated on `data.id`: a KV marker (7 days, like the GitHub
 webhook) and the `dist_connector_events` primary key. A redelivery answers 200 `{duplicate: true}`
@@ -828,7 +850,8 @@ rule keeps the whole-release TestFlight row on the newest build — so a tick ov
 state writes no row and no audit entry.
 
 **Controls.** Each is a platform-admin console action (session, CSRF, rate limit), proves the
-object is the outlet's app first (above), sends exactly one documented request (two for webhook registration: create, then ping), writes one audit row
+object is the outlet's app first (above; the app `.pkey/distribution` names, not one the
+operator pinned), sends exactly one documented request (two for webhook registration: create, then ping), writes one audit row
 with the session's subject, and re-reads the object. "Register webhook" sends the stored secret
 to Apple once; the secret is generated server-side by the Core admin handler
 (`PUT …/outlet-credentials/<id>` with `generate: true`) and never returned to anyone.
@@ -856,6 +879,17 @@ days are enforced by the nightly maintenance sweep (`scheduled.ts`, step
 `connectorEvents:<product>`), which walks every product slug, soft-deleted and Distribution-off
 products included, so a product that stops being polled does not keep its payloads forever
 (`test/scheduled.test.ts`).
+
+**Residual: a manifest-chosen app.** The app the connector reads and acts on is chosen by the repo writer, not the operator ("Who picks
+the outlet's app", above). Until an operator-owned pin exists, the mitigations are operational
+and documented in `services/distribution/app-store-connect.md`: before pressing a control, check
+that the `appleId` in `GET …/distribution/connectors/asc` is the product's app; prefer one API key
+per team, and one product per team where you can, so the key sees only the apps that product
+should touch; treat a change to an outlet's `appleId` in `.pkey/distribution` as a change that
+needs review. The intended fix is a pin the platform admin records on the `asc-api-key`
+credential (the expected `appleId`, stored with the credential's metadata at PUT). The setup
+would then refuse to run, or refuse controls, when the manifest's `appleId` differs. That needs a
+field on a P5-01 credential kind and is a follow-up, not part of P5-02.
 
 ### The device-code user-code page (P1-06)
 
@@ -1071,7 +1105,7 @@ originating outside the trust boundary.
 | OIDC `sub`                      | License identity                                                                  | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                   |
 | OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                              |
 | `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                            |
-| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02).                                                                                                                                                                                             |
+| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity also picks which App Store Connect app the operator's team key reads and the console controls act on (P5-02, "Who picks the outlet's app"); no operator pin yet.     |
 | `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).    |
 | `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                          |
 | `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                        |
@@ -1230,7 +1264,7 @@ descriptor hook gains a method that writes or a new provider, or a method that r
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
 offered (P3-03), or a reader of `dist_availability` does, a store connector is added, gains a
-control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, or starts uploading or submitting (P5-02), or anything but the console's key
+control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, takes the app it proves against from anywhere but the manifest's outlet identity, gains an operator pin on that app (or drops one), or starts uploading or submitting (P5-02), or anything but the console's key
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to

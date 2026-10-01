@@ -111,6 +111,19 @@ every app in the team, so before anything is written the connector asks Apple wh
 object belongs to, and drops it when the answer is another app or none (the event shows as
 `ignored`). For a Background Asset that means one extra read each of its version and asset.
 
+"The outlet's app" is the `appleId` in `.pkey/distribution`, and every resync takes it from the
+repo. So whoever can push that file decides which app your API key reads for this product and
+which app the controls below act on. If one team key serves several products, a repo writer of
+one product can point it at another app in the team. The connector does not catch that, because
+the other app's objects really do belong to the `appleId` it was given. Until the credential can
+pin the expected app, protect yourself:
+
+- prefer **one API key per team**, and one product per team where you can, so the key sees only
+  the apps this product should touch;
+- review any change to an outlet's `appleId` in `.pkey/distribution` like a change to the key
+  itself;
+- check the `appleId` that `GET …/distribution/connectors/asc` shows before you press a control.
+
 An App Store version belongs to the release whose version equals its version string (a leading
 `v` is ignored). A TestFlight build belongs to the release build whose `buildNumber` equals
 Apple's build number (`CFBundleVersion`) on the same platform, or to the whole release when none
@@ -156,6 +169,11 @@ In the console API, under `/manage/api/products/<slug>/distribution/connectors/a
 | `testflight/public-link`  | `{ betaGroupId, enabled }` | `PATCH /v1/betaGroups/{id}` `publicLinkEnabled`                   |
 | `webhook`                 | `{}`                       | `POST /v1/webhooks` (all 12 events), then `POST /v1/webhookPings` |
 
+**Check the app first.** The controls act on the app whose `appleId` the setup shows in
+`GET …/distribution/connectors/asc`, and that id comes from the repo's `.pkey/distribution`, not
+from you. Confirm it is this product's app before pressing `release` or `phased-release/*`: on
+another app's held version, either one releases that app's version, and that cannot be undone.
+
 Before sending anything, a version control re-reads the release's App Store version and checks
 that Apple still says it belongs to the outlet's app (and, for `release`, that it is held now):
 otherwise the answer is `unknown_version` and nothing is sent. A version stored while the outlet
@@ -174,6 +192,8 @@ the objects the connector tracks, unresolved ones flagged, and the latest webhoo
   can redirect it.
 - The API key never leaves custody: the connector uses short-lived tokens minted from it, every
   open of the key is in the activity log, and errors record an HTTP status, never a response.
+- Which app the key reads and the controls act on is the `appleId` in `.pkey/distribution`, so
+  the repo chooses it. Use one key per team and check the app before a control (above).
 - An App Manager key can change metadata, TestFlight and release timing, but it cannot sign a
   build. Keep a separate Developer-role key for CI uploads if you want the two apart.
 
