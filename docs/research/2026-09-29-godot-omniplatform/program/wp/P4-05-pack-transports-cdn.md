@@ -68,13 +68,18 @@ authorised per request because a hash is never a secret
   `Range` (a multi-range request gets the full 200; clients never send one, S-02), `If-Range` on
   the strong `ETag` evaluated by the Worker, `Repr-Digest: sha-256=:…:` (RFC 9530),
   `Cache-Control: public, max-age=31536000, immutable, no-transform` for ungated objects, and CORS
-  for `web`. The CORS rules:
-  - expose `ETag, Content-Range, Content-Length, Accept-Ranges, Repr-Digest`;
-  - answer the `OPTIONS` preflight with `Access-Control-Allow-Headers: Range, If-Range,
-If-None-Match` and `Access-Control-Max-Age: 7200`.
+  for `web`. CORS is P0-05's, not new code:
+  - bytes-host CORS is `core/cors.ts`, applied by `dispatchBytesHost` (`core/bytesHost.ts`
+    answers `OPTIONS` through `corsPreflight`). Its allow list already includes `Range`,
+    `If-Range` and `If-None-Match`, next to `Authorization` and the `X-PKey-*` headers that gated
+    delivery needs. Its expose list already has `ETag`, `Content-Range`, `Accept-Ranges`,
+    `Content-Length` and `Repr-Digest`. Keep both as they are.
+  - `Access-Control-Max-Age` stays `600`, chosen so that removing an origin takes effect soon.
+    Raise it only for the bytes host and only on purpose, recording the origin-removal
+    trade-off and that WebKit caps the preflight cache at 600 s anyway (Chromium at 7200 s).
 
   A single `Range` is CORS-safelisted, but `If-Range` is not. Chromium 145 and WebKit 26
-  preflight every such request ([notes/S-02](../../notes/S-02.md) §4.4).
+  preflight every such request ([notes/S-02](../../notes/S-02.md) §4.4, §6 point 1).
 
 - **Gated delivery.** `dist_access` for a pack deliverable with `entitlement`: its objects are
   uploaded to and served from the gated prefix only; each request is authorised by device token

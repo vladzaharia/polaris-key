@@ -29,7 +29,7 @@ a deploy it comes from `wrangler secret put PROBE_PUT_TOKEN`.
 ```sh
 cd docs/research/2026-09-29-godot-omniplatform/prototype/r2-range
 echo 'PROBE_PUT_TOKEN=local-only-token' > worker/.dev.vars
-WR=../../../../../packages/worker/node_modules/.bin/wrangler   # the repo's pinned wrangler
+WR=$PWD/../../../../../packages/worker/node_modules/.bin/wrangler   # the pinned wrangler, absolute so it survives `cd worker`
 
 # Path B (plus /c/ and /r/) on :8797, and the Workers Caching config on :8798
 (cd worker && mise exec node@22 -- $WR dev --local --port 8797 --persist-to .wrangler/state) &
