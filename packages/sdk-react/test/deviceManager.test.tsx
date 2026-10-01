@@ -1,3 +1,4 @@
+// @pkey-feature devices.manage ui.kit
 // `<DeviceManager>` — list / rename / disconnect.
 //
 // The state this file exists for is the UNSUPPORTED one. A browser cookie session cannot reach

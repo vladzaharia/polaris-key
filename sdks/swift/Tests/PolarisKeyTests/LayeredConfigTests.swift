@@ -57,6 +57,7 @@ final class LayeredConfigTests: XCTestCase {
                     localOverrides: localOverrides, environment: environment)))
     }
 
+    // @pkey-feature config.resolve
     func testEnforcedAndHiddenAlwaysWinOverOverrides() async throws {
         let c = try await client(
             localOverrides: ["run.concurrency": .int(99), "proxy.secret": .string("nope")],
@@ -71,6 +72,7 @@ final class LayeredConfigTests: XCTestCase {
         XCTAssertEqual(secretSrc, .hidden)
     }
 
+    // @pkey-feature config.resolve
     func testDefaultStateLocalOverrideBeatsRemote() async throws {
         let c = try await client(localOverrides: ["ui.theme": .string("light")])
         let theme = await c.config.config("ui.theme", default: .string("d"))
@@ -79,6 +81,7 @@ final class LayeredConfigTests: XCTestCase {
         XCTAssertEqual(src, .local)
     }
 
+    // @pkey-feature config.resolve
     func testDefaultStateFallsBackToRemoteThenFallback() async throws {
         let c = try await client()
         let theme = await c.config.config("ui.theme", default: .string("d"))
@@ -91,6 +94,7 @@ final class LayeredConfigTests: XCTestCase {
         XCTAssertEqual(missingSrc, .fallback)
     }
 
+    // @pkey-feature config.resolve
     /// The v3 env prefix is `PKEY_CONFIG_`, and the dot→`__` mapping is the part every SDK must
     /// agree on.
     func testEnvOverrideBeatsRemoteDefaultAndParsesJson() async throws {
@@ -119,6 +123,7 @@ final class LayeredConfigTests: XCTestCase {
         XCTAssertEqual(theme, .string("dark"), "PLRS_CONFIG_ was withdrawn by Amendment A1")
     }
 
+    // @pkey-feature config.resolve
     func testLocalOverrideBeatsEnvForDefaultState() async throws {
         let c = try await client(
             localOverrides: ["ui.theme": .string("local-wins")],
@@ -135,6 +140,7 @@ final class LayeredConfigTests: XCTestCase {
         XCTAssertEqual(v, .string("not json: bare"))
     }
 
+    // @pkey-feature config.list
     func testListUserConfigExcludesHiddenAndFlagsEnforced() async throws {
         let c = try await client(localOverrides: ["ui.theme": .string("light")])
         let rows = await c.config.listUserConfig()
@@ -147,6 +153,7 @@ final class LayeredConfigTests: XCTestCase {
         XCTAssertEqual(byKey["ui.theme"]?.value, .string("light"))
     }
 
+    // @pkey-feature config.secret
     /// Secrets are readable but never ENUMERATED — `listUserConfig` is a settings-UI surface and
     /// a secret has no business on one.
     func testSecretsAreReadableButNotEnumerated() async throws {

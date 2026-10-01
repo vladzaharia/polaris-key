@@ -1,0 +1,182 @@
+{
+  "$schema": "../../conformance/parity/manifest.schema.json",
+  "sdk": "react",
+  "runtimes": ["web", "desktop-bridge"],
+  "testRoots": [
+    "packages/sdk-react/test",
+    "packages/client-core/test",
+    "conformance/runners/node",
+    "tools/gen-mirrors.test.ts"
+  ],
+  "features": {
+    "core.verify": {
+      "status": "implemented",
+      "note": "client-core's verifier, which the Node runner drives vector for vector."
+    },
+    "core.cache": {
+      "status": "planned",
+      "unowned": true,
+      "note": "The browser adapter is online-only with no verified cache; on desktop the host's Node SDK holds it. No work package gives the browser one."
+    },
+    "core.bundle": {
+      "status": "planned",
+      "wp": "P1b-07",
+      "note": "client-core's inspectBundle exists; the React SDK does not expose an import."
+    },
+    "core.discover": { "status": "implemented" },
+    "core.sync": { "status": "implemented" },
+    "core.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No local-only client in React; P1b-07 leaves it unowned."
+    },
+    "core.headers": { "status": "planned", "wp": "P1b-04" },
+    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.caps": { "status": "planned", "wp": "P1b-10" },
+    "core.store": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host process's store holds the token."
+    },
+    "license.gate": { "status": "implemented" },
+    "license.activate": { "status": "implemented" },
+    "license.enroll": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK enrols."
+    },
+    "license.deactivate": { "status": "implemented" },
+    "license.entitlements": { "status": "implemented" },
+    "license.channels": { "status": "planned", "wp": "P1b-07" },
+    "license.reregister": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers (P1b-06)."
+    },
+    "config.resolve": { "status": "implemented" },
+    "config.list": { "status": "implemented" },
+    "config.secret": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New desktop-bridge N/A (P1b-01). The desktop renderer never holds secrets either; the host reads them with the Node SDK."
+    },
+    "config.schema": { "status": "planned", "wp": "P1b-07" },
+    "config.mint": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P1b-08 ports edge-mint to Node, Python and Swift only."
+    },
+    "config.mirror": {
+      "status": "implemented",
+      "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
+    },
+    "devices.fingerprint": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK computes it."
+    },
+    "devices.facts": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK collects them."
+    },
+    "devices.register": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK registers."
+    },
+    "devices.manage": {
+      "status": "implemented",
+      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "note": "New web N/A (P1b-01). Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported."
+    },
+    "devices.report": {
+      "status": "planned",
+      "wp": "P1b-07",
+      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "note": "New web N/A (P1b-01). P1b-07 adds desktop reporting through the bridge. POST /<p>/devices/report accepts only a device bearer, which a browser does not hold."
+    },
+    "identity.oidc": { "status": "implemented" },
+    "identity.devicecode": {
+      "status": "implemented",
+      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "note": "New web N/A (P1b-01). Through the desktop bridge (beginSignIn/pollSignIn). A browser signs in with the OIDC redirect (identity.oidc)."
+    },
+    "release.changelog": { "status": "planned", "wp": "P1b-07" },
+    "release.download": { "status": "planned", "wp": "P1b-07" },
+    "release.record": { "status": "planned", "wp": "P3-05" },
+    "update.check": { "status": "implemented" },
+    "update.feed": { "status": "planned", "wp": "P3-05" },
+    "update.decide": { "status": "planned", "wp": "P3-05" },
+    "update.driver": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No updater hand-off in React, and no work package adds one."
+    },
+    "update.bootguard": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them."
+    },
+    "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "packs.plan": { "status": "planned", "wp": "P4-06" },
+    "packs.index": { "status": "planned", "wp": "P4-06" },
+    "packs.apply.full": { "status": "planned", "wp": "P4-06" },
+    "packs.apply.file": { "status": "planned", "wp": "P4-06" },
+    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
+    "packs.apply.delta": {
+      "status": "planned",
+      "wp": "P4-06",
+      "note": "The WASM decoder in P4-06; dcz in Chromium in P4-18."
+    },
+    "packs.state": { "status": "planned", "wp": "P4-06" },
+    "packs.handlers": { "status": "planned", "wp": "P4-06" },
+    "packs.provides": { "status": "planned", "wp": "P4-20" },
+    "packs.transport.apple": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime"
+    },
+    "packs.transport.play": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime"
+    },
+    "packs.transport.steam": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
+    },
+    "packs.transport.msix": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
+    },
+    "packs.transport.flatpak": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
+    },
+    "ui.stages": {
+      "status": "planned",
+      "wp": "P1-09",
+      "note": "Partial today: the loading phase and LicenseGate screens, with no stage machine."
+    },
+    "ui.kit": { "status": "implemented" },
+    "commerce.receipt": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+    }
+  }
+}

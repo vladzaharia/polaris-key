@@ -1,3 +1,4 @@
+// @pkey-feature ui.kit
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, waitFor, within } from "@testing-library/react";
 import { PolarisKeyProvider } from "../src/react/Provider.js";
