@@ -47,7 +47,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/distribution.schema.json",
   "title": "Polaris Key distribution manifest (.pkey/distribution)",
-  "description": "The distribution document of a .pkey/ manifest: the product's outlets with their store identities, the transport each deliverable uses per outlet, and the store listing. Optional: with the distribution service on and no document, the product has one implicit outlet, direct, served by pkey-cdn. Outlet capabilities are operator-owned and may not appear anywhere in this file. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative, and the cross-document checks (artifact, channel and deliverable references into .pkey/release) are validator-only. The $id URL is an identifier, not a fetchable locator \\u2014 this file ships inside the @polaris-key/manifest npm package.",
+  "description": "The distribution document of a .pkey/ manifest: the product's outlets with their store identities, the transport each deliverable uses per outlet, and the store listing. Optional: with the distribution service on and no document, the product has one implicit outlet, direct, served by pkey-cdn. Outlet capabilities are operator-owned and may not appear anywhere in this file. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative, and the cross-document checks (artifact, channel and deliverable references into .pkey/release) are validator-only. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
   "type": "object",
   "properties": {
     "apiVersion": {
@@ -381,7 +381,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       ]
     },
     "outlet_direct": {
-      "description": "The identity fields a direct outlet reads: platforms, homebrewCask. Other keys are ignored.",
+      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, scoop. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -393,10 +393,25 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "homebrewCask": {
           "$ref": "#/$defs/homebrewCask"
         },
+        "scoop": {
+          "$ref": "#/$defs/scoop"
+        },
         "listing": {
           "$ref": "#/$defs/listing"
         },
         "capabilities": false
+      },
+      "if": {
+        "required": ["scoop", "platforms"]
+      },
+      "then": {
+        "properties": {
+          "platforms": {
+            "contains": {
+              "const": "windows"
+            }
+          }
+        }
       }
     },
     "outlet_app-store": {
@@ -728,7 +743,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\\\.[A-Za-z][A-Za-z0-9_]*)+$"
     },
     "tracks": {
-      "description": "Declared channel \\u2192 Play track. Keys must be declared channels (validator-checked).",
+      "description": "Declared channel → Play track. Keys must be declared channels (validator-checked).",
       "type": "object",
       "maxProperties": 32,
       "additionalProperties": {
@@ -746,7 +761,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "pattern": "^[A-Za-z0-9.-]{3,50}_[a-z0-9]{13}$"
     },
     "branches": {
-      "description": "Declared channel \\u2192 Steam branch. Keys must be declared channels (validator-checked).",
+      "description": "Declared channel → Steam branch. Keys must be declared channels (validator-checked).",
       "type": "object",
       "maxProperties": 32,
       "additionalProperties": {
@@ -785,6 +800,51 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "The Homebrew cask token.",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@-]{0,99}$"
+    },
+    "scoopPath": {
+      "description": "A relative path inside the Windows archive: no drive, no leading separator, no '..'.",
+      "type": "string",
+      "pattern": "^(?!.*(?:^|[\\\\\\\\/])\\\\.\\\\.(?:[\\\\\\\\/]|$))[A-Za-z0-9 ._()+-]{1,128}(?:[\\\\\\\\/][A-Za-z0-9 ._()+-]{1,128}){0,7}$"
+    },
+    "scoop": {
+      "description": "What the Scoop manifest installs (P2b-05): bin, the executables Scoop shims onto PATH; shortcuts, Start-menu entries as [target, name] pairs. A direct outlet that declares platforms must include windows.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bin": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/scoopPath"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "$ref": "#/$defs/scoopPath"
+              }
+            }
+          ]
+        },
+        "shortcuts": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/scoopPath"
+              },
+              {
+                "type": "string",
+                "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f\\\\\\\\/:*?\\"<>|]{1,100}$"
+              }
+            ]
+          }
+        }
+      }
     },
     "transport": {
       "enum": [
@@ -1516,6 +1576,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "requires": {
           "type": "object"
         },
+        "metadata": {
+          "description": "Facts pkey release publish read out of the payload (P2b-05), for the storefront feeds. Only ios and android builds carry it, each in its platform's shape."
+        },
         "artifacts": {
           "description": "Empty for a store-only build.",
           "type": "array",
@@ -1525,7 +1588,168 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           }
         }
       },
-      "required": ["id", "platform", "arch", "format", "artifacts"]
+      "required": ["id", "platform", "arch", "format", "artifacts"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "platform": {
+                "const": "ios"
+              }
+            },
+            "required": ["platform"]
+          },
+          "then": {
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/iosMetadata"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "platform": {
+                "const": "android"
+              }
+            },
+            "required": ["platform"]
+          },
+          "then": {
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/androidMetadata"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "platform": {
+                "enum": ["ios", "android"]
+              }
+            },
+            "required": ["platform"]
+          },
+          "else": {
+            "not": {
+              "required": ["metadata"]
+            }
+          }
+        }
+      ]
+    },
+    "iosMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bundleIdentifier": {
+          "type": "string",
+          "maxLength": 155,
+          "pattern": "^[A-Za-z0-9-]+(\\\\.[A-Za-z0-9-]+)+$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
+        },
+        "buildVersion": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
+        },
+        "minOSVersion": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$"
+        },
+        "appPermissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "entitlements": {
+              "type": "array",
+              "maxItems": 256,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$"
+              }
+            },
+            "privacy": {
+              "type": "object",
+              "maxProperties": 64,
+              "propertyNames": {
+                "pattern": "^NS[A-Za-z0-9]{1,100}UsageDescription$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 1000,
+                "pattern": "^[^\\\\u0000]*$"
+              }
+            }
+          },
+          "required": ["entitlements", "privacy"]
+        }
+      },
+      "required": [
+        "bundleIdentifier",
+        "version",
+        "buildVersion",
+        "appPermissions"
+      ]
+    },
+    "androidMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "packageName": {
+          "type": "string",
+          "maxLength": 255,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\\\.[A-Za-z][A-Za-z0-9_]*)+$"
+        },
+        "versionCode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2100000000
+        },
+        "versionName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$"
+        },
+        "minSdk": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "targetSdk": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "nativecode": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "arm64-v8a",
+              "armeabi-v7a",
+              "armeabi",
+              "x86",
+              "x86_64",
+              "riscv64",
+              "mips",
+              "mips64"
+            ]
+          }
+        },
+        "signerSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": ["packageName", "versionCode", "versionName", "signerSha256"]
     },
     "artifact": {
       "type": "object",
@@ -2292,17 +2516,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path6) {
-      const ctrl = callVisitor(key, node, visitor, path6);
+    function visit_(key, node, visitor, path7) {
+      const ctrl = callVisitor(key, node, visitor, path7);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path6, ctrl);
-        return visit_(key, ctrl, visitor, path6);
+        replaceNode(key, path7, ctrl);
+        return visit_(key, ctrl, visitor, path7);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path6 = Object.freeze(path6.concat(node));
+          path7 = Object.freeze(path7.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path6);
+            const ci = visit_(i, node.items[i], visitor, path7);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -2313,13 +2537,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path6 = Object.freeze(path6.concat(node));
-          const ck = visit_("key", node.key, visitor, path6);
+          path7 = Object.freeze(path7.concat(node));
+          const ck = visit_("key", node.key, visitor, path7);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path6);
+          const cv = visit_("value", node.value, visitor, path7);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -2340,17 +2564,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path6) {
-      const ctrl = await callVisitor(key, node, visitor, path6);
+    async function visitAsync_(key, node, visitor, path7) {
+      const ctrl = await callVisitor(key, node, visitor, path7);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path6, ctrl);
-        return visitAsync_(key, ctrl, visitor, path6);
+        replaceNode(key, path7, ctrl);
+        return visitAsync_(key, ctrl, visitor, path7);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path6 = Object.freeze(path6.concat(node));
+          path7 = Object.freeze(path7.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path6);
+            const ci = await visitAsync_(i, node.items[i], visitor, path7);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -2361,13 +2585,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path6 = Object.freeze(path6.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path6);
+          path7 = Object.freeze(path7.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path7);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path6);
+          const cv = await visitAsync_("value", node.value, visitor, path7);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -2394,23 +2618,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path6) {
+    function callVisitor(key, node, visitor, path7) {
       if (typeof visitor === "function")
-        return visitor(key, node, path6);
+        return visitor(key, node, path7);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path6);
+        return visitor.Map?.(key, node, path7);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path6);
+        return visitor.Seq?.(key, node, path7);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path6);
+        return visitor.Pair?.(key, node, path7);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path6);
+        return visitor.Scalar?.(key, node, path7);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path6);
+        return visitor.Alias?.(key, node, path7);
       return void 0;
     }
-    function replaceNode(key, path6, node) {
-      const parent = path6[path6.length - 1];
+    function replaceNode(key, path7, node) {
+      const parent = path7[path7.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -3029,10 +3253,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path6, value) {
+    function collectionFromPath(schema, path7, value) {
       let v = value;
-      for (let i = path6.length - 1; i >= 0; --i) {
-        const k = path6[i];
+      for (let i = path7.length - 1; i >= 0; --i) {
+        const k = path7[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -3051,7 +3275,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path6) => path6 == null || typeof path6 === "object" && !!path6[Symbol.iterator]().next().done;
+    var isEmptyPath = (path7) => path7 == null || typeof path7 === "object" && !!path7[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -3081,11 +3305,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path6, value) {
-        if (isEmptyPath(path6))
+      addIn(path7, value) {
+        if (isEmptyPath(path7))
           this.add(value);
         else {
-          const [key, ...rest] = path6;
+          const [key, ...rest] = path7;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -3099,8 +3323,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path6) {
-        const [key, ...rest] = path6;
+      deleteIn(path7) {
+        const [key, ...rest] = path7;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -3114,8 +3338,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path6, keepScalar) {
-        const [key, ...rest] = path6;
+      getIn(path7, keepScalar) {
+        const [key, ...rest] = path7;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -3133,8 +3357,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path6) {
-        const [key, ...rest] = path6;
+      hasIn(path7) {
+        const [key, ...rest] = path7;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -3144,8 +3368,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path6, value) {
-        const [key, ...rest] = path6;
+      setIn(path7, value) {
+        const [key, ...rest] = path7;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -5695,9 +5919,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path6, value) {
+      addIn(path7, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path6, value);
+          this.contents.addIn(path7, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -5772,14 +5996,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path6) {
-        if (Collection.isEmptyPath(path6)) {
+      deleteIn(path7) {
+        if (Collection.isEmptyPath(path7)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path6) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path7) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -5794,10 +6018,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path6, keepScalar) {
-        if (Collection.isEmptyPath(path6))
+      getIn(path7, keepScalar) {
+        if (Collection.isEmptyPath(path7))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path6, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path7, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -5808,10 +6032,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path6) {
-        if (Collection.isEmptyPath(path6))
+      hasIn(path7) {
+        if (Collection.isEmptyPath(path7))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path6) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path7) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -5828,13 +6052,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path6, value) {
-        if (Collection.isEmptyPath(path6)) {
+      setIn(path7, value) {
+        if (Collection.isEmptyPath(path7)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path6), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path7), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path6, value);
+          this.contents.setIn(path7, value);
         }
       }
       /**
@@ -7814,9 +8038,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path6) => {
+    visit.itemAtPath = (cst, path7) => {
       let item = cst;
-      for (const [field, index] of path6) {
+      for (const [field, index] of path7) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -7825,23 +8049,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path6) => {
-      const parent = visit.itemAtPath(cst, path6.slice(0, -1));
-      const field = path6[path6.length - 1][0];
+    visit.parentCollection = (cst, path7) => {
+      const parent = visit.itemAtPath(cst, path7.slice(0, -1));
+      const field = path7[path7.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path6, item, visitor) {
-      let ctrl = visitor(item, path6);
+    function _visit(path7, item, visitor) {
+      let ctrl = visitor(item, path7);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path6.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path7.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -7852,10 +8076,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path6);
+            ctrl = ctrl(item, path7);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path6) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path7) : ctrl;
     }
     exports.visit = visit;
   }
@@ -9617,7 +9841,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import path5 from "node:path";
+import path6 from "node:path";
 
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -10399,7 +10623,7 @@ var TRANSPORT_OUTLET_KINDS = {
 };
 var IMPLICIT_OUTLET_ID = "direct";
 var OUTLET_IDENTITY_FIELDS = {
-  direct: ["platforms", "homebrewCask"],
+  direct: ["platforms", "homebrewCask", "scoop"],
   "app-store": ["appleId", "bundleId"],
   testflight: ["appleId", "bundleId"],
   altstore: ["artifact", "bundleId"],
@@ -10434,6 +10658,9 @@ var SNAP_NAME_RE = /^[a-z0-9](?:-?[a-z0-9]){0,39}$/;
 var WINGET_ID_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$/;
 var HOMEBREW_CASK_PATTERN = /^[a-z0-9][a-z0-9.@-]{0,99}$/;
 var MAX_CHANNEL_MAP_ENTRIES = 32;
+var SCOOP_PATH_PATTERN = /^(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[A-Za-z0-9 ._()+-]{1,128}(?:[\\/][A-Za-z0-9 ._()+-]{1,128}){0,7}$/;
+var SCOOP_SHORTCUT_NAME_RE = /^[^\u0000-\u001f\u007f\\/:*?"<>|]{1,100}$/;
+var MAX_SCOOP_ENTRIES = 16;
 var pattern = (re, what, max) => (v) => typeof v === "string" && re.test(v) && (max === void 0 || v.length <= max) ? null : `must be ${what}`;
 var numericId = (v) => typeof v === "number" && Number.isSafeInteger(v) && v > 0 || typeof v === "string" && NUMERIC_ID_PATTERN.test(v) ? null : "must be a positive integer or a string of decimal digits with no leading zero";
 var channelMap = (valueRe, what) => (v) => {
@@ -10502,8 +10729,25 @@ function fieldCheck(kind, field) {
         HOMEBREW_CASK_PATTERN,
         "a Homebrew cask token (lower-case letters, digits, -, . and @)"
       );
+    case "scoop":
+      return scoopCheck;
   }
 }
+var scoopPath = (v) => typeof v === "string" && SCOOP_PATH_PATTERN.test(v);
+var scoopCheck = (v) => {
+  const shape = "must be { bin?: a relative path or a list of at most 16, shortcuts?: at most 16 [target, name] pairs }";
+  if (!isRecord(v) || Object.keys(v).some((k) => k !== "bin" && k !== "shortcuts"))
+    return shape;
+  const bin = v.bin;
+  if (bin !== void 0 && !scoopPath(bin) && !(Array.isArray(bin) && bin.length > 0 && bin.length <= MAX_SCOOP_ENTRIES && bin.every(scoopPath)))
+    return shape;
+  const shortcuts = v.shortcuts;
+  if (shortcuts !== void 0 && !(Array.isArray(shortcuts) && shortcuts.length <= MAX_SCOOP_ENTRIES && shortcuts.every(
+    (s) => Array.isArray(s) && s.length === 2 && scoopPath(s[0]) && typeof s[1] === "string" && SCOOP_SHORTCUT_NAME_RE.test(s[1])
+  )))
+    return shape;
+  return null;
+};
 var LISTING_TEXT_FIELDS = [
   "name",
   "subtitle",
@@ -10584,11 +10828,11 @@ function validateDistribution(errors, doc, ctx) {
       "apiVersion must be pkey.dev/v1 when present."
     );
   }
-  for (const path6 of capabilityPaths(doc)) {
+  for (const path7 of capabilityPaths(doc)) {
     add(
       errors,
       "distribution",
-      path6,
+      path7,
       "capabilities_not_manifest_writable",
       "outlet capabilities are operator-owned and cannot be set in .pkey/distribution; they default per outlet kind and an operator narrows them in the console."
     );
@@ -10719,6 +10963,15 @@ function validateOutlet(errors, id, entry, ctx, kinds) {
       }
     }
   }
+  if (kind === "direct" && entry.scoop !== void 0 && Array.isArray(entry.platforms) && !entry.platforms.includes("windows")) {
+    add(
+      errors,
+      "distribution",
+      `/outlets/${id}/scoop`,
+      "invalid_outlet_identity",
+      `outlets.${id}.scoop describes a Windows install, so platforms must include windows.`
+    );
+  }
   if (entry.listing !== void 0) {
     const problem = listingProblem(entry.listing);
     if (problem) {
@@ -10753,13 +11006,13 @@ function validateTransports(errors, transports, ctx, kinds) {
       );
     }
   }
-  const checkMap = (path6, raw) => {
+  const checkMap = (path7, raw) => {
     if (raw === void 0) return;
     if (!isRecord(raw)) {
       add(
         errors,
         "distribution",
-        path6,
+        path7,
         "invalid_transport",
         "a transport map must be an object keyed by outlet id."
       );
@@ -10770,7 +11023,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path6}/${outletId}`,
+          `${path7}/${outletId}`,
           "invalid_transport",
           `transports must be one of ${TRANSPORTS.join(", ")}.`
         );
@@ -10781,7 +11034,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path6}/${outletId}`,
+          `${path7}/${outletId}`,
           "unknown_outlet_ref",
           `transport maps may only name outlets declared under outlets.`
         );
@@ -10789,7 +11042,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path6}/${outletId}`,
+          `${path7}/${outletId}`,
           "transport_not_allowed",
           `transport ${transport} cannot carry a deliverable on a ${kind} outlet.`
         );
@@ -10829,11 +11082,11 @@ function capabilityPaths(doc) {
     { node: doc, path: "" }
   ];
   while (stack.length) {
-    const { node, path: path6 } = stack.pop();
+    const { node, path: path7 } = stack.pop();
     if (node === null || typeof node !== "object") continue;
     const entries = Array.isArray(node) ? node.map((v, i) => [String(i), v]) : Object.entries(node);
     for (const [key, child] of entries) {
-      const childPath = `${path6}/${key}`;
+      const childPath = `${path7}/${key}`;
       if (!Array.isArray(node) && key === "capabilities") found.push(childPath);
       stack.push({ node: child, path: childPath });
     }
@@ -10916,10 +11169,22 @@ function normalizeIdentity(kind, entry) {
     if (value === void 0 || fieldCheck(kind, field)(value) !== null)
       continue;
     if (typeof value === "number") out[field] = String(value);
+    else if (field === "scoop") out[field] = structuredCloneScoop(value);
     else if (Array.isArray(value)) out[field] = [...value];
     else if (isRecord(value)) out[field] = sortedRecord(value);
     else out[field] = value;
   }
+  return out;
+}
+function structuredCloneScoop(v) {
+  const r = v;
+  const out = {};
+  if (typeof r.bin === "string") out.bin = r.bin;
+  else if (Array.isArray(r.bin)) out.bin = [...r.bin];
+  if (Array.isArray(r.shortcuts))
+    out.shortcuts = r.shortcuts.map(
+      ([t, n]) => [t, n]
+    );
   return out;
 }
 function normalizeListing(raw) {
@@ -10965,8 +11230,8 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add(list, file, path6, code, message) {
-  list.push({ file, path: path6, code, message });
+function add(list, file, path7, code, message) {
+  list.push({ file, path: path7, code, message });
 }
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
@@ -10979,11 +11244,79 @@ var LOCATION_PROVIDERS = [
 var MAX_DESCRIPTOR_BUILDS = 64;
 var MAX_BUILD_ARTIFACTS = 32;
 var MAX_ARTIFACT_LOCATIONS = 8;
+var MAX_ENTITLEMENTS = 256;
+var MAX_PRIVACY_KEYS = 64;
+var MAX_PRIVACY_TEXT = 1e3;
+var ENTITLEMENT_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
+var PRIVACY_KEY_RE = /^NS[A-Za-z0-9]{1,100}UsageDescription$/;
+var META_BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+var META_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
+var VERSION_NAME_RE = /^[^\u0000-\u001f\u007f]{1,128}$/u;
+var MAX_VERSION_CODE = 21e8;
+function buildMetadataProblem(platform, m) {
+  if (platform !== "ios" && platform !== "android")
+    return "only ios and android builds carry metadata";
+  if (!isRecord2(m)) return "metadata must be an object";
+  const allowed = platform === "ios" ? [
+    "bundleIdentifier",
+    "version",
+    "buildVersion",
+    "minOSVersion",
+    "appPermissions"
+  ] : [
+    "packageName",
+    "versionCode",
+    "versionName",
+    "minSdk",
+    "targetSdk",
+    "nativecode",
+    "signerSha256"
+  ];
+  const extra = Object.keys(m).find((k) => !allowed.includes(k));
+  if (extra) return `${extra} is not a ${platform} metadata field`;
+  if (platform === "ios") {
+    if (typeof m.bundleIdentifier !== "string" || m.bundleIdentifier.length > 155 || !META_BUNDLE_ID_RE.test(m.bundleIdentifier))
+      return "bundleIdentifier must be a reverse-DNS bundle id";
+    for (const f of ["version", "buildVersion"])
+      if (typeof m[f] !== "string" || !VERSION_RE.test(m[f]))
+        return `${f} must be 1-64 version characters`;
+    if (m.minOSVersion !== void 0 && (typeof m.minOSVersion !== "string" || !MIN_OS_RE.test(m.minOSVersion)))
+      return "minOSVersion must be at most 32 version characters";
+    const p = m.appPermissions;
+    if (!isRecord2(p) || Object.keys(p).some((k) => k !== "entitlements" && k !== "privacy"))
+      return "appPermissions must be { entitlements, privacy }";
+    const ents = p.entitlements;
+    if (!Array.isArray(ents) || ents.length > MAX_ENTITLEMENTS || new Set(ents).size !== ents.length || !ents.every((e) => typeof e === "string" && ENTITLEMENT_RE.test(e)))
+      return `appPermissions.entitlements must be at most ${MAX_ENTITLEMENTS} distinct entitlement keys`;
+    const priv = p.privacy;
+    if (!isRecord2(priv) || Object.keys(priv).length > MAX_PRIVACY_KEYS || !Object.entries(priv).every(
+      ([k, v]) => PRIVACY_KEY_RE.test(k) && typeof v === "string" && codePoints(v) <= MAX_PRIVACY_TEXT && !v.includes("\0")
+    ))
+      return `appPermissions.privacy must map at most ${MAX_PRIVACY_KEYS} NS…UsageDescription keys to text`;
+    return null;
+  }
+  if (typeof m.packageName !== "string" || m.packageName.length > 255 || !META_PACKAGE_RE.test(m.packageName))
+    return "packageName must be an Android package name";
+  if (!Number.isSafeInteger(m.versionCode) || m.versionCode < 1 || m.versionCode > MAX_VERSION_CODE)
+    return `versionCode must be an integer from 1 to ${MAX_VERSION_CODE}`;
+  if (typeof m.versionName !== "string" || !VERSION_NAME_RE.test(m.versionName))
+    return "versionName must be 1-128 characters with no control characters";
+  if (m.minSdk !== void 0 && !(Number.isSafeInteger(m.minSdk) && m.minSdk >= 1 && m.minSdk <= 1e3))
+    return "minSdk must be an integer from 1 to 1000";
+  if (m.targetSdk !== void 0 && !(Number.isSafeInteger(m.targetSdk) && m.targetSdk >= 1 && m.targetSdk <= 1e3))
+    return "targetSdk must be an integer from 1 to 1000";
+  const abis = ANDROID_ABIS;
+  if (m.nativecode !== void 0 && (!Array.isArray(m.nativecode) || new Set(m.nativecode).size !== m.nativecode.length || !m.nativecode.every((a) => typeof a === "string" && abis.includes(a))))
+    return `nativecode must be distinct ABIs from ${ANDROID_ABIS.join(", ")}`;
+  if (typeof m.signerSha256 !== "string" || !SHA256_RE.test(m.signerSha256))
+    return "signerSha256 must be 64 lower-case hex characters";
+  return null;
+}
 function descriptorReleaseId(d) {
   return d.tag ?? `${d.deliverable}@${d.version}`;
 }
-function isContentAddressedKey(key, sha256) {
-  return key === `blobs/sha256/${sha256}` || key === `gated/blobs/sha256/${sha256}`;
+function isContentAddressedKey(key, sha2563) {
+  return key === `blobs/sha256/${sha2563}` || key === `gated/blobs/sha256/${sha2563}`;
 }
 var SLUG_RE = /^[a-z0-9-]{1,64}$/;
 var DELIVERABLE_RE = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
@@ -11028,7 +11361,7 @@ function versionFitsScheme(version, scheme) {
 }
 function validateReleaseDescriptor(descriptor, manifest) {
   const errors = [];
-  const err = (path6, code, message) => errors.push({ path: path6, code, message });
+  const err = (path7, code, message) => errors.push({ path: path7, code, message });
   if (!isRecord2(descriptor)) {
     err(
       "/",
@@ -11189,6 +11522,11 @@ function validateReleaseDescriptor(descriptor, manifest) {
         "invalid_descriptor_build",
         "requires must be an object."
       );
+    if (b.metadata !== void 0) {
+      const problem = buildMetadataProblem(b.platform, b.metadata);
+      if (problem)
+        err(`/builds/${bi}/metadata`, "invalid_build_metadata", `${problem}.`);
+    }
     if (!Array.isArray(b.artifacts) || b.artifacts.length > MAX_BUILD_ARTIFACTS) {
       err(
         `/builds/${bi}/artifacts`,
@@ -11481,6 +11819,16 @@ var RELEASE_ARCHES = [
   "wasm32",
   "any"
 ];
+var ANDROID_ABIS = [
+  "arm64-v8a",
+  "armeabi-v7a",
+  "armeabi",
+  "x86",
+  "x86_64",
+  "riscv64",
+  "mips",
+  "mips64"
+];
 var ARTIFACT_ROLES = [
   "payload",
   "files-index",
@@ -11702,7 +12050,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
     GROUP_NAME_RE,
     "product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$)."
   );
-  for (const [key, path6] of [
+  for (const [key, path7] of [
     [productNode.compatMin ?? productRoot.compatMin, "/compatMin"],
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"]
   ]) {
@@ -11710,13 +12058,13 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       add2(
         errors,
         "product",
-        path6,
+        path7,
         "invalid_semver",
         "Version bounds must be semver strings."
       );
     }
   }
-  for (const [key, path6] of [
+  for (const [key, path7] of [
     [
       productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit,
       "/licensing/defaultDeviceLimit"
@@ -11730,7 +12078,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       add2(
         errors,
         "product",
-        path6,
+        path7,
         "invalid_number",
         "Value must be a non-negative integer."
       );
@@ -13504,36 +13852,36 @@ function validateCatalogShape(catalog) {
   }
   return issues;
 }
-function constrained(errors, file, value, path6, code, re, message) {
+function constrained(errors, file, value, path7, code, re, message) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string" || !re.test(value)) {
-    add2(errors, file, path6, code, message);
+    add2(errors, file, path7, code, message);
   }
 }
-function releaseString(errors, value, path6, code, re, message) {
-  constrained(errors, "release", value, path6, code, re, message);
+function releaseString(errors, value, path7, code, re, message) {
+  constrained(errors, "release", value, path7, code, re, message);
 }
-function boundedText(errors, file, value, path6, code, max, label) {
+function boundedText(errors, file, value, path7, code, max, label) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string") {
-    add2(errors, file, path6, code, `${label} must be a string.`);
+    add2(errors, file, path7, code, `${label} must be a string.`);
     return;
   }
   if (value.length > max || CONTROL_CHAR_RE.test(value)) {
     add2(
       errors,
       file,
-      path6,
+      path7,
       code,
       `${label} must be at most ${max} characters and free of control characters.`
     );
   }
 }
-function constrainedList(errors, file, values, path6, code, re, message) {
+function constrainedList(errors, file, values, path7, code, re, message) {
   if (!Array.isArray(values)) return;
   for (const [i, value] of values.entries()) {
     if (typeof value !== "string" || !re.test(value)) {
-      add2(errors, file, `${path6}/${i}`, code, message);
+      add2(errors, file, `${path7}/${i}`, code, message);
     }
   }
 }
@@ -13741,8 +14089,8 @@ function isOneOf(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add2(list, file, path6, code, message) {
-  list.push({ file, path: path6, code, message });
+function add2(list, file, path7, code, message) {
+  list.push({ file, path: path7, code, message });
 }
 
 // src/bundle.ts
@@ -14278,9 +14626,9 @@ function ciClient(opts) {
   const f = opts.fetchImpl ?? fetch;
   const sleep = opts.sleep ?? defaultSleep;
   const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
-  const url = (path6) => `${baseUrl}/${encodeURIComponent(product)}/${path6.replace(/^\/+/, "")}`;
-  async function postJson(path6, p) {
-    const target = url(path6);
+  const url = (path7) => `${baseUrl}/${encodeURIComponent(product)}/${path7.replace(/^\/+/, "")}`;
+  async function postJson(path7, p) {
+    const target = url(path7);
     const auth = p.auth !== false;
     if (auth && !opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
@@ -14320,7 +14668,34 @@ function ciClient(opts) {
       await sleep(wait);
     }
   }
-  return { baseUrl, product, url, postJson };
+  async function getJson(path7, p) {
+    const target = url(path7);
+    if (!opts.token)
+      throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
+    let res;
+    try {
+      res = await f(target, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${opts.token}`
+        }
+      });
+    } catch (e) {
+      throw new Error(
+        `${p.what}: could not reach ${target}: ${e.message}`
+      );
+    }
+    const parsed = await readBody(res);
+    if (res.ok) return parsed;
+    throw new CiRequestError(
+      renderRefusal(p.what, target, res.status, parsed),
+      res.status,
+      parsed,
+      false
+    );
+  }
+  return { baseUrl, product, url, postJson, getJson };
 }
 function backoff(attempt, retryAfter) {
   const seconds = retryAfter ? Number(retryAfter) : NaN;
@@ -14500,7 +14875,7 @@ async function resolveCiToken(opts) {
 
 // src/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
 import { readdir, readFile as readFile2, stat as stat3 } from "node:fs/promises";
 import path3 from "node:path";
@@ -14562,8 +14937,8 @@ function signV4(input) {
 }
 function objectUrl(creds, key) {
   const base = creds.endpoint.replace(/\/+$/, "");
-  const path6 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
-  return new URL(`${base}/${path6}`);
+  const path7 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
+  return new URL(`${base}/${path7}`);
 }
 var TRANSIENT = /* @__PURE__ */ new Set([408, 429, 500, 502, 503, 504]);
 async function putFile(opts) {
@@ -14632,6 +15007,851 @@ async function putFile(opts) {
     );
     await sleep(wait);
   }
+}
+
+// src/buildMetadata.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash2 } from "node:crypto";
+
+// src/plist.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var PlistError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "PlistError";
+  }
+};
+var MAX_DEPTH = 64;
+function parsePlist(buf) {
+  if (buf.subarray(0, 8).toString("latin1") === "bplist00")
+    return parseBinary(buf);
+  return parseXml(buf.toString("utf8"));
+}
+function readUInt(buf, at, size) {
+  if (at < 0 || at + size > buf.length)
+    throw new PlistError("binary plist: offset out of range");
+  let v = 0;
+  for (let i = 0; i < size; i++) v = v * 256 + buf[at + i];
+  return v;
+}
+function parseBinary(buf) {
+  if (buf.length < 40) throw new PlistError("binary plist: too short");
+  const t = buf.length - 32;
+  const offsetSize = buf[t + 6];
+  const refSize = buf[t + 7];
+  const numObjects = readUInt(buf, t + 8, 8);
+  const top = readUInt(buf, t + 16, 8);
+  const tableOffset = readUInt(buf, t + 24, 8);
+  if (!offsetSize || !refSize || top >= numObjects || tableOffset + numObjects * offsetSize > t)
+    throw new PlistError("binary plist: bad trailer");
+  const offsets = [];
+  for (let i = 0; i < numObjects; i++)
+    offsets.push(readUInt(buf, tableOffset + i * offsetSize, offsetSize));
+  const visiting = /* @__PURE__ */ new Set();
+  const obj = (ref, depth) => {
+    if (depth > MAX_DEPTH) throw new PlistError("binary plist: too deep");
+    if (ref >= numObjects) throw new PlistError("binary plist: bad reference");
+    if (visiting.has(ref)) throw new PlistError("binary plist: cycle");
+    visiting.add(ref);
+    try {
+      return decode(offsets[ref], depth);
+    } finally {
+      visiting.delete(ref);
+    }
+  };
+  const lengthAt = (at, info) => {
+    if (info !== 15) return { len: info, start: at + 1 };
+    const marker = buf[at + 1];
+    if (marker >> 4 !== 1) throw new PlistError("binary plist: bad length");
+    const size = 1 << (marker & 15);
+    return { len: readUInt(buf, at + 2, size), start: at + 2 + size };
+  };
+  const decode = (at, depth) => {
+    if (at >= t) throw new PlistError("binary plist: object out of range");
+    const marker = buf[at];
+    const type = marker >> 4;
+    const info = marker & 15;
+    switch (type) {
+      case 0:
+        if (info === 8) return false;
+        if (info === 9) return true;
+        return null;
+      case 1: {
+        const size = 1 << info;
+        if (at + 1 + size > t)
+          throw new PlistError("binary plist: int out of range");
+        if (size === 8) {
+          const v = buf.readBigInt64BE(at + 1);
+          return v >= BigInt(Number.MIN_SAFE_INTEGER) && v <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(v) : v;
+        }
+        if (size > 8) throw new PlistError("binary plist: int too wide");
+        return readUInt(buf, at + 1, size);
+      }
+      case 2:
+        if (info === 2) return buf.readFloatBE(at + 1);
+        if (info === 3) return buf.readDoubleBE(at + 1);
+        throw new PlistError("binary plist: bad real");
+      case 3:
+        return new Date(
+          (buf.readDoubleBE(at + 1) + 978307200) * 1e3
+        ).toISOString();
+      case 4: {
+        const { len, start } = lengthAt(at, info);
+        if (start + len > t)
+          throw new PlistError("binary plist: data out of range");
+        return Buffer.from(buf.subarray(start, start + len));
+      }
+      case 5: {
+        const { len, start } = lengthAt(at, info);
+        if (start + len > t)
+          throw new PlistError("binary plist: string out of range");
+        return buf.toString("latin1", start, start + len);
+      }
+      case 6: {
+        const { len, start } = lengthAt(at, info);
+        if (start + 2 * len > t)
+          throw new PlistError("binary plist: string out of range");
+        const chars = Buffer.from(buf.subarray(start, start + 2 * len));
+        chars.swap16();
+        return chars.toString("utf16le");
+      }
+      case 8:
+        return readUInt(buf, at + 1, info + 1);
+      case 10: {
+        const { len, start } = lengthAt(at, info);
+        const out = [];
+        for (let i = 0; i < len; i++)
+          out.push(obj(readUInt(buf, start + i * refSize, refSize), depth + 1));
+        return out;
+      }
+      case 13: {
+        const { len, start } = lengthAt(at, info);
+        const out = {};
+        for (let i = 0; i < len; i++) {
+          const key = obj(
+            readUInt(buf, start + i * refSize, refSize),
+            depth + 1
+          );
+          if (typeof key !== "string")
+            throw new PlistError("binary plist: a dict key is not a string");
+          out[key] = obj(
+            readUInt(buf, start + (len + i) * refSize, refSize),
+            depth + 1
+          );
+        }
+        return out;
+      }
+      default:
+        throw new PlistError(`binary plist: unknown object type ${type}`);
+    }
+  };
+  return obj(top, 0);
+}
+function unescapeXml(s) {
+  return s.replace(
+    /&(lt|gt|amp|quot|apos|#\d+|#x[0-9a-fA-F]+);/g,
+    (_, e) => {
+      if (e === "lt") return "<";
+      if (e === "gt") return ">";
+      if (e === "amp") return "&";
+      if (e === "quot") return '"';
+      if (e === "apos") return "'";
+      const code = e.startsWith("#x") ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return String.fromCodePoint(code);
+    }
+  );
+}
+function parseXml(text) {
+  const body = text.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!DOCTYPE[\s\S]*?>/g, "");
+  const tokens = body.match(/<\/?[A-Za-z]+(?:\s[^>]*)?\/?>|[^<]+/g) ?? [];
+  let i = 0;
+  const skipSpace = () => {
+    while (i < tokens.length && !tokens[i].startsWith("<") && !tokens[i].trim())
+      i++;
+  };
+  const tagOf = (tok) => /^<\/?([A-Za-z]+)/.exec(tok)?.[1] ?? "";
+  const textUntil = (tag) => {
+    let s = "";
+    while (i < tokens.length && tokens[i] !== `</${tag}>`) {
+      if (tokens[i].startsWith("<"))
+        throw new PlistError(`xml plist: unexpected ${tokens[i]} in <${tag}>`);
+      s += tokens[i];
+      i++;
+    }
+    if (i >= tokens.length)
+      throw new PlistError(`xml plist: <${tag}> not closed`);
+    i++;
+    return unescapeXml(s);
+  };
+  const value = (depth) => {
+    if (depth > MAX_DEPTH) throw new PlistError("xml plist: too deep");
+    skipSpace();
+    const tok = tokens[i++];
+    if (!tok || !tok.startsWith("<"))
+      throw new PlistError("xml plist: expected a value");
+    const tag = tagOf(tok);
+    const selfClosing = tok.endsWith("/>");
+    switch (tag) {
+      case "true":
+        return true;
+      case "false":
+        return false;
+      case "string":
+        return selfClosing ? "" : textUntil("string");
+      case "integer": {
+        const s = textUntil("integer").trim();
+        const n = Number(s);
+        return Number.isSafeInteger(n) ? n : BigInt(s);
+      }
+      case "real":
+        return Number(textUntil("real").trim());
+      case "date":
+        return textUntil("date").trim();
+      case "data":
+        return selfClosing ? Buffer.alloc(0) : Buffer.from(textUntil("data").replace(/\s+/g, ""), "base64");
+      case "array": {
+        const out = [];
+        if (selfClosing) return out;
+        for (; ; ) {
+          skipSpace();
+          if (tokens[i] === "</array>") {
+            i++;
+            return out;
+          }
+          out.push(value(depth + 1));
+        }
+      }
+      case "dict": {
+        const out = {};
+        if (selfClosing) return out;
+        for (; ; ) {
+          skipSpace();
+          if (tokens[i] === "</dict>") {
+            i++;
+            return out;
+          }
+          if (tokens[i] !== "<key>")
+            throw new PlistError("xml plist: expected <key>");
+          i++;
+          const key = textUntil("key");
+          out[key] = value(depth + 1);
+        }
+      }
+      default:
+        throw new PlistError(`xml plist: unknown element <${tag}>`);
+    }
+  };
+  skipSpace();
+  if (tagOf(tokens[i] ?? "") !== "plist")
+    throw new PlistError("xml plist: no <plist> element");
+  i++;
+  return value(0);
+}
+
+// src/zip.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { open } from "node:fs/promises";
+import { inflateRawSync } from "node:zlib";
+var EOCD_SIG = 101010256;
+var ZIP64_LOCATOR_SIG = 117853008;
+var ZIP64_EOCD_SIG = 101075792;
+var CDH_SIG = 33639248;
+var LFH_SIG = 67324752;
+var MAX_ENTRY_BYTES = 1024 * 1024 * 1024;
+var ZipError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ZipError";
+  }
+};
+function u64(buf, at) {
+  const v = buf.readBigUInt64LE(at);
+  if (v > BigInt(Number.MAX_SAFE_INTEGER))
+    throw new ZipError("a ZIP64 field is out of range");
+  return Number(v);
+}
+var ZipReader = class _ZipReader {
+  constructor(fh, path7, fileSize, entries, centralDirectoryOffset) {
+    this.fh = fh;
+    this.path = path7;
+    this.fileSize = fileSize;
+    this.entries = entries;
+    this.centralDirectoryOffset = centralDirectoryOffset;
+  }
+  fh;
+  path;
+  fileSize;
+  entries;
+  centralDirectoryOffset;
+  static async open(path7) {
+    const fh = await open(path7, "r");
+    try {
+      const { size } = await fh.stat();
+      const tailLen = Math.min(size, 65557);
+      const tail = Buffer.alloc(tailLen);
+      await fh.read(tail, 0, tailLen, size - tailLen);
+      let eocd = -1;
+      for (let i = tailLen - 22; i >= 0; i--) {
+        if (tail.readUInt32LE(i) === EOCD_SIG) {
+          eocd = i;
+          break;
+        }
+      }
+      if (eocd < 0) throw new ZipError(`${path7} is not a ZIP archive`);
+      let count = tail.readUInt16LE(eocd + 10);
+      let cdSize = tail.readUInt32LE(eocd + 12);
+      let cdOffset = tail.readUInt32LE(eocd + 16);
+      if (count === 65535 || cdSize === 4294967295 || cdOffset === 4294967295) {
+        const loc = eocd - 20;
+        if (loc < 0 || tail.readUInt32LE(loc) !== ZIP64_LOCATOR_SIG)
+          throw new ZipError(`${path7}: ZIP64 locator missing`);
+        const recOffset = u64(tail, loc + 8);
+        const rec = Buffer.alloc(56);
+        await fh.read(rec, 0, 56, recOffset);
+        if (rec.readUInt32LE(0) !== ZIP64_EOCD_SIG)
+          throw new ZipError(`${path7}: ZIP64 end record missing`);
+        count = u64(rec, 32);
+        cdSize = u64(rec, 40);
+        cdOffset = u64(rec, 48);
+      }
+      if (cdOffset + cdSize > size)
+        throw new ZipError(`${path7}: the central directory runs past the end`);
+      const cd = Buffer.alloc(cdSize);
+      await fh.read(cd, 0, cdSize, cdOffset);
+      const entries = [];
+      let p = 0;
+      for (let i = 0; i < count; i++) {
+        if (p + 46 > cd.length || cd.readUInt32LE(p) !== CDH_SIG)
+          throw new ZipError(`${path7}: a central directory entry is malformed`);
+        const flags = cd.readUInt16LE(p + 8);
+        const method = cd.readUInt16LE(p + 10);
+        const crc322 = cd.readUInt32LE(p + 16);
+        let compressedSize = cd.readUInt32LE(p + 20);
+        let uncompressed = cd.readUInt32LE(p + 24);
+        const nameLen = cd.readUInt16LE(p + 28);
+        const extraLen = cd.readUInt16LE(p + 30);
+        const commentLen = cd.readUInt16LE(p + 32);
+        let localOffset = cd.readUInt32LE(p + 42);
+        const name = cd.toString("utf8", p + 46, p + 46 + nameLen);
+        let x = p + 46 + nameLen;
+        const xEnd = x + extraLen;
+        while (x + 4 <= xEnd) {
+          const id = cd.readUInt16LE(x);
+          const len = cd.readUInt16LE(x + 2);
+          if (id === 1) {
+            let q = x + 4;
+            if (uncompressed === 4294967295) {
+              uncompressed = u64(cd, q);
+              q += 8;
+            }
+            if (compressedSize === 4294967295) {
+              compressedSize = u64(cd, q);
+              q += 8;
+            }
+            if (localOffset === 4294967295) localOffset = u64(cd, q);
+          }
+          x += 4 + len;
+        }
+        entries.push({
+          name,
+          method,
+          flags,
+          crc32: crc322,
+          compressedSize,
+          size: uncompressed,
+          localOffset
+        });
+        p = xEnd + commentLen;
+      }
+      return new _ZipReader(fh, path7, size, entries, cdOffset);
+    } catch (e) {
+      await fh.close();
+      throw e;
+    }
+  }
+  entry(name) {
+    return this.entries.find((e) => e.name === name);
+  }
+  /** Bytes `[offset, offset + length)` of the archive file itself. */
+  async readRaw(offset, length) {
+    if (offset < 0 || length < 0 || offset + length > this.fileSize)
+      throw new ZipError(`${this.path}: a read runs past the end`);
+    const buf = Buffer.alloc(length);
+    await this.fh.read(buf, 0, length, offset);
+    return buf;
+  }
+  /** One entry's uncompressed bytes. */
+  async read(entry) {
+    if (entry.flags & 1) throw new ZipError(`${entry.name} is encrypted`);
+    if (entry.size > MAX_ENTRY_BYTES || entry.compressedSize > MAX_ENTRY_BYTES)
+      throw new ZipError(`${entry.name} is too large to read`);
+    const lfh = await this.readRaw(entry.localOffset, 30);
+    if (lfh.readUInt32LE(0) !== LFH_SIG)
+      throw new ZipError(`${entry.name}: local header missing`);
+    const start = entry.localOffset + 30 + lfh.readUInt16LE(26) + lfh.readUInt16LE(28);
+    const raw = await this.readRaw(start, entry.compressedSize);
+    if (entry.method === 0) return raw;
+    if (entry.method === 8)
+      return inflateRawSync(raw, { maxOutputLength: MAX_ENTRY_BYTES });
+    throw new ZipError(
+      `${entry.name} uses compression method ${entry.method}, which pkey does not read`
+    );
+  }
+  close() {
+    return this.fh.close();
+  }
+};
+async function withZip(path7, fn) {
+  const zip = await ZipReader.open(path7);
+  try {
+    return await fn(zip);
+  } finally {
+    await zip.close();
+  }
+}
+var CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(data) {
+  let c = 4294967295;
+  for (let i = 0; i < data.length; i++)
+    c = (CRC_TABLE[(c ^ data[i]) & 255] ^ c >>> 8) >>> 0;
+  return (c ^ 4294967295) >>> 0;
+}
+var DOS_TIME = 0;
+var DOS_DATE = 0 << 9 | 1 << 5 | 1;
+function zipStore(files) {
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = Buffer.from(f.name, "utf8");
+    const crc = crc32(f.data);
+    const lfh = Buffer.alloc(30);
+    lfh.writeUInt32LE(LFH_SIG, 0);
+    lfh.writeUInt16LE(20, 4);
+    lfh.writeUInt16LE(2048, 6);
+    lfh.writeUInt16LE(0, 8);
+    lfh.writeUInt16LE(DOS_TIME, 10);
+    lfh.writeUInt16LE(DOS_DATE, 12);
+    lfh.writeUInt32LE(crc, 14);
+    lfh.writeUInt32LE(f.data.length, 18);
+    lfh.writeUInt32LE(f.data.length, 22);
+    lfh.writeUInt16LE(name.length, 26);
+    lfh.writeUInt16LE(0, 28);
+    locals.push(lfh, name, Buffer.from(f.data));
+    const cdh = Buffer.alloc(46);
+    cdh.writeUInt32LE(CDH_SIG, 0);
+    cdh.writeUInt16LE(20, 4);
+    cdh.writeUInt16LE(20, 6);
+    cdh.writeUInt16LE(2048, 8);
+    cdh.writeUInt16LE(0, 10);
+    cdh.writeUInt16LE(DOS_TIME, 12);
+    cdh.writeUInt16LE(DOS_DATE, 14);
+    cdh.writeUInt32LE(crc, 16);
+    cdh.writeUInt32LE(f.data.length, 20);
+    cdh.writeUInt32LE(f.data.length, 24);
+    cdh.writeUInt16LE(name.length, 28);
+    cdh.writeUInt32LE(offset, 42);
+    centrals.push(cdh, name);
+    offset += 30 + name.length + f.data.length;
+  }
+  const cd = Buffer.concat(centrals);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(EOCD_SIG, 0);
+  eocd.writeUInt16LE(files.length, 8);
+  eocd.writeUInt16LE(files.length, 10);
+  eocd.writeUInt32LE(cd.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, cd, eocd]);
+}
+
+// src/buildMetadata.ts
+var MetadataError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "MetadataError";
+  }
+};
+var sha256 = (b) => createHash2("sha256").update(b).digest("hex");
+function dict(v) {
+  return v && typeof v === "object" && !Array.isArray(v) && !Buffer.isBuffer(v) ? v : null;
+}
+var EXCLUDED_ENTITLEMENTS = /* @__PURE__ */ new Set([
+  "application-identifier",
+  "com.apple.developer.team-identifier"
+]);
+var LC_CODE_SIGNATURE = 29;
+var CSMAGIC_EMBEDDED_SIGNATURE = 4208856256;
+var CSMAGIC_EMBEDDED_ENTITLEMENTS = 4208882033;
+function machoEntitlements(bin) {
+  if (bin.length < 32) return null;
+  let base = 0;
+  const fat = bin.readUInt32BE(0);
+  if (fat === 3405691582 || fat === 3405691583) {
+    const n = bin.readUInt32BE(4);
+    if (n === 0 || n > 32) return null;
+    base = fat === 3405691583 ? Number(bin.readBigUInt64BE(16)) : bin.readUInt32BE(16);
+    if (base <= 0 || base >= bin.length) return null;
+  }
+  const magic = bin.readUInt32LE(base);
+  const is64 = magic === 4277009103;
+  if (!is64 && magic !== 4277009102) return null;
+  const ncmds = bin.readUInt32LE(base + 16);
+  let p = base + (is64 ? 32 : 28);
+  for (let i = 0; i < ncmds && i < 4096; i++) {
+    if (p + 8 > bin.length) return null;
+    const cmd = bin.readUInt32LE(p);
+    const size = bin.readUInt32LE(p + 4);
+    if (size < 8) return null;
+    if (cmd === LC_CODE_SIGNATURE) {
+      const off = base + bin.readUInt32LE(p + 8);
+      const len = bin.readUInt32LE(p + 12);
+      if (off + len > bin.length || len < 12) return null;
+      if (bin.readUInt32BE(off) !== CSMAGIC_EMBEDDED_SIGNATURE) return null;
+      const count = bin.readUInt32BE(off + 8);
+      for (let j = 0; j < count && j < 64; j++) {
+        const entry = off + 12 + j * 8;
+        if (entry + 8 > off + len) return null;
+        const blob = off + bin.readUInt32BE(entry + 4);
+        if (blob + 8 > off + len) return null;
+        if (bin.readUInt32BE(blob) !== CSMAGIC_EMBEDDED_ENTITLEMENTS) continue;
+        const blobLen = bin.readUInt32BE(blob + 4);
+        if (blobLen < 8 || blob + blobLen > off + len) return null;
+        return dict(parsePlist(bin.subarray(blob + 8, blob + blobLen)));
+      }
+      return null;
+    }
+    p += size;
+  }
+  return null;
+}
+function appRoot(zip) {
+  const roots = /* @__PURE__ */ new Set();
+  for (const e of zip.entries) {
+    const m = /^Payload\/([^/]+\.app)\//.exec(e.name);
+    if (m) roots.add(`Payload/${m[1]}/`);
+  }
+  if (roots.size !== 1)
+    throw new MetadataError(
+      `the IPA must hold exactly one Payload/<App>.app (found ${roots.size})`
+    );
+  return [...roots][0];
+}
+async function readPlistEntry(zip, name) {
+  const entry = zip.entry(name);
+  if (!entry) throw new MetadataError(`${name} is missing`);
+  const plist = dict(parsePlist(await zip.read(entry)));
+  if (!plist) throw new MetadataError(`${name} is not a dictionary`);
+  return plist;
+}
+async function bundleEntitlements(zip, root, info) {
+  const exe = info.CFBundleExecutable;
+  if (typeof exe !== "string" || !exe || exe.includes("/"))
+    throw new MetadataError(`${root}Info.plist has no CFBundleExecutable`);
+  const entry = zip.entry(`${root}${exe}`);
+  if (!entry) throw new MetadataError(`${root}${exe} is missing`);
+  const ents = machoEntitlements(await zip.read(entry));
+  return ents ? Object.keys(ents) : [];
+}
+async function iosBuildMetadata(ipa) {
+  return withZip(ipa, async (zip) => {
+    const root = appRoot(zip);
+    const info = await readPlistEntry(zip, `${root}Info.plist`);
+    const str = (k) => {
+      const v = info[k];
+      if (typeof v !== "string" || !v)
+        throw new MetadataError(`${root}Info.plist has no ${k}`);
+      return v;
+    };
+    const entitlements = new Set(await bundleEntitlements(zip, root, info));
+    const appexes = /* @__PURE__ */ new Set();
+    for (const e of zip.entries) {
+      const m = new RegExp(
+        `^${root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}PlugIns/([^/]+\\.appex)/Info\\.plist$`
+      ).exec(e.name);
+      if (m) appexes.add(`${root}PlugIns/${m[1]}/`);
+    }
+    for (const ext of [...appexes].sort()) {
+      const extInfo = await readPlistEntry(zip, `${ext}Info.plist`);
+      for (const k of await bundleEntitlements(zip, ext, extInfo))
+        entitlements.add(k);
+    }
+    const privacy = {};
+    for (const [k, v] of Object.entries(info).sort(
+      ([a], [b]) => a < b ? -1 : a > b ? 1 : 0
+    ))
+      if (/^NS[A-Za-z0-9]{1,100}UsageDescription$/.test(k) && typeof v === "string")
+        privacy[k] = v;
+    const minOS = info.MinimumOSVersion;
+    return {
+      bundleIdentifier: str("CFBundleIdentifier"),
+      version: str("CFBundleShortVersionString"),
+      buildVersion: str("CFBundleVersion"),
+      ...typeof minOS === "string" && minOS ? { minOSVersion: minOS } : {},
+      appPermissions: {
+        entitlements: [...entitlements].filter((e) => !EXCLUDED_ENTITLEMENTS.has(e)).sort(),
+        privacy
+      }
+    };
+  });
+}
+var RES_STRING_POOL_TYPE = 1;
+var RES_XML_TYPE = 3;
+var RES_XML_START_ELEMENT_TYPE = 258;
+var RES_XML_RESOURCE_MAP_TYPE = 384;
+var UTF8_FLAG = 256;
+var ATTR = {
+  versionCode: 16843291,
+  versionName: 16843292,
+  minSdkVersion: 16843276,
+  targetSdkVersion: 16843376
+};
+var TYPE_STRING = 3;
+var TYPE_INT_DEC = 16;
+var TYPE_INT_HEX = 17;
+function readStringPool(buf, at) {
+  const headerSize = buf.readUInt16LE(at + 2);
+  const count = buf.readUInt32LE(at + 8);
+  const flags = buf.readUInt32LE(at + 16);
+  const stringsStart = at + buf.readUInt32LE(at + 20);
+  const utf8 = (flags & UTF8_FLAG) !== 0;
+  if (count > 1e6)
+    throw new MetadataError("AndroidManifest.xml: string pool too large");
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const off = stringsStart + buf.readUInt32LE(at + headerSize + i * 4);
+    if (utf8) {
+      let p = off;
+      p += buf[p] & 128 ? 2 : 1;
+      let len = buf[p];
+      if (len & 128) {
+        len = (len & 127) << 8 | buf[p + 1];
+        p += 2;
+      } else p += 1;
+      out.push(buf.toString("utf8", p, p + len));
+    } else {
+      let len = buf.readUInt16LE(off);
+      let p = off + 2;
+      if (len & 32768) {
+        len = (len & 32767) << 16 | buf.readUInt16LE(off + 2);
+        p += 2;
+      }
+      out.push(buf.toString("utf16le", p, p + len * 2));
+    }
+  }
+  return out;
+}
+function parseAxml(buf) {
+  if (buf.length < 8 || buf.readUInt16LE(0) !== RES_XML_TYPE)
+    throw new MetadataError(
+      "AndroidManifest.xml is not a compiled XML document"
+    );
+  let strings = [];
+  let resIds = [];
+  const out = [];
+  let p = buf.readUInt16LE(2);
+  while (p + 8 <= buf.length) {
+    const type = buf.readUInt16LE(p);
+    const size = buf.readUInt32LE(p + 4);
+    if (size < 8 || p + size > buf.length)
+      throw new MetadataError("AndroidManifest.xml: a chunk runs past the end");
+    if (type === RES_STRING_POOL_TYPE) strings = readStringPool(buf, p);
+    else if (type === RES_XML_RESOURCE_MAP_TYPE) {
+      const header = buf.readUInt16LE(p + 2);
+      resIds = [];
+      for (let q = p + header; q + 4 <= p + size; q += 4)
+        resIds.push(buf.readUInt32LE(q));
+    } else if (type === RES_XML_START_ELEMENT_TYPE) {
+      const ext = p + buf.readUInt16LE(p + 2);
+      const name = strings[buf.readUInt32LE(ext + 4)] ?? "";
+      const attrStart = buf.readUInt16LE(ext + 8);
+      const attrSize = buf.readUInt16LE(ext + 10);
+      const attrCount = buf.readUInt16LE(ext + 12);
+      const attrs = [];
+      for (let i = 0; i < attrCount && i < 1024; i++) {
+        const a = ext + attrStart + i * attrSize;
+        if (a + 20 > p + size) break;
+        const nameIdx = buf.readUInt32LE(a + 4);
+        const raw = buf.readUInt32LE(a + 8);
+        const dataType = buf[a + 15];
+        const data = buf.readUInt32LE(a + 16);
+        attrs.push({
+          name: strings[nameIdx] ?? "",
+          resId: nameIdx < resIds.length ? resIds[nameIdx] : null,
+          string: dataType === TYPE_STRING ? strings[data] ?? null : raw !== 4294967295 ? strings[raw] ?? null : null,
+          int: dataType === TYPE_INT_DEC || dataType === TYPE_INT_HEX ? data | 0 : null
+        });
+      }
+      out.push({ name, attrs });
+    }
+    p += size;
+  }
+  return out;
+}
+function attr(el, name, resId) {
+  return el?.attrs.find(
+    (a) => resId !== null && a.resId === resId || a.name === name
+  );
+}
+function intOf(a) {
+  if (!a) return void 0;
+  if (a.int !== null) return a.int;
+  if (a.string !== null && /^\d+$/.test(a.string)) return Number(a.string);
+  return void 0;
+}
+var APK_SIG_BLOCK_MAGIC = "APK Sig Block 42";
+var APK_SIGNATURE_SCHEME_V2_BLOCK_ID = 1896449818;
+var APK_SIGNATURE_SCHEME_V3_BLOCK_ID = 4031998144;
+function lpItems(buf, at, end) {
+  const out = [];
+  let p = at;
+  while (p + 4 <= end) {
+    const len = buf.readUInt32LE(p);
+    if (p + 4 + len > end)
+      throw new MetadataError("APK Signing Block: truncated item");
+    out.push(buf.subarray(p + 4, p + 4 + len));
+    p += 4 + len;
+  }
+  return out;
+}
+function schemeBlockCertificate(block) {
+  if (block.length < 4) return null;
+  const signers = lpItems(block, 4, 4 + block.readUInt32LE(0));
+  const signer = signers[0];
+  if (!signer || signer.length < 4) return null;
+  const signedData = signer.subarray(4, 4 + signer.readUInt32LE(0));
+  if (signedData.length < 4) return null;
+  const digestsLen = signedData.readUInt32LE(0);
+  const certsAt = 4 + digestsLen;
+  if (certsAt + 4 > signedData.length) return null;
+  const certs = lpItems(
+    signedData,
+    certsAt + 4,
+    certsAt + 4 + signedData.readUInt32LE(certsAt)
+  );
+  return certs[0] ?? null;
+}
+async function signingBlockCertificate(zip) {
+  const cd = zip.centralDirectoryOffset;
+  if (cd < 32) return null;
+  const footer = await zip.readRaw(cd - 24, 24);
+  if (footer.toString("latin1", 8, 24) !== APK_SIG_BLOCK_MAGIC) return null;
+  const size = Number(footer.readBigUInt64LE(0));
+  if (size < 24 || size + 8 > cd) return null;
+  const block = await zip.readRaw(cd - size - 8, size + 8);
+  const pairs = /* @__PURE__ */ new Map();
+  let p = 8;
+  const end = block.length - 24;
+  while (p + 12 <= end) {
+    const len = Number(block.readBigUInt64LE(p));
+    if (len < 4 || p + 8 + len > end) break;
+    pairs.set(block.readUInt32LE(p + 8), block.subarray(p + 12, p + 8 + len));
+    p += 8 + len;
+  }
+  for (const id of [
+    APK_SIGNATURE_SCHEME_V2_BLOCK_ID,
+    APK_SIGNATURE_SCHEME_V3_BLOCK_ID
+  ]) {
+    const b = pairs.get(id);
+    const cert = b ? schemeBlockCertificate(b) : null;
+    if (cert) return cert;
+  }
+  return null;
+}
+function der(buf, at) {
+  if (at + 2 > buf.length) throw new MetadataError("DER: truncated");
+  const tag = buf[at];
+  let len = buf[at + 1];
+  let start = at + 2;
+  if (len & 128) {
+    const n = len & 127;
+    if (n === 0 || n > 4 || start + n > buf.length)
+      throw new MetadataError("DER: bad length");
+    len = 0;
+    for (let i = 0; i < n; i++) len = len * 256 + buf[start + i];
+    start += n;
+  }
+  if (start + len > buf.length) throw new MetadataError("DER: truncated");
+  return { tag, start, end: start + len };
+}
+function pkcs7FirstCertificate(buf) {
+  const ci = der(buf, 0);
+  if (ci.tag !== 48) return null;
+  const oid = der(buf, ci.start);
+  const explicit = der(buf, oid.end);
+  if (explicit.tag !== 160) return null;
+  const sd = der(buf, explicit.start);
+  if (sd.tag !== 48) return null;
+  let p = der(buf, sd.start).end;
+  p = der(buf, p).end;
+  p = der(buf, p).end;
+  const certs = der(buf, p);
+  if (certs.tag !== 160) return null;
+  const first = der(buf, certs.start);
+  return buf.subarray(certs.start, first.end);
+}
+async function v1Certificate(zip) {
+  const sig = zip.entries.filter((e) => /^META-INF\/[^/]+\.(RSA|DSA|EC)$/i.test(e.name)).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)[0];
+  return sig ? pkcs7FirstCertificate(await zip.read(sig)) : null;
+}
+async function apkSignerSha256(zip) {
+  const cert = await v1Certificate(zip) ?? await signingBlockCertificate(zip);
+  return cert ? sha256(cert) : null;
+}
+async function androidBuildMetadata(apk) {
+  return withZip(apk, async (zip) => {
+    const entry = zip.entry("AndroidManifest.xml");
+    if (!entry) throw new MetadataError("AndroidManifest.xml is missing");
+    const elements = parseAxml(await zip.read(entry));
+    const manifest = elements.find((e) => e.name === "manifest");
+    const usesSdk = elements.find((e) => e.name === "uses-sdk");
+    const packageName = attr(manifest, "package", null)?.string;
+    if (!packageName) throw new MetadataError("the manifest names no package");
+    const versionCode = intOf(attr(manifest, "versionCode", ATTR.versionCode));
+    if (versionCode === void 0 || versionCode < 1)
+      throw new MetadataError(
+        "the manifest has no literal android:versionCode"
+      );
+    const versionName = attr(manifest, "versionName", ATTR.versionName)?.string;
+    if (!versionName)
+      throw new MetadataError(
+        "the manifest has no literal android:versionName (a resource reference is not resolved)"
+      );
+    const minSdk = intOf(attr(usesSdk, "minSdkVersion", ATTR.minSdkVersion));
+    const targetSdk = intOf(
+      attr(usesSdk, "targetSdkVersion", ATTR.targetSdkVersion)
+    );
+    const abis = ANDROID_ABIS;
+    const nativecode = [
+      ...new Set(
+        zip.entries.map((e) => /^lib\/([^/]+)\/[^/]+\.so$/.exec(e.name)?.[1]).filter((a) => !!a && abis.includes(a))
+      )
+    ].sort();
+    const signerSha256 = await apkSignerSha256(zip);
+    if (!signerSha256) throw new MetadataError("the APK is not signed");
+    return {
+      packageName,
+      versionCode,
+      versionName,
+      ...minSdk !== void 0 ? { minSdk } : {},
+      ...targetSdk !== void 0 ? { targetSdk } : {},
+      ...nativecode.length ? { nativecode } : {},
+      signerSha256
+    };
+  });
+}
+async function buildMetadataFor(platform, format, file) {
+  if (platform === "ios" && format === "ipa") return iosBuildMetadata(file);
+  if (platform === "android" && format === "apk")
+    return androidBuildMetadata(file);
+  return null;
 }
 
 // src/publish.ts
@@ -14723,7 +15943,7 @@ function matchArtifacts(files, entries) {
   return { builds, warnings, errors };
 }
 async function hashFile(file) {
-  const hash = createHash2("sha256");
+  const hash = createHash3("sha256");
   let size = 0;
   for await (const chunk of createReadStream2(file)) {
     const buf = chunk;
@@ -14786,8 +16006,8 @@ ${problems.map((p) => `  ${p}`).join("\n")}`
     );
   return out;
 }
-function blobKey(sha256) {
-  return `blobs/sha256/${sha256}`;
+function blobKey(sha2563) {
+  return `blobs/sha256/${sha2563}`;
 }
 function provenanceFrom(env) {
   const commit = env.GITHUB_SHA;
@@ -14812,6 +16032,7 @@ function buildDescriptor(input) {
       ...m.buildNumber !== void 0 ? { buildNumber: m.buildNumber } : {},
       ...m.minOS !== void 0 ? { minOS: m.minOS } : {},
       ...m.requires !== void 0 ? { requires: m.requires } : {},
+      ...input.extracted?.[entry.id] ? { metadata: input.extracted[entry.id] } : {},
       artifacts: files.map((f) => ({
         name: f.name,
         role: f.role,
@@ -14914,6 +16135,24 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     }
     hashed.push({ entry: b.entry, files });
   }
+  const extracted = {};
+  for (const b of hashed) {
+    const payload = b.files.find((f) => f.role === b.entry.role);
+    if (!payload) continue;
+    try {
+      const m = await buildMetadataFor(
+        b.entry.platform,
+        b.entry.format,
+        payload.path
+      );
+      if (m) extracted[b.entry.id] = m;
+    } catch (e) {
+      const w = `could not read ${payload.name} for build ${b.entry.id}'s metadata (${e.message}); the storefront feeds that need it will skip this build.`;
+      opts.stderr.write(`warning: ${w}
+`);
+      match.warnings.push(w);
+    }
+  }
   const fileCount = hashed.reduce((n, b) => n + b.files.length, 0);
   out.write(
     `Matched ${hashed.length} build${hashed.length === 1 ? "" : "s"} (${fileCount} files) in ${path3.relative(opts.cwd, dir) || "."}
@@ -14934,6 +16173,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     source,
     builds: hashed,
     meta,
+    extracted,
     provenance: provenanceFrom(opts.env)
   });
   const local = validateReleaseDescriptor(descriptor, context);
@@ -15279,8 +16519,8 @@ ${DISTRIBUTION_CI_USAGE}`
   }
   const client = await clientFor2(opts);
   const base = `distribution/rollouts/${encodeURIComponent(opts.outlet)}/${encodeURIComponent(opts.channel)}`;
-  const path6 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
-  const body = await client.postJson(path6, {
+  const path7 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
+  const body = await client.postJson(path7, {
     what: opts.command === "rollout" ? `Rolling out ${opts.releaseId} on ${opts.outlet}/${opts.channel}` : `${opts.command[0].toUpperCase()}${opts.command.slice(1)} on ${opts.outlet}/${opts.channel}`,
     body: {
       ...opts.releaseId ? { releaseId: opts.releaseId } : {},
@@ -15327,6 +16567,517 @@ async function writeManifestSchemas(outDir) {
   return written;
 }
 
+// src/feeds.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash4 } from "node:crypto";
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdir as mkdir3, readdir as readdir3, readFile as readFile4, rm, writeFile as writeFile4 } from "node:fs/promises";
+import path5 from "node:path";
+import { promisify } from "node:util";
+var FEEDS_USAGE = "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
+var FDROID_INDEX_VERSION = 3e4;
+var DEFAULT_KS_PASS_ENV = "PKEY_FDROID_KS_PASS";
+var LOCALE = "en-US";
+var SAFE_NAME = /^[A-Za-z0-9_~.-]+$/;
+var sha2562 = (b) => createHash4("sha256").update(b).digest("hex");
+function sortedJson(value) {
+  return JSON.stringify(value, (_k, v) => {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const out = {};
+      for (const k of Object.keys(v).sort())
+        out[k] = v[k];
+      return out;
+    }
+    return v;
+  });
+}
+function dictDiff(source, target) {
+  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  if (!isObj(source) || !isObj(target)) return target;
+  const out = {};
+  for (const k of Object.keys(source)) if (!(k in target)) out[k] = null;
+  for (const [k, v] of Object.entries(target)) {
+    if (!(k in source)) out[k] = v;
+    else if (sortedJson(v) !== sortedJson(source[k]))
+      out[k] = dictDiff(source[k], v);
+  }
+  return out;
+}
+function buildFdroidIndex(inputs, timestamp, icon) {
+  const listing = inputs.listing ?? {};
+  const name = listing.name ?? inputs.productName ?? inputs.product;
+  const problems = [];
+  const pkg = inputs.packageName ?? (typeof inputs.versions[0]?.metadata?.packageName === "string" ? inputs.versions[0].metadata.packageName : null);
+  if (!pkg)
+    problems.push(
+      "the fdroid-repo outlet names no packageName and no APK metadata does"
+    );
+  const versions = {};
+  let previousCode = Number.POSITIVE_INFINITY;
+  let hasBeta = false;
+  let added = Number.POSITIVE_INFINITY;
+  let lastUpdated = 0;
+  let preferredSigner;
+  for (const v of inputs.versions) {
+    const m = v.metadata ?? {};
+    const where = `${v.releaseId} (${v.apk.name})`;
+    if (!SAFE_NAME.test(v.apk.name))
+      problems.push(
+        `${where}: the file name must be [A-Za-z0-9_~.-] for the relay to serve it`
+      );
+    if (!v.apk.sha256 || v.apk.size === null)
+      problems.push(`${where}: the APK has no recorded sha256 and size`);
+    if (typeof m.versionCode !== "number" || typeof m.versionName !== "string" || typeof m.signerSha256 !== "string") {
+      problems.push(
+        `${where}: no APK metadata (publish it with a pkey that reads build metadata)`
+      );
+      continue;
+    }
+    if (m.packageName !== pkg)
+      problems.push(`${where}: package ${String(m.packageName)} is not ${pkg}`);
+    if (!(m.versionCode < previousCode))
+      problems.push(
+        `${where}: versionCode ${m.versionCode} does not strictly decrease from the newer release's ${previousCode}; keep versionCode strictly increasing across releases and channels`
+      );
+    previousCode = m.versionCode;
+    const at = (v.publishedAt ?? timestamp / 1e3) * 1e3;
+    added = Math.min(added, at);
+    lastUpdated = Math.max(lastUpdated, at);
+    preferredSigner ??= m.signerSha256;
+    const minSdk = typeof m.minSdk === "number" ? m.minSdk : void 0;
+    const targetSdk = typeof m.targetSdk === "number" ? m.targetSdk : void 0;
+    const nativecode = Array.isArray(m.nativecode) ? m.nativecode : [];
+    if (!v.stable) hasBeta = true;
+    versions[v.apk.sha256 ?? where] = {
+      added: at,
+      file: { name: `/${v.apk.name}`, sha256: v.apk.sha256, size: v.apk.size },
+      manifest: {
+        versionName: m.versionName,
+        versionCode: m.versionCode,
+        ...minSdk !== void 0 && targetSdk !== void 0 ? { usesSdk: { minSdkVersion: minSdk, targetSdkVersion: targetSdk } } : {},
+        ...nativecode.length ? { nativecode } : {},
+        signer: { sha256: [m.signerSha256] }
+      },
+      ...v.stable ? {} : { releaseChannels: ["Beta"] },
+      ...v.notes ? { whatsNew: { [LOCALE]: v.notes } } : {}
+    };
+  }
+  if (problems.length)
+    throw new Error(
+      `The F-Droid repository cannot be built:
+  ${problems.join("\n  ")}`
+    );
+  const iconFile = icon ? {
+    [LOCALE]: {
+      name: `/${icon.path}`,
+      sha256: icon.sha256,
+      size: icon.size
+    }
+  } : void 0;
+  const packages = {};
+  if (inputs.versions.length && pkg)
+    packages[pkg] = {
+      metadata: {
+        added,
+        lastUpdated,
+        name: { [LOCALE]: name },
+        ...listing.subtitle ? { summary: { [LOCALE]: listing.subtitle } } : {},
+        ...listing.description ? { description: { [LOCALE]: listing.description } } : {},
+        ...listing.website ? { webSite: listing.website } : {},
+        ...listing.developerName ? { authorName: listing.developerName } : {},
+        ...preferredSigner ? { preferredSigner } : {},
+        ...iconFile ? { icon: iconFile } : {}
+      },
+      versions
+    };
+  return {
+    repo: {
+      name: {
+        [LOCALE]: inputs.channel === "stable" ? name : `${name} (${inputs.channel})`
+      },
+      description: {
+        [LOCALE]: listing.subtitle ?? `${name}, ${inputs.channel} channel, from Polaris Key.`
+      },
+      ...iconFile ? { icon: iconFile } : {},
+      address: inputs.repo.address,
+      timestamp,
+      ...hasBeta ? { releaseChannels: { Beta: { name: { [LOCALE]: "Beta" } } } } : {}
+    },
+    packages
+  };
+}
+function indexV2Problems(index) {
+  const out = [];
+  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  const isInt = (v) => Number.isSafeInteger(v);
+  const isLocalized = (v) => v === void 0 || isObj(v) && Object.values(v).every((s) => typeof s === "string");
+  const isFile = (v, needHash) => isObj(v) && typeof v.name === "string" && v.name.startsWith("/") && (needHash ? typeof v.sha256 === "string" && /^[0-9a-f]{64}$/.test(v.sha256) : true);
+  if (!isObj(index)) return ["the index is not an object"];
+  const repo = index.repo;
+  if (!isObj(repo)) return ["repo is missing"];
+  if (typeof repo.address !== "string")
+    out.push("repo.address is not a string");
+  if (!isInt(repo.timestamp)) out.push("repo.timestamp is not an integer");
+  for (const k of ["name", "description"])
+    if (!isLocalized(repo[k])) out.push(`repo.${k} is not localized text`);
+  if (repo.releaseChannels !== void 0) {
+    if (!isObj(repo.releaseChannels))
+      out.push("repo.releaseChannels is not an object");
+    else
+      for (const [k, c] of Object.entries(repo.releaseChannels))
+        if (!isObj(c) || !isLocalized(c.name) || c.name === void 0)
+          out.push(`repo.releaseChannels.${k}.name is required`);
+  }
+  if (index.packages !== void 0 && !isObj(index.packages)) {
+    out.push("packages is not an object");
+    return out;
+  }
+  for (const [id, p] of Object.entries(
+    index.packages ?? {}
+  )) {
+    if (!isObj(p) || !isObj(p.metadata)) {
+      out.push(`packages.${id}.metadata is missing`);
+      continue;
+    }
+    const meta = p.metadata;
+    if (!isInt(meta.added))
+      out.push(`packages.${id}.metadata.added is not an integer`);
+    if (!isInt(meta.lastUpdated))
+      out.push(`packages.${id}.metadata.lastUpdated is not an integer`);
+    for (const k of ["name", "summary", "description"])
+      if (!isLocalized(meta[k]))
+        out.push(`packages.${id}.metadata.${k} is not localized text`);
+    if (p.versions !== void 0 && !isObj(p.versions)) {
+      out.push(`packages.${id}.versions is not an object`);
+      continue;
+    }
+    for (const [key, v] of Object.entries(
+      p.versions ?? {}
+    )) {
+      const at = `packages.${id}.versions.${key}`;
+      if (!isObj(v)) {
+        out.push(`${at} is not an object`);
+        continue;
+      }
+      if (!isInt(v.added)) out.push(`${at}.added is not an integer`);
+      if (!isFile(v.file, true))
+        out.push(`${at}.file needs a /name and a sha256`);
+      else if (v.file.sha256 !== key)
+        out.push(`${at} is not keyed by its file's sha256`);
+      const m = v.manifest;
+      if (!isObj(m)) {
+        out.push(`${at}.manifest is missing`);
+        continue;
+      }
+      if (typeof m.versionName !== "string")
+        out.push(`${at}.manifest.versionName is required`);
+      if (!isInt(m.versionCode))
+        out.push(`${at}.manifest.versionCode is required`);
+      if (m.usesSdk !== void 0 && !(isObj(m.usesSdk) && isInt(m.usesSdk.minSdkVersion) && isInt(m.usesSdk.targetSdkVersion)))
+        out.push(
+          `${at}.manifest.usesSdk needs minSdkVersion and targetSdkVersion`
+        );
+      if (m.signer !== void 0 && !(isObj(m.signer) && Array.isArray(m.signer.sha256) && m.signer.sha256.every((s) => typeof s === "string")))
+        out.push(`${at}.manifest.signer.sha256 must be a list`);
+      if (v.releaseChannels !== void 0 && !(Array.isArray(v.releaseChannels) && v.releaseChannels.every((c) => typeof c === "string")))
+        out.push(`${at}.releaseChannels must be a list of names`);
+    }
+  }
+  return out;
+}
+function buildRepoFiles(inputs, timestamp, opts = {}) {
+  const files = /* @__PURE__ */ new Map();
+  let icon;
+  if (opts.icon) {
+    const p = `icons/${opts.icon.name}`;
+    files.set(p, opts.icon.bytes);
+    icon = {
+      path: p,
+      sha256: sha2562(opts.icon.bytes),
+      size: opts.icon.bytes.length
+    };
+  }
+  const index = buildFdroidIndex(inputs, timestamp, icon);
+  const problems = indexV2Problems(index);
+  if (problems.length)
+    throw new Error(
+      `index-v2.json would not parse:
+  ${problems.join("\n  ")}`
+    );
+  const indexBytes = Buffer.from(sortedJson(index), "utf8");
+  files.set("index-v2.json", indexBytes);
+  const numPackages = Object.keys(index.packages).length;
+  const entry = {
+    timestamp,
+    version: FDROID_INDEX_VERSION,
+    index: {
+      name: "/index-v2.json",
+      sha256: sha2562(indexBytes),
+      size: indexBytes.length,
+      numPackages
+    },
+    diffs: {}
+  };
+  const prev = opts.previous;
+  const prevTs = prev?.repo?.timestamp;
+  if (prev && Number.isSafeInteger(prevTs) && prevTs < timestamp) {
+    const diff = dictDiff(prev, index);
+    const bytes = Buffer.from(sortedJson(diff), "utf8");
+    const p = `diff/${prevTs}.json`;
+    files.set(p, bytes);
+    entry.diffs[String(prevTs)] = {
+      name: `/${p}`,
+      sha256: sha2562(bytes),
+      size: bytes.length,
+      numPackages: Object.keys(diff.packages ?? {}).length
+    };
+  }
+  files.set("entry.json", Buffer.from(sortedJson(entry), "utf8"));
+  return { files, index, entry };
+}
+async function findApksigner(explicit, env) {
+  if (explicit) return explicit;
+  const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
+  if (sdk) {
+    const bt = path5.join(sdk, "build-tools");
+    try {
+      const versions = (await readdir3(bt)).sort(
+        (a, b) => a.localeCompare(b, void 0, { numeric: true })
+      );
+      for (const v of versions.reverse()) {
+        const p = path5.join(bt, v, "apksigner");
+        if (existsSync(p)) return p;
+      }
+    } catch {
+    }
+  }
+  return "apksigner";
+}
+async function signEntryJar(jar, opts) {
+  const tool = await findApksigner(opts.apksigner, opts.env);
+  if (!opts.env[opts.passEnv])
+    throw new Error(
+      `The keystore password is not in $${opts.passEnv}; export it from the CI secret (never pass it on the command line).`
+    );
+  const unsigned = `${jar}.unsigned`;
+  await writeFile4(unsigned, await readFile4(jar));
+  try {
+    await promisify(execFile)(
+      tool,
+      [
+        "sign",
+        "--min-sdk-version",
+        "23",
+        "--v1-signing-enabled",
+        "true",
+        "--v2-signing-enabled",
+        "false",
+        "--v3-signing-enabled",
+        "false",
+        "--v4-signing-enabled",
+        "false",
+        "--ks",
+        opts.keystore,
+        "--ks-key-alias",
+        opts.alias,
+        "--ks-pass",
+        `env:${opts.passEnv}`,
+        "--out",
+        jar,
+        unsigned
+      ],
+      { env: { ...process.env, ...opts.env } }
+    );
+  } catch (e) {
+    const err = e;
+    throw new Error(`apksigner failed: ${(err.stderr || err.message).trim()}`);
+  } finally {
+    await rm(unsigned, { force: true });
+  }
+}
+async function currentIndex(inputs, fetchImpl, log) {
+  const reg = inputs.files.find((f) => f.path === "index-v2.json");
+  if (!reg) return null;
+  try {
+    const res = await fetchImpl(`${inputs.repo.address}/index-v2.json`);
+    if (!res.ok) return null;
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (sha2562(bytes) !== reg.sha256) return null;
+    return JSON.parse(bytes.toString("utf8"));
+  } catch (e) {
+    log.write(
+      `warning: could not read the current index (${e.message}); no diff is written.
+`
+    );
+    return null;
+  }
+}
+async function buildFdroidFeed(opts) {
+  const out = opts.stdout;
+  if (!opts.channel?.trim() || !opts.out?.trim()) throw new Error(FEEDS_USAGE);
+  if (opts.keystore === void 0 !== (opts.alias === void 0))
+    throw new Error(`--keystore and --alias go together.
+${FEEDS_USAGE}`);
+  const token = await resolveCiToken({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    env: opts.env,
+    out,
+    log: opts.stderr,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep
+  });
+  const client = ciClient({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    token,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    log: opts.stderr
+  });
+  const route = `distribution/feeds/fdroid/${encodeURIComponent(opts.channel.trim())}`;
+  const inputs = await client.getJson(route, {
+    what: "Reading the F-Droid feed inputs"
+  });
+  out.write(
+    `F-Droid ${inputs.channel}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${inputs.packageName ?? "(no package)"}
+`
+  );
+  const previous = await currentIndex(
+    inputs,
+    opts.fetchImpl ?? fetch,
+    opts.stderr
+  );
+  const now = (opts.now ?? Date.now)();
+  const prevTs = previous?.repo?.timestamp ?? 0;
+  const timestamp = Math.max(now, prevTs + 1);
+  const icon = opts.icon ? {
+    name: path5.basename(opts.icon),
+    bytes: await readFile4(path5.resolve(opts.cwd, opts.icon))
+  } : void 0;
+  if (icon && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon.name))
+    throw new Error(
+      "--icon must be a .png, .jpg or .webp file with a plain name."
+    );
+  const repo = buildRepoFiles(inputs, timestamp, {
+    previous,
+    ...icon ? { icon } : {}
+  });
+  const dir = path5.resolve(opts.cwd, opts.out);
+  await rm(dir, { recursive: true, force: true });
+  const written = {};
+  for (const [p, bytes] of repo.files) {
+    const file = path5.join(dir, ...p.split("/"));
+    await mkdir3(path5.dirname(file), { recursive: true });
+    await writeFile4(file, bytes);
+    written[p] = file;
+  }
+  const jar = path5.join(dir, "entry.jar");
+  await writeFile4(
+    jar,
+    zipStore([{ name: "entry.json", data: repo.files.get("entry.json") }])
+  );
+  written["entry.jar"] = jar;
+  const result = {
+    channel: inputs.channel,
+    written,
+    index: repo.index,
+    entry: repo.entry,
+    signed: false,
+    registered: false,
+    uploaded: []
+  };
+  if (!opts.keystore || !opts.alias) {
+    out.write(
+      `Wrote the unsigned repository to ${path5.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
+`
+    );
+    return result;
+  }
+  await (opts.sign ?? signEntryJar)(jar, {
+    keystore: path5.resolve(opts.cwd, opts.keystore),
+    alias: opts.alias,
+    passEnv: opts.ksPassEnv ?? DEFAULT_KS_PASS_ENV,
+    env: opts.env,
+    ...opts.apksigner ? { apksigner: opts.apksigner } : {}
+  });
+  result.signed = true;
+  const signer = await withZip(jar, (z) => apkSignerSha256(z));
+  if (!signer) throw new Error("entry.jar is not signed after apksigner ran.");
+  if (inputs.repo.fingerprints.length && !inputs.repo.fingerprints.includes(signer))
+    throw new Error(
+      `entry.jar is signed by ${signer}, which is not an fdroid-repo key in the product's key inventory (${inputs.repo.fingerprints.join(", ")}). Check --keystore and --alias.`
+    );
+  if (opts.dryRun) {
+    out.write("Dry run: signed locally; nothing uploaded or registered.\n");
+    return result;
+  }
+  const all = await Promise.all(
+    Object.entries(written).map(async ([p, file]) => {
+      const bytes = await readFile4(file);
+      return { path: p, file, sha256: sha2562(bytes), size: bytes.length };
+    })
+  );
+  all.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  const unique = new Map(all.map((f) => [f.sha256, f]));
+  const ticket = await client.postJson("release/publish/uploads", {
+    what: "Requesting an upload ticket",
+    body: {
+      objects: [...unique.values()].map((f) => ({
+        sha256: f.sha256,
+        size: f.size
+      }))
+    }
+  });
+  if (typeof ticket.ticket !== "string" || !Array.isArray(ticket.objects))
+    throw new Error("The uploads route answered without a ticket.");
+  mask(opts.env, out, ticket.ticket);
+  mask(opts.env, out, ticket.credentials.secretAccessKey);
+  mask(opts.env, out, ticket.credentials.sessionToken);
+  for (const o of ticket.objects) {
+    if (o.present) continue;
+    const f = unique.get(o.sha256);
+    if (!f)
+      throw new Error(
+        `The ticket names ${o.sha256}, which pkey did not ask for.`
+      );
+    await putFile({
+      creds: ticket.credentials,
+      key: o.key,
+      file: f.file,
+      size: f.size,
+      sha256: f.sha256,
+      fetchImpl: opts.fetchImpl,
+      sleep: opts.sleep,
+      log: opts.stderr
+    });
+    result.uploaded.push(f.path);
+  }
+  await client.postJson(route, {
+    what: "Registering the F-Droid repository",
+    body: {
+      ticket: ticket.ticket,
+      files: all.map((f) => ({ path: f.path, sha256: f.sha256, size: f.size }))
+    }
+  });
+  result.registered = true;
+  out.write(
+    `Registered ${all.length} files for ${inputs.channel} (${result.uploaded.length} uploaded): ${inputs.repo.address}
+`
+  );
+  if (inputs.repo.fingerprints.length)
+    out.write(
+      `Add with: ${inputs.repo.address}?fingerprint=${inputs.repo.fingerprints[0]}
+`
+    );
+  else
+    out.write(
+      "warning: the key inventory has no fdroid-repo key; record the repo key's fingerprint in the console so users can verify the repository.\n"
+    );
+  return result;
+}
+
 // src/index.ts
 async function runPkey(argv2, io = {}) {
   const parsed = parseArgs(argv2);
@@ -15365,6 +17116,8 @@ async function runPkey(argv2, io = {}) {
         return await cmdRelease(parsed, cwd, stdout, stderr, ci);
       case "manifest":
         return await cmdManifest(parsed, cwd, stdout);
+      case "feeds":
+        return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
       default:
         stderr.write(`Unknown command "${parsed.command}".
 
@@ -15403,7 +17156,7 @@ function parseArgs(argv2) {
   return { command, flags, positional };
 }
 async function cmdInit(parsed, cwd, stdout) {
-  const basename = path5.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
+  const basename = path6.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
   const slug = flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
   const modules = normalizeModules2(flagString(parsed, "modules"));
@@ -15422,7 +17175,7 @@ async function cmdInit(parsed, cwd, stdout) {
 `
   );
   for (const file of result.files)
-    stdout.write(`- ${path5.relative(cwd, file)}
+    stdout.write(`- ${path6.relative(cwd, file)}
 `);
   stdout.write("\nNext: pkey validate\n");
   return 0;
@@ -15458,7 +17211,7 @@ function located(manifest, cwd, msg) {
     release: manifest.releasePath,
     distribution: manifest.distributionPath
   }[msg.file];
-  return `${msg.file}${msg.path}${file ? ` (${path5.relative(cwd, file)})` : ""}`;
+  return `${msg.file}${msg.path}${file ? ` (${path6.relative(cwd, file)})` : ""}`;
 }
 var DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>
 ${DISTRIBUTION_CI_USAGE}`;
@@ -15486,7 +17239,7 @@ async function cmdDistribution(parsed, cwd, stdout, stderr, ci) {
   const ids = outletIdsFor(manifest, outlet);
   if (!ids) {
     stderr.write(
-      `outlet ${JSON.stringify(outlet)} is not declared in ${path5.relative(cwd, manifest.distributionPath)}
+      `outlet ${JSON.stringify(outlet)} is not declared in ${path6.relative(cwd, manifest.distributionPath)}
 `
     );
     return 1;
@@ -15594,7 +17347,7 @@ async function cmdBundle(parsed, cwd, stdout) {
     force: flagBool(parsed, "force"),
     cookie: process.env[ADMIN_COOKIE_ENV]
   });
-  const rel = path5.relative(cwd, result.file);
+  const rel = path6.relative(cwd, result.file);
   stdout.write(`Minted bundle ${result.bundleId}
 `);
   stdout.write(`- File: ${rel}
@@ -15713,15 +17466,41 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
 ${CHANNEL_USAGE}`);
   }
 }
+async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
+  const product = flagString(parsed, "product");
+  const channel = flagString(parsed, "channel");
+  const out = flagString(parsed, "out");
+  if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
+    throw new Error(FEEDS_USAGE);
+  await buildFdroidFeed({
+    cwd,
+    product,
+    channel,
+    out,
+    keystore: flagString(parsed, "keystore"),
+    alias: flagString(parsed, "alias"),
+    ksPassEnv: flagString(parsed, "ks-pass-env"),
+    apksigner: flagString(parsed, "apksigner"),
+    icon: flagString(parsed, "icon"),
+    dryRun: flagBool(parsed, "dry-run"),
+    baseUrl: flagString(parsed, "base-url"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep
+  });
+  return 0;
+}
 var MANIFEST_USAGE = "Usage: pkey manifest schemas --out <dir>";
 async function cmdManifest(parsed, cwd, stdout) {
   const outDir = flagString(parsed, "out");
   if (parsed.positional[0] !== "schemas" || !outDir)
     throw new Error(MANIFEST_USAGE);
-  const written = await writeManifestSchemas(path5.resolve(cwd, outDir));
+  const written = await writeManifestSchemas(path6.resolve(cwd, outDir));
   stdout.write(`Wrote ${written.length} schemas:
 `);
-  for (const file of written) stdout.write(`- ${path5.relative(cwd, file)}
+  for (const file of written) stdout.write(`- ${path6.relative(cwd, file)}
 `);
   return 0;
 }
@@ -15765,12 +17544,16 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--deliverable id]
   pkey distribution pause|resume|halt|complete --product slug --outlet id --channel c
               [--release id] [--deliverable id]
+  pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a]
+              [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
 them, uploads what Polaris Key does not already hold, and submits the release descriptor.
 --dry-run prints the descriptor and the server's verdict and uploads and writes nothing.
---meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. The CI commands
+--meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
+payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
+read into the descriptor for the storefront feeds. The CI commands
 exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret
 is stored in the repository. See /docs/build/ci/.
 
@@ -15782,6 +17565,11 @@ sends the SHA-256 fingerprint the job signed with (colons allowed); one that is 
 product's key inventory is flagged for an operator and the command exits 1. rollout, pause,
 resume, halt and complete drive the outlet rollout; --bp is basis points (2500 = 25%), and
 they need a token an operator granted distribution:rollout.
+
+pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff)
+from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
+password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
+distribution:feeds. Without --keystore it writes the unsigned files and stops.
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.

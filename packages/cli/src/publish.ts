@@ -7,7 +7,10 @@
  *      build is omitted; an entry matching more than one is an error. `<file>.sig` and
  *      `<file>.sha256` beside a matched file ride along as its `signature` and `checksum`.
  *   2. Hash every file with a streamed SHA-256 (artifacts reach 2 GiB; the runner's memory does
- *      not), and read build numbers, minimum OS and `requires` from `--meta`.
+ *      not), and read build numbers, minimum OS and `requires` from `--meta`. For an `ios`/`ipa`
+ *      or `android`/`apk` build, read the payload's facts the storefront feeds need into
+ *      `builds[].metadata` (P2b-05, `buildMetadata.ts`): the Worker never unzips an archive. A
+ *      payload that cannot be read is a warning and its build carries no metadata.
  *   3. Build the release descriptor and validate it LOCALLY with `validateReleaseDescriptor` — the
  *      same function the Worker runs — so a mistake costs no round trip.
  *   4. Exchange credentials (`oidc.ts`), request an upload ticket, PUT every object the product
@@ -54,6 +57,7 @@ import { ciClient, CiRequestError, type Out, type Sleep } from "./ci.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { MAX_SINGLE_PUT_BYTES, putFile } from "./s3.js";
+import { buildMetadataFor } from "./buildMetadata.js";
 
 export const PUBLISH_USAGE =
   "Usage: pkey release publish --product <slug> --version <v> --dir <path> " +
@@ -353,6 +357,8 @@ export interface DescriptorInput {
   source: PublishSource;
   builds: { entry: ManifestArtifactEntry; files: HashedFile[] }[];
   meta: Record<string, BuildMeta>;
+  /** Per build id: what `buildMetadata.ts` read out of the payload (P2b-05). */
+  extracted?: Record<string, NonNullable<DescriptorBuild["metadata"]>>;
   provenance?: ReleaseDescriptor["provenance"];
 }
 
@@ -367,6 +373,9 @@ export function buildDescriptor(input: DescriptorInput): ReleaseDescriptor {
       ...(m.buildNumber !== undefined ? { buildNumber: m.buildNumber } : {}),
       ...(m.minOS !== undefined ? { minOS: m.minOS } : {}),
       ...(m.requires !== undefined ? { requires: m.requires } : {}),
+      ...(input.extracted?.[entry.id]
+        ? { metadata: input.extracted[entry.id] }
+        : {}),
       artifacts: files.map((f) => ({
         name: f.name,
         role: f.role,
@@ -513,6 +522,27 @@ export async function publishRelease(
     }
     hashed.push({ entry: b.entry, files });
   }
+  // The storefront feeds' facts, from inside each iOS and Android payload (P2b-05).
+  const extracted: Record<
+    string,
+    NonNullable<DescriptorBuild["metadata"]>
+  > = {};
+  for (const b of hashed) {
+    const payload = b.files.find((f) => f.role === b.entry.role);
+    if (!payload) continue;
+    try {
+      const m = await buildMetadataFor(
+        b.entry.platform,
+        b.entry.format,
+        payload.path,
+      );
+      if (m) extracted[b.entry.id] = m;
+    } catch (e) {
+      const w = `could not read ${payload.name} for build ${b.entry.id}'s metadata (${(e as Error).message}); the storefront feeds that need it will skip this build.`;
+      opts.stderr.write(`warning: ${w}\n`);
+      match.warnings.push(w);
+    }
+  }
   const fileCount = hashed.reduce((n, b) => n + b.files.length, 0);
   out.write(
     `Matched ${hashed.length} build${hashed.length === 1 ? "" : "s"} (${fileCount} files) in ${path.relative(opts.cwd, dir) || "."}\n`,
@@ -533,6 +563,7 @@ export async function publishRelease(
     source,
     builds: hashed,
     meta,
+    extracted,
     provenance: provenanceFrom(opts.env),
   });
   const local = validateReleaseDescriptor(descriptor, context);
