@@ -173,6 +173,36 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 mise exec node@22 -- pnpm typecheck
 ```
 
+## Corrections from implementation
+
+Recorded where the code disagreed with the text above.
+
+- **The F-Droid CI route also answers `GET`.** `pkey feeds fdroid` builds the index "from
+  Polaris Key's releases", but no route gave CI the channel's selected APKs with their metadata.
+  So `GET /{product}/distribution/feeds/fdroid/{channel}` (same path, same `distribution:feeds`
+  scope) returns the generator's inputs: the repository address and `fdroid-repo` fingerprints,
+  the APKs newest first with a `stable` flag and their metadata, and the files registered now.
+  The register `POST` also takes the upload `ticket` it promotes from.
+- **Build metadata needs a column.** The descriptor's `builds[].metadata` had nowhere to live.
+  Migration 0043 adds `release_builds.metadata_json` beside `dist_feed_files`, and the
+  `releaseCatalog` hook gained `CatalogBuild.metadata`. It also gained `channelReleases()`, the
+  channel's eligible history newest first: the hook only resolved a channel's head.
+- **Android metadata carries `targetSdk`.** F-Droid's index states `usesSdk` only with both
+  `minSdkVersion` and `targetSdkVersion` (`org.fdroid.index.v2.UsesSdkV2`).
+- **Flathub's liveness is the bytes.** Flathub is a store kind, so it is never live by
+  derivation. But its checker JSON is what leads to a Flathub build, so that feed lists releases
+  whose payload Polaris Key serves. Holds on the `flathub` outlet still apply.
+- **Several outlets of a kind.** The routes are per channel, not per outlet. `?outlet=<id>`
+  picks one outlet (for example `altstore-beta`). The default is the outlet whose id is the kind,
+  else the first by id.
+- **`users/downloads.md` did not exist**, so it was created, with the "adding a source" section.
+- **Obtainium key names**, which E2 marked unverified, were checked against Obtainium's source on
+  2026-10-01: `App.fromJson` reads `id`, `url`, `author`, `name`, `overrideSource` and
+  `additionalSettings` (a JSON string). `overrideSource` is the source's class name
+  (`FDroidRepo`, `DirectAPKLink`). `FDroidRepo` reads `appIdOrName`, `pickHighestVersionCode` and
+  `trySelectingSuggestedVersionCode`. `DirectAPKLink` reads `defaultPseudoVersioningMethod`
+  (`partialAPKHash` or `ETag`).
+
 ## Hand-off
 
 - Feed URLs (and their deep links: `altstore://source?url=`, `sidestore://source?url=`,
