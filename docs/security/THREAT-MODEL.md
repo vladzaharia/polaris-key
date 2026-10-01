@@ -118,6 +118,16 @@ uploads. Its write paths, and nothing else:
   gated build, which that product's signed manifests publish to every customer, be told
   "present", skip the upload, get a ref, and serve the other product's paid bytes from its
   own byte route.
+- **Descriptor ingest is the first `recordRef` caller (P2-04).** `ingestReleaseDescriptor`
+  (`services/release/descriptor.ts`) writes an `artifact` ref for an `r2` location only when
+  the key is in the caller's `promoted` set (P2-02's submit, after promoting from this
+  product's staging prefix) or the product already references it, and only when
+  `blob_objects` records it with the descriptor's hash and size; anything else is refused
+  (`r2_ref_not_owned`, `r2_object_missing`) and nothing is written. A descriptor attached to a
+  GitHub release (`pkey-release.json`) arrives with no `promoted` set, so it can name only keys
+  the product already holds. Where GitHub holds the bytes, ingest requires an immutable release
+  and GitHub's own digest to equal the descriptor's SHA-256, and `source_url` stays GitHub's
+  `browser_download_url` (R6-12).
 - **Deduplication answers are per product.** An upload ticket's `present` flag (P2-02, P4-03)
   comes from `referencedKeys(db, product, keys)` — the keys _this_ product already
   references — never from `blob_objects` alone, which would also tell a tenant which hashes

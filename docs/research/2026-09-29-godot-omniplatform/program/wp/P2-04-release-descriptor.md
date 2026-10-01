@@ -47,10 +47,11 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
 - [P2-03](P2-03-release-data-model.md) hand-off (`model.ts`, the vocabulary constants,
   identifiers, `seq`), and the landed [P0-02](P0-02-release-resolution.md) (`stableTagPattern`,
   `ignoreTags` and the shared comparator).
-- Code: `packages/shared-manifest/src/index.ts` (release root `:875-1060`, `normalizeRelease`
-  `:1569`, `releaseRoot` `:2048`), `schemas/v1/release.schema.json`,
+- Code: `packages/shared-manifest/src/index.ts` (release validation `:1094-1330` on main at
+  `caeb3ed`, `normalizeRelease` `:1886`, `releaseRoot` `:2377`), `schemas/v1/release.schema.json`,
   `test/schema-parity.test.ts` (the `Docs` type `:44-48`, the sweep `:740-760`);
-  `packages/worker/src/services/release/store.ts:172-197` (the sniffers), `sync.ts`,
+  `packages/worker/src/services/release/store.ts` (`artifactKind`/`artifactPlatform`, the
+  sniffers), `sync.ts`,
   `github.ts:30-47` (`Release`/`ReleaseAsset` lack `immutable` and `digest`) and
   `github.ts:343,395` (`fetchTextAsset`, 4 KiB default cap).
 
@@ -139,6 +140,21 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
 - **Errors** reuse `ErrorCode` with a `reason`; no new `PolarisErrorCode` (plan mode).
 - **Products are data.** No product-, platform- or format-specific branch outside the vocabulary
   constants and the manifest.
+
+- **Implementation corrections (P2-04).**
+  - The nested spelling `deliverables.app.versioning.{stableTagPattern, ignoreTags}` reports
+    the existing `invalid_stable_tag_pattern` / `invalid_ignore_tags`, not a new
+    `invalid_tag_pattern`: one rule and one code for both spellings.
+  - P0-04's `CHANNEL_NAME_PATTERN` and `CHANNEL_ALIASES` have not landed in
+    `@polaris-key/protocol`, so `@polaris-key/manifest` carries `CANONICAL_CHANNEL_PATTERN` and
+    `CHANNEL_ALIAS_NAMES` with the same values; a non-canonical channel key is the existing
+    `invalid_channel`. Switch to the protocol constants when P0-04 merges.
+  - `match` is matched by a linear wildcard matcher (`matchesArtifactGlob`), not a compiled
+    RegExp: `*`-heavy globs compile to polynomially backtracking patterns, and both sides are
+    repo-controlled.
+  - The `release_exists` and `seq` rules need the GitHub path to put a described release's row
+    FIRST in the sync batch (so an explicit `seq` is taken before the store numbers new
+    releases) and its builds and files LAST; `ingestGithubDescriptors` returns `head`/`tail`.
 
 ## Steps
 
