@@ -121,6 +121,11 @@ function plane(): Plane {
         return json({ token: "pkeyt_registered", deviceId: device });
       }
       if (path.endsWith("/devices/report")) return json({ ok: true });
+      if (path.includes("/config/mint/")) {
+        if (p.alwaysUnauthorized || p.revoked)
+          return json({ error: { code: "unauthorized" } }, 401);
+        return json({ token: "edge_minted", expiresAt: at + 3600 });
+      }
       const doc = path.endsWith("/license/document")
         ? "license"
         : path.endsWith("/config/document")
@@ -154,7 +159,13 @@ function plane(): Plane {
 
 describe("chooseReacquireRoute — the path-selection rule", () => {
   it("a licensed device uses /license/token", () => {
-    for (const source of ["activate", "enroll", "reacquire", null] as const)
+    for (const source of [
+      "activate",
+      "enroll",
+      "signin",
+      "reacquire",
+      null,
+    ] as const)
       expect(chooseReacquireRoute({ licenseEnabled: true, source })).toBe(
         "license-token",
       );
@@ -316,5 +327,54 @@ describe("re-register on 401 (§5)", () => {
     expect(m.count("/config/document")).toBe(2);
     await client.sync();
     expect(m.count("/devices/register")).toBe(2);
+  });
+
+  it("an edge-mint 401 on a registered device re-registers once, then retries the mint", async () => {
+    // The edge-mint's own single re-acquire takes the same route a document fetch's would:
+    // §5's rule is about the device token, and a licence-less device has no license/token.
+    const m = plane();
+    const store = new InMemoryStore(PRODUCT);
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store,
+      fetchImpl: m.impl,
+    });
+    expect((await client.devices.register()).kind).toBe("ok");
+    m.calls.length = 0;
+    m.revoked = true;
+    const minted = await client.config.mintToken("recipe-a");
+    expect(minted.token).toBe("edge_minted");
+    expect(m.count("/license/token")).toBe(0);
+    expect(m.count("/devices/register")).toBe(1);
+    expect(
+      m.calls.find((c) => c.path.endsWith("/devices/register"))!.bearer,
+    ).toBeNull();
+    const mints = m.calls.filter((c) => c.path.includes("/config/mint/"));
+    expect(mints.map((c) => c.bearer)).toEqual([
+      "Bearer pkeyt_registered",
+      "Bearer pkeyt_registered",
+    ]);
+    expect(await store.getToken()).toBe("pkeyt_registered");
+  });
+
+  it("an edge-mint 401 whose re-register is refused fails unauthorized after one attempt", async () => {
+    const m = plane();
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore(PRODUCT),
+      fetchImpl: m.impl,
+    });
+    expect((await client.devices.register()).kind).toBe("ok");
+    m.calls.length = 0;
+    m.revoked = true;
+    m.registerStatus = 403;
+    await expect(client.config.mintToken("recipe-a")).rejects.toMatchObject({
+      code: "unauthorized",
+    });
+    expect(m.count("/devices/register")).toBe(1);
+    expect(m.count("/license/token")).toBe(0);
+    expect(
+      m.calls.filter((c) => c.path.includes("/config/mint/")),
+    ).toHaveLength(1);
   });
 });

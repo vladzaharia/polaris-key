@@ -34,7 +34,12 @@ import type { Store } from "@polaris-key/client-core";
 import type { CoreContext } from "./context.js";
 
 /** How the token was obtained, for the callers that care about the transition. */
-export type TokenSource = "activate" | "enroll" | "register" | "reacquire";
+export type TokenSource =
+  | "activate"
+  | "enroll"
+  | "register"
+  | "signin"
+  | "reacquire";
 
 /** The two routes the §5 single re-acquire can take. */
 export type ReacquireRoute = "license-token" | "devices-register";
@@ -134,13 +139,22 @@ export class TokenManager {
    * The single re-acquire for an authenticated call made OUTSIDE a sync pass (an edge-mint).
    * One attempt per call, never a loop: the caller retries its request once when this returns
    * true and fails on a second 401. It does not touch the sync pass's budget.
+   *
+   * It takes the SAME route a document fetch's 401 would (`chooseReacquireRoute`): §5's
+   * single-attempt rule is about the device token, not about which call presented it, and a
+   * licence-less device has no `license/token` route to take — sending it there would spend
+   * the one attempt on a guaranteed 401.
    */
   async reacquire(): Promise<boolean> {
     const current = this.token;
     if (!current) return false;
-    const next = await this.reacquireFn(this.ctx, current).catch(() => null);
+    const next = await this.reacquireFn(
+      this.ctx,
+      current,
+      this.tokenSource,
+    ).catch(() => null);
     if (!next) return false;
-    await this.set(next);
+    await this.set(next.token, next.source);
     return true;
   }
 
