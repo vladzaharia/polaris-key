@@ -207,33 +207,33 @@ immutable, no-transform` when public, the gated blob's `private, no-store, no-tr
 
 ## Acceptance criteria
 
-- [ ] `pkey release publish` with a test release key produces a record that verifies against that
+- [x] `pkey release publish` with a test release key produces a record that verifies against that
       key with `typ` `pkey-release+jws`, and whose builds equal the descriptor's; `--dry-run`
       signs nothing; the private key never appears in logs or in any request body.
-- [ ] A publish with a valid record stores it; a wrong `kid`, bad signature, hash or size
+- [x] A publish with a valid record stores it; a wrong `kid`, bad signature, hash or size
       mismatch, non-increasing `seq` or wrong `aud` is refused with its documented code, and
       nothing is stored.
-- [ ] `GET` on the record route returns bytes whose SHA-256 equals the path, as
+- [x] `GET` on the record route returns bytes whose SHA-256 equals the path, as
       `application/jose` with immutable caching; an unknown hash is 404; the access mode applies.
-- [ ] `GET` on the feed route returns a `pkey-feed+jws` that verifies against the product's trust
+- [x] `GET` on the feed route returns a `pkey-feed+jws` that verifies against the product's trust
       manifest keys, with exactly the plan's fields; two requests with no state change return the
       same `seq`; a pointer move, floor change, rollout change or halt raises `seq` by one.
-- [ ] A halted outlet, a partial rollout and an outlet still serving an older release each appear
+- [x] A halted outlet, a partial rollout and an outlet still serving an older release each appear
       in the feed as the plan specifies (tests over P2b-04 fixtures).
-- [ ] Once P3-05 has landed, a test verifies a composed feed and record with `client-core`
+- [ ] (Open: P3-05 has not landed on `main`; the ceiling test checks `verifyJws`, `feedClaims` and step 8 directly.) Once P3-05 has landed, a test verifies a composed feed and record with `client-core`
       (`verifyFeed`, `verifyReleaseRecord`) end to end, and the `seq` ceiling recovery with
       `verifyFeed`.
-- [ ] `feed:seq-ceiling` against a local D1: the next feed of a channel that had a row, and the
+- [x] `feed:seq-ceiling` against a local D1: the next feed of a channel that had a row, and the
       first feed of a manual channel that had none, both carry `seq` 9007199254740991 and pass
       `verifyJws`, `feedClaims` and §2.5 step 8 against the old floor.
-- [ ] The feed's `channel` claim is the canonical channel (`latest` → `stable`); the two
+- [x] The feed's `channel` claim is the canonical channel (`latest` → `stable`); the two
       transcripts pass `parity:check`.
-- [ ] OpenAPI and `routeCoverage` updated; `reference/routes.mdx`, `data-model.mdx` and
+- [x] OpenAPI and `routeCoverage` updated; `reference/routes.mdx`, `data-model.mdx` and
       `error-codes.mdx` regenerated.
-- [ ] `boundaries.test.ts` passes with no new cross-service import.
-- [ ] `docs/security/THREAT-MODEL.md` describes the two-signer property and its limits.
-- [ ] The green gate passes (`AGENTS.md`), including `typecheck:workerd` and `test:workerd`.
-- [ ] Sparkle verification: a body shorter or longer than the listed asset size answers `incomplete` and writes no memo; a malformed key or signature makes no upstream fetch; a failing KV `put` does not turn a completed verification into a 500.
+- [x] `boundaries.test.ts` passes with no new cross-service import.
+- [x] `docs/security/THREAT-MODEL.md` describes the two-signer property and its limits.
+- [x] The green gate passes (`AGENTS.md`), including `typecheck:workerd` and `test:workerd`.
+- [x] Sparkle verification: a body shorter or longer than the listed asset size answers `incomplete` and writes no memo; a malformed key or signature makes no upstream fetch; a failing KV `put` does not turn a completed verification into a 500.
 
 ## Verify
 
