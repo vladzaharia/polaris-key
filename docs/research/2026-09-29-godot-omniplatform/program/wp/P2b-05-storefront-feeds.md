@@ -217,6 +217,24 @@ Recorded where the code disagreed with the text above.
   The F-Droid documents themselves (`index-v2.json`, `entry.json` and the diff) are compared byte
   for byte in `packages/cli/test/fixtures/feeds/`. A held rollout on the `flathub` outlet has its
   own test.
+- **The public feed routes have a bounded D1 cost and a cache** (second review). The first cut
+  called `delivery.availability()` and `delivery.deliveryUrl()` per release, and each re-read
+  every release row, so a feed cost hundreds of queries (the PAL source about 2,000 at 80
+  releases, past the per-invocation D1 cap). The selection now reads the outlet's availability
+  rows and transport once and two queries per scanned release, `MAX_FEED_SCAN` is 100 (was 200),
+  and the routes keep rendered answers in the Workers Cache API for five minutes, keyed by path,
+  `?outlet=` and a stamp of rollouts, yanks, availability, outlets, feed files and notes access,
+  so a hold applies on the next request. The catalog hook's `artifacts()` now returns the
+  locations too (`CatalogSourceArtifact`). The relay resolves only APK names the registered
+  `index-v2.json` lists, and Obtainium checks only that an `fdroid-repo` outlet exists instead of
+  running a second selection. A test checks the bulk selection agrees with the hooks.
+- **Feeds honour rollout holds and availability reports**, so the threat model's P2b-04
+  paragraph ("a holder of `distribution:rollout` cannot yet withhold a build") and the P2b-03
+  report bullet were corrected: both scopes can now withhold a release from the storefront feeds
+  (a rollback for new installs), never expose one.
+- **`pkey feeds fdroid --out` is never deleted wholesale** (second review). It removes only the
+  files a repository is made of, and refuses the working directory, a parent of it, or a
+  directory that holds anything else.
 
 ## Hand-off
 
