@@ -187,9 +187,23 @@ GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_t
 
 ## Hand-off
 
-- `PolarisKey.identity` (`is_available`, `begin_sign_in`, `cancel`, `open_in_browser`,
-  `copy_link`, the two signals), `PKeySignInPrompt`, `PKeySignInResult` and `PKeyQrRect`: P1-10's
-  `PKeySignInDialog` is a themed view over exactly these.
+- `PolarisKey.identity`: `is_available()`, `begin_sign_in(device_name, confirm_identity)`,
+  `cancel()`, `accept_sign_in(attach_license)`, `open_in_browser(prompt)`, `copy_link(prompt)`,
+  `signed_in_identity()` and the three signals `sign_in_pending(prompt)`,
+  `sign_in_confirm(confirmation)` and `sign_in_finished(result)`; plus `PKeySignInPrompt`,
+  `PKeySignInResult` and `PKeyQrRect`. P1-10's `PKeySignInDialog` is a themed view over exactly
+  these, and it must render two things beyond the code and QR:
+  - **The confirm step.** On a device that may hold an anonymous enrolled licence, call
+    `begin_sign_in(name, true)`. On `sign_in_confirm`, show `confirmation.identity` (name, verified
+    e-mail) and ask the player to accept it. Offer "attach this device's licence to my account"
+    only when `confirmation.attachable` is true. Answer with `accept_sign_in(attach)`, or
+    `cancel()` when the player rejects the identity.
+  - **The signed-in identity after `ok`.** Show `PKeySignInResult.identity` (or
+    `signed_in_identity()` later, for example in the activation panel). P1-06's accepted residual
+    (a user-code holder who signs in as themselves binds the device to their account) relies on
+    the player seeing who the device is signed in as.
+    _Correction (P1-07 review):_ this bullet used to list only the first five calls and two
+    signals, which would have left the confirm step and the identity display out of P1-10.
 - The request sequence and result mapping are the reference P1b-08 ports and P1b-03 records.
 - Set the status with
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1-07 done`.
