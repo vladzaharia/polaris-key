@@ -11,7 +11,12 @@
 // in `validateEnvelope`; only the per-document claims differ, and those live in the two
 // `DocTypeSpec`s below. `verifyDoc` is generic so P6's bundle verifier can reuse it.
 
-import { verifyJws, type JwsTyp, type TrustSet } from "@polaris-key/jws";
+import {
+  verifyJws,
+  type JwsTyp,
+  type NonWireIntegers,
+  type TrustSet,
+} from "@polaris-key/jws";
 import { ISSUER, type DocClaims } from "@polaris-key/protocol/core";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
@@ -37,10 +42,7 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
  * the Worker hardcodes — that one IS allow-listed, in trust.ts.) What is enforceable, and what
  * R2-08's `schemaVersion: 999` payload actually violated, is the SHAPE.
  */
-function isValidSchemaVersion(
-  v: unknown,
-  nonWire: ReadonlySet<string>,
-): boolean {
+function isValidSchemaVersion(v: unknown, nonWire: NonWireIntegers): boolean {
   // V4 §3: an integer claim decided from its token, minimum 1.
   return isWireInteger(v, "/schemaVersion", 1, nonWire);
 }
@@ -78,7 +80,7 @@ export interface DocTypeSpec<T extends DocClaims> {
   typ: JwsTyp;
   /** Per-document claim validation, run only after the envelope passes. `nonWire` is the
    *  verified payload's non-wire-integer pointer set (WIRE-CONTRACT-V4 §3). */
-  validate: (doc: T, nonWire: ReadonlySet<string>) => boolean;
+  validate: (doc: T, nonWire: NonWireIntegers) => boolean;
 }
 
 /** `pkey-license+jws` — grants. `entitlements` is the sole carrier of grant data (D-20). */
@@ -114,7 +116,7 @@ function validateEnvelope(
   doc: DocClaims,
   opts: VerifyOptions,
   now: number,
-  nonWire: ReadonlySet<string> = NO_NON_WIRE_INTEGERS,
+  nonWire: NonWireIntegers = NO_NON_WIRE_INTEGERS,
 ): boolean {
   if (doc.aud !== opts.expectedAud) return false;
   // The issuer is the fixed `key.plrs.im` (Amendment A1), never a caller-derived hostname —

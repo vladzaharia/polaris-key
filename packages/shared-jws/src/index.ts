@@ -85,7 +85,16 @@ export interface VerifiedJws<T> {
    * number `JSON.parse` made of it (`7.0`, `17e8` and `1700000000.00000001` all read as
    * integers in JavaScript).
    */
-  nonWireIntegers: ReadonlySet<string>;
+  nonWireIntegers: NonWireIntegers;
+}
+
+/**
+ * A set of RFC 6901 pointers: what `VerifiedJws.nonWireIntegers` and `StrictJsonScan` report.
+ * A `Set<string>` satisfies it, for a caller checking an object it built.
+ */
+export interface NonWireIntegers extends Iterable<string> {
+  has(pointer: string): boolean;
+  readonly size: number;
 }
 
 /** A trust set: `kid` → raw 32-byte Ed25519 public key, base64url-encoded. */
@@ -250,10 +259,101 @@ function pointerToken(name: string): string {
   return name.replace(/~/g, "~0").replace(/\//g, "~1");
 }
 
+/**
+ * The non-wire-integer pointers of one scan, held as a tree of raw (unescaped) reference
+ * tokens: one node per container on the way to a recorded number, plus the number itself, each
+ * naming its parent. A member name is stored once, by reference, however many numbers sit
+ * under it, so the set is linear in the payload's size. A document with long member names and
+ * many fractional numbers below them would otherwise cost one full pointer string per number,
+ * which grows with the square of the payload (WIRE-CONTRACT-V4 §1.2: the verifier's work and
+ * memory are linear in the capped payload). `has` walks the tree. Full pointer strings are
+ * built only when the set is iterated, which the conformance runners do on small corpus cases.
+ */
+class PointerSet implements NonWireIntegers {
+  // Node 0 is the top-level object.
+  private readonly parent: number[] = [-1];
+  private readonly name: string[] = [""];
+  private readonly children: (Map<string, number> | undefined)[] = [undefined];
+  private readonly leaf: boolean[] = [false];
+  private readonly leaves: number[] = [];
+  private listed: string[] | undefined;
+
+  /** The node for `name` under `node`, created when absent. */
+  child(node: number, name: string): number {
+    let m = this.children[node];
+    if (m === undefined) {
+      m = new Map();
+      this.children[node] = m;
+    }
+    let id = m.get(name);
+    if (id === undefined) {
+      id = this.parent.length;
+      this.parent.push(node);
+      this.name.push(name);
+      this.children.push(undefined);
+      this.leaf.push(false);
+      m.set(name, id);
+    }
+    return id;
+  }
+
+  /** Record the number at `node`. */
+  add(node: number): void {
+    if (this.leaf[node]) return;
+    this.leaf[node] = true;
+    this.leaves.push(node);
+    this.listed = undefined;
+  }
+
+  get size(): number {
+    return this.leaves.length;
+  }
+
+  has(pointer: string): boolean {
+    if (typeof pointer !== "string") return false;
+    let node = 0;
+    if (pointer !== "") {
+      if (pointer.charCodeAt(0) !== 0x2f) return false;
+      for (const token of pointer.slice(1).split("/")) {
+        // RFC 6901: `~` appears only as `~0` or `~1`; anything else names no member.
+        if (/~(?![01])/.test(token)) return false;
+        const next = this.children[node]?.get(
+          token.replace(/~1/g, "/").replace(/~0/g, "~"),
+        );
+        if (next === undefined) return false;
+        node = next;
+      }
+    }
+    return this.leaf[node] === true;
+  }
+
+  /** Every pointer, escaped, in JavaScript's default string order. */
+  private list(): string[] {
+    if (this.listed === undefined) {
+      this.listed = this.leaves
+        .map((n) => {
+          const tokens: string[] = [];
+          for (let k = n; k > 0; k = this.parent[k]!)
+            tokens.push(pointerToken(this.name[k]!));
+          return tokens
+            .reverse()
+            .map((t) => `/${t}`)
+            .join("");
+        })
+        .sort();
+    }
+    return this.listed;
+  }
+
+  [Symbol.iterator](): Iterator<string> {
+    return this.list()[Symbol.iterator]();
+  }
+}
+
 export interface StrictJsonScan {
   ok: boolean;
-  /** Sorted in JavaScript's default string order; empty when `ok` is false. */
-  nonWireIntegers: string[];
+  /** Iterates in JavaScript's default string order; empty when `ok` is false. */
+  nonWireIntegers: NonWireIntegers;
 }
 
 class StrictJsonRefused extends Error {}
@@ -273,7 +373,21 @@ const NUMBER_TOKEN_RE = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
  */
 export function scanStrictJson(text: string): StrictJsonScan {
   let i = 0;
-  const nonWire: string[] = [];
+  const nonWire = new PointerSet();
+  // The open path: one raw reference token per level, and its node in `nonWire` once a number
+  // below it has been recorded (-1 until then). Never a pointer string per value.
+  const segs: (string | number)[] = [];
+  const ids: number[] = [];
+  const record = (): void => {
+    let k = segs.length - 1;
+    while (k >= 0 && ids[k]! < 0) k--;
+    let node = k < 0 ? 0 : ids[k]!;
+    for (let j = k + 1; j < segs.length; j++) {
+      node = nonWire.child(node, String(segs[j]));
+      ids[j] = node;
+    }
+    nonWire.add(node);
+  };
   const refuse = (): never => {
     throw new StrictJsonRefused();
   };
@@ -355,16 +469,16 @@ export function scanStrictJson(text: string): StrictJsonScan {
     }
     return out;
   };
-  const num = (pointer: string): void => {
+  const num = (): void => {
     NUMBER_TOKEN_RE.lastIndex = i;
     const m = NUMBER_TOKEN_RE.exec(text);
     if (!m) refuse();
     const token = m![0];
     i += token.length;
     if (!numberTokenInRange(token)) refuse();
-    if (isNonWireIntegerToken(token)) nonWire.push(pointer);
+    if (isNonWireIntegerToken(token)) record();
   };
-  const value = (depth: number, pointer: string): void => {
+  const value = (depth: number): void => {
     ws();
     const c = text[i];
     if (c === "{") {
@@ -385,7 +499,11 @@ export function scanStrictJson(text: string): StrictJsonScan {
         ws();
         if (text[i] !== ":") refuse();
         i++;
-        value(depth + 1, `${pointer}/${pointerToken(name)}`);
+        segs.push(name);
+        ids.push(-1);
+        value(depth + 1);
+        segs.pop();
+        ids.pop();
         ws();
         if (text[i] === ",") {
           i++;
@@ -407,7 +525,11 @@ export function scanStrictJson(text: string): StrictJsonScan {
         return;
       }
       for (let index = 0; ; index++) {
-        value(depth + 1, `${pointer}/${index}`);
+        segs.push(index);
+        ids.push(-1);
+        value(depth + 1);
+        segs.pop();
+        ids.pop();
         ws();
         if (text[i] === ",") {
           i++;
@@ -425,7 +547,7 @@ export function scanStrictJson(text: string): StrictJsonScan {
       return;
     }
     if (c === "-" || (c !== undefined && c >= "0" && c <= "9")) {
-      num(pointer);
+      num();
       return;
     }
     for (const lit of ["true", "false", "null"]) {
@@ -438,14 +560,16 @@ export function scanStrictJson(text: string): StrictJsonScan {
   };
   try {
     ws();
-    if (text[i] !== "{") return { ok: false, nonWireIntegers: [] };
-    value(0, "");
+    if (text[i] !== "{")
+      return { ok: false, nonWireIntegers: new PointerSet() };
+    value(0);
     ws();
-    if (i !== text.length) return { ok: false, nonWireIntegers: [] };
-    return { ok: true, nonWireIntegers: nonWire.sort() };
+    if (i !== text.length)
+      return { ok: false, nonWireIntegers: new PointerSet() };
+    return { ok: true, nonWireIntegers: nonWire };
   } catch (e) {
     if (e instanceof StrictJsonRefused || e instanceof RangeError)
-      return { ok: false, nonWireIntegers: [] };
+      return { ok: false, nonWireIntegers: new PointerSet() };
     throw e;
   }
 }
@@ -453,7 +577,7 @@ export function scanStrictJson(text: string): StrictJsonScan {
 /** Decode and parse one header or payload under V4 §1.2. Returns null on any failure. */
 function parseStrictJson<T>(
   bytes: Uint8Array,
-): { value: T; nonWireIntegers: string[] } | null {
+): { value: T; nonWireIntegers: NonWireIntegers } | null {
   let text: string;
   try {
     text = dec.decode(bytes);
@@ -718,7 +842,7 @@ export async function verifyJws<T = unknown>(
   return {
     kid: header.kid,
     payload: parsed.value,
-    nonWireIntegers: new Set(parsed.nonWireIntegers),
+    nonWireIntegers: parsed.nonWireIntegers,
   };
 }
 

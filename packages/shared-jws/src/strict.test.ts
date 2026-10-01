@@ -173,12 +173,51 @@ describe("scanStrictJson (WIRE-CONTRACT-V4 §1.2)", () => {
       '{"seq":7,"b":7.0,"a/b":[1,17e8,9007199254740991,9007199254740992],"t~":{"x":-0,"y":1.5}}',
     );
     expect(scan.ok).toBe(true);
-    expect(scan.nonWireIntegers).toEqual([
+    expect([...scan.nonWireIntegers]).toEqual([
       "/a~1b/1",
       "/a~1b/3",
       "/b",
       "/t~0/y",
     ]);
+    expect(scan.nonWireIntegers.size).toBe(4);
+    for (const p of ["/a~1b/1", "/a~1b/3", "/b", "/t~0/y"])
+      expect(scan.nonWireIntegers.has(p)).toBe(true);
+    for (const p of [
+      "",
+      "/seq",
+      "/a/b/1",
+      "/a~1b",
+      "/a~1b/0",
+      "/a~1b/2",
+      "/a~1b/01",
+      "/t~/y",
+      "/t~2/y",
+      "/t~0",
+      "/t~0/x",
+      "/t~0/y/0",
+      "b",
+    ])
+      expect(scan.nonWireIntegers.has(p)).toBe(false);
+  });
+
+  it("keeps the pointer set linear in the payload (long names, many fractions below them)", () => {
+    // One full pointer string per number would cost 8 000 × 32 000 bytes here (256 MB).
+    const name = "a".repeat(32_000);
+    const text = `{"config":{"k":{"value":{"${name}":[${Array(8000).fill("1.5").join(",")}]}}}}`;
+    expect(text.length).toBeLessThan(65_536);
+    const before = process.memoryUsage().heapUsed;
+    const started = performance.now();
+    const scan = scanStrictJson(text);
+    const elapsed = performance.now() - started;
+    const grown = process.memoryUsage().heapUsed - before;
+    expect(scan.ok).toBe(true);
+    expect(scan.nonWireIntegers.size).toBe(8000);
+    expect(scan.nonWireIntegers.has(`/config/k/value/${name}/7999`)).toBe(true);
+    expect(scan.nonWireIntegers.has(`/config/k/value/${name}/8000`)).toBe(
+      false,
+    );
+    expect(grown).toBeLessThan(32 * 1024 * 1024);
+    expect(elapsed).toBeLessThan(2000);
   });
 
   it("judges rule 8 from the digits and the token rule from the spelling", () => {

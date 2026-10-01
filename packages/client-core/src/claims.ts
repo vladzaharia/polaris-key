@@ -3,6 +3,8 @@
 // Swift, and the Worker signer), so they live in one place rather than being re-declared per
 // call site.
 
+import type { NonWireIntegers } from "@polaris-key/jws";
+
 /**
  * Tolerance applied to every clock comparison, in seconds. v1 had none anywhere, so a device
  * 61 minutes fast flipped a freshly-signed document straight to `grace` (R2-08).
@@ -37,7 +39,7 @@ export function isWireInteger(
   value: unknown,
   pointer: string,
   min: number,
-  nonWire: ReadonlySet<string>,
+  nonWire: NonWireIntegers,
 ): value is number {
   return (
     !nonWire.has(pointer) &&
@@ -48,4 +50,4 @@ export function isWireInteger(
 }
 
 /** The empty pointer set, for a caller checking an object it built rather than parsed. */
-export const NO_NON_WIRE_INTEGERS: ReadonlySet<string> = new Set<string>();
+export const NO_NON_WIRE_INTEGERS: NonWireIntegers = new Set<string>();

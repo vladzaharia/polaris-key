@@ -3,6 +3,7 @@
 // P3-03's ingest and CLI signer run; P3-05 adds `verifyReleaseRecord` (hash, key selection,
 // signature, claims, cross-check) around it.
 
+import type { NonWireIntegers } from "@polaris-key/jws";
 import { BUILD_ID_PATTERN } from "@polaris-key/protocol/release";
 import { NO_NON_WIRE_INTEGERS, isWireInteger } from "./claims.js";
 
@@ -10,7 +11,7 @@ export interface ReleaseRecordClaimsOptions {
   /** The product: `aud` must equal it. */
   expectedAud: string;
   /** The verified payload's `nonWireIntegers`; omit when checking an object you built. */
-  nonWire?: ReadonlySet<string>;
+  nonWire?: NonWireIntegers;
 }
 
 /** `@polaris-key/manifest`'s `DELIVERABLE_ID_PATTERN`, restated (client-core does not depend on
@@ -38,7 +39,7 @@ const optString = (o: Record<string, unknown>, key: string): boolean =>
 function claimsOk(
   doc: Record<string, unknown>,
   opts: ReleaseRecordClaimsOptions,
-  nonWire: ReadonlySet<string>,
+  nonWire: NonWireIntegers,
 ): boolean {
   const int = (v: unknown, pointer: string, min: number): v is number =>
     isWireInteger(v, pointer, min, nonWire);

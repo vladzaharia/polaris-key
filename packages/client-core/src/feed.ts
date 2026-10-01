@@ -8,6 +8,7 @@
 // and an optional member is absent or of its type (a present `null` is refused). Every integer
 // field is an integer claim, checked at its RFC 6901 pointer.
 
+import type { NonWireIntegers } from "@polaris-key/jws";
 import {
   CHANNEL_ALIASES,
   CHANNEL_NAME_PATTERN,
@@ -36,7 +37,7 @@ export interface FeedClaimsOptions {
   /** The client's platform; when given, a `selector.platform` must equal it. */
   platform?: string;
   /** The verified payload's `nonWireIntegers`; omit when checking an object you built. */
-  nonWire?: ReadonlySet<string>;
+  nonWire?: NonWireIntegers;
 }
 
 export type FeedClaimsRefusal = "claims" | "channel" | "selector";
@@ -89,7 +90,7 @@ function capabilitiesOk(v: unknown): boolean {
 function claimsOk(
   doc: Record<string, unknown>,
   opts: FeedClaimsOptions,
-  nonWire: ReadonlySet<string>,
+  nonWire: NonWireIntegers,
 ): boolean {
   const int = (v: unknown, pointer: string, min: number): v is number =>
     isWireInteger(v, pointer, min, nonWire);
