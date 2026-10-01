@@ -33,6 +33,7 @@ vi.mock("../src/api.js", async (importOriginal) => {
       deauthorizeDevice: vi.fn(),
       services: vi.fn(),
       mintBundle: vi.fn(),
+      releases: vi.fn(),
     },
   };
 });
@@ -222,6 +223,7 @@ beforeEach(() => {
     deviceId: "dev_1",
   });
   mockApi.services.mockResolvedValue(SERVICES);
+  mockApi.releases.mockResolvedValue({ releases: [], channels: [] });
   mockApi.mintBundle.mockResolvedValue({
     bundleId: "01JBUNDLEID0000000000000A",
     bundle: "eyJhbGciOiJFZERTQSJ9.e30.sig",
@@ -612,5 +614,97 @@ describe("License detail", () => {
         licenseId: "lic_1",
       }),
     );
+  });
+});
+
+// ── The channel picker (P0-04, WIRE-CONTRACT-V3 §5.1) ─────────────────────────────────
+describe("license channel picker", () => {
+  const channelRows = (names: string[]) => ({
+    releases: [],
+    channels: names.map((channel) => ({
+      channel,
+      releaseId: "v1",
+      modifiedAt: null,
+    })),
+  });
+
+  async function openCreatePolicy() {
+    const user = userEvent.setup();
+    withProviders(<Licenses slug="djdl" />);
+    await screen.findByText("ada@x.io");
+    await user.click(screen.getByRole("button", { name: "Create license" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("tab", { name: "Policy" }));
+    return { user, dialog };
+  }
+
+  it("offers neither dev nor staging on create for a product with no manual channels", async () => {
+    const { dialog } = await openCreatePolicy();
+    const group = within(dialog).getByRole("group", {
+      name: "Release channels",
+    });
+    for (const name of ["stable", "beta", "pr"])
+      expect(within(group).getByLabelText(name)).toBeTruthy();
+    expect(within(group).queryByLabelText("dev")).toBeNull();
+    expect(within(group).queryByLabelText("staging")).toBeNull();
+  });
+
+  it("drops reserved and non-canonical manual names; a manual staging is listed once", async () => {
+    mockApi.releases.mockResolvedValue(
+      channelRows(["stable", "beta", "dev", "pr", "Nightly", "staging"]),
+    );
+    const { dialog } = await openCreatePolicy();
+    const group = within(dialog).getByRole("group", {
+      name: "Release channels",
+    });
+    await waitFor(() =>
+      expect(within(group).getAllByLabelText("staging")).toHaveLength(1),
+    );
+    expect(within(group).queryByLabelText("dev")).toBeNull();
+    expect(within(group).queryByLabelText("Nightly")).toBeNull();
+    expect(within(group).getAllByLabelText("pr")).toHaveLength(1);
+    expect(
+      within(group).getByLabelText("pr").getAttribute("aria-describedby"),
+    ).toBeTruthy();
+    expect(within(group).getByText("every PR build")).toBeTruthy();
+    expect(
+      within(group).getByText("manual; the grant also covers beta"),
+    ).toBeTruthy();
+  });
+
+  it("shows a held dev grant with its label, and can remove it", async () => {
+    mockApi.license.mockResolvedValue({
+      ...DETAIL,
+      channels: ["stable", "dev"],
+    });
+    const user = userEvent.setup();
+    withProviders(<LicenseDetail slug="djdl" id="lic_1" />);
+    await screen.findByRole("heading", { name: "Ada Lovelace" });
+    const dev = screen.getByLabelText("dev") as HTMLInputElement;
+    expect(dev.checked).toBe(true);
+    expect(screen.getByText(/skips the version window/)).toBeTruthy();
+    await user.click(dev);
+    await user.click(screen.getByRole("button", { name: /Save/ }));
+    await waitFor(() => expect(mockApi.patchLicense).toHaveBeenCalledTimes(1));
+    expect(mockApi.patchLicense.mock.calls[0]![2].channels).toEqual(["stable"]);
+  });
+
+  it("keeps a held value the picker does not offer through a save", async () => {
+    mockApi.license.mockResolvedValue({
+      ...DETAIL,
+      channels: ["stable", "Legacy.X"],
+    });
+    const user = userEvent.setup();
+    withProviders(<LicenseDetail slug="djdl" id="lic_1" />);
+    await screen.findByRole("heading", { name: "Ada Lovelace" });
+    expect(screen.getByText("not offered")).toBeTruthy();
+    await user.click(screen.getByLabelText("beta"));
+    await user.click(screen.getByRole("button", { name: /Save/ }));
+    await waitFor(() => expect(mockApi.patchLicense).toHaveBeenCalledTimes(1));
+    expect(mockApi.patchLicense.mock.calls[0]![2].channels).toEqual([
+      "stable",
+      "beta",
+      "Legacy.X",
+    ]);
   });
 });

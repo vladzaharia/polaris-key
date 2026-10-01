@@ -29,14 +29,16 @@ reference the way it did for the appcast and install-script URLs (see
 [Appcast](/docs/services/update/appcast/) for the paths that _were_ kept forever, and why
 this one wasn't).
 
-- **`<version>`** is a channel selector: `latest`, `stable`, a pinned `X.Y.Z` tag, `beta`,
-  `pr-<n>`, or an operator's manual channel name — the identical vocabulary
+- **`<version>`** is a channel selector: `latest`, `stable`, a pinned `X.Y.Z` tag, `beta` (or
+  its legacy alias `staging`, which matches `-staging-` assets), `pr-<n>`, or an operator's
+  manual channel name — the identical vocabulary
   [Eligibility](/docs/services/update/eligibility/) documents in full, since the download
   route, the appcast, and the version check all resolve it through the same logic.
 - **`<binary>-<arch>`** matches an asset by convention. On the bare-binary path an exact
   filename hit (`<binaryName>-<arch>`, or `<binaryName>-<channel>-<arch>` for a non-stable
   channel) short-circuits everything else. Failing that — and always, for a DMG — matching
-  scores candidates by file extension, architecture token, binary name, and channel suffix.
+  scores candidates by file extension, architecture token, binary name, and channel suffix. A
+  request that names no channel prefers assets carrying no `beta`, `staging` or `pr` token.
   Real projects aren't always perfectly consistent about naming, so this is deliberately
   fuzzy; when it leaves two equally good candidates the route answers `404` rather than
   guessing.
@@ -174,8 +176,8 @@ when no template is configured, a built-in POSIX script that:
 5. Installs to `/usr/local/bin` when writable, or `~/.local/bin` otherwise, and prints a
    `PATH` hint when the chosen directory isn't already on it.
 
-Channel builds (`staging`, `beta`, `pr-<n>`) install under a name suffixed with the
-channel, so a staging build and the stable install coexist rather than overwriting each
+Channel builds (`beta`, its legacy alias `staging`, `pr-<n>`) install under a name suffixed
+with the channel, so a beta build and the stable install coexist rather than overwriting each
 other.
 
 Every value this script interpolates is either bounded to a strict character class or

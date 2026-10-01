@@ -691,13 +691,14 @@ describe("PolarisKeyClient — channel derivation", () => {
     await client.license.activateWithKey(KEY);
 
     // §5 — every product-scoped call carries the client metadata, and the channel is what the
-    // server's build gate reads.
+    // server's build gate reads. P0-04: a legacy `0.0.0-staging*` build sends the canonical
+    // `beta` (WIRE-CONTRACT-V3 §5.1); the Worker accepts both spellings.
     const doc = m.last("/license/document");
-    expect(doc?.channel).toBe("staging");
+    expect(doc?.channel).toBe("beta");
     expect(doc?.version).toBe("0.0.0-staging+abc");
     expect(doc?.device).toBeTruthy();
-    expect(m.last("/config/document")?.channel).toBe("staging");
-    expect(m.first("/license/activate")?.channel).toBe("staging");
+    expect(m.last("/config/document")?.channel).toBe("beta");
+    expect(m.first("/license/activate")?.channel).toBe("beta");
   });
 });
 

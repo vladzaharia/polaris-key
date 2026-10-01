@@ -6,8 +6,9 @@
  * A "channel" is a moving selector that maps to a concrete tag:
  *  - `stable`       — a pinned `X.Y.Z` tag (or `latest`, the highest-precedence non-prerelease
  *                     candidate — see "Candidates and ordering" below).
- *  - `beta`/`latest`— the latest tag built from the configured `beta_branch` head via a
- *                     successful run of `channel_workflow`.
+ *  - `beta`         — the latest tag built from the configured `beta_branch` head via a
+ *                     successful run of `channel_workflow`. `staging` is its legacy alias,
+ *                     unless the product declares a manual channel of that name.
  *  - `pr-<n>`       — auto: the latest tag from PR #n's head SHA via `channel_workflow`.
  *  - manual         — manifest-declared `{name, regex}` rules in `manual_channels_json`
  *                     (`release.manualChannels`, persisted by linkRepo/resync); the newest
@@ -22,6 +23,7 @@ import {
   DEFAULT_STABLE_TAG_PATTERN,
   isIgnoreTag,
 } from "@polaris-key/manifest";
+import { CHANNEL_ALIASES, CHANNEL_BETA } from "@polaris-key/protocol";
 import { compareSemver, parseSemver } from "../../core/entitlements.js";
 import type { Release } from "./github.js";
 
@@ -44,8 +46,14 @@ export interface ChannelSelector {
 
 /**
  * Classify a `:version`/channel segment. `stable`/`latest`/`X.Y.Z` → stable; `beta` →
- * beta; `pr-<n>` → pr; otherwise matched against the admin manual channels. Returns
- * `null` for an unrecognized selector.
+ * beta; `pr-<n>` → pr; otherwise matched against the admin manual channels; then `staging`, the
+ * legacy alias of `beta` (WIRE-CONTRACT-V3 §5.1 rule 6), looked up AFTER the manual names so a
+ * product that declares a manual `staging` channel keeps it. Returns `null` for an unrecognized
+ * selector.
+ *
+ * An aliased selector keeps the requested spelling in `raw` (P0-04 D8): the asset suffix, the
+ * enclosure, the feed title and the edge-cache key all follow `raw`, while resolution, floors and
+ * the `entitled` check go by `kind`.
  */
 export function classifyChannel(
   selector: string | undefined,
@@ -62,6 +70,12 @@ export function classifyChannel(
 
   const manual = manualChannels.find((c) => c.name === selector);
   if (manual) return { kind: "manual", raw: selector, manual };
+
+  if (
+    Object.hasOwn(CHANNEL_ALIASES, selector) &&
+    CHANNEL_ALIASES[selector as keyof typeof CHANNEL_ALIASES] === CHANNEL_BETA
+  )
+    return { kind: "beta", raw: selector };
 
   // A bare X.Y.Z(-suffix) is a pinned stable tag.
   if (/^\d+\.\d+\.\d+/.test(selector)) return { kind: "stable", raw: selector };

@@ -51,6 +51,7 @@ currently means:
 | `stable`, `latest`, or omitted                       | the highest-version non-prerelease **candidate** (see below)                                                                                                                         |
 | a bare `X.Y.Z` (optionally with a prerelease suffix) | that exact tag, pinned                                                                                                                                                               |
 | `beta`                                               | the latest tag from a configured GitHub Actions channel workflow's run on the product's beta branch, falling back to the highest prerelease candidate when no workflow is configured |
+| `staging`                                            | the legacy alias of `beta`, resolved exactly as `beta` — unless the product declares a manual channel named `staging`, which wins                                                    |
 | `pr-<n>`                                             | the same workflow-based resolution, scoped to that pull request's head commit — with no workflow configured, this resolves to nothing                                                |
 | a manifest-declared manual channel                   | the highest release whose tag matches the channel's anchored regular expression                                                                                                      |
 
@@ -63,7 +64,12 @@ Manual channels are declared in `.pkey/release` as `release.manualChannels` — 
 table. The regex is compiled anchored (`^(?:…)$`), capped at 80 characters, and refused at
 manifest validation if it does not compile; the runtime reader applies the same rule, so an
 ingested channel is always a resolvable one. The built-in names are matched first, so a
-manual channel could never be called `stable`, `beta`, `latest` or `pr-<n>`.
+manual channel could never be called `stable`, `beta`, `latest` or `pr-<n>`; the validator warns
+(`reserved_channel_name`) on such a name, and on `dev` or `pr`, whose grant would mean the gate's
+pseudo-channel or the PR family. `staging` is the exception: the alias is looked up after the
+manual names, so a declared manual `staging` keeps working. An aliased request keeps its own
+spelling for the asset suffix, the enclosure, the feed title and the edge-cache key; resolution,
+floors and the entitlement check go by `beta`. The full vocabulary is WIRE-CONTRACT-V3 §5.1.
 
 ### Which tags are candidates, and which one wins
 
@@ -161,7 +167,9 @@ What gets evaluated, and in this order:
 2. **Channel.** Is the requested channel in the license's entitled set. `stable` is always
    in it; it's the floor every license holds regardless of what it was ever granted
    explicitly. A license entitled to the coarser `pr` channel also covers any specific
-   `pr-<n>` selector.
+   `pr-<n>` selector, and a legacy `staging` grant covers `beta` (and so the `staging` alias).
+   A manual channel is covered only by its own name: a `beta` grant does not cover a manual
+   channel named `staging`. This is the same predicate the license build gate uses.
 3. **Version** — evaluated only once the channel passes. Is the concrete version being
    fetched inside the intersection of the product's global compatibility window and the
    license's own minimum/maximum version entitlements (the tighter bound wins in both

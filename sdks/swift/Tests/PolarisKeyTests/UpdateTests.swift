@@ -123,7 +123,7 @@ final class UpdateTests: XCTestCase {
             UpdateFeedBuilder.allowedChannels(from: [
                 "channels": .array([.string("stable"), .string("beta")])
             ]),
-            ["stable", "beta"])
+            ["stable", "beta", "staging"])
     }
 
     /// `stable` is always included: it is the unnamed default channel, and a licence that grants
@@ -133,8 +133,8 @@ final class UpdateTests: XCTestCase {
         XCTAssertEqual(
             UpdateFeedBuilder.allowedChannels(from: ["channels": .array([])]), ["stable"])
         XCTAssertEqual(
-            UpdateFeedBuilder.allowedChannels(from: ["channels": .array([.string("beta")])]),
-            ["stable", "beta"])
+            UpdateFeedBuilder.allowedChannels(from: ["channels": .array([.string("pr")])]),
+            ["stable", "pr"])
     }
 
     /// A malformed entitlement narrows to stable rather than widening to everything — the same
@@ -148,11 +148,27 @@ final class UpdateTests: XCTestCase {
             ]), ["stable"])
     }
 
+    /// `staging` is the legacy spelling of `beta` (WIRE-CONTRACT-V3 §5.1, P0-04): each grant
+    /// also allows the other spelling, as the server's `entitled` feed check treats them.
+    func testStagingAndBetaGrantsCoverEachOther() {
+        XCTAssertEqual(
+            UpdateFeedBuilder.allowedChannels(from: [
+                "channels": .array([.string("stable"), .string("staging")])
+            ]),
+            ["stable", "staging", "beta"])
+        XCTAssertEqual(
+            UpdateFeedBuilder.allowedChannels(from: ["channels": .array([.string("beta")])]),
+            ["stable", "beta", "staging"])
+        XCTAssertEqual(
+            UpdateFeedBuilder.allowedChannels(from: ["channels": .array([.string("nightly")])]),
+            ["stable", "nightly"])
+    }
+
     func testFeedCarriesTheDerivedChannels() {
         let feed = UpdateFeedBuilder.feed(
             from: discovery(), channel: "beta", arch: .arm64,
             entitlements: ["channels": .array([.string("beta")])])
-        XCTAssertEqual(feed?.allowedChannels, ["stable", "beta"])
+        XCTAssertEqual(feed?.allowedChannels, ["stable", "beta", "staging"])
     }
 
     // ── entitled-mode headers ────────────────────────────────────────────────────────

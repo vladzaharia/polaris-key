@@ -1,6 +1,7 @@
-// Client-side semver + channel helpers — mirrors sdk-node's semver.ts (itself pinned by the
+// Client-side semver + channel helpers — mirrors client-core's semver.ts (itself pinned by the
 // conformance corpus so all SDKs agree). Used to derive the default channel from a build
-// version and to compare versions against an allowed window.
+// version and to compare versions against an allowed window. The channel vocabulary is
+// WIRE-CONTRACT-V3 §5.1.
 
 import Foundation
 
@@ -11,8 +12,14 @@ public struct ParsedSemver: Sendable, Equatable {
     public let prerelease: [String]
 }
 
+/// The channel family a build's version implies (WIRE-CONTRACT-V3 §5.1 rule 2), which the SDK
+/// sends as its default `X-PKey-Channel`. Only the Worker narrows `pr` to `pr-<n>`.
 public enum Channel: String, Sendable, Equatable {
     case stable
+    case beta
+    /// The legacy spelling of `beta`. `channelForVersion` never returns it; the Worker still
+    /// accepts `staging` as a header and a grant.
+    @available(*, deprecated, renamed: "beta", message: "staging is the legacy spelling of beta (WIRE-CONTRACT-V3 §5.1)")
     case staging
     case pr
     case dev
@@ -72,15 +79,18 @@ public enum Semver {
         return 0
     }
 
-    /// Derive the release channel from a build version string.
+    /// Derive the channel family from a build version string: `.dev` for `0.0.0-dev*`, `.beta`
+    /// for `0.0.0-beta*` and the legacy `0.0.0-staging*`, `.pr` for `0.0.0-pr-<n>` (hyphen
+    /// optional), `.stable` for anything else. Only the `0.0.0-<word>` sentinels carry a channel.
     public static func channelForVersion(_ version: String) -> Channel {
         if version.hasPrefix("0.0.0-dev") { return .dev }
-        if version.hasPrefix("0.0.0-staging") { return .staging }
+        if version.hasPrefix("0.0.0-beta") || version.hasPrefix("0.0.0-staging") { return .beta }
         if version.range(of: #"^0\.0\.0-pr-?\d+"#, options: .regularExpression) != nil { return .pr }
         return .stable
     }
 
-    /// A `0.0.0-dev…` build is the unrestricted local-dev channel.
+    /// A `0.0.0-dev…` build: the `dev` pseudo-channel. It skips the version window and channel
+    /// checks only when the licence is granted `dev` (R3-01); otherwise it is gated like any build.
     public static func isDevBuild(_ version: String) -> Bool {
         version.hasPrefix("0.0.0-dev")
     }
