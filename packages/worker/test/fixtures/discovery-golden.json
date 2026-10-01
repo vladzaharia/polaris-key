@@ -151,7 +151,9 @@
         "endpoints": {
           "changelog": "https://key.plrs.im/full/release/changelog",
           "install": "https://key.plrs.im/full/release/install.sh",
-          "download": "https://key.plrs.im/full/release/dl"
+          "download": "https://key.plrs.im/full/release/dl",
+          "builds": "https://key.plrs.im/full/release/builds/{selector}/{buildId}",
+          "blobs": "https://key.plrs.im/full/release/blobs/sha256/{sha256}"
         }
       },
       "update": {
