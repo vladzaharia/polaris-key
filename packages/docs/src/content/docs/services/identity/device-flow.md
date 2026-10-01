@@ -212,6 +212,17 @@ because the user code is public by design and the confirmation page hands its ho
 authorize URL, which carries `state`. What a user-code holder can and cannot do is set out in
 the security threat model.
 
+### From an SDK
+
+The Node, Python and Swift SDKs drive this flow for you: `client.identity.beginSignIn()`
+(`begin_sign_in` in Python) returns the user code and both verification URIs, and
+`waitForSignIn()` polls at `interval`, honours `slow_down`, stops at `expiresIn` or when the
+caller cancels, and on `ready` stores the device token and runs the same sync activation does.
+`pollSignIn()` makes a single poll for a host that paces itself. The
+[Node](/docs/build/sdks/node/), [Python](/docs/build/sdks/python/) and
+[Swift](/docs/build/sdks/swift/) pages have the details; `conformance/transcripts/devicecode-*.json`
+pin the conversation every SDK replays.
+
 :::note[Changed: the user code is independent]
 `userCode` used to be the first eight characters of `deviceCode`, case-folded, and
 `verificationUri` embedded the whole device code, so there was no page a human could type a code

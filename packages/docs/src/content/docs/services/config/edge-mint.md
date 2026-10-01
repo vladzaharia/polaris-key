@@ -317,6 +317,14 @@ recipe already learned its id from the catalog entry whose `delivery` is `edgeMi
 the inventory to an anonymous caller would enumerate a product's third-party integrations for
 nothing.
 
+## From an SDK
+
+`client.config.mintToken(recipeId)` (`mint_token` in Python) in the Node, Python and Swift SDKs
+calls the token route with the device bearer, caches the result in memory only until
+`expiresAt` minus 30 seconds, applies the usual single re-acquire on a 401, and validates the
+recipe id against the router's alphabet before sending anything.
+`conformance/transcripts/edge-mint.json` pins the conversation.
+
 ## See also
 
 - [The catalog](/docs/services/config/catalog/) — the `delivery: "edgeMint"` annotation this
