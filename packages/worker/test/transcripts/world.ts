@@ -140,6 +140,7 @@ export async function setup(
   method: string,
   path: string,
   headers: Record<string, string>,
+  now: number = T0,
 ): Promise<Response> {
   return dispatchWith(
     new Request(`${BASE_URL}${path}`, {
@@ -152,7 +153,7 @@ export async function setup(
     }) as unknown as Request,
     w.env,
     w.db,
-    T0,
+    now,
   );
 }
 

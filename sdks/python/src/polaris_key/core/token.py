@@ -64,6 +64,23 @@ class TokenManager:
         """Re-arm the single-attempt budget. Called once at the top of each ``sync()``."""
         self._attempted = False
 
+    def reacquire(self) -> bool:
+        """The single re-acquire for an authenticated call made OUTSIDE a sync pass (an
+        edge-mint). One attempt per call, never a loop: the caller retries its request once
+        when this returns ``True`` and fails on a second 401. It does not touch the sync
+        pass's budget."""
+        current = self._token
+        if not current:
+            return False
+        try:
+            nxt = self._reacquire(self._ctx, current)
+        except Exception:
+            return False
+        if not nxt:
+            return False
+        self.set(nxt)
+        return True
+
     def reacquire_once(self) -> bool:
         """At most one re-acquire per sync pass, shared across every 401 in it.
 

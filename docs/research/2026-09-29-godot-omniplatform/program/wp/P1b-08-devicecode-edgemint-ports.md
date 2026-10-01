@@ -64,18 +64,27 @@ code), and this package brings the other native SDKs level ([PARITY §8](../../P
   - `devicecode-happy`: start, pending, `slow_down`, pending, the human confirms (a server-side step
     inside the scenario), ready;
   - `devicecode-expired`;
-  - `edge-mint`: success, 401 without a token, 404 for an unknown recipe, 429.
+  - `edge-mint`: success, 404 for an unknown recipe, 429, and a 401 for a token the Worker no
+    longer honours (the device was deauthorized), followed by the one re-acquire, which 401s too.
+    _(Corrected at implementation: a client holding NO token refuses `unauthorized` locally
+    without a request, so "401 without a token" is not a conversation; it is a unit test. The
+    transcript also pins the in-memory cache: a second mint inside the lifetime makes no request.)_
 - **Node:**
   - `client.identity.beginSignIn({ deviceName? }): Promise<SignInPrompt>`;
   - `client.identity.pollSignIn(prompt): Promise<SignInPoll>`;
   - `client.identity.waitForSignIn(prompt, { signal? }): Promise<SignInResult>`;
   - `client.config.mintToken(recipeId): Promise<{ token, expiresAt }>`.
 - **Python:** `identity.begin_sign_in(device_name=None)`, `identity.poll_sign_in(prompt)`,
-  `identity.wait_for_sign_in(prompt, timeout=None)`, `config.mint_token(recipe_id)`.
+  `identity.wait_for_sign_in(prompt, timeout=None, *, cancel=None)`, `config.mint_token(recipe_id)`.
+  _(Corrected at implementation: `cancel`, a `threading.Event`, is the synchronous SDK's
+  cancellation, since "cancellation stops polling" is an acceptance row.)_
 - **Swift:**
   - a new library target `PolarisKeyIdentity` (depends on Core) with
-    `beginSignIn(deviceName:) async throws -> SignInPrompt` and
+    `beginSignIn(deviceName:) async throws -> SignInPrompt`,
+    `pollSignIn(_:) async throws -> SignInPoll` and
     `waitForSignIn(_:) async throws -> SignInResult` (cancelled by task cancellation);
+    _(corrected at implementation: `pollSignIn` is needed, because the transcripts are made of
+    single polls and every SDK replays them)_
   - `ConfigClient.mintToken(_:) async throws -> MintedToken`.
 - Unit tests for interval and `slow_down` handling, expiry, cancellation and the mint cache; the
   transcript replays; manifests; the SDK docs pages.
@@ -135,7 +144,10 @@ refuse with `service-unavailable` before any request.
 
 **Names** follow notes/A2 §9.3 and §9.5 (Godot's `config.mint_token(recipe_id)`,
 `identity.begin_sign_in(device_name)`), camelCased for TypeScript and Swift (PARITY §2.1). Errors use
-the generated `ErrorCode` from [P1b-02](P1b-02-sdk-constants.md).
+the generated `ErrorCode` from [P1b-02](P1b-02-sdk-constants.md). _(At implementation P1b-02 had
+not landed, so the SDKs raise the Worker's own wire codes — `not_found`, `unauthorized`,
+`rate_limited`, `bad_request` — and the client codes `service-unavailable`, `network-error`,
+`server-error` and `cancelled` as string literals, ready for P1b-02 to replace.)_
 
 ## Steps
 
@@ -146,18 +158,18 @@ the generated `ErrorCode` from [P1b-02](P1b-02-sdk-constants.md).
 
 ## Acceptance criteria
 
-- [ ] `conformance/transcripts/devicecode-happy.json`, `devicecode-expired.json` and `edge-mint.json`
+- [x] `conformance/transcripts/devicecode-happy.json`, `devicecode-expired.json` and `edge-mint.json`
       exist with Swift mirrors, and `pnpm gen:transcripts -- --check` passes.
-- [ ] Node, Python and Swift replay all three green.
-- [ ] Unit tests in each SDK show:
-  - [ ] no poll comes earlier than `interval`;
-  - [ ] `slow_down` lengthens the interval;
-  - [ ] expiry and cancellation stop polling;
-  - [ ] a second `mintToken` inside the expiry window makes no request;
-  - [ ] a disabled service refuses before any request.
-- [ ] `parity.json` manifests are updated for every SDK this changes (`identity.devicecode` and
+- [x] Node, Python and Swift replay all three green.
+- [x] Unit tests in each SDK show:
+  - [x] no poll comes earlier than `interval`;
+  - [x] `slow_down` lengthens the interval;
+  - [x] expiry and cancellation stop polling;
+  - [x] a second `mintToken` inside the expiry window makes no request;
+  - [x] a disabled service refuses before any request.
+- [x] `parity.json` manifests are updated for every SDK this changes (`identity.devicecode` and
       `config.mint` in Node, Python and Swift), and `pnpm parity:check` passes.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
