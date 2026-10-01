@@ -26,7 +26,7 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { ciClient, type CiClient, type Out, type Sleep } from "./ci.js";
@@ -525,6 +525,72 @@ export async function signEntryJar(
   }
 }
 
+// ── The output directory ─────────────────────────────────────────────────────────────────────
+
+/** The top-level names a repository under `--out` is made of; nothing else is ever removed. */
+const OUT_FILES = new Set(["entry.jar", "entry.json", "index-v2.json"]);
+const OUT_DIRS: Record<string, RegExp> = {
+  diff: /^[0-9]+\.json$/,
+  icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/,
+};
+
+/**
+ * What a previous run left under `dir`, as the exact files to remove before writing a new
+ * repository. Refuses an `--out` that is the working directory or one of its ancestors, and
+ * one that holds anything this command does not write: `--out` is never deleted wholesale, so
+ * a mistyped `--out .` or `--out build` cannot take the checkout, the APKs or the keystore with
+ * it.
+ */
+export async function staleOutFiles(
+  dir: string,
+  cwd: string,
+): Promise<{ files: string[]; dirs: string[] }> {
+  const up = path.relative(dir, path.resolve(cwd));
+  if (up === "" || (up.split(path.sep)[0] !== ".." && !path.isAbsolute(up)))
+    throw new Error(
+      `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`,
+    );
+  let top;
+  try {
+    top = await lstat(dir);
+  } catch {
+    return { files: [], dirs: [] };
+  }
+  if (!top.isDirectory())
+    throw new Error(`--out ${dir} exists and is not a directory.`);
+  const files: string[] = [];
+  const dirs: string[] = [];
+  const foreign: string[] = [];
+  for (const name of (await readdir(dir)).sort()) {
+    const full = path.join(dir, name);
+    const st = await lstat(full);
+    if (OUT_FILES.has(name) && st.isFile()) {
+      files.push(full);
+      continue;
+    }
+    const pattern = OUT_DIRS[name];
+    if (pattern && st.isDirectory()) {
+      let clean = true;
+      for (const inner of (await readdir(full)).sort()) {
+        const f = path.join(full, inner);
+        if (pattern.test(inner) && (await lstat(f)).isFile()) files.push(f);
+        else {
+          foreign.push(path.join(name, inner));
+          clean = false;
+        }
+      }
+      if (clean) dirs.push(full);
+      continue;
+    }
+    foreign.push(name);
+  }
+  if (foreign.length)
+    throw new Error(
+      `--out ${dir} holds files pkey feeds fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`,
+    );
+  return { files, dirs };
+}
+
 // ── The command ──────────────────────────────────────────────────────────────────────────────
 
 export interface FdroidFeedOptions {
@@ -608,6 +674,9 @@ export async function buildFdroidFeed(
   if (!opts.channel?.trim() || !opts.out?.trim()) throw new Error(FEEDS_USAGE);
   if ((opts.keystore === undefined) !== (opts.alias === undefined))
     throw new Error(`--keystore and --alias go together.\n${FEEDS_USAGE}`);
+  // Check --out before anything is fetched: a refused directory costs no token.
+  const dir = path.resolve(opts.cwd, opts.out);
+  await staleOutFiles(dir, opts.cwd);
 
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
@@ -658,9 +727,11 @@ export async function buildFdroidFeed(
     ...(icon ? { icon } : {}),
   });
 
-  // Write the repository under --out, replacing what a previous run left.
-  const dir = path.resolve(opts.cwd, opts.out);
-  await rm(dir, { recursive: true, force: true });
+  // Write the repository under --out, replacing what a previous run left: only the files this
+  // command writes are removed, never the directory itself (see staleOutFiles).
+  const stale = await staleOutFiles(dir, opts.cwd);
+  for (const f of stale.files) await rm(f, { force: true });
+  for (const d of stale.dirs) await rmdir(d);
   const written: Record<string, string> = {};
   for (const [p, bytes] of repo.files) {
     const file = path.join(dir, ...p.split("/"));

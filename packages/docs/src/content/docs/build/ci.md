@@ -223,7 +223,9 @@ The command builds `index-v2.json`, `entry.json` and a diff from the channel's r
 `entry.jar` with `apksigner` (from `$ANDROID_HOME/build-tools`, or `--apksigner`), checks the
 signer against the `fdroid-repo` key in the product's key inventory, then uploads and registers
 the files. It needs `distribution:feeds`, which an operator adds deliberately. Without
-`--keystore` it writes the unsigned files and stops. See
+`--keystore` it writes the unsigned files and stops. `--out` must be a directory of its own: the
+command replaces only the files it writes there, and refuses the working directory, a parent of
+it, or a directory that holds anything else (keep the keystore and the APKs outside it). See
 [Storefront feeds](/docs/services/distribution/feeds/#the-f-droid-repository).
 
 ## Other CI systems

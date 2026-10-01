@@ -531,6 +531,60 @@ describe("pkey feeds fdroid", () => {
     expect(server.to("/release/publish/uploads")).toHaveLength(0);
   });
 
+  it("never deletes what it did not write under --out", async () => {
+    const cwd = await tempDir();
+    const unsigned = (out: string, server = serverWithInputs()) =>
+      buildFdroidFeed({
+        cwd,
+        product: SLUG,
+        channel: "beta",
+        out,
+        baseUrl: BASE,
+        env: { PKEY_CI_TOKEN: CI_TOKEN },
+        stdout: capture().stdout,
+        stderr: capture().stderr,
+        fetchImpl: server.fetchImpl,
+        sleep: instant,
+        now: () => T,
+      });
+    // The working directory, and any parent of it, is refused before anything is fetched.
+    writeFileSync(path.join(cwd, "project.godot"), "keep");
+    for (const out of [".", "..", cwd, path.dirname(cwd)]) {
+      const server = serverWithInputs();
+      await expect(unsigned(out, server)).rejects.toThrow(
+        /working directory or one of its parents/,
+      );
+      expect(server.calls).toHaveLength(0);
+    }
+    expect(readFileSync(path.join(cwd, "project.godot"), "utf8")).toBe("keep");
+    // A directory holding anything else (the APKs, the keystore) is refused and left alone.
+    mkdirSync(path.join(cwd, "build", "icons"), { recursive: true });
+    writeFileSync(path.join(cwd, "build", "game.apk"), "apk");
+    writeFileSync(path.join(cwd, "build", "icons", "nested.txt"), "x");
+    await expect(unsigned("build")).rejects.toThrow(
+      /did not write \(game\.apk, icons\/nested\.txt\)/,
+    );
+    expect(readFileSync(path.join(cwd, "build", "game.apk"), "utf8")).toBe(
+      "apk",
+    );
+    expect(existsSync(path.join(cwd, "build", "icons", "nested.txt"))).toBe(
+      true,
+    );
+    // A previous run's repository is replaced file by file, stale diffs included.
+    mkdirSync(path.join(cwd, "repo", "diff"), { recursive: true });
+    writeFileSync(path.join(cwd, "repo", "diff", "1.json"), "{}");
+    writeFileSync(path.join(cwd, "repo", "entry.json"), "old");
+    await unsigned("repo");
+    expect(readdirSync(path.join(cwd, "repo")).sort()).toEqual([
+      "entry.jar",
+      "entry.json",
+      "index-v2.json",
+    ]);
+    expect(readFileSync(path.join(cwd, "repo", "entry.json"), "utf8")).not.toBe(
+      "old",
+    );
+  });
+
   it("runs from the CLI, and needs --channel and --out", async () => {
     const cwd = await tempDir();
     const io = capture();
