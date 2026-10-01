@@ -4434,7 +4434,9 @@ paths:
         retire the anonymous one, and `ready` reports `attached`. The bearer must be a live token
         of the device the flow was started for, on an anonymous, usable enrolled licence; a
         migrate is attachable only while every seat-holding device on both licences fits the
-        identity licence's device limit. A decision sent before the device was shown the
+        identity licence's device limit. Nothing is attachable when the identity's tier has
+        fingerprint mode `strict`: this poll presents no fingerprint, so its mint would be
+        refused, and the attach is never committed for a mint that cannot succeed. A decision sent before the device was shown the
         identity, or an attach with nothing attachable, is answered with `confirm` again and
         changes nothing. A user-code holder cannot reach any of this: it needs the device code.
         The flow's starter can, which is why the open R1-07 (no browser binding) also covers
@@ -6273,7 +6275,8 @@ components:
             On `confirm`: the poll's bearer is a live token of the flow's device on an anonymous,
             usable enrolled licence, so `attachLicense: true` would attach it. When the identity
             already has a licence, also that moving the anonymous licence's devices onto it keeps
-            it within its device limit.
+            it within its device limit. Always `false` when the identity's tier has fingerprint
+            mode `strict`, because the mint would be refused.
         attached:
           type: string
           enum: [claimed, migrated]

@@ -864,9 +864,18 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   seats with the starter's devices, so the victim's own next device then gets `device_limit`
   until the owner removes them. This is a read before the move, like `authorizeDevice`'s
   pre-count, not a seat claim; a concurrent activation can race it.
+- **Never on a refused mint** (P1-07 review): the merge is committed before the token is minted
+  and nothing undoes it, so the attach is offered only when the mint can succeed. A device-code
+  poll presents no fingerprint, so when the victim's tier has fingerprint mode `strict` (whose
+  mint always answers `fingerprint_required`) nothing is `attachable` and a forced
+  `attachLicense: true` gets `confirm` again with nothing merged. Without that check the attach
+  turned a flow the Worker refuses (`error`) into a claim or migrate onto the victim's strict
+  licence.
 
 PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
-migrate)` assert the gap; `P1-07 (R1-07 bound)` asserts the seat-limit refusal. Binding the
+migrate)` assert the gap; `P1-07 (R1-07 bound)` asserts the seat-limit refusal, and `P1-07
+(R1-07, claim on a strict tier)` and `P1-07 (R1-07, migrate on a strict tier)` assert that nothing
+merges when the mint would be refused. Binding the
 callback to the confirming browser (below) closes all of it, because the device-code holder is
 then again the person who signed in.
 

@@ -1668,6 +1668,136 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
       starterLicence,
     );
   });
+
+  // ── P1-07: the attach never commits when the mint would be refused ──────────────────────
+  //
+  // The merge runs before the mint and nothing undoes it. A device-code mint presents no
+  // fingerprint, so a `strict` tier refuses it every time (`fingerprint_required`). Offering
+  // the attach there would turn a flow the Worker refuses into a takeover of the victim's
+  // entitlements under R1-07, and would claim or retire an honest player's anonymous licence
+  // while the poll answers `error`.
+
+  const VIP = { ...PHISHED, groups: ["vip"] };
+
+  /** Map the `vip` group to a `gold` tier. `strict` applies the tier's fingerprint mode now;
+   *  otherwise it stays `normal` until `makeGoldStrict`. */
+  async function goldTier(): Promise<void> {
+    await ctx.db.run(
+      `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days,
+         policy_device_limit, policy_fingerprint, modified_by, modified_at)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      "djdl",
+      "gold",
+      "Gold",
+      null,
+      365,
+      50,
+      "normal",
+      null,
+      NOW,
+    );
+    await ctx.db.run(
+      "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
+      JSON.stringify({
+        family: { role: "user", tier: "pro" },
+        vip: { role: "user", tier: "gold" },
+      }),
+    );
+  }
+  const makeGoldStrict = (): Promise<unknown> =>
+    ctx.db.run(
+      "UPDATE tiers SET policy_fingerprint = 'strict' WHERE product = 'djdl' AND id = 'gold'",
+    );
+
+  /** The starter's token still resolves to its own anonymous licence, on its own tier. */
+  async function expectStarterOnOwnLicence(
+    starterToken: string,
+    starterLicence: string,
+  ): Promise<void> {
+    const valid = await requireLicensedDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      starterToken,
+      NOW + 4,
+    );
+    if ("error" in valid) throw new Error(`token refused: ${valid.error}`);
+    expect(valid.license.id).toBe(starterLicence);
+    expect(valid.license.sub).toBeNull();
+    expect(valid.license.tier_id).not.toBe("gold");
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      starterLicence,
+    );
+  }
+
+  /** Confirm, force the attach, then decline: the attach is never offered, the forced attach
+   *  is answered with the identity again, and the decline is the refused mint it always was. */
+  async function attachRefusedOnStrictTier(
+    deviceCode: string,
+    starterToken: string,
+  ): Promise<void> {
+    const shown = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      starterToken,
+    );
+    expect(shown.body).toMatchObject({ status: "confirm", attachable: false });
+    const forced = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      starterToken,
+    );
+    expect(forced.body).toMatchObject({
+      status: "confirm",
+      attachable: false,
+    });
+    expect(forced.body.token).toBeUndefined();
+    const declined = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: false },
+      NOW + 4,
+      starterToken,
+    );
+    expect(declined.body).toEqual({ status: "error" });
+  }
+
+  it("P1-07 (R1-07, claim on a strict tier): the attach is not offered when the mint would be refused, so the victim's identity never takes over the starter's row", async () => {
+    await goldTier();
+    await makeGoldStrict();
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(VIP);
+    await attachRefusedOnStrictTier(deviceCode, starterToken);
+    await expectNoMerge(starterLicence);
+    await expectStarterOnOwnLicence(starterToken, starterLicence);
+  });
+
+  it("P1-07 (R1-07, migrate on a strict tier): the attach is not offered when the mint would be refused, so no device moves and the anonymous licence stays active", async () => {
+    await goldTier();
+    // The victim's licence and own device exist before the tier turns strict.
+    const pre = await activateFromIdentity(ctx.db, ctx.product, VIP, NOW);
+    const victimLicence = (pre as { licenseId: string }).licenseId;
+    const authorized = await authorizeDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      (await getLicense(ctx.db, "djdl", victimLicence))!,
+      "victim-own-device",
+      NOW,
+    );
+    expect("error" in authorized).toBe(false);
+    await makeGoldStrict();
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(VIP);
+    await attachRefusedOnStrictTier(deviceCode, starterToken);
+    await expectNoMerge(starterLicence);
+    await expectStarterOnOwnLicence(starterToken, starterLicence);
+    expect(await countActiveDevices(ctx.db, "djdl", victimLicence)).toBe(1);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

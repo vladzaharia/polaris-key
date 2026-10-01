@@ -68,6 +68,7 @@ import { allowsOidcDefault } from "../../core/fingerprint.js";
 import {
   authorizeDevice,
   licenseDeviceLimit,
+  tierFingerprintMode,
   tierExpiresAt,
 } from "../../core/authz.js";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
@@ -1621,7 +1622,8 @@ function shownIdentity(identity: OidcIdentity): {
  *  decision, not the identity's owner, so it is offered only while every seat-holding device
  *  on both licences still fits the destination's limit: the migrate can never push the
  *  victim's licence past it, nor lock the victim's own next device out with `device_limit`.
- *  Like the pre-count in `authorizeDevice`, this is a read, not a claim. */
+ *  Like the pre-count in `authorizeDevice`, this is a read, not a claim. Nothing is attachable
+ *  onto a tier whose mint would refuse this device (fingerprint mode `strict`). */
 async function attachableLicense(
   env: Env,
   db: Db,
@@ -1640,6 +1642,17 @@ async function attachableLicense(
   if (!license || license.origin !== "enroll" || license.sub !== null)
     return null;
   if (!licenseUsable(license, now)) return null;
+  // The merge is committed BEFORE the mint (`activateFromIdentity`, then `authorizeAndMint`)
+  // and nothing undoes it, so it is offered only when the mint can succeed. A device-code mint
+  // presents no fingerprint, so a `strict` tier always refuses it (`fingerprint_required`): an
+  // attach there would claim or retire the anonymous licence while the poll answers `error`,
+  // and under R1-07 hand the starter's devices the victim's entitlements on a flow the Worker
+  // refuses. Both a claim and a migrate end on the identity's tier (`activateFromIdentity`
+  // rewrites an existing licence's `tier_id` to it), so that is the tier the mint resolves.
+  const tier = await identityTier(db, product, identity, now);
+  if ("error" in tier) return null;
+  if ((await tierFingerprintMode(db, product, tier.tierId)) === "strict")
+    return null;
   const destination = await getLicenseBySub(db, product.slug, identity.sub);
   if (destination && licenseUsable(destination, now)) {
     const since = seatActiveSince(now);

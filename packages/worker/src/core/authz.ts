@@ -250,6 +250,23 @@ export async function licenseDeviceLimit(
   return resolveDeviceLimit(entitlements, product.defaultDeviceLimit);
 }
 
+/** The fingerprint mode `authorizeDevice` enforces on a licence of tier `tierId`: the tier's
+ *  policy, else the product default, or `off` when the product opts out. Exported for the
+ *  identity attach (P1-07), which must not merge onto a tier whose mint would refuse a device
+ *  that presents no fingerprint (`strict`). */
+export async function tierFingerprintMode(
+  db: Db,
+  product: Product,
+  tierId: string | null,
+): Promise<FingerprintMode> {
+  if (!product.fingerprintPolicy.enabled) return "off";
+  const tier = tierId ? await getTier(db, product.slug, tierId) : null;
+  return resolveFingerprintMode(
+    tier?.policy_fingerprint,
+    product.fingerprintPolicy.defaultMode,
+  );
+}
+
 export async function authorizeDevice(
   env: Env,
   db: Db,
@@ -270,15 +287,7 @@ export async function authorizeDevice(
 ): Promise<{ token: string; device: DeviceRow } | AuthzError> {
   if (!licenseUsable(license, now)) return { error: "unauthorized" };
 
-  const tier = license.tier_id
-    ? await getTier(db, product.slug, license.tier_id)
-    : null;
-  const mode: FingerprintMode = product.fingerprintPolicy.enabled
-    ? resolveFingerprintMode(
-        tier?.policy_fingerprint,
-        product.fingerprintPolicy.defaultMode,
-      )
-    : "off";
+  const mode = await tierFingerprintMode(db, product, license.tier_id);
   const presented = opts.fingerprint ?? null;
 
   // `strict` is the only mode that makes a fingerprint mandatory, so clients that predate

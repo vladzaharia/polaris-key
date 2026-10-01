@@ -201,7 +201,10 @@ code:
    Nothing has been minted or merged. `attachable` says whether the bearer is a live token of the
    device the flow was started for, on an anonymous (`origin = enroll`, no subject), usable
    enrolled license. When the identity already has a license, it is also `false` if moving the
-   anonymous license's devices would take that license past its device limit.
+   anonymous license's devices would take that license past its device limit. It is always
+   `false` when the identity's tier has fingerprint mode `strict`: a device-code poll presents no
+   fingerprint, so the mint would be refused, and the attach is never committed for a mint that
+   cannot succeed.
 
 2. The device shows the identity. After the player accepts it **on the device**, the next poll
    sends `"attachLicense": true` with the same bearer (or `false` to sign in without attaching).
