@@ -1,7 +1,7 @@
 extends RefCounted
 # @pkey-feature license.deactivate
 # deactivate(): POST /license/deauthorize best-effort, then the mandatory local wipe of the token
-# and the verified cache; the device id stays. A refused or unreachable server still gets a full
+# and the verified cache (PolarisKey.config falls back at once); the device id stays. A refused or unreachable server still gets a full
 # wipe and the remote failure reported; a wipe failure is returned (store-failed), never
 # swallowed.
 
@@ -49,14 +49,18 @@ func _confirmed(t: PKeyTestContext) -> void:
 	var store := PKeyMemoryStore.new(h.F["device_id"], TOKEN)
 	var sdk = await _synced(store)
 	t.check("deactivate: the device starts licensed with a cache", sdk.license.status()["status"] == "ok" and store.cache is Dictionary)
+	t.check("deactivate: the synced config is visible", sdk.config.get_value("ui.theme", "light") == "dark")
 	var states: Array = []
 	sdk.state_changed.connect(func(s): states.append(s["status"]))
+	var changed: Array = []
+	sdk.config.config_changed.connect(func(keys): changed.append_array(keys))
 	var r: PKeyResult = await sdk.license.deactivate()
 	var reqs: Array = h.requests("POST", "/license/deauthorize")
 	t.check("deactivate: one POST /license/deauthorize with the token", reqs.size() == 1 and S.bearer(reqs[0]) == TOKEN)
 	t.check("deactivate: ok when confirmed and wiped", r.ok and r.detail == {"remote_attempted": true, "remote_ok": true, "wiped": true}, str(r))
 	_wiped(t, "confirmed", sdk, store)
 	t.check("deactivate: state_changed reported needs-activation", states.back() == "needs-activation", str(states))
+	t.check("deactivate: the wiped config falls back and config_changed fires", sdk.config.get_value("ui.theme", "light") == "light" and changed.has("ui.theme"), str(changed))
 	sdk.queue_free()
 
 
