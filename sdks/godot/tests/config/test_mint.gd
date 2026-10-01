@@ -155,6 +155,7 @@ func _reacquire(t: PKeyTestContext) -> void:
 	var r: PKeyMintResult = await sdk.config.mint_token("r2")
 	t.check("mint: 401 -> one re-acquire -> retried with the new token", r.ok and r.token == MINTED and calls[0] == 1 and _mints("r2").size() == 2 and store.token == "pkeyt_rotated", str(r))
 	t.check("mint: the cache is bound to the token the retry presented", (await sdk.config.mint_token("r2")).cached)
+	t.check("mint: a bare-String re-acquire records source reacquire", sdk.core.tokens.source() == PKeyTokenManager.SOURCE_REACQUIRE, sdk.core.tokens.source())
 
 	# 401 -> the re-acquire fails -> unauthorized, nothing else.
 	plan = {"/config/mint/r3/token": [_err(401, "unauthorized")], "/license/token": [_err(401, "unauthorized")]}
@@ -166,6 +167,17 @@ func _reacquire(t: PKeyTestContext) -> void:
 	plan = {"/config/mint/r4/token": [_err(401, "unauthorized")], "/license/token": [{"status": 200, "body": "{\"token\": \"pkeyt_third\"}"}]}
 	r = await sdk.config.mint_token("r4")
 	t.check("mint: a second 401 is final (one re-acquire per call)", not r.ok and r.kind == PKeyMintResult.KIND_UNAUTHORIZED and calls[0] == 3 and _mints("r4").size() == 2)
+
+	# The callable may return {token, source} (the devices-register route): the retry presents
+	# the new token and the named source is kept, exactly as the sync pass's reacquire_once does.
+	var dict_calls := [0]
+	sdk.core.tokens.set_reacquire(func(_c: PKeyCore, _current: String) -> Variant:
+		dict_calls[0] += 1
+		return {"token": "pkeyt_registered", "source": PKeyTokenManager.SOURCE_REGISTER})
+	plan = {"/config/mint/r6/token": [func(req): return _minted() if req["headers"]["authorization"] == "Bearer pkeyt_registered" else _err(401, "unauthorized")]}
+	r = await sdk.config.mint_token("r6")
+	t.check("mint: a {token, source} re-acquire is used for the retry", r.ok and r.token == MINTED and dict_calls[0] == 1 and _mints("r6").size() == 2 and store.token == "pkeyt_registered", str(r))
+	t.check("mint: a {token, source} re-acquire keeps the named source", sdk.core.tokens.source() == PKeyTokenManager.SOURCE_REGISTER, sdk.core.tokens.source())
 
 	# Without a re-acquire route a 401 is a hard 401.
 	sdk.core.tokens.set_reacquire(Callable())

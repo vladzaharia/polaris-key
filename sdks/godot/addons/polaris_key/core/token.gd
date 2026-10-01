@@ -113,10 +113,12 @@ func reacquire() -> bool:
 		return false
 	_in_flight = true
 	attempts += 1
-	var next = await _reacquire.call(core_ref.get_ref() if core_ref != null else null, _token)
-	var ok: bool = next is String and next != ""
+	var next: Array = _normalise_reacquired(
+		await _reacquire.call(core_ref.get_ref() if core_ref != null else null, _token)
+	)
+	var ok: bool = next[0] != ""
 	if ok:
-		set_token(next)
+		set_token(next[0], next[1])
 	_in_flight = false
 	reacquired.emit(ok)
 	return ok
@@ -135,7 +137,22 @@ func reacquire_once() -> bool:
 	_in_flight = true
 	attempts += 1
 	var current_token := _token
-	var next = await _reacquire.call(core_ref.get_ref() if core_ref != null else null, current_token)
+	var next: Array = _normalise_reacquired(
+		await _reacquire.call(core_ref.get_ref() if core_ref != null else null, current_token)
+	)
+	var ok: bool = next[0] != ""
+	if ok:
+		set_token(next[0], next[1])
+	_last_ok = ok
+	_in_flight = false
+	reacquired.emit(ok)
+	return ok
+
+
+## A re-acquire callable's result as [token, source]: a bare String is SOURCE_REACQUIRE,
+## {token, source?} names its source (empty or missing also means SOURCE_REACQUIRE), and
+## anything else is ["", SOURCE_REACQUIRE] (failure). Shared by reacquire() and reacquire_once().
+static func _normalise_reacquired(next: Variant) -> Array:
 	var next_token := ""
 	var next_source := SOURCE_REACQUIRE
 	if next is String:
@@ -144,10 +161,4 @@ func reacquire_once() -> bool:
 		next_token = next["token"]
 		if next.get("source") is String and next["source"] != "":
 			next_source = next["source"]
-	var ok := next_token != ""
-	if ok:
-		set_token(next_token, next_source)
-	_last_ok = ok
-	_in_flight = false
-	reacquired.emit(ok)
-	return ok
+	return [next_token, next_source]
