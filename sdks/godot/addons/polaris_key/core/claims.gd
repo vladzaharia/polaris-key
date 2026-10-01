@@ -3,7 +3,7 @@ extends RefCounted
 ## Wire constants (WIRE-CONTRACT-V3 §1–§3; client-core `claims.ts`, shared-protocol `core.ts`).
 ## Normative: identical in every implementation.
 
-const PROTOCOL_VERSION := 3
+const PROTOCOL_VERSION := 4
 ## The fixed issuer (Amendment A1) — never derived from a base URL.
 const ISSUER := "key.plrs.im"
 ## Tolerance on every clock comparison, in seconds.

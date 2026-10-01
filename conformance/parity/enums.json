@@ -1,6 +1,6 @@
 {
   "$schema": "./enums.schema.json",
-  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen:constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values. Outlets, transports, pack types, patch strategies and bindings are added when their owners define them (P2b-02, P4-01).",
+  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen:constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values. Transports, pack types, patch strategies and bindings are added when their owners define them (P4-01). The outlet and update vocabularies are plans/P3-01.md §2.8's tables, in their order, and equal the constants in `@polaris-key/protocol/distribution` and `/update` (a reserved value such as `packs` joins an enum only with its own plan-mode package). The version schemes are not an enum: `semver+build` and `4part` are not identifiers.",
   "enums": [
     {
       "name": "platform",
@@ -38,6 +38,92 @@
         "keyring-error",
         "legacy-keychain",
         "not-persistent"
+      ]
+    },
+    {
+      "name": "outletKind",
+      "description": "The 17 outlet kinds, in `OUTLET_KINDS` order (README §3.1, plans/P3-01.md §2.9). `unknown` is a detection result, not a kind, and is not listed.",
+      "values": [
+        "direct",
+        "app-store",
+        "testflight",
+        "altstore",
+        "altstore-pal",
+        "play",
+        "play-testing",
+        "obtainium",
+        "fdroid-repo",
+        "ms-store",
+        "app-installer",
+        "steam",
+        "itch",
+        "flathub",
+        "snap",
+        "winget",
+        "web"
+      ]
+    },
+    {
+      "name": "outletConfidence",
+      "description": "How sure outlet detection is, strongest first (`OUTLET_CONFIDENCES`, plans/P3-01.md §2.9).",
+      "values": ["attested", "declared", "heuristic", "stamp"]
+    },
+    {
+      "name": "outletSubkind",
+      "description": "How a `direct` install was put on the device, where that changes who updates it (`OUTLET_SUBKINDS`, plans/P3-01.md §2.9).",
+      "values": [
+        "homebrew",
+        "npm",
+        "pnpm",
+        "npx",
+        "scoop",
+        "chocolatey",
+        "flatpak",
+        "appimage"
+      ]
+    },
+    {
+      "name": "updateAction",
+      "description": "The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed.",
+      "values": ["none", "code-ready", "binary", "store", "platform", "blocked"]
+    },
+    {
+      "name": "updateNoneReason",
+      "description": "Why the update decision is `none` (`NONE_REASONS`, plans/P3-01.md §2.8).",
+      "values": [
+        "up-to-date",
+        "behind",
+        "not-available",
+        "halted",
+        "out-of-bucket",
+        "stale",
+        "skipped",
+        "no-method",
+        "no-build",
+        "unknown-version"
+      ]
+    },
+    {
+      "name": "updateBlockedReason",
+      "description": "Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed.",
+      "values": ["app-floor"]
+    },
+    {
+      "name": "binaryMethod",
+      "description": "How a `binary` decision installs the new build (`BINARY_METHODS`, plans/P3-01.md §2.8).",
+      "values": ["native", "download", "sidecar-pck"]
+    },
+    {
+      "name": "updateEvent",
+      "description": "The update telemetry event names on the unsigned `devices/report` (plans/P3-01.md §2.10). The shapes and the Worker allowlist are P6-03's.",
+      "values": [
+        "update_offered",
+        "update_downloaded",
+        "update_applied",
+        "update_confirmed",
+        "update_reverted",
+        "pack_failed",
+        "boot_rolled_back"
       ]
     }
   ]

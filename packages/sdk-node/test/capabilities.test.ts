@@ -198,7 +198,7 @@ function discoveryDoc(
   const product = `${BASE_URL}/${PRODUCT}`;
   return {
     version: 2,
-    protocolVersion: 3,
+    protocolVersion: 4,
     schemaVersion: 4,
     product: PRODUCT,
     slug: PRODUCT,

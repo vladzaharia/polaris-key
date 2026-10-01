@@ -1,7 +1,7 @@
 {
   "defaults": {
     "version": 2,
-    "protocolVersion": 3,
+    "protocolVersion": 4,
     "schemaVersion": 1,
     "product": "dflt",
     "slug": "dflt",
@@ -80,7 +80,7 @@
   },
   "everything": {
     "version": 2,
-    "protocolVersion": 3,
+    "protocolVersion": 4,
     "schemaVersion": 1,
     "product": "full",
     "slug": "full",
@@ -201,7 +201,7 @@
   },
   "configOnly": {
     "version": 2,
-    "protocolVersion": 3,
+    "protocolVersion": 4,
     "schemaVersion": 1,
     "product": "cfg",
     "slug": "cfg",

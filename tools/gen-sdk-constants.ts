@@ -15,7 +15,11 @@
 //                                       PLATFORM_SPELLINGS / ARCH_SPELLINGS header-value tables
 //                                       (WIRE-CONTRACT-V3 §5.2, P1b-04) — read as exports, so a
 //                                       constant added there flows through here
-//   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion
+//                                       and the wire contract v4 limits MAX_WIRE_INTEGER,
+//                                       MAX_JSON_DEPTH and MAX_RECORD_JWS_BYTES
+//   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
+//                                       stageMatrixVersion, updateMatrixVersion,
+//                                       outletMatrixVersion
 //
 // Outputs, each with a GENERATED banner (TypeScript is prettier-formatted, as sign-corpus.ts
 // does): see TARGETS. The GDScript module is written only while `sdks/godot/addons/polaris_key`
@@ -98,6 +102,9 @@ export interface Sources {
     corpusVersion: number;
     gateMatrixVersion: number;
     fingerprintVersion: number;
+    stageMatrixVersion: number;
+    updateMatrixVersion: number;
+    outletMatrixVersion: number;
   };
 }
 
@@ -410,6 +417,9 @@ export function loadSources(root = ROOT): Sources {
       corpusVersion: corpus("cases.json", "corpusVersion"),
       gateMatrixVersion: corpus("gate-matrix.json", "gateMatrixVersion"),
       fingerprintVersion: corpus("fingerprint.json", "fingerprintVersion"),
+      stageMatrixVersion: corpus("stage-matrix.json", "stageMatrixVersion"),
+      updateMatrixVersion: corpus("update-matrix.json", "updateMatrixVersion"),
+      outletMatrixVersion: corpus("outlet-matrix.json", "outletMatrixVersion"),
     },
   };
 }
@@ -530,6 +540,12 @@ export const CHANNEL_EXPORT = /^(?:CHANNEL|PR)_[A-Z0-9_]+$/;
  *  header-value tables (WIRE-CONTRACT-V3 §5.2). */
 export const SPELLINGS_EXPORT = /^(?:PLATFORM|ARCH)_SPELLINGS$/;
 const HEADER_EXPORT = /^HEADER_([A-Z0-9_]+)$/;
+/** The wire contract v4 limits every SDK applies (WIRE-CONTRACT-V4 §1.2, §3). */
+export const WIRE_LIMIT_EXPORTS = [
+  "MAX_WIRE_INTEGER",
+  "MAX_JSON_DEPTH",
+  "MAX_RECORD_JWS_BYTES",
+] as const;
 
 function scalarValue(name: string, value: unknown): ScalarValue {
   if (typeof value === "string") return value;
@@ -631,6 +647,31 @@ export function buildModel(sources: Sources): Model {
       doc: "`fingerprintVersion` of conformance/corpus/v2/fingerprint.json.",
       value: sources.corpus.fingerprintVersion,
     },
+    {
+      name: "STAGE_MATRIX_VERSION",
+      doc: "`stageMatrixVersion` of conformance/corpus/v2/stage-matrix.json.",
+      value: sources.corpus.stageMatrixVersion,
+    },
+    {
+      name: "UPDATE_MATRIX_VERSION",
+      doc: "`updateMatrixVersion` of conformance/corpus/v2/update-matrix.json.",
+      value: sources.corpus.updateMatrixVersion,
+    },
+    {
+      name: "OUTLET_MATRIX_VERSION",
+      doc: "`outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json.",
+      value: sources.corpus.outletMatrixVersion,
+    },
+    ...WIRE_LIMIT_EXPORTS.map((name) => {
+      const value = protocol[name];
+      if (typeof value !== "number" || !Number.isSafeInteger(value))
+        throw new Error(`@polaris-key/protocol/core exports no integer ${name}`);
+      return {
+        name,
+        doc: `Wire contract v4 limit \`${name}\` (\`@polaris-key/protocol/core\`).`,
+        value,
+      };
+    }),
     ...exportNames
       .filter((name) => CHANNEL_EXPORT.test(name))
       .map((name) => ({

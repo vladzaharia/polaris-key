@@ -435,7 +435,7 @@ final class WireContractV3Tests: XCTestCase {
     /// cross-language break rather than a local bug.
     func testV3IdentifierRegistry() {
         XCTAssertEqual(POLARIS_ISSUER, "key.plrs.im")
-        XCTAssertEqual(POLARIS_PROTOCOL_VERSION, 3)
+        XCTAssertEqual(POLARIS_PROTOCOL_VERSION, 4)
         XCTAssertEqual(CACHE_RECORD_VERSION, 3)
         XCTAssertEqual(DEVICE_TOKEN_PREFIX, "pkeyt_")
         XCTAssertEqual(MAX_BUNDLE_BYTES, 262_144)

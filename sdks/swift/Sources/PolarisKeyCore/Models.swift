@@ -259,7 +259,7 @@ public struct TrustManifestDoc: Sendable, Codable, Equatable {
 // ── Wire constants (§2, §8) ─────────────────────────────────────────────────────────────────
 
 /// Bumped on any wire-breaking change to the document shapes or HTTP contract.
-public let POLARIS_PROTOCOL_VERSION = 3
+public let POLARIS_PROTOCOL_VERSION = 4
 
 /// The `iss` every Polaris Key document carries. A fixed string (Amendment A1), never derived
 /// from the base URL or the serving host; any other issuer is refused.

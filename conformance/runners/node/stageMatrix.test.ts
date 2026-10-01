@@ -15,6 +15,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  BOOT_CONFIRMATIONS,
+  BOOT_OK_SECONDS,
+  bootConfirmation,
   BOOT_EMIT_TYPES,
   BOOT_EVENT_TYPES,
   BOOT_GUARD_ACTIONS,
@@ -33,12 +36,14 @@ import {
 interface StageMatrix {
   stageMatrixVersion: number;
   maxFailedBoots: number;
+  bootOkSeconds: number;
   vocabulary: {
     stages: string[];
     outcomes: string[];
     events: string[];
     emits: string[];
     guardActions: string[];
+    confirmations: string[];
   };
   accepts: Record<string, string[]>;
   probes: BootEvent[];
@@ -53,6 +58,7 @@ interface StageMatrix {
     input: { staged: boolean; failedBoots: number };
     expect: { action: string };
   }>;
+  confirmCases: Array<{ outcome: string; expect: string }>;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -92,8 +98,9 @@ function probe(state: BootState, where: string): number {
 
 describe(`stage-matrix v${matrix.stageMatrixVersion} (the boot stage machine)`, () => {
   it(`runs on Node ${process.version}`, () => {
-    expect(matrix.stageMatrixVersion).toBe(1);
+    expect(matrix.stageMatrixVersion).toBe(2);
     expect(matrix.maxFailedBoots).toBe(MAX_FAILED_BOOTS);
+    expect(matrix.bootOkSeconds).toBe(BOOT_OK_SECONDS);
   });
 
   it("has the vocabulary of @polaris-key/client-core/stages, in order", () => {
@@ -103,6 +110,7 @@ describe(`stage-matrix v${matrix.stageMatrixVersion} (the boot stage machine)`, 
       events: [...BOOT_EVENT_TYPES],
       emits: [...BOOT_EMIT_TYPES],
       guardActions: [...BOOT_GUARD_ACTIONS],
+      confirmations: [...BOOT_CONFIRMATIONS],
     });
   });
 
@@ -139,6 +147,20 @@ describe(`stage-matrix v${matrix.stageMatrixVersion} (the boot stage machine)`, 
   for (const c of matrix.guardCases) {
     it(`guard: ${c.name}`, () => {
       expect(bootGuardAction(c.input)).toBe(c.expect.action);
+    });
+  }
+
+  // Version 2 (plans/P3-01.md §2.10): boot confirmation, one case per outcome.
+  it("has one confirm case per outcome", () => {
+    expect(matrix.confirmCases.map((c) => c.outcome).sort()).toEqual(
+      [...BOOT_OUTCOMES].sort(),
+    );
+  });
+  for (const c of matrix.confirmCases) {
+    it(`confirm: ${c.outcome} → ${c.expect}`, () => {
+      expect(
+        bootConfirmation(c.outcome as (typeof BOOT_OUTCOMES)[number]),
+      ).toBe(c.expect);
     });
   }
 });

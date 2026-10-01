@@ -137,7 +137,7 @@ export function discoveryBody(
 ): string {
   return JSON.stringify({
     version: 2,
-    protocolVersion: 3,
+    protocolVersion: 4,
     product,
     slug: product,
     baseUrl: "https://key.plrs.im",
