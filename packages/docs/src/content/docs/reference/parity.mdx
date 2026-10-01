@@ -19,10 +19,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 27 | 3 | 19 | 7 |
-| React | `web`, `desktop-bridge` | 16 | 12 | 22 | 6 |
-| Python | `python` | 27 | 3 | 19 | 7 |
-| Swift | `macos`, `ios` | 26 | 3 | 21 | 6 |
+| Node | `node` | 29 | 3 | 17 | 7 |
+| React | `web`, `desktop-bridge` | 17 | 12 | 21 | 6 |
+| Python | `python` | 29 | 3 | 17 | 7 |
+| Swift | `macos`, `ios` | 28 | 3 | 19 | 6 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 0 | 0 | 53 | 3 |
 
 ## Core
@@ -36,7 +36,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
 | `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | planned (P1-02) | — |
 | `core.headers` | Canonical platform/arch/SDK/engine header values | `headers.json` (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1-02) | — |
-| `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1-02) | — |
+| `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | planned (P1-02) | — |
 | `core.caps` | supports() and capability telemetry | unit | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | — |
 | `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-02) | web, desktop-bridge: runtime |
 
@@ -50,7 +50,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
 | `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
 | `license.channels` | entitledChannels() | unit | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1-03) | — |
-| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | planned (P1b-06) | N/A (web, desktop-bridge: runtime) | planned (P1b-06) | planned (P1b-06) | planned (P1-03) | web, desktop-bridge: runtime |
+| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-03) | web, desktop-bridge: runtime |
 
 ## Config
 

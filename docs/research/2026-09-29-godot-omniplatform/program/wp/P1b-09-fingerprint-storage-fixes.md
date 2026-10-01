@@ -192,6 +192,14 @@ but Python does too), and `~/.config` on macOS in Swift by design (`Store.swift:
 - Read both keychains (data-protection first) so existing items still load, and delete from both on
   clear.
 - The alternative is to document the trade-off (notes/E9 §12 item 5); the plan chooses.
+- (Correction, P1b-09 plan §5.6 and H4, from review: an attribute-only read cannot detect the
+  missing entitlement. Measured on macOS 27, an unentitled `SecItemCopyMatching` on the
+  data-protection keychain answers `errSecItemNotFound` (−25300), not −34018; only add, update
+  and delete answer −34018. So `status()` follows a "not found" with a `SecItemDelete` of a
+  sentinel item that never exists (`pkey-status-probe`): −34018 reports `legacy-keychain`, "not
+  found" means the process is entitled. An entitled process whose token is still in the legacy
+  keychain also reports `legacy-keychain` until a read migrates it. **P5-05** must follow this
+  real probe, not the plan's read-only one.)
 
 **6. `ramBucket`.** Node emits `"0.5"`-style values below 1 GiB (`fingerprint.ts:62-66`), while Python
 and Swift omit the component. **Recommend Node omits it too.** Pin the rule in a `ramBuckets`

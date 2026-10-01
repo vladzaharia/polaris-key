@@ -461,11 +461,11 @@ describe("api — every product-scoped resource is under its owning service", ()
           error: {
             code: "bad_request",
             message: "incoherent services",
-            errors: ["update_requires_release"],
+            errors: ["update_requires_distribution"],
           },
           code: "bad_request",
           message: "incoherent services",
-          errors: ["update_requires_release"],
+          errors: ["update_requires_distribution"],
         },
         422,
       ),
@@ -479,9 +479,9 @@ describe("api — every product-scoped resource is under its owning service", ()
       expect(e).toBeInstanceOf(ApiError);
       const err = e as ApiError;
       expect(err.status).toBe(422);
-      expect(err.errors).toEqual(["update_requires_release"]);
+      expect(err.errors).toEqual(["update_requires_distribution"]);
       expect(err.fields).toBeUndefined();
-      expect(SERVICE_ERROR_MESSAGES[err.errors![0]!]).toContain("Release");
+      expect(SERVICE_ERROR_MESSAGES[err.errors![0]!]).toContain("Distribution");
     }
   });
 });

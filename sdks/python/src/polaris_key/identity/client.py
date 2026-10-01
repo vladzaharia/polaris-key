@@ -220,7 +220,7 @@ class IdentityClient:
             token = body.get("token")
             if not _is_str(token):
                 return SignInPoll(status="error", message="ready without a token.")
-            self._tokens.set(token)
+            self._tokens.set(token, "signin")
             self._on_acquired()
             return SignInPoll(status="ready")
         return SignInPoll(status="error", message="device sign-in failed.")

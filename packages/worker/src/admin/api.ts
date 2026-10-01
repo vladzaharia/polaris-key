@@ -69,6 +69,7 @@ import { handleProductDevices } from "./handlers/devices.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { loadProduct } from "../core/products.js";
+import { buildHooks } from "../core/hooks.js";
 import { SERVICES } from "../mount.js";
 import type { ServiceSlug } from "../core/services.js";
 
@@ -150,6 +151,14 @@ async function handleProductScoped(
         rest: rest.slice(1),
         now,
         session,
+        // Same gate as the public path: a hook whose providing service is off answers `null`,
+        // even though the admin route itself is reachable while its own service is off.
+        hooks: buildHooks(SERVICES, loaded.services, {
+          env,
+          db,
+          product: loaded,
+          now,
+        }),
       });
       if (res) return res;
     }

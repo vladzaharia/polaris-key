@@ -58,14 +58,15 @@ interface ServiceDescriptor {
 }
 ```
 
-| Member                   | What it is                                                                                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `slug`                   | the one word used as the directory, the route namespace, the SDK sub-client and the console section.                                                         |
-| `handle`                 | handles a product-scoped request. `ctx.rest` is the path _after_ `/<product>/<service>`, already split; the service owns its sub-routing from there.         |
-| `discoveryFragment`      | this service's slice of `/<product>/.well-known/polaris.json`. **Only called when enabled** — Core emits `{"enabled": false}` and nothing else for the rest. |
-| `adminHandle?`           | handles `/manage/api/products/<slug>/<service>/…`. All five implement it.                                                                                    |
-| `manifestIngest?`        | rows this service wants written when a product manifest is ingested. **Declared but currently unimplemented** — see below.                                   |
-| `authorizeRegistration?` | may this caller be given a device credential? Only Identity implements it.                                                                                   |
+| Member                   | What it is                                                                                                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slug`                   | the one word used as the directory, the route namespace, the SDK sub-client and the console section.                                                                                                |
+| `handle`                 | handles a product-scoped request. `ctx.rest` is the path _after_ `/<product>/<service>`, already split; the service owns its sub-routing from there.                                                |
+| `discoveryFragment`      | this service's slice of `/<product>/.well-known/polaris.json`. **Only called when enabled** — Core emits `{"enabled": false}` and nothing else for the rest.                                        |
+| `adminHandle?`           | handles `/manage/api/products/<slug>/<service>/…`. Every service but Distribution implements it.                                                                                                    |
+| `manifestIngest?`        | rows this service wants written when a product manifest is ingested. **Declared but currently unimplemented** — see below.                                                                          |
+| `authorizeRegistration?` | may this caller be given a device credential? Only Identity implements it.                                                                                                                          |
+| descriptor hooks         | `releaseCatalog?` (Release), `delivery?` and `outletCapabilities?` (Distribution): read-only views another service reads through `ctx.hooks`, gated on the provider's enablement (`core/hooks.ts`). |
 
 Three details in that interface are load-bearing:
 
@@ -117,7 +118,7 @@ CI-gated; only the mechanism differs.
 :::
 
 The suite is written so it cannot quietly become a no-op. It walks **every file actually present**
-under `src/services/`, and it separately asserts that all five services were scanned, that
+under `src/services/`, and it separately asserts that every service in the table was scanned, that
 Identity's nested `portal/` directory was walked and not just its top level, and that the rule
 itself still allows what it should and refuses what it should. A rename or a broken walk fails
 loudly instead of passing on an empty set.

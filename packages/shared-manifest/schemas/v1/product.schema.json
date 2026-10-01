@@ -97,7 +97,50 @@
   ],
   "allOf": [
     {
-      "$comment": "update_requires_release: the update service renders a feed over release data. (The legacy `releases` module enables both, so it satisfies the requirement too.)",
+      "$comment": "distribution_requires_release: the distribution service delivers release artifacts. (The legacy `releases` module enables release, distribution and update, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["distribution"],
+            "properties": {
+              "distribution": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["release"],
+                "properties": {
+                  "release": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["releases"],
+                "properties": {
+                  "releases": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "update_requires_distribution: the update service serves a feed over distribution's delivery state. It subsumes the retired update_requires_release, because distribution itself requires release. (The legacy `releases` module enables all three, so it satisfies the requirement too.)",
       "if": {
         "required": ["modules"],
         "properties": {
@@ -117,9 +160,9 @@
           "modules": {
             "anyOf": [
               {
-                "required": ["release"],
+                "required": ["distribution"],
                 "properties": {
-                  "release": {
+                  "distribution": {
                     "required": ["enabled"],
                     "properties": { "enabled": { "const": true } }
                   }
@@ -216,12 +259,13 @@
       }
     },
     "modules": {
-      "description": "Per-service enablement. Service slugs (license, config, release, update, identity) are canonical; the legacy module vocabulary (licensing, releases, oidc, edgeMint) is accepted and mapped (releases enables release+update; edgeMint enables config). Undeclared defaults to license+config.",
+      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity) are canonical; the legacy module vocabulary (licensing, releases, oidc, edgeMint) is accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",
       "type": "object",
       "properties": {
         "license": { "$ref": "#/$defs/moduleFlag" },
         "config": { "$ref": "#/$defs/moduleFlag" },
         "release": { "$ref": "#/$defs/moduleFlag" },
+        "distribution": { "$ref": "#/$defs/moduleFlag" },
         "update": { "$ref": "#/$defs/moduleFlag" },
         "identity": { "$ref": "#/$defs/moduleFlag" },
         "licensing": { "$ref": "#/$defs/moduleFlag" },

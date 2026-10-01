@@ -19,7 +19,9 @@
  *   - `services/<a>/…` importing `services/<b>/…`. The ONE sanctioned exception is
  *     `update → release`: Update renders a feed over Release's truth store, which is a hard
  *     dependency by design (D-05). Every other cross-service need goes through a
- *     core-mediated interface.
+ *     core-mediated interface — for Distribution and Update reading one another's state, the
+ *     descriptor hooks in `core/hooks.ts` (P2b-01). Distribution is NOT an exception: it reads
+ *     Release only through `hooks.releaseCatalog()`.
  *   - reaching back into legacy top-level modules (`../../repo.js`, `../../licensing.js`, …).
  *     That is the seam the whole re-organisation exists to remove, and it is exactly the
  *     import a hurried move would leave behind.
@@ -32,8 +34,8 @@
  * gates every commit. A test runs on the same gate, needs no new dependencies, and can say
  * *why* in its failure message.
  *
- * `src/services/` now holds all five: `license/`, `config/`, `release/`, `update/` and
- * `identity/`. The last case in this file is the one that does the work — it walks every file
+ * `src/services/` now holds all six: `license/`, `config/`, `release/`, `distribution/`,
+ * `update/` and `identity/`. The last case in this file is the one that does the work — it walks every file
  * actually present — so the rule is exhaustive rather than hypothetical.
  *
  * The identity carve (P3) is the one that exercised the rule hardest, because identity genuinely
@@ -227,6 +229,49 @@ describe("service boundaries", () => {
         `${specifier} should be refused`,
       ).not.toBeNull();
     }
+  });
+
+  it("keeps update -> release the ONLY exception: distribution reads release and update reads distribution through core/hooks.ts (P2b-01)", () => {
+    expect(CROSS_SERVICE_EXCEPTIONS).toEqual({ update: ["release"] });
+    // The chain release ← distribution ← update is NOT a licence to import along it.
+    const refused: Array<[string, string, string]> = [
+      [
+        "distribution",
+        "src/services/distribution/index.ts",
+        "../release/model.js",
+      ],
+      [
+        "distribution",
+        "src/services/distribution/index.ts",
+        "../update/feed.js",
+      ],
+      ["update", "src/services/update/feed.ts", "../distribution/delivery.js"],
+      [
+        "release",
+        "src/services/release/catalog.ts",
+        "../distribution/index.js",
+      ],
+    ];
+    for (const [service, file, specifier] of refused) {
+      expect(
+        violation({ service, file, specifier }),
+        `${service} -> ${specifier} should be refused`,
+      ).not.toBeNull();
+    }
+    // …and the live tree honours it: distribution imports only core/ and itself.
+    const crossings = collectImportSites().filter(
+      (s) =>
+        s.service === "distribution" &&
+        /^\.\.\/(?!\.\.\/core\/)/.test(s.specifier) &&
+        !s.specifier.startsWith("../../core/"),
+    );
+    expect(crossings).toEqual([]);
+    expect(
+      collectImportSites().some(
+        (s) =>
+          s.service === "distribution" && s.specifier === "../../core/hooks.js",
+      ),
+    ).toBe(true);
   });
 
   it("proves update -> release is a LIVE edge, not just a permitted one", () => {

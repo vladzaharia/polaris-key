@@ -112,9 +112,16 @@ export {
   type ProductDiscoveryDocument,
   type ProductDiscoveryTrust,
   type ServiceFragment,
-  type ServiceSlug,
   type ServicesMap,
 } from "./discovery.js";
+
+// ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──
+// Error codes, header names, enums, feature ids, versions and the channel vocabulary, spelled
+// identically (up to casing) in every SDK. Re-exported wholesale so a constant the generator gains
+// (a new enum, P0-04's channel constants) reaches the package root without editing this file;
+// test/errorCodes.test.ts checks every generated export is reachable from here. `ServiceSlug` is
+// exported as a value and a type; it is the same union the discovery module uses.
+export * from "./constants.generated.js";
 
 export { SDK_NAME, SDK_VERSION } from "./version.js";
 
@@ -139,11 +146,11 @@ export type {
 export type { ConfigDoc } from "@polaris-key/protocol/config";
 export type { TrustSet } from "@polaris-key/jws";
 export type { BlockedState, LicenseState } from "@polaris-key/client-core";
+// `StoreBackend` and `StoreDegradedReason` (the type and its constants) come from the generated
+// constants above; enums.json pins them to these arrays.
 export {
   STORE_BACKENDS,
   STORE_DEGRADED_REASONS,
-  type StoreBackend,
-  type StoreDegradedReason,
 } from "@polaris-key/client-core";
 // The one error type the transport/orchestration layers throw. Its `.code` carries the wire
 // error code, the §7 bundle refusal step, `local-only`, or `service-unavailable`.

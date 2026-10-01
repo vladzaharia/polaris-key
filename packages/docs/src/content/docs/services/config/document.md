@@ -87,7 +87,7 @@ forces a license re-download: the two documents' ETags are computed independentl
 Wire contract v3 names exactly one enforcement point for version and channel blocking: the license
 document, because that gate is a **license grant** (D-20). This route has none. A product with no
 License service has no version window to be outside of in the first place, and gating settings
-distribution on a license policy would re-couple two services the whole split exists to keep
+delivery on a license policy would re-couple two services the whole split exists to keep
 apart. A device that is `version-too-old` or `channel-not-entitled` on its license document still
 gets its config document — "should this build even run" and "what are its settings" are answered
 independently.

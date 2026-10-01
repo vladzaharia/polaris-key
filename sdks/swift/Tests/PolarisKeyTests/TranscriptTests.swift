@@ -1,5 +1,5 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
-// @pkey-feature license.deactivate devices.register
+// @pkey-feature license.deactivate license.reregister devices.register
 // @pkey-feature identity.devicecode config.mint
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
@@ -9,7 +9,7 @@
 // asserts every request.
 //
 // Which transcripts run is DATA: a transcript for a feature this SDK has not implemented is
-// skipped — register-reregister-401 until P1b-06, telemetry-report until P1b-07 exposes
+// skipped — telemetry-report until P1b-07 exposes
 // `report()` — and starts running the moment the manifest claims it (the `report` verb then
 // needs its mapping below). The SDK clock is `CoreOptions.clock`, pinned to each step's `now`:
 // the recorded documents were signed at a fixed instant and expire an hour later.

@@ -351,9 +351,15 @@ importers:
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../packages/shared-catalog
+      '@polaris-key/client-core':
+        specifier: workspace:*
+        version: link:../packages/client-core
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../packages/shared-jws
+      '@polaris-key/protocol':
+        specifier: workspace:*
+        version: link:../packages/shared-protocol
       ajv:
         specifier: ^8.20.0
         version: 8.20.0

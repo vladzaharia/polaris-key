@@ -135,6 +135,7 @@ public actor PolarisKeyClient {
     public nonisolated let identity: IdentityClient
 
     private let probes: [ProbeDeclaration]
+    private let fingerprintEnabled: Bool
     private let refreshIntervalSeconds: Double?
     private var refreshTask: Task<Void, Never>?
     private var onChange: (@Sendable (LicenseState) -> Void)?
@@ -143,22 +144,21 @@ public actor PolarisKeyClient {
         self.product = options.core.productSlug
         let core = try CoreContext(options: options.core)
         self.core = core
+        // An edge-mint 401 gets the same single re-acquire a document fetch does, through the
+        // same closure, so a registered-without-licence device re-registers there too (§5).
         self.config = ConfigClient(
             core: core, options: options.config,
-            reacquire: { token in
-                // An edge-mint 401 gets the same single re-acquire a document fetch does, on the
-                // route the license module owns.
-                guard case .ok(let next, _) = await LicenseEndpoints.reacquireToken(
-                    core, token: token)
-                else { return nil }
-                return next
-            })
+            reacquire: PolarisKeyClient.reacquire(
+                core: core, fingerprintEnabled: options.license.fingerprint))
         // A completed device-code sign-in raises the same acquisition event activation does: a
         // signed-in device holds a licensed token exactly as an activated one does.
         self.identity = IdentityClient(core: core) {
-            await PolarisKeyClient.syncAfterAcquisition(core: core, probes: options.probes)
+            await PolarisKeyClient.syncAfterAcquisition(
+                core: core, probes: options.probes,
+                fingerprintEnabled: options.license.fingerprint)
         }
         self.probes = options.probes
+        self.fingerprintEnabled = options.license.fingerprint
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
@@ -167,7 +167,9 @@ public actor PolarisKeyClient {
         self.license = LicenseClient(core: core, options: options.license) { _ in
             // A `nonisolated` closure so `LicenseClient` can raise it without knowing about this
             // actor; the hop back in is what makes `sync()` the facade's decision.
-            await PolarisKeyClient.syncAfterAcquisition(core: core, probes: options.probes)
+            await PolarisKeyClient.syncAfterAcquisition(
+                core: core, probes: options.probes,
+                fingerprintEnabled: options.license.fingerprint)
         }
     }
 
@@ -214,14 +216,7 @@ public actor PolarisKeyClient {
         let probes = self.probes
         let result = await core.sync(
             force: force,
-            reacquire: { token in
-                // §5's single re-acquire, with the ROUTE injected so Core keeps no dependency on
-                // the license module.
-                guard case .ok(let next, _) = await LicenseEndpoints.reacquireToken(
-                    core, token: token)
-                else { return nil }
-                return next
-            },
+            reacquire: PolarisKeyClient.reacquire(core: core, fingerprintEnabled: fingerprintEnabled),
             report: { await PolarisKeyClient.report(core: core, probes: probes) })
         // The ETags are the change signal: they exclude the per-request timestamps, so a
         // differing tag means the CONTENT changed rather than that the document was re-signed.
@@ -235,16 +230,48 @@ public actor PolarisKeyClient {
     }
 
     /// The post-activation sync, forced so a stale ETag cannot 304 away the very first document.
-    private static func syncAfterAcquisition(core: CoreContext, probes: [ProbeDeclaration]) async {
+    private static func syncAfterAcquisition(
+        core: CoreContext, probes: [ProbeDeclaration], fingerprintEnabled: Bool
+    ) async {
         _ = await core.sync(
             force: true,
-            reacquire: { token in
-                guard case .ok(let next, _) = await LicenseEndpoints.reacquireToken(
-                    core, token: token)
-                else { return nil }
-                return next
-            },
+            reacquire: reacquire(core: core, fingerprintEnabled: fingerprintEnabled),
             report: { await PolarisKeyClient.report(core: core, probes: probes) })
+    }
+
+    /// The §5 single re-acquire, injected into `CoreContext.sync` so Core keeps no dependency on
+    /// the license module: `POST /<p>/license/token` for a licensed device, or
+    /// `POST /<p>/devices/register` (keyless, no bearer, the same request as `register()`) for a
+    /// registered-without-licence device or a product with License off. nil means the one
+    /// attempt failed (403 `registration_closed`, 401, 404, 429 or transport) and the hard-401
+    /// path applies.
+    private static func reacquire(core: CoreContext, fingerprintEnabled: Bool) -> ReacquireFn {
+        { current, source in
+            let route = chooseReacquireRoute(
+                licenseEnabled: await core.enabled(.license), source: source)
+            switch route {
+            case .devicesRegister:
+                guard
+                    case .ok(let token, _) = await core.requestDeviceRegistration(
+                        fingerprint: registrationFingerprint(
+                            product: core.product, enabled: fingerprintEnabled))
+                else { return nil }
+                return Reacquired(token: token, source: .register)
+            case .licenseToken:
+                guard case .ok(let token, _) = await LicenseEndpoints.reacquireToken(
+                    core, token: current)
+                else { return nil }
+                return Reacquired(token: token, source: .reacquire)
+            }
+        }
+    }
+
+    /// The fingerprint a registration sends: collected when fingerprinting is enabled
+    /// (`PolarisKeyClientOptions.fingerprint`), none otherwise.
+    private static func registrationFingerprint(product: String, enabled: Bool)
+        -> HardwareFingerprint?
+    {
+        enabled ? Fingerprint.collect(productSlug: product) : nil
     }
 
     /// Assemble the telemetry snapshot from RE-VERIFIED documents and post it (§6).
@@ -319,7 +346,8 @@ public actor PolarisKeyClient {
     @discardableResult
     public func register() async -> RegisterResult {
         await core.registerDevice(
-            fingerprint: Fingerprint.collect(productSlug: product))
+            fingerprint: PolarisKeyClient.registrationFingerprint(
+                product: product, enabled: fingerprintEnabled))
     }
 
     public func deactivate() async throws {

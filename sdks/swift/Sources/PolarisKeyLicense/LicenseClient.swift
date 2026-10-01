@@ -126,23 +126,24 @@ public actor LicenseClient {
     /// Obtain a licence with no key and no sign-in, when the product offers a free tier.
     @discardableResult
     public func enroll() async -> ActivationResult {
-        await acquire(LicenseEndpoints.enroll(core, fingerprint: fingerprint()))
+        await acquire(LicenseEndpoints.enroll(core, fingerprint: fingerprint()), source: .enroll)
     }
 
     /// Exchange a licence key for a per-device token.
     @discardableResult
     public func activate(key: String) async -> ActivationResult {
-        await acquire(LicenseEndpoints.activate(core, key: key, fingerprint: fingerprint()))
+        await acquire(
+            LicenseEndpoints.activate(core, key: key, fingerprint: fingerprint()), source: .activate)
     }
 
     /// Persist a freshly issued token, then raise the acquisition event.
     ///
     /// A failed token write is reported, not swallowed: it used to return `.ok` having stored
     /// nothing, so the app looked activated until the next launch (R4-12).
-    private func acquire(_ result: ActivationResult) async -> ActivationResult {
+    private func acquire(_ result: ActivationResult, source: TokenSource) async -> ActivationResult {
         guard case .ok(let token, _) = result else { return result }
         do {
-            try await core.setToken(token)
+            try await core.setToken(token, source: source)
         } catch {
             return .error(message: "could not persist the device token: \(error)")
         }

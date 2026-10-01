@@ -17,7 +17,15 @@ export {
 
 export { TrustManager } from "./trust.js";
 export { CacheManager, type CachedDoc, type LoadedCache } from "./cache.js";
-export { TokenManager, type ReacquireFn, type TokenSource } from "./token.js";
+export {
+  TokenManager,
+  chooseReacquireRoute,
+  type ReacquireFn,
+  type ReacquireInputs,
+  type ReacquireRoute,
+  type Reacquired,
+  type TokenSource,
+} from "./token.js";
 export {
   sync,
   type DocOutcome,

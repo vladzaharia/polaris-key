@@ -22,6 +22,7 @@ from polaris_key.core.store import (
     StoreDegraded,
     StoreStatus,
 )
+from polaris_key.constants_generated import STORE_BACKEND_VALUES, STORE_DEGRADED_REASON_VALUES
 from polaris_key.devices.store import FileStore, InMemoryStore, KeyringStore
 
 PRODUCT = "djdl"
@@ -95,6 +96,9 @@ def test_the_vocabulary_matches_client_core() -> None:
         "legacy-keychain",
         "not-persistent",
     )
+    # The generated constants (conformance/parity/enums.json) carry the same values.
+    assert STORE_BACKENDS == STORE_BACKEND_VALUES
+    assert STORE_DEGRADED_REASONS == STORE_DEGRADED_REASON_VALUES
     assert StoreStatus("file", StoreDegraded("keyring-error", "x")).to_dict() == {
         "backend": "file",
         "degraded": {"reason": "keyring-error", "detail": "x"},

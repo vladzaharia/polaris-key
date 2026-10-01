@@ -16,7 +16,7 @@
       "wp": "P1b-04",
       "note": "Sends windows/AMD64-style values where other SDKs send other spellings."
     },
-    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
       "status": "implemented",
@@ -28,7 +28,7 @@
     "license.deactivate": { "status": "implemented" },
     "license.entitlements": { "status": "implemented" },
     "license.channels": { "status": "planned", "wp": "P1b-07" },
-    "license.reregister": { "status": "planned", "wp": "P1b-06" },
+    "license.reregister": { "status": "implemented" },
     "config.resolve": { "status": "implemented" },
     "config.list": { "status": "implemented" },
     "config.secret": { "status": "implemented" },

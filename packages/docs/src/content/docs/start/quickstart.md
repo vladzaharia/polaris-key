@@ -154,6 +154,8 @@ name: Acme
 modules:
   release:
     enabled: true
+  distribution:
+    enabled: true
   update:
     enabled: true
 ```
@@ -169,12 +171,14 @@ A nested `provider:` block with `type: github`, `owner:` and `repo:` is the equi
 spelling. GitHub is the only provider implemented, and `binaryName` is character-class-bounded
 because it is interpolated into the published `install.sh`.
 
-Release and Update are **two services, not one**: Release is the truth store (GitHub sync, channel
-resolution, artifacts, changelog, install script) and Update is the feed rendered over it (appcast,
-`/version`, eligibility). Enabling Update without Release is refused as `update_requires_release` —
-the feed would answer every client with an empty document rather than an error. The legacy
-`"releases": { "enabled": true }` spelling still works and turns on **both**, which is why it can
-never trip that rule.
+Release, Distribution and Update are **three services, not one**: Release is the truth store
+(GitHub sync, channel resolution, artifacts, changelog, install script), Distribution is how
+releases reach devices and outlets, and Update is the feed that tells an installed copy what to do
+next (appcast, `/version`, eligibility). They form a chain — Distribution without Release is
+refused as `distribution_requires_release`, Update without Distribution as
+`update_requires_distribution` — because the feed would otherwise answer every client with an
+empty document rather than an error. The legacy `"releases": { "enabled": true }` spelling still
+works and turns on **all three**, which is why it can never trip either rule.
 
 **Endpoints that light up:**
 
@@ -213,7 +217,7 @@ mode is a console setting, not a manifest one. See [Update](/docs/services/updat
 
 ## Goal: everything
 
-All five services, the closed registration policy, and the full manifest set. This is the shape
+All six services, the closed registration policy, and the full manifest set. This is the shape
 `djdl` — the first Polaris Key product — actually ships.
 
 ```yaml
@@ -224,6 +228,7 @@ modules:
   license: { enabled: true }
   config: { enabled: true }
   release: { enabled: true }
+  distribution: { enabled: true }
   update: { enabled: true }
   identity: { enabled: true }
 devices:

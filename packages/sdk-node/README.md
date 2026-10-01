@@ -150,6 +150,15 @@ read-modify-write of the cache record → the clock floor → best-effort teleme
 `POST /<product>/devices/report`. A 401 gets exactly **one** `POST /<product>/license/token`
 re-acquire for the whole pass, then one retry of the failed fetch.
 
+A registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `devices.register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
+`Authorization` header). It shares the single-attempt budget, so two parallel 401s still make one
+call. A refusal (403 `registration_closed`, 404, 429) spends the attempt and the hard 401 is
+recorded. After a restart the token's origin is not persisted, so a product with License on uses
+`license/token`. Under the `requires-identity` policy a native device cannot re-register (that
+needs a browser session) and lands on the hard 401.
+
 `client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
 lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 
@@ -204,7 +213,7 @@ device token) and resolves `{ token, expiresAt }`. The result is cached **in mem
 in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, so asking on
 every API call costs one mint per lifetime. A cached token counts only while the client still
 holds the device token it was minted with: `deactivate()`, a cleared token or a different sign-in
-drops it. A 401 gets the usual single re-acquire and one retry.
+drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry.
 Failures throw `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id
 outside `[a-z0-9-]`) before any request, `unauthorized` (no token, or still 401), or the Worker's
 `not_found` / `rate_limited` / `misconfigured`.

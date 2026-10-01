@@ -6,6 +6,7 @@ import {
   Package,
   RefreshCw,
   Settings2,
+  Truck,
   Undo2,
   UserRound,
   type LucideIcon,
@@ -54,9 +55,9 @@ import {
  * ── WHY THE TOGGLES BATCH BEHIND A SAVE BUTTON ──────────────────────────────────────────────
  *
  * The server validates the SET, not each flag (`core/services.ts` `validateServices`): Update
- * requires Release, `requires-identity` requires Identity, and Config-without-License forbids
- * `requires-license`. An operator turning Release off while Update is on is making a coherent
- * two-step change, and a card that PATCHed on every flip would reject the first step and never
+ * requires Distribution, Distribution requires Release, `requires-identity` requires Identity,
+ * and Config-without-License forbids `requires-license`. An operator turning Release off while
+ * Distribution is on is making a coherent two-step change, and a card that PATCHed on every flip would reject the first step and never
  * let them reach the second. So the form accumulates a whole proposed set and submits it once.
  *
  * ── WHY A REJECTION IS INLINE AND NOT A TOAST ───────────────────────────────────────────────
@@ -76,6 +77,7 @@ const SERVICE_ICONS: Record<ServiceIconName, LucideIcon> = {
   Package,
   RefreshCw,
   UserRound,
+  Truck,
 };
 
 interface ServiceRow {
@@ -116,7 +118,8 @@ const REGISTRATION_OPTIONS: { value: RegistrationPolicy; label: string }[] = [
  * where the sentence goes, because only the card knows what it drew.
  */
 const ERROR_TARGETS: Record<string, (ServiceSlug | "registration")[]> = {
-  update_requires_release: ["update"],
+  distribution_requires_release: ["distribution"],
+  update_requires_distribution: ["update"],
   registration_requires_identity: ["identity", "registration"],
   config_without_activation: ["config", "registration"],
 };
