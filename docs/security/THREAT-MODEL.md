@@ -657,6 +657,48 @@ own key could also publish that key as the expected one.
   releases × builds × declared outlets. The `registered` flag is the operator's own record of
   Android developer verification; nothing verifies it against Google.
 
+### Storefront feeds and the F-Droid relay (P2b-05)
+
+**What arrived.** Public per-channel feeds under `/<p>/distribution/` — AltStore/SideStore and
+AltStore PAL sources, Obtainium configs, Scoop manifests, Flathub checker JSON — rendered from
+Release's truth and Distribution's state, and an F-Droid repository relay serving files CI signed
+and registered (`services/distribution/feeds/`; tests: `test/storefrontFeeds.test.ts`). A new
+opt-in CI scope, `distribution:feeds`, reads the generator's inputs, registers a repository's
+files, and buys an upload ticket for them. A new column, `release_builds.metadata_json`, holds
+the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK signer).
+
+- **Public by construction, so public only.** None of these clients can authenticate. Every feed
+  route, the relay included, exists only while the app deliverable's `dist_access` is `public`.
+  Otherwise it answers the plain not-found, so a `licensed` product's release history, notes and
+  byte URLs are never listed. Release notes appear only when the metadata access is public too.
+  The feeds are served on the console host, never on the bytes host, and are read-only.
+- **The relay is not a file host.** It serves only paths registered for (product, `fdroid`,
+  channel). Every path passes `isSafeAssetPath` at registration and on every read, so a `%` or a
+  dot segment never reaches a lookup. Each file is a content-addressed blob that this product
+  holds a `feed` ref to, and `blobResponse` re-checks its stored checksum. The content type comes
+  from a Worker allowlist keyed by extension (`json`, `jar`, `png`, `jpg`, `jpeg`, `webp`, `asc`);
+  CI never supplies it, and HTML, XML and SVG cannot be registered. Every answer carries `nosniff`
+  and the sandbox CSP. `application/json` and `image/*` are served on the console origin, which
+  holds sessions. With `nosniff` and `sandbox`, no browser runs either as a document. An APK name
+  is a 302 to its immutable delivery URL, and only for a release the channel's F-Droid feed
+  selects.
+- **Refs are earned the P2-02 way.** A register promotes only objects of the caller's own upload
+  ticket, verified in staging, or keys this product already references. A hash alone never earns
+  a ref (§3, the blob store). The channel's file set and its `feed` refs are replaced in one batch.
+- **The repo key never reaches the Worker.** CI signs `entry.jar` with `apksigner`. Before it
+  uploads, `pkey feeds fdroid` refuses a signature by any key other than the `fdroid-repo` entries
+  of the operator-owned key inventory. F-Droid clients pin the fingerprint they were given when
+  they added the repository, so a pipeline holding another key cannot get a client to accept its
+  index.
+- **Residual.** A `distribution:feeds` token can replace a channel's repository with any validly
+  shaped files. A client that pinned the fingerprint rejects an index signed by another key, but
+  the token can still break the repository: it can register a stale index or a broken one. That is
+  denial of service and a rollback to versions that were listed before, not code execution, since
+  the APKs stay pinned by SHA-256 and Android verifies their signatures. The scope is opt-in for
+  that reason. Build metadata is CI's claim: it decides what a feed lists, never the bytes behind
+  a URL. A wrong `appPermissions` makes AltStore refuse the install, and a wrong `signerSha256`
+  makes F-Droid refuse the APK.
+
 ### Outlet credentials (P5-01)
 
 **What they are.** The keys a store connector authenticates with (A11): an App Store Connect API
