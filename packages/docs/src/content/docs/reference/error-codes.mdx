@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(53 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(58 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -77,3 +77,8 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `key-entry-unsupported` | `license` | React: this transport cannot accept a typed licence key. |
 | `sign-in-failed` | `identity` | React: sign-in or activation did not complete. |
 | `sign-out-failed` | `identity` | React: sign-out did not complete. |
+| `bad_response` | `core` | Node, Python, Swift: the server answered 200 with a body missing a field the call needs (an edge-mint without its token or expiry, a device sign-in start without a complete prompt). |
+| `network-error` | `core` | Node, Python, Swift: the request never got an answer (edge-mint, device-code sign-in). A device-code sign-in wait treats it as transient and polls again. |
+| `server-error` | `identity` | Node, Python, Swift: a device-code sign-in poll answered 5xx. Transient: the wait polls again at the same interval. |
+| `cancelled` | `identity` | Python: a device-code sign-in wait was cancelled by the host. |
+| `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. |

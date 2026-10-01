@@ -171,7 +171,7 @@ device token) and resolves `{ token, expiresAt }`. The result is cached **in mem
 in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, so asking on
 every API call costs one mint per lifetime. A cached token counts only while the client still
 holds the device token it was minted with: `deactivate()`, a cleared token or a different sign-in
-drops it. A 401 gets the usual single re-acquire and one retry.
+drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry.
 Failures throw `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id
 outside `[a-z0-9-]`) before any request, `unauthorized` (no token, or still 401), or the Worker's
 `not_found` / `rate_limited` / `misconfigured`.

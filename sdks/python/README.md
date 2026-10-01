@@ -179,7 +179,7 @@ through an operator-approved recipe (`GET /<product>/config/mint/<recipe_id>/tok
 device token) and returns a `MintedToken(token, expiresAt)`. It is cached **in memory only** —
 never in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, and only
 while the client still holds the device token it was minted with — `deactivate()`, a cleared
-token or a different sign-in drops it. A 401 gets the usual single re-acquire and one retry. Failures raise `PolarisError`:
+token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures raise `PolarisError`:
 `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`) before any
 request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.
