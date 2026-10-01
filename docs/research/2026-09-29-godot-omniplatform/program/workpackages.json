@@ -425,7 +425,7 @@
       "optional": false,
       "refs": ["README §9.1 #18", "notes/A2 §6"],
       "brief": "wp/P1-06-rfc8628-page.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-07",
@@ -476,7 +476,7 @@
       "optional": false,
       "refs": ["README §5.8", "README §8 item 6", "PARITY §4.1 §5.7"],
       "brief": "wp/P1-09-boot-stage-machine.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P1-10",

@@ -188,9 +188,13 @@ anonymous row, and re-enrolling around it would bypass the operator's deliberate
 
 ## Claim and migrate
 
-When a user who enrolled anonymously later signs in, the enrolled license is merged into the
-identity rather than abandoned. The client passes the license its device is currently on;
-Identity decides what to do with it.
+Identity's `activateFromIdentity` can merge an anonymously enrolled license into an identity
+rather than abandon it, when its caller names the license the device is currently on. **No
+sign-in route does that today.** The device-code callback used to, but a device-code flow is
+confirmed with a public user code, so the merge let whoever confirmed the flow take the device's
+license over. A sign-in now gets only the identity's own license, and the enrolled license stays
+anonymous and active. An explicit opt-in, made on the device after the player accepts the
+signed-in identity, is planned. The rules below are what a merge does when it runs.
 
 A license is **claimable** only if it is `origin = 'enroll'` with a null `sub`. Anything else —
 an admin or OIDC license the device happens to hold — is left strictly alone, and the sign-in

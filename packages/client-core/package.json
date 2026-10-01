@@ -49,6 +49,10 @@
     "./store": {
       "types": "./dist/store.d.ts",
       "default": "./dist/store.js"
+    },
+    "./stages": {
+      "types": "./dist/stages.d.ts",
+      "default": "./dist/stages.js"
     }
   },
   "files": [

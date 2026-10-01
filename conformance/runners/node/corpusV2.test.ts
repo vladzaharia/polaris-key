@@ -15,6 +15,10 @@
 //   gate-matrix      §5 the gate decision table            → licenseState
 //   bundleCases      §7 offline bundle import              → inspectBundle
 //
+// The fourth file in `corpus/v2/`, `stage-matrix.json` (the boot stage machine, client boot
+// behaviour outside the wire contract), has its own runner: `stageMatrix.test.ts`, through
+// `@polaris-key/client-core/stages`. `fingerprint.json` likewise runs in `fingerprint.test.ts`.
+//
 // The bundle section used to carry an inline reference implementation of §7's numbered order,
 // because no shipped verifier existed. P4 shipped one — `@polaris-key/client-core`'s `inspectBundle`
 // — and this file now drives THAT, vector for vector, including which numbered step refuses.

@@ -27,13 +27,13 @@ out of scope for now. A product that does not enable Identity has none of this: 
 | Page                                                         | What it covers                                                                                                                                                                              |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Product OIDC](/docs/services/identity/oidc/)                | The platform-vs-custom provider choice, the PKCE browser flow, `groupRoleMap`, `activateFromIdentity`, the `oidcDefault` auto-issue fallback, provisioning hooks, and the issuer allowlist. |
-| [The device-code flow](/docs/services/identity/device-flow/) | The device-code start, verify, and poll routes — sign-in for a client that cannot receive a browser redirect.                                                                               |
+| [The device-code flow](/docs/services/identity/device-flow/) | The device-code start, user-code, and poll routes — sign-in for a client that cannot receive a browser redirect.                                                                            |
 | [Browser sessions](/docs/services/identity/sessions/)        | The session cookie, the fused session document and its build gate, key-to-session exchange, logout, and how `requires-identity` device registration is authorized without a license.        |
 | [Customer portal](/docs/services/identity/portal/)           | The root-level, cross-tenant account surface: sign-in, account erasure, license claiming, device management, and gated release downloads.                                                   |
 
 ## The public surface
 
-Nine product-scoped routes, all under `/<product>/identity`:
+Ten product-scoped routes, all under `/<product>/identity`:
 
 | Route                                         | What it is                                                                  |
 | --------------------------------------------- | --------------------------------------------------------------------------- |
@@ -44,6 +44,7 @@ Nine product-scoped routes, all under `/<product>/identity`:
 | `GET /<p>/identity/auth/poll`                 | Poll a browser sign-in flow                                                 |
 | `POST /<p>/identity/auth/logout`              | End the browser session                                                     |
 | `POST /<p>/identity/auth/device/start`        | Begin the device-code flow                                                  |
+| `GET`/`POST /<p>/identity/auth/device`        | The RFC 8628 user-code page — type or scan the code, then confirm           |
 | `GET`/`POST /<p>/identity/auth/device/verify` | The device-authorization page — side-effect-free `GET`, CSRF-checked `POST` |
 | `POST /<p>/identity/auth/device/poll`         | Poll the device-code flow                                                   |
 
