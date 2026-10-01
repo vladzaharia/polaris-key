@@ -20,7 +20,8 @@ import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.
 import {
   handlePortalApi,
   handlePortalDownload,
-} from "../src/services/identity/portal/api.js";
+} from "./portalHarness.js";
+import { seedDeliveryAccess } from "./releaseSurface.js";
 import { handleMagicVerify } from "../src/services/identity/portal/auth.js";
 import {
   PORTAL_COOKIE,
@@ -301,6 +302,9 @@ describe("customer portal", () => {
     // describes a product that does not serve them. Declaring the service is what this fixture
     // always meant; it just used to be able to leave it unsaid.
     await enableReleaseService(db, "djdl");
+    // The delivery access is Distribution's per-deliverable answer since P2b-04 (it was the
+    // per-artifact snapshot below): `licensed`, as the artifact row says.
+    await seedDeliveryAccess(db, "djdl", "licensed");
 
     await db.run(
       `INSERT INTO release_metadata
@@ -391,6 +395,9 @@ describe("customer portal", () => {
     // describes a product that does not serve them. Declaring the service is what this fixture
     // always meant; it just used to be able to leave it unsaid.
     await enableReleaseService(db, "djdl");
+    // The delivery access is Distribution's per-deliverable answer since P2b-04 (it was the
+    // per-artifact snapshot below): `authenticated`, as the artifact row says.
+    await seedDeliveryAccess(db, "djdl", "authenticated");
 
     await db.run(
       `INSERT INTO release_metadata
@@ -459,6 +466,9 @@ describe("customer portal", () => {
     // describes a product that does not serve them. Declaring the service is what this fixture
     // always meant; it just used to be able to leave it unsaid.
     await enableReleaseService(db, "djdl");
+    // The delivery access is Distribution's per-deliverable answer since P2b-04 (it was the
+    // per-artifact snapshot below): `licensed`, as the artifact row says.
+    await seedDeliveryAccess(db, "djdl", "licensed");
 
     await db.run(
       `INSERT INTO release_metadata

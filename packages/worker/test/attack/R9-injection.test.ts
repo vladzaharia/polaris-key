@@ -41,7 +41,10 @@ import {
   handleAuthStart,
 } from "../../src/services/identity/oidc.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
-import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
+import {
+  handleReleaseSurface as handleRelease,
+  seedDeliveryAccess,
+} from "../releaseSurface.js";
 import {
   type FetchImpl,
   installationTokenSlot,
@@ -67,7 +70,7 @@ import { Catalog } from "@polaris-key/catalog";
 import {
   handlePortalApi,
   handlePortalDownload,
-} from "../../src/services/identity/portal/api.js";
+} from "../portalHarness.js";
 import { handlePortalLogin } from "../../src/services/identity/portal/auth.js";
 import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
 import {
@@ -296,7 +299,7 @@ async function seedReleaseConfig(
     row.artifact_policy_json,
     row.metadata_access,
     row.artifacts_access,
-  );
+  );  await seedDeliveryAccess(db, row.product, row.artifacts_access);
 }
 
 /**
@@ -956,7 +959,12 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
       db,
       SLUG,
       serializeServices({
-        services: { ...DEFAULT_SERVICES, release: { enabled: true } },
+        // Release + Distribution: the services that serve a download (P2b-04).
+        services: {
+          ...DEFAULT_SERVICES,
+          release: { enabled: true },
+          distribution: { enabled: true },
+        },
       }),
       "manifest",
       NOW,

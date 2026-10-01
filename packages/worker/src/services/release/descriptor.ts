@@ -60,6 +60,7 @@ import {
 import { parseManualChannels } from "./channels.js";
 import {
   artifactPolicy,
+  artifactsAccessSnapshot,
   getReleaseConfig,
   isResolved,
   type ReleaseConfigRow,
@@ -571,7 +572,9 @@ export async function planDescriptorIngest(
   // 6. The rows.
   const policy = cfg ? artifactPolicy(cfg) : null;
   const metadataAccess = storeAccess(policy?.access.metadata ?? "public");
-  const artifactsAccess = storeAccess(policy?.access.artifacts ?? "public");
+  const artifactsAccess = storeAccess(
+    cfg ? artifactsAccessSnapshot(cfg) : "public",
+  );
   const planned: PlannedRows = {
     release: {
       releaseId,

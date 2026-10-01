@@ -28,6 +28,7 @@
  * route would not serve.
  */
 
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Env, Db } from "../../core/platform.js";
 import { appSecurityHeaders } from "../../core/platform.js";
 import type { ProductPublic } from "../../core/products.js";
@@ -214,6 +215,14 @@ export async function serveReleaseSurface(
   params: ReleaseParams,
   fetchImpl: FetchImpl,
   compute: (ctx: SurfaceContext) => Promise<Response>,
+  opts: {
+    /**
+     * The ARTIFACTS access mode for this request, from Distribution's `delivery.accessMode()`
+     * (P2b-04). Required for an artifacts-governed surface (the appcasts); without it such a
+     * surface fails closed to `entitled` and is never edge-cached (`artifactPolicy`).
+     */
+    artifactsAccess?: ReleaseAccess;
+  } = {},
 ): Promise<Response> {
   const cfg = await getReleaseConfig(db, product.slug);
   if (!cfg) return harden(notFound());
@@ -228,7 +237,8 @@ export async function serveReleaseSurface(
   const cacheable =
     req.method === "GET" &&
     CACHEABLE_KINDS.has(kind) &&
-    accessModeFor(artifactPolicy(cfg), kind) === "public";
+    accessModeFor(artifactPolicy(cfg, opts.artifactsAccess), kind) ===
+      "public";
   const cache = cacheable ? edgeCache() : null;
   const cacheKey = cache
     ? releaseCacheKey(origin, product.slug, kind, params)
@@ -247,6 +257,7 @@ export async function serveReleaseSurface(
     kind,
     params,
     now,
+    opts.artifactsAccess,
   );
   if (denied) return harden(denied);
 
@@ -304,24 +315,30 @@ async function runSurface(
     // R10-05. GitHub quota exhaustion is a platform condition, not "no such release": it hits
     // every product on the installation at once and previously surfaced as a 404, which is
     // indistinguishable from a withdrawn release and silently stops auto-updaters.
-    if (err instanceof UpstreamRateLimitedError) {
-      const headers: Record<string, string> = { "cache-control": "no-store" };
-      if (err.retryAfterSeconds !== undefined) {
-        headers["retry-after"] = String(Math.ceil(err.retryAfterSeconds));
-      }
-      return harden(
-        json(
-          {
-            error: "upstream_rate_limited",
-            message: "release metadata is temporarily unavailable",
-          },
-          { status: 503, headers },
-        ),
-      );
-    }
+    if (err instanceof UpstreamRateLimitedError)
+      return harden(upstreamUnavailable(err));
     if (err instanceof NotFoundError) return harden(notFound());
     throw err;
   }
+}
+
+/**
+ * The answer to an exhausted GitHub quota: 503 with `Retry-After` when GitHub gave one. Shared
+ * with `source.ts`, which maps the same failure for the bytes Distribution streams through the
+ * `releaseCatalog` hook, so a download and an appcast say the same thing.
+ */
+export function upstreamUnavailable(err: UpstreamRateLimitedError): Response {
+  const headers: Record<string, string> = { "cache-control": "no-store" };
+  if (err.retryAfterSeconds !== undefined) {
+    headers["retry-after"] = String(Math.ceil(err.retryAfterSeconds));
+  }
+  return json(
+    {
+      error: "upstream_rate_limited",
+      message: "release metadata is temporarily unavailable",
+    },
+    { status: 503, headers },
+  );
 }
 
 // ── Selector resolution ──────────────────────────────────────────────────────

@@ -32,8 +32,14 @@ import { loadProduct } from "../src/core/products.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { handleUpdate } from "../src/services/update/index.js";
-import { handleRelease } from "../src/services/release/index.js";
+// P2b-04: the feed reads Distribution's delivery access and the downloads are Distribution's,
+// so both go through the one entry point that drives them the way the router does
+// (`releaseSurface.ts`: the downloads at their permanent alias paths).
+import {
+  handleReleaseSurface as handleUpdate,
+  handleReleaseSurface as handleRelease,
+  seedDeliveryAccess,
+} from "./releaseSurface.js";
 import { updateParams } from "../src/services/update/eligibility.js";
 import { handleUpdateRoutes } from "../src/services/update/routes.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
@@ -126,7 +132,7 @@ async function seedCfg(
     row.metadata_access,
     row.artifacts_access,
     row.operator_policy_json,
-  );
+  );  await seedDeliveryAccess(db, row.product, row.artifacts_access);
 }
 
 function envFor(): Env {

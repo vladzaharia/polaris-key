@@ -22,11 +22,11 @@ import type { ServiceRegistry } from "./core/registry.js";
 import type { ByteRoute } from "./core/bytesHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
+import { releaseService } from "./services/release/index.js";
 import {
-  RELEASE_BYTE_ROUTES,
-  releaseService,
-} from "./services/release/index.js";
-import { distributionService } from "./services/distribution/index.js";
+  DISTRIBUTION_BYTE_ROUTES,
+  distributionService,
+} from "./services/distribution/index.js";
 import { updateService } from "./services/update/index.js";
 import { identityService } from "./services/identity/index.js";
 
@@ -43,11 +43,13 @@ export const SERVICES: ServiceRegistry = new Map([
  * The bytes-host allowlist (P2-01, `core/bytesHost.ts`): the only routes that can answer on
  * `BLOB_ORIGIN` (`dl.plrs.im`). A route not listed here does not exist on that host.
  *
- * It lives here, beside `SERVICES`, for the same reason: byte routes are service code (P2-05's
- * release byte routes, P2b-04's distribution routes), and Core must not import services. Each
- * entry names its `service`, and the bytes-host dispatcher runs it only while that service is
- * enabled for the product. P2-01 registered none; P2-05 adds Release's three
- * (`/<p>/release/builds/…`, `/<p>/release/files/…`, `/<p>/release/blobs/sha256/…`), the first
- * real responses the bytes host serves.
+ * It lives here, beside `SERVICES`, for the same reason: byte routes are service code, and Core
+ * must not import services. Each entry names its `service`, and the bytes-host dispatcher runs it
+ * only while that service is enabled for the product. P2-01 registered none; P2-05 added
+ * Release's three; P2b-04 moved them into Distribution (all byte delivery is Distribution's,
+ * README §3.5): `/<p>/distribution/{builds,files,blobs}/…`, each also matching its
+ * `/<p>/release/…` spelling, so the URLs discovery advertised on `dl.plrs.im` keep answering.
+ * They name `service: "distribution"`: with Distribution off they answer the host's flat
+ * not-found, whatever Release says.
  */
-export const BYTE_ROUTES: readonly ByteRoute[] = [...RELEASE_BYTE_ROUTES];
+export const BYTE_ROUTES: readonly ByteRoute[] = [...DISTRIBUTION_BYTE_ROUTES];

@@ -346,7 +346,7 @@ const TABLE_OWNERS = {
     "release_channel_policy",
     "release_yanks",
   ],
-  distribution: ["dist_outlets", "dist_transports"],
+  distribution: ["dist_outlets", "dist_transports", "dist_rollouts", "dist_access"],
   identity: [
     "oidc_config",
     "provisioning_config",

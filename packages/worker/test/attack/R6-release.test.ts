@@ -29,7 +29,10 @@ import type {
   Release,
   ReleaseAsset,
 } from "../../src/services/release/github.js";
-import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
+import {
+  handleReleaseSurface as handleRelease,
+  seedDeliveryAccess,
+} from "../releaseSurface.js";
 import { renderAppcast } from "../../src/services/update/appcast.js";
 import { defaultInstallScript } from "../../src/services/release/install.js";
 import { linkRepo } from "../../src/services/release/linkRepo.js";
@@ -43,7 +46,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../../src/admin/session.js";
-import { handlePortalDownload } from "../../src/services/identity/portal/api.js";
+import { enableDownloads, handlePortalDownload } from "../portalHarness.js";
 import {
   createPortalDownloadToken,
   getOrCreateAccountByEmail,
@@ -178,7 +181,7 @@ async function seedReleaseConfig(
     row.artifact_policy_json,
     row.metadata_access,
     row.artifacts_access,
-  );
+  );  await seedDeliveryAccess(db, row.product, row.artifacts_access);
 }
 
 interface Call {
@@ -1634,6 +1637,8 @@ describe("R6-11 portal download redirect host allowlist", () => {
     const env = makeEnv(new KvMock(), [SLUG]);
     env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
     await seedProduct(db, SLUG);
+    // Release + Distribution: the services that serve a download (P2b-04).
+    await enableDownloads(db, SLUG);
     await seedLicenseWithKey(db, SLUG);
     const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
     await syncAccountLicenseLinks(db, account.id, NOW);
@@ -1710,6 +1715,8 @@ describe("R6-11 portal download redirect host allowlist", () => {
     const env = makeEnv(new KvMock(), [SLUG]);
     env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
     await seedProduct(db, SLUG);
+    // Release + Distribution: the services that serve a download (P2b-04).
+    await enableDownloads(db, SLUG);
     await seedLicenseWithKey(db, SLUG);
     const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
     await syncAccountLicenseLinks(db, account.id, NOW);

@@ -13,20 +13,28 @@
 // `SERVICE_NAMESPACES` below is therefore the complete list, and there are no per-service route
 // kinds left in this file. Identity was the last to cut over, and its old top-level spellings
 // (`/<p>/session`, `/<p>/session/license`, `/<p>/auth/…`) are DELETED rather than aliased — see
-// `services/identity/routes.ts` for why that is safe where the four Release/Update aliases below
-// are not.
+// `services/identity/routes.ts` for why that is safe where the aliases below are not.
 //
 // Core routes stay core routes whatever happens to the services: discovery, JWKS, the trust
 // manifest, `/devices[/:id]`, `/devices/report` and `/devices/register`.
 //
-// ── THE PERMANENT ALIASES (D-07) ────────────────────────────────────────────────────────────
+// ── THE PERMANENT ALIASES (D-07, P2b-04) ────────────────────────────────────────────────────
 //
-// Four paths predate the namespacing and are baked into things nobody can recall: `SUFeedURL`
-// values compiled into shipped app bundles, and `curl … | sh` lines in published documentation.
-// They are kept FOREVER (spec §4.1), and they are implemented by REWRITING — the alias resolves
-// to the same `{kind:"service"}` route, with the same segments, as its canonical spelling. There
-// is therefore no second handler to keep in step and no way for the two to answer differently;
-// the `alias` flag exists so a route table can be asserted on, not so a handler can branch.
+// Some paths are baked into things nobody can recall: `SUFeedURL` values compiled into shipped
+// app bundles, `curl … | sh` lines in published documentation, download URLs SDKs build, and the
+// byte URLs discovery advertised. They are kept FOREVER (spec §4.1), and they are implemented by
+// REWRITING — the alias resolves to the same `{kind:"service"}` route, with the same segments, as
+// its canonical spelling. There is therefore no second handler to keep in step and no way for the
+// two to answer differently; the `alias` flag exists so a route table can be asserted on, not so
+// a handler can branch.
+//
+//   /<p>/appcast.xml, /<p>/<channel>/appcast.xml, /<p>/version    → /<p>/update/…   (D-07)
+//   /<p>/install.sh, /<p>/release/install.sh                       → /<p>/distribution/install.sh
+//   /<p>/release/{dl,builds,files,blobs}/…                         → /<p>/distribution/{…}/…
+//
+// The last two rows are P2b-04's: all byte delivery moved from Release to Distribution
+// (README §3.5). Their rewrite runs BEFORE the service-namespace check, because `release` is
+// itself a namespace and would otherwise claim the path.
 
 import { SERVICE_SLUGS, type ServiceSlug } from "./core/services.js";
 
@@ -72,9 +80,9 @@ export type Route =
   /** A product-scoped request for a service the core router has cut over. `rest` is the path
    *  after `/<product>/<slug>`, already split; `[]` means the bare namespace.
    *
-   *  `alias` marks one of the four permanent pre-namespace spellings (§R1). It carries no
-   *  behaviour: the route it produces is identical to the canonical one, which is the property
-   *  the route tests pin. */
+   *  `alias` marks one of the permanent alias spellings (§R1, P2b-04). It carries no behaviour:
+   *  the route it produces is identical to the canonical one, which is the property the route
+   *  tests pin. */
   | {
       kind: "service";
       slug: ServiceSlug;
@@ -147,16 +155,26 @@ export function matchRoute(pathname: string): Route {
       return { kind: "report", product };
     case "/devices/register":
       return { kind: "register", product };
-    // The permanent aliases (§R1). `/<p>/changelog` is NOT among them: unlike the four below it
-    // was never compiled into a shipped binary or a published curl line, so wire v3 moves it to
+    // The permanent aliases (§R1). `/<p>/changelog` is NOT among them: unlike these it was never
+    // compiled into a shipped binary or a published curl line, so wire v3 moves it to
     // `/<p>/release/changelog` outright.
     case "/appcast.xml":
       return alias("update", product, ["appcast.xml"]);
     case "/install.sh":
-      return alias("release", product, ["install.sh"]);
+    case "/release/install.sh":
+      return alias("distribution", product, ["install.sh"]);
     case "/version":
       return alias("update", product, ["version"]);
   }
+
+  // `/<p>/release/{dl,builds,files,blobs}/…` — Release's old byte paths, now Distribution's
+  // (P2b-04). Ahead of the namespace check below, which would hand them to Release.
+  const releaseBytes = rest.match(/^\/release\/(dl|builds|files|blobs)\/(.+)$/);
+  if (releaseBytes?.[1] && releaseBytes[2])
+    return alias("distribution", product, [
+      releaseBytes[1],
+      ...releaseBytes[2].split("/"),
+    ]);
 
   // /<product>/<service>/<rest…> for the services that have been cut over. Placed before the
   // channel-appcast and download patterns so a service namespace can never be shadowed by a

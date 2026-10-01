@@ -36,7 +36,10 @@ import { handleActivate } from "../../src/services/license/activation.js";
 import { handleConfigDocument } from "../../src/services/config/document.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 import { handleCatalog as handleAdminCatalog } from "../../src/services/config/admin/catalog.js";
-import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
+import {
+  handleReleaseSurface as handleRelease,
+  seedDeliveryAccess,
+} from "../releaseSurface.js";
 import { matchRoute } from "../../src/router.js";
 import { rateLimitOk } from "../../src/core/rateLimit.js";
 import { RateLimitDO } from "../../src/rateLimitDo.js";
@@ -521,6 +524,7 @@ async function seedReleaseCfg(db: Db): Promise<void> {
     "public",
     "public",
   );
+  await seedDeliveryAccess(db, "djdl", "public");
 }
 
 function stubReleaseFetch(rel: Release): FetchImpl {
@@ -535,18 +539,19 @@ function stubReleaseFetch(rel: Release): FetchImpl {
 }
 
 describe("R10-02 arch alias is never normalized ⇒ unhandled TypeError", () => {
-  it("the router hands `aarch64`/`amd64` through verbatim to the release service", () => {
+  it("the router hands `aarch64`/`amd64` through verbatim to the download route", () => {
     // P2.T1 removed `/cli` and `/dmg` and moved arch parsing off the router entirely: the
-    // canonical `/release/dl/…` route hands the whole leaf to `services/release/routes.ts`,
-    // which is where `normalizeArch` runs. The finding's premise — an un-normalised alias
-    // reaching a handler — is therefore what these paths still deliver, and the two tests
-    // below still prove the handler survives it.
+    // `/release/dl/…` route hands the whole leaf to its service, and `normalizeArch` runs in
+    // Release's `source.ts` (P2b-04 moved the route to Distribution; `/release/dl/…` is now its
+    // permanent alias). The finding's premise — an un-normalised alias reaching a handler — is
+    // therefore what these paths still deliver, and the two tests below still prove the handler
+    // survives it.
     expect(matchRoute("/djdl/release/dl/1.2.3/app-aarch64.dmg")).toMatchObject({
-      slug: "release",
+      slug: "distribution",
       rest: ["dl", "1.2.3", "app-aarch64.dmg"],
     });
     expect(matchRoute("/djdl/release/dl/1.2.3/djdl-amd64")).toMatchObject({
-      slug: "release",
+      slug: "distribution",
       rest: ["dl", "1.2.3", "djdl-amd64"],
     });
   });

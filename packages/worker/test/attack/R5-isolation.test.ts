@@ -36,7 +36,7 @@ import {
 } from "../../src/services/identity/oidc.js";
 import { handleAdminApi } from "../../src/admin/api.js";
 import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
-import { handlePortalApi } from "../../src/services/identity/portal/api.js";
+import { handlePortalApi } from "../portalHarness.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,

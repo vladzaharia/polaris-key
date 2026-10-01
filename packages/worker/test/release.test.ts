@@ -26,7 +26,10 @@ import {
   defaultInstallScript,
 } from "../src/services/release/install.js";
 import { renderAppcast } from "../src/services/update/appcast.js";
-import { handleReleaseSurface as handleRelease } from "./releaseSurface.js";
+import {
+  handleReleaseSurface as handleRelease,
+  seedDeliveryAccess,
+} from "./releaseSurface.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { checkReleaseHealth } from "../src/services/release/health.js";
 
@@ -105,7 +108,7 @@ async function seedReleaseConfig(
     row.metadata_access,
     row.artifacts_access,
     row.operator_policy_json,
-  );
+  );  await seedDeliveryAccess(db, row.product, row.artifacts_access);
 }
 
 function makeProduct(): Product {

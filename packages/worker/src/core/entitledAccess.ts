@@ -35,7 +35,9 @@
 
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { AllowedRange } from "@polaris-key/protocol";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import { channelEntitled } from "./channels.js";
+import { errorResponse, wireError } from "./errors.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { ProductPublic } from "./products.js";
@@ -49,6 +51,7 @@ import { resolveMergedPayload } from "./payload.js";
 import {
   entitledChannels,
   injectAdminPolicy,
+  parseSemver,
   tighterMax,
   tighterMin,
   versionInWindow,
@@ -140,15 +143,43 @@ export async function entitledAccessCheck(
 ): Promise<EntitledGrant | EntitledDenial> {
   const valid = await usableLicensedDevice(env, db, product, token, now);
   if ("error" in valid) return { ok: false, status: 401, code: "unauthorized" };
+  const decision = await grantDecision(
+    db,
+    product,
+    valid.license,
+    valid.device,
+    selector,
+    now,
+  );
+  if (!decision.ok) return decision;
+  return { ...decision, license: valid.license, device: valid.device };
+}
 
+/**
+ * The channel-then-version half of the decision, for a licence already known to be usable.
+ * `device` is the caller's device when there is one (its overrides are a layer of the grant, as
+ * in the licence document); the portal, which authenticates a person rather than a device, has
+ * none and passes `null` — the licence's own grant is then the whole answer.
+ */
+async function grantDecision(
+  db: Db,
+  product: ProductPublic,
+  license: LicenseRow,
+  device: DeviceRow | null,
+  selector: EntitledSelector,
+  now: number,
+): Promise<
+  | { ok: true; channels: string[]; allowedRange: AllowedRange }
+  | Exclude<EntitledDenial, { status: 401 }>
+> {
   const { payload, tier } = await resolveMergedPayload(
     db,
     product.slug,
-    valid.license,
-    valid.device,
+    license,
+    device,
     now,
   );
-  injectAdminPolicy(payload, tier, valid.license, tighterMin, tighterMax);
+  injectAdminPolicy(payload, tier, license, tighterMin, tighterMax);
   const channels = entitledChannels(payload.entitlements);
   const allowedRange = versionWindow(
     payload.entitlements,
@@ -167,11 +198,122 @@ export async function entitledAccessCheck(
   if (selector.version && !versionInWindow(selector.version, allowedRange)) {
     return { ok: false, status: 403, code: "version_blocked", allowedRange };
   }
-  return {
-    ok: true,
-    channels,
-    allowedRange,
-    license: valid.license,
-    device: valid.device,
-  };
+  return { ok: true, channels, allowedRange };
+}
+
+/**
+ * `entitled` for a LICENCE rather than a device token — the customer portal's question (P2b-04).
+ * A portal account holds licences, not a `pkeyt_` token, so the same grant is evaluated from the
+ * licence alone (no device layer). True when the licence is usable, the channel is in its grant
+ * and the version sits in its window; a pinned version the window cannot order is refused when
+ * the window is bounded, exactly as `accessRefusal` does for a device.
+ */
+export async function licenseEntitled(
+  db: Db,
+  product: ProductPublic,
+  license: LicenseRow,
+  selector: EntitledSelector,
+  now: number,
+): Promise<boolean> {
+  if (!licenseUsable(license, now)) return false;
+  const decision = await grantDecision(
+    db,
+    product,
+    license,
+    null,
+    selector,
+    now,
+  );
+  if (!decision.ok) return false;
+  return !unorderablePin(selector, true, decision.allowedRange);
+}
+
+// ── One refusal for every delivery surface (P2b-04) ─────────────────────────────────────────
+
+/**
+ * The selector for ONE fixed release, checked by its STORED version: pinned, on the stable
+ * channel, never re-read as a route selector. A release synced from the tag `latest`, `stable`,
+ * `beta`, `pr-5` or a manual channel's name stores that word as its version, and classifying it
+ * as a selector would read it as a moving channel, which has no window check (P2-05 security
+ * round). Release's `access.ts` and Distribution's byte routes both use this one definition.
+ */
+export function fixedReleaseSelector(version: string): EntitledSelector {
+  return { channel: CHANNEL_STABLE, version: version.replace(/^v/, "") };
+}
+
+/** A pinned version the window cannot order, under a bounded window (see `accessRefusal`). */
+function unorderablePin(
+  selector: EntitledSelector,
+  pinned: boolean,
+  allowedRange: AllowedRange,
+): boolean {
+  return (
+    pinned &&
+    !parseSemver(selector.version ?? "") &&
+    Boolean(allowedRange.min || allowedRange.max)
+  );
+}
+
+/**
+ * Enforce a delivery access mode for a request bearing `token`. Returns `null` when it may
+ * proceed, or the refusal to answer with. The one implementation Release's surfaces (through its
+ * gateway) and Distribution's byte routes share, so a mode means the same everywhere.
+ *
+ *   - `public` demands nothing.
+ *   - `authenticated` / `licensed` answer the flat v2 body (`download_auth_required`) they have
+ *     always answered with: those surfaces moved, they did not change.
+ *   - `entitled` (D-13) speaks wire v3: `401 unauthorized`, `403 channel_not_allowed`,
+ *     `403 version_blocked` with `allowedRange` at the top level.
+ *
+ * `pinned` says the request names one concrete version (a pinned selector, or a fixed release's
+ * stored version even when it is empty). Such a version is refused whenever the window is
+ * bounded and cannot order it: `versionInWindow` compares with `compareSemver`, which calls
+ * anything it cannot parse EQUAL to both bounds, so `1.2.3.4` or `3.0.0beta` would otherwise
+ * pass any window.
+ */
+export async function accessRefusal(
+  env: Env,
+  db: Db,
+  product: ProductPublic,
+  token: string | null,
+  mode: ReleaseAccess,
+  selector: EntitledSelector,
+  pinned: boolean,
+  now: number,
+): Promise<Response | null> {
+  if (mode === "public") return null;
+
+  if (mode === "entitled") {
+    const decision = await entitledAccessCheck(
+      env,
+      db,
+      product,
+      token,
+      selector,
+      now,
+    );
+    if (decision.ok) {
+      if (unorderablePin(selector, pinned, decision.allowedRange))
+        return wireError(403, "version_blocked", {
+          allowedRange: decision.allowedRange,
+        });
+      return null;
+    }
+    if (decision.code === "version_blocked")
+      return wireError(403, "version_blocked", {
+        allowedRange: decision.allowedRange,
+      });
+    if (decision.code === "channel_not_allowed")
+      return wireError(403, "channel_not_allowed");
+    return wireError(401, "unauthorized");
+  }
+
+  const valid = await usableLicensedDevice(env, db, product, token, now);
+  if ("error" in valid)
+    return errorResponse(
+      401,
+      "download_auth_required",
+      "a valid license is required to download this release artifact",
+    );
+  return null;
 }

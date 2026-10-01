@@ -9,6 +9,7 @@
  */
 
 import type { Env } from "../env.js";
+import { isAllowedStorageHost } from "../http.js";
 
 /**
  * A hostname in the form hosts are compared in: lowercase, with any trailing dots removed.
@@ -40,4 +41,20 @@ export function bytesHostname(env: Pick<Env, "BLOB_ORIGIN">): string | null {
 export function isBytesHost(url: URL, env: Pick<Env, "BLOB_ORIGIN">): boolean {
   const host = bytesHostname(env);
   return host !== null && normalizeHostname(url.hostname) === host;
+}
+
+/**
+ * May a signed-in customer be REDIRECTED to `host` for a download (R6-12)? The GitHub storage
+ * hosts `isAllowedStorageHost` names, plus — deliberately, P2b-04 — this deployment's own bytes
+ * host, where Distribution serves R2-held bytes. A separate predicate from the SSRF guard's on
+ * purpose: "where may the worker FETCH from" stays GitHub-only (`streamAsset`), and only the
+ * portal's redirect learns the second host.
+ */
+export function isAllowedDownloadRedirectHost(
+  host: string,
+  env: Pick<Env, "BLOB_ORIGIN">,
+): boolean {
+  if (isAllowedStorageHost(host)) return true;
+  const bytes = bytesHostname(env);
+  return bytes !== null && normalizeHostname(host) === bytes;
 }

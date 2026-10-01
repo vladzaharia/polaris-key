@@ -19,6 +19,7 @@ import type { Env, Db } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";
 import type { UpdateArch } from "@polaris-key/protocol/update";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { FetchImpl } from "../release/githubApp.js";
 import { fetchTextAsset, getReleaseByTag } from "../release/github.js";
 import { matchAsset, normalizeArch, sigAssetName } from "../release/assets.js";
@@ -73,6 +74,13 @@ export function handleUpdate(
   kind: UpdateSurfaceKind,
   params: ReleaseParams,
   fetchImpl: FetchImpl = fetch,
+  /**
+   * Who may read the appcast: Distribution's delivery access for the `app` deliverable
+   * (`delivery.accessMode()`, P2b-04) — the same answer the download behind each enclosure
+   * enforces, so the feed can no longer offer what the download refuses. The router reads it
+   * through the hook; omitted, an appcast fails closed to `entitled` (`artifactPolicy`).
+   */
+  artifactsAccess?: ReleaseAccess,
 ): Promise<Response> {
   return serveReleaseSurface(
     req,
@@ -90,7 +98,9 @@ export function handleUpdate(
               ? { ...ctx.params, channel: "stable" }
               : ctx.params,
             ctx,
+            artifactsAccess,
           ),
+    artifactsAccess !== undefined ? { artifactsAccess } : {},
   );
 }
 
@@ -124,6 +134,7 @@ async function handleVersion({
 async function handleAppcast(
   params: ReleaseParams,
   { env, db, cfg, product, origin, now, fetchImpl }: SurfaceContext,
+  artifactsAccess: ReleaseAccess | undefined,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
@@ -150,7 +161,7 @@ async function handleAppcast(
   // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline.
   // Signed Sparkle appcasts are required by default; only an operator (never a `.pkey/`
   // push) can opt a product out. R6-03.
-  const policy = artifactPolicy(cfg);
+  const policy = artifactPolicy(cfg, artifactsAccess);
   if (policy.requireSparkleSignature && !cfg.sparkle_ed25519_pub) {
     return notFound();
   }
@@ -209,6 +220,9 @@ async function handleAppcast(
     edSignature = claimed;
   }
 
+  // The enclosure keeps the `/release/dl` spelling, a permanent alias of the canonical
+  // `/distribution/dl` (P2b-04): a feed already cached by every installed copy names it, and a
+  // changed URL would be a changed feed for no change in what is offered.
   const enclosureUrl = `${origin}/${product.slug}/release/dl/${segment}/${dmg.name}`;
   const channelTitle =
     sel.kind === "stable" ? binaryName : `${binaryName} (${sel.raw})`;
