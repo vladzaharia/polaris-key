@@ -56,7 +56,7 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
   `packages/shared-protocol/src/core.ts:9` (`PROTOCOL_VERSION = 3`), `release.ts`, `update.ts`;
   `packages/shared-jws/src/index.ts:31-35` (`JwsTyp`) and `:308-379` (`verifyJws`);
   `packages/client-core/src/{verify,trust,clock,store}.ts`; `tools/sign-corpus.ts` (`KEYS` at
-  `:58-71`, `buildV2` at `:1619`, the mirrors in `main` at `:2334`);
+  `:87-100`, `buildV2` at `:1709`, the mirrors in `main` at `:4308`);
   `conformance/runners/node/corpusV2.test.ts`; `packages/docs/src/content/docs/contribute/{waves,corpus}.md`.
 - The landed P2-03 and P2b-01 work: the names they chose for `seq`, deliverable ids, channel
   policy and the descriptor hooks. Use those names, not the research's.
@@ -164,8 +164,8 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
     until [S-06](S-06-outlet-signals.md) reports.
 12. Corpus placement: keep `conformance/corpus/v2/` and `corpusVersion: 2` with additive sections
     and new files versioned `updateMatrixVersion: 1` and `outletMatrixVersion: 1`, or open
-    `corpus/v3/`. Every runner asserts `corpusVersion == 2` today (Node runner `:179`, Python
-    `test_conformance.py:61`, Swift `ConformanceTests.swift:185`). [Keep v2, additive.]
+    `corpus/v3/`. Every runner asserts `corpusVersion == 2` today (Node runner `:217`, Python
+    `test_conformance.py:62`, Swift `ConformanceTests.swift:185`). [Keep v2, additive.]
 13. Committed test keys: new release test keys in `KEYS` (e.g. `djdl-release-test-2026` and a
     second for rotation); feeds signed by the existing `pkey-test-prod-2026`.
 14. Malleability vectors: the list, the expected verdict for each, and the rule when backends
