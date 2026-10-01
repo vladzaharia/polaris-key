@@ -660,7 +660,7 @@ own key could also publish that key as the expected one.
 ### Outlet credentials (P5-01)
 
 **What they are.** The keys a store connector authenticates with (A11): an App Store Connect API
-key (`.p8`), the App Store Server Notifications webhook secret, a Google service-account key, a
+key (`.p8`), the App Store Connect webhook secret, a Google service-account key, a
 Partner Center client secret. Each is worth as much as the release channel (A3) — whoever holds
 one can ship to that store as the operator.
 
@@ -682,7 +682,8 @@ accessor.
   (`admin/handlers/outletCredentials.ts`); only the owner, the KEK re-seal sweep and
   `deleteProduct` name the table; only the vault, the owner, the token helpers and the sweep spell
   the AAD kind; and only the owner and the Core admin handler name the writers
-  `putOutletCredential` / `deleteOutletCredential` (`test/outletCredentialReach.test.ts`). In
+  `putOutletCredential` / `pinOutletCredential` / `deleteOutletCredential`
+  (`test/outletCredentialReach.test.ts`). In
   particular Config (edge-mint) and `core/products.ts` (`openProductSecret`) cannot reach it, and
   no manifest ingest, resync, service hook — nor a Distribution connector, webhook handler or
   route, even though Distribution may import the module to open — can write or delete a row.
@@ -691,7 +692,17 @@ accessor.
   be RSA and name exactly `https://oauth2.googleapis.com/token`, so a stored credential can never
   make the Worker post a signed assertion to a host of the writer's choosing — and echoes the id
   only. `GET` returns metadata (`meta_json`: key id, issuer id, client email, tenant, client and
-  seller ids) and health, never a value; the sealed column is never selected.
+  seller ids, and the pin below) and health, never a value; the sealed column is never selected.
+- **The operator names the app (P5-02f).** A kind whose key reaches more than one store app
+  carries an operator-owned **pin** (`OUTLET_CREDENTIAL_PINS`: today `asc-api-key` → `appleId`),
+  the one app its connector may read and act on. It is stored in `meta_json` (not secret, not
+  sealed), written only by the Core admin handler — with a value, or alone (`{kind, pin}`, which
+  touches neither the sealed blob nor its version marker) — and never taken from a value field
+  (the kind's projection is written first, the pin over it). A rotation without `pin` keeps the
+  stored one. Every change is its own `outlet_credential.pin` audit row with the old and new pin.
+  A connector compares it with the manifest's outlet identity (`checkOutletCredentialPin`) before
+  it opens anything; a missing pin is refused like a wrong one. The connector section below says
+  what that closes.
 - **Every use audited, fail closed.** `openOutletCredential(env, db, product, id, use)` appends an
   `outlet_credential.use` row (actor `system:distribution`, the `use`, the outcome) on every call,
   usable or not, and answers `null` — "unusable credential" — for an unknown id, a disabled row,
@@ -714,11 +725,204 @@ credential. The admin plane (A4) can overwrite a credential (but not read one ba
 bug in the Distribution service could misuse an opened value or a cached token; the audit row per
 open is the detection, and because token caches are checked first, opens stay at tens a day per
 credential, so that signal is not buried. A path that needs the raw value on every request —
-verifying an inbound App Store notification against `asc-webhook-secret` (P5-02) — opens it every
-time, and each open is two D1 writes; such a path must authenticate or rate-limit the request
-before the open, or it becomes an unauthenticated write amplifier (the R1-04 class). Least privilege per store (App Manager team key; one-app Play service account; Partner
+verifying an inbound App Store Connect webhook against `asc-webhook-secret` (P5-02) — opens it
+every time, and each open is two D1 writes; such a path must authenticate or rate-limit the request
+before the open, or it becomes an unauthenticated write amplifier (the R1-04 class). P5-02 does
+both what it can before the open: the signature header's shape is checked, and the delivery is
+rate-limited per product, fail closed (next section). That bounds the amplification; it does not
+keep the signal quiet: anyone can send a well-formed header, so `asc-webhook-secret` can be made
+to log up to 60 opens a minute per product, and its "tens a day" baseline does not hold under
+attack (next section, Residual). Least privilege per store (App Manager team key; one-app Play service account; Partner
 Center Manager role) is documented for operators in `admin/secrets-and-keys.md` but cannot be
 verified by the Worker.
+
+### Store connectors: App Store Connect (P5-02)
+
+**What it is.** `services/distribution/connectors/asc/` keeps a product's App Store and TestFlight
+state in Distribution: availability and submissions (`source = asc`), the phased release mirrored
+into `dist_rollouts` (`mirrored = 1`), and Background Asset version states as connector objects
+(`dist_connector_objects`, unresolved until P5-08 maps asset packs to pack releases). Three entry
+points: Apple's signed webhook `POST /<p>/distribution/hooks/asc`, a poller on a 15-minute cron
+(`CONNECTOR_POLL_CRON`), and operator controls in the console (`…/distribution/connectors/asc/…`:
+phased release pause/resume/complete, release a held version, the TestFlight public link,
+register the webhook). It authenticates to Apple with the `asc-api-key` outlet credential (P5-01)
+and verifies Apple with `asc-webhook-secret`; it never writes a credential.
+
+**Webhook forgery.** `x-apple-signature: hmacsha256=<hex>` is HMAC-SHA256 over the raw body with
+the product's own `asc-webhook-secret`, compared in constant time. A missing header, another
+scheme (`sha256=`, `hmacsha1=`, upper case) or a short MAC is refused 401 before anything is
+opened or counted; a body over 64 KiB is 413. The secret is per product, so a secret leaked from
+one product forges nothing for another. Even a valid signature is only a HINT: the handler never
+writes what the payload says. It re-reads the instance from the App Store Connect API with the
+product's own key and writes only what that GET says — a forged or replayed payload can at worst
+make the Worker re-read a real object.
+
+**Cross-app writes (ownership fails closed, against the app the manifest names).** The `asc-api-key` the brief asks for is a team key,
+so it can read every app in the team, and the instance a signed payload names can be any of them.
+Before storing or writing anything, every path proves the object is the outlet's app: the GET asks
+for `include=app` (the real API puts relationship `data` in a response only when the relationship
+is included) and an absent or different `app` is treated as foreign — no connector object, no
+availability, outcome `ignored`. App Store versions, builds and build uploads carry `app`
+themselves; a beta detail is proven through its build; a Background Asset version or release
+through the chain release → version → asset, with `backgroundAssets/{id}?include=app` as the
+check, each link read from the primary data of its own GET. A build upload that cannot be proven
+writes nothing, whatever its state, and is never followed into the build it names. The poller's
+lists are app-scoped by their endpoint (`/v1/apps/{appleId}/…`, `/v1/builds?filter[app]=…`); a
+reconciled object that is gone or no longer provable is retired (`terminal = 1`), never updated.
+The state-changing controls hold to the same rule before they write, because a team key's write
+to another app's version (releasing it, completing its phased release) cannot be undone by a later
+re-read: `release` and `phased-release/*` act only on a stored version whose `ascAppId` is the
+app the setup names now (a row stored while the outlet named another app is invisible to them),
+and first re-read it with `include=app`, sending nothing unless Apple answers that it is this
+app's version of that release; `testflight/public-link` proves its beta group with
+`betaGroups/{id}?include=app`. The test fake (`test/ascFake.ts`) answers relationships the same way, so a test cannot pass on
+data the real API would not send.
+
+**Who picks "the outlet's app".** Every check above compares against `appleId`, which the setup
+reads from `dist_outlets.identity_json`. That column is manifest-owned (migration 0036: every
+resync rewrites it), so it comes from `.pkey/distribution`, and whoever can push that file picks
+the app. The credential is the other way round: an operator stores the `asc-api-key`, it is a
+team key, and the operator docs suggest one key may serve several products. The ownership checks
+therefore stop a payload, a webhook or a stale row from reaching another app. They do NOT stop a
+repo writer of product Q, the actor P2b-02 already treats as a third party, from setting Q's
+`appleId` to any other app the team key can see. The next resync then makes the connector, with
+the operator's key:
+
+- mirror that app's versions, builds, phased release and held state into Q's tables, Q's
+  console view and Q's `delivery()` availability;
+- register the webhook (the `webhook` control) on that app;
+- point the console controls at that app's versions. The repo writer also publishes Q's
+  releases, so they can publish one whose version string matches the other app's
+  `PENDING_DEVELOPER_RELEASE` version. A platform admin who then presses `release` or
+  `phased-release/complete` on Q releases or completes the other app's version, which cannot be
+  undone.
+
+That was a confused deputy over every app the key can see, and P5-02 shipped with it as a
+documented residual. **P5-02f closes it with the operator's pin.** The `asc-api-key` carries the
+`appleId` a platform admin chose (P5-01 section, "The operator names the app"), and the setup
+(`connectors/asc/setup.ts`, `resolveAscSetup`) exists only when the chosen key's pin equals the
+manifest's `appleId`. Otherwise the connector is inert, before any token is minted or credential
+opened: the poller skips the product (`credential-pin-missing` / `credential-pin-mismatch`), the
+webhook answers Core's not-found shape (so a delivery for the old app mirrors nothing), every
+control answers 409 `credential_pin_missing` / `credential_pin_mismatch` and sends nothing, and
+`GET …/distribution/connectors/asc` shows why (`inert`: the manifest's app, the chosen key, the
+pinned app). A repo writer who changes the outlet's `appleId` therefore stops the connector
+instead of aiming it; it stays stopped until the manifest names the pinned app again or a
+platform admin re-pins, which is audited. The pin is checked on the credential the setup picks (a
+bound key before an unbound one), so a second key's matching pin never stands in for it. The
+ownership checks above then hold against an app the operator chose, not one the repo chose
+(`test/ascPin.test.ts`).
+
+**Replay.** Deliveries are deduplicated on `data.id`: a KV marker (7 days, like the GitHub
+webhook) and the `dist_connector_events` primary key. A redelivery answers 200 `{duplicate: true}`
+and makes no API call and no write.
+
+**Lost follow-ups.** The webhook answers before it re-reads the instance. A follow-up that fails
+records `failed` on the event row and drops the KV marker; one cut off before it records anything
+leaves `received`. The poll tick re-drives both (`poll.ts` step 4): up to 5 events a tick, received
+in the last 24 hours, `received` ones only 5 minutes on, each re-read through the same ownership
+chain as the webhook, the row's outcome moved to what that read came to. An older event waits for
+a manual redelivery (Apple allows one resend per delivery, notes/E1 §A1), which the dropped
+marker lets through. A delivery the route REFUSED (401, 413, 429) was never stored and is not
+re-driven, and Apple does not retry it on its own: notes/E1 documents only the manual resend. App
+Store versions, builds and phased release still come back on the next 15-minute tick, because the
+poller lists them; a Background Asset version or release that the refused delivery named first
+does not, since nothing lists them — it is read when Apple sends its next event for it, or when an
+operator resends the delivery from App Store Connect.
+
+**Write amplification.** Each secret open is an audit row and a D1 write (P5-01), so deliveries
+are rate-limited per product (`ascWebhook`, 60 a minute) BEFORE the open, and the limiter fails
+CLOSED: with the limiter down the route answers 429 rather than letting an unsigned flood write.
+Unknown products, products without the connector, and Distribution-off products answer Core's
+not-found shape before any of this, byte-identical to an unknown connector. A product that has
+the connector set up answers 401 to an unsigned request instead, so the route does tell a prober
+which products run it; that is not treated as a secret (the product's App Store listing says as
+much), but it is what makes the residual below targetable.
+
+**SSRF.** The client sends requests only to `https://api.appstoreconnect.apple.com/v1/…`. Paths
+are built from segments that must match `^[A-Za-z0-9][A-Za-z0-9-]*$` (so a payload's
+`instance.id` of `../../users` is refused), the instance type must be one the event may name, and
+a JSON:API `links.next` is followed only when it names the same origin and `/v1/`. The bearer
+token therefore cannot be sent to a host a payload, a manifest or an operator chooses.
+
+**Errors carry no bodies.** An ASC failure becomes `AscError` with the method, path and HTTP
+status only; that line is what reaches `outlet_credentials.last_error`, the cron's thrown
+aggregate and a control's `store_refused` refusal.
+
+**Blast radius of a stolen App Manager key.** Apple's App Manager role covers metadata, TestFlight
+(groups, testers, public links), App Store versions, phased release and release requests, review
+submissions and — through the API — build uploads; it does NOT sign: an `.ipa` must still be
+signed with a distribution certificate the key cannot create or export, and App Review still sees
+every App Store version. A thief could pause or complete a phased release, release a held
+version early, open a public TestFlight link, change metadata, or upload a build signed with
+certificates they already hold. Mitigations: the key is custodied by P5-01 (sealed, platform-admin
+writes only, every open audited); the connector itself never uploads and never submits for
+review; App Store Connect's own activity log is the second record; rotate by revoking the key in
+Users and Access and PUTting a new one (the version marker drops cached tokens). Least privilege
+(App Manager, not Admin; a separate Developer-role key for CI uploads) is the operator's choice,
+documented in `services/distribution/app-store-connect.md`.
+
+**The mirror is not an access control.** A phased release reaches only devices with automatic
+updates on, and anyone can download the version by hand, so `dist_rollouts` rows with
+`source = asc` are informative for the feed (P3-03) and the console; nothing may gate a download
+on them. A mirrored row refuses direct edits (`rollout_mirrored`); the connector overwrites any
+operator rollout on the same (deliverable, outlet, channel) and audits that it did. Only one
+writer may own that row, or the audit signal drowns: a replaced or removed version's phased
+release is not mirrored, an older release never takes the row from a newer one, and of a
+Universal Purchase app's platforms only one (iOS when present) writes a release's rows — the same
+rule keeps the whole-release TestFlight row on the newest build — so a tick over unchanged store
+state writes no row and no audit entry.
+
+**Controls.** Each is a platform-admin console action (session, CSRF, rate limit), runs only when
+the key's pin matches the manifest's app (else 409, nothing sent), proves the object is that app's
+first (above), sends exactly one documented request (two for webhook registration: create, then ping), writes one audit row
+with the session's subject, and re-reads the object. "Register webhook" sends the stored secret
+to Apple once; the secret is generated server-side by the Core admin handler
+(`PUT …/outlet-credentials/<id>` with `generate: true`) and never returned to anyone.
+
+**Residual.** The `ascWebhook` bucket is per product and counted before the signature is
+verified, so forged and genuine deliveries share it. Anyone who finds a product that runs the connector
+(the 401 above) can, without the secret:
+
+- **starve genuine deliveries** — about one well-formed `hmacsha256=<64 hex>` request a second
+  keeps the bucket full, and every genuine Apple delivery for that product in that minute is
+  answered 429 and lost (see Lost follow-ups for what the poller recovers and what it does not);
+- **write up to 60 audited opens a minute per product** — each forged request opens the secret
+  once (`outlet_credential.use` audit row plus the `last_used_at` write), about 86,400 a day,
+  which buries the per-open detection signal the P5-01 section relies on for that credential.
+  The `asc-api-key` opens are not affected (its token cache is checked first).
+
+Neither reveals or forges anything, and the poller keeps App Store versions, builds and phased
+release current regardless. An operator seeing either should rotate nothing (the secret is not
+at risk) and can block the source at the edge. Whoever holds a product's `asc-webhook-secret` can
+also make the Worker spend API budget re-reading objects (bounded by the rate limit and Apple's
+per-key hourly limit, which the poller reads from `X-Rate-Limit` and backs off from). Raw event
+payloads are stored for 30 days, capped at 16 KiB each; beta-feedback events can name testers, so
+`dist_connector_events` is personal data under the same retention reasoning as `audit`. The 30
+days are enforced by the nightly maintenance sweep (`scheduled.ts`, step
+`connectorEvents:<product>`), which walks every product slug, soft-deleted and Distribution-off
+products included, so a product that stops being polled does not keep its payloads forever
+(`test/scheduled.test.ts`).
+
+**Closed: a manifest-chosen app (P5-02f).** P5-02 shipped with the repo writer choosing the app
+the operator's team key reads and acts on. The operator's pin now chooses it, and the manifest can
+only agree ("Who picks the outlet's app", above). What remains:
+
+- **A re-pin is only as good as the admin's check.** A platform admin who re-pins to whatever
+  `appleId` a new manifest names, without confirming it is the product's app, reopens the hole for
+  that app. The console's pin dialog and the docs say to check first; the `outlet_credential.pin`
+  row is the record. A4 (the admin plane) can set any pin, as it can overwrite any credential.
+- **A repo writer can stop the connector.** Changing the outlet's `appleId` makes it inert (an
+  availability loss, not a write): store state stops flowing in until someone notices `inert` in
+  the console. Webhook deliveries refused meanwhile are not re-driven (Lost follow-ups, above).
+- **Several products on one key.** Each product's credential row carries its own pin, so one team
+  key stored for two products is pinned twice, once per product; the pin limits each product to
+  its own app, but the key itself can still see the whole team if it is ever stolen. One key per
+  team and one product per team where you can stays good advice.
+- **Other stores.** The pin is generic (`OUTLET_CREDENTIAL_PINS`); a Google Play service account
+  (`packageName`, P5-03) or a Partner Center app is protected only once its connector adds its
+  entry and calls `checkOutletCredentialPin` in its setup. Until then that connector has this
+  section's old residual.
 
 ### The device-code user-code page (P1-06)
 
@@ -919,6 +1123,59 @@ flight across the deploy. Confirmation on both routes is one function: the Fetch
 `no-store`. The confirmation
 page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
 
+### Release keys, the strict verifier and the signed feed (wire contract v4, P3-02)
+
+Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds two signed documents and a second
+signer. P3-02 lands the contract, the types, the corpus and the verifier fixes in every SDK; the
+Worker routes, ingest and composer arrive with P3-03, and the Worker's write checks and signer
+guard with P3-12, each of which extends this section.
+
+- **A third trust input: the pinned release keys.** A release record (`pkey-release+jws`) is
+  signed in CI by a release key and verified **only** against the release keys the app pins
+  (`pinnedReleaseKeys`), never against, merged with or extended from the product trust set. The
+  Worker never holds a release key's private half, so it cannot mint a record (the two-signer
+  model): a compromised Worker or KEK can choose among CI-signed releases, but cannot ship bytes
+  no release key signed, because every SDK verifies the record's signature, and then the
+  payload's `size` and SHA-256 against the record, before staging.
+- **Release keys are never product keys.** If a product key were pinned or declared as a release
+  key, the Worker would hold the private half of a "release key" and the two-signer property
+  would be gone without a trace. Three checks keep them apart: `verifyReleaseRecord` refuses at
+  step `jws` when the selected release key's bytes are also in the effective product trust set
+  (`record-release-key-is-product-key`); every SDK refuses options whose `pinnedReleaseKeys` and
+  trust pins share a key (`invalid-options`); and P3-03's `.pkey/release` sync refuses a declared
+  release key equal to any current or retired product signing key
+  (`release_key_is_product_key`).
+- **Hash before signature.** A feed pins each record by the SHA-256 of its exact compact JWS. A
+  client refuses a body over 88 844 bytes or with a non-ASCII byte without hashing it, and
+  checks the hash before any Ed25519 work, so substituting a record is caught by the cheapest
+  check and no attacker-chosen body reaches the signature code.
+- **One strict verifier for all six `typ`s.** Every SDK applies Ed25519 strictness (`S < L`,
+  canonical and non-small-order `A` and `R`, cofactorless equation) and an I-JSON profile
+  (well-formed UTF-8, no BOM, no lone surrogate, no U+0000 in a member name, numbers inside
+  binary64's range, at most 64 levels) before trusting a byte, and decides every integer claim
+  from its token. Before v4 the four backends disagreed on 25 such vectors (OpenSSL accepted
+  non-canonical keys CryptoKit refused, Python accepted `NaN`, Swift accepted a trailing comma
+  and decided a mistyped bundle member at the wrong step, Godot read `1e4294967297` as 10), and
+  all four accepted a small-order `R`. A divergence between verifiers is a forgery that works
+  against some installs; the corpus now pins the strict verdict in every language. P3-12 makes
+  the Worker unable to sign anything the strict verifier refuses. The verifier's work and memory
+  are linear in the capped payload: each SDK holds the non-wire-integer pointers as a tree of
+  reference tokens and builds full pointer strings only when a caller lists them, because one
+  pointer per number grows with the square of the payload (a 64 KiB document of long member
+  names over fractional numbers cost 0.25 to 1.5 GB). Each of shared-jws, Swift and Godot has a
+  regression test on that document.
+- **The canonical channel and its residual.** A feed's `channel` claim is the canonical channel
+  the Worker resolved, which keys the client's `seq` floor; a `latest` claim is refused, and no
+  SDK resolves an alias itself. One residual is accepted (plan decision 4): a request for
+  `staging` binds to `staging` or to `beta`, so a network attacker can answer it with a genuine,
+  unexpired `beta` feed of the same product. A `staging` grant already covers `beta`, and that
+  feed is checked against `beta`'s own floor; committing it removes a manual `staging` entry, so
+  a later replay of an older `staging` feed meets no floor, but such a feed must still be
+  unexpired, and the attacker could as well have withheld the answer.
+- **Feeds do not move the clock floor**, and their freshness is judged against the effective
+  clock, so winding the system clock back cannot revive an expired feed. A stale feed freezes
+  updates (`none {stale}`); it never stops play.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -990,21 +1247,21 @@ page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
 These deserve their own section because each is treated as trusted somewhere in the code while
 originating outside the trust boundary.
 
-| Input                           | Trusted for                                                                       | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------- | --------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                            |
-| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                   |
-| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                              |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                            |
-| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02).                                                                                                                                                                                             |
-| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).    |
-| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                          |
-| `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                        |
-| `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                     |
-| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                               |
-| Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                      |
-| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02). |
-| CI distribution reports         | Availability and submission state per release and outlet; key observations        | A CI job (`pkeyci_`) | `distribution:report` (default grant). Validated whole before writing (declared live outlet, known release and build, vocabulary); audited. Can show a wrong state, never ship code, gate bytes or change a key: the operator-owned key inventory only records a CI-observed fingerprint, flagging a mismatch (P2b-03).                                                                     |
+| Input                           | Trusted for                                                                       | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                                                    |
+| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                                           |
+| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                                                      |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                    |
+| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). |
+| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).                            |
+| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                                                  |
+| `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                                                |
+| `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                                             |
+| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                                                       |
+| Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                                              |
+| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02).                         |
+| CI distribution reports         | Availability and submission state per release and outlet; key observations        | A CI job (`pkeyci_`) | `distribution:report` (default grant). Validated whole before writing (declared live outlet, known release and build, vocabulary); audited. Can show a wrong state, never ship code, gate bytes or change a key: the operator-owned key inventory only records a CI-observed fingerprint, flagging a mismatch (P2b-03).                                                                                             |
 
 **CI OIDC claims are only as strong as the repository's own settings.** The policy proves the
 token came from the declared workflow, in the declared environment, on a ref a branch or tag
@@ -1137,6 +1394,15 @@ Poison the release channel
 │   ├── edit `.pkey/release` to loosen the policy  (only workflow/environment are fields; an operator-claimed policy ignores the manifest)
 │   ├── steal a minted `pkeyci_` token from a job log  (30 min, one product, scoped; static tokens ≤ 90 days, revocable)
 │   └── copy another product's gated blob into the ticket prefix to earn a ref  (refused: credentials grant PutObject/HeadObject on one prefix only; promote refuses another product's staging key)
+├── Hold the product key: a compromised Worker or KEK (wire contract v4's two-signer model, P3-02)
+│   ├── CAN withhold an update (serve no target), or delay one (stop re-signing: installs freeze at expiresAt, `none {stale}`)
+│   ├── CAN re-target a channel among CI-signed releases newer than what is installed, halt or re-bucket a rollout, narrow capabilities, or lower a floor
+│   ├── CAN raise a floor: every install of that platform below it gets a prompt it cannot dismiss, including installs whose outlet has nothing newer (`blocked app-floor`), but play continues — no v4 answer maps to `required`, and License's compatibility window stays the one tool that blocks
+│   ├── CAN point a store prompt at another listing on the same store (the listing-URL prefixes fix the store, not the app)
+│   ├── CAN fast-forward `seq` to 2^53 − 1: installs that fetch that feed refuse the recovered Worker's lower `seq` and freeze once it is stale — until the operator runs `feed:seq-ceiling` for the product, which sets its ceiling flag (every `seq` row created later starts at the ceiling, so channels the attacker answered first, a manual or `pr-<n>` channel with no row, are covered), raises every existing row and drops the stored documents; the recovered Worker then signs every channel at the ceiling with a newer `issuedAt`, which clients accept. The freeze ends with the recovery, not with a client release
+│   ├── CANNOT ship bytes no release key signed (records verify against pinned release keys only; the payload's size and SHA-256 are checked against the record)
+│   ├── CANNOT downgrade (no answer offers a version below the installed one), widen a capability (the feed only narrows the per-kind defaults), or send a prompt outside the listing-URL prefixes
+│   └── CANNOT stop an install from running (the licence documents it also signs are AT-1's subject)
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
 ```
 
@@ -1154,7 +1420,8 @@ release channel or artifact type is added; a service gains a route, a table or a
 descriptor hook gains a method that writes or a new provider, or a method that returns bytes
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
-offered (P3-03), or a reader of `dist_availability` does, or anything but the console's key
+offered (P3-03), or a reader of `dist_availability` does, a store connector is added, gains a
+control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, takes the app it proves against from anywhere but the manifest's outlet identity, runs without that identity matching the operator's pin on its credential (a connector whose key reaches several apps added without an `OUTLET_CREDENTIAL_PINS` entry, or a pin check dropped or made optional), lets anything but the Core admin handler write a pin, or starts uploading or submitting (P5-02, P5-02f), or anything but the console's key
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to

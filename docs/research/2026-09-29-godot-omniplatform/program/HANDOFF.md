@@ -14,6 +14,21 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
+## Storing a real App Store Connect key (P5-02, P5-02f)
+
+- [x] **Wait for the operator-owned `appleId` pin before PUTting any `asc-api-key`.** Done
+      2026-10-01: the pin landed with P5-02f (lead). The connector now runs only while the key's
+      pin equals the `appleId` in `.pkey/distribution`; a key without a pin, or a manifest naming
+      another app, leaves it inert and every control refused (THREAT-MODEL, "Closed: a
+      manifest-chosen app"). When you store the real key, **pin it to the product's app**: the
+      Secrets tab asks for the App Store Connect app id with the key, or send `"pin": "<Apple ID>"`
+      on the `PUT`. Check the number against App Store Connect (App Information → Apple ID) before
+      saving, and again before any re-pin.
+- [ ] **A Google Play service account waits for the same pin in P5-03.** Do not store a real
+      `google-service-account` until P5-03's connector adds its `packageName` entry to
+      `OUTLET_CREDENTIAL_PINS` and checks it in its setup (the mechanism is generic; see the doc
+      comment in `core/outletCredentials.ts`).
+
 ## Before djdl's next `.pkey` push (from v0.5.0)
 
 - [ ] **Add `"distribution": { "enabled": true }` to `modules` in `vladzaharia/djdl`'s

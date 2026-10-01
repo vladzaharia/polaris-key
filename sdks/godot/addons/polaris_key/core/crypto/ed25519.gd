@@ -1,3 +1,4 @@
+@tool
 # Ed25519 signature VERIFY in pure GDScript — optimized variant.
 #
 # Port of the SUPERCOP "ref10" structure (via orlp/ed25519, public domain / zlib):
@@ -1181,6 +1182,9 @@ static func ge_tobytes(s: PackedByteArray, h: Array) -> void:
 # ---- scalars (TweetNaCl modL: runs once per verify, not worth unrolling)
 
 static func sc_reduce(h: PackedByteArray) -> PackedByteArray:
+	# A local copy: on 4.4 two threads reading one const Array race (it hands elements out
+	# through a single shared slot), so thread-reachable code never indexes or iterates one.
+	var l := PackedInt64Array(L)
 	var x := PackedInt64Array()
 	x.resize(64)
 	for i in 64:
@@ -1191,7 +1195,7 @@ static func sc_reduce(h: PackedByteArray) -> PackedByteArray:
 		carry = 0
 		j = i - 32
 		while j < i - 12:
-			x[j] += carry - 16 * x[i] * L[j - (i - 32)]
+			x[j] += carry - 16 * x[i] * l[j - (i - 32)]
 			carry = (x[j] + 128) >> 8
 			x[j] -= carry * 256
 			j += 1
@@ -1199,11 +1203,11 @@ static func sc_reduce(h: PackedByteArray) -> PackedByteArray:
 		x[i] = 0
 	carry = 0
 	for k in 32:
-		x[k] += carry - (x[31] >> 4) * L[k]
+		x[k] += carry - (x[31] >> 4) * l[k]
 		carry = x[k] >> 8
 		x[k] &= 255
 	for k in 32:
-		x[k] -= carry * L[k]
+		x[k] -= carry * l[k]
 	var r := PackedByteArray()
 	r.resize(32)
 	for k in 32:
@@ -1213,11 +1217,12 @@ static func sc_reduce(h: PackedByteArray) -> PackedByteArray:
 
 
 static func s_is_canonical(sig: PackedByteArray) -> bool:
+	var l := PackedInt64Array(L)  # see sc_reduce
 	for i in range(31, -1, -1):
 		var si: int = sig[32 + i]
-		if si < L[i]:
+		if si < l[i]:
 			return true
-		if si > L[i]:
+		if si > l[i]:
 			return false
 	return false
 
@@ -1290,3 +1295,41 @@ static func prepare_key(pk: PackedByteArray) -> Array:
 	if not ge_frombytes_negate_vartime(A, pk):
 		return []
 	return [pk.duplicate(), A, odd_multiples(A)]
+
+
+# ---- P3-02: WIRE-CONTRACT-V4 §1.1, byte checks on the key A and on R before any curve math.
+
+## The eight small-order point encodings (order 1, 2, the two of order 4, the four of order 8).
+const SMALL_ORDER_ENCODINGS := [
+	"0100000000000000000000000000000000000000000000000000000000000000",
+	"ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+	"0000000000000000000000000000000000000000000000000000000000000000",
+	"0000000000000000000000000000000000000000000000000000000000000080",
+	"26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+	"26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
+	"c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+	"c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",
+]
+## x = 0 with the sign bit set: no point (check 2). Godot's decoder read the first as the identity.
+const NEGATIVE_ZERO_ENCODINGS := [
+	"0100000000000000000000000000000000000000000000000000000000000080",
+	"ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+]
+
+
+## V4 §1.1 checks 1–3 on the trusted key `pk` and the signature `R ‖ S`: `S < L`, canonical
+## encodings (a `y` below p, and not x = 0 with the sign bit), and neither `A` nor `R` of small
+## order. Byte comparisons only; `verify` keeps its own `S` and `y` checks as a second line.
+static func v4_prechecks(pk: PackedByteArray, sig: PackedByteArray) -> bool:
+	if pk.size() != 32 or sig.size() != 64:
+		return false
+	if not s_is_canonical(sig):
+		return false
+	var r := sig.slice(0, 32)
+	for enc in [pk, r]:
+		if not y_is_canonical(enc):
+			return false
+		var h: String = (enc as PackedByteArray).hex_encode()
+		if NEGATIVE_ZERO_ENCODINGS.has(h) or SMALL_ORDER_ENCODINGS.has(h):
+			return false
+	return true

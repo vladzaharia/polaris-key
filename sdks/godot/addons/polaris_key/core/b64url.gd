@@ -1,3 +1,4 @@
+@tool
 class_name PKeyB64Url
 extends RefCounted
 ## base64url (RFC 4648 §5) for the wire (WIRE-CONTRACT-V3 §1).

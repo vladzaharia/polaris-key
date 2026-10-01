@@ -45,11 +45,11 @@ built and tested against recorded payloads and a fake ASC server before any real
   `prototype/policy-recheck/recheck.mjs --rows 4,6,16` if more than a month has passed.
 - notes/E1 §A1 (endpoints, the 12 `WebhookEventType`s, `x-apple-signature`, payload envelope,
   gaps, rate limits) and §E5 (Background Asset versions and states).
-- `packages/worker/src/githubWebhook.ts`: HMAC check (`verifySignature`, line 58) and delivery
-  dedupe in KV (`DELIVERY_TTL_SECONDS`, line 16). Copy the pattern.
+- `packages/worker/src/githubWebhook.ts`: HMAC check (`verifySignature`, line 81) and delivery
+  dedupe in KV (`DELIVERY_TTL_SECONDS`, line 19). Copy the pattern.
 - `src/services/release/githubApp.ts` (`FetchImpl` injection at line 30; `backoffMillis` and
   `isRateLimited` at 273-298).
-- `src/scheduled.ts` and `src/index.ts:59-65` (`scheduled()` ignores `event.cron` today);
+- `src/scheduled.ts` and `src/index.ts:34-40` (`scheduled()` ignores `event.cron` today);
   `wrangler.toml` `[triggers]` (one daily cron).
 - `packages/worker/openapi/polaris-key.v3.yaml`, `test/routeCoverage.test.ts`.
 
@@ -66,6 +66,10 @@ built and tested against recorded payloads and a fake ASC server before any real
 - Webhook route `POST /{product}/distribution/hooks/asc` (name proposed): HMAC over the raw body,
   constant-time compare, dedupe on `data.id` (7 days in KV), 2xx fast, then fetch the instance with
   the API and write state. Unknown event types answer 204 and are logged.
+  _Correction (implementation):_ the Worker writes no runtime log (R12), so "logged" is a row in
+  the new `dist_connector_events` table (migration 0041, with `dist_connector_objects`), outcome
+  `ignored`. "2xx fast, then fetch" uses `ExecutionContext.waitUntil`, threaded to services as
+  `ServiceContext.waitUntil`; without it (tests) the follow-up runs inline.
 - Mapping of all 12 event types (below), of `AppVersionState` and the legacy `AppStoreVersionState`,
   of `internalBuildState`/`externalBuildState`, and of Background Asset version states.
 - Poller on a new cron (e.g. `*/15 * * * *`), dispatched on `event.cron` in `scheduled.ts`: phased
@@ -79,6 +83,11 @@ built and tested against recorded payloads and a fake ASC server before any real
   Each is audited and re-reads state afterwards.
 - A "register webhook" admin action: generate a secret, store it as `asc-webhook-secret`, call
   `POST /v1/webhooks` for the app with the event types, then `POST /v1/webhookPings`.
+  _Correction (implementation):_ P5-01's reach test lets no Distribution code write a credential,
+  so the secret is generated and stored by the Core admin handler
+  (`PUT …/outlet-credentials/<id>` with `{kind: "asc-webhook-secret", generate: true}`, never
+  returned); the connector's `webhook` control opens it (audited `asc:register-webhook`) and
+  registers it with Apple.
 - Recorded fixtures under `packages/worker/test/fixtures/asc/` and a fake ASC server.
 
 **Out** (and where it belongs instead):
@@ -111,6 +120,11 @@ built and tested against recorded payloads and a fake ASC server before any real
   `READY_FOR_DISTRIBUTION` and legacy `READY_FOR_SALE` → `live`; `PENDING_DEVELOPER_RELEASE` →
   `approved-held`; `WAITING_FOR_REVIEW`/`IN_REVIEW` → submission `in-review`; `REJECTED`,
   `METADATA_REJECTED`, `INVALID_BINARY` → `rejected`; `REPLACED_WITH_NEW_VERSION` → `superseded`.
+  _Correction (implementation):_ P2b-03's vocabulary has no `approved-held` or `superseded`, and
+  it already expresses both: `PENDING_DEVELOPER_RELEASE` → availability `approved` + submission
+  `pending-developer-release`; `REPLACED_WITH_NEW_VERSION` (and a Background Asset `SUPERSEDED`)
+  → availability `removed`. `WAITING_FOR_REVIEW` → submission `submitted`, `IN_REVIEW` →
+  `in-review`. The vocabulary was not grown; Apple's state is kept verbatim in `detail.ascState`.
 - **Background Asset states** (ASC OpenAPI 4.5, notes/S-01 §4): version `AWAITING_UPLOAD`,
   `PROCESSING`, `FAILED`, `COMPLETE` (with `stateDetails` errors/warnings); internal beta release
   `READY_FOR_TESTING`, `SUPERSEDED`; external beta release `READY_FOR_BETA_SUBMISSION` …
@@ -129,8 +143,17 @@ built and tested against recorded payloads and a fake ASC server before any real
   slow the poller as the remainder drops.
 - **Dependency gap.** `dist_rollouts` is P2b-04's table and P2b-04 is not a declared dependency.
   If it has not landed, ship the phased-release mirror behind a check and say so in the PR.
+  _Correction (implementation):_ P2b-04 is a declared dependency and is merged; the mirror writes
+  `dist_rollouts` directly (`rollouts.ts` `mirrorRollout`), no check needed.
 - **Threat model:** webhook forgery (HMAC), replay (dedupe), SSRF (fixed host), and the blast
   radius of a stolen App Manager key (metadata and release control, not signing).
+  _Correction (lead follow-up P5-02f):_ the brief missed a fifth threat, the confused deputy of a
+  manifest-owned `appleId` steering an operator-owned team key. P5-02 shipped it as a documented
+  residual; P5-02f closed it with an operator-owned pin on the `asc-api-key` (`pin` on the
+  credential PUT, kept in `meta_json`, audited `outlet_credential.pin`). The connector is inert,
+  every control refused (409 `credential_pin_missing` / `credential_pin_mismatch`) and the webhook
+  not-found unless the chosen key's pin equals the manifest's `appleId`
+  (`connectors/asc/setup.ts` `resolveAscSetup`, `test/ascPin.test.ts`).
 
 ## Steps
 
@@ -144,18 +167,18 @@ built and tested against recorded payloads and a fake ASC server before any real
 
 ## Acceptance criteria
 
-- [ ] `pnpm --filter @polaris-key/worker test -- asc` covers: valid, invalid, missing and
+- [x] `pnpm --filter @polaris-key/worker test -- asc` covers: valid, invalid, missing and
       wrong-prefix `x-apple-signature`; a redelivered `data.id` changes nothing; each of the 12
       event types is mapped or explicitly ignored; `READY_FOR_SALE` and `READY_FOR_DISTRIBUTION`
       both yield `live`; phased day 3 → 500 bp; `PAUSED` mirrors as `paused`; a 429 backs off.
-- [ ] Each control sends the exact documented request to the fake server, writes one audit row,
+- [x] Each control sends the exact documented request to the fake server, writes one audit row,
       and re-reads state.
-- [ ] With distribution disabled, or without an `asc-api-key` credential, the webhook answers the
+- [x] With distribution disabled, or without an `asc-api-key` credential, the webhook answers the
       service not-found shape and the poller skips the product.
-- [ ] The credential is only reached through `openOutletCredential` (the P5-01 reach test passes).
-- [ ] OpenAPI and `routeCoverage` include the route; `docs gen:check` passes.
-- [ ] The threat model covers the webhook and the key.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd`.
+- [x] The credential is only reached through `openOutletCredential` (the P5-01 reach test passes).
+- [x] OpenAPI and `routeCoverage` include the route; `docs gen:check` passes.
+- [x] The threat model covers the webhook and the key.
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
 
 ## Verify
 

@@ -93,7 +93,8 @@ export const CORS_MAX_AGE = "600";
  * policy routes (`release/channels/{channel}/{promote,pin,unpin}`,
  * `release/releases/{releaseId}/yank`), its publishing routes and Distribution's rollout routes
  * (`distribution/rollouts/{outlet}/{channel}[/{verb}]`) — which a CI job calls with a `pkeyci_`
- * bearer and no browser page ever should.
+ * bearer and no browser page ever should — and the store webhooks
+ * (`distribution/hooks/asc`, P5-02), which only the store's servers call.
  *
  * The permanent aliases resolve to the same `{kind:"service"}` route as their targets
  * (`router.ts`), so they are covered exactly when their targets are.

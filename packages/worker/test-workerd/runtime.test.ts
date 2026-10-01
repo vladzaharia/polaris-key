@@ -19,6 +19,10 @@ import { D1Db } from "../src/db/d1.js";
 import { validatePayload } from "../src/core/payload.js";
 import { signJwtEs256, signJwtRs256 } from "../src/core/jwt.js";
 import {
+  parseSignature,
+  signatureMatches,
+} from "../src/services/distribution/connectors/asc/webhook.js";
+import {
   TEST_KID,
   TEST_PEM,
   TEST_PUB,
@@ -332,5 +336,48 @@ describe("GET /<product>/config/document end to end on workerd", () => {
       const res = await SELF.fetch(`https://key.plrs.im${path}`);
       expect(res.status).toBe(404);
     }
+  });
+});
+
+describe("App Store Connect webhooks on workerd (P5-02)", () => {
+  it("verifies an hmacsha256 signature with workerd's WebCrypto HMAC", async () => {
+    // RFC 4231-style public vector: HMAC-SHA256("key", "The quick brown fox jumps over the lazy dog").
+    const body = new TextEncoder().encode(
+      "The quick brown fox jumps over the lazy dog",
+    );
+    const good = parseSignature(
+      "hmacsha256=f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
+    );
+    expect(good).not.toBeNull();
+    expect(await signatureMatches("key", body, good!)).toBe(true);
+    expect(await signatureMatches("other", body, good!)).toBe(false);
+    expect(
+      parseSignature(
+        "sha256=f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
+      ),
+    ).toBeNull();
+  });
+
+  it("applies migration 0041 and answers the service not-found shape for a product without the connector", async () => {
+    const db = new D1Db(env.DB);
+    await seedProduct(env, db, "djdl5", djdlCatalog);
+    await db.run(
+      `INSERT INTO dist_connector_events
+         (product, connector, event_id, event_type, outcome, payload_json, received_at)
+       VALUES ('djdl5', 'asc', 'e-1', 'PING', 'stored', '{}', 1)`,
+    );
+    const row = await db.first<{ outcome: string }>(
+      "SELECT outcome FROM dist_connector_events WHERE product = 'djdl5'",
+    );
+    expect(row?.outcome).toBe("stored");
+    const res = await SELF.fetch(
+      "https://key.plrs.im/djdl5/distribution/hooks/asc",
+      {
+        method: "POST",
+        headers: { "x-apple-signature": `hmacsha256=${"0".repeat(64)}` },
+      },
+    );
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: { code: "not_found" } });
   });
 });

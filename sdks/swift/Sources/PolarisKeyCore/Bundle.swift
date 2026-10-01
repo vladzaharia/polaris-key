@@ -116,10 +116,20 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     // ordinary document call site. The cap comes from the protocol constant, never from the
     // caller — no host gets to choose how big a bundle may be.
     guard
-        let bundle = JWSVerifier.verifyDecoding(
-            BundleDoc.self, jws, trust: options.pinned, typ: .bundle, requireTyp: true,
+        let verified = JWSVerifier.verify(
+            jws, trust: options.pinned, typ: .bundle, requireTyp: true,
             maxPayloadBytes: MAX_BUNDLE_BYTES)
     else { return .refused(.bundleJwsRejected) }
+    // The payload verified; a member that is missing or mistyped, or a present `null` in
+    // `docs`, is a CLAIMS failure (V4 §3), never a signature one.
+    guard let bundle = try? JSONDecoder().decode(BundleDoc.self, from: verified.payload)
+    else { return .refused(.bundleClaimsRejected) }
+    guard
+        wireInteger(
+            bundle.issuedAt, pointer: "/issuedAt", min: 0, in: verified.nonWireIntegers),
+        wireInteger(
+            bundle.expiresAt, pointer: "/expiresAt", min: 0, in: verified.nonWireIntegers)
+    else { return .refused(.bundleClaimsRejected) }
 
     // ── 2. The bundle's OWN claims, on NETWORK-path freshness ────────────────────────────
     // §7.2: a stale bundle is refused even though the documents it carries are validated with

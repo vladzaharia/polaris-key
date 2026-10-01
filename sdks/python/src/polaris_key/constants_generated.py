@@ -28,6 +28,22 @@ __all__ = [
     "STORE_BACKEND_VALUES",
     "StoreDegradedReason",
     "STORE_DEGRADED_REASON_VALUES",
+    "OutletKind",
+    "OUTLET_KIND_VALUES",
+    "OutletConfidence",
+    "OUTLET_CONFIDENCE_VALUES",
+    "OutletSubkind",
+    "OUTLET_SUBKIND_VALUES",
+    "UpdateAction",
+    "UPDATE_ACTION_VALUES",
+    "UpdateNoneReason",
+    "UPDATE_NONE_REASON_VALUES",
+    "UpdateBlockedReason",
+    "UPDATE_BLOCKED_REASON_VALUES",
+    "BinaryMethod",
+    "BINARY_METHOD_VALUES",
+    "UpdateEvent",
+    "UPDATE_EVENT_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -37,6 +53,12 @@ __all__ = [
     "CORPUS_VERSION",
     "GATE_MATRIX_VERSION",
     "FINGERPRINT_VERSION",
+    "STAGE_MATRIX_VERSION",
+    "UPDATE_MATRIX_VERSION",
+    "OUTLET_MATRIX_VERSION",
+    "MAX_WIRE_INTEGER",
+    "MAX_JSON_DEPTH",
+    "MAX_RECORD_JWS_BYTES",
     "CHANNEL_ALIASES",
     "CHANNEL_BETA",
     "CHANNEL_DEV",
@@ -130,6 +152,10 @@ class ErrorCode:
     STORE_FAILED: Final = "store-failed"
     NO_TOKEN: Final = "no-token"
     MINT_UNAVAILABLE: Final = "mint-unavailable"
+    FEED_REJECTED: Final = "feed-rejected"
+    FEED_ROLLBACK: Final = "feed-rollback"
+    RECORD_REJECTED: Final = "record-rejected"
+    RECORD_MISMATCH: Final = "record-mismatch"
 
 
 #: Every ``ErrorCode`` value, in source order.
@@ -211,6 +237,10 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "store-failed",
     "no-token",
     "mint-unavailable",
+    "feed-rejected",
+    "feed-rollback",
+    "record-rejected",
+    "record-mismatch",
 )
 
 
@@ -294,6 +324,10 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "store-failed": "client",
         "no-token": "client",
         "mint-unavailable": "client",
+        "feed-rejected": "client",
+        "feed-rollback": "client",
+        "record-rejected": "client",
+        "record-mismatch": "client",
     }
 )
 
@@ -542,6 +576,198 @@ STORE_DEGRADED_REASON_VALUES: Tuple[str, ...] = (
 )
 
 
+class OutletKind:
+    """The 17 outlet kinds, in `OUTLET_KINDS` order (README §3.1, plans/P3-01.md §2.9). `unknown` is a detection result, not a kind, and is not listed."""
+
+    DIRECT: Final = "direct"
+    APP_STORE: Final = "app-store"
+    TESTFLIGHT: Final = "testflight"
+    ALTSTORE: Final = "altstore"
+    ALTSTORE_PAL: Final = "altstore-pal"
+    PLAY: Final = "play"
+    PLAY_TESTING: Final = "play-testing"
+    OBTAINIUM: Final = "obtainium"
+    FDROID_REPO: Final = "fdroid-repo"
+    MS_STORE: Final = "ms-store"
+    APP_INSTALLER: Final = "app-installer"
+    STEAM: Final = "steam"
+    ITCH: Final = "itch"
+    FLATHUB: Final = "flathub"
+    SNAP: Final = "snap"
+    WINGET: Final = "winget"
+    WEB: Final = "web"
+
+
+#: Every ``OutletKind`` value, in source order.
+OUTLET_KIND_VALUES: Tuple[str, ...] = (
+    "direct",
+    "app-store",
+    "testflight",
+    "altstore",
+    "altstore-pal",
+    "play",
+    "play-testing",
+    "obtainium",
+    "fdroid-repo",
+    "ms-store",
+    "app-installer",
+    "steam",
+    "itch",
+    "flathub",
+    "snap",
+    "winget",
+    "web",
+)
+
+
+class OutletConfidence:
+    """How sure outlet detection is, strongest first (`OUTLET_CONFIDENCES`, plans/P3-01.md §2.9)."""
+
+    ATTESTED: Final = "attested"
+    DECLARED: Final = "declared"
+    HEURISTIC: Final = "heuristic"
+    STAMP: Final = "stamp"
+
+
+#: Every ``OutletConfidence`` value, in source order.
+OUTLET_CONFIDENCE_VALUES: Tuple[str, ...] = (
+    "attested",
+    "declared",
+    "heuristic",
+    "stamp",
+)
+
+
+class OutletSubkind:
+    """How a `direct` install was put on the device, where that changes who updates it (`OUTLET_SUBKINDS`, plans/P3-01.md §2.9)."""
+
+    HOMEBREW: Final = "homebrew"
+    NPM: Final = "npm"
+    PNPM: Final = "pnpm"
+    NPX: Final = "npx"
+    SCOOP: Final = "scoop"
+    CHOCOLATEY: Final = "chocolatey"
+    FLATPAK: Final = "flatpak"
+    APPIMAGE: Final = "appimage"
+
+
+#: Every ``OutletSubkind`` value, in source order.
+OUTLET_SUBKIND_VALUES: Tuple[str, ...] = (
+    "homebrew",
+    "npm",
+    "pnpm",
+    "npx",
+    "scoop",
+    "chocolatey",
+    "flatpak",
+    "appimage",
+)
+
+
+class UpdateAction:
+    """The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed."""
+
+    NONE: Final = "none"
+    CODE_READY: Final = "code-ready"
+    BINARY: Final = "binary"
+    STORE: Final = "store"
+    PLATFORM: Final = "platform"
+    BLOCKED: Final = "blocked"
+
+
+#: Every ``UpdateAction`` value, in source order.
+UPDATE_ACTION_VALUES: Tuple[str, ...] = (
+    "none",
+    "code-ready",
+    "binary",
+    "store",
+    "platform",
+    "blocked",
+)
+
+
+class UpdateNoneReason:
+    """Why the update decision is `none` (`NONE_REASONS`, plans/P3-01.md §2.8)."""
+
+    UP_TO_DATE: Final = "up-to-date"
+    BEHIND: Final = "behind"
+    NOT_AVAILABLE: Final = "not-available"
+    HALTED: Final = "halted"
+    OUT_OF_BUCKET: Final = "out-of-bucket"
+    STALE: Final = "stale"
+    SKIPPED: Final = "skipped"
+    NO_METHOD: Final = "no-method"
+    NO_BUILD: Final = "no-build"
+    UNKNOWN_VERSION: Final = "unknown-version"
+
+
+#: Every ``UpdateNoneReason`` value, in source order.
+UPDATE_NONE_REASON_VALUES: Tuple[str, ...] = (
+    "up-to-date",
+    "behind",
+    "not-available",
+    "halted",
+    "out-of-bucket",
+    "stale",
+    "skipped",
+    "no-method",
+    "no-build",
+    "unknown-version",
+)
+
+
+class UpdateBlockedReason:
+    """Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed."""
+
+    APP_FLOOR: Final = "app-floor"
+
+
+#: Every ``UpdateBlockedReason`` value, in source order.
+UPDATE_BLOCKED_REASON_VALUES: Tuple[str, ...] = (
+    "app-floor",
+)
+
+
+class BinaryMethod:
+    """How a `binary` decision installs the new build (`BINARY_METHODS`, plans/P3-01.md §2.8)."""
+
+    NATIVE: Final = "native"
+    DOWNLOAD: Final = "download"
+    SIDECAR_PCK: Final = "sidecar-pck"
+
+
+#: Every ``BinaryMethod`` value, in source order.
+BINARY_METHOD_VALUES: Tuple[str, ...] = (
+    "native",
+    "download",
+    "sidecar-pck",
+)
+
+
+class UpdateEvent:
+    """The update telemetry event names on the unsigned `devices/report` (plans/P3-01.md §2.10). The shapes and the Worker allowlist are P6-03's."""
+
+    UPDATE_OFFERED: Final = "update_offered"
+    UPDATE_DOWNLOADED: Final = "update_downloaded"
+    UPDATE_APPLIED: Final = "update_applied"
+    UPDATE_CONFIRMED: Final = "update_confirmed"
+    UPDATE_REVERTED: Final = "update_reverted"
+    PACK_FAILED: Final = "pack_failed"
+    BOOT_ROLLED_BACK: Final = "boot_rolled_back"
+
+
+#: Every ``UpdateEvent`` value, in source order.
+UPDATE_EVENT_VALUES: Tuple[str, ...] = (
+    "update_offered",
+    "update_downloaded",
+    "update_applied",
+    "update_confirmed",
+    "update_reverted",
+    "pack_failed",
+    "boot_rolled_back",
+)
+
+
 class HeaderName:
     """The `X-PKey-*` request header names (wire contract v3 §5)."""
 
@@ -589,7 +815,7 @@ SERVICE_SLUG_VALUES: Tuple[str, ...] = (
 
 
 #: The wire contract version (`@polaris-key/protocol/core`).
-PROTOCOL_VERSION: Final[int] = 3
+PROTOCOL_VERSION: Final[int] = 4
 
 
 #: `corpusVersion` of conformance/corpus/v2/cases.json.
@@ -602,6 +828,30 @@ GATE_MATRIX_VERSION: Final[int] = 2
 
 #: `fingerprintVersion` of conformance/corpus/v2/fingerprint.json.
 FINGERPRINT_VERSION: Final[int] = 1
+
+
+#: `stageMatrixVersion` of conformance/corpus/v2/stage-matrix.json.
+STAGE_MATRIX_VERSION: Final[int] = 2
+
+
+#: `updateMatrixVersion` of conformance/corpus/v2/update-matrix.json.
+UPDATE_MATRIX_VERSION: Final[int] = 1
+
+
+#: `outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json.
+OUTLET_MATRIX_VERSION: Final[int] = 1
+
+
+#: Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
+MAX_WIRE_INTEGER: Final[int] = 9007199254740991
+
+
+#: Wire contract v4 limit `MAX_JSON_DEPTH` (`@polaris-key/protocol/core`).
+MAX_JSON_DEPTH: Final[int] = 64
+
+
+#: Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`).
+MAX_RECORD_JWS_BYTES: Final[int] = 88844
 
 
 #: Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).

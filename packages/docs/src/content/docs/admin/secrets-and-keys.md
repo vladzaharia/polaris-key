@@ -97,7 +97,7 @@ Four kinds exist today:
 | Kind                         | Value                                                     | Least privilege                                                                    |
 | ---------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | App Store Connect API key    | key ID, issuer ID and the `.p8` file (a P-256 PKCS#8 key) | A **team** key with the **App Manager** role — not Admin.                          |
-| App Store webhook secret     | the shared secret for App Store Server Notifications      | Used only to verify Apple's webhook calls.                                         |
+| App Store webhook secret     | the shared secret App Store Connect signs webhooks with   | Used only to verify Apple's webhook calls; let the Worker generate it.             |
 | Google service account       | the service account's JSON key file                       | Invite the account to **one app** in Play Console with release permissions only.   |
 | Microsoft Partner Center app | tenant ID, client ID, client secret and seller ID         | An Entra app added to Partner Center with the **Manager** role, not Account admin. |
 
@@ -109,10 +109,14 @@ kept.
 The rules, all enforced by the Worker rather than by the console:
 
 - **Platform admins only, write-only.** `PUT /manage/api/products/<slug>/outlet-credentials/<id>`
-  with `{kind, value, outletId?, expiresAt?}` seals and stores the value and echoes the **id
+  with `{kind, value, pin?, outletId?, expiresAt?}` seals and stores the value and echoes the **id
   only**. Saving to an existing id of the same kind rotates it in place (and clears its health);
   saving a different kind to an existing id is refused (409) — delete it first. No `.pkey/`
-  manifest, resync or service can write one.
+  manifest, resync or service can write one. For an App Store webhook secret, send
+  `{kind: "asc-webhook-secret", generate: true}` instead of a value: the Worker generates 32 random
+  bytes and stores them without ever returning them, and the
+  [App Store Connect connector](/docs/services/distribution/app-store-connect/)'s "register
+  webhook" control hands them to Apple.
 - **Metadata only on read.** `GET …/outlet-credentials` lists each credential's kind, outlet,
   non-secret identifiers (key ID, issuer ID, client email, tenant, client and seller IDs), when it
   was created and by whom, when it was last used, and the last result a connector reported. There
@@ -123,7 +127,20 @@ The rules, all enforced by the Worker rather than by the console:
   cache of short-lived tokens first and open the credential only when they need a fresh token, so
   this is tens of rows a day per credential, not one per request; a request served from the cache
   is not logged and does not move **Last used**.
-  Your own writes are audited as `outlet_credential.set` and `outlet_credential.delete`.
+  Your own writes are audited as `outlet_credential.set`, `outlet_credential.pin` and
+  `outlet_credential.delete`.
+- **You pick the app, not the repo.** An App Store Connect key is a team key: it can see every app
+  in the team. So it carries a **pin**, the App Store Connect app id (the app's numeric Apple ID)
+  of the one app it may be used for in this product, and its connector runs only while the
+  product's `.pkey/distribution` names that same app. Send it as `pin` with the key (the form asks
+  for it), or alone — `{"kind": "asc-api-key", "pin": "1234567890"}`, no `value` — to re-pin a
+  stored key without pasting the `.p8` again (the pin icon on a row). A rotation that leaves `pin`
+  out keeps the old pin. Each change of a pin is audited as `outlet_credential.pin` with the old
+  and the new app id. A key with no pin, or a pin naming another app than the manifest does, is
+  stored but unused: see
+  [the connector's setup](/docs/services/distribution/app-store-connect/#pinning-the-app). The
+  list shows the pin with the key's metadata (`meta.appleId`), and `pins` maps each kind that
+  takes one to its field.
 - **Deleted with the product,** and re-sealed by the KEK rotation sweep like everything else on
   this page (its own `outletCredentials` bucket in `GET /manage/api/products/kek`).
 

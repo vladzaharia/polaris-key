@@ -84,6 +84,10 @@ export const ErrorCode = {
   storeFailed: "store-failed",
   noToken: "no-token",
   mintUnavailable: "mint-unavailable",
+  feedRejected: "feed-rejected",
+  feedRollback: "feed-rollback",
+  recordRejected: "record-rejected",
+  recordMismatch: "record-mismatch",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -166,6 +170,10 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "store-failed",
   "no-token",
   "mint-unavailable",
+  "feed-rejected",
+  "feed-rollback",
+  "record-rejected",
+  "record-mismatch",
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. */
@@ -250,6 +258,10 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "store-failed": "client",
   "no-token": "client",
   "mint-unavailable": "client",
+  "feed-rejected": "client",
+  "feed-rollback": "client",
+  "record-rejected": "client",
+  "record-mismatch": "client",
 };
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */
@@ -491,6 +503,193 @@ export const STORE_DEGRADED_REASON_VALUES: readonly StoreDegradedReason[] = [
   "not-persistent",
 ];
 
+/** The 17 outlet kinds, in `OUTLET_KINDS` order (README §3.1, plans/P3-01.md §2.9). `unknown` is a detection result, not a kind, and is not listed. */
+export const OutletKind = {
+  direct: "direct",
+  appStore: "app-store",
+  testflight: "testflight",
+  altstore: "altstore",
+  altstorePal: "altstore-pal",
+  play: "play",
+  playTesting: "play-testing",
+  obtainium: "obtainium",
+  fdroidRepo: "fdroid-repo",
+  msStore: "ms-store",
+  appInstaller: "app-installer",
+  steam: "steam",
+  itch: "itch",
+  flathub: "flathub",
+  snap: "snap",
+  winget: "winget",
+  web: "web",
+} as const;
+export type OutletKind = (typeof OutletKind)[keyof typeof OutletKind];
+
+/** Every `OutletKind` value, in source order. */
+export const OUTLET_KIND_VALUES: readonly OutletKind[] = [
+  "direct",
+  "app-store",
+  "testflight",
+  "altstore",
+  "altstore-pal",
+  "play",
+  "play-testing",
+  "obtainium",
+  "fdroid-repo",
+  "ms-store",
+  "app-installer",
+  "steam",
+  "itch",
+  "flathub",
+  "snap",
+  "winget",
+  "web",
+];
+
+/** How sure outlet detection is, strongest first (`OUTLET_CONFIDENCES`, plans/P3-01.md §2.9). */
+export const OutletConfidence = {
+  attested: "attested",
+  declared: "declared",
+  heuristic: "heuristic",
+  stamp: "stamp",
+} as const;
+export type OutletConfidence =
+  (typeof OutletConfidence)[keyof typeof OutletConfidence];
+
+/** Every `OutletConfidence` value, in source order. */
+export const OUTLET_CONFIDENCE_VALUES: readonly OutletConfidence[] = [
+  "attested",
+  "declared",
+  "heuristic",
+  "stamp",
+];
+
+/** How a `direct` install was put on the device, where that changes who updates it (`OUTLET_SUBKINDS`, plans/P3-01.md §2.9). */
+export const OutletSubkind = {
+  homebrew: "homebrew",
+  npm: "npm",
+  pnpm: "pnpm",
+  npx: "npx",
+  scoop: "scoop",
+  chocolatey: "chocolatey",
+  flatpak: "flatpak",
+  appimage: "appimage",
+} as const;
+export type OutletSubkind = (typeof OutletSubkind)[keyof typeof OutletSubkind];
+
+/** Every `OutletSubkind` value, in source order. */
+export const OUTLET_SUBKIND_VALUES: readonly OutletSubkind[] = [
+  "homebrew",
+  "npm",
+  "pnpm",
+  "npx",
+  "scoop",
+  "chocolatey",
+  "flatpak",
+  "appimage",
+];
+
+/** The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed. */
+export const UpdateAction = {
+  none: "none",
+  codeReady: "code-ready",
+  binary: "binary",
+  store: "store",
+  platform: "platform",
+  blocked: "blocked",
+} as const;
+export type UpdateAction = (typeof UpdateAction)[keyof typeof UpdateAction];
+
+/** Every `UpdateAction` value, in source order. */
+export const UPDATE_ACTION_VALUES: readonly UpdateAction[] = [
+  "none",
+  "code-ready",
+  "binary",
+  "store",
+  "platform",
+  "blocked",
+];
+
+/** Why the update decision is `none` (`NONE_REASONS`, plans/P3-01.md §2.8). */
+export const UpdateNoneReason = {
+  upToDate: "up-to-date",
+  behind: "behind",
+  notAvailable: "not-available",
+  halted: "halted",
+  outOfBucket: "out-of-bucket",
+  stale: "stale",
+  skipped: "skipped",
+  noMethod: "no-method",
+  noBuild: "no-build",
+  unknownVersion: "unknown-version",
+} as const;
+export type UpdateNoneReason =
+  (typeof UpdateNoneReason)[keyof typeof UpdateNoneReason];
+
+/** Every `UpdateNoneReason` value, in source order. */
+export const UPDATE_NONE_REASON_VALUES: readonly UpdateNoneReason[] = [
+  "up-to-date",
+  "behind",
+  "not-available",
+  "halted",
+  "out-of-bucket",
+  "stale",
+  "skipped",
+  "no-method",
+  "no-build",
+  "unknown-version",
+];
+
+/** Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed. */
+export const UpdateBlockedReason = {
+  appFloor: "app-floor",
+} as const;
+export type UpdateBlockedReason =
+  (typeof UpdateBlockedReason)[keyof typeof UpdateBlockedReason];
+
+/** Every `UpdateBlockedReason` value, in source order. */
+export const UPDATE_BLOCKED_REASON_VALUES: readonly UpdateBlockedReason[] = [
+  "app-floor",
+];
+
+/** How a `binary` decision installs the new build (`BINARY_METHODS`, plans/P3-01.md §2.8). */
+export const BinaryMethod = {
+  native: "native",
+  download: "download",
+  sidecarPck: "sidecar-pck",
+} as const;
+export type BinaryMethod = (typeof BinaryMethod)[keyof typeof BinaryMethod];
+
+/** Every `BinaryMethod` value, in source order. */
+export const BINARY_METHOD_VALUES: readonly BinaryMethod[] = [
+  "native",
+  "download",
+  "sidecar-pck",
+];
+
+/** The update telemetry event names on the unsigned `devices/report` (plans/P3-01.md §2.10). The shapes and the Worker allowlist are P6-03's. */
+export const UpdateEvent = {
+  updateOffered: "update_offered",
+  updateDownloaded: "update_downloaded",
+  updateApplied: "update_applied",
+  updateConfirmed: "update_confirmed",
+  updateReverted: "update_reverted",
+  packFailed: "pack_failed",
+  bootRolledBack: "boot_rolled_back",
+} as const;
+export type UpdateEvent = (typeof UpdateEvent)[keyof typeof UpdateEvent];
+
+/** Every `UpdateEvent` value, in source order. */
+export const UPDATE_EVENT_VALUES: readonly UpdateEvent[] = [
+  "update_offered",
+  "update_downloaded",
+  "update_applied",
+  "update_confirmed",
+  "update_reverted",
+  "pack_failed",
+  "boot_rolled_back",
+];
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 export const HeaderName = {
   arch: "X-PKey-Arch",
@@ -536,7 +735,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
 ];
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** `corpusVersion` of conformance/corpus/v2/cases.json. */
 export const CORPUS_VERSION = 2;
@@ -546,6 +745,24 @@ export const GATE_MATRIX_VERSION = 2;
 
 /** `fingerprintVersion` of conformance/corpus/v2/fingerprint.json. */
 export const FINGERPRINT_VERSION = 1;
+
+/** `stageMatrixVersion` of conformance/corpus/v2/stage-matrix.json. */
+export const STAGE_MATRIX_VERSION = 2;
+
+/** `updateMatrixVersion` of conformance/corpus/v2/update-matrix.json. */
+export const UPDATE_MATRIX_VERSION = 1;
+
+/** `outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json. */
+export const OUTLET_MATRIX_VERSION = 1;
+
+/** Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`). */
+export const MAX_WIRE_INTEGER = 9007199254740991;
+
+/** Wire contract v4 limit `MAX_JSON_DEPTH` (`@polaris-key/protocol/core`). */
+export const MAX_JSON_DEPTH = 64;
+
+/** Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`). */
+export const MAX_RECORD_JWS_BYTES = 88844;
 
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 export const CHANNEL_ALIASES = {

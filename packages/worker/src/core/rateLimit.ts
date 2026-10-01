@@ -96,6 +96,13 @@ const FAIL_MODE: Record<string, FailMode> = {
   // signature, audience and publisher policy, so no outsider can spend it).
   ciPublishToken: "closed",
   ciPublishTokenProduct: "closed",
+  // P5-02: App Store Connect webhook deliveries, per product, counted BEFORE the webhook secret
+  // is opened. Every open is an audit row and a D1 write (P5-01), so with the limiter gone an
+  // unsigned flood would become a write amplifier. A refused delivery is lost (Apple does not
+  // retry on its own; an operator can resend it once): the poller re-lists versions, builds and
+  // phased release, but not a Background Asset object only that delivery named
+  // (THREAT-MODEL.md, the ASC section's Lost follow-ups and Residual).
+  ascWebhook: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

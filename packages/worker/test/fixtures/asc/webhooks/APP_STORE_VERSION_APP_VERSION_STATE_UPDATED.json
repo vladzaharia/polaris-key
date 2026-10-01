@@ -1,0 +1,23 @@
+{
+  "data": {
+    "type": "appStoreVersionAppVersionStateUpdated",
+    "id": "5f1c1e3a-0001-4b8e-9d2a-000000000001",
+    "version": 1,
+    "attributes": {
+      "newValue": "READY_FOR_DISTRIBUTION",
+      "oldValue": "PENDING_DEVELOPER_RELEASE",
+      "timestamp": "2026-09-30T17:00:00.000Z"
+    },
+    "relationships": {
+      "instance": {
+        "data": {
+          "type": "appStoreVersions",
+          "id": "asv-110"
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/asv-110"
+        }
+      }
+    }
+  }
+}

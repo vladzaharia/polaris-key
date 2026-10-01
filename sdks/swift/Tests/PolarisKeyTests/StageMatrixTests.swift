@@ -22,11 +22,17 @@ final class StageMatrixTests: XCTestCase {
     private struct StageMatrix: Decodable {
         let stageMatrixVersion: Int
         let maxFailedBoots: Int
+        let bootOkSeconds: Int
         let vocabulary: Vocabulary
         let accepts: [String: [String]]
         let probes: [RawEvent]
         let rows: [Row]
         let guardCases: [GuardCase]
+        let confirmCases: [ConfirmCase]
+    }
+    private struct ConfirmCase: Decodable {
+        let outcome: String
+        let expect: String
     }
     private struct Vocabulary: Decodable {
         let stages: [String]
@@ -34,6 +40,7 @@ final class StageMatrixTests: XCTestCase {
         let events: [String]
         let emits: [String]
         let guardActions: [String]
+        let confirmations: [String]
     }
     private struct Init: Decodable {
         let allowOffline: Bool?
@@ -183,8 +190,10 @@ final class StageMatrixTests: XCTestCase {
         let matrix = try loadMatrix()
         print(
             "stage-matrix runner on \(ProcessInfo.processInfo.operatingSystemVersionString)")
-        XCTAssertEqual(matrix.stageMatrixVersion, 1)
+        XCTAssertEqual(matrix.stageMatrixVersion, 2)
         XCTAssertEqual(matrix.maxFailedBoots, MAX_FAILED_BOOTS)
+        XCTAssertEqual(matrix.bootOkSeconds, BOOT_OK_SECONDS)
+        XCTAssertEqual(matrix.vocabulary.confirmations, BootConfirmation.allCases.map(\.rawValue))
         XCTAssertEqual(matrix.vocabulary.stages, BOOT_STAGES)
         XCTAssertEqual(matrix.vocabulary.outcomes, BOOT_OUTCOMES)
         XCTAssertEqual(matrix.vocabulary.events, BOOT_EVENT_TYPES)
@@ -245,5 +254,20 @@ final class StageMatrixTests: XCTestCase {
         XCTAssertEqual(state, initialBootState())
         XCTAssertEqual(bootGuardAction(staged: true, failedBoots: MAX_FAILED_BOOTS - 1), .applyStaged)
         XCTAssertEqual(bootGuardAction(staged: true, failedBoots: MAX_FAILED_BOOTS), .rollBack)
+    }
+
+    /// Stage matrix v2 (plans/P3-01.md §2.10): boot confirmation, one case per outcome.
+    func testConfirmCases() throws {
+        let matrix = try loadMatrix()
+        XCTAssertEqual(
+            Set(matrix.confirmCases.map(\.outcome)), Set(BootOutcome.allCases.map(\.rawValue)))
+        XCTAssertEqual(matrix.confirmCases.count, BootOutcome.allCases.count)
+        for c in matrix.confirmCases {
+            guard let outcome = BootOutcome(rawValue: c.outcome) else {
+                XCTFail("unknown outcome \(c.outcome)")
+                continue
+            }
+            XCTAssertEqual(bootConfirmation(outcome).rawValue, c.expect, c.outcome)
+        }
     }
 }

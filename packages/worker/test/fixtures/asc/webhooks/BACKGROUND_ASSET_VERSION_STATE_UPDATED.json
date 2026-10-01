@@ -1,0 +1,21 @@
+{
+  "data": {
+    "type": "backgroundAssetVersionStateUpdated",
+    "id": "5f1c1e3a-0006-4b8e-9d2a-000000000006",
+    "version": 1,
+    "attributes": {
+      "newState": "COMPLETE",
+      "oldState": "PROCESSING",
+      "timestamp": "2026-09-30T17:00:00.000Z"
+    },
+    "relationships": {
+      "instance": {
+        "type": "backgroundAssetVersions",
+        "id": "bav-1",
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/backgroundAssetVersions/bav-1"
+        }
+      }
+    }
+  }
+}

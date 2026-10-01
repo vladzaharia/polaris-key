@@ -276,3 +276,39 @@ describe("parseManifest and .pkey/distribution", () => {
     expect(res.errors[0]).toMatch(/^distribution: larger than/);
   });
 });
+
+describe("the v4 move to @polaris-key/protocol (P3-02)", () => {
+  it("re-exports OUTLET_KINDS and OUTLET_ID_PATTERN unchanged, as the same objects", async () => {
+    const protocol = await import("@polaris-key/protocol/distribution");
+    const manifest = await import("./index.js");
+    expect(manifest.OUTLET_KINDS).toBe(protocol.OUTLET_KINDS);
+    expect(manifest.OUTLET_ID_PATTERN).toBe(protocol.OUTLET_ID_PATTERN);
+    expect([...manifest.OUTLET_KINDS]).toEqual([
+      "direct",
+      "app-store",
+      "testflight",
+      "altstore",
+      "altstore-pal",
+      "play",
+      "play-testing",
+      "obtainium",
+      "fdroid-repo",
+      "ms-store",
+      "app-installer",
+      "steam",
+      "itch",
+      "flathub",
+      "snap",
+      "winget",
+      "web",
+    ]);
+  });
+
+  it("the feed's version schemes equal the manifest's", async () => {
+    const update = await import("@polaris-key/protocol/update");
+    const manifest = await import("./index.js");
+    expect([...update.FEED_VERSION_SCHEMES]).toEqual([
+      ...manifest.VERSION_SCHEMES,
+    ]);
+  });
+});

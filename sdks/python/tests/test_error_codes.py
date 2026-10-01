@@ -98,7 +98,7 @@ def test_the_generated_module_is_the_registry() -> None:
     assert constants.ERROR_CODE_KINDS["unauthorized"] == "wire"
     assert tuple(constants.ERROR_CODE_KINDS) == constants.ERROR_CODE_VALUES
     assert polaris_key.ErrorCode is constants.ErrorCode
-    assert polaris_key.PROTOCOL_VERSION == 3
+    assert polaris_key.PROTOCOL_VERSION == 4
 
 
 def test_the_package_root_reexports_every_generated_constant() -> None:

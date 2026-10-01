@@ -10313,7 +10313,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-HRUAEMNZ.js
+// ../shared-protocol/dist/chunk-YYVZZX43.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var FINGERPRINT_TOLERANCE = {
   off: Number.POSITIVE_INFINITY,
@@ -10331,6 +10331,88 @@ var PR_CHANNEL_PATTERN = "^pr-?([0-9]+)$";
 
 // ../shared-manifest/dist/index.js
 var import_yaml = __toESM(require_dist(), 1);
+
+// ../shared-protocol/dist/distribution.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../shared-protocol/dist/chunk-6RF4FL4T.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var OUTLET_KINDS = [
+  "direct",
+  "app-store",
+  "testflight",
+  "altstore",
+  "altstore-pal",
+  "play",
+  "play-testing",
+  "obtainium",
+  "fdroid-repo",
+  "ms-store",
+  "app-installer",
+  "steam",
+  "itch",
+  "flathub",
+  "snap",
+  "winget",
+  "web"
+];
+var OUTLET_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
+var STORE = {
+  binaryUpdates: "store",
+  codeUpdates: false,
+  dataUpdates: true,
+  channelSwitch: false,
+  commerce: "store-iap",
+  downloadedScripts: false
+};
+var STORE_OWN = { ...STORE, commerce: "own" };
+var PLATFORM_OWN = {
+  ...STORE_OWN,
+  binaryUpdates: "none"
+};
+var OUTLET_CAPABILITY_DEFAULTS = {
+  direct: {
+    binaryUpdates: "self",
+    codeUpdates: true,
+    dataUpdates: true,
+    channelSwitch: true,
+    commerce: "own",
+    downloadedScripts: true
+  },
+  "app-store": STORE,
+  testflight: STORE,
+  altstore: STORE_OWN,
+  "altstore-pal": STORE_OWN,
+  play: STORE,
+  "play-testing": STORE,
+  obtainium: STORE_OWN,
+  "fdroid-repo": STORE_OWN,
+  "ms-store": STORE,
+  "app-installer": PLATFORM_OWN,
+  winget: PLATFORM_OWN,
+  steam: { ...PLATFORM_OWN, commerce: "steam" },
+  itch: PLATFORM_OWN,
+  flathub: PLATFORM_OWN,
+  snap: PLATFORM_OWN,
+  web: { ...PLATFORM_OWN, downloadedScripts: true },
+  unknown: {
+    binaryUpdates: "none",
+    codeUpdates: false,
+    dataUpdates: false,
+    channelSwitch: false,
+    commerce: "none",
+    downloadedScripts: false
+  }
+};
+
+// ../shared-protocol/dist/release.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../shared-protocol/dist/chunk-42PRJNL4.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+// ../shared-manifest/dist/index.js
 var SERVICE_SLUGS = [
   "license",
   "config",
@@ -10355,26 +10437,6 @@ var MODULE_SERVICES = {
   update: ["update"],
   identity: ["identity"]
 };
-var OUTLET_KINDS = [
-  "direct",
-  "app-store",
-  "testflight",
-  "altstore",
-  "altstore-pal",
-  "play",
-  "play-testing",
-  "obtainium",
-  "fdroid-repo",
-  "ms-store",
-  "app-installer",
-  "steam",
-  "itch",
-  "flathub",
-  "snap",
-  "winget",
-  "web"
-];
-var OUTLET_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 var MAX_OUTLETS = 32;
 var TRANSPORTS = [
   "embedded",
@@ -10991,7 +11053,7 @@ var VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 var SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 var FOUR_PART_RE = /^(0|[1-9]\d*)(\.(0|[1-9]\d*)){3}$/;
 var TAG_RE = /^[^\u0000-\u0020\u007f]{1,255}$/u;
-var BUILD_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+var BUILD_ID_RE = BUILD_ID_PATTERN;
 var FORMAT_RE = /^[a-z0-9][a-z0-9.+-]{0,31}$/;
 var BUILD_NUMBER_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 var MIN_OS_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
@@ -11581,7 +11643,7 @@ var SECRET_DELIVERY_VALUES = [
   "edgeMint"
 ];
 var MANAGEMENT_STATE_VALUES = ["default", "enforced", "hidden"];
-var DEFAULT_RELEASE_ACCESS = {
+var DEFAULT_RELEASE_ACCESS2 = {
   metadata: "public",
   artifacts: "public"
 };
@@ -13244,15 +13306,15 @@ function normalizeIgnoreTags(raw) {
   return [...new Set(raw.filter(isIgnoreTag))].slice(0, MAX_IGNORE_TAGS);
 }
 function normalizeReleaseAccess(raw) {
-  if (!isRecord3(raw)) return { ...DEFAULT_RELEASE_ACCESS };
+  if (!isRecord3(raw)) return { ...DEFAULT_RELEASE_ACCESS2 };
   return {
     metadata: normalizeReleaseAccessValue(
       raw.metadata,
-      DEFAULT_RELEASE_ACCESS.metadata
+      DEFAULT_RELEASE_ACCESS2.metadata
     ),
     artifacts: normalizeReleaseAccessValue(
       raw.artifacts,
-      DEFAULT_RELEASE_ACCESS.artifacts
+      DEFAULT_RELEASE_ACCESS2.artifacts
     )
   };
 }
@@ -14084,7 +14146,10 @@ function trustSnippet(kid, publicKey) {
     "Swift:",
     // Swift dictionary literals use square brackets — emitting the JSON `{…}` form here
     // produced a snippet that did not compile.
-    `let trustedKeys = [${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}]`
+    `let trustedKeys = [${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}]`,
+    "",
+    "Godot (GDScript; assign to PKeyOptions.pinned_trust_keys):",
+    `const PINNED_TRUST_KEYS := {${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}}`
   ].join("\n");
 }
 function sdkSnippet(opts) {

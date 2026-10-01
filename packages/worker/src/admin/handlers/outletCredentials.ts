@@ -2,11 +2,21 @@
  * The Core admin handler for outlet credentials (P5-01), beside `secrets`:
  *
  *   GET    /api/products/<slug>/outlet-credentials        — metadata and health, never values
- *   PUT    /api/products/<slug>/outlet-credentials/<id>   — write-only; echoes the id only
+ *   PUT    /api/products/<slug>/outlet-credentials/<id>   — write-only; echoes the id only.
+ *          `{kind: "asc-webhook-secret", generate: true}` (no `value`) has the Worker generate
+ *          the secret (32 random bytes, hex) and store it without ever returning it: the App
+ *          Store Connect connector's "register webhook" control then opens it and hands it to
+ *          Apple (P5-02). No Distribution code may write a credential, so generation lives here.
+ *          `pin` (a kind in `OUTLET_CREDENTIAL_PINS` only, e.g. an `asc-api-key`'s App Store
+ *          Connect app id) records the operator's pin: the one app the credential's connector may
+ *          read and act on. Beside a `value` it is set with the value; ALONE (`{kind, pin}`, no
+ *          `value`, no `generate`) it re-pins a stored credential without touching its value.
  *   DELETE /api/products/<slug>/outlet-credentials/<id>
  *
  * Writes are audited as `outlet_credential.set` / `outlet_credential.delete` with the session's
- * actor, exactly as `secret.set` is. This file, the Distribution service and
+ * actor, exactly as `secret.set` is; a write that changes a pin adds one `outlet_credential.pin`
+ * row naming the old and the new pin. The list answers `pins` (kind → the metadata field its pin
+ * is stored under) so the console can show and edit pins without knowing the kinds. This file, the Distribution service and
  * `core/outletTokens.ts` are the only importers of `core/outletCredentials` the reach test
  * allows, and this is the only file outside the owner it lets name `putOutletCredential` or
  * `deleteOutletCredential` — and this one never opens a value: it seals, lists metadata and
@@ -27,7 +37,10 @@ import {
   isOutletId,
   listOutletCredentials,
   OUTLET_CREDENTIAL_KINDS,
+  OUTLET_CREDENTIAL_PINS,
+  pinOutletCredential,
   putOutletCredential,
+  type OutletCredentialPinChange,
 } from "../../core/outletCredentials.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
@@ -57,6 +70,12 @@ export async function handleOutletCredentials(
     return adminJson({
       ok: true,
       kinds: OUTLET_CREDENTIAL_KINDS,
+      pins: Object.fromEntries(
+        Object.entries(OUTLET_CREDENTIAL_PINS).map(([kind, spec]) => [
+          kind,
+          { field: spec.field, label: spec.label },
+        ]),
+      ),
       credentials: await listOutletCredentials(db, slug),
     });
   }
@@ -113,8 +132,67 @@ export async function handleOutletCredentials(
       { fields: ["expiresAt"] },
     );
   }
+  const auditPin = (change: OutletCredentialPinChange | null) =>
+    change
+      ? audit(
+          db,
+          slug,
+          session,
+          now,
+          "outlet_credential.pin",
+          { kind: "outlet_credential", id },
+          `Pinned outlet credential ${id} (${body.kind}) to ${change.field} ${change.after} (was ${change.before ?? "unpinned"})`,
+        )
+      : Promise.resolve();
+
+  // A pin alone re-pins a stored credential; its value is not touched (nor needed).
+  if (
+    body.value === undefined &&
+    body.generate === undefined &&
+    body.pin !== undefined
+  ) {
+    const pinned = await pinOutletCredential(db, {
+      product: slug,
+      credentialId: id,
+      kind: body.kind,
+      pin: body.pin,
+    });
+    if (!pinned.ok) {
+      if (pinned.status === 404) return notFound();
+      return err(pinned.status, ErrorCode.BadRequest, pinned.message, {
+        fields: [pinned.field],
+      });
+    }
+    await auditPin(pinned.pinChange);
+    return adminJson({ ok: true, id });
+  }
+
   // A Google key is pasted as the JSON file it arrives as; accept that string form for it.
   let value: unknown = body.value;
+  if (body.generate !== undefined) {
+    if (body.generate !== true || body.kind !== "asc-webhook-secret")
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "generate: true is accepted only for an asc-webhook-secret",
+        { fields: ["generate"] },
+      );
+    if (body.value !== undefined)
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "give value or generate, not both",
+        {
+          fields: ["value"],
+        },
+      );
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    value = {
+      secret: Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
+        "",
+      ),
+    };
+  }
   if (body.kind === "google-service-account" && typeof value === "string") {
     try {
       value = JSON.parse(value) as unknown;
@@ -135,13 +213,16 @@ export async function handleOutletCredentials(
     outletId,
     value,
     expiresAt,
+    ...(body.pin !== undefined ? { pin: body.pin } : {}),
     actor: session.sub,
     now,
   });
   if (!result.ok) {
     return err(result.status, ErrorCode.BadRequest, result.message, {
       fields: [
-        result.field === "id" || result.field === "kind"
+        result.field === "id" ||
+        result.field === "kind" ||
+        result.field === "pin"
           ? result.field
           : `value.${result.field}`,
       ],
@@ -154,8 +235,9 @@ export async function handleOutletCredentials(
     now,
     "outlet_credential.set",
     { kind: "outlet_credential", id },
-    `${result.created ? "Set" : "Rotated"} outlet credential ${id} (${body.kind})`,
+    `${result.created ? "Set" : "Rotated"} outlet credential ${id} (${body.kind}${body.generate === true ? ", generated" : ""})`,
   );
+  await auditPin(result.pinChange);
   // NEVER echo the value, its metadata or anything derived from it — the id only.
   return adminJson({ ok: true, id });
 }

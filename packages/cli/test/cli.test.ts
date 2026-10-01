@@ -298,6 +298,9 @@ describe("@polaris-key/cli", () => {
       await runPkey(["trust", "--kid", "kid1", "--public-key", "pub1"], trust),
     ).toBe(0);
     expect(trust.out()).toContain('"kid1": "pub1"');
+    expect(trust.out()).toContain(
+      'const PINNED_TRUST_KEYS := {"kid1": "pub1"}',
+    );
 
     const sdk = capture();
     expect(

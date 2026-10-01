@@ -1,6 +1,7 @@
 # Polaris Key — public wire, OpenAPI 3.1.
 #
-# Scope: the PUBLIC product-scoped API (wire contract v3) — Core routes plus the six service
+# Scope: the PUBLIC product-scoped API (wire contract v4; the file name versions the API, not
+# the wire) — Core routes plus the six service
 # namespaces and the four permanent aliases. The admin (/manage/api/*) and portal (/api/*)
 # APIs are session-authenticated browser surfaces and are documented narratively on the docs
 # site instead (they are not "wire" — no SDK speaks them). The offline-bundle mint is one of
@@ -47,7 +48,7 @@ info:
   version: "3.0.0"
   description: >
     Per-product licensing, managed config, releases, distribution, updates, and identity over wire
-    contract v3 (PROTOCOL_VERSION 3). Every route is scoped by a product slug; signed
+    contract v4 (PROTOCOL_VERSION 4). Every route is scoped by a product slug; signed
     documents are compact EdDSA JWS with typ-separated document kinds; clients verify
     against pinned keys plus a signed trust manifest.
   contact:
@@ -102,7 +103,7 @@ paths:
 
 
         `version` is the DISCOVERY document's own version (still `2`) and `protocolVersion`
-        is the wire version (`3`) — they are deliberately different numbers. `schemaVersion`
+        is the wire version (`4`) — they are deliberately different numbers. `schemaVersion`
         is the product's catalog version, a third orthogonal counter. `services` always
         carries all six slugs in the canonical order license, config, release, distribution,
         update, identity, so a client can iterate it rather than probe. `core.endpoints.register`
@@ -119,7 +120,7 @@ paths:
                   summary: A product running every service (test/surfaces.test.ts)
                   value:
                     version: 2
-                    protocolVersion: 3
+                    protocolVersion: 4
                     schemaVersion: 1
                     product: djdl
                     slug: djdl
@@ -2889,6 +2890,112 @@ paths:
         "409": { $ref: "#/components/responses/CiRefusal" }
         "422": { $ref: "#/components/responses/CiRefusal" }
 
+  /{product}/distribution/hooks/asc:
+    post:
+      operationId: ascWebhook
+      tags: [distribution]
+      summary: App Store Connect webhook notifications (Apple → Worker)
+      description: >
+        P5-02. Called by App Store Connect, never by a client: the connector registers it
+        (`POST /v1/webhooks`, all 12 `WebhookEventType`s) from the console. The body is Apple's
+        thin JSON:API envelope; `x-apple-signature: hmacsha256=<hex>` is HMAC-SHA256 over the raw
+        body with the product's `asc-webhook-secret` outlet credential, compared in constant time.
+        A missing header or another scheme is 401 before anything is opened; deliveries are
+        rate-limited per product BEFORE the secret is opened (429 `rate_limited`). A `data.id`
+        seen in the last 7 days answers 200 `{ok, duplicate: true}` and changes nothing. The
+        webhook is a hint: the instance it names (an App Store version, build upload, build beta
+        detail or Background Asset version/release) is re-read from the App Store Connect API
+        and only what the API says is written — availability, submissions and the phased-release
+        mirror (`source: asc`). Beta feedback, alternative-distribution events and Apple's ping
+        are stored raw (200); an unknown event type answers 204 and is stored as `ignored`. The
+        product must declare an `app-store` or `testflight` outlet with an `appleId` and hold
+        an `asc-api-key` credential that the operator has PINNED to that same `appleId`, and an
+        `asc-webhook-secret`; otherwise — like with Distribution off — the answer is the service
+        not-found shape, so a manifest naming another app than the pinned one mirrors nothing.
+        No CORS. Errors are LEGACY FLAT.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: x-apple-signature
+          in: header
+          required: true
+          schema: { type: string, pattern: "^hmacsha256=[0-9a-fA-F]{64}$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data:
+                  type: object
+                  required: [id, type]
+                  properties:
+                    id:
+                      {
+                        type: string,
+                        description: "The delivery id; the dedupe key.",
+                      }
+                    type:
+                      type: string
+                      description: "The event type in Apple's camel-case spelling (`appStoreVersionAppVersionStateUpdated`)."
+                    version: { type: integer }
+                    attributes: { type: object }
+                    relationships:
+                      type: object
+                      description: "`instance` names the object, as `{data: {type, id}}` or — Background Asset events — `{type, id, links}`."
+            examples:
+              appVersionState:
+                summary: test/fixtures/asc/webhooks/APP_STORE_VERSION_APP_VERSION_STATE_UPDATED.json
+                value:
+                  data:
+                    type: appStoreVersionAppVersionStateUpdated
+                    id: 5f1c1e3a-0001-4b8e-9d2a-000000000001
+                    version: 1
+                    attributes:
+                      newValue: READY_FOR_DISTRIBUTION
+                      oldValue: PENDING_DEVELOPER_RELEASE
+                      timestamp: "2026-09-30T17:00:00.000Z"
+                    relationships:
+                      instance:
+                        data: { type: appStoreVersions, id: asv-110 }
+      responses:
+        "200":
+          description: "Accepted (the follow-up read runs after the response), stored, or a duplicate."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+                  duplicate: { type: boolean, const: true }
+        "204":
+          {
+            description: "An event type this build does not know; stored as `ignored`.",
+          }
+        "400":
+          description: "Not a webhook payload (`reason: bad_body`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: Missing, malformed or wrong `x-apple-signature`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413":
+          description: Body over 64 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many deliveries for this product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+
   /{product}/release/channels/{channel}/promote:
     post:
       operationId: ciPromoteChannel
@@ -5493,7 +5600,7 @@ components:
         ]
       properties:
         version: { type: integer, const: 2 }
-        protocolVersion: { type: integer, const: 3 }
+        protocolVersion: { type: integer, const: 4 }
         schemaVersion: { type: integer }
         product: { type: string }
         slug: { type: string }

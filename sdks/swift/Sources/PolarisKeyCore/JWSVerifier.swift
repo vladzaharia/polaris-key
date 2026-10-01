@@ -1,7 +1,19 @@
 // The Polaris Key wire crypto: compact JWS (EdDSA / Ed25519) verification, natively on CryptoKit.
 // This is a byte-for-byte re-implementation of `@polaris-key/jws`'s `verifyJws` — the cross-language
 // conformance corpus (`conformance/corpus/v2`, `jwsCases`) pins them identical. See
-// docs/security/WIRE-CONTRACT-V3.md §1 for the normative ordering this file implements.
+// docs/security/WIRE-CONTRACT-V4.md §1 for the normative ordering this file implements.
+//
+// ── WIRE CONTRACT v4 (§1.1, §1.2), for every `typ` ──────────────────────────────────────────
+//
+// 1. Ed25519 pre-checks before CryptoKit's verify: `S < L`, canonical `A` and `R`, and neither
+//    of the eight small-order encodings. CryptoKit refuses non-canonical points itself; every
+//    backend measured accepted a small-order `R` and key.
+// 2. `StrictJSON.validate`, a byte-level RFC 8259 scanner over the header and the payload:
+//    well-formed UTF-8 with no BOM, exactly one object, no trailing comma, no `NaN`, no raw
+//    control character, no lone surrogate, member names unique by Unicode scalars (never
+//    `String` equality, which is canonical equivalence) and free of U+0000, every number inside
+//    binary64's range judged from its digits, and at most `MAX_JSON_DEPTH` levels. It reports
+//    `nonWireIntegers`, from which every integer claim is decided (V4 §3), keyed by scalars.
 //
 //   protected header = {"alg":"EdDSA","kid":<kid>,"typ":<typ>}   (key order fixed)
 //   signingInput     = base64url(utf8(JSON(header))) "." base64url(utf8(JSON(payload)))
@@ -40,6 +52,148 @@ public enum JwsTyp: String, Sendable, Equatable, CaseIterable {
     case config = "pkey-config+jws"
     case trust = "pkey-trust+jws"
     case bundle = "pkey-bundle+jws"
+    /// Wire contract v4 §2.3: the channel feed, signed by the product key.
+    case feed = "pkey-feed+jws"
+    /// Wire contract v4 §2.4: the release record, signed by a CI-held release key.
+    case release = "pkey-release+jws"
+}
+
+/// The RFC 6901 pointers of a payload's number tokens that cannot be wire integers (a fraction
+/// or exponent part, or digits above 2^53 − 1), keyed by Unicode scalars like member names.
+///
+/// Held as a tree of raw (unescaped) reference tokens: one node per container on the way to a
+/// recorded number, plus the number itself, each naming its parent. A member name is stored
+/// once, by reference, however many numbers sit under it, so the set is linear in the payload's
+/// size. One full pointer per number would grow with the square of the payload (long member
+/// names over many fractional numbers), and WIRE-CONTRACT-V4 §1.2 keeps the verifier's work and
+/// memory linear in the capped payload. `contains` walks the tree; `pointers` builds the full
+/// pointers, for callers that list them (the conformance runner, on small corpus cases).
+public struct NonWireIntegers: Sendable, Equatable, ExpressibleByArrayLiteral {
+    private struct Edge: Hashable, Sendable {
+        let parent: Int
+        let name: [Unicode.Scalar]
+    }
+
+    // Node 0 is the top-level object.
+    private var parent: [Int] = [-1]
+    private var name: [[Unicode.Scalar]] = [[]]
+    private var leaf: [Bool] = [false]
+    private var edges: [Edge: Int] = [:]
+    private var leaves: [Int] = []
+
+    public init() {}
+
+    /// A set from escaped pointer strings (an invalid pointer is skipped).
+    public init(arrayLiteral pointers: String...) {
+        for p in pointers {
+            guard let tokens = Self.tokens(Array(p.unicodeScalars)) else { continue }
+            var node = 0
+            for t in tokens { node = child(node, t) }
+            add(node)
+        }
+    }
+
+    /// The node for `name` under `node`, created when absent.
+    mutating func child(_ node: Int, _ name: [Unicode.Scalar]) -> Int {
+        let edge = Edge(parent: node, name: name)
+        if let id = edges[edge] { return id }
+        let id = parent.count
+        parent.append(node)
+        self.name.append(name)
+        leaf.append(false)
+        edges[edge] = id
+        return id
+    }
+
+    /// Record the number at `node`.
+    mutating func add(_ node: Int) {
+        guard !leaf[node] else { return }
+        leaf[node] = true
+        leaves.append(node)
+    }
+
+    public var count: Int { leaves.count }
+    public var isEmpty: Bool { leaves.isEmpty }
+
+    /// RFC 6901: split an escaped pointer into raw reference tokens, or nil when it is not a
+    /// pointer (no leading `/`, or a `~` not followed by `0` or `1`).
+    static func tokens(_ pointer: [Unicode.Scalar]) -> [[Unicode.Scalar]]? {
+        if pointer.isEmpty { return [] }
+        guard pointer[0] == "/" else { return nil }
+        var out: [[Unicode.Scalar]] = []
+        var current: [Unicode.Scalar] = []
+        var k = 1
+        while k < pointer.count {
+            let s = pointer[k]
+            if s == "/" {
+                out.append(current)
+                current = []
+            } else if s == "~" {
+                guard k + 1 < pointer.count else { return nil }
+                if pointer[k + 1] == "0" {
+                    current.append("~")
+                } else if pointer[k + 1] == "1" {
+                    current.append("/")
+                } else {
+                    return nil
+                }
+                k += 1
+            } else {
+                current.append(s)
+            }
+            k += 1
+        }
+        out.append(current)
+        return out
+    }
+
+    public func contains(_ pointer: [Unicode.Scalar]) -> Bool {
+        guard let tokens = Self.tokens(pointer) else { return false }
+        var node = 0
+        for t in tokens {
+            guard let next = edges[Edge(parent: node, name: t)] else { return false }
+            node = next
+        }
+        return leaf[node]
+    }
+
+    public func contains(_ pointer: String) -> Bool { contains(Array(pointer.unicodeScalars)) }
+
+    /// Every pointer, escaped.
+    public var pointers: Set<[Unicode.Scalar]> {
+        var out = Set<[Unicode.Scalar]>()
+        for n in leaves {
+            var tokens: [[Unicode.Scalar]] = []
+            var k = n
+            while k > 0 {
+                tokens.append(StrictScanner.token(name[k]))
+                k = parent[k]
+            }
+            var pointer: [Unicode.Scalar] = []
+            for t in tokens.reversed() {
+                pointer.append("/")
+                pointer += t
+            }
+            out.insert(pointer)
+        }
+        return out
+    }
+
+    public static func == (a: NonWireIntegers, b: NonWireIntegers) -> Bool {
+        a.pointers == b.pointers
+    }
+}
+
+/// WIRE-CONTRACT-V4 §3: an integer claim is a plain integer token from the claim's minimum to
+/// 2^53 − 1, decided from the token (`pointer` must not be in `nonWire`) and never from the
+/// number `JSONDecoder` made of it — it decodes `1700000000.00000001` as an `Int`. The minimum
+/// is the claim's own: 0 for every timestamp, 1 for `schemaVersion` and every `seq`.
+public func wireInteger(
+    _ value: Int?, pointer: String, min: Int, in nonWire: NonWireIntegers
+) -> Bool {
+    guard let v = value else { return false }
+    if nonWire.contains(pointer) { return false }
+    return v >= min && v <= MAX_WIRE_INTEGER
 }
 
 /// The successful result of a JWS verification: the selected `kid` + the signed payload bytes.
@@ -48,6 +202,14 @@ public struct VerifiedJws: Sendable, Equatable {
     /// The RAW signed payload. Typed decoding is the caller's, after this returns — see
     /// `verifyDoc`.
     public let payload: Data
+    /// WIRE-CONTRACT-V4 §3: the payload's non-wire-integer pointers.
+    public let nonWireIntegers: NonWireIntegers
+
+    public init(kid: String, payload: Data, nonWireIntegers: NonWireIntegers = []) {
+        self.kid = kid
+        self.payload = payload
+        self.nonWireIntegers = nonWireIntegers
+    }
 }
 
 public enum JWSVerifier {
@@ -118,8 +280,9 @@ public enum JWSVerifier {
             headerData.count <= maxHeaderBytes
         else { return nil }
 
-        // 6. Parse the header, REJECTING duplicate object keys (never first- or last-wins).
-        guard let header = StrictJSON.decode(ProtectedHeader.self, from: headerData)
+        // 6. Parse the header under V4 §1.2 (duplicate keys refused, never first- or last-wins).
+        guard StrictJSON.validate(headerData) != nil,
+            let header = try? JSONDecoder().decode(ProtectedHeader.self, from: headerData)
         else { return nil }
 
         // 7. Assert alg == EdDSA — BEFORE any signature math. This is the algorithm-downgrade
@@ -152,16 +315,18 @@ public enum JWSVerifier {
         // 11-12. Verify over the ASCII bytes of the ORIGINAL encoded substrings — never
         //        re-encode. Everything below this line is authenticated bytes.
         guard let sig = Base64URL.decodeStrict(encSig) else { return nil }
+        // V4 §1.1: S < L, canonical A and R, no small-order A or R — before CryptoKit.
+        guard Ed25519Strict.prechecks(key: [UInt8](rawKey), sig: [UInt8](sig)) else { return nil }
         let signingInput = Data((encHeader + "." + encPayload).utf8)
         guard publicKey.isValidSignature(sig, for: signingInput) else { return nil }
 
-        // 13. ONLY NOW decode the payload, bound it, and reject duplicate keys in it too.
+        // 13. ONLY NOW decode the payload, bound it, and validate it under V4 §1.2.
         guard let payloadData = Base64URL.decodeStrict(encPayload),
             payloadData.count <= payloadCap,
-            !StrictJSON.hasDuplicateKeys(payloadData)
+            let nonWire = StrictJSON.validate(payloadData)
         else { return nil }
 
-        return VerifiedJws(kid: kid, payload: payloadData)
+        return VerifiedJws(kid: kid, payload: payloadData, nonWireIntegers: nonWire)
     }
 
     /// Verify and decode in one step, for callers that want the typed payload and nothing else.
@@ -459,4 +624,362 @@ public func saturatingAdd(_ a: Int, _ b: Int) -> Int {
     let (sum, overflowed) = a.addingReportingOverflow(b)
     guard overflowed else { return sum }
     return b > 0 ? Int.max : Int.min
+}
+
+// ── Ed25519 strictness (WIRE-CONTRACT-V4 §1.1) ─────────────────────────────────────
+
+/// Byte comparisons on the trusted key `A` and the signature `R ‖ S`, run before the backend.
+public enum Ed25519Strict {
+    /// The group order L, little-endian.
+    static let l: [UInt8] = [
+        0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde,
+        0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x10,
+    ]
+    /// The field prime p = 2^255 − 19, little-endian.
+    static let p: [UInt8] = [0xed] + [UInt8](repeating: 0xff, count: 30) + [0x7f]
+
+    /// The eight small-order encodings, lowercase hex (V4 §1.1 check 3).
+    public static let smallOrderEncodings: Set<String> = [
+        "0100000000000000000000000000000000000000000000000000000000000000",
+        "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000080",
+        "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+        "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
+        "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+        "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",
+    ]
+    static let negativeZero: Set<String> = [
+        "0100000000000000000000000000000000000000000000000000000000000080",
+        "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    ]
+
+    /// `a < b` for two 32-byte little-endian integers.
+    static func lessThan(_ a: [UInt8], _ b: [UInt8]) -> Bool {
+        for k in stride(from: 31, through: 0, by: -1) where a[k] != b[k] { return a[k] < b[k] }
+        return false
+    }
+
+    static func hex(_ bytes: [UInt8]) -> String {
+        bytes.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Checks 2–3 for one 32-byte encoding.
+    static func acceptablePoint(_ enc: [UInt8]) -> Bool {
+        guard enc.count == 32 else { return false }
+        var y = enc
+        y[31] &= 0x7f
+        guard lessThan(y, p) else { return false }
+        let h = hex(enc)
+        return !negativeZero.contains(h) && !smallOrderEncodings.contains(h)
+    }
+
+    /// V4 §1.1 checks 1–3.
+    public static func prechecks(key: [UInt8], sig: [UInt8]) -> Bool {
+        guard key.count == 32, sig.count == 64 else { return false }
+        guard lessThan(Array(sig[32..<64]), l) else { return false }
+        return acceptablePoint(key) && acceptablePoint(Array(sig[0..<32]))
+    }
+}
+
+// ── Strict JSON (WIRE-CONTRACT-V4 §1.2) ────────────────────────────────────────────
+
+extension StrictJSON {
+    /// Validate one header or payload byte for byte under V4 §1.2 rules 1–9 and RFC 8259's
+    /// grammar, returning its non-wire-integer pointers, or nil when it is refused.
+    package static func validate(_ data: Data) -> NonWireIntegers? {
+        var scanner = StrictScanner(bytes: [UInt8](data))
+        return scanner.run()
+    }
+}
+
+/// The byte-level scanner behind `StrictJSON.validate`. Recursion is bounded by
+/// `MAX_JSON_DEPTH`, which it refuses past before descending.
+struct StrictScanner {
+    let b: [UInt8]
+    var i = 0
+    var nonWire = NonWireIntegers()
+    /// One level of the open path: a member name or an array index.
+    enum Segment {
+        case name([Unicode.Scalar])
+        case index(Int)
+    }
+    /// The open path, one segment per level, and its node in `nonWire` once a number below it
+    /// has been recorded (-1 until then). Never a pointer per value: copying the path for every
+    /// member and element grows with the square of the payload.
+    var segs: [Segment] = []
+    var ids: [Int] = []
+
+    init(bytes: [UInt8]) { b = bytes }
+
+    /// Record the number at the open path.
+    mutating func record() {
+        var k = segs.count - 1
+        while k >= 0 && ids[k] < 0 { k -= 1 }
+        var node = k < 0 ? 0 : ids[k]
+        var j = k + 1
+        while j < segs.count {
+            switch segs[j] {
+            case .name(let n): node = nonWire.child(node, n)
+            case .index(let x): node = nonWire.child(node, Array(String(x).unicodeScalars))
+            }
+            ids[j] = node
+            j += 1
+        }
+        nonWire.add(node)
+    }
+
+    static let maxWireDigits: [UInt8] = Array("9007199254740991".utf8)
+
+    mutating func run() -> NonWireIntegers? {
+        ws()
+        guard i < b.count, b[i] == UInt8(ascii: "{") else { return nil }
+        guard value(depth: 0) else { return nil }
+        ws()
+        return i == b.count ? nonWire : nil
+    }
+
+    mutating func ws() {
+        while i < b.count, b[i] == 0x20 || b[i] == 0x09 || b[i] == 0x0a || b[i] == 0x0d { i += 1 }
+    }
+
+    static func token(_ name: [Unicode.Scalar]) -> [Unicode.Scalar] {
+        var out: [Unicode.Scalar] = []
+        for s in name {
+            if s == "~" {
+                out += ["~", "0"]
+            } else if s == "/" {
+                out += ["~", "1"]
+            } else {
+                out.append(s)
+            }
+        }
+        return out
+    }
+
+    mutating func value(depth: Int) -> Bool {
+        ws()
+        guard i < b.count else { return false }
+        let c = b[i]
+        if c == UInt8(ascii: "{") {
+            guard depth + 1 <= MAX_JSON_DEPTH else { return false }
+            i += 1
+            ws()
+            if i < b.count, b[i] == UInt8(ascii: "}") {
+                i += 1
+                return true
+            }
+            var names = Set<[Unicode.Scalar]>()
+            while true {
+                ws()
+                guard let name = string() else { return false }
+                if name.contains(Unicode.Scalar(UInt8(0))) { return false }
+                guard names.insert(name).inserted else { return false }
+                ws()
+                guard i < b.count, b[i] == UInt8(ascii: ":") else { return false }
+                i += 1
+                segs.append(.name(name))
+                ids.append(-1)
+                guard value(depth: depth + 1) else { return false }
+                segs.removeLast()
+                ids.removeLast()
+                ws()
+                guard i < b.count else { return false }
+                if b[i] == UInt8(ascii: ",") {
+                    i += 1
+                    continue
+                }
+                if b[i] == UInt8(ascii: "}") {
+                    i += 1
+                    return true
+                }
+                return false
+            }
+        }
+        if c == UInt8(ascii: "[") {
+            guard depth + 1 <= MAX_JSON_DEPTH else { return false }
+            i += 1
+            ws()
+            if i < b.count, b[i] == UInt8(ascii: "]") {
+                i += 1
+                return true
+            }
+            var index = 0
+            while true {
+                segs.append(.index(index))
+                ids.append(-1)
+                guard value(depth: depth + 1) else { return false }
+                segs.removeLast()
+                ids.removeLast()
+                index += 1
+                ws()
+                guard i < b.count else { return false }
+                if b[i] == UInt8(ascii: ",") {
+                    i += 1
+                    continue
+                }
+                if b[i] == UInt8(ascii: "]") {
+                    i += 1
+                    return true
+                }
+                return false
+            }
+        }
+        if c == UInt8(ascii: "\"") { return string() != nil }
+        if c == UInt8(ascii: "-") || (c >= 0x30 && c <= 0x39) { return number() }
+        for lit in ["true", "false", "null"] {
+            let bytes = Array(lit.utf8)
+            if i + bytes.count <= b.count, Array(b[i..<i + bytes.count]) == bytes {
+                i += bytes.count
+                return true
+            }
+        }
+        return false
+    }
+
+    mutating func hex4() -> UInt32? {
+        guard i + 4 <= b.count else { return nil }
+        var v: UInt32 = 0
+        for k in 0..<4 {
+            let c = b[i + k]
+            let d: UInt32
+            switch c {
+            case 0x30...0x39: d = UInt32(c - 0x30)
+            case 0x41...0x46: d = UInt32(c - 0x41 + 10)
+            case 0x61...0x66: d = UInt32(c - 0x61 + 10)
+            default: return nil
+            }
+            v = v * 16 + d
+        }
+        i += 4
+        return v
+    }
+
+    /// One string, decoded to Unicode scalars: refuses raw control characters, bad escapes,
+    /// lone surrogates (rule 5) and ill-formed UTF-8 (rule 1: overlongs, encoded surrogates and
+    /// anything above U+10FFFF included).
+    mutating func string() -> [Unicode.Scalar]? {
+        guard i < b.count, b[i] == UInt8(ascii: "\"") else { return nil }
+        i += 1
+        var out: [Unicode.Scalar] = []
+        while true {
+            guard i < b.count else { return nil }
+            let c = b[i]
+            if c == UInt8(ascii: "\"") {
+                i += 1
+                return out
+            }
+            if c < 0x20 { return nil }
+            if c == UInt8(ascii: "\\") {
+                i += 1
+                guard i < b.count else { return nil }
+                let e = b[i]
+                i += 1
+                switch e {
+                case UInt8(ascii: "\""): out.append("\"")
+                case UInt8(ascii: "\\"): out.append("\\")
+                case UInt8(ascii: "/"): out.append("/")
+                case UInt8(ascii: "b"): out.append("\u{08}")
+                case UInt8(ascii: "f"): out.append("\u{0C}")
+                case UInt8(ascii: "n"): out.append("\n")
+                case UInt8(ascii: "r"): out.append("\r")
+                case UInt8(ascii: "t"): out.append("\t")
+                case UInt8(ascii: "u"):
+                    guard let u = hex4() else { return nil }
+                    if u >= 0xD800 && u <= 0xDBFF {
+                        guard i + 2 <= b.count, b[i] == UInt8(ascii: "\\"), b[i + 1] == UInt8(ascii: "u")
+                        else { return nil }
+                        i += 2
+                        guard let low = hex4(), low >= 0xDC00, low <= 0xDFFF else { return nil }
+                        let cp = 0x10000 + ((u - 0xD800) << 10) + (low - 0xDC00)
+                        guard let s = Unicode.Scalar(cp) else { return nil }
+                        out.append(s)
+                    } else if u >= 0xDC00 && u <= 0xDFFF {
+                        return nil
+                    } else {
+                        guard let s = Unicode.Scalar(u) else { return nil }
+                        out.append(s)
+                    }
+                default:
+                    return nil
+                }
+                continue
+            }
+            if c < 0x80 {
+                out.append(Unicode.Scalar(c))
+                i += 1
+                continue
+            }
+            guard let s = utf8Scalar() else { return nil }
+            out.append(s)
+        }
+    }
+
+    /// One multi-byte UTF-8 sequence, strictly (RFC 3629 Table 3-7).
+    mutating func utf8Scalar() -> Unicode.Scalar? {
+        let c = b[i]
+        var need = 0
+        var lo: UInt8 = 0x80
+        var hi: UInt8 = 0xBF
+        var cp: UInt32 = 0
+        switch c {
+        case 0xC2...0xDF: need = 1; cp = UInt32(c & 0x1F)
+        case 0xE0: need = 2; lo = 0xA0; cp = UInt32(c & 0x0F)
+        case 0xE1...0xEC, 0xEE...0xEF: need = 2; cp = UInt32(c & 0x0F)
+        case 0xED: need = 2; hi = 0x9F; cp = UInt32(c & 0x0F)
+        case 0xF0: need = 3; lo = 0x90; cp = UInt32(c & 0x07)
+        case 0xF1...0xF3: need = 3; cp = UInt32(c & 0x07)
+        case 0xF4: need = 3; hi = 0x8F; cp = UInt32(c & 0x07)
+        default: return nil
+        }
+        guard i + need < b.count else { return nil }
+        for k in 1...need {
+            let x = b[i + k]
+            let (min, max) = k == 1 ? (lo, hi) : (UInt8(0x80), UInt8(0xBF))
+            guard x >= min && x <= max else { return nil }
+            cp = (cp << 6) | UInt32(x & 0x3F)
+        }
+        i += need + 1
+        return Unicode.Scalar(cp)
+    }
+
+    /// One number token (RFC 8259 grammar), judged under rule 8, recorded when it cannot be a
+    /// wire integer.
+    mutating func number() -> Bool {
+        let start = i
+        func digit(_ k: Int) -> Bool { k < b.count && b[k] >= 0x30 && b[k] <= 0x39 }
+        if b[i] == UInt8(ascii: "-") { i += 1 }
+        guard digit(i) else { return false }
+        if b[i] == 0x30 {
+            i += 1
+        } else {
+            while digit(i) { i += 1 }
+        }
+        var plain = true
+        if i < b.count, b[i] == UInt8(ascii: ".") {
+            plain = false
+            i += 1
+            guard digit(i) else { return false }
+            while digit(i) { i += 1 }
+        }
+        if i < b.count, b[i] == UInt8(ascii: "e") || b[i] == UInt8(ascii: "E") {
+            plain = false
+            i += 1
+            if i < b.count, b[i] == UInt8(ascii: "+") || b[i] == UInt8(ascii: "-") { i += 1 }
+            guard digit(i) else { return false }
+            while digit(i) { i += 1 }
+        }
+        let token = b[start..<i]
+        guard StrictJSON.numberTokenInRange(token) else { return false }
+        var digits = Array(token)
+        if digits.first == UInt8(ascii: "-") { digits.removeFirst() }
+        let tooBig =
+            digits.count > Self.maxWireDigits.count
+            || (digits.count == Self.maxWireDigits.count
+                && digits.lexicographicallyPrecedes(Self.maxWireDigits) == false
+                && digits != Self.maxWireDigits)
+        if !plain || tooBig { record() }
+        return true
+    }
 }

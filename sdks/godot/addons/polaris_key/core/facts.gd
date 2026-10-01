@@ -20,7 +20,7 @@ extends RefCounted
 ## Each `collect` reads only cheap getters and file existence, so it runs on the calling thread.
 
 const MAX_PROBES := 32
-const BUILD_STAMP := "res://.polaris_key/build.json"
+const BUILD_STAMP := PKeyBuildStamp.PATH
 const OS_NAMES := {
 	"Windows": "win32",
 	"macOS": "darwin",
@@ -199,11 +199,6 @@ static func _put(d: Dictionary, key: String, value: String) -> void:
 
 ## The outlet the build was stamped with (P1-11's `res://.polaris_key/build.json`), or "" when
 ## there is no stamp or it names none. Never detected at runtime here (that is P3-11's).
-static func outlet() -> String:
-	if not FileAccess.file_exists(BUILD_STAMP):
-		return ""
-	var parsed := PKeyJson.parse(FileAccess.get_file_as_string(BUILD_STAMP))
-	if not parsed["ok"] or not (parsed["value"] is Dictionary):
-		return ""
-	var o = parsed["value"].get("outlet")
-	return o.strip_edges() if o is String else ""
+static func outlet(path := PKeyBuildStamp.PATH) -> String:
+	var stamp = PKeyBuildStamp.read(path)
+	return stamp["outlet"].strip_edges() if stamp != null else ""

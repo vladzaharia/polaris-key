@@ -351,6 +351,16 @@ their JOSE `typ`, which is rejected when unknown or missing.
   the trust manifest. Imported all-or-nothing — the bundle verifies against pins, then its trust
   manifest, then each inner document, and only then is the cache written — so no partial import
   exists. A verified bundle satisfies activation with no `pkeyt_` token anywhere.
+- **channel feed** (`pkey-feed+jws`, wire contract v4, `GET /<product>/update/<channel>/feed.jws`)
+  — a device-less document, signed by the product key, that says what each platform of one
+  canonical channel should run: per platform target, the pinned **release record** (by hash,
+  `seq` and version), the platform's floor and, per outlet, what is live there. Its `seq` grows
+  per (product, channel), and a client refuses a lower one (a rollback); it is stale after its
+  TTL plus the clock skew, and a stale feed never updates anything.
+- **release record** (`pkey-release+jws`, wire contract v4, `GET /<product>/release/records/<sha256>`)
+  — a release's descriptor (builds, artifacts with sizes and digests) signed in CI by a
+  **release key**, fetched by the SHA-256 of its exact bytes, which the feed pins, and checked
+  against that hash before any signature work.
 
 **License status** is the terminal gate state a client renders: `ok`, `grace`, `expired`,
 `revoked`, `needs-activation`, `version-too-old`, `version-too-new`, `channel-not-entitled`, and
@@ -361,6 +371,10 @@ the client derives it.
 
 ## Trust & keys
 
+- **release key** — an Ed25519 key held by a product's CI that signs its release records. The
+  app pins its release keys separately from its product keys, a release key is never a product
+  key, and the Worker never holds one, so the Worker alone cannot ship bytes no release key
+  signed (the two-signer model). Not a **signing key**.
 - **signing key** — a per-product Ed25519 keypair. The private key is envelope-encrypted at rest
   in D1 under the platform **KEK** (a single Worker secret) and never leaves the Worker. The
   public key is served at `/<product>/.well-known/jwks.json` and pinned by SDKs.

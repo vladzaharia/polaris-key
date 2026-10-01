@@ -285,4 +285,4 @@ def discovery_doc(**enabled: bool) -> Dict[str, Any]:
                     "appcast": f"{BASE_URL}/{PRODUCT}/update/appcast.xml"
                 }
             services[slug] = fragment
-    return {"product": PRODUCT, "protocolVersion": 3, "services": services}
+    return {"product": PRODUCT, "protocolVersion": 4, "services": services}

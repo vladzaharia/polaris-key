@@ -397,13 +397,13 @@
       "code": "invalid-options",
       "kind": "client",
       "service": "core",
-      "description": "Godot: PKeyOptions failed validation at configure (a bad product slug, version, base URL or pin)."
+      "description": "The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin."
     },
     {
       "code": "not-configured",
       "kind": "client",
       "service": "core",
-      "description": "Godot: A call that needs configure() ran before it."
+      "description": "A call needs configuration it does not have: in Godot, a call that ran before configure(); in every SDK, update.decide() with no pinned release keys."
     },
     {
       "code": "unsupported",
@@ -464,6 +464,30 @@
       "kind": "client",
       "service": "config",
       "description": "Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent."
+    },
+    {
+      "code": "feed-rejected",
+      "kind": "client",
+      "service": "update",
+      "description": "A fetched channel feed (pkey-feed+jws) was refused at its signature, claims, channel binding, selector or freshness step; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 3–7)."
+    },
+    {
+      "code": "feed-rollback",
+      "kind": "client",
+      "service": "update",
+      "description": "A fetched channel feed carried a lower `seq` than the committed feed of its canonical channel: a rollback, refused (WIRE-CONTRACT-V4 §2.5 step 8)."
+    },
+    {
+      "code": "record-rejected",
+      "kind": "client",
+      "service": "update",
+      "description": "A release record (pkey-release+jws) was refused before use: its hash did not match the feed's pin, or its signature or claims failed; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 12–14)."
+    },
+    {
+      "code": "record-mismatch",
+      "kind": "client",
+      "service": "update",
+      "description": "A verified release record does not match the feed's pin: its kind, deliverable, version or `seq` differs (WIRE-CONTRACT-V4 §2.5 step 15)."
     }
   ]
 }

@@ -1,0 +1,667 @@
+# Polaris Wire Contract v4
+
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own.
+**PROTOCOL_VERSION:** `4` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
+**Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot): JWS envelope and its strictness, the six signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
+**Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen:corpus -- --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
+
+**What v4 changes, in one list.** Two signed documents (`pkey-feed+jws`, the channel feed, signed by the product key; `pkey-release+jws`, the release record, signed by a CI-held release key and verified only against the release keys the app pins). One stricter verifier for all six `typ`s: Ed25519 strictness (§1.1) and an I-JSON profile with number and depth limits (§1.2). Every integer claim, v3's included, decided from its token (§3.1). The members that are not claims decide nothing (§3.2). Patterns match whole strings, lengths count bytes, presence is exact (§3.3). The four v3 documents keep their shapes and bytes.
+
+Design spec: `docs/superpowers/specs/2026-08-26-polaris-suite-services-design.md` (decision register D-01…D-24).
+
+---
+
+## 1. Trust model
+
+Two tiers for **product keys**, strictly decreasing authority. The on-disk cache is **never** a key source.
+
+1. **Pinned keys** — `TrustSet = Record<kid, base64url(raw Ed25519 pubkey)>` compiled into the host app. Terminal: `mergeTrust(discovered, pinned) = { ...discovered, ...pinned }` (pins spread last; a manifest can never shadow a pin). **[C]**
+2. **Manifest keys** — learned only from a verified trust manifest (`pkey-trust+jws`). The discovered set is **replaced wholesale** on every successful verification; absence of a previously-seen kid is revocation. **[C]**
+
+The effective product trust set (pins ∪ manifest keys) verifies licence, config and feed documents. Trust manifests and bundles are always verified against **pinned keys only** — never against the effective (merged) set — on both the network path and the cache-reload path, so online and offline verification are identical. A manifest that presents a pinned `kid` with different key bytes is rejected in full (substitution attempt; previous trust kept). Keys with `status: "revoked"` are dropped; `retired` and `staged` are trusted for verification. Manifest entries that are not `alg: "EdDSA"` / `kty: "OKP"` / `crv: "Ed25519"` are **skipped, not fatal**: a future-alg key in the manifest must not brick current verifiers. **[C]**
+
+**A third, separate input: the pinned release keys** (`pinnedReleaseKeys`, `pinned_release_keys` in Python and GDScript): `kid → raw 32-byte Ed25519 key, base64url`, the `TrustSet` encoding. Release records verify against these and nothing else. They are configured by the host, compiled into the app, and never persisted, merged or extended from the network. Two or more may be valid at once during a rotation. **A release key is never a product key**: a record whose selected release key's bytes are also in the effective product trust set is refused (§3.5), an SDK refuses options in which a pinned release key is also a trust pin (`invalid-options`), and the `.pkey/release` sync refuses a declared release key equal to any current or retired product signing key. Otherwise the Worker would hold the private half of a release key and the two-signer property would be gone without a trace. **[C]** via `releaseRecordCases`.
+
+JWS mechanics are unchanged from v3: compact JWS, `alg: "EdDSA"` (Ed25519) only, fixed header key order `{"alg","typ","kid"}`, header ≤ 1024 bytes decoded, payload ≤ 65 536 bytes decoded (encoded-length caps checked **before** any decode), strict base64url alphabet (reject `+ / =` and whitespace), duplicate-JSON-key rejection in header and payload, signature verified over the raw encoded bytes **before** the payload is parsed, verification key selected only by header `kid` from the caller's trust set. **[C]**
+Exception: the `pkey-bundle+jws` payload cap is **262 144 bytes** (it wraps up to three inner compact JWSs); the caller passes this cap explicitly to the verifier for that `typ` alone (§7).
+
+### 1.1 Ed25519 strictness [C]
+
+A verifier applies these checks to the 64-byte signature `R ‖ S` and to the trusted key `A` **before** its backend's verify call:
+
+1. `S`, read as a 256-bit little-endian integer, is less than `L = 2^252 + 27742317777372353535851937790883648493`.
+2. `A` and `R` are canonical encodings: the 255-bit `y` (bit 255 cleared) is below `p = 2^255 − 19`, and the encoding is neither of the two "x = 0 with the sign bit set" strings, `01 00…00 80` and `ec ff…ff ff`.
+3. Neither `A` nor `R` is one of the eight small-order encodings (`SMALL_ORDER_ENCODINGS`, lowercase hex): `0100…00` (order 1); `ecff…ff7f` (order 2); `0000…00` and `0000…0080` (order 4); `26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05`, its `…fc85` twin, `c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a` and its `…03fa` twin (order 8).
+4. The equation is cofactorless, `[S]B = R + [k]A`. No prime-subgroup check is made, so a mixed-order key with a cofactorless-valid signature verifies.
+
+Checks 1–3 are byte comparisons, so a lenient backend never accepts what a strict one refuses. Pinned by the `sig-*`, `pubkey-*` and `valid-pubkey-mixed-order` `jwsCases`.
+
+### 1.2 Strict JSON, numbers and depth [C]
+
+These rules apply to the decoded header (before the signature check) and to the decoded payload (after it), for all six `typ`s:
+
+1. The bytes are well-formed UTF-8 (RFC 3629): no ill-formed sequences, no overlongs, no surrogate code points, nothing above U+10FFFF.
+2. There is no byte order mark at the start.
+3. The text is exactly one JSON object under RFC 8259's grammar: no `NaN`, `Infinity` or `-Infinity`, no comment, no trailing comma.
+4. No string contains an unescaped U+0000–U+001F.
+5. No escape is a lone surrogate: every `\uD800`–`\uDBFF` escape is immediately followed by a `\uDC00`–`\uDFFF` escape, and every `\uDC00`–`\uDFFF` escape immediately follows one (RFC 7493 §2.1).
+6. No object has two members with the same name. Names compare as sequences of Unicode scalar values after unescaping (RFC 7493 §2.3), so the NFC and NFD spellings of "é" are two names.
+7. No member name contains U+0000. Values keep §10's representation limit and its `docNulReplaced` annotation.
+8. **Numbers.** Every number token, judged exactly from its decimal digits (no floating point; an exponent of more than six significant digits is out of range outright), is zero or has a magnitude of at least 10^−307 and below 10^308. So `1e400`, `1e-400`, `5e-324` and `1e4294967297` are refused, and `7`, `-0`, `7.0`, `7e0`, `7.5`, `1e-7`, `1e+21`, `1e-307`, `9.99e307` and `0e5` are not. How a number is spelled matters only in an integer claim (§3.1).
+9. **Depth.** No object or array nests more than `MAX_JSON_DEPTH` = 64 levels deep, counting the top-level object as level 1.
+
+Noncharacters (`\uffff` and the rest) are ordinary characters, escaped or raw. Each verifier reports, beside the payload, its **non-wire-integer pointers** (`nonWireIntegers`): the RFC 6901 pointer of every number token that cannot be a wire integer, because it has a fraction or an exponent part, or because its digits exceed 9007199254740991 in magnitude. Member names are unescaped, then `~` is written `~0` and `/` is written `~1`; array indices are decimal. Python needs no set (its `json.loads` returns an `int` exactly for a plain integer token), so its runner derives one from the payload's `float`s and over-large `int`s. **[C]** via the JSON `jwsCases` and every case's `nonWireIntegers` member.
+
+## 2. Document envelope
+
+Six document types, domain-separated by `typ` (unknown or missing `typ` is rejected): **[C]**
+
+| `typ`              | Artifact                  | Signed by                     | Verified against          |
+| ------------------ | ------------------------- | ----------------------------- | ------------------------- |
+| `pkey-license+jws` | License document          | the product key (Worker)      | the effective product set |
+| `pkey-config+jws`  | Config document           | the product key (Worker)      | the effective product set |
+| `pkey-trust+jws`   | Trust manifest            | a pinned product key (Worker) | the pinned product keys   |
+| `pkey-bundle+jws`  | Offline activation bundle | a pinned product key (Worker) | the pinned product keys   |
+| `pkey-feed+jws`    | Channel feed              | the product key (Worker)      | the effective product set |
+| `pkey-release+jws` | Release record            | a release key (CI)            | the pinned release keys   |
+
+Shared claims on license and config documents (**the envelope**):
+
+```jsonc
+{
+  "iss": "key.plrs.im", // ISSUER — a FIXED string, never derived from the base URL (§8)
+  "aud": "<product-slug>",
+  "deviceId": "<32-char base64url device id>",
+  "issuedAt": 1756252800, // unix seconds
+  "expiresAt": 1756256400, // issuedAt + DOC_EXPIRY_SECONDS (3600) on the online path
+  "graceUntil": 1758844800, // issuedAt + maxOfflineDays*86400, see §3.6
+}
+```
+
+The trust manifest and the feed are device-less. The release record carries no `iss`: `key.plrs.im` would be false, and the pinned `kid` already names the signer.
+
+Normative constants (all **[C]**): `DOC_EXPIRY_SECONDS = 3600` · `CLOCK_SKEW_SECONDS = 300` · `MAX_GRACE_SECONDS = 31 536 000` (365 d) · `REFRESH_MARGIN_SECONDS = 1800` · `SECONDS_PER_DAY = 86 400` · `MAX_WIRE_INTEGER = 9 007 199 254 740 991` · `MAX_JSON_DEPTH = 64` · `FEED_TTL_SECONDS = 900` · `MAX_FEED_TTL_SECONDS = 3600` · `ROLLOUT_BUCKETS = 10 000` · `MAX_RECORD_JWS_BYTES = 88 844`.
+
+### 2.1 License document (`pkey-license+jws`)
+
+Envelope plus:
+
+```jsonc
+{
+  "licenseId": "…",
+  "profile": {
+    /* DocProfile — optional signed greeting/holder block; absent or an object, never null */
+  },
+  "entitlements": {
+    /* JSONValue map */
+  },
+}
+```
+
+`entitlements` is the **only** carrier of grant data (D-20): admin/tier policy is injected here as enforced entitlements — `license.tier`, `license.tierLabel`, `channels` (string array), `app.minVersion`, `app.maxVersion`, `deviceLimit` — alongside catalog-declared `flag` entries. License _state_ (`ok`/`grace`/…) is **never** carried in the document; it is derived by the client gate (§5).
+
+### 2.2 Config document (`pkey-config+jws`)
+
+Envelope plus:
+
+```jsonc
+{
+  "schemaVersion": 4,           // the product's active catalog version (NOT the wire version)
+  "config":  { "<key>": { "state": "default|enforced|hidden", "value": …, "updatedAt": … } },
+  "secrets": { "<key>": { … } }
+}
+```
+
+Contains no license fields. A product with `config` enabled and `license` disabled issues config documents to any registered device (§6) — this is the wire-level guarantee of service independence (D-08).
+
+### 2.2.1 Resolution [C]
+
+Pinned by `config-matrix.json`.
+
+A client resolves a config key from the verified document's `config` map (absent before the
+first document), the host's local overrides and the environment, in this order:
+`enforced | hidden (remote) > local override > environment > remote default > fallback`. The
+source is reported as `enforced`, `hidden`, `local`, `env`, `remote-default` or `fallback`. A
+layer holding JSON `null` answers `null`; only `fallback` means that no layer answered. A layer
+answers only for a key it holds itself, so a key named like a language built-in
+(`constructor`, `toString`) is an ordinary key.
+
+1. **Variable name.** The prefix (default `PKEY_CONFIG_`, §8), then the key with every `.`
+   replaced by `__`. Nothing else changes, case included. A variable that is set counts even
+   when it is empty. The SDK looks up exactly this name. A host's environment may match names
+   more loosely (Windows ignores case), and Swift's environment map is covered in §10.
+2. **Variable value.** It is the parsed value when the raw string is one RFC 8259 JSON text
+   that meets every rule below, and otherwise the raw string, unchanged:
+   - whitespace is only space, tab, LF and CR, so a leading byte order mark is not skipped.
+     There is no trailing comma, `NaN`, `Infinity` or leading zero;
+   - no object has two members of the same name, at any depth. Names compare as sequences of
+     Unicode scalar values after unescaping (RFC 7493 §2.3). So `"a"` and `"\u0061"` are one
+     name, and `"\u00e9"` and `"e\u0301"` are two;
+   - no member name holds U+0000 (written `\u0000`), at any depth, as §1.2 rule 7 says for
+     documents;
+   - no string value or member name holds a lone surrogate (RFC 7493 §2.1). That covers an
+     escaped one (`"\ud800"`), and a raw one where the host's strings can hold one: a JS
+     string can, and Python's `os.environ` holds one for each byte it cannot decode. Swift's
+     and Godot's strings cannot hold one;
+   - noncharacters (U+FDD0 to U+FDEF, and U+FFFE and U+FFFF in every plane) are ordinary
+     characters, escaped or raw. RFC 7493 §2.1 forbids them, but this rule does not, and
+     neither does §1.2 for documents;
+   - every number in range, judged exactly from its decimal digits, with no floating point.
+     Its exponent part has at most six significant digits, and the number is zero or has a
+     magnitude of at least 10^−307 and below 10^308 (§1.2 rule 8 for documents). So
+     `9.99e307`, `1e-307` and `0e5` qualify; `1e308`, `1e-308`, `5e-324`, `1e400`, a 309-digit
+     integer and `0e1000000` do not;
+   - at most 64 arrays and objects open at any point (`[[1]]` nests 2 deep), so a deeper text
+     is the raw string, whatever its length.
+
+   Reading a variable never fails: every input has one of these two answers, decided from the
+   text alone. The parsed value is pinned except in four cases:
+   - an integer beyond ±(2^53 − 1) keeps the language's own number type;
+   - Godot's number parser is not correctly rounded, so a number can read as another value
+     there (§10);
+   - a string value holding U+0000 (written `\u0000`) is read by Godot with U+FFFD in its
+     place (§10);
+   - of two canonically equivalent member names, Swift keeps only the first (§10).
+
+3. **No environment.** A host with no environment layer resolves as though no variable were
+   set. This covers React in a browser and in a desktop renderer.
+4. **The user-visible list.** Every document entry except `hidden` ones, each with its resolved
+   value. `enforced` is true exactly when the state is `enforced`. A key supplied only by a
+   local override or by the environment is not listed. The order is not specified.
+
+### 2.3 Trust manifest (`pkey-trust+jws`)
+
+Unchanged in shape and semantics (`schemaVersion`, `aud`, `iss`, `issuedAt`, `expiresAt`, `keys[{kid,publicKey,status}]`, `jwksUrl`, `cacheSeconds`). Servers SHOULD emit revoked keys explicitly for ≥ 2 × cacheSeconds as a positive prune signal; clients MUST honour an explicit `revoked` entry but MUST NOT depend on ever seeing one — wholesale replacement (absence-is-revocation) is the mechanism that always applies. (The worker emits them: `product_keys.revoked_at` is stamped on revocation and `listVerificationProductKeys` includes keys revoked within the 2 × cacheSeconds window, listed with `status: "revoked"`, for the trust manifest only — JWKS and discovery never include a revoked key.)
+
+### 2.4 Channel feed (`pkey-feed+jws`)
+
+Signed by the product key (`signDoc(…, "pkey-feed+jws")`). It carries no device id, so every caller of a channel gets identical bytes. Payload cap 65 536 bytes. Every `integer` field is an integer claim (§3.1), checked at its RFC 6901 pointer (`/seq`, `/app/targets/0/release/seq`, …), and every pattern, length and member follows §3.3. **[C]** via `feedCases`.
+
+| Field                    | JSON type      | Req. | Verifier check (refusal reason)                                                                                                                                                                               |
+| ------------------------ | -------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schemaVersion`          | integer        | yes  | `=== 1` (`claims`)                                                                                                                                                                                            |
+| `iss`                    | string         | yes  | `=== "key.plrs.im"` (`claims`)                                                                                                                                                                                |
+| `aud`                    | string         | yes  | `===` the product (`claims`)                                                                                                                                                                                  |
+| `channel`                | string         | yes  | matches `CHANNEL_NAME_PATTERN` (`claims`); is not `latest`, and equals the requested name or, when that name is an alias, `CHANNEL_ALIASES[requested]` (`channel`). The claim is the canonical channel (§4.4) |
+| `selector`               | object         | yes  | keys ⊆ {`platform`}; `platform`, when present, a string that equals the client's platform (`selector`). P4 may add keys; a v4 client refuses any key it does not know                                         |
+| `seq`                    | integer        | yes  | ≥ 1 (`claims`); against the floor (`not-newer`, `rollback`; §4.4)                                                                                                                                             |
+| `issuedAt`               | integer        | yes  | ≥ 0 (`claims`); network path: `issuedAt ≤ now + 300` (`freshness`)                                                                                                                                            |
+| `expiresAt`              | integer        | yes  | `issuedAt < expiresAt ≤ issuedAt + MAX_FEED_TTL_SECONDS` (`claims`); network path: `expiresAt > now − 300` (`freshness`)                                                                                      |
+| `app`                    | object         | yes  | the fields below (`claims`)                                                                                                                                                                                   |
+| `app.deliverable`        | string         | yes  | `=== "app"`                                                                                                                                                                                                   |
+| `app.versionScheme`      | string         | yes  | one of `semver`, `semver+build`, `4part`; every version below must parse under it (§11.1)                                                                                                                     |
+| `app.targets`            | array          | yes  | at most one item per `platform` value; when `selector.platform` is set, every item has that platform                                                                                                          |
+| `targets[].platform`     | string         | yes  | matches `FEED_PLATFORM_PATTERN` `^[a-z][a-z0-9-]{0,63}$`. Unknown values that match are allowed; a client reads only its own                                                                                  |
+| `targets[].release`      | object         | yes  | `{sha256, seq, version}`: 64 lowercase hex; integer ≥ 1; a version under the scheme. This is the pin                                                                                                          |
+| `targets[].floor`        | object \| null | yes  | present, and null or `{minVersion}` with a version that parses under the scheme and is not above the pin                                                                                                      |
+| `targets[].critical`     | boolean        | yes  | —                                                                                                                                                                                                             |
+| `targets[].outlets`      | object         | yes  | keys are product outlet ids, `OUTLET_ID_PATTERN` `^[a-z][a-z0-9-]{0,63}$`                                                                                                                                     |
+| `outlets.*.kind`         | string         | yes  | matches `OUTLET_ID_PATTERN` and is not `unknown`. A kind outside the 17 (§8) is allowed and never matches; the client then checks only the types and presence of that entry's other members                   |
+| `outlets.*.live`         | object \| null | yes  | present, and null or `{version, seq}` (a version under the scheme; integer ≥ 1)                                                                                                                               |
+| `outlets.*.halted`       | boolean        | yes  | —                                                                                                                                                                                                             |
+| `outlets.*.rollout`      | object         | no   | `{bp, salt}`: integer 0–10 000; exactly 32 lowercase hex. A present `null` is refused                                                                                                                         |
+| `outlets.*.listingUrl`   | string         | no   | for a known kind: 1–2048 bytes, each from 0x21 to 0x7E, starting byte for byte with one of `LISTING_URL_PREFIXES[kind]` (§11.2). A known kind without prefixes carries none                                   |
+| `outlets.*.capabilities` | object         | no   | any subset of the six capability fields, each in its vocabulary (§11.2); unknown keys are ignored                                                                                                             |
+| reserved                 | —              | —    | `packSets`, `packFloors`, `revocations` (P4-01, P4-13), `deltas` (P4-17). A v4 verifier ignores them, as it ignores every unknown member                                                                      |
+
+One feed per (product, canonical channel), requested as `GET /{product}/update/{channel}/feed.jws?platform={platform}`: the Worker answers with the channel-wide document (`selector: {}`) while it fits in 65 536 bytes, and otherwise with the per-platform document for the requested platform (`selector: {platform}`). `seq` is per (aud, canonical channel), shared by every selector document, and bumped when the composed content changes. `expiresAt = issuedAt + FEED_TTL_SECONDS`. A feed is **stale** when `now ≥ expiresAt + CLOCK_SKEW_SECONDS` (`now` the effective clock); the decision then answers `none {stale}` and never updates automatically. Neither the feed nor the record raises the clock floor (§4.2).
+
+### 2.5 Release record (`pkey-release+jws`)
+
+Signed in CI with a release key; the Worker never holds the private half and never signs one. Payload cap 65 536 bytes. It is the release descriptor moved into a signed payload, without the artifact locations (they change after signing) and with `minSupportedSeq`. `aud` binds the record to one product even when one release key serves several. **[C]** via `releaseRecordCases`.
+
+| Field                              | JSON type | Req.            | Verifier check (refusal step)                                                                                                                                                                                          |
+| ---------------------------------- | --------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schemaVersion`                    | integer   | yes             | `=== 1` (`claims`)                                                                                                                                                                                                     |
+| `aud`                              | string    | yes             | `===` the product (`claims`)                                                                                                                                                                                           |
+| `deliverable`                      | string    | yes             | `^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$`, at most 64 bytes (`claims`); equals the pin's (`cross-check`)                                                                                                                      |
+| `kind`                             | string    | yes             | non-empty (`claims`); `"app"` where an app record is expected (`cross-check`). `pack`, `revocation` and `delegation` are reserved: verified, never acted on in v4                                                      |
+| `version`                          | string    | yes             | `^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$` (`claims`); equals the pin's (`cross-check`). The record names no scheme: the pin's version already parses under the feed's                                                        |
+| `seq`                              | integer   | yes             | ≥ 1 (`claims`); equals the pin's (`cross-check`)                                                                                                                                                                       |
+| `issuedAt`                         | integer   | yes             | ≥ 0 (`claims`); informational otherwise: no freshness, no expiry, no clock floor                                                                                                                                       |
+| `minSupportedSeq`                  | integer   | no              | ≥ 1 (`claims`). The Worker folds it into the floor of each target that pins this record; clients do not evaluate it                                                                                                    |
+| `tag`, `channel`, `title`, `notes` | string    | no              | type only (display)                                                                                                                                                                                                    |
+| `provenance`                       | object    | no              | `{commit?, workflowRun?}` strings; type only                                                                                                                                                                           |
+| `builds`                           | array     | for `kind: app` | 1–64 items; build ids unique (`claims`)                                                                                                                                                                                |
+| `builds[].id`                      | string    | yes             | matches `BUILD_ID_PATTERN` `^[a-z0-9][a-z0-9._-]{0,63}$` (`claims`)                                                                                                                                                    |
+| `builds[].platform`                | string    | yes             | non-empty; a value outside the platform enum is allowed and never eligible                                                                                                                                             |
+| `builds[].arch`                    | string    | yes             | non-empty; an unknown string is allowed (never eligible); `universal` and `any` match every device arch                                                                                                                |
+| `builds[].format`                  | string    | yes             | non-empty                                                                                                                                                                                                              |
+| `builds[].buildNumber`             | string    | no              | a string when present; informational in v4                                                                                                                                                                             |
+| `builds[].minOS`                   | string    | no              | type only; informational in v4                                                                                                                                                                                         |
+| `builds[].requires`                | object    | no              | absent or an object (a present `null` is refused). The decision reads `engine` (a string) and `minBinary` (a version under the feed's scheme); `contentApi`, `packs`, `textures` and `formatVersion` are reserved (P4) |
+| `builds[].artifacts`               | array     | yes             | 0–32 items, at most one with `role: "payload"` (`claims`). An empty list is a store-only build; a build is eligible for self-installation only with exactly one `payload` artifact                                     |
+| `artifacts[].name`, `.role`        | string    | yes             | non-empty; v4 reads only `payload`                                                                                                                                                                                     |
+| `artifacts[].sha256`               | string    | yes             | 64 lowercase hex                                                                                                                                                                                                       |
+| `artifacts[].size`                 | integer   | yes             | ≥ 0                                                                                                                                                                                                                    |
+| `artifacts[].contentType`          | string    | no              | type only                                                                                                                                                                                                              |
+| reserved                           | —         | —               | `content: {contentApi, pins[], holds[], expects[], packChannels}` (P4-01). Ignored by v4                                                                                                                               |
+
+A feed pins a record by the **lowercase hex SHA-256 of its exact compact JWS** (ASCII). The record never says where bytes are: an SDK installs through Distribution's `builds` template (`distribution.endpoints.builds`, `{selector}` = the record's `version`, `{buildId}` = the build's `id`, each `encodeURIComponent`-encoded) and verifies the payload's `size` and SHA-256 against the record before staging.
+
+## 3. Claim validation
+
+Two validation profiles per licence and config document, selected by `checkFreshness`: **[C]**
+
+- **Network path** (`checkFreshness: true`): reject if `now > expiresAt + CLOCK_SKEW_SECONDS` or `issuedAt > now + CLOCK_SKEW_SECONDS`. A stale or future-dated document must never enter the cache.
+- **Reload path** (`checkFreshness: false`): the document is _expected_ to be past `expiresAt` (that is what offline operation is); only `graceUntil` bounds it, enforced by the gate against `effectiveNow` (§4.2). Used for cache reload **and bundle import** (§7).
+
+Always enforced on both paths, both document types **[C]**: `typ` matches expectation · `iss === "key.plrs.im"` · `aud` equals the expected product · `deviceId` equals the local device id · `graceUntil ≥ expiresAt` · `graceUntil ≤ issuedAt + MAX_GRACE_SECONDS` (a hostile signer cannot grant a century of grace) · anti-replay: a document with `issuedAt` lower than the currently-accepted document's `issuedAt` for the same type is rejected (per-type floors). The feed has the same two profiles (§4.4); the record has no freshness at all.
+
+### 3.1 Integer claims [C]
+
+The integer claims are every field typed `integer` in §2.4 and §2.5, and these v3 claims: `issuedAt`, `expiresAt` and `graceUntil` of the licence and config documents; `schemaVersion` of the config document and of the trust manifest; and `issuedAt` and `expiresAt` of the trust manifest and of the bundle. A verifier accepts an integer claim only when both hold:
+
+1. its token is a **plain integer token**, `-?(0|[1-9][0-9]*)`, with no fraction part and no exponent part;
+2. its value lies from the claim's minimum to `MAX_WIRE_INTEGER` = 2^53 − 1.
+
+Only then does the claim's own check run (`=== 1`, `≥ 1`, the freshness window, …), and `true` or `false` is never a number. The verifier decides rule 1 from the token, never from the number a parser made of it: `7.0`, `17e8`, `7.5` and `7.0000000000000001` are all refused in an integer claim (`isWireInteger` in client-core, `_wire_int` in Python, `wireInteger` in Swift, `PKeyClaims.is_wire_integer` in GDScript). Every other number in a document (an entitlement or config value, a member of `requires`, an unknown member) is a value, and §1.2 rule 8 is its only constraint.
+
+**Minimums.** Every timestamp's minimum is 0; every `schemaVersion` and `seq` is 1; `rollout.bp` is 0 (at most 10 000); `artifacts[].size` is 0:
+
+| Path (`*` is any index or member)                                                                  | Minimum   |
+| -------------------------------------------------------------------------------------------------- | --------- |
+| licence and config `issuedAt`, `expiresAt`, `graceUntil`                                           | 0         |
+| config `schemaVersion`; trust `schemaVersion`                                                      | 1         |
+| trust `issuedAt`, `expiresAt`; bundle `issuedAt`, `expiresAt`                                      | 0         |
+| feed `schemaVersion`, `seq`, `/app/targets/*/release/seq`, `/app/targets/*/outlets/*/live/seq`     | 1         |
+| feed `issuedAt` (0), `expiresAt` (1), `/app/targets/*/outlets/*/rollout/bp` (0)                    | as listed |
+| record `schemaVersion`, `seq`, `minSupportedSeq` (1); `issuedAt`, `/builds/*/artifacts/*/size` (0) | as listed |
+
+The corpus gives every one of the 21 paths a token case, a bound case (unless another check refuses every value above 2^53 − 1) and a minimum case (unless another check implies the minimum), and the generator proves each breaks its path alone.
+
+### 3.2 Members outside the claims [C]
+
+A verdict depends only on the claims and on these member checks:
+
+- licence: `licenseId` is a non-empty string; `entitlements` is an object; `profile` is absent or an object (a present `null` is refused);
+- config: `config` and `secrets` are objects;
+- trust manifest: `keys` is an array of objects with a string `kid` and `publicKey`, and anything else refuses the manifest. A key whose `alg`, `kty` and `crv` are not `EdDSA`, `OKP` and `Ed25519` is skipped, and only `status: "revoked"` drops a key;
+- bundle: `bundleId` is a non-empty string, `trust` a string, and `docs` an object whose `license` and `config` are each absent or a string, at least one present (a present `null` is refused). Every bundle member failure is `bundle-claims-rejected`.
+
+Nothing else is checked: not an entry's `state`, `value` or `updatedAt`, not a profile's members, not the trust manifest's `jwksUrl` or `cacheSeconds`. A typed decoder (Swift's) reads them totally: a non-object entry reads `{state: default, value: null, updatedAt: 0}`, an unknown `state` reads `default`, a non-integer `updatedAt` or `activatedAt` reads 0, a non-string member reads "".
+
+### 3.3 Patterns, lengths and presence [C]
+
+1. **A pattern matches the whole string**, with nothing after the match, a line terminator included. JavaScript uses the pattern with no flags; Python `re.fullmatch`; Swift `\A…\z` (`wholeMatches`); GDScript `\A…\z` (`PKeyClaims.matches_whole`). Every class is ASCII: `[0-9]`, never `\d`.
+2. **A length counts UTF-8 bytes.** Every bounded string in §2.4 and §2.5 is ASCII by its pattern, or must be (`listingUrl`).
+3. **Presence.** A required member must be present; `null` satisfies it only where its type includes `null` (`targets[].floor`, `outlets.*.live`). An optional member is absent or of its type, and a present `null` is refused. A payload that verifies but does not decode into an SDK's types fails at the claims step with that family's claims reason, never at the signature step.
+
+### 3.4 Feed verification order [C]
+
+`now` is the effective clock (§4.2). Steps 3–8 are pinned by `feedCases` (each case's `reason`):
+
+1. Read `update.endpoints.feed` and `release.endpoints.record` from discovery; if either is absent, refuse with `service-unavailable` before dialling (the host falls back to `update.check()`).
+2. Fetch the feed with the requested name as `{channel}`; a body equal to the committed feed of a name step 5 binds to is no change.
+3. `verifyJws` with the **effective** product trust set and `typ` `pkey-feed+jws`, §1.1 and §1.2 included (`jws`).
+4. The claims of §2.4 (`claims`).
+5. Channel binding: the `channel` claim is not `latest`, and equals the requested name or, when that name is an alias, `CHANNEL_ALIASES[requested]` (`channel`). From here on the claim is the canonical channel.
+6. Selector (`selector`).
+7. Network path only: freshness at `now` (`freshness`).
+8. The `seq` floor of the canonical channel (§4.4): `seq > floor.seq`, or `seq == floor.seq` with `issuedAt > floor.issuedAt`, accepts; `seq == floor.seq` with `issuedAt ≤ floor.issuedAt` is `not-newer` (kept silently); `seq < floor.seq` is `rollback`.
+9. Commit the feed under its claim; after an alias answer, remove the requested name's entry.
+
+### 3.5 Record verification order [C]
+
+Pinned by `releaseRecordCases` (each case's `step`):
+
+12. **Hash before signature.** A body over `MAX_RECORD_JWS_BYTES` = 88 844 bytes (`verifyJws`'s own encoded caps, 1 370 + 1 + 87 386 + 1 + 86), or with any byte outside ASCII, is refused without hashing; otherwise the lowercase hex SHA-256 of the exact body bytes must equal the pin's `sha256` (`hash`).
+13. Select the key by `kid` from the **pinned release keys only**; refuse when its raw bytes equal any key of the effective product trust set; then `verifyJws` with that one key and `typ` `pkey-release+jws` (`jws`).
+14. The record claims of §2.5 (`claims`).
+15. Cross-check against the pin: `kind` and `deliverable` are `"app"`, and `version` and `seq` equal the pin's (`cross-check`). A reserved or unknown `kind` verifies without a pin and is refused here where an app record is expected.
+
+### 3.6 Grace
+
+`graceUntil = issuedAt + maxOfflineDays × SECONDS_PER_DAY`, where `maxOfflineDays` is the per-license override or the product default. The 365-day ceiling applies at **verify time**, not only in the gate. Offline bundles use the same mechanism with operator-chosen `graceDays ≤ 365` (D-22).
+
+## 4. Verified cache, clock floor and feed floor
+
+### 4.1 Cache record v3
+
+`CACHE_VERSION = 3`, unchanged: v4 adds two optional slices, which a v3 loader ignores and a v4 loader treats as "no floor yet". One Core-owned record per product; **signed artifacts only**, plus two unsigned hints that can only _tighten_ the gate:
+
+```jsonc
+{
+  "v": 3,
+  "trustJws": "<pkey-trust+jws>",
+  "docs": { "license": "<jws>", "config": "<jws>" }, // per-service slices; absent = service unused
+  "etags": { "license": "…", "config": "…" },
+  "importedBundle": { "bundleId": "…", "importedAt": 1756252800 },
+  "lastSyncUnauthorized": false,
+  "blocked": {
+    "reason": "version-too-old",
+    "allowedRange": { "min": "2.0.0" },
+  },
+  "feeds": { "<canonical channel>": "<pkey-feed+jws>" }, // v4, optional
+  "releaseRecords": { "<lowercase hex sha256>": "<pkey-release+jws>" }, // v4, optional
+}
+```
+
+Rules (all **[C]** via reload-path corpus cases):
+
+- Every load re-verifies everything: `trustJws` against **pins only** → build effective trust → each entry of `docs` against the effective set with `checkFreshness: false`. Each `feeds[k]` goes through §3.4 steps 3–6 with `k` as the requested name, no freshness and no floor, and its claim must equal `k`; each `releaseRecords[h]` through §3.5 steps 12–14 with `h` as the pin, kept only while a surviving feed pins it. Any verification failure ⇒ that artifact is treated as absent (fail closed); a failed license doc ⇒ `needs-activation`, never a partial state.
+- `v !== 3` ⇒ the record is **discarded, never migrated**.
+- Decoded state, bare keys, floors or plaintext counters must never be persisted: the feed floors are derived from `feeds` on load.
+- Writes are Core-mediated read-modify-write of the whole record; service modules never write the file directly.
+
+### 4.2 Monotonic clock floor
+
+```
+highWaterMark = max(issuedAt of every currently-verified cached document, trustManifest.issuedAt)
+effectiveNow  = max(systemClock, highWaterMark)
+```
+
+Both document sources and the trust manifest feed the floor; the v4 feed and release record do not (a feed's freshness is checked against the effective clock, so winding the system clock back cannot revive an expired feed); a config-document-only floor is provably inert and the corpus pins the defective form so it cannot silently return (`floor-config-doc-alone-does-not-stop-rollback`, carried from v2; new `floor-max-over-three-artifacts`). **[C]**
+
+**Core owns trust refresh on its own schedule.** Trust refresh must not be a side effect of any single service's document fetch: a product with any service enabled still advances the independent signed clock. (v2's floor rode the `/config` fetch; that coupling is abolished.)
+
+### 4.3 Revocation while offline
+
+Unchanged semantics: a recorded hard 401 (`lastSyncUnauthorized`) yields `revoked` offline; a device that never reconnects learns nothing new and runs out at `graceUntil`. For bundle-activated installs the grace bound **is** the revocation lever — stated, not pretended otherwise.
+
+### 4.4 The feed `seq` floor, its ceiling, and the canonical channel [C]
+
+A client keeps one floor per (aud, **canonical channel**), derived from `feeds[channel]` while that feed still passes §3.4 steps 3–6 against the current effective trust set: `floor = {seq, issuedAt}` of the committed feed. A committed feed whose key has left the set no longer verifies, so it is dropped with its floor. Switching selectors (today platform, in P4 `contentApi`) can never evade the floor, because every selector document of a channel carries the same `seq`.
+
+**The canonical channel.** The Worker resolves the requested name as §5.1 rule 6 says — `stable` for `latest` and `stable`; `beta` for `beta`, and for `staging` unless the product declares a manual channel of that name; the name itself for `pr-<n>` and for a manual channel — and signs the result as `channel`. A client cannot tell the two `staging` cases apart, so the verified feed's `channel` claim **is** the canonical channel: it keys `feeds` and the floors, step 8 looks its floor up only after step 5 has bound it, it is the decision's channel, and the host records it as `staged.channel`. No SDK maps a requested name through `CHANNEL_ALIASES` to choose a key, a floor or a decision channel. A `latest` claim is refused. One residual is accepted: a request for `staging` binds to `staging` or to `beta`, so a network attacker can answer it with a genuine, unexpired `beta` feed of the same product, which is then checked against `beta`'s own floor (a `staging` grant already covers `beta`, §5.1 rule 4).
+
+**The ceiling.** `seq` never exceeds `MAX_WIRE_INTEGER`: at the ceiling, a change of content is signed at the ceiling again with a newer `issuedAt`, which step 8 accepts. A signer that holds the product key can sign a fresh feed at the ceiling, which installs that fetch it commit and so refuse the recovered Worker's lower `seq` until they freeze (`none {stale}`). The recovery is product-wide and needs no client change: the operator runs the `feed:seq-ceiling` script, which sets the product's ceiling flag, raises every existing `seq` row of the product to `MAX_WIRE_INTEGER` and drops the stored documents. A new `seq` row starts at 1, or at `MAX_WIRE_INTEGER` when its product's ceiling flag is set, so a channel without a row at recovery time is covered too. The recovered Worker then signs every channel at the ceiling with the current `issuedAt`, which is newer than any `issuedAt` the attacker's feed can carry (a client refuses one more than 300 s ahead of its effective clock). Pinned by `feed-valid-seq-ceiling-recovery`.
+
+## 5. Transport & gate placement
+
+- **Documents:** `GET /<p>/license/document` and `GET /<p>/config/document`, `Authorization: Bearer pkeyt_…`, response `application/jwt`. Per-document `ETag`/`If-None-Match`; on 304, if `effectiveNow > doc.expiresAt − REFRESH_MARGIN_SECONDS` the client refetches unconditionally (the half-life rule, applied per document). **[C]**
+- **Feeds and records:** `GET /<p>/update/{channel}/feed.jws?platform={platform}` and `GET /<p>/release/records/{sha256}`, both `application/jose`, both under the release `metadata` access mode, advertised as `update.endpoints.feed` and `release.endpoints.record` in discovery. The SDK always sends `platform`, so a per-platform split is invisible to it. The record route serves the stored bytes exactly, with `ETag: "<sha256>"`; an unknown hash is the plain 404.
+- **401 handling:** exactly one `POST /<p>/license/token` re-acquire attempt, then one retry of the failed fetch. (Registered-without-license devices re-register instead; same single-attempt rule.)
+- **Build gate placement (D-20):** channel/version-window enforcement returns `403 {"error":{"code":"version_blocked"|"channel_not_allowed"},"allowedRange":{…}}` on **`/license/document`** (and identity's `/session`). The config document enforces device authentication only. The channel names, the header normalisation and the entitlement predicate the gate applies are §5.1.
+- **Client metadata headers** on every product-scoped call: `X-PKey-Device`, `X-PKey-Version`, `X-PKey-Channel`, `X-PKey-SDK`, `X-PKey-SDK-Version`, `X-PKey-Platform`, `X-PKey-Arch`. Their values are §5.2.
+- **Gate function** (client-side, shared implementation): input `{ licenseServiceEnabled, activation: "token"|"bundle"|null, doc, now, highWaterMark, lastSyncUnauthorized, blocked, lastVerifiedAt }` with `now := max(now, highWaterMark)`. `licenseServiceEnabled: false` ⇒ status **`not-applicable`**, `isUsable = true`. `activation: null` ⇒ `needs-activation`. Otherwise the state machine is unchanged (`ok` → `grace` → `expired`; `revoked` on recorded 401; blocked states from the unsigned hint). **[C]** via gate-matrix v2.
+
+### 5.1 Channel vocabulary
+
+One set of channel names serves the licence build gate, the `entitled` release check
+(`release`/`update` access mode) and every SDK's `X-PKey-Channel`. The constants live in
+`@polaris-key/protocol/core` (`CHANNEL_*`, `CHANNEL_ALIASES`, `CHANNEL_NAME_PATTERN`,
+`PR_CHANNEL_PATTERN`, `PR_NUMBER_MAX_DIGITS`). **[C]** via gate-matrix v2.
+
+| Name      | What it is                                                               | Valid as                         |
+| --------- | ------------------------------------------------------------------------ | -------------------------------- |
+| `stable`  | the shipping channel; every grant holds it                               | header, selector, grant          |
+| `beta`    | the pre-release channel                                                  | header, selector, grant          |
+| `pr-<n>`  | one pull request; `<n>` is 1–7 digits, kept as written                   | header, selector, grant          |
+| `pr`      | the PR family: as a grant it covers every `pr-<n>`                       | header, grant                    |
+| `dev`     | the gate pseudo-channel of `0.0.0-dev*` builds (R3-01); Release has none | header, grant                    |
+| manual    | a name from the product's `release.manualChannels`                       | header, selector, grant          |
+| `staging` | the legacy alias of `beta`                                               | header, grant; selector (rule 6) |
+| `latest`  | an alias of `stable`                                                     | header, selector                 |
+
+1. **Alphabet.** Every name matches `^[a-z0-9][a-z0-9-]{0,63}$`: the intersection of the
+   manifest's `CHANNEL_RE` and the feed routes' `^[a-z0-9-]+$`. The routes keep their own
+   pattern, which every valid name passes.
+2. **Build-implied channel**, `impliedChannel(version)`:
+
+   | Version          | Channel                                             |
+   | ---------------- | --------------------------------------------------- |
+   | `0.0.0-dev*`     | `dev`                                               |
+   | `0.0.0-beta*`    | `beta`                                              |
+   | `0.0.0-staging*` | `beta`                                              |
+   | `0.0.0-pr-?<d>*` | `pr-<d>`, or `pr` when `<d>` has more than 7 digits |
+   | anything else    | `stable`                                            |
+
+   Only the `0.0.0-<word>` sentinels carry a channel: `2.0.0-beta.1` is `stable`. An SDK's
+   `channelForVersion` returns the coarse family (`stable`, `beta`, `pr`, `dev`) and sends it as
+   its default `X-PKey-Channel`; only the server narrows `pr` to `pr-<n>`.
+
+3. **Header**, `normalizeChannelHeader(header, version)`:
+
+   | `X-PKey-Channel`               | Becomes                                             |
+   | ------------------------------ | --------------------------------------------------- |
+   | `stable`, `latest`             | `stable`                                            |
+   | `beta`, `staging`              | `beta`                                              |
+   | `dev`                          | `dev`                                               |
+   | the literal `pr`               | the build's `pr-<n>` if it has one, else `pr`       |
+   | `pr-<d>`, `pr<d>`              | `pr-<d>`, or `pr` when `<d>` has more than 7 digits |
+   | any other name in the alphabet | itself                                              |
+   | anything else                  | refused with `channel-not-entitled`                 |
+
+   An unknown well-formed name is never a free pass: it must be granted by name (R3-01, R3-13).
+
+4. **Predicate**, `channelEntitled(granted, channel)`, where `granted` is the `channels`
+   entitlement (absent means `["stable"]`):
+   - `stable` is always granted;
+   - otherwise `granted` must contain the name exactly;
+   - two exceptions widen a grant: `staging` also covers `beta`, and `pr` also covers `pr-<n>`.
+
+   Nothing else widens one. `dev` and manual names are granted only by their exact name, and a
+   `beta` grant never covers a manual channel named `staging`. Grants are matched as stored and
+   are never rewritten.
+
+5. **Gate order.** The server checks, in order:
+   1. the dev bypass: `allowDevBuilds ?? granted includes "dev"`;
+   2. the version window;
+   3. a malformed header, which is refused;
+   4. every channel in {build-implied, header} other than `stable`, each against rule 4.
+6. **Release selectors keep their grammar:** `latest`, `stable`, `beta`, `pr-<1–7 digits>`, a
+   manual name, or a pinned `X.Y.Z`. `staging` resolves as `beta`, and it is looked up **after**
+   the manual names, so a declared manual `staging` channel wins. An aliased request keeps its
+   requested spelling for the asset suffix, the enclosure, the feed title and the edge-cache key;
+   resolution, floors and the `entitled` check go by the canonical channel. A channel feed's
+   `channel` claim is that canonical channel, and a client never resolves an alias itself
+   (§4.4).
+
+### 5.2 Client metadata header values [C]
+
+Pinned by `headers.json`.
+
+`X-PKey-Platform` and `X-PKey-Arch` describe the running binary: the OS family and the CPU
+architecture it was built for. For example:
+
+- an x86_64 build under Rosetta 2 or Windows-on-Arm emulation sends `x86_64`;
+- a Mac Catalyst build sends `macos`;
+- an iPad app running on a Mac or on visionOS sends `ios`.
+
+| Header               | Value                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `X-PKey-Platform`    | `macos`, `ios` (iPadOS too), `android`, `windows`, `linux`, `web`                                                        |
+| `X-PKey-Arch`        | `arm64`, `x86_64`, `armv7`, `wasm32`                                                                                     |
+| `X-PKey-SDK`         | the SDK id: `node`, `react`, `python`, `swift`, `godot`; a later SDK registers its id in `conformance/parity/enums.json` |
+| `X-PKey-SDK-Version` | the SDK's package version (unchanged)                                                                                    |
+
+1. **Spellings.** An SDK reads its runtime's own report: Node `os.platform()` and `os.arch()`,
+   Python `platform.system()` and `platform.machine()`, Swift's compilation conditions, Godot
+   `OS.get_name()` and `Engine.get_architecture_name()`. It looks the report up in
+   `PLATFORM_SPELLINGS` or `ARCH_SPELLINGS` (`@polaris-key/protocol/core`, generated into every
+   SDK):
+   - after ASCII case folding (A–Z only, never a locale-dependent lowercase);
+   - with no trimming;
+   - reading the table's own entries only.
+2. **Omission.** A spelling the table lacks has no value, and the SDK omits the header rather
+   than inventing one (`unknown`, `x86`, `freebsd`). A browser sends `web` and no `X-PKey-Arch`.
+3. **Server.** The Worker stores:
+   - the canonical value of any listed spelling;
+   - the id for each pre-§5.2 SDK name (`@polaris-key/node`, `@polaris-key/react`,
+     `polaris-key-python`, `PolarisKeySwift`, `polaris-key-godot`);
+   - any other value as sent.
+
+   It treats an empty value as absent. No server decision reads these headers.
+
+4. A `POST /<p>/devices/report` body that carries `platform`, `arch` or `sdk` uses the same
+   values. The `engine` object that an engine SDK adds carries an `id` of the form
+   `<engine>-<major>.<minor>`, in lowercase ASCII, such as `godot-4.7`.
+
+## 6. Device principal
+
+- **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `pkeyt_` tokens are rejected (pre-launch, no migration).
+- **Registration policy** (per product, manifest key `devices.registration`, default derived — `requires-license` if license enabled, else `requires-identity` if identity enabled, else `open`):
+  - `open` — `POST /<p>/devices/register` (keyless, rate-limited, optional fingerprint) mints a token.
+  - `requires-identity` — same endpoint, but only with a valid product identity session.
+  - `requires-license` — the endpoint returns `403 registration_closed`; activation/enrollment are the only mint paths (today's behavior).
+- **Device management:** `GET/PATCH/DELETE /<p>/devices[/:id]` (self-only for PATCH/DELETE) and `POST /<p>/devices/report` (facts/probes telemetry; best-effort, errors swallowed client-side) are Core surfaces available under every policy.
+
+### 6.1 Hardware fingerprint components
+
+A native SDK MAY present a fingerprint with activation, enrolment and registration. Each
+component is read on the device, omitted when unreadable (never substituted), and hashed as
+`base64url(sha256("pkey-hw:<product>:<component>:<raw>"))[0..22]` (`fingerprintVersion` 1).
+The Worker drops unknown names, recomputes `hwid`, and matches component-wise.
+
+| Component              | macOS                             | Windows                                 | Linux                            | iOS                   |
+| ---------------------- | --------------------------------- | --------------------------------------- | -------------------------------- | --------------------- |
+| `machineUuid` (anchor) | `IOPlatformUUID`                  | registry `MachineGuid`                  | rule 2                           | `identifierForVendor` |
+| `boardSerial`          | `IOPlatformSerialNumber`          | `Win32_BaseBoard.SerialNumber` (rule 1) | not read                         | not read              |
+| `cpuModel`             | CPU brand `:` logical cores       | same                                    | same                             | not read              |
+| `primaryMac`           | lowest non-internal, non-zero MAC | same                                    | same                             | not read              |
+| `bootVolumeUuid`       | boot volume UUID                  | `vol C:` serial                         | `findmnt -no UUID /`             | not read              |
+| `ramBucket`            | rule 3                            | rule 3                                  | rule 3                           | rule 3                |
+| `machineModel`         | `hw.model`                        | `Win32_ComputerSystem.Model` (rule 1)   | `/sys/class/dmi/id/product_name` | `hw.machine`          |
+
+The table is informative except where it cites a rule. `cpuModel` and `primaryMac` are read
+differently by different SDKs today; only stability within one SDK is promised for them.
+
+1. **Windows CIM** (`windowsCim`, `windowsCimCommand`). One PowerShell call, with stdin on the
+   null device, prints `{"boardSerial": …, "machineModel": …}` for the last instance of each
+   class, with non-ASCII escaped. The parser strips one leading U+FEFF, requires a JSON object,
+   and keeps a value only if it is a string that is non-empty after trimming ASCII whitespace
+   (U+0009–U+000D, U+0020, and nothing else) at both ends. It keeps vendor placeholders verbatim
+   and ignores other keys. Anything else yields neither component. **[C]**
+2. **Linux anchor** (`linuxAnchor`). The first of `/etc/machine-id` and `/var/lib/dbus/machine-id`
+   whose content, trimmed of ASCII whitespace as in rule 1, is non-empty and not
+   `uninitialized`. No DMI file is read; a host where neither file qualifies has no anchor. The
+   same value is the device id's raw input on Linux. **[C]**
+3. **RAM bucket** (`ramBuckets`). `g = floor(bytes / 2^30)`. Omitted when `g = 0`, otherwise the
+   largest power of two not above `g`, in decimal. Divide before any logarithm. **[C]**
+
+## 7. Offline bundles (`pkey-bundle+jws`)
+
+Air-gapped activation (D-12) — classic request-code flow:
+
+```jsonc
+// payload (≤ 262 144 bytes)
+{
+  "bundleId": "…", // ULID; audit anchor
+  "aud": "<product-slug>",
+  "deviceId": "<the requesting device's id>", // operator copies it from the app's offline screen
+  "issuedAt": 1756252800,
+  "expiresAt": 1758844800, // import window for the bundle itself
+  "docs": { "license": "<pkey-license+jws>", "config": "<pkey-config+jws>" }, // config optional
+  "trust": "<pkey-trust+jws>",
+}
+```
+
+The bundle's import window is `BUNDLE_IMPORT_WINDOW_SECONDS = 2 592 000` (30 days): `expiresAt = issuedAt + 30 d`, deliberately decoupled from and much shorter than `graceDays` — the import window bounds how long a stolen bundle _file_ stays useful, while `graceUntil` bounds how long the imported _install_ runs. Inner documents carry the ordinary `expiresAt = issuedAt + DOC_EXPIRY_SECONDS` (they are validated on the reload profile at import); stretching an inner `expiresAt` instead of `graceUntil` would pass _network_-path freshness for the whole grace period and is refused at mint. **[C]** via `bundleCases`.
+
+`importBundle` validation order (**all-or-nothing**; any failure imports nothing) **[C]** via `bundleCases`:
+
+1. Verify the bundle JWS against **pinned keys only**; `typ` must be `pkey-bundle+jws`; payload cap 262 144.
+2. `aud` equals the product; `deviceId` equals the local device id; `issuedAt ≤ now + skew`; `now ≤ expiresAt + skew` (the bundle import window uses network-path freshness — a stale bundle is refused).
+3. Verify `trust` against pins (reload profile); build the effective set.
+4. Verify each entry of `docs` against the effective set with the **reload profile** (`checkFreshness: false` — inner docs carry long `graceUntil`, not long `expiresAt`).
+5. Atomically write cache v3: `trustJws`, `docs`, `importedBundle: {bundleId, importedAt}`. No token is created.
+
+State semantics: `importedBundle` present with a verified license doc ⇒ gate `activation: "bundle"`. If the device later activates online, the token path supersedes (`activation: "token"`). Fingerprint enforcement is skipped for bundle activation (no server to dedupe against). Server-side minting is an admin surface (`POST /manage/api/products/<slug>/bundles`), audit-logged, `graceDays ≤ 365` enforced at mint **and** verify.
+
+`docs.license` is **optional by design**: a config-only product (D-08) air-gaps with a bundle carrying only `docs.config` + `trust`. Importing a bundle with no license document has **no activation effect** — for a license-enabled product the gate remains `needs-activation`; for a license-disabled product it is `not-applicable` as always. `activation: "bundle"` arises only from a bundle whose license document verified. A bundle with an EMPTY `docs` (no license, no config) is refused at import step 2 as vacuous.
+
+## 8. Identifier registry
+
+Amendment A1 (see the design spec) withdrew the interim `plrs` rebrand, so the v2 identifier family carries forward unchanged apart from the document types v3 and v4 added. The "withdrawn" column exists so a reader who saw the interim spelling in a draft, a branch or an old plan knows it is not merely deprecated — no verifier, signer or store ever accepts it.
+
+| Concern                  | v4 (normative)                                                                                                                                                                                                                               | Withdrawn (never accepted)                                |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| ISSUER (`iss`)           | `key.plrs.im`                                                                                                                                                                                                                                | `plrs.im`                                                 |
+| Device token prefix      | `pkeyt_`                                                                                                                                                                                                                                     | `plrst_`                                                  |
+| Client headers           | `X-PKey-*`                                                                                                                                                                                                                                   | `X-Polaris-*`                                             |
+| License key prefix       | `pkey_<product>_…`                                                                                                                                                                                                                           | — (never changed)                                         |
+| JWS `typ` values         | `pkey-license+jws`, `pkey-config+jws`, `pkey-trust+jws`, `pkey-bundle+jws`, `pkey-feed+jws`, `pkey-release+jws`                                                                                                                              | the `plrs-*` spellings                                    |
+| Record hash              | lowercase hex SHA-256 over the exact ASCII compact JWS of the record                                                                                                                                                                         | —                                                         |
+| Outlet kinds             | `direct`, `app-store`, `testflight`, `altstore`, `altstore-pal`, `play`, `play-testing`, `obtainium`, `fdroid-repo`, `ms-store`, `app-installer`, `steam`, `itch`, `flathub`, `snap`, `winget`, `web` (`unknown` is a detection result only) | —                                                         |
+| Version schemes          | `semver`, `semver+build`, `4part`                                                                                                                                                                                                            | —                                                         |
+| Manifest dir             | `.pkey/` — the ONLY directory, no fallback                                                                                                                                                                                                   | `.polaris/`                                               |
+| Session domain tags      | `pkey.admin.v1\|`, `pkey.portal.v1\|`                                                                                                                                                                                                        | `plrs.admin.v1\|`, `plrs.portal.v1\|`                     |
+| Session cookies          | `__Host-pkey_admin`, `__Host-pkey_portal`, `pkey_<p>_session`                                                                                                                                                                                | the `plrs_` spellings                                     |
+| Keychain service (Swift) | `pkey:<product>`                                                                                                                                                                                                                             | `plrs:<product>`                                          |
+| Config env prefix        | `PKEY_CONFIG_`                                                                                                                                                                                                                               | `PLRS_CONFIG_`                                            |
+| Hash domains             | `pkey-hw`, `pkey-device:` (FROZEN at `fingerprintVersion` 1)                                                                                                                                                                                 | — (never changed; a rename orphans every enrolled digest) |
+| Serving host             | `key.plrs.im`                                                                                                                                                                                                                                | — (equal to the issuer, but checked separately)           |
+
+`pkey-config+jws` and `pkey-trust+jws` are the v2 type strings reused for v3's config document and trust manifest; the document _shapes_ changed in v3, the type strings did not.
+
+## 9. Rollout & versioning
+
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 2` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 1` (§5.2), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1` and `outletMatrixVersion = 1` (§11), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+
+## 10. Divergence & hardening ledger
+
+All v2 and v3 divergence classes (alg confusion, oversize, duplicate keys, alphabet strictness, typ separation, freshness profiles, trust substitution, clock floor, per-type anti-replay floors, config-document-without-license issuance, registration-policy token minting, bundle all-or-nothing import, bundle payload cap, gate `not-applicable`/`activation` semantics, channel vocabulary and aliases, fingerprint component derivations, client metadata header values, config resolution and environment values) carry into v4 unchanged. New classes introduced by v4, each with corpus coverage: Ed25519 strictness (§1.1, the `sig-*` and `pubkey-*` `jwsCases`); strict JSON, numbers and depth (§1.2, the `json-*` and `valid-*` `jwsCases`); integer claims decided from the token, with their minimums (§3.1, the v3 claim cases, `feedCases`, `releaseRecordCases` and every `nonWireIntegers` member); members outside the claims (§3.2); whole-string patterns, byte lengths and member presence (§3.3); the feed `seq` floor, its ceiling and the canonical channel that keys it (§4.4); record hash before signature (§3.5); and release keys that are never product keys (§1). Implementations must not add local tolerances beyond this document; any observed divergence gets a corpus case before a fix.
+
+**U+0000 in member names is now refused everywhere** (§1.2 rule 7), which closes v3 §10's open entry for signed documents. U+0000 in a string value keeps the representation limit below.
+
+**Declared representation limit: U+0000 in decoded strings.** Some client platforms have a native string type that cannot hold U+0000. GDScript's `String` is one: Godot 4.4 drops the character and 4.7 replaces it. Such a platform is conformant only under this rule.
+
+- It MUST decode the JSON escape `\u0000` as U+FFFD on every engine version, before its duplicate-key scan and its parse. Its decoded documents are then the same on every engine, and the loss stays visible.
+- Verdicts do not change. The signature covers the encoded bytes (§1). Every value a verifier compares is ASCII (`typ`, `kid`, `iss`, `aud`, `deviceId`, channel names, versions), so a value that contains U+0000 fails the comparison on every platform alike.
+- For each string value under a `jwsCases` `expect.doc` that contains U+0000, the generator writes `expect.docNulReplaced`. It maps the value's RFC 6901 pointer to the value with every U+0000 replaced by U+FFFD.
+- A runner on such a platform compares those values against `docNulReplaced`, and the rest of the document as usual. Every other runner ignores the field.
+- Environment values (§2.2.1 rule 2) follow the same rule. Such a platform reads `\u0000` in a
+  string value as U+FFFD, and `config-matrix.json` compares no such value. A member name
+  holding U+0000 keeps the variable's raw string on every platform, so such a platform
+  decides it on the raw text, before the replacement.
+- In a signed document, a member name that contains U+0000 is refused (§1.2 rule 7, `json-nul-escape-in-key`), so no verdict depends on representing one; a platform that cannot represent U+0000 decides it on the raw text, before the replacement. A raw string in `config-matrix.json` spells such a key as an escape, which is ASCII text, so no corpus file holds a decoded one.
+
+**Declared representation limit: canonically equivalent names in Swift.** Swift's `String`
+equality and hashing are canonical equivalence. Swift holds a decoded object as
+`[String: JSONValue]` and the environment as `[String: String]`, so two names that differ but
+are canonically equivalent are one key. Swift is conformant only under this rule.
+
+- **Member names in an environment value (§2.2.1 rule 2).** `"\u00e9"` and `"e\u0301"` are two
+  names, and Swift keeps the first. The verdict does not change, because Swift's duplicate scan
+  compares scalar values, so the text is parsed as everywhere else. `config-matrix.json` pins
+  that verdict in one row whose two members hold equal values. The generator refuses any row
+  where such members hold different values.
+- **Variable names (§2.2.1 rule 1).** Swift reads a variable whose name is canonically
+  equivalent to the built name as that name. With an ASCII prefix this happens only through
+  U+212A KELVIN SIGN, which is equivalent to `K` (in `PKEY_CONFIG_`, and allowed in keys). No
+  row holds a variable name outside ASCII.
+- **Member names in a signed document.** The verifier compares names by scalar value (§1.2 rule 6), so `valid-canonically-equivalent-member-names` verifies in Swift as everywhere else; Swift's `JSONValue` then keeps only the first, which is why that case carries no `doc`. P3-12's write checks keep the Worker from signing such a pair.
+
+**Declared representation limit: number values in Godot.** Godot's JSON parser
+(`built_in_strtod`) is not correctly rounded. It keeps the first 18 digits of a number,
+leading zeros included, as an integer, and multiplies or divides that integer by a power of
+ten built from inexact factors. Godot is conformant only under this rule. Measured on 4.7.2:
+
+- a number with a fraction or an exponent can differ in its last bits: `1e-307` reads as
+  1.0000000000000001e-307, and `9007199254740991.0` as 9007199254740990;
+- a number whose first 18 digits are all zeros reads as 0 (`0.00000000000000000001`), or as
+  NaN when the power of ten passes 10^308 (`0e999`,
+  `0.00000000000000000000000000000000000000001e348`);
+- a number divided by a power of ten above 10^308 reads as 0 (`100000000000000000e-309`, which
+  is 10^−292).
+
+The verdict of §2.2.1 rule 2 does not depend on any of this, because every SDK judges each
+number from its digits. Every SDK, Godot included, reads a number as the nearest double when
+it has at most 18 digits before its exponent part (leading zeros included), those digits form
+an integer of at most 2^53, and its exponent minus its count of fraction digits is within
+±22. `config-matrix.json` compares the value only of such numbers.
+
+In a signed document the same holds for every number **value** (an entitlement or config
+value, an unknown member): Godot's reading can differ in its last bits, and Python reads `7.0`
+as a `float`. The verdict agrees, because §1.2 rule 8 is judged from the digits, and an integer
+claim (§3.1) is always exact because its token is checked. `valid-number-forms` and
+`valid-number-integral-spellings` therefore carry no `doc`.
+
+These are the only declared representation limits. The first covers no character but U+0000. **[C]**
+
+## 11. Client behaviour pinned beside the contract (informative)
+
+These are client behaviour outside the wire contract, like the stage machine; their tables live in the corpus directory and are guarded by the same drift gate. The plan (`plans/P3-01.md` §2.8–§2.10, §4.6–§4.8) is their long form.
+
+### 11.1 The update decision (`update-matrix.json`)
+
+`decideUpdate` is a pure, synchronous function over the verified feed and record, the installed build, the outlet (`{id, kind}` from `resolveUpdateOutlet`), the host's update methods, the staged update, the skipped version and the rollout bucket. It answers `none`, `code-ready`, `binary`, `store`, `platform` or `blocked` (reserved for later packages: `packs`, `content-floor`, `revoked-content`), and `bootDecision` maps the answer onto the stage machine's `decide.done`. **No v4 answer stops play**: a mandatory offer and every `blocked {app-floor}` give `optional`, a prompt the player cannot dismiss; `required` is unused in v4. Versions compare under the feed's scheme with `compareVersions` — `semver` is SemVer 2.0's own grammar with ASCII classes and §11 precedence on unbounded integers, `semver+build` breaks a tie with numeric build metadata, `4part` compares four unbounded integers — and a version that does not parse compares as null. The rollout bucket is `u32_be(SHA-256(UTF-8(salt) ‖ UTF-8(installId))[0..4]) mod 10000`, and a device is in the rollout iff its bucket is not null and below `bp`. `update-matrix.json` pins 25 version cases, 10 capability cases, 12 outlet cases, 6 bucket vectors and 65 decision rows, each recomputed by the generator's reference implementation.
+
+### 11.2 Outlet kinds, capabilities and detection (`outlet-matrix.json`)
+
+Capabilities (`binaryUpdates` none < store < self, `codeUpdates`, `dataUpdates`, `channelSwitch`, `commerce`, `downloadedScripts`) default per outlet kind (`OUTLET_CAPABILITY_DEFAULTS` in `@polaris-key/protocol/distribution`), narrowed first by the platform (`PLATFORM_NARROWING`: an iOS `direct` install opens its web-distribution page and never loads code), then by the subkind (`SUBKIND_NARROWING`: a package-managed `direct` install is updated by its manager), then by the feed entry's `capabilities`. Booleans narrow by AND, `binaryUpdates` to the narrower value, `commerce` only to `none`; nothing widens. A feed's `listingUrl` may only start with the kind's `LISTING_URL_PREFIXES`, byte for byte. Detection (`detectOutlet`) applies S-06's precedence rules over 25 signals; `outlet-matrix.json` pins the tables, the signal vocabulary with each signal's confidence and evidence, and 48 detection rows, each recomputed by the generator's reference.
+
+### 11.3 Boot confirmation (`stage-matrix.json` version 2)
+
+A launch is confirmed, resetting `failedBoots` to 0, the first time the machine's outcome is `waiting`, `blocked` or `offline` (`now`), or has been `ready` for `BOOT_OK_SECONDS` = 10 with the process alive or the game calls `confirmBoot()` (`after-ok-seconds`). `running` and `error` never confirm. `bootConfirmation(outcome)` is the pure part; the timer and `confirmBoot()` are host-side. The stage machine itself is unchanged.
