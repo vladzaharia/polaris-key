@@ -9,6 +9,7 @@ import {
   loadTable,
   renderAdminTs,
   renderAll,
+  renderGdscript,
   renderManifestTs,
   renderPython,
   renderSwift,
@@ -116,6 +117,9 @@ describe("renderers", () => {
     expect(renderSwift(table)).toContain(
       "case .release, .update, .identity, .distribution: return false",
     );
+    expect(renderGdscript(table)).toContain(
+      'const SLUGS := ["license", "config", "release", "update", "identity", "distribution"]',
+    );
   });
 
   it("defaults are generated from defaultEnabled", () => {
@@ -126,6 +130,9 @@ describe("renderers", () => {
       'DEFAULT_ENABLED_SERVICES: Tuple[str, ...] = ("license", "config")',
     );
     expect(renderSwift(TABLE)).toContain("case .license, .config: return true");
+    expect(renderGdscript(TABLE)).toContain(
+      'const DEFAULT_ENABLED := ["license", "config"]',
+    );
   });
 
   it("names a hyphenated or keyword slug as a valid Swift case", () => {

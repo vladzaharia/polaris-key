@@ -27,6 +27,17 @@ static func is_number(v: Variant) -> bool:
 	return v is float or v is int
 
 
+## `v` is the boolean true. Never `v == true`: comparing a String with a bool is a runtime
+## error in GDScript, and values read from JSON can be anything.
+static func is_true(v: Variant) -> bool:
+	return v is bool and v
+
+
+## `v` is the boolean false.
+static func is_false(v: Variant) -> bool:
+	return v is bool and not v
+
+
 ## The current time in whole epoch seconds.
 static func system_now() -> int:
 	return int(floor(Time.get_unix_time_from_system()))

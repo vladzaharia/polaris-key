@@ -65,7 +65,7 @@ static func check_envelope(doc: Dictionary, opts: Dictionary, now: float) -> boo
 		return false
 	if grace > issued + PKeyClaims.MAX_GRACE_SECONDS:
 		return false
-	if opts.get("check_freshness", true) != false:
+	if not PKeyClaims.is_false(opts.get("check_freshness", true)):
 		if issued > now + PKeyClaims.CLOCK_SKEW_SECONDS:
 			return false
 		if expires <= now - PKeyClaims.CLOCK_SKEW_SECONDS:
@@ -75,7 +75,7 @@ static func check_envelope(doc: Dictionary, opts: Dictionary, now: float) -> boo
 
 ## Verify one signed document of type `typ`: the payload Dictionary, or null. A coroutine.
 static func verify_doc(jws: String, typ: String, opts: Dictionary) -> Variant:
-	var v = await PKeyJws.verify_async(jws, opts.get("trust", {}), typ, 0, opts.get("offload", false) == true)
+	var v = await PKeyJws.verify_async(jws, opts.get("trust", {}), typ, 0, PKeyClaims.is_true(opts.get("offload", false)))
 	if v == null or not (v["payload"] is Dictionary):
 		return null
 	var doc: Dictionary = v["payload"]

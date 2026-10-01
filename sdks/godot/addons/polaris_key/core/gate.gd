@@ -27,7 +27,7 @@ static func license_state(input: Dictionary) -> Dictionary:
 	var doc = input.get("doc")
 	var now := maxf(float(input.get("now", 0)), float(input.get("high_water_mark", 0)))
 	var last_verified = input.get("last_verified_at")
-	if input.get("license_service_enabled", true) == false:
+	if PKeyClaims.is_false(input.get("license_service_enabled", true)):
 		return {"status": "not-applicable"}
 	var activation = input.get("activation")
 	if activation == null or activation == "":
@@ -38,7 +38,7 @@ static func license_state(input: Dictionary) -> Dictionary:
 		if blocked.has("allowedRange"):
 			out["allowed_range"] = blocked["allowedRange"]
 		return out
-	if input.get("last_sync_unauthorized", false) == true:
+	if PKeyClaims.is_true(input.get("last_sync_unauthorized", false)):
 		return {"status": "revoked"}
 	if not (doc is Dictionary):
 		return {"status": "needs-activation"}

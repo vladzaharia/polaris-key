@@ -34,7 +34,7 @@ static func merge(pinned: Dictionary, discovered: Dictionary) -> Dictionary:
 static func verify_manifest(jws: String, opts: Dictionary) -> Dictionary:
 	var rejected := {"doc": null, "discovered": {}}
 	var pinned: Dictionary = opts.get("pinned", {})
-	var v = await PKeyJws.verify_async(jws, pinned, PKeyClaims.TYP_TRUST, 0, opts.get("offload", false) == true)
+	var v = await PKeyJws.verify_async(jws, pinned, PKeyClaims.TYP_TRUST, 0, PKeyClaims.is_true(opts.get("offload", false)))
 	if v == null or not (v["payload"] is Dictionary):
 		return rejected
 	var doc: Dictionary = v["payload"]
@@ -57,7 +57,7 @@ static func verify_manifest(jws: String, opts: Dictionary) -> Dictionary:
 	var floor_at = opts.get("last_trust_issued_at")
 	if floor_at != null and issued <= floor_at:
 		return rejected
-	if opts.get("check_freshness", true) != false:
+	if not PKeyClaims.is_false(opts.get("check_freshness", true)):
 		if issued > now + PKeyClaims.CLOCK_SKEW_SECONDS:
 			return rejected
 		if expires <= now - PKeyClaims.CLOCK_SKEW_SECONDS:

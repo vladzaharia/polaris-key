@@ -1,0 +1,59 @@
+class_name PKeyStore
+extends RefCounted
+## Where the device credential and the verified cache live (client-core `store.ts`). A store is
+## DUMB on purpose: it round-trips bytes and knows nothing about versions, verification or
+## migration; discarding a `v != 3` record is PKeyCache's decision, because that is a security
+## rule.
+##
+## Failures are never swallowed: every failing operation sets `last_error` and emits `failed`,
+## which Core forwards as `PolarisKey.store_error`. `status()` reports P1b-09's StoreStatus
+## shape: {backend, degraded?: {reason, detail?}}.
+##
+## The file store (PKeyFileStore) is the default; the Keychain and Keystore stores (P5-05,
+## P5-06) subclass this.
+
+## {op, path, error: int (Godot Error), message}.
+signal failed(err: Dictionary)
+
+## The last failure, or {} when none happened yet.
+var last_error: Dictionary = {}
+
+
+## The `pkeyt_` token, or "" when none is held.
+func get_token() -> String:
+	return ""
+
+
+func set_token(_token: String) -> bool:
+	return false
+
+
+func clear_token() -> bool:
+	return true
+
+
+## The device id, minted once and then stable.
+func get_device_id() -> String:
+	return ""
+
+
+## The cache record as parsed JSON (a Dictionary), or null when absent or unreadable.
+func read_cache() -> Variant:
+	return null
+
+
+func write_cache(_record: Dictionary) -> bool:
+	return false
+
+
+func clear_cache() -> bool:
+	return true
+
+
+func status() -> Dictionary:
+	return {"backend": "custom"}
+
+
+func _fail(op: String, path: String, error: int, message: String) -> void:
+	last_error = {"op": op, "path": path, "error": error, "message": message}
+	failed.emit(last_error)
