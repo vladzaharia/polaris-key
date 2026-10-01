@@ -107,7 +107,7 @@ and `pnpm typecheck`). A green hook is not a green gate.
 ## Hard rules
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
-gate-matrix.json,fingerprint.json}` and the Swift mirror at
+gate-matrix.json,fingerprint.json,stage-matrix.json}` and the Swift mirror at
 `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` are output. Regenerate with `pnpm gen:corpus`
 and commit the result in the same change. `pnpm gen:corpus -- --check` regenerates in memory and
 fails on any difference, mirror included. Never weaken a runner to make a change "pass".

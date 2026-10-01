@@ -82,11 +82,11 @@ into a red build.
 
 ### 1. Conformance corpus
 
-|             |                                                                                                                                                                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Catches** | A wire-affecting change that was not reflected in the golden vectors, and any hand edit to `conformance/corpus/v2/` (`cases.json`, `gate-matrix.json`, `fingerprint.json`) or the Swift mirror at `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` |
-| **How**     | Regenerates all three files in memory from a fixed keypair and case list, then compares against what is committed — mirror included                                                                                                                |
-| **Command** | `pnpm gen:corpus -- --check` (drop `--check` to write)                                                                                                                                                                                             |
+|             |                                                                                                                                                                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catches** | A wire-affecting change that was not reflected in the golden vectors, and any hand edit to `conformance/corpus/v2/` (`cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`) or the Swift mirror at `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` |
+| **How**     | Regenerates all four files in memory from a fixed keypair and case list, then compares against what is committed — mirror included                                                                                                                                      |
+| **Command** | `pnpm gen:corpus -- --check` (drop `--check` to write)                                                                                                                                                                                                                  |
 
 A red drift job means: regenerate and commit it in the same change. Never weaken a runner to make
 a change pass.
