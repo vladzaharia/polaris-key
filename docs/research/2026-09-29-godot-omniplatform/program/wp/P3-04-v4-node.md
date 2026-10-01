@@ -142,6 +142,35 @@ conformance runner sections. P3-05 is a graph dependency.
 - [ ] The green gate passes (`AGENTS.md`).
 - [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
+## Corrections from the implementation
+
+- **Branch.** The branch is `wp/P3-04-node-v4`.
+- **Options.** `UpdateClientOptions` also carries `stamp` and `detected` (as React's
+  `BrowserUpdateConfig` does, through `resolveUpdateOutlet`), and `binaryVersion`, `engine`,
+  `platform` and `arch` (defaulting to the version and to `os.platform()`/`os.arch()`'s canonical
+  values). Without them the projection suite could not map every `update-matrix.json` row's
+  installed state (rows on `ios`, `android` and `web`, code-pack rows with an `engine`, rows
+  whose binary and code versions differ). Each is validated at construction (`invalid-options`).
+- **Surface.** `feed({channel})` returns `{channel, feed, source, errors}` and runs
+  `runUpdateCheck` itself with the record fetch withheld, so its order, floors and fallback are
+  `decide()`'s; `releaseRecord(hash)` returns `{sha256, record, source, pinned}`, cross-checks
+  and commits only when a committed feed pins the hash. `buildUrl(version, buildId)` is the
+  builds route (plan decision 5). Raised refusals are `UpdateError` (a `PolarisError` with
+  `detail`); Core's D-21 gate and `local-only` stay plain `PolarisError`.
+- **Discovery.** `decide()` loads discovery itself when the session has not (after the D-21
+  gate, which reads `expectedServices`); when discovery is unreachable the fetches fail as a
+  transport failure and the committed feed decides. The bearer goes only to the control plane's
+  origin.
+- **Cache.** `init()` runs the reload path over the slices, and `decide()` runs it again. The
+  slices survive `deactivate()` and a bundle import (signed public documents carrying the seq
+  floors, as in React).
+- **Transcripts.** P3-03 has not landed, so `update-feed-rollback` and `update-record-by-hash`
+  do not exist yet. The Node replayer learns `updateDecide` and `initial.update` (with React's
+  standard-discovery fallback for a transcript that loads none) and is proven by a synthetic
+  transcript in `conformance/runners/node/transcripts.test.ts`.
+- **Docs.** `build/sdks/node.mdx` renders `packages/sdk-node/README.md` whole, so the README is
+  the one page edited.
+
 ## Verify
 
 ```sh

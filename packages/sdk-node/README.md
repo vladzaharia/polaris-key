@@ -61,7 +61,7 @@ await client.sync();
 | `client.devices`  | `@polaris-key/node/devices`  | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas      |
 | `client.identity` | `@polaris-key/node/identity` | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                          |
 | `client.release`  | `@polaris-key/node/release`  | `changelog` / `installUrl` / `downloadUrl`                                                                               |
-| `client.update`   | `@polaris-key/node/update`   | `check` (version) / `appcastUrl` (from discovery)                                                                        |
+| `client.update`   | `@polaris-key/node/update`   | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)           |
 | —                 | `@polaris-key/node/local`    | The transportless profile: every network-requiring call refuses                                                          |
 | —                 | `@polaris-key/node/cli`      | Framework-agnostic commands + commander/yargs adapters                                                                   |
 
@@ -96,7 +96,8 @@ one implementation, and every JS host consumes it.
 | `expectedServices` | What this build expects the product to run — the capability fallback when discovery has not been fetched.                                    |
 
 Per-service inputs ride their own bags: `config: { localOverrides, envPrefix, env }`,
-`license: { fingerprint }`, `devices: { probes, fingerprint }`.
+`license: { fingerprint }`, `devices: { probes, fingerprint }`, and
+`update: { pinnedReleaseKeys, outlet, format, buildNumber, methods, … }` (below).
 
 ### Directories
 
@@ -266,6 +267,85 @@ Every product-scoped request carries the `X-PKey-*` metadata headers. `X-PKey-Pl
 (`freebsd`, `ia32`) omits its header. `X-PKey-SDK` is `node` (`SdkId.node`); `SDK_NAME` stays the
 npm package name and is not sent.
 
+## Signed update decisions (wire v4)
+
+`client.update.decide()` answers "what should this install do next?" from the signed channel
+feed (`pkey-feed+jws`) and the release record it pins (`pkey-release+jws`), with the same
+`@polaris-key/client-core` functions every SDK runs against `update-matrix.json`
+(`runUpdateCheck`, the React SDK's too). It is what an Electron main process or a CLI acts on:
+verify, then stage. `check()` and `appcastUrl()` are unchanged beside it.
+
+```ts
+const client = await PolarisKeyClient.create({
+  productSlug: "acme",
+  version: "1.4.0",
+  trust: { pinnedKeys: { "acme-2026": "<raw base64url>" } },
+  expectedServices: ["release", "distribution", "update"],
+  update: {
+    pinnedReleaseKeys: { "acme-release-2026": "<raw base64url>" },
+    outlet: "direct", // turns offers on; without an outlet the install is `unknown`
+    format: "zip",
+  },
+});
+
+const check = await client.update.decide({ channel: "latest" });
+// { channel: "stable", decision: { action: "binary", method: "download", build, release, … },
+//   feed: "network", record: "network", errors: [] }
+if (check.decision.action === "binary") {
+  const url = client.update.buildUrl(
+    check.decision.release.version,
+    check.decision.build,
+  );
+  // download, check `size` and `sha256` against the record's payload artifact, then stage
+}
+```
+
+The answer is an `UpdateCheck`: `channel` (the canonical channel, the feed's own claim — record it
+as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed`), `record`
+(`network`, `cache` or `none`) and `errors`.
+
+| `update` option     | Notes                                                                                                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pinnedReleaseKeys` | `{ kid -> raw Ed25519 key, base64url }`: the **only** keys a release record verifies against. Never merged with the trust pins, never persisted, never learned from the network. |
+| `outlet`            | A kind (`"direct"`, `"steam"`, …) or `{ id, kind, subkind? }`. Wins over `stamp` and `detected`. A Node CLI is never store-installed: `"direct"` is the usual value.             |
+| `stamp`, `detected` | The build stamp's outlet fields and a detection result, through `resolveUpdateOutlet`, until P3-11 detects the outlet in-process.                                                |
+| `format`            | The installed build's format; a binary build of another format is never offered. Default `null`.                                                                                 |
+| `buildNumber`       | Informational in v4. Default `null`.                                                                                                                                             |
+| `methods`           | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["download"]`.                                                            |
+| `binaryVersion`     | The executable's version when it differs from `version` (after a code update). Defaults to `version`.                                                                            |
+| `engine`            | `godot-<major>.<minor>` for a host that runs Godot code packs; `null` otherwise.                                                                                                 |
+| `platform`, `arch`  | Default to `os.platform()` / `os.arch()`'s canonical values; set them on an OS with none.                                                                                        |
+
+- **Refusals.** A bad option, or a release key whose bytes are also a trust pin, throws
+  `invalid-options` from the constructor; an empty `pinnedReleaseKeys` makes `decide()` throw
+  `not-configured`. A product that runs no Update service is refused before dialling
+  (`service-unavailable`, D-21), and so is a Worker whose discovery document has no
+  `update.endpoints.feed` or `release.endpoints.record` — fall back to `check()`.
+- **Discovery.** `decide()` loads discovery when this session has not. The feed is
+  `GET …/update/{channel}/feed.jws?platform=…` with the channel as requested (`latest` is fine:
+  the Worker answers with the canonical `stable` feed); the record is
+  `GET …/release/records/{sha256}`, read at most 88 845 bytes, hashed before any signature work.
+  The device bearer goes only to the control plane's own origin.
+- **After a refusal** it decides from the committed feed and reports the refusal in `errors`
+  (`feed-rejected` with the step as `detail`, `feed-rollback`, `record-rejected`,
+  `record-mismatch`, `network-error` or the Worker's wire code). It throws an `UpdateError`
+  (a `PolarisError` with `detail`) only when nothing committed is left to decide from. Offline,
+  the committed feed decides; once it is past `expiresAt + 300` the answer is `none {stale}`.
+- **The cache.** The `feeds` slice (keyed by each feed's own `channel` claim) and the
+  `releaseRecords` slice (keyed by hash, kept only while a committed feed pins it) hold signed
+  JWSs only, through Core's read-modify-write. Every load and every decision re-verifies them;
+  each channel's `seq` floor is derived from the committed feed that survives, never stored, so
+  it survives a restart and cannot be edited on disk. A deactivation or a bundle import keeps
+  them.
+- **The clock** is the effective clock, `max(system clock, highWaterMark)`: winding the system
+  clock back cannot revive an expired feed.
+- **No v4 answer stops play.** `binary`, `store` and `platform` with `mandatory: true`, and every
+  `blocked {app-floor}`, are prompts the user cannot dismiss: show them as a persistent notice
+  with no dismiss control over an app that keeps running, never as a window that covers it.
+- `feed({channel})` returns the verified feed `decide()` would use, without the record;
+  `releaseRecord(sha256)` verifies one record by hash (cross-checked and cached when a committed
+  feed pins it). Handing off to Velopack, electron-updater or a self-replace is the host's.
+
 ## Offline depths
 
 1. **Online with grace** — the default. Documents carry a short `expiresAt` and a long,
@@ -302,11 +382,12 @@ program.parseAsync(process.argv);
 ## The frozen wire contract
 
 Documents are compact **JWS (EdDSA / Ed25519)**, domain-separated by `typ`
-(`pkey-license+jws`, `pkey-config+jws`, `pkey-trust+jws`, `pkey-bundle+jws`). The verifying key
-is chosen by the header `kid` from the pinned trust set — never from the document, and never
-from the cache. The encoding and every claim rule are pinned by
-`conformance/corpus/v2/cases.json`, which this SDK, the worker, and the other three SDKs verify
-identically. See `docs/security/WIRE-CONTRACT-V3.md`.
+(`pkey-license+jws`, `pkey-config+jws`, `pkey-trust+jws`, `pkey-bundle+jws`, `pkey-feed+jws`,
+`pkey-release+jws`). The verifying key is chosen by the header `kid` from the pinned trust set —
+never from the document, and never from the cache; a release record verifies against the pinned
+release keys only. The encoding and every claim rule are pinned by
+`conformance/corpus/v2/cases.json`, which this SDK, the worker, and the other SDKs verify
+identically. See `docs/security/WIRE-CONTRACT-V4.md`.
 
 ## Develop
 
