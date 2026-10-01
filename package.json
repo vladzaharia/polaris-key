@@ -17,6 +17,7 @@
     "gen:mirrors": "tsx tools/gen-mirrors.ts",
     "gen:transcripts": "node tools/gen-transcripts.mjs",
     "gen:services": "tsx tools/gen-services.ts",
+    "gen:constants": "tsx tools/gen-sdk-constants.ts",
     "parity:check": "tsx tools/parity-check.ts",
     "prepare": "husky",
     "conformance": "turbo run test --filter=@polaris-key/conformance-node",

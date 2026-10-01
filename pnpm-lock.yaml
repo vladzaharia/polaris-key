@@ -348,6 +348,9 @@ importers:
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../packages/shared-jws
+      '@polaris-key/protocol':
+        specifier: workspace:*
+        version: link:../packages/shared-protocol
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
