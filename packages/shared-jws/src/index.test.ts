@@ -6,6 +6,7 @@ import {
   base64UrlEncodeBytes,
   importVerifyKey,
   sha256Base64Url,
+  hasDuplicateKeys,
   type TrustSet,
 } from "./index.js";
 
@@ -351,5 +352,25 @@ describe("verifyJws — maxPayloadBytes (the pkey-bundle+jws cap, §1)", () => {
     expect(
       (await verifyJws(jws, TRUST, { maxPayloadBytes: 16 }))?.payload,
     ).toEqual(doc);
+  });
+});
+
+// Exported for client-core's environment-value rule (WIRE-CONTRACT-V3 §2.2.1 rule 2), which
+// applies the same duplicate rule without a second scanner.
+describe("hasDuplicateKeys", () => {
+  it("finds a duplicate nested inside another object", () => {
+    expect(hasDuplicateKeys('{"a":{"b":1,"b":2}}')).toBe(true);
+  });
+
+  it('compares names after unescaping ("a" against "\\u0061")', () => {
+    expect(hasDuplicateKeys('{"a":1,"\\u0061":2}')).toBe(true);
+  });
+
+  it("never normalizes: canonically equivalent names are two names", () => {
+    expect(hasDuplicateKeys('{"\\u00e9":1,"e\\u0301":2}')).toBe(false);
+  });
+
+  it("accepts distinct keys", () => {
+    expect(hasDuplicateKeys('{"a":1,"b":[{"a":2}],"c":{"a":3}}')).toBe(false);
   });
 });

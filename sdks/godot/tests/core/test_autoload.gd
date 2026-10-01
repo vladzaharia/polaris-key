@@ -127,7 +127,7 @@ func _headers_and_refresh(t: PKeyTestContext) -> void:
 		"x-pkey-device": sdk.core.device_id,
 		"x-pkey-version": "1.0.0",
 		"x-pkey-channel": "stable",
-		"x-pkey-sdk": "polaris-key-godot",
+		"x-pkey-sdk": "godot",
 		"x-pkey-sdk-version": "0.1.0",
 		"authorization": "Bearer pkeyt_x",
 	}
@@ -135,8 +135,10 @@ func _headers_and_refresh(t: PKeyTestContext) -> void:
 	for k in want:
 		all = all and h.get(k) == want[k]
 	t.check("autoload: a product-scoped call carries the X-PKey-* headers and the bearer", all, str(h))
-	if PKeyHeaders.platform() != "" and PKeyHeaders.arch() != "":
-		t.check("autoload: platform and arch come from the one table", h.get("x-pkey-platform") == PKeyHeaders.platform() and h.get("x-pkey-arch") == PKeyHeaders.arch(), str(h))
+	# @pkey-feature core.headers
+	# WIRE-CONTRACT-V3 §5.2: every CI host (and editor) maps both, through the generated tables.
+	t.check("autoload: this host has a canonical platform and arch", PKeyHeaders.platform() != "" and PKeyHeaders.arch() != "", "%s / %s" % [OS.get_name(), Engine.get_architecture_name()])
+	t.check("autoload: platform and arch are the canonical values", h.get("x-pkey-platform") == PKeyHeaders.platform() and h.get("x-pkey-arch") == PKeyHeaders.arch(), str(h))
 	t.check("autoload: a 404 with a flat body is a failure with the wire code", not r.ok and r.code == &"not_found" and r.detail["status"] == 404, str(r))
 
 	server.requests.clear()

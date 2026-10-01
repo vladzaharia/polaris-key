@@ -44,6 +44,11 @@ import {
   HEADER_SDK_VERSION,
   HEADER_VERSION,
 } from "@polaris-key/protocol/core";
+import {
+  normalizeArchHeader,
+  normalizePlatformHeader,
+  normalizeSdkHeader,
+} from "./clientMetadata.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product, ProductPublic } from "./products.js";
@@ -668,6 +673,9 @@ export async function touchDeviceMetadata(
   });
 }
 
+/** The client metadata headers as stored (WIRE-CONTRACT-V3 §5.2 rule 3): platform, arch and SDK
+ *  canonical where the spelling is known (`core/clientMetadata.ts`), and an empty header absent,
+ *  so `?? existing` at the merge sites keeps the stored value rather than blanking it. */
 export function deviceMetadata(req: Request): {
   userAgent: string | null;
   platform: string | null;
@@ -678,10 +686,10 @@ export function deviceMetadata(req: Request): {
 } {
   return {
     userAgent: req.headers.get("user-agent"),
-    platform: req.headers.get(HEADER_PLATFORM),
-    arch: req.headers.get(HEADER_ARCH),
+    platform: normalizePlatformHeader(req.headers.get(HEADER_PLATFORM)),
+    arch: normalizeArchHeader(req.headers.get(HEADER_ARCH)),
     appVersion: req.headers.get(HEADER_VERSION),
-    sdkName: req.headers.get(HEADER_SDK_NAME),
+    sdkName: normalizeSdkHeader(req.headers.get(HEADER_SDK_NAME)),
     sdkVersion: req.headers.get(HEADER_SDK_VERSION),
   };
 }

@@ -100,9 +100,11 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 - **local override** — a user setting, or a programmatic override the client itself stores. Only
   reachable when the remote state is `default`.
 - **environment** — `PKEY_CONFIG_` plus the key with every `.` replaced by `__`:
-  `run.concurrency` becomes `PKEY_CONFIG_run__concurrency`. The value is JSON-parsed when it
-  parses, otherwise taken as a raw string. Checked per-SDK; see that SDK's own README for the
-  exact API.
+  `run.concurrency` becomes `PKEY_CONFIG_run__concurrency`. The value is parsed when it is one
+  strict JSON text (no duplicate member names, no lone surrogate, every number zero or of
+  magnitude 10^−307 up to below 10^308, at most 64 levels deep), and is otherwise the raw
+  string, the same in every SDK (WIRE-CONTRACT-V3 §2.2.1, pinned by `config-matrix.json`). See
+  each SDK's own README for the exact API.
 - **remote default** — the value the document carries with `state: "default"`.
 - **fallback** — the entry's own schema `default`, compiled into the SDK or a generated mirror,
   used only when nothing above answered at all — including when the key never made it into the

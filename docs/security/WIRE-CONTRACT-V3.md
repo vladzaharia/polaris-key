@@ -3,7 +3,7 @@
 **Status:** Normative. Supersedes `WIRE-CONTRACT-V2.md` (v2 remains the historical record of the pre-suite contract; its §6 divergence findings seed §10 here).
 **PROTOCOL_VERSION:** `3` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker and the four client SDKs (Node, React, Python, Swift): JWS envelope, per-service signed documents, trust distribution, device principal, offline bundles, verified cache, and the monotonic clock floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
-**Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the one representation limit declared in §10. `pnpm gen:corpus -- --check` is the drift gate.
+**Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen:corpus -- --check` is the drift gate.
 
 Design spec: `docs/superpowers/specs/2026-08-26-polaris-suite-services-design.md` (decision register D-01…D-24).
 
@@ -79,6 +79,61 @@ Envelope plus:
 
 Contains no license fields. A product with `config` enabled and `license` disabled issues config documents to any registered device (§6) — this is the wire-level guarantee of service independence (D-08).
 
+### 2.2.1 Resolution [C]
+
+Pinned by `config-matrix.json`.
+
+A client resolves a config key from the verified document's `config` map (absent before the
+first document), the host's local overrides and the environment, in this order:
+`enforced | hidden (remote) > local override > environment > remote default > fallback`. The
+source is reported as `enforced`, `hidden`, `local`, `env`, `remote-default` or `fallback`. A
+layer holding JSON `null` answers `null`; only `fallback` means that no layer answered. A layer
+answers only for a key it holds itself, so a key named like a language built-in
+(`constructor`, `toString`) is an ordinary key.
+
+1. **Variable name.** The prefix (default `PKEY_CONFIG_`, §8), then the key with every `.`
+   replaced by `__`. Nothing else changes, case included. A variable that is set counts even
+   when it is empty. The SDK looks up exactly this name. A host's environment may match names
+   more loosely (Windows ignores case), and Swift's environment map is covered in §10.
+2. **Variable value.** It is the parsed value when the raw string is one RFC 8259 JSON text
+   that meets every rule below, and otherwise the raw string, unchanged:
+   - whitespace is only space, tab, LF and CR, so a leading byte order mark is not skipped.
+     There is no trailing comma, `NaN`, `Infinity` or leading zero;
+   - no object has two members of the same name, at any depth. Names compare as sequences of
+     Unicode scalar values after unescaping (RFC 7493 §2.3). So `"a"` and `"\u0061"` are one
+     name, and `"\u00e9"` and `"e\u0301"` are two;
+   - no member name holds U+0000 (written `\u0000`), at any depth, as P3-01's rule 7 says for
+     documents;
+   - no string value or member name holds a lone surrogate (RFC 7493 §2.1). That covers an
+     escaped one (`"\ud800"`), and a raw one where the host's strings can hold one: a JS
+     string can, and Python's `os.environ` holds one for each byte it cannot decode. Swift's
+     and Godot's strings cannot hold one;
+   - noncharacters (U+FDD0 to U+FDEF, and U+FFFE and U+FFFF in every plane) are ordinary
+     characters, escaped or raw. RFC 7493 §2.1 forbids them, but this rule does not, and
+     neither does P3-01 for documents;
+   - every number in range, judged exactly from its decimal digits, with no floating point.
+     Its exponent part has at most six significant digits, and the number is zero or has a
+     magnitude of at least 10^−307 and below 10^308 (P3-01's rule 8 for documents). So
+     `9.99e307`, `1e-307` and `0e5` qualify; `1e308`, `1e-308`, `5e-324`, `1e400`, a 309-digit
+     integer and `0e1000000` do not;
+   - at most 64 arrays and objects open at any point (`[[1]]` nests 2 deep), so a deeper text
+     is the raw string, whatever its length.
+
+   Reading a variable never fails: every input has one of these two answers, decided from the
+   text alone. The parsed value is pinned except in four cases:
+   - an integer beyond ±(2^53 − 1) keeps the language's own number type;
+   - Godot's number parser is not correctly rounded, so a number can read as another value
+     there (§10);
+   - a string value holding U+0000 (written `\u0000`) is read by Godot with U+FFFD in its
+     place (§10);
+   - of two canonically equivalent member names, Swift keeps only the first (§10).
+
+3. **No environment.** A host with no environment layer resolves as though no variable were
+   set. This covers React in a browser and in a desktop renderer.
+4. **The user-visible list.** Every document entry except `hidden` ones, each with its resolved
+   value. `enforced` is true exactly when the state is `enforced`. A key supplied only by a
+   local override or by the environment is not listed. The order is not specified.
+
 ### 2.3 Trust manifest (`pkey-trust+jws`)
 
 Unchanged from v2 in shape and semantics (`schemaVersion`, `aud`, `issuedAt`, `expiresAt`, `keys[{kid,publicKey,status}]`, `cacheSeconds`). Servers SHOULD emit revoked keys explicitly for ≥ 2 × cacheSeconds as a positive prune signal; clients MUST honour an explicit `revoked` entry but MUST NOT depend on ever seeing one — wholesale replacement (absence-is-revocation) is the mechanism that always applies. (The worker emits them: `product_keys.revoked_at` is stamped on revocation and `listVerificationProductKeys` includes keys revoked within the 2 × cacheSeconds window, listed with `status: "revoked"`, for the trust manifest only — JWKS and discovery never include a revoked key.)
@@ -144,7 +199,7 @@ Unchanged semantics: a recorded hard 401 (`lastSyncUnauthorized`) yields `revoke
 - **Documents:** `GET /<p>/license/document` and `GET /<p>/config/document`, `Authorization: Bearer pkeyt_…`, response `application/jwt`. Per-document `ETag`/`If-None-Match`; on 304, if `effectiveNow > doc.expiresAt − REFRESH_MARGIN_SECONDS` the client refetches unconditionally (the v2 half-life rule, applied per document). **[C]**
 - **401 handling:** exactly one `POST /<p>/license/token` re-acquire attempt, then one retry of the failed fetch. (Registered-without-license devices re-register instead; same single-attempt rule.)
 - **Build gate placement (D-20):** channel/version-window enforcement returns `403 {"error":{"code":"version_blocked"|"channel_not_allowed"},"allowedRange":{…}}` on **`/license/document`** (and identity's `/session`). The config document enforces device authentication only. The channel names, the header normalisation and the entitlement predicate the gate applies are §5.1.
-- **Client metadata headers** on every product-scoped call: `X-PKey-Device`, `X-PKey-Version`, `X-PKey-Channel`, `X-PKey-SDK`, `X-PKey-SDK-Version`, `X-PKey-Platform`, `X-PKey-Arch`.
+- **Client metadata headers** on every product-scoped call: `X-PKey-Device`, `X-PKey-Version`, `X-PKey-Channel`, `X-PKey-SDK`, `X-PKey-SDK-Version`, `X-PKey-Platform`, `X-PKey-Arch`. Their values are §5.2.
 - **Gate function** (client-side, shared implementation): input `{ licenseServiceEnabled, activation: "token"|"bundle"|null, doc, now, highWaterMark, lastSyncUnauthorized, blocked, lastVerifiedAt }` with `now := max(now, highWaterMark)`. `licenseServiceEnabled: false` ⇒ status **`not-applicable`**, `isUsable = true`. `activation: null` ⇒ `needs-activation`. Otherwise v2 state machine unchanged (`ok` → `grace` → `expired`; `revoked` on recorded 401; blocked states from the unsigned hint). **[C]** via gate-matrix v2.
 
 ### 5.1 Channel vocabulary
@@ -216,6 +271,46 @@ One set of channel names serves the licence build gate, the `entitled` release c
    the manual names, so a declared manual `staging` channel wins. An aliased request keeps its
    requested spelling for the asset suffix, the enclosure, the feed title and the edge-cache key;
    resolution, floors and the `entitled` check go by the canonical channel.
+
+### 5.2 Client metadata header values [C]
+
+Pinned by `headers.json`.
+
+`X-PKey-Platform` and `X-PKey-Arch` describe the running binary: the OS family and the CPU
+architecture it was built for. For example:
+
+- an x86_64 build under Rosetta 2 or Windows-on-Arm emulation sends `x86_64`;
+- a Mac Catalyst build sends `macos`;
+- an iPad app running on a Mac or on visionOS sends `ios`.
+
+| Header               | Value                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `X-PKey-Platform`    | `macos`, `ios` (iPadOS too), `android`, `windows`, `linux`, `web`                                                        |
+| `X-PKey-Arch`        | `arm64`, `x86_64`, `armv7`, `wasm32`                                                                                     |
+| `X-PKey-SDK`         | the SDK id: `node`, `react`, `python`, `swift`, `godot`; a later SDK registers its id in `conformance/parity/enums.json` |
+| `X-PKey-SDK-Version` | the SDK's package version (unchanged)                                                                                    |
+
+1. **Spellings.** An SDK reads its runtime's own report: Node `os.platform()` and `os.arch()`,
+   Python `platform.system()` and `platform.machine()`, Swift's compilation conditions, Godot
+   `OS.get_name()` and `Engine.get_architecture_name()`. It looks the report up in
+   `PLATFORM_SPELLINGS` or `ARCH_SPELLINGS` (`@polaris-key/protocol/core`, generated into every
+   SDK):
+   - after ASCII case folding (A–Z only, never a locale-dependent lowercase);
+   - with no trimming;
+   - reading the table's own entries only.
+2. **Omission.** A spelling the table lacks has no value, and the SDK omits the header rather
+   than inventing one (`unknown`, `x86`, `freebsd`). A browser sends `web` and no `X-PKey-Arch`.
+3. **Server.** The Worker stores:
+   - the canonical value of any listed spelling;
+   - the id for each pre-§5.2 SDK name (`@polaris-key/node`, `@polaris-key/react`,
+     `polaris-key-python`, `PolarisKeySwift`, `polaris-key-godot`);
+   - any other value as sent.
+
+   It treats an empty value as absent. No server decision reads these headers.
+
+4. A `POST /<p>/devices/report` body that carries `platform`, `arch` or `sdk` uses the same
+   values. The `engine` object that an engine SDK adds carries an `id` of the form
+   `<engine>-<major>.<minor>`, in lowercase ASCII, such as `godot-4.7`.
 
 ## 6. Device principal
 
@@ -319,11 +414,11 @@ either string ever existed in the wild.
 
 ## 9. Rollout & versioning
 
-Pre-launch, no live clients: v3 replaces v2 in one movement — no dual-accept window. `PROTOCOL_VERSION = 3`; cache v2 records are discarded on first v3 load (§4.1); djdl is re-seeded; the corpus lives at `corpus/v2/` and v1 has been deleted (its fifteen gate-matrix rows were inlined into the v2 generator first; gate-matrix v2 has since retired one of them, the pre-R3-01 dev-build bypass, through an approved plan with a named successor row, P0-04). Version counters and their owners: `PROTOCOL_VERSION` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1` (unchanged), `stageMatrixVersion = 1` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), per-product catalog `schemaVersion` (orthogonal). The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+Pre-launch, no live clients: v3 replaces v2 in one movement — no dual-accept window. `PROTOCOL_VERSION = 3`; cache v2 records are discarded on first v3 load (§4.1); djdl is re-seeded; the corpus lives at `corpus/v2/` and v1 has been deleted (its fifteen gate-matrix rows were inlined into the v2 generator first; gate-matrix v2 has since retired one of them, the pre-R3-01 dev-build bypass, through an approved plan with a named successor row, P0-04). Version counters and their owners: `PROTOCOL_VERSION` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1` (unchanged), `stageMatrixVersion = 1` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 1` (§5.2) and `configMatrixVersion = 1` (§2.2.1), per-product catalog `schemaVersion` (orthogonal). The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger (seeded from v2 §6)
 
-All v2 divergence classes (alg confusion, oversize, duplicate keys, alphabet strictness, typ separation, freshness profiles, trust substitution, clock floor) carry into corpus v2 unchanged. New classes introduced by v3, each with corpus coverage: per-type anti-replay floors (§3), config-document-without-license issuance (§2.2), registration-policy token minting (§6), bundle all-or-nothing import (§7), bundle payload cap (§1), gate `not-applicable`/`activation` semantics (§5), channel vocabulary and aliases (§5.1, gate-matrix), fingerprint component derivations (§6.1, `fingerprint.json`). Implementations must not add local tolerances beyond this document; any observed divergence gets a corpus case before a fix.
+All v2 divergence classes (alg confusion, oversize, duplicate keys, alphabet strictness, typ separation, freshness profiles, trust substitution, clock floor) carry into corpus v2 unchanged. New classes introduced by v3, each with corpus coverage: per-type anti-replay floors (§3), config-document-without-license issuance (§2.2), registration-policy token minting (§6), bundle all-or-nothing import (§7), bundle payload cap (§1), gate `not-applicable`/`activation` semantics (§5), channel vocabulary and aliases (§5.1, gate-matrix), fingerprint component derivations (§6.1, `fingerprint.json`), client metadata header values (§5.2, `headers.json`), config resolution and environment values (§2.2.1, `config-matrix.json`). Implementations must not add local tolerances beyond this document; any observed divergence gets a corpus case before a fix.
 
 **Declared representation limit: U+0000 in decoded strings.** Some client platforms have a native string type that cannot hold U+0000. GDScript's `String` is one: Godot 4.4 drops the character and 4.7 replaces it. Such a platform is conformant only under this rule.
 
@@ -331,6 +426,48 @@ All v2 divergence classes (alg confusion, oversize, duplicate keys, alphabet str
 - Verdicts do not change. The signature covers the encoded bytes (§1). Every value a verifier compares is ASCII (`typ`, `kid`, `iss`, `aud`, `deviceId`, channel names, versions), so a value that contains U+0000 fails the comparison on every platform alike.
 - For each string value under a `jwsCases` `expect.doc` that contains U+0000, the generator writes `expect.docNulReplaced`. It maps the value's RFC 6901 pointer to the value with every U+0000 replaced by U+FFFD.
 - A runner on such a platform compares those values against `docNulReplaced`, and the rest of the document as usual. Every other runner ignores the field.
-- An object key that contains U+0000 is outside this entry. The corpus has none, the generator refuses to emit one, and no verdict for it is pinned yet (P3-01 decides it).
+- Environment values (§2.2.1 rule 2) follow the same rule. Such a platform reads `\u0000` in a
+  string value as U+FFFD, and `config-matrix.json` compares no such value. A member name
+  holding U+0000 keeps the variable's raw string on every platform, so such a platform
+  decides it on the raw text, before the replacement.
+- In a signed document, an object key that contains U+0000 is outside this entry. No `jwsCases` document has one, the generator refuses to emit one, and no verdict for it is pinned yet (P3-01 decides it). A raw string in `config-matrix.json` spells such a key as an escape, which is ASCII text, so no corpus file holds a decoded one.
 
-This is the only declared representation limit, and it covers no other character. **[C]**
+**Declared representation limit: canonically equivalent names in Swift.** Swift's `String`
+equality and hashing are canonical equivalence. Swift holds a decoded object as
+`[String: JSONValue]` and the environment as `[String: String]`, so two names that differ but
+are canonically equivalent are one key. Swift is conformant only under this rule.
+
+- **Member names in an environment value (§2.2.1 rule 2).** `"\u00e9"` and `"e\u0301"` are two
+  names, and Swift keeps the first. The verdict does not change, because Swift's duplicate scan
+  compares scalar values, so the text is parsed as everywhere else. `config-matrix.json` pins
+  that verdict in one row whose two members hold equal values. The generator refuses any row
+  where such members hold different values.
+- **Variable names (§2.2.1 rule 1).** Swift reads a variable whose name is canonically
+  equivalent to the built name as that name. With an ASCII prefix this happens only through
+  U+212A KELVIN SIGN, which is equivalent to `K` (in `PKEY_CONFIG_`, and allowed in keys). No
+  row holds a variable name outside ASCII.
+- Signed documents are outside this entry (P3-01).
+
+**Declared representation limit: number values in Godot.** Godot's JSON parser
+(`built_in_strtod`) is not correctly rounded. It keeps the first 18 digits of a number,
+leading zeros included, as an integer, and multiplies or divides that integer by a power of
+ten built from inexact factors. Godot is conformant only under this rule. Measured on 4.7.2:
+
+- a number with a fraction or an exponent can differ in its last bits: `1e-307` reads as
+  1.0000000000000001e-307, and `9007199254740991.0` as 9007199254740990;
+- a number whose first 18 digits are all zeros reads as 0 (`0.00000000000000000001`), or as
+  NaN when the power of ten passes 10^308 (`0e999`,
+  `0.00000000000000000000000000000000000000001e348`);
+- a number divided by a power of ten above 10^308 reads as 0 (`100000000000000000e-309`, which
+  is 10^−292).
+
+The verdict of §2.2.1 rule 2 does not depend on any of this, because every SDK judges each
+number from its digits. Every SDK, Godot included, reads a number as the nearest double when
+it has at most 18 digits before its exponent part (leading zeros included), those digits form
+an integer of at most 2^53, and its exponent minus its count of fraction digits is within
+±22. `config-matrix.json` compares the value only of such numbers.
+
+Signed documents are outside this entry. P3-01's V4 §10 declares the same limit for their
+values.
+
+These are the only declared representation limits. The first covers no character but U+0000. **[C]**

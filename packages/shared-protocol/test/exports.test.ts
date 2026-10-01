@@ -48,6 +48,42 @@ describe("@polaris-key/protocol layout", () => {
     expect(families).toHaveLength(4);
   });
 
+  it("pins the client-metadata spelling tables (WIRE-CONTRACT-V3 §5.2), one identifier set", () => {
+    expect(core.PLATFORM_SPELLINGS).toEqual({
+      macos: "macos",
+      darwin: "macos",
+      maccatalyst: "macos",
+      ios: "ios",
+      ipados: "ios",
+      android: "android",
+      windows: "windows",
+      win32: "windows",
+      linux: "linux",
+      web: "web",
+      browser: "web",
+    });
+    expect(core.ARCH_SPELLINGS).toEqual({
+      arm64: "arm64",
+      aarch64: "arm64",
+      "arm64-v8a": "arm64",
+      x86_64: "x86_64",
+      x64: "x86_64",
+      amd64: "x86_64",
+      armv7: "armv7",
+      armv7l: "armv7",
+      armv8l: "armv7",
+      arm: "armv7",
+      arm32: "armv7",
+      "armeabi-v7a": "armv7",
+      wasm32: "wasm32",
+    });
+    expect(barrel.PLATFORM_SPELLINGS).toBe(core.PLATFORM_SPELLINGS);
+    expect(barrel.ARCH_SPELLINGS).toBe(core.ARCH_SPELLINGS);
+    const platform: barrel.ClientPlatform = "web";
+    const arch: barrel.ClientArch = "wasm32";
+    expect([platform, arch]).toHaveLength(2);
+  });
+
   it("release access gains the entitled mode with public defaults intact", () => {
     const modes: barrel.ReleaseAccess[] = [
       "public",

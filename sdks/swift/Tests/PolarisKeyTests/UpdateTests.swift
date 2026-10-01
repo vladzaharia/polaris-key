@@ -183,6 +183,10 @@ final class UpdateTests: XCTestCase {
         XCTAssertEqual(headers[HEADER_VERSION], "1.2.3")
         XCTAssertEqual(headers[HEADER_CHANNEL], "beta")
         XCTAssertEqual(headers[HEADER_SDK_NAME], POLARIS_SDK_NAME)
+        // WIRE-CONTRACT-V3 §5.2: the short SDK id and the canonical platform.
+        XCTAssertEqual(headers[HEADER_SDK_NAME], "swift")
+        XCTAssertEqual(headers[HEADER_PLATFORM], PlatformFamily.headerValue)
+        XCTAssertEqual(headers[HEADER_ARCH], ArchFamily.headerValue)
     }
 
     /// A `public` product sends no credential — but still identifies itself, so the Worker's

@@ -272,6 +272,15 @@ for product.
   `sparkle:version`). Platforms are `macos`, `ios`, `android`, `windows`, `linux`, `web`; arches
   `arm64`, `x86_64`, `universal`, `armv7`, `wasm32`, `any` (`universal` and `any` match every
   arch).
+- **platform** — the OS family a running binary was built for, as a client sends it in
+  `X-PKey-Platform` (WIRE-CONTRACT-V3 §5.2): `macos`, `ios` (iPadOS too), `android`, `windows`,
+  `linux` or `web`. An SDK maps its runtime's own spelling (`darwin`, `win32`, `Windows`) to
+  these through one table, and omits the header for a spelling the table lacks.
+- **arch** — the CPU architecture a running binary was built for, sent in `X-PKey-Arch`:
+  `arm64`, `x86_64`, `armv7` or `wasm32`. A browser sends none. (`universal` and `any` are
+  artifact values, never header values.)
+- **SDK id** — which SDK made a request, sent in `X-PKey-SDK`: `node`, `react`, `python`,
+  `swift` or `godot`. The SDK's version travels separately, in `X-PKey-SDK-Version`.
 - **artifact role** — what an artifact (a file of a build, or a sidecar) is for: `payload`,
   `files-index`, `chunk-index`, `chunk-bundle`, `delta`, `signature` or `checksum`.
 - **promote / pin / yank** — move a channel's pointer to a release (which makes it a member of

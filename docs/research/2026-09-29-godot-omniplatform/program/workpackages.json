@@ -600,7 +600,7 @@
       "optional": false,
       "refs": ["PARITY §4.1", "README §9.1 #17"],
       "brief": "wp/P1b-04-headers-config-corpora.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P1b-05",
