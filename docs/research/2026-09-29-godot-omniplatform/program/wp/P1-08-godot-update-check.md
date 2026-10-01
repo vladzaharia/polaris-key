@@ -99,20 +99,20 @@ decision, the signed feed and in-game installation are wire v4 work, not this.
 
 ## Acceptance criteria
 
-- [ ] `check()` against the fake server returns `update_available == true` when the served version
+- [x] `check()` against the fake server returns `update_available == true` when the served version
       is newer than `PKeyOptions.version` (including a pre-release ordering case) and `false`
       when equal or older, and emits `update_available` only in the first case.
-- [ ] A 403 `{"error":{"code":"channel_not_allowed"}}` returns a result with that code; a 404
+- [x] A 403 `{"error":{"code":"channel_not_allowed"}}` returns a result with that code; a 404
       returns `not_found`; with Update disabled in discovery, `check()` returns
       `service-unavailable` and the fake server records no request.
-- [ ] `appcast_url("beta", "arm64")` equals Node's `appcastUrlFrom` for the same discovery
+- [x] `appcast_url("beta", "arm64")` equals Node's `appcastUrlFrom` for the same discovery
       document; it is empty before discovery.
-- [ ] `download_url("1.2.3", "diceroll", "x86_64", true)` equals Node's `downloadUrl` output
+- [x] `download_url("1.2.3", "diceroll", "x86_64", true)` equals Node's `downloadUrl` output
       byte for byte, including encoding.
-- [ ] `changelog()` returns an empty array for a body without `entries`, and forwards the bearer
+- [x] `changelog()` returns an empty array for a body without `entries`, and forwards the bearer
       token when one is held.
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
-- [ ] `sdks/godot/parity.json` marks `update.check`, `release.changelog` and `release.download`
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job.
+- [x] `sdks/godot/parity.json` marks `update.check`, `release.changelog` and `release.download`
       implemented, with test tags (once P1b-01 has landed).
 
 ## Verify
