@@ -87,7 +87,7 @@ grows forever without GC, and on Apple the asset-pack quotas make retirement rou
   - `embedded`, `play-pad` and `steam-depot` builds are ready by construction;
   - `pkey-cdn` and `web` are ready when every required pack release's objects are published
     (`blob_objects` rows exist);
-  - `apple-ba` is ready when the level's asset pack (`<pack>.c<contentApi>`, CONTENT §6.6) is
+  - `apple-ba` is ready when the level's asset pack (`<pack>-c<contentApi>`, CONTENT §6.6; hyphen, not dot: notes/S-01) is
     approved. ASC states arrive with P5-02/P5-08; until then, CI-reported availability (P2b-03)
     stands in;
   - `msix-optional` and `flatpak-ext` use CI-reported availability.
@@ -152,7 +152,7 @@ ref_kind, ref_id, created_at)`. `blob_refs` rows written at ingest (P2-04, P4-02
 ## Acceptance criteria
 
 - [ ] Readiness tests per transport: `embedded` ready at once; `pkey-cdn` ready only after the
-      pack's blobs exist; `apple-ba` blocked until CI-reported approval of `foes.c4` (CONTENT
+      pack's blobs exist; `apple-ba` blocked until CI-reported approval of `foes-c4` (CONTENT
       §6.8 row 1); an override flips the state and is audited.
 - [ ] While readiness is `blocked` on the direct outlet, the composed feed and the storefront
       feeds do not offer that app release there; on the App Store outlet the matrix shows the

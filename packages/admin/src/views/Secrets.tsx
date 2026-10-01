@@ -1,6 +1,7 @@
 import * as React from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { api } from "../api.js";
+import { api, type SecretUsage } from "../api.js";
+import { EdgeMintRecipes } from "./EdgeMintRecipes.js";
 import { invalidate, useResource } from "../context.js";
 import {
   Badge,
@@ -14,6 +15,12 @@ import {
   EmptyState,
   Field,
   Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   useToast,
 } from "../components/ui/index.js";
@@ -23,7 +30,19 @@ import {
  * edge-mint key material, provisioned secret values). `putProductSecret` stores values
  * encrypted under the platform KEK; they are never read back. The required-secret list comes
  * from the product's setup projection so operators can see what the manifest still expects.
+ *
+ * P0-12: a secret's USAGE is chosen here and only here — a manifest can name a secret in an
+ * edge-mint recipe but can never make it signable. "Keep current" sends no usage, so
+ * re-uploading a rotated key never silently changes what it may sign (a new secret is general).
  */
+
+export type UsageChoice = "keep" | SecretUsage;
+
+export const USAGE_CHOICES: { value: UsageChoice; label: string }[] = [
+  { value: "keep", label: "Keep current (new secrets: general)" },
+  { value: "general", label: "General" },
+  { value: "edge-mint", label: "Edge-mint signing key" },
+];
 export function Secrets({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
     api.product(slug).then((r) => r.product),
@@ -31,6 +50,7 @@ export function Secrets({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
   const [name, setName] = React.useState("");
   const [value, setValue] = React.useState("");
+  const [usage, setUsage] = React.useState<UsageChoice>("keep");
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<{ name?: string; value?: string }>(
     {},
@@ -46,14 +66,21 @@ export function Secrets({ slug }: { slug: string }): React.ReactElement {
     setSaving(true);
     try {
       const secretName = name.trim();
-      await api.putProductSecret(slug, secretName, value);
+      await api.putProductSecret(
+        slug,
+        secretName,
+        value,
+        usage === "keep" ? undefined : usage,
+      );
       invalidate(`product:${slug}`);
+      invalidate(`edge-mint:${slug}`);
       toast.success(
         "Secret saved",
         `“${secretName}” was stored. Its value is never shown again.`,
       );
       setName("");
       setValue("");
+      setUsage("keep");
     } catch (err) {
       toast.error(
         "Couldn’t save secret",
@@ -167,6 +194,34 @@ export function Secrets({ slug }: { slug: string }): React.ReactElement {
                   />
                 </Field>
               </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="secret-usage">Usage</Label>
+                <Select
+                  value={usage}
+                  onValueChange={(next) => setUsage(next as UsageChoice)}
+                >
+                  <SelectTrigger
+                    id="secret-usage"
+                    aria-describedby="secret-usage-help"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {USAGE_CHOICES.map((choice) => (
+                      <SelectItem key={choice.value} value={choice.value}>
+                        {choice.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p
+                  id="secret-usage-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  Only a secret marked edge-mint can sign an edge-mint token; a
+                  general secret (such as an OIDC client secret) never can.
+                </p>
+              </div>
             </CardContent>
             <CardFooter>
               <Button type="submit" variant="secondary" loading={saving}>
@@ -176,6 +231,7 @@ export function Secrets({ slug }: { slug: string }): React.ReactElement {
           </form>
         </Card>
       ) : null}
+      {data ? <EdgeMintRecipes slug={slug} /> : null}
     </section>
   );
 }

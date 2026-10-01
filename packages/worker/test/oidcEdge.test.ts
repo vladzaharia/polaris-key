@@ -1519,4 +1519,39 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     // The unsealed secret was forwarded to the IdP as a confidential-client credential.
     expect(sentClientSecret).toBe("shhh-confidential");
   });
+
+  // P0-12 — usage scoping runs both ways. The OIDC path asks for a GENERAL secret, so a secret an
+  // operator marked as edge-mint key material reads as missing here: it fails closed exactly
+  // like the missing-secret case above, and is never unsealed or sent to the IdP.
+  it("fails closed when the declared client secret is marked edge-mint (P0-12)", async () => {
+    await db.run(
+      "UPDATE oidc_config SET client_secret_secret = ? WHERE product = 'djdl'",
+      "OIDC_CLIENT_SECRET",
+    );
+    await seedProductSecret(
+      db,
+      "djdl",
+      "OIDC_CLIENT_SECRET",
+      "shhh-confidential",
+      "edge-mint",
+    );
+    await seedFlow("c3", "the-nonce");
+    let tokenExchangeCalled = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (input: RequestInfo | URL) => {
+        const u =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        if (u.includes("/api/oidc/token")) tokenExchangeCalled = true;
+        throw new Error(`unexpected fetch: ${u}`);
+      },
+    );
+    const res = await callback("c3");
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("misconfigured");
+    expect(tokenExchangeCalled).toBe(false);
+  });
 });

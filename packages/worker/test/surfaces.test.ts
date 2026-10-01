@@ -8,6 +8,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  approveEdgeMintRecipe,
   seedProductSecret,
   TEST_KID,
   TEST_PUB,
@@ -370,7 +371,13 @@ describe("worker surfaces", () => {
     const env = makeEnv(kv, ["djdl"]);
     await seedProduct(db, "djdl");
     // Mint key is now KEK-custodied in product_secrets, addressed by the recipe's NAME.
-    await seedProductSecret(db, "djdl", "applemusic_devkey", ES_PEM);
+    await seedProductSecret(
+      db,
+      "djdl",
+      "applemusic_devkey",
+      ES_PEM,
+      "edge-mint",
+    );
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const activateRes = await handleActivate(
@@ -397,6 +404,7 @@ describe("worker surfaces", () => {
       null,
       null,
     );
+    await approveEdgeMintRecipe(db, "djdl", "applemusic");
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
@@ -423,7 +431,13 @@ describe("worker surfaces", () => {
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
     await seedProduct(db, "djdl");
-    await seedProductSecret(db, "djdl", "applemusic_devkey", ES_PEM);
+    await seedProductSecret(
+      db,
+      "djdl",
+      "applemusic_devkey",
+      ES_PEM,
+      "edge-mint",
+    );
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const activateRes = await handleActivate(
@@ -458,6 +472,7 @@ describe("worker surfaces", () => {
       "music.apple.com",
       null,
     );
+    await approveEdgeMintRecipe(db, "djdl", "applemusic");
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
@@ -486,7 +501,7 @@ describe("worker surfaces", () => {
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const { pem, publicKey } = await generateRs256();
-    await seedProductSecret(db, "djdl", "rs256_key", pem);
+    await seedProductSecret(db, "djdl", "rs256_key", pem, "edge-mint");
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const activateRes = await handleActivate(
@@ -513,6 +528,7 @@ describe("worker surfaces", () => {
       "aud-rs",
       null,
     );
+    await approveEdgeMintRecipe(db, "djdl", "rsa");
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
@@ -547,7 +563,13 @@ describe("worker surfaces", () => {
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
-    await seedProductSecret(db, "djdl", "ed25519_key", privatePkcs8Pem);
+    await seedProductSecret(
+      db,
+      "djdl",
+      "ed25519_key",
+      privatePkcs8Pem,
+      "edge-mint",
+    );
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const activateRes = await handleActivate(
@@ -574,6 +596,7 @@ describe("worker surfaces", () => {
       "aud-ed",
       null,
     );
+    await approveEdgeMintRecipe(db, "djdl", "eddsa");
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),

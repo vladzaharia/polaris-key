@@ -168,7 +168,8 @@ export async function handleReleaseAdmin(
  * Raising is refused: the floor is the highest version a SYNC has seen, and an operator-raised
  * floor would be a way to 404 a channel by typo. A floor stuck too high (a typo'd `v10.0.0`
  * that was deleted later) is exactly the case this endpoint exists for, and `checkReleaseHealth`
- * names it. Audited as `release.channel.floor`.
+ * names it. A stranded floor — its channel since removed, or no longer floored — can still be
+ * cleared, never lowered. Audited as `release.channel.floor`.
  */
 async function handleChannelFloor(
   ctx: ServiceContext & { session: AdminSession },
@@ -180,12 +181,20 @@ async function handleChannelFloor(
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
   const cfg = await getReleaseConfig(db, slug);
-  if (!cfg || !channelNames(cfg).includes(channel)) return adminNotFound();
-  const sel = classifyChannel(
-    channel,
-    parseManualChannels(cfg.manual_channels_json),
-  );
-  if (!sel || floorChannelOf(sel, cfg) !== channel) {
+  if (!cfg) return adminNotFound();
+  // A floor row can outlive the configuration that made it: a manual channel since removed from
+  // the manifest, or a `beta` floor recorded before a `channel_workflow` was configured (beta is
+  // not floored while one is). Such a STRANDED row is inert today but comes back to life if the
+  // configuration does, so it must stay clearable (P2-03, wave-1 sync). Lowering stays limited
+  // to channels that are floored now.
+  const existing = await getChannelFloor(db, slug, channel);
+  const known = channelNames(cfg).includes(channel);
+  if (!known && !existing) return adminNotFound();
+  const sel = known
+    ? classifyChannel(channel, parseManualChannels(cfg.manual_channels_json))
+    : null;
+  const floored = !!sel && floorChannelOf(sel, cfg) === channel;
+  if (!floored && !existing) {
     return err(422, ErrorCode.BadRequest, "this channel is not floored", {
       fields: ["channel"],
     });
@@ -203,7 +212,6 @@ async function handleChannelFloor(
     );
   }
 
-  const existing = await getChannelFloor(db, slug, channel);
   if (!existing) return adminNotFound();
 
   if (clear) {
@@ -220,6 +228,14 @@ async function handleChannelFloor(
     return adminJson({ ok: true, channel, floor: null });
   }
 
+  if (!floored) {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "this channel is no longer floored; its stale floor can only be cleared",
+      { fields: ["channel"] },
+    );
+  }
   if (typeof version !== "string" || !parseSemver(version)) {
     return err(422, ErrorCode.BadRequest, "version must be X.Y.Z semver", {
       fields: ["version"],

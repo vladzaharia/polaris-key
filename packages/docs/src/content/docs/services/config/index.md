@@ -68,7 +68,7 @@ and nothing else.
 
 ## The admin surface
 
-Two resources under `/manage/api/products/<slug>/config`:
+Three resources under `/manage/api/products/<slug>/config`:
 
 - `catalog` — `GET` the active catalog, `PUT` a new one. A publish compiles every entry's schema
   fragment before anything is written, bumps the version, and flips it active.
@@ -76,21 +76,25 @@ Two resources under `/manage/api/products/<slug>/config`:
   same batch mechanism — validate against the active catalog, seal anything catalog-secret,
   all-or-nothing — is what License's per-license override endpoint uses too; see
   [Profiles](/docs/services/config/profiles/).
+- `mint` — list the product's edge-mint recipes with their approval status, and approve or revoke
+  one. A recipe from `.pkey/` mints nothing until it is approved exactly as it stands; see
+  [Approving a recipe](/docs/services/config/edge-mint/#approving-a-recipe).
 
-Session, CSRF, rate limiting, and the platform-admin gate all run in Core before either handler is
-reached.
+Session, CSRF, rate limiting, and the platform-admin gate all run in Core before any of these
+handlers is reached.
 
 ## What Config owns, and what it shares
 
-Config logically owns three D1 tables (see [D1 data model](/docs/reference/data-model/)).
+Config logically owns four D1 tables (see [D1 data model](/docs/reference/data-model/)).
 Ownership is logical: the tables live in one database, and a service may only reach another's
 rows through a Core-mediated seam.
 
-| Table              | Carries                                                                                                                                |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `product_schema`   | The catalog, versioned — `catalog_version`, `catalog_json`, `active`. Only one row is active per product.                              |
-| `profiles`         | Reusable managed-payload baselines — `id`, `name`, `description`, `payload_json`.                                                      |
-| `edge_mint_config` | Edge-mint recipes — `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `auth_page_template`. |
+| Table                 | Carries                                                                                                                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product_schema`      | The catalog, versioned — `catalog_version`, `catalog_json`, `active`. Only one row is active per product.                                                                                                                                         |
+| `profiles`            | Reusable managed-payload baselines — `id`, `name`, `description`, `payload_json`.                                                                                                                                                                 |
+| `edge_mint_config`    | Edge-mint recipes — `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `auth_page_template`.                                                                                                            |
+| `edge_mint_approvals` | Operator approvals of edge-mint recipes — the approved `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, plus `open_registration_acknowledged`, `approved_at`, `approved_by`. Written only by the admin API. |
 
 The layered merge that turns a catalog, a tier's profile, a license's profiles, license overrides,
 and device overrides into one effective payload lives in **Core** (`core/payload.ts`), not here —
@@ -118,7 +122,12 @@ collision.
 2. Resolve each key through the client precedence chain: a remote `enforced`/`hidden` value always
    wins; otherwise a local override, then an environment variable, then the remote `default`, then
    the schema's own fallback. See [Management states](/docs/services/config/management-states/).
-3. Store `secret`-kind values in the OS keyring, never in plaintext application storage.
+3. Treat `secret`-kind values as secrets. The SDKs keep the **device token** in the OS keyring
+   (Node, Python and Swift; a headless host falls back to a `0600` file), but a `secret` value
+   itself arrives inside the signed config document and rides the SDK's offline cache — a
+   `0600` `managed.json` under the config directory — with the rest of that document. It is not
+   copied into the keyring for you. A host application that wants a value in the keyring or
+   another vault must move it there itself, and never write it to plaintext application storage.
 4. Re-fetch on the document's own schedule. Config's ETag is computed independently of License's,
    so a settings change never forces a license re-download and a re-licensing never forces a
    settings re-fetch.

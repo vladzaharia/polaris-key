@@ -176,14 +176,27 @@ console's cookies ([notes/A3 §7.2](../../notes/A3-admin-dx.md#72-web-builds-and
   otherwise stream `get` into `put` with the checksum option so R2 rejects a mismatch.
 - **Every read goes through the Worker.** Never attach an R2 public domain or `r2.dev` to the
   bucket: a direct R2 domain cannot set `ETag` to the SHA-256, add `Repr-Digest`, or enforce access.
+  S-02 confirmed this ([notes/S-02](../../notes/S-02.md) §5.1). R2's own ETag is the MD5, or
+  `md5(part md5s)-N` for a multipart upload. The edge compares `If-Range` with that cached value,
+  so an SDK's `If-Range: "<sha256>"` would turn every chunk request into a full 200.
 - **`blobResponse`** sets `Accept-Ranges: bytes`, `ETag: "<hex>"`, `Repr-Digest: sha-256=:<base64>:`
   (RFC 9530, the whole representation even on a 206), `X-Content-Type-Options: nosniff`, and:
   - ungated: `Cache-Control: public, max-age=31536000, immutable, no-transform` (no edge
     recompression: hashes and `Range` depend on the stored bytes); gated: `private, no-store`;
   - `HEAD` returns the same headers without a body;
-  - `Range` → 206 with `Content-Range`, unsatisfiable → 416; `If-Range` not matching the ETag →
-    the full 200; `If-None-Match` matching → 304. R2's `get(key, {range, onlyIf})` takes the
-    request headers directly.
+  - `Range` → 206 with `Content-Range`; a start at or past the size, or `bytes=-0`, → 416 with
+    `Content-Range: bytes */<size>`; an end past the size is shortened; a multi-range, unparseable
+    or non-`bytes` header → the full 200. `If-Range` not matching the ETag exactly and strongly
+    (weak tags, dates and R2's MD5 all count as mismatches) → the full 200. `If-None-Match`
+    matching → 304, with no body read (one `head()` checks the stored hash first).
+  - **The Worker parses `Range` and evaluates `If-Range` itself**, then calls `get(key, { range:
+{offset, length} | {suffix} })`. Never pass the request `Headers` as `range` or `onlyIf`. R2
+    ignores `If-Range` ("all conditional headers aside from `If-Range` are supported"), so it
+    would splice a stale resume. In the emulator, header ranges it cannot satisfy (multi,
+    inverted, `bytes=-0`, past the end) came back as the whole object (S-02 §2, §4.1). The S-02
+    probe Worker (`prototype/r2-range/worker/`) is a reference for this logic.
+  - Serve `application/octet-stream` with no `Content-Encoding`. Cloudflare never compresses that
+    type or a 206, and `no-transform` keeps the strong ETag from being weakened on 200s.
   - On the console host (`key.plrs.im`) the type is always `application/octet-stream` with
     `Content-Disposition: attachment`, as `streamAsset` does today (R6-04). Only on the bytes host
     may a route pass a real type from an allowlist (`application/vnd.android.package-archive`,

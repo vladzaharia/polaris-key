@@ -15,6 +15,8 @@ import {
 } from "../src/repo.js";
 import { hashKey, mintLicenseKey } from "../src/crypto.js";
 import { seal } from "../src/keyvault.js";
+import { parseServices } from "../src/core/services.js";
+import { readIdentityIssuance } from "../src/core/identityTrust.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
 
@@ -107,12 +109,15 @@ export async function seedProduct(
 }
 
 /** Seal `value` under the test KEK and upsert it into product_secrets as `name`. Used by
- *  edge-mint tests: the recipe's `signing_key_secret` is now a product_secrets NAME. */
+ *  edge-mint tests: the recipe's `signing_key_secret` is now a product_secrets NAME. `usage`
+ *  is written as given (`"edge-mint"` for key material a recipe may sign with, P0-12); omitted,
+ *  a new secret is general. */
 export async function seedProductSecret(
   db: Db,
   slug: string,
   name: string,
   value: string,
+  usage?: "edge-mint" | null,
 ): Promise<void> {
   const enc_value_json = await seal({ PLATFORM_KEK: TEST_KEK } as Env, value, {
     product: slug,
@@ -123,9 +128,49 @@ export async function seedProductSecret(
     product: slug,
     name,
     enc_value_json,
+    ...(usage !== undefined ? { usage } : {}),
     created_at: NOW,
     modified_at: NOW,
   });
+}
+
+/**
+ * Approve an edge-mint recipe exactly as it is currently stored — what an operator's
+ * `POST …/config/mint/<id>/approve` records (P0-12), including the product's sign-in trust as it
+ * stands now. Tests that exercise SIGNING call this after seeding the recipe; tests of the
+ * approval gate itself go through the admin API instead.
+ */
+export async function approveEdgeMintRecipe(
+  db: Db,
+  slug: string,
+  id: string,
+  opts: { acknowledgeOpenRegistration?: boolean } = {},
+): Promise<void> {
+  const row = await db.first<{ services_json: string | null }>(
+    "SELECT services_json FROM products WHERE slug = ?",
+    slug,
+  );
+  const services = parseServices(row?.services_json ?? null).services;
+  const identity = await readIdentityIssuance(db, { slug, services });
+  await db.run(
+    `INSERT OR REPLACE INTO edge_mint_approvals
+       (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
+        open_registration_acknowledged, license_enabled, identity_enabled, oidc_provider,
+        oidc_issuer, oidc_client_id, oidc_group_role_map_json, approved_at, approved_by)
+     SELECT product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds,
+            audience, ?, ?, ?, ?, ?, ?, ?, ?, 'test'
+       FROM edge_mint_config WHERE product = ? AND id = ?`,
+    opts.acknowledgeOpenRegistration ? 1 : 0,
+    services.license.enabled ? 1 : 0,
+    identity.enabled ? 1 : 0,
+    identity.provider,
+    identity.issuer,
+    identity.clientId,
+    identity.groupRoleMapJson,
+    NOW,
+    slug,
+    id,
+  );
 }
 
 /** The real djdl product catalog (from products/djdl/catalog.json) — used by tests that

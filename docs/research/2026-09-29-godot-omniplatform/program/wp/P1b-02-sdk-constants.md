@@ -70,7 +70,9 @@ Today:
     `linux`, `web`) and `arch` (`arm64`, `x86_64`, `armv7`, `wasm32`), from README §3.1. `universal`
     and `any` are artifact values, not header values, and stay out.
   - Also read: feature ids and `reasons` from `conformance/parity/features.json`; service slugs from
-    P0-09's table; header names and `PROTOCOL_VERSION` imported from `@polaris-key/protocol/core`;
+    P0-09's table; header names, `PROTOCOL_VERSION` and P0-04's channel constants (`CHANNEL_STABLE`,
+    `CHANNEL_BETA`, `CHANNEL_PR`, `CHANNEL_DEV`, `CHANNEL_ALIASES`, `CHANNEL_NAME_PATTERN`,
+    `PR_CHANNEL_PATTERN`, `PR_NUMBER_MAX_DIGITS`, plan §2.2) imported from `@polaris-key/protocol/core`;
     `corpusVersion`, `gateMatrixVersion` and `fingerprintVersion` from the corpus files.
 - **Outputs**, each with a GENERATED banner (TypeScript formatted with prettier, as `sign-corpus.ts`
   does):

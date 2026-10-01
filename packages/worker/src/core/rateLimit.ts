@@ -65,6 +65,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   token: "closed",
   enroll: "closed",
   mint: "closed",
+  // Edge-mint's per-DEVICE budget (P0-12), beside the per-IP `mint`. Same surface, same side.
+  mintDevice: "closed",
   // `POST /<p>/devices/register` (wire v3 §6). The strongest case in this table for failing
   // closed: it mints a device token from nothing — no key, no session, no prior state — so
   // with the limiter gone it is an unbounded free-credential faucet, and the seat/telemetry

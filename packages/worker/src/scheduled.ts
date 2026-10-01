@@ -74,17 +74,21 @@ export const PRUNE_MAX_BATCHES = 20;
  * R11-04: seven of the eleven original migrations fail on replay with `duplicate column name`,
  * and SQLite offers neither `ADD COLUMN IF NOT EXISTS` nor conditional DDL, so replay-idempotency
  * is not reachable in pure SQL. The recommendation was a deploy-time assertion instead — which
- * `migrations/0018_index_assertion.sql` is, aborting the migration on a short count. This is its
- * runtime twin, and it catches what a migration-time check structurally cannot: an index dropped
- * after deploy, by hand, from the D1 dashboard.
+ * `migrations/0018_index_assertion.sql` is (succeeded by 0027_i; the deploy re-runs the newest),
+ * aborting the migration on a short count. This is its runtime twin, and it catches what a
+ * migration-time check structurally cannot: an index dropped after deploy, by hand, from the D1
+ * dashboard.
  *
  * Every name is an invariant whose absence is silent. `idx_licenses_enroll_hwid` is
  * one-free-licence-per-machine; `idx_devices_seat` is the UNIQUE arbiter that makes
  * `claimDeviceSeat` atomic instead of check-then-act; `idx_product_keys_one_active` is one active
  * signing key per product; `idx_release_download_tokens_hash` is what makes a download token
- * globally unambiguous. Without them nothing errors — the constraint simply stops being enforced.
+ * globally unambiguous; `idx_release_metadata_seq` (P2-03) is "two releases of one deliverable never
+ * share a seq", the position the signed release record carries. Without them nothing errors — the
+ * constraint simply stops being enforced.
  *
- * A test asserts this list and 0018's are the same set, so the two cannot drift apart.
+ * A test asserts this list and the newest `migrations/*_index_assertion.sql` (0018, then its
+ * successors — 0027_i today) are the same set, so the two cannot drift apart.
  */
 export const REQUIRED_INDEXES: readonly string[] = [
   "idx_audit_time",
@@ -104,6 +108,7 @@ export const REQUIRED_INDEXES: readonly string[] = [
   "idx_product_keys_verify",
   "idx_release_download_tokens_expiry",
   "idx_release_download_tokens_hash",
+  "idx_release_metadata_seq",
 ];
 
 /** Which of `REQUIRED_INDEXES` are absent from the live schema. */
@@ -124,7 +129,7 @@ export async function assertRequiredIndexes(db: Db): Promise<void> {
   if (missing.length > 0) {
     throw new Error(
       `schema is missing ${missing.length} required index(es): ${missing.join(", ")} — ` +
-        "re-apply migrations; see migrations/0018_index_assertion.sql",
+        "re-apply migrations; see the newest migrations/*_index_assertion.sql",
     );
   }
 }

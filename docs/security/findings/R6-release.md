@@ -768,7 +768,7 @@ was about).
 **Follow-up (P0-10): streaming verification.** `fetchAssetBytes` read the whole DMG with
 `res.arrayBuffer()` before checking its size, against a 256 MiB cap inside a 128 MB isolate, so a
 large DMG was an uncatchable out-of-memory crash rather than a clean 404. It is replaced by
-`fetchAssetStream` plus `streamingEd25519Verify` (`services/release/ed25519Stream.ts`): the
+`fetchAssetStream` plus `streamingEd25519Check` (`services/release/ed25519Stream.ts`): the
 SHA-512 of `R || A || M` is computed incrementally (`node:crypto`) as the body streams, and the
 PureEdDSA equation is finished with `@noble/curves` (pinned `2.4.0`, a new Worker runtime
 dependency: a T6 supply-chain surface, accepted because it is audited and dependency-free apart
@@ -898,18 +898,28 @@ below said it needed: a migration and an admin surface.
   pick lands below the floor it looks the floor's release up by tag (one GitHub call): still
   there (it sat on a page not read) ⇒ serve it; gone ⇒ `404 no release for selector`, so no
   `cache-control: public` downgrade is ever emitted. The truth-store channel row refuses the
-  same downgrade and records `release_health` as `blocked`.
+  same downgrade and records `release_health` as `blocked`. For a repository above the sync's
+  1,000-release cap (`RELEASE_PAGE_CAP.sync`), the sync looks a floor release the capped list
+  did not reach up by tag, as the live route does, so the channel row still resolves to that
+  release instead of reading as regressed (P2-03, `heldFloorReleases` in `services/release/sync.ts`).
 - **Health.** `checkReleaseHealth` reports a `channel-regressed` check (error) naming the floor
   and what the list now offers. The follow-up lookup for a non-stable floor is guarded: a quota
   refusal or upstream failure there becomes a `channel-floor-unverified-<channel>` warning, so a
   GitHub hiccup never turns the health report into a 500.
 - **Operator override.** `POST /manage/api/products/<slug>/release/channels/<channel>/floor`
   with `{ "version": "1.0.0" }` lowers the floor (never raises it) and `{ "clear": true }`
-  removes it; both are audited as `release.channel.floor`.
+  removes it; both are audited as `release.channel.floor`. A stranded floor (its channel since
+  removed from the manifest, or no longer floored, such as a `beta` floor recorded before a
+  `channel_workflow` was configured) can be cleared but not lowered (P2-03).
 
 The fix direction's "compare against a client-reported version" half is not done: no client
 version is accepted on these routes, and the floor alone closes the deleted-release primitive.
-The floor table is a stop-gap that P2-03 folds into `release_channel_policy.min_supported`.
+The floor table stays release's own anti-rollback high-water mark. P2-03 decided **not** to fold
+it into `release_channel_policy.min_supported`, which is the device floor the signed feed will
+carry: the high-water mark is the newest version a channel has resolved to, so folding it in
+would raise every channel's device floor to its newest version and, once P3 enforces floors,
+block every older install. See the P2-03 brief's "Two different floors" note and
+`packages/docs/src/content/docs/services/release/truth-store.md`.
 
 **Tests:** the R6-10 PoC is now a regression test, `it("FIXED: once a sync has seen v2.0.0,
 deleting it 404s latest until an operator lowers the floor")`. It gains the sync step the PoC

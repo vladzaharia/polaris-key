@@ -156,6 +156,32 @@ describe("Products view", () => {
     ).toBe("#/p/djdl/licenses");
   });
 
+  it("omits the License checklist items when License is disabled", async () => {
+    mockApi.product.mockResolvedValue({
+      product: {
+        ...MANUAL,
+        services: {
+          license: { enabled: false },
+          config: { enabled: true },
+          release: { enabled: true },
+          update: { enabled: false },
+          identity: { enabled: false },
+        },
+        setup: { healthy: true, nextActions: [] },
+      },
+    });
+    render(
+      <Toaster>
+        <ProductOverview slug="djdl" />
+      </Toaster>,
+    );
+
+    expect(await screen.findByText("Guided checklist")).toBeTruthy();
+    expect(screen.getByText("Required secrets")).toBeTruthy();
+    expect(screen.queryByText("Issue a license")).toBeNull();
+    expect(screen.queryByText("License defaults")).toBeNull();
+  });
+
   it("creates a manual product via createManualProduct and shows the returned kid", async () => {
     mockApi.createManualProduct.mockResolvedValue({
       ok: true,
@@ -325,10 +351,12 @@ describe("Products view", () => {
     );
 
     await waitFor(() =>
+      // No usage chosen: none is sent, so an existing secret keeps its usage (P0-12).
       expect(mockApi.putProductSecret).toHaveBeenCalledWith(
         "djdl",
         "TOKEN",
         "s3cr3t",
+        undefined,
       ),
     );
   });

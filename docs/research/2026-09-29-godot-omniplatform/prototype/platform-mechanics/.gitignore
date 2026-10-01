@@ -1,0 +1,22 @@
+# Generated packs, exports, APKs/AABs, logs and template copies.
+out/
+logs/
+tpl/
+build/
+*.pck
+*.apk
+*.aab
+*.apks
+*.keystore
+# Godot caches and generated filler.
+.godot/
+a_stall/probe/filler/
+# Velopack launcher build output and vpk releases.
+e_velopack/launcher/target/
+e_velopack/releases/
+# Web export and browser profiles.
+c_web/export/
+c_web/profiles/
+c_web/node_modules/
+# Generated from a_stall/export_presets.cfg.in (holds the local keystore path).
+a_stall/probe/export_presets.cfg

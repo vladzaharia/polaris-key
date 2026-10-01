@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  MonitorSmartphone,
   RefreshCw,
   Rocket,
   Settings,
@@ -61,6 +62,7 @@ const TAB_ICONS: Partial<Record<Tab, LucideIcon>> = {
   // platform / core
   overview: LayoutDashboard,
   services: Blocks,
+  devices: MonitorSmartphone,
   secrets: ClipboardList,
   activity: Activity,
   settings: Settings,

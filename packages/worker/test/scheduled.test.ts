@@ -5,7 +5,7 @@
 // a test that merely exercises the happy path.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { makeTestDb } from "./helpers.js";
@@ -25,8 +25,14 @@ import { appendAudit, claimDeviceSeat, insertLicense } from "../src/repo.js";
 import { portalAudit } from "../src/services/identity/portal/repo.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+// The NEWEST index assertion is the live one: each successor (0018, then 0027_i) re-runs the
+// DELETE-then-INSERT with the full list, so an older file's list is history, not the contract.
+const ASSERTION_FILE = readdirSync(join(HERE, "..", "migrations"))
+  .filter((f) => f.endsWith("_index_assertion.sql"))
+  .sort()
+  .at(-1)!;
 const ASSERTION_SQL = readFileSync(
-  join(HERE, "..", "migrations", "0018_index_assertion.sql"),
+  join(HERE, "..", "migrations", ASSERTION_FILE),
   "utf8",
 );
 
@@ -409,7 +415,7 @@ describe("required-index assertion", () => {
     );
   });
 
-  // R11-04: the migration-time half of the same check. `makeTestDb()` applies 0018, so the
+  // R11-04: the migration-time half of the same check. `makeTestDb()` applies 0018 and 0027_i, so the
   // suite passing at all is a standing proof that the assertion does not false-positive.
   it("the migration records the assertion it made", async () => {
     const db = makeTestDb();
@@ -425,7 +431,7 @@ describe("required-index assertion", () => {
 
   // The runtime list and the migration list are the same claim in two languages, so the only
   // way they stay true is if nothing can change one without the other.
-  it("REQUIRED_INDEXES and 0018_index_assertion.sql name the same set", () => {
+  it("REQUIRED_INDEXES and the newest *_index_assertion.sql name the same set", () => {
     // Statements only — the file's header carries a worked example of the same VALUES list.
     const statements = ASSERTION_SQL.replace(/--[^\n]*/g, "");
     const inSql = [...statements.matchAll(/\('(idx_[a-z0-9_]+)'\)/g)].map(
@@ -433,5 +439,31 @@ describe("required-index assertion", () => {
     );
     expect(inSql.length).toBeGreaterThan(0);
     expect([...inSql].sort()).toEqual([...REQUIRED_INDEXES].sort());
+  });
+
+  // The deploy re-runs the assertion on every deploy, and each successor DELETEs then re-INSERTs
+  // its own list — so a deploy that named an OLDER file would overwrite the newest row with a
+  // shorter list and silently stop checking the indexes added since (0018 lacks
+  // idx_release_metadata_seq). The step must select the newest file, never name one.
+  it("the deploy re-runs the newest *_index_assertion.sql, not a pinned older one", () => {
+    const deploy = readFileSync(
+      join(HERE, "..", "..", "..", ".github", "workflows", "deploy.yml"),
+      "utf8",
+    );
+    expect(deploy).toContain(
+      'ASSERTION="$(ls migrations/*_index_assertion.sql | sort | tail -1)"',
+    );
+    expect(deploy).toMatch(/d1 execute[^\n]*--file "\$ASSERTION"/);
+    const pinned = [
+      ...deploy.matchAll(/--file\s+\S*?(\d+[a-z_]*_index_assertion\.sql)/g),
+    ].map((m) => m[1]);
+    expect(pinned).toEqual([]);
+    // And the selection the shell makes is the file this suite treats as the contract.
+    const newest = readdirSync(join(HERE, "..", "migrations"))
+      .filter((f) => f.endsWith("_index_assertion.sql"))
+      .sort()
+      .at(-1);
+    expect(newest).toBe(ASSERTION_FILE);
+    expect(ASSERTION_FILE).not.toBe("0018_index_assertion.sql");
   });
 });

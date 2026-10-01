@@ -10,16 +10,39 @@
 // Moved from `src/edgeMint.ts` to `/<p>/config/mint/:id/{token,auth}` (D-19): edge minting is
 // how a catalog SECRET with `delivery: "edgeMint"` actually reaches a runtime, so it belongs
 // with the service that owns the catalog rather than sitting at the product root.
+//
+// P0-12 — a recipe is repo-authored (`.pkey/` `edgeMint[]`), so on its own it is NOT enough to
+// mint. Two operator-held conditions must also hold, and neither can be set from a manifest:
+//   1. the recipe's `signing_key_secret` names a product secret whose USAGE is `edge-mint`
+//      (`openProductSecret(..., "edge-mint")`; a general secret reads as missing → 500
+//      `misconfigured`), and
+//   2. an `edge_mint_approvals` row APPLIES to the recipe as the product stands now
+//      (`approvalMismatch` is empty): it equals the current recipe column for column; while the
+//      mint is PUBLIC (`mintIsPublic`: open registration, anonymous enrolment, or an OIDC
+//      default tier) it records the operator's open-registration acknowledgement; if it was
+//      given with License on, License is still on (the licence check below runs only then); and
+//      while Identity is on it recorded the same identity provider, issuer, client id and group
+//      map the product trusts now. A push can change every one of those product settings
+//      without touching the recipe, so all of them are re-checked on every request — and the
+//      manifest ingest DELETES an approval a push widened, so reverting the push cannot revive
+//      it (`invalidateWidenedEdgeMintApprovals`, core/edgeMintApproval.ts). No approval, or one
+//      that no longer applies, answers exactly like an unknown recipe (404).
 
 import type { Env, Db } from "../../core/platform.js";
 import { bearer, staticHtmlSecurityHeaders } from "../../core/platform.js";
 import { type Product, openProductSecret } from "../../core/products.js";
+import {
+  approvalMismatch,
+  mintApprovalBasis,
+  type MintApprovalRow,
+  type MintPolicyProduct,
+} from "../../core/edgeMintApproval.js";
 import { errorResponse } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 
-interface EdgeMintRow {
+export interface EdgeMintRow {
   product: string;
   id: string;
   alg: string;
@@ -141,6 +164,8 @@ async function signRs256(
   return signingInput + "." + b64url(new Uint8Array(sig));
 }
 
+/** The recipe row as the manifest last wrote it — approved or not. The `/auth` page and the
+ *  console read this; the token route must use `getApprovedEdgeMintConfig`. */
 export async function getEdgeMintConfig(
   db: Db,
   product: string,
@@ -153,18 +178,84 @@ export async function getEdgeMintConfig(
   );
 }
 
-/** Whether this product declares ANY edge-mint recipe — the capability bit the discovery
- *  fragment publishes. Deliberately not the id list: see `configService.discoveryFragment`. */
-export async function hasEdgeMintRecipes(
+// The approval rule itself lives in Core (`core/edgeMintApproval.ts`) because the manifest
+// ingest must run it on the state it writes (a service may not import another service). It is
+// re-exported here so Config's callers keep one import site.
+export {
+  approvalMismatch,
+  differingRecipeFields,
+  MINT_RECIPE_FIELDS,
+  mintApprovalBasis,
+  mintIsPublic,
+  productWidening,
+  type MintApprovalBasis,
+  type MintApprovalRow,
+  type MintMismatch,
+  type MintPolicyProduct,
+  type MintRecipeFields,
+  type MintRecipeWireField,
+  type MintWidening,
+} from "../../core/edgeMintApproval.js";
+
+/** The recipe row, but ONLY when an operator's approval applies to it as the product stands now
+ *  (`approvalMismatch` is empty). */
+export async function getApprovedEdgeMintConfig(
   db: Db,
-  product: string,
-): Promise<boolean> {
-  const row = await db.first<{ id: string }>(
-    "SELECT id FROM edge_mint_config WHERE product = ? LIMIT 1",
-    product,
+  product: MintPolicyProduct,
+  id: string,
+): Promise<EdgeMintRow | null> {
+  const cfg = await getEdgeMintConfig(db, product.slug, id);
+  if (!cfg) return null;
+  const approval = await db.first<MintApprovalRow>(
+    "SELECT * FROM edge_mint_approvals WHERE product = ? AND id = ?",
+    product.slug,
+    id,
   );
-  return row !== null;
+  if (!approval) return null;
+  const basis = await mintApprovalBasis(db, product);
+  return approvalMismatch(cfg, approval, basis).length === 0 ? cfg : null;
 }
+
+/** Every recipe of the product with its approval (or null), in id order. */
+export async function listEdgeMintRecipesWithApprovals(
+  db: Db,
+  slug: string,
+): Promise<Array<{ recipe: EdgeMintRow; approval: MintApprovalRow | null }>> {
+  const recipes = await db.all<EdgeMintRow>(
+    "SELECT * FROM edge_mint_config WHERE product = ? ORDER BY id",
+    slug,
+  );
+  const approvals = await db.all<MintApprovalRow>(
+    "SELECT * FROM edge_mint_approvals WHERE product = ?",
+    slug,
+  );
+  const byId = new Map(approvals.map((a) => [a.id, a]));
+  return recipes.map((recipe) => ({
+    recipe,
+    approval: byId.get(recipe.id) ?? null,
+  }));
+}
+
+/** Whether this product has ANY approved edge-mint recipe — the capability bit the discovery
+ *  fragment publishes. A product whose every recipe is pending or changed says `false`: there
+ *  is nothing a client could mint. Deliberately not the id list: see
+ *  `configService.discoveryFragment`. */
+export async function hasApprovedEdgeMintRecipes(
+  db: Db,
+  product: MintPolicyProduct,
+): Promise<boolean> {
+  const rows = await listEdgeMintRecipesWithApprovals(db, product.slug);
+  if (!rows.some((r) => r.approval !== null)) return false;
+  const basis = await mintApprovalBasis(db, product);
+  return rows.some(
+    ({ recipe, approval }) =>
+      approval !== null &&
+      approvalMismatch(recipe, approval, basis).length === 0,
+  );
+}
+
+/** Per-device mint budget, on top of the per-IP one. */
+const MINT_DEVICE_LIMIT = { limit: 30, windowSec: 60 } as const;
 
 /**
  * Strip server/recipe-controlled claims from a parsed template so the free-form template can
@@ -218,18 +309,46 @@ export async function handleMintToken(
   if (product.services.license.enabled && !licenseUsable(valid.license, now))
     return errorResponse(401, "unauthorized");
 
-  const cfg = await getEdgeMintConfig(db, product.slug, mintId);
+  // P0-12 — a per-DEVICE budget as well as the per-IP one. Under open registration anyone can
+  // hold a device token, and one device behind many IPs would otherwise get a fresh 60/min per
+  // address. Counted after authentication (an unauthenticated caller has no device id to key
+  // on) and before the recipe lookup, so probing recipe ids spends the same budget as minting.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      {
+        bucket: "mintDevice",
+        id: valid.device.device_id,
+        ...MINT_DEVICE_LIMIT,
+      },
+      now,
+    ))
+  ) {
+    return errorResponse(429, "rate_limited", "too many mint requests");
+  }
+
+  // Unknown, never approved, and approved-but-since-changed are ONE answer: the device-facing
+  // contract says 404 means "not available", and an unapproved recipe must not be
+  // distinguishable from a missing one. "Changed" includes the product changing under the
+  // approval — the mint becoming public without the acknowledgement, License being turned off,
+  // or sign-in trusting a different identity provider or group map — re-checked here on every
+  // request, because a push can do any of them without touching the recipe.
+  const cfg = await getApprovedEdgeMintConfig(db, product, mintId);
   if (!cfg) return errorResponse(404, "not_found", "no such edge-mint recipe");
   if (cfg.alg !== "ES256" && cfg.alg !== "RS256" && cfg.alg !== "EdDSA") {
     return errorResponse(500, "misconfigured", `unsupported alg ${cfg.alg}`);
   }
   // Key material is KEK-custodied: `signing_key_secret` is now a product_secrets NAME, not a
   // worker secret. Missing/unopenable ⇒ misconfigured (fail closed — never an unsigned token).
+  // P0-12: only a secret an operator marked `edge-mint` opens here; a general secret (the OIDC
+  // client secret, anything else a recipe happens to name) reads as missing.
   const pem = await openProductSecret(
     db,
     env,
     product.slug,
     cfg.signing_key_secret,
+    "edge-mint",
   );
   if (!pem) return errorResponse(500, "misconfigured", "missing mint key");
 

@@ -1,6 +1,6 @@
 ---
 title: "Manifest validation codes"
-description: "Every error and warning validateManifestDocuments can emit, extracted from the validator source."
+description: "Every error and warning validateManifestDocuments and validateIngestDocuments can emit, extracted from the validator source."
 ---
 
 {/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments can emit, extrac
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 80 distinct emit sites.
+codes with their JSON-pointer paths. 82 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -89,6 +89,8 @@ the offending value, or the allowed set.
 | `missing_schema` | error | schema | `/` | .pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries. |
 | `reserved_slug` | error | product | `/product/slug` | product.slug "$\{productSlug\}" collides with a reserved platform route. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/deviceLimit` | deviceLimit on a tier is ignored; use policyDeviceLimit. |
+| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry. |
+| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace. |
 | `too_many_redirect_uris` | error | product | `/oidc/redirectUris` | At most $\{MAX_REDIRECT_URIS\} redirect URIs are allowed. |
 | `unknown_auto_issue_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId references unknown tier $\{autoIssue.tierId\}. |

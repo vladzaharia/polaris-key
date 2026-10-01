@@ -93,9 +93,16 @@ every later release, distribution and wire v4 package names its tables.
   `services/release/truth-store.md` and add the terms deliverable, build, artifact role, promote,
   pin and yank to `start/concepts.md` (README §3.1: "the first implementing PR").
 - **Wave-1 sync:** **Fold P0-02's floors.** `release_channel_floors` rows move into `release_channel_policy.min_supported` and the two candidate-filter columns (`stable_tag_pattern`, `ignore_tags_json`) are inherited. Floor rows that cannot be cleared today become clearable: a floor on a manual channel later removed from the manifest returns 404 at the floor endpoint, and a `beta` floor recorded before a `channel_workflow` was configured returns 422.
+  _Implementer's correction:_ this bullet contradicts the "Two different floors" design note
+  below, which explains why folding the high-water mark into `min_supported` would block older
+  installs once P3 enforces floors. The floors were **not** folded: `release_channel_floors` stays
+  release's own table, `release_channel_policy.min_supported` is the device floor, and the
+  candidate-filter columns stay on `release_config`. The clearable part is done: a stranded floor
+  can be cleared (never lowered) at the floor endpoint.
 - **Wave-1 sync:** **Bare-tag/`v`-tag ambiguity.** When both `v1.2.0` and `1.2.0` exist, `latest` picks the later-published one, but the appcast enclosure (`/release/dl/1.2.0/…`) looks up `tags/v1.2.0` first, so the DMG can come from a different release than the item's Sparkle signature. Resolve the enclosure by release id, not by re-deriving the tag, or refuse the ambiguity.
 - **Wave-1 sync:** **Store status for big repos.** `releaseStoreStatements` treats a floor release it did not see as gone; for a repo above 1,000 releases the store row can say `blocked` while the live route still serves the floor via its tag lookup. Make the store row agree.
-- **Wave-1 sync:** **ignoreTags length.** `release.schema.json` `ignoreTags` `maxLength: 255` counts code points while the validator's `value.length` counts UTF-16 units; align them when the schema is next touched (rule 9).
+- **Wave-1 sync:** **ignoreTags length.** `release.schema.json` `ignoreTags` `maxLength: 255` counts code points while the validator's `value.length` counts UTF-16 units; align them when the schema is next touched (rule 9). _Done here without touching the schema:_ `isIgnoreTag`
+  now counts code points.
 
 **Out** (and where it belongs instead):
 
@@ -120,7 +127,9 @@ every later release, distribution and wire v4 package names its tables.
   §3.3) and what breaks ties in pack-set resolution.
 - **`release_metadata.channel`** is an addition to the README sketch: the channel a release was
   published to (`pkey release publish --channel events`, README §6.1). NULL means "derive from
-  GitHub", i.e. `stable` unless `prerelease`, plus manual-channel regexes, as today.
+  GitHub", i.e. `stable` unless `prerelease`, plus manual-channel regexes, as today. Only canonical
+  channel names are stored (P0-04 plan §10): `staging` is never stored, so `pkey release publish
+--channel staging` records `beta`. `release_channel_policy.channel` is canonical too.
 - **Channel policy semantics**, which P2-05 implements and P3 signs:
   - `includes_json` (`["stable"]` for beta) is manifest-declared (`deliverables.app.channels`);
   - `pointer_release_id` NULL means "follow the newest eligible release"; `promote` sets the

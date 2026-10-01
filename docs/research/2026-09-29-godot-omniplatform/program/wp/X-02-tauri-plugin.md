@@ -89,6 +89,12 @@ and `cargo test` passes the corpus vectors the plugin implements.
 
 ## Design notes
 
+**WebKitGTK's Ed25519 fails by size, not by feature ([S-04](../../notes/S-04-low-end-performance.md)).** WebKitGTK 2.52.6 (Ubuntu 24.04,
+libgcrypt 1.10.3) reports WebCrypto Ed25519 and verifies small messages. It returns
+`OperationError` from 65,504 B, and its web process dies from 65,535 B, the 87 KB payload and the
+350 KB bundle included. A crashed web process cannot be caught. On Linux, send every signing input
+over 60,000 B to the plugin's Rust verifier, or send all of them there.
+
 **What stays in the webview.** Documents, trust, clock, gate, config, the update decision and packs
 are `client-core`, unchanged. The plugin never sees a signed document except to verify a signature
 when asked.

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://s05databscn1"]
+
+[ext_resource type="Resource" uid="uid://s05databres1" path="res://packs/b/thing.tres" id="1"]
+
+[node name="Rootb" type="Node"]
+metadata/thing = ExtResource("1")

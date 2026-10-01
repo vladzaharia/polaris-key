@@ -89,6 +89,83 @@ export interface ProductModuleSummary {
   missingSecrets?: string[];
 }
 
+// ── edge-mint recipe approval (Config, P0-12) ────────────────────────────────
+
+/** What a product secret may be used for. Set by an operator only — never by a manifest. */
+export type SecretUsage = "general" | "edge-mint";
+
+/** The security-relevant recipe fields, exactly as the approve call must echo them. */
+export interface EdgeMintRecipeFields {
+  alg: string;
+  signingKeySecret: string;
+  kid: string | null;
+  claimsTemplateJson: string | null;
+  ttlSeconds: number;
+  audience: string | null;
+}
+
+/** The sign-in trust an edge-mint approval covers: the product's identity provider and the group
+ *  map that decides who a sign-in licenses. `null` means Identity is off (no sign-in path). */
+export interface EdgeMintIdentity {
+  provider: string | null;
+  issuer: string | null;
+  clientId: string | null;
+  groupRoleMapJson: string | null;
+}
+
+export interface EdgeMintRecipe extends EdgeMintRecipeFields {
+  id: string;
+  /** Parsed `claimsTemplateJson`, for display only (null when absent or corrupt). */
+  claimsTemplate: unknown;
+  /** `approved` mints; `pending` was never approved; `changed` was approved in another form. */
+  status: "approved" | "pending" | "changed";
+  secretUsage: SecretUsage | "missing" | "unrecognised";
+  approval:
+    | (EdgeMintRecipeFields & {
+        /** Whether the approval carries the open-registration acknowledgement. */
+        openRegistrationAcknowledged: boolean;
+        /** Whether License was on (licences checked) when the approval was given. */
+        licenseEnabled: boolean;
+        /** The sign-in trust recorded with the approval. */
+        identity: EdgeMintIdentity | null;
+        approvedAt: number;
+        approvedBy: string;
+      })
+    | null;
+  /** Why a `changed` recipe's approval no longer applies. `registration` means the mint is
+   *  public now (open registration, anonymous enrolment or an OIDC default tier) and the
+   *  approval was given without acknowledging that; `license` means License was turned off
+   *  since, so device licences are no longer checked; `identity` means sign-in now trusts a
+   *  different identity provider or group map than the approval recorded. The next push or
+   *  console edit of the product's services or License policy deletes such an approval before
+   *  it writes (the recipe then reads `pending`; the audit log says why), so `changed` for these
+   *  three lasts only until then — after an operator's own edit, or a push that was cut off
+   *  before its own sweep. */
+  changedFields: (
+    | keyof EdgeMintRecipeFields
+    | "registration"
+    | "license"
+    | "identity"
+  )[];
+}
+
+export interface EdgeMintRecipesResponse {
+  /** The product's EFFECTIVE registration policy; `open` means anyone can hold a device token. */
+  registration: "open" | "requires-identity" | "requires-license";
+  /** Whether auto-issue lets any caller enrol anonymously (`POST /<p>/license/enroll`). */
+  anonymousEnroll: boolean;
+  /** Whether Identity is on and auto-issue gives every signed-in account a default tier. */
+  oidcDefault: boolean;
+  /** Open registration, anonymous enrolment or an OIDC default tier: anyone (who can sign in)
+   *  can hold a device token, so approving needs the acknowledgement. */
+  publicMint: boolean;
+  /** Whether License is on, so the mint checks each device's licence. */
+  licenseEnabled: boolean;
+  /** The sign-in trust an approval given now would record; the approve call echoes it. */
+  identity: EdgeMintIdentity | null;
+  recipes: EdgeMintRecipe[];
+}
+
 export interface ProductSetupAction {
   id?: string;
   label?: string;
@@ -539,6 +616,64 @@ export interface DeviceDto {
   facts?: DeviceFactsDto | null;
 }
 
+/** One row of Platform → Devices: the license view's device without fingerprint/facts, plus the
+ *  license it holds (null = license-free) and the seat it occupies. */
+export interface ProductDeviceDto {
+  deviceId: string;
+  status: string;
+  firstSeen: number;
+  lastSeen: number;
+  ua?: string;
+  label?: string;
+  platform?: string;
+  arch?: string;
+  appVersion?: string;
+  sdkName?: string;
+  sdkVersion?: string;
+  licenseId: string | null;
+  seatNo: number | null;
+}
+
+/** A single device, with the hardware binding and software facts the list omits. */
+export interface ProductDeviceDetail extends ProductDeviceDto {
+  fingerprint: DeviceFingerprintDto | null;
+  facts: DeviceFactsDto | null;
+}
+
+export type ProductDeviceStatusFilter = "authorized" | "deauthorized" | "all";
+
+export interface ProductDeviceQuery {
+  status?: ProductDeviceStatusFilter;
+  platform?: string;
+  licensed?: boolean;
+  q?: string;
+  limit?: number;
+  /** Opaque: the previous page's `nextCursor`. */
+  cursor?: string | null;
+}
+
+export interface ProductDevicePage {
+  devices: ProductDeviceDto[];
+  nextCursor: string | null;
+}
+
+export interface DeviceCount {
+  value: string | null;
+  count: number;
+}
+
+export interface ProductDeviceSummary {
+  total: number;
+  byStatus: DeviceCount[];
+  /** Authorized devices only, as are the breakdowns below. */
+  licensed: { licensed: number; licenseFree: number };
+  byPlatform: DeviceCount[];
+  byArch: DeviceCount[];
+  bySdkName: DeviceCount[];
+  /** Top 20 by count. */
+  byAppVersion: DeviceCount[];
+}
+
 export type FingerprintMode = "off" | "lenient" | "normal" | "strict";
 
 export interface FingerprintProbeDto {
@@ -611,7 +746,7 @@ export interface MintBundleBody {
    *  and let enablement decide rather than asserting a preference the operator never made. */
   includeConfig?: boolean;
   /** REQUIRED when the License service is enabled — there is no authenticated device here to
-   *  infer a licence from, and guessing would silently mint the wrong grant. */
+   *  infer a license from, and guessing would silently mint the wrong grant. */
   licenseId?: string;
 }
 
@@ -823,11 +958,20 @@ export const api = {
         body: JSON.stringify(body),
       },
     ),
-  putProductSecret: (slug: string, name: string, value: string) =>
-    call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, {
-      method: "PUT",
-      body: JSON.stringify({ value }),
-    }),
+  /** Write-only. `usage` omitted keeps what is stored (a new secret is general). */
+  putProductSecret: (
+    slug: string,
+    name: string,
+    value: string,
+    usage?: SecretUsage,
+  ) =>
+    call<{ ok: true; name: string; usage?: SecretUsage }>(
+      `${p(slug)}/secrets/${enc(name)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(usage ? { value, usage } : { value }),
+      },
+    ),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
 
@@ -866,6 +1010,46 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ catalog }),
     }),
+
+  // ── config: edge-mint recipe approval (P0-12) ───────────────────────────────
+  edgeMintRecipes: (slug: string) =>
+    call<EdgeMintRecipesResponse>(`${p(slug)}/config/mint`),
+  /** Approve exactly what the operator was shown — the recipe and the sign-in trust beside it:
+   *  the server refuses (409) if either changed. */
+  approveEdgeMintRecipe: (
+    slug: string,
+    id: string,
+    fields: EdgeMintRecipeFields,
+    identity: EdgeMintIdentity | null,
+    /** Whether License was on in the view the operator approved from (refused with 409 if a
+     *  push changed it since). */
+    licenseEnabled: boolean,
+    acknowledgeOpenRegistration = false,
+  ) =>
+    call<{ ok: true; id: string; status: "approved" }>(
+      `${p(slug)}/config/mint/${enc(id)}/approve`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          alg: fields.alg,
+          signingKeySecret: fields.signingKeySecret,
+          kid: fields.kid,
+          claimsTemplateJson: fields.claimsTemplateJson,
+          ttlSeconds: fields.ttlSeconds,
+          audience: fields.audience,
+          identity,
+          licenseEnabled,
+          ...(acknowledgeOpenRegistration
+            ? { acknowledgeOpenRegistration: true }
+            : {}),
+        }),
+      },
+    ),
+  revokeEdgeMintRecipe: (slug: string, id: string) =>
+    call<{ ok: true; id: string; status: "pending" }>(
+      `${p(slug)}/config/mint/${enc(id)}/revoke`,
+      { method: "POST" },
+    ),
 
   // ── licenses ────────────────────────────────────────────────────────────────
   licenses: (slug: string) =>
@@ -939,6 +1123,34 @@ export const api = {
   resetDeviceFingerprint: (slug: string, id: string, deviceId: string) =>
     call<{ ok: true; deviceId: string }>(
       `${p(slug)}/license/licenses/${enc(id)}/devices/${enc(deviceId)}/fingerprint/reset`,
+      { method: "POST" },
+    ),
+
+  // ── devices, product-wide (Core) ─────────────────────────────────────────────
+  productDevices: (slug: string, query: ProductDeviceQuery = {}) => {
+    const search = new URLSearchParams();
+    if (query.status) search.set("status", query.status);
+    if (query.platform) search.set("platform", query.platform);
+    if (query.licensed !== undefined)
+      search.set("licensed", String(query.licensed));
+    if (query.q) search.set("q", query.q);
+    if (query.limit) search.set("limit", String(query.limit));
+    if (query.cursor) search.set("cursor", query.cursor);
+    const qs = search.toString();
+    return call<ProductDevicePage>(`${p(slug)}/devices${qs ? `?${qs}` : ""}`);
+  },
+  productDeviceSummary: (slug: string) =>
+    call<ProductDeviceSummary>(`${p(slug)}/devices/summary`),
+  productDevice: (slug: string, deviceId: string) =>
+    call<ProductDeviceDetail>(`${p(slug)}/devices/${enc(deviceId)}`),
+  deauthorizeProductDevice: (slug: string, deviceId: string) =>
+    call<{ ok: true; deviceId: string }>(
+      `${p(slug)}/devices/${enc(deviceId)}/deauthorize`,
+      { method: "POST" },
+    ),
+  resetProductDeviceFingerprint: (slug: string, deviceId: string) =>
+    call<{ ok: true; deviceId: string }>(
+      `${p(slug)}/devices/${enc(deviceId)}/fingerprint/reset`,
       { method: "POST" },
     ),
 

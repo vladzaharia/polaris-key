@@ -121,6 +121,23 @@ Today the feed can offer what the download refuses, because the two read access 
   without distribution loses downloads by choice. State it in the docs.
 - **No GitHub token in distribution.** GitHub-located bytes come through `releaseCatalog.openSource`;
   R2 bytes through Core's `blobResponse(req, bucket, key, opts)`; byte routes are registered as `ByteRoute`s in `mount.ts` `BYTE_ROUTES`, each with `service` set to the distribution slug, because the bytes host bypasses `dispatchService` and that field is the only enablement check there. Distribution never imports `github.ts` or `githubApp.ts`.
+- **Edge caching of byte routes** ([notes/S-02](../../notes/S-02.md) §6.1–§6.2). Byte routes stay
+  uncached unless this package turns caching on. If it does, use Workers Caching on one named
+  entrypoint that serves only ungated bytes-host reads, never a top-level `cache` block: the
+  cache key has no hostname and no `Origin`, so CORS headers and the host-dependent
+  `Content-Type`/`Content-Disposition` must stay outside it, and every response from it needs an
+  explicit `Cache-Control` (a 404 from `notFound()` has none and would be cached for 3 minutes).
+  The default entrypoint must strip `Authorization` and `Cookie` before calling the cached one,
+  and must never route a gated request to it. Cloudflare's pages disagree on what an
+  `Authorization` request does: the configuration page says a `public` response to it is stored,
+  the examples page says it forces `BYPASS`. S-02 hand-off row H10 measures it; until then the
+  threat model records the conflict and relies on routing plus stripping, never on an automatic
+  bypass (S-02 §6.1 rule 1). The
+  `ctx.exports` call is billed as a second Workers request once caching is on; the gain that pays
+  for it is the tiered cache, request collapsing, no `miss-fill` second R2 read and no R2
+  Class B reads on hits (S-02 §5.2).
+  Gated responses should read `private, no-store, no-transform`; `blobResponse` sends
+  `private, no-store` today, so a compressible gated type could get a weak ETag.
 - **Access CHECKs.** `dist_access.mode` includes `entitled`. Stop reading
   `release_config.artifacts_access` (leave the column; dropping it needs a rebuild) and say so in a
   comment next to `setReleaseAccess`.

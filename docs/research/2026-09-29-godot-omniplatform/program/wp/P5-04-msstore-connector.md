@@ -75,8 +75,21 @@ submits, publishes or changes a rollout.
   (e.g. `CommitStarted`, `PreProcessing`, `Certification`, `Release`, `Published`, and the
   `…Failed` states) with `statusDetails`; `packageRollout` (`isPackageRollout`,
   `packageRolloutPercentage`, `packageRolloutStatus`); flights under `…/listflights`. If the
-  documentation disagrees, the documentation wins and the fixtures follow it. S-07 rows 11 and 18
-  re-check these facts; use its findings if it has run.
+  documentation disagrees, the documentation wins and the fixtures follow it. [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) rows 11 and 18
+  re-checked these facts on 2026-09-30 and confirmed them; the full `status` list is `None`,
+  `Canceled`, `PendingCommit`, `CommitStarted`, `CommitFailed`, `PendingPublication`, `Publishing`,
+  `Published`, `PublishFailed`, `PreProcessing`, `PreProcessingFailed`, `Certification`,
+  `CertificationFailed`, `Release`, `ReleaseFailed`; `packageRolloutStatus` is one of
+  `PackageRolloutNotStarted`, `…InProgress`, `…Complete`, `…Stopped`; flight submissions have the
+  same rollout methods under `…/flights/{flightId}/submissions/{submissionId}/`. The submission API
+  answers 409 for an app that uses mandatory app updates or Store-managed consumable add-ons; treat
+  only that case as "not readable", not as an error. For an app on Pricing Version 2 the overview
+  says the API "will return an unknown tier for the pricing part" and that you "can continue using
+  this API to update modules other than Pricing and availability": ignore the pricing module, and
+  `status`, `packageRollout` and flights still read normally. The same page also opens with "You
+  can't use this API with apps or add-ons that are on Pricing Version 2", so pin the behaviour with
+  a fixture (a Pricing Version 2 app with an unknown price tier and normal status and rollout
+  fields) and follow the documentation if a live app differs. Store Policies 7.20 takes effect 2026-10-22.
 - **Gradual rollout is MSIX-only and never rolls back installed users** when halted (notes/E3
   §A1.2). Mirror it for information; it is not an access control.
 - **Certification lag.** Record `submitted_at` and `reviewed_at` so the console can show time in

@@ -1,0 +1,10 @@
+plugins {
+    id 'com.android.asset-pack'
+}
+
+assetPack {
+    packName = "s05ondemand"
+    dynamicDelivery {
+        deliveryType = "on-demand"
+    }
+}
