@@ -182,7 +182,8 @@ console's cookies ([notes/A3 §7.2](../../notes/A3-admin-dx.md#72-web-builds-and
 - **`blobResponse`** sets `Accept-Ranges: bytes`, `ETag: "<hex>"`, `Repr-Digest: sha-256=:<base64>:`
   (RFC 9530, the whole representation even on a 206), `X-Content-Type-Options: nosniff`, and:
   - ungated: `Cache-Control: public, max-age=31536000, immutable, no-transform` (no edge
-    recompression: hashes and `Range` depend on the stored bytes); gated: `private, no-store`;
+    recompression: hashes and `Range` depend on the stored bytes); gated: `private, no-store, no-transform`
+    (corrected by P2-05: the edge must not recompress a private `application/wasm` either);
   - `HEAD` returns the same headers without a body;
   - `Range` → 206 with `Content-Range`; a start at or past the size, or `bytes=-0`, → 416 with
     `Content-Range: bytes */<size>`; an end past the size is shortened; a multi-range, unparseable
@@ -230,7 +231,7 @@ console's cookies ([notes/A3 §7.2](../../notes/A3-admin-dx.md#72-web-builds-and
       falls back to a streamed hash; `promote` never writes the target when verification fails.
 - [x] Header tests: 200 with `ETag`, `Repr-Digest`, `Accept-Ranges`, immutable caching; 206 with
       `Content-Range`; 416; `If-Range` mismatch returns 200; `If-None-Match` returns 304; gated
-      responses are `private, no-store`; console-host responses are always octet-stream attachments.
+      responses are `private, no-store, no-transform` (P2-05); console-host responses are always octet-stream attachments.
 - [x] `test-workerd/blobs.test.ts` passes on miniflare R2, including a streamed hash of an object
       larger than 16 MiB.
 - [x] `promote` records a `blob_objects` row only after verification; `hasRef(db, product, key)`

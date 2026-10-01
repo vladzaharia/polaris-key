@@ -193,7 +193,11 @@ describe("blobResponse on R2", R2_LANE, () => {
     const h = await hexSha256(bytes);
     const key = blobKey(h);
     await putVerified(bucket(), key, bytes, { sha256: h, size: bytes.length });
-    const opts = { sha256: h, gated: false, host: "bytes" as const };
+    const opts = {
+      sha256: h,
+      gated: false,
+      env: { BLOB_ORIGIN: "https://dl.workerd.test" },
+    };
     const url = "https://dl.workerd.test/x";
 
     const full = await blobResponse(new Request(url), bucket(), key, opts);

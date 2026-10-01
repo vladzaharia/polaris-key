@@ -36,7 +36,9 @@
  */
 
 import type { Db } from "../db/types.js";
+import type { Env } from "../env.js";
 import { notFound } from "./errors.js";
+import { isBytesHost } from "./bytesHostname.js";
 
 // ── Key builders ────────────────────────────────────────────────────────────────────────────
 
@@ -608,14 +610,21 @@ const NEVER_SERVED = /html|xml|svg|script|ecmascript|json|text\/|multipart\//i;
 export interface BlobResponseOptions {
   /** Lowercase hex SHA-256 of the object; becomes the ETag and `Repr-Digest`. */
   sha256: string;
-  /** Gated responses are `private, no-store`; ungated ones immutable for a year. */
+  /** Gated responses are `private, no-store, no-transform`; ungated ones immutable for a year. */
   gated: boolean;
   /**
-   * Which host the request arrived on. On the console host (`key.plrs.im`) the type is ALWAYS
-   * `application/octet-stream` with `attachment` (R6-04): that origin holds the admin and
-   * portal sessions. Only on the bytes host may a route pass a real type or `inline`.
+   * Where `BLOB_ORIGIN` comes from. The host a response is shaped for is DERIVED from
+   * `req.url` against it (`isBytesHost`), never taken from the caller (P2-05): on the console
+   * host (`key.plrs.im`) the type is ALWAYS `application/octet-stream` with `attachment`
+   * (R6-04), because that origin holds the admin and portal sessions. Only a request that
+   * really arrived on the bytes host may get a real type or `inline`.
    */
-  host: "console" | "bytes";
+  env: Pick<Env, "BLOB_ORIGIN">;
+  /**
+   * Optional and never trusted to WIDEN anything: `"console"` forces the console treatment even
+   * on the bytes host; `"bytes"` changes nothing unless `req.url` is on the bytes host.
+   */
+  host?: "console" | "bytes";
   /** Bytes host only; must be in `BYTES_HOST_TYPES`, else octet-stream. */
   contentType?: string;
   /** Bytes host only, and only with an allowlisted `contentType`; default `attachment`. */
@@ -633,11 +642,14 @@ function baseType(t: string): string {
   return (t.split(";")[0] ?? "").trim().toLowerCase();
 }
 
-function resolveType(opts: BlobResponseOptions): {
+function resolveType(
+  opts: BlobResponseOptions,
+  onBytesHost: boolean,
+): {
   type: string;
   inline: boolean;
 } {
-  if (opts.host !== "bytes" || !opts.contentType)
+  if (!onBytesHost || !opts.contentType)
     return { type: "application/octet-stream", inline: false };
   const t = baseType(opts.contentType);
   if (!BYTES_HOST_TYPES.has(t) || NEVER_SERVED.test(t))
@@ -694,12 +706,20 @@ function ifNoneMatchHits(header: string | null, etag: string): boolean {
  * are evaluated here against the SHA-256 and R2 is asked only for the byte range that results.
  *
  * The caller has already decided the request may see this key (`hasRef`, and any gating). A
- * missing object, or one whose stored checksum is not `opts.sha256`, answers not-found.
+ * missing object, one with NO stored checksum, or one whose stored checksum is not
+ * `opts.sha256`, answers not-found. Everything under a locked prefix was written by
+ * `putVerified`, which always stores the checksum; an object without one did not come through
+ * it, and serving it would put an ETag and `Repr-Digest` on bytes nothing verified (P2-05).
+ *
+ * The host the response is shaped for is derived from `req.url` and `opts.env`, never trusted
+ * from the caller (`BlobResponseOptions.env`).
  *
  * Headers on every 200/206/304: `ETag: "<hex>"`, `Repr-Digest` (the whole representation,
  * also on a 206), `Accept-Ranges: bytes`, `X-Content-Type-Options: nosniff`, `BLOB_CSP`, and
  * `Cache-Control` — `public, max-age=31536000, immutable, no-transform` ungated (no edge
- * recompression: hashes and ranges depend on the stored bytes), `private, no-store` gated.
+ * recompression: hashes and ranges depend on the stored bytes), `private, no-store,
+ * no-transform` gated (the edge must not recompress `application/wasm` and break
+ * `Content-Length`, `Range` and `Repr-Digest` on a private response either).
  */
 export async function blobResponse(
   req: Request,
@@ -727,9 +747,13 @@ export async function blobResponse(
   const head = await bucket.head(key);
   if (!head) return notFound();
   const stored = checksumHex(head);
-  // A stored checksum that is not the expected hash means the record and the bytes disagree;
-  // serving them would hand out bytes under the wrong name, so the answer is not-found.
-  if (stored !== null && stored !== opts.sha256) return notFound();
+  // Fail closed (P2-05): every locked-prefix object was written by `putVerified` with its
+  // checksum, so one without a stored checksum did not come through it. And a stored checksum
+  // that is not the expected hash means the record and the bytes disagree. Either way, serving
+  // would hand out bytes under a name nothing verified, so the answer is not-found.
+  if (stored === null || stored !== opts.sha256) return notFound();
+  const onBytesHost =
+    opts.host !== "console" && isBytesHost(new URL(req.url), opts.env);
 
   const etag = `"${opts.sha256}"`;
   const headers = new Headers({
@@ -739,14 +763,14 @@ export async function blobResponse(
     "x-content-type-options": "nosniff",
     "content-security-policy": BLOB_CSP,
     "cache-control": gated
-      ? "private, no-store"
+      ? "private, no-store, no-transform"
       : "public, max-age=31536000, immutable, no-transform",
   });
 
   if (ifNoneMatchHits(req.headers.get("if-none-match"), etag))
     return new Response(null, { status: 304, headers });
 
-  const { type, inline } = resolveType(opts);
+  const { type, inline } = resolveType(opts, onBytesHost);
   headers.set("content-type", type);
   headers.set(
     "content-disposition",
