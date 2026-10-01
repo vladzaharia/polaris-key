@@ -247,14 +247,23 @@ export type ReleaseKind =
   /** P2-05's three byte routes: a declared build, an exact file, a content-addressed blob. */
   | "build"
   | "file"
-  | "blob";
+  | "blob"
+  /** P3-03: the signed channel feed (`/update/{channel}/feed.jws`) and the release record
+   *  (`/release/records/{sha256}`). Both are metadata: a client that may read a feed must be
+   *  able to fetch every record it pins. */
+  | "feed"
+  | "record";
 
 /** Which access mode governs a surface: metadata for the informational reads, else artifacts. */
 export function accessModeFor(
   policy: ArtifactPolicy,
   kind: ReleaseKind,
 ): ReleaseAccess {
-  return kind === "version" || kind === "changelog" || kind === "install"
+  return kind === "version" ||
+    kind === "changelog" ||
+    kind === "install" ||
+    kind === "feed" ||
+    kind === "record"
     ? policy.access.metadata
     : policy.access.artifacts;
 }

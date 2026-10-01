@@ -6,6 +6,7 @@
  *     /update/appcast.xml[?arch=]           (+ the permanent alias `/<p>/appcast.xml`)
  *     /update/<channel>/appcast.xml[?arch=] (+ the permanent alias `/<p>/<channel>/appcast.xml`)
  *     /update/version                        (+ the permanent alias `/<p>/version`)
+ *     /update/<channel>/feed.jws?platform=   (P3-03, the signed channel feed; no alias)
  *
  * The aliases arrive here already rewritten into the canonical segments by the core router
  * (`router.ts`), so both spellings run this file's single code path and are byte-identical by
@@ -16,6 +17,7 @@ import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { ServiceContext } from "../../core/registry.js";
 import { handleUpdate } from "./feed.js";
+import { handleFeedRoute } from "./feedDoc.js";
 import { updateParams } from "./eligibility.js";
 
 /** Channel names the router will hand through, matching the product-slug class. */
@@ -68,6 +70,15 @@ export async function handleUpdateRoutes(
     }
     return null;
   }
+
+  // The signed channel feed (P3-03). No channel name contains a dot (`CHANNEL_NAME_PATTERN`), so
+  // `feed.jws` sits beside `appcast.xml` without reserving a word.
+  if (
+    rest.length === 2 &&
+    rest[1] === "feed.jws" &&
+    CHANNEL.test(rest[0] ?? "")
+  )
+    return handleFeedRoute(ctx, rest[0] as string);
 
   if (
     rest.length === 2 &&

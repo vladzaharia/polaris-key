@@ -42,6 +42,8 @@ public enum ErrorCode {
     public static let upstreamRateLimited = "upstream_rate_limited"
     public static let serverMisconfigured = "server_misconfigured"
     public static let internalError = "internal_error"
+    public static let releaseRecordRejected = "release_record_rejected"
+    public static let feedNotComposable = "feed_not_composable"
     public static let serviceUnavailable = "service-unavailable"
     public static let serviceDisabled = "service-disabled"
     public static let localOnly = "local-only"
@@ -125,6 +127,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "upstream_rate_limited",
     "server_misconfigured",
     "internal_error",
+    "release_record_rejected",
+    "feed_not_composable",
     "service-unavailable",
     "service-disabled",
     "local-only",
@@ -208,6 +212,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "upstream_rate_limited": "wire",
     "server_misconfigured": "wire",
     "internal_error": "wire",
+    "release_record_rejected": "wire",
+    "feed_not_composable": "wire",
     "service-unavailable": "client",
     "service-disabled": "client",
     "local-only": "client",

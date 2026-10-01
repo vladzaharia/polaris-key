@@ -14,6 +14,8 @@
  *     and P6-03 halts through.
  *   - `accessMode` (P2b-04): `dist_access` — the ONE delivery-access answer the byte routes, the
  *     appcast and the portal read.
+ *   - `outlets` (P3-03): the live outlets with kind, identity and whether an operator narrowed
+ *     them — what the signed feed keys its per-outlet entries by.
  *   - `deliveryUrl` (P2b-04): the canonical, immutable byte URL of a release file or of a build's
  *     payload (both as `files/<releaseId>/<name>`), on the bytes host when `BLOB_ORIGIN` is set — what P2b-05's feeds, P2b-06's page, P3-09's updater feeds and
  *     P4-05's pack transports link to.
@@ -30,6 +32,7 @@ import { bytesHostname } from "../../core/bytesHost.js";
 import { accessModeOf } from "./access.js";
 import { getRollout, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
+import { listOutlets, parseJsonColumn } from "./outlets.js";
 
 /** The origin byte URLs are minted on: the bytes host when there is one, else none (a path). */
 function bytesOrigin(ctx: HookContext): string {
@@ -51,6 +54,25 @@ export function delivery(ctx: HookContext): Delivery {
       submissionsFor({ db, product: slug, hooks: ctx.hooks }, releaseId),
 
     keys: (q?: { purpose?: string }) => inventory(db, slug, q?.purpose),
+
+    async outlets() {
+      return (await listOutlets(db, slug))
+        .filter((o) => o.removed_at === null)
+        .map((o) => {
+          const identity = parseJsonColumn(o.identity_json);
+          return {
+            outletId: o.outlet_id,
+            kind: o.kind,
+            identity:
+              identity &&
+              typeof identity === "object" &&
+              !Array.isArray(identity)
+                ? (identity as Record<string, unknown>)
+                : {},
+            narrowed: o.capabilities_source === "admin",
+          };
+        });
+    },
 
     async rollout({ deliverable, outlet, channel }) {
       const row = await getRollout(db, slug, deliverable, outlet, channel);

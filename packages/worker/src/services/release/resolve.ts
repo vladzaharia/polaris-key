@@ -435,17 +435,31 @@ function policyView(row: ReleaseChannelPolicyRow): PolicyView {
 }
 
 /**
- * Resolve a selector for one deliverable from the truth store. `cfg` is the product's release
- * configuration when the caller already holds it (its tag filter and manual channels); omitted,
- * it is read.
+ * Everything resolution reads for one deliverable, in four queries: the deliverable, its
+ * releases, their builds, the product's yanks and the deliverable's channel policies. Read once
+ * and resolved many times (`resolveInState`): the signed feed (P3-03) resolves one channel for
+ * every platform from one read.
  */
-export async function resolveBuild(
+export interface DeliverableState {
+  deliverableId: string;
+  deliverable: ReleaseDeliverableRow;
+  scheme: VersionScheme;
+  config: ReleaseConfigRow | null;
+  manual: ManualChannel[];
+  rows: ReleaseMetadataRow[];
+  buildsByRelease: Map<string, ReleaseBuildRow[]>;
+  yanked: Set<string>;
+  /** Policy rows of THIS deliverable, by (canonical) channel. */
+  policyRows: Map<string, ReleaseChannelPolicyRow>;
+  candidates: Candidate[];
+}
+
+export async function loadDeliverableState(
   db: Db,
   product: string,
-  opts: ResolveBuildOptions,
+  deliverableId: string,
   cfg?: ReleaseConfigRow | null,
-): Promise<BuildResolution | null> {
-  const deliverableId = opts.deliverable ?? APP_DELIVERABLE_ID;
+): Promise<DeliverableState | null> {
   const deliverable = await db.first<ReleaseDeliverableRow>(
     "SELECT * FROM release_deliverables WHERE product = ? AND deliverable_id = ?",
     product,
@@ -454,23 +468,11 @@ export async function resolveBuild(
   if (!deliverable) return null;
   const config = cfg === undefined ? await getReleaseConfig(db, product) : cfg;
   const manual = parseManualChannels(config?.manual_channels_json);
-
-  let selector: Selector;
-  let channel: string | null = null;
-  if (isVersionSelector(opts.selector)) {
-    selector = { type: "version", version: opts.selector };
-  } else {
-    channel = canonicalChannel(opts.selector, manual);
-    if (!channel) return null;
-    selector = { type: "channel", channel };
-  }
-
   const rows = await db.all<ReleaseMetadataRow>(
     "SELECT * FROM release_metadata WHERE product = ? AND deliverable_id = ?",
     product,
     deliverableId,
   );
-  if (rows.length === 0) return null;
   const builds = await db.all<ReleaseBuildRow>(
     `SELECT b.* FROM release_builds b
        JOIN release_metadata m ON m.product = b.product AND m.release_id = b.release_id
@@ -507,17 +509,47 @@ export async function resolveBuild(
       arch: b.arch,
     })),
   }));
-
-  const resolved = resolveCandidates({
-    deliverable: deliverableId,
+  return {
+    deliverableId,
+    deliverable,
     scheme: versionSchemeOf(deliverable),
-    selector,
-    releases: candidates,
+    config,
+    manual,
+    rows,
+    buildsByRelease,
     yanked: new Set(yanks.map((y) => y.release_id)),
-    policies: new Map(policies.map((p) => [p.channel, policyView(p)])),
-    manualChannels: manual,
-    stableTagPattern: config?.stable_tag_pattern ?? null,
-    ignoreTags: parseIgnoreTags(config?.ignore_tags_json),
+    policyRows: new Map(policies.map((p) => [p.channel, p])),
+    candidates,
+  };
+}
+
+/** Resolve one selector against a loaded state (pure; see `resolveCandidates`). */
+export function resolveInState(
+  state: DeliverableState,
+  opts: Omit<ResolveBuildOptions, "deliverable">,
+): BuildResolution | null {
+  let selector: Selector;
+  let channel: string | null = null;
+  if (isVersionSelector(opts.selector)) {
+    selector = { type: "version", version: opts.selector };
+  } else {
+    channel = canonicalChannel(opts.selector, state.manual);
+    if (!channel) return null;
+    selector = { type: "channel", channel };
+  }
+  if (state.rows.length === 0) return null;
+  const resolved = resolveCandidates({
+    deliverable: state.deliverableId,
+    scheme: state.scheme,
+    selector,
+    releases: state.candidates,
+    yanked: state.yanked,
+    policies: new Map(
+      [...state.policyRows].map(([c, p]) => [c, policyView(p)]),
+    ),
+    manualChannels: state.manual,
+    stableTagPattern: state.config?.stable_tag_pattern ?? null,
+    ignoreTags: parseIgnoreTags(state.config?.ignore_tags_json),
     target: {
       ...(opts.platform !== undefined ? { platform: opts.platform } : {}),
       ...(opts.arch !== undefined ? { arch: opts.arch } : {}),
@@ -525,15 +557,38 @@ export async function resolveBuild(
     },
   });
   if (!resolved) return null;
-  const release = rows.find(
+  const release = state.rows.find(
     (r) => r.release_id === resolved.release.releaseId,
   ) as ReleaseMetadataRow;
   const build = resolved.build
-    ? ((buildsByRelease.get(release.release_id) ?? []).find(
+    ? ((state.buildsByRelease.get(release.release_id) ?? []).find(
         (b) => b.build_id === resolved.build?.buildId,
       ) ?? null)
     : null;
   return { release, build, via: resolved.via, channel };
+}
+
+/**
+ * Resolve a selector for one deliverable from the truth store. `cfg` is the product's release
+ * configuration when the caller already holds it (its tag filter and manual channels); omitted,
+ * it is read.
+ */
+export async function resolveBuild(
+  db: Db,
+  product: string,
+  opts: ResolveBuildOptions,
+  cfg?: ReleaseConfigRow | null,
+): Promise<BuildResolution | null> {
+  const state = await loadDeliverableState(
+    db,
+    product,
+    opts.deliverable ?? APP_DELIVERABLE_ID,
+    cfg,
+  );
+  if (!state) return null;
+  // A selector that is neither a version nor a channel name resolves nothing (as before the
+  // state split, which read nothing past the deliverable for it).
+  return resolveInState(state, opts);
 }
 
 // ── The legacy routes' view of the same policy ───────────────────────────────────────────────
