@@ -49,9 +49,11 @@ decision, the signed feed and in-game installation are wire v4 work, not this.
   `PKeyVersionCheck` (`version`, `tag`, `url`, `update_available`); signal
   `update_available(check)`; `appcast_url(channel := "", arch := "") -> String` (empty when
   discovery is not loaded or Update is off).
-- `services/release.gd` (`PolarisKey.release`): `await changelog() -> Array[PKeyChangelogEntry]`
-  (`version`, `tag`, `date`, `summary`, `url`), `install_url()`,
-  `download_url(version, binary, arch, checksum := false) -> String`.
+- `services/release.gd` (`PolarisKey.release`): `await changelog() -> PKeyChangelogResult` (a
+  PKeyResult whose `entries` is `Array[PKeyChangelogEntry]`: `version`, `tag`, `date`, `summary`,
+  `url`), `install_url()`,
+  `download_url(version, binary, arch, checksum := false, dmg := false) -> String` (both ""
+  with Release off).
 - The bearer token is forwarded when one is held (`entitled` access mode needs it); a 403 maps
   to the body's code (default `forbidden`); any other failure to `not_found`; a disabled service
   to `service-unavailable` before any request.
@@ -77,8 +79,9 @@ decision, the signed feed and in-game installation are wire v4 work, not this.
 - **Appcast URL:** a channel feed is a path segment (`/update/<channel>/appcast.xml`), `arch` is a
   query parameter; take the base from discovery, never string-build the host (as
   `appcastUrlFrom` does). It exists for parity; Godot has no Sparkle.
-- **Download URL:** `release/dl/<version>/<binary>-<arch>`, each segment URI-encoded
-  (`String.uri_encode()`), `?checksum=sha256` when asked. The server requires an arch suffix
+- **Download URL:** `release/dl/<version>/<binary>-<arch>`, each segment encoded as JS
+  `encodeURIComponent` does (`PKeyUri.component`; `String.uri_encode()` also encodes `!'()*`, so it
+  is not byte-identical to Node), `?checksum=sha256` when asked. The server requires an arch suffix
   (`arm64|aarch64|x86_64|amd64`). Only the URL is built here: fetching it needs P1-02's
   credential-safe redirects and `accept_gzip = false`, which is P3-10's job.
 - **No throttle in the SDK.** A caller decides when to check (P1-10's `DECIDE` stage checks once
