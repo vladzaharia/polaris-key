@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Optional
 
 from .jws import TrustSet, verify_jws
-from .models import CLOCK_SKEW_SECONDS, ISSUER, TYP_TRUST
+from .models import CLOCK_SKEW_SECONDS, ISSUER, TYP_TRUST, _wire_int
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .context import CoreContext
@@ -129,14 +129,17 @@ def verify_trust_manifest(
         return _REJECTED
 
     wall = int(time.time()) if now is None else now
-    if doc.get("schemaVersion") not in SUPPORTED_TRUST_SCHEMA_VERSIONS:
+    # V4 §3: an integer claim first (``True in frozenset({1})`` holds, and ``1.0 == 1``),
+    # then the allow-list.
+    schema_version = _wire_int(doc.get("schemaVersion"), 1)
+    if schema_version is None or schema_version not in SUPPORTED_TRUST_SCHEMA_VERSIONS:
         return _REJECTED
     if doc.get("aud") != expected_aud:
         return _REJECTED
     if doc.get("iss") != expected_iss:
         return _REJECTED
-    issued_at = _int_or_none(doc.get("issuedAt"))
-    expires_at = _int_or_none(doc.get("expiresAt"))
+    issued_at = _wire_int(doc.get("issuedAt"), 0)
+    expires_at = _wire_int(doc.get("expiresAt"), 0)
     if issued_at is None or expires_at is None:
         return _REJECTED
     if last_trust_issued_at is not None and issued_at <= last_trust_issued_at:

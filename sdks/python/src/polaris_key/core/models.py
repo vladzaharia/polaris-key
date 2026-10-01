@@ -41,7 +41,11 @@ __all__ = [
     "TYP_CONFIG",
     "TYP_TRUST",
     "TYP_BUNDLE",
+    "TYP_FEED",
+    "TYP_RELEASE",
     "JWS_TYPS",
+    "MAX_WIRE_INTEGER",
+    "MAX_JSON_DEPTH",
     "TOKEN_PREFIX",
     "HEADER_DEVICE",
     "HEADER_VERSION",
@@ -107,7 +111,17 @@ TYP_LICENSE = "pkey-license+jws"
 TYP_CONFIG = "pkey-config+jws"
 TYP_TRUST = "pkey-trust+jws"
 TYP_BUNDLE = "pkey-bundle+jws"
-JWS_TYPS = (TYP_LICENSE, TYP_CONFIG, TYP_TRUST, TYP_BUNDLE)
+#: Wire contract v4 §2.3: the channel feed, signed by the product key.
+TYP_FEED = "pkey-feed+jws"
+#: Wire contract v4 §2.4: the release record, signed by a CI-held release key.
+TYP_RELEASE = "pkey-release+jws"
+JWS_TYPS = (TYP_LICENSE, TYP_CONFIG, TYP_TRUST, TYP_BUNDLE, TYP_FEED, TYP_RELEASE)
+
+# ── Wire contract v4 limits (WIRE-CONTRACT-V4 §1.2, §3) ─────────────────────────────
+#: The largest integer claim, 2^53 − 1.
+MAX_WIRE_INTEGER = 9_007_199_254_740_991
+#: The deepest a signed header or payload may nest, the top-level object as level 1.
+MAX_JSON_DEPTH = 64
 
 # ── Client metadata headers (§5) ────────────────────────────────────────────────────
 HEADER_DEVICE = "X-PKey-Device"
@@ -133,6 +147,23 @@ ActivationSource = str
 def _int_or_none(value: Any) -> Optional[int]:
     """An int that is not a bool. ``True`` is not a timestamp."""
     if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
+def _wire_int(value: Any, minimum: int) -> Optional[int]:
+    """WIRE-CONTRACT-V4 §3: an integer claim, or ``None``.
+
+    ``json.loads`` returns an ``int`` exactly for a plain integer token and a ``float`` for any
+    other (``7.0``, ``17e8``, ``1700000000.00000001``), so "an ``int`` that is never a
+    ``bool``" IS the token rule, and the comparisons with the claim's minimum and with
+    2^53 − 1 are exact. Every integer claim goes through here, with its minimum (0 for every
+    timestamp, 1 for ``schemaVersion``); ``_int_or_none`` stays for the values that are not
+    claims.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if value < minimum or value > MAX_WIRE_INTEGER:
         return None
     return value
 
@@ -278,9 +309,10 @@ class DocClaims:
         iss = d.get("iss")
         aud = d.get("aud")
         device_id = d.get("deviceId")
-        issued_at = _int_or_none(d.get("issuedAt"))
-        expires_at = _int_or_none(d.get("expiresAt"))
-        grace_until = _int_or_none(d.get("graceUntil"))
+        # V4 §3: every timestamp is an integer claim, minimum 0.
+        issued_at = _wire_int(d.get("issuedAt"), 0)
+        expires_at = _wire_int(d.get("expiresAt"), 0)
+        grace_until = _wire_int(d.get("graceUntil"), 0)
         if not isinstance(iss, str) or not isinstance(aud, str):
             return None
         if not isinstance(device_id, str):
@@ -329,9 +361,11 @@ class LicenseDoc:
             return None
         if not _is_plain_object(d.get("entitlements")):
             return None
-        raw_profile = d.get("profile")
         profile: Optional[DocProfile] = None
-        if raw_profile is not None:
+        if "profile" in d:
+            # V4 §3 presence: an optional member is absent or of its type, so a present
+            # ``null`` is refused like any other non-object (Node and Godot always did).
+            raw_profile = d["profile"]
             # Present but not an object ⇒ a smuggled scalar ⇒ not a document.
             profile = DocProfile.from_any(raw_profile)
             if profile is None:
@@ -391,8 +425,8 @@ class ConfigDoc:
         # catalog. What is enforceable, and what R2-08's `schemaVersion: 999` payload
         # actually violated, is the SHAPE. (Contrast the trust manifest's, which IS
         # allow-listed — see `polaris_key.core.trust`.)
-        schema_version = _int_or_none(d.get("schemaVersion"))
-        if schema_version is None or schema_version < 1:
+        schema_version = _wire_int(d.get("schemaVersion"), 1)
+        if schema_version is None:
             return None
         if not _is_plain_object(d.get("config")):
             return None
