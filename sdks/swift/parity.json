@@ -13,7 +13,7 @@
     "core.discover": { "status": "implemented" },
     "core.sync": { "status": "implemented" },
     "core.local": { "status": "implemented" },
-    "core.headers": { "status": "planned", "wp": "P1b-04" },
+    "core.headers": { "status": "implemented" },
     "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
@@ -27,7 +27,10 @@
     "license.entitlements": { "status": "implemented" },
     "license.channels": { "status": "implemented" },
     "license.reregister": { "status": "implemented" },
-    "config.resolve": { "status": "implemented" },
+    "config.resolve": {
+      "status": "implemented",
+      "note": "Member names compare by scalar value, but JSONValue keeps the first of two canonically equivalent names (WIRE-CONTRACT-V3 §10)."
+    },
     "config.list": { "status": "implemented" },
     "config.secret": { "status": "implemented" },
     "config.schema": { "status": "implemented" },
