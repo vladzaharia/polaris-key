@@ -16,7 +16,7 @@
 // file. `client-core` is deliberately not a target: touching it is plan mode, and nothing here
 // needs it.
 //
-// WHAT IS NOT GENERATED. Coherence error CODES (`update_requires_release`) stay literal in both
+// WHAT IS NOT GENERATED. Coherence error CODES (`update_requires_distribution`) stay literal in both
 // validators: the rule-9 parity test extracts codes from validator SOURCE, so a code built from
 // table data would vanish from its sweep. Views, descriptors, docs pages and accent CSS are real
 // code. For each of those an assertion test names what a new row is missing instead; see the

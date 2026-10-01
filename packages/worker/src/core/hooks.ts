@@ -261,10 +261,10 @@ export function hookProvider(
  *
  * `services` is passed explicitly rather than read off `base.product`, so the gate is the SAME
  * map the caller dispatched on (`dispatchService`'s `services` argument). Every accessor checks
- * `services[provider.slug].enabled` and returns `null` BEFORE
- * calling into the provider, so a disabled service's hook code never runs. `releaseCatalog()`
- * and `delivery()` are memoised per hooks object (one request): a reader is cheap, but a
- * consumer that asks twice should get the same one.
+ * `services[provider.slug].enabled` and returns `null` BEFORE calling into the provider, so a
+ * disabled service's hook code never runs. `releaseCatalog()` and `delivery()` are memoised per
+ * hooks object (one request): a reader is cheap, but a consumer that asks twice should get the
+ * same one.
  */
 export function buildHooks(
   registry: HookRegistry,
