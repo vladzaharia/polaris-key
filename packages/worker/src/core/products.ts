@@ -100,6 +100,46 @@ export async function loadPublicSigningKeys(
   }
 }
 
+/**
+ * A product WITHOUT its signing key: everything a route that never signs needs (P2-05).
+ *
+ * The bytes host (`core/bytesHost.ts`) serves downloads; no byte route signs anything, so
+ * unsealing the product's Ed25519 key under `PLATFORM_KEK` on every download chunk would be
+ * work for nothing and would hand a private key to code that has no use for it. Byte routes get
+ * this shape instead (least privilege), and every Core check a download needs
+ * (`validateDeviceToken`, `usableLicensedDevice`, `entitledAccessCheck`) takes it.
+ */
+export type ProductPublic = Omit<Product, "signingKeyPem">;
+
+/** The row-derived half of a product, shared by both loaders below. */
+function productFields(
+  row: NonNullable<Awaited<ReturnType<typeof getProduct>>>,
+  keyRow: NonNullable<Awaited<ReturnType<typeof getActiveProductKey>>>,
+  schemaVersion: number,
+): ProductPublic {
+  const parsedServices = parseServices(row.services_json);
+  return {
+    slug: row.slug,
+    name: row.name,
+    signingKid: keyRow.kid,
+    signingPub: keyRow.public_b64url,
+    compatMin: row.compat_min,
+    compatMax: row.compat_max,
+    defaultMaxOfflineDays: row.default_max_offline_days,
+    defaultDeviceLimit: row.default_device_limit,
+    adminGroup: row.admin_group,
+    schemaVersion,
+    fingerprintPolicy: parseFingerprintPolicy(row.fingerprint_policy_json),
+    autoIssue: parseAutoIssue(row.auto_issue_json),
+    services: parsedServices.services,
+    registration: resolveRegistration(
+      parsedServices.services,
+      parsedServices.registration,
+    ),
+    webOrigins: parseWebOrigins(row.web_origins_json),
+  };
+}
+
 /** Load a product + its signing key from the sealed `product_keys` table. Returns null for
  *  an unknown product, a product with no active key, or one whose sealed key fails to open
  *  (fail-closed: no plaintext key ⇒ no Product ⇒ no signed config). */
@@ -119,31 +159,30 @@ export async function loadProduct(
       id: keyRow.kid,
     });
     const schema = await getActiveSchema(db, slug);
-    const parsedServices = parseServices(row.services_json);
     return {
-      slug: row.slug,
-      name: row.name,
-      signingKid: keyRow.kid,
+      ...productFields(row, keyRow, schema?.catalog_version ?? 1),
       signingKeyPem: pem,
-      signingPub: keyRow.public_b64url,
-      compatMin: row.compat_min,
-      compatMax: row.compat_max,
-      defaultMaxOfflineDays: row.default_max_offline_days,
-      defaultDeviceLimit: row.default_device_limit,
-      adminGroup: row.admin_group,
-      schemaVersion: schema?.catalog_version ?? 1,
-      fingerprintPolicy: parseFingerprintPolicy(row.fingerprint_policy_json),
-      autoIssue: parseAutoIssue(row.auto_issue_json),
-      services: parsedServices.services,
-      registration: resolveRegistration(
-        parsedServices.services,
-        parsedServices.registration,
-      ),
-      webOrigins: parseWebOrigins(row.web_origins_json),
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * Load a product WITHOUT unsealing its signing key (`ProductPublic`). Same existence rule as
+ * `loadProduct` — an unknown product, or one with no active key, is `null` — so the two can
+ * never disagree about whether a product exists; only the KEK unseal is skipped.
+ */
+export async function loadProductPublic(
+  db: Db,
+  slug: string,
+): Promise<ProductPublic | null> {
+  const row = await getProduct(db, slug);
+  if (!row) return null;
+  const keyRow = await getActiveProductKey(db, slug);
+  if (!keyRow) return null;
+  const schema = await getActiveSchema(db, slug);
+  return productFields(row, keyRow, schema?.catalog_version ?? 1);
 }
 
 /**

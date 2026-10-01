@@ -20,6 +20,7 @@ import type { AdminSession } from "../../core/adminApi.js";
 import { handleReleaseRoutes } from "./routes.js";
 import { handleReleaseAdmin } from "./admin.js";
 import { getReleaseConfig } from "./config.js";
+import { bytesHostname } from "../../core/bytesHost.js";
 import { releaseCatalog } from "./catalog.js";
 
 export const releaseService: ServiceDescriptor = {
@@ -43,8 +44,14 @@ export const releaseService: ServiceDescriptor = {
    * so shipped `SUFeedURL`s and published curl-pipe URLs keep working, not so new clients learn
    * it. Discovery is where a compatibility path stops being advertised first.
    */
-  discoveryFragment: async ({ product, db, base }: DiscoveryContext) => {
+  discoveryFragment: async ({ product, db, env, base }: DiscoveryContext) => {
     const cfg = await getReleaseConfig(db, product.slug);
+    // The byte routes (P2-05) are advertised on the bytes host when there is one, so a client
+    // downloads from `dl.plrs.im` and never from the origin that holds the console's sessions.
+    const bytesBase =
+      bytesHostname(env) && env.BLOB_ORIGIN
+        ? `${new URL(env.BLOB_ORIGIN).origin}/${product.slug}`
+        : base;
     return {
       enabled: true,
       configured: Boolean(cfg),
@@ -57,6 +64,9 @@ export const releaseService: ServiceDescriptor = {
         changelog: `${base}/release/changelog`,
         install: `${base}/release/install.sh`,
         download: `${base}/release/dl`,
+        // Templated: `{selector}` is a channel or a version, `{buildId}` an artifact-map id.
+        builds: `${bytesBase}/release/builds/{selector}/{buildId}`,
+        blobs: `${bytesBase}/release/blobs/sha256/{sha256}`,
       },
     };
   },
@@ -64,6 +74,7 @@ export const releaseService: ServiceDescriptor = {
 
 // ── The service's public face ────────────────────────────────────────────────
 export { handleRelease, type ReleaseSurfaceKind } from "./surfaces.js";
+export { RELEASE_BYTE_ROUTES } from "./bytes.js";
 export {
   accessModeFor,
   artifactPolicy,

@@ -487,7 +487,9 @@ describe("blobResponse", () => {
   function req(headers: Record<string, string> = {}, method = "GET"): Request {
     return new Request("https://dl.example/x", { method, headers });
   }
-  const ungated = { sha256: HEX, gated: false, host: "bytes" as const };
+  // The bytes host is DERIVED from the request URL against BLOB_ORIGIN (P2-05).
+  const bytesEnv = { BLOB_ORIGIN: "https://dl.example" };
+  const ungated = { sha256: HEX, gated: false, env: bytesEnv };
 
   it("200 carries ETag, Repr-Digest, Accept-Ranges, nosniff, sandbox and immutable caching", async () => {
     const res = await blobResponse(req(), asR2(r2), key, ungated);
@@ -629,28 +631,34 @@ describe("blobResponse", () => {
     expect(await head.text()).toBe("");
   });
 
-  it("gated responses are private, no-store", async () => {
+  it("gated responses are private, no-store, no-transform", async () => {
     const gkey = blobKey(HEX, { gated: true });
     await putVerified(asR2(r2), gkey, BODY, { sha256: HEX, size });
     const res = await blobResponse(req(), asR2(r2), gkey, {
       ...ungated,
       gated: true,
     });
-    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("cache-control")).toBe(
+      "private, no-store, no-transform",
+    );
     const nm = await blobResponse(
       req({ "if-none-match": `"${HEX}"` }),
       asR2(r2),
       gkey,
       { ...ungated, gated: true },
     );
-    expect(nm.headers.get("cache-control")).toBe("private, no-store");
+    expect(nm.headers.get("cache-control")).toBe(
+      "private, no-store, no-transform",
+    );
   });
 
   it("a gated/ key is private, no-store even if the caller forgot to say gated", async () => {
     const gkey = blobKey(HEX, { gated: true });
     await putVerified(asR2(r2), gkey, BODY, { sha256: HEX, size });
     const res = await blobResponse(req(), asR2(r2), gkey, ungated);
-    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("cache-control")).toBe(
+      "private, no-store, no-transform",
+    );
   });
 
   it("never serves a staging/ object (unverified CI upload)", async () => {
@@ -665,6 +673,7 @@ describe("blobResponse", () => {
     const res = await blobResponse(req(), asR2(r2), key, {
       sha256: HEX,
       gated: false,
+      env: bytesEnv,
       host: "console",
       contentType: "application/vnd.android.package-archive",
       disposition: "inline",
@@ -675,6 +684,54 @@ describe("blobResponse", () => {
       'attachment; filename="My_Game.apk"',
     );
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("ignores a caller-supplied host: bytes on a console-host request (P2-05)", async () => {
+    const consoleReq = new Request("https://key.example/djdl/release/blobs/x");
+    for (const env of [bytesEnv, {}]) {
+      const res = await blobResponse(consoleReq, asR2(r2), key, {
+        sha256: HEX,
+        gated: false,
+        env,
+        host: "bytes",
+        contentType: "application/wasm",
+        disposition: "inline",
+        filename: "game.wasm",
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/octet-stream");
+      expect(res.headers.get("content-disposition")).toBe(
+        'attachment; filename="game.wasm"',
+      );
+    }
+  });
+
+  it("a locked key whose object has no stored checksum answers not-found (P2-05)", async () => {
+    // Seeded directly, bypassing putVerified: no `checksums.sha256` on the object.
+    for (const k of [
+      blobKey(sha(OTHER)),
+      blobKey(sha(OTHER), { gated: true }),
+      bundleKey(sha(OTHER)),
+    ]) {
+      r2.seed(k, OTHER);
+      const res = await blobResponse(req(), asR2(r2), k, {
+        ...ungated,
+        sha256: sha(OTHER),
+      });
+      expect(res.status, k).toBe(404);
+      expect(res.headers.get("etag"), k).toBeNull();
+      expect(res.headers.get("repr-digest"), k).toBeNull();
+    }
+    const dkey = deltaKey("a".repeat(64), "b".repeat(64), "bsdiff");
+    r2.seed(dkey, OTHER);
+    expect(
+      (
+        await blobResponse(req(), asR2(r2), dkey, {
+          ...ungated,
+          sha256: sha(OTHER),
+        })
+      ).status,
+    ).toBe(404);
   });
 
   it("the bytes host may pass an allowlisted type and inline disposition", async () => {

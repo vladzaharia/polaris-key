@@ -48,9 +48,16 @@ they are compiled into shipped app bundles and published curl lines. Removed v2 
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| GET | `/{product}/release/blobs/sha256/{sha256}` | release | Download a content-addressed object |
+| GET | `/{product}/release/builds/{selector}/{buildId}` | release | Download the payload of a declared build |
 | GET | `/{product}/release/changelog` | release | Release changelog |
+| POST | `/{product}/release/channels/{channel}/pin` | release | Pin a channel to a release (CI) |
+| POST | `/{product}/release/channels/{channel}/promote` | release | Promote a release to a channel (CI) |
+| POST | `/{product}/release/channels/{channel}/unpin` | release | Unpin a channel (CI) |
 | GET | `/{product}/release/dl/{version}/{asset}` | release | Download a release artifact |
+| GET | `/{product}/release/files/{releaseId}/{name}` | release | Download one exact file of one release |
 | GET | `/{product}/release/install.sh` | release | The curl-pipe install script |
+| POST | `/{product}/release/releases/{releaseId}/yank` | release | Yank a release (CI) |
 | GET | `/{product}/update/{channel}/appcast.xml` | update | The Sparkle appcast for a channel |
 | GET | `/{product}/update/appcast.xml` | update | The Sparkle appcast (default channel) |
 | GET | `/{product}/update/version` | update | Latest-version check |

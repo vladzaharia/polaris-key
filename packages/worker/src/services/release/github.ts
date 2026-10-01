@@ -33,6 +33,12 @@ export interface ReleaseAsset {
   size: number;
   content_type: string;
   browser_download_url: string;
+  /**
+   * GitHub's own digest of the uploaded bytes, `sha256:<hex>` (P2-04). Computed by GitHub, so
+   * it is the bytes' hash, not the uploader's claim. Absent on assets uploaded before GitHub
+   * began recording digests, and in older API responses.
+   */
+  digest?: string | null;
 }
 
 export interface Release {
@@ -43,7 +49,21 @@ export interface Release {
   html_url: string;
   prerelease: boolean;
   draft: boolean;
+  /**
+   * True for a GitHub immutable release (P2-04): its tag and assets can no longer change after
+   * publication. Descriptor ingest requires it wherever GitHub is the source of bytes; absent
+   * (an older API response, or a repo without immutable releases) counts as mutable.
+   */
+  immutable?: boolean;
   assets: ReleaseAsset[];
+}
+
+/** The lower-case hex SHA-256 in a GitHub asset `digest` (`sha256:<hex>`), or null. */
+export function assetSha256(
+  asset: Pick<ReleaseAsset, "digest">,
+): string | null {
+  const m = /^sha256:([0-9a-fA-F]{64})$/.exec(asset.digest ?? "");
+  return m ? m[1]!.toLowerCase() : null;
 }
 
 /** Thrown internally; callers map this to a 404 response. */
@@ -292,6 +312,17 @@ export interface StreamAssetOptions {
 }
 
 /**
+ * A cache for the asset's signed storage URL (P2-05, `ghCache.ts`). With one, a request whose
+ * URL is cached skips the API call entirely — which is what makes a `Range` chunk free — and a
+ * fresh redirect is remembered for the next one.
+ */
+export interface SignedUrlCache {
+  get(): Promise<string | null>;
+  put(url: string): Promise<void>;
+  drop(): Promise<void>;
+}
+
+/**
  * Stream a release asset's raw bytes back to the client. Requests the asset with
  * `Accept: application/octet-stream`; GitHub answers with a 302 to its storage
  * backend. We follow that redirect **manually** so we can SSRF-guard the redirect
@@ -303,36 +334,62 @@ export interface StreamAssetOptions {
  * response type is forced from `opts.contentType`, `Content-Disposition: attachment` is
  * always sent (GitHub sets one; the old header allowlist dropped it), and `nosniff` is set
  * so a mislabelled body can never be sniffed into same-origin script.
+ *
+ * `token` may be a function, so a request served from `urlCache` never mints or reads an
+ * installation token at all.
  */
 export async function streamAsset(
-  token: string,
+  token: string | (() => Promise<string>),
   owner: string,
   repo: string,
   assetId: number,
   clientRequest: Request,
   opts: StreamAssetOptions,
   fetchImpl: FetchImpl = fetch,
+  urlCache?: SignedUrlCache,
 ): Promise<Response> {
-  const headers = new Headers(apiHeaders(token, "application/octet-stream"));
   const range = clientRequest.headers.get("Range");
-  if (range) headers.set("Range", range);
   const ifNoneMatch = clientRequest.headers.get("If-None-Match");
-  if (ifNoneMatch) headers.set("If-None-Match", ifNoneMatch);
+  const storageHeaders = (): Headers => {
+    const h = new Headers();
+    if (range) h.set("Range", range);
+    if (ifNoneMatch) h.set("If-None-Match", ifNoneMatch);
+    return h;
+  };
 
-  const url = `${GITHUB_API}/repos/${owner}/${repo}/releases/assets/${assetId}`;
-  let upstream = await fetchImpl(url, { headers, redirect: "manual" });
+  let upstream: Response | null = null;
+  const cached = urlCache ? await urlCache.get() : null;
+  if (cached && isAllowedStorageHost(new URL(cached).hostname)) {
+    const res = await fetchImpl(cached, { headers: storageHeaders() });
+    // An expired or revoked signature: forget it and ask the API for a fresh one.
+    if (res.status === 400 || res.status === 401 || res.status === 403) {
+      await res.body?.cancel().catch(() => undefined);
+      await urlCache?.drop();
+    } else {
+      upstream = res;
+    }
+  }
 
-  if (upstream.status >= 300 && upstream.status < 400) {
-    const loc = upstream.headers.get("Location");
-    if (!loc) throw new NotFoundError("asset redirect: missing location");
-    // SSRF guard: only follow redirects into GitHub's own storage hosts.
-    const host = new URL(loc).hostname;
-    if (!isAllowedStorageHost(host))
-      throw new NotFoundError(`asset redirect host not allowed: ${host}`);
-    const storageHeaders = new Headers();
-    if (range) storageHeaders.set("Range", range);
-    if (ifNoneMatch) storageHeaders.set("If-None-Match", ifNoneMatch);
-    upstream = await fetchImpl(loc, { headers: storageHeaders }); // signed URL — no Authorization
+  if (!upstream) {
+    const tok = typeof token === "string" ? token : await token();
+    const headers = new Headers(apiHeaders(tok, "application/octet-stream"));
+    if (range) headers.set("Range", range);
+    if (ifNoneMatch) headers.set("If-None-Match", ifNoneMatch);
+
+    const url = `${GITHUB_API}/repos/${owner}/${repo}/releases/assets/${assetId}`;
+    upstream = await fetchImpl(url, { headers, redirect: "manual" });
+
+    if (upstream.status >= 300 && upstream.status < 400) {
+      const loc = upstream.headers.get("Location");
+      if (!loc) throw new NotFoundError("asset redirect: missing location");
+      // SSRF guard: only follow redirects into GitHub's own storage hosts.
+      const host = new URL(loc).hostname;
+      if (!isAllowedStorageHost(host))
+        throw new NotFoundError(`asset redirect host not allowed: ${host}`);
+      upstream = await fetchImpl(loc, { headers: storageHeaders() }); // signed URL — no Authorization
+      if (urlCache && upstream.status >= 200 && upstream.status < 400)
+        await urlCache.put(loc);
+    }
   }
 
   throwIfRateLimited(upstream);

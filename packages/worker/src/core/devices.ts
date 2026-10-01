@@ -46,7 +46,7 @@ import {
 } from "@polaris-key/protocol/core";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import type { Product } from "./products.js";
+import type { Product, ProductPublic } from "./products.js";
 import {
   hashKey,
   isDeviceToken,
@@ -559,7 +559,7 @@ export async function registerDeviceBinding(
 export async function validateDeviceToken(
   env: Env,
   db: Db,
-  product: Product,
+  product: ProductPublic,
   token: string | null,
   now: number,
   opts: { deviceId?: string | null } = {},

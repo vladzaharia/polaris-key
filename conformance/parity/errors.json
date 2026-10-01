@@ -184,6 +184,12 @@
       "description": "The release webhook cannot verify deliveries because its secret is not configured."
     },
     {
+      "code": "internal_error",
+      "kind": "wire",
+      "service": "release",
+      "description": "The byte host (dl.plrs.im) failed while answering; a flat, hardened JSON 500 that discloses nothing about the failure."
+    },
+    {
       "code": "service-unavailable",
       "kind": "client",
       "service": "core",

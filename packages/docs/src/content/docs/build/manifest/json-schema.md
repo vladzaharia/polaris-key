@@ -16,6 +16,12 @@ runs. They ship inside the `@polaris-key/manifest` npm package:
 | `.pkey/schema.*`  | `schemas/v1/schema.schema.json`  |
 | `.pkey/release.*` | `schemas/v1/release.schema.json` |
 
+A fourth schema, `schemas/v1/release-descriptor.schema.json`, describes the **release
+descriptor** CI attaches to a release as `pkey-release.json` — not a `.pkey/` file, but the
+same package, the same parity rule against its validator (`validateReleaseDescriptor`), and
+the same `$id` convention. See
+[Artifacts](/docs/services/release/artifacts/#the-release-descriptor).
+
 `@polaris-key/manifest`'s `package.json` lists `schemas` alongside `dist` in its published
 `files`, so installing the package for any reason — a direct dependency, or transitively
 through `@polaris-key/cli` — puts real files at

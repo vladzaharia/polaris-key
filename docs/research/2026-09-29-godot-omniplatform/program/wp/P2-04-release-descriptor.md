@@ -47,10 +47,11 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
 - [P2-03](P2-03-release-data-model.md) hand-off (`model.ts`, the vocabulary constants,
   identifiers, `seq`), and the landed [P0-02](P0-02-release-resolution.md) (`stableTagPattern`,
   `ignoreTags` and the shared comparator).
-- Code: `packages/shared-manifest/src/index.ts` (release root `:875-1060`, `normalizeRelease`
-  `:1569`, `releaseRoot` `:2048`), `schemas/v1/release.schema.json`,
+- Code: `packages/shared-manifest/src/index.ts` (release validation `:1094-1330` on main at
+  `caeb3ed`, `normalizeRelease` `:1886`, `releaseRoot` `:2377`), `schemas/v1/release.schema.json`,
   `test/schema-parity.test.ts` (the `Docs` type `:44-48`, the sweep `:740-760`);
-  `packages/worker/src/services/release/store.ts:172-197` (the sniffers), `sync.ts`,
+  `packages/worker/src/services/release/store.ts` (`artifactKind`/`artifactPlatform`, the
+  sniffers), `sync.ts`,
   `github.ts:30-47` (`Release`/`ReleaseAsset` lack `immutable` and `digest`) and
   `github.ts:343,395` (`fetchTextAsset`, 4 KiB default cap).
 
@@ -139,6 +140,54 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
 - **Errors** reuse `ErrorCode` with a `reason`; no new `PolarisErrorCode` (plan mode).
 - **Products are data.** No product-, platform- or format-specific branch outside the vocabulary
   constants and the manifest.
+
+- **Implementation corrections (P2-04).**
+  - The nested spelling `deliverables.app.versioning.{stableTagPattern, ignoreTags}` reports
+    the existing `invalid_stable_tag_pattern` / `invalid_ignore_tags`, not a new
+    `invalid_tag_pattern`: one rule and one code for both spellings.
+  - `@polaris-key/manifest` exports `CANONICAL_CHANNEL_PATTERN` and `CHANNEL_ALIAS_NAMES`,
+    derived from P0-04's `CHANNEL_NAME_PATTERN` and `CHANNEL_ALIASES` in
+    `@polaris-key/protocol`; a non-canonical or alias channel key in `deliverables.app.channels`
+    is the existing `invalid_channel` (an error, since these names are stored as written).
+  - `match` is matched by a linear wildcard matcher (`matchesArtifactGlob`), not a compiled
+    RegExp: `*`-heavy globs compile to polynomially backtracking patterns, and both sides are
+    repo-controlled.
+  - The `release_exists` and `seq` rules need the GitHub path to put a described release's row
+    in that release's own publication-order slot among the store's upserts (so `seq` stays
+    publication order) and its builds and files LAST; `ingestGithubDescriptors` returns the
+    rows by release id (`rows`, emitted by `releaseStoreStatements`) plus a `tail`. It plans
+    descriptors in publication order and checks an explicit `seq` on a new release against the
+    value the batch will have reached at that slot (stored maximum plus one per new release
+    published before it), refusing `seq_not_increasing` otherwise, so an explicit seq can never
+    collide with a computed one in the same batch.
+  - Channel `includes` entries must be canonical names too (`invalid_channel_includes`, and the
+    schema's `includes` items carry the canonical pattern): they are stored as written in
+    `release_channel_policy.includes_json`, so a manual channel P0-04 tolerates with a warning
+    (`Nightly.2`) or an alias (`staging`) cannot be included.
+  - Enrichment checks only that every file the descriptor places on GitHub is one the row holds.
+    A held file the descriptor does not name leaves whatever build the map gave it (`build_id`
+    NULL, `role` back to `roleOfKind(kind)`) in the same batch that deletes the builds the
+    descriptor does not list, so no file points at a deleted build. In the other order (CI
+    submits first, the GitHub sync runs after), a described release is not classified by the map
+    at all: a GitHub file the descriptor does not name is inserted with `build_id` NULL and its
+    kind's role, the same state the ingest leaves it in.
+  - "Bounded GitHub cost": a refused `pkey-release.json` is remembered in its marker with the
+    asset id and `basis`, the SHA-256 of the persisted app declaration and the manual channels it
+    was judged against. It is fetched again when either changes. Refusals that hang on other rows
+    (`release_exists`, `r2_object_missing`, `r2_ref_not_owned`) are fetched again on every sync,
+    within the per-sync cap.
+  - Both writers plan from a read and apply a batch later, so every statement re-checks at write
+    time what another writer can change in between (`services/release/guard.ts`). The sync's
+    `sniffed`/`mapped` artifact upserts and the map's build upserts do nothing to a release that
+    has an ingested descriptor by then. The ingest's head writes a new release only while no other
+    release of its version exists and an explicit `seq` is still above the maximum. It updates an
+    existing row only while it has no ingested descriptor, or has this one, and while the row's
+    stored `seq` (if any) is the one the plan checked: a row the sync created and numbered after
+    the plan read the store is not overwritten by a descriptor whose explicit `seq` differs.
+    Every tail statement runs only while the release carries this descriptor's marker. Racing
+    writers (two submissions, or a submission and a sync) therefore resolve as
+    first-commit-wins. The CI path reads the marker back and reports a loss as the refusal that a
+    fresh plan gives (`release_exists`, `seq_not_increasing` or `seq_mismatch`).
 
 ## Steps
 
