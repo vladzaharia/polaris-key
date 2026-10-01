@@ -284,7 +284,11 @@ website data and caches erased. `tools/summarize_c.py` prints this table [M]:
   and 46–95% at 6 packs. Four loads at 1 and 3 packs exceeded 150% (mem 1 pack reload +99 MB on
   50 MB, 198%; idb 1 pack first +85 MB, 170%; idb 3 packs reload +162 MB on 100 MB, 162%; idb 3
   packs restart +152 MB, 152%), probably the transient ArrayBuffer copy during `copyToFS` or a
-  wasm-heap growth step that is not given back [I]. Against the same run's 0-pack footprint instead
+  wasm-heap growth step that is not given back [I]. The probe loads packs strictly in turn
+  (`c_web/probe/probe.gd` lines 91–139 with `c_web/probe/shell.html` lines 56–82): it fetches one
+  pack, copies it into MEMFS with `copyToFS` and only then starts the next fetch, and it mounts the
+  packs one per frame after all are copied. So about 2x is the worst case for one-at-a-time loading;
+  concurrent copies were not measured. Against the same run's 0-pack footprint instead
   of the median the peak is 190% and the 6-pack range 53–95%. With n = 1 per load and reclaimable
   pages moving between loads, treat these as an indication, not a per-byte figure: a mounted pack
   can transiently cost up to about twice its size at small counts, and cost at most its size at
@@ -428,7 +432,8 @@ that path. `user://` holds only small state. Do not use `HTTPRequest.download_fi
 mounted pack costs about its full size in memory (and up to about twice its size transiently while
 it is copied in), so the web build caps the total mounted pack bytes (default 150 MB on mobile
 browsers and 300 MB on desktop, until device numbers exist), leaves headroom under the tab's limit
-for that transient copy (mount packs one at a time, not concurrently) and treats a Cache Storage
+for that transient copy (mount packs one at a time, not concurrently [I]: the probe only ever loaded them one at a time,
+so concurrent copies were not measured) and treats a Cache Storage
 miss as a normal re-download."
 
 **(d) → P3-10, P5-07, S-06 / P3-11.** "Under MSIX (the executable path contains a `WindowsApps` path
