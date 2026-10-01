@@ -219,6 +219,34 @@ Note that **profile** is already taken twice — the reusable managed-payload ba
   and `release` (release config + minters), each in JSON or YAML. They live in exactly one
   directory, **`.pkey/`** — there is no second candidate directory and no fallback between two.
 
+## Release model
+
+The release truth store's nouns (see [Truth store](/docs/services/release/truth-store/)). "App"
+here names only the deliverable kind `app`, the product's own executable; it is never a synonym
+for product.
+
+- **deliverable** — something a product releases: its `app` (kind `app`, id `app`) or a pack
+  (kind `pack`, with a pack type). Ids are lower-case, dot-separated segments of at most 64
+  characters (`app`, `diceroll.core3d`). Every release belongs to exactly one deliverable, and
+  carries a **seq**: its position in that deliverable's publication order (not version order, so
+  a backport can have a higher seq than a newer version).
+- **build** — one compiled form of a release for a (platform, arch, format), with a **build
+  number** (iOS `CFBundleVersion`, Android `versionCode`, MSIX four-part, Sparkle
+  `sparkle:version`). Platforms are `macos`, `ios`, `android`, `windows`, `linux`, `web`; arches
+  `arm64`, `x86_64`, `universal`, `armv7`, `wasm32`, `any` (`universal` and `any` match every
+  arch).
+- **artifact role** — what an artifact (a file of a build, or a sidecar) is for: `payload`,
+  `files-index`, `chunk-index`, `chunk-bundle`, `delta`, `signature` or `checksum`.
+- **promote / pin / yank** — move a channel's pointer to a release (which makes it a member of
+  the channel) / freeze the channel at its pointer / make a release unservable except through an
+  explicit pin. A yank never deletes anything, and a release deleted on GitHub is not a yank.
+  "Yank", not "revoke": keys and licenses revoke.
+- **channel policy** — the per-deliverable, per-channel record of pointer, pin, included
+  channels, **minimum supported** version (the device floor the signed feed will carry) and the
+  critical flag. Owned by the manifest until an operator or CI changes it, then by `admin` until
+  it is reverted — the `services_source` precedent. Not the same as a release **channel floor**,
+  the sync's anti-rollback high-water mark.
+
 ## Layering & precedence
 
 Effective managed config is computed server-side by merging payload layers

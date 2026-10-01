@@ -71,14 +71,19 @@ jobs:
           cd packages/worker
           npx wrangler d1 migrations apply "$DATABASE" --env "$ENV" --remote
           # Re-assert the indexes the code depends on, on EVERY deploy.
-          # 0018 is recorded in d1_migrations, so its SQL half runs exactly once per database
-          # — which is the wrong cadence for an invariant check. R11-04 found that 7 of the
-          # original migrations fail on replay, and a partially-applied one can strand the
+          # The assertion is recorded in d1_migrations, so its SQL half runs exactly once per
+          # database — which is the wrong cadence for an invariant check. R11-04 found that 7 of
+          # the original migrations fail on replay, and a partially-applied one can strand the
           # database missing an index the licensing path silently depends on (the enroll
           # dedupe index is the example that bit us). Running it here turns "a required index
           # vanished" into a failed deploy instead of a latent correctness bug.
-          npx wrangler d1 execute "$DATABASE" --env "$ENV" --remote \
-            --file migrations/0018_index_assertion.sql
+          # Always the NEWEST *_index_assertion.sql (0018, then 0027_i, ...): each successor
+          # DELETEs and re-INSERTs the full list, so re-running an older file would overwrite
+          # the row with a shorter list and stop checking the indexes added since.
+          # test/scheduled.test.ts pins this step to that selection.
+          ASSERTION="$(ls migrations/*_index_assertion.sql | sort | tail -1)"
+          echo "Re-asserting required indexes from $ASSERTION"
+          npx wrangler d1 execute "$DATABASE" --env "$ENV" --remote --file "$ASSERTION"
       - name: Assemble static assets (admin SPA + docs site)
         run: pnpm --filter @polaris-key/worker assemble
       - name: Deploy worker + admin assets

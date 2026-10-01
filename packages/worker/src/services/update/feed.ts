@@ -20,7 +20,7 @@ import type { Product } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";
 import type { UpdateArch } from "@polaris-key/protocol/update";
 import type { FetchImpl } from "../release/githubApp.js";
-import { fetchTextAsset } from "../release/github.js";
+import { fetchTextAsset, getReleaseByTag } from "../release/github.js";
 import { matchAsset, normalizeArch, sigAssetName } from "../release/assets.js";
 import { extractSummary } from "../release/changelog.js";
 import { versionFromTag } from "../release/channels.js";
@@ -155,6 +155,30 @@ async function handleAppcast(
     return notFound();
   }
   const tok = await installationToken(env, cfg, now, fetchImpl);
+
+  // Stable feeds (latest/stable/pinned) point the enclosure at the concrete version so the DMG
+  // URL is immutable; moving channels point at their channel segment.
+  const segment =
+    sel.kind === "stable" ? versionFromTag(release.tag_name) : selectorStr;
+  // The enclosure route re-resolves that version as a PINNED lookup — `tags/v<version>` first,
+  // the bare tag only on its 404 — so when this item came from a bare `1.2.0` and a `v1.2.0` also
+  // exists, the DMG a client downloads would be `v1.2.0`'s while the signature below is
+  // `1.2.0`'s. Refuse the ambiguity rather than ship a feed whose item and enclosure disagree
+  // (P2-03, wave-1 sync). One extra tag lookup, only for a stable item with a bare tag. An
+  // operator resolves it by adding the BARE tag to `release.ignoreTags` or deleting one of the two
+  // releases; ignoring the `v`-tag does not help, because the pinned lookup never consults
+  // ignoreTags (test/releaseResolution.test.ts pins both).
+  if (sel.kind === "stable" && release.tag_name !== `v${segment}`) {
+    const shadow = await getReleaseByTag(
+      tok,
+      cfg.gh_owner,
+      cfg.gh_repo,
+      `v${segment}`,
+      fetchImpl,
+    );
+    if (shadow && shadow.tag_name !== release.tag_name) return notFound();
+  }
+
   const sig = release.assets.find((a) => a.name === sigAssetName(dmg.name));
   if (!sig && (cfg.sparkle_ed25519_pub || policy.requireSparkleSignature)) {
     return notFound();
@@ -185,10 +209,6 @@ async function handleAppcast(
     edSignature = claimed;
   }
 
-  // Stable feeds (latest/stable/pinned) point the enclosure at the concrete version so
-  // the DMG URL is immutable; moving channels point at their channel segment.
-  const segment =
-    sel.kind === "stable" ? versionFromTag(release.tag_name) : selectorStr;
   const enclosureUrl = `${origin}/${product.slug}/release/dl/${segment}/${dmg.name}`;
   const channelTitle =
     sel.kind === "stable" ? binaryName : `${binaryName} (${sel.raw})`;

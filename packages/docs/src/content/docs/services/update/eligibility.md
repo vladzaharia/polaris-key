@@ -111,7 +111,9 @@ The console's [release health](/docs/services/release/truth-store/#health-checks
 `channel-regressed`, naming the floor and what the list now offers. The only way past a floor
 is an operator's decision. `POST /manage/api/products/<slug>/release/channels/<channel>/floor`
 with `{ "version": "1.0.0" }` lowers it, and `{ "clear": true }` removes it. Both are audited
-as `release.channel.floor`. A floor can only be lowered this way. Only a sync raises one.
+as `release.channel.floor`. A floor can only be lowered this way. Only a sync raises one. A
+floor whose channel is no longer floored (a manual channel since removed, or `beta` once a
+channel workflow is configured) can still be cleared, but not lowered.
 
 ## Access versus eligibility, restated
 

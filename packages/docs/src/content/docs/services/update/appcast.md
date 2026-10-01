@@ -84,6 +84,14 @@ concrete version segment, so the URL is immutable once minted:
 https://key.plrs.im/<product>/release/dl/1.2.3/<binary>-arm64.dmg
 ```
 
+The download route resolves that segment as a pinned version, `tags/v1.2.3` first. So when the
+feed's release has a bare tag (`1.2.3`) and a `v1.2.3` release also exists, the DMG a client
+would download is not the one the item's signature covers. The feed refuses that ambiguity and
+answers `404`. To resolve it, add the bare tag (`1.2.3`) to `release.ignoreTags`, or delete one
+of the two releases. Ignoring the `v`-tag does not help: the download route's pinned lookup does
+not consult `ignoreTags`, so the feed would pick the bare tag while the enclosure still resolves
+`v1.2.3`.
+
 A moving channel (`beta`, `pr-<n>`, a manual channel) points at the channel segment itself
 instead, so the enclosure URL is stable across releases on that channel even though what it
 resolves to changes underneath it:
