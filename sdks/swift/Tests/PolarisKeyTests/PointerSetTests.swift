@@ -58,7 +58,7 @@ final class PointerSetTests: XCTestCase {
                 }
                 guard let result else { continue }
                 let expected = Set((c.nonWireIntegers ?? []).map { Array($0.unicodeScalars) })
-                XCTAssertEqual(result.nonWireIntegers, expected, "\(family)/\(c.id)")
+                XCTAssertEqual(result.nonWireIntegers.pointers, expected, "\(family)/\(c.id)")
                 checked += 1
             }
         }
@@ -83,6 +83,48 @@ final class PointerSetTests: XCTestCase {
         XCTAssertFalse(wireInteger(MAX_WIRE_INTEGER + 1, pointer: "/seq", min: 1, in: []))
         XCTAssertFalse(wireInteger(0, pointer: "/seq", min: 1, in: []))
         XCTAssertFalse(wireInteger(nil, pointer: "/seq", min: 1, in: []))
-        XCTAssertFalse(wireInteger(7, pointer: "/seq", min: 1, in: [Array("/seq".unicodeScalars)]))
+        XCTAssertFalse(wireInteger(7, pointer: "/seq", min: 1, in: ["/seq"]))
+    }
+
+    /// The scanner reports every non-wire number; `contains` is exact on escaped pointers.
+    func testPointersAndContains() throws {
+        let text = #"{"seq":7,"b":7.0,"a/b":[1,17e8,9007199254740991,9007199254740992],"t~":{"x":-0,"y":1.5}}"#
+        let set = try XCTUnwrap(StrictJSON.validate(Data(text.utf8)))
+        let expected: Set<[Unicode.Scalar]> = Set(["/a~1b/1", "/a~1b/3", "/b", "/t~0/y"].map { Array($0.unicodeScalars) })
+        XCTAssertEqual(set.pointers, expected)
+        XCTAssertEqual(set.count, 4)
+        XCTAssertEqual(set, ["/b", "/t~0/y", "/a~1b/3", "/a~1b/1"])
+        for p in ["/a~1b/1", "/a~1b/3", "/b", "/t~0/y"] { XCTAssertTrue(set.contains(p), p) }
+        for p in ["", "/seq", "/a/b/1", "/a~1b", "/a~1b/0", "/a~1b/2", "/a~1b/01", "/t~/y", "/t~2/y", "/t~0", "/t~0/x", "/t~0/y/0", "b"] {
+            XCTAssertFalse(set.contains(p), p)
+        }
+    }
+
+    /// Long member names over many fractional numbers: one full pointer per number would cost
+    /// 8 000 × 32 000 scalars here (about 1 GB). The set stays linear in the payload.
+    func testPointerSetIsLinearInThePayload() throws {
+        let name = String(repeating: "a", count: 32_000)
+        let text = #"{"config":{"k":{"value":{""# + name + #"":["#
+            + Array(repeating: "1.5", count: 8000).joined(separator: ",") + "]}}}}"
+        XCTAssertLessThan(text.utf8.count, 65_536)
+        let rssBefore = maxResidentBytes()
+        let started = Date()
+        let set = try XCTUnwrap(StrictJSON.validate(Data(text.utf8)))
+        let elapsed = Date().timeIntervalSince(started)
+        XCTAssertEqual(set.count, 8000)
+        XCTAssertTrue(set.contains("/config/k/value/" + name + "/7999"))
+        XCTAssertFalse(set.contains("/config/k/value/" + name + "/8000"))
+        XCTAssertLessThan(maxResidentBytes() - rssBefore, 128 * 1024 * 1024)
+        XCTAssertLessThan(elapsed, 2)
+    }
+
+    private func maxResidentBytes() -> Int {
+        var usage = rusage()
+        getrusage(RUSAGE_SELF, &usage)
+        #if os(Linux)
+            return Int(usage.ru_maxrss) * 1024
+        #else
+            return Int(usage.ru_maxrss)
+        #endif
     }
 }

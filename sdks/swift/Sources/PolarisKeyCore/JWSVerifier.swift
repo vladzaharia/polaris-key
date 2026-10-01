@@ -60,7 +60,129 @@ public enum JwsTyp: String, Sendable, Equatable, CaseIterable {
 
 /// The RFC 6901 pointers of a payload's number tokens that cannot be wire integers (a fraction
 /// or exponent part, or digits above 2^53 − 1), keyed by Unicode scalars like member names.
-public typealias NonWireIntegers = Set<[Unicode.Scalar]>
+///
+/// Held as a tree of raw (unescaped) reference tokens: one node per container on the way to a
+/// recorded number, plus the number itself, each naming its parent. A member name is stored
+/// once, by reference, however many numbers sit under it, so the set is linear in the payload's
+/// size. One full pointer per number would grow with the square of the payload (long member
+/// names over many fractional numbers), and WIRE-CONTRACT-V4 §1.2 keeps the verifier's work and
+/// memory linear in the capped payload. `contains` walks the tree; `pointers` builds the full
+/// pointers, for callers that list them (the conformance runner, on small corpus cases).
+public struct NonWireIntegers: Sendable, Equatable, ExpressibleByArrayLiteral {
+    private struct Edge: Hashable, Sendable {
+        let parent: Int
+        let name: [Unicode.Scalar]
+    }
+
+    // Node 0 is the top-level object.
+    private var parent: [Int] = [-1]
+    private var name: [[Unicode.Scalar]] = [[]]
+    private var leaf: [Bool] = [false]
+    private var edges: [Edge: Int] = [:]
+    private var leaves: [Int] = []
+
+    public init() {}
+
+    /// A set from escaped pointer strings (an invalid pointer is skipped).
+    public init(arrayLiteral pointers: String...) {
+        for p in pointers {
+            guard let tokens = Self.tokens(Array(p.unicodeScalars)) else { continue }
+            var node = 0
+            for t in tokens { node = child(node, t) }
+            add(node)
+        }
+    }
+
+    /// The node for `name` under `node`, created when absent.
+    mutating func child(_ node: Int, _ name: [Unicode.Scalar]) -> Int {
+        let edge = Edge(parent: node, name: name)
+        if let id = edges[edge] { return id }
+        let id = parent.count
+        parent.append(node)
+        self.name.append(name)
+        leaf.append(false)
+        edges[edge] = id
+        return id
+    }
+
+    /// Record the number at `node`.
+    mutating func add(_ node: Int) {
+        guard !leaf[node] else { return }
+        leaf[node] = true
+        leaves.append(node)
+    }
+
+    public var count: Int { leaves.count }
+    public var isEmpty: Bool { leaves.isEmpty }
+
+    /// RFC 6901: split an escaped pointer into raw reference tokens, or nil when it is not a
+    /// pointer (no leading `/`, or a `~` not followed by `0` or `1`).
+    static func tokens(_ pointer: [Unicode.Scalar]) -> [[Unicode.Scalar]]? {
+        if pointer.isEmpty { return [] }
+        guard pointer[0] == "/" else { return nil }
+        var out: [[Unicode.Scalar]] = []
+        var current: [Unicode.Scalar] = []
+        var k = 1
+        while k < pointer.count {
+            let s = pointer[k]
+            if s == "/" {
+                out.append(current)
+                current = []
+            } else if s == "~" {
+                guard k + 1 < pointer.count else { return nil }
+                if pointer[k + 1] == "0" {
+                    current.append("~")
+                } else if pointer[k + 1] == "1" {
+                    current.append("/")
+                } else {
+                    return nil
+                }
+                k += 1
+            } else {
+                current.append(s)
+            }
+            k += 1
+        }
+        out.append(current)
+        return out
+    }
+
+    public func contains(_ pointer: [Unicode.Scalar]) -> Bool {
+        guard let tokens = Self.tokens(pointer) else { return false }
+        var node = 0
+        for t in tokens {
+            guard let next = edges[Edge(parent: node, name: t)] else { return false }
+            node = next
+        }
+        return leaf[node]
+    }
+
+    public func contains(_ pointer: String) -> Bool { contains(Array(pointer.unicodeScalars)) }
+
+    /// Every pointer, escaped.
+    public var pointers: Set<[Unicode.Scalar]> {
+        var out = Set<[Unicode.Scalar]>()
+        for n in leaves {
+            var tokens: [[Unicode.Scalar]] = []
+            var k = n
+            while k > 0 {
+                tokens.append(StrictScanner.token(name[k]))
+                k = parent[k]
+            }
+            var pointer: [Unicode.Scalar] = []
+            for t in tokens.reversed() {
+                pointer.append("/")
+                pointer += t
+            }
+            out.insert(pointer)
+        }
+        return out
+    }
+
+    public static func == (a: NonWireIntegers, b: NonWireIntegers) -> Bool {
+        a.pointers == b.pointers
+    }
+}
 
 /// WIRE-CONTRACT-V4 §3: an integer claim is a plain integer token from the claim's minimum to
 /// 2^53 − 1, decided from the token (`pointer` must not be in `nonWire`) and never from the
@@ -70,7 +192,7 @@ public func wireInteger(
     _ value: Int?, pointer: String, min: Int, in nonWire: NonWireIntegers
 ) -> Bool {
     guard let v = value else { return false }
-    if nonWire.contains(Array(pointer.unicodeScalars)) { return false }
+    if nonWire.contains(pointer) { return false }
     return v >= min && v <= MAX_WIRE_INTEGER
 }
 
@@ -577,16 +699,43 @@ extension StrictJSON {
 struct StrictScanner {
     let b: [UInt8]
     var i = 0
-    var nonWire: NonWireIntegers = []
+    var nonWire = NonWireIntegers()
+    /// One level of the open path: a member name or an array index.
+    enum Segment {
+        case name([Unicode.Scalar])
+        case index(Int)
+    }
+    /// The open path, one segment per level, and its node in `nonWire` once a number below it
+    /// has been recorded (-1 until then). Never a pointer per value: copying the path for every
+    /// member and element grows with the square of the payload.
+    var segs: [Segment] = []
+    var ids: [Int] = []
 
     init(bytes: [UInt8]) { b = bytes }
+
+    /// Record the number at the open path.
+    mutating func record() {
+        var k = segs.count - 1
+        while k >= 0 && ids[k] < 0 { k -= 1 }
+        var node = k < 0 ? 0 : ids[k]
+        var j = k + 1
+        while j < segs.count {
+            switch segs[j] {
+            case .name(let n): node = nonWire.child(node, n)
+            case .index(let x): node = nonWire.child(node, Array(String(x).unicodeScalars))
+            }
+            ids[j] = node
+            j += 1
+        }
+        nonWire.add(node)
+    }
 
     static let maxWireDigits: [UInt8] = Array("9007199254740991".utf8)
 
     mutating func run() -> NonWireIntegers? {
         ws()
         guard i < b.count, b[i] == UInt8(ascii: "{") else { return nil }
-        guard value(depth: 0, pointer: []) else { return nil }
+        guard value(depth: 0) else { return nil }
         ws()
         return i == b.count ? nonWire : nil
     }
@@ -609,7 +758,7 @@ struct StrictScanner {
         return out
     }
 
-    mutating func value(depth: Int, pointer: [Unicode.Scalar]) -> Bool {
+    mutating func value(depth: Int) -> Bool {
         ws()
         guard i < b.count else { return false }
         let c = b[i]
@@ -630,8 +779,11 @@ struct StrictScanner {
                 ws()
                 guard i < b.count, b[i] == UInt8(ascii: ":") else { return false }
                 i += 1
-                guard value(depth: depth + 1, pointer: pointer + ["/"] + Self.token(name))
-                else { return false }
+                segs.append(.name(name))
+                ids.append(-1)
+                guard value(depth: depth + 1) else { return false }
+                segs.removeLast()
+                ids.removeLast()
                 ws()
                 guard i < b.count else { return false }
                 if b[i] == UInt8(ascii: ",") {
@@ -655,8 +807,11 @@ struct StrictScanner {
             }
             var index = 0
             while true {
-                let element = pointer + ["/"] + String(index).unicodeScalars
-                guard value(depth: depth + 1, pointer: element) else { return false }
+                segs.append(.index(index))
+                ids.append(-1)
+                guard value(depth: depth + 1) else { return false }
+                segs.removeLast()
+                ids.removeLast()
                 index += 1
                 ws()
                 guard i < b.count else { return false }
@@ -672,7 +827,7 @@ struct StrictScanner {
             }
         }
         if c == UInt8(ascii: "\"") { return string() != nil }
-        if c == UInt8(ascii: "-") || (c >= 0x30 && c <= 0x39) { return number(pointer) }
+        if c == UInt8(ascii: "-") || (c >= 0x30 && c <= 0x39) { return number() }
         for lit in ["true", "false", "null"] {
             let bytes = Array(lit.utf8)
             if i + bytes.count <= b.count, Array(b[i..<i + bytes.count]) == bytes {
@@ -791,7 +946,7 @@ struct StrictScanner {
 
     /// One number token (RFC 8259 grammar), judged under rule 8, recorded when it cannot be a
     /// wire integer.
-    mutating func number(_ pointer: [Unicode.Scalar]) -> Bool {
+    mutating func number() -> Bool {
         let start = i
         func digit(_ k: Int) -> Bool { k < b.count && b[k] >= 0x30 && b[k] <= 0x39 }
         if b[i] == UInt8(ascii: "-") { i += 1 }
@@ -824,7 +979,7 @@ struct StrictScanner {
             || (digits.count == Self.maxWireDigits.count
                 && digits.lexicographicallyPrecedes(Self.maxWireDigits) == false
                 && digits != Self.maxWireDigits)
-        if !plain || tooBig { nonWire.insert(pointer) }
+        if !plain || tooBig { record() }
         return true
     }
 }
