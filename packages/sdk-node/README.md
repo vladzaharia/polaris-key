@@ -56,13 +56,21 @@ await client.sync();
 | Surface          | Subpath                     | What it owns                                                                                                        |
 | ---------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `client.core`    | `@polaris-key/node/core`    | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import           |
-| `client.license` | `@polaris-key/node/license` | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile                                     |
-| `client.config`  | `@polaris-key/node/config`  | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret`                                                    |
+| `client.license` | `@polaris-key/node/license` | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                |
+| `client.config`  | `@polaris-key/node/config`  | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog)                      |
 | `client.devices` | `@polaris-key/node/devices` | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas |
 | `client.release` | `@polaris-key/node/release` | `changelog` / `installUrl` / `downloadUrl`                                                                          |
 | `client.update`  | `@polaris-key/node/update`  | `check` (version) / `appcastUrl` (from discovery)                                                                   |
 | —                | `@polaris-key/node/local`   | The transportless profile: every network-requiring call refuses                                                     |
 | —                | `@polaris-key/node/cli`     | Framework-agnostic commands + commander/yargs adapters                                                              |
+
+`client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
+or `["stable"]` when the licence carries none — the Worker's own answer, and every SDK's for the
+same document. `client.config.fetchSchema()` returns the product's catalog (`ProductCatalog`) or
+`null` on any failure; it is unsigned and diagnostic, so it never throws. `client.release`
+refuses with `service-unavailable` when the product does not run Release, forwards the device
+token when one is held, and surfaces a 401/403 by the refusal body's own code
+(`unauthorized`, `channel_not_allowed`, …).
 
 Pure verification logic is **not** re-exported here. `verifyLicenseDoc`, `licenseState`,
 `mergeTrust`, `verifyBundle`, `compareSemver` and friends live in `@polaris-key/client-core`; there is

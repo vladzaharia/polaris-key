@@ -27,9 +27,11 @@
 //     process. OPTIONAL: a v2 host omits it and the adapter reports `bundle-import-unsupported`.
 //   * `fetchSchema()` returns the product catalog or `null` (the host's
 //     `client.config.fetchSchema()`), never a throw for a failed fetch.
-//   * The renderer reaches three more sub-client verbs through `invoke` — `release.changelog`,
-//     `release.installUrl` / `release.downloadUrl`, and `devices.report` — which need no
-//     interface change, only a host that answers them.
+//   * The renderer reaches more sub-client verbs through `invoke` — `("release", "changelog")`,
+//     `("release", "installUrl")`, `("release", "downloadUrl", {version, binary, arch,
+//     checksum?, dmg?})` and `("devices", "report")` — which need no interface change, only a
+//     host that answers them (the last two map onto `client.release.downloadUrl(version,
+//     binary, arch, {checksum, dmg})` and `client.devices.report()`).
 //
 // ── THE @polaris-key/node MIRROR ───────────────────────────────────────────────────────────────────
 //

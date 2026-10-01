@@ -15,14 +15,15 @@ Polaris Key is a suite of opt-in services over an always-on Core, and on Apple p
 division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
 a product with no license service does not carry the gate.
 
-| Product             | Contents                                                                                | Depends on            |
-| ------------------- | --------------------------------------------------------------------------------------- | --------------------- |
-| `PolarisKey`        | `PolarisKeyClient` + `@_exported import` of Core/License/Config — the one-import path   | Core, License, Config |
-| `PolarisKeyCore`    | device principal, trust set, verified cache, clock floor, transport, discovery, bundles | —                     |
-| `PolarisKeyLicense` | the gate, activation, entitlements                                                      | Core                  |
-| `PolarisKeyConfig`  | the config document, layered resolution, device facts                                   | Core                  |
-| `PolarisKeyUpdate`  | Sparkle wiring. **macOS only**                                                          | Core, Sparkle ≥ 2.9.6 |
-| `PolarisKeyUI`      | the brandable SwiftUI drop-in gate                                                      | Core, License, Config |
+| Product             | Contents                                                                                | Depends on                     |
+| ------------------- | --------------------------------------------------------------------------------------- | ------------------------------ |
+| `PolarisKey`        | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Release — one import    | Core, License, Config, Release |
+| `PolarisKeyCore`    | device principal, trust set, verified cache, clock floor, transport, discovery, bundles | —                              |
+| `PolarisKeyLicense` | the gate, activation, entitlements                                                      | Core                           |
+| `PolarisKeyConfig`  | the config document, layered resolution, device facts, the catalog fetch                | Core                           |
+| `PolarisKeyRelease` | the changelog, the install and artifact URLs (macOS **and** iOS)                        | Core                           |
+| `PolarisKeyUpdate`  | Sparkle wiring. **macOS only**                                                          | Core, Sparkle ≥ 2.9.6          |
+| `PolarisKeyUI`      | the brandable SwiftUI drop-in gate                                                      | Core, License, Config          |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -85,10 +86,18 @@ try await client.deactivate()
 ```
 
 The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
-isEntitled,entitlements,profile,deactivate}` and `client.config.{config,configSource,secret,
-listUserConfig,schemaVersion}`. `client.{status,isLicensed,config,activate,enroll,register,
-sync,deactivate,importBundle,syncState}` are convenience passthroughs for the calls a host
-makes before it knows which service it is talking to.
+isEntitled,entitlements,entitledChannels,profile,deactivate}`, `client.config.{config,
+configSource,secret,listUserConfig,schemaVersion,fetchSchema}` and `client.release.{changelog,
+installURL,downloadURL(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,config,
+activate,enroll,register,report,sync,deactivate,importBundle,syncState}` are convenience
+passthroughs for the calls a host makes before it knows which service it is talking to.
+
+`client.report()` posts the telemetry snapshot now (`sync()` already reports after each pass);
+it answers `false` rather than throwing when no credential is held or the server refused.
+`client.config.fetchSchema()` returns the catalog's bytes, or `nil` on any failure — it is
+unsigned and diagnostic. `client.release` throws `service-unavailable` when the product does not
+run Release, forwards the device token when one is held, and throws a 401/403 with the refusal
+body's own code (`unauthorized`, `channel_not_allowed`, …).
 
 ### Capabilities
 
@@ -246,6 +255,12 @@ anchor beside the real one.
 The channel names are WIRE-CONTRACT-V3 §5.1's: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and a
 product's manual channels. `Semver.channelForVersion` derives the default `X-PKey-Channel` from
 the build version: `0.0.0-beta*` and the legacy `0.0.0-staging*` builds are now `.beta`.
+
+**Behaviour note (P1b-07):** `client.license.entitledChannels()` now answers `["stable"]` when
+the licence carries no `channels` entitlement (or a non-array one), where it used to answer `[]`.
+That is the Worker's own answer and every other SDK's; Sparkle's `allowedChannels(from:)` already
+treated an empty grant as stable only, so the updater's behaviour does not change. The list is
+the raw grants: `staging` is not rewritten to `beta`.
 
 **Source note (P0-04):** `enum Channel` gained `case beta`, and `case staging` is deprecated
 (`staging` is the legacy spelling of `beta`; `channelForVersion` no longer returns it). An
