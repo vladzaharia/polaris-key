@@ -1,16 +1,16 @@
 # P3-08 Wire v4 in the Godot SDK
 
-| Field       | Value                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------ |
-| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                                                        |
-| Size        | 0.5–0.75 engineer-weeks                                                                                      |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P1-02](P1-02-godot-core.md)                                      |
-| Unblocks    | [P3-10](P3-10-godot-updater.md), [P4-08](P4-08-godot-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
-| Role        | `pkey-godot-engineer`                                                                                        |
-| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                                                    |
-| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`, on the editor and a release template)       |
-| Human input | none                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                    |
+| Field       | Value                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                                                                                            |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                                          |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P1-02](P1-02-godot-core.md), [P3-05](P3-05-v4-react.md)                                              |
+| Unblocks    | [P3-10](P3-10-godot-updater.md), [P3-11](P3-11-outlet-detection.md), [P4-08](P4-08-godot-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
+| Role        | `pkey-godot-engineer`                                                                                                                            |
+| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                                                                                        |
+| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`, on the editor and a release template)                                           |
+| Human input | none                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                        |
 
 ## Goal
 
@@ -83,6 +83,30 @@ install ([notes/A4 §5.7](../../notes/A4-diceroll-mapping.md)).
 
 ## Design notes
 
+- **Plan amendments (`plans/P3-01.md` §8, approved).** Where this brief and the plan differ, the
+  plan wins:
+  - the function names, refusal reasons and steps in plan §2.7 and §2.5, including
+    `parseVersion`, `compareVersions`, `resolveUpdateOutlet` and
+    `effectiveCapabilities(kind, {platform, …})`;
+  - `decide()` returns an `UpdateCheck` (`channel`, `decision`, `feed`, `record`, `errors`) with
+    §2.5's error map, the record-body bound (`MAX_RECORD_JWS_BYTES`, 88 844 bytes, refused at
+    step 12 without hashing) included; the decision inputs are `outlet {id, kind}`, `subkind`,
+    `format` and `methods`;
+  - every pattern goes through the SDK's whole-string pattern helper, and member presence is as
+    plan §2.2 says (a required member present, an optional one absent or typed, never `null`);
+    `builds[].id` and `targets[].platform` are ASCII by `BUILD_ID_PATTERN` and
+    `FEED_PLATFORM_PATTERN`;
+  - the cache slices are `feeds` and `releaseRecords`; `bootDecision` never answers `required`,
+    and `mandatory` and `blocked` are prompts the player cannot dismiss; an empty
+    `pinnedReleaseKeys` raises `not-configured` and a release key that is also a trust pin raises
+    `invalid-options`;
+  - the canonical channel (§2.3, §2.5, §2.6): `feeds` and the floors are keyed by each feed's own
+    `channel` claim, `verifyFeed`'s `floors` map is read only after step 5, the fallback order,
+    the removal of the requested name's entry after an alias answer, and `UpdateCheck.channel`;
+    no SDK resolves an alias itself, and the decision has no `channel` input;
+  - this package's transcript replayer learns the `updateDecide` action and the `initial.update`
+    block in the same PR that flips `update.feed`, `release.record` and `update.decide`
+    (plan §5).
 - **Strict JSON after the signature check.** Godot's parser keeps the last duplicate key and
   accepts trailing commas, leading zeros and raw control characters; P1-02's strict validator
   must run on every feed and record payload. Every number is a float: compare `seq` and times as
@@ -101,7 +125,7 @@ install ([notes/A4 §5.7](../../notes/A4-diceroll-mapping.md)).
 
 ## Steps
 
-1. Confirm P3-02 and P1-02 are `done`; branch `wp/P3-08-v4-godot`.
+1. Confirm P3-02, P3-05 and P1-02 are `done`; branch `wp/P3-08-v4-godot`.
 2. `typ` handling, models and pure functions; runner sections green on the editor.
 3. Cache slices and the load path.
 4. The update service methods and signal; configuration.

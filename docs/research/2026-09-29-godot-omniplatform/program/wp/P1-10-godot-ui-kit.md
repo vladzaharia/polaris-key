@@ -111,6 +111,10 @@ already have partial kits to mirror (notes/A2 §10).
 
 ## Design notes
 
+- **Stage matrix version 2 (P3-01's approved plan, §2.10, §8).** `stage-matrix.json` is version 2
+  once P3-02 lands. If this package lands after it, implement `bootConfirmation` and
+  `BOOT_OK_SECONDS` in the Godot port, and have the stage runner read `confirmCases`. No v4
+  decision sends `decide.done required`.
 - **Stage budgets on a low-end phone ([S-04](../../notes/S-04-low-end-performance.md), derived).**
   - Natively, budget about 0.25 s for trust + licence + config (three small verifies), up to
     about 0.9 s for one 350 KB bundle import, and 0.1 s or less for the cache.

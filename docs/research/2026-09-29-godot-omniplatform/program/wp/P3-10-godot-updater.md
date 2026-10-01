@@ -115,6 +115,22 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
 
 ## Design notes
 
+- **Plan amendments (`plans/P3-01.md` §8, approved).** Where this brief and the plan differ, the
+  plan wins:
+  - the boot-confirmation rule (plan §2.10): `stage-matrix.json` version 2, `BOOT_OK_SECONDS`
+    and `confirm_boot()`; `decide.done` goes through `bootDecision`, which never answers
+    `required`, so no v4 answer stops play; `mandatory` and `blocked` are prompts the player
+    cannot dismiss;
+  - `binary.build`, with byte URLs from discovery's templates: install through
+    `distribution.endpoints.builds` (falling back to `release.endpoints.builds`), never the R2-only
+    `blobs` route (plan §2.4);
+  - a staged update records `UpdateCheck.channel` as `staged.channel`, never the requested name
+    (plan §2.5, §2.8);
+  - `skipVersion` suppresses only `code-ready` and `sidecar-pck`;
+  - `web` and the other `none` kinds are `platform`;
+  - `store.listingUrl` may be null: AltStore, the Android stores and an iOS `direct` install open
+    the compiled source or web-distribution page, and each listing prefix is checked on a device.
+
 - **Never relaunch with `--main-pack`, `--path`, `--scene` or `-s`.** Custom export templates are
   the only way to keep them, and the SDK does not support that path (README §5.6 option 3).
   Override packs at `_init()` are not used for code (option 4).

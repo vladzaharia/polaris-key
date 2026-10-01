@@ -1,16 +1,16 @@
 # P3-03 Worker: ingest CI-signed release records and compose the signed channel feed
 
-| Field       | Value                                                                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                          |
-| Size        | 1.75–2.25 engineer-weeks                                                                                                                                                            |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P2b-04](P2b-04-rollouts-delivery.md), [P2-06](P2-06-publish-cli-action.md), [P2b-03](P2b-03-availability-keys.md)                       |
-| Unblocks    | [P3-09](P3-09-updater-feeds.md), [P4-02](P4-02-pack-deliverables.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-17](P4-17-lazy-deltas.md), [P6-03](P6-03-update-funnel-autohalt.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                  |
-| Plan mode   | no: the shapes, routes and checks are fixed by the approved `plans/P3-01.md`                                                                                                        |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); threat model; also D1 migrations with `TABLE_OWNERS`, and rule 9 if `releaseKeys` lands here (see Design notes)                                |
-| Human input | none. Production release keys stay in each product's CI; tests use the corpus test keys                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                           |
+| Field       | Value                                                                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                                                       |
+| Size        | 2.75–3.25 engineer-weeks                                                                                                                                                                                                                         |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P2b-04](P2b-04-rollouts-delivery.md), [P2-06](P2-06-publish-cli-action.md), [P2b-03](P2b-03-availability-keys.md)                                                                                    |
+| Unblocks    | [P3-09](P3-09-updater-feeds.md), [P4-02](P4-02-pack-deliverables.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-17](P4-17-lazy-deltas.md), [P6-03](P6-03-update-funnel-autohalt.md)                                                              |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                               |
+| Plan mode   | no: the shapes, routes and checks are fixed by the approved `plans/P3-01.md`                                                                                                                                                                     |
+| Gates       | rule 10 (OpenAPI, `routeCoverage`, `CORS_SERVICE_PATHS`); threat model; D1 migrations with `TABLE_OWNERS` and `data-model.mdx`; rule 9 (`releaseKeys`, `testflight.publicLink`); the parity gate for its two transcripts; the Action-bundle gate |
+| Human input | none. Production release keys stay in each product's CI; tests use the corpus test keys                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                        |
 
 ## Goal
 
@@ -75,30 +75,76 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
   `kid` for `.pkey/release`, and writes the private key to a file for the CI secret.
 - **Record ingest** through P2-02's `submit` route and P2-04's ingest: accept the compact JWS
   beside the descriptor and refuse the publish unless `typ` is `pkey-release+jws`, `kid` is one
-  of the product's declared release keys, the signature verifies, `aud` is the product, `deliverable`,
-  `kind`, `version` and `seq` match the descriptor, every build's `sha256` and `size` match the
-  artifact records, and `seq` is greater than the deliverable's previous `seq`. Each refusal has
-  an error code in the registry (`reference/error-codes.mdx` regenerates).
-- **Storage** that never rewrites a record (proposed table `release_records` with `product`,
-  `deliverable_id`, `release_id`, `seq`, `record_sha256`, `kid`, `jws`, `ingested_at`; or the
-  blob store, if the plan chose it), a migration and a `TABLE_OWNERS` entry for `release`.
-- **Record route** (plan name, proposed `GET /{product}/release/records/{sha256}`): the stored
-  bytes exactly, `application/jose`, immutable caching, release metadata access mode, 404 for an
-  unknown hash.
-- **Feed route** (plan name, proposed `GET /{product}/update/feed/{channel}`): compose the
-  `ChannelFeedDoc` from release (direct import) and distribution (hooks only), sign it with
-  `signDoc(…, "pkey-feed+jws")`, cache it per (product, channel, selector) for the plan's TTL.
-- **Feed `seq` state**: proposed Update-owned table `update_feed_state` (`product`, `channel`,
-  `selector_key`, `seq`, `content_sha256`, `signed_at`). Bump `seq` only when the content hash
-  changes, in one conditional write so concurrent requests cannot reuse or skip a number.
-- **Discovery**: `endpoints.feed` in Update's fragment (`services/update/index.ts:39`) and
-  `endpoints.record` in Release's, as the plan names them.
-- **`.pkey/release` `releaseKeys`**, if P2-04 has not added it: validator rule, mutation-table
-  entry, JSON schema, the authoring docs and skill. Record release-key fingerprints in the key
+  of the product's declared release keys, that key is not a product signing key, the signature
+  verifies through `shared-jws`, `releaseRecordClaims` (given `verifyJws`'s `nonWireIntegers`)
+  accepts the payload, the record's `version` parses under the deliverable's scheme (SemVer 2.0's
+  grammar for `semver`), the record equals the descriptor under the plan's §2.4 mapping, `seq`
+  follows P2-04's rule, and `record_sha256` is new. One code, `release_record_rejected`, with
+  the reasons `typ`, `kid`, `product-key`, `signature`, `claims`, `scheme`,
+  `descriptor-mismatch` and `seq` (`reference/error-codes.mdx` regenerates).
+- **Storage** that never rewrites a record: table `release_records` (`product`,
+  `deliverable_id`, `release_id`, `seq`, `kind`, `record_sha256`, `kid`, `jws`, `ingested_at`;
+  PK `(product, record_sha256)`, unique `(product, deliverable_id, seq)`), a migration and a
+  `TABLE_OWNERS` entry for `release`.
+- **Record route** `GET /{product}/release/records/{sha256}` (and `HEAD`): the stored bytes
+  exactly, `application/jose`, `ETag` and `304`; the release `metadata` mode, and under
+  `entitled` P2-05's blob rule applied to the record's own release; `public, max-age=31536000,
+immutable, no-transform` when public, the gated blob's `private, no-store, no-transform`
+  otherwise; the plain 404 for an unknown hash (plan §6).
+- **Feed route** `GET /{product}/update/{channel}/feed.jws?platform={platform}` (not
+  `/update/feed/{channel}`): compose the `ChannelFeedDoc` from release (direct import) and
+  distribution (hooks only) and sign it with `signDoc(…, "pkey-feed+jws")`. The signed documents
+  are stored in `update_feed_docs` per (product, canonical channel, selector key) and served to
+  every data centre; a request re-signs only when the content's SHA-256 changed or the stored
+  copy is 450 s old. Under the release `metadata` mode; under `entitled` the check goes by the
+  canonical channel. The feed's `channel` claim is the canonical channel `classifyChannel`
+  resolves, never the requested spelling.
+- **Feed `seq` state**: Update-owned `update_feed_state` (`product`, `channel`, `seq`,
+  `content_sha256`), keyed per (product, canonical channel), not per selector. Bump `seq` only
+  when the content hash changes, in one conditional write, to `min(seq + 1, MAX_WIRE_INTEGER)`.
+  A new row starts at `seq` 1, or at `MAX_WIRE_INTEGER` when the product's ceiling flag
+  (`update_feed_ceiling`) is set (plan §2.3, §6).
+- **The `seq` ceiling recovery**: `update_feed_ceiling(product, set_at)`, and the product-wide
+  `feed:seq-ceiling` script (`--product <slug>`, no per-channel option), which sets the flag,
+  raises every existing row to `MAX_WIRE_INTEGER` and deletes the product's stored documents;
+  its local-D1 test covers a channel with a row and a manual channel with none; the RUNBOOK
+  section "Recovering the update feeds after a signer compromise".
+- **The composer rules** (plan §6): `app.versionScheme` from `versioning.scheme`; outlet entries
+  keyed by outlet id with `kind`; `listingUrl` composed from P2b-02's identities and checked
+  against the listing prefixes and §2.3's `listingUrl` rule; the per-target floor from
+  `min_supported` and the pinned record's `minSupportedSeq`, clipped to the target's own
+  version; versions that do not parse left out; empty outlet entries without a hook; the
+  self-check with `feedClaims` and `scanStrictJson` before signing (`500 feed_not_composable`).
+- **One ordering.** `@polaris-key/client-core` becomes a Worker runtime dependency, importing only
+  the four functions P3-02 lands (`parseVersion`, `compareVersions`, `feedClaims`,
+  `releaseRecordClaims`); `services/release/resolve.ts` uses client-core's `compareVersions`; fix
+  `versionSchemeOf` to read `versioning.scheme` (and `test/resolve.test.ts:392-398`).
+- **The release's `seq` before signing.** Extend P2-02's upload request with
+  `releases: [{deliverable, version}]` and its answer with `seqs: [{deliverable, version, seq}]`
+  (P2-02, done, did not add them); move P2-06's `signRecord` call after the upload answer and
+  retype it `(record) => Promise<string>`, so the submit carries the JWS as `record` beside the
+  descriptor; the CLI verifies its own record with `verifyJws` and `releaseRecordClaims` before
+  publishing; regenerate the Action bundle.
+- **Transcripts**: `update-feed-rollback` (requests `latest`) and `update-record-by-hash`, with
+  `action: "updateDecide"`, hand-written `expect` blocks carrying `channel`, the
+  `initial.update` format in `format.ts`, and `{kind: "transcript", wp: "P3-03"}` on the
+  `update.feed`, `release.record` and `update.decide` registry entries (plan §6).
+- **CORS**: both routes in `CORS_SERVICE_PATHS`.
+- **`ed25519Stream.ts`**: refuse a small-order `R`, the one plan §2.2 rule it lacks.
+- **Discovery**: `endpoints.feed: "<base>/update/{channel}/feed.jws"` in Update's fragment and
+  `endpoints.record: "<base>/release/records/{sha256}"` plus `releaseKeyFingerprints` in
+  Release's.
+- **`.pkey/release` `releaseKeys`** as `{kid, publicKey}`, with `release_key_reused` and the
+  sync's `release_key_is_product_key`: validator rule, mutation-table entry, JSON schema, the
+  authoring docs and skill. `testflight.publicLink` in `.pkey/distribution` (P2b-02, done, did not
+  add it). Record release-key fingerprints in the key
   inventory (`dist_keys`) with purpose `release` if [P2b-03](P2b-03-availability-keys.md) has
   landed; it is not a graph dependency.
-- **Threat model**: rewrite AT-3 for the two-signer model and add what a compromised Worker can
-  still do (withhold, delay, re-target among signed releases, freeze until `expiresAt`).
+- **Threat model**: P3-02 writes AT-3's two-signer branch; this package adds the record and feed
+  routes with their access modes, the four tables, the ingest refusals, the composer self-check
+  and the `seq` ceiling script (plan §6).
+- **Operator docs** say a floor prompts and never blocks; a hard stop is License's compatibility
+  window.
 - **Tests** in `packages/worker/test/` with the corpus test keys (see Acceptance criteria).
 - **Wave-1 sync:** **Close the Sparkle verification residuals (P0-10 follow-ups).** Verification at publish time removes the unauthenticated appcast's DoS residual (up to 2 GiB upstream read per cache-missing `GET /<p>/appcast.xml`, no single-flight, aborted requests never memoise). If the appcast still verifies at request time before this lands, run the stream tail and memo write under `ctx.waitUntil` as a stopgap.
 - **Wave-1 sync:** **Harden the verifier's edges in `services/release/sparkle.ts` / `ed25519Stream.ts`:** pass the release listing's `dmg.size` through and return `incomplete` (never memoised) when the streamed total differs, so a truncated clean EOF or a wrong-but-2xx body cannot pin a `"0"` verdict for 24 h and drop a security update from the appcast; run the S >= L, point-decode and small-order checks before `fetchAssetStream` so a malformed key or signature opens no GitHub download; wrap both `env.HOT.put` memo writes in `.catch(() => undefined)` (the contract says the verifier never throws); write the literal NUL bytes in the cache-key template (`sparkle.ts` ~line 69) as `\u0000` so git diffs the file as text.
@@ -135,11 +181,12 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
   their `*_source`-guarded rows; a manifest resync must not change a signed feed's meaning.
 - **Size.** Refuse to sign a feed over the 64 KiB payload cap (a clear 5xx and a test), rather than
   emit a document every SDK will reject.
-- **Route words.** The core router matches service namespaces before the channel-appcast alias,
-  so a channel cannot shadow a service (`src/router.ts:164-183`). Inside Update's own sub-router
-  (`services/update/routes.ts`), `/update/feed/appcast.xml` could read as either the feed of a
-  channel called `appcast.xml` (refused by the `CHANNEL` pattern) or the appcast of a channel
-  called `feed`. Pin the intended reading, reserve the new path words if needed, and add tests.
+- **Route words.** `rest = [channel, "feed.jws"]` sits beside `[channel, "appcast.xml"]` in
+  `services/update/routes.ts`. No channel name can contain a dot (`CHANNEL_NAME_PATTERN`), and
+  `records` is a fixed word under `release`, so no new word needs reserving (plan §6).
+- **Shared with P3-12.** [P3-12](P3-12-worker-representability.md) adds the signer guards and
+  write checks in the same worker lane; the two rebase on each other, and the composer's own
+  `scanStrictJson` keeps the feed safe whichever lands first.
 - **Gates not in the graph.** This package adds tables (migration, `TABLE_OWNERS`), may add a
   manifest field (rule 9), and changes the CLI, whose Action bundle is generated and checked
   (P2-06). All are required even though `workpackages.json` lists only rule 10 and the threat
@@ -174,7 +221,13 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
 - [ ] A halted outlet, a partial rollout and an outlet still serving an older release each appear
       in the feed as the plan specifies (tests over P2b-04 fixtures).
 - [ ] Once P3-05 has landed, a test verifies a composed feed and record with `client-core`
-      (`verifyFeed`, `verifyReleaseRecord`) end to end.
+      (`verifyFeed`, `verifyReleaseRecord`) end to end, and the `seq` ceiling recovery with
+      `verifyFeed`.
+- [ ] `feed:seq-ceiling` against a local D1: the next feed of a channel that had a row, and the
+      first feed of a manual channel that had none, both carry `seq` 9007199254740991 and pass
+      `verifyJws`, `feedClaims` and §2.5 step 8 against the old floor.
+- [ ] The feed's `channel` claim is the canonical channel (`latest` → `stable`); the two
+      transcripts pass `parity:check`.
 - [ ] OpenAPI and `routeCoverage` updated; `reference/routes.mdx`, `data-model.mdx` and
       `error-codes.mdx` regenerated.
 - [ ] `boundaries.test.ts` passes with no new cross-service import.

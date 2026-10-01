@@ -92,21 +92,22 @@ keys, devices). _Optional_ work packages are off the required path.
 
 ## P3: Signed feed, decision, feeds (wire v4)
 
-11 work packages, 10.75–15 weeks.
+12 work packages, 14.75–19.75 weeks.
 
-| Id                                             | Title                                                                                               | Depends on                              | Role           | Weeks     | Status |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------- | -------------- | --------- | ------ |
-| [P3-01](wp/P3-01-wire-v4-plan.md) ⚑            | Plan wire v4: `pkey-feed+jws`, `pkey-release+jws`, update and outlet matrices                       | P2-03, P2b-01                           | wire-planner   | 1–1.5     | todo   |
-| [P3-02](wp/P3-02-wire-v4-contract-corpus.md) ⚑ | Implement the wire v4 contract and corpus (feed, release, malleability, update and outlet matrices) | P3-01, S-06                             | implementer    | 1.5–2     | todo   |
-| [P3-03](wp/P3-03-feed-composition.md)          | Worker: ingest CI-signed release records and compose the signed channel feed                        | P3-02, P2b-04, P2-06, P2b-03            | implementer    | 1.75–2.25 | todo   |
-| [P3-04](wp/P3-04-v4-node.md)                   | Wire v4 in the Node SDK: feed and release-record verification, update decision                      | P3-02, P3-05                            | sdk-porter     | 0.5–0.75  | todo   |
-| [P3-05](wp/P3-05-v4-react.md)                  | Wire v4 in `client-core` and the React SDK                                                          | P3-02                                   | sdk-porter     | 0.5–0.75  | todo   |
-| [P3-06](wp/P3-06-v4-python.md)                 | Wire v4 in the Python SDK                                                                           | P3-02                                   | sdk-porter     | 0.5–0.75  | todo   |
-| [P3-07](wp/P3-07-v4-swift.md)                  | Wire v4 in the Swift SDK                                                                            | P3-02                                   | sdk-porter     | 0.5–0.75  | todo   |
-| [P3-08](wp/P3-08-v4-godot.md)                  | Wire v4 in the Godot SDK                                                                            | P3-02, P1-02                            | godot-engineer | 0.5–0.75  | todo   |
-| [P3-09](wp/P3-09-updater-feeds.md)             | Update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync, extended `/version` | P3-03, P0-10, P0-05                     | implementer    | 1.5–2     | todo   |
-| [P3-10](wp/P3-10-godot-updater.md)             | Godot updater: outlet adapters, sidecar-PCK swap, boot guard, Velopack and Sparkle hooks            | P3-08, P3-09, P3-11, P1-10, P1-11, S-05 | godot-engineer | 1.5–2     | todo   |
-| [P3-11](wp/P3-11-outlet-detection.md)          | Outlet detection in every SDK against `outlet-matrix.json`                                          | P3-02, P1-02, S-06                      | sdk-porter     | 1–1.5     | todo   |
+| Id                                                | Title                                                                                               | Depends on                                            | Role           | Weeks     | Status |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------- | --------- | ------ |
+| [P3-01](wp/P3-01-wire-v4-plan.md) ⚑               | Plan wire v4: `pkey-feed+jws`, `pkey-release+jws`, update and outlet matrices                       | P2-03, P2b-01                                         | wire-planner   | 1–1.5     | todo   |
+| [P3-02](wp/P3-02-wire-v4-contract-corpus.md) ⚑    | Implement the wire v4 contract and corpus (feed, release, malleability, update and outlet matrices) | P3-01, S-06                                           | implementer    | 2.75–3.25 | todo   |
+| [P3-03](wp/P3-03-feed-composition.md)             | Worker: ingest CI-signed release records and compose the signed channel feed                        | P3-02, P2b-04, P2-06, P2b-03                          | implementer    | 2.75–3.25 | todo   |
+| [P3-04](wp/P3-04-v4-node.md)                      | Wire v4 in the Node SDK: feed and release-record verification, update decision                      | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
+| [P3-05](wp/P3-05-v4-react.md)                     | Wire v4 in `client-core` and the React SDK                                                          | P3-02                                                 | sdk-porter     | 1.25–1.75 | todo   |
+| [P3-06](wp/P3-06-v4-python.md)                    | Wire v4 in the Python SDK                                                                           | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
+| [P3-07](wp/P3-07-v4-swift.md)                     | Wire v4 in the Swift SDK                                                                            | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
+| [P3-08](wp/P3-08-v4-godot.md)                     | Wire v4 in the Godot SDK                                                                            | P3-02, P1-02, P3-05                                   | godot-engineer | 0.5–0.75  | todo   |
+| [P3-09](wp/P3-09-updater-feeds.md)                | Update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync, extended `/version` | P3-03, P0-10, P0-05                                   | implementer    | 1.5–2     | todo   |
+| [P3-10](wp/P3-10-godot-updater.md)                | Godot updater: outlet adapters, sidecar-PCK swap, boot guard, Velopack and Sparkle hooks            | P3-08, P3-09, P3-11, P1-10, P1-11, S-05               | godot-engineer | 1.5–2     | todo   |
+| [P3-11](wp/P3-11-outlet-detection.md)             | Outlet detection in every SDK against `outlet-matrix.json`                                          | P3-02, P1-02, S-06, P3-04, P3-05, P3-06, P3-07, P3-08 | sdk-porter     | 1–1.5     | todo   |
+| [P3-12](wp/P3-12-worker-representability.md) ⚑ ✋ | Worker: representability write checks, signer guards and the D1 check                               | P3-01, P3-02                                          | implementer    | 1–1.5     | todo   |
 
 ## P4: Packs
 
@@ -210,6 +211,7 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [P1b-09](wp/P1b-09-fingerprint-storage-fixes.md) | `plans/P1b-09.md`                    | sdk-porter     |
 | [P3-01](wp/P3-01-wire-v4-plan.md)                | `plans/P3-01.md`                     | planning only  |
 | [P3-02](wp/P3-02-wire-v4-contract-corpus.md)     | `plans/P3-01.md` (shared with P3-01) | implementer    |
+| [P3-12](wp/P3-12-worker-representability.md)     | `plans/P3-01.md` (shared with P3-01) | implementer    |
 | [P4-01](wp/P4-01-packs-plan.md)                  | `plans/P4-01.md`                     | planning only  |
 | [P4-04](wp/P4-04-content-corpus-v1.md)           | `plans/P4-04.md`                     | implementer    |
 | [P4-10](wp/P4-10-chunk-indexes.md)               | `plans/P4-10.md`                     | implementer    |
@@ -235,6 +237,7 @@ What a person must supply, per work package. Ask early: several sit on the criti
 | [P2-02](wp/P2-02-trusted-publisher.md)        | an R2 parent API token per environment, stored as a Worker secret                                                                                                                        |
 | [P2-06](wp/P2-06-publish-cli-action.md)       | a GitHub repository and Marketplace listing for polaris-key/publish@v1                                                                                                                   |
 | [P2b-01](wp/P2b-01-distribution-service.md)   | P0-08 deployed to production first; djdl adds `distribution` to its .pkey/product before its next push                                                                                   |
+| [P3-12](wp/P3-12-worker-representability.md)  | an operator runs check:representable against production D1 before the first deploy of a Worker containing P3-12, and fixes every value it flags                                          |
 | [P4-17](wp/P4-17-lazy-deltas.md)              | Cloudflare Queues, Workflows and Containers enabled (Workers Paid); an R2 event-notification rule; a container registry                                                                  |
 | [P5-02](wp/P5-02-asc-connector.md)            | App Store Connect API key                                                                                                                                                                |
 | [P5-03](wp/P5-03-play-connector.md)           | Play service account                                                                                                                                                                     |
