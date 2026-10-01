@@ -216,22 +216,22 @@ section: byte counts to a bucket or `omitted`.
 
 ## Acceptance criteria
 
-- [ ] `program/plans/P1b-09.md` is merged (approved) before any code change.
-- [ ] `fingerprint.json` carries the new sections with the mirrors (Swift, Godot);
+- [x] `program/plans/P1b-09.md` is merged (approved) before any code change.
+- [x] `fingerprint.json` carries the new sections with the mirrors (Swift, Godot);
       `mise exec node@22 -- pnpm gen:corpus -- --check` passes.
-- [ ] Node, Python and Swift pass every section that applies to them; the Worker's fingerprint corpus
+- [x] Node, Python and Swift pass every section that applies to them; the Worker's fingerprint corpus
       test passes.
-- [ ] No `wmic` invocation remains in `packages/sdk-node/src` or `sdks/python/src`
+- [x] No `wmic` invocation remains in `packages/sdk-node/src` or `sdks/python/src`
       (`grep -rn wmic` is empty).
-- [ ] On Linux, a unit test with `product_uuid` readable and unreadable yields the same
+- [x] On Linux, a unit test with `product_uuid` readable and unreadable yields the same
       `machineUuid`.
-- [ ] Each SDK reports `degraded` in a test where the keyring backend is missing or failing.
-- [ ] The directory defaults have unit tests per OS, and the config directory is unchanged unless the
+- [x] Each SDK reports `degraded` in a test where the keyring backend is missing or failing.
+- [x] The directory defaults have unit tests per OS, and the config directory is unchanged unless the
       plan decided otherwise.
-- [ ] `docs/PRIVACY.md` lists the new sources; `pnpm --filter @polaris-key/docs gen:check` passes.
-- [ ] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
+- [x] `docs/PRIVACY.md` lists the new sources; `pnpm --filter @polaris-key/docs gen:check` passes.
+- [x] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
       passes.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
