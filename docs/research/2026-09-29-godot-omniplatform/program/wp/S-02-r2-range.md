@@ -102,11 +102,11 @@ P2-01 and P2b-04 and the chunk-bundle size for P4-10.
 - The first run could not create the custom domain or deploy the probe Worker. So it measured the
   Worker and R2-binding logic on miniflare, measured clients (Godot, Chromium, WebKit) for real,
   and took edge behaviour from Cloudflare's docs.
-- The live rows are hand-off rows H1–H9 in the note (§8). They run against a throwaway bucket,
+- The live rows are hand-off rows H1–H10 in the note (§8). They run against a throwaway bucket,
   `pk-s02-probe`, with temporary hostnames, never `polaris-key-blobs-dev` or `dl-dev.plrs.im`:
   path A would publish the whole dev bucket, and `dl-dev.plrs.im` is already P2-01's bytes host.
   The probe Worker refuses keys outside `s02/` whichever bucket it binds. Teardown is deleting
-  the bucket, its custom domain and the two probe Workers.
+  the bucket, its custom domain and the probe Workers (a third, gateway-form one for H10).
 
 ## Steps
 

@@ -6,7 +6,8 @@
 // DO NOT copy the top-level `"cache": { "enabled": true }` below into packages/worker. It turns
 // the cache on for every entrypoint of the Worker, which is right for this single-purpose probe and
 // wrong for the product Worker (console, API and bytes in one script). The production pattern is
-// in notes/S-02.md §6 point 3: caching on for a named byte-serving entrypoint only.
+// in notes/S-02.md §6.1 rule 1: caching on for a named byte-serving entrypoint only. This config
+// does not exercise that gateway form; hand-off row H10 does.
 //
 // `--env live` binds the throwaway bucket `pk-s02-probe`, as in wrangler.jsonc.
 {

@@ -100,9 +100,20 @@ dev bytes host of `packages/worker`.
    the custom domain, not `workers.dev`. Workers Caching (Bw) follows the Worker.
 
 4. Repeat from a second vantage point, such as a GitHub Actions runner, with `--vantage gha`.
-5. After P2-01 is deployed to dev, point `PROBE_BASE_B` at a real `dl-dev.plrs.im` byte route
+5. Row H10 (gateway form). The probe here does not cover it: `wrangler.wcache.jsonc` turns the
+   cache on for the whole single-entrypoint Worker, and wrangler 4.104 accepts neither
+   per-entrypoint `exports` nor any local Workers Caching emulation. For H10, build a third
+   probe Worker with wrangler 4.107 or later whose config sets
+   `"exports": { "default": { "type": "worker", "cache": { "enabled": false } }, "Bytes": { "type": "worker", "cache": { "enabled": true } } }`.
+   Its default entrypoint forwards to `ctx.exports.Bytes.fetch(request)`, either stripping
+   `Authorization` or, for one trial, keeping it. `Bytes` runs this probe's `/b/` handler and
+   returns `public, max-age=31536000, immutable, no-transform`. Record `cf-cache-status`, whether
+   `Range` reaches `Bytes`, `If-Range` on a HIT, the `Authorization` outcome (stored, or `BYPASS`)
+   and the billed request count from account analytics.
+6. After P2-01 is deployed to dev, point `PROBE_BASE_B` at a real `dl-dev.plrs.im` byte route
    for one object (row H9).
-6. Tear down: delete the bucket with its custom domain, both Workers and their domains.
+7. Tear down: delete the bucket with its custom domain, every probe Worker (two, or three with
+   H10) and their domains.
 
 Every cold case uploads fresh random bytes under a new key and never purges. So no edge state
 leaks between trials.
