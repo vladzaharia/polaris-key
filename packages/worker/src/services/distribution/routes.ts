@@ -12,6 +12,9 @@
  *     /distribution/rollouts/:outlet/:channel/{pause,resume,halt,complete}   POST, same
  *     /distribution/report                                   POST, `pkeyci_` + distribution:report
  *                                                            (P2b-03, `availability.ts`)
+ *     /distribution/hooks/:connector                         POST, a store webhook, signed by
+ *                                                            the store (P5-02, `connectors/`;
+ *                                                            `asc` today)
  *
  * The permanent aliases (`/<p>/release/{install.sh,dl,builds,files,blobs}/…`, `/<p>/install.sh`)
  * reach this file already rewritten into the canonical segments by the core router, so there is
@@ -30,6 +33,7 @@ import {
   type RolloutVerb,
 } from "./rollouts.js";
 import { applyReport } from "./availability.js";
+import { connectorOf } from "./connectors/index.js";
 
 /** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`); a report carries at most two small
  *  JSON objects (`platformRef`, `detail`). */
@@ -49,6 +53,13 @@ export async function handleDistributionRoutes(
           : null;
     if (!verb || req.method !== "POST") return null;
     return handleCiRollout(ctx, rest[1] as string, rest[2] as string, verb);
+  }
+
+  // A store webhook. `null` (Core's not-found) for an unknown connector, one without a webhook,
+  // or a product the connector is not set up for — the connector decides the last.
+  if (rest[0] === "hooks" && rest.length === 2) {
+    const webhook = connectorOf(rest[1] as string)?.webhook;
+    return webhook ? webhook(ctx) : null;
   }
 
   if (rest[0] === "report" && rest.length === 1) {

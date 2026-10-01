@@ -1,6 +1,7 @@
 extends RefCounted
 # @pkey-feature core.discover core.sync core.cache config.schema config.mint devices.register devices.report
 # @pkey-feature license.activate license.enroll license.deactivate license.reregister
+# @pkey-feature release.changelog release.download
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -74,6 +75,9 @@ static func replay(tr: Dictionary) -> Array:
 			var step: Dictionary = engine.begin_step(i)
 			clock[0] = step.get("now", tr["now"])
 			var observed := await _act(sdk, store, step)
+			# A built URL names the loopback server; the recording names the transcript's base.
+			if observed.get("url") is String and String(observed["url"]).begins_with(server.base_url() + "/"):
+				observed["url"] = tr["baseUrl"] + String(observed["url"]).substr(server.base_url().length())
 			fails.append_array(engine.end_step())
 			for key in step["expect"]:
 				if not _same(observed.get(key), step["expect"][key]):
@@ -122,6 +126,18 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
 		"report":
 			out["result"] = await sdk.devices.report()
+		"changelog":
+			var r: PKeyChangelogResult = await sdk.release.changelog()
+			out["result"] = "ok" if r.ok else "error"
+			if r.ok:
+				out["entries"] = r.to_array()
+			else:
+				out["code"] = String(r.code)
+		"installUrl":
+			out["url"] = sdk.release.install_url()
+		"downloadUrl":
+			var a: Dictionary = step["args"]
+			out["url"] = sdk.release.download_url(String(a["version"]), String(a["binary"]), String(a["arch"]), PKeyClaims.is_true(a.get("checksum")), PKeyClaims.is_true(a.get("dmg")))
 		_:
 			out["unsupported"] = step["action"]
 	var services := {}

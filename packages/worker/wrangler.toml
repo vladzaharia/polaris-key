@@ -55,12 +55,19 @@ new_sqlite_classes = ["RateLimitDO"]
 # `0 3 * * *` puts the job in the same second as every other cron on the platform, and a sweep
 # that competes with a thundering herd for D1 is a sweep that starts timing out.
 #
+# Every 15 minutes (P5-02): the store-connector poll (`CONNECTOR_POLL_CRON` in
+# `src/scheduled.ts`; `services/distribution/connectors/`). It reads what no store webhook
+# covers — Apple's phased release, review submissions, internal TestFlight state — for products
+# with Distribution on and a connector set up, and nothing for anyone else. `scheduled()`
+# dispatches on `event.cron`; any trigger other than this one runs the maintenance sweep.
+# `test/scheduled.test.ts` pins this list to the two constants.
+#
 # `triggers` is an INHERITABLE wrangler key, so this one block applies to prod, staging and dev
 # without a per-environment copy; overriding it for one environment means adding
 # `[env.<name>.triggers]`, which then replaces this list for that environment entirely.
 # ---------------------------------------------------------------------------
 [triggers]
-crons = ["17 3 * * *"]
+crons = ["17 3 * * *", "*/15 * * * *"]
 
 # ---------------------------------------------------------------------------
 # The Core blob store and the bytes host (P2-01; docs/DEPLOYMENT.md "Blob store").

@@ -21,7 +21,13 @@ import {
   missingRequiredIndexes,
   runScheduledMaintenance,
 } from "../src/scheduled.js";
-import { appendAudit, claimDeviceSeat, insertLicense } from "../src/repo.js";
+import {
+  appendAudit,
+  claimDeviceSeat,
+  insertLicense,
+  setServices,
+} from "../src/repo.js";
+import { CONNECTOR_EVENT_RETENTION_SECONDS } from "../src/services/distribution/connectors/state.js";
 import { portalAudit } from "../src/services/identity/portal/repo.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -214,6 +220,63 @@ describe("scheduled() retention", () => {
 
     expect(report.counts["audit:acme"]).toBe(1);
     expect(await count(db, "SELECT COUNT(*) AS n FROM audit")).toBe(0);
+  });
+
+  // P5-02 review: the connector poll reaches only live products with Distribution on, so the
+  // 30-day retention of raw webhook payloads must not depend on it. Three products: one live with
+  // Distribution on, one SOFT-DELETED, one with Distribution OFF — each holds a 31-day-old event
+  // and a fresh one, and the sweep prunes exactly the old one from every product.
+  it("prunes store-connector webhook events past 30 days for every product, deleted and Distribution-off ones included", async () => {
+    const db = makeTestDb();
+    const now = NOW + 40 * 86400;
+    const old = now - CONNECTOR_EVENT_RETENTION_SECONDS - 86400;
+    const fresh = now - 86400;
+    for (const slug of ["live", "gone", "off"]) await seedProduct(db, slug);
+    await setServices(
+      db,
+      "live",
+      '{"distribution":{"enabled":true}}',
+      "manifest",
+      NOW,
+    );
+    await setServices(
+      db,
+      "off",
+      '{"distribution":{"enabled":false}}',
+      "manifest",
+      NOW,
+    );
+    await db.run("UPDATE products SET status = 'deleted' WHERE slug = 'gone'");
+    for (const slug of ["live", "gone", "off"]) {
+      for (const [id, at] of [
+        ["e-old", old],
+        ["e-fresh", fresh],
+      ] as const) {
+        await db.run(
+          `INSERT INTO dist_connector_events
+             (product, connector, event_id, event_type, outcome, payload_json, received_at)
+           VALUES (?, 'asc', ?, 'BETA_FEEDBACK_SCREENSHOT_SUBMISSION_CREATED', 'stored', '{}', ?)`,
+          slug,
+          id,
+          at,
+        );
+      }
+    }
+
+    const report = await runScheduledMaintenance(db, now);
+
+    expect(report.failures).toEqual({});
+    for (const slug of ["live", "gone", "off"]) {
+      expect(report.counts[`connectorEvents:${slug}`]).toBe(1);
+      const rows = await db.all<{ event_id: string }>(
+        "SELECT event_id FROM dist_connector_events WHERE product = ?",
+        slug,
+      );
+      expect(rows.map((r) => r.event_id)).toEqual(["e-fresh"]);
+    }
+    // A second tick on the same clock removes nothing (idempotent like every other step).
+    const again = await runScheduledMaintenance(db, now);
+    expect(again.counts["connectorEvents:gone"]).toBe(0);
   });
 });
 

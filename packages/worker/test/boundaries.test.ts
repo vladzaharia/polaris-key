@@ -48,7 +48,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SERVICE_SLUGS } from "../src/core/services.js";
@@ -258,13 +258,20 @@ describe("service boundaries", () => {
         `${service} -> ${specifier} should be refused`,
       ).not.toBeNull();
     }
-    // …and the live tree honours it: distribution imports only core/ and itself.
-    const crossings = collectImportSites().filter(
-      (s) =>
-        s.service === "distribution" &&
-        /^\.\.\/(?!\.\.\/core\/)/.test(s.specifier) &&
-        !s.specifier.startsWith("../../core/"),
-    );
+    // …and the live tree honours it: distribution imports only core/ and itself. The specifier
+    // is resolved against its file, so a sub-directory (`connectors/asc/`, P5-02) reaching its
+    // own service's files is not a crossing and one reaching another service still is.
+    const crossings = collectImportSites().filter((s) => {
+      if (s.service !== "distribution" || !s.specifier.startsWith("."))
+        return false;
+      const target = posix.normalize(
+        posix.join(posix.dirname(s.file), s.specifier),
+      );
+      return (
+        !target.startsWith("src/services/distribution/") &&
+        !target.startsWith("src/core/")
+      );
+    });
     expect(crossings).toEqual([]);
     expect(
       collectImportSites().some(

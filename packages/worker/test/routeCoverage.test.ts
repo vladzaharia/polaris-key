@@ -100,6 +100,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/rollouts/{outlet}/{channel}/complete", ["post"]],
   // P2b-03: the CI report of availability, submissions and signing keys.
   ["/{product}/distribution/report", ["post"]],
+  // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
+  ["/{product}/distribution/hooks/asc", ["post"]],
   ["/{product}/update/appcast.xml", ["get"]],
   ["/{product}/update/{channel}/appcast.xml", ["get"]],
   ["/{product}/update/version", ["get"]],
@@ -246,6 +248,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/rollouts/{outlet}/{channel}/complete",
   // P2b-03: the CI report route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/report",
+  // P5-02: a store webhook, called server-to-server by App Store Connect.
+  "/{product}/distribution/hooks/asc",
 ]);
 
 /** Every product path the router serves, from the three tables above. */

@@ -9,8 +9,8 @@ The addon's Core (P1-02) is offline-capable: strict base64url and JSON, the 13-s
 licence and config claims, the trust manifest, the clock floor, the verified cache, the file
 store, bundle import, discovery and capabilities, an HTTP transport that never leaks the bearer,
 and `sync()`, behind the `PolarisKey` autoload. The service clients build on `PolarisKey.core`;
-`PolarisKey.config` (P1-04) is the first, and licence, devices, identity and update follow in
-later work packages.
+`PolarisKey.config` (P1-04), `license` (P1-03), `devices` (P1-05), `update` and `release` (P1-08)
+are in; identity follows in a later work package.
 
 ## Layout
 
@@ -32,7 +32,7 @@ sdks/godot/
     polaris_key.gd            the PolarisKey autoload: configure, start, discover, capabilities,
                               sync, get_sync_state, import_bundle, status, build_info; three
                               signals;
-                              the `devices` and `license` sub-objects
+                              the `devices`, `license`, `update` and `release` sub-objects
     services/devices.gd       PKeyDevices (PolarisKey.devices): fingerprint, register, list,
                               rename, deauthorize, report (also after every sync)
     services/license.gd       PKeyLicense (PolarisKey.license): the gate, activate_with_key,
@@ -40,6 +40,13 @@ sdks/godot/
                               401 re-acquire it installs into Core (license/token or
                               devices/register, P1b-06's rule)
     services/license/         PKeyActivationResult (both error spellings), PKeyLicenseEndpoints
+    services/update.gd        PKeyUpdate (PolarisKey.update): check -> PKeyVersionCheck
+                              (services/update/), update_available(check), appcast_url
+    services/release.gd       PKeyRelease (PolarisKey.release): changelog -> PKeyChangelogResult
+                              of PKeyChangelogEntry (services/release/), install_url,
+                              download_url
+    core/uri.gd               PKeyUri: encodeURIComponent and URLSearchParams encoding, byte for
+                              byte as sdk-node (String.uri_encode() is not)
     core/channel.gd           PKeyChannel: the §5.1 channel vocabulary, the header this SDK sends
     core/fingerprint.gd       PKeyFingerprint: per-platform readers as pure parsers over captured
                               output, hashing, the desktop device-id raw source
@@ -70,13 +77,16 @@ sdks/godot/
     support/fake_server.gd    a TCPServer on 127.0.0.1 the core and transcript tests talk to
     support/transcript_replay.gd  replays conformance/transcripts against the fake server
     support/fake_host.gd      a PKeyHostIo over fixtures/devices-captures.json (any platform)
-    suite_<name>.gd           one suite per file (core/, config/, devices/ and build_stamp/ hold
+    suite_<name>.gd           one suite per file (core/, config/, devices/, update/ and
+                              build_stamp/ hold
                               their suites' groups); suite_platform reads THIS machine's
                               fingerprint; suite_export_stamps (outside `ci`) reads the ZIP
                               exports run_tests.sh makes
     config/catalog.json       the mirror fixture; catalog_generated.gd is GENERATED from it by
                               `pnpm gen:mirrors -- --lang gdscript` (a tools test keeps it fresh)
-    fixtures/                 hand-maintained captures (identifiers replaced by fake values)
+    fixtures/                 hand-maintained captures (identifiers replaced by fake values);
+                              release-urls.json holds sdk-node's URL outputs, which
+                              packages/sdk-node/test/godotUrlVectors.test.ts keeps true
     corpus/v2/                GENERATED mirror of conformance/corpus/v2/ — never edit
     transcripts/              GENERATED mirror of conformance/transcripts/ — never edit
     vectors/                  hand-generated SHA-512 and Ed25519 vectors (byte-for-byte)
@@ -253,6 +263,38 @@ those strings against the generator's `expect.docNulReplaced`.
 So every `run_tests.sh` step fails on `SCRIPT ERROR`, `Parse Error`, `Failed to load script`,
 `Cannot get class` or `Invalid MainLoop` in its log, on its timeout, on a non-zero exit, and (for
 runs) without a final `PKEY-TEST SUMMARY … failed=0`.
+
+## Update and release (`PolarisKey.update`, `PolarisKey.release`)
+
+```gdscript
+PolarisKey.update.update_available.connect(_on_update)   # fires only when this build is behind
+var check := await PolarisKey.update.check()             # or check("beta"); a PKeyVersionCheck
+if check.ok and check.update_available: print(check.version, " ", check.url)
+var notes := await PolarisKey.release.changelog()        # notes.entries: Array[PKeyChangelogEntry]
+var url := PolarisKey.release.download_url("1.2.3", "diceroll", "x86_64", true)  # ?checksum=sha256
+```
+
+- Today's v3 check, the same as sdk-node's and Python's, and no more: the outlet-aware decision,
+  the signed feed and installing builds are P3-08 and P3-10. In P1 the answer is informational on
+  every outlet; a Steam, itch or store build must not act on it by itself.
+- `update_available` compares `PKeyOptions.version` (the game's, never the SDK's) with
+  PKeySemver, the gate's own semver, so a pre-release sorts below its release.
+- `check("")` sends no `?channel=`. Any other value must be a channel name: an alias goes out
+  canonically (`staging` as `beta`, `latest` as `stable`), `pr<n>` as `pr-<n>`, and a malformed
+  one (`1.2.3`) is refused as `invalid-options` without a request. `appcast_url` follows the same
+  rule and returns "" for a malformed channel.
+- A 403 keeps the body's code (`channel_not_allowed`; `forbidden` when it names none); any other
+  status is `not_found`; a check that got no answer keeps the transport's code. The changelog maps
+  a 401 or 403 by its body's code in either spelling (`download_auth_required` stays itself). The
+  bearer is forwarded only when one is held.
+- With the service off (discovery this session, else `expected_services`), `check` and
+  `changelog` answer `service-unavailable` without a request, and `install_url`, `download_url`
+  and `appcast_url` return "". `update` and `release` exist before `configure()`, so a signal
+  connected early survives it.
+- There is no throttle: the caller decides when to check (P1-10's DECIDE stage checks once per
+  boot). A periodic caller must not let a failed check consume its interval.
+- `download_url` only builds the URL. Fetching it needs the transport's credential-safe redirects
+  and no gzip (gzip breaks `Range`); that is P3-10's.
 
 ## Config (`PolarisKey.config`)
 

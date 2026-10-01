@@ -14,6 +14,15 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
+## Do not store a real App Store Connect key yet (P5-02)
+
+- [ ] **Wait for the operator-owned `appleId` pin before PUTting any `asc-api-key`.** Until it lands,
+      the connector acts on whatever `appleId` the repo's `.pkey/distribution` names, so a repo
+      writer could aim an operator's team key (and the irreversible `release` /
+      `phased-release/complete` controls) at another app the key can see (THREAT-MODEL residual
+      "a manifest-chosen app"). The pin is a lead follow-up in progress; this row is ticked when it
+      merges. The same applies to a Google Play service account once P5-03 lands.
+
 ## Before djdl's next `.pkey` push (from v0.5.0)
 
 - [ ] **Add `"distribution": { "enabled": true }` to `modules` in `vladzaharia/djdl`'s

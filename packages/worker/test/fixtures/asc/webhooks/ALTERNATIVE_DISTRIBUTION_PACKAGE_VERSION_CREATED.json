@@ -1,0 +1,19 @@
+{
+  "data": {
+    "type": "alternativeDistributionPackageVersionCreated",
+    "id": "5f1c1e3a-0010-4b8e-9d2a-000000000010",
+    "version": 1,
+    "attributes": {
+      "timestamp": "2026-09-30T17:00:00.000Z"
+    },
+    "relationships": {
+      "instance": {
+        "type": "alternativeDistributionPackageVersions",
+        "id": "adpv-1",
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/alternativeDistributionPackageVersions/adpv-1"
+        }
+      }
+    }
+  }
+}
