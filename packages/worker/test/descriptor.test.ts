@@ -980,6 +980,41 @@ describe("ingestReleaseDescriptor (CI)", () => {
     await check();
   });
 
+  it("CI first, sync after: a GitHub file the descriptor does not name is inserted in no build", async () => {
+    const { db, ingest, fetchImpl } = await ciSetup();
+    // The P2-02 order: CI submits the descriptor, then the GitHub sync records the release's
+    // files. descriptor() names only the macOS build (on GitHub) and the web build (in R2).
+    expect(await ingest(descriptor())).toMatchObject({ ok: true });
+
+    const check = async () => {
+      const builds = new Set(
+        (await listBuilds(db, SLUG, "v1.2.3")).map((b) => b.build_id),
+      );
+      expect(builds).toEqual(new Set(["macos", "web"]));
+      const artifacts = await listReleaseArtifacts(db, SLUG, "v1.2.3");
+      for (const a of artifacts)
+        if (a.build_id !== null) expect(builds.has(a.build_id)).toBe(true);
+      const byName = new Map(artifacts.map((a) => [a.name, a]));
+      for (const name of [
+        "Diceroll-1.2.3-windows-x86_64.zip",
+        "Diceroll-1.2.3-linux-x86_64.tar.gz",
+        "Diceroll-1.2.3-android.apk",
+        "Diceroll-1.2.3-ios-sideload.ipa",
+      ]) {
+        const a = byName.get(name)!;
+        expect(a).toMatchObject({ build_id: null, role: roleOfKind(a.kind) });
+      }
+      expect(byName.get("Diceroll-1.2.3-macos.dmg.sig")).toMatchObject({
+        build_id: "macos",
+        role: "signature",
+      });
+    };
+    await syncReleaseStore(envFor(), db, SLUG, NOW + 100, fetchImpl);
+    await check();
+    await syncReleaseStore(envFor(), db, SLUG, NOW + 200, fetchImpl);
+    await check();
+  });
+
   it("ROLE_OF_KIND_SQL is roleOfKind", async () => {
     const db = makeTestDb();
     for (const kind of [

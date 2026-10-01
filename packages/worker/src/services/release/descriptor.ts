@@ -636,8 +636,9 @@ export async function planDescriptorIngest(
     ...planned.builds.map((b) => stmtUpsertBuild(b, now)),
     // A file the descriptor does not name belongs to no build of it: whatever build the map
     // gave it goes (below), so it leaves that build and its role falls back to the one its kind
-    // implies (`roleOfKind`). The descriptor owns the release from here, and `described` syncs
-    // never touch `build_id` or `role`, so no file is left pointing at a deleted build.
+    // implies (`roleOfKind`). The descriptor owns the release from here: `described` syncs
+    // never touch `build_id` or `role` of a row, and insert a file the descriptor does not name
+    // with no build (they skip the map), so no file is left pointing at a build that is not there.
     {
       sql: `UPDATE release_artifacts
                SET build_id = NULL,

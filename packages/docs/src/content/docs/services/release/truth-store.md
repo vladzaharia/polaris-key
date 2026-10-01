@@ -81,7 +81,9 @@ arch — under a map nothing is sniffed. See
 A release with an ingested **release descriptor** belongs to the descriptor: its `build_id`,
 `role`, `sha256`, `storage_key` and `locations_json` (hash-pinned places the bytes can be
 fetched from), its builds, and its classification are the descriptor's, and the sync refreshes
-only the GitHub-derived serving columns. `release_metadata.metadata_json.descriptor` records
+only the GitHub-derived serving columns. The map does not apply to it: a GitHub file the
+descriptor does not name, recorded by a later sync, joins no build and takes the role its name
+implies. `release_metadata.metadata_json.descriptor` records
 the ingested descriptor's hash (or why a `pkey-release.json` was refused), and survives every
 resync.
 

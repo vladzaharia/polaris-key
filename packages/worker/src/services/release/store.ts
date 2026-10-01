@@ -798,12 +798,17 @@ export function releaseStoreStatements(
       : map
         ? "mapped"
         : "sniffed";
-    const classified = map
-      ? classifyByMap(
-          map,
-          release.assets.map((a) => a.name),
-        )
-      : null;
+    // A described release is never classified by the map: the descriptor owns its builds, so a
+    // GitHub file it does not name is inserted in no build (`build_id` NULL, role from its kind),
+    // exactly as the descriptor's own ingest leaves such a file. Taking the map's build here would
+    // point the new row at a build the descriptor never wrote, and nothing would prune it.
+    const classified =
+      map && !described
+        ? classifyByMap(
+            map,
+            release.assets.map((a) => a.name),
+          )
+        : null;
     for (const asset of release.assets) {
       artifacts.push(
         stmtUpsertArtifact(
@@ -823,7 +828,7 @@ export function releaseStoreStatements(
     // The map's builds, for a release the descriptor does not own. They follow the map: a build
     // the map no longer yields is deleted below (nothing references `release_builds`).
     if (!described) undescribedReleaseIds.push(releaseId);
-    if (classified && !described) {
+    if (classified) {
       for (const entry of classified.builds) {
         mappedBuildKeys.push(`${releaseId}\u0000${entry.id}`);
         builds.push(

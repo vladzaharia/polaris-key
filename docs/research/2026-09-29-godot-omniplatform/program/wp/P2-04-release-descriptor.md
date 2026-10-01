@@ -167,7 +167,10 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
   - Enrichment checks only that every file the descriptor places on GitHub is one the row holds.
     A held file the descriptor does not name leaves whatever build the map gave it (`build_id`
     NULL, `role` back to `roleOfKind(kind)`) in the same batch that deletes the builds the
-    descriptor does not list, so no file points at a deleted build.
+    descriptor does not list, so no file points at a deleted build. In the other order (CI
+    submits first, the GitHub sync runs after), a described release is not classified by the map
+    at all: a GitHub file the descriptor does not name is inserted with `build_id` NULL and its
+    kind's role, the same state the ingest leaves it in.
   - "Bounded GitHub cost": a refused `pkey-release.json` is remembered in its marker with the
     asset id and `basis`, the SHA-256 of the persisted app declaration and the manual channels it
     was judged against. It is fetched again when either changes. Refusals that hang on other rows
