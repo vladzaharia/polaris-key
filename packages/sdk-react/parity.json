@@ -54,7 +54,7 @@
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers (P1b-06)."
+      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers inside its own sync (P1b-06); test/bridge.test.ts pins the renderer picking up the host's post-re-register state through refresh() and a pushed stateChanged."
     },
     "config.resolve": { "status": "implemented" },
     "config.list": { "status": "implemented" },
