@@ -25,8 +25,10 @@ import {
 } from "@polaris-key/client-core";
 import type { CacheManager } from "../core/cache.js";
 import type { CoreContext } from "../core/context.js";
+import type { TokenManager } from "../core/token.js";
+import { MintCache, mintToken, type MintedToken } from "./mint.js";
 
-export type { ConfigSource, ProductCatalog, UserConfigEntry };
+export type { ConfigSource, ProductCatalog, UserConfigEntry, MintedToken };
 
 /** Env-var prefix for config overrides. A key's env var is
  *  `${envPrefix}${key.replaceAll(".", "__")}` — `run.concurrency` →
@@ -47,11 +49,15 @@ export class ConfigClient {
   private readonly localOverrides: Record<string, JSONValue>;
   private readonly envPrefix: string;
   private readonly env: Record<string, string | undefined>;
+  private readonly minted = new MintCache();
 
   constructor(
     private readonly ctx: CoreContext,
     private readonly cache: CacheManager,
     opts: ConfigClientOptions = {},
+    /** The device credential edge-mint authenticates with. Without it `mintToken` has nothing
+     *  to present and refuses with `unauthorized`, as a client holding no token does. */
+    private readonly tokens?: TokenManager,
   ) {
     this.localOverrides = opts.localOverrides ?? {};
     this.envPrefix = opts.envPrefix ?? DEFAULT_ENV_PREFIX;
@@ -124,6 +130,23 @@ export class ConfigClient {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Mint a third-party token through the product's edge-mint recipe `recipeId`
+   * (`GET /<p>/config/mint/<recipeId>/token`, authenticated with the device token).
+   *
+   * Minted tokens are cached IN MEMORY ONLY, per recipe, and reused until 30 seconds before
+   * `expiresAt`: they are short-lived secrets and never reach the cache file or the keyring. A
+   * 401 gets the one re-acquire every authenticated call gets (§5), then one retry.
+   *
+   * Throws `PolarisError`: `service-unavailable` (no Config service, before any request),
+   * `bad_request` (a recipe id the router could never match, before any request),
+   * `unauthorized` (no token, or still 401 after the re-acquire), or the Worker's code —
+   * `not_found` for an unknown or unapproved recipe, `rate_limited`, `misconfigured`.
+   */
+  async mintToken(recipeId: string): Promise<MintedToken> {
+    return mintToken(this.ctx, this.tokens, this.minted, recipeId);
   }
 
   /** Whether the product runs Config at all — the config-side twin of the license gate's

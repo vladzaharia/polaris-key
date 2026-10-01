@@ -26,6 +26,10 @@
       "types": "./dist/devices/index.d.ts",
       "default": "./dist/devices/index.js"
     },
+    "./identity": {
+      "types": "./dist/identity/client.d.ts",
+      "default": "./dist/identity/client.js"
+    },
     "./release": {
       "types": "./dist/release/client.d.ts",
       "default": "./dist/release/client.js"

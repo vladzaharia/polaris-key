@@ -8,9 +8,11 @@ import {
   telemetryReport,
 } from "./devices.js";
 import { discoveryCapabilities, discoveryFailure } from "./discovery.js";
+import { devicecodeExpired, devicecodeHappy } from "./identity.js";
 import { activateEnrollDeactivate } from "./license.js";
 import { configSchemaFetch } from "./catalog.js";
 import { releaseChangelog, releaseChangelogEntitled } from "./release.js";
+import { edgeMint } from "./mint.js";
 import { syncErrors, syncEtag304 } from "./sync.js";
 
 export const SCENARIOS: Scenario[] = [
@@ -25,4 +27,7 @@ export const SCENARIOS: Scenario[] = [
   configSchemaFetch,
   releaseChangelog,
   releaseChangelogEntitled,
+  devicecodeHappy,
+  devicecodeExpired,
+  edgeMint,
 ];

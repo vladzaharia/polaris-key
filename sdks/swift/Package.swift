@@ -3,7 +3,7 @@ import PackageDescription
 
 // Polaris Key for Swift — wire contract v3 (docs/security/WIRE-CONTRACT-V3.md).
 //
-// ── WHY SEVEN TARGETS ────────────────────────────────────────────────────────────────────────
+// ── WHY SEPARATE TARGETS ────────────────────────────────────────────────────────────────────
 //
 // Polaris Key is a suite of opt-in services over an always-on Core, and on Apple platforms that
 // division is worth spending link-time on rather than only runtime flags: a product that does
@@ -15,12 +15,13 @@ import PackageDescription
 //                   transport, discovery, bundle verification, the boot stage machine.
 //                   Always on.
 //   PolarisKeyLicense  the gate, activation, the license document.        (deps Core)
-//   PolarisKeyConfig   the config document, layered resolution, facts.    (deps Core)
+//   PolarisKeyConfig   the config document, layered resolution, facts, edge-mint. (deps Core)
+//   PolarisKeyIdentity device-code sign-in (RFC 8628).                   (deps Core)
 //   PolarisKeyRelease  the changelog and the install/download URLs.       (deps Core)
 //   PolarisKeyUpdate   Sparkle wiring. macOS ONLY.                        (deps Core)
 //   PolarisKeyUI       the drop-in SwiftUI gate.              (deps Core + License + Config)
 //   PolarisKey      the umbrella: `PolarisKeyClient` + `@_exported import` of the
-//                   cross-platform service modules (Core, License, Config, Release), so a
+//                   cross-platform modules (Core, License, Config, Identity, Release), so a
 //                   one-import adopter writes `import PolarisKey`.
 //
 // ── THE SPARKLE CONDITIONING (D-24) ─────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ let package = Package(
         .iOS(.v17),
     ],
     products: [
-        // The one-import surface: Core + License + Config + Release re-exported, plus
+        // The one-import surface: Core + License + Config + Identity + Release re-exported, plus
         // `PolarisKeyClient`.
         .library(name: "PolarisKey", targets: ["PolarisKey"]),
         // The substrate on its own, for a product that composes its own services.
@@ -55,6 +56,8 @@ let package = Package(
         .library(name: "PolarisKeyConfig", targets: ["PolarisKeyConfig"]),
         // The changelog and artifact URLs. Cross-platform: an iOS app can show release notes.
         .library(name: "PolarisKeyRelease", targets: ["PolarisKeyRelease"]),
+        // Device-code sign-in, for a product that runs Identity.
+        .library(name: "PolarisKeyIdentity", targets: ["PolarisKeyIdentity"]),
         // macOS only — see the conditioning note above.
         .library(name: "PolarisKeyUpdate", targets: ["PolarisKeyUpdate"]),
         // Brandable SwiftUI login/gate components layered over the services.
@@ -87,6 +90,11 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
+            name: "PolarisKeyIdentity",
+            dependencies: ["PolarisKeyCore"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .target(
             name: "PolarisKeyUpdate",
             dependencies: [
                 "PolarisKeyCore",
@@ -99,7 +107,8 @@ let package = Package(
         .target(
             name: "PolarisKey",
             dependencies: [
-                "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig", "PolarisKeyRelease",
+                "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig", "PolarisKeyIdentity",
+                "PolarisKeyRelease",
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
@@ -111,8 +120,8 @@ let package = Package(
         .testTarget(
             name: "PolarisKeyTests",
             dependencies: [
-                "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig", "PolarisKeyUI",
-                "PolarisKeyUpdate", "PolarisKeyRelease",
+                "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
+                "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUpdate", "PolarisKeyRelease",
             ],
             // Bundle the SAME cross-language corpus + gate-matrix + fingerprint + stage-matrix
             // fixtures the Node and Python runners drive, so the Swift verifier, gate, bundle
