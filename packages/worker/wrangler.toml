@@ -57,8 +57,10 @@ new_sqlite_classes = ["RateLimitDO"]
 #
 # Every 15 minutes (P5-02): the store-connector poll (`CONNECTOR_POLL_CRON` in
 # `src/scheduled.ts`; `services/distribution/connectors/`). It reads what no store webhook
-# covers — Apple's phased release, review submissions, internal TestFlight state — for products
-# with Distribution on and a connector set up, and nothing for anyone else. `scheduled()`
+# covers — Apple's phased release, review submissions, internal TestFlight state; every Google
+# Play track through a throwaway edit (P5-03: Play has no release webhooks at all), and, when an
+# operator opted in, Play's crash and ANR rates for the vitals auto-halt — for products with
+# Distribution on and a connector set up, and nothing for anyone else. `scheduled()`
 # dispatches on `event.cron`; any trigger other than this one runs the maintenance sweep.
 # `test/scheduled.test.ts` pins this list to the two constants.
 #

@@ -37,6 +37,7 @@ import { loadProduct } from "../src/core/products.js";
 import { setServices } from "../src/repo.js";
 import { distributionService } from "../src/services/distribution/index.js";
 import {
+  CAPABILITY_KEYS,
   DEFAULT_CAPABILITIES,
   effectiveCapabilities,
   kindChangeNarrows,
@@ -46,6 +47,10 @@ import {
 } from "../src/services/distribution/capabilities.js";
 import { manifestIngestStatements as distributionIngestStatements } from "../src/services/distribution/outlets.js";
 import { OUTLET_KINDS, parseManifest } from "@polaris-key/manifest";
+import { OUTLET_CAPABILITY_DEFAULTS } from "@polaris-key/protocol/distribution";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SLUG = "dice";
 const INGEST = manifestIngestFor(SERVICES);
@@ -680,10 +685,13 @@ describe("a push cannot widen capabilities by changing an outlet's kind", () => 
   });
 
   it("a narrowing kind change is applied", async () => {
+    // direct → altstore narrows every capability (self → store, code and scripts to false,
+    // commerce stays own). P2b-02's table used web → altstore; wire v4's web updates through
+    // the platform (`binaryUpdates: none`), so moving it to altstore would widen.
     const { db, env } = await linked({
-      ".pkey/distribution.yaml": withBeta("web"),
+      ".pkey/distribution.yaml": withBeta("direct"),
     });
-    expect(await kindOf(db, "altstore-beta")).toBe("web");
+    expect(await kindOf(db, "altstore-beta")).toBe("direct");
     expect((await resync(env, db, withBeta("altstore"), NOW + 10)).ok).toBe(
       true,
     );
@@ -700,9 +708,81 @@ describe("a push cannot widen capabilities by changing an outlet's kind", () => 
     // store-iap → own is a different commerce channel, not a narrowing.
     expect(kindChangeNarrows("app-store", "altstore")).toBe(false);
     expect(kindChangeNarrows("app-store", "testflight")).toBe(true);
-    expect(kindChangeNarrows("web", "altstore")).toBe(true);
+    expect(kindChangeNarrows("direct", "altstore")).toBe(true);
+    // Wire v4's table (P3-12): web installs update through the platform, so web → altstore
+    // widens binaryUpdates (none → store), and altstore → web widens downloadedScripts.
+    expect(kindChangeNarrows("web", "altstore")).toBe(false);
+    expect(kindChangeNarrows("altstore", "web")).toBe(false);
+    expect(kindChangeNarrows("winget", "app-installer")).toBe(true);
+    expect(kindChangeNarrows("steam", "itch")).toBe(false);
     for (const kind of OUTLET_KINDS)
       expect(kindsNarrowableTo(kind)).toContain(kind);
+  });
+});
+
+describe("the capability table is wire contract v4's (P3-12, plans/P3-01.md §2.9)", () => {
+  const matrix = JSON.parse(
+    readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "..",
+        "..",
+        "conformance",
+        "corpus",
+        "v2",
+        "outlet-matrix.json",
+      ),
+      "utf8",
+    ),
+  ) as { kinds: Record<string, Record<string, unknown>> };
+
+  it("the Worker's table, OUTLET_CAPABILITY_DEFAULTS and outlet-matrix.json#/kinds are equal", () => {
+    const fromMatrix = Object.fromEntries(
+      Object.entries(matrix.kinds)
+        // `unknown` is a detection result with no outlet row; `platforms` is not a capability.
+        .filter(([kind]) => kind !== "unknown")
+        .map(([kind, row]) => {
+          const { platforms: _platforms, ...caps } = row;
+          return [kind, caps];
+        }),
+    );
+    const fromProtocol = Object.fromEntries(
+      OUTLET_KINDS.map((kind) => [kind, OUTLET_CAPABILITY_DEFAULTS[kind]]),
+    );
+    expect(DEFAULT_CAPABILITIES).toEqual(fromProtocol);
+    expect(DEFAULT_CAPABILITIES).toEqual(fromMatrix);
+    expect(Object.keys(DEFAULT_CAPABILITIES)).toEqual([...OUTLET_KINDS]);
+    for (const kind of OUTLET_KINDS)
+      expect(Object.keys(DEFAULT_CAPABILITIES[kind])).toEqual([
+        ...CAPABILITY_KEYS,
+      ]);
+  });
+
+  it("a stored override wider than a newly narrowed default reads back narrowed", async () => {
+    // Written under P2b-02's table, where web updated itself and loaded code: an operator could
+    // store exactly that. Wire v4 narrows web to the platform's updates, and the read clamps.
+    const { db, env } = await linked();
+    await db.run(
+      `UPDATE dist_outlets SET capabilities_source = 'admin', capabilities_json = ?
+        WHERE outlet_id = 'web'`,
+      JSON.stringify({
+        binaryUpdates: "self",
+        codeUpdates: true,
+        channelSwitch: true,
+        downloadedScripts: false,
+      }),
+    );
+    const caps = await (await hooksFor(env, db)).outletCapabilities("web");
+    expect(caps).toEqual({
+      outletId: "web",
+      ...OUTLET_CAPABILITY_DEFAULTS.web,
+      // The one field that genuinely narrows the new default is kept.
+      downloadedScripts: false,
+    });
+    expect(caps!.binaryUpdates).toBe("none");
+    expect(caps!.codeUpdates).toBe(false);
+    expect(caps!.channelSwitch).toBe(false);
   });
 });
 

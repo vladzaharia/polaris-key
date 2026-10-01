@@ -137,7 +137,7 @@ export function discoveryBody(
 ): string {
   return JSON.stringify({
     version: 2,
-    protocolVersion: 3,
+    protocolVersion: 4,
     product,
     slug: product,
     baseUrl: "https://key.plrs.im",
@@ -254,4 +254,54 @@ export function fuse(
       entitlements: doc.entitlements,
     },
   };
+}
+
+// ── Signing (wire v4 update tests) ──────────────────────────────────────────────────────────
+// A throwaway Ed25519 signer over WebCrypto, so this package's tests mint feeds and records
+// without depending on `@polaris-key/jws`: the header is `{alg, typ, kid}` in that order, as
+// `signJws` writes it, and the signing input is the exact ASCII of `header.payload`.
+
+export interface TestKey {
+  kid: string;
+  /** The raw 32-byte public key, base64url: a `TrustSet` value. */
+  raw: string;
+  privateKey: CryptoKey;
+}
+
+const b64url = (bytes: Uint8Array): string => {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+
+export async function newTestKey(kid: string): Promise<TestKey> {
+  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
+  return {
+    kid,
+    raw: b64url(
+      new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey)),
+    ),
+    privateKey: pair.privateKey,
+  };
+}
+
+export async function signCompact(
+  payload: unknown,
+  key: TestKey,
+  typ: "pkey-feed+jws" | "pkey-release+jws" | "pkey-config+jws",
+): Promise<string> {
+  const enc = new TextEncoder();
+  const input =
+    b64url(enc.encode(JSON.stringify({ alg: "EdDSA", typ, kid: key.kid }))) +
+    "." +
+    b64url(enc.encode(JSON.stringify(payload)));
+  const sig = await crypto.subtle.sign(
+    { name: "Ed25519" },
+    key.privateKey,
+    enc.encode(input),
+  );
+  return `${input}.${b64url(new Uint8Array(sig))}`;
 }

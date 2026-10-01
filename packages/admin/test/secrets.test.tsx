@@ -636,6 +636,60 @@ describe("Outlet credentials card (P5-01)", () => {
     expect(within(table).getByText("app-store")).toBeTruthy();
     expect(within(table).getByText("never")).toBeTruthy();
     expect(within(table).getByText("Error")).toBeTruthy();
+    // No pin on this App Store Connect key: its connector is off, and the row says so.
+    expect(within(table).getByText("Not pinned")).toBeTruthy();
+  });
+
+  it("shows the operator's pin apart from the key's metadata (P5-02f)", async () => {
+    mockApi.outletCredentials.mockResolvedValue({
+      ok: true,
+      kinds: [],
+      pins: {
+        "asc-api-key": {
+          field: "appleId",
+          label: "App Store Connect app id (Apple ID)",
+        },
+      },
+      credentials: [{ ...CRED, meta: { ...CRED.meta, appleId: "1234567890" } }],
+    });
+    renderSecrets();
+    const table = await screen.findByRole("table", {
+      name: "Outlet credentials",
+    });
+    expect(within(table).getByText("ABC123DEFG · issuer-1")).toBeTruthy();
+    expect(within(table).getByText("1234567890")).toBeTruthy();
+    expect(within(table).queryByText("Not pinned")).toBeNull();
+  });
+
+  it("re-pins a credential without its value (P5-02f)", async () => {
+    mockApi.outletCredentials.mockResolvedValue({
+      ok: true,
+      kinds: [],
+      credentials: [{ ...CRED, meta: { ...CRED.meta, appleId: "1234567890" } }],
+    });
+    mockApi.putOutletCredential.mockResolvedValue({
+      ok: true,
+      id: "asc-team-key",
+    });
+    renderSecrets();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Pin asc-team-key" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText(
+      "App Store Connect app id (Apple ID)",
+    ) as HTMLInputElement;
+    expect(input.value).toBe("1234567890");
+    await userEvent.clear(input);
+    await userEvent.type(input, "5555555555");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Pin" }));
+    await waitFor(() =>
+      expect(mockApi.putOutletCredential).toHaveBeenCalledWith(
+        "djdl",
+        "asc-team-key",
+        { kind: "asc-api-key", pin: "5555555555" },
+      ),
+    );
   });
 
   it("sets an App Store Connect key write-only and clears the form", async () => {
@@ -658,6 +712,20 @@ describe("Outlet credentials card (P5-01)", () => {
     await userEvent.type(within(form).getByLabelText("Key ID"), "ABC123DEFG");
     await userEvent.type(within(form).getByLabelText("Issuer ID"), "issuer-1");
     await userEvent.type(within(form).getByLabelText(".p8 private key"), "PEM");
+    // The pin is required with the key (P5-02f).
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Set credential" }),
+    );
+    expect(
+      within(form).getByText(
+        "App Store Connect app id (Apple ID) is required.",
+      ),
+    ).toBeTruthy();
+    expect(mockApi.putOutletCredential).not.toHaveBeenCalled();
+    await userEvent.type(
+      within(form).getByLabelText("App Store Connect app id (Apple ID)"),
+      "1234567890",
+    );
     await userEvent.click(
       within(form).getByRole("button", { name: "Set credential" }),
     );
@@ -668,6 +736,7 @@ describe("Outlet credentials card (P5-01)", () => {
         {
           kind: "asc-api-key",
           value: { keyId: "ABC123DEFG", issuerId: "issuer-1", p8: "PEM" },
+          pin: "1234567890",
           outletId: "app-store",
         },
       ),
@@ -680,7 +749,7 @@ describe("Outlet credentials card (P5-01)", () => {
     );
   });
 
-  it("sends a Google key as its JSON file", async () => {
+  it("sends a Google key as its JSON file, with its package-name pin", async () => {
     mockApi.putOutletCredential.mockResolvedValue({ ok: true, id: "play" });
     renderSecrets();
     const form = await screen.findByRole("form", {
@@ -689,6 +758,18 @@ describe("Outlet credentials card (P5-01)", () => {
     await userEvent.type(within(form).getByLabelText("Credential id"), "play");
     await pick("Kind", "Google service account");
     await userEvent.type(within(form).getByLabelText("JSON key file"), "{{}");
+    // The pin is required with the key (P5-03 adopts P5-02f's pin).
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Set credential" }),
+    );
+    expect(
+      within(form).getByText("Google Play package name is required."),
+    ).toBeTruthy();
+    expect(mockApi.putOutletCredential).not.toHaveBeenCalled();
+    await userEvent.type(
+      within(form).getByLabelText("Google Play package name"),
+      "gg.acme.djdl",
+    );
     await userEvent.click(
       within(form).getByRole("button", { name: "Set credential" }),
     );
@@ -696,6 +777,7 @@ describe("Outlet credentials card (P5-01)", () => {
       expect(mockApi.putOutletCredential).toHaveBeenCalledWith("djdl", "play", {
         kind: "google-service-account",
         value: "{}",
+        pin: "gg.acme.djdl",
         outletId: null,
       }),
     );

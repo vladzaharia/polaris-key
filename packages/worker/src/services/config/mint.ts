@@ -39,7 +39,7 @@ import {
 } from "../../core/edgeMintApproval.js";
 import { errorResponse } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
-import { signJws } from "@polaris-key/jws";
+import { signJws, StrictJsonError } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { signJwtEs256, signJwtRs256 } from "../../core/jwt.js";
 
@@ -279,8 +279,20 @@ export async function handleMintToken(
       minted = await signJwtRs256(claims, pem, kid);
       break;
     case "EdDSA":
-      // @polaris-key/jws emits a compact JWS with header {alg:"EdDSA", kid}.
-      minted = await signJws(claims, pem, kid ?? "");
+      // @polaris-key/jws emits a compact JWS with header {alg:"EdDSA", kid}. Its signer guard
+      // refuses claims a strict verifier would refuse (plans/P3-01.md §2.2); the manifest
+      // validator refuses such a claims template at sync, so only a template stored before it
+      // reaches here, and it answers in this route's flat body, never as a throw.
+      try {
+        minted = await signJws(claims, pem, kid ?? "");
+      } catch (e) {
+        if (!(e instanceof StrictJsonError)) throw e;
+        return errorResponse(
+          500,
+          "document_not_representable",
+          "the mint's claims break the wire contract's strict JSON rules",
+        );
+      }
       break;
     default:
       return errorResponse(500, "misconfigured", `unsupported alg ${cfg.alg}`);

@@ -362,6 +362,38 @@ publishing:
 
 The flow CI follows is on [Artifacts](/docs/services/release/artifacts/#trusted-publishing).
 
+## Release keys: `releaseKeys`
+
+A release record (`pkey-release+jws`) is what CI signs to say a release exists: its version,
+`seq` and builds, with each payload's SHA-256 and size. The Worker never holds a release key, so
+it can point devices at a release but cannot invent one. Declare the public halves in
+`.pkey/release` (P3-03):
+
+```yaml
+releaseKeys:
+  - kid: ci-2026 # the JWS kid CI signs under
+    publicKey: 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo # raw Ed25519, base64url
+```
+
+- `pkey release keys generate --kid ci-2026 --out release-key.pem` prints the entry to paste here
+  and writes the private key for a GitHub Environment secret (`PKEY_RELEASE_KEY`). The private
+  key never goes in the repository.
+- 1 to 4 entries; `kid` matches `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` and `publicKey` is the raw
+  32-byte key in unpadded base64url, 43 characters (`invalid_release_key`). Two keys at once is
+  a rotation: add the new one, publish with it, then remove the old one.
+- A non-canonical or small-order key is refused (`weak_release_key`), and so is a repeated
+  `kid` or key (`duplicate_release_key`) and a key equal to `sparkleEd25519Pub`
+  (`release_key_reused`: one key must never sign both archive bytes and JWS inputs).
+- The sync refuses a release key equal to any of the product's signing keys, current or
+  retired (`release_key_is_product_key`), and keeps the previous `releaseKeys`.
+- Apps pin the same keys in their binaries; a record verifies only against pinned release
+  keys, never against the product's trust set.
+- `contentKeys` is reserved for content-key delegation and ignored with a warning
+  (`content_keys_not_supported`).
+
+Without `releaseKeys` a publish carries no record and the signed update feed offers none of that
+product's releases.
+
 ## Registering + re-syncing a product
 
 There are three ways the catalog reaches D1. Repo-link is the normal product setup path;

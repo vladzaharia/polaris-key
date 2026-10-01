@@ -25,6 +25,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { describe, expect, it } from "vitest";
 import type { Env } from "../src/core/platform.js";
 import {
+  ed25519SignaturePrecheck,
   streamingEd25519Check,
   streamingEd25519Verify,
 } from "../src/services/release/ed25519Stream.js";
@@ -44,6 +45,16 @@ const MiB = 1024 * 1024;
 const hex = (s: string): Uint8Array =>
   new Uint8Array((s.match(/../g) ?? []).map((b) => parseInt(b, 16)));
 const b64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
+
+/** One chunk, served as a stream. */
+function streamOf(bytes: Uint8Array): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(bytes);
+      controller.close();
+    },
+  });
+}
 
 /** A tiny deterministic PRNG (xorshift32), so a failing random case is reproducible. */
 function prng(seed: number): () => number {
@@ -419,6 +430,25 @@ describe("streamingEd25519Verify agrees with WebCrypto", () => {
     ).toBe(false);
   });
 
+  it("refuses a small-order R (WIRE-CONTRACT-V4 §1.1 check 3), and the precheck agrees", async () => {
+    const { pub, sign } = await freshKeypair();
+    const msg = new TextEncoder().encode("small-order R");
+    const sig = await sign(msg);
+    expect(ed25519SignaturePrecheck(pub, sig)).toBe(true);
+    for (const enc of [
+      Point.ZERO.toBytes(),
+      hex("ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"),
+      hex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"),
+    ]) {
+      const bad = sig.slice();
+      bad.set(enc, 0);
+      expect(ed25519SignaturePrecheck(pub, bad)).toBe(false);
+      expect(await streamingEd25519Check(pub, bad, streamOf(msg), 1024)).toBe(
+        "invalid",
+      );
+    }
+  });
+
   it("treats a body that errors mid-stream as false, not a throw", async () => {
     const { pub, sign } = await freshKeypair();
     const sig = await sign(new Uint8Array(8));
@@ -744,6 +774,115 @@ describe("verifySparkleSignature (streaming path)", () => {
       }),
     );
     expect(again).toBe(false);
+  });
+
+  // ── P3-03 (P0-10 follow-ups) ──────────────────────────────────────────────────────────
+
+  it("a body shorter or longer than the listed asset size is incomplete and writes no memo", async () => {
+    const { env, kv, publicKey, signature } = await setup(MiB);
+    for (const served of [MiB - 1, MiB + 1]) {
+      expect(
+        await verifySparkleSignature(env, "djdl", {
+          ...input(
+            publicKey,
+            signature,
+            serving(newStats(), served, String(served)),
+          ),
+          expectedSize: MiB,
+        }),
+      ).toBe(false);
+      expect(kv.keys()).toEqual([]);
+    }
+    // The listed length verifies (and only then is a verdict memoised).
+    expect(
+      await verifySparkleSignature(env, "djdl", {
+        ...input(publicKey, signature, serving(newStats(), MiB, String(MiB))),
+        expectedSize: MiB,
+      }),
+    ).toBe(true);
+    expect(kv.keys()).toHaveLength(1);
+  });
+
+  it("a malformed key or signature opens no download", async () => {
+    const { env, kv, publicKey, signature } = await setup(MiB);
+    const sig = Uint8Array.from(atob(signature), (c) => c.charCodeAt(0));
+    const sPlusL = sig.slice();
+    let s = 0n;
+    for (let i = 63; i >= 32; i--) s = (s << 8n) | BigInt(sig[i]!);
+    s += L;
+    for (let i = 32; i < 64; i++) {
+      sPlusL[i] = Number(s & 0xffn);
+      s >>= 8n;
+    }
+    const smallOrderR = sig.slice();
+    smallOrderR.set(Point.ZERO.toBytes(), 0); // the identity: order 1
+    const cases: [string, string][] = [
+      [publicKey, b64(sPlusL)], // S >= L
+      [publicKey, b64(smallOrderR)], // small-order R
+      [b64(Point.ZERO.toBytes()), signature], // small-order key
+      [b64(new Uint8Array(32).fill(0xff)), signature], // non-canonical key
+    ];
+    for (const [key, sg] of cases) {
+      expect(
+        await verifySparkleSignature(
+          env,
+          "djdl",
+          input(key, sg, async () => {
+            throw new Error("must not fetch");
+          }),
+        ),
+      ).toBe(false);
+    }
+    expect(kv.keys()).toEqual([]);
+  });
+
+  it("a failing KV put does not turn a completed verification into an error", async () => {
+    const { publicKey, signature } = await setup(MiB);
+    const env = {
+      HOT: {
+        get: async () => null,
+        put: () => {
+          throw new Error("KV is down");
+        },
+      },
+    } as unknown as Env;
+    await expect(
+      verifySparkleSignature(
+        env,
+        "djdl",
+        input(publicKey, signature, serving(newStats(), MiB, String(MiB))),
+      ),
+    ).resolves.toBe(true);
+    const rejecting = {
+      HOT: {
+        get: async () => null,
+        put: async () => Promise.reject(new Error("KV is down")),
+      },
+    } as unknown as Env;
+    await expect(
+      verifySparkleSignature(
+        rejecting,
+        "djdl",
+        input(
+          publicKey,
+          signature,
+          serving(newStats(), MiB - 1, String(MiB - 1)),
+        ),
+      ),
+    ).resolves.toBe(false);
+  });
+
+  it("finishes the stream and the memo under waitUntil, so an aborted request still memoises", async () => {
+    const { env, kv, publicKey, signature } = await setup(MiB);
+    const pending: Promise<unknown>[] = [];
+    const ok = await verifySparkleSignature(env, "djdl", {
+      ...input(publicKey, signature, serving(newStats(), MiB, String(MiB))),
+      waitUntil: (p) => pending.push(p),
+    });
+    expect(ok).toBe(true);
+    expect(pending).toHaveLength(1);
+    await Promise.all(pending);
+    expect(kv.keys()).toHaveLength(1);
   });
 
   it("does not memoise a verification that broke off mid-stream", async () => {

@@ -1,7 +1,7 @@
 extends RefCounted
 # @pkey-feature core.discover core.sync core.cache config.schema config.mint devices.register devices.report
-# @pkey-feature license.activate license.enroll license.deactivate license.reregister
-# @pkey-feature release.changelog release.download
+# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode
+# @pkey-feature release.changelog release.download update.feed release.record update.decide
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -16,6 +16,18 @@ extends RefCounted
 # route rule, P1-03), and so is the post-sync report (PolarisKey.devices, P1-05); the recording
 # checks every header and body shape they send, and that the report's keys are on the Worker's
 # allowlist.
+#
+# `updateDecide` (plans/P3-01.md §5, §6) runs PolarisKey.update.decide(args.channel, args.staged,
+# args.skipVersion) with `initial.update` as the build's configuration: `pinnedReleaseKeys` as
+# PKeyOptions.pinned_release_keys, the host `outlet` as update_outlet (a kind, or {id, kind,
+# subkind}), `methods` as update_methods, `installed.format` as update_format, and `platform`,
+# `arch` and the rest of `installed` as a build stamp written for the run; `cache: {feeds,
+# releaseRecords}` seeds the store's record, and carries from step to step as the SDK writes it.
+# The endpoints come from the last discovery the transcript ran, else the Worker's standard
+# templates. Its `expect` keys are the five UpdateCheck members (PKeyUpdateCheck.to_dictionary),
+# or `result: "error"` and `code`. P3-03's `update-feed-rollback` and `update-record-by-hash`
+# replay through it; the synthetic transcripts at the end of this file (corpus-signed: the SDK has
+# no signer) add an alias request and prove the mapping fails on a doctored recording.
 
 const FLOOR := 4
 
@@ -39,6 +51,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 		replayed += 1
 	t.check("replay coverage", replayed >= FLOOR, "%d replayed, floor %d" % [replayed, FLOOR])
 	await _negative(t)
+	await _synthetic_update(t)
 	return true
 
 
@@ -64,6 +77,8 @@ static func replay(tr: Dictionary) -> Array:
 	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, tr["product"], tr["trust"], tr["initial"]["version"])
 	if tr["initial"].get("services") is Array:
 		opts.expected_services = PackedStringArray(tr["initial"]["services"])
+	if tr["initial"].get("update") is Dictionary:
+		_configure_update(opts, store, tr["initial"]["update"])
 	var sdk := PKeyTestFixtures.new_sdk()
 	var fails: Array = []
 	var cr: PKeyResult = sdk.configure(opts)
@@ -74,6 +89,9 @@ static func replay(tr: Dictionary) -> Array:
 		for i in tr["steps"].size():
 			var step: Dictionary = engine.begin_step(i)
 			clock[0] = step.get("now", tr["now"])
+			if step["action"] == "updateDecide" and sdk.core.discovery_manifest == null:
+				# The transcript ran no discovery: the Worker's standard templates, as React's replayer.
+				sdk.core.discovery_manifest = _standard_discovery(server.base_url(), tr["product"])
 			var observed := await _act(sdk, store, step)
 			# A built URL names the loopback server; the recording names the transcript's base.
 			if observed.get("url") is String and String(observed["url"]).begins_with(server.base_url() + "/"):
@@ -126,6 +144,29 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
 		"report":
 			out["result"] = await sdk.devices.report()
+		"beginSignIn":
+			var prompt: PKeySignInPrompt = await sdk.identity.request_sign_in(String(step["args"].get("deviceName", "")))
+			sdk.set_meta("pkey_prompt", prompt)
+			if prompt.ok:
+				out["prompt"] = {
+					"userCode": prompt.user_code,
+					"verificationUri": prompt.verification_uri,
+					"verificationUriComplete": prompt.verification_uri_complete,
+					"expiresIn": prompt.expires_in,
+					"interval": prompt.interval,
+				}
+			else:
+				out["result"] = String(prompt.code)
+		"pollSignIn":
+			var p: Dictionary = await sdk.identity.poll_sign_in(sdk.get_meta("pkey_prompt"))
+			out["result"] = _sign_in_status(p["status"])
+			if p.has("interval"):
+				out["interval"] = p["interval"]
+		"waitForSignIn":
+			# Any wait between polls would be a real timer; the recorded wait starts past expiry.
+			sdk.identity.sleeper = func(_s: float) -> void: pass
+			var r: PKeySignInResult = await sdk.identity.wait_for_sign_in(sdk.get_meta("pkey_prompt"))
+			out["result"] = "ready" if r.ok else _sign_in_status(String(r.kind))
 		"changelog":
 			var r: PKeyChangelogResult = await sdk.release.changelog()
 			out["result"] = "ok" if r.ok else "error"
@@ -138,6 +179,14 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 		"downloadUrl":
 			var a: Dictionary = step["args"]
 			out["url"] = sdk.release.download_url(String(a["version"]), String(a["binary"]), String(a["arch"]), PKeyClaims.is_true(a.get("checksum")), PKeyClaims.is_true(a.get("dmg")))
+		"updateDecide":
+			var a: Dictionary = step["args"]
+			var r: PKeyUpdateCheck = await sdk.update.decide(String(a.get("channel", "")), a.get("staged"), a.get("skipVersion"))
+			out["result"] = "ok" if r.ok else "error"
+			if r.ok:
+				out.merge(r.to_dictionary(), true)
+			else:
+				out["code"] = String(r.code)
 		_:
 			out["unsupported"] = step["action"]
 	var services := {}
@@ -148,6 +197,71 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 	out["licenseStatus"] = sdk.status()["status"]
 	out["tokenHeld"] = store.token != ""
 	return out
+
+
+## `initial.update` onto the options, a build stamp written for the run and the store's record.
+static func _configure_update(opts: PKeyOptions, store: PKeyMemoryStore, u: Dictionary) -> void:
+	opts.pinned_release_keys = u.get("pinnedReleaseKeys", {})
+	var outlet = u.get("outlet")
+	if outlet is String:
+		opts.update_outlet = outlet
+	elif outlet is Dictionary:
+		opts.update_outlet = String(outlet.get("kind", ""))
+		opts.update_outlet_id = String(outlet.get("id", "")) if outlet.get("id") is String else ""
+		opts.update_outlet_subkind = String(outlet.get("subkind")) if outlet.get("subkind") is String else ""
+	if u.get("methods") is Array:
+		opts.update_methods = PackedStringArray(u["methods"])
+	var installed: Dictionary = u.get("installed", {})
+	if installed.get("format") is String:
+		opts.update_format = installed["format"]
+	var build = installed.get("buildNumber")
+	var stamp := {
+		"pkeyBuild": 1,
+		"product": "",
+		"version": String(installed.get("version", "")),
+		"build": int(build) if build is String and (build as String).is_valid_int() else 0,
+		"outlet": "",
+		"channel": "",
+		"engine": String(installed["engine"]) if installed.get("engine") is String else "",
+		"platform": String(u.get("platform", "")),
+		"arch": String(u.get("arch", "")),
+	}
+	var path := "%s/stamp.json" % PKeyTestFixtures.scratch_dir("transcript-stamp")
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(stamp))
+		f.close()
+	opts.build_stamp_path = path
+	var cache = u.get("cache")
+	if cache is Dictionary and (cache.get("feeds") is Dictionary or cache.get("releaseRecords") is Dictionary):
+		var rec := {"v": PKeyCache.VERSION}
+		for slice in PKeyCache.UPDATE_SLICES:
+			if cache.get(slice) is Dictionary and not (cache[slice] as Dictionary).is_empty():
+				rec[slice] = (cache[slice] as Dictionary).duplicate()
+		store.cache = rec
+
+
+## The discovery document's two update endpoints at the Worker's standard templates.
+static func _standard_discovery(base: String, product: String) -> Dictionary:
+	var root := "%s/%s" % [base, product]
+	return {
+		"product": product,
+		"services": {
+			"update": {"enabled": true, "endpoints": {"feed": root + "/update/{channel}/feed.jws"}},
+			"release": {"enabled": true, "endpoints": {"record": root + "/release/records/{sha256}"}},
+		},
+	}
+
+
+## The transcripts' sign-in vocabulary (sdk-node `SignInPoll`): the server's `timeout` and the
+## client's expiry are both `expired`, and its `error` state is `error`.
+static func _sign_in_status(status: String) -> String:
+	match status:
+		"timeout", "expired":
+			return "expired"
+		"denied":
+			return "error"
+	return status
 
 
 # ── The replayer fails on a doctored transcript (it is not vacuous) ──────────────────────
@@ -180,10 +294,25 @@ func _negative(t: PKeyTestContext) -> void:
 	t.check("negative: a different outcome fails", _mentions(f, "step 1 (sync): documents"), "\n  ".join(f))
 
 
-## JSON equality without GDScript's cross-type `==` errors (a String compared with a bool).
+## JSON equality without GDScript's cross-type `==` errors (a String compared with a bool), and
+## with every number compared as a number at any depth (JSON parses 600 as 600.0).
 static func _same(a: Variant, b: Variant) -> bool:
 	if PKeyClaims.is_number(a) and PKeyClaims.is_number(b):
 		return float(a) == float(b)
+	if a is Dictionary and b is Dictionary:
+		if a.size() != b.size():
+			return false
+		for k in a:
+			if not b.has(k) or not _same(a[k], b[k]):
+				return false
+		return true
+	if a is Array and b is Array:
+		if a.size() != b.size():
+			return false
+		for i in a.size():
+			if not _same(a[i], b[i]):
+				return false
+		return true
 	return typeof(a) == typeof(b) and a == b
 
 
@@ -192,3 +321,110 @@ static func _mentions(fails: Array, needle: String) -> bool:
 		if String(line).contains(needle):
 			return true
 	return false
+
+
+# ── updateDecide over synthetic transcripts (beside P3-03's two) ───────────────────────────
+
+## The shape of P3-03's update transcripts (`initial.update`, `action: "updateDecide"`,
+## `args.channel`, `expect: {channel, feed, record, errors, decision}`), built from the corpus's
+## signed control feed (requested as `latest`, claiming `stable`) and the record it pins.
+func _synthetic_update(t: PKeyTestContext) -> void:
+	var corpus = PKeyTestFixtures.read_json(PKeyTestFixtures.CASES)
+	var feed = null
+	var record = null
+	if corpus is Dictionary:
+		for c in corpus["feedCases"]:
+			if c["id"] == "feed-valid-alias-channel":
+				feed = c
+		for c in corpus["releaseRecordCases"]:
+			if c["id"] == "record-valid-app":
+				record = c
+	if not t.check("synthetic updateDecide: the corpus feed and record are present", feed != null and record != null):
+		return
+	var hash: String = record["expectedHash"]
+	var get_ := func(path: String, body: String) -> Dictionary:
+		return {
+			"request": {"method": "GET", "path": path, "headers": {"X-PKey-Device": "{deviceId}"}, "requiredHeaders": ["accept"], "body": null},
+			"response": {"status": 200, "headers": {"Content-Type": "application/jose"}, "body": body},
+		}
+	var decision := {
+		"action": "binary", "method": "download", "release": {"version": "1.5.0", "seq": 15, "sha256": hash},
+		"build": "macos-dmg", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false,
+	}
+	var tr := {
+		"transcriptVersion": 1,
+		"id": "synthetic-update-decide",
+		"description": "updateDecide over a feed and its pinned record, then the cached record",
+		"features": ["update.feed", "release.record", "update.decide"],
+		"requires": ["core.store"],
+		"product": "djdl",
+		"baseUrl": "https://key.plrs.im",
+		"now": feed["now"],
+		"trust": feed["trust"],
+		"initial": {
+			"deviceId": "dev_7c1e2d",
+			"version": "1.4.0",
+			"update": {
+				"pinnedReleaseKeys": record["releaseKeys"],
+				"outlet": "direct",
+				"platform": "macos",
+				"arch": "arm64",
+				"installed": {"version": "1.4.0"},
+				"methods": ["download"],
+				"cache": {"feeds": {}, "releaseRecords": {}},
+			},
+		},
+		"steps": [
+			{
+				"action": "updateDecide",
+				"args": {"channel": "latest"},
+				"exchanges": {"ordered": false, "items": [
+					get_.call("/djdl/update/latest/feed.jws?platform=macos", feed["jws"]),
+					get_.call("/djdl/release/records/" + hash, record["jws"]),
+				]},
+				"expect": {"result": "ok", "channel": "stable", "feed": "network", "record": "network", "errors": [], "decision": decision},
+			},
+			{
+				"action": "updateDecide",
+				"args": {"channel": "stable"},
+				"exchanges": {"ordered": false, "items": [get_.call("/djdl/update/stable/feed.jws?platform=macos", feed["jws"])]},
+				"expect": {"result": "ok", "channel": "stable", "feed": "network", "record": "cache", "errors": []},
+			},
+		],
+	}
+	var fails := await replay(tr)
+	t.check("synthetic updateDecide: both steps replay (the record fetched once, then read from the carried cache)", fails.is_empty(), "\n  ".join(fails))
+
+	var doctored: Dictionary = tr.duplicate(true)
+	doctored["steps"][0]["exchanges"]["items"].pop_back()
+	fails = await replay(doctored)
+	t.check("synthetic updateDecide: a record request missing from the recording fails", _mentions(fails, "unexpected request: GET /djdl/release/records/"), "\n  ".join(fails))
+
+	var wrong: Dictionary = tr.duplicate(true)
+	wrong["steps"][0]["expect"]["channel"] = "latest"
+	fails = await replay(wrong)
+	t.check("synthetic updateDecide: a different channel fails", _mentions(fails, "step 0 (updateDecide): channel"), "\n  ".join(fails))
+
+	# The rollback shape of P3-03's update-feed-rollback: a committed higher seq for `stable`, a
+	# request for `latest`, the Worker answering a lower seq that claims `stable`.
+	var high = null
+	for c in corpus["feedCases"]:
+		if c["id"] == "feed-valid-seq-at-max":
+			high = c
+	if t.check("synthetic updateDecide: the seq-ceiling feed is present", high != null):
+		var rb: Dictionary = tr.duplicate(true)
+		rb["id"] = "synthetic-update-rollback"
+		rb["initial"]["update"]["cache"] = {"feeds": {"stable": high["jws"]}, "releaseRecords": {}}
+		rb["steps"] = [{
+			"action": "updateDecide",
+			"args": {"channel": "latest"},
+			"exchanges": {"ordered": false, "items": [
+				get_.call("/djdl/update/latest/feed.jws?platform=macos", feed["jws"]),
+				{"request": {"method": "GET", "path": "/djdl/release/records/aaa51d6e196aa0893c266a611272520bee33c7a78636b66ef4dbba8a2ecfcbb6", "headers": {}, "requiredHeaders": [], "body": null},
+					"response": {"status": 404, "headers": {"Content-Type": "application/json"}, "body": {"error": {"code": "not_found"}}}},
+			]},
+			"expect": {"result": "ok", "channel": "stable", "feed": "committed", "record": "none",
+				"errors": [{"code": "feed-rollback", "detail": null}, {"code": "not_found", "detail": null}]},
+		}]
+		fails = await replay(rb)
+		t.check("synthetic updateDecide: a lower seq for the canonical channel is a rollback, decided from the committed feed", fails.is_empty(), "\n  ".join(fails))

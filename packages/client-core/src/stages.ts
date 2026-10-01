@@ -84,6 +84,18 @@ export const BOOT_GUARD_ACTIONS = [
 /** Unconfirmed launches of the active slot that trigger a rollback on the next launch. */
 export const MAX_FAILED_BOOTS = 2;
 
+/** What `decide.done` carries. `required` is P1-09's; no v4 update decision maps to it
+ *  (plans/P3-01.md §2.8, decision 1). */
+export const BOOT_DECISIONS = ["none", "optional", "required"] as const;
+
+/** How long the outcome must stay `ready`, with the process alive, before the launch counts
+ *  as confirmed (plans/P3-01.md §2.10; `stage-matrix.json#/bootOkSeconds`). */
+export const BOOT_OK_SECONDS = 10;
+
+/** When a launch is confirmed, by outcome: at once, after `BOOT_OK_SECONDS` of `ready`, or
+ *  never (`running` and `error` never confirm). */
+export const BOOT_CONFIRMATIONS = ["now", "after-ok-seconds", "never"] as const;
+
 export type BootStage = (typeof BOOT_STAGES)[number];
 export type BootOutcome = (typeof BOOT_OUTCOMES)[number];
 export type BootEventType = (typeof BOOT_EVENT_TYPES)[number];
@@ -92,7 +104,8 @@ export type BootGuardAction = (typeof BOOT_GUARD_ACTIONS)[number];
 
 export type BootGuardResult = "ok" | "applied" | "rolled-back";
 export type BootSyncResult = "ok" | "offline" | "error";
-export type BootDecision = "none" | "optional" | "required";
+export type BootDecision = (typeof BOOT_DECISIONS)[number];
+export type BootConfirmation = (typeof BOOT_CONFIRMATIONS)[number];
 export type BootFetchResult = "ok" | "offline" | "failed";
 export type BootBlockedReason = "update-required" | "not-available";
 
@@ -413,5 +426,25 @@ export function bootTransition(
     // `play-offline` is accepted nowhere in v1: `canPlayOffline` is never true.
     default:
       return ignore(state);
+  }
+}
+
+/**
+ * Stage matrix v2 (plans/P3-01.md §2.10): when the launch that reached `outcome` counts as
+ * confirmed, which resets `failedBoots` to 0. `waiting`, `blocked` and `offline` confirm at
+ * once (the app is running and waiting for the player, so a quit there can never roll back a
+ * good update); `ready` confirms after `BOOT_OK_SECONDS` with the process alive, or earlier
+ * through the game's `confirmBoot()` (host-side); `running` and `error` never confirm.
+ */
+export function bootConfirmation(outcome: BootOutcome): BootConfirmation {
+  switch (outcome) {
+    case "waiting":
+    case "blocked":
+    case "offline":
+      return "now";
+    case "ready":
+      return "after-ok-seconds";
+    default:
+      return "never";
   }
 }

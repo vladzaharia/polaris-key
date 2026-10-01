@@ -1,9 +1,9 @@
 class_name PKeyClaims
 extends RefCounted
-## Wire constants (WIRE-CONTRACT-V3 §1–§3; client-core `claims.ts`, shared-protocol `core.ts`).
+## Wire constants (WIRE-CONTRACT-V4 §1–§3; client-core `claims.ts`, shared-protocol `core.ts`).
 ## Normative: identical in every implementation.
 
-const PROTOCOL_VERSION := 3
+const PROTOCOL_VERSION := 4
 ## The fixed issuer (Amendment A1) — never derived from a base URL.
 const ISSUER := "key.plrs.im"
 ## Tolerance on every clock comparison, in seconds.
@@ -19,6 +19,55 @@ const TYP_LICENSE := "pkey-license+jws"
 const TYP_CONFIG := "pkey-config+jws"
 const TYP_TRUST := "pkey-trust+jws"
 const TYP_BUNDLE := "pkey-bundle+jws"
+## Wire contract v4 §2.3: the channel feed, signed by the product key.
+const TYP_FEED := "pkey-feed+jws"
+## Wire contract v4 §2.4: the release record, signed by a CI-held release key.
+const TYP_RELEASE := "pkey-release+jws"
+
+## Wire contract v4 §3: the largest integer claim, 2^53 − 1.
+const MAX_WIRE_INTEGER := 9007199254740991
+
+
+## WIRE-CONTRACT-V4 §3: an integer claim. Its pointer is not in the verified payload's
+## `non_wire_integers` (null for an object the caller built; so its token had no fraction or exponent part and at most 2^53 − 1 in
+## its digits), and its value is a finite whole number from `minimum` to 2^53 − 1. The minimum
+## is the claim's own: 0 for every timestamp, 1 for `schemaVersion` and every `seq`. Godot's
+## parser is not correctly rounded, so the token rule, not the float, is what decides.
+static func is_wire_integer(v: Variant, pointer: String, minimum: int, non_wire_integers: PKeyJson.PointerSet) -> bool:
+	if non_wire_integers != null and non_wire_integers.has(pointer):
+		return false
+	if not (v is float or v is int):
+		return false
+	var f := float(v)
+	if not is_finite(f) or f != floorf(f):
+		return false
+	return f >= float(minimum) and f <= float(MAX_WIRE_INTEGER)
+
+
+## WIRE-CONTRACT-V4 §3: true when `pattern` matches the WHOLE of `value`, with nothing after
+## the match (a line terminator included). The pattern is wrapped in `\A(?:…)\z`; every class
+## in it must be ASCII. Python (`_full_match`) and Swift (`wholeMatches`) apply the same rule.
+static func matches_whole(pattern: String, value: Variant) -> bool:
+	return matches_whole_re(whole(pattern), value)
+
+
+## `pattern` compiled for `matches_whole_re`: wrapped in `\A(?:…)\z`. A caller that matches one
+## pattern often compiles it once (a static var) and keeps every match on the same helper. A JS
+## pattern written `^…$` (the generated CHANNEL_NAME_PATTERN) loses those anchors first: PCRE's
+## `$` also matches before a trailing newline.
+static func whole(pattern: String) -> RegEx:
+	var p := pattern
+	if p.begins_with("^") and p.ends_with("$") and not p.ends_with("\\$"):
+		p = p.substr(1, p.length() - 2)
+	return RegEx.create_from_string("\\A(?:" + p + ")\\z")
+
+
+## `matches_whole` over a pattern `whole` compiled: true when `re` matches ALL of `value`.
+static func matches_whole_re(re: RegEx, value: Variant) -> bool:
+	if not (value is String) or re == null or not re.is_valid():
+		return false
+	var m := re.search(value)
+	return m != null and m.get_start() == 0 and m.get_end() == (value as String).length()
 
 
 ## A JSON number. Godot's JSON makes every number a float; values this SDK built may be ints.

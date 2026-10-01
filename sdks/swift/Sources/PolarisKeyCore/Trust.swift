@@ -74,8 +74,15 @@ public func verifyTrustManifest(
     // Signed by a PINNED key, and typed `pkey-trust+jws` — a license document replayed here is
     // refused on `typ`, not incidentally on a decode error (R2-10).
     guard
-        let doc = JWSVerifier.verifyDecoding(
-            TrustManifestDoc.self, jws, trust: options.pinned, typ: .trust, requireTyp: true)
+        let verified = JWSVerifier.verify(
+            jws, trust: options.pinned, typ: .trust, requireTyp: true),
+        let doc = try? JSONDecoder().decode(TrustManifestDoc.self, from: verified.payload)
+    else { return rejected }
+    // V4 §3: integer claims decided from their tokens (`1.0` and `true` are refused).
+    let nonWire = verified.nonWireIntegers
+    guard wireInteger(doc.schemaVersion, pointer: "/schemaVersion", min: 1, in: nonWire),
+        wireInteger(doc.issuedAt, pointer: "/issuedAt", min: 0, in: nonWire),
+        wireInteger(doc.expiresAt, pointer: "/expiresAt", min: 0, in: nonWire)
     else { return rejected }
 
     let now = options.now ?? Int(Date().timeIntervalSince1970)

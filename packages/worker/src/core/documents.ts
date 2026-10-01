@@ -51,6 +51,15 @@ import {
   resolveMergedPayload,
 } from "./payload.js";
 
+/**
+ * `graceUntil` with integer arithmetic (plans/P3-01.md §2.2): a fractional day count stored
+ * before the admin paths refused one moves `graceUntil` by under a second instead of making
+ * it a fraction, which `signDoc`'s integer guard would refuse.
+ */
+function graceUntil(now: number, maxOfflineDays: number): number {
+  return now + Math.floor(maxOfflineDays * SECONDS_PER_DAY);
+}
+
 // ── license document (§2.1) ───────────────────────────────────────────────────
 
 export interface BuildLicenseDocInput {
@@ -75,7 +84,7 @@ export function buildLicenseDoc(input: BuildLicenseDocInput): LicenseDoc {
     deviceId: input.deviceId,
     issuedAt: input.now,
     expiresAt: input.now + DOC_EXPIRY_SECONDS,
-    graceUntil: input.now + input.maxOfflineDays * SECONDS_PER_DAY,
+    graceUntil: graceUntil(input.now, input.maxOfflineDays),
     licenseId: input.licenseId,
     profile: input.profile,
     entitlements: input.entitlements,
@@ -143,7 +152,7 @@ export function buildConfigDoc(input: BuildConfigDocInput): ConfigDoc {
     deviceId: input.deviceId,
     issuedAt: input.now,
     expiresAt: input.now + DOC_EXPIRY_SECONDS,
-    graceUntil: input.now + input.maxOfflineDays * SECONDS_PER_DAY,
+    graceUntil: graceUntil(input.now, input.maxOfflineDays),
     schemaVersion: input.schemaVersion,
     config: input.payload.config,
     secrets: input.payload.secrets,

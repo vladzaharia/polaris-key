@@ -129,15 +129,20 @@ run new code (`codeUpdates`, `downloadedScripts`) or sell things itself (`commer
 **operator-owned**: they default per outlet kind, an operator may only **narrow** them, and the
 manifest cannot express them at all (`capabilities_not_manifest_writable`).
 
-| Kinds                                                                                                        | binaryUpdates | codeUpdates | dataUpdates | channelSwitch | commerce    | downloadedScripts |
-| ------------------------------------------------------------------------------------------------------------ | ------------- | ----------- | ----------- | ------------- | ----------- | ----------------- |
-| `direct`, `web`                                                                                              | `self`        | true        | true        | true          | `own`       | true              |
-| `app-store`, `testflight`, `play`, `play-testing`, `ms-store`                                                | `store`       | false       | true        | false         | `store-iap` | false             |
-| `steam`                                                                                                      | `store`       | false       | true        | false         | `steam`     | false             |
-| `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo`, `app-installer`, `itch`, `flathub`, `snap`, `winget` | `store`       | false       | true        | false         | `own`       | false             |
+| Kinds                                                         | binaryUpdates | codeUpdates | dataUpdates | channelSwitch | commerce    | downloadedScripts |
+| ------------------------------------------------------------- | ------------- | ----------- | ----------- | ------------- | ----------- | ----------------- |
+| `direct`                                                      | `self`        | true        | true        | true          | `own`       | true              |
+| `app-store`, `testflight`, `play`, `play-testing`, `ms-store` | `store`       | false       | true        | false         | `store-iap` | false             |
+| `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo`        | `store`       | false       | true        | false         | `own`       | false             |
+| `app-installer`, `winget`, `itch`, `flathub`, `snap`          | `none`        | false       | true        | false         | `own`       | false             |
+| `steam`                                                       | `none`        | false       | true        | false         | `steam`     | false             |
+| `web`                                                         | `none`        | false       | true        | false         | `own`       | true              |
 
-The table is the proposed default; once the outlet matrix of the update-manifest design is
-approved it becomes the source of truth and this table follows it.
+The table is wire contract v4's (`OUTLET_CAPABILITY_DEFAULTS` in
+`@polaris-key/protocol/distribution`, pinned by the corpus's `outlet-matrix.json`); the Worker
+imports it, so its defaults and every SDK's are the same table. A client narrows it further per
+platform (an iOS `direct` install opens its page rather than updating itself), and the signed
+feed can narrow it again; nothing widens it.
 
 **Narrowing** means `binaryUpdates` moves right along `self` > `store` > `none`, a boolean goes
 from true to false, and `commerce` becomes `none`. Anything else is refused. The narrowing is
@@ -171,8 +176,8 @@ tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, 
 non-secret version of the credential, so the cache is checked first and a credential is opened
 only when a fresh token is needed. Operators set them on the Secrets tab — see
 [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). The first connector is
-the [App Store Connect connector](/docs/services/distribution/app-store-connect/); Play and the
-Microsoft Store follow.
+the [App Store Connect connector](/docs/services/distribution/app-store-connect/), then the
+[Google Play connector](/docs/services/distribution/google-play/); the Microsoft Store follows.
 
 ## Vocabulary
 

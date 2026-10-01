@@ -37,6 +37,11 @@ import {
   type ReleasePlatform,
   type ValidationMessage,
 } from "./index.js";
+import {
+  BUILD_ID_PATTERN,
+  type ReleaseRecordBuild,
+  type ReleaseRecordDoc,
+} from "@polaris-key/protocol/release";
 
 /** The one descriptor version this code reads. */
 export const DESCRIPTOR_VERSION = 1;
@@ -159,6 +164,74 @@ export function canonicalDescriptorJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
+// ── From the descriptor to the release record (P3-03, WIRE-CONTRACT-V4 §2.4) ─
+
+/** What the record carries that the descriptor does not: the release's `seq` (from the upload
+ *  answer), the signing time, and the optional `--min-supported-seq`. */
+export interface RecordFields {
+  seq: number;
+  issuedAt: number;
+  minSupportedSeq?: number;
+}
+
+/**
+ * The `pkey-release+jws` payload a descriptor MOVES into (plans/P3-01.md §2.4): `product` becomes
+ * `aud`, `descriptorVersion` becomes `schemaVersion: 1`, `publishedAt` and every artifact's
+ * `locations` are dropped (locations change after signing), and everything else moves unchanged.
+ * An optional field the descriptor omits stays absent, and a store-only build keeps
+ * `artifacts: []`. The CLI signs exactly this object (`pkey release publish`), and the Worker's
+ * ingest refuses a record that is not this object for the descriptor it arrived with
+ * (`release_record_rejected`, reason `descriptor-mismatch`).
+ */
+export function descriptorToRecord(
+  d: ReleaseDescriptor,
+  fields: RecordFields,
+): ReleaseRecordDoc {
+  const record: ReleaseRecordDoc = {
+    schemaVersion: 1,
+    aud: d.product,
+    deliverable: d.deliverable,
+    kind: d.kind,
+    version: d.version,
+    seq: fields.seq,
+    issuedAt: fields.issuedAt,
+  };
+  if (fields.minSupportedSeq !== undefined)
+    record.minSupportedSeq = fields.minSupportedSeq;
+  if (d.tag !== undefined) record.tag = d.tag;
+  if (d.channel !== undefined) record.channel = d.channel;
+  if (d.title !== undefined) record.title = d.title;
+  if (d.notes !== undefined) record.notes = d.notes;
+  if (d.provenance !== undefined) {
+    const provenance: { commit?: string; workflowRun?: string } = {};
+    if (d.provenance.commit !== undefined)
+      provenance.commit = d.provenance.commit;
+    if (d.provenance.workflowRun !== undefined)
+      provenance.workflowRun = d.provenance.workflowRun;
+    record.provenance = provenance;
+  }
+  record.builds = d.builds.map((b) => {
+    const build: ReleaseRecordBuild = {
+      id: b.id,
+      platform: b.platform,
+      arch: b.arch,
+      format: b.format,
+      artifacts: b.artifacts.map((a) => ({
+        name: a.name,
+        role: a.role,
+        sha256: a.sha256,
+        size: a.size,
+        ...(a.contentType !== undefined ? { contentType: a.contentType } : {}),
+      })),
+    };
+    if (b.buildNumber !== undefined) build.buildNumber = b.buildNumber;
+    if (b.minOS !== undefined) build.minOS = b.minOS;
+    if (b.requires !== undefined) build.requires = b.requires;
+    return build;
+  });
+  return record;
+}
+
 // ── Field rules (mirrored as patterns in release-descriptor.schema.json) ─────
 
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
@@ -168,7 +241,8 @@ const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const FOUR_PART_RE = /^(0|[1-9]\d*)(\.(0|[1-9]\d*)){3}$/;
 const TAG_RE = /^[^\u0000-\u0020\u007f]{1,255}$/u;
-const BUILD_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+/** The record's build-id rule (WIRE-CONTRACT-V4 §2.4), one source for both. */
+const BUILD_ID_RE = BUILD_ID_PATTERN;
 const FORMAT_RE = /^[a-z0-9][a-z0-9.+-]{0,31}$/;
 const BUILD_NUMBER_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const MIN_OS_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;

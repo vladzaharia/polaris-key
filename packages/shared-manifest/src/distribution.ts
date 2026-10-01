@@ -33,30 +33,23 @@ import {
 
 // ── Vocabulary ──────────────────────────────────────────────────────────────────────────────
 
-/** Every outlet kind (README §3.1 "outlet"). An outlet id that is one of these needs no `kind`. */
-export const OUTLET_KINDS = [
-  "direct",
-  "app-store",
-  "testflight",
-  "altstore",
-  "altstore-pal",
-  "play",
-  "play-testing",
-  "obtainium",
-  "fdroid-repo",
-  "ms-store",
-  "app-installer",
-  "steam",
-  "itch",
-  "flathub",
-  "snap",
-  "winget",
-  "web",
-] as const;
-export type OutletKind = (typeof OUTLET_KINDS)[number];
+/**
+ * Every outlet kind (README §3.1 "outlet"), the kind type and the outlet-id pattern. They moved
+ * to `@polaris-key/protocol/distribution` (P3-02), the one table every SDK and the Worker read;
+ * re-exported here with the same values and order. An outlet id that is one of these kinds needs
+ * no `kind`; outlet ids are lower-case, start with a letter and have at most 64 characters.
+ */
+export {
+  OUTLET_KINDS,
+  OUTLET_ID_PATTERN,
+  type OutletKind,
+} from "@polaris-key/protocol/distribution";
+import {
+  OUTLET_KINDS,
+  OUTLET_ID_PATTERN,
+  type OutletKind,
+} from "@polaris-key/protocol/distribution";
 
-/** Outlet ids: lower-case, starting with a letter, at most 64 characters (`altstore-beta`). */
-export const OUTLET_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 /** The most outlets one document may declare. */
 export const MAX_OUTLETS = 32;
 
@@ -104,6 +97,8 @@ export interface ManifestOutletIdentity {
   appleId?: string;
   /** `app-store` / `testflight` / `altstore` / `altstore-pal`: the iOS bundle id. */
   bundleId?: string;
+  /** `testflight`: the join code of the public TestFlight link (`testflight.apple.com/join/<code>`). */
+  publicLink?: string;
   /** `altstore` / `altstore-pal` / `obtainium` / `fdroid-repo`: an artifact-map `id` (P2-04). */
   artifact?: string;
   /** `altstore-pal`: the AltStore PAL marketplace id. */
@@ -141,7 +136,7 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
 > = {
   direct: ["platforms", "homebrewCask"],
   "app-store": ["appleId", "bundleId"],
-  testflight: ["appleId", "bundleId"],
+  testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
   "altstore-pal": ["artifact", "bundleId", "marketplaceId"],
   play: ["packageName", "tracks"],
@@ -162,6 +157,8 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
 export const NUMERIC_ID_PATTERN = /^[1-9][0-9]{0,19}$/;
 const BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 const MAX_BUNDLE_ID_LENGTH = 155;
+/** The join code of a public TestFlight link (P3-03, from which the feed composes `listingUrl`). */
+export const TESTFLIGHT_PUBLIC_LINK_PATTERN = /^[A-Za-z0-9]{1,32}$/;
 const MARKETPLACE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const ANDROID_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 const MAX_PACKAGE_NAME_LENGTH = 255;
@@ -249,6 +246,11 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
           : `must be an artifact-map id (${ARTIFACT_ENTRY_ID_PATTERN.source})`;
     case "marketplaceId":
       return pattern(MARKETPLACE_ID_RE, "a marketplace id");
+    case "publicLink":
+      return pattern(
+        TESTFLIGHT_PUBLIC_LINK_PATTERN,
+        "the join code of a public TestFlight link (1-32 letters and digits)",
+      );
     case "packageName":
       return pattern(
         ANDROID_PACKAGE_RE,

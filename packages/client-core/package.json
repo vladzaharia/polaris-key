@@ -57,6 +57,26 @@
     "./stages": {
       "types": "./dist/stages.d.ts",
       "default": "./dist/stages.js"
+    },
+    "./version": {
+      "types": "./dist/version.d.ts",
+      "default": "./dist/version.js"
+    },
+    "./feed": {
+      "types": "./dist/feed.d.ts",
+      "default": "./dist/feed.js"
+    },
+    "./record": {
+      "types": "./dist/record.d.ts",
+      "default": "./dist/record.js"
+    },
+    "./decide": {
+      "types": "./dist/decide.d.ts",
+      "default": "./dist/decide.js"
+    },
+    "./check": {
+      "types": "./dist/check.d.ts",
+      "default": "./dist/check.js"
     }
   },
   "files": [

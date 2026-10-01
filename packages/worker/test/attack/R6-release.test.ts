@@ -664,7 +664,11 @@ describe("R6-03 Sparkle signature is relayed, not verified", () => {
     await seedReleaseConfig(db, { sparkle_ed25519_pub: pub });
     const rel = release({
       assets: [
-        asset("djdl-arm64.dmg", 100, 4096),
+        asset(
+          "djdl-arm64.dmg",
+          100,
+          dmgBytes.length,
+        ) /* the listed size is the served one (P3-03) */,
         asset("djdl-arm64.dmg.sig", 101),
       ],
     });

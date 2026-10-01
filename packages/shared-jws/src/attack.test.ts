@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 import {
   base64UrlDecode,
   base64UrlEncodeBytes,
+  importSigningKey,
   signJws,
+  StrictJsonError,
   verifyJws,
   type TrustSet,
 } from "./index.js";
@@ -187,12 +189,20 @@ describe("R2-05 · base64url decoding is LENIENT in TS (diverges from Swift's st
 });
 
 describe("R2-07 · verifyJws does ZERO payload schema validation (diverges from Swift Codable)", () => {
-  it("a signed JSON scalar verifies and is returned as the 'document'", async () => {
-    const jws = await signJws(42, PEM, KID);
-    const v = await verifyJws<unknown>(jws, { [KID]: PUB });
-    expect(v?.payload).toBe(42);
-    // Swift's `JWSVerifier.verify` decodes into a concrete document type and returns nil
-    // here; Python's `verify_jws` returns the raw scalar like TS. Unpinned by the corpus.
+  it("a signed JSON scalar is refused: the payload must be exactly one object (WIRE-CONTRACT-V4 §1.2 rule 3)", async () => {
+    // `signJws` refuses to write one (plans/P3-01.md §2.2's signer guard), so the vector is
+    // signed over raw segments, as an attacker holding the key would.
+    await expect(signJws(42, PEM, KID)).rejects.toBeInstanceOf(StrictJsonError);
+    const input = `${enc({ alg: "EdDSA", kid: KID })}.${encRaw("42")}`;
+    const sig = await crypto.subtle.sign(
+      { name: "Ed25519" },
+      await importSigningKey(PEM),
+      new TextEncoder().encode(input),
+    );
+    const jws = `${input}.${base64UrlEncodeBytes(new Uint8Array(sig))}`;
+    expect(await verifyJws<unknown>(jws, { [KID]: PUB })).toBeNull();
+    // v3 returned the scalar here (Python too, while Swift's typed decode refused it); v4's
+    // strict JSON profile makes every SDK refuse it at the same step.
   });
 
   it("a doc missing every required field verifies in TS", async () => {

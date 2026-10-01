@@ -154,9 +154,18 @@ importers:
 
   packages/cli:
     dependencies:
+      '@polaris-key/client-core':
+        specifier: workspace:*
+        version: link:../client-core
+      '@polaris-key/jws':
+        specifier: workspace:*
+        version: link:../shared-jws
       '@polaris-key/manifest':
         specifier: workspace:*
         version: link:../shared-manifest
+      '@polaris-key/protocol':
+        specifier: workspace:*
+        version: link:../shared-protocol
       yaml:
         specifier: ^2.6.1
         version: 2.9.0
@@ -281,7 +290,11 @@ importers:
         specifier: workspace:*
         version: link:../shared-protocol
 
-  packages/shared-jws: {}
+  packages/shared-jws:
+    dependencies:
+      '@polaris-key/protocol':
+        specifier: workspace:*
+        version: link:../shared-protocol
 
   packages/shared-manifest:
     dependencies:
@@ -312,6 +325,9 @@ importers:
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog
+      '@polaris-key/client-core':
+        specifier: workspace:*
+        version: link:../client-core
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
@@ -337,9 +353,6 @@ importers:
       '@polaris-key/cli':
         specifier: workspace:*
         version: link:../cli
-      '@polaris-key/client-core':
-        specifier: workspace:*
-        version: link:../client-core
       '@polaris-key/node':
         specifier: workspace:*
         version: link:../sdk-node
@@ -380,6 +393,9 @@ importers:
         specifier: ^8.20.0
         version: 8.20.0
     devDependencies:
+      '@noble/curves':
+        specifier: 2.4.0
+        version: 2.4.0
       prettier:
         specifier: ^3.5.0
         version: 3.8.4

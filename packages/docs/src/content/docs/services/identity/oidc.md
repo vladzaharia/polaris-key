@@ -39,11 +39,11 @@ must expose exactly those three paths at those exact suffixes.
 
 Three routes, all under `/<product>/identity/auth`:
 
-| Route                             | What it does                                                                                          |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `GET /<p>/identity/auth/start`    | Begins PKCE and 302s to the IdP's `/authorize`.                                                       |
-| `GET /<p>/identity/auth/callback` | The registered redirect URI: exchanges the code, verifies the ID token, mints or locates the license. |
-| `GET /<p>/identity/auth/poll`     | Polls a device-bound flow by `state`; a device-code flow is refused here (see below).                 |
+| Route                             | What it does                                                                                                                                                           |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /<p>/identity/auth/start`    | Begins PKCE and 302s to the IdP's `/authorize`.                                                                                                                        |
+| `GET /<p>/identity/auth/callback` | The registered redirect URI: exchanges the code, verifies the ID token, mints or locates the license (a device-code flow: stores the identity; the poll activates it). |
+| `GET /<p>/identity/auth/poll`     | Polls a device-bound flow by `state`; a device-code flow is refused here (see below).                                                                                  |
 
 **`/auth/start`** generates `state` and `nonce` (16 random bytes each, base64url) and a PKCE pair
 — a 32-byte random `verifier` and its SHA-256 `challenge`, method `S256` — and stores them in a
@@ -156,13 +156,16 @@ matching provisioning hook (below) into a payload of overrides.
 
 `activateFromIdentity` can also merge a **claimable** enrolled license into the identity. A
 claimable license is an anonymous, keyless one with no identity attached yet (`origin: "enroll"`,
-`sub: null`). The caller must name it as the license its device is already on. **No sign-in
-route names one today.** The callback used to take it from the device that started a device-code
-flow. But a device-code flow is confirmed with a public user code, so whoever confirmed it and
-signed in could take that device's license over. The callback therefore merges nothing, and
-attaching an anonymous license to an account is left to an explicit opt-in on the device that is
-not built yet. See [the device-code flow](/docs/services/identity/device-flow/). When a caller
-does name one, two merge outcomes are possible, using the vocabulary from
+`sub: null`). The caller must name it as the license its device is already on. **Only
+`/device/poll` names one**, and only when the device-code holder opts in. The callback used to
+take it from the device that started a device-code flow. But a device-code flow is confirmed with
+a public user code, so whoever confirmed it and signed in could take that device's license over.
+A device-code callback therefore stores the verified identity and activates nothing; the poll
+activates it. The device first asks to see the identity (`confirmIdentity`, answered `confirm`
+with the name and e-mail), and only after the player accepts it on the device does a poll send
+`attachLicense: true` with that device's own bearer. See
+[attaching the device's anonymous license](/docs/services/identity/device-flow/#attaching-the-devices-anonymous-license). When a caller does name one, two merge outcomes
+are possible, using the vocabulary from
 [the concepts page](/docs/start/concepts/):
 
 - **Claim.** No license exists yet for this identity: the identity is attached to the _same_ row.

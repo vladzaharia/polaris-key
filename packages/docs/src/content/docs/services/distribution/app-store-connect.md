@@ -38,7 +38,9 @@ The connector runs for a product when all of these hold:
    ```
 
 2. An **`asc-api-key` outlet credential** is stored on the Secrets tab: a **team** API key with
-   the **App Manager** role (not Admin), as key id, issuer id and the `.p8` file. See
+   the **App Manager** role (not Admin), as key id, issuer id and the `.p8` file, **pinned** to
+   this product's app — its App Store Connect app id, the same digits as the `appleId` above (see
+   [Pinning the app](#pinning-the-app)). See
    [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
    one of the Apple outlets (`outletId`) is preferred over an unbound one.
 
@@ -54,9 +56,44 @@ The connector runs for a product when all of these hold:
    You can also create the webhook yourself in App Store Connect (Users and Access →
    Integrations → Webhooks) and store the secret you chose there.
 
-Without the API key, or without an Apple outlet, the connector does not exist for the product:
-the poller skips it and the webhook route answers not-found, exactly as it does with
-Distribution off.
+Without the API key, without an Apple outlet, or with a key that is not pinned to the outlet's
+app, the connector does not run for the product: the poller skips it, every control is refused,
+and the webhook route answers not-found, exactly as it does with Distribution off.
+`GET …/distribution/connectors/asc` says why in `inert` (`no_outlet`, `no_api_key`,
+`pin_missing` or `pin_mismatch`, with a sentence on what to do).
+
+## Pinning the app
+
+An App Store Connect API key is a team key: it can read, and its controls can change, every app in
+the team. The app the connector works on is named by the `appleId` in `.pkey/distribution`, and
+every resync takes that from the repo. Without a pin, whoever can push that file could point your
+key — and the `release` and `phased-release/complete` controls, which cannot be undone — at
+another app the key can see.
+
+So the key carries a **pin** that only a platform admin sets: the app id it may be used for in
+this product. The connector runs only while the manifest's `appleId` equals the pin.
+
+- **Set it with the key.** The Secrets tab asks for the app id with the key. Over the API, send it
+  as `pin`:
+
+  ```http
+  PUT /manage/api/products/<slug>/outlet-credentials/asc
+  {"kind": "asc-api-key", "value": {"keyId": "…", "issuerId": "…", "p8": "…"}, "pin": "1234567890"}
+  ```
+
+- **Re-pin without the key.** The pin icon on the credential's row, or a `PUT` with the pin and no
+  value: `{"kind": "asc-api-key", "pin": "1234567890"}`. The key itself, its cached tokens and its
+  health are untouched. Rotating the key without a `pin` keeps the old one.
+- **Every change is audited** as `outlet_credential.pin`, with the old and the new app id.
+- **A key stored without a pin does nothing** (`pin_missing`); so does a key stored before pins
+  existed. Pin it before you expect the connector to run.
+
+If the manifest's `appleId` changes — a new app, a typo, or someone pointing the product at
+another app — the connector stops (`pin_mismatch`): no reads, no mirroring, no webhook, every
+control refused with `credential_pin_mismatch`. It stays stopped until the manifest names the
+pinned app again, or until you **check that the new app really is this product's** and re-pin.
+The pin is checked on the key the connector chooses (a key bound to an Apple outlet before an
+unbound one); another key's pin never stands in for it.
 
 ## What it reads
 
@@ -111,18 +148,10 @@ every app in the team, so before anything is written the connector asks Apple wh
 object belongs to, and drops it when the answer is another app or none (the event shows as
 `ignored`). For a Background Asset that means one extra read each of its version and asset.
 
-"The outlet's app" is the `appleId` in `.pkey/distribution`, and every resync takes it from the
-repo. So whoever can push that file decides which app your API key reads for this product and
-which app the controls below act on. If one team key serves several products, a repo writer of
-one product can point it at another app in the team. The connector does not catch that, because
-the other app's objects really do belong to the `appleId` it was given. Until the credential can
-pin the expected app, protect yourself:
-
-- prefer **one API key per team**, and one product per team where you can, so the key sees only
-  the apps this product should touch;
-- review any change to an outlet's `appleId` in `.pkey/distribution` like a change to the key
-  itself;
-- check the `appleId` that `GET …/distribution/connectors/asc` shows before you press a control.
+"The outlet's app" is the `appleId` in `.pkey/distribution`, and it is only ever the app the key
+is pinned to: a manifest naming any other app stops the connector ([Pinning the
+app](#pinning-the-app)). One API key per team, and one product per team where you can, still
+narrows what a key could reach if it were stolen.
 
 An App Store version belongs to the release whose version equals its version string (a leading
 `v` is ignored). A TestFlight build belongs to the release build whose `buildNumber` equals
@@ -169,10 +198,10 @@ In the console API, under `/manage/api/products/<slug>/distribution/connectors/a
 | `testflight/public-link`  | `{ betaGroupId, enabled }` | `PATCH /v1/betaGroups/{id}` `publicLinkEnabled`                   |
 | `webhook`                 | `{}`                       | `POST /v1/webhooks` (all 12 events), then `POST /v1/webhookPings` |
 
-**Check the app first.** The controls act on the app whose `appleId` the setup shows in
-`GET …/distribution/connectors/asc`, and that id comes from the repo's `.pkey/distribution`, not
-from you. Confirm it is this product's app before pressing `release` or `phased-release/*`: on
-another app's held version, either one releases that app's version, and that cannot be undone.
+**Only on the pinned app.** The controls act on the app whose `appleId` the setup shows in
+`GET …/distribution/connectors/asc`, which is always the app the key is pinned to. While the key
+is not pinned, or the manifest names another app, every control answers 409 with reason
+`credential_pin_missing` or `credential_pin_mismatch` and sends nothing to Apple.
 
 Before sending anything, a version control re-reads the release's App Store version and checks
 that Apple still says it belongs to the outlet's app (and, for `release`, that it is held now):
@@ -180,7 +209,8 @@ otherwise the answer is `unknown_version` and nothing is sent. A version stored 
 named another app is never acted on. Each control is audited as `distribution.asc.<control>` with
 your identity, and re-reads the object afterwards, so the answer is what Apple now says. If Apple refuses — an invalid phase
 change, a version that is not held — the answer is `store_refused` with Apple's HTTP status.
-`GET …/distribution/connectors` (or `…/connectors/asc`) shows the setup (credential ids only),
+`GET …/distribution/connectors` (or `…/connectors/asc`) shows the setup (credential ids only) or
+why there is none (`inert`: the manifest's app id, the chosen key and the app it is pinned to),
 the objects the connector tracks, unresolved ones flagged, and the latest webhook deliveries.
 
 ## Security
@@ -192,8 +222,9 @@ the objects the connector tracks, unresolved ones flagged, and the latest webhoo
   can redirect it.
 - The API key never leaves custody: the connector uses short-lived tokens minted from it, every
   open of the key is in the activity log, and errors record an HTTP status, never a response.
-- Which app the key reads and the controls act on is the `appleId` in `.pkey/distribution`, so
-  the repo chooses it. Use one key per team and check the app before a control (above).
+- Which app the key reads and the controls act on is the app you pinned it to. The repo's
+  `.pkey/distribution` must name the same app, or the connector stops; it can never choose
+  another one.
 - An App Manager key can change metadata, TestFlight and release timing, but it cannot sign a
   build. Keep a separate Developer-role key for CI uploads if you want the two apart.
 

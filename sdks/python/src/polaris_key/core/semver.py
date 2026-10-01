@@ -15,6 +15,8 @@ import re
 from dataclasses import dataclass
 from typing import List, Optional
 
+from .patterns import _full_match
+
 __all__ = [
     "ParsedSemver",
     "parse_semver",
@@ -23,11 +25,13 @@ __all__ = [
     "is_dev_build",
 ]
 
+# ASCII classes only, matched whole through ``_full_match`` (WIRE-CONTRACT-V4 §3): ``\d``
+# would read ``١.٢.٣`` as 1.2.3, and ``re.match`` with ``$`` would accept ``1.2.3\n``.
 _SEMVER_RE = re.compile(
-    r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z\-.]+))?(?:\+[0-9A-Za-z\-.]+)?$"
+    r"([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z\-.]+))?(?:\+[0-9A-Za-z\-.]+)?"
 )
-_PR_RE = re.compile(r"^0\.0\.0-pr-?\d+")
-_NUMERIC_RE = re.compile(r"^\d+$")
+_PR_RE = re.compile(r"0\.0\.0-pr-?[0-9]+")
+_NUMERIC_RE = re.compile(r"[0-9]+")
 
 
 @dataclass(frozen=True)
@@ -39,7 +43,7 @@ class ParsedSemver:
 
 
 def parse_semver(v: str) -> Optional[ParsedSemver]:
-    m = _SEMVER_RE.match(v)
+    m = _full_match(_SEMVER_RE, v)
     if not m:
         return None
     return ParsedSemver(
@@ -72,8 +76,8 @@ def compare_semver(a: str, b: str) -> int:
             return -1
         if y is None:
             return 1
-        xn = bool(_NUMERIC_RE.match(x))
-        yn = bool(_NUMERIC_RE.match(y))
+        xn = bool(_full_match(_NUMERIC_RE, x))
+        yn = bool(_full_match(_NUMERIC_RE, y))
         if xn and yn:
             d = int(x) - int(y)
             if d != 0:
@@ -95,6 +99,7 @@ def channel_for_version(version: str) -> str:
         return "dev"
     if version.startswith("0.0.0-beta") or version.startswith("0.0.0-staging"):
         return "beta"
+    # A prefix match on purpose: `0.0.0-pr-42.1` is still the `pr` family.
     if _PR_RE.match(version):
         return "pr"
     return "stable"

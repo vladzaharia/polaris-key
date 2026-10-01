@@ -1,5 +1,6 @@
 extends RefCounted
 # @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers
+# @pkey-feature update.feed release.record update.decide
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json, gate-matrix.json, fingerprint.json and headers.json, written by
 # `pnpm gen:corpus`; never
@@ -13,6 +14,20 @@ extends RefCounted
 #   trustCases       PKeyTrust                   accepted, the merged set, issuedAt
 #   clockFloorCases  the reload path + PKeyGate  highWaterMark, effectiveNow, status
 #   bundleCases      PKeyBundle.inspect          imports + docs, or the refusing step
+#   pointer sets     PKeyJws.verify              WIRE-CONTRACT-V4 §4.1: non_wire_integers equals
+#                                                each case's `nonWireIntegers` over the seven JWS
+#                                                families (feedCases, releaseRecordCases included)
+#   feedCases        PKeyFeed.verify_feed        V4 §2.5 steps 3–8: ok with seq, issuedAt and the
+#                                                document, or the refusing reason
+#   releaseRecordCases PKeyReleaseRecord.verify_release_record  steps 12–15: ok with kind and the
+#                                                document, or the refusing step
+#   update-matrix    vocabulary (the generated enums and PKeyVersion.SCHEMES), versionCases
+#                    (PKeyVersion.compare_versions), capabilityCases (effective_capabilities),
+#                    outletCases (resolve_update_outlet), bucketVectors (rollout_bucket), rows
+#                    (decide_update, compared by value, and boot_decision)
+#   outlet-matrix    PKeyDecision's compiled tables equal kinds, platformNarrowing, subkinds and
+#                    platformData.listingUrlPrefixes (detection rows are P3-11's)
+#   timings          INFO only: one feed and one record verify, median of a few runs
 #   gate-matrix rows the build-gate port + PKeyGate status, usable, reason, allowedRange
 #   deviceIds        PKeyDeviceId.from_raw       the derived id (fingerprint.json)
 #   vectors          PKeyFingerprint             components and hwid (fingerprint.json)
@@ -32,6 +47,8 @@ const CASES := "res://tests/corpus/v2/cases.json"
 const FINGERPRINT := "res://tests/corpus/v2/fingerprint.json"
 const GATE_MATRIX := "res://tests/corpus/v2/gate-matrix.json"
 const HEADERS := "res://tests/corpus/v2/headers.json"
+const UPDATE_MATRIX := "res://tests/corpus/v2/update-matrix.json"
+const OUTLET_MATRIX := "res://tests/corpus/v2/outlet-matrix.json"
 const HEADERS_VERSION := 1
 const CORPUS_VERSION := 2
 const FLOORS := {
@@ -41,6 +58,14 @@ const FLOORS := {
 	"trustCases": 11,
 	"clockFloorCases": 7,
 	"bundleCases": 9,
+	"pointerSets": 288,
+	"feedCases": 77,
+	"releaseRecordCases": 49,
+	"versionCases": 25,
+	"capabilityCases": 10,
+	"outletCases": 12,
+	"bucketVectors": 6,
+	"updateRows": 65,
 	"gate-matrix": 38,
 	"deviceIds": 4,
 	"vectors": 6,
@@ -63,6 +88,16 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _trust_cases(t, _section(t, corpus, "trustCases"))
 	await _clock_floor_cases(t, _section(t, corpus, "clockFloorCases"))
 	await _bundle_cases(t, _section(t, corpus, "bundleCases"))
+	_pointer_sets(t, corpus)
+	await _feed_cases(t, _section(t, corpus, "feedCases"))
+	await _record_cases(t, _section(t, corpus, "releaseRecordCases"))
+	var um = _load(t, UPDATE_MATRIX)
+	if um != null:
+		_update_matrix(t, um)
+	var om = _load(t, OUTLET_MATRIX)
+	if om != null:
+		_outlet_tables(t, om)
+	await _update_timings(t, corpus)
 	var matrix = _load(t, GATE_MATRIX)
 	if matrix != null:
 		_gate_matrix(t, matrix)
@@ -148,6 +183,50 @@ func _jws_cases(t: PKeyTestContext, cases: Array) -> void:
 	_coverage(t, "jwsCases", evaluated, cases.size(), _ms_since(t0))
 
 
+# ── WIRE-CONTRACT-V4 §4.1: the non-wire-integer pointer sets ────────────────────────────────
+# Every case of the seven JWS families goes through PKeyJws.verify with its family's keys, typ
+# and cap. Whenever it verifies, `non_wire_integers` must equal the case's `nonWireIntegers` as a
+# set (absent = empty), and a case that carries the member must verify.
+
+func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
+	var families := [
+		["jwsCases", "jws", "trust", "", 0],
+		["licenseDocCases", "jws", "trust", PKeyClaims.TYP_LICENSE, 0],
+		["configDocCases", "jws", "trust", PKeyClaims.TYP_CONFIG, 0],
+		["trustCases", "manifestJws", "pinned", PKeyClaims.TYP_TRUST, 0],
+		["bundleCases", "bundleJws", "pinned", PKeyClaims.TYP_BUNDLE, PKeyClaims.MAX_BUNDLE_BYTES],
+		["feedCases", "jws", "trust", PKeyClaims.TYP_FEED, 0],
+		["releaseRecordCases", "jws", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
+	]
+	var evaluated := 0
+	var total := 0
+	var t0 := Time.get_ticks_usec()
+	for f in families:
+		var cases := _section(t, corpus, f[0])
+		total += cases.size()
+		for c in cases:
+			if not (c is Dictionary and c.get(f[1]) is String and c.get(f[2]) is Dictionary):
+				t.check("%s/%s well-formed for the pointer set" % [f[0], str(c.get("id"))], false)
+				continue
+			var typ: String = f[3] if f[3] != "" else str(c.get("typ", ""))
+			var cap: int = f[4] if f[0] != "jwsCases" else int(c.get("maxPayloadBytes", 0))
+			var r = PKeyJws.verify(c[f[1]], c[f[2]], typ, cap)
+			evaluated += 1
+			var where := "%s/%s pointer set" % [f[0], c["id"]]
+			if c.has("nonWireIntegers") and r == null:
+				t.check(where, false, "carries nonWireIntegers, so it must verify")
+				continue
+			if r == null:
+				continue
+			var want := {}
+			for p in c.get("nonWireIntegers", []):
+				want[p] = true
+			var got: PKeyJson.PointerSet = r.get("non_wire_integers")
+			var listed := got.keys()
+			t.check(where, got.size() == want.size() and listed.size() == want.size() and want.keys().all(func(k): return got.has(k) and listed.has(k)), "got %s" % str(listed))
+	_coverage(t, "pointerSets", evaluated, total, _ms_since(t0))
+
+
 static func _jws_well_formed(c) -> bool:
 	if not (c is Dictionary):
 		return false
@@ -205,6 +284,268 @@ static func _apply_nul_replaced(t: PKeyTestContext, id: String, doc, replaced: D
 		if not t.check("%s docNulReplaced %s resolves to a string" % [id, pointer], resolved):
 			return null
 	return out
+
+
+# ── feedCases (V4 §2.3, §2.5 steps 3–8) ────────────────────────────────────────────────────
+
+func _feed_cases(t: PKeyTestContext, cases: Array) -> void:
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	for i in cases.size():
+		var c = cases[i]
+		var e = c.get("expect") if c is Dictionary else null
+		var ok_shape: bool = c is Dictionary and c.get("id") is String and c.get("jws") is String \
+				and c.get("trust") is Dictionary and c.get("expectedAud") is String and c.get("channel") is String \
+				and c.get("platform") is String and c.get("now") is float and c.get("checkFreshness") is bool \
+				and (not c.has("floors") or c["floors"] is Dictionary) and e is Dictionary \
+				and ((e.get("verify") == "ok" and e.get("seq") is float and e.get("issuedAt") is float) \
+					or (e.get("verify") == "fail" and e.get("reason") is String))
+		if not t.check("feedCases %d well-formed" % i, ok_shape):
+			continue
+		var id: String = c["id"]
+		var r := await PKeyFeed.verify_feed(c["jws"], {
+			"trust": c["trust"],
+			"expected_aud": c["expectedAud"],
+			"channel": c["channel"],
+			"platform": c["platform"],
+			"now": c["now"],
+			"check_freshness": c["checkFreshness"],
+			"floors": c.get("floors"),
+		})
+		evaluated += 1
+		var want: String = "ok" if e["verify"] == "ok" else e["reason"]
+		var got: String = "ok" if r["ok"] else String(r.get("reason"))
+		if not t.check("%s → %s" % [id, want], got == want, "got %s" % got):
+			continue
+		if r["ok"]:
+			var feed: Dictionary = r["feed"]
+			t.check("%s seq and issuedAt" % id, _json_eq(feed.get("seq"), e["seq"]) and _json_eq(feed.get("issuedAt"), e["issuedAt"]))
+			if e.has("doc"):
+				t.check("%s doc" % id, _json_eq(feed, e["doc"]))
+	_coverage(t, "feedCases", evaluated, cases.size(), _ms_since(t0))
+
+
+# ── releaseRecordCases (V4 §2.4, §2.5 steps 12–15) ─────────────────────────────────────────
+
+func _record_cases(t: PKeyTestContext, cases: Array) -> void:
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	for i in cases.size():
+		var c = cases[i]
+		var e = c.get("expect") if c is Dictionary else null
+		var ok_shape: bool = c is Dictionary and c.get("id") is String and c.get("jws") is String \
+				and c.get("releaseKeys") is Dictionary and c.get("productTrust") is Dictionary \
+				and c.get("expectedAud") is String and c.get("expectedHash") is String \
+				and (not c.has("pin") or c["pin"] is Dictionary) and e is Dictionary \
+				and ((e.get("verify") == "ok" and e.get("kind") is String) or (e.get("verify") == "fail" and e.get("step") is String))
+		if not t.check("releaseRecordCases %d well-formed" % i, ok_shape):
+			continue
+		var id: String = c["id"]
+		var opts := {
+			"release_keys": c["releaseKeys"],
+			"product_trust": c["productTrust"],
+			"expected_aud": c["expectedAud"],
+			"expected_hash": c["expectedHash"],
+		}
+		if c.has("pin"):
+			opts["pin"] = c["pin"]
+		var r := await PKeyReleaseRecord.verify_release_record(c["jws"], opts)
+		evaluated += 1
+		var want: String = "ok" if e["verify"] == "ok" else e["step"]
+		var got: String = "ok" if r["ok"] else String(r.get("step"))
+		if not t.check("%s → %s" % [id, want], got == want, "got %s" % got):
+			continue
+		if r["ok"]:
+			t.check("%s kind" % id, _json_eq(r["record"].get("kind"), e["kind"]))
+			if e.has("doc"):
+				t.check("%s doc" % id, _json_eq(r["record"], e["doc"]))
+	_coverage(t, "releaseRecordCases", evaluated, cases.size(), _ms_since(t0))
+
+
+# ── update-matrix.json (plans/P3-01.md §2.8, §4.6) ─────────────────────────────────────────
+
+func _update_matrix(t: PKeyTestContext, m: Dictionary) -> void:
+	t.check("updateMatrixVersion", _json_eq(m.get("updateMatrixVersion"), PKeyConstants.UPDATE_MATRIX_VERSION), str(m.get("updateMatrixVersion")))
+	var vocab = m.get("vocabulary")
+	var want_vocab := {
+		"actions": PKeyConstants.UPDATE_ACTION_VALUES,
+		"noneReasons": PKeyConstants.UPDATE_NONE_REASON_VALUES,
+		"blockedReasons": PKeyConstants.UPDATE_BLOCKED_REASON_VALUES,
+		"methods": PKeyConstants.BINARY_METHOD_VALUES,
+		"boot": ["none", "optional", "required"],
+		"schemes": Array(PKeyVersion.SCHEMES),
+	}
+	t.check("update-matrix vocabulary equals the generated enums and PKeyVersion.SCHEMES", vocab is Dictionary and _json_eq(vocab, want_vocab), JSON.stringify(vocab))
+
+	# versionCases
+	var cases: Array = m.get("versionCases", []) if m.get("versionCases") is Array else []
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	for c in cases:
+		if not t.check("versionCases %s well-formed" % str(c.get("name") if c is Dictionary else c), c is Dictionary and c.get("name") is String and c.get("scheme") is String and c.get("a") is String and c.get("b") is String and c.has("expect")):
+			continue
+		var got = PKeyVersion.compare_versions(c["scheme"], c["a"], c["b"])
+		evaluated += 1
+		t.check("version %s" % c["name"], _json_eq(got, c["expect"]), "got %s" % str(got))
+	_coverage(t, "versionCases", evaluated, cases.size(), _ms_since(t0))
+
+	# capabilityCases
+	cases = m.get("capabilityCases", []) if m.get("capabilityCases") is Array else []
+	evaluated = 0
+	t0 = Time.get_ticks_usec()
+	for c in cases:
+		if not t.check("capabilityCases %s well-formed" % str(c.get("name") if c is Dictionary else c), c is Dictionary and c.get("name") is String and c.get("kind") is String and c.get("platform") is String and c.get("expect") is Dictionary):
+			continue
+		var got := PKeyDecision.effective_capabilities(c["kind"], {"platform": c["platform"], "subkind": c.get("subkind"), "server": c.get("server")})
+		evaluated += 1
+		t.check("capability %s" % c["name"], _json_eq(got, c["expect"]), JSON.stringify(got))
+	_coverage(t, "capabilityCases", evaluated, cases.size(), _ms_since(t0))
+
+	# outletCases
+	cases = m.get("outletCases", []) if m.get("outletCases") is Array else []
+	evaluated = 0
+	t0 = Time.get_ticks_usec()
+	for c in cases:
+		if not t.check("outletCases %s well-formed" % str(c.get("name") if c is Dictionary else c), c is Dictionary and c.get("name") is String and c.get("expect") is Dictionary):
+			continue
+		var got = PKeyDecision.resolve_update_outlet({"host": c.get("host"), "stamp": c.get("stamp"), "detected": c.get("detected")})
+		evaluated += 1
+		t.check("outlet %s" % c["name"], got is Dictionary and _json_eq(got, c["expect"]), JSON.stringify(got))
+	_coverage(t, "outletCases", evaluated, cases.size(), _ms_since(t0))
+	var bad_hosts := ["epic", {"id": "Direct Build", "kind": "direct"}, {"id": "direct", "kind": "epic"}, {"id": "direct", "kind": "direct", "subkind": "brew"}, 7, ""]
+	for host in bad_hosts:
+		t.check("outlet: an invalid host %s is refused (invalid-options)" % JSON.stringify(host), PKeyDecision.resolve_update_outlet({"host": host}) == null)
+
+	# bucketVectors
+	cases = m.get("bucketVectors", []) if m.get("bucketVectors") is Array else []
+	evaluated = 0
+	t0 = Time.get_ticks_usec()
+	for v in cases:
+		if not t.check("bucketVectors %s well-formed" % str(v.get("name") if v is Dictionary else v), v is Dictionary and v.get("name") is String and v.get("salt") is String and v.get("installId") is String and v.get("bucket") is float and v.get("u32") is float):
+			continue
+		var got := PKeyDecision.rollout_bucket(v["salt"], v["installId"])
+		evaluated += 1
+		t.check("bucket %s" % v["name"], got == int(v["bucket"]) and int(v["u32"]) % 10000 == int(v["bucket"]), "got %d" % got)
+	_coverage(t, "bucketVectors", evaluated, cases.size(), _ms_since(t0))
+
+	# rows: every decision and its boot value
+	cases = m.get("rows", []) if m.get("rows") is Array else []
+	evaluated = 0
+	t0 = Time.get_ticks_usec()
+	var all_boot_ok := true
+	for row in cases:
+		if not t.check("rows %s well-formed" % str(row.get("name") if row is Dictionary else row), row is Dictionary and row.get("name") is String and row.get("input") is Dictionary and row.get("expect") is Dictionary and row["expect"].get("decision") is Dictionary and row["expect"].get("boot") is String):
+			continue
+		var decision := PKeyDecision.decide_update(row["input"])
+		evaluated += 1
+		t.check("row %s" % row["name"], _json_eq(decision, row["expect"]["decision"]), JSON.stringify(decision))
+		var boot := PKeyDecision.boot_decision(decision)
+		t.check("row %s boot" % row["name"], boot == row["expect"]["boot"], boot)
+		all_boot_ok = all_boot_ok and (row["expect"]["boot"] == "none" or row["expect"]["boot"] == "optional")
+	t.check("every v4 boot value is none or optional: no floor stops play", all_boot_ok)
+	_coverage(t, "updateRows", evaluated, cases.size(), _ms_since(t0))
+	# The comparator is not vacuous: one changed member makes a decision unequal.
+	if cases.size() > 0 and cases[0] is Dictionary and cases[0].get("expect") is Dictionary:
+		var d: Dictionary = (cases[0]["expect"]["decision"] as Dictionary).duplicate(true)
+		d["discardStaged"] = not PKeyClaims.is_true(d.get("discardStaged"))
+		t.check("rows comparator rejects a changed member", not _json_eq(d, cases[0]["expect"]["decision"]))
+		d = (cases[0]["expect"]["decision"] as Dictionary).duplicate(true)
+		d["extra"] = null
+		t.check("rows comparator rejects an extra member", not _json_eq(d, cases[0]["expect"]["decision"]))
+
+
+# ── outlet-matrix.json: the compiled tables (detection rows are P3-11's) ───────────────────
+
+func _outlet_tables(t: PKeyTestContext, m: Dictionary) -> void:
+	t.check("outletMatrixVersion", _json_eq(m.get("outletMatrixVersion"), PKeyConstants.OUTLET_MATRIX_VERSION))
+	var kinds := {}
+	for kind in PKeyDecision.CAPABILITY_DEFAULTS:
+		var row: Dictionary = (PKeyDecision.CAPABILITY_DEFAULTS[kind] as Dictionary).duplicate()
+		row["platforms"] = PKeyDecision.OUTLET_PLATFORMS[kind]
+		kinds[kind] = row
+	t.check("CAPABILITY_DEFAULTS and OUTLET_PLATFORMS equal outlet-matrix kinds", _json_eq(kinds, m.get("kinds")), JSON.stringify(kinds))
+	t.check("PLATFORM_NARROWING equals outlet-matrix platformNarrowing", _json_eq(PKeyDecision.PLATFORM_NARROWING, m.get("platformNarrowing")))
+	t.check("SUBKIND_NARROWING equals outlet-matrix subkinds", _json_eq(PKeyDecision.SUBKIND_NARROWING, m.get("subkinds")))
+	var pd = m.get("platformData")
+	t.check("LISTING_URL_PREFIXES equals outlet-matrix platformData.listingUrlPrefixes", pd is Dictionary and _json_eq(PKeyDecision.LISTING_URL_PREFIXES, pd.get("listingUrlPrefixes")))
+	var vocab = m.get("vocabulary")
+	t.check("outlet-matrix vocabulary kinds, subkinds and confidence equal the generated enums", vocab is Dictionary \
+			and _json_eq(vocab.get("kinds"), PKeyConstants.OUTLET_KIND_VALUES) \
+			and _json_eq(vocab.get("subkinds"), PKeyConstants.OUTLET_SUBKIND_VALUES) \
+			and _json_eq(vocab.get("confidence"), PKeyConstants.OUTLET_CONFIDENCE_VALUES))
+
+
+# ── timings (INFO): one feed verify and one record verify ──────────────────────────────────
+
+func _update_timings(t: PKeyTestContext, corpus: Dictionary) -> void:
+	var feed_case = null
+	var record_case = null
+	for c in corpus.get("feedCases", []):
+		if c is Dictionary and c.get("id") == "feed-valid":
+			feed_case = c
+	for c in corpus.get("releaseRecordCases", []):
+		if c is Dictionary and c.get("id") == "record-valid-app":
+			record_case = c
+	if not t.check("timings: the control feed and record are present", feed_case != null and record_case != null):
+		return
+	# Run 0 starts with an empty per-kid key cache (the first decide() of a session); runs 1–8 reuse
+	# the decompressed keys. Each run is a feed verify then a record verify, inline on this thread.
+	var runs := 9
+	var feed_ms: Array = []
+	var record_ms: Array = []
+	var both_ms: Array = []
+	var ok := true
+	PKeyJws.clear_key_cache()
+	for i in runs:
+		var t0 := Time.get_ticks_usec()
+		var f := await PKeyFeed.verify_feed(feed_case["jws"], {
+			"trust": feed_case["trust"], "expected_aud": feed_case["expectedAud"], "channel": feed_case["channel"],
+			"platform": feed_case["platform"], "now": feed_case["now"],
+		})
+		var t1 := Time.get_ticks_usec()
+		var r := await PKeyReleaseRecord.verify_release_record(record_case["jws"], {
+			"release_keys": record_case["releaseKeys"], "product_trust": record_case["productTrust"],
+			"expected_aud": record_case["expectedAud"], "expected_hash": record_case["expectedHash"], "pin": record_case["pin"],
+		})
+		var t2 := Time.get_ticks_usec()
+		ok = ok and f["ok"] and r["ok"]
+		feed_ms.append((t1 - t0) / 1000.0)
+		record_ms.append((t2 - t1) / 1000.0)
+		both_ms.append((t2 - t0) / 1000.0)
+	t.check("timings: every timed verify accepted", ok)
+	var cold := [feed_ms[0], record_ms[0], both_ms[0]]
+	var warm_feed := feed_ms.slice(1)
+	var warm_record := record_ms.slice(1)
+	var warm_both := both_ms.slice(1)
+	warm_feed.sort()
+	warm_record.sort()
+	warm_both.sort()
+	var mid := 4
+	t.info("timing feed+record verify (%s, %s build): cold feed %.2f ms + record %.2f ms = %.2f ms; warm median feed %.2f ms, record %.2f ms, both %.2f ms (min %.2f, max %.2f over %d runs)" % [
+		"editor" if OS.has_feature("editor") else "template", "debug" if OS.is_debug_build() else "release",
+		cold[0], cold[1], cold[2], warm_feed[mid], warm_record[mid], warm_both[mid], warm_both[0], warm_both[warm_both.size() - 1], warm_both.size()])
+
+
+## JSON equality by value: every number compared as a number (JSON reads 7 as 7.0), the member
+## sets equal, no cross-type `==` (a String against a bool is a runtime error in GDScript).
+static func _json_eq(a: Variant, b: Variant) -> bool:
+	if PKeyClaims.is_number(a) and PKeyClaims.is_number(b):
+		return float(a) == float(b)
+	if a is Dictionary and b is Dictionary:
+		if a.size() != b.size():
+			return false
+		for k in a:
+			if not b.has(k) or not _json_eq(a[k], b[k]):
+				return false
+		return true
+	if (a is Array or a is PackedStringArray) and (b is Array or b is PackedStringArray):
+		if a.size() != b.size():
+			return false
+		for i in a.size():
+			if not _json_eq(a[i], b[i]):
+				return false
+		return true
+	return typeof(a) == typeof(b) and a == b
 
 
 # ── licenseDocCases / configDocCases (§3) ────────────────────────────────────────────────

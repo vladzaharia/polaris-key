@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 32 | 3 | 14 | 7 |
-| React | `web`, `desktop-bridge` | 24 | 12 | 14 | 6 |
+| Node | `node` | 35 | 3 | 11 | 7 |
+| React | `web`, `desktop-bridge` | 27 | 12 | 11 | 6 |
 | Python | `python` | 32 | 3 | 14 | 7 |
 | Swift | `macos`, `ios` | 33 | 3 | 14 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 29 | 0 | 24 | 3 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 33 | 0 | 20 | 3 |
 
 ## Core
 
@@ -73,7 +73,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | web: runtime |
 | `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | web: runtime |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | — |
-| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-07) | web: runtime |
+| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | web: runtime |
 
 ## Release and update
 
@@ -81,13 +81,13 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
+| `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` + transcripts | ✓ | ✓ | planned (P3-06) | planned (P3-07) | ✓ | — |
 | `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
-| `update.decide` | The update decision | `update-matrix.json` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
+| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | planned (P3-06) | planned (P3-07) | ✓ | — |
+| `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | planned (P3-06) | planned (P3-07) | ✓ | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | planned (P3-10) | ios: outlet |
 | `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P3-10) | — |
-| `outlet.detect` | Outlet detection | `outlet-matrix.json` (P3-02) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | — |
+| `outlet.detect` | Outlet detection | `outlet-matrix.json` | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | — |
 
 ## Packs
 
@@ -129,7 +129,7 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Node | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
 | Node | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
-| React | `core.cache` | The browser adapter is online-only with no verified cache; on desktop the host's Node SDK holds it. No work package gives the browser one. |
+| React | `core.cache` | The browser adapter keeps no verified licence/config cache (only the signed update slices, P3-05); on desktop the host's Node SDK holds it. No work package gives the browser one. |
 | React | `core.local` | No local-only client in React; P1b-07 leaves it unowned. |
 | React | `config.mint` | P1b-08 ports edge-mint to Node, Python and Swift only. |
 | React | `update.driver` | No updater hand-off in React, and no work package adds one. |

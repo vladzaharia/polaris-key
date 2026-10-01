@@ -1,5 +1,5 @@
 // @pkey-feature core.verify core.bundle
-// The Swift conformance runner for wire contract v3. It drives EVERY case in
+// The Swift conformance runner for wire contract v4 (v3's documents, unchanged). It drives EVERY case in
 // `conformance/corpus/v2` through the native CryptoKit verifier and asserts the expected
 // outcome — the Node runner (`conformance/runners/node/corpusV2.test.ts`) mirrors this file
 // against the SAME vectors. That is how the SDKs prove byte-identical verification: one signer,
@@ -13,6 +13,9 @@
 //   trustCases        §1     trust merge / prune / revocation   → verifyTrustManifest + mergeTrust
 //   clockFloorCases   §4.2   the monotonic floor over 3 kinds   → reload path + licenseState
 //   bundleCases       §7     all-or-nothing bundle import       → inspectBundle
+//
+// v4's pointer-set section (§4.1), over the seven JWS families with `feedCases` and
+// `releaseRecordCases`, is `PointerSetTests.swift`.
 //
 // Everything reads `Resources/v2/`, which mirrors `conformance/corpus/v2/` path-for-path.
 // The wire-v2 corpus is gone; there is one corpus.

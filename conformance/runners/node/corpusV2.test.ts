@@ -1,11 +1,11 @@
-// The Node conformance runner for corpus v2 / wire contract v3. It drives EVERY vector in
+// The Node conformance runner for corpus v2 / wire contract v4. It drives EVERY vector in
 // `conformance/corpus/v2/` through `@polaris-key/client-core` — the single isomorphic implementation
 // every JS SDK will consume — and asserts the expected outcome. The Python, Swift and Godot
 // runners mirror THIS file against the SAME corpus (Swift and Godot read generator-owned
 // mirrors); that is how every SDK proves byte-identical verification. Godot runs `jwsCases`
 // so far, and reads `expect.docNulReplaced` (WIRE-CONTRACT-V3 §10), which this runner ignores.
 //
-// Seven sections, seven layers of the contract:
+// Seven v3 sections, seven layers of the contract:
 //
 //   jwsCases         §1–§2 raw compact-JWS verification    → @polaris-key/jws verifyJws
 //   licenseDocCases  §3 claim validation, license          → verifyLicenseDoc
@@ -14,6 +14,26 @@
 //   clockFloorCases  §4.2 monotonic floor over 3 artifacts → the reload path + licenseState
 //   gate-matrix      §5 the gate decision table            → licenseState
 //   bundleCases      §7 offline bundle import              → inspectBundle
+//
+// and, for wire contract v4 (docs/security/WIRE-CONTRACT-V4.md, plans/P3-01.md §5 order 0):
+//
+//   the pointer sets  §4.1 nonWireIntegers over the seven JWS families → verifyJws
+//   versionCases      update-matrix.json, the version comparator      → compareVersions
+//   feedCases         steps 4–6 over every case that reaches them     → feedClaims
+//   releaseRecordCases step 14 over every case that reaches it        → releaseRecordClaims
+//
+// with `outlet-matrix.json`'s capability tables asserted against `@polaris-key/protocol/
+// distribution`; and, from P3-05 (plans/P3-01.md §5 order 1), the full verifiers and the rest
+// of the update matrix:
+//
+//   feedCases         steps 3–8, every case                            → verifyFeed
+//   releaseRecordCases steps 12–15, every case                         → verifyReleaseRecord
+//   capabilityCases   update-matrix.json, §2.9's narrowing             → effectiveCapabilities
+//   outletCases       update-matrix.json, the decision's outlet        → resolveUpdateOutlet
+//   bucketVectors     update-matrix.json, the rollout bucket           → rolloutBucket
+//   rows              update-matrix.json, every decision and boot      → decideUpdate, bootDecision
+//
+// Detection (`outlet-matrix.json`'s rows) is P3-11's.
 //
 // The fourth file in `corpus/v2/`, `stage-matrix.json` (the boot stage machine, client boot
 // behaviour outside the wire contract), has its own runner: `stageMatrix.test.ts`, through
@@ -29,7 +49,26 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { verifyJws, type TrustSet } from "@polaris-key/jws";
+import { base64UrlDecode, verifyJws, type TrustSet } from "@polaris-key/jws";
+import {
+  LISTING_URL_PREFIXES,
+  OUTLET_CAPABILITY_DEFAULTS,
+  OUTLET_CONFIDENCES,
+  OUTLET_KINDS,
+  OUTLET_PLATFORMS,
+  OUTLET_SUBKINDS,
+  PLATFORM_NARROWING,
+  SUBKIND_NARROWING,
+} from "@polaris-key/protocol/distribution";
+import {
+  BINARY_METHODS,
+  BLOCKED_REASONS,
+  FEED_VERSION_SCHEMES,
+  NONE_REASONS,
+  UPDATE_ACTIONS,
+  type UpdateDecision,
+  type UpdateDecisionInput,
+} from "@polaris-key/protocol/update";
 import {
   CHANNEL_ALIASES,
   CHANNEL_BETA,
@@ -48,8 +87,19 @@ import type {
   LicenseDoc,
 } from "@polaris-key/protocol/license";
 import {
+  BOOT_DECISIONS,
   MAX_BUNDLE_BYTES,
   channelForVersion,
+  compareVersions,
+  bootDecision,
+  decideUpdate,
+  effectiveCapabilities,
+  feedClaims,
+  releaseRecordClaims,
+  resolveUpdateOutlet,
+  rolloutBucket,
+  verifyFeed,
+  verifyReleaseRecord,
   compareSemver,
   effectiveNow,
   highWaterMark,
@@ -71,9 +121,16 @@ type TypV3 =
   | "pkey-license+jws"
   | "pkey-config+jws"
   | "pkey-trust+jws"
-  | "pkey-bundle+jws";
+  | "pkey-bundle+jws"
+  | "pkey-feed+jws"
+  | "pkey-release+jws";
 
-interface JwsCase {
+/** WIRE-CONTRACT-V4 §4.1: the payload's non-wire-integer pointers, beside `expect`. */
+interface NonWire {
+  nonWireIntegers?: string[];
+}
+
+interface JwsCase extends NonWire {
   id: string;
   description: string;
   jws: string;
@@ -83,7 +140,7 @@ interface JwsCase {
   expect: { verify: "ok" | "fail"; kid?: string; doc?: unknown };
 }
 
-interface DocCase {
+interface DocCase extends NonWire {
   id: string;
   description: string;
   jws: string;
@@ -98,7 +155,7 @@ interface DocCase {
   expect: { accept: boolean };
 }
 
-interface TrustCase {
+interface TrustCase extends NonWire {
   id: string;
   description: string;
   pinned: TrustSet;
@@ -130,7 +187,7 @@ type ImportOutcome =
   | { imports: false; reason: BundleReason }
   | { imports: true; docs: string[] };
 
-interface BundleCase {
+interface BundleCase extends NonWire {
   id: string;
   description: string;
   bundleJws: string;
@@ -142,6 +199,38 @@ interface BundleCase {
   expect: ImportOutcome;
 }
 
+/** WIRE-CONTRACT-V4 §2.3: one `feedCases` vector (plans/P3-01.md §4.4). */
+interface FeedCase extends NonWire {
+  id: string;
+  description: string;
+  jws: string;
+  trust: TrustSet;
+  expectedAud: string;
+  channel: string;
+  platform: string;
+  now: number;
+  checkFreshness: boolean;
+  floors?: Record<string, { seq: number; issuedAt: number }>;
+  expect:
+    | { verify: "ok"; seq: number; issuedAt: number; doc?: unknown }
+    | { verify: "fail"; reason: string };
+}
+
+/** WIRE-CONTRACT-V4 §2.4: one `releaseRecordCases` vector (plans/P3-01.md §4.5). */
+interface RecordCase extends NonWire {
+  id: string;
+  description: string;
+  jws: string;
+  releaseKeys: TrustSet;
+  productTrust: TrustSet;
+  expectedAud: string;
+  expectedHash: string;
+  pin?: { deliverable: string; version: string; seq: number };
+  expect:
+    | { verify: "ok"; kind: string; doc?: unknown }
+    | { verify: "fail"; step: string };
+}
+
 interface Corpus {
   corpusVersion: number;
   keys: { kid: string; publicKeyRaw: string }[];
@@ -151,6 +240,8 @@ interface Corpus {
   trustCases: TrustCase[];
   clockFloorCases: ClockFloorCase[];
   bundleCases: BundleCase[];
+  feedCases: FeedCase[];
+  releaseRecordCases: RecordCase[];
 }
 
 interface MatrixRow {
@@ -585,5 +676,382 @@ describe(`conformance corpus v${corpus.corpusVersion} — offline bundles (§7)`
     // The artifacts are the exact inner bytes — the host persists these, never the payloads.
     expect(bundle!.docs.license!.jws.split(".")).toHaveLength(3);
     expect(bundle!.docs.config!.jws.split(".")).toHaveLength(3);
+  });
+});
+
+// ── WIRE-CONTRACT-V4 §4.1 — the non-wire-integer pointer sets, over the seven JWS families ───
+// Every family's JWS goes through this verifier's own `verifyJws` with the family's keys, `typ`
+// and cap. Whenever it accepts, its `nonWireIntegers` must equal the case's member as a set (an
+// absent member is the empty set), and a case that carries the member must be accepted. So
+// the four SDKs' pointer sets cannot drift: one that misses or invents a pointer fails here.
+const POINTER_FAMILIES: [
+  string,
+  { id: string; nonWireIntegers?: string[] }[],
+  (c: never) => {
+    jws: string;
+    keys: TrustSet;
+    typ: TypV3 | undefined;
+    cap: number | undefined;
+  },
+][] = [
+  [
+    "jwsCases",
+    corpus.jwsCases,
+    (c: JwsCase) => ({
+      jws: c.jws,
+      keys: c.trust,
+      typ: c.typ,
+      cap: c.maxPayloadBytes,
+    }),
+  ],
+  [
+    "licenseDocCases",
+    corpus.licenseDocCases,
+    (c: DocCase) => ({ jws: c.jws, keys: c.trust, typ: c.typ, cap: undefined }),
+  ],
+  [
+    "configDocCases",
+    corpus.configDocCases,
+    (c: DocCase) => ({ jws: c.jws, keys: c.trust, typ: c.typ, cap: undefined }),
+  ],
+  [
+    "trustCases",
+    corpus.trustCases,
+    (c: TrustCase) => ({
+      jws: c.manifestJws,
+      keys: c.pinned,
+      typ: "pkey-trust+jws",
+      cap: undefined,
+    }),
+  ],
+  [
+    "bundleCases",
+    corpus.bundleCases,
+    (c: BundleCase) => ({
+      jws: c.bundleJws,
+      keys: c.pinned,
+      typ: "pkey-bundle+jws",
+      cap: MAX_BUNDLE_BYTES,
+    }),
+  ],
+  [
+    "feedCases",
+    corpus.feedCases,
+    (c: FeedCase) => ({
+      jws: c.jws,
+      keys: c.trust,
+      typ: "pkey-feed+jws",
+      cap: undefined,
+    }),
+  ],
+  [
+    "releaseRecordCases",
+    corpus.releaseRecordCases,
+    (c: RecordCase) => ({
+      jws: c.jws,
+      keys: c.releaseKeys,
+      typ: "pkey-release+jws",
+      cap: undefined,
+    }),
+  ],
+];
+
+// @pkey-feature core.verify
+describe(`conformance corpus v${corpus.corpusVersion} — non-wire-integer pointer sets (V4 §4.1)`, () => {
+  for (const [family, cases, view] of POINTER_FAMILIES) {
+    for (const c of cases) {
+      it(`${family}/${c.id}`, async () => {
+        const { jws, keys, typ, cap } = view(c as never);
+        const v = await verifyJws(jws, keys, { typ, maxPayloadBytes: cap });
+        if (c.nonWireIntegers !== undefined)
+          expect(
+            v,
+            `${c.id} carries nonWireIntegers, so it must verify`,
+          ).not.toBeNull();
+        if (v === null) return;
+        expect([...v.nonWireIntegers].sort()).toEqual(
+          [...(c.nonWireIntegers ?? [])].sort(),
+        );
+      });
+    }
+  }
+});
+
+// ── plans/P3-01.md §5 order 0 — the four functions P3-03 imports ─────────────────────────────
+// `versionCases` through `compareVersions`, and the two claim functions over every feed and
+// record case that reaches the claims step (V4 §2.5 steps 4–6 and 14). The full feed and record
+// verifiers and the rest of `update-matrix.json` are P3-05's sections.
+
+interface UpdateMatrix {
+  updateMatrixVersion: number;
+  vocabulary: Record<string, string[]>;
+  versionCases: {
+    name: string;
+    scheme: string;
+    a: string;
+    b: string;
+    expect: -1 | 0 | 1 | null;
+  }[];
+  capabilityCases: {
+    name: string;
+    kind: string;
+    platform: string;
+    subkind: string | null;
+    server: Record<string, unknown>;
+    expect: Record<string, unknown>;
+  }[];
+  outletCases: {
+    name: string;
+    host: unknown;
+    stamp: Record<string, string> | null;
+    detected: Record<string, string | null> | null;
+    expect: { id: string | null; kind: string; subkind: string | null };
+  }[];
+  bucketVectors: {
+    name: string;
+    salt: string;
+    installId: string;
+    sha256: string;
+    first4: string;
+    u32: number;
+    bucket: number;
+  }[];
+  rows: {
+    name: string;
+    input: UpdateDecisionInput;
+    expect: { decision: UpdateDecision; boot: string };
+  }[];
+}
+interface OutletMatrix {
+  outletMatrixVersion: number;
+  kinds: Record<string, Record<string, unknown>>;
+  platformNarrowing: Record<string, Record<string, unknown>>;
+  subkinds: Record<string, unknown>;
+  vocabulary: Record<string, string[]>;
+  platformData: { listingUrlPrefixes: Record<string, string[]> };
+}
+const updateMatrix = JSON.parse(
+  readFileSync(v2("update-matrix.json"), "utf8"),
+) as UpdateMatrix;
+const outletMatrix = JSON.parse(
+  readFileSync(v2("outlet-matrix.json"), "utf8"),
+) as OutletMatrix;
+
+// @pkey-feature update.decide
+describe(`update-matrix v${updateMatrix.updateMatrixVersion} — vocabulary and versions`, () => {
+  it("has its version and §2.8's vocabularies, which the protocol constants hold", () => {
+    expect(updateMatrix.updateMatrixVersion).toBe(1);
+    expect(updateMatrix.vocabulary).toEqual({
+      actions: [...UPDATE_ACTIONS],
+      noneReasons: [...NONE_REASONS],
+      blockedReasons: [...BLOCKED_REASONS],
+      methods: [...BINARY_METHODS],
+      boot: [...BOOT_DECISIONS],
+      schemes: [...FEED_VERSION_SCHEMES],
+    });
+  });
+  for (const c of updateMatrix.versionCases) {
+    it(`version ${c.name}`, () => {
+      expect(compareVersions(c.scheme, c.a, c.b)).toBe(c.expect);
+    });
+  }
+});
+
+// @pkey-feature outlet.detect
+describe(`outlet-matrix v${outletMatrix.outletMatrixVersion} — the compiled tables`, () => {
+  it("OUTLET_CAPABILITY_DEFAULTS, PLATFORM_NARROWING, SUBKIND_NARROWING and LISTING_URL_PREFIXES equal the matrix", () => {
+    expect(outletMatrix.outletMatrixVersion).toBe(1);
+    const kinds: Record<string, unknown> = {};
+    for (const [kind, caps] of Object.entries(OUTLET_CAPABILITY_DEFAULTS))
+      kinds[kind] = {
+        ...caps,
+        platforms: [...OUTLET_PLATFORMS[kind as keyof typeof OUTLET_PLATFORMS]],
+      };
+    expect(outletMatrix.kinds).toEqual(kinds);
+    expect(outletMatrix.platformNarrowing).toEqual(PLATFORM_NARROWING);
+    expect(outletMatrix.subkinds).toEqual(SUBKIND_NARROWING);
+    expect(outletMatrix.platformData.listingUrlPrefixes).toEqual(
+      LISTING_URL_PREFIXES,
+    );
+    expect(outletMatrix.vocabulary.kinds).toEqual([...OUTLET_KINDS]);
+    expect(outletMatrix.vocabulary.subkinds).toEqual([...OUTLET_SUBKINDS]);
+    expect(outletMatrix.vocabulary.confidence).toEqual([...OUTLET_CONFIDENCES]);
+  });
+});
+
+const CLAIM_REASONS = new Set(["claims", "channel", "selector"]);
+const AFTER_CLAIMS = new Set(["freshness", "not-newer", "rollback"]);
+
+// @pkey-feature update.feed
+describe(`conformance corpus v${corpus.corpusVersion} — feed claims (V4 §2.5 steps 4–6)`, () => {
+  for (const c of corpus.feedCases) {
+    const reason = c.expect.verify === "ok" ? null : c.expect.reason;
+    if (
+      reason !== null &&
+      !CLAIM_REASONS.has(reason) &&
+      !AFTER_CLAIMS.has(reason)
+    )
+      continue;
+    it(`${c.id} → ${reason !== null && CLAIM_REASONS.has(reason) ? reason : "no refusal"}`, async () => {
+      const v = await verifyJws(c.jws, c.trust, { typ: "pkey-feed+jws" });
+      expect(v, `${c.id} reaches the claims step`).not.toBeNull();
+      const got = feedClaims(v!.payload, {
+        expectedAud: c.expectedAud,
+        channel: c.channel,
+        platform: c.platform,
+        nonWire: v!.nonWireIntegers,
+      });
+      expect(got, c.description).toBe(
+        reason !== null && CLAIM_REASONS.has(reason) ? reason : null,
+      );
+    });
+  }
+});
+
+// @pkey-feature release.record
+describe(`conformance corpus v${corpus.corpusVersion} — record claims (V4 §2.5 step 14)`, () => {
+  for (const c of corpus.releaseRecordCases) {
+    const step = c.expect.verify === "ok" ? null : c.expect.step;
+    if (step !== null && step !== "claims" && step !== "cross-check") continue;
+    it(`${c.id} → claims ${step === "claims" ? "refused" : "accepted"}`, async () => {
+      // Step 13's key selection, from the pinned release keys only.
+      const kid = (
+        JSON.parse(
+          new TextDecoder().decode(base64UrlDecode(c.jws.split(".")[0]!)),
+        ) as { kid: string }
+      ).kid;
+      const v = await verifyJws(
+        c.jws,
+        { [kid]: c.releaseKeys[kid]! },
+        { typ: "pkey-release+jws" },
+      );
+      expect(v, `${c.id} reaches the claims step`).not.toBeNull();
+      const ok = releaseRecordClaims(v!.payload, {
+        expectedAud: c.expectedAud,
+        nonWire: v!.nonWireIntegers,
+      });
+      expect(ok, c.description).toBe(step !== "claims");
+    });
+  }
+});
+
+// ── plans/P3-01.md §5 order 1 (P3-05) — the full verifiers and the rest of the update matrix ──
+
+// @pkey-feature update.feed
+describe(`conformance corpus v${corpus.corpusVersion} — channel feeds (V4 §2.5 steps 3–8)`, () => {
+  it("has every feed case of plans/P3-01.md §4.4", () => {
+    expect(corpus.feedCases.length).toBe(77);
+  });
+  for (const c of corpus.feedCases) {
+    const want = c.expect.verify === "ok" ? "ok" : c.expect.reason;
+    it(`${c.id} → ${want}`, async () => {
+      const r = await verifyFeed(c.jws, {
+        trust: c.trust,
+        expectedAud: c.expectedAud,
+        channel: c.channel,
+        platform: c.platform,
+        now: c.now,
+        checkFreshness: c.checkFreshness,
+        floors: c.floors,
+      });
+      if (c.expect.verify === "ok") {
+        expect(r, c.description).toMatchObject({ ok: true });
+        if (!r.ok) return;
+        expect(r.feed.seq).toBe(c.expect.seq);
+        expect(r.feed.issuedAt).toBe(c.expect.issuedAt);
+        if (c.expect.doc !== undefined) expect(r.feed).toEqual(c.expect.doc);
+      } else {
+        expect(r.ok, c.description).toBe(false);
+        if (r.ok) return;
+        expect(r.reason, c.description).toBe(c.expect.reason);
+      }
+    });
+  }
+});
+
+// @pkey-feature release.record
+describe(`conformance corpus v${corpus.corpusVersion} — release records (V4 §2.5 steps 12–15)`, () => {
+  it("has every record case of plans/P3-01.md §4.5", () => {
+    expect(corpus.releaseRecordCases.length).toBe(49);
+  });
+  for (const c of corpus.releaseRecordCases) {
+    const want = c.expect.verify === "ok" ? "ok" : c.expect.step;
+    it(`${c.id} → ${want}`, async () => {
+      const r = await verifyReleaseRecord(c.jws, {
+        releaseKeys: c.releaseKeys,
+        productTrust: c.productTrust,
+        expectedAud: c.expectedAud,
+        expectedHash: c.expectedHash,
+        ...(c.pin ? { pin: c.pin } : {}),
+      });
+      if (c.expect.verify === "ok") {
+        expect(r, c.description).toMatchObject({ ok: true });
+        if (!r.ok) return;
+        expect(r.record.kind).toBe(c.expect.kind);
+        if (c.expect.doc !== undefined) expect(r.record).toEqual(c.expect.doc);
+      } else {
+        expect(r.ok, c.description).toBe(false);
+        if (r.ok) return;
+        expect(r.step, c.description).toBe(c.expect.step);
+      }
+    });
+  }
+});
+
+// @pkey-feature update.decide
+describe(`update-matrix v${updateMatrix.updateMatrixVersion} — capabilities, outlets, buckets and rows`, () => {
+  it("has every case of plans/P3-01.md §4.6", () => {
+    expect(updateMatrix.capabilityCases.length).toBe(10);
+    expect(updateMatrix.outletCases.length).toBe(12);
+    expect(updateMatrix.bucketVectors.length).toBe(6);
+    expect(updateMatrix.rows.length).toBe(65);
+  });
+  for (const c of updateMatrix.capabilityCases) {
+    it(`capability ${c.name}`, () => {
+      expect(
+        effectiveCapabilities(c.kind, {
+          platform: c.platform,
+          subkind: c.subkind,
+          server: c.server,
+        }),
+      ).toEqual(c.expect);
+    });
+  }
+  for (const c of updateMatrix.outletCases) {
+    it(`outlet ${c.name}`, () => {
+      expect(
+        resolveUpdateOutlet({
+          host: c.host,
+          stamp: c.stamp,
+          detected: c.detected as never,
+        }),
+      ).toEqual(c.expect);
+    });
+  }
+  it("refuses a host outlet outside the vocabularies (invalid-options)", () => {
+    for (const host of [
+      "epic",
+      { id: "Direct Build", kind: "direct" },
+      { id: "direct", kind: "epic" },
+      { id: "direct", kind: "direct", subkind: "brew" },
+    ])
+      expect(resolveUpdateOutlet({ host })).toBeNull();
+  });
+  for (const v of updateMatrix.bucketVectors) {
+    it(`bucket ${v.name}`, async () => {
+      expect(await rolloutBucket(v.salt, v.installId)).toBe(v.bucket);
+      expect(v.u32 % 10000).toBe(v.bucket);
+    });
+  }
+  for (const row of updateMatrix.rows) {
+    it(`row ${row.name}`, () => {
+      const decision = decideUpdate(row.input);
+      expect(decision).toEqual(row.expect.decision);
+      expect(bootDecision(decision)).toBe(row.expect.boot);
+    });
+  }
+  it("every v4 boot value is none or optional: no floor stops play", () => {
+    for (const row of updateMatrix.rows)
+      expect(["none", "optional"]).toContain(row.expect.boot);
   });
 });

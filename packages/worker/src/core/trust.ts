@@ -9,7 +9,6 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Product } from "./products.js";
 import type { Db } from "../db/types.js";
-import { signJws } from "@polaris-key/jws";
 import type { TrustManifestDoc } from "@polaris-key/protocol";
 // The issuer is `key.plrs.im` (Amendment A1 withdrew the host-neutral `plrs.im` spelling), and
 // `@polaris-key/protocol/core` is where that constant lives — the barrel re-exports the SAME
@@ -18,6 +17,8 @@ import type { TrustManifestDoc } from "@polaris-key/protocol";
 // have to name one `iss` or an SDK that pins it cannot accept all three.
 import { ISSUER } from "@polaris-key/protocol/core";
 import { loadPublicSigningKeys } from "./products.js";
+import { isStrictJsonError, signDoc } from "./signing.js";
+import { ErrorCode, wireError } from "./errors.js";
 
 const TRUST_CACHE_SECONDS = 300;
 
@@ -95,7 +96,11 @@ export async function signTrustManifest(
   // `typ` is the domain separator, and wire v3 §2 makes it MANDATORY — an untyped manifest is
   // rejected outright now, so the v2 tolerance window (sign without a typ, verify without
   // requiring one) has to close on the signing side too or nothing verifies.
-  return signJws(
+  //
+  // Through `signDoc`, not `signJws`, so the manifest passes the same integer-claim guard as
+  // every other v3 document (plans/P3-01.md §2.2). The bytes are the same: `signDoc` adds a
+  // check, never a transformation.
+  return signDoc(
     doc,
     product.signingKeyPem,
     product.signingKid,
@@ -110,7 +115,15 @@ export async function handleTrustManifest(
   now: number,
 ): Promise<Response> {
   const url = new URL(req.url);
-  return new Response(await signTrustManifest(db, product, now, url.origin), {
+  let jws: string;
+  try {
+    jws = await signTrustManifest(db, product, now, url.origin);
+  } catch (e) {
+    // A stored kid no v4 verifier would accept (plans/P3-01.md §2.2): refuse, never throw.
+    if (!isStrictJsonError(e)) throw e;
+    return wireError(500, ErrorCode.DocumentNotRepresentable);
+  }
+  return new Response(jws, {
     status: 200,
     headers: {
       "content-type": "application/jose",

@@ -109,8 +109,11 @@ A store's own staged rollout — Apple's seven-day phased release, Play's `userF
 **mirrored** from the store by its connector, and controlled through the connector, not here.
 Such a row has `mirrored = 1` and its connector's kind as `source`, and every direct edit is
 refused with `rollout_mirrored`. Apple's phased release is mirrored by the
-[App Store Connect connector](/docs/services/distribution/app-store-connect/#phased-release),
-audited as `distribution.rollout.mirror`.
+[App Store Connect connector](/docs/services/distribution/app-store-connect/#phased-release) and
+each Play track's staged rollout by the
+[Google Play connector](/docs/services/distribution/google-play/#how-play-maps), both audited as
+`distribution.rollout.mirror`. The Play connector's halt is also the one an opt-in vitals
+auto-halt uses (`connector:play-vitals`).
 
 ## See also
 

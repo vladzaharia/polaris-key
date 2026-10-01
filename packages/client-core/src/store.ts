@@ -47,6 +47,20 @@ export interface CacheRecordV3 {
   lastSyncUnauthorized?: boolean;
   /** The last 403 version/channel block from `GET /<p>/license/document`. */
   blocked?: BlockedState;
+  /**
+   * WIRE-CONTRACT-V4 §4: the committed channel feeds (`pkey-feed+jws`, verbatim), keyed by the
+   * CANONICAL channel — each feed's own `channel` claim, never the requested name (`latest` is
+   * stored under `stable`). Re-verified on load (steps 3–6, no freshness, the claim equal to the
+   * key) by `reloadFeeds`, which derives each channel's `seq` floor; no floor is ever stored.
+   * Additive, so `CACHE_VERSION` stays 3: a record without it has no floor yet.
+   */
+  feeds?: Record<string, string>;
+  /**
+   * WIRE-CONTRACT-V4 §4: verified release records (`pkey-release+jws`, verbatim), keyed by their
+   * lowercase hex SHA-256. Re-verified on load by `reloadReleaseRecords` (steps 12–14) and kept
+   * only while a committed feed's target for this platform pins the hash.
+   */
+  releaseRecords?: Record<string, string>;
 }
 
 /**

@@ -28,6 +28,12 @@
  *   - **Never a value out.** Listing reads metadata columns only (the sealed column is never
  *     selected); open failures collapse to `null` ("unusable credential"), never an error
  *     message that could carry bytes; the admin write echoes the id only.
+ *   - **The operator names the app.** A kind whose key can reach more than one store app (a
+ *     team-wide App Store Connect key) carries an operator-owned **pin**: the one app id its
+ *     connector may read and act on (`OUTLET_CREDENTIAL_PINS`). The pin is set only by the Core
+ *     admin handler (`putOutletCredential`, `pinOutletCredential`), kept in `meta_json`, and
+ *     compared with the manifest's outlet identity by `checkOutletCredentialPin`; a missing or
+ *     different pin leaves the connector inert. See "Pins" below.
  *
  * Later kinds are added by the packages that need them (P6-01, P6-02, P6-03): one entry in
  * `KINDS` with a validator and its metadata projection.
@@ -229,6 +235,126 @@ export async function validateOutletCredential<K extends OutletCredentialKind>(
   >;
 }
 
+// ── pins ─────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Pins: which store app a credential may be used for, decided by the operator (P5-02f).
+ *
+ * The app a connector reads and acts on is named by the product's `.pkey/distribution` outlet
+ * identity (`appleId`, `packageName`, …), which the repo rewrites on every resync. The credential
+ * is the operator's, and for some stores one key reaches every app of a team. Without a pin, a
+ * repo writer could aim the operator's key — and the console's irreversible controls — at any
+ * app that key can see (a confused deputy; THREAT-MODEL.md, "Who picks the outlet's app"). So a
+ * kind listed here carries one operator-owned value, the **pin**, and a connector runs only when
+ * the manifest's identity field equals it (`checkOutletCredentialPin`):
+ *
+ *   - **Where it lives.** In `meta_json` under `field` (`appleId` for `asc-api-key`, `packageName`
+ *     for `google-service-account`), beside the kind's display metadata. It is not secret and not
+ *     sealed; it is written only by the Core admin handler, through `putOutletCredential` (`pin`
+ *     in the PUT body, alongside a value) or `pinOutletCredential` (a PUT with `pin` and no
+ *     value: re-pinning never needs the key material again). The reach test keeps both writers to that handler.
+ *   - **Required where used, not at write.** A credential may be stored before it is pinned (and
+ *     rows from before P5-02f have none); a rotation that omits `pin` keeps the stored one. A
+ *     connector treats a missing pin exactly as a wrong one: inert, with the reason shown.
+ *   - **Audited.** Every change of a pin is its own `outlet_credential.pin` audit row (old and
+ *     new value) written by the admin handler, apart from the `outlet_credential.set` row.
+ *
+ * Reuse by other connectors (P5-04 Microsoft Store next): add one entry here — as P5-03 did for
+ * the Play app's package name (`google-service-account`, field `packageName`) — and call
+ * `checkOutletCredentialPin(info, identity.<field>)` in that connector's setup before it opens
+ * anything, refusing every control and webhook when it is not `ok`. Nothing else in this module or
+ * the admin handler changes: the PUT body's `pin`, the list's `pins` map, the audit row and the
+ * console's re-pin action are all keyed by this table. The console's create form gives the kind
+ * its `pin` entry (`OutletCredentials.tsx`, `KINDS`) so the pin is required with the key.
+ */
+export interface OutletCredentialPinSpec {
+  /** The `meta_json` field the pin is stored under, named after the outlet identity field it is
+   *  compared with. */
+  field: string;
+  /** What a valid pin looks like. */
+  pattern: RegExp;
+  /** A human label for the pinned value (the console's field label). */
+  label: string;
+  /** The 422 message for a malformed pin. Never echoes the input. */
+  message: string;
+}
+
+export const OUTLET_CREDENTIAL_PINS: Readonly<
+  Partial<Record<OutletCredentialKind, OutletCredentialPinSpec>>
+> = {
+  "asc-api-key": {
+    field: "appleId",
+    pattern: /^[0-9]{1,20}$/,
+    label: "App Store Connect app id (Apple ID)",
+    message:
+      "pin must be the App Store Connect app id (the app's numeric Apple ID)",
+  },
+  // A Google Play service account can be invited to every app of a developer account (P5-03).
+  // The Android package-name rule, with the 255-character cap the manifest and the Play setup
+  // apply: the pin is compared byte-for-byte with the outlet identity's `packageName`.
+  "google-service-account": {
+    field: "packageName",
+    pattern: /^(?=.{1,255}$)[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/,
+    label: "Google Play package name",
+    message:
+      "pin must be the Google Play app's package name (an Android application id such as com.example.game)",
+  },
+};
+
+/** The pin spec of a kind, or `null` for a kind without one. */
+export function outletCredentialPinSpec(
+  kind: string,
+): OutletCredentialPinSpec | null {
+  return isOutletCredentialKind(kind)
+    ? (OUTLET_CREDENTIAL_PINS[kind] ?? null)
+    : null;
+}
+
+/** Validate a raw pin for `kind`: the trimmed value, or why it is refused. */
+export function validateOutletCredentialPin(
+  kind: OutletCredentialKind,
+  raw: unknown,
+): { ok: true; value: string } | { ok: false; message: string } {
+  const spec = OUTLET_CREDENTIAL_PINS[kind];
+  if (!spec) return { ok: false, message: `a ${kind} takes no pin` };
+  const v = typeof raw === "string" ? raw.trim() : null;
+  if (!v || !spec.pattern.test(v)) return { ok: false, message: spec.message };
+  return { ok: true, value: v };
+}
+
+/** The stored pin of a listed credential, or `null` when its kind has none or none is set. */
+export function outletCredentialPin(info: {
+  kind: string;
+  meta: OutletCredentialMeta;
+}): string | null {
+  const spec = outletCredentialPinSpec(info.kind);
+  if (!spec) return null;
+  const v = info.meta[spec.field];
+  return typeof v === "string" && spec.pattern.test(v) ? v : null;
+}
+
+/** Whether a credential may be used for the app the manifest names. */
+export type OutletCredentialPinCheck =
+  | { ok: true; pinned: string }
+  | { ok: false; reason: "pin_missing"; pinned: null }
+  | { ok: false; reason: "pin_mismatch"; pinned: string };
+
+/**
+ * Compare a credential's pin with the app id the manifest's outlet identity names. `ok` only on an
+ * exact match; a kind that should be pinned but is not, and a pin naming another app, both refuse.
+ * A connector must call this before it opens the credential, and treat every refusal as "not set
+ * up": no store call, no write, every control refused.
+ */
+export function checkOutletCredentialPin(
+  info: { kind: string; meta: OutletCredentialMeta },
+  expected: string,
+): OutletCredentialPinCheck {
+  const pinned = outletCredentialPin(info);
+  if (pinned === null) return { ok: false, reason: "pin_missing", pinned };
+  if (pinned !== expected) return { ok: false, reason: "pin_mismatch", pinned };
+  return { ok: true, pinned };
+}
+
 // ── ids ──────────────────────────────────────────────────────────────────────────────────────
 
 /** A credential id: lowercase, no `:` (the AAD and the token-cache id are `:`-separated, so a
@@ -341,20 +467,38 @@ export interface PutOutletCredentialInput {
   outletId: string | null;
   value: unknown;
   expiresAt: number | null;
+  /** The operator's pin for a kind in `OUTLET_CREDENTIAL_PINS`; omitted keeps the stored one. */
+  pin?: unknown;
   /** The verified admin session subject. */
   actor: string;
   now: number;
 }
 
+/** A pin that a write changed: the stored value before (`null`: none) and after. */
+export interface OutletCredentialPinChange {
+  field: string;
+  before: string | null;
+  after: string;
+}
+
 export type PutOutletCredentialResult =
-  | { ok: true; id: string; created: boolean }
-  | { ok: false; status: 409 | 422; message: string; field: string };
+  | {
+      ok: true;
+      id: string;
+      created: boolean;
+      /** Set when the write changed the pin; the caller audits it. */
+      pinChange: OutletCredentialPinChange | null;
+    }
+  | { ok: false; status: 404 | 409 | 422; message: string; field: string };
 
 /**
  * Validate, seal and store one credential. A new id is inserted; an existing id of the SAME
  * kind is rotated in place (`rotated_at` set, the health columns cleared — they described the
  * old value); an existing id of another kind is refused (409), so a value can never silently
  * change what a connector reads it as.
+ *
+ * `pin` (kinds in `OUTLET_CREDENTIAL_PINS` only) sets the operator's pin; omitted, a rotation
+ * keeps the stored pin, so rotating the key material never silently un-pins it.
  *
  * Called ONLY from the Core admin handler, which has already established a platform-admin
  * session. Auditing is the handler's, with the session's actor.
@@ -379,8 +523,16 @@ export async function putOutletCredential(
       field: checked.field,
       message: checked.message,
     };
-  const existing = await db.first<{ kind: string }>(
-    "SELECT kind FROM outlet_credentials WHERE product = ? AND credential_id = ?",
+  const spec = OUTLET_CREDENTIAL_PINS[input.kind];
+  let pin: string | null = null;
+  if (input.pin !== undefined) {
+    const p = validateOutletCredentialPin(input.kind, input.pin);
+    if (!p.ok)
+      return { ok: false, status: 422, field: "pin", message: p.message };
+    pin = p.value;
+  }
+  const existing = await db.first<{ kind: string; meta_json: string }>(
+    "SELECT kind, meta_json FROM outlet_credentials WHERE product = ? AND credential_id = ?",
     input.product,
     input.credentialId,
   );
@@ -391,12 +543,29 @@ export async function putOutletCredential(
       field: "kind",
       message: `credential ${input.credentialId} is a ${existing.kind}; delete it before reusing the id`,
     };
+  const before = existing
+    ? outletCredentialPin({
+        kind: existing.kind,
+        meta: parseMeta(existing.meta_json),
+      })
+    : null;
+  const after = pin ?? before;
   const enc = await seal(
     env,
     JSON.stringify(checked.value),
     outletCredentialContext(input.product, input.credentialId),
   );
-  const meta = JSON.stringify(checked.meta);
+  // The pin is the operator's, never the value's: it is written after the kind's projection so
+  // no field of a value can stand in for it.
+  const meta = JSON.stringify(
+    spec && after !== null
+      ? { ...checked.meta, [spec.field]: after }
+      : checked.meta,
+  );
+  const pinChange: OutletCredentialPinChange | null =
+    spec && pin !== null && pin !== before
+      ? { field: spec.field, before, after: pin }
+      : null;
   if (existing) {
     await db.run(
       `UPDATE outlet_credentials
@@ -427,7 +596,76 @@ export async function putOutletCredential(
       input.actor,
     );
   }
-  return { ok: true, id: input.credentialId, created: !existing };
+  return { ok: true, id: input.credentialId, created: !existing, pinChange };
+}
+
+export interface PinOutletCredentialInput {
+  product: string;
+  credentialId: string;
+  kind: OutletCredentialKind;
+  pin: unknown;
+}
+
+/**
+ * Set the operator's pin on a stored credential without touching its value: `meta_json` only, so
+ * the sealed blob, its version marker (and with it every cached token), `rotated_at` and the
+ * health columns are unchanged. 404 for an unknown id, 409 for a row of another kind, 422 for a
+ * kind without a pin or a malformed pin.
+ *
+ * Called ONLY from the Core admin handler (the reach test), which audits a change as
+ * `outlet_credential.pin`.
+ */
+export async function pinOutletCredential(
+  db: Db,
+  input: PinOutletCredentialInput,
+): Promise<PutOutletCredentialResult> {
+  if (!isOutletCredentialId(input.credentialId))
+    return {
+      ok: false,
+      status: 404,
+      field: "id",
+      message: "no such credential",
+    };
+  const p = validateOutletCredentialPin(input.kind, input.pin);
+  if (!p.ok)
+    return { ok: false, status: 422, field: "pin", message: p.message };
+  const spec = OUTLET_CREDENTIAL_PINS[input.kind]!;
+  const row = await db.first<{ kind: string; meta_json: string }>(
+    "SELECT kind, meta_json FROM outlet_credentials WHERE product = ? AND credential_id = ?",
+    input.product,
+    input.credentialId,
+  );
+  if (!row)
+    return {
+      ok: false,
+      status: 404,
+      field: "id",
+      message: "no such credential",
+    };
+  if (row.kind !== input.kind)
+    return {
+      ok: false,
+      status: 409,
+      field: "kind",
+      message: `credential ${input.credentialId} is a ${row.kind}`,
+    };
+  const meta = parseMeta(row.meta_json);
+  const before = outletCredentialPin({ kind: row.kind, meta });
+  if (before !== p.value) {
+    await db.run(
+      "UPDATE outlet_credentials SET meta_json = ? WHERE product = ? AND credential_id = ?",
+      JSON.stringify({ ...meta, [spec.field]: p.value }),
+      input.product,
+      input.credentialId,
+    );
+  }
+  return {
+    ok: true,
+    id: input.credentialId,
+    created: false,
+    pinChange:
+      before === p.value ? null : { field: spec.field, before, after: p.value },
+  };
 }
 
 /** Delete one credential. `true` when a row was removed. */

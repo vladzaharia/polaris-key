@@ -57,7 +57,7 @@ function workerDoc(
 ): Record<string, unknown> {
   return {
     version: 2,
-    protocolVersion: 3,
+    protocolVersion: 4,
     schemaVersion: 4,
     product: PRODUCT,
     slug: PRODUCT,
@@ -248,7 +248,7 @@ describe("discoverProduct — the typed stable fields", () => {
     expect(res.manifest.name).toBe("DJDL");
     expect(res.manifest.baseUrl).toBe(ORIGIN);
     expect(res.manifest.version).toBe(2);
-    expect(res.manifest.protocolVersion).toBe(3);
+    expect(res.manifest.protocolVersion).toBe(4);
     expect(res.manifest.schemaVersion).toBe(4);
     // v3 moved the endpoint list off the top level into Core's always-on block (§2.1).
     expect(res.manifest.core?.registration).toBe("requires-license");

@@ -22,6 +22,7 @@ import { handleReleaseAdmin } from "./admin.js";
 import { getReleaseConfig } from "./config.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import { releaseCatalog } from "./catalog.js";
+import { releaseKeyFingerprints } from "./records.js";
 
 export const releaseService: ServiceDescriptor = {
   slug: "release",
@@ -72,7 +73,12 @@ export const releaseService: ServiceDescriptor = {
         // Templated: `{selector}` is a channel or a version, `{buildId}` an artifact-map id.
         builds: `${bytesBase}/release/builds/{selector}/{buildId}`,
         blobs: `${bytesBase}/release/blobs/sha256/{sha256}`,
+        // P3-03: a CI-signed release record by the lowercase hex SHA-256 a feed pins.
+        record: `${base}/release/records/{sha256}`,
       },
+      // P3-03: lowercase hex SHA-256 of each declared release key's raw bytes, for tooling
+      // (`pkey release keys check`). No SDK reads it: apps pin their release keys at build time.
+      releaseKeyFingerprints: await releaseKeyFingerprints(cfg),
     };
   },
 };

@@ -1,7 +1,7 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// Polaris Key for Swift — wire contract v3 (docs/security/WIRE-CONTRACT-V3.md).
+// Polaris Key for Swift — wire contract v4 (docs/security/WIRE-CONTRACT-V4.md).
 //
 // ── WHY SEPARATE TARGETS ────────────────────────────────────────────────────────────────────
 //
@@ -123,9 +123,11 @@ let package = Package(
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUpdate", "PolarisKeyRelease",
             ],
-            // Bundle the SAME cross-language corpus + gate-matrix + fingerprint + stage-matrix
-            // fixtures the Node and Python runners drive, so the Swift verifier, gate, bundle
-            // importer and boot stage machine are held to byte-for-byte conformance. The `v2` segment is kept so this path
+            // Bundle the SAME cross-language corpus (cases, gate-matrix, fingerprint, stage-matrix,
+            // headers, config-matrix, and wire contract v4's update-matrix and outlet-matrix) the
+            // Node and Python runners drive, so the Swift verifier, gate, bundle importer and boot
+            // stage machine are held to byte-for-byte conformance. `.copy` bundles the directory
+            // whole, so a new corpus file needs no entry here. The `v2` segment is kept so this path
             // matches `conformance/corpus/v2/` one-for-one — the mirror is findable from the
             // source without a translation step. Written by `pnpm gen:corpus`, guarded by
             // `--check`. `Resources/transcripts` is the same arrangement for the HTTP transcripts

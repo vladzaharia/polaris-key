@@ -51,6 +51,7 @@ import { isSafeBinaryName } from "./install.js";
 import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
+import { releaseKeysForSync } from "./records.js";
 import { serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
@@ -271,6 +272,14 @@ async function registerFromManifest(
 
   // Defaults: binary name = repo name; summary marker = the parser default.
   const rel = manifest.release;
+  // P3-03: a declared release key must never be a signing key of the product (the one minted
+  // here included). Refused at link, the product starts with none, and the guidance says why.
+  const releaseKeys = await releaseKeysForSync(
+    db,
+    slug,
+    rel?.releaseKeys ?? [],
+    [publicRawB64url],
+  );
   const binaryName = rel?.binaryName || gh.repo;
   const summaryMarker = rel?.summaryMarker || "pkey:summary";
 
@@ -466,6 +475,7 @@ async function registerFromManifest(
       ignoreTagsJson: rel?.ignoreTags.length
         ? JSON.stringify(rel.ignoreTags)
         : null,
+      releaseKeysJson: releaseKeys.ok ? releaseKeys.json : null,
     }),
   );
 
@@ -545,9 +555,12 @@ async function registerFromManifest(
   const remainingSecrets = collectSecretNames(manifest);
 
   const install =
-    remainingSecrets.length > 0
+    (remainingSecrets.length > 0
       ? `Linked ${gh.owner}/${gh.repo}. Supply these secrets via PUT /api/products/${slug}/secrets/<name>: ${remainingSecrets.join(", ")}.`
-      : `Linked ${gh.owner}/${gh.repo}. No additional secrets required.`;
+      : `Linked ${gh.owner}/${gh.repo}. No additional secrets required.`) +
+    (releaseKeys.ok
+      ? ""
+      : ` release_key_is_product_key: ${releaseKeys.refused.map((r) => r.kid).join(", ")} refused; no releaseKeys were stored.`);
 
   return {
     ok: true,

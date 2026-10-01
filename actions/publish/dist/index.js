@@ -419,7 +419,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "outlet_testflight": {
-      "description": "The identity fields a testflight outlet reads: appleId, bundleId. Other keys are ignored.",
+      "description": "The identity fields a testflight outlet reads: appleId, bundleId, publicLink. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -430,6 +430,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         },
         "bundleId": {
           "$ref": "#/$defs/bundleId"
+        },
+        "publicLink": {
+          "$ref": "#/$defs/publicLink"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -780,6 +783,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "items": {
         "enum": ["macos", "ios", "android", "windows", "linux", "web"]
       }
+    },
+    "publicLink": {
+      "description": "The join code of the public TestFlight link (https://testflight.apple.com/join/<publicLink>), from which the signed feed composes the outlet's listingUrl.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9]{1,32}$"
     },
     "homebrewCask": {
       "description": "The Homebrew cask token.",
@@ -1640,445 +1648,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     }
   }
 }
-`, "release.schema.json": `{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://key.plrs.im/docs/schemas/v1/release.schema.json",
-  "title": "Polaris Key release manifest (.pkey/release)",
-  "description": "The release document of a .pkey/ manifest: GitHub provider coordinates, channel/appcast/install settings, artifact policy, access modes, deliverables with the declared artifact map, and edge-mint recipes. Required only when the release service is enabled. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
-  "type": "object",
-  "properties": {
-    "release": {
-      "$ref": "#/$defs/releaseBody"
-    },
-    "provider": {
-      "$ref": "#/$defs/provider"
-    },
-    "ghOwner": {
-      "$ref": "#/$defs/ghSlug"
-    },
-    "ghRepo": {
-      "$ref": "#/$defs/ghSlug"
-    },
-    "binaryName": {
-      "$ref": "#/$defs/binaryName"
-    },
-    "channelWorkflow": {
-      "$ref": "#/$defs/channelWorkflow"
-    },
-    "betaBranch": {
-      "$ref": "#/$defs/branch"
-    },
-    "summaryMarker": {
-      "$ref": "#/$defs/summaryMarker"
-    },
-    "sparkleEd25519Pub": {
-      "$ref": "#/$defs/sparklePub"
-    },
-    "manualChannels": {
-      "$ref": "#/$defs/manualChannels"
-    },
-    "stableTagPattern": {
-      "$ref": "#/$defs/stableTagPattern"
-    },
-    "ignoreTags": {
-      "$ref": "#/$defs/ignoreTags"
-    },
-    "artifactPolicy": {
-      "$ref": "#/$defs/artifactPolicy"
-    },
-    "access": {
-      "$ref": "#/$defs/access"
-    },
-    "deliverables": {
-      "$ref": "#/$defs/deliverables"
-    },
-    "edgeMint": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/edgeMintRecipe"
-      }
-    },
-    "publishing": {
-      "$ref": "#/$defs/publishing"
-    }
-  },
-  "$defs": {
-    "releaseBody": {
-      "description": "The same fields may be nested under a \`release\` key instead of flattened at the root.",
-      "type": "object",
-      "properties": {
-        "provider": {
-          "$ref": "#/$defs/provider"
-        },
-        "ghOwner": {
-          "$ref": "#/$defs/ghSlug"
-        },
-        "ghRepo": {
-          "$ref": "#/$defs/ghSlug"
-        },
-        "binaryName": {
-          "$ref": "#/$defs/binaryName"
-        },
-        "channelWorkflow": {
-          "$ref": "#/$defs/channelWorkflow"
-        },
-        "betaBranch": {
-          "$ref": "#/$defs/branch"
-        },
-        "summaryMarker": {
-          "$ref": "#/$defs/summaryMarker"
-        },
-        "sparkleEd25519Pub": {
-          "$ref": "#/$defs/sparklePub"
-        },
-        "manualChannels": {
-          "$ref": "#/$defs/manualChannels"
-        },
-        "stableTagPattern": {
-          "$ref": "#/$defs/stableTagPattern"
-        },
-        "ignoreTags": {
-          "$ref": "#/$defs/ignoreTags"
-        },
-        "artifactPolicy": {
-          "$ref": "#/$defs/artifactPolicy"
-        },
-        "access": {
-          "$ref": "#/$defs/access"
-        },
-        "deliverables": {
-          "$ref": "#/$defs/deliverables"
-        },
-        "edgeMint": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/edgeMintRecipe"
-          }
-        },
-        "publishing": {
-          "$ref": "#/$defs/publishing"
-        }
-      }
-    },
-    "provider": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "description": "Only github is implemented (the seam for other providers is designed, not built).",
-          "const": "github"
-        },
-        "owner": {
-          "$ref": "#/$defs/ghSlug"
-        },
-        "repo": {
-          "$ref": "#/$defs/ghSlug"
-        }
-      }
-    },
-    "ghSlug": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
-    },
-    "binaryName": {
-      "description": "Interpolated into the published install.sh and artifact filenames.",
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-    },
-    "channelWorkflow": {
-      "description": "A workflow filename (*.yml/*.yaml) or numeric workflow id.",
-      "type": "string",
-      "pattern": "^(?:[0-9]{1,20}|[A-Za-z0-9._-]{1,100}\\\\.ya?ml)$"
-    },
-    "branch": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9._][A-Za-z0-9._/-]{0,254}$"
-    },
-    "summaryMarker": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$"
-    },
-    "sparklePub": {
-      "description": "The app's Sparkle Ed25519 public key (base64/base64url).",
-      "type": "string",
-      "pattern": "^[A-Za-z0-9+/=_-]{1,512}$"
-    },
-    "artifactPolicy": {
-      "type": "object",
-      "properties": {
-        "channels": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-          }
-        },
-        "architectures": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-          }
-        },
-        "requireDmg": {
-          "type": "boolean"
-        },
-        "requireCli": {
-          "type": "boolean"
-        },
-        "allowAmbiguousAssets": {
-          "type": "boolean"
-        }
-      }
-    },
-    "access": {
-      "description": "Who may read release metadata and download artifacts. (The per-product \`entitled\` feed mode is an admin-set runtime policy, not a manifest value.)",
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/$defs/accessMode"
-        },
-        "artifacts": {
-          "$ref": "#/$defs/accessMode"
-        }
-      }
-    },
-    "accessMode": {
-      "enum": ["public", "authenticated", "licensed"]
-    },
-    "edgeMintRecipe": {
-      "description": "Edge-mint recipe (identical shape to product.schema.json's — the block is accepted in either document).",
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
-        },
-        "alg": {
-          "enum": ["ES256", "RS256", "EdDSA"]
-        },
-        "signingKeySecret": {
-          "type": "string",
-          "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"
-        },
-        "kid": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
-        },
-        "claimsTemplate": {
-          "type": "object"
-        },
-        "ttlSeconds": {
-          "type": "integer",
-          "exclusiveMinimum": 0
-        },
-        "audience": {
-          "anyOf": [
-            {
-              "type": "string",
-              "maxLength": 200,
-              "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "required": ["id", "alg", "signingKeySecret"]
-    },
-    "manualChannels": {
-      "description": "Named channels beyond the built-in stable/beta, matched by anchored tag regex. Persisted verbatim to release_config.manual_channels_json. The validator additionally requires each regex to COMPILE, which JSON Schema cannot express.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "Becomes a URL path segment on the release/update routes.",
-            "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-          },
-          "regex": {
-            "description": "Matched anchored (^(?:...)$) against release tags.",
-            "type": "string",
-            "maxLength": 80
-          }
-        },
-        "required": ["name", "regex"]
-      }
-    },
-    "stableTagPattern": {
-      "description": "Which release tags are real app releases: only a non-draft tag this regex matches (anchored, ^(?:...)$) and whose version (the tag minus a leading v) parses as semver is a candidate for stable/latest and the beta prerelease fallback. Undeclared means a semver tag with an optional leading v. Persisted to release_config.stable_tag_pattern. The validator additionally requires the regex to COMPILE, which JSON Schema cannot express.",
-      "type": "string",
-      "maxLength": 80
-    },
-    "ignoreTags": {
-      "description": "Exact tag names that never resolve on stable, beta or a manual channel (a pinned X.Y.Z still reaches them). Persisted to release_config.ignore_tags_json.",
-      "type": "array",
-      "maxItems": 200,
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 255,
-        "pattern": "^[^\\\\u0000-\\\\u0020\\\\u007f]+$"
-      }
-    },
-    "deliverables": {
-      "description": "The product's deliverables (P2-04, README §3.4). \`app\` is the product's application; any other id is a pack (kind: pack), accepted with the warning pack_deliverables_not_supported and ignored until P4-02. Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",
-      "type": "object",
-      "propertyNames": {
-        "type": "string",
-        "maxLength": 64,
-        "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*$"
-      },
-      "properties": {
-        "app": {
-          "$ref": "#/$defs/appDeliverable"
-        }
-      },
-      "additionalProperties": {
-        "$ref": "#/$defs/packDeliverable"
-      }
-    },
-    "packDeliverable": {
-      "description": "A pack deliverable. Not supported yet: the validator warns (pack_deliverables_not_supported) and ignores it.",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "const": "pack"
-        }
-      },
-      "required": ["kind"]
-    },
-    "appDeliverable": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "const": "app"
-        },
-        "versioning": {
-          "type": "object",
-          "properties": {
-            "scheme": {
-              "description": "How versions are ordered. Default semver.",
-              "enum": ["semver", "semver+build", "4part"]
-            },
-            "stableTagPattern": {
-              "$ref": "#/$defs/stableTagPattern"
-            },
-            "ignoreTags": {
-              "$ref": "#/$defs/ignoreTags"
-            },
-            "buildNumber": {
-              "description": "Where each build's build number comes from.",
-              "enum": ["descriptor", "none"]
-            }
-          }
-        },
-        "channels": {
-          "description": "Channels this deliverable declares, by canonical name. includes names the channels whose releases it also offers (beta: { includes: [stable] } makes beta a superset of stable); includes names are canonical too; the validator additionally refuses an unknown channel or an includes cycle, which JSON Schema cannot express.",
-          "type": "object",
-          "maxProperties": 32,
-          "propertyNames": {
-            "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
-            "not": {
-              "enum": ["staging", "latest"]
-            }
-          },
-          "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "includes": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
-                  "not": {
-                    "enum": ["staging", "latest"]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "artifacts": {
-          "description": "The declared artifact map: each entry is one build, and match names its file. A file named <payload>.sig or <payload>.sha256 is that build's signature or checksum.",
-          "type": "array",
-          "maxItems": 64,
-          "items": {
-            "$ref": "#/$defs/artifactEntry"
-          }
-        }
-      },
-      "required": ["kind"]
-    },
-    "artifactEntry": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "The build id; unique within the map (the validator checks uniqueness).",
-          "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
-        },
-        "platform": {
-          "enum": ["macos", "ios", "android", "windows", "linux", "web"]
-        },
-        "arch": {
-          "description": "universal and any match every architecture.",
-          "enum": ["arm64", "x86_64", "universal", "armv7", "wasm32", "any"]
-        },
-        "format": {
-          "description": "The file type (dmg, zip, tar.gz, apk, ipa, exe, msix, …). Installer versus portable is a format, not a role.",
-          "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9.+-]{0,31}$"
-        },
-        "role": {
-          "description": "What the matched file is for in its build. Default payload.",
-          "enum": [
-            "payload",
-            "files-index",
-            "chunk-index",
-            "chunk-bundle",
-            "delta",
-            "signature",
-            "checksum"
-          ]
-        },
-        "match": {
-          "description": "An anchored, case-sensitive file-name glob: * matches any run of characters, ? exactly one.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$"
-        }
-      },
-      "required": ["id", "platform", "arch", "format", "match"]
-    },
-    "publishing": {
-      "description": "Trusted publishing (P2-02, README §3.4): which GitHub Actions workflow and environment may exchange their OIDC token for a short-lived pkeyci_ token. The manifest names only these two fields: the repository's numeric ids are resolved from GitHub at link/resync, and the protected-ref, GitHub-hosted-runner and allowed-event checks are platform-fixed. Once an operator claims the policy in the console, resync leaves it alone.",
-      "type": "object",
-      "properties": {
-        "trustedPublisher": {
-          "type": "object",
-          "required": ["workflow"],
-          "properties": {
-            "workflow": {
-              "description": "The workflow file, as GitHub's job_workflow_ref spells it.",
-              "type": "string",
-              "pattern": "^\\\\.github/workflows/[A-Za-z0-9._-]{1,100}\\\\.ya?ml$"
-            },
-            "environment": {
-              "description": "The GitHub environment the publishing job runs in. Default release.",
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_.-](?:[A-Za-z0-9 _.-]{0,98}[A-Za-z0-9_.-])?$"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-`, "schema.schema.json": `{
+`, "release.schema.json": '{\n  "$schema": "https://json-schema.org/draft/2020-12/schema",\n  "$id": "https://key.plrs.im/docs/schemas/v1/release.schema.json",\n  "title": "Polaris Key release manifest (.pkey/release)",\n  "description": "The release document of a .pkey/ manifest: GitHub provider coordinates, channel/appcast/install settings, artifact policy, access modes, deliverables with the declared artifact map, and edge-mint recipes. Required only when the release service is enabled. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",\n  "type": "object",\n  "properties": {\n    "release": {\n      "$ref": "#/$defs/releaseBody"\n    },\n    "provider": {\n      "$ref": "#/$defs/provider"\n    },\n    "ghOwner": {\n      "$ref": "#/$defs/ghSlug"\n    },\n    "ghRepo": {\n      "$ref": "#/$defs/ghSlug"\n    },\n    "binaryName": {\n      "$ref": "#/$defs/binaryName"\n    },\n    "channelWorkflow": {\n      "$ref": "#/$defs/channelWorkflow"\n    },\n    "betaBranch": {\n      "$ref": "#/$defs/branch"\n    },\n    "summaryMarker": {\n      "$ref": "#/$defs/summaryMarker"\n    },\n    "sparkleEd25519Pub": {\n      "$ref": "#/$defs/sparklePub"\n    },\n    "manualChannels": {\n      "$ref": "#/$defs/manualChannels"\n    },\n    "stableTagPattern": {\n      "$ref": "#/$defs/stableTagPattern"\n    },\n    "ignoreTags": {\n      "$ref": "#/$defs/ignoreTags"\n    },\n    "artifactPolicy": {\n      "$ref": "#/$defs/artifactPolicy"\n    },\n    "access": {\n      "$ref": "#/$defs/access"\n    },\n    "deliverables": {\n      "$ref": "#/$defs/deliverables"\n    },\n    "edgeMint": {\n      "type": "array",\n      "items": {\n        "$ref": "#/$defs/edgeMintRecipe"\n      }\n    },\n    "publishing": {\n      "$ref": "#/$defs/publishing"\n    },\n    "releaseKeys": {\n      "$ref": "#/$defs/releaseKeys"\n    }\n  },\n  "$defs": {\n    "releaseBody": {\n      "description": "The same fields may be nested under a `release` key instead of flattened at the root.",\n      "type": "object",\n      "properties": {\n        "provider": {\n          "$ref": "#/$defs/provider"\n        },\n        "ghOwner": {\n          "$ref": "#/$defs/ghSlug"\n        },\n        "ghRepo": {\n          "$ref": "#/$defs/ghSlug"\n        },\n        "binaryName": {\n          "$ref": "#/$defs/binaryName"\n        },\n        "channelWorkflow": {\n          "$ref": "#/$defs/channelWorkflow"\n        },\n        "betaBranch": {\n          "$ref": "#/$defs/branch"\n        },\n        "summaryMarker": {\n          "$ref": "#/$defs/summaryMarker"\n        },\n        "sparkleEd25519Pub": {\n          "$ref": "#/$defs/sparklePub"\n        },\n        "manualChannels": {\n          "$ref": "#/$defs/manualChannels"\n        },\n        "stableTagPattern": {\n          "$ref": "#/$defs/stableTagPattern"\n        },\n        "ignoreTags": {\n          "$ref": "#/$defs/ignoreTags"\n        },\n        "artifactPolicy": {\n          "$ref": "#/$defs/artifactPolicy"\n        },\n        "access": {\n          "$ref": "#/$defs/access"\n        },\n        "deliverables": {\n          "$ref": "#/$defs/deliverables"\n        },\n        "edgeMint": {\n          "type": "array",\n          "items": {\n            "$ref": "#/$defs/edgeMintRecipe"\n          }\n        },\n        "publishing": {\n          "$ref": "#/$defs/publishing"\n        },\n        "releaseKeys": {\n          "$ref": "#/$defs/releaseKeys"\n        }\n      }\n    },\n    "releaseKeys": {\n      "description": "The Ed25519 public keys CI signs release records (pkey-release+jws) with (P3-03, WIRE-CONTRACT-V4 §2.4). The private halves stay in CI (a GitHub Environment secret); `pkey release keys generate` prints an entry. A release key is never a product signing key (refused at sync, release_key_is_product_key) nor release.sparkleEd25519Pub (release_key_reused). Validator-only: non-canonical or small-order points (weak_release_key) and duplicate kids or keys (duplicate_release_key). `contentKeys` is reserved for P4-19 and ignored with a warning.",\n      "type": "array",\n      "minItems": 1,\n      "maxItems": 4,\n      "items": {\n        "type": "object",\n        "required": ["kid", "publicKey"],\n        "properties": {\n          "kid": {\n            "description": "The JWS header kid the records are signed under.",\n            "type": "string",\n            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"\n          },\n          "publicKey": {\n            "description": "The raw 32-byte Ed25519 public key, unpadded base64url (the TrustSet encoding).",\n            "type": "string",\n            "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"\n          }\n        }\n      }\n    },\n    "provider": {\n      "type": "object",\n      "properties": {\n        "type": {\n          "description": "Only github is implemented (the seam for other providers is designed, not built).",\n          "const": "github"\n        },\n        "owner": {\n          "$ref": "#/$defs/ghSlug"\n        },\n        "repo": {\n          "$ref": "#/$defs/ghSlug"\n        }\n      }\n    },\n    "ghSlug": {\n      "type": "string",\n      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"\n    },\n    "binaryName": {\n      "description": "Interpolated into the published install.sh and artifact filenames.",\n      "type": "string",\n      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"\n    },\n    "channelWorkflow": {\n      "description": "A workflow filename (*.yml/*.yaml) or numeric workflow id.",\n      "type": "string",\n      "pattern": "^(?:[0-9]{1,20}|[A-Za-z0-9._-]{1,100}\\\\.ya?ml)$"\n    },\n    "branch": {\n      "type": "string",\n      "pattern": "^[A-Za-z0-9._][A-Za-z0-9._/-]{0,254}$"\n    },\n    "summaryMarker": {\n      "type": "string",\n      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$"\n    },\n    "sparklePub": {\n      "description": "The app\'s Sparkle Ed25519 public key (base64/base64url).",\n      "type": "string",\n      "pattern": "^[A-Za-z0-9+/=_-]{1,512}$"\n    },\n    "artifactPolicy": {\n      "type": "object",\n      "properties": {\n        "channels": {\n          "type": "array",\n          "items": {\n            "type": "string",\n            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"\n          }\n        },\n        "architectures": {\n          "type": "array",\n          "items": {\n            "type": "string",\n            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"\n          }\n        },\n        "requireDmg": {\n          "type": "boolean"\n        },\n        "requireCli": {\n          "type": "boolean"\n        },\n        "allowAmbiguousAssets": {\n          "type": "boolean"\n        }\n      }\n    },\n    "access": {\n      "description": "Who may read release metadata and download artifacts. (The per-product `entitled` feed mode is an admin-set runtime policy, not a manifest value.)",\n      "type": "object",\n      "properties": {\n        "metadata": {\n          "$ref": "#/$defs/accessMode"\n        },\n        "artifacts": {\n          "$ref": "#/$defs/accessMode"\n        }\n      }\n    },\n    "accessMode": {\n      "enum": ["public", "authenticated", "licensed"]\n    },\n    "edgeMintRecipe": {\n      "description": "Edge-mint recipe (identical shape to product.schema.json\'s — the block is accepted in either document).",\n      "type": "object",\n      "properties": {\n        "id": {\n          "type": "string",\n          "pattern": "^[A-Za-z0-9._:-]{1,64}$"\n        },\n        "alg": {\n          "enum": ["ES256", "RS256", "EdDSA"]\n        },\n        "signingKeySecret": {\n          "type": "string",\n          "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"\n        },\n        "kid": {\n          "type": "string",\n          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"\n        },\n        "claimsTemplate": {\n          "type": "object"\n        },\n        "ttlSeconds": {\n          "type": "integer",\n          "exclusiveMinimum": 0\n        },\n        "audience": {\n          "anyOf": [\n            {\n              "type": "string",\n              "maxLength": 200,\n              "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"\n            },\n            {\n              "type": "null"\n            }\n          ]\n        }\n      },\n      "required": ["id", "alg", "signingKeySecret"]\n    },\n    "manualChannels": {\n      "description": "Named channels beyond the built-in stable/beta, matched by anchored tag regex. Persisted verbatim to release_config.manual_channels_json. The validator additionally requires each regex to COMPILE, which JSON Schema cannot express.",\n      "type": "array",\n      "items": {\n        "type": "object",\n        "properties": {\n          "name": {\n            "description": "Becomes a URL path segment on the release/update routes.",\n            "type": "string",\n            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"\n          },\n          "regex": {\n            "description": "Matched anchored (^(?:...)$) against release tags.",\n            "type": "string",\n            "maxLength": 80\n          }\n        },\n        "required": ["name", "regex"]\n      }\n    },\n    "stableTagPattern": {\n      "description": "Which release tags are real app releases: only a non-draft tag this regex matches (anchored, ^(?:...)$) and whose version (the tag minus a leading v) parses as semver is a candidate for stable/latest and the beta prerelease fallback. Undeclared means a semver tag with an optional leading v. Persisted to release_config.stable_tag_pattern. The validator additionally requires the regex to COMPILE, which JSON Schema cannot express.",\n      "type": "string",\n      "maxLength": 80\n    },\n    "ignoreTags": {\n      "description": "Exact tag names that never resolve on stable, beta or a manual channel (a pinned X.Y.Z still reaches them). Persisted to release_config.ignore_tags_json.",\n      "type": "array",\n      "maxItems": 200,\n      "items": {\n        "type": "string",\n        "minLength": 1,\n        "maxLength": 255,\n        "pattern": "^[^\\\\u0000-\\\\u0020\\\\u007f]+$"\n      }\n    },\n    "deliverables": {\n      "description": "The product\'s deliverables (P2-04, README §3.4). `app` is the product\'s application; any other id is a pack (kind: pack), accepted with the warning pack_deliverables_not_supported and ignored until P4-02. Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",\n      "type": "object",\n      "propertyNames": {\n        "type": "string",\n        "maxLength": 64,\n        "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*$"\n      },\n      "properties": {\n        "app": {\n          "$ref": "#/$defs/appDeliverable"\n        }\n      },\n      "additionalProperties": {\n        "$ref": "#/$defs/packDeliverable"\n      }\n    },\n    "packDeliverable": {\n      "description": "A pack deliverable. Not supported yet: the validator warns (pack_deliverables_not_supported) and ignores it.",\n      "type": "object",\n      "properties": {\n        "kind": {\n          "const": "pack"\n        }\n      },\n      "required": ["kind"]\n    },\n    "appDeliverable": {\n      "type": "object",\n      "properties": {\n        "kind": {\n          "const": "app"\n        },\n        "versioning": {\n          "type": "object",\n          "properties": {\n            "scheme": {\n              "description": "How versions are ordered. Default semver.",\n              "enum": ["semver", "semver+build", "4part"]\n            },\n            "stableTagPattern": {\n              "$ref": "#/$defs/stableTagPattern"\n            },\n            "ignoreTags": {\n              "$ref": "#/$defs/ignoreTags"\n            },\n            "buildNumber": {\n              "description": "Where each build\'s build number comes from.",\n              "enum": ["descriptor", "none"]\n            }\n          }\n        },\n        "channels": {\n          "description": "Channels this deliverable declares, by canonical name. includes names the channels whose releases it also offers (beta: { includes: [stable] } makes beta a superset of stable); includes names are canonical too; the validator additionally refuses an unknown channel or an includes cycle, which JSON Schema cannot express.",\n          "type": "object",\n          "maxProperties": 32,\n          "propertyNames": {\n            "type": "string",\n            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",\n            "not": {\n              "enum": ["staging", "latest"]\n            }\n          },\n          "additionalProperties": {\n            "type": "object",\n            "properties": {\n              "includes": {\n                "type": "array",\n                "items": {\n                  "type": "string",\n                  "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",\n                  "not": {\n                    "enum": ["staging", "latest"]\n                  }\n                }\n              }\n            }\n          }\n        },\n        "artifacts": {\n          "description": "The declared artifact map: each entry is one build, and match names its file. A file named <payload>.sig or <payload>.sha256 is that build\'s signature or checksum.",\n          "type": "array",\n          "maxItems": 64,\n          "items": {\n            "$ref": "#/$defs/artifactEntry"\n          }\n        }\n      },\n      "required": ["kind"]\n    },\n    "artifactEntry": {\n      "type": "object",\n      "properties": {\n        "id": {\n          "description": "The build id; unique within the map (the validator checks uniqueness).",\n          "type": "string",\n          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"\n        },\n        "platform": {\n          "enum": ["macos", "ios", "android", "windows", "linux", "web"]\n        },\n        "arch": {\n          "description": "universal and any match every architecture.",\n          "enum": ["arm64", "x86_64", "universal", "armv7", "wasm32", "any"]\n        },\n        "format": {\n          "description": "The file type (dmg, zip, tar.gz, apk, ipa, exe, msix, …). Installer versus portable is a format, not a role.",\n          "type": "string",\n          "pattern": "^[a-z0-9][a-z0-9.+-]{0,31}$"\n        },\n        "role": {\n          "description": "What the matched file is for in its build. Default payload.",\n          "enum": [\n            "payload",\n            "files-index",\n            "chunk-index",\n            "chunk-bundle",\n            "delta",\n            "signature",\n            "checksum"\n          ]\n        },\n        "match": {\n          "description": "An anchored, case-sensitive file-name glob: * matches any run of characters, ? exactly one.",\n          "type": "string",\n          "minLength": 1,\n          "maxLength": 128,\n          "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$"\n        }\n      },\n      "required": ["id", "platform", "arch", "format", "match"]\n    },\n    "publishing": {\n      "description": "Trusted publishing (P2-02, README §3.4): which GitHub Actions workflow and environment may exchange their OIDC token for a short-lived pkeyci_ token. The manifest names only these two fields: the repository\'s numeric ids are resolved from GitHub at link/resync, and the protected-ref, GitHub-hosted-runner and allowed-event checks are platform-fixed. Once an operator claims the policy in the console, resync leaves it alone.",\n      "type": "object",\n      "properties": {\n        "trustedPublisher": {\n          "type": "object",\n          "required": ["workflow"],\n          "properties": {\n            "workflow": {\n              "description": "The workflow file, as GitHub\'s job_workflow_ref spells it.",\n              "type": "string",\n              "pattern": "^\\\\.github/workflows/[A-Za-z0-9._-]{1,100}\\\\.ya?ml$"\n            },\n            "environment": {\n              "description": "The GitHub environment the publishing job runs in. Default release.",\n              "type": "string",\n              "pattern": "^[A-Za-z0-9_.-](?:[A-Za-z0-9 _.-]{0,98}[A-Za-z0-9_.-])?$"\n            }\n          }\n        }\n      }\n    }\n  }\n}\n', "schema.schema.json": `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/schema.schema.json",
   "title": "Polaris Key config catalog (.pkey/schema)",
@@ -9617,6 +9187,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
+import { readFile as readFile4 } from "node:fs/promises";
 import path5 from "node:path";
 
 // ../shared-manifest/dist/index.js
@@ -10307,14 +9878,95 @@ var FORMATS = {
 };
 var SUPPORTED_FORMATS = Object.keys(FORMATS);
 
+// ../shared-catalog/dist/representable.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var MAX_VALUE_DEPTH = 32;
+function escapePointer(key) {
+  return key.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+function hasLoneSurrogate(s) {
+  for (let k = 0; k < s.length; k++) {
+    const u = s.charCodeAt(k);
+    if (u >= 55296 && u <= 56319) {
+      const n = s.charCodeAt(k + 1);
+      if (n >= 56320 && n <= 57343) {
+        k++;
+        continue;
+      }
+      return true;
+    }
+    if (u >= 56320 && u <= 57343)
+      return true;
+  }
+  return false;
+}
+function numberInWireRange(n) {
+  if (!Number.isFinite(n))
+    return false;
+  if (n === 0)
+    return true;
+  const token = String(Math.abs(n));
+  const m = /^([0-9]+)(?:\.([0-9]+))?(?:e([+-])([0-9]+))?$/.exec(token);
+  if (!m)
+    return false;
+  const int = m[1];
+  const digits = int + (m[2] ?? "");
+  const first = digits.search(/[1-9]/);
+  const exp = (m[3] === "-" ? -1 : 1) * Number(m[4] ?? "0");
+  const power = int.length - 1 - first + exp;
+  return power >= -307 && power <= 307;
+}
+function representabilityIssue(value) {
+  return walk(value, "", 0);
+}
+function walk(value, path6, depth) {
+  if (typeof value === "string") {
+    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path6 } : null;
+  }
+  if (typeof value === "number") {
+    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path6 };
+  }
+  if (value === null || typeof value !== "object")
+    return null;
+  if (depth + 1 > MAX_VALUE_DEPTH)
+    return { rule: "too-deep", path: path6 };
+  if (Array.isArray(value)) {
+    for (let k = 0; k < value.length; k++) {
+      const issue = walk(value[k], `${path6}/${k}`, depth + 1);
+      if (issue)
+        return issue;
+    }
+    return null;
+  }
+  const seen = /* @__PURE__ */ new Map();
+  for (const [name, member] of Object.entries(value)) {
+    const memberPath = `${path6}/${escapePointer(name)}`;
+    if (hasLoneSurrogate(name))
+      return { rule: "lone-surrogate", path: memberPath };
+    if (name.includes("\0"))
+      return { rule: "nul-in-member-name", path: memberPath };
+    const nfc = name.normalize("NFC");
+    const earlier = seen.get(nfc);
+    if (earlier !== void 0 && earlier !== name)
+      return { rule: "equivalent-member-names", path: memberPath };
+    seen.set(nfc, name);
+    const issue = walk(member, memberPath, depth + 1);
+    if (issue)
+      return issue;
+  }
+  return null;
+}
+
 // ../shared-protocol/dist/config.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-HRUAEMNZ.js
+// ../shared-protocol/dist/chunk-YYVZZX43.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
+var MAX_JSON_DEPTH = 64;
+var MAX_RECORD_JWS_BYTES = 88844;
 var FINGERPRINT_TOLERANCE = {
   off: Number.POSITIVE_INFINITY,
   lenient: 4,
@@ -10331,6 +9983,165 @@ var PR_CHANNEL_PATTERN = "^pr-?([0-9]+)$";
 
 // ../shared-manifest/dist/index.js
 var import_yaml = __toESM(require_dist(), 1);
+
+// ../shared-protocol/dist/distribution.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../shared-protocol/dist/chunk-6RF4FL4T.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var OUTLET_KINDS = [
+  "direct",
+  "app-store",
+  "testflight",
+  "altstore",
+  "altstore-pal",
+  "play",
+  "play-testing",
+  "obtainium",
+  "fdroid-repo",
+  "ms-store",
+  "app-installer",
+  "steam",
+  "itch",
+  "flathub",
+  "snap",
+  "winget",
+  "web"
+];
+var OUTLET_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
+var STORE = {
+  binaryUpdates: "store",
+  codeUpdates: false,
+  dataUpdates: true,
+  channelSwitch: false,
+  commerce: "store-iap",
+  downloadedScripts: false
+};
+var STORE_OWN = { ...STORE, commerce: "own" };
+var PLATFORM_OWN = {
+  ...STORE_OWN,
+  binaryUpdates: "none"
+};
+var OUTLET_CAPABILITY_DEFAULTS = {
+  direct: {
+    binaryUpdates: "self",
+    codeUpdates: true,
+    dataUpdates: true,
+    channelSwitch: true,
+    commerce: "own",
+    downloadedScripts: true
+  },
+  "app-store": STORE,
+  testflight: STORE,
+  altstore: STORE_OWN,
+  "altstore-pal": STORE_OWN,
+  play: STORE,
+  "play-testing": STORE,
+  obtainium: STORE_OWN,
+  "fdroid-repo": STORE_OWN,
+  "ms-store": STORE,
+  "app-installer": PLATFORM_OWN,
+  winget: PLATFORM_OWN,
+  steam: { ...PLATFORM_OWN, commerce: "steam" },
+  itch: PLATFORM_OWN,
+  flathub: PLATFORM_OWN,
+  snap: PLATFORM_OWN,
+  web: { ...PLATFORM_OWN, downloadedScripts: true },
+  unknown: {
+    binaryUpdates: "none",
+    codeUpdates: false,
+    dataUpdates: false,
+    channelSwitch: false,
+    commerce: "none",
+    downloadedScripts: false
+  }
+};
+
+// ../shared-protocol/dist/release.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../shared-protocol/dist/chunk-42PRJNL4.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+// ../shared-manifest/dist/index.js
+var MAX_RELEASE_KEYS = 4;
+var RELEASE_KEY_KID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+var RELEASE_KEY_PUBLIC_PATTERN = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
+var ED25519_P = (1n << 255n) - 19n;
+var WEAK_POINT_ENCODINGS = [
+  "0100000000000000000000000000000000000000000000000000000000000000",
+  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+  "0000000000000000000000000000000000000000000000000000000000000000",
+  "0000000000000000000000000000000000000000000000000000000000000080",
+  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
+  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",
+  "0100000000000000000000000000000000000000000000000000000000000080",
+  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+];
+var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+function decodeBase64Loose(s) {
+  const body = s.replace(/=+$/, "");
+  if (body.length % 4 === 1) return null;
+  const out = [];
+  let acc = 0;
+  let bits = 0;
+  for (const ch of body) {
+    let v;
+    if (ch === "+" || ch === "-") v = 62;
+    else if (ch === "/" || ch === "_") v = 63;
+    else {
+      v = B64.indexOf(ch);
+      if (v < 0) return null;
+    }
+    acc = acc << 6 | v;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out.push(acc >> bits & 255);
+    }
+  }
+  return Uint8Array.from(out);
+}
+function hexOf(bytes) {
+  let out = "";
+  for (const b of bytes) out += b.toString(16).padStart(2, "0");
+  return out;
+}
+function releaseKeyBytes(publicKey) {
+  if (typeof publicKey !== "string" || !RELEASE_KEY_PUBLIC_PATTERN.test(publicKey))
+    return null;
+  const bytes = decodeBase64Loose(publicKey);
+  return bytes && bytes.length === 32 ? bytes : null;
+}
+function isWeakEd25519Key(key) {
+  if (key.length !== 32) return true;
+  let y = 0n;
+  for (let k = 31; k >= 0; k--) y = y << 8n | BigInt(key[k]);
+  y &= (1n << 255n) - 1n;
+  if (y >= ED25519_P) return true;
+  return WEAK_POINT_ENCODINGS.includes(hexOf(key));
+}
+function sameKeyBytes(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+function normalizeReleaseKeys(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const entry of raw.slice(0, MAX_RELEASE_KEYS)) {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry))
+      continue;
+    const { kid, publicKey } = entry;
+    if (typeof kid !== "string" || !RELEASE_KEY_KID_PATTERN.test(kid)) continue;
+    if (releaseKeyBytes(publicKey) === null) continue;
+    out.push({ kid, publicKey });
+  }
+  return out;
+}
 var SERVICE_SLUGS = [
   "license",
   "config",
@@ -10355,26 +10166,6 @@ var MODULE_SERVICES = {
   update: ["update"],
   identity: ["identity"]
 };
-var OUTLET_KINDS = [
-  "direct",
-  "app-store",
-  "testflight",
-  "altstore",
-  "altstore-pal",
-  "play",
-  "play-testing",
-  "obtainium",
-  "fdroid-repo",
-  "ms-store",
-  "app-installer",
-  "steam",
-  "itch",
-  "flathub",
-  "snap",
-  "winget",
-  "web"
-];
-var OUTLET_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 var MAX_OUTLETS = 32;
 var TRANSPORTS = [
   "embedded",
@@ -10401,7 +10192,7 @@ var IMPLICIT_OUTLET_ID = "direct";
 var OUTLET_IDENTITY_FIELDS = {
   direct: ["platforms", "homebrewCask"],
   "app-store": ["appleId", "bundleId"],
-  testflight: ["appleId", "bundleId"],
+  testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
   "altstore-pal": ["artifact", "bundleId", "marketplaceId"],
   play: ["packageName", "tracks"],
@@ -10420,6 +10211,7 @@ var OUTLET_IDENTITY_FIELDS = {
 var NUMERIC_ID_PATTERN = /^[1-9][0-9]{0,19}$/;
 var BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 var MAX_BUNDLE_ID_LENGTH = 155;
+var TESTFLIGHT_PUBLIC_LINK_PATTERN = /^[A-Za-z0-9]{1,32}$/;
 var MARKETPLACE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 var ANDROID_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 var MAX_PACKAGE_NAME_LENGTH = 255;
@@ -10472,6 +10264,11 @@ function fieldCheck(kind, field) {
       return (v) => typeof v === "string" && ARTIFACT_ENTRY_ID_PATTERN.test(v) ? null : `must be an artifact-map id (${ARTIFACT_ENTRY_ID_PATTERN.source})`;
     case "marketplaceId":
       return pattern(MARKETPLACE_ID_RE, "a marketplace id");
+    case "publicLink":
+      return pattern(
+        TESTFLIGHT_PUBLIC_LINK_PATTERN,
+        "the join code of a public TestFlight link (1-32 letters and digits)"
+      );
     case "packageName":
       return pattern(
         ANDROID_PACKAGE_RE,
@@ -10985,13 +10782,67 @@ function descriptorReleaseId(d) {
 function isContentAddressedKey(key, sha256) {
   return key === `blobs/sha256/${sha256}` || key === `gated/blobs/sha256/${sha256}`;
 }
+function canonicalDescriptorJson(value) {
+  if (Array.isArray(value))
+    return `[${value.map((v) => canonicalDescriptorJson(v)).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value).filter(([, v]) => v !== void 0).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalDescriptorJson(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+function descriptorToRecord(d, fields) {
+  const record = {
+    schemaVersion: 1,
+    aud: d.product,
+    deliverable: d.deliverable,
+    kind: d.kind,
+    version: d.version,
+    seq: fields.seq,
+    issuedAt: fields.issuedAt
+  };
+  if (fields.minSupportedSeq !== void 0)
+    record.minSupportedSeq = fields.minSupportedSeq;
+  if (d.tag !== void 0) record.tag = d.tag;
+  if (d.channel !== void 0) record.channel = d.channel;
+  if (d.title !== void 0) record.title = d.title;
+  if (d.notes !== void 0) record.notes = d.notes;
+  if (d.provenance !== void 0) {
+    const provenance = {};
+    if (d.provenance.commit !== void 0)
+      provenance.commit = d.provenance.commit;
+    if (d.provenance.workflowRun !== void 0)
+      provenance.workflowRun = d.provenance.workflowRun;
+    record.provenance = provenance;
+  }
+  record.builds = d.builds.map((b) => {
+    const build = {
+      id: b.id,
+      platform: b.platform,
+      arch: b.arch,
+      format: b.format,
+      artifacts: b.artifacts.map((a) => ({
+        name: a.name,
+        role: a.role,
+        sha256: a.sha256,
+        size: a.size,
+        ...a.contentType !== void 0 ? { contentType: a.contentType } : {}
+      }))
+    };
+    if (b.buildNumber !== void 0) build.buildNumber = b.buildNumber;
+    if (b.minOS !== void 0) build.minOS = b.minOS;
+    if (b.requires !== void 0) build.requires = b.requires;
+    return build;
+  });
+  return record;
+}
 var SLUG_RE = /^[a-z0-9-]{1,64}$/;
 var DELIVERABLE_RE = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 var VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 var SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 var FOUR_PART_RE = /^(0|[1-9]\d*)(\.(0|[1-9]\d*)){3}$/;
 var TAG_RE = /^[^\u0000-\u0020\u007f]{1,255}$/u;
-var BUILD_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+var BUILD_ID_RE = BUILD_ID_PATTERN;
 var FORMAT_RE = /^[a-z0-9][a-z0-9.+-]{0,31}$/;
 var BUILD_NUMBER_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 var MIN_OS_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
@@ -11581,7 +11432,7 @@ var SECRET_DELIVERY_VALUES = [
   "edgeMint"
 ];
 var MANAGEMENT_STATE_VALUES = ["default", "enforced", "hidden"];
-var DEFAULT_RELEASE_ACCESS = {
+var DEFAULT_RELEASE_ACCESS2 = {
   metadata: "public",
   artifacts: "public"
 };
@@ -12258,6 +12109,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       }
       validateDeliverables(errors, warnings, relRoot);
       validatePublishing(errors, relRoot);
+      validateReleaseKeys(errors, warnings, relRoot);
       if (relRoot.access !== void 0 && !isRecord3(relRoot.access)) {
         add2(
           errors,
@@ -12648,6 +12500,46 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       }
     }
   }
+  const productIssue = representabilityIssue(productRoot);
+  if (productIssue) {
+    add2(
+      errors,
+      "product",
+      `${productIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${productIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`
+    );
+  }
+  const schemaIssue = representabilityIssue(manifest.schema);
+  if (schemaIssue) {
+    add2(
+      errors,
+      "schema",
+      `${schemaIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${schemaIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`
+    );
+  }
+  const releaseIssue = representabilityIssue(manifest.release);
+  if (releaseIssue) {
+    add2(
+      errors,
+      "release",
+      `${releaseIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${releaseIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`
+    );
+  }
+  const distributionIssue = representabilityIssue(manifest.distribution);
+  if (distributionIssue) {
+    add2(
+      errors,
+      "distribution",
+      `${distributionIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${distributionIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`
+    );
+  }
   return {
     ok: errors.length === 0,
     errors,
@@ -12718,6 +12610,96 @@ function validatePublishing(errors, relRoot) {
       "invalid_trusted_publisher_environment",
       "publishing.trustedPublisher.environment must be a GitHub environment name of at most 100 characters (letters, digits, space, . _ -)."
     );
+  }
+}
+function validateReleaseKeys(errors, warnings, relRoot) {
+  if (relRoot.contentKeys !== void 0) {
+    add2(
+      warnings,
+      "release",
+      "/release/contentKeys",
+      "content_keys_not_supported",
+      "release.contentKeys is reserved for content-key delegation (P4-19) and is ignored."
+    );
+  }
+  const raw = relRoot.releaseKeys;
+  if (raw === void 0) return;
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_RELEASE_KEYS) {
+    add2(
+      errors,
+      "release",
+      "/release/releaseKeys",
+      "invalid_release_key",
+      `release.releaseKeys must be an array of 1 to ${MAX_RELEASE_KEYS} { kid, publicKey } entries.`
+    );
+    return;
+  }
+  const sparkle = typeof relRoot.sparkleEd25519Pub === "string" && SPARKLE_PUB_RE.test(relRoot.sparkleEd25519Pub) ? decodeBase64Loose(relRoot.sparkleEd25519Pub) : null;
+  const kids = /* @__PURE__ */ new Set();
+  const keys = [];
+  for (const [i, entry] of raw.entries()) {
+    const at = `/release/releaseKeys/${i}`;
+    if (!isRecord3(entry)) {
+      add2(
+        errors,
+        "release",
+        at,
+        "invalid_release_key",
+        "Each release key must be a { kid, publicKey } object."
+      );
+      continue;
+    }
+    if (typeof entry.kid !== "string" || !RELEASE_KEY_KID_PATTERN.test(entry.kid)) {
+      add2(
+        errors,
+        "release",
+        `${at}/kid`,
+        "invalid_release_key",
+        `releaseKeys[].kid must match ${RELEASE_KEY_KID_PATTERN.source}.`
+      );
+    }
+    const bytes = releaseKeyBytes(entry.publicKey);
+    if (!bytes) {
+      add2(
+        errors,
+        "release",
+        `${at}/publicKey`,
+        "invalid_release_key",
+        "releaseKeys[].publicKey must be a raw 32-byte Ed25519 public key in unpadded base64url (43 characters), as `pkey release keys generate` prints it."
+      );
+    } else if (isWeakEd25519Key(bytes)) {
+      add2(
+        errors,
+        "release",
+        `${at}/publicKey`,
+        "weak_release_key",
+        "releaseKeys[].publicKey is a non-canonical or small-order Ed25519 point, which no v4 verifier accepts a signature from (WIRE-CONTRACT-V4 §1.1)."
+      );
+    }
+    const dupKid = typeof entry.kid === "string" && kids.has(entry.kid);
+    const dupKey = bytes !== null && keys.some((k) => sameKeyBytes(k, bytes));
+    if (dupKid || dupKey) {
+      add2(
+        errors,
+        "release",
+        at,
+        "duplicate_release_key",
+        "Each release key's kid and key must be unique."
+      );
+    }
+    if (typeof entry.kid === "string") kids.add(entry.kid);
+    if (bytes) {
+      keys.push(bytes);
+      if (sparkle && sameKeyBytes(sparkle, bytes)) {
+        add2(
+          errors,
+          "release",
+          `${at}/publicKey`,
+          "release_key_reused",
+          "A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs."
+        );
+      }
+    }
   }
 }
 function isTagPattern(value) {
@@ -13179,7 +13161,8 @@ function normalizeRelease(rel) {
     artifactPolicy: normalizeArtifactPolicy(rel.artifactPolicy),
     access: normalizeReleaseAccess(rel.access),
     app,
-    trustedPublisher: normalizeTrustedPublisher(rel.publishing)
+    trustedPublisher: normalizeTrustedPublisher(rel.publishing),
+    releaseKeys: normalizeReleaseKeys(rel.releaseKeys)
   };
 }
 function normalizeTrustedPublisher(raw) {
@@ -13244,15 +13227,15 @@ function normalizeIgnoreTags(raw) {
   return [...new Set(raw.filter(isIgnoreTag))].slice(0, MAX_IGNORE_TAGS);
 }
 function normalizeReleaseAccess(raw) {
-  if (!isRecord3(raw)) return { ...DEFAULT_RELEASE_ACCESS };
+  if (!isRecord3(raw)) return { ...DEFAULT_RELEASE_ACCESS2 };
   return {
     metadata: normalizeReleaseAccessValue(
       raw.metadata,
-      DEFAULT_RELEASE_ACCESS.metadata
+      DEFAULT_RELEASE_ACCESS2.metadata
     ),
     artifacts: normalizeReleaseAccessValue(
       raw.artifacts,
-      DEFAULT_RELEASE_ACCESS.artifacts
+      DEFAULT_RELEASE_ACCESS2.artifacts
     )
   };
 }
@@ -14500,7 +14483,7 @@ async function resolveCiToken(opts) {
 
 // src/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
 import { readdir, readFile as readFile2, stat as stat3 } from "node:fs/promises";
 import path3 from "node:path";
@@ -14634,25 +14617,746 @@ async function putFile(opts) {
   }
 }
 
+// src/releaseKeys.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import {
+  createHash as createHash2,
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync
+} from "node:crypto";
+import { writeFile as writeFile3 } from "node:fs/promises";
+
+// ../shared-jws/dist/index.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var enc = new TextEncoder();
+var dec = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+var MAX_DOC_BYTES = 65536;
+var MAX_HEADER_BYTES = 1024;
+var b64Cap = (bytes) => Math.ceil(bytes * 4 / 3) + 4;
+var MAX_HEADER_B64 = b64Cap(MAX_HEADER_BYTES);
+function payloadCapFor(requested) {
+  if (typeof requested !== "number" || !Number.isFinite(requested)) {
+    return MAX_DOC_BYTES;
+  }
+  return Math.max(MAX_DOC_BYTES, Math.floor(requested));
+}
+var B64URL_RE = /^[A-Za-z0-9_-]*$/;
+function base64UrlDecodeStrict(s) {
+  if (!B64URL_RE.test(s)) return null;
+  try {
+    return base64UrlDecode(s);
+  } catch {
+    return null;
+  }
+}
+var PLAIN_INTEGER_RE = /^-?(0|[1-9][0-9]*)$/;
+var MAX_WIRE_DIGITS = "9007199254740991";
+function numberTokenInRange(token) {
+  const m = /^-?([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?)([0-9]+))?$/.exec(token);
+  if (!m) return false;
+  const int = m[1];
+  const digits = int + (m[2] ?? "");
+  const first = digits.search(/[1-9]/);
+  const expDigits = (m[4] ?? "0").replace(/^0+/, "");
+  if (expDigits.length > 6) return false;
+  if (first === -1) return true;
+  const exp = (m[3] === "-" ? -1 : 1) * Number(expDigits || "0");
+  const power = int.length - 1 - first + exp;
+  return power >= -307 && power <= 307;
+}
+function isNonWireIntegerToken(token) {
+  if (!PLAIN_INTEGER_RE.test(token)) return true;
+  const digits = token.replace(/^-/, "");
+  return digits.length > MAX_WIRE_DIGITS.length || digits.length === MAX_WIRE_DIGITS.length && digits > MAX_WIRE_DIGITS;
+}
+function pointerToken(name) {
+  return name.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+var PointerSet = class {
+  // Node 0 is the top-level object.
+  parent = [-1];
+  name = [""];
+  children = [void 0];
+  leaf = [false];
+  leaves = [];
+  listed;
+  /** The node for `name` under `node`, created when absent. */
+  child(node, name) {
+    let m = this.children[node];
+    if (m === void 0) {
+      m = /* @__PURE__ */ new Map();
+      this.children[node] = m;
+    }
+    let id = m.get(name);
+    if (id === void 0) {
+      id = this.parent.length;
+      this.parent.push(node);
+      this.name.push(name);
+      this.children.push(void 0);
+      this.leaf.push(false);
+      m.set(name, id);
+    }
+    return id;
+  }
+  /** Record the number at `node`. */
+  add(node) {
+    if (this.leaf[node]) return;
+    this.leaf[node] = true;
+    this.leaves.push(node);
+    this.listed = void 0;
+  }
+  get size() {
+    return this.leaves.length;
+  }
+  has(pointer) {
+    if (typeof pointer !== "string") return false;
+    let node = 0;
+    if (pointer !== "") {
+      if (pointer.charCodeAt(0) !== 47) return false;
+      for (const token of pointer.slice(1).split("/")) {
+        if (/~(?![01])/.test(token)) return false;
+        const next = this.children[node]?.get(
+          token.replace(/~1/g, "/").replace(/~0/g, "~")
+        );
+        if (next === void 0) return false;
+        node = next;
+      }
+    }
+    return this.leaf[node] === true;
+  }
+  /** Every pointer, escaped, in JavaScript's default string order. */
+  list() {
+    if (this.listed === void 0) {
+      this.listed = this.leaves.map((n) => {
+        const tokens = [];
+        for (let k = n; k > 0; k = this.parent[k])
+          tokens.push(pointerToken(this.name[k]));
+        return tokens.reverse().map((t) => `/${t}`).join("");
+      }).sort();
+    }
+    return this.listed;
+  }
+  [Symbol.iterator]() {
+    return this.list()[Symbol.iterator]();
+  }
+};
+var StrictJsonRefused = class extends Error {
+};
+var NUMBER_TOKEN_RE = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
+function scanStrictJson(text) {
+  let i = 0;
+  const nonWire = new PointerSet();
+  const segs = [];
+  const ids = [];
+  const record = () => {
+    let k = segs.length - 1;
+    while (k >= 0 && ids[k] < 0) k--;
+    let node = k < 0 ? 0 : ids[k];
+    for (let j = k + 1; j < segs.length; j++) {
+      node = nonWire.child(node, String(segs[j]));
+      ids[j] = node;
+    }
+    nonWire.add(node);
+  };
+  const refuse = () => {
+    throw new StrictJsonRefused();
+  };
+  const ws = () => {
+    while (i < text.length) {
+      const c = text.charCodeAt(i);
+      if (c === 32 || c === 9 || c === 10 || c === 13) i++;
+      else break;
+    }
+  };
+  const hex4 = () => {
+    const h = text.slice(i, i + 4);
+    if (!/^[0-9a-fA-F]{4}$/.test(h)) refuse();
+    i += 4;
+    return parseInt(h, 16);
+  };
+  const str = () => {
+    if (text.charCodeAt(i) !== 34) refuse();
+    i++;
+    let out = "";
+    for (; ; ) {
+      if (i >= text.length) refuse();
+      const c = text.charCodeAt(i);
+      if (c === 34) {
+        i++;
+        break;
+      }
+      if (c < 32) refuse();
+      if (c === 92) {
+        const e = text[i + 1];
+        i += 2;
+        switch (e) {
+          case '"':
+            out += '"';
+            break;
+          case "\\":
+            out += "\\";
+            break;
+          case "/":
+            out += "/";
+            break;
+          case "b":
+            out += "\b";
+            break;
+          case "f":
+            out += "\f";
+            break;
+          case "n":
+            out += "\n";
+            break;
+          case "r":
+            out += "\r";
+            break;
+          case "t":
+            out += "	";
+            break;
+          case "u":
+            out += String.fromCharCode(hex4());
+            break;
+          default:
+            refuse();
+        }
+        continue;
+      }
+      out += text[i];
+      i++;
+    }
+    for (let k = 0; k < out.length; k++) {
+      const u = out.charCodeAt(k);
+      if (u >= 55296 && u <= 56319) {
+        const n = out.charCodeAt(k + 1);
+        if (n >= 56320 && n <= 57343) {
+          k++;
+          continue;
+        }
+        refuse();
+      } else if (u >= 56320 && u <= 57343) refuse();
+    }
+    return out;
+  };
+  const num = () => {
+    NUMBER_TOKEN_RE.lastIndex = i;
+    const m = NUMBER_TOKEN_RE.exec(text);
+    if (!m) refuse();
+    const token = m[0];
+    i += token.length;
+    if (!numberTokenInRange(token)) refuse();
+    if (isNonWireIntegerToken(token)) record();
+  };
+  const value = (depth) => {
+    ws();
+    const c = text[i];
+    if (c === "{") {
+      if (depth + 1 > MAX_JSON_DEPTH) refuse();
+      i++;
+      const names = /* @__PURE__ */ new Set();
+      ws();
+      if (text[i] === "}") {
+        i++;
+        return;
+      }
+      for (; ; ) {
+        ws();
+        const name = str();
+        if (name.indexOf("\0") !== -1) refuse();
+        if (names.has(name)) refuse();
+        names.add(name);
+        ws();
+        if (text[i] !== ":") refuse();
+        i++;
+        segs.push(name);
+        ids.push(-1);
+        value(depth + 1);
+        segs.pop();
+        ids.pop();
+        ws();
+        if (text[i] === ",") {
+          i++;
+          continue;
+        }
+        if (text[i] === "}") {
+          i++;
+          return;
+        }
+        refuse();
+      }
+    }
+    if (c === "[") {
+      if (depth + 1 > MAX_JSON_DEPTH) refuse();
+      i++;
+      ws();
+      if (text[i] === "]") {
+        i++;
+        return;
+      }
+      for (let index = 0; ; index++) {
+        segs.push(index);
+        ids.push(-1);
+        value(depth + 1);
+        segs.pop();
+        ids.pop();
+        ws();
+        if (text[i] === ",") {
+          i++;
+          continue;
+        }
+        if (text[i] === "]") {
+          i++;
+          return;
+        }
+        refuse();
+      }
+    }
+    if (c === '"') {
+      str();
+      return;
+    }
+    if (c === "-" || c !== void 0 && c >= "0" && c <= "9") {
+      num();
+      return;
+    }
+    for (const lit of ["true", "false", "null"]) {
+      if (text.startsWith(lit, i)) {
+        i += lit.length;
+        return;
+      }
+    }
+    refuse();
+  };
+  try {
+    ws();
+    if (text[i] !== "{")
+      return { ok: false, nonWireIntegers: new PointerSet() };
+    value(0);
+    ws();
+    if (i !== text.length)
+      return { ok: false, nonWireIntegers: new PointerSet() };
+    return { ok: true, nonWireIntegers: nonWire };
+  } catch (e) {
+    if (e instanceof StrictJsonRefused || e instanceof RangeError)
+      return { ok: false, nonWireIntegers: new PointerSet() };
+    throw e;
+  }
+}
+function parseStrictJson(bytes) {
+  let text;
+  try {
+    text = dec.decode(bytes);
+  } catch {
+    return null;
+  }
+  if (text.charCodeAt(0) === 65279) return null;
+  const scan = scanStrictJson(text);
+  if (!scan.ok) return null;
+  try {
+    return {
+      value: JSON.parse(text),
+      nonWireIntegers: scan.nonWireIntegers
+    };
+  } catch {
+    return null;
+  }
+}
+var ED25519_L = (1n << 252n) + 27742317777372353535851937790883648493n;
+var ED25519_P2 = (1n << 255n) - 19n;
+var SMALL_ORDER_ENCODINGS = [
+  "0100000000000000000000000000000000000000000000000000000000000000",
+  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+  "0000000000000000000000000000000000000000000000000000000000000000",
+  "0000000000000000000000000000000000000000000000000000000000000080",
+  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
+  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa"
+];
+var NEGATIVE_ZERO_ENCODINGS = [
+  "0100000000000000000000000000000000000000000000000000000000000080",
+  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+];
+function hexOf2(bytes) {
+  let out = "";
+  for (const b of bytes) out += b.toString(16).padStart(2, "0");
+  return out;
+}
+function littleEndian(bytes) {
+  let n = 0n;
+  for (let k = bytes.length - 1; k >= 0; k--) n = n << 8n | BigInt(bytes[k]);
+  return n;
+}
+function isAcceptablePoint(enc32) {
+  if (enc32.length !== 32) return false;
+  const y = littleEndian(enc32) & (1n << 255n) - 1n;
+  if (y >= ED25519_P2) return false;
+  const hex2 = hexOf2(enc32);
+  if (NEGATIVE_ZERO_ENCODINGS.includes(hex2)) return false;
+  return !SMALL_ORDER_ENCODINGS.includes(hex2);
+}
+function ed25519Prechecks(key, sig) {
+  if (key.length !== 32 || sig.length !== 64) return false;
+  if (littleEndian(sig.subarray(32, 64)) >= ED25519_L) return false;
+  return isAcceptablePoint(key) && isAcceptablePoint(sig.subarray(0, 32));
+}
+function base64UrlEncode(bytes) {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function base64UrlEncodeString(s) {
+  return base64UrlEncode(enc.encode(s));
+}
+function base64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function base64UrlDecode(s) {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = b64 + "=".repeat((4 - b64.length % 4) % 4);
+  return base64ToBytes(pad);
+}
+function toArrayBuffer(b) {
+  return b.buffer.slice(
+    b.byteOffset,
+    b.byteOffset + b.byteLength
+  );
+}
+function pemToPkcs8(pem) {
+  const body = pem.replace(/-----BEGIN [^-]+-----/g, "").replace(/-----END [^-]+-----/g, "").replace(/\s+/g, "");
+  return base64ToBytes(body);
+}
+async function importSigningKey(pem) {
+  return crypto.subtle.importKey(
+    "pkcs8",
+    toArrayBuffer(pemToPkcs8(pem)),
+    { name: "Ed25519" },
+    false,
+    ["sign"]
+  );
+}
+async function importVerifyKey(rawBase64Url) {
+  const raw = base64UrlDecode(rawBase64Url);
+  if (raw.length !== 32) {
+    throw new Error(`Ed25519 public key must be 32 bytes, got ${raw.length}`);
+  }
+  return crypto.subtle.importKey(
+    "raw",
+    toArrayBuffer(raw),
+    { name: "Ed25519" },
+    false,
+    ["verify"]
+  );
+}
+var StrictJsonError = class extends Error {
+  constructor(part, message) {
+    super(message);
+    this.part = part;
+    this.name = "StrictJsonError";
+  }
+  part;
+};
+function assertStrictJson(text, part) {
+  if (!scanStrictJson(text).ok) {
+    throw new StrictJsonError(
+      part,
+      `the ${part} breaks WIRE-CONTRACT-V4 §1.2 (a lone surrogate, U+0000 in a member name, a number out of range, or nesting past ${MAX_JSON_DEPTH} levels), so no strict verifier would accept it`
+    );
+  }
+}
+async function signJws(payload, signingKeyPem, kid, typ) {
+  const header = typ ? { alg: "EdDSA", typ, kid } : { alg: "EdDSA", kid };
+  const headerText = JSON.stringify(header);
+  const payloadText = JSON.stringify(payload);
+  assertStrictJson(headerText, "header");
+  assertStrictJson(payloadText ?? "", "payload");
+  const signingInput = base64UrlEncodeString(headerText) + "." + base64UrlEncodeString(payloadText ?? "");
+  const key = await importSigningKey(signingKeyPem);
+  const sig = await crypto.subtle.sign(
+    { name: "Ed25519" },
+    key,
+    toArrayBuffer(enc.encode(signingInput))
+  );
+  return signingInput + "." + base64UrlEncode(new Uint8Array(sig));
+}
+async function verifyJws(jws, trustedKeys, opts = {}) {
+  const parts = jws.split(".");
+  if (parts.length !== 3) return null;
+  const [encHeader, encPayload, encSig] = parts;
+  const maxPayloadBytes = payloadCapFor(opts.maxPayloadBytes);
+  if (encHeader.length > MAX_HEADER_B64) return null;
+  if (encPayload.length > b64Cap(maxPayloadBytes)) return null;
+  const headerBytes = base64UrlDecodeStrict(encHeader);
+  if (!headerBytes || headerBytes.byteLength > MAX_HEADER_BYTES) return null;
+  const parsedHeader = parseStrictJson(headerBytes);
+  const header = parsedHeader?.value;
+  if (!header || typeof header !== "object") return null;
+  if (header.alg !== "EdDSA") return null;
+  if (opts.typ !== void 0 && header.typ !== opts.typ) return null;
+  if (header.typ !== void 0 && typeof header.typ !== "string") return null;
+  if (typeof header.kid !== "string") return null;
+  const rawKey = trustedKeys[header.kid];
+  if (!rawKey) return null;
+  let key;
+  try {
+    key = await importVerifyKey(rawKey);
+  } catch {
+    return null;
+  }
+  const sigBytes = base64UrlDecodeStrict(encSig);
+  if (!sigBytes) return null;
+  if (!ed25519Prechecks(base64UrlDecode(rawKey), sigBytes)) return null;
+  let ok;
+  try {
+    ok = await crypto.subtle.verify(
+      { name: "Ed25519" },
+      key,
+      toArrayBuffer(sigBytes),
+      toArrayBuffer(enc.encode(encHeader + "." + encPayload))
+    );
+  } catch {
+    return null;
+  }
+  if (!ok) return null;
+  const payloadBytes = base64UrlDecodeStrict(encPayload);
+  if (!payloadBytes || payloadBytes.byteLength > maxPayloadBytes) return null;
+  const parsed = parseStrictJson(payloadBytes);
+  if (parsed === null) return null;
+  return {
+    kid: header.kid,
+    payload: parsed.value,
+    nonWireIntegers: parsed.nonWireIntegers
+  };
+}
+
+// ../client-core/dist/record.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../client-core/dist/claims.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var MAX_GRACE_SECONDS = 365 * 86400;
+function isWireInteger(value, pointer, min, nonWire) {
+  return !nonWire.has(pointer) && typeof value === "number" && Number.isSafeInteger(value) && value >= min;
+}
+var NO_NON_WIRE_INTEGERS = /* @__PURE__ */ new Set();
+
+// ../client-core/dist/record.js
+var DELIVERABLE_RE2 = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
+var VERSION_RE2 = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
+var SHA256_RE2 = /^[0-9a-f]{64}$/;
+var MAX_BUILDS = 64;
+var MAX_ARTIFACTS = 32;
+function isObject(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function has(o, key) {
+  return Object.prototype.hasOwnProperty.call(o, key);
+}
+var nonEmpty = (v) => typeof v === "string" && v !== "";
+var optString = (o, key) => !has(o, key) || typeof o[key] === "string";
+function claimsOk(doc, opts, nonWire) {
+  const int = (v, pointer, min) => isWireInteger(v, pointer, min, nonWire);
+  if (!int(doc.schemaVersion, "/schemaVersion", 1) || doc.schemaVersion !== 1)
+    return false;
+  if (doc.aud !== opts.expectedAud)
+    return false;
+  if (typeof doc.deliverable !== "string" || doc.deliverable.length > 64 || !DELIVERABLE_RE2.test(doc.deliverable))
+    return false;
+  if (!nonEmpty(doc.kind))
+    return false;
+  if (typeof doc.version !== "string" || !VERSION_RE2.test(doc.version))
+    return false;
+  if (!int(doc.seq, "/seq", 1))
+    return false;
+  if (!int(doc.issuedAt, "/issuedAt", 0))
+    return false;
+  if (has(doc, "minSupportedSeq") && !int(doc.minSupportedSeq, "/minSupportedSeq", 1))
+    return false;
+  for (const key of ["tag", "channel", "title", "notes"])
+    if (!optString(doc, key))
+      return false;
+  if (has(doc, "provenance")) {
+    const p = doc.provenance;
+    if (!isObject(p) || !optString(p, "commit") || !optString(p, "workflowRun"))
+      return false;
+  }
+  if (!has(doc, "builds"))
+    return doc.kind !== "app";
+  const builds = doc.builds;
+  if (!Array.isArray(builds) || builds.length < 1 || builds.length > MAX_BUILDS)
+    return false;
+  const ids = /* @__PURE__ */ new Set();
+  for (const [i, build] of builds.entries()) {
+    if (!isObject(build))
+      return false;
+    if (typeof build.id !== "string" || !BUILD_ID_PATTERN.test(build.id))
+      return false;
+    if (ids.has(build.id))
+      return false;
+    ids.add(build.id);
+    if (!nonEmpty(build.platform) || !nonEmpty(build.arch) || !nonEmpty(build.format))
+      return false;
+    if (!optString(build, "buildNumber") || !optString(build, "minOS"))
+      return false;
+    if (has(build, "requires") && !isObject(build.requires))
+      return false;
+    const artifacts = build.artifacts;
+    if (!Array.isArray(artifacts) || artifacts.length > MAX_ARTIFACTS)
+      return false;
+    let payloads = 0;
+    for (const [j, artifact] of artifacts.entries()) {
+      if (!isObject(artifact))
+        return false;
+      if (!nonEmpty(artifact.name) || !nonEmpty(artifact.role))
+        return false;
+      if (artifact.role === "payload")
+        payloads++;
+      if (typeof artifact.sha256 !== "string" || !SHA256_RE2.test(artifact.sha256))
+        return false;
+      if (!int(artifact.size, `/builds/${i}/artifacts/${j}/size`, 0))
+        return false;
+      if (!optString(artifact, "contentType"))
+        return false;
+    }
+    if (payloads > 1)
+      return false;
+  }
+  return true;
+}
+function releaseRecordClaims(payload, opts) {
+  if (!isObject(payload))
+    return false;
+  try {
+    return claimsOk(payload, opts, opts.nonWire ?? NO_NON_WIRE_INTEGERS);
+  } catch {
+    return false;
+  }
+}
+
+// src/releaseKeys.ts
+var RELEASE_KEY_ENV = "PKEY_RELEASE_KEY";
+var KEYS_USAGE = "Usage: pkey release keys generate --kid <kid> --out <file> [--force]";
+function publicKeyOfPem(pem) {
+  let key;
+  try {
+    key = createPrivateKey({ key: pem, format: "pem" });
+  } catch {
+    throw new Error(
+      `${RELEASE_KEY_ENV} is not a PEM private key (PKCS#8, as pkey release keys generate writes it).`
+    );
+  }
+  if (key.asymmetricKeyType !== "ed25519")
+    throw new Error(`${RELEASE_KEY_ENV} must be an Ed25519 key.`);
+  const jwk = createPublicKey(key).export({ format: "jwk" });
+  if (!jwk.x) throw new Error(`${RELEASE_KEY_ENV}: no public key.`);
+  return jwk.x;
+}
+function fingerprintOf(publicKey) {
+  return createHash2("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
+}
+async function generateReleaseKey(opts) {
+  if (!RELEASE_KEY_KID_PATTERN.test(opts.kid))
+    throw new Error(
+      `--kid must match ${RELEASE_KEY_KID_PATTERN.source}.
+${KEYS_USAGE}`
+    );
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
+  const raw = publicKey.export({ format: "jwk" }).x;
+  try {
+    await writeFile3(opts.out, pem, {
+      mode: 384,
+      flag: opts.force ? "w" : "wx"
+    });
+  } catch (e) {
+    if (e.code === "EEXIST")
+      throw new Error(
+        `${opts.out} exists; pass --force to overwrite it (the key in it is then gone for good).`
+      );
+    throw e;
+  }
+  return {
+    kid: opts.kid,
+    publicKey: raw,
+    fingerprint: fingerprintOf(raw),
+    out: opts.out
+  };
+}
+function generatedKeyText(g) {
+  return `Wrote the private release key to ${g.out} (mode 0600). Store it as the GitHub Environment
+secret ${RELEASE_KEY_ENV} of the publishing environment, then delete the file. Never commit it.
+
+Add to .pkey/release:
+
+releaseKeys:
+  - kid: ${g.kid}
+    publicKey: ${g.publicKey}
+
+Pin the same key in the app (pinnedReleaseKeys: { "${g.kid}": "${g.publicKey}" }).
+Fingerprint (sha256 of the raw key): ${g.fingerprint}
+`;
+}
+function kidFor(pem, declared) {
+  const publicKey = publicKeyOfPem(pem);
+  const match = declared.find((k) => k.publicKey === publicKey);
+  if (!match)
+    throw new Error(
+      declared.length === 0 ? `${RELEASE_KEY_ENV} is set, but .pkey/release declares no releaseKeys; add the key's releaseKeys entry first.` : `${RELEASE_KEY_ENV}'s public key (${publicKey}) is not one of .pkey/release's releaseKeys (${declared.map((k) => k.kid).join(", ")}).`
+    );
+  return { kid: match.kid, publicKey };
+}
+function recordSigner(pem, declared) {
+  const { kid } = kidFor(pem, declared);
+  return (record) => signJws(record, pem, kid, "pkey-release+jws");
+}
+async function checkSignedRecord(jws, record, declared) {
+  if (jws.length > MAX_RECORD_JWS_BYTES)
+    throw new Error(
+      `The signed release record is ${jws.length} bytes; a record is at most ${MAX_RECORD_JWS_BYTES}.`
+    );
+  const trust = {};
+  for (const k of declared) trust[k.kid] = k.publicKey;
+  const v = await verifyJws(jws, trust, { typ: "pkey-release+jws" });
+  if (!v)
+    throw new Error(
+      "The signed release record does not verify against .pkey/release's releaseKeys; nothing was published."
+    );
+  if (!releaseRecordClaims(v.payload, {
+    expectedAud: record.aud,
+    nonWire: v.nonWireIntegers
+  }))
+    throw new Error(
+      "The release record fails the v4 record claims (WIRE-CONTRACT-V4 §2.4); nothing was published."
+    );
+  if (canonicalDescriptorJson(v.payload) !== canonicalDescriptorJson(record))
+    throw new Error(
+      "The signed release record is not the record pkey built; nothing was published."
+    );
+}
+
 // src/publish.ts
-var PUBLISH_USAGE = "Usage: pkey release publish --product <slug> --version <v> --dir <path> [--deliverable app] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] [--meta builds.json] [--base-url <url>] [--dry-run]";
+var PUBLISH_USAGE = "Usage: pkey release publish --product <slug> --version <v> --dir <path> [--deliverable app] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] [--meta builds.json] [--base-url <url>] [--release-key-file <pem>] [--min-supported-seq <n>] [--no-record] [--dry-run]";
 var SIDECARS = [
   [".sig", "signature"],
   [".sha256", "checksum"]
 ];
 async function scanDir(dir) {
   const out = [];
-  async function walk(d) {
+  async function walk2(d) {
     const entries = await readdir(d, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
       const full = path3.join(d, e.name);
-      if (e.isDirectory()) await walk(full);
+      if (e.isDirectory()) await walk2(full);
       else if (e.isFile()) out.push({ path: full, name: e.name });
     }
   }
   try {
-    await walk(dir);
+    await walk2(dir);
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`--dir ${dir} does not exist.`);
@@ -14723,7 +15427,7 @@ function matchArtifacts(files, entries) {
   return { builds, warnings, errors };
 }
 async function hashFile(file) {
-  const hash = createHash2("sha256");
+  const hash = createHash3("sha256");
   let size = 0;
   for await (const chunk of createReadStream2(file)) {
     const buf = chunk;
@@ -14846,7 +15550,8 @@ function descriptorManifestOf(docs) {
     release: {
       app: res.manifest.release?.app ?? null,
       manualChannels: res.manifest.release?.manualChannels ?? []
-    }
+    },
+    releaseKeys: res.manifest.release?.releaseKeys ?? []
   };
 }
 function asTicket(body, where) {
@@ -14942,7 +15647,22 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       `The release descriptor does not validate:
 ${local.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
     );
-  await opts.signRecord?.(descriptor);
+  if (opts.minSupportedSeq !== void 0 && (!Number.isSafeInteger(opts.minSupportedSeq) || opts.minSupportedSeq < 1))
+    throw new Error(
+      "--min-supported-seq must be a whole number of at least 1."
+    );
+  const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? void 0;
+  const declared = context.releaseKeys;
+  let sign = null;
+  if (!opts.noRecord && !opts.dryRun) {
+    if (opts.signRecord) sign = opts.signRecord;
+    else if (pem) sign = recordSigner(pem, declared);
+    else if (declared.length > 0)
+      throw new Error(
+        `.pkey/release declares releaseKeys, so pkey signs a release record: set ${RELEASE_KEY_ENV} (the release-key input of polaris-key/publish) or --release-key-file, or pass --no-record.`
+      );
+  }
+  const wantsRecord = !opts.noRecord && (sign !== null || opts.dryRun === true && (pem || declared.length > 0));
   const result = {
     descriptor,
     releaseId: local.releaseId,
@@ -14973,6 +15693,19 @@ ${JSON.stringify(descriptor, null, 2)}
     });
   } catch (e) {
     if (opts.dryRun && !(e instanceof CiRequestError)) {
+      if (wantsRecord) {
+        const { seq: _seq, ...record } = descriptorToRecord(descriptor, {
+          seq: 1,
+          issuedAt: opts.now ?? Math.floor(Date.now() / 1e3),
+          ...opts.minSupportedSeq !== void 0 ? { minSupportedSeq: opts.minSupportedSeq } : {}
+        });
+        out.write(
+          `
+Release record (unsigned; seq is the upload route's answer):
+${JSON.stringify(record, null, 2)}
+`
+        );
+      }
       out.write(`Server validation: skipped (${e.message})
 `);
       return result;
@@ -14996,7 +15729,8 @@ ${JSON.stringify(descriptor, null, 2)}
         objects: [...objects.values()].map((f) => ({
           sha256: f.sha256,
           size: f.size
-        }))
+        })),
+        releases: [{ deliverable, version }]
       }
     }),
     client.url("release/publish/uploads")
@@ -15004,6 +15738,47 @@ ${JSON.stringify(descriptor, null, 2)}
   mask(opts.env, out, ticket.ticket);
   mask(opts.env, out, ticket.credentials.secretAccessKey);
   mask(opts.env, out, ticket.credentials.sessionToken);
+  const answered = Array.isArray(ticket.seqs) ? ticket.seqs.find(
+    (s) => s.deliverable === deliverable && s.version === version
+  ) : void 0;
+  if (answered && Number.isSafeInteger(answered.seq) && answered.seq >= 1) {
+    descriptor.seq = answered.seq;
+    const again = validateReleaseDescriptor(descriptor, context);
+    if (!again.ok)
+      throw new Error(
+        `The release descriptor does not validate with seq ${answered.seq}:
+${again.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
+      );
+  } else if (wantsRecord) {
+    throw new Error(
+      `${client.url("release/publish/uploads")} answered no seq for ${deliverable} ${version} (an older Polaris Key?); a release record needs it. Pass --no-record to publish without one.`
+    );
+  }
+  let recordJws;
+  if (wantsRecord && descriptor.seq !== void 0) {
+    const record = descriptorToRecord(descriptor, {
+      seq: descriptor.seq,
+      issuedAt: opts.now ?? Math.floor(Date.now() / 1e3),
+      ...opts.minSupportedSeq !== void 0 ? { minSupportedSeq: opts.minSupportedSeq } : {}
+    });
+    result.record = record;
+    if (opts.dryRun) {
+      out.write(
+        `
+Release record (unsigned; a dry run signs nothing):
+${JSON.stringify(record, null, 2)}
+`
+      );
+    } else if (sign) {
+      recordJws = await sign(record);
+      await checkSignedRecord(recordJws, record, declared);
+      result.recordJws = recordJws;
+      out.write(
+        `Signed the release record (seq ${record.seq}, sha256 ${createHash3("sha256").update(recordJws).digest("hex").slice(0, 12)}…)
+`
+      );
+    }
+  }
   if (source === "r2") {
     for (const o of ticket.objects) {
       if (o.present) {
@@ -15039,6 +15814,7 @@ ${JSON.stringify(descriptor, null, 2)}
     body: {
       ticket: ticket.ticket,
       descriptor,
+      ...recordJws !== void 0 ? { record: recordJws } : {},
       ...opts.dryRun ? { dryRun: true } : {}
     }
   });
@@ -15302,7 +16078,7 @@ ${DISTRIBUTION_CI_USAGE}`
 
 // src/schemas.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir2, readdir as readdir2, readFile as readFile3, writeFile as writeFile3 } from "node:fs/promises";
+import { mkdir as mkdir2, readdir as readdir2, readFile as readFile3, writeFile as writeFile4 } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path4 from "node:path";
 async function manifestSchemas() {
@@ -15321,7 +16097,7 @@ async function writeManifestSchemas(outDir) {
   const written = [];
   for (const [name, body] of Object.entries(await manifestSchemas())) {
     const file = path4.join(outDir, name);
-    await writeFile3(file, body, "utf8");
+    await writeFile4(file, body, "utf8");
     written.push(file);
   }
   return written;
@@ -15683,8 +16459,29 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         channel: flagString(parsed, "channel"),
         source: flagString(parsed, "source"),
         meta: flagString(parsed, "meta"),
-        dryRun: flagBool(parsed, "dry-run")
+        dryRun: flagBool(parsed, "dry-run"),
+        ...flagString(parsed, "release-key-file") ? {
+          releaseKeyPem: await readFile4(
+            path5.resolve(cwd, flagString(parsed, "release-key-file")),
+            "utf8"
+          )
+        } : {},
+        ...flagString(parsed, "min-supported-seq") !== void 0 ? { minSupportedSeq: Number(flagString(parsed, "min-supported-seq")) } : {},
+        noRecord: flagBool(parsed, "no-record")
       });
+      return 0;
+    }
+    case "keys": {
+      const kid = flagString(parsed, "kid");
+      const outFile = flagString(parsed, "out");
+      if (parsed.positional[1] !== "generate" || !kid || !outFile)
+        throw new Error(KEYS_USAGE);
+      const generated = await generateReleaseKey({
+        kid,
+        out: path5.resolve(cwd, outFile),
+        force: flagBool(parsed, "force")
+      });
+      stdout.write(generatedKeyText(generated));
       return 0;
     }
     case "promote":
@@ -15753,7 +16550,9 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey auth github-oidc --product slug [--base-url url]
   pkey release publish --product slug --version v --dir path [--deliverable app]
               [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json]
-              [--base-url url] [--dry-run]
+              [--base-url url] [--release-key-file pem] [--min-supported-seq n]
+              [--no-record] [--dry-run]
+  pkey release keys generate --kid kid --out file [--force]
   pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
   pkey release unpin --channel c --product slug [--deliverable id]
   pkey release yank releaseId --reason text --product slug
@@ -15770,6 +16569,10 @@ pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
 them, uploads what Polaris Key does not already hold, and submits the release descriptor.
 --dry-run prints the descriptor and the server's verdict and uploads and writes nothing.
+With a release key (PKEY_RELEASE_KEY, or --release-key-file) it also signs the release record
+(pkey-release+jws) under the .pkey/release releaseKeys entry whose public key matches, checks it,
+and submits it with the descriptor; a dry run prints the record unsigned. pkey release keys
+generate writes a new private release key to --out and prints its releaseKeys entry.
 --meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. The CI commands
 exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret
 is stored in the repository. See /docs/build/ci/.
@@ -15848,6 +16651,10 @@ async function runAction(io) {
       source: input("source"),
       meta: input("meta"),
       baseUrl: input("base-url"),
+      // P3-03: the release key's PKCS#8 PEM, from a GitHub Environment secret. Read here, never
+      // echoed; absent, PKEY_RELEASE_KEY from the job's environment is used.
+      ...input("release-key") ? { releaseKeyPem: input("release-key") } : {},
+      ...input("min-supported-seq") !== void 0 ? { minSupportedSeq: Number(input("min-supported-seq")) } : {},
       dryRun: dryRun === "true",
       env: io.env,
       stdout: io.stdout,

@@ -81,6 +81,8 @@ export function handleUpdate(
    * through the hook; omitted, an appcast fails closed to `entitled` (`artifactPolicy`).
    */
   artifactsAccess?: ReleaseAccess,
+  /** The runtime's `waitUntil`, for the Sparkle verification's stream tail and memo write. */
+  waitUntil?: (promise: Promise<unknown>) => void,
 ): Promise<Response> {
   return serveReleaseSurface(
     req,
@@ -99,6 +101,7 @@ export function handleUpdate(
               : ctx.params,
             ctx,
             artifactsAccess,
+            waitUntil,
           ),
     artifactsAccess !== undefined ? { artifactsAccess } : {},
   );
@@ -135,6 +138,7 @@ async function handleAppcast(
   params: ReleaseParams,
   { env, db, cfg, product, origin, now, fetchImpl }: SurfaceContext,
   artifactsAccess: ReleaseAccess | undefined,
+  waitUntil?: (promise: Promise<unknown>) => void,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
@@ -211,6 +215,11 @@ async function handleAppcast(
           signature: claimed,
           publicKey: cfg.sparkle_ed25519_pub,
           fetchImpl,
+          // The listed size: a body of any other length is no verdict (P0-10 follow-up).
+          ...(Number.isSafeInteger(dmg.size) && dmg.size >= 0
+            ? { expectedSize: dmg.size }
+            : {}),
+          ...(waitUntil ? { waitUntil } : {}),
         })
       : false;
     // Fail closed: the item is dropped and the feed 404s rather than shipping an

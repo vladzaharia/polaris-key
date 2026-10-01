@@ -65,8 +65,9 @@ deliberately lightweight. A green hook is not a green gate.
 
 1. **Never hand-edit the corpus.** `conformance/corpus/v2/` and its Swift and Godot mirrors are
    output.
-2. **A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** It is currently 3; the
-   signed set is license / config / trust / bundle.
+2. **A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** It is currently 4; the
+   signed set is license / config / trust / bundle / feed / release, and a release record is
+   signed by a CI-held release key, never a product key.
 3. **Generated files carry a GENERATED banner.** Regenerate; never hand-edit.
 4. **Terminology comes from [the concepts page](/docs/start/concepts/).** And "profile" is
    already taken twice — do not overload it a third time.

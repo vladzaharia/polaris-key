@@ -1,6 +1,7 @@
 # Polaris Key — public wire, OpenAPI 3.1.
 #
-# Scope: the PUBLIC product-scoped API (wire contract v3) — Core routes plus the six service
+# Scope: the PUBLIC product-scoped API (wire contract v4; the file name versions the API, not
+# the wire) — Core routes plus the six service
 # namespaces and the four permanent aliases. The admin (/manage/api/*) and portal (/api/*)
 # APIs are session-authenticated browser surfaces and are documented narratively on the docs
 # site instead (they are not "wire" — no SDK speaks them). The offline-bundle mint is one of
@@ -47,7 +48,7 @@ info:
   version: "3.0.0"
   description: >
     Per-product licensing, managed config, releases, distribution, updates, and identity over wire
-    contract v3 (PROTOCOL_VERSION 3). Every route is scoped by a product slug; signed
+    contract v4 (PROTOCOL_VERSION 4). Every route is scoped by a product slug; signed
     documents are compact EdDSA JWS with typ-separated document kinds; clients verify
     against pinned keys plus a signed trust manifest.
   contact:
@@ -102,7 +103,7 @@ paths:
 
 
         `version` is the DISCOVERY document's own version (still `2`) and `protocolVersion`
-        is the wire version (`3`) — they are deliberately different numbers. `schemaVersion`
+        is the wire version (`4`) — they are deliberately different numbers. `schemaVersion`
         is the product's catalog version, a third orthogonal counter. `services` always
         carries all six slugs in the canonical order license, config, release, distribution,
         update, identity, so a client can iterate it rather than probe. `core.endpoints.register`
@@ -119,7 +120,7 @@ paths:
                   summary: A product running every service (test/surfaces.test.ts)
                   value:
                     version: 2
-                    protocolVersion: 3
+                    protocolVersion: 4
                     schemaVersion: 1
                     product: djdl
                     slug: djdl
@@ -178,6 +179,11 @@ paths:
                           download: https://key.plrs.im/djdl/release/dl
                           builds: https://dl.plrs.im/djdl/release/builds/{selector}/{buildId}
                           blobs: https://dl.plrs.im/djdl/release/blobs/sha256/{sha256}
+                          record: https://key.plrs.im/djdl/release/records/{sha256}
+                        releaseKeyFingerprints:
+                          [
+                            d8f1a6a3f0b2a1c7e6d9b4c3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3,
+                          ]
                       distribution:
                         enabled: true
                         configured: true
@@ -195,6 +201,7 @@ paths:
                           version: https://key.plrs.im/djdl/update/version
                           appcast: https://key.plrs.im/djdl/update/appcast.xml
                           channelAppcast: https://key.plrs.im/djdl/update/{channel}/appcast.xml
+                          feed: https://key.plrs.im/djdl/update/{channel}/feed.jws
                         archParameter: [arm64, x86_64]
                       identity:
                         enabled: true
@@ -2908,8 +2915,10 @@ paths:
         mirror (`source: asc`). Beta feedback, alternative-distribution events and Apple's ping
         are stored raw (200); an unknown event type answers 204 and is stored as `ignored`. The
         product must declare an `app-store` or `testflight` outlet with an `appleId` and hold
-        `asc-api-key` and `asc-webhook-secret` credentials; otherwise — like with Distribution
-        off — the answer is the service not-found shape. No CORS. Errors are LEGACY FLAT.
+        an `asc-api-key` credential that the operator has PINNED to that same `appleId`, and an
+        `asc-webhook-secret`; otherwise — like with Distribution off — the answer is the service
+        not-found shape, so a manifest naming another app than the pinned one mirrors nothing.
+        No CORS. Errors are LEGACY FLAT.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: x-apple-signature
@@ -3232,7 +3241,12 @@ paths:
         Upload each object with `x-amz-checksum-sha256` so R2 records its digest. The route
         answers 404 until the environment's parent R2 token (`R2_ACCOUNT_ID`,
         `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`, `BLOBS_BUCKET_NAME`) and the
-        `BLOBS` binding exist. No CORS. `bad_objects` and `bad_body` are 400.
+        `BLOBS` binding exist. No CORS. `bad_objects`, `bad_releases` and `bad_body` are 400.
+        P3-03: `releases` names the releases CI is about to publish (at most 16
+        `{deliverable, version}`), and `seqs` answers each one's `seq` — the stored one for a
+        release that exists (the GitHub sync may have created it first), else the next one for
+        its deliverable, counting the new releases named before it. CI signs that `seq` into
+        the release record and the descriptor; a re-run gets the stored value again.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3255,6 +3269,24 @@ paths:
                       sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
                       size: { type: integer, minimum: 0, maximum: 5363466240 }
                       gated: { type: boolean }
+                releases:
+                  type: array
+                  maxItems: 16
+                  items:
+                    type: object
+                    required: [deliverable, version]
+                    properties:
+                      deliverable:
+                        {
+                          type: string,
+                          pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+                          maxLength: 64,
+                        }
+                      version:
+                        {
+                          type: string,
+                          pattern: "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$",
+                        }
       responses:
         "200":
           description: The ticket, the credentials, the staging keys and `nextSeq`.
@@ -3307,6 +3339,16 @@ paths:
                   nextSeq:
                     type: object
                     additionalProperties: { type: integer }
+                  seqs:
+                    type: array
+                    description: One entry per `releases` entry, in order (empty without `releases`).
+                    items:
+                      type: object
+                      required: [deliverable, version, seq]
+                      properties:
+                        deliverable: { type: string }
+                        version: { type: string }
+                        seq: { type: integer, minimum: 1 }
         "400": { $ref: "#/components/responses/CiRefusal" }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }
@@ -3337,6 +3379,20 @@ paths:
         `promote_failed`) may be sent again; every other refusal is final. A descriptor's
         `title`, `notes` and `publishedAt` are the release's until a GitHub release with the
         same tag is synced, after which GitHub's are shown. No CORS.
+        P3-03: `record` is the CI-signed release record (`pkey-release+jws`, WIRE-CONTRACT-V4
+        §2.4) — the descriptor moved into a signed payload, signed with a key from the
+        product's declared `releaseKeys`. It is checked after the descriptor and before anything
+        is promoted, and stored (never rewritten) in the descriptor's batch. A refusal is
+        `release_record_rejected` with a `reason`: `typ`, `kid` (not a declared release key),
+        `product-key` (the key is one of the product's signing keys), `signature`, `claims`,
+        `scheme` (the version does not parse under the deliverable's scheme; SemVer 2.0's
+        grammar for `semver`), `descriptor-mismatch` (the record is not the descriptor under
+        §2.4's mapping, or the descriptor does not carry the record's `seq` explicitly) — all
+        400 — or `seq` (409, `retryable`: not the release's `seq`; ask the upload route again).
+        Because the descriptor carries the `seq`, two publishes racing for one new `seq` are
+        refused by the ingest (`seq_not_increasing` or the retryable `release_exists`) with
+        nothing stored. A re-run whose release already holds a record keeps it
+        (`record.stored: false`).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3352,6 +3408,10 @@ paths:
                 descriptor:
                   type: object
                   description: A release descriptor (`release-descriptor.schema.json` in `@polaris-key/manifest`).
+                record:
+                  type: string
+                  maxLength: 88844
+                  description: "P3-03: the compact JWS of the release record (`pkey-release+jws`)."
                 dryRun: { type: boolean }
       responses:
         "200":
@@ -3377,6 +3437,16 @@ paths:
                     type: array
                     items: { type: string }
                     description: "`dryRun` only: storage keys of ticket objects not yet uploaded, judged as if they were."
+                  record:
+                    type: object
+                    description: >
+                      P3-03, when the submit carried a record: its `sha256` (the record route's
+                      path) and `kid` on a dry run; otherwise the release's stored record and
+                      whether it is this submit's (`stored`).
+                    properties:
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      kid: { type: string }
+                      stored: { type: boolean }
               examples:
                 created:
                   summary: test/publishRoutes.test.ts
@@ -3393,6 +3463,57 @@ paths:
         "403": { $ref: "#/components/responses/CiRefusal" }
         "404": { $ref: "#/components/responses/CiRefusal" }
         "409": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/records/{sha256}:
+    get:
+      operationId: getReleaseRecord
+      tags: [release]
+      summary: A CI-signed release record, by its SHA-256
+      description: >
+        P3-03 (WIRE-CONTRACT-V4 §2.4–§2.5). The stored `pkey-release+jws` exactly as CI signed
+        it, so the lowercase hex SHA-256 of the body equals the path: a client checks that hash
+        before any signature work, then verifies the record against the release keys its binary
+        pins (never the product trust set). `ETag` is the quoted hash; `If-None-Match` answers
+        304; `HEAD` returns the same headers. Governed by the release METADATA access mode:
+        `public` answers anyone with `public, max-age=31536000, immutable, no-transform`;
+        otherwise `private, no-store, no-transform`. The mode's request-level check runs first
+        (under `entitled` it proves only a usable licence); an unknown hash is then the plain
+        404, so the route is no oracle for which records exist; under `entitled` the licence's
+        version window must also admit the record's own release (its stored version, pinned —
+        the byte blob route's rule). Discovery advertises it as `release.endpoints.record`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: sha256
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+        - { $ref: "#/components/parameters/IfNoneMatch" }
+      responses:
+        "200":
+          description: "The compact JWS, `application/jose`."
+          content:
+            application/jose:
+              schema: { type: string }
+        "304":
+          description: Not modified (`If-None-Match`).
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The record rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    options:
+      operationId: preflightGetReleaseRecord
+      tags: [release]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: sha256, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── update ────────────────────────────────────────────────────────────────────
   /{product}/update/appcast.xml:
@@ -3507,6 +3628,73 @@ paths:
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
     options:
       operationId: preflightGetChannelAppcast
+      tags: [update]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/update/{channel}/feed.jws:
+    get:
+      operationId: getChannelFeed
+      tags: [update]
+      summary: The signed channel feed (pkey-feed+jws)
+      description: >
+        P3-03 (WIRE-CONTRACT-V4 §2.3). The device-less `pkey-feed+jws` for one channel, signed
+        with the product key: per platform, the release target (pinning a CI-signed release
+        record by hash, `seq` and version), that platform's floor (a prompt, never a block),
+        `critical`, and an entry per live outlet of the platform (keyed by outlet id, with its
+        `kind`, the newest release `live` there, `halted`, a client-evaluated `rollout`, a store
+        `listingUrl` and any operator-narrowed `capabilities`). Every caller of a channel gets
+        the same bytes. The `channel` claim is the CANONICAL channel (`latest` → `stable`;
+        `staging` → `beta` unless the product declares a manual `staging`), which keys the
+        client's `seq` floor. `seq` is shared by every selector of the channel and moves only
+        when the composed content changes; `expiresAt = issuedAt + 900`; a stored copy is
+        re-signed once it is 450 s old. A channel that has never offered a target is signed at
+        the starting `seq` (1, or the ceiling after a `feed:seq-ceiling` recovery) with empty
+        `targets`, and nothing is stored for it. The channel-wide document (`selector: {}`) is served
+        while its payload fits 65 536 bytes, else the per-platform one (`selector:
+        {platform}`); a document that fails the composer's self-check (the v4 claims and the
+        strict JSON profile) or does not fit is never signed: `500 feed_not_composable`.
+        Governed by the release METADATA access mode; under `entitled` the licence's
+        entitlements must hold the canonical channel (403 `channel_not_allowed`). `public`
+        caches `public, max-age=60, no-transform`, every other mode `private, no-store,
+        no-transform`. An unknown channel, or a missing or unknown `platform`, is the plain
+        404. Discovery advertises it as `update.endpoints.feed`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - name: platform
+          in: query
+          required: true
+          schema:
+            { type: string, enum: [macos, ios, android, windows, linux, web] }
+      responses:
+        "200":
+          description: "The compact JWS, `application/jose`."
+          content:
+            application/jose:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The feed rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "500":
+          description: "`feed_not_composable` — nothing was signed; keep deciding from the committed feed."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightGetChannelFeed
       tags: [update]
       summary: CORS preflight
       description: >
@@ -4519,7 +4707,44 @@ paths:
         not an error body. The OTHER 429 on this route — the ordinary per-IP/per-code rate
         limit — answers the LEGACY FLAT `rate_limited` instead, so a client must branch on the
         body, not the status.
-      parameters: [{ $ref: "#/components/parameters/Product" }]
+
+
+        The sign-in callback activates nothing for a device-code flow: it stores the verified
+        identity, and the poll that completes the flow activates it. An ordinary poll then yields
+        the identity's own licence (or a new one) and nothing else, and its `ready` carries the
+        `identity` (name, verified e-mail) for the device to show the player.
+
+
+        **Opt-in attach** (P1-07). A device that is on an anonymous enrolled licence can offer
+        the player to attach it to the account. Its polls send `confirmIdentity: true` (and the
+        device token as a bearer): once the player has signed in, the answer is `confirm` with
+        the `identity` and whether this device's licence is `attachable`, and nothing is minted.
+        The device shows the identity; after the player accepts it ON THE DEVICE, the next poll
+        sends `attachLicense: true` (or `false` to sign in without attaching) with the same
+        bearer. Only then does the Worker claim the anonymous licence for the identity (no licence
+        yet), or move every device on the anonymous licence onto the identity's licence and
+        retire the anonymous one, and `ready` reports `attached`. The bearer must be a live token
+        of the device the flow was started for, on an anonymous, usable enrolled licence. The
+        attach never takes the identity's licence past its device limit, measured as the licence
+        will be after the activation rewrites its tier and overrides to the identity's mapped
+        tier and provisioning: a claim is attachable only while every authorized device on the
+        anonymous licence (dormant ones too) fits that limit, and a migrate only while those
+        devices plus the identity licence's seat-holding devices do. Nothing is attachable when the identity's tier has
+        fingerprint mode `strict`: this poll presents no fingerprint, so its mint would be
+        refused, and the attach is never committed for a mint that cannot succeed. A decision sent before the device was shown the
+        identity, or an attach with nothing attachable, is answered with `confirm` again and
+        changes nothing. A user-code holder cannot reach any of this: it needs the device code.
+        The flow's starter can, which is why the open R1-07 (no browser binding) also covers
+        this decision.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: Authorization
+          in: header
+          required: false
+          description: >
+            `Bearer pkeyt_…` — the device's current token, read only with `confirmIdentity` or
+            `attachLicense`, to find the anonymous enrolled licence the opt-in attach names.
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -4529,6 +4754,22 @@ paths:
               poll:
                 summary: test/oidcEdge.test.ts
                 value: { deviceCode: Zk8LqR8nT0sYp2vcEgHj6A, deviceId: dev-1 }
+              confirmIdentity:
+                summary: test/attack/R8-oidc.test.ts — hold at the identity (opt-in attach)
+                value:
+                  {
+                    deviceCode: Zk8LqR8nT0sYp2vcEgHj6A,
+                    deviceId: victim-game,
+                    confirmIdentity: true,
+                  }
+              attach:
+                summary: test/attack/R8-oidc.test.ts — the player accepted on the device
+                value:
+                  {
+                    deviceCode: Zk8LqR8nT0sYp2vcEgHj6A,
+                    deviceId: victim-game,
+                    attachLicense: true,
+                  }
       responses:
         "200":
           description: Flow state / activation result.
@@ -4537,12 +4778,27 @@ paths:
               schema: { $ref: "#/components/schemas/AuthFlowState" }
               examples:
                 pending: { value: { status: pending } }
+                confirm:
+                  summary: test/attack/R8-oidc.test.ts — signed in; nothing minted yet
+                  value:
+                    status: confirm
+                    identity: { name: Player, email: player@example.com }
+                    attachable: true
                 ready:
                   summary: test/oidcEdge.test.ts — the flow record is deleted by this call
                   value:
                     status: ready
                     token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
                     schemaVersion: 1
+                    identity: { name: Player, email: player@example.com }
+                readyAttached:
+                  summary: "test/attack/R8-oidc.test.ts — after `attachLicense: true`"
+                  value:
+                    status: ready
+                    token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    schemaVersion: 1
+                    identity: { name: Player, email: player@example.com }
+                    attached: claimed
                 timeout: { value: { status: timeout } }
                 error: { value: { status: error } }
         "400":
@@ -5529,7 +5785,7 @@ components:
         ]
       properties:
         version: { type: integer, const: 2 }
-        protocolVersion: { type: integer, const: 3 }
+        protocolVersion: { type: integer, const: 4 }
         schemaVersion: { type: integer }
         product: { type: string }
         slug: { type: string }
@@ -6301,7 +6557,12 @@ components:
         deletes the flow record, so the poll after it is `timeout`.
       required: [status]
       properties:
-        status: { type: string, enum: [pending, ready, timeout, error] }
+        status:
+          type: string
+          enum: [pending, confirm, ready, timeout, error]
+          description: >
+            `confirm` is `deviceAuthPoll` only, answered to a poll that asked to confirm the
+            identity (`confirmIdentity` / `attachLicense`) once the player has signed in.
         token:
           type: string
           description: Present only on `ready`.
@@ -6309,6 +6570,31 @@ components:
         schemaVersion:
           type: integer
           description: Present only on `ready` — the product's catalog version.
+        identity:
+          type: object
+          description: >
+            On `confirm`, and on a device-code flow's `ready`: who signed in, for the device to
+            show the player. `email` only when the IdP verified it; never the subject or groups.
+          properties:
+            name: { type: string }
+            email: { type: string }
+        attachable:
+          type: boolean
+          description: >
+            On `confirm`: the poll's bearer is a live token of the flow's device on an anonymous,
+            usable enrolled licence, so `attachLicense: true` would attach it, and that the
+            attach keeps the identity's licence within its device limit as the activation will
+            leave it (the identity's mapped tier and provisioned overrides): every authorized
+            device on the anonymous licence (dormant ones included), plus on a migrate the
+            identity licence's seat-holding devices, fits that limit. Always `false` when the identity's tier has fingerprint
+            mode `strict`, because the mint would be refused.
+        attached:
+          type: string
+          enum: [claimed, migrated]
+          description: >
+            On `ready` after `attachLicense: true`: the anonymous licence became the identity's
+            (`claimed`), or every device on it moved onto the identity's licence and the
+            anonymous one was retired (`migrated`).
     SlowDown:
       type: object
       description: >
@@ -6396,9 +6682,20 @@ components:
       type: object
       description: >
         `deviceCode` and `deviceId` are both required; the spelling `state` is accepted as an
-        alias for `deviceCode`.
+        alias for `deviceCode`. `confirmIdentity` and `attachLicense` are the opt-in attach
+        (P1-07); without them the poll completes as an ordinary sign-in.
       required: [deviceId]
       properties:
         deviceCode: { type: string }
         state: { type: string, description: Accepted alias for `deviceCode`. }
         deviceId: { type: string }
+        confirmIdentity:
+          type: boolean
+          description: >
+            Answer `confirm` (the signed-in identity, nothing minted) instead of `ready`, so the
+            device can show the identity and the player can accept it first.
+        attachLicense:
+          type: boolean
+          description: >
+            The player's decision, sent after a `confirm`: `true` attaches the anonymous enrolled
+            licence the bearer is on, `false` signs in without attaching.
