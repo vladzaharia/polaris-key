@@ -453,6 +453,7 @@ describe("normalizeChannelHeader (§5.1 rule 3)", () => {
     ["pr-12345678", "1.2.3", "pr"],
     ["nightly", "1.2.3", "nightly"],
     ["staging-2", "1.2.3", "staging-2"],
+    ["constructor", "1.2.3", "constructor"], // a name, not a prototype key
     ["STAGING", "1.2.3", null],
     ["Beta.2", "1.2.3", null],
     ["beta_2", "1.2.3", null],

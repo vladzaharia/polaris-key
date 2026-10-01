@@ -71,8 +71,11 @@ export function classifyChannel(
   const manual = manualChannels.find((c) => c.name === selector);
   if (manual) return { kind: "manual", raw: selector, manual };
 
-  const aliased = (CHANNEL_ALIASES as Record<string, string>)[selector];
-  if (aliased === CHANNEL_BETA) return { kind: "beta", raw: selector };
+  if (
+    Object.hasOwn(CHANNEL_ALIASES, selector) &&
+    CHANNEL_ALIASES[selector as keyof typeof CHANNEL_ALIASES] === CHANNEL_BETA
+  )
+    return { kind: "beta", raw: selector };
 
   // A bare X.Y.Z(-suffix) is a pinned stable tag.
   if (/^\d+\.\d+\.\d+/.test(selector)) return { kind: "stable", raw: selector };

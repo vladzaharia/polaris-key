@@ -81,8 +81,9 @@ export function normalizeChannelHeader(
   header: string,
   version: string,
 ): string | null {
-  const aliased = (CHANNEL_ALIASES as Record<string, string>)[header];
-  if (aliased !== undefined) return aliased;
+  // `Object.hasOwn`, not a bare index: `constructor` is a well-formed channel name.
+  if (Object.hasOwn(CHANNEL_ALIASES, header))
+    return CHANNEL_ALIASES[header as keyof typeof CHANNEL_ALIASES];
   if (header === CHANNEL_PR) {
     const implied = impliedChannel(version);
     return PR_N_RE.test(implied) ? implied : CHANNEL_PR;
