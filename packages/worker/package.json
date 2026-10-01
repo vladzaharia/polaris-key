@@ -6,6 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "assemble": "node scripts/assemble-assets.mjs",
+    "feed:seq-ceiling": "node scripts/feed-seq-ceiling.mjs",
     "test": "vitest run",
     "test:workerd": "vitest run --config vitest.workers.config.ts",
     "typecheck:workerd": "tsc -p test-workerd",

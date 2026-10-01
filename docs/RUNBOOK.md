@@ -283,6 +283,36 @@ curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 Use the Releases view to inspect GitHub sync status, changed `.pkey/` paths, manifest
 validation errors, and release health. Use manual resync there when a webhook was missed.
 
+### Recovering the update feeds after a signer compromise
+
+The signed update feed (`pkey-feed+jws`, `GET /<p>/update/<channel>/feed.jws`) carries a `seq`
+that every install refuses to see go down. Anyone who held the product's signing key — a
+compromised Worker deploy, a leaked KEK — can sign a feed at the maximum `seq`
+(9007199254740991) for any channel name, and installs that fetch it then refuse the honest
+Worker's lower `seq` and freeze (they keep running, but stop updating) once that feed expires.
+Run this after **any** suspected product-key or Worker compromise, without waiting for evidence:
+
+1. Rotate the product key (console → product → keys) and redeploy from a trusted commit.
+2. For every affected product:
+
+   ```sh
+   pnpm --filter @polaris-key/worker feed:seq-ceiling --product <slug>            # --env prod by default
+   pnpm --filter @polaris-key/worker feed:seq-ceiling --product <slug> --env staging
+   ```
+
+   In one D1 batch it sets the product's ceiling flag (`update_feed_ceiling`, never cleared),
+   raises every channel's `update_feed_state.seq` to the ceiling, and deletes the stored feed
+   documents. It always covers the whole product: a channel nobody has requested yet starts at
+   the ceiling too. It is idempotent.
+
+3. Check one channel: `GET /<slug>/update/stable/feed.jws?platform=macos` must decode to
+   `"seq": 9007199254740991`. Every later feed of the product is signed at the ceiling with a
+   newer `issuedAt`, which installs accept; no client release is needed.
+
+Release records are not affected: they are signed in CI with release keys the Worker never
+holds. If a **release** key leaked, rotate it in CI, add the new key to `.pkey/release`
+`releaseKeys`, and ship an app build that pins it.
+
 ## CI gates
 
 `.github/workflows/ci.yml` runs on PRs and `main` pushes:
