@@ -7,7 +7,7 @@ extends SceneTree
 # Editor:   godot --headless --path . --script res://tests/cli.gd -- <suite> [args...]
 # Exported: ./pkey.x86_64 --headless -- <suite> [args...]   (project main_loop_type = PKTestRunner;
 #           official 4.7 templates refuse --path / --main-pack / --script)
-# <suite> is one of: platform (the default), or a probe suite another spike adds under tests/.
+# <suite> is one of: platform (the default) | outlet (S-06), or a probe suite another spike adds.
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()

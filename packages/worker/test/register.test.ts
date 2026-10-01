@@ -25,6 +25,7 @@ import {
   RETIRED_DEVICE_TOKEN,
   seedLicenseWithKey,
   seedProduct,
+  approveEdgeMintRecipe,
   seedProductSecret,
   UNKNOWN_DEVICE_TOKEN,
 } from "./seed.js";
@@ -646,7 +647,13 @@ describe("Core surfaces accept a registered device when License is disabled", ()
 
   it("edge-mint signs for a registered device", async () => {
     const w = await world(SET.configOnly);
-    await seedProductSecret(w.db, "djdl", "applemusic_devkey", ES_PEM);
+    await seedProductSecret(
+      w.db,
+      "djdl",
+      "applemusic_devkey",
+      ES_PEM,
+      "edge-mint",
+    );
     await w.db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
       "djdl",
@@ -660,15 +667,26 @@ describe("Core surfaces accept a registered device when License is disabled", ()
       null,
     );
     const { token } = await register(w);
-    const res = await handleMintToken(
-      mkReq("POST", { authorization: `Bearer ${token}` }),
-      w.env,
-      w.db,
-      w.product,
-      "applemusic",
-      NOW,
-    );
-    expect(res.status).toBe(200);
+    const mint = async () =>
+      (
+        await handleMintToken(
+          mkReq("POST", { authorization: `Bearer ${token}` }),
+          w.env,
+          w.db,
+          w.product,
+          "applemusic",
+          NOW,
+        )
+      ).status;
+    // A config-only product derives OPEN registration, so an approval counts only when it
+    // carries the operator's open-registration acknowledgement (P0-12).
+    expect(w.product.registration).toBe("open");
+    await approveEdgeMintRecipe(w.db, "djdl", "applemusic");
+    expect(await mint()).toBe(404);
+    await approveEdgeMintRecipe(w.db, "djdl", "applemusic", {
+      acknowledgeOpenRegistration: true,
+    });
+    expect(await mint()).toBe(200);
   });
 });
 
@@ -729,7 +747,13 @@ describe("Core surfaces are UNCHANGED when License is enabled", () => {
 
   it("still 401s edge-mint for a device whose licence lapsed", async () => {
     const { w, token } = await expired();
-    await seedProductSecret(w.db, "djdl", "applemusic_devkey", ES_PEM);
+    await seedProductSecret(
+      w.db,
+      "djdl",
+      "applemusic_devkey",
+      ES_PEM,
+      "edge-mint",
+    );
     await w.db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
       "djdl",
@@ -742,6 +766,7 @@ describe("Core surfaces are UNCHANGED when License is enabled", () => {
       null,
       null,
     );
+    await approveEdgeMintRecipe(w.db, "djdl", "applemusic");
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
       w.env,

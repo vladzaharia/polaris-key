@@ -20,6 +20,7 @@ What stays here is the spike-probe harness. This project is not part of the gree
 | ------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `tests/cli.gd`            | `PKTestRunner`, the probe runner. A suite that moved to `sdks/godot` prints where to run it and exits 1 |
 | `tests/suite_platform.gd` | `platform`: OS, engine and feature-tag facts, and `user://` paths                                       |
+| `tests/suite_outlet.gd`   | `outlet`: S-06's outlet-signal probe ([`outlet-signals/`](outlet-signals/README.md))                    |
 | `tests/http_probe.gd`     | the HTTP probe (redirect credentials, gzip and `Range`, `download_file`, ETag, TLS name mismatch)       |
 | `lowend/`, `content/`, …  | other spikes; see [Other experiments](#other-experiments) and each directory's README                   |
 
@@ -31,6 +32,7 @@ Needs the Godot 4.7 standard editor binary (not .NET).
 cd docs/research/2026-09-29-godot-omniplatform/prototype
 godot --headless --path . --import               # registers class_name globals
 godot --headless --path . --script res://tests/cli.gd -- platform
+godot --headless --path . --script res://tests/cli.gd -- outlet bundle /Applications/<App>.app
 godot --headless --path . --script res://tests/http_probe.gd   # network; honours HTTPS_PROXY
 ```
 

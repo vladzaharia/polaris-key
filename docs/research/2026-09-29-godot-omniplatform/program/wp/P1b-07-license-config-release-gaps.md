@@ -121,7 +121,10 @@ returns the `channels` entitlement's string values, or `["stable"]` when it is a
 - Swift's `UpdateFeed.allowedChannels(from:)` already treats empty as "stable only", so change
   `LicenseClient.entitledChannels()` and check `SparkleUpdater.swift:45`. Record it in the Swift
   changelog.
-- If P0-04 has landed, use its vocabulary.
+- If P0-04 has landed, use its vocabulary. `entitledChannels` keeps returning the raw grants. Any
+  channel predicate an SDK adds must be the plan's entitlement rule (`channelEntitled`, with
+  `CHANNEL_ALIASES`; P0-04 plan §2.1 rule 4), not a literal string match; the corpus case goes to a
+  later plan (P0-04 D11).
 - **Proof.** The PARITY row says `cases.json`, but no corpus case asserts channels, so the proof is
   unit tests over identical fixtures until a corpus case exists.
 

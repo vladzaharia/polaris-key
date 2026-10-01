@@ -140,6 +140,18 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
       release baseline, profiles, tiers, provisioning, edge-mint recipes.
 - [ ] Admin-set **values and management states** (per profile/tier/license/device) live in D1 and
       are **not** overwritten by a resync.
+- [ ] **Edge-mint recipes need operator approval.** A recipe from `.pkey/` is inert (its token
+      route answers `404`) until an operator approves it in the console's Secrets view, and it
+      signs only with a secret the operator marked usage `edge-mint`. The manifest can never set
+      either. Changing a recipe's `alg`, `signingKeySecret`, `kid`, `claimsTemplate`,
+      `ttlSeconds` or `audience` makes it inert again until it is re-approved; an unchanged
+      resync keeps it approved; dropping it deletes its approval. So does a push that makes the
+      mint public — opens registration (`devices.registration: open`, or License turned off),
+      enables anonymous `autoIssue` (`mode: anonymous`/`both`), or enables `oidcDefault` with
+      Identity on — when the approval was given without the open-registration acknowledgement.
+      And, with Identity on, so does any change to `oidc.provider`, `oidc.issuer`,
+      `oidc.clientId` or `oidc.groupRoleMap`, or turning Identity on. Tell the product owner to
+      expect a review step after any such push (docs: `services/config/edge-mint`).
 - [ ] Five blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
       `auto_issue_source` (on the product), `compat_source` (the compat window, claimed from
       Update settings) and `access_source` (both release access modes together, on

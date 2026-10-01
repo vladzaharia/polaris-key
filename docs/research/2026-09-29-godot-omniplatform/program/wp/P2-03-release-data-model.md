@@ -120,7 +120,9 @@ every later release, distribution and wire v4 package names its tables.
   §3.3) and what breaks ties in pack-set resolution.
 - **`release_metadata.channel`** is an addition to the README sketch: the channel a release was
   published to (`pkey release publish --channel events`, README §6.1). NULL means "derive from
-  GitHub", i.e. `stable` unless `prerelease`, plus manual-channel regexes, as today.
+  GitHub", i.e. `stable` unless `prerelease`, plus manual-channel regexes, as today. Only canonical
+  channel names are stored (P0-04 plan §10): `staging` is never stored, so `pkey release publish
+--channel staging` records `beta`. `release_channel_policy.channel` is canonical too.
 - **Channel policy semantics**, which P2-05 implements and P3 signs:
   - `includes_json` (`["stable"]` for beta) is manifest-declared (`deliverables.app.channels`);
   - `pointer_release_id` NULL means "follow the newest eligible release"; `promote` sets the

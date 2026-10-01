@@ -79,7 +79,12 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   transport, verify size and SHA-256 against the verified record, stage
   it, and at restart replace `<exe-name>.pck` beside the executable, keeping the old one as
   previous; `OS.set_restart_on_exit`. Refuse where the directory is not writable, inside a macOS
-  `.app`, under `Program Files`, or in MSIX, Flatpak or Snap installs.
+  `.app`, under `Program Files`, in MSIX, Flatpak or Snap installs, and in Velopack installs (S-05
+  §4.5: an update replaces the whole app directory, and a sidecar beside the executable was deleted
+  by the first update). Detect MSIX when `OS.get_executable_path()` contains a `WindowsApps` path segment
+  (Godot returns `/` on Windows; compare case-insensitively on either separator, and give the fake
+  a `C:/Program Files/WindowsApps/...` path) (S-05 §4.4);
+  the MSIX install directory is read-only by design.
 - **Slots and boot guard** in `updater/slots.gd` and `updater/boot_guard.gd`: staged, current and
   previous under `user://pkey/<product>/updates/` with a meta file (version, build number, record
   hash, SHA-256, size, engine); count launches, confirm after `BOOT_OK_SECONDS` or an explicit
@@ -132,6 +137,13 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   measurement in the PR. Linux renames an open file without trouble.
   [D-01](D-01-diceroll-now.md) makes the same swap in Diceroll first and records the Windows
   behaviour; start from its result.
+- **MSIX `user://`** (S-05 §4.4, from Microsoft's documentation; not run on Windows): `user://`
+  works unchanged but is virtualized to `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\…`,
+  is kept across package updates and is deleted on uninstall. Slots and the boot guard under
+  `user://` therefore work in MSIX builds; say on the docs page that uninstalling removes them.
+- **Velopack** (S-05 §4.5): ship the launcher shim as `--mainExe`. Godot as the main executable
+  also survives the hooks (1.0–1.7 s per hook when an autoload quits from `_init`, limits 15/30 s),
+  but starts its renderer and window for each hook; keep that only as a documented fallback.
 - **The sidecar keeps the executable's hash stable**, which keeps its SmartScreen reputation across
   code updates (notes/E3 §A3.3).
 - **HTTP rules from P1-02**: follow redirects manually without `Authorization` on a host change,

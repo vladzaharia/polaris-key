@@ -447,6 +447,15 @@ async function registerFromManifest(
       }),
     );
   }
+  // P0-12: a freshly linked product's recipes are PENDING — a link never writes an approval,
+  // because an approval is the operator's decision and the manifest is the repo's. So the link
+  // deletes EVERY approval row under the slug, not only the orphans resync drops: a new slug
+  // has none, and a row left by an earlier product of the same slug must not approve this
+  // one's recipes (nor survive the widening sweep resync runs, which a link has no "before" for).
+  statements.push({
+    sql: "DELETE FROM edge_mint_approvals WHERE product = ?",
+    params: [slug],
+  });
 
   await db.batch(statements);
 

@@ -1,0 +1,10 @@
+plugins {
+    id 'com.android.asset-pack'
+}
+
+assetPack {
+    packName = "s05fastfollow"
+    dynamicDelivery {
+        deliveryType = "fast-follow"
+    }
+}

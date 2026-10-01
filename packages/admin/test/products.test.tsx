@@ -351,10 +351,12 @@ describe("Products view", () => {
     );
 
     await waitFor(() =>
+      // No usage chosen: none is sent, so an existing secret keeps its usage (P0-12).
       expect(mockApi.putProductSecret).toHaveBeenCalledWith(
         "djdl",
         "TOKEN",
         "s3cr3t",
+        undefined,
       ),
     );
   });

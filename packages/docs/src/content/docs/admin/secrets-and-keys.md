@@ -1,6 +1,6 @@
 ---
 title: "Secrets & keys"
-description: "Write-only product secrets, the setup-health required-secrets list, and signing-key rotation."
+description: "Write-only product secrets and their usage, edge-mint recipe approval, the setup-health required-secrets list, and signing-key rotation."
 sidebar:
   order: 6
 ---
@@ -21,6 +21,46 @@ Typical secret names are an OIDC client secret (custom OIDC providers only — t
 provider needs none) and an edge-mint signing key, one per recipe the product's manifest
 declares (`EDGE_MINT__DJDL__APPLEMUSIC` is the production example — see [Operating: the KEK
 keyring](/docs/admin/kek/) → _Product operations_).
+
+### Secret usage
+
+Each secret also has a **usage**, chosen in the form's _Usage_ selector (or sent as `"usage"` on
+the `PUT`):
+
+| Usage                     | Meaning                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| _General_ (the default)   | An ordinary secret — an OIDC client secret, anything else. An edge-mint recipe can **never** sign with it. |
+| _Edge-mint signing key_   | Key material an edge-mint recipe may sign with. Not usable as an OIDC client secret.                       |
+| _Keep current_ (selector) | Sends no `usage`: an existing secret keeps what it had, a new one is general.                              |
+
+The usage is the operator's decision and only the operator's — a `.pkey/` manifest can name a
+secret in a recipe but can never make it signable. So re-uploading a rotated key with _Keep
+current_ never changes what it may sign, and a change of usage is audited on its own as
+`secret.usage`. The response echoes the name and the resulting usage, never the value.
+
+### Edge-mint recipes
+
+Below the form, products that declare edge-mint recipes get an **Edge-mint recipes** card. A
+recipe arrives from the linked repo, so it mints only once you have **approved it exactly as it
+stands**: each recipe shows as _Pending approval_, _Approved_, or _Changed since approval_ (with
+the approved value beside each changed field), next to its signing secret's usage. **Approve**
+shows the full recipe once more and records exactly those values; if a push changed it in the
+meantime the approval is refused and the card reloads. **Revoke** drops the approval. When the
+mint is public — the product's registration is open, auto-issue allows anonymous enrolment, or
+Identity is on with an OIDC default tier — the card warns that an approved recipe is a public token mint, and approval needs an explicit
+acknowledgement. The acknowledgement belongs to the approval: if the mint becomes public after you
+approved without it, the recipe shows _Changed since approval_ and stops minting until you
+re-approve it. When Identity is on, the card also shows the identity provider and group map an
+approval covers, because signing in is how people get device tokens without a key; a push that
+changes them makes the recipe _Changed since approval_ too, with the approved values beside the new
+ones, and so does turning License off after an approval given with it on. When the change arrives
+by a manifest push, the ingest also drops the approval (audited as `config.mint.invalidate`), so
+the recipe returns to _Pending approval_ and a later push that reverts the change does not restore
+it: review the licences and devices issued in between before you re-approve. While License is
+off the card and the approve dialog warn that the mint does not check device licences, so an
+approval given then (recorded as such) lets a disabled or expired licence mint. The setup checklist lists each recipe awaiting approval
+and each recipe secret not yet marked edge-mint. The full rule, the admin endpoints and the
+upgrade backfill are in [Edge-mint](/docs/services/config/edge-mint/#two-operator-conditions).
 
 :::note[A different, related mechanism]
 Catalog-declared **managed secrets** — a config entry with `kind: "secret"`, or `secret: true` —
@@ -89,5 +129,8 @@ rotates the KEK that seals every product's keys; this rotates one product's own 
 - [Operating: the KEK keyring](/docs/admin/kek/) — the runbook for `PLATFORM_KEK` itself, which
   seals both the secrets and the keys on this page. If it's misconfigured, every product route
   serving something signed 404s silently — read that page's opening note before you touch it.
-- [D1 data model](/docs/reference/data-model/) — `product_secrets` and `product_keys`.
+- [D1 data model](/docs/reference/data-model/) — `product_secrets`, `product_keys` and
+  `edge_mint_approvals`.
+- [Edge-mint](/docs/services/config/edge-mint/) — recipes, the two operator conditions, and the
+  mint route.
 - [Products](/docs/admin/products/#setup-health) — the full setup-health computation.

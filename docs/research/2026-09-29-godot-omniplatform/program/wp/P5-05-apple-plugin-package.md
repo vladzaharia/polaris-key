@@ -56,11 +56,17 @@ Group that S-01 proved are added to the exported Xcode project by a repeatable s
 **In:**
 
 - A new SwiftPM library target, proposed name `PolarisKeyPlatform`, in `sdks/swift/`:
-  - `distributor`: `AppDistributor.current` behind `#available(iOS 17.4, *)`, returning the raw
+  - `distributor`: `AppDistributor.current` behind `#available(iOS 17.4, *)`, raced against a
+    deadline (proposed 2 s; a timeout returns `unavailable`, which means no evidence, because the
+    call never resolved in 100 s on the iOS 26.5 simulator:
+    [notes/S-06](../../notes/S-06-outlet-signals.md) §1 and rule 5), with the `web` case matched
+    only behind `#available(iOS 17.5, *)` (the case does not exist in 17.4). It returns the raw
     signal (`appStore`, `testFlight`, `marketplace:<bundleID>`, `web`, `other`, or `unavailable`),
-    read at every launch;
+    read at every launch and never cached;
   - `appTransaction`: environment, `originalAppVersion`, `appTransactionID` and the JWS
-    representation for server verification;
+    representation for server verification. This is for commerce only: outlet detection does not
+    call it (on macOS the `_MASReceipt` receipt, its `ProductionSandbox` marker and the signing
+    leaf are enough, notes/S-06 §2);
   - `assetPacks` (iOS/macOS 26+): ensure (single and batch), status stream, `localVersion`,
     `checkForUpdates`, `remove`, and `url(for:)` resolved off the main thread and never persisted;
   - `store`: product lookup, purchase with an `appAccountToken`, `currentEntitlements`, the
@@ -156,7 +162,9 @@ platform=ios target=template_release arch=arm64 simulator=yes`, about 6 minutes)
 ## Acceptance criteria
 
 - [ ] `swift test` covers each module against fakes, including `unavailable` below iOS 17.4 and,
-      for Background Assets, below 26.4 (a 26.0–26.3 fake reports `unavailable`).
+      for Background Assets, below 26.4 (a 26.0–26.3 fake reports `unavailable`),
+      `unavailable` when a fake `DistributorSource` never resolves within the deadline, and no
+      `web` result below iOS 17.5.
 - [ ] The xcframework builds for `ios-arm64` and the simulator in CI on `macos-26`.
 - [ ] Headless Godot tests show every `PKeyApple` call returns `Unsupported` (reason `runtime`) on
       desktop and (reason `dependency`) when the class is missing.
