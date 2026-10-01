@@ -410,6 +410,12 @@ describe("GET /update/<channel>/feed.jws", () => {
     const g = (await getFeed(w, "qa")).payload!;
     expect(g.seq).toBe(MAX_WIRE_INTEGER);
     expect(g.issuedAt).toBeGreaterThan(f.issuedAt);
+    // The Worker has no log sink: the re-signing at the ceiling is in the audit trail.
+    const audit = await w.db.all<{ target_id: string }>(
+      "SELECT target_id FROM audit WHERE product = ? AND action = 'update.feed.ceiling'",
+      SLUG,
+    );
+    expect(audit).toEqual([{ target_id: "qa" }]);
   });
 });
 

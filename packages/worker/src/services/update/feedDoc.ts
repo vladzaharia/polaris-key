@@ -18,7 +18,7 @@
  * A new row starts at 1, or at `MAX_WIRE_INTEGER` when the product's ceiling flag
  * (`update_feed_ceiling`, written by the `feed:seq-ceiling` recovery script) is set. At the
  * ceiling a change of content re-signs at the ceiling with a newer `issuedAt`, which clients
- * accept (§2.5 step 8), and is logged.
+ * accept (§2.5 step 8), and is recorded in the audit trail (`update.feed.ceiling`).
  *
  * ── what is never signed ────────────────────────────────────────────────────────────────────
  *
@@ -51,6 +51,8 @@ import { appSecurityHeaders } from "../../core/platform.js";
 import { errorResponse, wireError } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signDoc } from "../../core/signing.js";
+import { appendAudit } from "../../core/data.js";
+import { randomId } from "../../core/platform.js";
 import {
   accessModeFor,
   artifactPolicy,
@@ -303,15 +305,22 @@ export async function handleFeedRoute(
   );
   // Concurrent writers kept moving the row (three times over): nothing consistent to sign.
   if (!state) return notComposable();
+  // At the ceiling a change of content re-signs at the ceiling with a newer `issuedAt`. The
+  // Worker has no log sink (R12), so it is recorded in the product's audit trail.
   if (state.bumped && state.atCeiling)
-    console.log(
-      JSON.stringify({
-        event: "update.feed.ceiling",
-        product: product.slug,
-        channel: composed.channel,
-        seq: state.seq,
-      }),
-    );
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: "system:update-feed",
+      actor_name: "Update feed",
+      actor_email: null,
+      action: "update.feed.ceiling",
+      target_kind: "channel",
+      target_id: composed.channel,
+      parent_id: null,
+      summary: `The ${composed.channel} feed changed at the seq ceiling and was re-signed at ${state.seq}`,
+    });
 
   // Which document this request gets, and whether the stored copy of it is current.
   const probe = documentFor(product.slug, composed, platform, state.seq, now);
