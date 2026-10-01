@@ -165,7 +165,7 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
 12. Corpus placement: keep `conformance/corpus/v2/` and `corpusVersion: 2` with additive sections
     and new files versioned `updateMatrixVersion: 1` and `outletMatrixVersion: 1`, or open
     `corpus/v3/`. Every runner asserts `corpusVersion == 2` today (Node runner `:217`, Python
-    `test_conformance.py:62`, Swift `ConformanceTests.swift:185`). [Keep v2, additive.]
+    `test_conformance.py:62`, Swift `ConformanceTests.swift:186`). [Keep v2, additive.]
 13. Committed test keys: new release test keys in `KEYS` (e.g. `djdl-release-test-2026` and a
     second for rotation); feeds signed by the existing `pkey-test-prod-2026`.
 14. Malleability vectors: the list, the expected verdict for each, and the rule when backends
