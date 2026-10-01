@@ -4,6 +4,8 @@ import {
   DEFAULT_ENABLED_SERVICES,
   MODULE_SERVICES,
   SERVICE_SLUGS,
+  distributionOutletIds,
+  normalizeDistribution,
   validateIngestDocuments,
   type ProductModule,
   type ServiceSlug,
@@ -33,6 +35,9 @@ export interface LoadedManifest {
   schema?: unknown;
   releasePath?: string;
   release?: unknown;
+  /** `.pkey/distribution` (P2b-02), when the repo has one. */
+  distributionPath?: string;
+  distribution?: unknown;
 }
 
 export interface ValidationResult {
@@ -74,6 +79,11 @@ const SCHEMA_BASE = "../node_modules/@polaris-key/manifest/schemas/v1";
 const PRODUCT_FILES = ["product.json", "product.yaml", "product.yml"];
 const SCHEMA_FILES = ["schema.json", "schema.yaml", "schema.yml"];
 const RELEASE_FILES = ["release.json", "release.yaml", "release.yml"];
+const DISTRIBUTION_FILES = [
+  "distribution.json",
+  "distribution.yaml",
+  "distribution.yml",
+];
 /** Every name `--modules` accepts: the service slugs, then the legacy module names. */
 const MODULES: readonly ProductModule[] = [
   ...SERVICE_SLUGS,
@@ -119,6 +129,7 @@ export async function loadManifest(cwd: string): Promise<LoadedManifest> {
   }
   const schemaFile = await findExisting(rootDir, SCHEMA_FILES);
   const releaseFile = await findExisting(rootDir, RELEASE_FILES);
+  const distributionFile = await findExisting(rootDir, DISTRIBUTION_FILES);
   const product = parseFile(productFile, await readFile(productFile, "utf8"));
   if (!isRecord(product))
     throw new Error(
@@ -140,7 +151,43 @@ export async function loadManifest(cwd: string): Promise<LoadedManifest> {
           release: parseFile(releaseFile, await readFile(releaseFile, "utf8")),
         }
       : {}),
+    ...(distributionFile
+      ? {
+          distributionPath: distributionFile,
+          distribution: parseFile(
+            distributionFile,
+            await readFile(distributionFile, "utf8"),
+          ),
+        }
+      : {}),
   };
+}
+
+/**
+ * The `.pkey/distribution` file in `cwd`, or `null` when there is none — checked WITHOUT loading
+ * the rest of the manifest, so `pkey distribution outlet-ids` can answer `{}` for a repo with no
+ * distribution document even where the other documents are absent.
+ */
+export async function findDistributionFile(
+  cwd: string,
+): Promise<string | null> {
+  return findExisting(path.join(cwd, ".pkey"), DISTRIBUTION_FILES);
+}
+
+/**
+ * The `outletIds` object for one build outlet (`pkey distribution outlet-ids`, P2b-02): the
+ * product's store ids, every value a string, keys sorted — what CI passes to a Godot export as
+ * `PKEY_OUTLET_IDS` (P1-11; notes/S-06 rule 4). `null` when the document declares no such outlet.
+ * Call only on a manifest that validated.
+ */
+export function outletIdsFor(
+  manifest: LoadedManifest,
+  outletId: string,
+): Record<string, string> | null {
+  return distributionOutletIds(
+    normalizeDistribution(manifest.distribution),
+    outletId,
+  );
 }
 
 export function validateLoadedManifest(
@@ -152,6 +199,7 @@ export function validateLoadedManifest(
     product: manifest.product,
     schema: manifest.schema,
     release: manifest.release,
+    distribution: manifest.distribution,
   });
 }
 
