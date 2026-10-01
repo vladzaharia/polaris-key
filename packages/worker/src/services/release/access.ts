@@ -33,7 +33,7 @@
 
 import type { Env, Db } from "../../core/platform.js";
 import { bearer } from "../../core/platform.js";
-import type { Product } from "../../core/products.js";
+import type { ProductPublic } from "../../core/products.js";
 import { errorResponse, wireError } from "../../core/errors.js";
 import {
   entitledAccessCheck,
@@ -110,7 +110,7 @@ export async function enforceReleaseAccess(
   req: Request,
   env: Env,
   db: Db,
-  product: Product,
+  product: ProductPublic,
   cfg: ReleaseConfigRow,
   kind: ReleaseKind,
   params: ReleaseParams,

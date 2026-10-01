@@ -1,5 +1,6 @@
 /**
- * Which host a request arrived on: the bytes host (`BLOB_ORIGIN`, P2-01) or the console.
+ * Which host a request arrived on: the bytes host (`BLOB_ORIGIN`, P2-01) or the
+ * console host.
  *
  * Its own module because two Core files need the answer and one of them is imported by the
  * other: `bytesHost.ts` (dispatch) and `blobs.ts` (`blobResponse` derives its host from the
@@ -13,7 +14,8 @@ import type { Env } from "../env.js";
  * A hostname in the form hosts are compared in: lowercase, with any trailing dots removed.
  * `dl.plrs.im.` (the fully-qualified form) is the same DNS name as `dl.plrs.im`, and the edge
  * routes it to this Worker with the dot still in `req.url` — so an exact comparison would let
- * `https://dl.plrs.im./manage` skip host isolation and reach the console routes.
+ * `https://dl.plrs.im./manage` skip host isolation and reach the
+ * console-host routes.
  */
 export function normalizeHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/\.+$/, "");

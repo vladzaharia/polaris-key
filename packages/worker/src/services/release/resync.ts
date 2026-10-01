@@ -46,6 +46,7 @@ import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSyncStatements } from "./sync.js";
+import { bumpReleaseGeneration } from "./ghCache.js";
 import { serializeServices } from "../../core/services.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 
@@ -516,7 +517,12 @@ async function applyRepoManifest(
     }
   }
 
-  if (stmts.length > 0) await db.batch(stmts);
+  if (stmts.length > 0) {
+    await db.batch(stmts);
+    // A resync can change the tag filter, the manual channels and the store: drop every cached
+    // resolution of this product (P2-05, `ghCache.ts`).
+    await bumpReleaseGeneration(env, slug, now);
+  }
 
   if (droppedBefore.length > 0) updated.push("edgeMintApprovals");
   return { ok: true, updated };
