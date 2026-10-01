@@ -109,17 +109,21 @@ client should not use it.
 From here the human completes sign-in exactly as in the browser flow, landing on
 `/identity/auth/callback` — see [Product OIDC](/docs/services/identity/oidc/) for what that
 route does. Because this flow never carries a `return_to`, the callback does not set a session
-cookie; it leaves the minted license on the flow record for the poll below to pick up.
+cookie. It does not activate anything either: it checks that the identity would be entitled
+(answering the browser `403` at once if not), stores the verified identity on the flow record and
+stops. The poll below activates it.
 
-That license is exactly what an ordinary sign-in for the signing-in identity gets: its own
-license, or a new one under the product's group mapping or `oidcDefault` tier. The callback does
-**not** claim, migrate or disable the license the polling device is already on. That includes an
+By default that activation is exactly what an ordinary sign-in for the signing-in identity gets:
+its own license, or a new one under the product's group mapping or `oidcDefault` tier. Nothing
+claims, migrates or disables the license the polling device is already on. That includes an
 anonymous enrolled license, which stays anonymous and active. The reason is that the user code is
 public, so whoever confirms the flow need not be the device's owner. Merging the device's license
 at the callback let a user-code holder take it over. When the device redeems the flow, the device
-moves onto the signed-in identity's license. Attaching the device's previous anonymous license to
-the account will be a separate, explicit opt-in that the device makes after the player accepts
-the signed-in identity. It is not built yet.
+moves onto the signed-in identity's license.
+
+Attaching the device's anonymous license to the account is an explicit opt-in that only the
+device can make, after the player has seen the signed-in identity on the device and accepted it.
+See "Attaching the device's anonymous license" below.
 
 :::caution[Why the split matters]
 This page used to be a single `GET` that accepted `?confirm=1` and completed the flow right
@@ -154,10 +158,18 @@ being served. Before confirmation, the answer is `{ "status": "pending" }`. Once
 confirmed _and_ the OIDC callback has completed, the response becomes:
 
 ```json
-{ "status": "ready", "token": "pkeyt_…", "schemaVersion": 1 }
+{
+  "status": "ready",
+  "token": "pkeyt_…",
+  "schemaVersion": 1,
+  "identity": { "name": "Ada", "email": "ada@example.com" }
+}
 ```
 
-— a per-device bearer token, not a session cookie; this flow never produces one. The underlying
+— a per-device bearer token, not a session cookie; this flow never produces one. `identity` names
+who the device is now signed in as (`email` only when the IdP verified it). A client should show
+it: if someone else confirmed the flow with the user code and signed in as themselves, this is
+where the player sees that the device is now on a stranger's account. The underlying
 flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is only ever
 handed out once. An IdP failure or a stale/expired code answers `{ "status": "error" }` or
 `{ "status": "timeout" }` — the same generic shapes throughout this service, deliberately: a
@@ -167,6 +179,39 @@ Minting the token at `ready` runs through the same seat-authorization step activ
 browser session both use — the same device can only hold one seat's worth of authorization
 regardless of which of the three paths it came through, because all three bind to one shared
 computation rather than three copies of it.
+
+## Attaching the device's anonymous license
+
+A device that enrolled anonymously already holds a license of its own. A player who now signs in
+may want that license (its devices, its overrides) to become their account's, rather than leaving
+it behind. The poll offers this as a two-step opt-in, and only to the party holding the device
+code:
+
+1. While polling, the device sends `"confirmIdentity": true` and its current device token as
+   `Authorization: Bearer pkeyt_…`. Once the player has signed in, the answer is not `ready` but:
+
+   ```json
+   {
+     "status": "confirm",
+     "identity": { "name": "Ada", "email": "ada@example.com" },
+     "attachable": true
+   }
+   ```
+
+   Nothing has been minted or merged. `attachable` says whether the bearer is a live token of the
+   device the flow was started for, on an anonymous (`origin = enroll`, no subject), usable
+   enrolled license.
+
+2. The device shows the identity. After the player accepts it **on the device**, the next poll
+   sends `"attachLicense": true` with the same bearer (or `false` to sign in without attaching).
+   With `true`, an identity that has no license yet takes the anonymous license over in place
+   (`"attached": "claimed"`); an identity that already has a usable license gets the device moved
+   onto it and the anonymous license retired (`"attached": "migrated"`). Then `ready` as usual.
+
+A decision sent before the device was shown the identity, or `attachLicense: true` with nothing
+attachable, is answered with `confirm` again and changes nothing. The decision poll counts
+against the `interval` like any other. A user-code holder cannot reach any of this: the only
+surface that completes a device-code flow is this one, and it needs the device code.
 
 ## Lifetime and rate limits
 

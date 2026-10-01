@@ -672,10 +672,14 @@ change:
   yields only the identity's own license (`getLicenseBySub`) or a new one under the existing
   group-map / `oidcDefault` policy. The browser-redirect flow carries no device id and never
   merged. PoCs, asserting the fix: `test/attack/R8-oidc.test.ts` › `R8-02 / P1-06 a user-code
-holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). Follow-up owned
-  by P1-07: an opt-in "attach this device's anonymous license to my account", applied only at
-  `/auth/device/poll` by the device-code holder after the player has seen the signed-in identity
-  on the device and accepted it.
+holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). Follow-up, done
+  in P1-07: an opt-in "attach this device's anonymous license to my account", applied only at
+  `/auth/device/poll` by the device-code holder after the device was shown the signed-in identity
+  (`confirm`) and the player accepted it, for the license the flow's own device holds a token on.
+  The callback now stores the identity and activates nothing for a device-code flow; the poll
+  activates it. PoCs: `ATTACK (claim, P1-07)`, `ATTACK (migrate, P1-07)` and the `P1-07:` cases
+  in the same describe block. The `ready` answer also names the signed-in identity, so the
+  residual mis-binding above is visible on the device.
 - **Not closed by P1-06: the flow's starter.** Everything above bounds a party holding _someone
   else's_ user code. The party that started a flow can still confirm it themselves — GET the page
   for its own user code, read the CSRF token, POST it with no `Origin` — and receive the IdP

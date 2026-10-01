@@ -36,6 +36,7 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // `manifest.ts` merely re-exports it — a service may not import a sibling.
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import {
+  bearer,
   hashKey,
   platformOidcConfig,
   secret,
@@ -63,7 +64,7 @@ import {
 } from "../../core/data.js";
 import { allowsOidcDefault } from "../../core/fingerprint.js";
 import { authorizeDevice, tierExpiresAt } from "../../core/authz.js";
-import { licenseUsable } from "../../core/devices.js";
+import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { createBrowserSession } from "./browserSession.js";
 
 const FLOW_TTL_SECONDS = 600;
@@ -127,6 +128,14 @@ interface FlowRecord {
    *  and the device id can be on the page, so on `/identity/auth/poll` the pair would be a
    *  redemption handle for anyone who holds the user code (R8-02, P1-06). */
   viaDeviceCode?: boolean;
+  /** A device-code flow's verified identity, stored by the callback INSTEAD of activating it
+   *  (P1-07). Activation happens at `/device/poll`, where the device-code holder decides whether
+   *  the device's anonymous enrolled licence is attached; until then no licence row is created,
+   *  claimed or changed. */
+  identity?: OidcIdentity;
+  /** Stamped the first time `/device/poll` answered `confirm`, i.e. the device was shown the
+   *  signed-in identity. An attach decision is honoured only after this (P1-07). */
+  identityShownAt?: number;
 }
 
 interface DeviceFlowRecord {
@@ -558,21 +567,15 @@ export async function applyProvisioning(
   }
 }
 
-/** Find or mint a license for an identity. Returns the licenseId, or an error if the
- *  identity's groups don't grant entitlement. Idempotent on the OIDC subject. */
-export async function activateFromIdentity(
+/** The tier an identity is entitled to under the product's group map, or its `oidcDefault`
+ *  policy: `{ tierId, expiresAt }`, or `{ error: "not-entitled" }`. Read-only. */
+async function identityTier(
   db: Db,
   product: Product,
   identity: OidcIdentity,
   now: number,
-  /** The license the caller's device is already using, when it presented one. An anonymous
-   *  enrolled license found here is merged into the identity rather than abandoned. No HTTP
-   *  route passes it today: the sign-in callback must not, because a device-code flow is
-   *  confirmed with the public user code (P1-06). P1-07 owns the opt-in that will, from
-   *  `/device/poll`, after the player accepts the signed-in identity on the device. */
-  opts: { enrolledLicenseId?: string | null } = {},
 ): Promise<
-  { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
+  { tierId: string | null; expiresAt: number | null } | { error: string }
 > {
   const oidc = await getOidcConfig(db, product.slug);
   // A malformed map grants nothing (fail closed) instead of throwing out of sign-in (R8-06).
@@ -606,6 +609,45 @@ export async function activateFromIdentity(
   if (tierId) {
     expiresAt = tierExpiresAt(await getTier(db, product.slug, tierId), now);
   }
+  return { tierId, expiresAt };
+}
+
+/** Would `activateFromIdentity` refuse this identity? The same two refusals, read-only: no
+ *  entitlement, or an existing licence that is not usable. The device-code callback answers the
+ *  browser with this, because it defers the activation itself to `/device/poll` (P1-07). */
+async function identityRefusal(
+  db: Db,
+  product: Product,
+  identity: OidcIdentity,
+  now: number,
+): Promise<string | null> {
+  const tier = await identityTier(db, product, identity, now);
+  if ("error" in tier) return tier.error;
+  const existing = await getLicenseBySub(db, product.slug, identity.sub);
+  if (existing && !licenseUsable(existing, now)) return "license-unusable";
+  return null;
+}
+
+/** Find or mint a license for an identity. Returns the licenseId, or an error if the
+ *  identity's groups don't grant entitlement. Idempotent on the OIDC subject. */
+export async function activateFromIdentity(
+  db: Db,
+  product: Product,
+  identity: OidcIdentity,
+  now: number,
+  /** The license the caller's device is already using, when it presented one. An anonymous
+   *  enrolled license found here is merged into the identity rather than abandoned. The sign-in
+   *  callback never passes it, because a device-code flow is confirmed with the public user code
+   *  (P1-06). The one HTTP route that does is `/device/poll`, and only on the device-code
+   *  holder's explicit opt-in after the player accepted the signed-in identity on the device,
+   *  for the licence the flow's own device holds a token on (P1-07). */
+  opts: { enrolledLicenseId?: string | null } = {},
+): Promise<
+  { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
+> {
+  const tier = await identityTier(db, product, identity, now);
+  if ("error" in tier) return tier;
+  const { tierId, expiresAt } = tier;
 
   const overrides: ManagedPayload = {
     config: {},
@@ -1450,6 +1492,25 @@ export async function handleAuthCallback(
   // account is P1-07's opt-in, applied at `/device/poll` by the device-code holder after the
   // player accepts the signed-in identity on the device. A browser-redirect flow carries no
   // device id and so never merged; its behaviour is unchanged.
+  //
+  // So a flow `/device/start` began does not activate here at all (P1-07). The callback checks,
+  // read-only, that activation would succeed (so the browser still hears "not entitled" at
+  // once), stores the verified identity on the flow and stops: no licence row is created,
+  // claimed or changed until the device-code holder polls. That keeps the claim case possible
+  // for the opt-in (an identity with no licence yet takes over the device's anonymous row in
+  // place, instead of being handed a fresh row it would then have to abandon), and it keeps the
+  // decision with the only party that holds the device code.
+  if (flow.viaDeviceCode) {
+    if (await identityRefusal(db, product, identity, now)) {
+      await env.HOT.delete(stateKey);
+      return errorResponse(403, "forbidden", "not entitled");
+    }
+    flow.identity = identity;
+    await env.HOT.put(stateKey, JSON.stringify(flow), {
+      expirationTtl: FLOW_TTL_SECONDS,
+    });
+    return signedInPage();
+  }
   const result = await activateFromIdentity(db, product, identity, now);
   if ("error" in result) {
     // Failed activation: drop the flow so the poller gets a generic error, not the reason.
@@ -1491,6 +1552,11 @@ export async function handleAuthCallback(
   await env.HOT.put(stateKey, JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
+  return signedInPage();
+}
+
+/** The callback's "return to the app" page. */
+function signedInPage(): Response {
   return new Response(
     '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You\'re signed in</h1><p>You can close this tab and return to the app.</p>',
     {
@@ -1507,6 +1573,60 @@ export async function handleAuthCallback(
   );
 }
 
+/** What a `/device/poll` asks for beyond "is it done yet" (P1-07). All three are absent on an
+ *  ordinary poll, which then completes exactly as before: the identity's own licence, nothing
+ *  merged. */
+interface DevicePollAsk {
+  /** Hold the flow at the signed-in identity (`confirm`) instead of minting, so the device can
+   *  show it and the player can accept it first. */
+  confirmIdentity: boolean;
+  /** The player's decision, sent after the device was shown the identity: attach this device's
+   *  anonymous enrolled licence to the account (`true`) or not (`false`). `null`: none sent. */
+  attachLicense: boolean | null;
+  /** The device token the poll carried (`Authorization: Bearer`), naming the licence to attach. */
+  token: string | null;
+}
+
+const NO_ASK: DevicePollAsk = {
+  confirmIdentity: false,
+  attachLicense: null,
+  token: null,
+};
+
+/** The name and verified e-mail of a signed-in identity, for the device to show. Never `sub`,
+ *  groups or other claims. */
+function shownIdentity(identity: OidcIdentity): {
+  name?: string;
+  email?: string;
+} {
+  return {
+    ...(identity.name ? { name: identity.name } : {}),
+    ...(identity.email ? { email: identity.email } : {}),
+  };
+}
+
+/** The licence `token` holds for `deviceId` when it is one the opt-in may attach: a live token
+ *  OF THAT DEVICE (`validateDeviceToken` with the device id), on an anonymous enrolled licence
+ *  (`origin = 'enroll'`, no subject) that is usable now. Anything else attaches nothing. */
+async function attachableLicense(
+  env: Env,
+  db: Db,
+  product: Product,
+  token: string | null,
+  deviceId: string,
+  now: number,
+): Promise<string | null> {
+  if (!token) return null;
+  const valid = await validateDeviceToken(env, db, product, token, now, {
+    deviceId,
+  });
+  if ("error" in valid) return null;
+  const license = valid.license;
+  if (!license || license.origin !== "enroll" || license.sub !== null)
+    return null;
+  return licenseUsable(license, now) ? license.id : null;
+}
+
 async function pollAuthFlow(
   env: Env,
   db: Db,
@@ -1515,6 +1635,7 @@ async function pollAuthFlow(
   deviceId: string | null,
   now: number,
   surface: "state" | "deviceCode",
+  ask: DevicePollAsk = NO_ASK,
 ): Promise<Response> {
   if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing state/device");
@@ -1526,11 +1647,13 @@ async function pollAuthFlow(
   // A device-code flow redeems only through `/device/poll`, with the device code. On the
   // `state` surface, `state` (on the authorize URL a user-code holder is 303'd to) plus the
   // device id would otherwise be a complete credential for the victim's token (R8-02, P1-06).
+  // Nothing a `state`-surface poll sends reaches the deferred activation below either: it never
+  // gets past this line (P1-07).
   if (surface === "state" && flow.viaDeviceCode)
     return json({ status: "error" });
   // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
   if (flow.error) return json({ status: "error" });
-  if (!flow.licenseId) return json({ status: "pending" });
+  if (!flow.licenseId && !flow.identity) return json({ status: "pending" });
   // `state` is a non-secret by construction (it rides on the authorize and callback URLs), so
   // it can never be the sole authorization input: the token is minted for the device that
   // STARTED the flow and only after the human confirmed it — the same two guards
@@ -1540,21 +1663,81 @@ async function pollAuthFlow(
     return json({ status: "error" });
   if (!flow.confirmedAt) return json({ status: "pending" });
 
+  let licenseId = flow.licenseId;
+  let attached: "claimed" | "migrated" | undefined;
+  if (!licenseId) {
+    // The deferred activation of a device-code flow (P1-07). Only the device-code surface gets
+    // here (the `state` surface refused above), so only the device-code holder, polling as the
+    // device the flow was started for, decides.
+    const identity = flow.identity!;
+    let enrolledLicenseId: string | null = null;
+    if (ask.confirmIdentity || ask.attachLicense !== null) {
+      const attachable = await attachableLicense(
+        env,
+        db,
+        product,
+        ask.token,
+        deviceId,
+        now,
+      );
+      // The decision is honoured only once the device has been shown the identity, and an
+      // attach only while there is something to attach; otherwise the device is (re)shown the
+      // identity with what is attachable NOW, and nothing is minted or merged.
+      if (
+        ask.attachLicense === null ||
+        !flow.identityShownAt ||
+        (ask.attachLicense && !attachable)
+      ) {
+        if (!flow.identityShownAt) {
+          flow.identityShownAt = now;
+          await env.HOT.put(stateKey, JSON.stringify(flow), {
+            expirationTtl: FLOW_TTL_SECONDS,
+          });
+        }
+        return json({
+          status: "confirm",
+          identity: shownIdentity(identity),
+          attachable: attachable !== null,
+        });
+      }
+      if (ask.attachLicense) enrolledLicenseId = attachable;
+    }
+    const result = await activateFromIdentity(db, product, identity, now, {
+      enrolledLicenseId,
+    });
+    if ("error" in result) {
+      // The callback checked this; it can still change underneath a waiting flow (the
+      // identity's licence was disabled meanwhile). Same generic answer as every failure (D8).
+      await env.HOT.delete(stateKey);
+      return json({ status: "error" });
+    }
+    licenseId = result.licenseId;
+    attached = result.merged;
+    // Recorded before minting, so a retried poll after a failed mint reuses this licence and
+    // never runs the activation (or the merge) twice.
+    flow.licenseId = licenseId;
+    await env.HOT.put(stateKey, JSON.stringify(flow), {
+      expirationTtl: FLOW_TTL_SECONDS,
+    });
+  }
+
   let token: string;
   try {
-    token = await authorizeAndMint(
-      env,
-      db,
-      product,
-      flow.licenseId,
-      deviceId,
-      now,
-    );
+    token = await authorizeAndMint(env, db, product, licenseId, deviceId, now);
   } catch {
     return json({ status: "error" });
   }
   await env.HOT.delete(stateKey);
-  return json({ status: "ready", token, schemaVersion: product.schemaVersion });
+  return json({
+    status: "ready",
+    token,
+    schemaVersion: product.schemaVersion,
+    // Who the device is now signed in as, for it to show (P1-06's residual: a user-code holder
+    // who confirmed and signed in as themselves binds the device to THEIR account, and the
+    // player must be able to see that). Device-code flows only.
+    ...(flow.identity ? { identity: shownIdentity(flow.identity) } : {}),
+    ...(attached ? { attached } : {}),
+  });
 }
 
 /** GET /<product>/identity/auth/poll?state=&device= — return a token once a device-bound flow
@@ -1651,6 +1834,12 @@ export async function handleAuthDevicePoll(
     deviceFlow.deviceId,
     now,
     "deviceCode",
+    {
+      confirmIdentity: body.confirmIdentity === true,
+      attachLicense:
+        typeof body.attachLicense === "boolean" ? body.attachLicense : null,
+      token: bearer(req),
+    },
   );
   const bodyOut = (await res
     .clone()

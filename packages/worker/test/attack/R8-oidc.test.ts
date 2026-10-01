@@ -14,7 +14,9 @@
  * security review found that the public user code then sufficed to confirm someone else's flow
  * and, through the callback's enrolled-license merge, claim or retire the victim device's
  * anonymous license; the callback no longer merges, and `R8-02 / P1-06 a user-code holder
- * cannot claim…` asserts it.
+ * cannot claim…` asserts it. P1-07 brought the merge back as an opt-in only the device-code
+ * holder can make at `/device/poll`, after the device was shown the signed-in identity; the same
+ * block asserts a user-code holder still cannot trigger it (claim and migrate).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -988,15 +990,36 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
   /** The reviewer's PoC up to the callback: the victim's enrolled game starts a device-code
    *  flow; the attacker, holding ONLY the user code, GETs the page, POSTs its csrf with no
    *  Origin (curl), and completes the IdP login as `attacker-sub`. */
-  async function attackerConfirmsVictimFlow(): Promise<{
+  function attackerConfirmsVictimFlow(): Promise<VictimFlow> {
+    return confirmVictimFlowAs(ATTACKER);
+  }
+
+  interface VictimFlow {
     victimLicense: string;
+    /** The victim game's device token on its anonymous enrolled licence. */
+    victimToken: string;
     deviceCode: string;
-  }> {
+    /** The flow's `state`, which the confirming browser saw on the authorize URL. */
+    state: string;
+  }
+
+  /** The same flow, confirmed by user code and signed in as `who` — the attacker above, or the
+   *  player themselves (P1-07's legitimate attach). */
+  async function confirmVictimFlowAs(
+    who: {
+      sub: string;
+      email: string;
+      groups: string[];
+    },
+    callbackStatus = 200,
+  ): Promise<VictimFlow> {
     const enrolled = await enroll("victim-game");
     expect(enrolled.status).toBe(200);
-    const victimLicense = (
-      (await enrolled.json()) as { license: { id: string } }
-    ).license.id;
+    const enrolledBody = (await enrolled.json()) as {
+      license: { id: string };
+      token: string;
+    };
+    const victimLicense = enrolledBody.license.id;
 
     const started = await handleAuthDeviceStart(
       req(`${ORIGIN}/djdl/identity/auth/device/start`, {
@@ -1037,17 +1060,21 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     const authorize = new URL(confirmed.headers.get("location")!);
     installFetchMock(
       await signIdToken(ctx, {
-        sub: ATTACKER.sub,
-        email: ATTACKER.email,
+        sub: who.sub,
+        email: who.email,
         email_verified: true,
-        groups: ATTACKER.groups,
+        groups: who.groups,
         nonce: authorize.searchParams.get("nonce")!,
       }),
     );
-    expect(
-      (await callback(ctx, authorize.searchParams.get("state")!)).status,
-    ).toBe(200);
-    return { victimLicense, deviceCode };
+    const state = authorize.searchParams.get("state")!;
+    expect((await callback(ctx, state)).status).toBe(callbackStatus);
+    return {
+      victimLicense,
+      victimToken: enrolledBody.token,
+      deviceCode,
+      state,
+    };
   }
 
   async function expectVictimUntouched(victimLicense: string): Promise<void> {
@@ -1079,19 +1106,21 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     const { victimLicense } = await attackerConfirmsVictimFlow();
     await expectVictimUntouched(victimLicense);
 
-    // The attacker got exactly an ordinary sign-in: a NEW license of their own.
-    const own = await getLicenseBySub(ctx.db, "djdl", ATTACKER.sub);
-    expect(own).toBeTruthy();
-    expect(own!.id).not.toBe(victimLicense);
-    expect(own!.sub).toBe(ATTACKER.sub);
-    // So an ordinary sign-in from the attacker's own devices never reaches the victim's row.
+    // P1-07: a device-code callback activates nothing at all — the activation waits for the
+    // device-code holder's poll — so the attacker does not even get a licence row from it.
+    expect(await getLicenseBySub(ctx.db, "djdl", ATTACKER.sub)).toBeNull();
+    // An ordinary sign-in from the attacker's own devices gets a NEW licence of their own and
+    // never reaches the victim's row.
     const later = await activateFromIdentity(
       ctx.db,
       ctx.product,
       ATTACKER,
       NOW,
     );
-    expect(later).toMatchObject({ licenseId: own!.id });
+    expect("licenseId" in later && later.licenseId).not.toBe(victimLicense);
+    const own = await getLicenseBySub(ctx.db, "djdl", ATTACKER.sub);
+    expect(own!.id).not.toBe(victimLicense);
+    expect(own!.sub).toBe(ATTACKER.sub);
   });
 
   it("ATTACK (Case 2): an attacker who already has a license confirms by user code — the victim's devices are NOT migrated and the victim's license is NOT disabled", async () => {
@@ -1162,8 +1191,17 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
         ctx.product,
         NOW,
       )
-    ).json()) as { status: string; token?: string };
+    ).json()) as {
+      status: string;
+      token?: string;
+      identity?: { name?: string; email?: string };
+      attached?: string;
+    };
     expect(polled.status).toBe("ready");
+    // P1-07: the ready answer names who the device is now signed in as, so the player sees the
+    // mis-binding on the device; and with no opt-in nothing was attached.
+    expect(polled.identity?.email).toBe(ATTACKER.email);
+    expect(polled.attached).toBeUndefined();
     const attackerLicense = (await getLicenseBySub(
       ctx.db,
       "djdl",
@@ -1180,6 +1218,326 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     expect(reenrolled.status).toBe(200);
     expect(
       ((await reenrolled.json()) as { license: { id: string } }).license.id,
+    ).toBe(victimLicense);
+  });
+
+  // ── P1-07: the opt-in "attach this device's anonymous licence to my account" ────────────
+  //
+  // The merge P1-06 removed from the callback comes back as an explicit opt-in that only the
+  // device-code holder can make, at `/device/poll`: the device asks to be shown the signed-in
+  // identity (`confirmIdentity`), the player accepts it ON THE DEVICE, and only then does a
+  // poll carrying `attachLicense: true` and the device's own token apply the claim or migrate.
+
+  type PollBody = {
+    status: string;
+    token?: string;
+    interval?: number;
+    identity?: { name?: string; email?: string };
+    attachable?: boolean;
+    attached?: string;
+  };
+
+  async function devicePoll(
+    body: Record<string, unknown>,
+    at: number,
+    token?: string,
+  ): Promise<{ status: number; body: PollBody }> {
+    const res = await handleAuthDevicePoll(
+      req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+        method: "POST",
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+        body: JSON.stringify(body),
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      at,
+    );
+    return { status: res.status, body: (await res.json()) as PollBody };
+  }
+
+  const PLAYER = {
+    sub: "player-sub",
+    email: "player@example.com",
+    name: "Player",
+    groups: ["family"],
+    claims: {} as Record<string, unknown>,
+  };
+
+  async function expectNoMerge(victimLicense: string): Promise<void> {
+    const row = await getLicense(ctx.db, "djdl", victimLicense);
+    expect(row?.sub).toBeNull();
+    expect(row?.origin).toBe("enroll");
+    expect(row?.status).toBe("active");
+    const merges = await ctx.db.all(
+      "SELECT id FROM audit WHERE product = 'djdl' AND action = 'license.merge'",
+    );
+    expect(merges).toHaveLength(0);
+  }
+
+  it("ATTACK (claim, P1-07): a user-code holder with no licence who signed in as themselves can reach no surface that applies the attach", async () => {
+    const { victimLicense, state } = await attackerConfirmsVictimFlow();
+    // The `state` surface — the one half of a credential the confirming browser holds — refuses
+    // a device-code flow outright, whatever the attach fields say.
+    for (const extra of ["", "&confirmIdentity=true&attachLicense=true"]) {
+      const res = await handleAuthPoll(
+        req(
+          `${ORIGIN}/djdl/identity/auth/poll?state=${encodeURIComponent(state)}&device=victim-game${extra}`,
+        ),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      );
+      expect(await res.json()).toEqual({ status: "error" });
+    }
+    // `/device/poll` needs the device code, which never left the victim's game: a guessed one
+    // with the attach fields and the attacker's own enrolled token is an unknown flow.
+    const own = await enroll("attacker-box");
+    const ownToken = ((await own.json()) as { token: string }).token;
+    for (const deviceId of ["victim-game", "attacker-box"]) {
+      const guessed = await devicePoll(
+        {
+          deviceCode: "not-the-device-code",
+          deviceId,
+          confirmIdentity: true,
+          attachLicense: true,
+        },
+        NOW,
+        ownToken,
+      );
+      expect(guessed.body.status).toBe("timeout");
+      expect(guessed.body.token).toBeUndefined();
+    }
+    await expectNoMerge(victimLicense);
+    // The attacker's sign-in created no licence at all: nothing is activated until the
+    // device-code holder polls.
+    expect(await getLicenseBySub(ctx.db, "djdl", ATTACKER.sub)).toBeNull();
+  });
+
+  it("ATTACK (migrate, P1-07): a user-code holder who already has a licence can reach no surface that applies the attach, and an ordinary poll by the victim device migrates nothing", async () => {
+    const pre = await activateFromIdentity(ctx.db, ctx.product, ATTACKER, NOW);
+    const attackerLicense = (pre as { licenseId: string }).licenseId;
+    const { victimLicense, deviceCode, state } =
+      await attackerConfirmsVictimFlow();
+    const statePoll = await handleAuthPoll(
+      req(
+        `${ORIGIN}/djdl/identity/auth/poll?state=${encodeURIComponent(state)}&device=victim-game&attachLicense=true`,
+      ),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      NOW,
+    );
+    expect(await statePoll.json()).toEqual({ status: "error" });
+    await expectNoMerge(victimLicense);
+    expect(await countActiveDevices(ctx.db, "djdl", attackerLicense)).toBe(0);
+
+    // The victim's game polls WITHOUT the opt-in (or never accepts): an ordinary completion.
+    // Its one device row signs in to the attacker's licence (the documented residual, shown to
+    // the player through `identity`), but the victim's licence is not retired and keeps its
+    // other devices.
+    const second = await enroll("victim-game-2");
+    expect(second.status).toBe(200);
+    const done = await devicePoll({ deviceCode, deviceId: "victim-game" }, NOW);
+    expect(done.body.status).toBe("ready");
+    expect(done.body.attached).toBeUndefined();
+    expect(done.body.identity?.email).toBe(ATTACKER.email);
+    await expectNoMerge(victimLicense);
+    expect((await getDevice(ctx.db, "djdl", "victim-game-2"))?.license_id).toBe(
+      victimLicense,
+    );
+  });
+
+  it("P1-07: an attach decision is not honoured before the device was shown the identity", async () => {
+    const { victimLicense, victimToken, deviceCode } =
+      await confirmVictimFlowAs(PLAYER);
+    const skipped = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW,
+      victimToken,
+    );
+    // Instead of merging, the device is shown the identity; nothing is minted.
+    expect(skipped.body).toEqual({
+      status: "confirm",
+      identity: { name: PLAYER.email, email: PLAYER.email },
+      attachable: true,
+    });
+    await expectNoMerge(victimLicense);
+    expect(await getLicenseBySub(ctx.db, "djdl", PLAYER.sub)).toBeNull();
+  });
+
+  it("P1-07: the attach names only a licence the flow's OWN device holds a token on", async () => {
+    const { victimLicense, deviceCode } = await confirmVictimFlowAs(PLAYER);
+    // Another machine's token (an enrolled licence the device-code holder might also hold)
+    // is not attachable to this flow: the token must belong to the device the flow was
+    // started for.
+    const other = await handleEnroll(
+      mkReq(
+        "POST",
+        { "x-pkey-device": "other-box" },
+        {
+          fingerprint: {
+            components: {
+              machineUuid: "uuid-other".padEnd(
+                FINGERPRINT_COMPONENT_LENGTH,
+                "x",
+              ),
+              boardSerial: "board-other".padEnd(
+                FINGERPRINT_COMPONENT_LENGTH,
+                "x",
+              ),
+              cpuModel: "cpu-other".padEnd(FINGERPRINT_COMPONENT_LENGTH, "x"),
+            },
+            hwid: "ignored",
+          },
+        },
+      ),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      NOW,
+    );
+    const otherBody = (await other.json()) as {
+      token: string;
+      license: { id: string };
+    };
+    const shown = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      otherBody.token,
+    );
+    expect(shown.body).toMatchObject({ status: "confirm", attachable: false });
+    // Asking to attach anyway re-shows the identity with nothing attachable; no merge.
+    const refused = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      otherBody.token,
+    );
+    expect(refused.body).toMatchObject({
+      status: "confirm",
+      attachable: false,
+    });
+    await expectNoMerge(victimLicense);
+    await expectNoMerge(otherBody.license.id);
+  });
+
+  it("P1-07 (claim): the player accepts the shown identity on the device and attaches — the anonymous licence becomes the account's, in place", async () => {
+    const { victimLicense, victimToken, deviceCode } =
+      await confirmVictimFlowAs(PLAYER);
+    const shown = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      victimToken,
+    );
+    expect(shown.body).toEqual({
+      status: "confirm",
+      identity: { name: PLAYER.email, email: PLAYER.email },
+      attachable: true,
+    });
+    // Still nothing merged while the player decides.
+    await expectNoMerge(victimLicense);
+    // The decision is a poll like any other: inside the interval it is told to slow down.
+    const early = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 1,
+      victimToken,
+    );
+    expect(early.status).toBe(429);
+    const done = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      victimToken,
+    );
+    expect(done.body.status).toBe("ready");
+    expect(done.body.attached).toBe("claimed");
+    expect(done.body.identity?.email).toBe(PLAYER.email);
+    const row = await getLicense(ctx.db, "djdl", victimLicense);
+    expect(row?.sub).toBe(PLAYER.sub);
+    expect(row?.status).toBe("active");
+    expect((await getLicenseBySub(ctx.db, "djdl", PLAYER.sub))?.id).toBe(
+      victimLicense,
+    );
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      victimLicense,
+    );
+    const valid = await requireLicensedDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      done.body.token!,
+      NOW + 2,
+    );
+    expect("error" in valid).toBe(false);
+  });
+
+  it("P1-07 (migrate): a player who already has a licence attaches — the device moves onto it and the anonymous licence is retired", async () => {
+    const pre = await activateFromIdentity(ctx.db, ctx.product, PLAYER, NOW);
+    const playerLicense = (pre as { licenseId: string }).licenseId;
+    const { victimLicense, victimToken, deviceCode } =
+      await confirmVictimFlowAs(PLAYER);
+    const shown = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      victimToken,
+    );
+    expect(shown.body).toMatchObject({ status: "confirm", attachable: true });
+    const done = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: true },
+      NOW + 2,
+      victimToken,
+    );
+    expect(done.body.status).toBe("ready");
+    expect(done.body.attached).toBe("migrated");
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      playerLicense,
+    );
+    expect((await getLicense(ctx.db, "djdl", victimLicense))?.status).toBe(
+      "disabled",
+    );
+  });
+
+  it("P1-07: the deferred callback still refuses an identity it would not activate, at once, and the flow is gone", async () => {
+    // No mapped group and no oidcDefault tier: activation would refuse, so the callback does.
+    await ctx.db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = ?",
+      JSON.stringify({ enabled: true, tierId: "pro", mode: "enroll" }),
+      "djdl",
+    );
+    ctx.product = (await loadProduct(ctx.env, ctx.db, "djdl"))!;
+    const { victimLicense, victimToken, deviceCode } =
+      await confirmVictimFlowAs({ ...PLAYER, groups: ["randos"] }, 403);
+    const polled = await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      victimToken,
+    );
+    expect(polled.body.status).toBe("timeout");
+    await expectNoMerge(victimLicense);
+  });
+
+  it("P1-07: declining the attach signs in without touching the anonymous licence", async () => {
+    const { victimLicense, victimToken, deviceCode } =
+      await confirmVictimFlowAs(PLAYER);
+    await devicePoll(
+      { deviceCode, deviceId: "victim-game", confirmIdentity: true },
+      NOW,
+      victimToken,
+    );
+    const done = await devicePoll(
+      { deviceCode, deviceId: "victim-game", attachLicense: false },
+      NOW + 2,
+      victimToken,
+    );
+    expect(done.body.status).toBe("ready");
+    expect(done.body.attached).toBeUndefined();
+    await expectNoMerge(victimLicense);
+    const own = await getLicenseBySub(ctx.db, "djdl", PLAYER.sub);
+    expect(own!.id).not.toBe(victimLicense);
+    // Still re-enrollable: the machine gets its anonymous licence back.
+    const again = await enroll("victim-game-reinstalled");
+    expect(
+      ((await again.json()) as { license: { id: string } }).license.id,
     ).toBe(victimLicense);
   });
 });

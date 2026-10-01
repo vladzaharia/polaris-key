@@ -707,9 +707,17 @@ moved the victim's devices onto it and disabled the victim's license, keeping `e
 that machine could never enroll again (migrate). The holder could then mint tokens on the
 captured license from their own devices with an ordinary sign-in. The callback now applies no
 enrolled license at all (PoC, asserting the fix: `R8-oidc.test.ts` › `R8-02 / P1-06 a user-code
-holder cannot claim…`). Attaching a device's anonymous license to an account becomes P1-07's
-explicit opt-in. It will be applied at `/device/poll` by the device-code holder, and only after
-the player has seen the signed-in identity on the device and accepted it.
+holder cannot claim…`). Attaching a device's anonymous license to an account is P1-07's
+explicit opt-in. It is applied at `/device/poll` by the device-code holder, and only after the
+device was shown the signed-in identity (`confirm`) and the player accepted it there. The callback
+now activates nothing for a device-code flow: it stores the verified identity and the
+device-code holder's poll activates it, so no license row is created or changed before that poll.
+The opt-in names the license by the device's own bearer token, which must belong to the device
+the flow was started for and sit on an anonymous, usable enrolled license (PoCs:
+`R8-oidc.test.ts` › `ATTACK (claim, P1-07)`, `ATTACK (migrate, P1-07)` and the `P1-07:` cases).
+What remains is a human decision: a player who accepts a stranger's identity on the device, and
+attaches, hands that stranger the license. The device shows the name and verified e-mail before
+anything happens, which is the control.
 
 Four controls make that true. The first and the fourth are the ones that matter:
 
@@ -724,10 +732,11 @@ Four controls make that true. The first and the fourth are the ones that matter:
 3. **Confirmation retires the user code.** The index is deleted, and a flow already confirmed
    does not resolve even if a KV read still sees it: nobody can re-render, re-mint the CSRF token
    or be 303'd to the authorize URL after the real user has pressed the button.
-4. **The callback merges nothing.** `handleAuthCallback` calls `activateFromIdentity` with no
-   enrolled license. The only flows that carry a device id are device-code flows, and those are
-   confirmed with the public user code, so the device's current license must not be an input to
-   whoever signs in. The browser-redirect flow carries no device id and never merged.
+4. **The callback merges nothing.** `handleAuthCallback` activates nothing for a device-code
+   flow, and nothing it stores names the device's license. The only flows that carry a device id
+   are device-code flows, and those are confirmed with the public user code, so the device's
+   current license must not be an input to whoever signs in. The browser-redirect flow carries no
+   device id and never merged.
 
 **Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
 policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
