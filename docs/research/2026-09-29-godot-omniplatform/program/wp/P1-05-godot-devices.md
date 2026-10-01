@@ -73,8 +73,12 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   - all native: `cpuModel` = `OS.get_processor_name() + ":" + str(OS.get_processor_count())`
     (empty on Android: omit); `ramBucket` from `OS.get_memory_info()["physical"]`;
   - iOS/Android: anchor `OS.get_unique_id()`, model, RAM (and CPU on iOS); web: nothing.
-- **Desktop device-id raw source** replacing P1-02's default through
-  `PKeyDeviceId.set_raw_source`: `MachineGuid` on Windows, `IOPlatformUUID` on macOS.
+- **Desktop device-id raw source** replacing P1-02's default: `MachineGuid` on Windows,
+  `IOPlatformUUID` on macOS (and P1b-09's rule-2 machine-id on Linux). Corrected during
+  implementation: the default itself changed (`PKeyDeviceId` now calls
+  `PKeyFingerprint.device_id_raw()`), so the id is right wherever `PKeyDeviceId` is used;
+  `set_raw_source` stays the override for a host or a test. Core reads it on a worker thread
+  (`PKeyDeviceId.prepare()`) before a store that holds no id derives one.
 - `core/facts.gd` (`PKeyFacts.collect(probes)`): `os`, `hardware`, `runtime`
   (`{name: "godot", version: Engine.get_version_info().string}`), `locale`, IANA `timezone` where
   available (web via `JavaScriptBridge`; omit elsewhere unless IANA is readable), and desktop
@@ -120,6 +124,16 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   It **must** match on the device-id raw source on desktop, which is why `MachineGuid` and
   `IOPlatformUUID` replace `OS.get_unique_id()` there. Normalise MACs to lowercase,
   colon-separated, lowest first, as Node does (`getmac` prints uppercase with dashes).
+  Corrected during implementation: Godot also ignores multicast and locally administered
+  addresses (docker bridges, VM and AWDL interfaces, randomised Wi-Fi MACs), which would
+  otherwise sort lowest and change between runs. On current macOS every interface reports a
+  locally administered address, so `primaryMac` is omitted there; omission is stable,
+  a rotating private address is not.
+- **Command output is parsed by shape where Windows localises it** (corrected during
+  implementation): the `vol C:` serial is the trailing `XXXX-XXXX`, not the English "Volume
+  Serial Number is" line. `OS.execute` cannot be timed out, so the pinned CIM command's
+  `timeoutMs` bounds how long `collect()` waits for the off-thread capture (15 s for the whole
+  capture); a capture that lands later is memoised for the next call.
 - **`OS.execute` blocks and is desktop only.** Collect once, on a `WorkerThreadPool` task at first
   launch, and memoise for the session. PowerShell start-up is slow; never on the main thread.
   A Mac App Store sandbox may block `ioreg`; then omit the component and use `get_unique_id()`
@@ -144,6 +158,10 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   `devices.reported_json`; the typed `device_facts` columns are unchanged. Deploy order does not
   matter: a Worker without the change drops the two keys silently. Adding the fields to
   `DeviceFacts` in `shared-protocol` would make this a plan-mode change; leave the type alone.
+  Corrected during implementation: the recorded HTTP transcripts hold every replayed report to
+  the Worker's `REPORT_KEYS` (`allowedKeys`), so adding the two keys re-records
+  `conformance/transcripts/` and its Swift and Godot mirrors (`pnpm gen:transcripts`); only
+  `allowedKeys` changes, and every replayer still passes.
 - **Manage is self-only.** A device token may rename or deauthorise only its own device; other
   rows are read-only (server R3-09). `deauthorize()` then wipes locally like `license.deactivate`.
 - Registration is rate limited to 10 per minute per IP and refused with one body for four causes

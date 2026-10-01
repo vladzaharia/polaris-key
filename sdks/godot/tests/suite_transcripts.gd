@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature core.discover core.sync core.cache
+# @pkey-feature core.discover core.sync core.cache devices.register devices.report
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
