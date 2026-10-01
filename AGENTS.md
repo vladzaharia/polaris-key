@@ -21,7 +21,7 @@ packages/
   client-core/       @polaris-key/client-core  isomorphic verify/trust/gate/clock floor
   worker/            @polaris-key/worker       the Cloudflare Worker (core/ + services/<slug>/)
   admin/             @polaris-key/admin        the admin SPA + customer portal (React + Vite)
-  cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint)
+  cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint, CI publishing)
   sdk-node/          @polaris-key/node         full client + CLI adapters
   sdk-react/         @polaris-key/react        browser-OIDC + desktop-over-node + login UI
   docs/              @polaris-key/docs         the Astro Starlight docs site served at /docs
@@ -35,6 +35,7 @@ conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node run
                      + transcripts/ (HTTP conversations recorded through the Worker router)
 tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-transcripts.mjs ·
                      gen-services.ts + services.json · gen-sdk-constants.ts
+actions/publish/     the polaris-key/publish GitHub Action (committed dist/ bundle of the CLI)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
                      security/ (threat model, wire contract v3, audit + findings)
