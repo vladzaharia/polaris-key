@@ -307,11 +307,13 @@ static func feature_tags(outlet: String, channel: String) -> PackedStringArray:
 	return out
 
 
-## The report §3.1 platform for an EditorExportPlatform OS name (`Linux`, `macOS`, …), else
-## from the export features.
+## The canonical platform (WIRE-CONTRACT-V3 §5.2) for an EditorExportPlatform OS name (`Linux`,
+## `macOS`, …) through PKeyHeaders.canonical_platform, else from the export features
+## (`Windows Desktop` has no spelling of its own).
 static func platform_for(os_name: String, features: PackedStringArray) -> String:
-	if PKeyHeaders.PLATFORMS.has(os_name):
-		return PKeyHeaders.PLATFORMS[os_name]
+	var canonical := PKeyHeaders.canonical_platform(os_name)
+	if canonical != "":
+		return canonical
 	for p in ["windows", "macos", "linux", "android", "ios", "web"]:
 		if features.has(p):
 			return p
