@@ -1,22 +1,23 @@
 ---
 sidebar:
-  order: 3
+  order: 4
 title: "JSON Schema & editor setup"
 description: "Machine-readable schemas for the .pkey/ manifest — editor completion, validation, and how the schemas stay honest."
 ---
 
-The three `.pkey/` files are also validated against machine-readable [JSON
+The four `.pkey/` files are also validated against machine-readable [JSON
 Schema](https://json-schema.org/) documents — one per file, Draft 2020-12 — so an editor can
 offer completion and inline errors while you type, before `pkey validate` or a resync ever
 runs. They ship inside the `@polaris-key/manifest` npm package:
 
-| File              | Schema                           |
-| ----------------- | -------------------------------- |
-| `.pkey/product.*` | `schemas/v1/product.schema.json` |
-| `.pkey/schema.*`  | `schemas/v1/schema.schema.json`  |
-| `.pkey/release.*` | `schemas/v1/release.schema.json` |
+| File                   | Schema                                |
+| ---------------------- | ------------------------------------- |
+| `.pkey/product.*`      | `schemas/v1/product.schema.json`      |
+| `.pkey/schema.*`       | `schemas/v1/schema.schema.json`       |
+| `.pkey/release.*`      | `schemas/v1/release.schema.json`      |
+| `.pkey/distribution.*` | `schemas/v1/distribution.schema.json` |
 
-A fourth schema, `schemas/v1/release-descriptor.schema.json`, describes the **release
+One more schema, `schemas/v1/release-descriptor.schema.json`, describes the **release
 descriptor** CI attaches to a release as `pkey-release.json` — not a `.pkey/` file, but the
 same package, the same parity rule against its validator (`validateReleaseDescriptor`), and
 the same `$id` convention. See
@@ -54,14 +55,14 @@ fixtures that mirror it:
       "fileMatch": ["**/.pkey/product.json", "products/*/product.json"],
       "url": "./packages/shared-manifest/schemas/v1/product.schema.json",
     },
-    // …schema.json, release.json follow the same shape
+    // …schema.json, release.json, distribution.json follow the same shape
   ],
   "yaml.schemas": {
     "./packages/shared-manifest/schemas/v1/product.schema.json": [
       "**/.pkey/product.yaml",
       "**/.pkey/product.yml",
     ],
-    // …schema.{yaml,yml}, release.{yaml,yml} follow the same shape
+    // …schema.{yaml,yml}, release.{yaml,yml}, distribution.{yaml,yml} follow the same shape
   },
 }
 ```

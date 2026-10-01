@@ -22,7 +22,7 @@ fallback between two: an interim design renamed it, and the dual-read that renam
 every miss cost a second GitHub round trip and made "which file is actually live" a question you
 had to trace through a fallback chain. Both were withdrawn.
 
-The directory holds up to **three independent files**. The base name (no extension) selects the
+The directory holds up to **four independent files**. The base name (no extension) selects the
 role; the extension is a pure format preference, tried in the fixed order **`.json`, then
 `.yaml`, then `.yml`**, resolved per document independently — so a repo may keep `product.yaml`
 next to `schema.json`. The files are the **manifest baseline**: they describe intended product
@@ -34,6 +34,11 @@ and operator policy overrides live separately in Polaris Key and are preserved a
 | **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                                                              |
 | **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**)                                       |
 | **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `release_deliverables` + `edge_mint_config` rows                                        | release provider coordinates + channel/install/appcast/edge-mint settings + the app deliverable and its artifact map (required only when releases are enabled) |
+
+The fourth, optional file — **distribution** (`distribution.{json,yaml,yml}`, mapping to
+`dist_outlets` + `dist_transports`) — declares the product's outlets, their store identities,
+the transport per deliverable and the store listing. It has its own page:
+[Distribution: outlets, transports and listing](/docs/build/manifest/distribution/).
 
 In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
 (the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When

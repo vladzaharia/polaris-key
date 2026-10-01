@@ -59,8 +59,10 @@ Distribution ships as the foundation the later work builds on. Today it has:
   { "enabled": true, "configured": false, "endpoints": {} }
   ```
 
-- **Two descriptor hooks** (below), with no outlets declared yet: every deliverable travels by
-  the default transport, `pkey-cdn`, and there are no availability records.
+- **Outlets and transports** from the product's optional `.pkey/distribution` file (below),
+  applied on every link and resync.
+- **Two descriptor hooks** (below): `delivery` (the default transport, `pkey-cdn`, and no
+  availability records yet) and `outletCapabilities` (what one declared outlet permits).
 - **A console section**, shown only while Distribution is on, with an overview of the chain and
   of which hook answers for the product.
 
@@ -78,12 +80,61 @@ gates. Distribution consumes one and provides two:
 | -------------------- | ------------ | ------------ | ------------------------------------------------------------------------------- |
 | `releaseCatalog`     | Release      | Distribution | deliverables, releases, builds, artifact records, channel policy, yanks         |
 | `delivery`           | Distribution | Update       | the default transport and availability; later rollouts, halts and delivery URLs |
-| `outletCapabilities` | Distribution | Update       | what one outlet permits; nothing until outlets can be declared                  |
+| `outletCapabilities` | Distribution | Update       | what one declared outlet permits: its kind's default, narrowed by an operator   |
 
 Every accessor **fails closed**: while the providing service is off for the product it answers
 `null`, the provider's code never runs, and the consumer degrades explicitly — Update without a
 delivery hook serves no per-outlet state. Hooks are read-only; a cross-service write would be an
 import in disguise.
+
+## Outlets and transports
+
+A product declares where it is distributed in `.pkey/distribution` — see
+[Distribution: outlets, transports and listing](/docs/build/manifest/distribution/). No file
+means one implicit outlet, `direct`, served by `pkey-cdn`. On link and resync, Distribution's
+own ingest hook (run by Core, in the same batch as the rest of the ingest, only while
+Distribution is on) writes:
+
+- **`dist_outlets`** — one row per outlet: its kind, normalised identity (`identity_json`) and
+  merged listing (`listing_json`). A row changes only when the manifest changes it; an outlet the
+  manifest drops gets `removed_at` and is kept, because availability history refers to it.
+- **`dist_transports`** — the resolved transport for every declared deliverable on every live
+  outlet.
+
+## Outlet capabilities
+
+What an install from an outlet may do. The security-relevant bits — whether it may fetch and
+run new code (`codeUpdates`, `downloadedScripts`) or sell things itself (`commerce`) — are
+**operator-owned**: they default per outlet kind, an operator may only **narrow** them, and the
+manifest cannot express them at all (`capabilities_not_manifest_writable`).
+
+| Kinds                                                                                                        | binaryUpdates | codeUpdates | dataUpdates | channelSwitch | commerce    | downloadedScripts |
+| ------------------------------------------------------------------------------------------------------------ | ------------- | ----------- | ----------- | ------------- | ----------- | ----------------- |
+| `direct`, `web`                                                                                              | `self`        | true        | true        | true          | `own`       | true              |
+| `app-store`, `testflight`, `play`, `play-testing`, `ms-store`                                                | `store`       | false       | true        | false         | `store-iap` | false             |
+| `steam`                                                                                                      | `store`       | false       | true        | false         | `steam`     | false             |
+| `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo`, `app-installer`, `itch`, `flathub`, `snap`, `winget` | `store`       | false       | true        | false         | `own`       | false             |
+
+The table is the proposed default; once the outlet matrix of the update-manifest design is
+approved it becomes the source of truth and this table follows it.
+
+**Narrowing** means `binaryUpdates` moves right along `self` > `store` > `none`, a boolean goes
+from true to false, and `commerce` becomes `none`. Anything else is refused. The narrowing is
+stored on the outlet's row (`capabilities_source = 'admin'`) and survives every resync; revert
+hands the outlet back to its kind's default. Reading back clamps too: a stored value wider than
+today's default is ignored, so the answer can only ever be narrower than the table.
+
+The console API (narrative-only, not in the wire spec), every write audited:
+
+| Method | Path                                                                              | Does                                                      |
+| ------ | --------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `GET`  | `/manage/api/products/<slug>/distribution/outlets`                                | every outlet with identity, capabilities and transports   |
+| `PUT`  | `/manage/api/products/<slug>/distribution/outlets/<outletId>/capabilities`        | `{ "capabilities": { … } }` — narrow; a widening is a 422 |
+| `POST` | `/manage/api/products/<slug>/distribution/outlets/<outletId>/capabilities/revert` | back to the kind's default                                |
+
+The audit actions are `distribution.outlet.capabilities` and
+`distribution.outlet.capabilities.revert`. A removed outlet answers 404 to both writes, and the
+`outletCapabilities` hook answers `null` for it.
 
 ## Outlet credentials
 
