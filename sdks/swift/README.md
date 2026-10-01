@@ -15,14 +15,15 @@ Polaris Key is a suite of opt-in services over an always-on Core, and on Apple p
 division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
 a product with no license service does not carry the gate.
 
-| Product             | Contents                                                                                | Depends on            |
-| ------------------- | --------------------------------------------------------------------------------------- | --------------------- |
-| `PolarisKey`        | `PolarisKeyClient` + `@_exported import` of Core/License/Config — the one-import path   | Core, License, Config |
-| `PolarisKeyCore`    | device principal, trust set, verified cache, clock floor, transport, discovery, bundles | —                     |
-| `PolarisKeyLicense` | the gate, activation, entitlements                                                      | Core                  |
-| `PolarisKeyConfig`  | the config document, layered resolution, device facts                                   | Core                  |
-| `PolarisKeyUpdate`  | Sparkle wiring. **macOS only**                                                          | Core, Sparkle ≥ 2.9.6 |
-| `PolarisKeyUI`      | the brandable SwiftUI drop-in gate                                                      | Core, License, Config |
+| Product              | Contents                                                                                       | Depends on                      |
+| -------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------- |
+| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity — the one-import path | Core, License, Config, Identity |
+| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles        | —                               |
+| `PolarisKeyLicense`  | the gate, activation, entitlements                                                             | Core                            |
+| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint                               | Core                            |
+| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                 | Core                            |
+| `PolarisKeyUpdate`   | Sparkle wiring. **macOS only**                                                                 | Core, Sparkle ≥ 2.9.6           |
+| `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                             | Core, License, Config           |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -86,7 +87,8 @@ try await client.deactivate()
 
 The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
 isEntitled,entitlements,profile,deactivate}` and `client.config.{config,configSource,secret,
-listUserConfig,schemaVersion}`. `client.{status,isLicensed,config,activate,enroll,register,
+listUserConfig,schemaVersion,mintToken}` and `client.identity.{beginSignIn,pollSignIn,
+waitForSignIn}`. `client.{status,isLicensed,config,activate,enroll,register,
 sync,deactivate,importBundle,syncState}` are convenience passthroughs for the calls a host
 makes before it knows which service it is talking to.
 
@@ -135,6 +137,54 @@ The env var for a key is `envPrefix + key` with dots replaced by `__` (default p
 JSON-decoded when it looks like JSON (`4` → int, `true` → bool, `[1,2]` → array); otherwise it
 is taken as a plain string. Supply `localOverrides` / `envPrefix` / an injected `environment`
 via `ConfigClientOptions`.
+
+### Device-code sign-in
+
+For a host that cannot complete a browser redirect — a TV app, a kiosk, a command-line tool —
+`client.identity` signs in with a device code (RFC 8628). It needs the Identity service
+(`expectedServices` or discovery); with it off, every call throws `service-unavailable` before
+any request.
+
+```swift
+let prompt = try await client.identity.beginSignIn(deviceName: "Living-room Apple TV")
+// Show prompt.userCode; render prompt.verificationUriComplete as a QR code (the verification
+// page with the code filled in); show prompt.verificationUri as the short URL.
+let signIn = Task { try await client.identity.waitForSignIn(prompt) }
+// …cancel `signIn` if the player backs out: polling stops and it throws CancellationError.
+if try await signIn.value == .ready {
+    // The device token is stored and the post-activation sync has already run.
+}
+```
+
+`waitForSignIn` waits at least `prompt.interval` seconds before each poll; a `slow_down`
+lengthens the interval for every later poll (to the server's value, or by five seconds), and a
+poll that fails on the network or with a 5xx is retried at the same interval, never faster. It
+returns `.expired` once `prompt.expiresAt` has passed without asking the server again.
+`pollSignIn(_:)` makes exactly one poll (`.pending`, `.slowDown(interval:)`, `.ready`, `.expired`
+or `.error`). `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the
+signed-in identity's **own** licence; it does not attach a licence this device already held.
+
+**After `.ready`, show on the device which account signed in.** Anyone holding the user code can
+complete the sign-in on the verification page, so the player must be able to see a mis-binding:
+`.ready` carries no identity itself, but the post-acquisition sync has already run, so
+`await client.currentDevice().profile` (or `LicenseClient.profile()`) returns the signed licence
+profile (`name`, `email`) to show — for example "Signed in as Ada Lovelace
+<ada@example.com>" with a way to sign out.
+
+`SignInPrompt` and `MintedToken` print (`print`, `String(describing:)`, `debugPrint`, `dump`)
+with `deviceCode` / `token` as `[redacted]`; the properties themselves read normally.
+
+### Edge-mint
+
+`try await client.config.mintToken("musickit")` asks the Worker to sign a short-lived
+third-party token through an operator-approved recipe (`GET /<product>/config/mint/<id>/token`,
+with the device token) and returns a `MintedToken(token:expiresAt:)`. It is cached **in memory
+only** — never in the cache file or the keychain — and reused until 30 seconds before
+`expiresAt`, and only while the client still holds the device token it was minted with —
+`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire and one retry. Failures throw
+`PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`)
+before any request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
+`rate_limited` / `misconfigured`.
 
 ### Stores
 

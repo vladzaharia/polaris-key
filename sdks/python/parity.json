@@ -34,7 +34,7 @@
     "config.list": { "status": "implemented" },
     "config.secret": { "status": "implemented" },
     "config.schema": { "status": "planned", "wp": "P1b-07" },
-    "config.mint": { "status": "planned", "wp": "P1b-08" },
+    "config.mint": { "status": "implemented" },
     "config.mirror": {
       "status": "implemented",
       "note": "The Python mirror is rendered by tools/gen-mirrors.ts."
@@ -53,7 +53,7 @@
       "unowned": true,
       "note": "No browser sign-in in the Python SDK, and no work package ports it."
     },
-    "identity.devicecode": { "status": "planned", "wp": "P1b-08" },
+    "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
     "release.record": { "status": "planned", "wp": "P3-06" },

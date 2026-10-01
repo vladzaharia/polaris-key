@@ -4,6 +4,7 @@
 //
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate devices.register devices.report
+// @pkey-feature identity.devicecode config.mint
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented (register-reregister-401, until P1b-06) is
@@ -15,8 +16,10 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  PolarisError,
   PolarisKeyClient,
   type CacheRecordV3,
+  type SignInPrompt,
   type Store,
 } from "@polaris-key/node";
 import {
@@ -74,14 +77,59 @@ class TranscriptStore implements Store {
 
 type Observed = Record<string, JsonValue>;
 
+/** The replay's memory between steps: the prompt the last `beginSignIn` returned. */
+interface Session {
+  prompt: SignInPrompt | null;
+}
+
 /** THE mapping from transcript verbs and `expect` keys onto the Node SDK. Kept in one place. */
 async function act(
   client: PolarisKeyClient,
   store: TranscriptStore,
   step: Step,
+  session: Session,
 ): Promise<Observed> {
   const out: Observed = {};
   switch (step.action) {
+    case "beginSignIn": {
+      const name = step.args.deviceName;
+      const p = await client.identity.beginSignIn(
+        typeof name === "string" ? { deviceName: name } : {},
+      );
+      session.prompt = p;
+      out.prompt = {
+        userCode: p.userCode,
+        verificationUri: p.verificationUri,
+        verificationUriComplete: p.verificationUriComplete,
+        expiresIn: p.expiresIn,
+        interval: p.interval,
+      };
+      break;
+    }
+    case "pollSignIn": {
+      const poll = await client.identity.pollSignIn(session.prompt!);
+      out.result = poll.status;
+      if (poll.status === "slow-down") out.interval = poll.interval;
+      break;
+    }
+    case "waitForSignIn":
+      out.result = (
+        await client.identity.waitForSignIn(session.prompt!)
+      ).status;
+      break;
+    case "mintToken":
+      try {
+        const minted = await client.config.mintToken(
+          String(step.args.recipeId),
+        );
+        out.result = "ok";
+        out.token = minted.token;
+        out.expiresAt = minted.expiresAt;
+      } catch (e) {
+        if (!(e instanceof PolarisError)) throw e;
+        out.result = e.code;
+      }
+      break;
     case "discover":
       out.result = (await client.discover()).kind;
       break;
@@ -144,10 +192,11 @@ async function replay(t: Transcript): Promise<void> {
   });
   client.devices.fingerprint = () => FINGERPRINT;
   await client.init();
+  const session: Session = { prompt: null };
   for (let i = 0; i < t.steps.length; i += 1) {
     const step = server.beginStep(i);
     vi.setSystemTime((step.now ?? t.now) * 1000);
-    const observed = await act(client, store, step);
+    const observed = await act(client, store, step, session);
     server.endStep();
     for (const [key, want] of Object.entries(step.expect))
       expect(
