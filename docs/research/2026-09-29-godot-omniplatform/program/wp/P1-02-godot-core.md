@@ -67,8 +67,14 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 - `jws.gd` (`PKeyJws`): the 13-step order over `PKeyJson`; a per-`kid` cache of the decompressed
   key and its precomputed table; an incremental `PKeySha512` API so a bundle-sized verify runs on
   `WorkerThreadPool` where `OS.has_feature("threads")`, and spreads across frames otherwise.
-- `semver.gd` (`PKeySemver.parse`, `compare`: a port of `client-core/src/semver.ts`, used to
-  refuse a non-semver version here and by P1-03 and P1-08).
+- `semver.gd` (`PKeySemver.parse`, `compare`, `channel_for_version`: a port of
+  `client-core/src/semver.ts`, used to refuse a non-semver version here and by P1-03 and P1-08;
+  `channel_for_version` follows P0-04's vocabulary, so `0.0.0-beta*` and `0.0.0-staging*` are
+  `beta`).
+- `core/services_generated.gd` (`PKeyServices`): a GDScript target added to `tools/gen-services.ts`
+  so the service slugs and their order come from `tools/services.json`, not a hand copy. It joins
+  the generated-file lists in AGENTS.md rule 3, `contribute/layout.md` and the Service-table row
+  of `contribute/waves.md`.
 - `verify.gd` (envelope, licence and config claims), `trust.gd` (verify against pins only, merge
   with pins terminal, anti-rollback in memory), `clock.gd`, `gate.gd` (`license_state`,
   `is_usable`: the nine-step order, needed by `clockFloorCases`), `bundle.gd` (inspect with the
@@ -144,6 +150,10 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
     - At 4 ms the worst frame stayed within 4 ms of idle and the wall time was ×4–5; at 8 ms it was
       ×2.0–2.3.
     - On an A53-class phone a sliced bundle verify takes 6–12 s, so report it as progress.
+      **Deferred to [P1-10](P1-10-godot-ui-kit.md)**, which owns the boot progress bar: P1-02
+      ships the slicing (`PKeyEd25519Job.step`, phases 0–3) but no progress signal. The verify
+      runs through static `PKeyJws` helpers with no `PolarisKey` instance in reach, so P1-10
+      adds the signal where its stage reporter lives.
 - **Verdicts come from the corpus, not from Godot.** Validate before `JSON` sees a byte. Two
   divergences are known and must be recorded, not tolerated: Godot rejects a lone surrogate
   that JS accepts, and U+0000 follows the P1-01 plan's decision. No corpus vector covers the
@@ -158,7 +168,9 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 - **Never pin from discovery** (`trust.pinnedKeys`): pins come only from
   `PKeyOptions.pinned_trust_keys`.
 - **Transport rules** (notes/A5 §4): `max_redirects = 0` and follow redirects manually, dropping
-  `Authorization` whenever the origin changes; `timeout = 15.0`; `body_size_limit` 512 KiB for API
+  `Authorization` whenever the origin changes; a 15 s timeout on the wall clock from the request's
+  start (`HTTPRequest.timeout` counts process delta, so a long frame before the call spends it;
+  leave it at 0); `body_size_limit` 512 KiB for API
   responses; `accept_gzip = false` for any `Range` request; https only, except
   `http://localhost|127.0.0.1|[::1]`. `HTTPRequest` nodes live under the autoload. On web the
   browser follows redirects and strips credentials itself; cross-origin calls need P0-05.
@@ -210,27 +222,27 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 
 ## Acceptance criteria
 
-- [ ] On the 4.7.2 editor and release template the runner reports, per section: `jwsCases`
+- [x] On the 4.7.2 editor and release template the runner reports, per section: `jwsCases`
       36/36, `licenseDocCases` 16/16, `configDocCases` 18/18, `trustCases` 11/11,
       `clockFloorCases` 7/7, `bundleCases` 9/9 (including the refusal reason), `deviceIds` 4/4.
-- [ ] `PKeyJson` unit tests reject each of: a trailing comma, a leading zero, `1.`, a raw
+- [x] `PKeyJson` unit tests reject each of: a trailing comma, a leading zero, `1.`, a raw
       control character, a duplicate key at depth 3; and accept `1e400` and 2^53−1 exactly as
       `JSON.parse` does.
-- [ ] Transport tests against the fake server: a same-origin redirect keeps `Authorization`; a
+- [x] Transport tests against the fake server: a same-origin redirect keeps `Authorization`; a
       cross-origin redirect drops it; a body over the cap and a timeout both return a
       `PKeyResult` error; plain `http://` to a non-loopback host is refused at `configure`.
-- [ ] Sync tests: 304 keeps the cached document; parallel 401s cause exactly one re-acquire
+- [x] Sync tests: 304 keeps the cached document; parallel 401s cause exactly one re-acquire
       call; a hard 401 sets `lastSyncUnauthorized`; a 403 block sets `blocked`; a later 200
       clears both; each pass writes `managed.json` exactly once.
-- [ ] A cache file edited by hand (a changed payload byte, a `v` of 2, a foreign `kid`) loads
+- [x] A cache file edited by hand (a changed payload byte, a `v` of 2, a foreign `kid`) loads
       as absent, never as trusted; derived counters are never read from disk.
-- [ ] A failed device-id write is surfaced through `store_error` and `last_store_error`, and no
+- [x] A failed device-id write is surfaced through `store_error` and `last_store_error`, and no
       new id is minted on the next start.
-- [ ] The profile suite records trust + licence + config verification time and a 350 KB bundle
+- [x] The profile suite records trust + licence + config verification time and a 350 KB bundle
       import on the release template in the PR; the main thread is not blocked by the bundle
       verify on a threaded build.
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
-- [ ] `sdks/godot/parity.json` marks `core.verify`, `core.cache`, `core.bundle`,
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job.
+- [x] `sdks/godot/parity.json` marks `core.verify`, `core.cache`, `core.bundle`,
       `core.discover`, `core.sync`, `core.local` implemented, with `# @pkey-feature` test tags
       (once P1b-01 has landed).
 

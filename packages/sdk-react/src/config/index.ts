@@ -9,6 +9,6 @@ export {
   type ConfigPanelSlots,
   type ConfigRow,
 } from "../components/ConfigPanel.js";
-export type { UserConfigEntry } from "../core/index.js";
+export type { UserConfigEntry, ProductCatalog } from "../core/index.js";
 export type { ConfigSource } from "@polaris-key/client-core";
 export type { ManagedEntry, ManagementState } from "@polaris-key/protocol/core";

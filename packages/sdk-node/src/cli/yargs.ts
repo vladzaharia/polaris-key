@@ -92,7 +92,10 @@ export function polarisCommandModule(
         .command<CommonArgs>({
           command: "status",
           describe: "[license] Show the current licence gate status",
-          handler: async (argv) => emit(status(await buildClient(argv))),
+          handler: async (argv) => {
+            const client = await buildClient(argv);
+            emit(status(client, await client.storeStatus()));
+          },
         })
         .command<CommonArgs>({
           command: "enroll",

@@ -5,19 +5,20 @@ makes applicable, against a fake server (``transcript_replay.ReplayServer``, an
 ``httpx.MockTransport`` handler) that serves the Worker's recorded answers and asserts every
 request.
 
-Which transcripts run is DATA: a transcript for a feature this SDK has not implemented
-(register-reregister-401, until P1b-06) is skipped, and starts running the moment the manifest
-claims it. The SDK clock is ``time.time`` pinned to each step's ``now``: the recorded documents
+Which transcripts run is DATA: a transcript for a feature this SDK has not implemented is
+skipped, and starts running the moment the manifest claims it. The SDK clock is ``time.time`` pinned to each step's ``now``: the recorded documents
 were signed at a fixed instant and expire an hour later.
 """
 
 # @pkey-feature core.discover core.sync core.cache license.activate license.enroll
-# @pkey-feature license.deactivate devices.register devices.report
+# @pkey-feature license.deactivate license.reregister devices.register devices.report
+# @pkey-feature config.schema release.changelog release.download
 # @pkey-feature identity.devicecode config.mint
 
 from __future__ import annotations
 
 import copy
+import dataclasses
 import time
 from typing import Any, Dict, Optional
 
@@ -136,6 +137,25 @@ def _act(
         client.license.deactivate()
     elif action == "report":
         out["result"] = client.devices.report()
+    elif action == "fetchSchema":
+        out["catalog"] = client.config.fetch_schema()
+    elif action == "changelog":
+        try:
+            out["entries"] = [dataclasses.asdict(e) for e in client.release.changelog()]
+            out["result"] = "ok"
+        except PolarisError as e:
+            out["result"] = "error"
+            out["code"] = e.code
+    elif action == "installUrl":
+        out["url"] = client.release.install_url()
+    elif action == "downloadUrl":
+        out["url"] = client.release.download_url(
+            args["version"],
+            args["binary"],
+            args["arch"],
+            checksum=args.get("checksum") is True,
+            dmg=args.get("dmg") is True,
+        )
     else:
         raise AssertionError(f"unknown action {action}")
     out["services"] = {

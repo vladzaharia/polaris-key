@@ -8,9 +8,11 @@
 // state projection. `submitKey` IS supported here (unlike browser): desktop apps allow typed-key
 // activation as an offline-friendly path.
 //
-// Device management and update checks go through the bridge's versioned `invoke()` escape hatch
-// rather than dedicated methods, so a host that predates them reports them unsupported instead
-// of failing to satisfy the interface.
+// Device management, update checks, the Release verbs and telemetry go through the bridge's
+// versioned `invoke()` escape hatch rather than dedicated methods, so a host that predates them
+// reports them unsupported instead of failing to satisfy the interface. Offline bundle import is
+// bridge protocol v3's optional `importBundle` (P1b-07): the host's Node client verifies and
+// writes the cache, and the renderer re-reads the state it left.
 
 import {
   configSource,
@@ -19,7 +21,9 @@ import {
   projectState,
   readConfig,
   readEntitled,
+  readEntitledChannels,
 } from "../core/adapter.js";
+import { ErrorCode } from "../constants.generated.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -32,7 +36,12 @@ import {
   type PolarisState,
   type UserConfigEntry,
   type VersionCheck,
+  type ChangelogEntry,
+  type DownloadUrlOptions,
+  type ImportBundleResult,
+  type ProductCatalog,
 } from "../core/index.js";
+import { isCatalog } from "../browser/catalog.js";
 import {
   copyServices,
   defaultServices,
@@ -399,6 +408,136 @@ export class DesktopAdapter implements PolarisAdapter {
     }
   }
 
+  async fetchSchema(): Promise<ProductCatalog | null> {
+    // D-21: not even asked for. Diagnostic: every failure, an absent host method included, is
+    // null — the catalog drives no decision, so there is nothing to refuse.
+    if (!this.capabilities.config.enabled || !this.bridge.fetchSchema)
+      return null;
+    try {
+      const body: unknown = await this.bridge.fetchSchema();
+      return isCatalog(body) ? body : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** D-21 for Release: refuse before crossing the bridge when the product does not run it. */
+  private requireRelease(): void {
+    if (!this.capabilities.release.enabled) {
+      throw this.fail(
+        "release",
+        new PolarisError(
+          "service-disabled",
+          "This product does not run the Release service.",
+        ),
+      );
+    }
+  }
+
+  private releaseUnsupported(): PolarisError {
+    return new PolarisError(
+      "service-disabled",
+      "This desktop bridge does not expose the release client.",
+    );
+  }
+
+  async changelog(): Promise<ChangelogEntry[]> {
+    this.requireRelease();
+    this.setBusy("release", true);
+    try {
+      const rows = await this.invoke<ChangelogEntry[]>(
+        "release",
+        "changelog",
+        undefined,
+        this.releaseUnsupported(),
+      );
+      this.patch((prev) => ({
+        busy: withBusy(prev.busy, "release", false),
+        error: withError(prev.error, "release", null),
+      }));
+      return Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      throw this.fail("release", releaseError(e));
+    }
+  }
+
+  async installUrl(): Promise<string> {
+    this.requireRelease();
+    return this.invoke<string>(
+      "release",
+      "installUrl",
+      undefined,
+      this.releaseUnsupported(),
+    );
+  }
+
+  async downloadUrl(
+    version: string,
+    binary: string,
+    arch: string,
+    opts: DownloadUrlOptions = {},
+  ): Promise<string> {
+    this.requireRelease();
+    return this.invoke<string>(
+      "release",
+      "downloadUrl",
+      { version, binary, arch, ...opts },
+      this.releaseUnsupported(),
+    );
+  }
+
+  async importBundle(jws: string): Promise<ImportBundleResult> {
+    if (!this.bridge.importBundle) {
+      throw this.fail(
+        "license",
+        new PolarisError(
+          ErrorCode.bundleImportUnsupported,
+          `This desktop bridge (protocol v${this.bridge.version ?? 1}) cannot import offline bundles; protocol v3 adds importBundle.`,
+        ),
+      );
+    }
+    this.setBusy("license", true);
+    try {
+      const result = await this.bridge.importBundle(jws);
+      this.apply(await this.bridge.getSyncState(), {
+        busy: noBusy(),
+        error: noErrors(),
+      });
+      return result;
+    } catch (e) {
+      // The host's refusal carries the §7 step as its code (`@polaris-key/node`'s PolarisError).
+      const code = errorCode(e);
+      throw this.fail(
+        "license",
+        e instanceof PolarisError
+          ? e
+          : new PolarisError(
+              ErrorCode.bundleRejected,
+              (e as Error)?.message ?? String(e),
+              code,
+            ),
+      );
+    }
+  }
+
+  /** Device telemetry through the privileged process's Node client (`devices.report()`). */
+  async report(): Promise<boolean> {
+    const ok = await this.invoke<boolean>(
+      "devices",
+      "report",
+      undefined,
+      new PolarisError(
+        ErrorCode.reportUnsupported,
+        "This desktop bridge does not expose device telemetry.",
+      ),
+    );
+    return ok === true;
+  }
+
+  entitledChannels(): string[] {
+    return readEntitledChannels(this.store.get());
+  }
+
   getConfig<T = JSONValue>(key: string, fallback: T): T {
     return readConfig(this.store.get(), key, fallback);
   }
@@ -431,6 +570,28 @@ export class DesktopAdapter implements PolarisAdapter {
 function asPolarisError(e: unknown): PolarisError {
   if (e instanceof PolarisError) return e;
   return new PolarisError("unknown", (e as Error)?.message ?? String(e));
+}
+
+/** The `code` a host-side error carries across the bridge, when it kept one. */
+function errorCode(e: unknown): string | undefined {
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === "string" && code !== "" ? code : undefined;
+}
+
+/** A release refusal from the host: its code is the refusal body's (`@polaris-key/node`). */
+function releaseError(e: unknown): PolarisError {
+  if (e instanceof PolarisError) return e;
+  const code = errorCode(e);
+  const message = (e as Error)?.message ?? String(e);
+  if (code === "service-unavailable")
+    return new PolarisError("service-disabled", message, code);
+  // The Node client's own failure codes (a non-refusal status, local-only mode) are transport
+  // trouble, not an entitlement answer.
+  if (code === "not_found" || code === "local-only")
+    return new PolarisError("network", message, code);
+  return code
+    ? new PolarisError(ErrorCode.releaseRefused, message, code)
+    : new PolarisError("unknown", message);
 }
 
 function delay(ms: number): Promise<void> {

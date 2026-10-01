@@ -32,11 +32,21 @@
       "docs": "/docs/services/release/"
     },
     {
+      "slug": "distribution",
+      "label": "Distribution",
+      "summary": "How releases reach devices and outlets — transports, availability, and rollouts.",
+      "defaultEnabled": false,
+      "requires": ["release"],
+      "legacyModules": ["releases"],
+      "console": { "accent": "distribution", "icon": "Truck" },
+      "docs": "/docs/services/distribution/"
+    },
+    {
       "slug": "update",
       "label": "Update",
       "summary": "The feed over Release’s truth store — appcasts, /version, and eligibility.",
       "defaultEnabled": false,
-      "requires": ["release"],
+      "requires": ["distribution"],
       "legacyModules": ["releases"],
       "console": { "accent": "update", "icon": "RefreshCw" },
       "docs": "/docs/services/update/"

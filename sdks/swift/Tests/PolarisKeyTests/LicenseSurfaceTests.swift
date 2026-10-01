@@ -136,4 +136,33 @@ final class LicenseSurfaceTests: XCTestCase {
         let none = await ConfigEndpoints.fetchSchema(failing)
         XCTAssertNil(none)
     }
+
+    // @pkey-feature config.schema
+    /// The client-level `client.config.fetchSchema()` (P1b-07): a body that is not a catalog is
+    /// `nil`, and a product without Config is `nil` without a request (D-21).
+    func testFetchSchemaRefusesANonCatalogAndNeverProbesADisabledConfig() async throws {
+        for body in ["<html>", #"{"entries":[]}"#, #"[{"schemaVersion":1,"entries":[]}]"#] {
+            let server = StubServer()
+            await server.reply("/djdl/config/schema", body: body)
+            let c = try await PolarisKeyClient.create(
+                options: PolarisKeyClientOptions(
+                    productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                    pinnedKeys: [:], trustRefresh: false, store: InMemoryStore(deviceId: "dev"),
+                    transport: server.transport))
+            let none = await c.config.fetchSchema()
+            XCTAssertNil(none, body)
+        }
+
+        let server = StubServer()
+        await server.reply("/djdl/config/schema", body: #"{"schemaVersion":3,"entries":[]}"#)
+        let licenseOnly = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], trustRefresh: false, store: InMemoryStore(deviceId: "dev"),
+                transport: server.transport, expectedServices: [.license]))
+        let disabled = await licenseOnly.config.fetchSchema()
+        XCTAssertNil(disabled)
+        let probes = await server.requests(forPath: "/djdl/config/schema")
+        XCTAssertTrue(probes.isEmpty)
+    }
 }

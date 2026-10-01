@@ -45,8 +45,8 @@ function servicesWhere(enabled: (slug: ServiceSlug) => boolean): ServicesMap {
 
 /**
  * What a product runs when it has never said otherwise: the table's `defaultEnabled` rows —
- * licensing + settings distribution, which is exactly what every product does today.
- * Distribution (release/update) and identity are opt-in because they need coordinates (a
+ * licensing + settings delivery, which is exactly what every product does today.
+ * Release, Distribution, Update and Identity are opt-in because they need coordinates (a
  * linked repo, an IdP) a default cannot invent.
  */
 export const DEFAULT_SERVICES: ServicesMap = servicesWhere((slug) =>
@@ -280,11 +280,18 @@ export function validateServices(
   registration?: RegistrationPolicy,
 ): string[] {
   const errors: string[] = [];
-  // Update is the FEED over Release's truth store (D-05) — appcasts and `/version` are
-  // rendered from the releases, channels and artifacts Release syncs. A product with Update
-  // on and Release off would serve an empty feed and call it an answer.
-  if (services.update.enabled && !services.release.enabled) {
-    errors.push("update_requires_release");
+  // The chain is release ← distribution ← update (README §3.2): truth, then delivery, then
+  // decision. Distribution moves Release's artifacts to devices and outlets, so with Release off
+  // it has nothing to deliver.
+  if (services.distribution.enabled && !services.release.enabled) {
+    errors.push("distribution_requires_release");
+  }
+  // Update is the FEED that tells a device what to do next, over what Distribution says has
+  // reached it. Update on with Distribution off would serve a feed with no delivery behind it.
+  // This edge SUBSUMES the retired `update_requires_release`: Distribution itself requires
+  // Release, so a set that passes both rules has Release on whenever Update is on.
+  if (services.update.enabled && !services.distribution.enabled) {
+    errors.push("update_requires_distribution");
   }
   // `requires-identity` says "register, but only behind a product login". With Identity off
   // there is no login to stand behind, so the endpoint could never say yes to anyone — a

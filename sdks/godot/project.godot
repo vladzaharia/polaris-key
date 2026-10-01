@@ -11,6 +11,10 @@ run/main_scene="res://tests/main.tscn"
 run/main_loop_type="PKeyTestRunner"
 run/flush_stdout_on_print=true
 
+[autoload]
+
+PolarisKey="*res://addons/polaris_key/polaris_key.gd"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/polaris_key/plugin.cfg")

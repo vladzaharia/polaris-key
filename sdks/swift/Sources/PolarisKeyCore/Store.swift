@@ -151,6 +151,58 @@ public enum StoreError: Error, Sendable, Equatable {
     case encoding
 }
 
+// ── Store status (P1b-09 plan §2.3) ──────────────────────────────────────────────────
+
+/// Where a token store keeps the token. Stable identifiers, shared with every SDK
+/// (`client-core`'s `STORE_BACKENDS`).
+public enum StoreBackend: String, Sendable, CaseIterable, Codable {
+    /// An OS credential store through a keyring library.
+    case keyring
+    /// The Apple Keychain through Security.framework.
+    case keychain
+    /// An Android Keystore key wrapping the token.
+    case keystore
+    /// A 0600 file.
+    case file
+    /// Nothing persists (tests).
+    case memory
+    /// Browser storage (Godot web).
+    case indexeddb
+    /// A host store that fits none of these.
+    case custom
+}
+
+/// Why a store is weaker than this platform's best option (`STORE_DEGRADED_REASONS`).
+public enum StoreDegradedReason: String, Sendable, CaseIterable, Codable {
+    case keyringUnavailable = "keyring-unavailable"
+    case keyringError = "keyring-error"
+    /// macOS: no data-protection keychain entitlement; the file-based keychain is used.
+    case legacyKeychain = "legacy-keychain"
+    case notPersistent = "not-persistent"
+}
+
+/// What a store's `status()` reports: where the token lives now, and why if that is weaker than
+/// this platform's best option. `detail` is human text and never contains the token.
+public struct StoreStatus: Sendable, Equatable, Codable {
+    public struct Degraded: Sendable, Equatable, Codable {
+        public let reason: StoreDegradedReason
+        public let detail: String?
+
+        public init(reason: StoreDegradedReason, detail: String? = nil) {
+            self.reason = reason
+            self.detail = detail
+        }
+    }
+
+    public let backend: StoreBackend
+    public let degraded: Degraded?
+
+    public init(backend: StoreBackend, degraded: Degraded? = nil) {
+        self.backend = backend
+        self.degraded = degraded
+    }
+}
+
 /// The persistence surface Core depends on. All methods are async so a keychain- or
 /// network-backed implementation can be slotted in without changing Core; the mutating ones
 /// throw so a failure is never silent.
@@ -164,6 +216,13 @@ public protocol Store: Sendable {
     func readCache() async -> CacheRecord?
     func writeCache(_ record: CacheRecord) async throws
     func clearCache() async throws
+    /// Where the token lives now, and why if that is weaker than this platform's best option.
+    /// Optional: the default is `nil` ("this store does not report"). Never throws.
+    func status() async -> StoreStatus?
+}
+
+extension Store {
+    public func status() async -> StoreStatus? { nil }
 }
 
 // ── In-memory (tests) ────────────────────────────────────────────────────────────
@@ -185,14 +244,59 @@ public actor InMemoryStore: Store {
     public func readCache() async -> CacheRecord? { cache }
     public func writeCache(_ record: CacheRecord) async { cache = record }
     public func clearCache() async { cache = nil }
+    public func status() async -> StoreStatus? { StoreStatus(backend: .memory) }
 }
 
 // ── Keychain + 0600 file (production) ──────────────────────────────────────────────
+
+/// The four `SecItem*` calls `KeychainStore` makes, behind a seam so tests can inject a fake
+/// keychain (an unsigned test bundle cannot reach the data-protection keychain at all).
+protocol KeychainAPI: Sendable {
+    /// `SecItemCopyMatching`: the status, and the returned data when the query asked for it.
+    func copyMatching(_ query: [String: Any]) -> (OSStatus, Data?)
+    func add(_ attributes: [String: Any]) -> OSStatus
+    func update(_ query: [String: Any], _ attributes: [String: Any]) -> OSStatus
+    func delete(_ query: [String: Any]) -> OSStatus
+}
+
+/// The real Security.framework calls.
+struct SystemKeychain: KeychainAPI {
+    func copyMatching(_ query: [String: Any]) -> (OSStatus, Data?) {
+        var item: CFTypeRef?
+        let status = withUnsafeMutablePointer(to: &item) {
+            SecItemCopyMatching(query as CFDictionary, $0)
+        }
+        return (status, item as? Data)
+    }
+
+    func add(_ attributes: [String: Any]) -> OSStatus {
+        SecItemAdd(attributes as CFDictionary, nil)
+    }
+
+    func update(_ query: [String: Any], _ attributes: [String: Any]) -> OSStatus {
+        SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+    }
+
+    func delete(_ query: [String: Any]) -> OSStatus {
+        SecItemDelete(query as CFDictionary)
+    }
+}
 
 /// Production store: the secret token lives in the OS keychain (generic password, service
 /// `pkey:<product>` per §8), while the device id + offline cache are 0600 JSON files under
 /// `<configDir>/<product>/`. An actor for `Sendable` safety; keychain/file I/O is serialized
 /// through it.
+///
+/// THE KEYCHAIN (P1b-09 plan §5.6). The token goes to the DATA-PROTECTION keychain
+/// (`kSecUseDataProtectionKeychain`) with `kSecAttrAccessibleAfterFirstUnlock`. Without that
+/// flag macOS writes the legacy file-based keychain, which ignores the accessibility attribute
+/// (R4-11). A macOS process without the entitlement the data-protection keychain needs (an
+/// unsigned CLI, a test bundle) has its writes refused with `errSecMissingEntitlement` (its
+/// reads answer "not found"); it then keeps using the legacy keychain, as before, and `status()`
+/// says so (`legacy-keychain`). Reads try data protection
+/// first and fall back to the legacy item, migrating it when the data-protection keychain is
+/// available; clears delete from both. iOS always uses the data-protection keychain, so the
+/// legacy branch is `#if os(macOS)`.
 public actor KeychainStore: Store {
     /// Largest cache file we will read. The record is at most three compact JWSs plus hints.
     private static let maxCacheBytes = 1024 * 1024
@@ -203,31 +307,19 @@ public actor KeychainStore: Store {
     private let dir: URL
     private let cacheURL: URL
     private let deviceURL: URL
-
-    /// Where the device id and cache live when the host does not say.
-    ///
-    /// `~/.config/` on macOS, matching the Node SDK's `XDG_CONFIG_HOME ?? ~/.config`, so a
-    /// developer running both against the same product finds one directory rather than two.
-    /// `homeDirectoryForCurrentUser` is UNAVAILABLE on iOS — a real gap the target split
-    /// surfaced, since the package has declared `.iOS(.v17)` support since v1 — so iOS uses
-    /// Application Support, the sandboxed equivalent, and falls back to the temporary directory
-    /// only on a platform that has neither.
-    private static func defaultConfigDir() -> URL {
-        #if os(macOS)
-        return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config", isDirectory: true)
-        #else
-        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-            .first ?? FileManager.default.temporaryDirectory
-        #endif
-    }
+    private let keychain: any KeychainAPI
 
     public init(productSlug: String, configDir: URL? = nil) {
+        self.init(productSlug: productSlug, configDir: configDir, keychain: SystemKeychain())
+    }
+
+    init(productSlug: String, configDir: URL?, keychain: any KeychainAPI) {
         self.productSlug = productSlug
         // §8 — the keychain service tag is `pkey:<product>`, stable across wire-contract
         // revisions. The `plrs:` spelling Amendment A1 withdrew is never written or read.
         self.service = "pkey:\(productSlug)"
-        let base = configDir ?? KeychainStore.defaultConfigDir()
+        self.keychain = keychain
+        let base = configDir ?? ProductDirs.defaultConfigBase()
         self.dir = base.appendingPathComponent(productSlug, isDirectory: true)
         self.cacheURL = dir.appendingPathComponent("managed.json")
         self.deviceURL = dir.appendingPathComponent("device")
@@ -241,60 +333,170 @@ public actor KeychainStore: Store {
     public var keychainService: String { service }
 
     // ── Token (keychain) ──
-    public func getToken() async throws -> String? {
-        let query: [String: Any] = [
+
+    /// The item's identity, in the data-protection keychain or the legacy one.
+    private func itemQuery(dataProtection: Bool) -> [String: Any] {
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
-        var item: CFTypeRef?
-        let status = withUnsafeMutablePointer(to: &item) {
-            SecItemCopyMatching(query as CFDictionary, $0)
-        }
-        // "No token" and "the keychain would not answer" are different facts: the first is
-        // needs-activation, the second is a condition the user can fix.
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess else { throw StoreError.keychain(status) }
-        guard let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        if dataProtection { query[kSecUseDataProtectionKeychain as String] = true }
+        return query
     }
 
-    public func setToken(_ token: String) async throws {
+    private func readItem(dataProtection: Bool) -> (OSStatus, String?) {
+        var query = itemQuery(dataProtection: dataProtection)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        let (status, data) = keychain.copyMatching(query)
+        return (status, data.flatMap { String(data: $0, encoding: .utf8) })
+    }
+
+    /// Update, else add. `kSecAttrAccessible` rides on the UPDATE too — it was only ever set on
+    /// the initial add, so a re-issued token silently inherited whatever protection class the
+    /// original item happened to carry (R4-11).
+    private func writeItem(_ token: String, dataProtection: Bool) -> OSStatus {
         let data = Data(token.utf8)
-        let base: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-        // `kSecAttrAccessible` must ride on the UPDATE too — it was only ever set on the initial
-        // add, so a re-issued token silently inherited whatever protection class the original
-        // item happened to carry (R4-11).
+        let base = itemQuery(dataProtection: dataProtection)
         let update: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
-        let status = SecItemUpdate(base as CFDictionary, update as CFDictionary)
-        if status == errSecSuccess { return }
-        guard status == errSecItemNotFound else { throw StoreError.keychain(status) }
+        let status = keychain.update(base, update)
+        guard status == errSecItemNotFound else { return status }
         var add = base
         add[kSecValueData as String] = data
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        let addStatus = SecItemAdd(add as CFDictionary, nil)
-        guard addStatus == errSecSuccess else { throw StoreError.keychain(addStatus) }
+        return keychain.add(add)
+    }
+
+    public func getToken() async throws -> String? {
+        let (status, token) = readItem(dataProtection: true)
+        if status == errSecSuccess { return token }
+        #if os(macOS)
+        if status == errSecItemNotFound || status == errSecMissingEntitlement {
+            let (legacyStatus, legacy) = readItem(dataProtection: false)
+            if legacyStatus == errSecItemNotFound { return nil }
+            guard legacyStatus == errSecSuccess else { throw StoreError.keychain(legacyStatus) }
+            // Migrate the legacy item into the data-protection keychain. An unentitled process
+            // also answers "not found" to the read above, so its migration write fails with
+            // −34018; a failed migration still returns the token and keeps the legacy item.
+            if status == errSecItemNotFound, let legacy,
+                writeItem(legacy, dataProtection: true) == errSecSuccess {
+                _ = keychain.delete(itemQuery(dataProtection: false))
+            }
+            return legacy
+        }
+        #endif
+        // "No token" and "the keychain would not answer" are different facts: the first is
+        // needs-activation, the second is a condition the user can fix.
+        if status == errSecItemNotFound { return nil }
+        throw StoreError.keychain(status)
+    }
+
+    public func setToken(_ token: String) async throws {
+        let status = writeItem(token, dataProtection: true)
+        if status == errSecSuccess {
+            #if os(macOS)
+            // Best effort: no older token may linger in the legacy keychain for a later read.
+            _ = keychain.delete(itemQuery(dataProtection: false))
+            #endif
+            return
+        }
+        #if os(macOS)
+        if status == errSecMissingEntitlement {
+            let legacy = writeItem(token, dataProtection: false)
+            guard legacy == errSecSuccess else { throw StoreError.keychain(legacy) }
+            return
+        }
+        #endif
+        throw StoreError.keychain(status)
     }
 
     public func clearToken() async throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw StoreError.keychain(status)
+        let status = keychain.delete(itemQuery(dataProtection: true))
+        guard
+            status == errSecSuccess || status == errSecItemNotFound
+                || status == errSecMissingEntitlement
+        else { throw StoreError.keychain(status) }
+        #if os(macOS)
+        let legacy = keychain.delete(itemQuery(dataProtection: false))
+        guard legacy == errSecSuccess || legacy == errSecItemNotFound else {
+            throw StoreError.keychain(legacy)
         }
+        #endif
+    }
+
+    /// The account of an item that never exists: the target of the side-effect-free entitlement
+    /// probe in `status()`.
+    static let entitlementProbeAccount = "pkey-status-probe"
+
+    /// An attribute-only probe: it never reads the secret.
+    ///
+    /// An unentitled macOS process cannot tell from a READ that the data-protection keychain is
+    /// closed to it — measured on macOS 27: `SecItemCopyMatching` answers errSecItemNotFound
+    /// (−25300) while add, update and delete answer errSecMissingEntitlement (−34018). So a
+    /// "not found" is followed by a DELETE of a sentinel item that never exists: −34018 means the
+    /// token goes to the legacy keychain (`legacy-keychain`); "not found" means the process is
+    /// entitled. An entitled process whose token still sits in the legacy keychain (not yet
+    /// migrated by a read) also reports `legacy-keychain`.
+    public func status() async -> StoreStatus? {
+        let status = probeAttributes(dataProtection: true)
+        if status == errSecSuccess { return StoreStatus(backend: .keychain) }
+        #if os(macOS)
+        if status == errSecMissingEntitlement { return Self.legacyKeychainStatus }
+        if status == errSecItemNotFound {
+            var sentinel = itemQuery(dataProtection: true)
+            sentinel[kSecAttrAccount as String] = Self.entitlementProbeAccount
+            let probe = keychain.delete(sentinel)
+            if probe == errSecMissingEntitlement { return Self.legacyKeychainStatus }
+            if probe == errSecSuccess || probe == errSecItemNotFound {
+                if probeAttributes(dataProtection: false) == errSecSuccess {
+                    return StoreStatus(
+                        backend: .keychain,
+                        degraded: .init(
+                            reason: .legacyKeychain,
+                            detail:
+                                "the token is still in the file-based login keychain; "
+                                + "the next read migrates it to the data-protection keychain"))
+                }
+                return StoreStatus(backend: .keychain)
+            }
+            return StoreStatus(
+                backend: .keychain,
+                degraded: .init(reason: .keyringError, detail: Self.describe(probe)))
+        }
+        #else
+        if status == errSecItemNotFound { return StoreStatus(backend: .keychain) }
+        #endif
+        return StoreStatus(
+            backend: .keychain,
+            degraded: .init(reason: .keyringError, detail: Self.describe(status)))
+    }
+
+    private func probeAttributes(dataProtection: Bool) -> OSStatus {
+        var query = itemQuery(dataProtection: dataProtection)
+        query[kSecReturnAttributes as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        return keychain.copyMatching(query).0
+    }
+
+    #if os(macOS)
+    private static let legacyKeychainStatus = StoreStatus(
+        backend: .keychain,
+        degraded: .init(
+            reason: .legacyKeychain,
+            detail:
+                "no data-protection keychain entitlement (errSecMissingEntitlement); "
+                + "the file-based login keychain is used"))
+    #endif
+
+    private static func describe(_ status: OSStatus) -> String {
+        if let message = SecCopyErrorMessageString(status, nil) as String? {
+            return "\(message) (OSStatus \(status))"
+        }
+        return "OSStatus \(status)"
     }
 
     // ── Device id (0600 file) ──

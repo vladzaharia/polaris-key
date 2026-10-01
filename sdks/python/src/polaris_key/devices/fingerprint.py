@@ -16,21 +16,33 @@ reader collide with every other one.
 from __future__ import annotations
 
 import hashlib
-import math
+import json
+import ntpath
 import os
 import re
 import subprocess
 import sys
 import uuid
-from typing import Dict, Optional
+from typing import Callable, Dict, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 from ..core.b64url import b64url_encode
 
 __all__ = [
     "COMPONENT_ORDER",
+    "LINUX_ANCHOR_PATHS",
+    "WINDOWS_CIM_COMMAND",
+    "AnchorSource",
+    "FingerprintIO",
+    "WindowsCimCommand",
     "collect_fingerprint",
     "hash_components",
+    "linux_anchor_source",
+    "parse_windows_cim",
+    "ram_bucket",
     "raw_components",
+    "read_linux_anchor",
+    "trim_ascii_whitespace",
+    "windows_powershell_path",
 ]
 
 #: Canonical component order. The hwid digest walks THIS list, never a dict's ordering.
@@ -60,23 +72,190 @@ def _sha256_b64url(value: str, length: int) -> str:
     return b64url_encode(digest)[:length]
 
 
-def _run(*args: str) -> Optional[str]:
-    """Run a command, returning ``None`` on any failure."""
+# ── The pure derivation rules (WIRE-CONTRACT-V3 §6.1), pinned by fingerprint.json ──────────
+
+
+class WindowsCimCommand(NamedTuple):
+    """The pinned Windows CIM call (``fingerprint.json``'s ``windowsCimCommand``)."""
+
+    program: str
+    args: Tuple[str, ...]
+    #: ``"null"``: the child's stdin is the null device, never the caller's.
+    stdin: str
+    timeout_ms: int
+
+
+#: Rule 1's one PowerShell call. One line with no double quotes, so Windows argument quoting
+#: cannot mangle it, and pure-ASCII output, so neither a console code page nor a missing
+#: console can corrupt a value. stdin is the null device, because Windows PowerShell 5.1 reads
+#: a redirected stdin as pipeline input and would otherwise wait out the timeout under a
+#: parent whose stdin is an open pipe.
+WINDOWS_CIM_COMMAND = WindowsCimCommand(
+    program="powershell.exe",
+    args=(
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$ErrorActionPreference='Stop';$b=$null;$m=$null;"
+        "try{$b=@(Get-CimInstance -ClassName Win32_BaseBoard -Property SerialNumber)[-1].SerialNumber}catch{};"
+        "try{$m=@(Get-CimInstance -ClassName Win32_ComputerSystem -Property Model)[-1].Model}catch{};"
+        "$j=ConvertTo-Json -Compress -InputObject @{boardSerial=$b;machineModel=$m};"
+        "$o='';foreach($c in $j.ToCharArray()){$n=[int]$c;if($n -gt 126){$o+='\\u'+$n.ToString('x4')}else{$o+=$c}};$o",
+    ),
+    stdin="null",
+    timeout_ms=10_000,
+)
+
+#: Rules 1 and 2 trim exactly U+0009–U+000D and U+0020. ``str.strip()`` would also drop
+#: U+001F and U+00A0, which the corpus pins as kept.
+_ASCII_WHITESPACE = "\t\n\x0b\x0c\r "
+
+
+def trim_ascii_whitespace(value: str) -> str:
+    return value.strip(_ASCII_WHITESPACE)
+
+
+def parse_windows_cim(stdout: Optional[str]) -> Dict[str, str]:
+    """Rule 1: parse what :data:`WINDOWS_CIM_COMMAND` printed.
+
+    Strips one leading U+FEFF, requires a JSON object, and keeps ``boardSerial`` /
+    ``machineModel`` only when each is a string that is non-empty after trimming ASCII
+    whitespace. Vendor placeholders are kept verbatim (what the retired WMI command-line tool
+    returned, so Windows 10 sees no drift); other keys are ignored; anything else yields
+    ``{}``.
+    """
+    if not stdout:
+        return {}
+    text = stdout[1:] if stdout.startswith("\ufeff") else stdout
+    try:
+        parsed = json.loads(text)
+    except ValueError:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    out: Dict[str, str] = {}
+    for key in ("boardSerial", "machineModel"):
+        value = parsed.get(key)
+        if not isinstance(value, str):
+            continue
+        trimmed = trim_ascii_whitespace(value)
+        if trimmed:
+            out[key] = trimmed
+    return out
+
+
+#: Rule 2's sources, in order. No DMI file is ever read: ``product_uuid`` and
+#: ``board_serial`` are root-only, so reading them made the fingerprint privilege-dependent.
+LINUX_ANCHOR_PATHS = ("/etc/machine-id", "/var/lib/dbus/machine-id")
+
+
+class AnchorSource(NamedTuple):
+    source: str
+    value: str
+
+
+def linux_anchor_source(files: Mapping[str, Optional[str]]) -> Optional[AnchorSource]:
+    """Rule 2: the first of ``/etc/machine-id`` and ``/var/lib/dbus/machine-id`` whose
+    content, trimmed of ASCII whitespace, is non-empty and not ``uninitialized``.
+
+    ``files`` maps each READABLE path to its raw content; an absent (or ``None``) path is
+    unreadable. ``None`` means the host has no anchor. The same value is the Linux device
+    id's raw input.
+    """
+    for source in LINUX_ANCHOR_PATHS:
+        content = files.get(source)
+        if not isinstance(content, str):
+            continue
+        value = trim_ascii_whitespace(content)
+        if value and value != "uninitialized":
+            return AnchorSource(source, value)
+    return None
+
+
+def ram_bucket(total_bytes: int) -> Optional[str]:
+    """Rule 3: ``g = floor(bytes / 2**30)``; ``None`` when ``g == 0``, otherwise the largest
+    power of two not above ``g``, in decimal. Integer arithmetic, dividing BEFORE any
+    logarithm (a float ``log2`` rounds a total just below a power of two up from 1 PiB).
+
+    What the bucket buys is stability while the reported total stays between two powers of
+    two (a 16 GB machine reporting 15.4 GiB buckets to 8, and keeps doing so).
+    """
+    g = int(total_bytes) >> 30
+    if g <= 0:
+        return None
+    return str(1 << (g.bit_length() - 1))
+
+
+# ── The platform reads ─────────────────────────────────────────────────────────────────
+
+
+#: Run a command (argv, timeout in seconds) → stdout or ``None``.
+RunFn = Callable[[Sequence[str], float], Optional[str]]
+#: Read a file → raw content or ``None`` when unreadable.
+ReadFn = Callable[[str], Optional[str]]
+
+
+class FingerprintIO(NamedTuple):
+    """The two side effects a reader performs, injectable so tests can drive any OS's
+    branch on any host."""
+
+    run: RunFn
+    read: ReadFn
+
+
+def _run(args: Sequence[str], timeout: float = 2.0) -> Optional[str]:
+    """Run a command, returning ``None`` on any failure.
+
+    stdin is the null device on every platform (the child must never inherit the caller's
+    stdin: PowerShell would wait on an open pipe), and on Windows no console window is
+    created (a ``pythonw`` app would otherwise flash one per call). Output is captured as
+    bytes and decoded as UTF-8 with replacement.
+    """
+    kwargs: Dict[str, object] = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
     try:
         out = subprocess.run(
-            list(args), capture_output=True, text=True, check=True, timeout=2
+            list(args),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=True,
+            timeout=timeout,
+            **kwargs,  # type: ignore[arg-type]
         ).stdout
-        return out or None
+        return out.decode("utf-8", errors="replace") or None
     except Exception:
         return None
 
 
 def _read(path: str) -> Optional[str]:
     try:
-        with open(path, "r", encoding="utf-8") as fh:
-            return fh.read().strip() or None
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            return fh.read()
     except OSError:
         return None
+
+
+DEFAULT_IO = FingerprintIO(run=_run, read=_read)
+
+
+def _read_trimmed(io: FingerprintIO, path: str) -> Optional[str]:
+    content = io.read(path)
+    return (trim_ascii_whitespace(content) or None) if content is not None else None
+
+
+def windows_powershell_path(env: Optional[Mapping[str, str]] = None) -> str:
+    """``%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`` when
+    ``SystemRoot`` is an absolute path, else the bare name."""
+    env = os.environ if env is None else env
+    root = env.get("SystemRoot") or env.get("SYSTEMROOT")
+    if root and re.match(r"^(?:[A-Za-z]:[\\/]|\\\\)", root):
+        return ntpath.join(
+            root, "System32", "WindowsPowerShell", "v1.0", WINDOWS_CIM_COMMAND.program
+        )
+    return WINDOWS_CIM_COMMAND.program
 
 
 def _match(text: Optional[str], pattern: "re.Pattern[str]") -> Optional[str]:
@@ -117,18 +296,12 @@ def _total_memory_bytes() -> Optional[int]:
 
 
 def _ram_bucket() -> Optional[str]:
-    """Total RAM rounded down to a power of two in GiB.
-
-    Identical to the Node SDK's ``2 ** floor(log2(gib))`` so a BIOS/OS reporting 15.9 vs 16.0
-    GiB never reads as a hardware change, and both SDKs bucket the same machine the same way.
-    """
+    """This machine's bucket, or ``None`` when RAM cannot be determined (the component is
+    then omitted without calling the rule)."""
     total = _total_memory_bytes()
     if not total:
         return None
-    gib = total / (1024**3)
-    if gib < 1:
-        return None
-    return str(2 ** math.floor(math.log2(gib)))
+    return ram_bucket(total)
 
 
 def _cpu_model() -> Optional[str]:
@@ -136,7 +309,7 @@ def _cpu_model() -> Optional[str]:
     cores = os.cpu_count()
     brand: Optional[str] = None
     if sys.platform == "darwin":
-        brand = (_run("sysctl", "-n", "machdep.cpu.brand_string") or "").strip() or None
+        brand = (_run(["sysctl", "-n", "machdep.cpu.brand_string"]) or "").strip() or None
     elif sys.platform == "win32":
         brand = os.environ.get("PROCESSOR_IDENTIFIER") or None
     else:
@@ -165,58 +338,61 @@ def _primary_mac() -> Optional[str]:
     return ":".join(raw[i : i + 2] for i in range(0, 12, 2))
 
 
-def _darwin_components() -> Dict[str, str]:
-    ioreg = _run("ioreg", "-rd1", "-c", "IOPlatformExpertDevice")
+def _darwin_components(io: FingerprintIO) -> Dict[str, str]:
+    ioreg = io.run(["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"], 2.0)
     return _present(
         machineUuid=_match(ioreg, _IOREG_UUID_RE),
         boardSerial=_match(ioreg, _IOREG_SERIAL_RE),
-        bootVolumeUuid=_match(_run("diskutil", "info", "-plist", "/"), _VOLUME_UUID_RE),
-        machineModel=(_run("sysctl", "-n", "hw.model") or "").strip() or None,
+        bootVolumeUuid=_match(io.run(["diskutil", "info", "-plist", "/"], 2.0), _VOLUME_UUID_RE),
+        machineModel=(io.run(["sysctl", "-n", "hw.model"], 2.0) or "").strip() or None,
     )
 
 
-def _win32_components() -> Dict[str, str]:
-    machine_uuid: Optional[str] = None
+def _registry_machine_guid(io: FingerprintIO) -> Optional[str]:
     try:
         import winreg  # type: ignore
 
         with winreg.OpenKey(
             winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography"
         ) as k:
-            machine_uuid = str(winreg.QueryValueEx(k, "MachineGuid")[0]) or None
+            return str(winreg.QueryValueEx(k, "MachineGuid")[0]) or None
     except Exception:
-        machine_uuid = _match(
-            _run("reg", "query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"),
+        return _match(
+            io.run(["reg", "query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"], 2.0),
             _REG_GUID_RE,
         )
+
+
+def _win32_components(io: FingerprintIO, env: Optional[Mapping[str, str]]) -> Dict[str, str]:
+    cim = parse_windows_cim(
+        io.run(
+            [windows_powershell_path(env), *WINDOWS_CIM_COMMAND.args],
+            WINDOWS_CIM_COMMAND.timeout_ms / 1000,
+        )
+    )
     return _present(
-        machineUuid=machine_uuid,
-        boardSerial=_csv_value(_run("wmic", "baseboard", "get", "serialnumber", "/format:csv")),
-        bootVolumeUuid=_match(_run("cmd", "/c", "vol", "C:"), _VOL_SERIAL_RE),
-        machineModel=_csv_value(_run("wmic", "computersystem", "get", "model", "/format:csv")),
+        machineUuid=_registry_machine_guid(io),
+        boardSerial=cim.get("boardSerial"),
+        bootVolumeUuid=_match(io.run(["cmd", "/c", "vol", "C:"], 2.0), _VOL_SERIAL_RE),
+        machineModel=cim.get("machineModel"),
     )
 
 
-def _csv_value(out: Optional[str]) -> Optional[str]:
-    """``wmic ... /format:csv`` emits a blank line, a header row, then ``Node,<value>``."""
-    if not out:
-        return None
-    rows = [line.strip() for line in out.splitlines() if line.strip()]
-    if not rows or "," not in rows[-1]:
-        return None
-    return rows[-1].split(",", 1)[1].strip() or None
+def read_linux_anchor(io: Optional[FingerprintIO] = None) -> Optional[AnchorSource]:
+    """Read only rule 2's two files and hand their raw contents to
+    :func:`linux_anchor_source`."""
+    io = io or DEFAULT_IO
+    return linux_anchor_source({path: io.read(path) for path in LINUX_ANCHOR_PATHS})
 
 
-def _linux_components() -> Dict[str, str]:
+def _linux_components(io: FingerprintIO) -> Dict[str, str]:
+    anchor = read_linux_anchor(io)
     return _present(
-        # product_uuid is genuinely hardware-scoped; machine-id is per OS INSTALL and changes
-        # on a container/VM clone, so it is only the fallback.
-        machineUuid=_read("/sys/class/dmi/id/product_uuid")
-        or _read("/etc/machine-id")
-        or _read("/var/lib/dbus/machine-id"),
-        boardSerial=_read("/sys/class/dmi/id/board_serial"),
-        bootVolumeUuid=(_run("findmnt", "-no", "UUID", "/") or "").strip() or None,
-        machineModel=_read("/sys/class/dmi/id/product_name"),
+        # Rule 2: machine-id only, never product_uuid or board_serial, so root and non-root
+        # agree. A host with neither file (most container images) has no anchor.
+        machineUuid=anchor.value if anchor else None,
+        bootVolumeUuid=(io.run(["findmnt", "-no", "UUID", "/"], 2.0) or "").strip() or None,
+        machineModel=_read_trimmed(io, "/sys/class/dmi/id/product_name"),
     )
 
 
@@ -225,20 +401,33 @@ def _present(**kwargs: Optional[str]) -> Dict[str, str]:
     return {k: v for k, v in kwargs.items() if v}
 
 
-def raw_components() -> Dict[str, str]:
-    """Read the platform-specific raw component values."""
-    if sys.platform == "darwin":
-        platform_specific = _darwin_components()
-    elif sys.platform == "win32":
-        platform_specific = _win32_components()
+def raw_components(
+    *,
+    platform: Optional[str] = None,
+    io: Optional[FingerprintIO] = None,
+    env: Optional[Mapping[str, str]] = None,
+    total_bytes: Optional[int] = None,
+) -> Dict[str, str]:
+    """Read the platform-specific raw component values.
+
+    Every argument is a test seam: ``platform`` (default ``sys.platform``) picks the OS
+    branch, ``io`` replaces the command runner and file reader, ``env`` the environment used
+    to resolve PowerShell, and ``total_bytes`` the RAM total.
+    """
+    platform = platform or sys.platform
+    io = io or DEFAULT_IO
+    if platform == "darwin":
+        platform_specific = _darwin_components(io)
+    elif platform == "win32":
+        platform_specific = _win32_components(io, env)
     else:
-        platform_specific = _linux_components()
+        platform_specific = _linux_components(io)
     return {
         **platform_specific,
         **_present(
             cpuModel=_cpu_model(),
             primaryMac=_primary_mac(),
-            ramBucket=_ram_bucket(),
+            ramBucket=ram_bucket(total_bytes) if total_bytes is not None else _ram_bucket(),
         ),
     }
 

@@ -25,12 +25,21 @@ import type {
   DocProfile,
   LicenseDoc,
 } from "@polaris-key/protocol/license";
-import type { BlockedState, LicenseState } from "@polaris-key/client-core";
+import type {
+  BlockedState,
+  LicenseState,
+  StoreStatus,
+} from "@polaris-key/client-core";
 import { CacheManager } from "./core/cache.js";
 import { CoreContext, nowSec, type CoreOptions } from "./core/context.js";
 import { importBundle, type ImportBundleResult } from "./core/bundle.js";
 import { sync, type SyncOptions, type SyncResult } from "./core/sync.js";
-import { TokenManager } from "./core/token.js";
+import {
+  chooseReacquireRoute,
+  TokenManager,
+  type Reacquired,
+  type TokenSource,
+} from "./core/token.js";
 import { TrustManager } from "./core/trust.js";
 import { buildSnapshot, reportSnapshot } from "./core/telemetry.js";
 import { ConfigClient, type ConfigClientOptions } from "./config/client.js";
@@ -128,15 +137,13 @@ export class PolarisKeyClient {
     this.core = new CoreContext(opts);
     this.trust = new TrustManager(this.core);
     this.cache = new CacheManager(this.core, this.trust);
-    // The re-acquire path is injected so Core does not depend on the license module; §5's
-    // single-attempt rule lives in `TokenManager` and the ROUTE lives in license/endpoints.
+    // The re-acquire path is injected so Core does not depend on the license or devices
+    // modules; §5's single-attempt rule lives in `TokenManager`, the route CHOICE in
+    // `chooseReacquireRoute`, and the two routes in license/endpoints and devices/client.
     this.tokens = new TokenManager(
       this.core,
       this.core.store,
-      async (ctx, current) => {
-        const r = await reacquireToken(ctx, current);
-        return r.kind === "ok" ? r.token : null;
-      },
+      (ctx, current, source) => this.reacquire(ctx, current, source),
     );
     this.probes = opts.devices?.probes;
 
@@ -260,6 +267,29 @@ export class PolarisKeyClient {
     return result;
   }
 
+  /**
+   * The §5 single re-acquire: `POST /<p>/license/token` for a licensed device, or
+   * `POST /<p>/devices/register` (keyless, no bearer) for a registered-without-licence device
+   * or a product with License off. Null means the one attempt failed (403
+   * `registration_closed`, 401, 404, 429 or transport) and the hard-401 path applies.
+   */
+  private async reacquire(
+    ctx: CoreContext,
+    current: string,
+    source: TokenSource | null,
+  ): Promise<Reacquired | null> {
+    const route = chooseReacquireRoute({
+      licenseEnabled: ctx.enabled("license"),
+      source,
+    });
+    if (route === "devices-register") {
+      const r = await this.devices.requestRegistration();
+      return r.kind === "ok" ? { token: r.token, source: "register" } : null;
+    }
+    const r = await reacquireToken(ctx, current);
+    return r.kind === "ok" ? { token: r.token, source: "reacquire" } : null;
+  }
+
   private async reportOnce(): Promise<void> {
     const token = this.tokens.current;
     if (!token) return;
@@ -300,6 +330,22 @@ export class PolarisKeyClient {
   // for the calls a host makes before it knows which service it is talking to.
   status(now = nowSec()): LicenseState {
     return this.license.status(now);
+  }
+
+  /**
+   * Where the token store keeps the token, and why if that is weaker than this platform's best
+   * option (P1b-09, R4-11): `{ backend: "file", degraded: { reason: "keyring-unavailable" } }`
+   * on a host whose OS keyring is missing. `null` when the store does not report (a host store
+   * without `status()`). Never throws.
+   */
+  async storeStatus(): Promise<StoreStatus | null> {
+    const store = this.core.store;
+    if (typeof store.status !== "function") return null;
+    try {
+      return await store.status();
+    } catch {
+      return null;
+    }
   }
 
   isLicensed(now = nowSec()): boolean {

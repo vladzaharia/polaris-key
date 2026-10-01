@@ -153,7 +153,7 @@ seeing.
 The GitHub sync records what a GitHub release says. These four tables record what it cannot:
 which deliverable a release belongs to, its per-platform builds, how an operator has steered a
 channel, and which releases are withdrawn. The release descriptor, the release routes, the
-distribution catalog and the signed release record are their writers and readers; the GitHub
+`releaseCatalog` hook Distribution reads through, and the signed release record are their writers and readers; the GitHub
 sync only keeps them consistent.
 
 | Table                    | One row per              | Written by                   |

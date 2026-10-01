@@ -1,4 +1,4 @@
-// Bridge protocol v2 — the contract an Electron/Tauri host implements.
+// Bridge protocol v3 — the contract an Electron/Tauri host implements.
 //
 // The load-bearing assertion here is the MIRROR: `@polaris-key/node`'s `PolarisKeyClient.getSyncState()`
 // must satisfy this package's `BridgeState` with nothing in between, so a host can write
@@ -19,6 +19,7 @@ import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import {
   emptyBridgeState,
+  makeConfig,
   makeDoc,
   makeFakeBridge,
   NOW_SEC,
@@ -64,9 +65,27 @@ describe("BridgeState mirrors @polaris-key/node's SyncState", () => {
     expect(asBridge.highWaterMark).toBe(1_700_000_000);
   });
 
-  it("declares its protocol revision", () => {
-    expect(BRIDGE_VERSION).toBe(2);
+  it("declares its protocol revision (the fixture bridge is a v2 host)", () => {
+    expect(BRIDGE_VERSION).toBe(3);
     expect(makeFakeBridge(emptyBridgeState()).version).toBe(2);
+  });
+
+  it("v3's importBundle mirrors @polaris-key/node's importBundle, field for field", () => {
+    /** VERBATIM from `packages/sdk-node/src/core/bundle.ts`. */
+    interface NodeImportBundleResult {
+      bundleId: string;
+      imported: ("license" | "config")[];
+    }
+    const nodeImport = async (
+      _jws: string,
+    ): Promise<NodeImportBundleResult> => ({
+      bundleId: "b1",
+      imported: ["license"],
+    });
+    // A host writes `importBundle: (jws) => client.importBundle(jws)`; this does not compile if
+    // the two shapes drift.
+    const asBridge: NonNullable<PolarisBridge["importBundle"]> = nodeImport;
+    expect(typeof asBridge).toBe("function");
   });
 
   it("v1's `hasToken` is gone outright — activation is the only credential signal", () => {
@@ -144,6 +163,76 @@ describe("desktopAdapter reads the v2 additions", () => {
     expect(adapter.snapshot().config["theme.mode"]).toBe("light");
     // Entitlements ride the LICENSE document (D-20), never the config one.
     expect(adapter.isEntitled("polarisVpn")).toBe(true);
+    adapter.dispose();
+  });
+});
+
+// @pkey-feature license.reregister
+describe("a host-side re-register on 401 (P1b-06)", () => {
+  // The renderer holds no device token (license.reregister is `na` on desktop-bridge): the
+  // host's Node SDK re-registers inside its own sync. What the renderer owes is to pick up the
+  // host's state afterwards, through `refresh()` or a pushed `stateChanged`, with nothing of
+  // its own to retry. This fixture is a config-only product (License off) whose registered
+  // device's token was revoked: the host's sync re-registers, retries the config document once
+  // and reports the new document.
+  const revoked = (): BridgeState =>
+    okBridgeState({
+      doc: null,
+      capabilities: services("config"),
+      config: makeConfig({
+        "theme.mode": { state: "enforced", value: "dark", updatedAt: 950 },
+      }),
+      lastVerifiedAt: 1_000_000,
+      lastSyncUnauthorized: true,
+    });
+  const reregistered = (): BridgeState =>
+    okBridgeState({
+      doc: null,
+      capabilities: services("config"),
+      config: makeConfig({
+        "theme.mode": { state: "enforced", value: "light", updatedAt: 1990 },
+      }),
+      lastVerifiedAt: NOW_SEC * 1000,
+      lastSyncUnauthorized: false,
+    });
+
+  it("refresh() returns the host's post-re-register state and the renderer applies it", async () => {
+    const bridge = makeFakeBridge(revoked());
+    const hostSync = vi.fn(async () => {
+      // The host's `client.sync()`: config 401 → one POST /devices/register → retry → 200.
+      bridge.push(reregistered());
+      return reregistered();
+    });
+    bridge.refresh = hostSync;
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(adapter);
+    expect(adapter.snapshot().config["theme.mode"]).toBe("dark");
+    expect(adapter.snapshot().status).toBe("not-applicable");
+
+    await adapter.refresh();
+    expect(hostSync).toHaveBeenCalledTimes(1);
+    expect(adapter.snapshot().config["theme.mode"]).toBe("light");
+    expect(adapter.snapshot().configEntries["theme.mode"]?.updatedAt).toBe(
+      1990,
+    );
+    expect(adapter.snapshot().status).toBe("not-applicable");
+    expect(adapter.snapshot().error.config).toBeNull();
+    adapter.dispose();
+  });
+
+  it("a pushed stateChanged from the host's own sync lands without a renderer call", async () => {
+    const bridge = makeFakeBridge(revoked());
+    const refresh = vi.spyOn(bridge, "refresh");
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(adapter);
+    expect(adapter.snapshot().config["theme.mode"]).toBe("dark");
+
+    bridge.push(reregistered());
+    expect(adapter.snapshot().config["theme.mode"]).toBe("light");
+    expect(adapter.snapshot().configEntries["theme.mode"]?.updatedAt).toBe(
+      1990,
+    );
+    expect(refresh).not.toHaveBeenCalled();
     adapter.dispose();
   });
 });

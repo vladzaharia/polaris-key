@@ -27,8 +27,16 @@ from .deviceid import derive_device_id, device_id_from_raw, raw_os_device_id
 from .facts import ProbeDeclaration, collect_facts, run_probes
 from .fingerprint import (
     COMPONENT_ORDER,
+    LINUX_ANCHOR_PATHS,
+    WINDOWS_CIM_COMMAND,
+    AnchorSource,
+    FingerprintIO,
+    WindowsCimCommand,
     collect_fingerprint,
     hash_components,
+    linux_anchor_source,
+    parse_windows_cim,
+    ram_bucket,
     raw_components,
 )
 from .store import (
@@ -63,6 +71,14 @@ __all__ = [
     "collect_fingerprint",
     "hash_components",
     "raw_components",
+    "parse_windows_cim",
+    "linux_anchor_source",
+    "ram_bucket",
+    "WINDOWS_CIM_COMMAND",
+    "WindowsCimCommand",
+    "LINUX_ANCHOR_PATHS",
+    "AnchorSource",
+    "FingerprintIO",
     "COMPONENT_ORDER",
     "Store",
     "InMemoryStore",

@@ -52,6 +52,7 @@ import {
   register,
   registerPolarisCommands,
   status,
+  LINUX_NO_MACHINE_ID_HINT,
   type ClientFactory,
 } from "../src/cli/index.js";
 
@@ -266,6 +267,64 @@ describe("cli/commands — license verbs", () => {
   });
 });
 
+describe("cli/commands — fingerprint-required and the token store (P1b-09)", () => {
+  /** The stub server, except that keyless enrolment answers 403 `fingerprint_required`. */
+  function refusingEnroll(): typeof fetch {
+    const { impl } = stubFetch();
+    return (async (input: string | URL | Request, init?: RequestInit) =>
+      new URL(String(input)).pathname === "/djdl/license/enroll"
+        ? jsonResponse({ error: "fingerprint_required" }, 403)
+        : impl(input, init)) as typeof fetch;
+  }
+
+  it("on Linux, a refused enrolment names the missing machine id and the container remedy", async () => {
+    const r = await enroll(await makeClient(refusingEnroll()), "linux");
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain("Enrollment failed");
+    expect(r.message).toContain(LINUX_NO_MACHINE_ID_HINT);
+    expect(r.message).toContain("/etc/machine-id");
+  });
+
+  it("elsewhere the hint is not printed", async () => {
+    const r = await enroll(await makeClient(refusingEnroll()), "darwin");
+    expect(r.ok).toBe(false);
+    expect(r.message).not.toContain(LINUX_NO_MACHINE_ID_HINT);
+  });
+
+  it("status prints the token store line the adapters pass in", async () => {
+    const client = await makeClient(stubFetch().impl);
+    expect(await client.storeStatus()).toEqual({ backend: "memory" });
+    expect(status(client, await client.storeStatus()).message).toContain(
+      "Token store: memory",
+    );
+    const degraded = status(client, {
+      backend: "file",
+      degraded: { reason: "keyring-unavailable", detail: "no Secret Service" },
+    });
+    expect(degraded.message).toContain(
+      "Token store: file (degraded: keyring-unavailable: no Secret Service)",
+    );
+    // Existing callers of `status(client)` are unaffected.
+    expect(status(client).message).not.toContain("Token store");
+  });
+
+  it("storeStatus() is null for a host store without status()", async () => {
+    const inner = new InMemoryStore("djdl");
+    const bare = {
+      getToken: () => inner.getToken(),
+      setToken: (t: string) => inner.setToken(t),
+      clearToken: () => inner.clearToken(),
+      getDeviceId: () => inner.getDeviceId(),
+      readCache: () => inner.readCache(),
+      writeCache: (r: Parameters<InMemoryStore["writeCache"]>[0]) =>
+        inner.writeCache(r),
+      clearCache: () => inner.clearCache(),
+    };
+    const client = await makeClient(stubFetch().impl, { store: bare });
+    expect(await client.storeStatus()).toBeNull();
+  });
+});
+
 describe("cli/commands — status under D-08 (licence service disabled)", () => {
   it("is ok:true with not-applicable, so a config-only product exits 0", async () => {
     // The whole D-08 promise at the CLI: a product that does not license must not be held
@@ -409,6 +468,8 @@ describe("cli/commander adapter smoke", () => {
     });
     // ...and the status command printed the core's output (gate = needs-activation).
     expect(lines.join("\n")).toContain("needs-activation");
+    // ...and the adapter passed the store status through (P1b-09).
+    expect(lines.join("\n")).toContain("Token store: memory");
     expect(seen.client).toBeInstanceOf(PolarisKeyClient);
 
     // Every v3 verb is attached, in its service group. `register` in particular: a config-only

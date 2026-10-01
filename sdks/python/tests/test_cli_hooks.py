@@ -22,8 +22,10 @@ from polaris_key.cli import core
 from polaris_key.core.errors import PolarisError
 from polaris_key.core.models import AllowedRange
 from polaris_key.devices.client import RegisterClosed, RegisterOk
+from polaris_key.core.store import StoreDegraded, StoreStatus
 from polaris_key.license.endpoints import (
     ActivationDeviceLimit,
+    ActivationFingerprintRequired,
     ActivationOk,
     ActivationUnauthorized,
 )
@@ -244,6 +246,45 @@ def test_status_not_applicable_is_zero():
     c = FakeClient(state=_State(status="not-applicable"), licensed=True)
     r = core.status(c)
     assert r.code == 0 and r.lines[0] == "Status: not-applicable"
+
+
+# ── P1b-09: the Linux enrol hint and the token-store line ─────────────────────────────
+def test_enroll_fingerprint_required_on_linux_names_the_machine_id_remedy():
+    c = FakeClient(activation_result=ActivationFingerprintRequired())
+    r = core.enroll(c, platform="linux")
+    assert r.code == 1
+    assert r.lines[0].startswith("Enrollment failed")
+    assert core.LINUX_NO_MACHINE_ID_HINT in r.lines
+    assert "/etc/machine-id" in core.LINUX_NO_MACHINE_ID_HINT
+
+
+def test_enroll_fingerprint_required_elsewhere_has_no_hint():
+    c = FakeClient(activation_result=ActivationFingerprintRequired())
+    r = core.enroll(c, platform="darwin")
+    assert r.code == 1
+    assert core.LINUX_NO_MACHINE_ID_HINT not in r.lines
+
+
+def test_activation_fingerprint_required_on_linux_has_no_enrol_hint():
+    c = FakeClient(activation_result=ActivationFingerprintRequired())
+    r = core.activate(c, "KEY")
+    assert core.LINUX_NO_MACHINE_ID_HINT not in r.lines
+
+
+def test_status_prints_the_token_store_line():
+    c = FakeClient(state=_State(status="ok"))
+    c.store_status = lambda: StoreStatus(  # type: ignore[attr-defined]
+        "file", StoreDegraded("keyring-unavailable", "no keyring extra")
+    )
+    r = core.status(c)
+    assert r.lines[-1] == "Token store: file (degraded: keyring-unavailable: no keyring extra)"
+    c.store_status = lambda: StoreStatus("keyring")  # type: ignore[attr-defined]
+    assert core.status(c).lines[-1] == "Token store: keyring"
+
+
+def test_status_without_store_status_prints_no_store_line():
+    c = FakeClient(state=_State(status="ok"))
+    assert not any(ln.startswith("Token store") for ln in core.status(c).lines)
 
 
 def test_config_layered_value():

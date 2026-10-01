@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/parity/enums.schema.json",
+  "title": "Polaris Key shared enums (conformance/parity/enums.json)",
+  "description": "Closed vocabularies every SDK spells identically (README §3.1). Hand-written; tools/gen-sdk-constants.ts validates it against this schema and generates one constant group per enum in every SDK. An enum is added here when its owner defines it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["enums"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "enums": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/enum" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "enum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "values"],
+      "properties": {
+        "name": {
+          "description": "The enum's name, lowerCamelCase. The generated group is its PascalCase form (`platform` → `Platform`).",
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9]*$"
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*([_.-][a-z0-9]+)*$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

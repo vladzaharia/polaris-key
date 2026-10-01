@@ -744,13 +744,13 @@ describe("module vocabulary → service slugs", () => {
     ).toEqual(["license"]);
   });
 
-  it("maps releases → release AND update", () => {
+  it("maps releases → release, distribution AND update", () => {
     // The old module meant "this product distributes software", which the suite splits into
-    // the truth store and the feed (D-05). Mapping it to release alone would silently take
-    // the appcast and /version away from every product already serving them.
+    // the truth store, delivery and the feed (D-05, README §3.2). Mapping it to release alone
+    // would silently take the appcast and /version away from every product already serving them.
     expect(
       validate({ modules: { releases: { enabled: true } } }).enabledModules,
-    ).toEqual(["release", "update"]);
+    ).toEqual(["release", "distribution", "update"]);
   });
 
   it("maps oidc → identity", () => {
@@ -775,12 +775,20 @@ describe("module vocabulary → service slugs", () => {
           license: { enabled: true },
           config: { enabled: true },
           release: { enabled: true },
+          distribution: { enabled: true },
           update: { enabled: true },
           identity: { enabled: true },
         },
         oidc: { provider: "platform" },
       }).enabledModules,
-    ).toEqual(["license", "config", "release", "update", "identity"]);
+    ).toEqual([
+      "license",
+      "config",
+      "release",
+      "distribution",
+      "update",
+      "identity",
+    ]);
   });
 
   it("collapses a mixed-vocabulary block instead of double-counting", () => {
@@ -793,7 +801,7 @@ describe("module vocabulary → service slugs", () => {
           release: { enabled: true },
         },
       }).enabledModules,
-    ).toEqual(["license", "release", "update"]);
+    ).toEqual(["license", "release", "distribution", "update"]);
   });
 
   it("reports in canonical order whatever order the manifest used", () => {
@@ -843,6 +851,7 @@ describe("parseManifest carries the enablement set", () => {
       license: { enabled: true },
       config: { enabled: false },
       release: { enabled: false },
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     });
@@ -856,73 +865,96 @@ describe("parseManifest carries the enablement set", () => {
       license: { enabled: true },
       config: { enabled: true },
       release: { enabled: false },
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     });
   });
 
-  it("turns a legacy releases manifest into release + update", () => {
+  it("turns a legacy releases manifest into release + distribution + update", () => {
     const res = parse({ modules: { releases: { enabled: true } } });
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.manifest.services.release.enabled).toBe(true);
+    expect(res.manifest.services.distribution.enabled).toBe(true);
     expect(res.manifest.services.update.enabled).toBe(true);
   });
 });
 
-describe("update_requires_release", () => {
+describe("the release ← distribution ← update chain", () => {
   const validate = (modules: Record<string, unknown>) =>
     validateManifestDocuments({
       product: { ...PRODUCT, modules },
       schema: catalogWithSecretDelivery(),
       release: release().release,
     });
+  const codes = (modules: Record<string, unknown>) =>
+    validate(modules).errors.map((e) => e.code);
 
-  it("refuses update declared without release", () => {
-    // Update renders a feed over Release's truth store; alone it would answer every client
-    // with an empty document rather than an error — a silent failure.
-    const res = validate({
-      config: { enabled: true },
-      update: { enabled: true },
-    });
-    expect(res.ok).toBe(false);
-    expect(res.errors.map((e) => e.code)).toContain("update_requires_release");
+  it("refuses distribution declared without release", () => {
+    // Distribution delivers what Release says exists; alone it has nothing to deliver.
+    expect(codes({ distribution: { enabled: true } })).toContain(
+      "distribution_requires_release",
+    );
   });
 
-  it("accepts update alongside release", () => {
+  it("refuses update declared without distribution", () => {
+    // Update serves a feed over what Distribution delivered. Release alone is not enough.
     const res = validate({
       release: { enabled: true },
       update: { enabled: true },
     });
-    expect(res.errors.map((e) => e.code)).not.toContain(
-      "update_requires_release",
-    );
+    expect(res.ok).toBe(false);
+    expect(res.errors.map((e) => e.code)).toEqual([
+      "update_requires_distribution",
+    ]);
   });
 
-  it("accepts release without update", () => {
-    const res = validate({ release: { enabled: true } });
-    expect(res.ok).toBe(true);
+  it("refuses update alone with update_requires_distribution, never update_requires_release", () => {
+    // The retired code is subsumed (README §3.2): it must never be emitted again.
+    const got = codes({ config: { enabled: true }, update: { enabled: true } });
+    expect(got).toContain("update_requires_distribution");
+    expect(got).not.toContain("update_requires_release");
+  });
+
+  it("accepts the whole chain", () => {
+    const res = validate({
+      release: { enabled: true },
+      distribution: { enabled: true },
+      update: { enabled: true },
+    });
+    expect(res.errors).toEqual([]);
+  });
+
+  it("accepts release alone, and release + distribution", () => {
+    expect(validate({ release: { enabled: true } }).ok).toBe(true);
+    expect(
+      validate({
+        release: { enabled: true },
+        distribution: { enabled: true },
+      }).ok,
+    ).toBe(true);
   });
 
   it("cannot be tripped by the legacy releases module", () => {
-    // `releases` maps to both, so the mapping can never produce its own violation.
+    // `releases` maps to all three, so the mapping can never produce its own violation.
     const res = validate({ releases: { enabled: true } });
     expect(res.ok).toBe(true);
-    expect(res.enabledModules).toEqual(["release", "update"]);
+    expect(res.enabledModules).toEqual(["release", "distribution", "update"]);
   });
 
   it("surfaces through parseManifest as a hard failure", () => {
     const res = parseManifest({
       product: JSON.stringify({
         ...PRODUCT,
-        modules: { update: { enabled: true } },
+        modules: { release: { enabled: true }, update: { enabled: true } },
       }),
       schema: JSON.stringify(catalogWithSecretDelivery()),
       release: JSON.stringify(release()),
     });
     expect(res.ok).toBe(false);
     if (res.ok) return;
-    expect(res.errors.join("\n")).toContain("release must be enabled too");
+    expect(res.errors.join("\n")).toContain("distribution must be enabled too");
   });
 });
 

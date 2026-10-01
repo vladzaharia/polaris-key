@@ -1254,3 +1254,39 @@ static func verify(sig: PackedByteArray, msg: PackedByteArray, pk: PackedByteArr
 	for i in 32:
 		d |= chk[i] ^ sig[i]
 	return d == 0
+
+
+# ---- P1-02: per-key precomputation (the per-kid cache in PKeyJws) and the stepwise verify in
+# PKeyEd25519Job. Nothing above this line changed; these reuse it.
+
+## The 8 odd multiples A, 3A, ..., 15A of a p3 point, in cached form (as built inside
+## ge_double_scalarmult_vartime).
+static func odd_multiples(A: Array) -> Array:
+	var t0 := fe_new()
+	var t := _pt(4)
+	var u := _pt(4)
+	var A2 := _pt(4)
+	var Ai := []
+	for i in 8:
+		Ai.append(_pt(4))
+	ge_p3_to_cached(Ai[0], A)
+	ge_p2_dbl(t, A, t0)
+	ge_p1p1_to_p3(A2, t)
+	for i in 7:
+		ge_add(t, A2, Ai[i], t0)
+		ge_p1p1_to_p3(u, t)
+		ge_p3_to_cached(Ai[i + 1], u)
+	return Ai
+
+
+## Decompress a public key once: [pk, -A (p3), odd multiples of -A], or [] when `pk` is not a
+## canonical, on-curve 32-byte key. Read-only afterwards, so one prepared key can serve verifies
+## on several threads. Call on the main thread: it runs `warmup()`.
+static func prepare_key(pk: PackedByteArray) -> Array:
+	if pk.size() != 32 or not y_is_canonical(pk):
+		return []
+	warmup()
+	var A := _pt(4)
+	if not ge_frombytes_negate_vartime(A, pk):
+		return []
+	return [pk.duplicate(), A, odd_multiples(A)]

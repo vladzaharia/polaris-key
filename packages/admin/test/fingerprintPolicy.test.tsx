@@ -68,6 +68,7 @@ const SERVICES: ServicesResponse = {
     license: { enabled: true },
     config: { enabled: false },
     release: { enabled: true },
+    distribution: { enabled: true },
     update: { enabled: true },
     identity: { enabled: false },
   },

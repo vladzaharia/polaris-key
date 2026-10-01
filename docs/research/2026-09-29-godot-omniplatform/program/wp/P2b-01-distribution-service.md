@@ -70,7 +70,7 @@ P4-05, P4-14, P5-\*) and the wire v4 plan (P3-01) build on this service and thes
     `distribution_requires_release`, `update_requires_distribution`; retire
     `update_requires_release` ("subsumed", README §3.2) with its mutation entry replaced by two new
     ones; `product.schema.json` `modules.properties.distribution` and the conditional rules;
-    `SERVICE_ERROR_MESSAGES` in `packages/admin/src/api.ts:349`;
+    `SERVICE_ERROR_MESSAGES` in `packages/admin/src/api.ts` (line 423 at implementation, not 349);
   - the OpenAPI discovery schema (`services.required` and a `distribution` fragment);
   - console: a Distribution section in `route.ts` with one tab (an overview of enablement and hook
     status, docs `/docs/services/distribution/`), the icon in `components/Shell.tsx`, dark and

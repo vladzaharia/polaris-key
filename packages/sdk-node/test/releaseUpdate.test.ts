@@ -171,6 +171,22 @@ describe("ReleaseClient — the truth store's public face (§R1)", () => {
     c.close();
   });
 
+  // `entitled` answers the nested v3 shape; `authenticated`/`licensed` keep the flat v2 one.
+  // Either way the host learns WHY, not merely that it failed (release-changelog transcript).
+  it.each([
+    [{ error: { code: "unauthorized" } }, "unauthorized"],
+    [{ error: "download_auth_required" }, "download_auth_required"],
+    [{}, "unauthorized"],
+  ])(
+    "surfaces a 401 by the refusal body's own code (%j → %s)",
+    async (body, code) => {
+      const mock = mockFetch({ "/release/changelog": () => json(body, 401) });
+      const c = await client(mock);
+      await expect(c.release.changelog()).rejects.toMatchObject({ code });
+      c.close();
+    },
+  );
+
   it("maps any other non-OK status to a PolarisError rather than a raw Response", async () => {
     const mock = mockFetch({ "/release/changelog": () => json({}, 500) });
     const c = await client(mock);
@@ -290,6 +306,7 @@ describe("UpdateClient — the feed over Release's store (§R1)", () => {
             license: { enabled: false },
             config: { enabled: false },
             release: { enabled: true },
+            distribution: { enabled: true },
             update: {
               enabled: true,
               endpoints: {
@@ -324,7 +341,7 @@ describe("Release/Update — the D-21 gate fires before the dial", () => {
       "/release/changelog": () => json(CHANGELOG),
       "/update/version": () => json({ version: "9.9.9", tag: "v9", url: "u" }),
     });
-    // The suite default: license + config on, release/update/identity OFF.
+    // The suite default: license + config on, release/distribution/update/identity OFF.
     const c = await client(mock, { services: ["license", "config"] });
     await expect(c.release.changelog()).rejects.toMatchObject({
       code: "service-unavailable",
@@ -349,6 +366,7 @@ describe("Release/Update — the D-21 gate fires before the dial", () => {
             license: { enabled: false },
             config: { enabled: false },
             release: { enabled: true },
+            distribution: { enabled: true },
             update: { enabled: false },
             identity: { enabled: false },
           },

@@ -166,12 +166,29 @@ function errorCodes() {
   const enumRows = [
     ...(enumMatch?.[1] ?? "").matchAll(/([A-Za-z]+):\s*"([a-z_]+)"/g),
   ].map((m) => [`\`${m[2]}\``, `\`ErrorCode.${m[1]}\``]);
+  // The registry (P1b-02): every code, wire and client. `pnpm gen:constants` generates each
+  // SDK's ErrorCode constants from it; the client codes are listed here because no Worker
+  // source names them.
+  const registry = JSON.parse(
+    read("conformance", "parity", "errors.json"),
+  ).codes;
+  const clientRows = registry
+    .filter((entry) => entry.kind === "client")
+    .map((entry) => [
+      `\`${entry.code}\``,
+      `\`${entry.service}\``,
+      mdxProse(entry.description),
+    ]);
   return page(
     "Wire error codes",
-    "The PolarisErrorCode taxonomy (protocol) and the worker's ErrorCode enum.",
+    "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode enum, and the client codes the SDKs raise.",
     `Wire-v3 errors are nested — \`{"error":{"code":…}}\` — and the not-found body is ONE
 shape for "no such product", "service not enabled", and "no such route" (hide-don't-reveal).
-${codes.length} protocol codes; the worker enum maps each to its response site.`,
+${codes.length} protocol codes; the worker enum maps each to its response site.
+
+Every code, wire and client, is registered in \`conformance/parity/errors.json\`
+(${registry.length} codes), and \`pnpm gen:constants\` generates each SDK's \`ErrorCode\` constants
+from it. A new code needs an entry there first.`,
     [
       "## Protocol codes (`@polaris-key/protocol/core`)",
       "",
@@ -182,6 +199,12 @@ ${codes.length} protocol codes; the worker enum maps each to its response site.`
       enumRows.length
         ? table(["Wire code", "Enum member"], enumRows)
         : "_(enum not found)_",
+      "",
+      "## Client codes (`conformance/parity/errors.json`)",
+      "",
+      "Raised by an SDK, never sent by the Worker. Hosts match on the exact string.",
+      "",
+      table(["Code", "Service", "Meaning"], clientRows),
     ].join("\n"),
   );
 }
@@ -428,8 +451,9 @@ function corpusInventory() {
     "Conformance corpus v2",
     "The case families every SDK verifies identically, generated from the corpus files themselves.",
     `One generator (\`tools/sign-corpus.ts\`) signs every vector, and every language runner
-verifies them: Node, Python, Swift, React (the gate matrix) and Godot (\`jwsCases\`, from an
-editor and an exported release template). \`pnpm gen:corpus -- --check\` is the CI drift gate,
+verifies them: Node, Python, Swift, React (the gate matrix) and Godot (every \`cases.json\`
+family and the \`fingerprint.json\` device ids, from an editor and an exported release
+template). \`pnpm gen:corpus -- --check\` is the CI drift gate,
 over the source and both generator-owned mirrors (the Swift test resources and the Godot
 \`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`). Corpus v1 is deleted — v2 is the
 only corpus. \`corpusVersion ${cases.corpusVersion}\`,
@@ -443,6 +467,8 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
       `## Gate matrix (\`gate-matrix.json\`): ${gate.rows?.length ?? gate.cases?.length ?? "?"} rows`,
       "",
       `## Fingerprint corpus (\`fingerprint.json\`): ${fp.vectors?.length ?? "?"} vectors, ${fp.deviceIds?.length ?? "?"} device-id derivations, component order ${fp.componentOrder?.map((c) => `\`${c}\``).join(" → ")}`,
+      "",
+      `Source-rule sections (WIRE-CONTRACT-V3 §6.1): \`windowsCim\` ${fp.windowsCim?.length ?? "?"}, \`linuxAnchor\` ${fp.linuxAnchor?.length ?? "?"}, \`ramBuckets\` ${fp.ramBuckets?.length ?? "?"}, plus the pinned \`windowsCimCommand\`.`,
       "",
       `## Stage matrix (\`stage-matrix.json\`): ${stages.rows?.length ?? "?"} rows, ${stages.guardCases?.length ?? "?"} guard cases`,
       "",

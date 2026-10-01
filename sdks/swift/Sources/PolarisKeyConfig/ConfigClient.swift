@@ -76,17 +76,19 @@ public actor ConfigClient {
     private let localOverrides: [String: JSONValue]
     private let envPrefix: String
     private let environment: [String: String]
-    private let reacquire: ReacquireToken?
+    private let reacquire: ReacquireFn?
     /// Edge-minted tokens, in memory only, each with the device token it was minted with (see
     /// `Mint.swift`).
     private var minted: [String: (deviceToken: String, token: MintedToken)] = [:]
     private var minting: [String: (deviceToken: String, task: Task<MintedToken, Error>)] = [:]
 
-    /// - Parameter reacquire: the §5 single re-acquire an edge-mint 401 gets. Injected by the
-    ///   facade because the route belongs to the license module; without it a 401 simply fails.
+    /// - Parameter reacquire: the §5 single re-acquire an edge-mint 401 gets — the facade's one
+    ///   closure, the same a document 401 uses, so the route (`license/token`, or re-registration
+    ///   for a licence-less device) is chosen the same way. Injected because the routes belong to
+    ///   the license and devices modules; without it a 401 simply fails.
     public init(
         core: CoreContext, options: ConfigClientOptions = ConfigClientOptions(),
-        reacquire: ReacquireToken? = nil
+        reacquire: ReacquireFn? = nil
     ) {
         self.core = core
         self.localOverrides = options.localOverrides
@@ -158,6 +160,12 @@ public actor ConfigClient {
     /// `not-applicable`.
     public func isEnabled() async -> Bool {
         await core.enabled(.config)
+    }
+
+    /// `GET /<p>/config/schema` — the product's active catalog, as served. `nil` on any failure,
+    /// never a throw; see `ConfigEndpoints.fetchSchema`.
+    public func fetchSchema() async -> Data? {
+        await ConfigEndpoints.fetchSchema(core)
     }
 
     /// The product's active catalog version, as the last verified document stated it.

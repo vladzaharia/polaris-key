@@ -39,6 +39,10 @@ __all__ = [
     "ImportedBundle",
     "CacheRecord",
     "Store",
+    "STORE_BACKENDS",
+    "STORE_DEGRADED_REASONS",
+    "StoreDegraded",
+    "StoreStatus",
 ]
 
 #: Bumped whenever the on-disk shape changes. A record carrying any other value is
@@ -162,3 +166,57 @@ class Store(Protocol):
     def read_cache(self) -> Optional[CacheRecord]: ...
     def write_cache(self, rec: CacheRecord) -> None: ...
     def clear_cache(self) -> None: ...
+
+    # NOT part of the protocol: ``status()`` is optional (P1b-09). The Protocol is
+    # ``runtime_checkable``, so adding it here would make every existing host store fail
+    # ``isinstance(store, Store)``. A store that reports adds ``status() -> StoreStatus`` and
+    # the client finds it with ``getattr``.
+
+
+# ── Store status (P1b-09 plan §2.3) ─────────────────────────────────────────────────────
+#: Where a token store keeps the token. Stable identifiers, shared with every SDK.
+STORE_BACKENDS = (
+    "keyring",  # an OS credential store through the `keyring` package
+    "keychain",  # the Apple Keychain through Security.framework
+    "keystore",  # an Android Keystore key wrapping the token
+    "file",  # a 0600 file
+    "memory",  # nothing persists (tests)
+    "indexeddb",  # browser storage (Godot web)
+    "custom",  # a host store that fits none of these
+)
+
+#: Why a store is weaker than this platform's best option. Stable identifiers.
+STORE_DEGRADED_REASONS = (
+    "keyring-unavailable",  # the OS keyring cannot be loaded, or its backend is fail/null
+    "keyring-error",  # the keyring loaded but an operation failed, now or in the write that fell back
+    "legacy-keychain",  # macOS: no data-protection keychain entitlement
+    "not-persistent",  # storage may be evicted or not survive a restart
+)
+
+
+@dataclass(frozen=True)
+class StoreDegraded:
+    reason: str
+    #: Human text; never contains the token.
+    detail: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"reason": self.reason}
+        if self.detail is not None:
+            out["detail"] = self.detail
+        return out
+
+
+@dataclass(frozen=True)
+class StoreStatus:
+    """What a store's optional ``status()`` reports: where the token lives now, and why if
+    that is weaker than this platform's best option."""
+
+    backend: str
+    degraded: Optional[StoreDegraded] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"backend": self.backend}
+        if self.degraded is not None:
+            out["degraded"] = self.degraded.to_dict()
+        return out

@@ -16,4 +16,5 @@ export {
   type BridgeOidcBegin,
   type BridgeOidcPoll,
   type BridgeActivation,
+  type BridgeImportBundle,
 } from "./bridge.js";

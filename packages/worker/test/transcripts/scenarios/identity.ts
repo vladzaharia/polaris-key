@@ -13,7 +13,13 @@ import { expect } from "vitest";
 import { dispatchWith } from "../../../src/dispatch.js";
 import { TranscriptRecorder, BASE_URL, type World } from "../recorder.js";
 import { DEVICE, document, syncReport, T0, trust, VERSION } from "../client.js";
-import { pinned, PRODUCT, productWorld, type Scenario } from "../world.js";
+import {
+  pinned,
+  PRODUCT,
+  productWorld,
+  servicesOn,
+  type Scenario,
+} from "../world.js";
 import type { ServicesMap } from "../../../src/core/services.js";
 import { seedTier } from "../../seed.js";
 import {
@@ -25,13 +31,7 @@ import {
 import type { JsonValue } from "../format.js";
 
 /** License for the gate, Config for the post-sign-in sync, Identity for the sign-in itself. */
-const IDENTITY: ServicesMap = {
-  license: { enabled: true },
-  config: { enabled: true },
-  release: { enabled: false },
-  update: { enabled: false },
-  identity: { enabled: true },
-};
+const IDENTITY: ServicesMap = servicesOn("license", "config", "identity");
 
 /** The player who signs in, and the IdP group that entitles them. */
 const PLAYER = {

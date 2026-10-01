@@ -1,0 +1,333 @@
+class_name PKeyCore
+extends RefCounted
+## Core's live state (sdk-node `core/context.ts`): the device principal, the credential, the
+## trust set, the verified cache, the monotonic clock floor, the capability map and the
+## transport. Every service client is handed this object (`PolarisKey.core`).
+##
+## Hooks for later packages:
+##   request(method, path, body, auth)  every service client's HTTP call (a PKeyResult)
+##   tokens.set_reacquire(callable)     the 401 re-acquire (P1-03)
+##   add_post_sync_hook(callable)       telemetry after each sync (P1-05)
+##   PKeyDeviceId.set_raw_source(...)   desktop device-id sources (P1-05)
+
+## A store operation failed: {op, path, error, message}.
+signal store_error(err: Dictionary)
+
+const DEFAULT_BASE := "https://key.plrs.im"
+
+var options: PKeyOptions
+var product := ""
+var base_url := ""
+var version := ""
+var channel := ""
+var sdk_version := ""
+var local_only := false
+var trust_refresh := true
+var store: PKeyStore
+var transport: PKeyTransport
+var clock: PKeyClock
+var trust: PKeyTrust
+var tokens: PKeyTokenManager
+var cache: PKeyCache
+var device_id := ""
+var started := false
+var last_store_error: Dictionary = {}
+## Callables `(core: PKeyCore, result: PKeySyncResult)`, awaited after each sync's write.
+var post_sync_hooks: Array[Callable] = []
+## The last discovery manifest this session, or null.
+var discovery_manifest = null
+
+var _expected_services = null
+var _discovered_services = null
+
+
+## Validate `opts` and build a Core. ok with detail = the PKeyCore, or a failure:
+## `insecure-base-url`, `invalid-options`. Nothing touches the disk or the network.
+static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKeyResult:
+	if opts == null:
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "No PKeyOptions given.")
+	if not RegEx.create_from_string("\\A[a-z0-9][a-z0-9_-]*\\z").search(opts.product):
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "product must be a lower-case slug, got '%s'." % opts.product)
+	var base := PKeyTransport.check_base_url(opts.base_url if opts.base_url != "" else DEFAULT_BASE)
+	if not base.ok:
+		return base
+	var v := opts.resolved_version()
+	if not PKeySemver.is_valid(v):
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "version must be semver (PKeyOptions.version or application/config/version), got '%s'." % v)
+	for k in opts.pinned_trust_keys:
+		if not (k is String and opts.pinned_trust_keys[k] is String):
+			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "pinned_trust_keys must map kid strings to base64url key strings.")
+	for s in opts.expected_services:
+		if not PKeyServices.SLUGS.has(s):
+			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "expected_services names an unknown service '%s'." % s)
+	var core := PKeyCore.new()
+	core.options = opts
+	core.product = opts.product
+	core.base_url = base.detail
+	core.version = v
+	core.channel = opts.default_channel if opts.default_channel != "" else PKeySemver.channel_for_version(v)
+	core.sdk_version = p_sdk_version
+	core.local_only = opts.local_only
+	core.trust_refresh = opts.trust_refresh
+	core.store = opts.store if opts.store != null else PKeyFileStore.new(opts.product, opts.store_root)
+	core.store.failed.connect(core._on_store_failed)
+	core.transport = PKeyTransport.new(host)
+	core.transport.timeout = opts.request_timeout_seconds
+	core.transport.local_only = opts.local_only
+	core.clock = PKeyClock.new(opts.now_source)
+	core.trust = PKeyTrust.new(opts.pinned_trust_keys)
+	core.tokens = PKeyTokenManager.new(core.store)
+	core.tokens.core_ref = weakref(core)
+	core._expected_services = opts.expected_services if not opts.expected_services.is_empty() else null
+	PKeyJws.set_slice_budget_ms(opts.verify_slice_ms)
+	return PKeyResult.success(core)
+
+
+## Offline load: device id, token, and the verified cache. No network. A coroutine.
+func start() -> PKeyResult:
+	device_id = store.get_device_id()
+	if device_id == "":
+		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The store has no device id.", last_store_error)
+	tokens.load_token()
+	cache = PKeyCache.new(store, trust, clock, product, device_id)
+	await cache.load_record()
+	started = true
+	return PKeyResult.success()
+
+
+func _on_store_failed(err: Dictionary) -> void:
+	last_store_error = err
+	store_error.emit(err)
+
+
+# ── Capabilities (D-21) ────────────────────────────────────────────────────────────────────
+
+## slug -> {"enabled": bool}: discovery this session, else expected_services, else the default.
+func services() -> Dictionary:
+	if _discovered_services != null:
+		return _discovered_services.duplicate(true)
+	if _expected_services != null:
+		return PKeyDiscovery.services_from_list(_expected_services)
+	return PKeyDiscovery.default_services()
+
+
+func enabled(slug: String) -> bool:
+	return PKeyClaims.is_true(services().get(slug, {}).get("enabled", false))
+
+
+## null when `slug` is enabled, else a `service-unavailable` failure for the caller to return.
+func require_service(slug: String) -> Variant:
+	if enabled(slug):
+		return null
+	return PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "The %s service is not enabled for %s." % [slug, product])
+
+
+## Fetch the discovery document and, when it parses, install its capability map. A coroutine.
+## detail: {kind: "ok" | "not-found" | "invalid" | "error", services?, manifest?}.
+func discover() -> PKeyResult:
+	var r := await transport.request("GET", "%s/%s/.well-known/polaris.json" % [base_url, product.uri_encode()])
+	if not r.ok:
+		return PKeyResult.failure(r.code, r.message, {"kind": "error"})
+	var status: int = r.detail["status"]
+	if status == 404:
+		return PKeyResult.failure(PKeyErrors.NOT_FOUND, "No such product.", {"kind": "not-found", "status": status})
+	if status < 200 or status >= 300:
+		return PKeyResult.failure(PKeyErrors.HTTP_ERROR, "Discovery answered %d." % status, {"kind": "error", "status": status})
+	var parsed := PKeyJson.parse_bytes(r.detail["body"])
+	if not parsed["ok"]:
+		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "Discovery response is not valid JSON.", {"kind": "invalid"})
+	var d := PKeyDiscovery.parse(parsed["value"], product)
+	if d["kind"] != "ok":
+		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, d["message"], d)
+	_discovered_services = d["services"]
+	discovery_manifest = d["manifest"]
+	return PKeyResult.success(d)
+
+
+# ── Transport ──────────────────────────────────────────────────────────────────────────────
+
+## The X-PKey-* headers every product-scoped call carries.
+func headers(extra: Dictionary = {}) -> Dictionary:
+	var h := PKeyHeaders.build(device_id, version, channel, sdk_version)
+	h.merge(extra, true)
+	return h
+
+
+## `<base_url>/<product>/<path>`.
+func url(path: String) -> String:
+	return "%s/%s/%s" % [base_url, product, path]
+
+
+## One product-scoped call. `body`: a Dictionary or Array (sent as JSON), a String, or null.
+## `auth`: send the device token as a bearer. ok for a 2xx or 304; otherwise `code` is the
+## server's error code (either spelling) or `http-error`, and `detail` always carries
+## {status, headers, body, error?}. Transport failures keep the transport's code. A coroutine.
+func request(method: String, path: String, body: Variant = null, auth := false, extra_headers: Dictionary = {}) -> PKeyResult:
+	var h := headers(extra_headers)
+	if auth:
+		if not tokens.has_token():
+			return PKeyResult.failure(PKeyErrors.NO_TOKEN, "No device token is held.")
+		h["Authorization"] = "Bearer %s" % tokens.current()
+	var bytes := PackedByteArray()
+	if body is Dictionary or body is Array:
+		bytes = PKeyJson.stringify(body).to_utf8_buffer()
+		h["Content-Type"] = "application/json"
+	elif body is String:
+		bytes = (body as String).to_utf8_buffer()
+	elif body is PackedByteArray:
+		bytes = body
+	var r := await transport.request(method, url(path), h, bytes)
+	if not r.ok:
+		return r
+	var status: int = r.detail["status"]
+	if (status >= 200 and status < 300) or status == 304:
+		return r
+	var e := PKeyErrors.read_body(r.detail["body"])
+	r.detail["error"] = e
+	var code: String = e["code"] if e["code"] != "" else String(PKeyErrors.HTTP_ERROR)
+	return PKeyResult.failure(StringName(code), e["message"] if e["message"] != "" else "HTTP %d" % status, r.detail)
+
+
+## GET one signed document with If-None-Match, mapped onto the §5 taxonomy:
+## {kind: "ok", jws, etag} | {kind: "not-modified"} | {kind: "unauthorized"} |
+## {kind: "blocked", blocked: {reason, allowedRange?}} | {kind: "rate-limited", ...} |
+## {kind: "error", status, message}. Verification is NOT here. A coroutine.
+func get_document(path: String, token: String, etag: String) -> Dictionary:
+	var h := headers({"Authorization": "Bearer %s" % token})
+	if etag != "":
+		h["If-None-Match"] = etag
+	var r := await transport.request("GET", url(path), h)
+	if not r.ok:
+		return {"kind": "error", "status": 0, "message": r.message, "code": r.code}
+	var status: int = r.detail["status"]
+	var body: PackedByteArray = r.detail["body"]
+	match status:
+		304:
+			return {"kind": "not-modified"}
+		401:
+			return {"kind": "unauthorized"}
+		429:
+			var e := PKeyErrors.read_body(body)
+			return {"kind": "rate-limited", "limit": e["body"].get("limit"), "deviceCount": e["body"].get("deviceCount")}
+		403:
+			# v3 nests the code and keeps allowedRange at the top level; a pre-nesting body is read
+			# flat; a body that says nothing (or names an unknown reason) is the stricter block.
+			var e := PKeyErrors.read_body(body)
+			var reason: String = e["reason"]
+			if not PKeyGate.BLOCK_REASONS.has(reason):
+				reason = "channel-not-entitled" if e["code"] == "channel_not_allowed" else "version-too-old"
+			var blocked := {"reason": reason}
+			if e["body"].get("allowedRange") is Dictionary:
+				blocked["allowedRange"] = e["body"]["allowedRange"]
+			return {"kind": "blocked", "blocked": PKeyGate.sanitize_blocked(blocked)}
+		200:
+			return {"kind": "ok", "jws": body.get_string_from_utf8(), "etag": r.detail["headers"].get("etag", "")}
+	return {"kind": "error", "status": status, "message": body.get_string_from_utf8().left(200)}
+
+
+## Fetch and accept the signed trust manifest (against the pins only). Returns the compact JWS
+## to persist, or "" when nothing acceptable arrived (the old set stays). A coroutine.
+func refresh_trust() -> String:
+	var r := await transport.request("GET", url(".well-known/polaris-trust.jws"), {"Accept": "application/jose"})
+	if not r.ok or r.detail["status"] != 200:
+		return ""
+	var jws: String = (r.detail["body"] as PackedByteArray).get_string_from_utf8().strip_edges()
+	var issued := await trust.accept_network(jws, product, clock.system_now(), true)
+	if issued < 0:
+		return ""
+	clock.raise(issued)
+	return jws
+
+
+# ── Sync, bundles, state ───────────────────────────────────────────────────────────────────
+
+func sync(force := false) -> PKeySyncResult:
+	return await PKeySync.run(self, force)
+
+
+func add_post_sync_hook(hook: Callable) -> void:
+	post_sync_hooks.append(hook)
+
+
+## Verify and install an offline bundle (§7), all-or-nothing; no token is created. ok with
+## detail {bundle_id, imported: ["license"?, "config"?]}, or the refusing step as `code`.
+## Works local-only. A coroutine.
+func import_bundle(text: String, now := -1.0) -> PKeyResult:
+	if not started:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call start() before import_bundle().")
+	var at := now if now >= 0 else clock.system_now()
+	var r := await PKeyBundle.inspect(text.strip_edges(), {
+		"pinned": trust.pinned(), "product": product, "device_id": device_id, "now": at,
+	})
+	if not r["ok"]:
+		return PKeyResult.failure(StringName(r["reason"]), _bundle_message(r["reason"]), {"reason": r["reason"]})
+	var b: Dictionary = r["bundle"]
+	var docs := {}
+	var imported: Array = []
+	for slice in ["license", "config"]:
+		if b["docs"].has(slice):
+			docs[slice] = b["docs"][slice]["jws"]
+			imported.append(slice)
+	var record := {
+		"v": PKeyCache.VERSION,
+		"trustJws": b["trust_jws"],
+		"docs": docs,
+		"importedBundle": {"bundleId": b["bundle_id"], "importedAt": int(at)},
+	}
+	if not cache.replace(record):
+		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The verified bundle could not be written.", last_store_error)
+	# Re-run the normal load over what was written: the import reaches exactly the state a
+	# restart would.
+	await cache.load_record()
+	return PKeyResult.success({"bundle_id": b["bundle_id"], "imported": imported})
+
+
+static func _bundle_message(reason: String) -> String:
+	match reason:
+		PKeyBundle.JWS_REJECTED:
+			return "The bundle's signature, type or size was not acceptable."
+		PKeyBundle.CLAIMS_REJECTED:
+			return "The bundle is not addressed to this device, or its import window has closed."
+		PKeyBundle.TRUST_REJECTED:
+			return "The trust manifest inside the bundle was rejected against the pinned keys."
+	return "A document inside the bundle failed verification; nothing was imported."
+
+
+## "token" when a device token is held, else "bundle" when an imported bundle left a verified
+## licence document, else "".
+func activation() -> String:
+	if tokens != null and tokens.has_token():
+		return "token"
+	if cache != null and cache.imported_bundle != null and cache.license != null:
+		return "bundle"
+	return ""
+
+
+## The licence gate's view now (PKeyGate.license_state).
+func license_state() -> Dictionary:
+	return PKeyGate.license_state({
+		"license_service_enabled": enabled("license"),
+		"activation": activation(),
+		"doc": cache.license["doc"] if cache != null and cache.license != null else null,
+		"now": clock.system_now(),
+		"high_water_mark": clock.high_water(),
+		"last_sync_unauthorized": cache != null and cache.last_sync_unauthorized,
+		"blocked": cache.blocked if cache != null else null,
+		"last_verified_at": cache.last_verified_at if cache != null else null,
+	})
+
+
+## One snapshot of everything a UI renders from (sdk-node `getSyncState`).
+func sync_state() -> Dictionary:
+	return {
+		"activation": activation(),
+		"doc": cache.license["doc"] if cache != null and cache.license != null else null,
+		"last_sync_unauthorized": cache != null and cache.last_sync_unauthorized,
+		"blocked": cache.blocked if cache != null else null,
+		"last_verified_at": cache.last_verified_at if cache != null else null,
+		"high_water_mark": clock.high_water(),
+	}
+
+
+func store_status() -> Dictionary:
+	return store.status()

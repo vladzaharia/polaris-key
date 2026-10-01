@@ -69,6 +69,56 @@ re-pulls. The default `KeyringStore` stores credentials in the OS keyring when a
 fallback. Inject an `InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client`
 (e.g. with a `MockTransport`) for the transport.
 
+A 401 on a document gets exactly **one** re-acquire per `sync()` pass, then one retry of the
+failed fetch. A licensed device rotates its token with `POST /<product>/license/token`. A
+registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `devices.register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
+`Authorization` header). A refusal (403 `registration_closed`, 404, 429) spends the attempt and
+the hard 401 is recorded. After a restart the token's origin is not persisted, so a product
+with License on uses `license/token`. Under the `requires-identity` policy a native device
+cannot re-register (that needs a browser session) and lands on the hard 401.
+
+### Token store status
+
+`client.store_status()` returns a `StoreStatus` (`backend`, `degraded`; `to_dict()` for JSON), or
+`None` for a host store without `status()`. The default `KeyringStore` reports `keyring`, or
+`file` with a reason:
+
+- `keyring-unavailable`: the optional `keyring` extra is not installed, or its backend is
+  `fail` or `null` (which store nothing);
+- `keyring-error`: the keyring raised, or an earlier write fell back to the `0600` file (the next
+  token write moves it to the keyring).
+
+Writes are verified by reading back, and reads are file-first: only a write that fell back leaves
+a file, so a file token is always the newest copy. The CLI `status` command prints the same as a
+`Token store:` line.
+
+### Directories
+
+`client.core.dirs` holds the resolved `config`, `data`, `cache` and `state` directories, each
+ending in `<product>`; pass `data_dir`, `cache_dir` or `state_dir` (bases) to override. Nothing
+is created until something uses one, and the config directory has not moved.
+
+| Base   | Linux and other POSIX                                         | macOS                                             | Windows                            |
+| ------ | ------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
+| config | `$XDG_CONFIG_HOME` or `~/.config`                             | same as Linux                                     | same as Linux (`~\.config`)        |
+| data   | `$XDG_DATA_HOME/polaris-key` or `~/.local/share/polaris-key`  | `~/Library/Application Support/polaris-key/data`  | `%LOCALAPPDATA%\polaris-key\data`  |
+| cache  | `$XDG_CACHE_HOME/polaris-key` or `~/.cache/polaris-key`       | `~/Library/Caches/polaris-key`                    | `%LOCALAPPDATA%\polaris-key\cache` |
+| state  | `$XDG_STATE_HOME/polaris-key` or `~/.local/state/polaris-key` | `~/Library/Application Support/polaris-key/state` | `%LOCALAPPDATA%\polaris-key\state` |
+
+`polaris_key.core.exclude_from_backup(path)` marks an existing directory (`CACHEDIR.TAG`, plus
+`tmutil addexclusion` on macOS; `not-applicable` on Windows) and never raises.
+
+### Linux and containers
+
+The fingerprint anchor and the device id read `/etc/machine-id`, else
+`/var/lib/dbus/machine-id` (a blank file and `uninitialized` are skipped); DMI files are never
+read, so root and non-root agree. A container with neither file has no anchor and cannot enrol
+without a licence key: mount the host's `/etc/machine-id` read-only, or create one and keep it in
+a volume. Never bake one into an image. On Windows, `boardSerial` and `machineModel` come from
+one PowerShell `Get-CimInstance` call, run with no console window and a null stdin.
+
 ## Sub-packages
 
 Every one is importable on its own, so a config-only daemon never pulls the licence module:
@@ -76,13 +126,21 @@ Every one is importable on its own, so a config-only daemon never pulls the lice
 | Import                 | Owns                                                                                                                 |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `polaris_key.core`     | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto |
-| `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate                                 |
-| `polaris_key.config`   | the signed config document + layered resolution, edge-mint (`mint_token`)                                            |
+| `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate, `entitled_channels()`          |
+| `polaris_key.config`   | the signed config document + layered resolution, `fetch_schema()` (the catalog), edge-mint (`mint_token`)            |
 | `polaris_key.devices`  | registration, the roster, fingerprint / facts / device-id, the stores                                                |
 | `polaris_key.identity` | device-code sign-in (RFC 8628): `begin_sign_in` / `poll_sign_in` / `wait_for_sign_in`                                |
 | `polaris_key.release`  | changelog, install script, artifact URLs                                                                             |
 | `polaris_key.update`   | version check + the Sparkle appcast URL                                                                              |
 | `polaris_key.local`    | the transportless profile                                                                                            |
+
+`client.license.entitled_channels()` returns the `channels` entitlement's string grants in
+order, or `["stable"]` when the licence carries none — the Worker's own answer, and every SDK's.
+`client.config.fetch_schema()` returns the product's catalog as a `dict`, or `None` on any
+failure (it is unsigned and diagnostic, so it never raises). `client.release` raises
+`service-unavailable` when the product does not run Release, forwards the device token when one
+is held, and raises a 401/403 with the refusal body's own code (`unauthorized`,
+`channel_not_allowed`, …); a changelog entry's `summary` is `None` when the release has none.
 
 ### Capabilities (fail-closed)
 
@@ -169,7 +227,7 @@ through an operator-approved recipe (`GET /<product>/config/mint/<recipe_id>/tok
 device token) and returns a `MintedToken(token, expiresAt)`. It is cached **in memory only** —
 never in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, and only
 while the client still holds the device token it was minted with — `deactivate()`, a cleared
-token or a different sign-in drops it. A 401 gets the usual single re-acquire and one retry. Failures raise `PolarisError`:
+token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures raise `PolarisError`:
 `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`) before any
 request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.

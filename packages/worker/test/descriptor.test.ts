@@ -107,6 +107,7 @@ const PRODUCT_DOC = {
   modules: {
     license: { enabled: true },
     release: { enabled: true },
+    distribution: { enabled: true },
     update: { enabled: true },
   },
 };

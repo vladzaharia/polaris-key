@@ -17,7 +17,15 @@ export {
 
 export { TrustManager } from "./trust.js";
 export { CacheManager, type CachedDoc, type LoadedCache } from "./cache.js";
-export { TokenManager, type ReacquireFn, type TokenSource } from "./token.js";
+export {
+  TokenManager,
+  chooseReacquireRoute,
+  type ReacquireFn,
+  type ReacquireInputs,
+  type ReacquireRoute,
+  type Reacquired,
+  type TokenSource,
+} from "./token.js";
 export {
   sync,
   type DocOutcome,
@@ -39,5 +47,18 @@ export {
   KeyringStore,
   randomFallbackId,
   type CacheRecordV3,
+  type KeyringStoreOptions,
   type Store,
+  type StoreStatus,
 } from "./store.js";
+export {
+  CACHEDIR_TAG_SIGNATURE,
+  defaultDirBases,
+  excludeFromBackup,
+  resolveDirs,
+  type BackupExclusion,
+  type BackupHost,
+  type DirOverrides,
+  type DirsHost,
+  type ProductDirs,
+} from "./dirs.js";

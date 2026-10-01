@@ -30,10 +30,11 @@ sdks/
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
   godot/             Godot addon               pure-GDScript verify and a headless runner
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
-                     + parity/ (features.json registry; each SDK keeps its own parity.json)
+                     + parity/ (features.json registry, errors.json + enums.json; each SDK
+                       keeps its own parity.json)
                      + transcripts/ (HTTP conversations recorded through the Worker router)
 tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-transcripts.mjs ·
-                     gen-services.ts + services.json
+                     gen-services.ts + services.json · gen-sdk-constants.ts
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
                      security/ (threat model, wire contract v3, audit + findings)
@@ -58,10 +59,15 @@ The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and 
 conformance runner. Python, Swift and Godot are standalone toolchains under `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
-opt-in service (`license`, `config`, `release`, `update`, `identity`). The services are declared
+opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`). The services
+are declared
 once, as rows of `tools/services.json`; `pnpm gen:services` generates every language's slug
 constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
-`SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`.
+`SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`. Release, Distribution and Update form a
+chain (release ← distribution ← update, coherence codes `distribution_requires_release` and
+`update_requires_distribution`); services read one another's state only through Core's
+read-only descriptor hooks in `src/core/hooks.ts` (`releaseCatalog`, `delivery`,
+`outletCapabilities`), which answer `null` while the providing service is off.
 
 ## Toolchain constraint: Node 22
 
@@ -85,6 +91,7 @@ pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
 pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
 pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
+pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -121,11 +128,11 @@ gate-matrix.json,fingerprint.json,stage-matrix.json}` and the generator-owned mi
 Regenerate with `pnpm gen:corpus` and commit the result in the same change.
 `pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,
 and on a stray JSON file in any of them. Never weaken a runner to make a change "pass". The same
-holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Swift mirror at
-`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` are recorded by the Worker's scenario
-tests (`packages/worker/test/transcripts/`) through `pnpm gen:transcripts`; a Worker change that
-alters a recorded response regenerates them in the same change, and the SDK replayers then show
-which SDKs must follow.
+holds for the HTTP transcripts: `conformance/transcripts/*.json` and their mirrors at
+`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` and `sdks/godot/tests/transcripts/` are
+recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) through
+`pnpm gen:transcripts`; a Worker change that alters a recorded response regenerates them in the
+same change, and the SDK replayers then show which SDKs must follow.
 
 **2. A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** The constant lives in
 `packages/shared-protocol/src/core.ts` and is currently **3**. The signed document set is
@@ -134,17 +141,21 @@ license / config / trust / bundle (`pkey-license+jws`, `pkey-config+jws`, `pkey-
 `graceUntil`). Changing the encoding is a deliberate, all-languages event: contract → catalog →
 corpus → SDKs, in that order, and a feature is not done until all five implementations pass.
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Three families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Four families:
 
-| File(s)                                                                 | Written by                                        |
-| ----------------------------------------------------------------------- | ------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`                              | the docs build (`scripts/collect-csp-hashes.mjs`) |
-| `packages/docs/src/content/docs/reference/*.mdx`                        | `pnpm --filter @polaris-key/docs gen`             |
-| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift` | `pnpm gen:services` from `tools/services.json`    |
+| File(s)                                                                                                   | Written by                                                                                                                    |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `packages/worker/src/docsCsp.generated.ts`                                                                | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                             |
+| `packages/docs/src/content/docs/reference/*.mdx`                                                          | `pnpm --filter @polaris-key/docs gen`                                                                                         |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`          | `pnpm gen:services` from `tools/services.json`                                                                                |
+| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd` | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core` |
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
-table), so a hand edit fails CI rather than shipping. The service table is the one declaration
+table, `pnpm gen:constants -- --check` for the SDK constants), so a hand edit fails CI rather
+than shipping. A new error code needs an entry in `conformance/parity/errors.json` first: the
+constants generator refuses a Worker code it lacks (and a boot-stage code pinned in
+`stage-matrix.json`), and each SDK's registry test refuses an SDK code it lacks. The service table is the one declaration
 of the opt-in services; adding one is the checklist at
 `packages/docs/src/content/docs/contribute/layout.md` ("Adding a service").
 
@@ -163,7 +174,8 @@ require a worker redeploy. If you are about to write `if (product === "djdl")`, 
 **6. Service boundaries are enforced by a test.** `packages/worker/test/boundaries.test.ts` walks
 every file under `src/services/` and refuses anything outside: a service may import `../../core/…`,
 its own directory, declared package dependencies, and `node:*` builtins. The **only** sanctioned
-cross-service edge is `update → release`. Everything else goes through a core-mediated interface.
+cross-service edge is `update → release`. Everything else goes through a core-mediated interface
+— for one service reading another's state, the descriptor hooks in `src/core/hooks.ts`.
 (It is a test and not a lint rule because this repo has no ESLint — `pnpm lint` is Prettier.)
 
 **7. Raw hardware values are hashed on-device and never transmitted.** A fingerprint is a set of

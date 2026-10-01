@@ -56,7 +56,8 @@ Today:
 - Today's literals: `packages/sdk-node/src/core/context.ts`, `release/client.ts`, `update/client.ts`,
   `core/bundle.ts`; `packages/sdk-react/src/browser/browserAdapter.ts`,
   `desktop/desktopAdapter.ts`; `sdks/python/src/polaris_key/core/errors.py`;
-  `sdks/swift/Sources/PolarisKeyCore/Models.swift:307-317` and `Platform.swift`.
+  `sdks/swift/Sources/PolarisKeyCore/Transport.swift` (`PolarisError`'s client-side codes,
+  `:39-47`; `Models.swift:307-317` is the `HEADER_*` block) and `Platform.swift`.
 
 ## Scope
 
@@ -72,7 +73,12 @@ Today:
   - Also read: feature ids and `reasons` from `conformance/parity/features.json`; service slugs from
     P0-09's table; header names, `PROTOCOL_VERSION` and P0-04's channel constants (`CHANNEL_STABLE`,
     `CHANNEL_BETA`, `CHANNEL_PR`, `CHANNEL_DEV`, `CHANNEL_ALIASES`, `CHANNEL_NAME_PATTERN`,
-    `PR_CHANNEL_PATTERN`, `PR_NUMBER_MAX_DIGITS`, plan §2.2) imported from `@polaris-key/protocol/core`;
+    `PR_CHANNEL_PATTERN`, `PR_NUMBER_MAX_DIGITS`, plan §2.2) imported from `@polaris-key/protocol/core`
+    (the generator emits every `CHANNEL_*`/`PR_*` export the module has; P0-04 landed while this
+    package was in review and all eight are now emitted in every output and re-exported from each
+    package root — Node and React `export * from "./constants.generated.js"`, Python
+    `from .constants_generated import *` plus the generated `__all__` — so a future addition needs
+    only `pnpm gen:constants`);
     `corpusVersion`, `gateMatrixVersion` and `fingerprintVersion` from the corpus files.
 - **Outputs**, each with a GENERATED banner (TypeScript formatted with prettier, as `sign-corpus.ts`
   does):
@@ -80,14 +86,19 @@ Today:
   - `packages/sdk-react/src/constants.generated.ts`;
   - `sdks/python/src/polaris_key/constants_generated.py`;
   - `sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift`;
-  - a GDScript module under `sdks/godot/` at the path P1-01's layout implies, written only if that
-    directory exists. The GDScript renderer is unit-tested either way.
+  - a GDScript module under `sdks/godot/` at the path P1-01's layout implies
+    (`sdks/godot/addons/polaris_key/core/constants_generated.gd`, `class_name PKeyConstants`),
+    written only if `sdks/godot/addons/polaris_key` exists. The GDScript renderer is unit-tested
+    either way.
 - Root script `"gen:constants": "tsx tools/gen-sdk-constants.ts"` with `--check`; a CI step; the
   `AGENTS.md` green gate; a row in the `contribute/waves.md` drift-gate inventory.
 - `tools/gen-sdk-constants.test.ts`: renderers, casing and collision checks, `--check` behaviour, and
   a source test. The source test extracts every wire code from `PolarisErrorCode`, the Worker's
   `ErrorCode` and the `errorResponse(…)` call sites, in the same way `gen-reference.mjs` reads source,
-  and fails if `errors.json` misses one.
+  and fails if `errors.json` misses one. (Correction, review: the boot stage machine's own error
+  codes, `sync-failed` and `fetch-failed`, are client codes no `PolarisError` scan sees; the
+  generator also checks every `error` emit in `conformance/corpus/v2/stage-matrix.json` that is not
+  the host's `fail` code echoed back.)
 - Per SDK, a test that every code the SDK raises is in the generated registry. For TypeScript, scan
   `src/**` for `PolarisError("…")` literals; for Python and Swift, check their code constants.
 - Extend the `errorCodes()` emitter to list the client codes from `errors.json`, then regenerate
@@ -144,18 +155,18 @@ Today:
 
 ## Acceptance criteria
 
-- [ ] `mise exec node@22 -- pnpm gen:constants -- --check` exits 0, and exits 1 after a hand edit
+- [x] `mise exec node@22 -- pnpm gen:constants -- --check` exits 0, and exits 1 after a hand edit
       to any output.
-- [ ] The source test fails when a new `errorResponse(…, "new_code")` appears without an
+- [x] The source test fails when a new `errorResponse(…, "new_code")` appears without an
       `errors.json` entry (a fixture shows this).
-- [ ] The four outputs compile: `pnpm typecheck`, `pytest`, `swift build`.
-- [ ] Each SDK's registry test passes and fails on an unregistered literal (shown by a fixture or in
+- [x] The four outputs compile: `pnpm typecheck`, `pytest`, `swift build`.
+- [x] Each SDK's registry test passes and fails on an unregistered literal (shown by a fixture or in
       the PR).
-- [ ] `reference/error-codes.mdx` lists the client codes; `pnpm --filter @polaris-key/docs gen:check`
+- [x] `reference/error-codes.mdx` lists the client codes; `pnpm --filter @polaris-key/docs gen:check`
       passes.
-- [ ] `core.errors` is `implemented` in the four manifests, and `pnpm parity:check` passes.
-- [ ] CI runs `pnpm gen:constants -- --check`; `AGENTS.md` and `waves.md` list it.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `core.errors` is `implemented` in the four manifests, and `pnpm parity:check` passes.
+- [x] CI runs `pnpm gen:constants -- --check`; `AGENTS.md` and `waves.md` list it.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 

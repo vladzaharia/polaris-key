@@ -35,8 +35,8 @@ import Foundation
 public typealias ServicesMap = [ServiceSlug: Bool]
 
 /// What a client believes with neither a discovery document nor a stated expectation:
-/// licensing + settings distribution, which is what every product ran before the suite existed.
-/// Release, update and identity are OFF, so their sub-clients refuse until something says
+/// licensing + settings delivery, which is what every product ran before the suite existed.
+/// Release, distribution, update and identity are OFF, so their sub-clients refuse until something says
 /// otherwise — the fail-closed half of D-21 applied to the genuinely new surfaces.
 /// The service table's `defaultEnabled` rows.
 public let DEFAULT_SERVICES: ServicesMap = Dictionary(

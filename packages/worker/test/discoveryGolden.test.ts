@@ -8,6 +8,10 @@
  * fixture file is prettier-formatted JSON; re-serialising it with `JSON.stringify` preserves
  * key order and values exactly, so text equality here is byte equality with the original
  * compact output. If this fails, a wire shape moved — that is plan mode, not a fixture update.
+ *
+ * The one sanctioned edit since capture: P2b-01 added the sixth service, so each golden gained
+ * `services.distribution` (in table order, between `release` and `update`) and nothing else. A
+ * new key under `services` is additive: clients ignore slugs they do not know (P0-08).
  */
 
 import { readFileSync } from "node:fs";
@@ -61,7 +65,7 @@ async function seedEverything(db: Db, slug: string): Promise<void> {
   await setServices(
     db,
     slug,
-    '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"update":{"enabled":true},"identity":{"enabled":true}}',
+    '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":true},"update":{"enabled":true},"identity":{"enabled":true}}',
     "manifest",
     NOW,
   );
@@ -124,7 +128,7 @@ describe("discovery document is byte-identical across the service-table move", (
     await setServices(
       db,
       "cfg",
-      '{"license":{"enabled":false},"config":{"enabled":true},"release":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"distribution":{"enabled":true},"registration":"open"}',
+      '{"license":{"enabled":false},"config":{"enabled":true},"release":{"enabled":false},"distribution":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"zeta":{"enabled":true},"registration":"open"}',
       "manifest",
       NOW,
     );

@@ -97,7 +97,8 @@ tier/license/device live at [The config catalog](/docs/services/config/catalog/)
 
 ## Enabled services: `modules` + `devices.registration`
 
-Polaris Key is five opt-in services — **license, config, release, update, identity** — over an
+Polaris Key is six opt-in services — **license, config, release, distribution, update,
+identity** — over an
 always-on Core substrate (see [Concepts & terminology](/docs/start/concepts/)). `.pkey/product` declares which of them the
 product runs, and that declaration is persisted verbatim into `products.services_json`, the
 single authority every other surface projects from. It used to be validated and then thrown
@@ -113,6 +114,7 @@ child row.
     "license": { "enabled": true },
     "config": { "enabled": true },
     "release": { "enabled": true },
+    "distribution": { "enabled": true },
     "update": { "enabled": true },
     "identity": { "enabled": true },
   },
@@ -140,19 +142,24 @@ pinned to a value nobody wrote.
 slugs at ingest and only slugs are stored, so a manifest in the field does not have to be
 rewritten on the day the server learns the new words, and one block may mix both spellings:
 
-| Declared    | Enables              | Note                                                                                                                                          |
-| ----------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `licensing` | `license`            | rename                                                                                                                                        |
-| `releases`  | `release` + `update` | the old module meant "distributes software"; mapping it to `release` alone would take the appcast away from every product already serving one |
-| `oidc`      | `identity`           | rename                                                                                                                                        |
-| `edgeMint`  | `config`             | edge-minting is a secret-**delivery** capability of Config, not a unit of its own                                                             |
+| Declared    | Enables                               | Note                                                                                                                                          |
+| ----------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `licensing` | `license`                             | rename                                                                                                                                        |
+| `releases`  | `release` + `distribution` + `update` | the old module meant "distributes software"; mapping it to `release` alone would take the appcast away from every product already serving one |
+| `oidc`      | `identity`                            | rename                                                                                                                                        |
+| `edgeMint`  | `config`                              | edge-minting is a secret-**delivery** capability of Config, not a unit of its own                                                             |
 
 **Validation at ingest.** `parseManifest` aggregates every error before it refuses, and a refusal
 applies nothing:
 
-- `update_requires_release` — **error**. Update renders a feed over Release's truth store, so
-  Update on with Release off would answer every client with an empty document rather than an
-  error. A `releases` manifest can never trip this: the mapping brings Release with it.
+- `distribution_requires_release` — **error**. Distribution delivers what Release says exists,
+  so Distribution on with Release off has nothing to deliver.
+- `update_requires_distribution` — **error**. Update's feed tells a device what to do next over
+  what Distribution delivered, so Update on with Distribution off would answer every client with
+  an empty document rather than an error. A `releases` manifest can never trip either rule: the
+  mapping brings the whole chain with it. A manifest naming `release` and `update` without
+  `distribution` does trip this one. (These two replaced `update_requires_release`, which they
+  imply.)
 - `invalid_registration_policy` — **error**. An unrecognised `devices.registration` is refused
   rather than coerced; silently falling back to a default would answer "requires-license" with
   "open" for the one manifest that most meant it.

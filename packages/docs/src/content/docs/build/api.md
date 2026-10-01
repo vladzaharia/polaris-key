@@ -13,7 +13,7 @@ find each one rather than restating either.
 
 [`/docs/openapi/polaris-key.v3.yaml`](/docs/openapi/polaris-key.v3.yaml) is OpenAPI 3.1, and it
 covers exactly the **public, product-scoped wire API** — wire contract v3: Core's routes plus
-the five service namespaces and the four permanent pre-namespace aliases. Point any OpenAPI
+the six service namespaces and the four permanent pre-namespace aliases. Point any OpenAPI
 tool (Redoc, Swagger UI, an SDK generator for a language this repo doesn't ship) at that URL
 directly; it's a static file, not an authenticated endpoint.
 

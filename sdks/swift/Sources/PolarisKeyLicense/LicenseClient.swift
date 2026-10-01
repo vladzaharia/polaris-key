@@ -108,12 +108,20 @@ public actor LicenseClient {
         await doc()?.licenseId
     }
 
-    /// The channels this licence grants, from the `channels` entitlement. The source of truth
-    /// `PolarisKeyUpdate` derives `allowedChannels` from.
+    /// The channels this licence grants: the `channels` entitlement's string values, in order,
+    /// as granted — or `["stable"]` when the entitlement is absent or not an array. This is the
+    /// Worker's own answer (`entitledChannels` in core/entitlements.ts) and the same list every
+    /// SDK returns for the same document; before P1b-07 this SDK answered `[]` for an absent
+    /// entitlement, which disagreed with the Worker it gates against.
+    ///
+    /// The grants are RAW: `staging` is not rewritten to `beta` here. Whether a grant covers a
+    /// channel is the entitlement rule's question (WIRE-CONTRACT-V3 §5.1 rule 4), not this
+    /// list's. `PolarisKeyUpdate`'s `allowedChannels(from:)` derives Sparkle's channel set from
+    /// the same entitlement and already treats an absent one as stable only.
     public func entitledChannels() async -> [String] {
         guard let value = await doc()?.entitlements["channels"]?.value,
             let array = value.arrayValue
-        else { return [] }
+        else { return [CHANNEL_STABLE] }
         return array.compactMap(\.stringValue)
     }
 
@@ -126,23 +134,24 @@ public actor LicenseClient {
     /// Obtain a licence with no key and no sign-in, when the product offers a free tier.
     @discardableResult
     public func enroll() async -> ActivationResult {
-        await acquire(LicenseEndpoints.enroll(core, fingerprint: fingerprint()))
+        await acquire(LicenseEndpoints.enroll(core, fingerprint: fingerprint()), source: .enroll)
     }
 
     /// Exchange a licence key for a per-device token.
     @discardableResult
     public func activate(key: String) async -> ActivationResult {
-        await acquire(LicenseEndpoints.activate(core, key: key, fingerprint: fingerprint()))
+        await acquire(
+            LicenseEndpoints.activate(core, key: key, fingerprint: fingerprint()), source: .activate)
     }
 
     /// Persist a freshly issued token, then raise the acquisition event.
     ///
     /// A failed token write is reported, not swallowed: it used to return `.ok` having stored
     /// nothing, so the app looked activated until the next launch (R4-12).
-    private func acquire(_ result: ActivationResult) async -> ActivationResult {
+    private func acquire(_ result: ActivationResult, source: TokenSource) async -> ActivationResult {
         guard case .ok(let token, _) = result else { return result }
         do {
-            try await core.setToken(token)
+            try await core.setToken(token, source: source)
         } catch {
             return .error(message: "could not persist the device token: \(error)")
         }

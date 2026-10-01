@@ -49,12 +49,12 @@ row pins the opt-in bypass instead.
 
 ## The four files
 
-| File                | What it pins                                                                                    | Contract section                              |
-| ------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `cases.json`        | Six case families covering verification end to end, plus the two test keys                      | §1–§4, §7                                     |
-| `gate-matrix.json`  | Every gate transition, as pure input/expected-status rows                                       | §5                                            |
-| `fingerprint.json`  | Component order, per-component and composite digest lengths, and the device-id derivations      | Fingerprint v1                                |
-| `stage-matrix.json` | The boot stage machine: rows of host events with the exact emits each produces, and guard cases | client boot behaviour, not a contract section |
+| File                | What it pins                                                                                                                                                                                       | Contract section                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `cases.json`        | Six case families covering verification end to end, plus the two test keys                                                                                                                         | §1–§4, §7                                     |
+| `gate-matrix.json`  | Every gate transition, as pure input/expected-status rows                                                                                                                                          | §5                                            |
+| `fingerprint.json`  | Component order, per-component and composite digest lengths, the device-id derivations, and the three source rules (`windowsCim` with the pinned `windowsCimCommand`, `linuxAnchor`, `ramBuckets`) | Fingerprint v1, §6.1                          |
+| `stage-matrix.json` | The boot stage machine: rows of host events with the exact emits each produces, and guard cases                                                                                                    | client boot behaviour, not a contract section |
 
 ### The case families in `cases.json`
 
@@ -82,7 +82,7 @@ reference implementation written for the test.
 | Python | `sdks/python/tests/test_conformance.py`                   | `verify_jws`, `verify_license_doc`, `verify_config_doc`, `verify_trust_manifest`, `inspect_bundle` |
 | Swift  | `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift` | The Swift SDK, against the mirrored `Resources/v2/`                                                |
 | React  | `packages/sdk-react/test/gateMatrixParity.test.ts`        | `gate-matrix.json` through `licenseState` **and** the React projection                             |
-| Godot  | `sdks/godot/tests/suite_conformance.gd`                   | `PKeyJws` over `jwsCases`, from the `res://` mirror, on an editor **and** an exported template     |
+| Godot  | `sdks/godot/tests/suite_conformance.gd`                   | The addon's core, from the `res://` mirror, on an editor **and** an exported template              |
 | Worker | `packages/worker/test/gateMatrixCorpus.test.ts`           | `gate-matrix.json` through the server's own `checkBuildGate`: the oracle for every runner's port   |
 
 `stage-matrix.json` has its own runners too: `conformance/runners/node/stageMatrix.test.ts`
@@ -97,9 +97,9 @@ inputs — `licenseServiceEnabled` from the capability map, `activation` from th
 `highWaterMark` from the clock floor. It does not carry its own port of the gate to diverge
 from.
 
-The Godot runner covers `jwsCases` today; P1-02 adds the remaining `cases.json` families. Its
-platform has one declared representation limit (WIRE-CONTRACT-V3 §10): a GDScript `String`
-cannot hold U+0000. The Godot verifier decodes the escape `\u0000` as U+FFFD on every engine, and
+The Godot runner covers every `cases.json` family and the `deviceIds` vectors; the gate matrix
+follows with the licence client (P1-03). Its platform has one declared representation limit
+(WIRE-CONTRACT-V3 §10): a GDScript `String` cannot hold U+0000. The Godot verifier decodes the escape `\u0000` as U+FFFD on every engine, and
 for each `jwsCases` string that contains U+0000 the generator writes `expect.docNulReplaced`, a
 map from the value's RFC 6901 pointer to its U+FFFD form. The Godot runner compares those values
 exactly; every other runner ignores the field. Verdicts are unaffected.
@@ -111,7 +111,8 @@ fails on the server side too.
 
 `fingerprint.json` has its own runners alongside these — `conformance/runners/node/fingerprint.test.ts`,
 `sdks/python/tests/test_fingerprint_conformance.py`,
-`sdks/swift/Tests/PolarisKeyTests/FingerprintConformanceTests.swift` — plus
+`sdks/swift/Tests/PolarisKeyTests/FingerprintConformanceTests.swift`, and the `deviceIds` section of
+`sdks/godot/tests/suite_conformance.gd` — plus
 `packages/worker/test/fingerprintCorpus.test.ts`, because the server derives the same digests
 the clients do.
 
