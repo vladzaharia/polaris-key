@@ -164,10 +164,12 @@ conformance runner sections. P3-05 is a graph dependency.
 - **Cache.** `init()` runs the reload path over the slices, and `decide()` runs it again. The
   slices survive `deactivate()` and a bundle import (signed public documents carrying the seq
   floors, as in React).
-- **Transcripts.** P3-03 has not landed, so `update-feed-rollback` and `update-record-by-hash`
-  do not exist yet. The Node replayer learns `updateDecide` and `initial.update` (with React's
-  standard-discovery fallback for a transcript that loads none) and is proven by a synthetic
-  transcript in `conformance/runners/node/transcripts.test.ts`.
+- **Transcripts.** P3-03 landed while this package was in flight. The Node replayer learns
+  `updateDecide` and `initial.update` (with React's standard-discovery fallback for a transcript
+  that loads none, since `decide()` loads discovery itself) and replays `update-feed-rollback`
+  and `update-record-by-hash`; a synthetic transcript in
+  `conformance/runners/node/transcripts.test.ts` also proves the replayer fails on doctored
+  traffic.
 - **Docs.** `build/sdks/node.mdx` renders `packages/sdk-node/README.md` whole, so the README is
   the one page edited.
 

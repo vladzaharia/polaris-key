@@ -441,12 +441,13 @@ describe("the Node replayer fails on a doctored transcript", () => {
 
 // @pkey-feature update.feed release.record update.decide
 describe("the Node replayer's updateDecide mapping (a synthetic transcript)", () => {
-  // P3-03 records `update-feed-rollback` and `update-record-by-hash`; until they land, this
-  // transcript has their shape — `initial.update`, `action: "updateDecide"`, `args.channel` and
+  // P3-03's `update-feed-rollback` and `update-record-by-hash` run above. This transcript has
+  // their shape — `initial.update`, `action: "updateDecide"`, `args.channel` and
   // `expect: {channel, feed, record, errors, decision}` — signed with the corpus test keys, and
-  // pins the mapping. Step 0 asks for `latest` and commits the feed under `stable`; step 1 gets
-  // a LOWER `seq` for `stable`, so the floor of the committed feed refuses it (`feed-rollback`)
-  // and the record comes from the cache.
+  // pins the two halves together in one conversation: step 0 asks for `latest` and commits the
+  // feed under `stable`; step 1 gets a LOWER `seq` for `stable`, so the floor of the feed step 0
+  // committed refuses it (`feed-rollback`) and the record comes from the cache. It also proves
+  // the replayer fails when the traffic or an expectation differs.
   const KEYS = Object.fromEntries(
     (
       JSON.parse(
