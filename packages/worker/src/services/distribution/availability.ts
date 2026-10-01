@@ -577,7 +577,12 @@ export type ReportResult =
   | {
       ok: true;
       type: "key";
-      key: { purpose: string; sha256: string; match: boolean; flagged: boolean };
+      key: {
+        purpose: string;
+        sha256: string;
+        match: boolean;
+        flagged: boolean;
+      };
     }
   | ReportRefusal;
 
@@ -648,7 +653,11 @@ async function reportedRelease(
     const hit = await findRelease(catalog, releaseId);
     return (
       hit ??
-      refuse(404, "unknown_release", `no release ${releaseId} on ${ctx.product}`)
+      refuse(
+        404,
+        "unknown_release",
+        `no release ${releaseId} on ${ctx.product}`,
+      )
     );
   }
   const d = (deliverable as string | undefined) ?? APP_DELIVERABLE_ID;
@@ -709,9 +718,7 @@ export async function applyReport(
     return invalid("type", `type must be one of ${REPORT_TYPES.join(", ")}`);
   if (type === "key") return reportKey(ctx, body, principal);
 
-  for (const field of type === "submission"
-    ? ["buildId", "platformRef"]
-    : []) {
+  for (const field of type === "submission" ? ["buildId", "platformRef"] : []) {
     if (body[field] !== undefined)
       return invalid(field, `a submission report takes no ${field}`);
   }
@@ -745,9 +752,7 @@ export async function applyReport(
   if (body.buildId !== undefined) {
     if (typeof body.buildId !== "string" || body.buildId === "")
       return invalid("buildId", "buildId must be a build id");
-    const builds = await ctx.hooks
-      .releaseCatalog()!
-      .builds(release.releaseId);
+    const builds = await ctx.hooks.releaseCatalog()!.builds(release.releaseId);
     if (!builds.some((b) => b.buildId === body.buildId))
       return refuse(
         404,
