@@ -155,22 +155,23 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
 
 ## Acceptance criteria
 
-- [ ] Fake-server tests: start → `pending` → `slow_down` (the returned interval is used) →
+- [x] Fake-server tests: start → `pending` → `slow_down` (the returned interval is used) →
       `pending` → `ready` stores the token, emits `sign_in_finished(ok)` and triggers one forced
       sync; `timeout`, `error` and a 401 map to their kinds; `cancel()` stops polling within one
       interval; no poll is sent after `expires_at`.
-- [ ] `begin_sign_in` on a product whose discovery has `identity.enabled == false` returns
+- [x] `begin_sign_in` on a product whose discovery has `identity.enabled == false` returns
       `service-unavailable` and sends no request.
-- [ ] Every poll carries the same device id as the `X-PKey-Device` header.
-- [ ] QR tests: for at least five fixed URLs up to 120 characters, the module matrix equals a
+- [x] Every poll carries the same device id as the `X-PKey-Device` header.
+- [x] QR tests: for at least five fixed URLs up to 120 characters, the module matrix equals a
       committed fixture produced by a reference encoder at the same version, level and mask;
       `PKeyQrRect` renders with a quiet zone and nearest filtering.
 - [ ] Manual check recorded in the PR: a phone scans the QR code from a desktop build against a
-      deployed Worker and the game reaches `ok` without typing.
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
-- [ ] `sdks/godot/parity.json` marks `identity.devicecode` implemented, with test tags (once
+      deployed Worker and the game reaches `ok` without typing. _(Hand-off: needs a deployed
+      Worker carrying this package's poll change, a configured IdP and a phone.)_
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job.
+- [x] `sdks/godot/parity.json` marks `identity.devicecode` implemented, with test tags (once
       P1b-01 has landed).
-- [ ] The anonymous-licence attach is opt-in and holder-only. With no opt-in, a device-code
+- [x] The anonymous-licence attach is opt-in and holder-only. With no opt-in, a device-code
       sign-in leaves the device's anonymous enrolled licence anonymous, active and re-enrollable.
       With the opt-in, the attach happens only on a `/device/poll` carrying the device code and
       the flow's own device id, after the player has accepted the shown identity on the device.
