@@ -15052,9 +15052,29 @@ async function importVerifyKey(rawBase64Url) {
     ["verify"]
   );
 }
+var StrictJsonError = class extends Error {
+  constructor(part, message) {
+    super(message);
+    this.part = part;
+    this.name = "StrictJsonError";
+  }
+  part;
+};
+function assertStrictJson(text, part) {
+  if (!scanStrictJson(text).ok) {
+    throw new StrictJsonError(
+      part,
+      `the ${part} breaks WIRE-CONTRACT-V4 §1.2 (a lone surrogate, U+0000 in a member name, a number out of range, or nesting past ${MAX_JSON_DEPTH} levels), so no strict verifier would accept it`
+    );
+  }
+}
 async function signJws(payload, signingKeyPem, kid, typ) {
   const header = typ ? { alg: "EdDSA", typ, kid } : { alg: "EdDSA", kid };
-  const signingInput = base64UrlEncodeString(JSON.stringify(header)) + "." + base64UrlEncodeString(JSON.stringify(payload));
+  const headerText = JSON.stringify(header);
+  const payloadText = JSON.stringify(payload);
+  assertStrictJson(headerText, "header");
+  assertStrictJson(payloadText ?? "", "payload");
+  const signingInput = base64UrlEncodeString(headerText) + "." + base64UrlEncodeString(payloadText ?? "");
   const key = await importSigningKey(signingKeyPem);
   const sig = await crypto.subtle.sign(
     { name: "Ed25519" },
