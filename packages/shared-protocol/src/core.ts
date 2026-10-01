@@ -228,3 +228,33 @@ export const HEADER_SDK_NAME = "X-PKey-SDK";
 export const HEADER_SDK_VERSION = "X-PKey-SDK-Version";
 export const HEADER_PLATFORM = "X-PKey-Platform";
 export const HEADER_ARCH = "X-PKey-Arch";
+
+/**
+ * The channel vocabulary (WIRE-CONTRACT-V3 §5.1). One set of names for the licence build gate,
+ * the `entitled` release check and every SDK's `X-PKey-Channel`: `stable`, `beta`, `pr-<n>`
+ * (`pr` is the family; as a grant it covers every PR), a product's manual channels, and `dev`,
+ * the gate's pseudo-channel for `0.0.0-dev*` builds. Release has no `dev` channel.
+ */
+export const CHANNEL_STABLE = "stable";
+export const CHANNEL_BETA = "beta";
+export const CHANNEL_PR = "pr";
+export const CHANNEL_DEV = "dev";
+
+/** Accepted aliases, never emitted by an SDK: `staging` is the legacy spelling of `beta`, and
+ *  `latest` names `stable`. Grants are never rewritten through this table; only `staging` widens
+ *  a grant (a `staging` grant also covers `beta`, §5.1 rule 4). */
+export const CHANNEL_ALIASES = { staging: "beta", latest: "stable" } as const;
+
+/** Every channel name matches this: the intersection of the manifest's `CHANNEL_RE` and the
+ *  feed routes' `^[a-z0-9-]+$`. */
+export const CHANNEL_NAME_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
+
+/** A PR channel, hyphen optional (`pr-42`, `pr42`); group 1 is the PR number. */
+export const PR_CHANNEL_PATTERN = "^pr-?([0-9]+)$";
+
+/** A PR number longer than this is not a `pr-<n>` channel; the gate reads it as the `pr` family. */
+export const PR_NUMBER_MAX_DIGITS = 7;
+
+/** The coarse channel family a build's version implies, as an SDK sends it. Only the Worker's
+ *  `impliedChannel` narrows `pr` to `pr-<n>`. */
+export type BuildChannel = "stable" | "beta" | "pr" | "dev";
