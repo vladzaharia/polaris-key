@@ -2,7 +2,7 @@
 sidebar:
   order: 4
 title: "Availability, submissions and keys"
-description: "Whether a release is available on each outlet and where it stands in a store's review, reported from CI until store connectors exist; derived availability for self-hosted outlets; and the operator-owned signing-key inventory."
+description: "Whether a release is available on each outlet and where it stands in a store's review, reported from CI or written by a store connector; derived availability for self-hosted outlets; and the operator-owned signing-key inventory."
 ---
 
 "Is it in the App Store yet?" is a question about one release on one outlet. Distribution keeps
@@ -10,8 +10,9 @@ two answers per release and outlet — **availability** (is the build there?) an
 **submission** state (where is it in the store's review?) — and, per product, a **key inventory**
 of the signing keys a download is checked against.
 
-Until the store connectors exist, CI reports what each store says with
-`pkey distribution report`. Self-hosted outlets need no report: their availability follows from
+CI reports what each store says with `pkey distribution report`, and a store connector writes
+it directly — the App Store and TestFlight through the
+[App Store Connect connector](/docs/services/distribution/app-store-connect/). Self-hosted outlets need no report: their availability follows from
 what Release already knows.
 
 ## Availability
@@ -109,9 +110,10 @@ vocabulary. A refused report writes nothing. The route underneath is
 observations nobody has reviewed).
 
 Reports are **semi-trusted**. A wrong report can make the matrix and feeds show a wrong state, but
-it cannot ship code and cannot change a key. Once a store's connector exists it writes these
-records too (`source` is then `asc`, `play` or `ms-store`), and it decides per outlet whether a CI
-report may still overwrite it.
+it cannot ship code and cannot change a key. A store's connector writes these records too
+(`source` is then `asc`, later `play` or `ms-store`). Whichever wrote last wins, and every change
+is audited with its writer; a connector re-reads the store on its next poll, so a stale CI report
+on a connector-run outlet does not last.
 
 ## The key inventory
 
@@ -157,8 +159,8 @@ Narrative-only (not in the wire spec), under `/manage/api/products/<slug>/distri
 | `PUT`    | `keys`                       | `{ purpose, sha256, outlet?, notes?, registered? }` — add or update an entry by purpose and fingerprint (adopting an observation); `null` clears |
 | `DELETE` | `keys/<purpose>/<sha256>`    | remove an entry, or dismiss an observation                                                                                                       |
 
-Availability and submissions are read-only in the console: CI reports them today, and the store
-connectors will.
+Availability and submissions are read-only in the console: CI reports them, and store connectors
+write them (`source: asc` for App Store Connect).
 
 ## Reading it from another service
 
