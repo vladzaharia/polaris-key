@@ -119,15 +119,16 @@ func get_source(key: String) -> StringName:
 	return PKeyConfigResolve.resolve_source(_context(), key)
 
 
-## The rows a settings screen shows: every key the document carries MINUS the hidden ones, in
-## document order, enforced rows flagged (show them read-only). Hidden keys are still applied by
-## `get_value`; they are only withheld here.
+## The rows a settings screen shows (WIRE-CONTRACT-V3 §2.2.1 rule 4): every key the document
+## carries MINUS the hidden ones, in document order, each with its resolved value, enforced rows
+## flagged (show them read-only). Hidden keys are still applied by `get_value`; they are only
+## withheld here, as are keys only an override or the environment supplies.
 func list_user_config() -> Array[PKeyConfigEntry]:
 	var out: Array[PKeyConfigEntry] = []
 	var ctx := _context()
-	for row in PKeyConfigResolve.list_user_entries(ctx.remote):
-		var r := PKeyConfigResolve.resolve(ctx, row["key"])
-		out.append(PKeyConfigEntry.new(row["key"], _copy(r["value"] if r["found"] else row["value"]), row["enforced"], r["source"], catalog_entry(row["key"])))
+	for row in PKeyConfigResolve.list_user_entries(ctx):
+		var source := PKeyConfigResolve.resolve_source(ctx, row["key"])
+		out.append(PKeyConfigEntry.new(row["key"], _copy(row["value"]), row["enforced"], source, catalog_entry(row["key"])))
 	return out
 
 

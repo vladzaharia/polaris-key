@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature core.verify core.bundle devices.fingerprint
+# @pkey-feature core.verify core.bundle devices.fingerprint core.headers
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json and fingerprint.json, written by `pnpm gen:corpus`; never
 # edit them) through the shipped addon, mirroring conformance/runners/node/corpusV2.test.ts and
@@ -16,12 +16,20 @@ extends RefCounted
 #   vectors          PKeyFingerprint             components and hwid (fingerprint.json)
 #   windowsCimCommand / windowsCim / linuxAnchor / ramBuckets
 #                    PKeyFingerprint             the §6.1 source rules (fingerprint.json)
+#   platformCases    PKeyHeaders.canonical_platform  the §5.2 value, or none (headers.json)
+#   archCases        PKeyHeaders.canonical_arch      the §5.2 value, or none (headers.json)
+#
+# For headers.json the generated PKeyConstants.PLATFORM_SPELLINGS / ARCH_SPELLINGS must also equal
+# the map derived from the non-null rows, with values in PLATFORM_VALUES / ARCH_VALUES, and one
+# doctored row must fail the same comparison.
 #
 # Under WIRE-CONTRACT-V3 §10, each string the generator lists in `expect.docNulReplaced` is
 # compared in its U+FFFD form, exactly.
 
 const CASES := "res://tests/corpus/v2/cases.json"
 const FINGERPRINT := "res://tests/corpus/v2/fingerprint.json"
+const HEADERS := "res://tests/corpus/v2/headers.json"
+const HEADERS_VERSION := 1
 const CORPUS_VERSION := 2
 const FLOORS := {
 	"jwsCases": 36,
@@ -35,6 +43,8 @@ const FLOORS := {
 	"windowsCim": 17,
 	"linuxAnchor": 10,
 	"ramBuckets": 13,
+	"platformCases": 31,
+	"archCases": 31,
 }
 
 
@@ -54,6 +64,9 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 		_device_ids(t, _section(t, fp, "deviceIds"))
 		_fingerprint_vectors(t, fp)
 		_source_rules(t, fp)
+	var headers = _load(t, HEADERS)
+	if headers != null:
+		_header_cases(t, headers)
 	return true
 
 
@@ -430,3 +443,55 @@ func _source_rules(t: PKeyTestContext, fp: Dictionary) -> void:
 		var want: String = c["bucket"] if c["bucket"] != null else ""
 		t.check("ramBuckets %s" % c["id"], got == want, "expect=%s got=%s" % [want, got])
 	_coverage(t, "ramBuckets", evaluated, buckets.size(), _ms_since(t0))
+
+
+# ── headers.json (WIRE-CONTRACT-V3 §5.2) ──────────────────────────────────────────────────────
+
+## ASCII-only folding, restated so the runner does not lean on the code it checks.
+static func _fold(raw: String) -> String:
+	var out := ""
+	for i in raw.length():
+		var c := raw.unicode_at(i)
+		out += String.chr(c + 32) if c >= 65 and c <= 90 else String.chr(c)
+	return out
+
+
+## The addon answers "" for "no value"; the corpus writes null.
+static func _header_passes(fn: Callable, row: Dictionary) -> bool:
+	var got: String = fn.call(String(row["raw"]))
+	var want = row["expect"]
+	return got == "" if want == null else got == String(want)
+
+
+func _header_cases(t: PKeyTestContext, corpus: Dictionary) -> void:
+	t.check("headersVersion", corpus.get("headersVersion") is float and int(corpus["headersVersion"]) == HEADERS_VERSION, str(corpus.get("headersVersion")))
+	for spec in [
+		["platformCases", PKeyHeaders.canonical_platform, PKeyConstants.PLATFORM_SPELLINGS, PKeyConstants.PLATFORM_VALUES],
+		["archCases", PKeyHeaders.canonical_arch, PKeyConstants.ARCH_SPELLINGS, PKeyConstants.ARCH_VALUES],
+	]:
+		var name: String = spec[0]
+		var fn: Callable = spec[1]
+		var table: Dictionary = spec[2]
+		var values: Array = spec[3]
+		var rows := _section(t, corpus, name)
+		var started := Time.get_ticks_usec()
+		var evaluated := 0
+		var derived := {}
+		for row in rows:
+			t.check("%s %s" % [name, row["id"]], _header_passes(fn, row), "raw %s -> %s" % [JSON.stringify(row["raw"]), fn.call(String(row["raw"]))])
+			if row["expect"] != null:
+				derived[_fold(String(row["raw"]))] = String(row["expect"])
+			evaluated += 1
+		_coverage(t, name, evaluated, rows.size(), (Time.get_ticks_usec() - started) / 1000.0)
+		var in_vocabulary := true
+		for v in table.values():
+			in_vocabulary = in_vocabulary and values.has(v)
+		t.check("%s: the generated table equals the rows" % name, table == derived and in_vocabulary, "%s vs %s" % [table, derived])
+		var sample: Dictionary = {}
+		for row in rows:
+			if row["expect"] != null:
+				sample = row
+				break
+		var doctored := sample.duplicate()
+		doctored["expect"] = "macos" if sample["expect"] == "linux" else "linux"
+		t.check("%s: a doctored row fails the same comparison" % name, _header_passes(fn, sample) and not _header_passes(fn, doctored))

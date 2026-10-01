@@ -9,7 +9,7 @@ extends RefCounted
 ##     variable for the same key, being the more explicit of the two. Both spellings work:
 ##     `--pkey-config key=value` and `--pkey-config=key=value`; a later one wins.
 ##
-## Either value goes through client-core's looksLikeJson rule (PKeyConfigResolve).
+## Either value goes through WIRE-CONTRACT-V3 §2.2.1 rule 2 (PKeyConfigResolve.parse_env_value).
 ##
 ## Whether the layer is on (PKeyOptions.config_env_layer):
 ##   CONFIG_ENV_AUTO    on in debug builds and on desktop; OFF in a release build on mobile or

@@ -2,10 +2,11 @@ class_name PKeyHeaders
 extends RefCounted
 ## The seven `X-PKey-*` headers every product-scoped call carries (shared-protocol `core.ts`).
 ##
-## No canonical platform or arch vocabulary exists yet (report §9.1 #17), so this is the one
-## table, in the report's vocabulary (§3.1); anything else is omitted rather than invented.
-## P1b-02 generates `core/constants_generated.gd` to replace it and P1b-04's `headers.json` pins
-## the mapping.
+## Platform and arch are the canonical values of WIRE-CONTRACT-V3 §5.2: this runtime's own report
+## (`OS.get_name()`, `Engine.get_architecture_name()`) looked up in the generated
+## `PKeyConstants.PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` after ASCII case folding. A spelling the
+## table lacks has no value and its header is omitted rather than invented. `headers.json` pins
+## the tables (tests/suite_conformance.gd runs every row).
 
 const DEVICE := "X-PKey-Device"
 const VERSION := "X-PKey-Version"
@@ -15,36 +16,37 @@ const SDK_VERSION_HEADER := "X-PKey-SDK-Version"
 const PLATFORM := "X-PKey-Platform"
 const ARCH := "X-PKey-Arch"
 
-## The SDK id (notes/A2 §5.4) until P1b-04 settles the short ids.
-const SDK_NAME := "polaris-key-godot"
-
-## OS.get_name() -> X-PKey-Platform.
-const PLATFORMS := {
-	"Windows": "windows",
-	"macOS": "macos",
-	"Linux": "linux",
-	"iOS": "ios",
-	"Android": "android",
-	"Web": "web",
-}
-
-## Engine.get_architecture_name() -> X-PKey-Arch.
-const ARCHS := {
-	"x86_64": "x86_64",
-	"arm64": "arm64",
-	"arm32": "armv7",
-	"wasm32": "wasm32",
-}
+## The short SDK id sent as `X-PKey-SDK` (§5.2); the version is `X-PKey-SDK-Version`.
+const SDK_NAME := PKeyConstants.SdkId.GODOT
 
 
-## "" when this OS is outside the table.
+## A-Z become a-z; every other character is unchanged (never a locale-dependent lowercase).
+static func _fold_ascii(raw: String) -> String:
+	var out := ""
+	for i in raw.length():
+		var c := raw.unicode_at(i)
+		out += String.chr(c + 32) if c >= 65 and c <= 90 else String.chr(c)
+	return out
+
+
+## A platform spelling to its canonical value, or "" when it has none (`macOS` -> `macos`).
+static func canonical_platform(raw: String) -> String:
+	return PKeyConstants.PLATFORM_SPELLINGS.get(_fold_ascii(raw), "")
+
+
+## An architecture spelling to its canonical value, or "" when it has none (`arm32` -> `armv7`).
+static func canonical_arch(raw: String) -> String:
+	return PKeyConstants.ARCH_SPELLINGS.get(_fold_ascii(raw), "")
+
+
+## This OS's canonical value; "" when it has none.
 static func platform() -> String:
-	return PLATFORMS.get(OS.get_name(), "")
+	return canonical_platform(OS.get_name())
 
 
-## "" when this architecture is outside the table.
+## This build's canonical architecture; "" when it has none.
 static func arch() -> String:
-	return ARCHS.get(Engine.get_architecture_name(), "")
+	return canonical_arch(Engine.get_architecture_name())
 
 
 ## The headers as a name -> value Dictionary; unknown platform or arch are left out.

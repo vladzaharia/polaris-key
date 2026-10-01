@@ -22,11 +22,7 @@
     "core.local": {
       "status": "implemented"
     },
-    "core.headers": {
-      "status": "planned",
-      "wp": "P1b-04",
-      "note": "P1-02 sends the seven X-PKey-* headers from one table (core/headers.gd: SDK id polaris-key-godot, the report's platform and arch vocabulary); P1b-04's headers.json pins the canonical values."
-    },
+    "core.headers": { "status": "implemented" },
     "core.errors": { "status": "implemented" },
     "core.caps": {
       "status": "planned",
@@ -65,7 +61,10 @@
       "status": "planned",
       "wp": "P1-03"
     },
-    "config.resolve": { "status": "implemented" },
+    "config.resolve": {
+      "status": "implemented",
+      "note": "OS.get_environment drops a leading U+FEFF from a value, so on a Godot host the two U+FEFF rows of config-matrix.json hold for the resolver, not for the process environment. A number's value is Godot's own reading, which is not correctly rounded, and a string value's \\u0000 reads as U+FFFD (both WIRE-CONTRACT-V3 §10); verdicts are unaffected."
+    },
     "config.list": { "status": "implemented" },
     "config.secret": { "status": "implemented" },
     "config.schema": { "status": "implemented" },
