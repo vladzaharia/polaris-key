@@ -12,6 +12,12 @@
  *     testflight/public-link   PATCH /v1/betaGroups/{id}  publicLinkEnabled
  *     webhook                  POST  /v1/webhooks (all 12 event types), then POST /v1/webhookPings
  *
+ * **The operator's app, or nothing.** Every control first resolves the setup, and the setup
+ * exists only when the `asc-api-key` credential is pinned to the `appleId` the manifest names
+ * (`setup.ts`, P5-02f). A missing pin answers 409 `credential_pin_missing`, a different one 409
+ * `credential_pin_mismatch`, both before any token is minted or request sent — so a repo writer
+ * who changes `.pkey/distribution` cannot aim these controls at another app the team key sees.
+ *
  * **Ownership before every write.** A version control acts only on a stored version of the app
  * the setup names now (`versionObjectForRelease`), and first RE-READS it from Apple with
  * `include=app` (`proveVersion`): unless Apple says it is this app's version of this release,
@@ -52,7 +58,7 @@ import {
 } from "./client.js";
 import { ASC_WEBHOOK_EVENT_TYPES } from "./map.js";
 import { ascRun, finishRun } from "./run.js";
-import { ASC_CONNECTOR, ascSetup, type AscSetup } from "./setup.js";
+import { ASC_CONNECTOR, resolveAscSetup, type AscSetup } from "./setup.js";
 
 export interface ControlContext {
   env: Env;
@@ -100,13 +106,19 @@ async function withRun(
   c: ControlContext,
   fn: (run: AscRun, setup: AscSetup) => Promise<ControlResult>,
 ): Promise<ControlResult> {
-  const setup = await ascSetup(c.db, c.product);
-  if (!setup)
+  const { setup, inert } = await resolveAscSetup(c.db, c.product);
+  if (!setup) {
+    // The operator's pin and the manifest disagree (or there is no pin): refuse with the reason,
+    // before any token is minted or any request is sent. Nothing a control does is reversible
+    // enough to run against an app the operator did not choose.
+    if (inert.reason === "pin_missing" || inert.reason === "pin_mismatch")
+      return refuse(409, `credential_${inert.reason}`, inert.message);
     return refuse(
       404,
       "not_configured",
-      "App Store Connect is not configured: declare an app-store or testflight outlet with an appleId and store an asc-api-key credential",
+      "App Store Connect is not configured: declare an app-store or testflight outlet with an appleId and store an asc-api-key credential pinned to that app",
     );
+  }
   const run = ascRun({
     env: c.env,
     db: c.db,

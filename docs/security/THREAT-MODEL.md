@@ -682,7 +682,8 @@ accessor.
   (`admin/handlers/outletCredentials.ts`); only the owner, the KEK re-seal sweep and
   `deleteProduct` name the table; only the vault, the owner, the token helpers and the sweep spell
   the AAD kind; and only the owner and the Core admin handler name the writers
-  `putOutletCredential` / `deleteOutletCredential` (`test/outletCredentialReach.test.ts`). In
+  `putOutletCredential` / `pinOutletCredential` / `deleteOutletCredential`
+  (`test/outletCredentialReach.test.ts`). In
   particular Config (edge-mint) and `core/products.ts` (`openProductSecret`) cannot reach it, and
   no manifest ingest, resync, service hook — nor a Distribution connector, webhook handler or
   route, even though Distribution may import the module to open — can write or delete a row.
@@ -691,7 +692,17 @@ accessor.
   be RSA and name exactly `https://oauth2.googleapis.com/token`, so a stored credential can never
   make the Worker post a signed assertion to a host of the writer's choosing — and echoes the id
   only. `GET` returns metadata (`meta_json`: key id, issuer id, client email, tenant, client and
-  seller ids) and health, never a value; the sealed column is never selected.
+  seller ids, and the pin below) and health, never a value; the sealed column is never selected.
+- **The operator names the app (P5-02f).** A kind whose key reaches more than one store app
+  carries an operator-owned **pin** (`OUTLET_CREDENTIAL_PINS`: today `asc-api-key` → `appleId`),
+  the one app its connector may read and act on. It is stored in `meta_json` (not secret, not
+  sealed), written only by the Core admin handler — with a value, or alone (`{kind, pin}`, which
+  touches neither the sealed blob nor its version marker) — and never taken from a value field
+  (the kind's projection is written first, the pin over it). A rotation without `pin` keeps the
+  stored one. Every change is its own `outlet_credential.pin` audit row with the old and new pin.
+  A connector compares it with the manifest's outlet identity (`checkOutletCredentialPin`) before
+  it opens anything; a missing pin is refused like a wrong one. The connector section below says
+  what that closes.
 - **Every use audited, fail closed.** `openOutletCredential(env, db, product, id, use)` appends an
   `outlet_credential.use` row (actor `system:distribution`, the `use`, the outcome) on every call,
   usable or not, and answers `null` — "unusable credential" — for an unknown id, a disabled row,
@@ -786,8 +797,21 @@ the operator's key:
   `phased-release/complete` on Q releases or completes the other app's version, which cannot be
   undone.
 
-It is a confused deputy over every app the key can see, and nothing in the Worker closes it
-today; see Residual for the operator-side mitigations and the code fix it waits on.
+That was a confused deputy over every app the key can see, and P5-02 shipped with it as a
+documented residual. **P5-02f closes it with the operator's pin.** The `asc-api-key` carries the
+`appleId` a platform admin chose (P5-01 section, "The operator names the app"), and the setup
+(`connectors/asc/setup.ts`, `resolveAscSetup`) exists only when the chosen key's pin equals the
+manifest's `appleId`. Otherwise the connector is inert, before any token is minted or credential
+opened: the poller skips the product (`credential-pin-missing` / `credential-pin-mismatch`), the
+webhook answers Core's not-found shape (so a delivery for the old app mirrors nothing), every
+control answers 409 `credential_pin_missing` / `credential_pin_mismatch` and sends nothing, and
+`GET …/distribution/connectors/asc` shows why (`inert`: the manifest's app, the chosen key, the
+pinned app). A repo writer who changes the outlet's `appleId` therefore stops the connector
+instead of aiming it; it stays stopped until the manifest names the pinned app again or a
+platform admin re-pins, which is audited. The pin is checked on the credential the setup picks (a
+bound key before an unbound one), so a second key's matching pin never stands in for it. The
+ownership checks above then hold against an app the operator chose, not one the repo chose
+(`test/ascPin.test.ts`).
 
 **Replay.** Deliveries are deduplicated on `data.id`: a KV marker (7 days, like the GitHub
 webhook) and the `dist_connector_events` primary key. A redelivery answers 200 `{duplicate: true}`
@@ -849,9 +873,9 @@ Universal Purchase app's platforms only one (iOS when present) writes a release'
 rule keeps the whole-release TestFlight row on the newest build — so a tick over unchanged store
 state writes no row and no audit entry.
 
-**Controls.** Each is a platform-admin console action (session, CSRF, rate limit), proves the
-object is the outlet's app first (above; the app `.pkey/distribution` names, not one the
-operator pinned), sends exactly one documented request (two for webhook registration: create, then ping), writes one audit row
+**Controls.** Each is a platform-admin console action (session, CSRF, rate limit), runs only when
+the key's pin matches the manifest's app (else 409, nothing sent), proves the object is that app's
+first (above), sends exactly one documented request (two for webhook registration: create, then ping), writes one audit row
 with the session's subject, and re-reads the object. "Register webhook" sends the stored secret
 to Apple once; the secret is generated server-side by the Core admin handler
 (`PUT …/outlet-credentials/<id>` with `generate: true`) and never returned to anyone.
@@ -880,16 +904,25 @@ days are enforced by the nightly maintenance sweep (`scheduled.ts`, step
 products included, so a product that stops being polled does not keep its payloads forever
 (`test/scheduled.test.ts`).
 
-**Residual: a manifest-chosen app.** The app the connector reads and acts on is chosen by the repo writer, not the operator ("Who picks
-the outlet's app", above). Until an operator-owned pin exists, the mitigations are operational
-and documented in `services/distribution/app-store-connect.md`: before pressing a control, check
-that the `appleId` in `GET …/distribution/connectors/asc` is the product's app; prefer one API key
-per team, and one product per team where you can, so the key sees only the apps that product
-should touch; treat a change to an outlet's `appleId` in `.pkey/distribution` as a change that
-needs review. The intended fix is a pin the platform admin records on the `asc-api-key`
-credential (the expected `appleId`, stored with the credential's metadata at PUT). The setup
-would then refuse to run, or refuse controls, when the manifest's `appleId` differs. That needs a
-field on a P5-01 credential kind and is a follow-up, not part of P5-02.
+**Closed: a manifest-chosen app (P5-02f).** P5-02 shipped with the repo writer choosing the app
+the operator's team key reads and acts on. The operator's pin now chooses it, and the manifest can
+only agree ("Who picks the outlet's app", above). What remains:
+
+- **A re-pin is only as good as the admin's check.** A platform admin who re-pins to whatever
+  `appleId` a new manifest names, without confirming it is the product's app, reopens the hole for
+  that app. The console's pin dialog and the docs say to check first; the `outlet_credential.pin`
+  row is the record. A4 (the admin plane) can set any pin, as it can overwrite any credential.
+- **A repo writer can stop the connector.** Changing the outlet's `appleId` makes it inert (an
+  availability loss, not a write): store state stops flowing in until someone notices `inert` in
+  the console. Webhook deliveries refused meanwhile are not re-driven (Lost follow-ups, above).
+- **Several products on one key.** Each product's credential row carries its own pin, so one team
+  key stored for two products is pinned twice, once per product; the pin limits each product to
+  its own app, but the key itself can still see the whole team if it is ever stolen. One key per
+  team and one product per team where you can stays good advice.
+- **Other stores.** The pin is generic (`OUTLET_CREDENTIAL_PINS`); a Google Play service account
+  (`packageName`, P5-03) or a Partner Center app is protected only once its connector adds its
+  entry and calls `checkOutletCredentialPin` in its setup. Until then that connector has this
+  section's old residual.
 
 ### The device-code user-code page (P1-06)
 
@@ -1152,21 +1185,21 @@ guard with P3-12, each of which extends this section.
 These deserve their own section because each is treated as trusted somewhere in the code while
 originating outside the trust boundary.
 
-| Input                           | Trusted for                                                                       | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------- | --------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                            |
-| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                   |
-| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                              |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                            |
-| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity also picks which App Store Connect app the operator's team key reads and the console controls act on (P5-02, "Who picks the outlet's app"); no operator pin yet.     |
-| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).    |
-| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                          |
-| `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                        |
-| `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                     |
-| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                               |
-| Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                      |
-| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02). |
-| CI distribution reports         | Availability and submission state per release and outlet; key observations        | A CI job (`pkeyci_`) | `distribution:report` (default grant). Validated whole before writing (declared live outlet, known release and build, vocabulary); audited. Can show a wrong state, never ship code, gate bytes or change a key: the operator-owned key inventory only records a CI-observed fingerprint, flagging a mismatch (P2b-03).                                                                     |
+| Input                           | Trusted for                                                                       | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                                                    |
+| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                                           |
+| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                                                      |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                    |
+| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). |
+| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).                            |
+| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                                                  |
+| `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                                                |
+| `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                                             |
+| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                                                       |
+| Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                                              |
+| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02).                         |
+| CI distribution reports         | Availability and submission state per release and outlet; key observations        | A CI job (`pkeyci_`) | `distribution:report` (default grant). Validated whole before writing (declared live outlet, known release and build, vocabulary); audited. Can show a wrong state, never ship code, gate bytes or change a key: the operator-owned key inventory only records a CI-observed fingerprint, flagging a mismatch (P2b-03).                                                                                             |
 
 **CI OIDC claims are only as strong as the repository's own settings.** The policy proves the
 token came from the declared workflow, in the declared environment, on a ref a branch or tag
@@ -1326,7 +1359,7 @@ descriptor hook gains a method that writes or a new provider, or a method that r
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
 offered (P3-03), or a reader of `dist_availability` does, a store connector is added, gains a
-control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, takes the app it proves against from anywhere but the manifest's outlet identity, gains an operator pin on that app (or drops one), or starts uploading or submitting (P5-02), or anything but the console's key
+control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, takes the app it proves against from anywhere but the manifest's outlet identity, runs without that identity matching the operator's pin on its credential (a connector whose key reaches several apps added without an `OUTLET_CREDENTIAL_PINS` entry, or a pin check dropped or made optional), lets anything but the Core admin handler write a pin, or starts uploading or submitting (P5-02, P5-02f), or anything but the console's key
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
