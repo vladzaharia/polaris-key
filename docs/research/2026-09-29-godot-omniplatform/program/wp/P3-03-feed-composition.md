@@ -247,6 +247,38 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 mise exec node@22 -- pnpm typecheck
 ```
 
+## Corrections from implementation
+
+Where the code disagreed with the text above, the code won; recorded here (P3-03's branch):
+
+- **`release_config.release_keys_json`** (migration 0044) persists the declared `releaseKeys`;
+  the plan's table list did not name it. `update_feed_docs` also stores `content_sha256`, so a
+  change of content at the `seq` ceiling (where `seq` cannot move) still re-signs.
+- **The composer's "logs it"** at the ceiling is an audit row (`update.feed.ceiling`): the Worker
+  has no log sink (`test/attack/R12-secrets.test.ts` refuses `console.*`).
+- **Distribution reached through hooks only** needed a read-only `delivery.outlets()` (id, kind,
+  identity, narrowed): no existing hook listed the outlets with their identities.
+- **`live`** is the newest release at or below the target's `seq` (looking back at most 16) that
+  `delivery.availability` reports `live` on the outlet for the platform: a self-updating outlet
+  is offered only when `live.seq` is the target's, so a newer release on another channel must not
+  count.
+- **Record ingest of a re-run** keeps the release's first record (`record.stored: false`) rather
+  than refusing it on `record_sha256`/`seq` uniqueness: records are never rewritten, and a CI
+  re-run stays idempotent. A record lost to a race is `409 release_record_rejected {seq}`,
+  `retryable`.
+- **The CLI** requires a release key when `.pkey/release` declares `releaseKeys` (`--no-record`
+  opts out), finds the `kid` from the declared key matching `PKEY_RELEASE_KEY`, and adds
+  `--release-key-file`, `--min-supported-seq` and the Action inputs `release-key` and
+  `min-supported-seq`. It never `::add-mask::`es the key (that would print it; a GitHub secret is
+  masked by the runner).
+- **Release-key fingerprints in `dist_keys`** are written by Distribution's `manifestIngest` as
+  `release`-purpose OBSERVATIONS (`source = 'ci'`), never inventory entries, so a repo declaring a
+  key flags it for the operator.
+- **Verification at publish time** for the Sparkle appcast was not built (the appcast still
+  verifies at request time): the brief's stopgap is in — the stream tail and memo write run under
+  `ctx.waitUntil`.
+- **Feed and record routes** carry per-IP rate limits (60/min, `updateFeed`, `releaseRecord`).
+
 ## Hand-off
 
 - The `signRecord` implementation and the key helper, which [P4-03](P4-03-ci-patch-artifacts.md)
