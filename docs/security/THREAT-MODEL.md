@@ -642,7 +642,13 @@ own key could also publish that key as the expected one.
 
 - **Operator-only writes.** Only the console's `PUT`/`DELETE …/distribution/keys` (platform-admin
   session, CSRF, audited with the session's subject) create, change or remove an entry
-  (`source = 'admin'`). No ingest writes `dist_keys`; no manifest field reaches it.
+  (`source = 'admin'`). No ingest writes a `dist_keys` ENTRY. The one manifest field that
+  reaches the table is `.pkey/release` `releaseKeys` (P3-03; see "Release keys, the strict
+  verifier and the signed feed" below): on every link and resync it writes `release`-purpose
+  observations (`source = 'ci'`, under the same `MAX_KEY_OBSERVATIONS` cap, past which a new one
+  is silently not stored) and refreshes `observed_json` on a matching entry, exactly as a CI key
+  report does — but with no per-observation audit row. An unadopted one still flags the purpose
+  in the inventory until an operator adopts or dismisses it.
 - **CI reports observations, never entries.** A `type: key` report that matches an entry writes
   only that row's `observed_json` (the upsert's `DO UPDATE` names no other operator column). One
   that matches no entry becomes an observation row (`source = 'ci'`), audited as
