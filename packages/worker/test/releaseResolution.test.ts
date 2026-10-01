@@ -777,6 +777,8 @@ describe("channel floors (R6-10)", () => {
       release("v2.0.0"),
     ];
     state.byTag = {};
+    // The upstream change reaches the resolution cache through the release generation (P2-05).
+    await bumpReleaseGeneration(env, SLUG, NOW);
     const beta = await versionOf("beta");
     expect(beta.status).not.toBe(200);
     expect(await versionOf("staging")).toEqual(beta);
