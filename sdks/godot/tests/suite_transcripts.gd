@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature core.discover core.sync core.cache devices.register devices.report
+# @pkey-feature core.discover core.sync core.cache config.schema config.mint devices.register devices.report
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -96,6 +96,14 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 		"discover":
 			var r: PKeyResult = await sdk.discover()
 			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
+		"fetchSchema":
+			out["catalog"] = await sdk.config.fetch_schema()
+		"mintToken":
+			var r: PKeyMintResult = await sdk.config.mint_token(step["args"]["recipeId"])
+			out["result"] = "ok" if r.ok else String(r.code)
+			if r.ok:
+				out["token"] = r.token
+				out["expiresAt"] = r.expires_at
 		"sync":
 			var r: PKeySyncResult = await sdk.sync(PKeyClaims.is_true(step["args"].get("force")))
 			out["applied"] = r.applied

@@ -17,7 +17,8 @@
 After an approved plan:
 
 - corpus v2 gains two generated files, `headers.json` and `config-matrix.json`, each mirrored into
-  the Swift test resources and guarded by `pnpm gen:corpus -- --check`;
+  the Swift test resources and the Godot `res://` mirror and guarded by
+  `pnpm gen:corpus -- --check`;
 - every SDK sends the canonical `X-PKey-Platform`, `X-PKey-Arch` and `X-PKey-SDK` values those files
   pin;
 - the Node, React, Python and Swift runners pass both files;
@@ -30,12 +31,12 @@ Header values differ across SDKs, so the Worker's device records and analytics s
 ([README §9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) #17):
 
 - Node sends `os.platform()` and `os.arch()` (`win32`, `darwin`, `x64`;
-  `packages/sdk-node/src/core/context.ts:288-298`);
+  `packages/sdk-node/src/core/context.ts:301-312`);
 - Python sends `platform.system().lower()` and `platform.machine()` (`windows`, `AMD64`, `aarch64`;
-  `sdks/python/src/polaris_key/core/context.py:361-362`);
+  `sdks/python/src/polaris_key/core/context.py:372-373`);
 - Swift sends `darwin`, `ios`, `win32` and `arm64`, `x86_64`
   (`sdks/swift/Sources/PolarisKeyCore/Platform.swift`);
-- the React browser adapter sends `browser` (`packages/sdk-react/src/browser/browserAdapter.ts:211`).
+- the React browser adapter sends `browser` (`packages/sdk-react/src/browser/browserAdapter.ts:257`).
 
 Config precedence is implemented three times (`client-core/src/config.ts`, Python
 `config/resolve.py`, Swift `ConfigClient.swift`), with Godot next, and has no shared vectors. Its
@@ -59,7 +60,7 @@ environment-variable JSON parsing is exactly the kind of rule languages disagree
   `looksLikeJson`, `safeJsonParse`); `packages/sdk-react/src/core/adapter.ts` (`ctxFor`: React's
   environment layer is always empty).
 - Where the Worker keeps header values: `packages/worker/src/core/devices.ts:671-687`
-  (`deviceMetadata`) and `packages/worker/src/repo.ts:1175` (stored verbatim).
+  (`deviceMetadata`) and `packages/worker/src/repo.ts:1224-1250` (`upsertDevice`, stored verbatim).
 - `packages/docs/scripts/gen-reference.mjs`, `corpusInventory()`.
 
 ## Scope
@@ -68,7 +69,8 @@ environment-variable JSON parsing is exactly the kind of rule languages disagree
 
 - `tools/sign-corpus.ts` builders for `conformance/corpus/v2/headers.json` (`headersVersion: 1`) and
   `config-matrix.json` (`configMatrixVersion: 1`), plus their mirrors in
-  `sdks/swift/Tests/PolarisKeyTests/Resources/v2/`.
+  `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` (both written
+  through `CORPUS_TARGETS`).
 - In each SDK, a pure mapping from that runtime's raw inputs to the canonical values, used by its
   header builder. Node, Python and Swift change what they send; React's browser adapter sends
   `web`.

@@ -389,7 +389,7 @@
       "optional": false,
       "refs": ["README §5.4", "notes/A2 §1.10 §9.3", "PARITY §5.3"],
       "brief": "wp/P1-04-godot-config.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1-05",
@@ -600,7 +600,7 @@
       "optional": false,
       "refs": ["PARITY §4.1", "README §9.1 #17"],
       "brief": "wp/P1b-04-headers-config-corpora.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "P1b-05",

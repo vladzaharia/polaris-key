@@ -11,8 +11,11 @@ extends Node
 ## Every call that can wait is a coroutine returning a PKeyResult (or PKeySyncResult). Signals:
 ## `state_changed(state)` when the licence state changes, `sync_finished(result)` after every
 ## sync, `store_error(err)` when the store fails to read or write (also `last_store_error`).
-## `core` is the PKeyCore every service client builds on. Sub-objects: `devices` (PKeyDevices:
-## fingerprint, keyless register, the device roster, telemetry after each sync).
+## `core` is the PKeyCore every service client builds on.
+##
+## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
+## `config_changed(keys)` fires after start, each sync and each bundle import) and `devices`
+## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync).
 
 const SDK_VERSION := "0.1.0"
 
@@ -27,6 +30,8 @@ var core: PKeyCore = null
 ## The device principal's surface (services/devices.gd); null until configure().
 var devices: PKeyDevices = null
 var last_store_error: Dictionary = {}
+## Managed config. Usable before `configure()` (every key falls back).
+var config := PKeyConfig.new()
 
 var _timer: Timer = null
 var _syncing := false
@@ -43,6 +48,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	_stop_timer()
 	core = r.detail
 	core.store_error.connect(_on_store_error)
+	config.attach(core)
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state
@@ -57,6 +63,7 @@ func start() -> PKeyResult:
 	if r.ok:
 		_start_timer()
 		_emit_state()
+		config.refresh()
 	return r
 
 
@@ -84,6 +91,7 @@ func sync(force := false) -> PKeySyncResult:
 	_syncing = true
 	var r := await core.sync(force)
 	_syncing = false
+	config.refresh()
 	sync_finished.emit(r)
 	_emit_state()
 	return r
@@ -100,6 +108,7 @@ func import_bundle(text: String) -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	var r := await core.import_bundle(text)
 	_emit_state()
+	config.refresh()
 	return r
 
 

@@ -37,6 +37,8 @@ const HTTP_ERROR := &"http-error"
 const INVALID_RESPONSE := &"invalid-response"
 const STORE_FAILED := &"store-failed"
 const NO_TOKEN := &"no-token"
+## Edge-mint: discovery says the product has no approved recipe, so nothing was sent.
+const MINT_UNAVAILABLE := &"mint-unavailable"
 ## Device management (rename, deauthorize) needs a device token this client does not hold.
 const DEVICE_MANAGEMENT_UNSUPPORTED := &"device-management-unsupported"
 ## The four §7 bundle steps (PKeyBundle).
