@@ -36,10 +36,14 @@ CREATE TABLE IF NOT EXISTS ci_publishers (
 -- Every `pkeyci_` token, minted (`oidc`) or operator-issued (`static`). `jti` is the GitHub OIDC
 -- token's id for a minted token (NULL for a static one); its UNIQUE index is what makes the
 -- exchange single-use in D1, atomically.
+--
+-- Product-first primary key like every tenant table (R11-05); the bearer carries no product, so
+-- the lookup goes through `idx_ci_tokens_hash`, which also makes the hash GLOBALLY unique — the
+-- real invariant for a 256-bit secret, as `idx_release_download_tokens_hash` (0015) is.
 CREATE TABLE IF NOT EXISTS ci_tokens (
-  token_hash   TEXT PRIMARY KEY,
-  token_id     TEXT NOT NULL,
   product      TEXT NOT NULL REFERENCES products(slug),
+  token_hash   TEXT NOT NULL,
+  token_id     TEXT NOT NULL,
   kind         TEXT NOT NULL CHECK (kind IN ('oidc', 'static')),
   scopes_json  TEXT NOT NULL,
   subject      TEXT NOT NULL,
@@ -48,9 +52,11 @@ CREATE TABLE IF NOT EXISTS ci_tokens (
   issued_at    INTEGER NOT NULL,
   expires_at   INTEGER NOT NULL,
   revoked_at   INTEGER,
-  created_by   TEXT NOT NULL
+  created_by   TEXT NOT NULL,
+  PRIMARY KEY (product, token_hash)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ci_tokens_hash ON ci_tokens(token_hash);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ci_tokens_jti ON ci_tokens(jti);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ci_tokens_id ON ci_tokens(token_id);
 CREATE INDEX IF NOT EXISTS idx_ci_tokens_product ON ci_tokens(product, issued_at DESC);
@@ -59,15 +65,17 @@ CREATE INDEX IF NOT EXISTS idx_ci_tokens_product ON ci_tokens(product, issued_at
 -- submit may promote only those. `redeemed_at` is set by the submit that consumed it — a ticket
 -- is redeemed once.
 CREATE TABLE IF NOT EXISTS ci_upload_tickets (
-  ticket_hash   TEXT PRIMARY KEY,
-  ticket_id     TEXT NOT NULL,
   product       TEXT NOT NULL REFERENCES products(slug),
+  ticket_hash   TEXT NOT NULL,
+  ticket_id     TEXT NOT NULL,
   token_hash    TEXT NOT NULL,
   objects_json  TEXT NOT NULL,
   issued_at     INTEGER NOT NULL,
   expires_at    INTEGER NOT NULL,
-  redeemed_at   INTEGER
+  redeemed_at   INTEGER,
+  PRIMARY KEY (product, ticket_hash)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ci_upload_tickets_hash ON ci_upload_tickets(ticket_hash);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ci_upload_tickets_id ON ci_upload_tickets(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_ci_upload_tickets_expiry ON ci_upload_tickets(expires_at);
