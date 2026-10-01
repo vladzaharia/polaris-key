@@ -300,7 +300,9 @@ release:
   one place: declaring them both at the root and here is `conflicting_versioning`.
 - **`channels`** keys are canonical channel names (lower-case letters, digits, `-`; not the
   aliases `staging` or `latest`). `includes` may name `stable`, `beta`, a manual channel or
-  another declared channel, and may not loop (`invalid_channel_includes`).
+  another declared channel, by its canonical name, and may not loop
+  (`invalid_channel_includes`). A manual channel whose name is not canonical (`Nightly.2`)
+  cannot be included.
 - **`artifacts`**: each entry is one **build**. `id` is the build id; `platform` is one of
   `macos`, `ios`, `android`, `windows`, `linux`, `web`; `arch` one of `arm64`, `x86_64`,
   `universal`, `armv7`, `wasm32`, `any`; `format` is the file type. `role` defaults to

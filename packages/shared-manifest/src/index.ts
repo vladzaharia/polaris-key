@@ -2203,6 +2203,17 @@ function validateAppDeliverable(
               "invalid_channel_includes",
               "includes may only name stable, beta, a manual channel or another declared channel.",
             );
+          } else if (!isCanonicalChannelName(inc)) {
+            // Stored as written (release_channel_policy.includes_json), so only canonical names:
+            // a manual channel P0-04 tolerates with a warning (Nightly.2) or an alias (staging)
+            // is still refused here.
+            add(
+              errors,
+              "release",
+              `/release/deliverables/app/channels/${name}/includes/${i}`,
+              "invalid_channel_includes",
+              `includes names must be canonical (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`,
+            );
           } else edges.push(inc);
         }
         graph.set(name, edges);
@@ -2524,7 +2535,9 @@ function normalizeAppDeliverable(raw: unknown): ManifestAppDeliverable | null {
   for (const [name, decl] of Object.entries(asRecord(def.channels))) {
     if (!isCanonicalChannelName(name) || !isRecord(decl)) continue;
     channels[name] = {
-      includes: (arrayAt(decl, "includes") ?? []).filter(isString),
+      includes: (arrayAt(decl, "includes") ?? []).filter(
+        isCanonicalChannelName,
+      ),
     };
   }
   const artifacts: ManifestArtifactEntry[] = [];

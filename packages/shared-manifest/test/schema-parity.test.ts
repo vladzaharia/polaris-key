@@ -896,6 +896,26 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (app(d).channels.beta.includes = "stable"),
   },
   {
+    code: "invalid_channel_includes",
+    file: "release",
+    schema: "rejects",
+    // A manual channel P0-04 accepts with a warning is still not a canonical includes name:
+    // includes are stored as written.
+    mutate: (d) => {
+      rel(d).manualChannels = [{ name: "Nightly.2", regex: "nightly-.*" }];
+      app(d).channels.beta.includes = ["Nightly.2"];
+    },
+  },
+  {
+    code: "invalid_channel_includes",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => {
+      rel(d).manualChannels = [{ name: "staging", regex: "staging-.*" }];
+      app(d).channels.beta.includes = ["staging"];
+    },
+  },
+  {
     code: "invalid_artifact_entry",
     file: "release",
     schema: "rejects",

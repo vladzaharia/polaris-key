@@ -24,6 +24,7 @@ import {
   MAX_MANIFEST_DEPTH,
   normalizeAutoIssue,
   parseManifest,
+  parseManifestAppDeliverable,
   validateIngestDocuments,
   validateManifestDocuments,
   webOriginProblem,
@@ -1756,6 +1757,31 @@ describe("deliverables and the artifact map (P2-04)", () => {
       },
     });
     expect(self.ok).toBe(false);
+  });
+
+  it("includes names are canonical: a tolerated manual name or an alias is refused, never stored", () => {
+    for (const name of ["Nightly.2", "staging"]) {
+      const res = parseWith({
+        manualChannels: [{ name, regex: "v.*-x" }],
+        deliverables: {
+          app: { kind: "app", channels: { beta: { includes: [name] } } },
+        },
+      });
+      expect(res.ok).toBe(false);
+      if (res.ok) return;
+      expect(res.errors.join("\n")).toContain(
+        "/release/deliverables/app/channels/beta/includes/0: includes names must be canonical",
+      );
+    }
+    // A stored declaration from before the rule loses the name rather than serving it.
+    expect(
+      parseManifestAppDeliverable(
+        JSON.stringify({
+          kind: "app",
+          channels: { beta: { includes: ["stable", "Nightly.2", "staging"] } },
+        }),
+      )?.channels,
+    ).toEqual({ beta: { includes: ["stable"] } });
   });
 });
 
