@@ -72,24 +72,27 @@
     "config.mint": { "status": "implemented" },
     "config.mirror": { "status": "implemented" },
     "devices.fingerprint": {
-      "status": "planned",
-      "wp": "P1-05"
+      "status": "implemented",
+      "note": "PKeyFingerprint: per-platform readers as pure parsers over captured output, the capture on a WorkerThreadPool task once a session; the desktop device id hashes MachineGuid (Windows), IOPlatformUUID (macOS) and the rule-2 machine-id (Linux).",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
     },
     "devices.facts": {
-      "status": "planned",
-      "wp": "P1-05"
+      "status": "implemented"
     },
     "devices.register": {
-      "status": "planned",
-      "wp": "P1-05"
+      "status": "implemented"
     },
     "devices.manage": {
-      "status": "planned",
-      "wp": "P1-05"
+      "status": "implemented"
     },
     "devices.report": {
-      "status": "planned",
-      "wp": "P1-05"
+      "status": "implemented",
+      "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them); outlet comes only from P1-11's build stamp."
     },
     "identity.oidc": {
       "status": "planned",

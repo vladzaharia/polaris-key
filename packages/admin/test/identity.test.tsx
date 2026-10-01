@@ -115,11 +115,15 @@ describe("Identity — the customer portal card", () => {
     //
     // Wait for the SETTLED value, not merely for the switch to exist: the card seeds its form
     // from the response in an effect, so the switches are briefly in the DOM at their initial
-    // state and `findByRole` can resolve on that one render when the machine is busy.
-    await waitFor(() => expect(checked(toggle("Customer portal"))).toBe(true));
-    expect(checked(toggle("OIDC access"))).toBe(false);
+    // state and `findByRole` can resolve on that one render when the machine is busy. The
+    // defaults already have the portal (and every other module) on, so wait on the two switches
+    // the fixture turns OFF — only the settled response can produce those.
+    await waitFor(() => {
+      expect(checked(toggle("OIDC access"))).toBe(false);
+      expect(checked(toggle("License-key claim"))).toBe(false);
+    });
+    expect(checked(toggle("Customer portal"))).toBe(true);
     expect(checked(toggle("Email magic links"))).toBe(true);
-    expect(checked(toggle("License-key claim"))).toBe(false);
     expect(checked(toggle("Release downloads"))).toBe(true);
   });
 
@@ -135,8 +139,13 @@ describe("Identity — the customer portal card", () => {
     });
     renderIdentity();
 
-    await waitFor(() => expect(checked(toggle("Customer portal"))).toBe(true));
-    expect(checked(toggle("OIDC access"))).toBe(false);
+    // Wait on the value only the endpoint supplies: the form's defaults already show the portal
+    // switch on (and OIDC on), so waiting on the portal switch alone passed before the endpoint
+    // answered and the OIDC assertion then raced it.
+    await waitFor(() => {
+      expect(checked(toggle("OIDC access"))).toBe(false);
+      expect(checked(toggle("Customer portal"))).toBe(true);
+    });
     expect(portalSettings).toHaveBeenCalledWith("djdl");
   });
 

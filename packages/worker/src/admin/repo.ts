@@ -94,6 +94,14 @@ export async function deleteProduct(
       sql: "UPDATE product_keys SET status = 'revoked', rotated_at = ?, revoked_at = ? WHERE product = ?",
       params: [now, now, slug],
     },
+    // P5-01: a deleted product keeps no store keys. Deleted, not flagged: an outlet credential
+    // is a live key to someone else's account, and nothing about a deleted product needs it.
+    // (This and the KEK sweep are the only places outside `core/outletCredentials.ts` allowed
+    // to name the table — `test/outletCredentialReach.test.ts`.)
+    {
+      sql: "DELETE FROM outlet_credentials WHERE product = ?",
+      params: [slug],
+    },
   ]);
 }
 

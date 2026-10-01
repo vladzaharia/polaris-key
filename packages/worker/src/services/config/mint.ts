@@ -41,6 +41,7 @@ import { errorResponse } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
+import { signJwtEs256, signJwtRs256 } from "../../core/jwt.js";
 
 export interface EdgeMintRow {
   product: string;
@@ -53,115 +54,6 @@ export interface EdgeMintRow {
   /** Trusted JWT `aud` — server-controlled, NOT overridable from the free template. */
   audience: string | null;
   auth_page_template: string | null;
-}
-
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-const b64urlStr = (s: string): string => b64url(new TextEncoder().encode(s));
-function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-/** Strip PEM armor + whitespace and decode the base64 body to raw DER bytes. */
-function pemToDer(pem: string): Uint8Array {
-  const body = pem
-    .replace(/-----BEGIN [^-]+-----/g, "")
-    .replace(/-----END [^-]+-----/g, "")
-    .replace(/\s+/g, "");
-  const bin = atob(body);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-/** Build a DER tag+length prefix (definite form) for a body of `n` bytes. */
-function derLen(tag: number, n: number): number[] {
-  if (n < 0x80) return [tag, n];
-  const bytes: number[] = [];
-  let v = n;
-  while (v > 0) {
-    bytes.unshift(v & 0xff);
-    v >>= 8;
-  }
-  return [tag, 0x80 | bytes.length, ...bytes];
-}
-
-/**
- * RSA private keys may arrive as PKCS#1 (`BEGIN RSA PRIVATE KEY`); WebCrypto only imports
- * PKCS#8, so wrap PKCS#1 DER in the PKCS#8 PrivateKeyInfo envelope (the fixed rsaEncryption
- * AlgorithmIdentifier prefix). Pass an existing PKCS#8 (`BEGIN PRIVATE KEY`) through as-is.
- * Mirrors release/githubApp.ts `toPkcs8`.
- */
-function rsaToPkcs8(pem: string): ArrayBuffer {
-  const der = pemToDer(pem);
-  if (/BEGIN PRIVATE KEY/.test(pem)) return toAB(der);
-  // PKCS#8 = SEQUENCE { version 0, AlgorithmIdentifier rsaEncryption NULL, OCTET STRING pkcs1 }
-  const rsaOid = [
-    0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
-    0x01, 0x05, 0x00,
-  ];
-  const version = [0x02, 0x01, 0x00];
-  const octetHeader = derLen(0x04, der.length);
-  const inner = [...version, ...rsaOid, ...octetHeader, ...der];
-  const seq = [...derLen(0x30, inner.length), ...inner];
-  return toAB(Uint8Array.from(seq));
-}
-
-/** Sign an ES256 (ECDSA P-256) JWT — WebCrypto returns the raw r||s that JWS ES256 wants. */
-async function signEs256(
-  payload: Record<string, unknown>,
-  pem: string,
-  kid?: string,
-): Promise<string> {
-  const header = { alg: "ES256", typ: "JWT", ...(kid ? { kid } : {}) };
-  const signingInput =
-    b64urlStr(JSON.stringify(header)) +
-    "." +
-    b64urlStr(JSON.stringify(payload));
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    toAB(pemToDer(pem)),
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    toAB(new TextEncoder().encode(signingInput)),
-  );
-  return signingInput + "." + b64url(new Uint8Array(sig));
-}
-
-/** Sign an RS256 (RSASSA-PKCS1-v1_5 / SHA-256) JWT. Accepts PKCS#1 or PKCS#8 PEM. */
-async function signRs256(
-  payload: Record<string, unknown>,
-  pem: string,
-  kid?: string,
-): Promise<string> {
-  const header = { alg: "RS256", typ: "JWT", ...(kid ? { kid } : {}) };
-  const signingInput =
-    b64urlStr(JSON.stringify(header)) +
-    "." +
-    b64urlStr(JSON.stringify(payload));
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    rsaToPkcs8(pem),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    toAB(new TextEncoder().encode(signingInput)),
-  );
-  return signingInput + "." + b64url(new Uint8Array(sig));
 }
 
 /** The recipe row as the manifest last wrote it — approved or not. The `/auth` page and the
@@ -381,10 +273,10 @@ export async function handleMintToken(
   let minted: string;
   switch (cfg.alg) {
     case "ES256":
-      minted = await signEs256(claims, pem, kid);
+      minted = await signJwtEs256(claims, pem, kid);
       break;
     case "RS256":
-      minted = await signRs256(claims, pem, kid);
+      minted = await signJwtRs256(claims, pem, kid);
       break;
     case "EdDSA":
       // @polaris-key/jws emits a compact JWS with header {alg:"EdDSA", kid}.

@@ -30,7 +30,8 @@
 
 import type { Env, Db } from "../../core/platform.js";
 import { appSecurityHeaders } from "../../core/platform.js";
-import type { Product } from "../../core/products.js";
+import type { ProductPublic } from "../../core/products.js";
+import { BLOB_CSP } from "../../core/blobs.js";
 import { errorResponse, json, notFound } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
@@ -51,12 +52,15 @@ import {
   parseManualChannels,
   resolutionPolicy,
   resolveChannel,
+  semverOfTag,
 } from "./channels.js";
 import {
   getChannelFloor,
   isBelowFloor,
   type ReleaseChannelFloorRow,
+  storedAppReleases,
 } from "./store.js";
+import { compareSemver, parseSemver } from "../../core/entitlements.js";
 import {
   accessModeFor,
   artifactPolicy,
@@ -66,6 +70,8 @@ import {
   type ResolvedConfig,
 } from "./config.js";
 import { enforceReleaseAccess, type ReleaseParams } from "./access.js";
+import { legacyPolicyFor, type LegacyPolicy } from "./resolve.js";
+import { cachedResolution } from "./ghCache.js";
 
 export type { ReleaseParams } from "./access.js";
 
@@ -133,6 +139,12 @@ function edgeCache(): Cache | null {
  * is meant to stop. Only the inputs that actually change the response are encoded — which, as
  * of P2.T4, includes `arch`: the appcast serves a different enclosure per architecture, and a
  * key that ignored it would hand an Intel Mac the arm64 DMG (or the reverse).
+ *
+ * The release GENERATION (`ghCache.ts`) is deliberately NOT part of the key: reading it would put
+ * a KV read in front of every hit and cost R10-05 its zero-binding hit. The price is that a yank,
+ * pin or promote reaches a public product's version check and appcasts only when this entry
+ * expires (`MOVING_CACHE` 120 s, `APPCAST_CACHE` 300 s, per colo), which the channels docs page
+ * states. The byte routes and the download route are never edge-cached.
  */
 function releaseCacheKey(
   origin: string,
@@ -146,6 +158,8 @@ function releaseCacheKey(
   if (params.version) url.searchParams.set("v", params.version);
   if (params.channel) url.searchParams.set("c", params.channel);
   if (params.arch) url.searchParams.set("a", params.arch);
+  if (params.fixedVersion !== undefined)
+    url.searchParams.set("f", params.fixedVersion);
   return new Request(url.toString(), { method: "GET" }) as unknown as Request;
 }
 
@@ -156,16 +170,29 @@ function releaseCacheKey(
  * admin SPA and the customer portal.
  */
 export function harden(res: Response): Response {
+  // A byte response (`blobResponse`) already carries the sandbox CSP, which is strictly tighter
+  // than the app CSP: keep it rather than loosen it (P2-05).
+  const sandboxed = res.headers.get("content-security-policy") === BLOB_CSP;
   const headers = appSecurityHeaders(new Headers(res.headers));
+  if (sandboxed) headers.set("content-security-policy", BLOB_CSP);
   return new Response(res.body, { status: res.status, headers });
 }
+
+/** The surfaces that stream bytes: the artifact rate-limit lane, never the edge cache. */
+export const ARTIFACT_KINDS: ReadonlySet<ReleaseKind> = new Set<ReleaseKind>([
+  "cli",
+  "dmg",
+  "build",
+  "file",
+  "blob",
+]);
 
 /** Everything a surface handler is given once the gateway has cleared the request. */
 export interface SurfaceContext {
   req: Request;
   env: Env;
   db: Db;
-  product: Product;
+  product: ProductPublic;
   cfg: ReleaseConfigRow;
   params: ReleaseParams;
   origin: string;
@@ -182,7 +209,7 @@ export async function serveReleaseSurface(
   req: Request,
   env: Env,
   db: Db,
-  product: Product,
+  product: ProductPublic,
   kind: ReleaseKind,
   params: ReleaseParams,
   fetchImpl: FetchImpl,
@@ -226,7 +253,7 @@ export async function serveReleaseSurface(
   // Only cache MISSES are metered: the budget exists to bound GitHub subrequests, and a hit
   // issues none. `install` is included even though it makes no GitHub call — it is the entry
   // point of the download flow and shares the same public surface.
-  const isArtifact = kind === "cli" || kind === "dmg";
+  const isArtifact = ARTIFACT_KINDS.has(kind);
   if (
     !(await rateLimitOk(
       env,
@@ -328,12 +355,41 @@ export async function installationToken(
 }
 
 /**
+ * The `release_channel_policy` channel a selector reads (canonical names, P0-04 plan §10): a
+ * moving stable selector is `stable`, any beta spelling is `beta`, a PR or manual channel is
+ * its own name. A pinned version reads no channel policy at all — it is explicit.
+ */
+export function policyChannelOf(sel: ChannelSelector): string | null {
+  switch (sel.kind) {
+    case "stable":
+      return isMovingSelector(sel) ? "stable" : null;
+    case "beta":
+      return "beta";
+    case "pr":
+    case "manual":
+      return sel.raw;
+  }
+}
+
+/**
  * Resolve a version/channel selector to a concrete release.
  *
  * Pinned `X.Y.Z` goes straight to the tag (`v<version>`, then `<version>`); every moving selector
  * goes through `resolveMovingSelector`, the ONE resolution function the download route, the
  * appcast, the version check and `checkReleaseHealth` share. A moving selector that resolves to
  * nothing — including a channel whose floor release has disappeared (R6-10) — is a 404.
+ *
+ * The channel policy (P2-05) applies on top, so these legacy routes agree with the new
+ * per-platform resolution (`resolve.ts`):
+ *   - a YANKED release is never offered on a moving selector (a pinned version still names it);
+ *   - a PINNED channel serves exactly its pointer, yanked or not (yanks resolve only by pin), and
+ *     a pinned pointer that no longer exists on GitHub is a 404, never a silent fallback;
+ *   - an unpinned pointer (a promote) is one more candidate, served when it is the newest.
+ *
+ * The result is cached for `RESOLUTION_TTL` per (product, selector, release generation)
+ * (`ghCache.ts`), so a download, an appcast and a version check cost at most one resolution per
+ * selector per 90 s, and any policy change or sync invalidates it at once (the edge cache in
+ * front of the version check and appcasts is a separate, unpurged layer: `releaseCacheKey`).
  */
 export async function resolveSelector(
   env: Env,
@@ -346,21 +402,47 @@ export async function resolveSelector(
   const manual = parseManualChannels(cfg.manual_channels_json);
   const sel = classifyChannel(selector, manual);
   if (!sel) throw new NotFoundError(`unknown selector: ${selector}`);
+  const release = await cachedResolution(
+    env,
+    cfg.product,
+    // Keyed by what the selector MEANS, not how it was spelled: `latest`, `stable` and an
+    // omitted selector are one resolution, and so are `beta` and its legacy spellings.
+    `selector:${policyChannelOf(sel) ?? `version:${sel.raw}`}`,
+    () => resolveSelectorLive(env, db, cfg, sel, now, fetchImpl),
+  );
+  if (!release) throw new NotFoundError(`no release for selector: ${selector}`);
+  return { release, sel };
+}
+
+/** `resolveSelector` without the cache. */
+async function resolveSelectorLive(
+  env: Env,
+  db: Db,
+  cfg: ResolvedConfig,
+  sel: ChannelSelector,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<Release | null> {
   const tok = await installationToken(env, cfg, now, fetchImpl);
 
   // A pinned stable tag can be resolved directly; moving selectors scan the release list.
-  if (sel.kind === "stable" && sel.raw !== "latest" && sel.raw !== "stable") {
-    const release = await resolveRelease(
+  if (!isMovingSelector(sel)) {
+    return resolveRelease(tok, cfg.gh_owner, cfg.gh_repo, sel.raw, fetchImpl);
+  }
+
+  const policy = await legacyPolicyFor(db, cfg.product, policyChannelOf(sel));
+  if (policy.pinned && policy.pointer) {
+    const pinned = await getReleaseByTag(
       tok,
       cfg.gh_owner,
       cfg.gh_repo,
-      sel.raw,
+      policy.pointer,
       fetchImpl,
     );
-    return { release, sel };
+    return pinned && !pinned.draft ? pinned : null;
   }
 
-  const { release } = await resolveMovingSelector(
+  const moving = await resolveMovingSelector(
     env,
     db,
     cfg,
@@ -368,9 +450,25 @@ export async function resolveSelector(
     sel,
     now,
     fetchImpl,
+    policy,
   );
-  if (!release) throw new NotFoundError(`no release for selector: ${selector}`);
-  return { release, sel };
+  if (!policy.pointer || policy.yanked.has(policy.pointer))
+    return moving.release;
+  // An unpinned pointer (promote) is a member of the channel: one more candidate.
+  // By tag, not from `moving.listed`: a cached listing carries no assets. The whole result is
+  // cached one level up, so this costs one call per 90 s at most.
+  const pointer = await getReleaseByTag(
+    tok,
+    cfg.gh_owner,
+    cfg.gh_repo,
+    policy.pointer,
+    fetchImpl,
+  );
+  if (!pointer || pointer.draft) return moving.release;
+  if (!moving.release) return pointer;
+  return resolutionPolicy(cfg).compare(pointer, moving.release) > 0
+    ? pointer
+    : moving.release;
 }
 
 /** What a moving selector resolved to, and why. */
@@ -392,14 +490,17 @@ export interface MovingResolution {
  * resolution function P0-02 asks for.
  *
  * 1. Filter + order with the product's candidate policy (`stableTagPattern`, `ignoreTags`,
- *    semver precedence — `resolutionPolicy`).
+ *    semver precedence — `resolutionPolicy`), minus every YANKED tag (P2-05, `policy`).
  * 2. Read release pages until one holds a candidate for this selector, capped at
  *    `RELEASE_PAGE_CAP.live` (3), and pick the highest candidate among the pages read. A repo
  *    whose first page already holds one — every normal repo — still costs ONE list call.
  * 3. Apply the channel floor (R6-10): one D1 read; and only when the pick is BELOW the floor,
  *    one GitHub tag lookup for the floor's release. Still there (it sat on a page not read) ⇒
  *    serve it. Gone ⇒ `release: null`, `regressed: true` — the caller 404s rather than
- *    silently promoting an older build to `latest` with a public cache header.
+ *    silently promoting an older build to `latest` with a public cache header. A floor whose
+ *    release was YANKED is lowered, not removed: it drops to the newest unyanked release the
+ *    store holds below it (`yankedFloorFallback`), so the channel falls back to that release
+ *    instead of 404ing, and a later upstream deletion of it still 404s the channel.
  *
  * `tok` is passed in so `checkReleaseHealth` can call this with the token it already holds.
  */
@@ -411,8 +512,62 @@ export async function resolveMovingSelector(
   sel: ChannelSelector,
   now: number,
   fetchImpl: FetchImpl,
+  policy?: Pick<LegacyPolicy, "yanked">,
 ): Promise<MovingResolution> {
-  const policy = resolutionPolicy(cfg);
+  // The yanks always apply (P2-05): a caller that did not read them gets them read here, so the
+  // health check's per-channel regression checks and the live routes can never disagree.
+  const yanks =
+    policy ?? (await legacyPolicyFor(db, cfg.product, policyChannelOf(sel)));
+  // Cached like `resolveSelector` (`ghCache.ts`): the health check and the download paths pay
+  // at most one live resolution — list pages plus a floor lookup — per channel per 90 s
+  // (README §9.1 issue #3). The cached `listed` keeps what the health check reads of each
+  // release (tag, flags, date) but not its notes or assets; `release` and `offered` are whole.
+  // A channel that resolves to nothing (nothing matches, or an R6-10 regression) is never
+  // cached: it is re-checked live, so a 404 cannot stick.
+  const holder: { live?: MovingResolution } = {};
+  const cached = await cachedResolution<MovingResolution>(
+    env,
+    cfg.product,
+    `moving:${policyChannelOf(sel) ?? sel.raw}`,
+    async () => {
+      const live = await resolveMovingSelectorLive(
+        env,
+        db,
+        cfg,
+        tok,
+        sel,
+        now,
+        fetchImpl,
+        yanks,
+      );
+      holder.live = live;
+      if (!live.release) return null;
+      return {
+        ...live,
+        listed: live.listed.map((r) => ({ ...r, body: null, assets: [] })),
+      };
+    },
+  );
+  // On a miss, the caller gets the live result itself (assets and notes included).
+  return holder.live ?? (cached as MovingResolution);
+}
+
+async function resolveMovingSelectorLive(
+  env: Env,
+  db: Db,
+  cfg: ResolvedConfig,
+  tok: string,
+  sel: ChannelSelector,
+  now: number,
+  fetchImpl: FetchImpl,
+  policy: Pick<LegacyPolicy, "yanked">,
+): Promise<MovingResolution> {
+  const candidates = resolutionPolicy(cfg);
+  const yanked = policy.yanked;
+  const unyanked = (releases: Release[]) =>
+    yanked.size > 0
+      ? releases.filter((r) => !yanked.has(r.tag_name))
+      : releases;
   const channelTags = await channelTagsFor(env, cfg, sel, now, fetchImpl);
   // `pr-<n>` without workflow tags can never resolve; do not spend three pages learning that.
   const listed =
@@ -424,24 +579,71 @@ export async function resolveMovingSelector(
           // match" is "the NEW page holds one": look at each release once here (R10-09 — each
           // look may run an operator regex), not once per page read.
           stopWhen: (_soFar, page) =>
-            resolveChannel(sel, page, channelTags, policy) !== null,
+            resolveChannel(sel, unyanked(page), channelTags, candidates) !==
+            null,
         });
-  const offered = resolveChannel(sel, listed, channelTags, policy);
+  const offered = resolveChannel(
+    sel,
+    unyanked(listed),
+    channelTags,
+    candidates,
+  );
 
   const floorName = floorChannelOf(sel, cfg);
-  const floor = floorName
+  const recorded = floorName
     ? await getChannelFloor(db, cfg.product, floorName)
     : null;
+  // A floor whose release was YANKED is LOWERED, never removed (R6-10, P2-05 review): it drops
+  // to the newest unyanked release the store holds below it, so the most common yank — the
+  // newest release, which is also the floor — still leaves the channel protected.
+  const floor =
+    recorded && recorded.release_id && yanked.has(recorded.release_id)
+      ? await yankedFloorFallback(db, cfg, sel, recorded, yanked)
+      : recorded;
   if (!floor || !isBelowFloor(offered, floor)) {
     return { release: offered, offered, floor, regressed: false, listed };
   }
   const held = await floorRelease(tok, cfg, floor, fetchImpl);
   // The floor's release must still be something this selector would pick: a tag since added to
   // `ignoreTags`, or re-flagged as a prerelease, no longer holds the stable channel up.
-  if (held && resolveChannel(sel, [held], channelTags, policy)) {
+  if (held && resolveChannel(sel, [held], channelTags, candidates)) {
     return { release: held, offered, floor, regressed: false, listed };
   }
   return { release: null, offered, floor, regressed: true, listed };
+}
+
+/**
+ * The floor a channel effectively has when its recorded floor release has been yanked: the
+ * newest release the STORE holds at or below the recorded floor version that is not yanked and
+ * that this selector would pick, or null when there is none (the channel then serves its
+ * newest unyanked candidate, as it would with no floor at all).
+ *
+ * Read from the store, not the live list, on purpose: a release deleted upstream after the yank
+ * keeps its store row, so it still holds the channel up and its deletion 404s the channel —
+ * exactly what the same deletion does to an unyanked floor. Computed per resolution rather than
+ * written back to `release_channel_floors`, because the sync (which does not read yanks) would
+ * otherwise raise the floor straight back to the yanked release on the next resync.
+ *
+ * Costs one D1 read, only when the recorded floor is yanked.
+ */
+async function yankedFloorFallback(
+  db: Db,
+  cfg: ResolvedConfig,
+  sel: ChannelSelector,
+  recorded: ReleaseChannelFloorRow,
+  yanked: ReadonlySet<string>,
+): Promise<ReleaseChannelFloorRow | null> {
+  if (!parseSemver(recorded.version)) return null;
+  const below = (await storedAppReleases(db, cfg.product)).filter((r) => {
+    if (yanked.has(r.tag_name)) return false;
+    const v = semverOfTag(r.tag_name);
+    return v !== null && compareSemver(v, recorded.version) <= 0;
+  });
+  // No channel-workflow tags: a floored selector never resolves through them (`floorChannelOf`).
+  const pick = resolveChannel(sel, below, undefined, resolutionPolicy(cfg));
+  const version = pick ? semverOfTag(pick.tag_name) : null;
+  if (!pick || version === null) return null;
+  return { ...recorded, version, release_id: pick.tag_name };
 }
 
 /**

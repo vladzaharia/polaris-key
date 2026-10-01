@@ -33,6 +33,10 @@ func get_device_id() -> String:
 	return device_id
 
 
+func has_device_id() -> bool:
+	return device_id != ""
+
+
 func read_cache() -> Variant:
 	return cache.duplicate(true) if cache is Dictionary else null
 

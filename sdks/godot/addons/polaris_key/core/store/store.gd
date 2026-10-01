@@ -37,6 +37,13 @@ func get_device_id() -> String:
 	return ""
 
 
+## Whether a device id is already held, so `get_device_id()` will not derive one. Core prepares
+## the raw source off the main thread first when this is false. A store that cannot tell answers
+## false (preparing is then merely wasted work).
+func has_device_id() -> bool:
+	return false
+
+
 ## The cache record as parsed JSON (a Dictionary), or null when absent or unreadable.
 func read_cache() -> Variant:
 	return null

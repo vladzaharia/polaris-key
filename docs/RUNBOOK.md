@@ -119,18 +119,20 @@ Check the live state at any time (platform admin):
 ```sh
 curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" | jq .
 # { "active": "k2", "kids": ["k1","k2"],
-#   "counts": { "keys": {"k1":3,"k2":12}, "secrets": {"k1":1}, "managed": {"k1":2} },
+#   "counts": { "keys": {"k1":3,"k2":12}, "secrets": {"k1":1}, "outletCredentials": {"k2":1},
+#               "managed": {"k1":2} },
 #   "remaining": 6,        ← sealed values not yet re-sealed under the active kid
 #   "unopenable": 0 }      ← values under a kid the ring does NOT hold: these are DARK right now
 ```
 
-Three classes of value are covered, and all three are counted and swept together:
+Four classes of value are covered, and all four are counted and swept together:
 
-| `counts` bucket | Where it lives                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------- |
-| `keys`          | `product_keys.enc_private_json` — per-product signing keys                                                    |
-| `secrets`       | `product_secrets.enc_value_json` — per-product secrets                                                        |
-| `managed`       | catalog-declared managed secrets sealed inside `profiles.payload_json` and `licenses.overrides_json` (R12-02) |
+| `counts` bucket     | Where it lives                                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `keys`              | `product_keys.enc_private_json` — per-product signing keys                                                      |
+| `secrets`           | `product_secrets.enc_value_json` — per-product secrets                                                          |
+| `outletCredentials` | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01) |
+| `managed`           | catalog-declared managed secrets sealed inside `profiles.payload_json` and `licenses.overrides_json` (R12-02)   |
 
 ### Rotating PLATFORM_KEK
 

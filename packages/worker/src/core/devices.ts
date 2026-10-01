@@ -46,7 +46,7 @@ import {
 } from "@polaris-key/protocol/core";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import type { Product } from "./products.js";
+import type { Product, ProductPublic } from "./products.js";
 import {
   hashKey,
   isDeviceToken,
@@ -559,7 +559,7 @@ export async function registerDeviceBinding(
 export async function validateDeviceToken(
   env: Env,
   db: Db,
-  product: Product,
+  product: ProductPublic,
   token: string | null,
   now: number,
   opts: { deviceId?: string | null } = {},
@@ -854,8 +854,10 @@ export async function handleDevices(
 
 // The report allowlist. Anything not named here is DROPPED SILENTLY, so a new client field
 // that isn't added here vanishes without an error anywhere — add the key here and a test in
-// licensingReport.test.ts together. The first six keys are the software-facts additions; the
-// rest are the original v1 set and must stay.
+// licensingEdge.test.ts together. The first six keys are the software-facts additions; the
+// next nine are the original v1 set and must stay; `engine` and `outlet` (P1-05) carry a game
+// engine's build facts and the store the build was published through, each with its own bound
+// below.
 export const REPORT_KEYS = [
   "os",
   "hardware",
@@ -872,7 +874,43 @@ export const REPORT_KEYS = [
   "config",
   "entitlements",
   "timestamp",
+  "engine",
+  "outlet",
 ] as const;
+
+/** The fields `engine` may carry; anything else in it is dropped. All are strings except
+ *  `debug`. Names are proposed by P1-05 (the Godot SDK); P1b-02 generates them later. */
+const ENGINE_STRING_FIELDS = [
+  "id",
+  "version",
+  "renderer",
+  "videoAdapter",
+  "videoVendor",
+  "videoApi",
+  "display",
+] as const;
+
+/** Bound `engine`: an object of known fields, strings truncated to 128 characters, `debug`
+ *  kept only as a boolean, unknown fields and wrong-typed values dropped. Not an object:
+ *  `undefined` (the key is dropped). */
+function boundedEngine(input: unknown): Record<string, unknown> | undefined {
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    return undefined;
+  const src = input as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of ENGINE_STRING_FIELDS) {
+    const value = src[key];
+    if (typeof value === "string") out[key] = value.slice(0, 128);
+  }
+  if (typeof src.debug === "boolean") out.debug = src.debug;
+  return out;
+}
+
+/** Bound `outlet`: a string truncated to 64 characters. Outlet ids are not validated here,
+ *  because later work adds outlets and this Worker must not drop a newer client's value. */
+function boundedOutlet(input: unknown): string | undefined {
+  return typeof input === "string" ? input.slice(0, 64) : undefined;
+}
 
 function boundedReport(input: unknown): Record<string, unknown> {
   const src =
@@ -888,6 +926,18 @@ function boundedReport(input: unknown): Record<string, unknown> {
   const probes = out.probes;
   if (probes !== undefined) {
     out.probes = boundedProbes(probes);
+  }
+  // `engine` and `outlet` are kept opaque like the v1 keys, but bounded: neither may carry an
+  // unbounded string or an open-ended map.
+  if (out.engine !== undefined) {
+    const engine = boundedEngine(out.engine);
+    if (engine === undefined) delete out.engine;
+    else out.engine = engine;
+  }
+  if (out.outlet !== undefined) {
+    const outlet = boundedOutlet(out.outlet);
+    if (outlet === undefined) delete out.outlet;
+    else out.outlet = outlet;
   }
   return out;
 }

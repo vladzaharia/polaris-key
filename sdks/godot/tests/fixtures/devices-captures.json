@@ -1,0 +1,136 @@
+{
+  "$comment": "Captured command output and file contents, one host per platform, with every identifier replaced by a fake value (the corpus's own example values where one exists). tests/devices/test_parsers.gd drives PKeyFingerprint over these through a fake PKeyHostIo; `expected` is the raw component set each must produce. Hand-maintained: not generated.",
+  "windows": {
+    "platform": "windows",
+    "env": {
+      "SystemRoot": "C:\\Windows"
+    },
+    "out": {
+      "reg": "\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\r\n    MachineGuid    REG_SZ    9f8e7d6c-5b4a-3928-1706-f5e4d3c2b1a0\r\n\r\n",
+      "powershell": "{\"boardSerial\":\"/8YHTG2/CN1234567890/\",\"machineModel\":\"XPS 15 9530\"}\r\n",
+      "getmac": "\"00-1A-2B-3C-4D-5E\",\"\\Device\\Tcpip_{1B2C3D4E-0000-1111-2222-333344445555}\"\r\n\"N/A\",\"Hardware not present\"\r\n\"0A-00-27-00-00-0B\",\"Media disconnected\"\r\n\"00-15-5D-01-02-03\",\"\\Device\\Tcpip_{9F8E7D6C-0000-1111-2222-333344445555}\"\r\n",
+      "cmd": " Volume in drive C has no label.\r\n Volume Serial Number is 3C4D-5E6F\r\n"
+    },
+    "cpu_name": "AMD Ryzen 9 7950X 16-Core Processor",
+    "cpu_count": 32,
+    "memory": 68719476736,
+    "model": "System Product Name",
+    "unique_id": "{846ee340-7039-11de-9d20-806e6f6e6963}",
+    "expected": {
+      "machineUuid": "9f8e7d6c-5b4a-3928-1706-f5e4d3c2b1a0",
+      "boardSerial": "/8YHTG2/CN1234567890/",
+      "cpuModel": "AMD Ryzen 9 7950X 16-Core Processor:32",
+      "primaryMac": "00:15:5d:01:02:03",
+      "bootVolumeUuid": "3C4D-5E6F",
+      "ramBucket": "64",
+      "machineModel": "XPS 15 9530"
+    },
+    "expectedPrograms": {
+      "reg": "C:\\Windows\\System32\\reg.exe",
+      "powershell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "getmac": "C:\\Windows\\System32\\getmac.exe",
+      "cmd": "C:\\Windows\\System32\\cmd.exe"
+    },
+    "localizedVol": " Datenträger in Laufwerk C: ist Windows\r\n Volumeseriennummer: 3c4d-5e6f\r\n"
+  },
+  "macos": {
+    "platform": "macos",
+    "env": {},
+    "out": {
+      "ioreg": "+-o J314sAP  <class IOPlatformExpertDevice, id 0x100000202, registered, matched, active, busy 0 (412 ms), retain 39>\n    {\n      \"IOPolledInterface\" = \"AppleARMWatchdogTimerHibernateHandler is not serializable\"\n      \"#address-cells\" = <02000000>\n      \"serial-number\" = <4330325849314142434445460000000000000000000000000000000000000000>\n      \"target-type\" = <\"J314s\">\n      \"manufacturer\" = <\"Apple Inc.\">\n      \"compatible\" = <\"J314sAP\",\"MacBookPro18,3\",\"AppleARM\">\n      \"IOPlatformSerialNumber\" = \"C02XK1ABCDEF\"\n      \"model\" = <\"MacBookPro18,3\">\n      \"device_type\" = <\"bootrom\">\n      \"IOPlatformUUID\" = \"564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6\"\n    }\n",
+      "diskutil": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>DeviceIdentifier</key>\n\t<string>disk3s1s1</string>\n\t<key>DiskUUID</key>\n\t<string>11111111-2222-3333-4444-555555555555</string>\n\t<key>MountPoint</key>\n\t<string>/</string>\n\t<key>VolumeName</key>\n\t<string>Macintosh HD</string>\n\t<key>VolumeUUID</key>\n\t<string>8F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0</string>\n</dict>\n</plist>\n",
+      "ifconfig": "lo0: flags=8049<UP,LOOPBACK,RUNNING,MULTICAST> mtu 16384\n\toptions=1203<RXCSUM,TXCSUM,TXSTATUS,SW_TIMESTAMP>\n\tinet 127.0.0.1 netmask 0xff000000\ngif0: flags=8010<POINTOPOINT,MULTICAST> mtu 1280\nen1: flags=8963<UP,BROADCAST,SMART,RUNNING,PROMISC,SIMPLEX,MULTICAST> mtu 1500\n\toptions=460<TSO4,TSO6,CHANNEL_IO>\n\tether b2:aa:10:00:00:01\n\tmedia: autoselect <full-duplex>\n\tstatus: inactive\nen0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\toptions=6460<TSO4,TSO6,CHANNEL_IO,PARTIAL_CSUM,ZEROINVERT_CSUM>\n\tether A4:83:E7:1B:2C:3D\n\tinet6 fe80::1c%en0 prefixlen 64 secured scopeid 0xb\n\tstatus: active\nanpi0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\tether f8:4d:89:00:00:02\nawdl0: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\tether 0e:11:22:33:44:55\nbridge0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\tether 36:aa:10:00:00:00\nutun0: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380\n\tinet6 fe80::ce81%utun0 prefixlen 64 scopeid 0x12\n"
+    },
+    "cpu_name": "Apple M3 Pro",
+    "cpu_count": 12,
+    "memory": 38654705664,
+    "model": "MacBookPro18,3",
+    "unique_id": "C02XK1ABCDEF",
+    "expected": {
+      "machineUuid": "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+      "boardSerial": "C02XK1ABCDEF",
+      "cpuModel": "Apple M3 Pro:12",
+      "primaryMac": "a4:83:e7:1b:2c:3d",
+      "bootVolumeUuid": "8F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0",
+      "ramBucket": "32",
+      "machineModel": "MacBookPro18,3"
+    }
+  },
+  "linux": {
+    "platform": "linux",
+    "env": {},
+    "out": {
+      "findmnt": "8f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0\n"
+    },
+    "files": {
+      "/etc/machine-id": "b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c\n",
+      "/var/lib/dbus/machine-id": "b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c\n",
+      "/sys/class/dmi/id/product_name": "XPS 15 9530\n",
+      "/sys/class/dmi/id/product_uuid": "4C4C4544-0042-3510-8048-B4C04F4E3732\n",
+      "/sys/class/dmi/id/board_serial": ".CN1234567890.\n",
+      "/sys/class/net/lo/address": "00:00:00:00:00:00\n",
+      "/sys/class/net/wlp2s0/address": "a4:83:e7:1b:2c:3d\n",
+      "/sys/class/net/enp3s0/address": "3c:7c:3f:aa:bb:cc\n",
+      "/sys/class/net/docker0/address": "02:42:ac:11:00:01\n",
+      "/sys/class/net/veth1a2b3c/address": "6e:1f:00:00:00:01\n"
+    },
+    "dirs": {
+      "/sys/class/net": ["docker0", "enp3s0", "lo", "veth1a2b3c", "wlp2s0"]
+    },
+    "cpu_name": "Intel(R) Core(TM) i7-12700H",
+    "cpu_count": 20,
+    "memory": 16496934912,
+    "model": "GenericDevice",
+    "unique_id": "b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c",
+    "expected": {
+      "machineUuid": "b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c",
+      "cpuModel": "Intel(R) Core(TM) i7-12700H:20",
+      "primaryMac": "3c:7c:3f:aa:bb:cc",
+      "bootVolumeUuid": "8f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
+      "ramBucket": "8",
+      "machineModel": "XPS 15 9530"
+    }
+  },
+  "ios": {
+    "platform": "ios",
+    "env": {},
+    "out": {},
+    "cpu_name": "Apple A17 Pro",
+    "cpu_count": 6,
+    "memory": 8589934592,
+    "model": "iPhone16,1",
+    "unique_id": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+    "expected": {
+      "machineUuid": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+      "cpuModel": "Apple A17 Pro:6",
+      "ramBucket": "8",
+      "machineModel": "iPhone16,1"
+    }
+  },
+  "android": {
+    "platform": "android",
+    "env": {},
+    "out": {},
+    "cpu_name": "",
+    "cpu_count": 8,
+    "memory": 12884901888,
+    "model": "Pixel 8",
+    "unique_id": "9774d56d682e549c",
+    "expected": {
+      "machineUuid": "9774d56d682e549c",
+      "ramBucket": "8",
+      "machineModel": "Pixel 8"
+    }
+  },
+  "web": {
+    "platform": "web",
+    "env": {},
+    "out": {},
+    "cpu_name": "",
+    "cpu_count": 4,
+    "memory": -1,
+    "model": "GenericDevice",
+    "unique_id": "",
+    "expected": {}
+  }
+}
