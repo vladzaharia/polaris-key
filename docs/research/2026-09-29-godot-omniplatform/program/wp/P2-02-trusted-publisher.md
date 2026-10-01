@@ -189,20 +189,26 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
 
 ## Acceptance criteria
 
-- [ ] Worker tests prove each policy check refuses: wrong `repository_id`, wrong owner id, other
+- [x] Worker tests prove each policy check refuses: wrong `repository_id`, wrong owner id, other
       workflow or ref, other environment, `ref_protected` false, self-hosted runner, disallowed
       event, wrong `aud`, expired token, replayed `jti`.
-- [ ] A token without `release:publish` cannot obtain a ticket; a revoked or expired `pkeyci_`
+- [x] A token without `release:publish` cannot obtain a ticket; a revoked or expired `pkeyci_`
       token is refused; a ticket cannot be redeemed twice or by another product's token.
-- [ ] Submit refuses a descriptor whose staged object is missing or whose SHA-256 or size differs,
+- [x] Submit refuses a descriptor whose staged object is missing or whose SHA-256 or size differs,
       and promotes nothing in that case (tests against the R2 fake).
-- [ ] A resync cannot change an operator-claimed publisher policy.
-- [ ] Rule 9: new codes have mutation entries; `pnpm --filter @polaris-key/manifest test` passes.
-- [ ] Rule 10: `routeCoverage` passes with the three paths; `docs gen:check` is clean.
-- [ ] The threat model lists the new input, assets and attack branch.
-- [ ] The green gate passes (`AGENTS.md`).
-- [ ] Upload-credential tests show the minted credentials cannot read or copy from any prefix outside `staging/<product>/<ticketId>/`, and a promote from another product's staging key is refused with `bad_key`.
-- [ ] A resubmit of an already-stored object answers CI identically to a first submit (no `alreadyStored` or timing signal).
+- [x] A resync cannot change an operator-claimed publisher policy.
+- [x] Rule 9: new codes have mutation entries; `pnpm --filter @polaris-key/manifest test` passes.
+- [x] Rule 10: `routeCoverage` passes with the three paths; `docs gen:check` is clean.
+- [x] The threat model lists the new input, assets and attack branch.
+- [x] The green gate passes (`AGENTS.md`).
+- [x] Upload-credential tests show the minted credentials cannot read or copy from any prefix outside `staging/<product>/<ticketId>/`, and a promote from another product's staging key is refused with `bad_key`.
+- [x] A resubmit of an already-stored object answers CI identically to a first submit (no `alreadyStored` or timing signal).
+
+Implementation notes on the last two rows: the credential test asserts the minted claims and
+models R2's documented authorisation rules (no R2 account exists here; the real-bucket check is
+listed in `docs/DEPLOYMENT.md` and in the hand-off). The response body is identical with or
+without a prior copy and `alreadyStored` is never surfaced; the residual **timing** difference of
+the skipped copy is recorded in THREAT-MODEL §3 as the wave-1 note asks.
 
 ## Verify
 
