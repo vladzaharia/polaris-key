@@ -5,19 +5,19 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import { deleteTokenRecord } from "../../../core/platform.js";
 import {
-  clearFingerprint,
+  deauthorizeDeviceAsAdmin,
+  resetDeviceFingerprintAsAdmin,
+} from "../../../core/deviceAdmin.js";
+import {
   getDevice,
   getDeviceFacts,
   getFingerprint,
   listDevicesByLicense,
-  setDeviceStatus,
 } from "../../../core/data.js";
 import {
   adminJson,
   adminNotFound,
-  audit,
   err,
   shapeFacts,
   shapeFingerprint,
@@ -67,32 +67,12 @@ export async function handleAdminDevices(
   if (action === "fingerprint") {
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
-    await clearFingerprint(db, slug, deviceId);
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "device.fingerprint.reset",
-      { kind: "device", id: deviceId },
-      `Cleared the hardware binding for ${deviceId}`,
-    );
+    await resetDeviceFingerprintAsAdmin({ env, db, session, now }, device);
     return adminJson({ ok: true, deviceId });
   }
 
   if (req.method === "DELETE" || req.method === "POST") {
-    await setDeviceStatus(db, slug, deviceId, "deauthorized");
-    if (device.token_hash)
-      await deleteTokenRecord(env, slug, device.token_hash);
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "device.deauthorize",
-      { kind: "device", id: deviceId },
-      `Deauthorized ${deviceId}`,
-    );
+    await deauthorizeDeviceAsAdmin({ env, db, session, now }, device);
     return adminJson({ ok: true, deviceId });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");
