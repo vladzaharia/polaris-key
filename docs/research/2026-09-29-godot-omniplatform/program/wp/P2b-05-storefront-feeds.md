@@ -231,7 +231,10 @@ Recorded where the code disagreed with the text above.
 - **Feeds honour rollout holds and availability reports**, so the threat model's P2b-04
   paragraph ("a holder of `distribution:rollout` cannot yet withhold a build") and the P2b-03
   report bullet were corrected: both scopes can now withhold a release from the storefront feeds
-  (a rollback for new installs), never expose one.
+  that list releases (a rollback for new installs), never expose one. Obtainium is the exception
+  (third review): its config names no release, so in FDroidRepo mode it follows the
+  `fdroid-repo` outlet's holds and in Direct mode the moving `builds/` route (yanks and pins, no
+  holds). The threat model and `rollouts.md` say so.
 - **`pkey feeds fdroid --out` is never deleted wholesale** (second review). It removes only the
   files a repository is made of, and refuses the working directory, a parent of it, or a
   directory that holds anything else.

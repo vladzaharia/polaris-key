@@ -12,9 +12,13 @@ per deliverable. Apple's phased release, Play's staged rollout and Polaris Key's
 are all per outlet, which is why the split falls there.
 
 :::caution[What a halt does today]
-The [storefront feeds](/docs/services/distribution/feeds/) (AltStore, AltStore PAL, Obtainium,
-F-Droid, Scoop and Flathub) honour rollouts: while a release's rollout on an outlet is paused,
-halted or below 100%, that outlet's feeds leave it out and list the previous release. Until the
+The [storefront feeds](/docs/services/distribution/feeds/) that list releases (AltStore,
+AltStore PAL, F-Droid, Scoop and Flathub) honour rollouts: while a release's rollout on an
+outlet is paused, halted or below 100%, that outlet's feeds leave it out and list the previous
+release. **Obtainium does not.** Its config is a pointer, not a release: in F-Droid repository
+mode it follows the `fdroid-repo` outlet's holds, and in direct-link mode it follows the moving
+`builds/<channel>/<buildId>` download, which applies yanks and pins but not holds. Halting the
+`obtainium` outlet does not stop a build reaching Obtainium users. Until the
 signed channel feed carries rollouts and halts, everything else **keeps serving**: the Sparkle
 appcast, `/update/version` and the downloads do not read it. To stop a release reaching every
 device now, **yank it** or **pin the channel** to an earlier release

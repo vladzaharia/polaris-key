@@ -596,14 +596,19 @@ the **opt-in** `distribution:rollout` scope (not in the default grant). Transiti
 table, applied conditionally on the state read (two concurrent verbs cannot both apply); a
 yanked release cannot be rolled out; a verb may pin the release it means (`stale_release`); a
 `mirrored` row (a store connector's) refuses every direct edit; every change is audited with its
-actor. **What a halt does today:** the storefront feeds (P2b-05: AltStore, AltStore PAL,
-Obtainium, Scoop, Flathub, and the F-Droid generator inputs and APK redirects) honour holds: a
+actor. **What a halt does today:** the storefront feeds that list releases (P2b-05: AltStore,
+AltStore PAL, Scoop, Flathub, and the F-Droid generator inputs and APK redirects) honour holds: a
 release whose rollout on an outlet is paused, halted or active below 10000 bp is left out of
-that outlet's feeds, which list the previous release instead. Nothing else reads
-`dist_rollouts` until P3-03 composes the signed feed: the Sparkle appcast, `/update/version` and
-the downloads keep serving. So a holder of `distribution:rollout` (or an admin) can WITHHOLD one
-release per outlet and channel from the storefront feeds, which for new installs there is a
-rollback to the release before it. It cannot EXPOSE a build: a feed lists only releases the
+that outlet's feeds, which list the previous release instead. **Obtainium does not:** its config
+is a pointer that names no release. In FDroidRepo mode it follows the `fdroid-repo` outlet's
+repository, so it obeys that outlet's holds; in Direct mode it follows the moving
+`builds/<channel>/<buildId>` route, which applies yanks and pins but neither holds nor
+availability. A hold on the `obtainium` outlet itself changes nothing unless no release
+qualifies at all, which turns the config into a not-found. Nothing else reads `dist_rollouts`
+until P3-03 composes the signed feed: the Sparkle appcast, `/update/version` and the downloads
+keep serving. So a holder of `distribution:rollout` (or an admin) can WITHHOLD one release per
+outlet and channel from the storefront feeds that list releases, which for new installs there is
+a rollback to the release before it. It cannot EXPOSE a build: a feed lists only releases the
 channel already serves, and a yanked release can be neither rolled out nor listed. The
 emergency stop for every device is still a yank or a pin (`release:yank`, `release:promote`). The salt
 is random per release and the bucket is evaluated on the device, so the Worker serves one feed
@@ -629,10 +634,13 @@ when) and `dist_submissions` (where R stands in O's review) — written by CI th
   `live` on a store where it is not, or `removed` from a self-hosted outlet where it is. Since
   P2b-05 that wrong state also STEERS the storefront feeds: a stored report wins over the derived
   `live` of a self-hosted outlet, so a non-`live` report hides a release from that outlet's
-  AltStore, Obtainium, F-Droid or Scoop feed (which then lists the previous one), and a `live`
-  report on AltStore PAL lists a release the store may not carry. Both are withholding or
+  AltStore, F-Droid or Scoop feed (which then lists the previous one), and a `live`
+  report on AltStore PAL lists a release the store may not carry. (An Obtainium config names no
+  release: a report on the `obtainium` outlet only matters when it leaves no release at all,
+  which turns the config into a not-found; see P2b-04 above.) Both are withholding or
   rollback for new installs, never exposure: a feed lists only releases the channel serves,
-  never a yanked one, and only by their pinned delivery URLs. It cannot ship code, serve or
+  never a yanked one, and only by their pinned delivery URLs, except Obtainium's Direct link,
+  which is the moving builds route. It cannot ship code, serve or
   withhold bytes (nothing on the byte path reads these tables), change a rollout, or change a
   key. It is recorded as a §5 semi-trusted input. A consumer that turns
   availability into an offer to a device (P3-03) must treat a CI-sourced `live` as a claim, not
@@ -735,7 +743,8 @@ the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK 
   the APKs stay pinned by SHA-256 and Android verifies their signatures. The scope is opt-in for
   that reason. Two scopes that existed before P2b-05 now steer these feeds too, with the same
   withholding-or-rollback effect and no exposure: `distribution:rollout` (opt-in) and the console
-  can hold one release per outlet and channel out of every feed on that outlet (P2b-04 above),
+  can hold one release per outlet and channel out of every feed on that outlet that lists
+  releases (P2b-04 above; not Obtainium's config, which only points at a source),
   and `distribution:report`, which is in the DEFAULT grant, decides through availability reports
   which releases the self-hosted feeds list (P2b-03 above). Build metadata is CI's claim: it
   decides what a feed lists, never the bytes behind a URL. A wrong `appPermissions` makes AltStore refuse the install, and a wrong `signerSha256`
