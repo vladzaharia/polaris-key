@@ -154,9 +154,16 @@ Idempotent on the OIDC subject: a second sign-in by the same identity finds the 
 (`getLicenseBySub`) rather than minting a duplicate. Before branching on that, it applies every
 matching provisioning hook (below) into a payload of overrides.
 
-If the device presenting this sign-in is already running on a **claimable** enrolled license — an
-anonymous, keyless one with no identity attached yet (`origin: "enroll"`, `sub: null`) — two
-merge outcomes are possible, using the vocabulary from [the concepts page](/docs/start/concepts/):
+`activateFromIdentity` can also merge a **claimable** enrolled license into the identity. A
+claimable license is an anonymous, keyless one with no identity attached yet (`origin: "enroll"`,
+`sub: null`). The caller must name it as the license its device is already on. **No sign-in
+route names one today.** The callback used to take it from the device that started a device-code
+flow. But a device-code flow is confirmed with a public user code, so whoever confirmed it and
+signed in could take that device's license over. The callback therefore merges nothing, and
+attaching an anonymous license to an account is left to an explicit opt-in on the device that is
+not built yet. See [the device-code flow](/docs/services/identity/device-flow/). When a caller
+does name one, two merge outcomes are possible, using the vocabulary from
+[the concepts page](/docs/start/concepts/):
 
 - **Claim.** No license exists yet for this identity: the identity is attached to the _same_ row.
   Its devices, keys, and overrides all survive; the person simply becomes known.

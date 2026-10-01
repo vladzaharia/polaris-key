@@ -111,6 +111,16 @@ From here the human completes sign-in exactly as in the browser flow, landing on
 route does. Because this flow never carries a `return_to`, the callback does not set a session
 cookie; it leaves the minted license on the flow record for the poll below to pick up.
 
+That license is exactly what an ordinary sign-in for the signing-in identity gets: its own
+license, or a new one under the product's group mapping or `oidcDefault` tier. The callback does
+**not** claim, migrate or disable the license the polling device is already on. That includes an
+anonymous enrolled license, which stays anonymous and active. The reason is that the user code is
+public, so whoever confirms the flow need not be the device's owner. Merging the device's license
+at the callback let a user-code holder take it over. When the device redeems the flow, the device
+moves onto the signed-in identity's license. Attaching the device's previous anonymous license to
+the account will be a separate, explicit opt-in that the device makes after the player accepts
+the signed-in identity. It is not built yet.
+
 :::caution[Why the split matters]
 This page used to be a single `GET` that accepted `?confirm=1` and completed the flow right
 there — which meant an `<img src>` or a link preview could confirm a sign-in with no user
@@ -183,9 +193,10 @@ user-code page: one attacker could exhaust it and lock every player out of sign-
 per-network budget (30 guesses a minute per IPv4 address or IPv6 /64) slows a single host, but
 an attacker with many networks — an IPv6 /48, a botnet — is limited only by the product's one
 rate-limit object. What actually bounds blind guessing is the code space — 20⁸ ≈ 2.6 × 10¹⁰
-codes — against a 600-second lifetime, and a guess that lands can only confirm someone else's
-flow into the attacker's own account; it never yields a device token. The security threat model
-works the numbers.
+codes — against a 600-second lifetime. A guess that lands can only confirm someone else's flow
+and sign it in to the guesser's own account, which pulls a stranger's device onto the guesser's
+own license. It never yields a device token, and it never touches the license that device was
+already on. The security threat model works the numbers.
 
 Every one of these is a refusal, `429 rate_limited` (or, for the poll interval specifically,
 `429 slow_down`) — never a silent drop, so a well-behaved client can tell "back off" from "the

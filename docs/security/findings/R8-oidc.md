@@ -654,8 +654,28 @@ change:
   code); the page shows `deviceName` or "Unnamed device", never the id; and confirmation deletes
   the user-code index, so nobody can re-render, re-mint the CSRF token or reach the authorize URL
   after the real user has confirmed. What a user-code holder can still do is bounded in
-  `THREAT-MODEL.md`: before the victim confirms, invalidate their CSRF token, or confirm first and
-  sign the device in under the holder's own IdP identity.
+  `THREAT-MODEL.md`. Before the victim confirms, they can invalidate the victim's CSRF token, or
+  confirm first and sign the flow in under their own IdP identity. In that case the victim's
+  device, when it polls with its device code, lands on the holder's own license. The holder
+  gets no token, and no license other than their own changes.
+- **The callback merges nothing (P1-06 security review).** The public user code was also enough
+  to reach the callback's enrolled-license merge. `handleAuthCallback` derived
+  `enrolledLicenseId` from `flow.deviceId`, the victim's device, and `activateFromIdentity` merged
+  that license into whichever identity signed in. If the holder had no license, it rewrote the
+  victim's anonymous enrolled license's `sub` to the holder (claim). Otherwise it moved the
+  victim's devices onto the holder's license and disabled the victim's license, keeping
+  `enroll_hwid`, so that machine could never enroll again (migrate). The holder could then mint
+  tokens on the captured license from their own devices. Before P1-06 this needed the 128-bit
+  device code. After P1-06 a shoulder-surfed, streamed or guessed user code was enough: at the
+  rate-limit ceiling with 1,000 live flows, a blind guesser captured about one license every
+  7 hours. Fixed fail-closed: the callback passes no enrolled license, so a device-code sign-in
+  yields only the identity's own license (`getLicenseBySub`) or a new one under the existing
+  group-map / `oidcDefault` policy. The browser-redirect flow carries no device id and never
+  merged. PoCs, asserting the fix: `test/attack/R8-oidc.test.ts` › `R8-02 / P1-06 a user-code
+holder cannot claim…` (Case 1, Case 2, and the device-code-holder residual). Follow-up owned
+  by P1-07: an opt-in "attach this device's anonymous license to my account", applied only at
+  `/auth/device/poll` by the device-code holder after the player has seen the signed-in identity
+  on the device and accepted it.
 - **Not closed by P1-06: the flow's starter.** Everything above bounds a party holding _someone
   else's_ user code. The party that started a flow can still confirm it themselves — GET the page
   for its own user code, read the CSRF token, POST it with no `Origin` — and receive the IdP

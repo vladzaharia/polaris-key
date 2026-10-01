@@ -116,6 +116,15 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
   deletes the user-code index on confirmation. The same review found that `Origin`-only checking
   refused every real browser POST (a `no-referrer` page sends `Origin: null`); the check now
   decides on `Sec-Fetch-Site` first and lets `Origin: null` through to the CSRF check.
+- **The callback must not merge on a device-code flow.** _Correction (security review):_ the
+  user code was also a path to the victim's licence. `handleAuthCallback` took
+  `enrolledLicenseId` from `flow.deviceId`, so a user-code holder who confirmed first and signed
+  in as themselves either claimed the device's anonymous enrolled licence (re-subjected to them)
+  or migrated its devices onto their own licence and disabled it. Fixed fail-closed: the callback
+  passes no enrolled licence, so a device-code sign-in yields only that identity's own licence.
+  `R8-oidc.test.ts` › `R8-02 / P1-06 a user-code holder cannot claim…` covers both cases. An
+  opt-in attach applied at `/device/poll` after the player accepts on the device is a P1-07
+  scope row.
 - **Brute force** (RFC 8628 §5.1): 20^8 codes, a 600-second lifetime, a per-IP limit and a
   per-flow single-use CSRF token keep blind guessing impractical; the threat-model paragraph
   states the numbers. Do not add a product-wide bucket that one attacker could exhaust to lock

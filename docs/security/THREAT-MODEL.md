@@ -204,14 +204,37 @@ is confirmed.
 is the remote-phishing case below, and is not bounded by anything here). The user code is public
 by design: clients show it large
 and render it as a QR code, so assume it is read over a shoulder, off a stream or from a photo.
-Before the real user confirms, its holder can (a) open the confirmation page, which re-mints the
-single-use CSRF token and so makes the real user's pending click 403 until they reload; and (b)
-confirm the flow themselves and sign it in under their OWN IdP identity, so the victim's device
-ends up on the attacker's account (a mis-binding the victim sees, not a takeover of theirs). It
-cannot obtain the victim's device token, the device code, a license, or the victim's identity,
-and it cannot act at all once the victim has confirmed.
+Before the real user confirms, its holder can:
 
-Three controls make that true, and the first is the one that matters:
+- **(a)** open the confirmation page, which re-mints the single-use CSRF token and so makes the
+  real user's pending click 403 until they reload;
+- **(b)** confirm the flow themselves and complete the IdP sign-in under their OWN identity. The
+  callback then does exactly what an ordinary sign-in for that identity does: it finds the
+  holder's own license (`getLicenseBySub`), or mints one under the product's existing group-map
+  or `oidcDefault` policy. It touches no other license. When the victim's device next polls with
+  the device code, which only it holds, it is signed in to the holder's account: that one device
+  row moves onto the holder's license and takes a seat there. The player sees this on the device.
+  The holder sees the device (its label, platform and version) in their own device list and can
+  revoke it. This is a visible mis-binding, not a takeover.
+
+The holder cannot obtain the device code, the victim's device token, or any token on the
+victim's license. They cannot change the victim's license in any way, and they cannot learn the
+victim's identity. The license the device was already on keeps its `sub`, origin and status, and
+the machine can enroll straight back onto it. The holder also cannot act at all once the victim
+has confirmed.
+
+Before P1-06's security fix, (b) was a takeover. The callback took the license the flow's device
+was on (`flow.deviceId`) and merged it into the signing-in identity. If the holder had no license,
+it re-subjected the victim's anonymous enrolled license to them (claim). If they had one, it
+moved the victim's devices onto it and disabled the victim's license, keeping `enroll_hwid`, so
+that machine could never enroll again (migrate). The holder could then mint tokens on the
+captured license from their own devices with an ordinary sign-in. The callback now applies no
+enrolled license at all (PoC, asserting the fix: `R8-oidc.test.ts` › `R8-02 / P1-06 a user-code
+holder cannot claim…`). Attaching a device's anonymous license to an account becomes P1-07's
+explicit opt-in. It will be applied at `/device/poll` by the device-code holder, and only after
+the player has seen the signed-in identity on the device and accepted it.
+
+Four controls make that true. The first and the fourth are the ones that matter:
 
 1. **Only the device code redeems a device-code flow.** Confirming 303s the browser to the IdP
    authorize URL, and that URL carries `state`. `/identity/auth/poll` redeems `state` plus a
@@ -224,6 +247,10 @@ Three controls make that true, and the first is the one that matters:
 3. **Confirmation retires the user code.** The index is deleted, and a flow already confirmed
    does not resolve even if a KV read still sees it: nobody can re-render, re-mint the CSRF token
    or be 303'd to the authorize URL after the real user has pressed the button.
+4. **The callback merges nothing.** `handleAuthCallback` calls `activateFromIdentity` with no
+   enrolled license. The only flows that carry a device id are device-code flows, and those are
+   confirmed with the public user code, so the device's current license must not be an input to
+   whoever signs in. The browser-redirect flow carries no device id and never merged.
 
 **Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
 policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
@@ -253,9 +280,13 @@ the product's other rate-limited routes, a visible attack in its own right — 1
 give about 6 × 10⁵ guesses per 600 s and one hit roughly every 7 hours; at a more sustainable
 200 guesses a second, one every day and a half; with 10 live flows, a hundred times rarer. What
 actually bounds guessing is the code space, the 600-second lifetime and the limited value of a
-hit, which is exactly what any user-code holder gets (above): the two nuisances before the victim
-confirms, and nothing after. Because only the device code redeems a device-code flow, a hit is
-not a path to a device token. There is
+hit. A blind hit gets exactly what any user-code holder gets (above), against a flow the guesser
+did not choose: a stale CSRF token on the page, or a stranger's device pulled onto the guesser's
+own account, where it is visible to both sides. It gets nothing after the victim confirms. Only
+the device code redeems a device-code flow, so a hit is not a path to a device token. The
+callback claims, migrates and disables nothing, so a hit is not a path to the victim's license
+either. Before that fix, one hit every 7 hours at the ceiling was one captured anonymous license
+every 7 hours. There is
 deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
 product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
 `clientIp`, and sharding the rate-limit Durable Object (R10-04a).
