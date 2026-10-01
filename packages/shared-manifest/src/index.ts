@@ -3238,3 +3238,6 @@ function add(
 ): void {
   list.push({ file, path, code, message });
 }
+
+// The release descriptor (P2-04): its contract, validator and helpers.
+export * from "./descriptor.js";

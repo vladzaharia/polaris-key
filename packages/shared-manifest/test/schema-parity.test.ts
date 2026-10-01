@@ -28,8 +28,12 @@ import {
   RELEASE_ARCHES,
   RELEASE_PLATFORMS,
   VERSION_SCHEMES,
+  LOCATION_PROVIDERS,
+  parseManifest,
   validateIngestDocuments,
   validateManifestDocuments,
+  validateReleaseDescriptor,
+  type ParsedManifest,
 } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -1217,3 +1221,421 @@ const EXTRACTION_NOISE: ReadonlySet<string> = new Set([
   "requires_identity",
   "requires_license",
 ]);
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// The release descriptor (P2-04): the same three properties over `src/descriptor.ts` and
+// `schemas/v1/release-descriptor.schema.json`.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const validateDescriptorSchema = ajv.compile(
+  JSON.parse(
+    readFileSync(join(schemasDir, "release-descriptor.schema.json"), "utf8"),
+  ),
+);
+
+/** The base manifest, parsed — the declaration every descriptor below is checked against. */
+function descriptorManifest(): ParsedManifest {
+  const docs = base();
+  const res = parseManifest({
+    product: JSON.stringify(docs.product),
+    schema: JSON.stringify(docs.schema),
+    release: JSON.stringify(docs.release),
+  });
+  if (!res.ok) throw new Error(res.errors.join("\n"));
+  return res.manifest;
+}
+
+const SHA_A = "a".repeat(64);
+const SHA_B = "b".repeat(64);
+
+/** A fully-valid descriptor for the base manifest's `macos` and `win-zip` builds. */
+function baseDescriptor(): Record<string, any> {
+  return {
+    descriptorVersion: 1,
+    product: "acme",
+    deliverable: "app",
+    kind: "app",
+    version: "1.2.3",
+    seq: 7,
+    tag: "v1.2.3",
+    channel: "beta",
+    title: "Acme 1.2.3",
+    notes: "Fixes.\nMore fixes.",
+    publishedAt: "2026-09-30T12:00:00Z",
+    provenance: {
+      commit: "0123456789abcdef0123456789abcdef01234567",
+      workflowRun: "https://github.com/acme/desktop/actions/runs/1",
+    },
+    builds: [
+      {
+        id: "macos",
+        platform: "macos",
+        arch: "universal",
+        format: "dmg",
+        buildNumber: "4021",
+        minOS: "13.0",
+        artifacts: [
+          {
+            name: "Acme-1.2.3-macos.dmg",
+            role: "payload",
+            sha256: SHA_A,
+            size: 1024,
+            contentType: "application/x-apple-diskimage",
+            locations: [
+              { provider: "r2", key: `blobs/sha256/${SHA_A}` },
+              { provider: "github", asset: "Acme-1.2.3-macos.dmg" },
+            ],
+          },
+          {
+            name: "Acme-1.2.3-macos.dmg.sig",
+            role: "signature",
+            sha256: SHA_B,
+            size: 96,
+            locations: [
+              { provider: "github", asset: "Acme-1.2.3-macos.dmg.sig" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "win-zip",
+        platform: "windows",
+        arch: "x86_64",
+        format: "zip",
+        artifacts: [
+          {
+            name: "Acme-1.2.3-windows-x86_64.zip",
+            role: "payload",
+            sha256: SHA_B,
+            size: 2048,
+            locations: [
+              { provider: "external", url: "https://cdn.acme.example/w.zip" },
+              { provider: "store" },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+type DescriptorMutation = {
+  code: string;
+  schema: "rejects" | "accepts";
+  mutate: (d: Record<string, any>) => void;
+};
+
+const mac = (d: Record<string, any>) => d.builds[0];
+const dmg = (d: Record<string, any>) => d.builds[0].artifacts[0];
+
+/** One entry per descriptor validator code (asserted complete against the source below). */
+const DESCRIPTOR_MUTATIONS: DescriptorMutation[] = [
+  {
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => delete d.version,
+  },
+  {
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => (d.product = "Acme!"),
+  },
+  {
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => (d.builds = []),
+  },
+  {
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => (d.kind = "game"),
+  },
+  {
+    // Over the serialised cap; the schema has no byte-size keyword.
+    code: "invalid_descriptor",
+    schema: "accepts",
+    mutate: (d) => (mac(d).requires = { blob: "x".repeat(70000) }),
+  },
+  {
+    code: "unsupported_descriptor_version",
+    schema: "rejects",
+    mutate: (d) => (d.descriptorVersion = 2),
+  },
+  {
+    code: "unsupported_deliverable_kind",
+    schema: "rejects",
+    mutate: (d) => (d.kind = "pack"),
+  },
+  {
+    code: "invalid_descriptor_field",
+    schema: "rejects",
+    mutate: (d) => (d.seq = 0),
+  },
+  {
+    code: "invalid_descriptor_field",
+    schema: "rejects",
+    mutate: (d) => (d.tag = "v 1.2.3"),
+  },
+  {
+    code: "invalid_descriptor_field",
+    schema: "rejects",
+    mutate: (d) => (d.channel = "staging"),
+  },
+  {
+    code: "invalid_descriptor_field",
+    schema: "rejects",
+    mutate: (d) => (d.channel = "Beta"),
+  },
+  {
+    code: "invalid_descriptor_field",
+    schema: "rejects",
+    mutate: (d) => (d.publishedAt = "yesterday"),
+  },
+  {
+    code: "invalid_descriptor_field",
+    schema: "rejects",
+    mutate: (d) => (d.provenance.commit = "abc"),
+  },
+  {
+    code: "invalid_descriptor_field",
+    schema: "rejects",
+    mutate: (d) => (d.title = "x".repeat(201)),
+  },
+  {
+    code: "invalid_descriptor_build",
+    schema: "rejects",
+    mutate: (d) => (mac(d).platform = "darwin"),
+  },
+  {
+    code: "invalid_descriptor_build",
+    schema: "rejects",
+    mutate: (d) => (mac(d).arch = "amd64"),
+  },
+  {
+    code: "invalid_descriptor_build",
+    schema: "rejects",
+    mutate: (d) => delete mac(d).artifacts,
+  },
+  {
+    code: "invalid_descriptor_build",
+    schema: "rejects",
+    mutate: (d) => (mac(d).buildNumber = 4021),
+  },
+  {
+    code: "duplicate_build_id",
+    schema: "accepts",
+    mutate: (d) => (d.builds[1].id = "macos"),
+  },
+  {
+    code: "invalid_descriptor_artifact",
+    schema: "rejects",
+    mutate: (d) => (dmg(d).sha256 = "A".repeat(64)),
+  },
+  {
+    code: "invalid_descriptor_artifact",
+    schema: "rejects",
+    mutate: (d) => (dmg(d).size = -1),
+  },
+  {
+    code: "invalid_descriptor_artifact",
+    schema: "rejects",
+    mutate: (d) => (dmg(d).role = "portable"),
+  },
+  {
+    code: "invalid_descriptor_artifact",
+    schema: "rejects",
+    mutate: (d) => (dmg(d).name = "dir/file.dmg"),
+  },
+  {
+    code: "invalid_descriptor_artifact",
+    schema: "rejects",
+    mutate: (d) => (dmg(d).locations = []),
+  },
+  {
+    code: "duplicate_artifact_name",
+    schema: "accepts",
+    mutate: (d) => (mac(d).artifacts[1].name = dmg(d).name),
+  },
+  {
+    code: "invalid_artifact_location",
+    schema: "rejects",
+    mutate: (d) => (dmg(d).locations[0] = { provider: "s3", key: "x" }),
+  },
+  {
+    code: "invalid_artifact_location",
+    schema: "rejects",
+    mutate: (d) =>
+      (d.builds[1].artifacts[0].locations[0].url =
+        "http://cdn.acme.example/w.zip"),
+  },
+  {
+    // A store location carries no bytes.
+    code: "invalid_artifact_location",
+    schema: "rejects",
+    mutate: (d) =>
+      (d.builds[1].artifacts[0].locations[1].url = "https://apps.apple.com/x"),
+  },
+  {
+    code: "invalid_artifact_location",
+    schema: "accepts",
+    // Validator-only: a github location names the artifact itself.
+    mutate: (d) => (dmg(d).locations[1].asset = "Other.dmg"),
+  },
+  {
+    code: "r2_key_not_content_addressed",
+    schema: "rejects",
+    mutate: (d) => (dmg(d).locations[0].key = `staging/acme/t1/${SHA_A}`),
+  },
+  {
+    code: "r2_key_not_content_addressed",
+    schema: "accepts",
+    // Validator-only: well-formed, but named by another file's hash.
+    mutate: (d) => (dmg(d).locations[0].key = `blobs/sha256/${SHA_B}`),
+  },
+  {
+    code: "product_mismatch",
+    schema: "accepts",
+    mutate: (d) => (d.product = "other"),
+  },
+  {
+    code: "unknown_deliverable",
+    schema: "accepts",
+    mutate: (d) => (d.deliverable = "acme.core3d"),
+  },
+  {
+    code: "invalid_version_for_scheme",
+    schema: "accepts",
+    mutate: (d) => {
+      d.version = "1.2";
+      delete d.tag;
+    },
+  },
+  {
+    code: "tag_version_mismatch",
+    schema: "accepts",
+    mutate: (d) => (d.tag = "release-1.2.3"),
+  },
+  {
+    code: "unknown_channel",
+    schema: "accepts",
+    mutate: (d) => (d.channel = "canary"),
+  },
+  {
+    code: "undeclared_build",
+    schema: "accepts",
+    mutate: (d) => (mac(d).id = "macos-arm64"),
+  },
+  {
+    code: "build_mismatch",
+    schema: "accepts",
+    mutate: (d) => (mac(d).arch = "arm64"),
+  },
+  {
+    code: "build_mismatch",
+    schema: "accepts",
+    mutate: (d) => (d.builds[1].format = "msi"),
+  },
+  {
+    code: "artifact_name_mismatch",
+    schema: "accepts",
+    mutate: (d) => {
+      dmg(d).name = "acme-1.2.3-macos.dmg";
+      dmg(d).locations = [{ provider: "r2", key: `blobs/sha256/${SHA_A}` }];
+    },
+  },
+  {
+    code: "invalid_build_payload",
+    schema: "accepts",
+    mutate: (d) => (mac(d).artifacts[1].role = "payload"),
+  },
+];
+
+describe("release descriptor: valid stays valid", () => {
+  it("the base descriptor passes both the validator and the schema", () => {
+    const res = validateReleaseDescriptor(
+      baseDescriptor(),
+      descriptorManifest(),
+    );
+    expect(res.ok ? [] : res.errors).toEqual([]);
+    expect(res.ok && res.releaseId).toBe("v1.2.3");
+    expect(
+      validateDescriptorSchema(baseDescriptor()),
+      JSON.stringify(validateDescriptorSchema.errors),
+    ).toBe(true);
+  });
+
+  it("a minimal store-only, untagged descriptor (release id <deliverable>@<version>)", () => {
+    const d = {
+      descriptorVersion: 1,
+      product: "acme",
+      deliverable: "app",
+      kind: "app",
+      version: "1.2.4",
+      builds: [
+        {
+          id: "macos",
+          platform: "macos",
+          arch: "universal",
+          format: "dmg",
+          buildNumber: "4022",
+          artifacts: [],
+        },
+      ],
+    };
+    const res = validateReleaseDescriptor(d, descriptorManifest());
+    expect(res.ok ? [] : res.errors).toEqual([]);
+    expect(res.ok && res.releaseId).toBe("app@1.2.4");
+    expect(
+      validateDescriptorSchema(d),
+      JSON.stringify(validateDescriptorSchema.errors),
+    ).toBe(true);
+  });
+
+  it("the schema's vocabularies are exactly the validator's constants", () => {
+    const schema = JSON.parse(
+      readFileSync(join(schemasDir, "release-descriptor.schema.json"), "utf8"),
+    );
+    expect(schema.$defs.build.properties.platform.enum).toEqual([
+      ...RELEASE_PLATFORMS,
+    ]);
+    expect(schema.$defs.build.properties.arch.enum).toEqual([
+      ...RELEASE_ARCHES,
+    ]);
+    expect(schema.$defs.artifact.properties.role.enum).toEqual([
+      ...ARTIFACT_ROLES,
+    ]);
+    expect(
+      schema.$defs.location.oneOf.map((b: any) => b.properties.provider.const),
+    ).toEqual([...LOCATION_PROVIDERS]);
+  });
+});
+
+describe("release descriptor: every code has a mutation, and the schema catches what it claims", () => {
+  it("the mutation table covers every code descriptor.ts emits", () => {
+    const source = readFileSync(
+      join(here, "..", "src", "descriptor.ts"),
+      "utf8",
+    );
+    const emitted = new Set(
+      [...source.matchAll(/"((?:[a-z0-9]+_)+[a-z0-9]+)"/g)].map((m) => m[1]!),
+    );
+    const covered = new Set(DESCRIPTOR_MUTATIONS.map((m) => m.code));
+    const missing = [...emitted].filter((code) => !covered.has(code));
+    expect(
+      missing,
+      `descriptor codes without a mutation: ${missing.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  for (const mutation of DESCRIPTOR_MUTATIONS) {
+    it(`${mutation.code} (schema ${mutation.schema})`, () => {
+      const d = baseDescriptor();
+      mutation.mutate(d);
+      const res = validateReleaseDescriptor(d, descriptorManifest());
+      expect(res.ok ? [] : res.errors.map((e) => e.code)).toContain(
+        mutation.code,
+      );
+      expect(validateDescriptorSchema(d)).toBe(mutation.schema === "accepts");
+    });
+  }
+});
