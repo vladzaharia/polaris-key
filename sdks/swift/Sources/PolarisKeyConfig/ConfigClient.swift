@@ -76,12 +76,62 @@ public actor ConfigClient {
     private let localOverrides: [String: JSONValue]
     private let envPrefix: String
     private let environment: [String: String]
+    private let reacquire: ReacquireToken?
+    /// Edge-minted tokens, in memory only (see `Mint.swift`).
+    private var minted: [String: MintedToken] = [:]
+    private var minting: [String: Task<MintedToken, Error>] = [:]
 
-    public init(core: CoreContext, options: ConfigClientOptions = ConfigClientOptions()) {
+    /// - Parameter reacquire: the §5 single re-acquire an edge-mint 401 gets. Injected by the
+    ///   facade because the route belongs to the license module; without it a 401 simply fails.
+    public init(
+        core: CoreContext, options: ConfigClientOptions = ConfigClientOptions(),
+        reacquire: ReacquireToken? = nil
+    ) {
         self.core = core
         self.localOverrides = options.localOverrides
         self.envPrefix = options.envPrefix
         self.environment = options.environment ?? ProcessInfo.processInfo.environment
+        self.reacquire = reacquire
+    }
+
+    /// Mint a third-party token through the product's edge-mint recipe `recipeId`
+    /// (`GET /<p>/config/mint/<recipeId>/token`, authenticated with the device token).
+    ///
+    /// Minted tokens are cached IN MEMORY ONLY, per recipe, and reused until 30 seconds before
+    /// `expiresAt`: they are short-lived secrets and never reach the cache file or the keychain. A
+    /// 401 gets the one re-acquire every authenticated call gets (§5), then one retry.
+    ///
+    /// Throws `PolarisError`: `service-unavailable` (no Config service, before any request),
+    /// `bad_request` (a recipe id the router could never match, before any request),
+    /// `unauthorized` (no token, or still 401 after the re-acquire), or the Worker's code —
+    /// `not_found` for an unknown or unapproved recipe, `rate_limited`, `misconfigured`.
+    public func mintToken(_ recipeId: String) async throws -> MintedToken {
+        try await core.requireService(.config)
+        guard MintEndpoint.isRecipeId(recipeId) else {
+            throw PolarisError(
+                code: "bad_request",
+                message:
+                    "\"\(recipeId)\" is not an edge-mint recipe id (lowercase letters, digits and \"-\").")
+        }
+        if let held = minted[recipeId],
+            await core.now() < held.expiresAt - MINT_REUSE_MARGIN_SECONDS
+        {
+            return held
+        }
+        if let pending = minting[recipeId] { return try await pending.value }
+        let core = self.core
+        let reacquire = self.reacquire
+        let task = Task { try await MintEndpoint.mint(core, recipeId: recipeId, reacquire: reacquire) }
+        minting[recipeId] = task
+        defer { minting[recipeId] = nil }
+        do {
+            let fresh = try await task.value
+            minted[recipeId] = fresh
+            return fresh
+        } catch {
+            minted[recipeId] = nil
+            throw error
+        }
     }
 
     private func doc() async -> ConfigDoc? {
