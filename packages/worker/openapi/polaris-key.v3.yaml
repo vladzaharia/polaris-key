@@ -3389,6 +3389,7 @@ paths:
         grammar for `semver`), `descriptor-mismatch` (the record is not the descriptor under
         §2.4's mapping) — all 400 — or `seq` (409: not the release's `seq`; ask the upload route
         again). A re-run whose release already holds a record keeps it (`record.stored: false`).
+      security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
       requestBody:
