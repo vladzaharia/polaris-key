@@ -141,10 +141,13 @@ delivery access it had until its next resync, which re-applies the manifest's mo
 ## Delivery URLs
 
 The `delivery` hook's `deliveryUrl({releaseId, buildId | name, outlet?})` mints the canonical
-URL of one release file or build: on the bytes host when `BLOB_ORIGIN` is set, otherwise a path
-on this origin. A build is pinned to its release's version, so the URL is immutable. It answers
-`null` for a release, file or build that does not exist, and for an outlet that delivers the
-deliverable by a transport other than `pkey-cdn`. Storefront feeds, the download page, the
+URL of one release file or of a build's payload: on the bytes host when `BLOB_ORIGIN` is set,
+otherwise a path on this origin. Both are minted as `…/distribution/files/<releaseId>/<name>`,
+pinned to the release by its id, so the URL is immutable. A build URL is never minted from the
+release's stored version: a release synced from a GitHub tag such as `latest` or `beta` stores
+that tag as its version, and `builds/latest/…` would serve whatever the channel points at now. It
+answers `null` for a release, file, build or build payload that does not exist, and for an outlet
+that delivers the deliverable by a transport other than `pkey-cdn`. Storefront feeds, the download page, the
 updater feeds and pack transports link through it.
 
 ## See also

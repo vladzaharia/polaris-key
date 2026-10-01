@@ -340,10 +340,14 @@ export interface Delivery {
    */
   accessMode(deliverable: string): Promise<ReleaseAccess>;
   /**
-   * The canonical URL of one release file (`name`) or build (`buildId`, served pinned to the
-   * release's version): on the bytes host when `BLOB_ORIGIN` is set, else a path on this origin.
-   * `null` when the release, file or build does not exist, or when `outlet` delivers the
-   * deliverable by a transport other than `pkey-cdn` (the bytes are not ours to serve there).
+   * The canonical, immutable URL of one release file (`name`) or of a build's payload
+   * (`buildId`), both minted as `…/files/<releaseId>/<name>` — pinned to the release by id, never
+   * to its stored version, which can be a channel-like tag (`latest`) a `builds/<selector>` URL
+   * would re-read as moving (P2-05's fixedVersion rule). On the bytes host when `BLOB_ORIGIN` is
+   * set, else a path on this origin. `null` when the release, file, build or build payload does
+   * not exist, when the payload's name is not the one the `files` route serves for that name, or
+   * when `outlet` delivers the deliverable by a transport other than `pkey-cdn` (the bytes are
+   * not ours to serve there).
    */
   deliveryUrl(q: {
     releaseId: string;

@@ -9,14 +9,13 @@
  *     and P6-03 halts through.
  *   - `accessMode` (P2b-04): `dist_access` — the ONE delivery-access answer the byte routes, the
  *     appcast and the portal read.
- *   - `deliveryUrl` (P2b-04): the canonical byte URL of a release file or build, on the bytes host
- *     when `BLOB_ORIGIN` is set — what P2b-05's feeds, P2b-06's page, P3-09's updater feeds and
+ *   - `deliveryUrl` (P2b-04): the canonical, immutable byte URL of a release file or of a build's
+ *     payload (both as `files/<releaseId>/<name>`), on the bytes host when `BLOB_ORIGIN` is set — what P2b-05's feeds, P2b-06's page, P3-09's updater feeds and
  *     P4-05's pack transports link to.
  *
  * Read-only by contract: a hook never writes.
  */
 
-import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import {
   DEFAULT_TRANSPORT,
   type AvailabilityRecord,
@@ -66,8 +65,12 @@ export function delivery(ctx: HookContext): Delivery {
         return `${base}/files/${encodeURIComponent(releaseId)}/${encodeURIComponent(name)}`;
       }
 
-      // A build is served pinned to its release's VERSION (an immutable URL), for the
-      // deliverable that owns the release.
+      // A build's immutable URL is its PAYLOAD file's `files/<releaseId>/<name>` URL: pinned to
+      // the release by id, never re-read as a selector. The release's stored version is NOT a
+      // safe route selector — a GitHub-synced release takes its version from its tag, which can
+      // be `latest`, `beta`, `pr-5` or a manual channel's name, and `builds/<that>/…` would
+      // resolve the channel's CURRENT release, against P2-05's fixedVersion rule. So no
+      // `builds/<version>/…` URL is ever minted here.
       const builds = await catalog.builds(releaseId);
       if (!builds.some((b) => b.buildId === buildId)) return null;
       for (const d of await catalog.deliverables()) {
@@ -76,11 +79,23 @@ export function delivery(ctx: HookContext): Delivery {
         );
         if (!release) continue;
         if (!(await transportIsOurs(ctx, d.id, outlet))) return null;
-        const query =
-          d.id === APP_DELIVERABLE_ID
-            ? ""
-            : `?deliverable=${encodeURIComponent(d.id)}`;
-        return `${base}/builds/${encodeURIComponent(release.version)}/${encodeURIComponent(buildId as string)}${query}`;
+        const payload = (
+          await catalog.artifacts(releaseId, buildId as string)
+        ).find((a) => a.role === "payload");
+        if (!payload) return null;
+        // The `files` route serves the first artifact (by id) with that name in the release;
+        // mint the URL only when that IS this build's payload, else there is no immutable URL.
+        const served = await catalog.resolve({
+          kind: "file",
+          releaseId,
+          name: payload.name,
+        });
+        if (
+          served?.kind !== "file" ||
+          served.artifact?.artifactId !== payload.artifactId
+        )
+          return null;
+        return `${base}/files/${encodeURIComponent(releaseId)}/${encodeURIComponent(payload.name)}`;
       }
       return null;
     },

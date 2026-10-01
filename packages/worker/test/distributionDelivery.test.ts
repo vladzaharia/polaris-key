@@ -52,12 +52,18 @@ import {
 } from "../src/services/identity/portal/session.js";
 import { handlePortalApi, handlePortalDownload } from "./portalHarness.js";
 import {
+  stmtSetArtifactModel,
+  stmtUpsertBuild,
+} from "../src/services/release/model.js";
+import {
+  ASSET_BYTES,
   BYTES,
   CONSOLE,
   bytesOf,
   call,
   envFor,
   github,
+  release,
   RELEASES,
   seedReleaseProduct,
   sha256Hex,
@@ -570,7 +576,7 @@ describe("dist_access", () => {
     ).toBe(`${BYTES}/${SLUG}/distribution/files/v1.1.0/djdl-arm64`);
     expect(
       await delivery.deliveryUrl({ releaseId: "v1.1.0", buildId: "cli-arm64" }),
-    ).toBe(`${BYTES}/${SLUG}/distribution/builds/1.1.0/cli-arm64`);
+    ).toBe(`${BYTES}/${SLUG}/distribution/files/v1.1.0/djdl-arm64`);
     expect(
       await delivery.deliveryUrl({ releaseId: "v1.1.0", name: "nope" }),
     ).toBeNull();
@@ -604,6 +610,101 @@ describe("dist_access", () => {
       }))!,
     );
     expect(res.status).toBe(200);
+  });
+
+  it("deliveryUrl never mints a build URL from a stored version a route would read as a selector", async () => {
+    // A GitHub-synced release takes its version from its tag, so a rolling release tagged
+    // `latest` is stored with the version `latest`. `builds/latest/<id>` would serve whatever the
+    // stable channel points at NOW (v1.1.0), cached as moving — not this release. The build's
+    // URL is its payload file's, pinned to the release by id (P2-05's fixedVersion rule).
+    const db = makeTestDb();
+    await seedReleaseProduct(db);
+    const env = envFor({ blobOrigin: BYTES });
+    env.BLOBS = asR2(new R2Mock());
+    ASSET_BYTES[451] = bytesOf(4500, 45);
+    const gh = github({
+      releases: [
+        release(
+          "latest",
+          [
+            {
+              id: 451,
+              name: "djdl-arm64",
+              size: ASSET_BYTES[451]!.length,
+              content_type: "application/octet-stream",
+              browser_download_url:
+                "https://github.com/acme/djdl/releases/download/latest/djdl-arm64",
+            },
+          ],
+          { prerelease: true },
+        ),
+        ...RELEASES,
+      ],
+    });
+    await syncAndDescribe(env, db, gh.fetchImpl);
+    const b = stmtUpsertBuild(
+      {
+        product: SLUG,
+        releaseId: "latest",
+        buildId: "cli-arm64",
+        platform: "macos",
+        arch: "arm64",
+        format: "binary",
+      },
+      NOW,
+    );
+    await db.run(b.sql, ...b.params);
+    const a = stmtSetArtifactModel({
+      product: SLUG,
+      releaseId: "latest",
+      artifactId: "451",
+      buildId: "cli-arm64",
+      role: "payload",
+      sha256: sha256Hex(ASSET_BYTES[451]!),
+    });
+    await db.run(a.sql, ...a.params);
+    const stored = await db.first<{ version: string }>(
+      "SELECT version FROM release_metadata WHERE product = ? AND release_id = 'latest'",
+      SLUG,
+    );
+    expect(stored?.version).toBe("latest");
+
+    const product = (await loadProduct(env, db, SLUG))!;
+    const delivery = buildHooks(SERVICES, product.services, {
+      env,
+      db,
+      product,
+      now: NOW,
+    }).delivery()!;
+    const url = await delivery.deliveryUrl({
+      releaseId: "latest",
+      buildId: "cli-arm64",
+    });
+    expect(url).toBe(`${BYTES}/${SLUG}/distribution/files/latest/djdl-arm64`);
+    expect(url).not.toContain("/builds/");
+    // …and it serves THIS release's payload, not the stable channel's current one.
+    const res = await call(env, db, gh.fetchImpl, url!);
+    expect(res.status).toBe(200);
+    expect(sha256Hex(new Uint8Array(await res.arrayBuffer()))).toBe(
+      sha256Hex(ASSET_BYTES[451]!),
+    );
+
+    // A build with no payload has no immutable URL at all.
+    const bare = stmtUpsertBuild(
+      {
+        product: SLUG,
+        releaseId: "latest",
+        buildId: "bare",
+        platform: "macos",
+        arch: "arm64",
+        format: "binary",
+      },
+      NOW,
+    );
+    await db.run(bare.sql, ...bare.params);
+    expect(
+      await delivery.deliveryUrl({ releaseId: "latest", buildId: "bare" }),
+    ).toBeNull();
   });
 
   it("the portal redirects a public artifact with no GitHub URL to the bytes host, never a gated one", async () => {

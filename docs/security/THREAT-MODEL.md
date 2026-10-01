@@ -538,6 +538,13 @@ the old column.
   deliverable with no GitHub download URL, only `https`, and only the exact `BLOB_ORIGIN`
   hostname, with the URL minted by `delivery.deliveryUrl` from stored records. A non-public
   deliverable is never redirected there.
+- **`deliveryUrl` keeps the fixedVersion rule.** Every URL it mints, for a file or for a build,
+  is `…/files/<releaseId>/<name>`, pinned to the release by id. It never mints
+  `builds/<stored version>/…`: a GitHub-synced release stores its tag as its version, and a tag
+  such as `latest`, `beta`, `pr-5` or a manual channel's name would be re-read there as a moving
+  selector and serve the channel's current release, cached as moving. A build's URL is its
+  payload's, and only when the `files` route resolves that name to that same artifact; otherwise
+  `null`.
 
 **Edge caching stays off.** The byte routes are not cached (no Workers Caching entrypoint, no
 `caches.default`), so S-02's open question — whether a public response to a request carrying
