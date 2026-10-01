@@ -131,3 +131,19 @@ Tested only against stubbed fetches, not a real GitHub App installation.
       cannot read or copy outside `staging/<product>/<ticketId>/`.
 - [ ] **P2-05 / P2b-04:** on the first deploy that registers `BYTE_ROUTES`, repeat the
       `dl.plrs.im` isolation checks above with a route that throws (expect a hardened JSON 500).
+
+## Release infrastructure (found 2026-09-30)
+
+- [ ] **Changesets cannot update the Version Packages PR.** `release.yml` runs `changesets/action`
+      with `GITHUB_TOKEN`, which force-pushes `main`'s history to `changeset-release/main`. Since
+      P0-09, P1b-03 and P1-01 changed `.github/workflows/ci.yml`, GitHub rejects that push
+      ("refusing to allow a GitHub App to create or update workflow … without `workflows`
+      permission"; run 36807091247). `GITHUB_TOKEN` cannot be granted `workflows`, so give the
+      action a fine-grained PAT or GitHub App token with Contents + Pull requests + Workflows on
+      this repository (secret, then `with: { token: … }` / `GITHUB_TOKEN: …` in `release.yml`).
+- [ ] **PR #1 (Version Packages) CI is `action_required`.** Bot-opened PR runs wait for a
+      maintainer's approval in the Actions tab; approve them (or the token above, being a user or
+      App token, avoids the hold).
+- [ ] **Required checks:** add the two new Godot CI legs ("Godot SDK (4.7.2 editor + release
+      template)", "Godot SDK (4.4.1 editor, floor)") to `main`'s required status checks. Both
+      passed on GitHub on 2026-09-30.

@@ -80,7 +80,9 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   available (web via `JavaScriptBridge`; omit elsewhere unless IANA is readable), and desktop
   probes for product-declared paths only.
 - `services/devices.gd` (`PolarisKey.devices`): `await register()` (keyless, optional
-  fingerprint, token source `register`), `get_current_device()`, `await list()`,
+  fingerprint, token source `register`; its result keeps a request that got no answer (status 0, as
+  P1-02's transport reports it) apart from a refusal or an unusable answer, so that PKeyBoot
+  classifies a keyless registration as [P1-09 plan §2.2](../plans/P1-09.md) says), `get_current_device()`, `await list()`,
   `await rename(label)`, `await deauthorize()`, `await report()`; automatic report after each
   sync through P1-02's post-sync hook.
 - **Report payload:** facts plus `sdk`, `sdkVersion`, `appVersion`, `platform`, `arch`, `gate`,

@@ -21,7 +21,7 @@ per-service-sub-client shape, and fails closed the same way when a capability is
 | CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script | shipped inside the Node and Python pages above |
 
 Node and React additionally share one isomorphic implementation of the verification, gate,
-trust and config-resolution logic, `@polaris-key/client-core`, rather than each reimplementing
+trust, config-resolution and boot-stage logic, `@polaris-key/client-core`, rather than each reimplementing
 it; Python and Swift carry independent ports proven identical by the same cross-language
 conformance corpus. See `packages/client-core/README.md` for why that split exists, and
 [The wire contract](/docs/build/wire/) for the envelope itself.

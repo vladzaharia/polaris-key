@@ -216,7 +216,7 @@ either string ever existed in the wild.
 
 ## 9. Rollout & versioning
 
-Pre-launch, no live clients: v3 replaces v2 in one movement — no dual-accept window. `PROTOCOL_VERSION = 3`; cache v2 records are discarded on first v3 load (§4.1); djdl is re-seeded; the corpus lives at `corpus/v2/` and v1 has been deleted (its fifteen gate-matrix rows were inlined into the v2 generator first, so nothing it pinned was dropped). Version counters and their owners: `PROTOCOL_VERSION` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1` (unchanged), per-product catalog `schemaVersion` (orthogonal). The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+Pre-launch, no live clients: v3 replaces v2 in one movement — no dual-accept window. `PROTOCOL_VERSION = 3`; cache v2 records are discarded on first v3 load (§4.1); djdl is re-seeded; the corpus lives at `corpus/v2/` and v1 has been deleted (its fifteen gate-matrix rows were inlined into the v2 generator first, so nothing it pinned was dropped). Version counters and their owners: `PROTOCOL_VERSION` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1` (unchanged), `stageMatrixVersion = 1` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), per-product catalog `schemaVersion` (orthogonal). The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger (seeded from v2 §6)
 

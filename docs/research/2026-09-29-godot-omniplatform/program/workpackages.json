@@ -476,7 +476,7 @@
       "optional": false,
       "refs": ["README §5.8", "README §8 item 6", "PARITY §4.1 §5.7"],
       "brief": "wp/P1-09-boot-stage-machine.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P1-10",

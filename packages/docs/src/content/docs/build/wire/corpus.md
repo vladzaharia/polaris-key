@@ -22,6 +22,7 @@ Spec references: §6 (mandatory corpus additions, carried from v2), §9 (version
 tools/sign-corpus.ts  →  conformance/corpus/v2/cases.json
                          conformance/corpus/v2/gate-matrix.json
                          conformance/corpus/v2/fingerprint.json
+                         conformance/corpus/v2/stage-matrix.json
                       →  sdks/swift/Tests/PolarisKeyTests/Resources/v2/   (Swift mirror)
                       →  sdks/godot/tests/corpus/v2/                      (Godot mirror)
 ```
@@ -44,13 +45,14 @@ reference them.
 `corpus/v1` is **deleted** — v2 is the only corpus. Its fifteen gate-matrix rows were inlined
 into the v2 generator before deletion, so nothing it pinned was dropped.
 
-## The three files
+## The four files
 
-| File               | What it pins                                                                               | Contract section |
-| ------------------ | ------------------------------------------------------------------------------------------ | ---------------- |
-| `cases.json`       | Six case families covering verification end to end, plus the two test keys                 | §1–§4, §7        |
-| `gate-matrix.json` | Every gate transition, as pure input/expected-status rows                                  | §5               |
-| `fingerprint.json` | Component order, per-component and composite digest lengths, and the device-id derivations | Fingerprint v1   |
+| File                | What it pins                                                                                    | Contract section                              |
+| ------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `cases.json`        | Six case families covering verification end to end, plus the two test keys                      | §1–§4, §7                                     |
+| `gate-matrix.json`  | Every gate transition, as pure input/expected-status rows                                       | §5                                            |
+| `fingerprint.json`  | Component order, per-component and composite digest lengths, and the device-id derivations      | Fingerprint v1                                |
+| `stage-matrix.json` | The boot stage machine: rows of host events with the exact emits each produces, and guard cases | client boot behaviour, not a contract section |
 
 ### The case families in `cases.json`
 
@@ -79,6 +81,12 @@ reference implementation written for the test.
 | Swift  | `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift` | The Swift SDK, against the mirrored `Resources/v2/`                                                |
 | React  | `packages/sdk-react/test/gateMatrixParity.test.ts`        | `gate-matrix.json` through `licenseState` **and** the React projection                             |
 | Godot  | `sdks/godot/tests/suite_conformance.gd`                   | `PKeyJws` over `jwsCases`, from the `res://` mirror, on an editor **and** an exported template     |
+
+`stage-matrix.json` has its own runners too: `conformance/runners/node/stageMatrix.test.ts`
+(through `@polaris-key/client-core/stages`, which React shares),
+`sdks/python/tests/test_stage_matrix.py` and
+`sdks/swift/Tests/PolarisKeyTests/StageMatrixTests.swift`. Each replays every row, sends every
+probe of the file's `accepts` table at every state the rows reach, and checks every guard case.
 
 The React runner is the odd one out on purpose. The gate itself is proven by the Node runner;
 what only the React suite can prove is that the React state machine feeds it the right
