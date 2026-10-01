@@ -1,16 +1,16 @@
 # S-02 Spike: Range, If-Range and cold-miss behaviour of R2 behind a custom domain
 
-| Field       | Value                                                                                                                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | S: Spikes                                                                                                                                                                                                 |
-| Size        | 0.5 engineer-weeks                                                                                                                                                                                        |
-| Depends on  | none                                                                                                                                                                                                      |
-| Unblocks    | [P4-10](P4-10-chunk-indexes.md), [P4-11](P4-11-chunk-sync-sdks.md)                                                                                                                                        |
-| Role        | `pkey-spike-runner`                                                                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                                                                        |
-| Gates       | none beyond `pnpm format` on the files it adds; no change to `packages/worker`                                                                                                                            |
-| Human input | Cloudflare account with R2. Also needed, not in the graph: a zone on that account to bind an R2 custom domain to (ideally the separate byte domain P2-01 will use), and a wrangler API token scoped to it |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | S: Spikes                                                                                                                                                                                                                                                                               |
+| Size        | 0.5 engineer-weeks                                                                                                                                                                                                                                                                      |
+| Depends on  | none                                                                                                                                                                                                                                                                                    |
+| Unblocks    | [P4-10](P4-10-chunk-indexes.md), [P4-11](P4-11-chunk-sync-sdks.md)                                                                                                                                                                                                                      |
+| Role        | `pkey-spike-runner`                                                                                                                                                                                                                                                                     |
+| Plan mode   | no                                                                                                                                                                                                                                                                                      |
+| Gates       | none beyond `pnpm format` on the files it adds; no change to `packages/worker`                                                                                                                                                                                                          |
+| Human input | Cloudflare account with R2. Also needed, not in the graph: a zone on that account for temporary hostnames (an R2 custom domain for path A and two probe Worker domains; not `dl-dev.plrs.im`, which is P2-01's bytes host), a throwaway bucket, and a wrangler API token scoped to them |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                               |
 
 ## Goal
 
@@ -102,9 +102,11 @@ P2-01 and P2b-04 and the chunk-bundle size for P4-10.
 - The first run could not create the custom domain or deploy the probe Worker. So it measured the
   Worker and R2-binding logic on miniflare, measured clients (Godot, Chromium, WebKit) for real,
   and took edge behaviour from Cloudflare's docs.
-- The live rows are hand-off rows H1–H8 in the note (§8). The probe Worker binds
-  `polaris-key-blobs-dev` and keeps every test object under `s02/`, so teardown is one prefix
-  delete.
+- The live rows are hand-off rows H1–H9 in the note (§8). They run against a throwaway bucket,
+  `pk-s02-probe`, with temporary hostnames, never `polaris-key-blobs-dev` or `dl-dev.plrs.im`:
+  path A would publish the whole dev bucket, and `dl-dev.plrs.im` is already P2-01's bytes host.
+  The probe Worker refuses keys outside `s02/` whichever bucket it binds. Teardown is deleting
+  the bucket, its custom domain and the two probe Workers.
 
 ## Steps
 
