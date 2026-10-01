@@ -5,7 +5,12 @@ extends RefCounted
 ##
 ##   {v: 3, trustJws?, docs?: {license?, config?}, etags?: {license?, config?},
 ##    importedBundle?: {bundleId, importedAt}, lastSyncUnauthorized?, blocked?: {reason,
-##    allowedRange?}}
+##    allowedRange?}, feeds?: {<canonical channel>: pkey-feed+jws},
+##    releaseRecords?: {<sha256>: pkey-release+jws}}
+##
+## `feeds` and `releaseRecords` are WIRE-CONTRACT-V4 §4's two additive slices (CACHE_VERSION
+## stays 3): `feeds` is keyed by each feed's own `channel` claim (the canonical channel, never the
+## requested name), and `releaseRecords` by lowercase hex SHA-256.
 ##
 ## SIGNED ARTIFACTS ONLY, plus ETags (non-security) and two unsigned hints that can only make the
 ## gate stricter. The load procedure is the security boundary:
@@ -14,9 +19,14 @@ extends RefCounted
 ##   2. `trustJws` is re-verified against the PINS, freshness off -> the effective set;
 ##   3. each document is re-verified against THAT set, freshness off, full claims, `aud` and
 ##      the local `deviceId`;
-##   4. every derived value (the anti-replay floors, the clock floor, `last_verified_at`) is
-##      computed from what verified. Nothing derived is ever read from the file, and unknown
-##      fields are dropped from the in-memory record.
+##   4. each committed feed goes through the feed reload path (PKeyFeed.reload_feeds: steps 3–6
+##      against THAT set, no freshness, its claim equal to its key) and each release record
+##      through steps 12–14 with its key as the pin, kept only while a surviving feed's target
+##      for this platform pins it (PKeyReleaseRecord.reload_release_records);
+##   5. every derived value (the anti-replay floors, each channel's `seq` floor, the clock
+##      floor, `last_verified_at`) is computed from what verified. Nothing derived is ever read
+##      from the file, and unknown fields are dropped from the in-memory record. Neither a feed
+##      nor a record raises the clock floor.
 ##
 ## A failing artifact is ABSENT for the session (and rewritten out on the next write), never
 ## half-trusted. Writes are one whole-record write per sync (`flush`), so two parallel document
@@ -24,6 +34,8 @@ extends RefCounted
 
 const VERSION := 3
 const SLICES := ["license", "config"]
+## The wire v4 update slices (WIRE-CONTRACT-V4 §4).
+const UPDATE_SLICES := ["feeds", "releaseRecords"]
 
 var store: PKeyStore
 var trust: PKeyTrust
@@ -43,6 +55,18 @@ var blocked = null
 ## Epoch seconds of the last verification: the newest verified document's signed `issuedAt` at
 ## load, then the time of each successful authenticated exchange (200 or 304). null: never.
 var last_verified_at = null
+## The platform the update slices are reloaded for (a record is kept only while a committed
+## feed's target for this platform pins it); set by Core before load_record().
+var platform := ""
+## `pinned_release_keys`: what each cached release record re-verifies against.
+var release_keys: Dictionary = {}
+## The committed feeds that survived the reload path: {canonical channel: {jws, feed}}.
+var feeds: Dictionary = {}
+## Each committed channel's `seq` floor, derived from `feeds` (never persisted): {channel:
+## {seq, issuedAt}}.
+var feed_floors: Dictionary = {}
+## The verified release records a committed feed pins: {sha256: {jws, record}}.
+var release_records: Dictionary = {}
 
 var _record = null
 
@@ -109,10 +133,66 @@ func load_record() -> void:
 		else:
 			_drop_slice("config")
 
+	await _load_update_slices()
+
 	imported_bundle = _record.get("importedBundle")
 	last_sync_unauthorized = PKeyClaims.is_true(_record.get("lastSyncUnauthorized"))
 	blocked = _record.get("blocked")
 	last_verified_at = newest if newest > 0 else null
+
+
+## Steps 4–5 for the update slices: re-verify, derive the floors, drop whatever failed.
+func _load_update_slices() -> void:
+	if not _record.has("feeds") and not _record.has("releaseRecords"):
+		return
+	var effective := trust.effective()
+	var reloaded := await PKeyFeed.reload_feeds(_record.get("feeds"), {
+		"trust": effective, "expected_aud": product, "platform": platform, "offload": true,
+	})
+	feeds = reloaded["feeds"]
+	feed_floors = reloaded["floors"]
+	var pinned := {}
+	for k in feeds:
+		var t = PKeyDecision.feed_target(feeds[k]["feed"]["app"]["targets"], platform)
+		if t is Dictionary:
+			pinned[t["release"]["sha256"]] = true
+	release_records = await PKeyReleaseRecord.reload_release_records(_record.get("releaseRecords"), {
+		"release_keys": release_keys, "product_trust": effective, "expected_aud": product,
+		"pinned": pinned, "offload": true,
+	})
+	_set_update_slices(_jws_map(feeds), _jws_map(release_records))
+
+
+## Commit what a decision verified (PolarisKey.update): the `feeds` and `releaseRecords` slices
+## as PKeyUpdateFlow returned them, in one read-modify-write of the whole record, and the
+## in-memory views beside them. Returns the store's verdict.
+func apply_update(committed: Dictionary, records: Dictionary) -> bool:
+	feeds = committed
+	feed_floors = {}
+	for k in feeds:
+		feed_floors[k] = PKeyFeed.feed_floor(feeds[k]["feed"])
+	release_records = records
+	var f := _jws_map(feeds)
+	var r := _jws_map(release_records)
+	return patch({"feeds": f if not f.is_empty() else null, "releaseRecords": r if not r.is_empty() else null})
+
+
+static func _jws_map(m: Dictionary) -> Dictionary:
+	var out := {}
+	for k in m:
+		out[k] = m[k]["jws"]
+	return out
+
+
+func _set_update_slices(f: Dictionary, r: Dictionary) -> void:
+	if f.is_empty():
+		_record.erase("feeds")
+	else:
+		_record["feeds"] = f
+	if r.is_empty():
+		_record.erase("releaseRecords")
+	else:
+		_record["releaseRecords"] = r
 
 
 ## Stage a freshly verified licence document (memory only; `flush` persists).
@@ -179,6 +259,9 @@ func _reset_loaded() -> void:
 	last_sync_unauthorized = false
 	blocked = null
 	last_verified_at = null
+	feeds = {}
+	feed_floors = {}
+	release_records = {}
 
 
 func _stage(slice: String, jws: String, p_etag: String) -> void:
@@ -227,4 +310,12 @@ static func _normalize(rec: Dictionary) -> Dictionary:
 	var b = PKeyGate.sanitize_blocked(rec.get("blocked"))
 	if b != null:
 		out["blocked"] = b
+	for slice in UPDATE_SLICES:
+		if rec.get(slice) is Dictionary:
+			var m := {}
+			for k in rec[slice]:
+				if k is String and rec[slice][k] is String:
+					m[k] = rec[slice][k]
+			if not m.is_empty():
+				out[slice] = m
 	return out
