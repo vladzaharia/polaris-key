@@ -16,7 +16,7 @@
     "core.cache": {
       "status": "planned",
       "unowned": true,
-      "note": "The browser adapter is online-only with no verified cache; on desktop the host's Node SDK holds it. No work package gives the browser one."
+      "note": "The browser adapter keeps no verified licence/config cache (only the signed update slices, P3-05); on desktop the host's Node SDK holds it. No work package gives the browser one."
     },
     "core.bundle": {
       "status": "implemented",
@@ -109,10 +109,19 @@
     },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
-    "release.record": { "status": "planned", "wp": "P3-05" },
+    "release.record": {
+      "status": "implemented",
+      "note": "client-core verifyReleaseRecord (hash before signature, pinned release keys only); the browser adapter fetches by hash and persists releaseRecords in IndexedDB, desktop through the host's decide()."
+    },
     "update.check": { "status": "implemented" },
-    "update.feed": { "status": "planned", "wp": "P3-05" },
-    "update.decide": { "status": "planned", "wp": "P3-05" },
+    "update.feed": {
+      "status": "implemented",
+      "note": "client-core verifyFeed with floors keyed by the canonical channel; the browser adapter fetches, verifies and persists the feeds slice in IndexedDB; desktop through invoke(\"update\", \"decide\")."
+    },
+    "update.decide": {
+      "status": "implemented",
+      "note": "client-core decideUpdate/runUpdateCheck; useUpdateDecision and <UpdatePrompt source=\"decision\"> render every v4 action. The browser outlet is web unless the host passes one."
+    },
     "update.driver": {
       "status": "planned",
       "unowned": true,

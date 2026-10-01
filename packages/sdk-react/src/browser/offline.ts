@@ -247,10 +247,17 @@ export async function importOfflineBundle(
   const imported: ImportBundleResult["imported"] = [];
   if (bundle.docs.license) imported.push("license");
   if (bundle.docs.config) imported.push("config");
+  // The update slices (`feeds`, `releaseRecords`) are not part of the bundle: they carry over,
+  // so re-provisioning never resets a channel's `seq` floor.
+  const prior = record.cache;
   await store.write(product, {
     deviceId: record.deviceId,
     cache: {
       v: CACHE_VERSION,
+      ...(prior?.feeds ? { feeds: prior.feeds } : {}),
+      ...(prior?.releaseRecords
+        ? { releaseRecords: prior.releaseRecords }
+        : {}),
       trustJws: bundle.trustJws,
       docs: {
         ...(bundle.docs.license ? { license: bundle.docs.license.jws } : {}),

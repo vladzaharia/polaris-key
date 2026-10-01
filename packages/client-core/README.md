@@ -45,21 +45,26 @@ verification primitives with no transport or store attached.
 Each module is also its own entry point, for a host that wants a single concern without
 pulling the barrel (`sideEffects: false`, so an unused subpath costs nothing either way):
 
-| Subpath                            | Exports                                                                                                                   | What it does                                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `@polaris-key/client-core`         | everything below                                                                                                          | the barrel                                                                                   |
-| `@polaris-key/client-core/verify`  | `verifyDoc`, `verifyLicenseDoc`, `verifyConfigDoc`, `LICENSE_DOC`, `CONFIG_DOC`                                           | JWS verification + per-document claim validation                                             |
-| `@polaris-key/client-core/trust`   | `verifyTrustManifest`, `mergeTrust`                                                                                       | trust-manifest verification and the two-tier pinned-then-discovered merge                    |
-| `@polaris-key/client-core/bundle`  | `verifyBundle`, `inspectBundle`, `MAX_BUNDLE_BYTES`                                                                       | offline activation bundle verification, all-or-nothing, in wire-contract §7's numbered order |
-| `@polaris-key/client-core/gate`    | `licenseState`, `isUsable`                                                                                                | the license gate state machine over a cached document + the clock floor                      |
-| `@polaris-key/client-core/config`  | `resolveValue`, `resolveSource`, `listUserEntries`                                                                        | layered config resolution (WIRE-CONTRACT-V3 §2.2.1, `config-matrix.json`)                    |
-| `@polaris-key/client-core/headers` | `canonicalPlatform`, `canonicalArch`                                                                                      | a runtime's platform/arch spelling to its canonical header value (§5.2, `headers.json`)      |
-| `@polaris-key/client-core/semver`  | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                         | client-side semver + the build-channel family (WIRE-CONTRACT-V3 §5.1)                        |
-| `@polaris-key/client-core/claims`  | `CLOCK_SKEW_SECONDS`, `MAX_GRACE_SECONDS`, `REFRESH_MARGIN_SECONDS`                                                       | the shared claim-validation constants every implementation must agree on                     |
-| `@polaris-key/client-core/clock`   | `highWaterMark`, `effectiveNow`                                                                                           | the monotonic clock floor: `max(issuedAt)` over every re-verified artifact                   |
-| `@polaris-key/client-core/errors`  | `PolarisError`                                                                                                            | the one error type, carrying the server's machine-readable code                              |
-| `@polaris-key/client-core/store`   | `CACHE_VERSION`, `Store`, `CacheRecordV3`                                                                                 | the persistence _contract_ (types only) — no concrete store lives here                       |
-| `@polaris-key/client-core/stages`  | `initialBootState`, `bootTransition`, `bootGuardAction`, `MAX_FAILED_BOOTS`, `BOOT_STAGES` and the other vocabulary lists | the boot stage machine every renderer drives, and the boot guard's launch decision           |
+| Subpath                            | Exports                                                                                                                           | What it does                                                                                   |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `@polaris-key/client-core`         | everything below                                                                                                                  | the barrel                                                                                     |
+| `@polaris-key/client-core/verify`  | `verifyDoc`, `verifyLicenseDoc`, `verifyConfigDoc`, `LICENSE_DOC`, `CONFIG_DOC`                                                   | JWS verification + per-document claim validation                                               |
+| `@polaris-key/client-core/trust`   | `verifyTrustManifest`, `mergeTrust`                                                                                               | trust-manifest verification and the two-tier pinned-then-discovered merge                      |
+| `@polaris-key/client-core/bundle`  | `verifyBundle`, `inspectBundle`, `MAX_BUNDLE_BYTES`                                                                               | offline activation bundle verification, all-or-nothing, in wire-contract §7's numbered order   |
+| `@polaris-key/client-core/gate`    | `licenseState`, `isUsable`                                                                                                        | the license gate state machine over a cached document + the clock floor                        |
+| `@polaris-key/client-core/config`  | `resolveValue`, `resolveSource`, `listUserEntries`                                                                                | layered config resolution (WIRE-CONTRACT-V3 §2.2.1, `config-matrix.json`)                      |
+| `@polaris-key/client-core/headers` | `canonicalPlatform`, `canonicalArch`                                                                                              | a runtime's platform/arch spelling to its canonical header value (§5.2, `headers.json`)        |
+| `@polaris-key/client-core/semver`  | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                                 | client-side semver + the build-channel family (WIRE-CONTRACT-V3 §5.1)                          |
+| `@polaris-key/client-core/claims`  | `CLOCK_SKEW_SECONDS`, `MAX_GRACE_SECONDS`, `REFRESH_MARGIN_SECONDS`                                                               | the shared claim-validation constants every implementation must agree on                       |
+| `@polaris-key/client-core/clock`   | `highWaterMark`, `effectiveNow`                                                                                                   | the monotonic clock floor: `max(issuedAt)` over every re-verified artifact                     |
+| `@polaris-key/client-core/errors`  | `PolarisError`                                                                                                                    | the one error type, carrying the server's machine-readable code                                |
+| `@polaris-key/client-core/store`   | `CACHE_VERSION`, `Store`, `CacheRecordV3`                                                                                         | the persistence _contract_ (types only) — no concrete store lives here                         |
+| `@polaris-key/client-core/stages`  | `initialBootState`, `bootTransition`, `bootGuardAction`, `MAX_FAILED_BOOTS`, `BOOT_STAGES` and the other vocabulary lists         | the boot stage machine every renderer drives, and the boot guard's launch decision             |
+| `@polaris-key/client-core/version` | `parseVersion`, `compareVersions`                                                                                                 | version ordering under a product's scheme (`semver`, `semver+build`, `4part`), exact past 2^53 |
+| `@polaris-key/client-core/feed`    | `verifyFeed`, `feedClaims`, `feedFloor`, `reloadFeeds`, `commitFeed`, `boundChannels`                                             | the channel feed (`pkey-feed+jws`): steps 3–9, floors keyed by the canonical channel           |
+| `@polaris-key/client-core/record`  | `verifyReleaseRecord`, `releaseRecordClaims`, `recordHash`, `reloadReleaseRecords`                                                | the release record (`pkey-release+jws`): hash before signature, pinned release keys only       |
+| `@polaris-key/client-core/decide`  | `decideUpdate`, `bootDecision`, `rolloutBucket`, `effectiveCapabilities`, `resolveUpdateOutlet`, `outletEntry`, `isUndismissable` | the update decision (`update-matrix.json`), synchronous; the bucket is its one async input     |
+| `@polaris-key/client-core/check`   | `runUpdateCheck`                                                                                                                  | `update.decide()`'s I/O-free core: the order, the fallback and the error map of §2.5           |
 
 ## The pieces
 
@@ -105,6 +110,30 @@ unchanged) v2 state machine: a product with the license service disabled reports
 `not-applicable` before any other check runs, and `activation` — an online token _or_ a
 verified bundle import — replaces v2's boolean `hasToken`. `isUsable` is true for `ok`,
 `grace` and `not-applicable`.
+
+### Update (`feed.ts`, `record.ts`, `decide.ts`, `check.ts`) — wire v4
+
+The signed update path of WIRE-CONTRACT-V4, in the contract's order (plans/P3-01.md §2.5):
+
+- `verifyFeed` verifies a `pkey-feed+jws` against the **effective** product trust set, then
+  its claims, the channel binding (the claim is never `latest`, and equals the requested name or
+  its alias target), the selector, freshness on the network path, and the `seq` floor. Floors are
+  keyed by the **canonical** channel — each committed feed's own `channel` claim — and read only
+  after the claim is bound; no function here resolves an alias to pick a key. `reloadFeeds`
+  re-verifies the cached `feeds` slice and derives the floors (never stored); `commitFeed` is
+  step 9's write, removing the requested name's entry after an alias answer.
+- `verifyReleaseRecord` refuses a body over `MAX_RECORD_JWS_BYTES` or with a non-ASCII byte
+  without hashing it, compares `recordHash` with the feed's pin **before** any signature work,
+  selects the key from the pinned release keys only (refusing one whose bytes are also a product
+  key), then checks the claims and the cross-check against the pin.
+- `decideUpdate` is synchronous and total; `rolloutBucket` (WebCrypto, so async) is computed
+  first and passed in. `bootDecision` never answers `required`: a mandatory offer and `blocked`
+  are prompts the player cannot dismiss (`isUndismissable`), and play goes on.
+- `runUpdateCheck` takes the two fetches as callbacks and the cache slices, and returns the
+  `UpdateCheck` plus the slices to write — the shared core of `update.decide()` in both JS SDKs.
+
+`CacheRecordV3` carries the two optional slices, `feeds` and `releaseRecords`, as signed JWSs
+only; `CACHE_VERSION` stays 3.
 
 ### Config (`config.ts`)
 
