@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(74 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(75 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -97,3 +97,4 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `invalid-response` | `core` | Godot: The server answered 2xx with a body that failed strict parsing or lacked a required field. |
 | `store-failed` | `core` | Godot: The credential or cache store could not be read or written. |
 | `no-token` | `core` | Godot: An authenticated call ran with no device token in hand. |
+| `mint-unavailable` | `config` | Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent. |

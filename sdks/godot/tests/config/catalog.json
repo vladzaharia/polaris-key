@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 3,
+  "entries": [
+    {
+      "key": "dice.animSpeed",
+      "kind": "config",
+      "category": "Dice",
+      "label": "Animation speed",
+      "description": "How fast the dice roll.",
+      "accessor": "dice.animSpeed",
+      "schema": { "type": "number", "minimum": 0.25, "maximum": 4 },
+      "default": 1.25,
+      "managementDefault": "default",
+      "ui": { "widget": "stepper", "order": 1, "unit": "×" }
+    },
+    {
+      "key": "audio.musicVolume",
+      "kind": "config",
+      "category": "Audio",
+      "label": "Música \"principal\"",
+      "description": "Line one.\nLine two, with a back\\slash and a tab\there.",
+      "accessor": "audio.music_volume",
+      "schema": { "type": "integer", "minimum": 0, "maximum": 100 },
+      "default": 80,
+      "ui": { "order": 2, "advanced": true }
+    },
+    {
+      "key": "ui.theme",
+      "kind": "config",
+      "category": "Interface",
+      "label": "Theme 🎲",
+      "description": "Dashboard colour theme.",
+      "accessor": "ui.theme",
+      "schema": { "type": "string", "enum": ["dark", "light"] },
+      "default": "dark",
+      "ui": {
+        "widget": "select",
+        "optionLabels": { "light": "Hell", "dark": "Dunkel ☾" }
+      }
+    },
+    {
+      "key": "game.killSwitch",
+      "kind": "config",
+      "category": "Operations",
+      "label": "Kill switch",
+      "description": "Turns online play off.",
+      "schema": { "type": "boolean" },
+      "default": false,
+      "managementDefault": "enforced",
+      "dependsOn": { "key": "ui.theme", "equals": "dark" }
+    },
+    {
+      "key": "difficulty.tuning",
+      "kind": "config",
+      "category": "Balance",
+      "label": "Tuning",
+      "description": "Per-difficulty multipliers.",
+      "schema": { "type": "object" },
+      "default": { "hard": [1, 2.5, 3], "easy": 0.5, "none": null },
+      "managementDefault": "hidden"
+    },
+    {
+      "key": "leaderboard.apiKey",
+      "kind": "secret",
+      "category": "Online",
+      "label": "Leaderboard token",
+      "description": "Minted at the edge.",
+      "schema": { "type": "string" },
+      "delivery": "edgeMint",
+      "default": "never-a-default"
+    },
+    {
+      "key": "extras.diceSkins",
+      "kind": "flag",
+      "category": "Extras",
+      "label": "Dice skins",
+      "description": "Unlocks the skin picker.",
+      "schema": { "type": "boolean" },
+      "default": true,
+      "userGrant": true,
+      "grantLabel": "Dice skins"
+    }
+  ]
+}

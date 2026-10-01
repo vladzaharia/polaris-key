@@ -11,10 +11,13 @@ extends Node
 ## Every call that can wait is a coroutine returning a PKeyResult (or PKeySyncResult). Signals:
 ## `state_changed(state)` when the licence state changes, `sync_finished(result)` after every
 ## sync, `store_error(err)` when the store fails to read or write (also `last_store_error`).
-## `core` is the PKeyCore every service client builds on. Sub-objects: `devices` (PKeyDevices:
-## fingerprint, keyless register, the device roster, telemetry after each sync).
-## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitlements,
-## entitled channels, and the 401 re-acquire it installs into Core).
+## `core` is the PKeyCore every service client builds on.
+##
+## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
+## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
+## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync) and
+## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitlements, entitled
+## channels, and the 401 re-acquire it installs into Core).
 
 const SDK_VERSION := "0.1.0"
 
@@ -31,6 +34,8 @@ var devices: PKeyDevices = null
 ## The licence surface (services/license.gd); null until configure().
 var license: PKeyLicense = null
 var last_store_error: Dictionary = {}
+## Managed config. Usable before `configure()` (every key falls back).
+var config := PKeyConfig.new()
 
 var _timer: Timer = null
 var _syncing := false
@@ -47,13 +52,14 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	_stop_timer()
 	core = r.detail
 	core.store_error.connect(_on_store_error)
+	config.attach(core)
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state
 	license = PKeyLicense.new(core, devices)
 	license.install(core)
 	license.on_acquired = _on_license_acquired
-	license.on_changed = _emit_state
+	license.on_changed = _on_license_wiped
 	return PKeyResult.success()
 
 
@@ -65,6 +71,7 @@ func start() -> PKeyResult:
 	if r.ok:
 		_start_timer()
 		_emit_state()
+		config.refresh()
 	return r
 
 
@@ -92,6 +99,7 @@ func sync(force := false) -> PKeySyncResult:
 	_syncing = true
 	var r := await core.sync(force)
 	_syncing = false
+	config.refresh()
 	sync_finished.emit(r)
 	_emit_state()
 	return r
@@ -108,6 +116,7 @@ func import_bundle(text: String) -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	var r := await core.import_bundle(text)
 	_emit_state()
+	config.refresh()
 	return r
 
 
@@ -132,6 +141,12 @@ func store_status() -> Dictionary:
 func _on_license_acquired() -> void:
 	await sync(true)
 	_emit_state()
+
+
+## deactivate() wiped the token and the cache: the gate and the config both read from them.
+func _on_license_wiped() -> void:
+	_emit_state()
+	config.refresh()
 
 
 func _on_store_error(err: Dictionary) -> void:

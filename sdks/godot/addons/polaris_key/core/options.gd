@@ -4,6 +4,13 @@ extends Resource
 ## copy outside `addons/` (for example `res://polaris_key.tres`) so an addon update cannot
 ## overwrite it.
 
+## `config_env_layer`: on in debug builds and on desktop, off in release builds on mobile and web.
+const CONFIG_ENV_AUTO := 0
+## `config_env_layer`: on everywhere.
+const CONFIG_ENV_ALWAYS := 1
+## `config_env_layer`: off everywhere.
+const CONFIG_ENV_NEVER := 2
+
 ## The product slug (`aud`, `/<product>/…`).
 @export var product := ""
 ## https only; plain http is accepted for localhost, 127.0.0.1 and [::1] alone.
@@ -44,6 +51,16 @@ extends Resource
 ## {id, label?, macos?, windows?, linux?} naming a path to test on that OS. Nothing else is ever
 ## enumerated.
 @export var probes: Array[Dictionary] = []
+
+@export_group("Config")
+## The config environment layer (`PKEY_CONFIG_*` variables and `--pkey-config key=value`
+## arguments). Auto: on in debug builds and on desktop, off in release builds on mobile and web.
+@export_enum("Auto", "Always", "Never") var config_env_layer := CONFIG_ENV_AUTO
+## A key's variable is this prefix plus the key with every `.` replaced by `__`.
+@export var config_env_prefix := "PKEY_CONFIG_"
+## A compiled catalog mirror (`catalog_generated.gd` from `tools/gen-mirrors.ts --lang
+## gdscript`): its defaults back `PolarisKey.config.get_value` when nothing else resolves.
+@export var config_catalog: Script = null
 
 ## A PKeyStore to use instead of the file store (tests, a platform secure store). Not exported.
 var store: PKeyStore = null
