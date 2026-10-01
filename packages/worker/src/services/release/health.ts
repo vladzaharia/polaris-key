@@ -16,6 +16,7 @@ import {
   type ResolvedConfig,
 } from "./config.js";
 import { resolveMovingSelector, type MovingResolution } from "./gateway.js";
+import { legacyPolicyFor } from "./resolve.js";
 import { NotFoundError, UpstreamRateLimitedError } from "./github.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import { isBelowFloor, listChannelFloors } from "./store.js";
@@ -199,6 +200,8 @@ export async function checkReleaseHealth(
       { kind: "stable", raw: "stable" },
       now,
       fetchImpl,
+      // The same yanks the live routes apply (P2-05), so health names what they serve.
+      await legacyPolicyFor(db, product, "stable"),
     );
     const releases = stable.listed;
     checks.push(

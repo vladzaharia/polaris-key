@@ -263,6 +263,12 @@ Rules for the bucket, each one load-bearing:
 - **The bytes host is a Worker custom domain.** `dl.plrs.im` (and the staging/dev siblings) is a
   `[[env.<env>.routes]]` entry with `custom_domain = true` on this Worker; `wrangler deploy`
   creates its DNS record and certificate. It is not an R2 custom domain.
+- **The route and `BLOB_ORIGIN` go together.** A `dl*` route deployed without `BLOB_ORIGIN`
+  serves the full console on the same-site sibling (host isolation fails open), and a
+  `BLOB_ORIGIN` naming the console's own hostname makes every console path answer not-found.
+  Add or remove the `[[env.<env>.routes]]` `dl*` entry and the `BLOB_ORIGIN` var in the same
+  change; `test/bytesHost.test.ts` refuses a committed `wrangler.toml` that breaks either rule
+  (P2-05).
 - **Same-site with the console.** `dl.plrs.im` is a `plrs.im` sibling, so it is same-site with
   `key.plrs.im`. That is an owner decision; the Worker compensates (`sandbox` CSP, `nosniff`,
   no HTML/SVG/XML/script types, no cookies read or set on the host, host-only console
@@ -277,6 +283,32 @@ curl -sI https://dl.plrs.im/manage | grep -iE '^(HTTP|content-security-policy|x-
 # The fully-qualified form (trailing dot) must answer the same, not the console:
 curl -sI https://dl.plrs.im./manage | grep -iE '^(HTTP|content-security-policy|x-content-type-options)'
 # HTTP/2 404, content-security-policy: sandbox; ..., x-content-type-options: nosniff
+```
+
+Since P2-05 the host serves Release's three byte routes (`/<p>/release/builds/…`,
+`/<p>/release/files/…`, `/<p>/release/blobs/sha256/…`), the first real responses on it. After
+the deploy that ships them, check them from outside too (`<slug>` is a product with Release on):
+
+```sh
+# An unreferenced or unknown hash is the plain JSON not-found, hardened:
+curl -si https://dl.plrs.im/<slug>/release/blobs/sha256/$(printf '0%.0s' $(seq 64)) \
+  | grep -iE '^(HTTP|content-type|content-security-policy|x-content-type-options)|not_found'
+# HTTP/2 404, content-type: application/json, sandbox CSP, nosniff, {"error":"not_found"}
+# A real file of a real release streams as an inert attachment, with no cookie:
+curl -sI https://dl.plrs.im/<slug>/release/files/<tag>/<asset> \
+  | grep -iE '^(HTTP|content-type|content-disposition|content-security-policy|set-cookie)'
+# HTTP/2 200, content-type: application/octet-stream (or an allowlisted type),
+# content-disposition: attachment; ..., sandbox CSP, and no set-cookie line
+# A Range request is a 206 (and a second one costs no GitHub API call):
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Range: bytes=0-99' \
+  https://dl.plrs.im/<slug>/release/files/<tag>/<asset>
+# 206
+# The legacy download path does NOT exist on the bytes host:
+curl -sI https://dl.plrs.im/<slug>/release/dl/latest/<binary>-arm64 | head -1
+# HTTP/2 404
+# Discovery (on the console) advertises the bytes host:
+curl -s https://key.plrs.im/<slug>/.well-known/polaris.json | grep -o '"builds":"[^"]*"'
+# "builds":"https://dl.plrs.im/<slug>/release/builds/{selector}/{buildId}"
 ```
 
 ## 4. Worker secrets

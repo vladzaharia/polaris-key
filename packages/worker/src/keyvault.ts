@@ -62,9 +62,17 @@ function b64Decode(s: string): Uint8Array {
   return out;
 }
 
+/**
+ * The slot a sealed value is bound to; it becomes the AAD `pkey:v2:<product>:<kind>:<id>`.
+ *
+ * `kind` is what separates custody domains cryptographically, not only by table: a blob sealed
+ * as an `outlet-credential` (P5-01 — a store's API key, held in `outlet_credentials`) cannot be
+ * opened as a `product-secret` even if it is copied into `product_secrets` under the same name,
+ * because the AAD differs and AES-GCM refuses it.
+ */
 export interface SealContext {
   product: string;
-  kind: "signing-key" | "product-secret";
+  kind: "signing-key" | "product-secret" | "outlet-credential";
   id: string;
 }
 

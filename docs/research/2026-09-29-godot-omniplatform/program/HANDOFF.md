@@ -14,6 +14,15 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
+## Before djdl's next `.pkey` push (from v0.5.0)
+
+- [ ] **Add `"distribution": { "enabled": true }` to `modules` in `vladzaharia/djdl`'s
+      `.pkey/product.json`.** P2b-01's new coherence rule (`update_requires_distribution`) rejects
+      djdl's current manifest (`update` on, no `distribution`). Migration `0033` already gave the
+      stored row `distribution`, so djdl keeps serving; only its next manifest push would be refused
+      (visible in the console) until this line is added. Also add `beta` to the `channels` enum in
+      djdl's `.pkey/schema` (P0-04; optional, blocks nothing).
+
 ## Before the first production deploy
 
 ### P0-08 (unknown-slug tolerance)
@@ -31,10 +40,10 @@ Exercised only against the in-memory test D1. Apply to staging, then production,
       `(product, version)` unique index for a non-unique one).
 - [x] `0024_product_web_origins.sql` (P0-05). — production, v0.3.0
 - [x] `0026_blob_store.sql` (P2-01; `blob_objects`, `blob_refs`). Production, v0.4.0, together with P0-12's `0025_a`/`0025_b`.
-- [ ] `0027_a`…`0027_i` (P2-03 release model v2: deliverables, builds, `seq`, `deliverable_id`,
+- [x] `0027_a`…`0027_i` (P2-03 release model v2: deliverables, builds, `seq`, `deliverable_id`,
       artifact roles and locations, backfill). Apply in file order. From now on every deploy
       re-runs `0027_i_index_assertion.sql` (the newest assertion) instead of `0018`, so a database
-      missing `idx_release_metadata_seq` fails the deploy: watch the first tagged deploy after this.
+      missing `idx_release_metadata_seq` fails the deploy: watch the first tagged deploy after this. — applied to production 2026-10-01 by v0.5.1 (deploy run 36835975944, success), with `0033_distribution_backfill`.
 - [ ] P2-03, real GitHub: a repository with more than 1,000 releases whose stable floor release is
       beyond page 10 still gets a healthy store row (tested only with stubbed responses).
 
@@ -147,3 +156,19 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 - [ ] **Required checks:** add the two new Godot CI legs ("Godot SDK (4.7.2 editor + release
       template)", "Godot SDK (4.4.1 editor, floor)") to `main`'s required status checks. Both
       passed on GitHub on 2026-09-30.
+
+## v0.5.1 (2026-10-01): deployed and checked
+
+- [x] Deploy run 36835975944 succeeded (migrations `0027_a`–`0027_i` and `0033` applied, smoke check
+      green). The tag pushes were delayed ~25 min by GitHub, not lost; `v0.5.2` is the same commit.
+- [x] Discovery lists all six services; djdl's `distribution` reads enabled (backfill), and
+      `services.identity.endpoints.authDeviceEntry` is advertised (P1-06).
+- [x] `POST /djdl/identity/auth/device/start` returns a `XXXX-XXXX` consonant user code, and neither
+      verification URL contains the device code (P1-06).
+- [x] `dl.plrs.im/manage` and the trailing-dot host still answer the hardened 404.
+- [ ] P1-06 in a real mobile browser: open `verificationUriComplete` (QR path) and
+      `verificationUri` (type a lower-case code with a space); confirm; reopen the same code → 404.
+- [ ] P0-03: subscribe the GitHub App to Release events, then publish a release on a linked repo
+      and confirm the store updates within one delivery.
+- [ ] P2-05's byte routes are not in v0.5.1 (merged after); its post-deploy curl checks run after
+      the next tag.

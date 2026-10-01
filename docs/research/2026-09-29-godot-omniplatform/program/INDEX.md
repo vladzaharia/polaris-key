@@ -37,7 +37,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P1-02](wp/P1-02-godot-core.md)           | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence               | P1-01                                    | godot-engineer | 1.5–2    | done   |
 | [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | todo   |
 | [P1-04](wp/P1-04-godot-config.md)         | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors          | P1-02, P0-12                             | godot-engineer | 1–1.25   | todo   |
-| [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | todo   |
+| [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | done   |
 | [P1-06](wp/P1-06-rfc8628-page.md) ✋      | Serve an RFC 8628 user-code page for device-code sign-in                                   | P0-13                                    | implementer    | 0.5–0.75 | done   |
 | [P1-07](wp/P1-07-godot-identity.md) ✋    | Godot identity: device-code sign-in with a QR code                                         | P1-02, P1-06                             | godot-engineer | 0.75–1   | todo   |
 | [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | todo   |
@@ -72,8 +72,8 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P2-01](wp/P2-01-blob-store.md) ✋         | Core blob store on R2: content-addressed, bucket-locked, on a separate domain               | —                   | implementer | 1–1.5 | done   |
 | [P2-02](wp/P2-02-trusted-publisher.md) ✋  | Trusted publishing: GitHub OIDC verification, publisher policy, scoped upload tickets       | P2-01, P2-04        | implementer | 1–1.5 | todo   |
 | [P2-03](wp/P2-03-release-data-model.md)    | Release data model v2: deliverables, builds, artifact roles, channel policy, yanks          | P0-01, P0-02        | implementer | 1–1.5 | done   |
-| [P2-04](wp/P2-04-release-descriptor.md)    | Release descriptor ingest and the declared artifact map in `.pkey/release`                  | P2-03               | implementer | 1–1.5 | todo   |
-| [P2-05](wp/P2-05-release-routes.md)        | Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching | P2-01, P2-03        | implementer | 1–1.5 | todo   |
+| [P2-04](wp/P2-04-release-descriptor.md)    | Release descriptor ingest and the declared artifact map in `.pkey/release`                  | P2-03               | implementer | 1–1.5 | done   |
+| [P2-05](wp/P2-05-release-routes.md)        | Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching | P2-01, P2-03        | implementer | 1–1.5 | done   |
 | [P2-06](wp/P2-06-publish-cli-action.md) ✋ | `pkey release` publishing commands and the `polaris-key/publish` Action                     | P2-02, P2-04, P2-05 | implementer | 1–1.5 | todo   |
 | [P2-07](wp/P2-07-console-builds.md)        | Console: builds and channels view in the Release section                                    | P2-05               | implementer | 0.5–1 | todo   |
 
@@ -141,7 +141,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 | Id                                               | Title                                                                                                            | Depends on                                      | Role        | Weeks | Status |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------- | ----- | ------ |
-| [P5-01](wp/P5-01-outlet-credentials.md)          | Outlet-credential custody and shared JWT signing (ES256, RS256)                                                  | P2b-01                                          | implementer | 1–1.5 | todo   |
+| [P5-01](wp/P5-01-outlet-credentials.md)          | Outlet-credential custody and shared JWT signing (ES256, RS256)                                                  | P2b-01                                          | implementer | 1–1.5 | done   |
 | [P5-02](wp/P5-02-asc-connector.md) ✋            | App Store Connect connector: webhooks, TestFlight, phased release, Background Assets states                      | P5-01, P2b-03, P2b-04, S-07                     | implementer | 2     | todo   |
 | [P5-03](wp/P5-03-play-connector.md) ✋           | Google Play connector: tracks, staged rollout, halt, update priority, Reporting API                              | P5-01, P2b-03, P2b-04, S-07                     | implementer | 1.5–2 | todo   |
 | [P5-04](wp/P5-04-msstore-connector.md) ✋        | Microsoft Store status connector                                                                                 | P5-01, P2b-03, S-07                             | implementer | 0.5–1 | todo   |

@@ -199,7 +199,9 @@
                   "gate",
                   "config",
                   "entitlements",
-                  "timestamp"
+                  "timestamp",
+                  "engine",
+                  "outlet"
                 ]
               }
             },
@@ -350,7 +352,9 @@
                   "gate",
                   "config",
                   "entitlements",
-                  "timestamp"
+                  "timestamp",
+                  "engine",
+                  "outlet"
                 ]
               }
             },
@@ -498,7 +502,9 @@
                   "gate",
                   "config",
                   "entitlements",
-                  "timestamp"
+                  "timestamp",
+                  "engine",
+                  "outlet"
                 ]
               }
             },

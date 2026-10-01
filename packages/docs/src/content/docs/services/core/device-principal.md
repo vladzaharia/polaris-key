@@ -277,8 +277,16 @@ The bounds, in order:
 - **Unparseable JSON** is `400 bad_request`; an empty body is treated as an empty report.
 - **The key allowlist.** Exactly these survive: `os`, `hardware`, `runtime`, `locale`,
   `timezone`, `probes`, `sdk`, `sdkVersion`, `appVersion`, `platform`, `arch`, `gate`, `config`,
-  `entitlements`, `timestamp`. Anything else is dropped **silently** — a new client field that
-  is not added to the list vanishes without an error anywhere.
+  `entitlements`, `timestamp`, `engine`, `outlet`. Anything else is dropped **silently** — a new
+  client field that is not added to the list vanishes without an error anywhere.
+- **Engine and outlet.** `engine` is a game engine's build facts (the Godot SDK sends it). Only
+  its known fields survive — `id` (such as `godot-4.7`), `version`, `renderer`, `videoAdapter`,
+  `videoVendor`, `videoApi`, `display` as strings truncated to 128 characters, and `debug` as a
+  boolean; any other field, or a field of the wrong type, is dropped, and a non-object `engine`
+  is dropped whole. `outlet` is the store the build was published through (`direct`, `steam`,
+  `itch`, `app-store`, …), truncated to 64 characters; the id is not validated, so a newer
+  client's outlet is kept. Both are stored on `devices.reported_json` only; the typed
+  `device_facts` columns do not change.
 - **Probes.** At most **32** entries. Each must be an object with a boolean `present`; anything
   else is skipped. Probe ids are truncated to 64 characters and the optional `version` string to 64. `probes` is the one open-ended map a client controls, so it carries its own bound on top of
   the body cap: a truncated inventory must not be able to ride in under 16 KiB.

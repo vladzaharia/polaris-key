@@ -81,9 +81,9 @@ needs an activation it will never have.
 
 ## Where Core's state lives
 
-Core owns nine D1 tables: `products`, `product_keys`, `product_secrets`, `devices`,
-`device_fingerprints`, `device_facts`, `audit`, `product_sync_state`, and
-`schema_index_assertion`. Ownership is **logical** — everything lives in one database, and a
+Core owns twelve D1 tables: `products`, `product_keys`, `product_secrets`,
+`outlet_credentials`, `devices`, `device_fingerprints`, `device_facts`, `audit`,
+`product_sync_state`, `schema_index_assertion`, `blob_objects` and `blob_refs`. Ownership is **logical** — everything lives in one database, and a
 service may only touch another's tables through Core-mediated seams, which the worker's boundary
 test enforces. Column lists are generated at [D1 data model](/docs/reference/data-model/).
 

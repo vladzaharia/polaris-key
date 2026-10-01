@@ -28,7 +28,7 @@ call site is named.
 
 ## What is collected
 
-### Hardware fingerprint — native SDKs only (Node/Electron, Python, Swift)
+### Hardware fingerprint — native SDKs only (Node/Electron, Python, Swift, Godot)
 
 Seven components, each hashed independently on-device. Any component that cannot be read is
 omitted rather than substituted.
@@ -51,6 +51,12 @@ component, and cannot obtain a keyless (free-tier) licence; activating with a li
 works. In a container, mount the host's `/etc/machine-id` read-only, or create one and keep it in a
 volume.
 
+**Godot** reads the same desktop sources through `OS.execute` and the file system (on Windows,
+`getmac` for the MAC; on macOS, `ifconfig`; on Linux, `/sys/class/net/*/address`), once per
+session and off the main thread. On iOS and Android it sends only the anchor (Godot's
+`OS.get_unique_id()`: `identifierForVendor` on iOS, `ANDROID_ID` on Android), the machine model,
+RAM and, on iOS, the CPU. A Godot web export collects no fingerprint.
+
 **The browser SDK collects no hardware fingerprint at all.** Canvas/WebGL-style browser
 fingerprinting is unreliable, actively degraded by browsers, and privacy-hostile; the browser
 keeps its existing server-minted session identity.
@@ -62,6 +68,11 @@ to one per machine, and detecting when a device's hardware has been replaced.
 
 OS name, version, build, and kernel; CPU model, core count, total RAM, and machine model;
 runtime name and version; locale and timezone; and the results of product-declared probes.
+
+A Godot game also reports `engine` (the engine version, the renderer, the graphics adapter's
+name, vendor and API version, the display server, and whether it is a debug build) and `outlet`
+(the store the build was published through, such as `steam` or `itch`, when the build declares
+one).
 
 Used for: admin visibility, compatibility gating, and targeting configuration at the machines
 that need it.

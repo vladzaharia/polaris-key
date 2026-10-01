@@ -11,6 +11,8 @@
  *   - `POST /api/products/kek`              — re-seal a bounded batch of rows under the active
  *                                             KEK (the rotation sweep; idempotent + resumable).
  *   - `PUT  /api/products/<slug>/secrets/<name>` — write-only sealed secret (never echoed).
+ *   - `GET|PUT|DELETE /api/products/<slug>/outlet-credentials[/<id>]` — store credentials
+ *                                             (P5-01; `./outletCredentials.ts`).
  *   - `POST /api/products/<slug>/keys/rotate`    — mint a STAGED key (the active key is
  *                                             untouched until the separate `activate` action).
  *
@@ -68,6 +70,7 @@ import {
   readBody,
 } from "../lib/respond.js";
 import { productView } from "../lib/shape.js";
+import { handleOutletCredentials } from "./outletCredentials.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
  *  an error message. Reuses the catalog compiler so manual schema is validated like a publish. */
@@ -431,6 +434,16 @@ const SEALED_TABLES = [
     kind: "product-secret",
     label: "secrets",
   },
+  // P5-01: store credentials. The sweep re-seals the blob byte-for-byte under the same AAD and
+  // never parses it; this is the one operator path outside `core/outletCredentials.ts` that
+  // opens one, and it is the KEK rotation itself (`test/outletCredentialReach.test.ts`).
+  {
+    table: "outlet_credentials",
+    idColumn: "credential_id",
+    blobColumn: "enc_value_json",
+    kind: "outlet-credential",
+    label: "outletCredentials",
+  },
 ] as const;
 
 /**
@@ -529,8 +542,9 @@ function managedNeedsWorkParams(
   return [NESTED_KEK_MARK, NESTED_KEK_MARK, activeMark, activeMark];
 }
 
-/** `{ keys: {k1:3,k2:12}, secrets: {k1:1}, managed: {k1:2} }` — sealed values per kid: whole
- *  rows for the two envelope columns, individual leaves for the managed payloads. */
+/** `{ keys: {k1:3,k2:12}, secrets: {k1:1}, outletCredentials: {k2:1}, managed: {k1:2} }` —
+ *  sealed values per kid: whole rows for the envelope columns, individual leaves for the managed
+ *  payloads. */
 async function kekCounts(db: Db): Promise<KekCounts> {
   const counts: KekCounts = {};
   for (const t of SEALED_TABLES) {
@@ -840,6 +854,8 @@ export async function handleProductScopedResource(
 ): Promise<Response> {
   if (resource === "secrets")
     return handleSecrets(req, env, db, session, slug, id, now);
+  if (resource === "outlet-credentials")
+    return handleOutletCredentials(req, env, db, session, slug, id, now);
   if (resource === "keys")
     return handleKeys(req, env, db, session, slug, id, now);
   return notFound();

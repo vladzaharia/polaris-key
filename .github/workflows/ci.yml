@@ -144,24 +144,48 @@ jobs:
   # upstream SHA-512 in sdks/godot/tools/godot.sha512, which also keys the cache.
   godot:
     name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: "Godot SDK (4.7.2 editor + release template)"
+            os: ubuntu-latest
             godot: "4.7.2"
             template: "--template"
+            suites: ""
           - name: "Godot SDK (4.4.1 editor, floor)"
+            os: ubuntu-latest
             godot: "4.4.1"
             template: ""
+            suites: ""
+          # Editor smoke legs (P1-05): the Windows and macOS fingerprint readers on a real
+          # machine. The platform suite asserts the anchor and the MachineGuid / IOPlatformUUID
+          # device id; the devices suite runs the readers over the committed captures.
+          - name: "Godot SDK (4.7.2 editor, Windows smoke)"
+            os: windows-latest
+            godot: "4.7.2"
+            template: ""
+            suites: "platform,devices"
+          - name: "Godot SDK (4.7.2 editor, macOS smoke)"
+            os: macos-14
+            godot: "4.7.2"
+            template: ""
+            suites: "platform,devices"
     steps:
+      # windows-latest's system git sets core.autocrlf=true; check out byte for byte (LF) so the
+      # bash tools, the pin file and the corpus the suites verify reach the job as committed.
+      # .gitattributes pins sdks/godot to LF as well.
+      - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pkey-godot/${{ matrix.godot }}
-          key: pkey-godot-${{ matrix.godot }}-linux-x86_64-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+          key: pkey-godot-${{ matrix.godot }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
       - run: >-
           sdks/godot/tools/fetch_godot.sh "${{ matrix.godot }}"
           "$HOME/.cache/pkey-godot/${{ matrix.godot }}" ${{ matrix.template }}
@@ -169,11 +193,12 @@ jobs:
           D="$HOME/.cache/pkey-godot/${{ matrix.godot }}"
           export GODOT_BIN="$D/godot"
           if [ -n "${{ matrix.template }}" ]; then export GODOT_TEMPLATE="$D/linux_release.x86_64"; fi
+          if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
           sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: godot-logs-${{ matrix.godot }}
+          name: godot-logs-${{ matrix.godot }}-${{ matrix.os }}
           path: sdks/godot/build/logs/

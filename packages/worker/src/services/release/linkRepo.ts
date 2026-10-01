@@ -50,6 +50,7 @@ import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
+import { manifestDeliverableStatements } from "./deliverables.js";
 import { serializeServices } from "../../core/services.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 
@@ -432,6 +433,10 @@ async function registerFromManifest(
         : null,
     }),
   );
+
+  // The app deliverable's declaration (P2-04), read back by the truth-store sync below.
+  if (rel)
+    statements.push(...manifestDeliverableStatements(slug, rel.app, now));
 
   for (const e of manifest.edgeMint) {
     statements.push(
