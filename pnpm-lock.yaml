@@ -207,6 +207,9 @@ importers:
 
   packages/sdk-node:
     dependencies:
+      '@polaris-key/catalog':
+        specifier: workspace:*
+        version: link:../shared-catalog
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
@@ -236,6 +239,9 @@ importers:
 
   packages/sdk-react:
     dependencies:
+      '@polaris-key/catalog':
+        specifier: workspace:*
+        version: link:../shared-catalog
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core

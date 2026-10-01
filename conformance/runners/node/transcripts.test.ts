@@ -4,6 +4,7 @@
 //
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate devices.register devices.report
+// @pkey-feature config.schema release.changelog release.download
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented (register-reregister-401, until P1b-06) is
@@ -15,6 +16,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  PolarisError,
   PolarisKeyClient,
   type CacheRecordV3,
   type Store,
@@ -112,6 +114,33 @@ async function act(
       break;
     case "report":
       out.result = await client.devices.report();
+      break;
+    case "fetchSchema":
+      out.catalog = (await client.config.fetchSchema()) as JsonValue;
+      break;
+    case "changelog":
+      try {
+        out.entries = (await client.release.changelog()) as never;
+        out.result = "ok";
+      } catch (e) {
+        if (!(e instanceof PolarisError)) throw e;
+        out.result = "error";
+        out.code = e.code;
+      }
+      break;
+    case "installUrl":
+      out.url = client.release.installUrl();
+      break;
+    case "downloadUrl":
+      out.url = client.release.downloadUrl(
+        String(step.args.version),
+        String(step.args.binary),
+        String(step.args.arch),
+        {
+          checksum: step.args.checksum === true,
+          dmg: step.args.dmg === true,
+        },
+      );
       break;
     default:
       throw new Error(`unknown action ${step.action}`);

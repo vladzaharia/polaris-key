@@ -14,6 +14,7 @@
 
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { ProductCatalog } from "@polaris-key/catalog";
 import {
   listUserEntries,
   resolveSource,
@@ -25,7 +26,7 @@ import {
 import type { CacheManager } from "../core/cache.js";
 import type { CoreContext } from "../core/context.js";
 
-export type { ConfigSource, UserConfigEntry };
+export type { ConfigSource, ProductCatalog, UserConfigEntry };
 
 /** Env-var prefix for config overrides. A key's env var is
  *  `${envPrefix}${key.replaceAll(".", "__")}` — `run.concurrency` →
@@ -102,9 +103,40 @@ export class ConfigClient {
     return this.doc?.schemaVersion ?? null;
   }
 
+  /**
+   * `GET /<p>/config/schema` — the product's active config catalog, parsed.
+   *
+   * Unsigned, unauthenticated and DIAGNOSTIC: nothing security-relevant is ever read from it
+   * (the values a client acts on arrive in the signed config document), so every failure — a
+   * refusal, a network error, a body that is not a catalog, local-only mode, a product that
+   * does not run Config (D-21: not even probed) — answers `null`. It never throws.
+   */
+  async fetchSchema(): Promise<ProductCatalog | null> {
+    if (!this.ctx.enabled("config")) return null;
+    try {
+      const res = await this.ctx.fetcher()(this.ctx.url("config/schema"), {
+        headers: this.ctx.headers({ accept: "application/json" }),
+        signal: this.ctx.deadline(),
+      });
+      if (!res.ok) return null;
+      const body: unknown = await res.json();
+      return isCatalog(body) ? body : null;
+    } catch {
+      return null;
+    }
+  }
+
   /** Whether the product runs Config at all — the config-side twin of the license gate's
    *  `not-applicable`. */
   get enabled(): boolean {
     return this.ctx.enabled("config");
   }
+}
+
+/** The catalog's outer shape — enough to hand it back typed. The entries are the product's own
+ *  data; the client does not validate them, because nothing it decides depends on them. */
+function isCatalog(v: unknown): v is ProductCatalog {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  const c = v as Record<string, unknown>;
+  return typeof c.schemaVersion === "number" && Array.isArray(c.entries);
 }

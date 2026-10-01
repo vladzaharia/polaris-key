@@ -8,7 +8,8 @@
 // Deliberately thin: these are public, unauthenticated GETs returning JSON. There is no signed
 // document here and therefore no verification — a release note is not a grant. When Release's
 // access mode is `entitled` (P2.T3) the server refuses without a device token; this client
-// forwards the bearer when one is held and reports the refusal rather than inventing a retry.
+// forwards the bearer when one is held and reports the refusal — by the refusal body's own
+// code — rather than inventing a retry (pinned by the release-changelog transcripts).
 
 import { PolarisError } from "@polaris-key/client-core";
 import type { CoreContext } from "../core/context.js";
@@ -19,7 +20,8 @@ export interface ChangelogEntry {
   version: string;
   tag: string;
   date: string | null;
-  summary: string;
+  /** The curated summary, or null when the release body yielded none. */
+  summary: string | null;
   url: string;
 }
 
@@ -78,13 +80,20 @@ export class ReleaseClient {
       ),
       signal: this.ctx.deadline(),
     });
-    if (res.status === 403) {
+    if (res.status === 401 || res.status === 403) {
+      // The refusal names itself: the nested v3 shape (`{"error":{"code":…}}`, the `entitled`
+      // mode) or the flat one (`{"error":"download_auth_required"}`, `authenticated`/
+      // `licensed`). Surface that code rather than inventing one.
       const body = (await res.json().catch(() => ({}))) as {
-        error?: { code?: string };
+        error?: string | { code?: string };
       };
+      const code =
+        typeof body.error === "string" ? body.error : body.error?.code;
       throw new PolarisError(
-        body.error?.code ?? "forbidden",
-        `${path} refused: this build is not entitled to that feed.`,
+        code || (res.status === 401 ? "unauthorized" : "forbidden"),
+        res.status === 401
+          ? `${path} refused: this feed needs a usable licence.`
+          : `${path} refused: this build is not entitled to that feed.`,
       );
     }
     if (!res.ok) {
