@@ -161,26 +161,26 @@ proposes moving them to a follow-up and marking `ui.stages` `planned` for those 
 
 ## Acceptance criteria
 
-- [ ] The approved plan is merged before the first code commit.
-- [ ] `conformance/corpus/v2/stage-matrix.json` and its Swift mirror (and the Godot mirror, if
+- [x] The approved plan is merged before the first code commit.
+- [x] `conformance/corpus/v2/stage-matrix.json` and its Swift mirror (and the Godot mirror, if
       P1-01 has landed) are generated, byte-identical, and `pnpm gen:corpus -- --check` fails if
       any of them changes.
-- [ ] The Node runner (`pnpm conformance`) passes every row, asserting the stage sequence, the
+- [x] The Node runner (`pnpm conformance`) passes every row, asserting the stage sequence, the
       emitted events and the outcome, and every probe of the file's `accepts` table
       ([`plans/P1-09.md`](../plans/P1-09.md) §4.1).
-- [ ] `mise exec node@22 -- pnpm --filter @polaris-key/client-core test` passes the unit
+- [x] `mise exec node@22 -- pnpm --filter @polaris-key/client-core test` passes the unit
       properties the corpus cannot express ([`plans/P1-09.md`](../plans/P1-09.md) §9): purity,
       that an ignored event returns its input object, that malformed events are ignored, the
       defaults, and that the gate's pass set equals `isUsable`. The rows and probes run in the
       Node runner, not the `client-core` suite, as `bundleCases` do.
-- [ ] `( cd sdks/python && .venv/bin/python -m pytest -q tests/test_stage_matrix.py )` and
+- [x] `( cd sdks/python && .venv/bin/python -m pytest -q tests/test_stage_matrix.py )` and
       `( cd sdks/swift && swift test --filter StageMatrixTests )` pass every row and every probe.
-- [ ] `bootTransition` is pure: no I/O, no clock, no randomness (a unit test calls it twice with
+- [x] `bootTransition` is pure: no I/O, no clock, no randomness (a unit test calls it twice with
       the same input and compares).
-- [ ] `pnpm --filter @polaris-key/docs gen:check` passes and the corpus page lists
+- [x] `pnpm --filter @polaris-key/docs gen:check` passes and the corpus page lists
       `stage-matrix.json`.
-- [ ] The green gate passes (`AGENTS.md`), Python and Swift included.
-- [ ] Parity manifests mark `ui.stages` implemented for Node, React, Python and Swift, and
+- [x] The green gate passes (`AGENTS.md`), Python and Swift included.
+- [x] Parity manifests mark `ui.stages` implemented for Node, React, Python and Swift, and
       `mise exec node@22 -- pnpm parity:check` passes.
 
 ## Verify
