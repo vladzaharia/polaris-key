@@ -8,7 +8,7 @@
 # Big-endian word loading uses a trick that keeps the per-byte work in native code: pad the
 # message, reverse the whole buffer, reinterpret as little-endian int64s (to_int64_array());
 # word i of the original big-endian stream is then element (n - 1 - i).
-class_name PKSha512
+class_name PKeySha512
 extends RefCounted
 
 const K := [

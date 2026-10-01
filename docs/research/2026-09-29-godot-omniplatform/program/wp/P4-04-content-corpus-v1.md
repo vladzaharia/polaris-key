@@ -89,8 +89,11 @@ SDKs is the repo's order (`AGENTS.md` rule 2), so this lands before any SDK appl
   placement: `plan-matrix.json` beside `update-matrix.json` in `conformance/corpus/v2/`, and the
   content set in `conformance/corpus/v2/content/` (`cases.json`, `blobs/`). The generator mirrors
   both into `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` (already bundled by
-  `.copy("Resources/v2")`) and into the Godot mirror P1-01 created. Add `.prettierignore` for the
-  blob directory and `.gitattributes` `binary`.
+  `.copy("Resources/v2")`) and into the Godot mirror P1-01 created: extend `CORPUS_TARGETS`'
+  reconciliation to the `content/` subdirectory and its blobs (the stray-file guard leaves
+  subdirectories to their owner), and add the blob extensions to the `Conformance (Linux)`
+  preset's `include_filter` so the exported pack carries them. Add `.prettierignore` for the blob
+  directory and `.gitattributes` `binary`.
 - **Docs and registry.** `corpusInventory` lists the content corpus and the plan matrix
   (regenerate `reference/corpus.mdx`); update `build/wire/corpus.md`. Once P1b-01 and P1b-02 have
   landed: feature ids in `conformance/parity/features.json` (every SDK `planned` for P4 v1) and the

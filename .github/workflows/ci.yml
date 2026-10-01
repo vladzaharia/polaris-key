@@ -129,3 +129,47 @@ jobs:
       # than looking like a source error.
       - run: swift --version
       - run: swift test --package-path sdks/swift
+
+  # The Godot SDK (sdks/godot): pure-GDScript SHA-512, both Ed25519 verifiers and the corpus
+  # `jwsCases`, read from the generator-owned res:// mirror. PARITY requires the runner on the
+  # editor AND an exported release template, because official 4.6+ templates ignore `--path`,
+  # `--script` and `--main-pack`; the runner is the project's main loop, so both run it the same
+  # way. Two legs: the 4.7.2 editor plus the official 4.7.2 linux_release.x86_64 template, and the
+  # 4.4.1 editor (the source-compatible floor). No path filter: a required check behind a filter
+  # never reports. Only first-party actions; every engine download is checked against the
+  # upstream SHA-512 in sdks/godot/tools/godot.sha512, which also keys the cache.
+  godot:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Godot SDK (4.7.2 editor + release template)"
+            godot: "4.7.2"
+            template: "--template"
+          - name: "Godot SDK (4.4.1 editor, floor)"
+            godot: "4.4.1"
+            template: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pkey-godot/${{ matrix.godot }}
+          key: pkey-godot-${{ matrix.godot }}-linux-x86_64-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+      - run: >-
+          sdks/godot/tools/fetch_godot.sh "${{ matrix.godot }}"
+          "$HOME/.cache/pkey-godot/${{ matrix.godot }}" ${{ matrix.template }}
+      - run: |
+          D="$HOME/.cache/pkey-godot/${{ matrix.godot }}"
+          export GODOT_BIN="$D/godot"
+          if [ -n "${{ matrix.template }}" ]; then export GODOT_TEMPLATE="$D/linux_release.x86_64"; fi
+          sdks/godot/tools/run_tests.sh
+      # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
+      - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-logs-${{ matrix.godot }}
+          path: sdks/godot/build/logs/

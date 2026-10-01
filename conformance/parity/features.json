@@ -48,7 +48,8 @@
       "title": "Python",
       "manifest": "sdks/python/parity.json"
     },
-    { "id": "swift", "title": "Swift", "manifest": "sdks/swift/parity.json" }
+    { "id": "swift", "title": "Swift", "manifest": "sdks/swift/parity.json" },
+    { "id": "godot", "title": "Godot", "manifest": "sdks/godot/parity.json" }
   ],
   "features": [
     {

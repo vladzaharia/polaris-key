@@ -389,9 +389,12 @@ function corpusInventory() {
   return page(
     "Conformance corpus v2",
     "The case families every SDK verifies identically, generated from the corpus files themselves.",
-    `One generator (\`tools/sign-corpus.ts\`) signs every vector; four language runners verify
-them; \`pnpm gen:corpus -- --check\` is the CI drift gate (source AND the Swift test-resource
-mirror). Corpus v1 is deleted — v2 is the only corpus. \`corpusVersion ${cases.corpusVersion}\`,
+    `One generator (\`tools/sign-corpus.ts\`) signs every vector, and every language runner
+verifies them: Node, Python, Swift, React (the gate matrix) and Godot (\`jwsCases\`, from an
+editor and an exported release template). \`pnpm gen:corpus -- --check\` is the CI drift gate,
+over the source and both generator-owned mirrors (the Swift test resources and the Godot
+\`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`). Corpus v1 is deleted — v2 is the
+only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`.`,
     [
       "## Case families (`cases.json`)",
@@ -519,12 +522,15 @@ function parityMatrix() {
         unowned.push([sdk.title, `\`${f.id}\``, mdxText(entry.note ?? "")]);
     }
 
+  const manifestPaths = registry.sdks
+    .map((sdk) => `\`${sdk.manifest}\``)
+    .join(", ");
+
   return page(
     "SDK parity matrix",
     "Every feature in the registry against every SDK's parity manifest: implemented, a typed N/A the registry allows, or planned in a named work package.",
     `One row per feature id in \`conformance/parity/features.json\`, one column per SDK manifest
-(\`packages/sdk-node/parity.json\`, \`packages/sdk-react/parity.json\`, \`sdks/python/parity.json\`,
-\`sdks/swift/parity.json\`). \`pnpm parity:check\` gates the manifests: an implemented entry
+(${manifestPaths}). \`pnpm parity:check\` gates the manifests: an implemented entry
 needs a test tagged \`@pkey-feature <id>\`, an N/A must be one the registry allows for that
 runtime, and a planned entry names an open work package or is marked unowned. A new feature
 starts with its registry entry; a new SDK starts with a manifest in which everything is planned.

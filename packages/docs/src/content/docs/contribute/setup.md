@@ -1,13 +1,13 @@
 ---
 title: "Setup"
-description: "Install the JS workspace, the Python SDK, and the Swift toolchain, then run the green gate before opening a PR."
+description: "Install the JS workspace, the Python SDK, and the Swift and Godot toolchains, then run the green gate before opening a PR."
 sidebar:
   order: 2
 ---
 
-Three toolchains, one repo. The JS workspace (`pnpm` + `turbo`) covers `packages/*`, `tools`,
-`products`, and the Node conformance runner; Python and Swift are standalone toolchains under
-`sdks/`, installed separately.
+Several toolchains, one repo. The JS workspace (`pnpm` + `turbo`) covers `packages/*`, `tools`,
+`products`, and the Node conformance runner; Python, Swift and Godot are standalone toolchains
+under `sdks/`, installed separately.
 
 ## Install
 
@@ -16,6 +16,7 @@ pnpm install                                   # JS workspace (Node 22 — see b
 ( cd sdks/python && python3 -m venv .venv && \
   .venv/bin/pip install -e ".[dev]" )          # Python SDK (add ",keyring" for the extra)
 # Swift uses the system toolchain (macOS 14+, Swift 6); no install step.
+# Godot: Godot 4.4+ on PATH, or set GODOT_BIN (sdks/godot/README.md); no install step.
 ```
 
 ## Node must be 22
@@ -55,6 +56,7 @@ pnpm --filter @polaris-key/worker test:workerd
 
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
+sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```
@@ -62,8 +64,12 @@ pnpm format                      # prettier check over md/json too (format:fix t
 Or run the whole cross-language suite in one shot:
 
 ```sh
-pnpm test:all                    # turbo test + Python pytest + Swift swift test
+pnpm test:all                    # turbo test + Python pytest + Swift swift test + Godot runner
 ```
+
+The Godot runner needs an editor binary and exits 2 without one; it never skips. CI runs it on
+the 4.7.2 editor, on an exported pack under the official 4.7.2 Linux release template, and on
+the 4.4.1 editor (the floor).
 
 `pnpm build` does not typecheck the Worker — esbuild strips types on the way through — so
 `pnpm typecheck` is never redundant with it, even though both are "just building."
@@ -80,5 +86,5 @@ pnpm gen:services -- --check     # service-table drift gate
 pnpm typecheck
 ```
 
-It is intentionally lightweight — the full five-language matrix runs in CI, not locally. For a
+It is intentionally lightweight — the full cross-language matrix runs in CI, not locally. For a
 trivial or docs-only commit you can skip it with `git commit --no-verify`.

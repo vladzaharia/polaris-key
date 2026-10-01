@@ -40,10 +40,13 @@ pnpm --filter @polaris-key/worker typecheck:workerd
 pnpm --filter @polaris-key/worker test:workerd
 ( cd sdks/python && .venv/bin/python -m pytest -q )
 ( cd sdks/swift && swift build && swift test )
+sdks/godot/tools/run_tests.sh
 pnpm format
 ```
 
-`pnpm test:all` collapses turbo test + pytest + `swift test` into one command. Two things worth
+`pnpm test:all` collapses turbo test + pytest + `swift test` + the Godot runner into one command.
+The Godot runner needs an editor (`GODOT_BIN`, or `godot` on `PATH`); CI also runs it from an
+exported release template. Two things worth
 knowing:
 
 - **`pnpm build` does not typecheck the worker** — esbuild strips types. `pnpm typecheck` is not
@@ -58,7 +61,8 @@ deliberately lightweight. A green hook is not a green gate.
 
 ## The hard rules, in one line each
 
-1. **Never hand-edit the corpus.** `conformance/corpus/v2/` and the Swift mirror are output.
+1. **Never hand-edit the corpus.** `conformance/corpus/v2/` and its Swift and Godot mirrors are
+   output.
 2. **A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** It is currently 3; the
    signed set is license / config / trust / bundle.
 3. **Generated files carry a GENERATED banner.** Regenerate; never hand-edit.
@@ -84,11 +88,11 @@ into a red build.
 
 ### 1. Conformance corpus
 
-|             |                                                                                                                                                                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Catches** | A wire-affecting change that was not reflected in the golden vectors, and any hand edit to `conformance/corpus/v2/` (`cases.json`, `gate-matrix.json`, `fingerprint.json`) or the Swift mirror at `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` |
-| **How**     | Regenerates all three files in memory from a fixed keypair and case list, then compares against what is committed — mirror included                                                                                                                |
-| **Command** | `pnpm gen:corpus -- --check` (drop `--check` to write)                                                                                                                                                                                             |
+|             |                                                                                                                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catches** | A wire-affecting change that was not reflected in the golden vectors, and any hand edit to `conformance/corpus/v2/` (`cases.json`, `gate-matrix.json`, `fingerprint.json`) or the mirrors at `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` |
+| **How**     | Regenerates all three files in memory from a fixed keypair and case list, then compares against what is committed — mirrors included; a JSON file in a mirror that the generator does not write fails as a stray                                                                |
+| **Command** | `pnpm gen:corpus -- --check` (drop `--check` to write)                                                                                                                                                                                                                          |
 
 A red drift job means: regenerate and commit it in the same change. Never weaken a runner to make
 a change pass.

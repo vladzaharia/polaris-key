@@ -61,7 +61,9 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
   `JSON.parse` rejects (trailing commas, leading zeros, `1.`, raw control characters, bad
   escapes, non-JSON literals) plus duplicate keys at any depth, then builds values with
   `JSON.new().parse()` and checks its `Error`, never `JSON.parse_string` (whose `null` is
-  ambiguous).
+  ambiguous). It keeps P1-01's WIRE-CONTRACT-V3 §10 rule: every real `\u0000` escape becomes
+  `\ufffd` before the duplicate-key scan and the parse (the conformance runner asserts
+  `expect.docNulReplaced` exactly, and the 4.4.1 CI leg fails without the rule).
 - `jws.gd` (`PKeyJws`): the 13-step order over `PKeyJson`; a per-`kid` cache of the decompressed
   key and its precomputed table; an incremental `PKeySha512` API so a bundle-sized verify runs on
   `WorkerThreadPool` where `OS.has_feature("threads")`, and spreads across frames otherwise.
@@ -87,6 +89,15 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 - Runner: the remaining `cases.json` sections and `fingerprint.json` `deviceIds` in
   `suite_conformance.gd`; a `core` unit suite against a GDScript loopback fake server
   (`tests/support/fake_server.gd`, `TCPServer` on 127.0.0.1). Both join the `ci` set.
+  - Every suite follows P1-01's contract (`sdks/godot/README.md`):
+    `func run(t: PKeyTestContext, args: PackedStringArray) -> bool`, reporting only through
+    `t.check` and `t.info` and ending with a coverage check. Release templates skip GDScript
+    runtime error checks, so a suite never uses `assert` and never relies on a runtime error.
+- The fingerprint text rows of P1-01's inventory (`conformance/runners/node/fingerprint.test.ts:5-7`
+  and `build/wire/corpus.md`'s fingerprint runners paragraph), once Godot runs `deviceIds`.
+- When this package closes, it updates every row of `sdks/godot/parity.json` that names P1-02:
+  marked implemented with `@pkey-feature` tags, or re-pointed to the package that finishes it
+  (`core.headers`, `core.errors`, `core.store`).
 
 **Out** (and where it belongs instead):
 

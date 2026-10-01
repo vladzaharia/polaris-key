@@ -6,13 +6,14 @@
 #   4. Ed25519 over the ASCII bytes of "<h>.<p>" exactly as received
 #   5. ONLY THEN decode + cap + duplicate-key-check + parse the payload
 # Returns {"kid": String, "payload": Variant} or null on ANY failure.
-class_name PKJws
+class_name PKeyJws
 extends RefCounted
 
 const MAX_DOC_BYTES := 65536
 const MAX_HEADER_BYTES := 1024
 
 static var _b64url_re: RegEx
+static var _nul_escape_re: RegEx
 
 
 static func _b64cap(n: int) -> int:
@@ -94,8 +95,22 @@ static func has_duplicate_keys(text: String) -> bool:
 	return false
 
 
+## WIRE-CONTRACT-V3 §10 (the U+0000 representation limit): a GDScript String cannot hold U+0000
+## (Godot 4.4 drops it, 4.7 replaces it), so every real `\u0000` escape becomes the six-character
+## escape `\ufffd` before the duplicate-key scan and the parse. Decoded documents are then the
+## same on every engine and the loss stays visible. An escaped backslash before `u0000` (`\\u0000`)
+## is text and stays. One native RegEx pass, only when the text contains the escape; no offset
+## moves.
+static func _nul_as_fffd(text: String) -> String:
+	if not text.contains("\\u0000"):
+		return text
+	if _nul_escape_re == null:
+		_nul_escape_re = RegEx.create_from_string("(?<!\\\\)((?:\\\\\\\\)*)\\\\u0000")
+	return _nul_escape_re.sub(text, "$1\\ufffd", true)
+
+
 static func _parse_strict_json(bytes: PackedByteArray) -> Variant:
-	var text := bytes.get_string_from_utf8()
+	var text := _nul_as_fffd(bytes.get_string_from_utf8())
 	if has_duplicate_keys(text):
 		return null
 	var j := JSON.new()
@@ -147,9 +162,9 @@ static func verify(jws: String, trust: Dictionary, typ: String = "", max_payload
 	var signing_input := (enc_header + "." + enc_payload).to_ascii_buffer()
 	var ok: bool
 	if fast:
-		ok = PKEd25519Fast.verify(sig, signing_input, raw_key)
+		ok = PKeyEd25519.verify(sig, signing_input, raw_key)
 	else:
-		ok = PKEd25519Ref.verify(sig, signing_input, raw_key)
+		ok = PKeyEd25519Ref.verify(sig, signing_input, raw_key)
 	if not ok:
 		return null
 

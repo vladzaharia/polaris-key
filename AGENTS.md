@@ -28,6 +28,7 @@ packages/
 sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
+  godot/             Godot addon               pure-GDScript verify and a headless runner
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
                      + parity/ (features.json registry; each SDK keeps its own parity.json)
                      + transcripts/ (HTTP conversations recorded through the Worker router)
@@ -54,7 +55,7 @@ the repo; the monorepo map, the wave model, the corpus and the release flow now 
 `packages/docs/src/content/docs/contribute/`.
 
 The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node
-conformance runner. Python and Swift are standalone toolchains under `sdks/`.
+conformance runner. Python, Swift and Godot are standalone toolchains under `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
 opt-in service (`license`, `config`, `release`, `update`, `identity`). The services are declared
@@ -99,11 +100,13 @@ pnpm --filter @polaris-key/worker test:workerd
 
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
+sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```
 
-`pnpm test:all` runs turbo test + Python pytest + Swift `swift test` in one shot. Note that
+`pnpm test:all` runs turbo test + Python pytest + Swift `swift test` + the Godot runner in one
+shot. Note that
 `pnpm build` does **not** typecheck the worker (esbuild strips types), so `pnpm typecheck` is not
 redundant with it — that gap once hid five broken type-only imports.
 
@@ -113,11 +116,12 @@ The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corp
 ## Hard rules
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
-gate-matrix.json,fingerprint.json}` and the Swift mirror at
-`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` are output. Regenerate with `pnpm gen:corpus`
-and commit the result in the same change. `pnpm gen:corpus -- --check` regenerates in memory and
-fails on any difference, mirror included. Never weaken a runner to make a change "pass". The
-same holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Swift mirror at
+gate-matrix.json,fingerprint.json}` and the generator-owned mirrors at
+`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output.
+Regenerate with `pnpm gen:corpus` and commit the result in the same change.
+`pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,
+and on a stray JSON file in any of them. Never weaken a runner to make a change "pass". The same
+holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Swift mirror at
 `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` are recorded by the Worker's scenario
 tests (`packages/worker/test/transcripts/`) through `pnpm gen:transcripts`; a Worker change that
 alters a recorded response regenerates them in the same change, and the SDK replayers then show
