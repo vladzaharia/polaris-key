@@ -12,7 +12,7 @@
 //   expect    (ctx) => string[]  extra checks that return failure messages
 //   canary    { title } the URL is expected to be a soft-404 with this <title> (tests a moved page)
 
-import { newerChangelogEntries } from "./lib.mjs";
+import { hasVersionNewerThan, newerChangelogEntries } from "./lib.mjs";
 
 const APPLE_NEWS = "https://developer.apple.com/news/";
 const ANDROID_DV = "https://developer.android.com/developer-verification";
@@ -365,8 +365,11 @@ export const rows = [
             "Google Play Billing Library 9.1.0 Release (2026-06-18)",
           ],
           expect: ({ text }) =>
-            /Google Play Billing Library (9\.[2-9]|[1-9]\d)\.\d+ Release/.test(
+            hasVersionNewerThan(
               text,
+              /Google Play Billing Library (\d+)\.(\d+)\.\d+ Release/g,
+              9,
+              1,
             )
               ? ["a newer Billing Library than 9.1.x is listed"]
               : [],
@@ -579,7 +582,9 @@ export const rows = [
               ),
             ].map((m) => m[1]);
             return ids.includes("4-5") &&
-              !ids.some((v) => /^4-([6-9]|\d\d)/.test(v) || /^[5-9]-/.test(v))
+              !ids.some(
+                (v) => /^4-([6-9]|\d\d)/.test(v) || /^([5-9]|\d{2,})-/.test(v),
+              )
               ? []
               : [
                   `newer API version listed than 4.5: ${[...new Set(ids)].slice(0, 4).join(", ")}`,

@@ -5,6 +5,7 @@ import {
   changelogDates,
   doccToText,
   hasQuote,
+  hasVersionNewerThan,
   htmlToText,
   mdToText,
   newerChangelogEntries,
@@ -83,4 +84,17 @@ test("changelog guard flags only newer On/As-of entries", () => {
   assert.deepEqual(newerChangelogEntries(text, "2026-09-17"), []);
   const grown = text + " On October 5, 2026, we changed it.";
   assert.equal(newerChangelogEntries(grown, "2026-09-17").length, 1);
+});
+
+test("hasVersionNewerThan compares numerically, including two-digit minors and majors", () => {
+  const re = /Google Play Billing Library (\d+)\.(\d+)\.\d+ Release/g;
+  const at = (v) => `Google Play Billing Library ${v} Release (2026-01-01)`;
+  assert.equal(hasVersionNewerThan(at("9.1.0"), re, 9, 1), false);
+  assert.equal(hasVersionNewerThan(at("8.3.0"), re, 9, 1), false);
+  for (const v of ["9.2.0", "9.10.0", "10.0.0", "10.1.2", "11.0.0"])
+    assert.equal(hasVersionNewerThan(at(v), re, 9, 1), true, v);
+  assert.equal(
+    hasVersionNewerThan(`${at("9.1.0")}\n${at("10.0.0")}`, re, 9, 1),
+    true,
+  );
 });

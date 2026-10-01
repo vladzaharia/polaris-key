@@ -147,3 +147,14 @@ export function newerChangelogEntries(text, knownThrough) {
       ]
     : [];
 }
+
+// True when any "<prefix>M.m.p<suffix>" version in text is newer than major.minor.
+// Compares numerically, so 9.10.0, 10.0.0 and 11.2.3 all count as newer than 9.1.
+export function hasVersionNewerThan(text, re, major, minor) {
+  for (const m of text.matchAll(re)) {
+    const maj = Number(m[1]);
+    const min = Number(m[2]);
+    if (maj > major || (maj === major && min > minor)) return true;
+  }
+  return false;
+}
