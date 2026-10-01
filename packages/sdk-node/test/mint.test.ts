@@ -6,12 +6,16 @@
 //   * Config off ⇒ `service-unavailable`, and a recipe id the router could never match ⇒
 //     `bad_request`, both before any request;
 //   * no device token ⇒ `unauthorized` without a request;
-//   * a 401 gets exactly one re-acquire and one retry.
+//   * a 401 gets exactly one re-acquire and one retry;
+//   * a cached token is bound to the device token it was minted with: after `deactivate()` the
+//     next mint refuses with `unauthorized` and makes no request, and a different device token
+//     re-mints instead of reusing it.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
 import type { ServiceSlug } from "../src/discovery.js";
+import type { TokenManager } from "../src/core/token.js";
 
 const PRODUCT = "djdl";
 const BASE_URL = "https://k.test";
@@ -116,6 +120,39 @@ describe("config.mintToken", () => {
     ]);
     expect(a).toEqual(b);
     expect(p.calls).toHaveLength(1);
+  });
+
+  it("drops the cached token once the device token is gone (deactivate)", async () => {
+    const p = plane({
+      [MINT]: [json({ token: "minted-1", expiresAt: T0 + 600 })],
+      [`/${PRODUCT}/license/deauthorize`]: [json({ ok: true })],
+    });
+    const { c } = await client(p.fetchImpl);
+    expect((await c.config.mintToken("musickit")).token).toBe("minted-1");
+    await c.license.deactivate();
+    const mints = () => p.calls.filter((x) => x.path === MINT).length;
+    expect(mints()).toBe(1);
+    await expect(c.config.mintToken("musickit")).rejects.toMatchObject({
+      code: "unauthorized",
+    });
+    expect(mints()).toBe(1);
+  });
+
+  it("re-mints instead of reusing a token minted under a different device token", async () => {
+    const p = plane({
+      [MINT]: [
+        json({ token: "minted-1", expiresAt: T0 + 600 }),
+        json({ token: "minted-2", expiresAt: T0 + 600 }),
+      ],
+    });
+    const { c } = await client(p.fetchImpl);
+    expect((await c.config.mintToken("musickit")).token).toBe("minted-1");
+    await (c as unknown as { tokens: TokenManager }).tokens.set("pkeyt_other");
+    expect((await c.config.mintToken("musickit")).token).toBe("minted-2");
+    expect(p.calls.map((x) => x.authorization)).toEqual([
+      "Bearer pkeyt_device",
+      "Bearer pkeyt_other",
+    ]);
   });
 
   it("refuses with service-unavailable before any request when Config is off", async () => {

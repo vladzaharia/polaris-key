@@ -11,6 +11,11 @@
 // process it is reused until `expiresAt` minus a 30-second margin, so a host that asks for the
 // token on every API call costs one mint per lifetime rather than one per call (and does not
 // burn the per-device budget, P0-12).
+//
+// A CACHED TOKEN IS BOUND TO THE DEVICE TOKEN IT WAS MINTED WITH. A hit counts only while the
+// client still holds that same device token, so `license.deactivate()`, a cleared or revoked
+// token, or a different identity signing in all invalidate it: the call then takes the normal
+// path, which refuses with `unauthorized` before any request when no token is held.
 
 import { PolarisError } from "@polaris-key/client-core";
 import type { CoreContext } from "../core/context.js";
@@ -31,11 +36,17 @@ export const MINT_REUSE_MARGIN_SECONDS = 30;
  *  refused here instead of sent. */
 export const MINT_ID = /^[a-z0-9-]+$/;
 
+/** One cache entry: the minted token and the device token that was presented for it. */
+interface Bound<T> {
+  deviceToken: string;
+  value: T;
+}
+
 /** The per-client, per-recipe memory cache, with in-flight sharing so two concurrent asks for
- *  the same recipe make one request. */
+ *  the same recipe (under the same device token) make one request. */
 export class MintCache {
-  readonly tokens = new Map<string, MintedToken>();
-  readonly inFlight = new Map<string, Promise<MintedToken>>();
+  readonly tokens = new Map<string, Bound<MintedToken>>();
+  readonly inFlight = new Map<string, Bound<Promise<MintedToken>>>();
 }
 
 export async function mintToken(
@@ -51,14 +62,23 @@ export async function mintToken(
       `"${recipeId}" is not an edge-mint recipe id (lowercase letters, digits and "-").`,
     );
   }
+  const current = tokens?.current ?? null;
   const held = cache.tokens.get(recipeId);
-  if (held && ctx.now() < held.expiresAt - MINT_REUSE_MARGIN_SECONDS)
-    return held;
+  if (held) {
+    if (
+      current !== null &&
+      held.deviceToken === current &&
+      ctx.now() < held.value.expiresAt - MINT_REUSE_MARGIN_SECONDS
+    )
+      return held.value;
+    cache.tokens.delete(recipeId);
+  }
   const pending = cache.inFlight.get(recipeId);
-  if (pending) return pending;
+  if (pending && current !== null && pending.deviceToken === current)
+    return pending.value;
   const request = mintOnce(ctx, tokens, recipeId).then(
-    (minted) => {
-      cache.tokens.set(recipeId, minted);
+    ({ minted, deviceToken }) => {
+      cache.tokens.set(recipeId, { deviceToken, value: minted });
       return minted;
     },
     (e: unknown) => {
@@ -66,11 +86,12 @@ export async function mintToken(
       throw e;
     },
   );
-  cache.inFlight.set(recipeId, request);
+  const entry = { deviceToken: current ?? "", value: request };
+  cache.inFlight.set(recipeId, entry);
   try {
     return await request;
   } finally {
-    cache.inFlight.delete(recipeId);
+    if (cache.inFlight.get(recipeId) === entry) cache.inFlight.delete(recipeId);
   }
 }
 
@@ -78,10 +99,12 @@ async function mintOnce(
   ctx: CoreContext,
   tokens: TokenManager | undefined,
   recipeId: string,
-): Promise<MintedToken> {
-  let res = await get(ctx, tokens?.current ?? null, recipeId);
+): Promise<{ minted: MintedToken; deviceToken: string }> {
+  let presented = tokens?.current ?? null;
+  let res = await get(ctx, presented, recipeId);
   if (res.status === 401 && tokens && (await tokens.reacquire())) {
-    res = await get(ctx, tokens.current, recipeId);
+    presented = tokens.current;
+    res = await get(ctx, presented, recipeId);
   }
   if (res.status === 200) {
     const b = (await res.json().catch(() => ({}))) as {
@@ -94,7 +117,11 @@ async function mintOnce(
         "edge-mint answered without a token and its expiry.",
       );
     }
-    return { token: b.token, expiresAt: b.expiresAt };
+    return {
+      minted: { token: b.token, expiresAt: b.expiresAt },
+      // `get` refused locally when no token was presented, so it is a string here.
+      deviceToken: presented as string,
+    };
   }
   const body = (await res.json().catch(() => ({}))) as {
     error?: string | { code?: string };
