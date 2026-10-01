@@ -1,0 +1,8 @@
+{
+  "id": "gg.vlad.diceroll",
+  "url": "https://key.example.test/diceroll/distribution/fdroid/stable/repo",
+  "author": "Vlad",
+  "name": "Diceroll",
+  "overrideSource": "FDroidRepo",
+  "additionalSettings": "{\"appIdOrName\":\"gg.vlad.diceroll\",\"pickHighestVersionCode\":false,\"trySelectingSuggestedVersionCode\":true}"
+}

@@ -101,6 +101,11 @@ export interface CiClient {
     path: string,
     opts: PostOptions,
   ): Promise<T>;
+  /** GET a CI read route (P2b-05's F-Droid inputs), with the same refusal rendering. */
+  getJson<T = Record<string, unknown>>(
+    path: string,
+    opts: { what: string },
+  ): Promise<T>;
 }
 
 /** The CI client for one product (name and shape proposed by the P2-06 brief's hand-off). */
@@ -165,7 +170,35 @@ export function ciClient(opts: CiClientOptions): CiClient {
     }
   }
 
-  return { baseUrl, product, url, postJson };
+  async function getJson<T>(path: string, p: { what: string }): Promise<T> {
+    const target = url(path);
+    if (!opts.token)
+      throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
+    let res: Response;
+    try {
+      res = await f(target, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${opts.token}`,
+        },
+      });
+    } catch (e) {
+      throw new Error(
+        `${p.what}: could not reach ${target}: ${(e as Error).message}`,
+      );
+    }
+    const parsed = await readBody(res);
+    if (res.ok) return parsed as T;
+    throw new CiRequestError(
+      renderRefusal(p.what, target, res.status, parsed),
+      res.status,
+      parsed,
+      false,
+    );
+  }
+
+  return { baseUrl, product, url, postJson, getJson };
 }
 
 /** `Retry-After` seconds when the server sent one, else exponential from `BASE_BACKOFF_MS`. */

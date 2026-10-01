@@ -496,6 +496,7 @@ describe("releaseCatalog (Release)", () => {
         format: "dmg",
         buildNumber: "110",
         minOs: "13.0",
+        metadata: null,
       },
     ]);
     expect(
@@ -534,11 +535,13 @@ describe("releaseCatalog (Release)", () => {
     const catalog = await catalogFor(db, env, product);
     // P2b-04 added the five byte-delivery methods: still readers. `openSource` answers with
     // bytes (Release's GitHub-located ones) rather than records, and writes nothing either.
+    // P2b-05 added `channelReleases`, the feeds' history read.
     expect(Object.keys(catalog).sort()).toEqual([
       "accessSelector",
       "artifacts",
       "builds",
       "channelPolicies",
+      "channelReleases",
       "deliverables",
       "installScript",
       "metadataAccess",
@@ -554,6 +557,7 @@ describe("releaseCatalog (Release)", () => {
     const before = await db.all("SELECT * FROM release_metadata");
     await catalog.releases("app");
     await catalog.yanks();
+    await catalog.channelReleases("app", "beta");
     expect(await db.all("SELECT * FROM release_metadata")).toEqual(before);
   });
 

@@ -29,6 +29,7 @@ import {
   RELEASE_PLATFORMS,
   VERSION_SCHEMES,
   LOCATION_PROVIDERS,
+  ANDROID_ABIS,
   OUTLET_IDENTITY_FIELDS,
   OUTLET_KINDS,
   TRANSPORTS,
@@ -279,6 +280,10 @@ function base(): Docs {
         direct: {
           platforms: ["macos", "windows", "linux"],
           homebrewCask: "acme",
+          scoop: {
+            bin: "Acme/acme.exe",
+            shortcuts: [["Acme/acme.exe", "Acme"]],
+          },
         },
         "app-store": { appleId: "1234567890", bundleId: "com.acme.desktop" },
         testflight: { bundleId: "com.acme.desktop", publicLink: "AbCdEf12" },
@@ -1449,6 +1454,33 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (outlet(d, "direct").platforms = ["macos", "amiga"]),
   },
   {
+    // direct.scoop (P2b-05): a relative path, never one that climbs out of the archive.
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "direct").scoop = { bin: "..\\evil.exe" }),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (outlet(d, "direct").scoop = { shortcuts: [["acme.exe", "A/B"]] }),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "direct").scoop = { bin: [], extra: 1 }),
+  },
+  {
+    // A Scoop install is a Windows install.
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "direct").platforms = ["macos", "linux"]),
+  },
+  {
     code: "invalid_outlet_identity",
     file: "distribution",
     schema: "rejects",
@@ -1964,6 +1996,29 @@ function baseDescriptor(): Record<string, any> {
   };
 }
 
+/** A well-formed iOS build's metadata (P2b-05). */
+const IOS_META = (): Record<string, any> => ({
+  bundleIdentifier: "gg.acme.app",
+  version: "1.2.3",
+  buildVersion: "4021",
+  minOSVersion: "16.0",
+  appPermissions: {
+    entitlements: ["com.apple.developer.game-center", "get-task-allow"],
+    privacy: { NSCameraUsageDescription: "Scan a QR code." },
+  },
+});
+
+/** A well-formed Android build's metadata (P2b-05). */
+const ANDROID_META = (): Record<string, any> => ({
+  packageName: "gg.acme.app",
+  versionCode: 10203,
+  versionName: "1.2.3",
+  minSdk: 24,
+  targetSdk: 35,
+  nativecode: ["arm64-v8a", "armeabi-v7a"],
+  signerSha256: SHA_A,
+});
+
 type DescriptorMutation = {
   code: string;
   schema: "rejects" | "accepts";
@@ -2193,6 +2248,61 @@ const DESCRIPTOR_MUTATIONS: DescriptorMutation[] = [
     schema: "accepts",
     mutate: (d) => (mac(d).artifacts[1].role = "payload"),
   },
+  {
+    // P2b-05: only ios and android builds carry metadata.
+    code: "invalid_build_metadata",
+    schema: "rejects",
+    mutate: (d) => (mac(d).metadata = ANDROID_META()),
+  },
+  {
+    code: "invalid_build_metadata",
+    schema: "rejects",
+    mutate: (d) => {
+      mac(d).platform = "ios";
+      mac(d).metadata = { ...IOS_META(), bundleIdentifier: "nodots" };
+    },
+  },
+  {
+    code: "invalid_build_metadata",
+    schema: "rejects",
+    mutate: (d) => {
+      mac(d).platform = "ios";
+      mac(d).metadata = IOS_META();
+      mac(d).metadata.appPermissions.privacy = { NSCamera: "x" };
+    },
+  },
+  {
+    code: "invalid_build_metadata",
+    schema: "rejects",
+    mutate: (d) => {
+      mac(d).platform = "android";
+      mac(d).metadata = { ...ANDROID_META(), versionCode: 0 };
+    },
+  },
+  {
+    code: "invalid_build_metadata",
+    schema: "rejects",
+    mutate: (d) => {
+      mac(d).platform = "android";
+      mac(d).metadata = { ...ANDROID_META(), signerSha256: "A".repeat(64) };
+    },
+  },
+  {
+    code: "invalid_build_metadata",
+    schema: "rejects",
+    mutate: (d) => {
+      mac(d).platform = "android";
+      mac(d).metadata = { ...ANDROID_META(), nativecode: ["arm64"] };
+    },
+  },
+  {
+    code: "invalid_build_metadata",
+    schema: "rejects",
+    mutate: (d) => {
+      mac(d).platform = "android";
+      mac(d).metadata = { ...ANDROID_META(), targetSdk: 0 };
+    },
+  },
 ];
 
 describe("release descriptor: valid stays valid", () => {
@@ -2234,6 +2344,47 @@ describe("release descriptor: valid stays valid", () => {
       validateDescriptorSchema(d),
       JSON.stringify(validateDescriptorSchema.errors),
     ).toBe(true);
+  });
+
+  it("ios and android build metadata pass both the validator's shape check and the schema", () => {
+    const d = baseDescriptor();
+    d.builds.push(
+      {
+        id: "ios",
+        platform: "ios",
+        arch: "arm64",
+        format: "ipa",
+        metadata: IOS_META(),
+        artifacts: [],
+      },
+      {
+        id: "apk",
+        platform: "android",
+        arch: "universal",
+        format: "apk",
+        metadata: ANDROID_META(),
+        artifacts: [],
+      },
+    );
+    const res = validateReleaseDescriptor(d, descriptorManifest());
+    // The base manifest declares neither build, so the cross-check refuses them — but never
+    // their metadata.
+    const codes = res.ok ? [] : res.errors.map((e) => e.code);
+    expect(codes).not.toContain("invalid_build_metadata");
+    expect(codes).toContain("undeclared_build");
+    expect(
+      validateDescriptorSchema(d),
+      JSON.stringify(validateDescriptorSchema.errors),
+    ).toBe(true);
+  });
+
+  it("the schema's ABI list is exactly the validator's", () => {
+    const schema = JSON.parse(
+      readFileSync(join(schemasDir, "release-descriptor.schema.json"), "utf8"),
+    );
+    expect(
+      schema.$defs.androidMetadata.properties.nativecode.items.enum,
+    ).toEqual([...ANDROID_ABIS]);
   });
 
   it("the schema's vocabularies are exactly the validator's constants", () => {

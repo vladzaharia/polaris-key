@@ -10,9 +10,12 @@
 export const CI_TOKEN_PREFIX = "pkeyci_";
 
 /**
- * The scope vocabulary so far (P2-02 design notes). Later packages add theirs here: P2b-05
- * `distribution:feeds`. `distribution:rollout` (P2b-04) is opt-in like `release:yank`: it is not
- * in `DEFAULT_CI_SCOPES` (`core/publisher.ts`), so an operator grants it deliberately.
+ * The scope vocabulary so far (P2-02 design notes). Later packages add theirs here.
+ * `distribution:rollout` (P2b-04) is opt-in like `release:yank`: it is not in
+ * `DEFAULT_CI_SCOPES` (`core/publisher.ts`), so an operator grants it deliberately.
+ * `distribution:feeds` (P2b-05) reads the F-Droid generator's inputs, registers the repository
+ * files CI signed, and buys an upload ticket for them (P2-02's uploads route accepts it beside
+ * `release:publish`); it is opt-in too.
  */
 export const CI_SCOPES = [
   "release:publish",
@@ -20,6 +23,7 @@ export const CI_SCOPES = [
   "release:yank",
   "distribution:report",
   "distribution:rollout",
+  "distribution:feeds",
 ] as const;
 export type CiScope = (typeof CI_SCOPES)[number];
 

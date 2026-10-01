@@ -1,0 +1,17 @@
+{
+  "version": "1.2.0",
+  "releases": [
+    {
+      "arch": "aarch64",
+      "url": "https://dl.example.test/diceroll/distribution/files/app%401.2.0/Diceroll-1.2.0-linux-arm64.tar.gz",
+      "sha256": "7a8b0130d4a3e74675f6ae2df859ade98776f47320eb9addcd561a3e1da2a12f",
+      "size": 43
+    },
+    {
+      "arch": "x86_64",
+      "url": "https://dl.example.test/diceroll/distribution/files/app%401.2.0/Diceroll-1.2.0-linux-x86_64.tar.gz",
+      "sha256": "43ab160772ff75bb9c67d197a29d42e907b39e9f1bce85762a1b66c1a3156ecd",
+      "size": 44
+    }
+  ]
+}

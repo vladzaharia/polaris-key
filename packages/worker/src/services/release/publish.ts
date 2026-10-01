@@ -47,7 +47,12 @@
 
 import type { ServiceContext } from "../../core/registry.js";
 import { errorResponse, ErrorCode, json, notFound } from "../../core/errors.js";
-import { readCiJson, requireCiScope, ciActor } from "../../core/ciScope.js";
+import {
+  readCiJson,
+  requireCiScope,
+  ciActor,
+  type CiScope,
+} from "../../core/ciScope.js";
 import { rateLimitOk, clientIp } from "../../core/rateLimit.js";
 import {
   blobKey,
@@ -155,13 +160,14 @@ function asTokenRecord(p: unknown): CiTokenRecord | null {
 
 async function requirePublisher(
   ctx: ServiceContext,
+  scopes: readonly CiScope[] = ["release:publish"],
 ): Promise<CiTokenRecord | Response> {
   const principal = await requireCiScope(
     ctx.req,
     ctx.env,
     ctx.db,
     ctx.product.slug,
-    "release:publish",
+    scopes,
     ctx.now,
   );
   if (principal instanceof Response) return principal;
@@ -254,7 +260,13 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
   const parent = r2Parent(env);
   if (!env.BLOBS || !parent) return notFound();
 
-  const holder = await requirePublisher(ctx);
+  // A ticket also carries the F-Droid repository files `pkey feeds fdroid` uploads (P2b-05):
+  // `distribution:feeds` buys one too. Only the submit (`release:publish`) ingests a release, and
+  // only the feed register (`distribution:feeds`) registers feed files, each redeeming its own.
+  const holder = await requirePublisher(ctx, [
+    "release:publish",
+    "distribution:feeds",
+  ]);
   if (holder instanceof Response) return holder;
   const body = await readCiJson(req, MAX_UPLOADS_BODY_BYTES);
   if (body instanceof Response) return body;

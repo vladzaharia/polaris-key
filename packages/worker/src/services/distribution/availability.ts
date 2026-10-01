@@ -140,6 +140,13 @@ export const DERIVED_OUTLET_KINDS: readonly string[] = [
 /** Byte locations that count as "the bytes are there" for derived availability. */
 const SERVING_PROVIDERS = new Set(["r2", "github"]);
 
+/** Whether an artifact's bytes are there to serve (a stored or GitHub location). */
+export function hasServingLocation(a: {
+  locations: readonly { provider: string }[];
+}): boolean {
+  return a.locations.some((l) => SERVING_PROVIDERS.has(l.provider));
+}
+
 /** A report's `since` may run ahead of the server clock by at most this much (skew). */
 const MAX_SINCE_SKEW_SECONDS = 300;
 const MAX_NOTES_LENGTH = 500;
@@ -304,7 +311,7 @@ export async function findRelease(
 }
 
 /** The transport a deliverable uses on an outlet: its `dist_transports` row, else the default. */
-async function transportOf(
+export async function transportOf(
   db: Db,
   product: string,
   deliverable: string,
@@ -321,7 +328,7 @@ async function transportOf(
 }
 
 /** Does `outlet` (kind + identity) carry a build of `platform` / `buildId`? */
-function outletMatches(
+export function outletMatches(
   kind: string,
   identity: Record<string, unknown>,
   buildId: string | null,
@@ -366,7 +373,7 @@ async function derivedAvailability(
           (r) =>
             r?.kind === "file" &&
             r.artifact?.artifactId === a.artifactId &&
-            r.artifact.locations.some((l) => SERVING_PROVIDERS.has(l.provider)),
+            hasServingLocation(r.artifact),
         );
       located.set(a.artifactId, hit);
     }
