@@ -18,6 +18,13 @@
     {
       "fileMatch": ["**/.pkey/release.json", "products/*/release.json"],
       "url": "./packages/shared-manifest/schemas/v1/release.schema.json"
+    },
+    {
+      "fileMatch": [
+        "**/.pkey/distribution.json",
+        "products/*/distribution.json"
+      ],
+      "url": "./packages/shared-manifest/schemas/v1/distribution.schema.json"
     }
   ],
   // Requires the YAML extension (redhat.vscode-yaml).
@@ -33,6 +40,10 @@
     "./packages/shared-manifest/schemas/v1/release.schema.json": [
       "**/.pkey/release.yaml",
       "**/.pkey/release.yml"
+    ],
+    "./packages/shared-manifest/schemas/v1/distribution.schema.json": [
+      "**/.pkey/distribution.yaml",
+      "**/.pkey/distribution.yml"
     ]
   }
 }

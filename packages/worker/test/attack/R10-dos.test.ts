@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { makeTestDb, NO_HOOKS } from "../helpers.js";
+import { makeTestDb, NO_HOOKS, NO_INGEST } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
   DJDL_CATALOG,
@@ -289,6 +289,7 @@ describe("R10-01 catalog validation no longer generates code at request time", (
         now: NOW,
         session,
         hooks: NO_HOOKS,
+        ingest: NO_INGEST,
       }),
     );
     expect(res.status).toBe(200); // was 422

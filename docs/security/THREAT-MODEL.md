@@ -365,7 +365,8 @@ and no admin handler. Its attack surface is the discovery fragment (`{enabled, c
 endpoints:{}}`) and the two hooks below. Everything that will make it valuable to an attacker —
 byte serving, outlet credentials, rollouts — arrives in later packages (P2b-02 to P2b-04, P5-01)
 and reopens this section. P5-01 has landed the credential custody (below) but no connector, so
-Distribution still opens nothing.
+Distribution still opens nothing. P2b-02 gave it two tables, a manifest ingest hook and an admin
+handler (below); it still has no device-facing route.
 
 **Descriptor hooks are a read-only, fail-closed boundary.** A service may import only Core and
 itself (`boundaries.test.ts`; the one exception is still `update → release`). Cross-service reads
@@ -408,6 +409,67 @@ console shows the error.
 `distribution` lost the `/<p>/distribution/appcast.xml` alias (its canonical
 `/<p>/update/distribution/appcast.xml` still works). A future service slug always shadows a
 channel of the same name; that is the safe direction (a channel can never shadow a service).
+
+### Outlets and outlet capabilities (P2b-02)
+
+**What arrived.** `.pkey/distribution` declares a product's outlets (store identities, listing)
+and transports; Distribution's `manifestIngest` applies it into `dist_outlets` and
+`dist_transports` on link and resync. The `outletCapabilities` hook now answers for declared
+outlets, and the console can narrow an outlet's capabilities
+(`/manage/api/products/<slug>/distribution/outlets/…`, audited).
+
+**Outlet capabilities are operator-owned and can only narrow.** `codeUpdates`,
+`downloadedScripts` and `commerce` decide whether an installed copy may hot-load code or sell
+things itself; a repo widening them by pushing YAML is the R6-03 (`requireSparkleSignature`)
+class. So (tests: `shared-manifest` parity mutations, `test/distributionOutlets.test.ts`):
+
+- **Not expressible in the manifest.** A `capabilities` key anywhere in `.pkey/distribution` fails
+  validation (`capabilities_not_manifest_writable`) — the push is refused, not partly applied.
+- **Never written by an ingest.** No statement of Distribution's `manifestIngest` names
+  `capabilities_json` or `capabilities_source`; an operator's narrowing survives every resync.
+- **Narrow-only at the API.** `PUT …/capabilities` refuses any value wider than the kind's
+  compiled default (`binaryUpdates` self > store > none, a boolean to false, `commerce` to
+  `none`), and an unknown key.
+- **The kind is guarded, because the defaults are keyed by it.** The manifest owns an outlet's
+  `kind`, so re-kinding was the one indirect way to widen. An id that is itself a kind is that
+  kind: `app-store: { kind: web }` fails validation (`outlet_kind_mismatch`; the schema pins
+  `kind` to the id). A custom id (`altstore-beta`) may pick any kind when first declared — a new
+  outlet id has no installed copies yet — but once its row exists, the ingest lets it take a new
+  kind only when every default capability of the new kind is equal or narrower than the old
+  (`kindsNarrowableTo`, the same order `narrows` uses; `commerce` only to itself or `none`).
+  Otherwise the row keeps its kind and the rest of the push applies; a removed row coming back
+  is held the same way. Widening needs a new outlet id, so copies installed through the old one
+  keep what they had.
+- **Clamped on read.** The hook re-checks every stored override field against the default of
+  the row's kind and ignores any that would widen, so a stale row or a D1 console edit can only
+  make the override narrower. (The clamp bounds the override, not the kind; the kind is guarded
+  above.) An unknown kind, an undeclared outlet and a removed outlet all answer `null` — never a
+  permissive default.
+
+**The ingest pipeline is a Core-mediated write path, not a hook.** `manifestIngestStatements`
+(`core/registry.ts`) runs each **enabled** service's `manifestIngest` and puts the statements in
+Release's link/resync batch, so the rows land atomically with the rest of the ingest. Release
+receives it from the composition root (the webhook, the console's link route, `ServiceContext.ingest`
+for its resync route) and never imports Distribution (rule 6). Resync gates on the product's
+**stored** enablement after the manifest's write, so a service an operator turned off live keeps
+its rows. A `manifestIngest` returns statements only, so it cannot read — it must be idempotent
+SQL and must not name an operator-owned column; reviewers check both.
+
+**The ingest's cost is bounded for untrusted input (the R10 class).** Every row Distribution
+writes comes from one push to a third party's repo and lands in the shared D1 batch, so its count
+is bounded by the validator, not by the push: at most 32 outlets (`MAX_OUTLETS`), and transport
+routes only for the deliverables Release actually ingests — today only `app`, because packs are
+ignored (`pack_deliverables_not_supported`). Routing every declared pack would have let a 64 KiB
+`release.yaml` of `{kind: pack}` entries multiply into ~90,000 statements. A link or resync
+therefore writes at most 32 outlet upserts, one removal sweep, one transport delete and 32
+transport inserts (`test/distributionOutlets.test.ts`, "the ingest's cost is bounded"). When
+packs are ingested (P4-02), the pack count must be bounded before they are routed.
+
+**Residual risk.** Identity and listing fields are manifest-owned and written verbatim (validated
+patterns, https-only URLs, no control characters); a repo writer can point a listing's `iconUrl`
+at any https host. Nothing serves listings yet — when storefront feeds do (P2b-05), they are
+untrusted display data and must be escaped by the feed, not trusted. The default capability table
+is the proposed one; P3-01's outlet matrix supersedes it.
 
 ### Outlet credentials (P5-01)
 
@@ -680,19 +742,20 @@ page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
 These deserve their own section because each is treated as trusted somewhere in the code while
 originating outside the trust boundary.
 
-| Input                           | Trusted for                                                               | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC `groups`                   | **Platform admin authority**                                              | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                            |
-| OIDC `sub`                      | License identity                                                          | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                   |
-| OIDC `email`                    | Portal license linking, cross-product                                     | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                              |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name             | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                            |
-| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS) | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).    |
-| `X-PKey-Version` header         | Version and channel gating                                                | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                          |
-| `X-PKey-Channel` header         | Channel gating                                                            | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                        |
-| `X-PKey-Device` header          | Device identity                                                           | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                     |
-| Fingerprint components          | Seat/hardware binding                                                     | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                               |
-| Cached `trustedKeys`            | **Signature verification**                                                | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                      |
-| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                   | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02). |
+| Input                           | Trusted for                                                                       | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                            |
+| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                   |
+| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                              |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                            |
+| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02).                                                                                                                                                                                             |
+| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).    |
+| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                          |
+| `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                        |
+| `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                     |
+| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                               |
+| Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                      |
+| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02). |
 
 **CI OIDC claims are only as strong as the repository's own settings.** The policy proves the
 token came from the declared workflow, in the declared environment, on a ref a branch or tag

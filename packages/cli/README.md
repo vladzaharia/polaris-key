@@ -24,6 +24,7 @@ core as a library (`import { runPkey } from "@polaris-key/cli"`) for embedding i
 pkey init [--product slug] [--name name] [--modules license,config,release,distribution,update,identity]
           [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]
 pkey validate
+pkey distribution outlet-ids --outlet id
 pkey doctor [--base-url url --product slug]
 pkey trust --kid kid --public-key key
 pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
@@ -72,21 +73,40 @@ keeps `.pkey/` somewhere other than one level under `node_modules`.
 
 ### `pkey validate`
 
-Reads `.pkey/` from the current directory (`product.{json,yaml,yml}` required; `schema` and
-`release` read if present) and runs it through `@polaris-key/manifest`'s
+Reads `.pkey/` from the current directory (`product.{json,yaml,yml}` required; `schema`,
+`release` and `distribution` read if present) and runs it through `@polaris-key/manifest`'s
 `validateIngestDocuments` — the same presence rule plus validator that repo-link and resync apply, so a missing `.pkey/schema` is `missing_schema` locally too. Prints the resolved
 service-slug vocabulary regardless of which vocabulary the manifest wrote in, any required
-secret names, then every warning and error with its file and JSON-pointer path:
+secret names, then every warning and error with its document, JSON-pointer path and the file it
+was read from:
 
 ```
 Manifest: invalid
 Modules: license, config, release, update
 Required secrets: OIDC_CLIENT_SECRET
-warning product/modules/config: Config is enabled without an activation method.
+warning product/modules/config (.pkey/product.yaml): Config is enabled without an activation method.
 error release/: Releases are enabled, so .pkey/release.yaml or release.json is required.
 ```
 
 The full code list is at [Manifest validation codes](/docs/reference/validation-codes/).
+
+### `pkey distribution outlet-ids`
+
+Prints the store ids a Godot export stamps into a build (P1-11's `outletIds`), from
+`.pkey/distribution`, as one compact JSON object with sorted keys and **every value a string** —
+for CI to pass as `PKEY_OUTLET_IDS`:
+
+```sh
+$ pkey distribution outlet-ids --outlet ms-store
+{"caskToken":"dice","itchGameId":"1001","msixFamilyName":"Vlad.Dice_abcdefghjkmnp","steamAppId":"480"}
+```
+
+`--outlet` names the build's outlet entry and is required. The keys are `steamAppId`,
+`itchGameId`, `flatpakId`, `snapName`, `caskToken` and, for an `ms-store` or `app-installer`
+build, that entry's `msixFamilyName`; an absent id is left out. With no `.pkey/distribution` it
+prints `{}` and exits `0` for any `--outlet`. With one, the manifest must validate and declare the
+outlet, or the command exits `1` with the reason on stderr. See
+[Distribution: outlets, transports and listing](/docs/build/manifest/distribution/).
 
 ### `pkey doctor`
 

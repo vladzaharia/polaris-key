@@ -53,6 +53,8 @@ import {
   type Sealed,
 } from "../../keyvault.js";
 import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
+import { manifestIngestFor } from "../../core/registry.js";
+import { SERVICES } from "../../mount.js";
 import {
   isAutoIssueMode,
   isFingerprintMode,
@@ -142,7 +144,14 @@ export async function handleProducts(
       return err(422, ErrorCode.BadRequest, "repoUrl is required", {
         fields: ["repoUrl"],
       });
-    const result = await linkRepo(env, db, repoUrl, now);
+    const result = await linkRepo(
+      env,
+      db,
+      repoUrl,
+      now,
+      fetch,
+      manifestIngestFor(SERVICES),
+    );
     if (!result.ok) {
       return err(
         422,

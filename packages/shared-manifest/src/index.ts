@@ -18,6 +18,12 @@ import {
   type ProductModule,
   type ServiceSlug,
 } from "./services.generated.js";
+import {
+  normalizeDistribution,
+  validateDistribution,
+  type DistributionDeliverable,
+  type ManifestDistribution,
+} from "./distribution.js";
 
 /**
  * The opt-in services and the `modules:` vocabulary come from the GENERATED service table
@@ -59,7 +65,7 @@ export const REGISTRATION_POLICIES = [
 export type RegistrationPolicy = (typeof REGISTRATION_POLICIES)[number];
 
 export interface ValidationMessage {
-  file: "product" | "schema" | "release";
+  file: "product" | "schema" | "release" | "distribution";
   path: string;
   code: string;
   message: string;
@@ -69,6 +75,8 @@ export interface ManifestDocuments {
   product: Record<string, unknown>;
   schema?: unknown;
   release?: unknown;
+  /** `.pkey/distribution` (P2b-02); `undefined` = absent (the implicit `direct` outlet). */
+  distribution?: unknown;
 }
 
 /** The documents ingest is handed: `product` is `undefined` when the file is missing. */
@@ -76,6 +84,7 @@ export interface IngestDocuments {
   product: Record<string, unknown> | undefined;
   schema?: unknown;
   release?: unknown;
+  distribution?: unknown;
 }
 
 export interface ValidationResult {
@@ -312,6 +321,13 @@ export interface ParsedManifest {
    * origin gets any `Access-Control-*` header. Persisted to `products.web_origins_json`.
    */
   webOrigins: string[];
+  /**
+   * `.pkey/distribution` (P2b-02), normalised: outlets with their identities, the resolved
+   * transport per (deliverable, outlet), and the listing. Present whenever Distribution is enabled
+   * (the absent document is the implicit `direct` outlet by `pkey-cdn`, `declared: false`) or the
+   * document exists; `undefined` otherwise.
+   */
+  distribution?: ManifestDistribution;
 }
 
 export type ParseManifestResult =
@@ -1865,6 +1881,17 @@ function validateDocuments(
     );
   }
 
+  // `.pkey/distribution` (P2b-02): validated whenever it is present, against what the release
+  // document declares (its artifact map, its channels, its deliverables). Absent is valid — with
+  // Distribution on it means the implicit `direct` outlet by `pkey-cdn`.
+  if (manifest.distribution !== undefined) {
+    validateDistribution(
+      errors,
+      manifest.distribution,
+      distributionContext(relDoc),
+    );
+  }
+
   // Declared secret names are looked up in the product's sealed-secret store.
   for (const [i, item] of (arrayAt(secrets, "required") ?? []).entries()) {
     const name = isRecord(item) ? item.name : item;
@@ -1995,6 +2022,70 @@ function validateDocuments(
     enabledModules: modules,
     requiredSecrets,
   };
+}
+
+/**
+ * What `.pkey/distribution` may refer to in `.pkey/release`: the app's artifact-map ids, every
+ * declared channel, and every declared deliverable (`app` always, implicit or not). Read off the
+ * raw release document so a distribution problem is reported even when the release document has
+ * problems of its own.
+ */
+function distributionContext(relRoot: Record<string, unknown> | null): {
+  artifactIds: Set<string>;
+  channels: Set<string>;
+  deliverables: Map<string, string>;
+} {
+  const rel = relRoot ?? {};
+  const declared = asRecord(rel.deliverables);
+  const app = asRecord(declared[APP_DELIVERABLE_ID]);
+  const artifactIds = new Set<string>();
+  for (const entry of arrayAt(app, "artifacts") ?? []) {
+    if (isRecord(entry) && typeof entry.id === "string")
+      artifactIds.add(entry.id);
+  }
+  return {
+    artifactIds,
+    channels: knownChannelNames(rel, Object.keys(asRecord(app.channels))),
+    deliverables: new Map(
+      distributionDeliverables(relRoot).map((d) => [d.id, d.kind]),
+    ),
+  };
+}
+
+/** The deliverables a release document declares, `app` first (always present), then by id. */
+function distributionDeliverables(
+  relRoot: Record<string, unknown> | null,
+): DistributionDeliverable[] {
+  const out: DistributionDeliverable[] = [
+    { id: APP_DELIVERABLE_ID, kind: "app" },
+  ];
+  const declared = asRecord(relRoot?.deliverables);
+  for (const id of Object.keys(declared).sort()) {
+    const kind = asRecord(declared[id]).kind;
+    if (
+      id !== APP_DELIVERABLE_ID &&
+      isDeliverableId(id) &&
+      isOneOf(kind, DELIVERABLE_KINDS)
+    )
+      out.push({ id, kind });
+  }
+  return out;
+}
+
+/**
+ * The deliverables that get a transport route (`dist_transports` rows): only those Release
+ * actually ingests. A pack is ignored today (`pack_deliverables_not_supported`), so only `app` is
+ * routed and an ingest writes at most MAX_OUTLETS transport rows. Routing every declared pack
+ * would let one push from a product's repo turn a 64 KiB release.yaml of `{kind: pack}` entries
+ * into tens of thousands of statements in the shared D1 batch (thousands of packs × 32 outlets).
+ * The validator still sees every declared deliverable (`distributionContext`), so a
+ * `transports.deliverables.<pack>` entry validates now and is routed once packs are ingested
+ * (P4-02, which must then bound the pack count itself).
+ */
+function routedDeliverables(
+  relRoot: Record<string, unknown> | null,
+): DistributionDeliverable[] {
+  return distributionDeliverables(relRoot).filter((d) => d.kind !== "pack");
 }
 
 /** A `stableTagPattern` value: a string the manual-channel safety rule compiles. One rule for
@@ -2444,12 +2535,21 @@ function formatIngestError(e: ValidationMessage): string {
   return `${e.file}${e.path === "/" ? "" : e.path}: ${e.message}`;
 }
 
+/** The `.pkey/` documents, in the order ingest reads and parses them. */
+export const MANIFEST_DOCUMENTS = [
+  "schema",
+  "product",
+  "release",
+  "distribution",
+] as const;
+export type ManifestDocumentName = (typeof MANIFEST_DOCUMENTS)[number];
+
 export function parseManifest(
   files: Record<string, string>,
 ): ParseManifestResult {
   const errors: string[] = [];
   const docs: Record<string, unknown> = {};
-  for (const name of ["schema", "product", "release"] as const) {
+  for (const name of MANIFEST_DOCUMENTS) {
     const raw = files[name];
     if (raw === undefined) continue;
     const res = parseDocument(name, raw);
@@ -2474,6 +2574,7 @@ export function parseManifest(
     product: docs.product,
     schema: docs.schema,
     release: docs.release,
+    distribution: docs.distribution,
   });
   if (!validation.ok)
     return { ok: false, errors: validation.errors.map(formatIngestError) };
@@ -2551,6 +2652,15 @@ export function parseManifest(
     };
   }
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
+  if (
+    validation.enabledModules.includes("distribution") ||
+    docs.distribution !== undefined
+  ) {
+    parsed.distribution = normalizeDistribution(
+      docs.distribution,
+      routedDeliverables(releaseDoc),
+    );
+  }
   if (productRoot.fingerprint !== undefined) {
     parsed.fingerprint = normalizeFingerprint(productRoot.fingerprint);
   }
@@ -3470,3 +3580,5 @@ function add(
 
 // The release descriptor (P2-04): its contract, validator and helpers.
 export * from "./descriptor.js";
+// `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
+export * from "./distribution.js";

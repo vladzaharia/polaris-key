@@ -48,10 +48,11 @@ import {
 } from "./githubApp.js";
 import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
-import { MANIFEST_FILES } from "./manifestFiles.js";
+import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { serializeServices } from "../../core/services.js";
+import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 
@@ -163,6 +164,7 @@ export async function linkRepo(
   repoUrl: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
+  ingest?: ManifestIngest,
 ): Promise<LinkRepoResult> {
   const parsed = parseRepoUrl(repoUrl);
   if (!parsed)
@@ -198,7 +200,7 @@ export async function linkRepo(
   // files surface as parseManifest errors below.
   const files: Record<string, string> = {};
   try {
-    for (const name of ["schema", "product", "release"] as const) {
+    for (const name of MANIFEST_FILE_NAMES) {
       const text = await readManifestFile(
         token,
         owner,
@@ -242,6 +244,7 @@ export async function linkRepo(
     { owner, repo, installId, token },
     now,
     fetchImpl,
+    ingest,
   );
 }
 
@@ -253,6 +256,7 @@ async function registerFromManifest(
   gh: { owner: string; repo: string; installId: number; token: string },
   now: number,
   fetchImpl: FetchImpl,
+  ingest: ManifestIngest | undefined,
 ): Promise<LinkRepoResult> {
   const slug = manifest.product.slug;
   const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}`;
@@ -496,6 +500,15 @@ async function registerFromManifest(
     sql: "DELETE FROM edge_mint_approvals WHERE product = ?",
     params: [slug],
   });
+
+  // Every enabled service's own manifest rows (P2b-02: Distribution's outlets and transports),
+  // through Core's ingest pipeline and in the same atomic batch, AFTER the product row they
+  // reference. A freshly linked product is manifest-owned, so the manifest's enablement is the
+  // product's enablement.
+  if (ingest)
+    statements.push(
+      ...ingest(manifest, slug, manifest.services, now).statements,
+    );
 
   await db.batch(statements);
 

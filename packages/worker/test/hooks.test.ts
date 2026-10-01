@@ -215,7 +215,7 @@ describe("descriptor hooks fail closed", () => {
     const delivery = seen[0]!.delivery();
     expect(delivery?.defaultTransport).toBe("pkey-cdn");
     expect(await delivery!.availability("app")).toEqual([]);
-    // No outlets until P2b-02: the hook runs and answers null for every outlet.
+    // This product has no dist_outlets rows (nothing ingested): the hook runs and answers null.
     expect(await seen[0]!.outletCapabilities("app-store")).toBeNull();
     expect(spies.delivery).toHaveBeenCalledTimes(1);
     expect(spies.outletCapabilities).toHaveBeenCalledWith(

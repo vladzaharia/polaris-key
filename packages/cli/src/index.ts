@@ -8,13 +8,17 @@ import {
   mintBundle,
 } from "./bundle.js";
 import {
+  findDistributionFile,
   initManifest,
   loadManifest,
   normalizeModules,
+  outletIdsFor,
   sdkSnippet,
   trustSnippet,
   validateLoadedManifest,
+  type LoadedManifest,
   type ProductModule,
+  type ValidationMessage,
 } from "./manifest.js";
 
 export {
@@ -31,9 +35,11 @@ export {
 } from "./bundle.js";
 
 export {
+  findDistributionFile,
   initManifest,
   loadManifest,
   normalizeModules,
+  outletIdsFor,
   sdkSnippet,
   trustSnippet,
   validateLoadedManifest,
@@ -74,6 +80,8 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdInit(parsed, cwd, stdout);
       case "validate":
         return await cmdValidate(cwd, stdout);
+      case "distribution":
+        return await cmdDistribution(parsed, cwd, stdout, stderr);
       case "doctor":
         return await cmdDoctor(parsed, cwd, stdout);
       case "bundle":
@@ -169,13 +177,78 @@ async function cmdValidate(
     stdout.write(`Required secrets: ${result.requiredSecrets.join(", ")}\n`);
   for (const warning of result.warnings) {
     stdout.write(
-      `warning ${warning.file}${warning.path}: ${warning.message}\n`,
+      `warning ${located(manifest, cwd, warning)}: ${warning.message}\n`,
     );
   }
   for (const error of result.errors) {
-    stdout.write(`error ${error.file}${error.path}: ${error.message}\n`);
+    stdout.write(`error ${located(manifest, cwd, error)}: ${error.message}\n`);
   }
   return result.ok ? 0 : 1;
+}
+
+/**
+ * Where a validation message points: `<document><pointer>`, followed by the file it was read
+ * from when there is one (`distribution/outlets/web (.pkey/distribution.yaml)`), so an author
+ * with several spellings on disk sees which file the validator actually read.
+ */
+function located(
+  manifest: LoadedManifest,
+  cwd: string,
+  msg: ValidationMessage,
+): string {
+  const file = {
+    product: manifest.productPath,
+    schema: manifest.schemaPath,
+    release: manifest.releasePath,
+    distribution: manifest.distributionPath,
+  }[msg.file];
+  return `${msg.file}${msg.path}${file ? ` (${path.relative(cwd, file)})` : ""}`;
+}
+
+const DISTRIBUTION_USAGE = "Usage: pkey distribution outlet-ids --outlet <id>";
+
+/**
+ * `pkey distribution outlet-ids --outlet <id>` (P2b-02): print the build outlet's `outletIds`
+ * as one compact JSON object on stdout — keys sorted, every value a string — for CI to pass to a
+ * Godot export as `PKEY_OUTLET_IDS` (P1-11 cannot read YAML, nor `.pkey/` outside its project).
+ *
+ * The absent-file check runs FIRST: with no `.pkey/distribution` the answer is `{}` and exit 0
+ * for any `--outlet` (there are no ids to stamp). With a file, the manifest must validate and
+ * must declare the outlet; anything else is a non-zero exit with the reason on stderr.
+ */
+async function cmdDistribution(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+): Promise<number> {
+  if (parsed.positional[0] !== "outlet-ids")
+    throw new Error(DISTRIBUTION_USAGE);
+  const outlet = flagString(parsed, "outlet");
+  if (!outlet) throw new Error(DISTRIBUTION_USAGE);
+
+  if (!(await findDistributionFile(cwd))) {
+    stdout.write("{}\n");
+    return 0;
+  }
+  const manifest = await loadManifest(cwd);
+  const result = validateLoadedManifest(manifest);
+  if (!result.ok) {
+    for (const error of result.errors)
+      stderr.write(
+        `error ${located(manifest, cwd, error)}: ${error.message}\n`,
+      );
+    return 1;
+  }
+  const ids = outletIdsFor(manifest, outlet);
+  if (!ids) {
+    stderr.write(
+      `outlet ${JSON.stringify(outlet)} is not declared in ${path.relative(cwd, manifest.distributionPath!)}\n`,
+    );
+    return 1;
+  }
+  stdout.write(`${JSON.stringify(ids)}\n`);
+  return 0;
 }
 
 async function cmdDoctor(
@@ -316,6 +389,7 @@ function helpText(): string {
 Commands:
   pkey init [--product slug] [--name name] [--modules ${SERVICE_SLUGS.join(",")}]
   pkey validate
+  pkey distribution outlet-ids --outlet id
   pkey doctor [--base-url url --product slug]
   pkey trust --kid kid --public-key key
   pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
@@ -325,6 +399,11 @@ Commands:
 pkey bundle mints one offline activation bundle and writes it to a file (default
 <product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}).
 Copy that file to the air-gapped machine and import it there.
+
+pkey distribution outlet-ids prints the build outlet's store ids from .pkey/distribution as
+one JSON object of strings (steamAppId, itchGameId, flatpakId, snapName, caskToken,
+msixFamilyName), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no
+.pkey/distribution it prints {}.
 
 Environment:
   ${ADMIN_COOKIE_ENV}   Required by \`pkey bundle\`. The console's admin session cookie, as

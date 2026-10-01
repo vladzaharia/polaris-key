@@ -1,0 +1,848 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/v1/distribution.schema.json",
+  "title": "Polaris Key distribution manifest (.pkey/distribution)",
+  "description": "The distribution document of a .pkey/ manifest: the product's outlets with their store identities, the transport each deliverable uses per outlet, and the store listing. Optional: with the distribution service on and no document, the product has one implicit outlet, direct, served by pkey-cdn. Outlet capabilities are operator-owned and may not appear anywhere in this file. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative, and the cross-document checks (artifact, channel and deliverable references into .pkey/release) are validator-only. The $id URL is an identifier, not a fetchable locator \u2014 this file ships inside the @polaris-key/manifest npm package.",
+  "type": "object",
+  "properties": {
+    "apiVersion": {
+      "const": "pkey.dev/v1"
+    },
+    "capabilities": false,
+    "outlets": {
+      "description": "Outlets keyed by outlet id. An id that is itself an outlet kind is that kind: it may omit kind, and an explicit kind must repeat the id. Any other id (altstore-beta) needs a kind. Absent means the implicit direct outlet; {} declares none.",
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,63}$"
+      },
+      "properties": {
+        "direct": {
+          "$ref": "#/$defs/outlet_direct"
+        },
+        "app-store": {
+          "$ref": "#/$defs/outlet_app-store"
+        },
+        "testflight": {
+          "$ref": "#/$defs/outlet_testflight"
+        },
+        "altstore": {
+          "$ref": "#/$defs/outlet_altstore"
+        },
+        "altstore-pal": {
+          "$ref": "#/$defs/outlet_altstore-pal"
+        },
+        "play": {
+          "$ref": "#/$defs/outlet_play"
+        },
+        "play-testing": {
+          "$ref": "#/$defs/outlet_play-testing"
+        },
+        "obtainium": {
+          "$ref": "#/$defs/outlet_obtainium"
+        },
+        "fdroid-repo": {
+          "$ref": "#/$defs/outlet_fdroid-repo"
+        },
+        "ms-store": {
+          "$ref": "#/$defs/outlet_ms-store"
+        },
+        "app-installer": {
+          "$ref": "#/$defs/outlet_app-installer"
+        },
+        "steam": {
+          "$ref": "#/$defs/outlet_steam"
+        },
+        "itch": {
+          "$ref": "#/$defs/outlet_itch"
+        },
+        "flathub": {
+          "$ref": "#/$defs/outlet_flathub"
+        },
+        "snap": {
+          "$ref": "#/$defs/outlet_snap"
+        },
+        "winget": {
+          "$ref": "#/$defs/outlet_winget"
+        },
+        "web": {
+          "$ref": "#/$defs/outlet_web"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/outlet"
+      }
+    },
+    "transports": {
+      "$ref": "#/$defs/transports"
+    },
+    "listing": {
+      "$ref": "#/$defs/listing"
+    }
+  },
+  "$defs": {
+    "outletKind": {
+      "enum": [
+        "direct",
+        "app-store",
+        "testflight",
+        "altstore",
+        "altstore-pal",
+        "play",
+        "play-testing",
+        "obtainium",
+        "fdroid-repo",
+        "ms-store",
+        "app-installer",
+        "steam",
+        "itch",
+        "flathub",
+        "snap",
+        "winget",
+        "web"
+      ]
+    },
+    "outlet": {
+      "description": "An outlet entry with an explicit kind.",
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/outletKind"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "direct"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_direct"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "app-store"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_app-store"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "testflight"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_testflight"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "altstore"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_altstore"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "altstore-pal"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_altstore-pal"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "play"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_play"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "play-testing"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_play-testing"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "obtainium"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_obtainium"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "fdroid-repo"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_fdroid-repo"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "ms-store"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_ms-store"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "app-installer"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_app-installer"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "steam"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_steam"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "itch"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_itch"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "flathub"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_flathub"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "snap"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_snap"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "winget"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_winget"
+          }
+        },
+        {
+          "if": {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "web"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/outlet_web"
+          }
+        }
+      ]
+    },
+    "outlet_direct": {
+      "description": "The identity fields a direct outlet reads: platforms, homebrewCask. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "direct"
+        },
+        "platforms": {
+          "$ref": "#/$defs/platforms"
+        },
+        "homebrewCask": {
+          "$ref": "#/$defs/homebrewCask"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_app-store": {
+      "description": "The identity fields a app-store outlet reads: appleId, bundleId. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "app-store"
+        },
+        "appleId": {
+          "$ref": "#/$defs/appleId"
+        },
+        "bundleId": {
+          "$ref": "#/$defs/bundleId"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_testflight": {
+      "description": "The identity fields a testflight outlet reads: appleId, bundleId. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "testflight"
+        },
+        "appleId": {
+          "$ref": "#/$defs/appleId"
+        },
+        "bundleId": {
+          "$ref": "#/$defs/bundleId"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_altstore": {
+      "description": "The identity fields a altstore outlet reads: artifact, bundleId. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "altstore"
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "bundleId": {
+          "$ref": "#/$defs/bundleId"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_altstore-pal": {
+      "description": "The identity fields a altstore-pal outlet reads: artifact, bundleId, marketplaceId. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "altstore-pal"
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "bundleId": {
+          "$ref": "#/$defs/bundleId"
+        },
+        "marketplaceId": {
+          "$ref": "#/$defs/marketplaceId"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_play": {
+      "description": "The identity fields a play outlet reads: packageName, tracks. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "play"
+        },
+        "packageName": {
+          "$ref": "#/$defs/packageName"
+        },
+        "tracks": {
+          "$ref": "#/$defs/tracks"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_play-testing": {
+      "description": "The identity fields a play-testing outlet reads: packageName, tracks. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "play-testing"
+        },
+        "packageName": {
+          "$ref": "#/$defs/packageName"
+        },
+        "tracks": {
+          "$ref": "#/$defs/tracks"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_obtainium": {
+      "description": "The identity fields a obtainium outlet reads: artifact, packageName. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "obtainium"
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "packageName": {
+          "$ref": "#/$defs/packageName"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_fdroid-repo": {
+      "description": "The identity fields a fdroid-repo outlet reads: artifact, packageName. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "fdroid-repo"
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "packageName": {
+          "$ref": "#/$defs/packageName"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_ms-store": {
+      "description": "The identity fields a ms-store outlet reads: productId, packageFamilyName. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "ms-store"
+        },
+        "productId": {
+          "$ref": "#/$defs/productId"
+        },
+        "packageFamilyName": {
+          "$ref": "#/$defs/packageFamilyName"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_app-installer": {
+      "description": "The identity fields a app-installer outlet reads: packageFamilyName. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "app-installer"
+        },
+        "packageFamilyName": {
+          "$ref": "#/$defs/packageFamilyName"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_steam": {
+      "description": "The identity fields a steam outlet reads: appId, branches. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "steam"
+        },
+        "appId": {
+          "$ref": "#/$defs/numericId"
+        },
+        "branches": {
+          "$ref": "#/$defs/branches"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_itch": {
+      "description": "The identity fields a itch outlet reads: target, gameId. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "itch"
+        },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "gameId": {
+          "$ref": "#/$defs/gameId"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_flathub": {
+      "description": "The identity fields a flathub outlet reads: appId. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "flathub"
+        },
+        "appId": {
+          "$ref": "#/$defs/flatpakId"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_snap": {
+      "description": "The identity fields a snap outlet reads: name. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "snap"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_winget": {
+      "description": "The identity fields a winget outlet reads: packageIdentifier. Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "winget"
+        },
+        "packageIdentifier": {
+          "$ref": "#/$defs/packageIdentifier"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "outlet_web": {
+      "description": "The identity fields a web outlet reads (none). Other keys are ignored.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "web"
+        },
+        "listing": {
+          "$ref": "#/$defs/listing"
+        },
+        "capabilities": false
+      }
+    },
+    "numericId": {
+      "description": "A numeric store id: a positive integer, or the same digits as a string (no leading zero). Stored as the digit string.",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,19}$"
+        }
+      ]
+    },
+    "appleId": {
+      "$ref": "#/$defs/numericId"
+    },
+    "gameId": {
+      "$ref": "#/$defs/numericId"
+    },
+    "bundleId": {
+      "type": "string",
+      "maxLength": 155,
+      "pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+    },
+    "artifact": {
+      "description": "An id in .pkey/release deliverables.app.artifacts (validator-checked).",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "marketplaceId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "packageName": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
+    },
+    "tracks": {
+      "description": "Declared channel \u2192 Play track. Keys must be declared channels (validator-checked).",
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:-]{0,99}$"
+      }
+    },
+    "productId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9]{12}$"
+    },
+    "packageFamilyName": {
+      "description": "The MSIX package family name, <Name>_<PublisherId>.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9.-]{3,50}_[a-z0-9]{13}$"
+    },
+    "branches": {
+      "description": "Declared channel \u2192 Steam branch. Keys must be declared channels (validator-checked).",
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+      }
+    },
+    "target": {
+      "description": "The butler user/game target (not the numeric gameId).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}/[A-Za-z0-9_-]{1,64}$"
+    },
+    "flatpakId": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(\\.[A-Za-z_][A-Za-z0-9_-]*)+$"
+    },
+    "name": {
+      "description": "The snap name.",
+      "type": "string",
+      "pattern": "^[a-z0-9](?:-?[a-z0-9]){0,39}$"
+    },
+    "packageIdentifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$"
+    },
+    "platforms": {
+      "type": "array",
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["macos", "ios", "android", "windows", "linux", "web"]
+      }
+    },
+    "homebrewCask": {
+      "description": "The Homebrew cask token.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.@-]{0,99}$"
+    },
+    "transport": {
+      "enum": [
+        "embedded",
+        "pkey-cdn",
+        "apple-ba",
+        "play-pad",
+        "steam-depot",
+        "msix-optional",
+        "flatpak-ext",
+        "web"
+      ]
+    },
+    "transportMap": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/transport"
+      }
+    },
+    "transports": {
+      "description": "Which transport carries each deliverable per outlet: deliverables.<id>.<outlet>, then packs.<outlet> for a pack, then default (pkey-cdn when unset). Outlet keys must be declared outlets whose kind can carry the transport (validator-checked).",
+      "type": "object",
+      "properties": {
+        "default": {
+          "description": "Applies to every outlet, so only a transport any outlet can carry.",
+          "enum": ["embedded", "pkey-cdn"]
+        },
+        "packs": {
+          "$ref": "#/$defs/transportMap"
+        },
+        "deliverables": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+            "maxLength": 64
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/transportMap"
+          }
+        }
+      }
+    },
+    "listing": {
+      "description": "Store-page metadata. A per-outlet listing is merged over the document's.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 200,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 200,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4000,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f]+$"
+        },
+        "iconUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
+        },
+        "headerUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
+        },
+        "tintColor": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 200,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "screenshots": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
+          }
+        },
+        "website": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
+        },
+        "developerName": {
+          "type": "string",
+          "maxLength": 200,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        }
+      }
+    }
+  }
+}
