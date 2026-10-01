@@ -19,7 +19,7 @@ import { parse as parseYaml } from "yaml";
 export type { ProductModule };
 
 export interface ValidationMessage {
-  file: "product" | "schema" | "release";
+  file: "product" | "schema" | "release" | "distribution";
   path: string;
   code: string;
   message: string;

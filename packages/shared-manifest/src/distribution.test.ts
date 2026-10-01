@@ -1,0 +1,231 @@
+import { describe, expect, it } from "vitest";
+import {
+  distributionOutletIds,
+  normalizeDistribution,
+  outletListing,
+  parseManifest,
+  validateIngestDocuments,
+} from "./index.js";
+
+const product = {
+  slug: "dice",
+  name: "Dice",
+  modules: {
+    license: { enabled: true },
+    release: { enabled: true },
+    distribution: { enabled: true },
+  },
+};
+const schema = { schemaVersion: 1, entries: [] };
+const release = {
+  release: {
+    provider: { type: "github", owner: "acme", repo: "dice" },
+    deliverables: {
+      app: {
+        kind: "app",
+        artifacts: [
+          {
+            id: "apk",
+            platform: "android",
+            arch: "any",
+            format: "apk",
+            match: "Dice-*.apk",
+          },
+        ],
+      },
+    },
+  },
+};
+
+function parse(distribution?: unknown, rel: unknown = release) {
+  const files: Record<string, string> = {
+    product: JSON.stringify(product),
+    schema: JSON.stringify(schema),
+    release: JSON.stringify(rel),
+  };
+  if (distribution !== undefined)
+    files.distribution =
+      typeof distribution === "string"
+        ? distribution
+        : JSON.stringify(distribution);
+  return parseManifest(files);
+}
+
+describe("normalizeDistribution", () => {
+  it("the absent document is one implicit direct outlet by pkey-cdn", () => {
+    const d = normalizeDistribution(undefined);
+    expect(d.declared).toBe(false);
+    expect(d.outlets).toEqual([
+      { id: "direct", kind: "direct", identity: {}, listing: null },
+    ]);
+    expect(d.routes).toEqual([
+      { deliverableId: "app", outletId: "direct", transport: "pkey-cdn" },
+    ]);
+  });
+
+  it("numeric ids become digit strings, foreign fields are dropped, ids are sorted", () => {
+    const d = normalizeDistribution({
+      outlets: {
+        steam: { appId: 480, bundleId: "ignored.on.steam" },
+        itch: { target: "a/b", gameId: 1001 },
+        "app-store": { appleId: "123", bundleId: "gg.vlad.dice" },
+      },
+    });
+    expect(d.outlets.map((o) => o.id)).toEqual(["app-store", "itch", "steam"]);
+    expect(d.outlets.find((o) => o.id === "steam")!.identity).toEqual({
+      appId: "480",
+    });
+    expect(d.outlets.find((o) => o.id === "itch")!.identity).toEqual({
+      target: "a/b",
+      gameId: "1001",
+    });
+  });
+
+  it("resolves a transport per deliverable: override, then packs (packs only), then default", () => {
+    const d = normalizeDistribution(
+      {
+        outlets: { "app-store": {}, play: {}, web: {} },
+        transports: {
+          default: "embedded",
+          packs: { "app-store": "apple-ba", play: "play-pad" },
+          deliverables: {
+            app: { web: "web" },
+            "dice.levels": { play: "embedded" },
+          },
+        },
+      },
+      [
+        { id: "app", kind: "app" },
+        { id: "dice.levels", kind: "pack" },
+      ],
+    );
+    const t = (deliverable: string, outlet: string) =>
+      d.routes.find(
+        (r) => r.deliverableId === deliverable && r.outletId === outlet,
+      )!.transport;
+    expect(t("app", "app-store")).toBe("embedded");
+    expect(t("app", "web")).toBe("web");
+    expect(t("dice.levels", "app-store")).toBe("apple-ba");
+    expect(t("dice.levels", "play")).toBe("embedded");
+    expect(t("dice.levels", "web")).toBe("embedded");
+    expect(d.routes).toHaveLength(6);
+  });
+
+  it("merges a per-outlet listing over the document's", () => {
+    const d = normalizeDistribution({
+      outlets: {
+        altstore: {},
+        "altstore-beta": { kind: "altstore", listing: { subtitle: "Beta" } },
+      },
+      listing: { name: "Dice", subtitle: "Roll" },
+    });
+    expect(outletListing(d, "altstore")).toEqual({
+      name: "Dice",
+      subtitle: "Roll",
+    });
+    expect(outletListing(d, "altstore-beta")).toEqual({
+      name: "Dice",
+      subtitle: "Beta",
+    });
+  });
+});
+
+describe("distributionOutletIds", () => {
+  const d = normalizeDistribution({
+    outlets: {
+      direct: { homebrewCask: "dice" },
+      steam: { appId: 480 },
+      "steam-playtest": { kind: "steam", appId: "481" },
+      itch: { target: "vlad/dice", gameId: 1001 },
+      flathub: { appId: "gg.vlad.Dice" },
+      snap: { name: "dice" },
+      "ms-store": { packageFamilyName: "Vlad.Dice_abcdefghjkmnp" },
+      "app-installer": { packageFamilyName: "Vlad.Dice_1a2b3c4d5e6f7" },
+    },
+  });
+
+  it("maps every id to a string, keys sorted, msixFamilyName from the build's own entry", () => {
+    const ids = distributionOutletIds(d, "ms-store")!;
+    expect(JSON.stringify(ids)).toBe(
+      JSON.stringify({
+        caskToken: "dice",
+        flatpakId: "gg.vlad.Dice",
+        itchGameId: "1001",
+        msixFamilyName: "Vlad.Dice_abcdefghjkmnp",
+        snapName: "dice",
+        steamAppId: "480",
+      }),
+    );
+    expect(distributionOutletIds(d, "app-installer")!.msixFamilyName).toBe(
+      "Vlad.Dice_1a2b3c4d5e6f7",
+    );
+    expect(distributionOutletIds(d, "direct")!.msixFamilyName).toBeUndefined();
+  });
+
+  it("prefers the build's own entry for its kind", () => {
+    expect(distributionOutletIds(d, "steam-playtest")!.steamAppId).toBe("481");
+    expect(distributionOutletIds(d, "itch")!.steamAppId).toBe("480");
+  });
+
+  it("is null for an outlet the document does not declare", () => {
+    expect(distributionOutletIds(d, "play")).toBeNull();
+  });
+});
+
+describe("parseManifest and .pkey/distribution", () => {
+  it("parses the document (YAML too) into ParsedManifest.distribution", () => {
+    const res = parse(
+      "outlets:\n  obtainium:\n    artifact: apk\n  steam:\n    appId: 480\n",
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.distribution?.declared).toBe(true);
+    expect(res.manifest.distribution?.outlets.map((o) => o.id)).toEqual([
+      "obtainium",
+      "steam",
+    ]);
+  });
+
+  it("carries the implicit document when Distribution is on and the file is absent", () => {
+    const res = parse();
+    expect(res.ok && res.manifest.distribution?.declared).toBe(false);
+  });
+
+  it("carries no distribution when the service is off and the file is absent", () => {
+    const res = parseManifest({
+      product: JSON.stringify({ slug: "dice", name: "Dice" }),
+      schema: JSON.stringify(schema),
+    });
+    expect(res.ok && res.manifest.distribution).toBeUndefined();
+  });
+
+  it("reports distribution errors with the file name", () => {
+    const res = parse({
+      outlets: { steam: { capabilities: { codeUpdates: true } } },
+    });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors).toEqual([
+      expect.stringMatching(/^distribution\/outlets\/steam\/capabilities: /),
+    ]);
+  });
+
+  it("checks artifact refs against the release document's map", () => {
+    const res = validateIngestDocuments({
+      product,
+      schema,
+      release,
+      distribution: { outlets: { altstore: { artifact: "ipa" } } },
+    });
+    expect(res.errors.map((e) => [e.file, e.code])).toEqual([
+      ["distribution", "unknown_artifact_ref"],
+    ]);
+  });
+
+  it("refuses an oversized distribution document before parsing it", () => {
+    const res = parse(`# ${"x".repeat(70 * 1024)}\n`);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors[0]).toMatch(/^distribution: larger than/);
+  });
+});
