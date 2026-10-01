@@ -6,8 +6,19 @@
 // reports `enabled: false`, the gate's status is `not-applicable`, and `<LicenseGate>` renders
 // its children straight through (D-08).
 
-export { useLicense, useLicenseGate, screenFor } from "../react/hooks.js";
-export type { UseLicense, UseLicenseGate, GateScreen } from "../react/hooks.js";
+export {
+  useLicense,
+  useLicenseGate,
+  useImportBundle,
+  screenFor,
+} from "../react/hooks.js";
+export type {
+  UseLicense,
+  UseLicenseGate,
+  UseImportBundle,
+  GateScreen,
+} from "../react/hooks.js";
+export type { ImportBundleResult } from "../core/index.js";
 export { useEntitlement } from "../react/hooks.js";
 export {
   LicenseGate,

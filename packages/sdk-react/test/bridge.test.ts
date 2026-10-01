@@ -1,4 +1,4 @@
-// Bridge protocol v2 — the contract an Electron/Tauri host implements.
+// Bridge protocol v3 — the contract an Electron/Tauri host implements.
 //
 // The load-bearing assertion here is the MIRROR: `@polaris-key/node`'s `PolarisKeyClient.getSyncState()`
 // must satisfy this package's `BridgeState` with nothing in between, so a host can write
@@ -64,9 +64,27 @@ describe("BridgeState mirrors @polaris-key/node's SyncState", () => {
     expect(asBridge.highWaterMark).toBe(1_700_000_000);
   });
 
-  it("declares its protocol revision", () => {
-    expect(BRIDGE_VERSION).toBe(2);
+  it("declares its protocol revision (the fixture bridge is a v2 host)", () => {
+    expect(BRIDGE_VERSION).toBe(3);
     expect(makeFakeBridge(emptyBridgeState()).version).toBe(2);
+  });
+
+  it("v3's importBundle mirrors @polaris-key/node's importBundle, field for field", () => {
+    /** VERBATIM from `packages/sdk-node/src/core/bundle.ts`. */
+    interface NodeImportBundleResult {
+      bundleId: string;
+      imported: ("license" | "config")[];
+    }
+    const nodeImport = async (
+      _jws: string,
+    ): Promise<NodeImportBundleResult> => ({
+      bundleId: "b1",
+      imported: ["license"],
+    });
+    // A host writes `importBundle: (jws) => client.importBundle(jws)`; this does not compile if
+    // the two shapes drift.
+    const asBridge: NonNullable<PolarisBridge["importBundle"]> = nodeImport;
+    expect(typeof asBridge).toBe("function");
   });
 
   it("v1's `hasToken` is gone outright — activation is the only credential signal", () => {

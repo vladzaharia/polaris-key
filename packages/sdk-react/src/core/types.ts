@@ -15,6 +15,7 @@ import type {
   LicenseStatus,
 } from "@polaris-key/protocol/license";
 import type { ConfigSource, LicenseState } from "@polaris-key/client-core";
+import type { ProductCatalog } from "@polaris-key/catalog";
 // `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
 // erased, so this value import creates no runtime cycle.
 import { noBusy, noErrors } from "./services.js";
@@ -44,6 +45,10 @@ export type PolarisErrorCode =
   | "refresh-failed"
   | "network"
   | "bridge-missing"
+  | "not-entitled"
+  | "bundle-rejected"
+  | "bundle-import-unsupported"
+  | "report-unsupported"
   | "unknown";
 
 /** One user-facing config row for a settings UI: `hidden` keys are excluded entirely, and
@@ -81,13 +86,47 @@ export interface VersionCheck {
   updateAvailable: boolean;
 }
 
-/** A typed error every adapter throws so callers can branch on `.code` not on strings. */
+/** One published release, as `GET /<product>/release/changelog` reports it. Mirrors
+ *  `@polaris-key/node`'s `ChangelogEntry` field for field. */
+export interface ChangelogEntry {
+  version: string;
+  tag: string;
+  /** ISO-8601 publication time, or null for an undated release. */
+  date: string | null;
+  /** The curated summary, or null when the release body yielded none. */
+  summary: string | null;
+  url: string;
+}
+
+/** Flags for `downloadUrl` — the same two `@polaris-key/node`'s `downloadUrl` takes. */
+export interface DownloadUrlOptions {
+  /** Ask for the artifact's sha256 digest instead of the artifact (`?checksum=sha256`). */
+  checksum?: boolean;
+  /** The `.dmg` variant of the artifact. */
+  dmg?: boolean;
+}
+
+/** What an offline bundle import landed (wire contract v3 §7). Mirrors `@polaris-key/node`'s
+ *  `ImportBundleResult`. `license` present ⇒ the gate is now activated by bundle. */
+export interface ImportBundleResult {
+  bundleId: string;
+  imported: ("license" | "config")[];
+}
+
+/** A typed error every adapter throws so callers can branch on `.code` not on strings.
+ *
+ *  `code` is the UI vocabulary above. `wireCode`, when present, is the code the OTHER side
+ *  named: the refusal body's own code for a `not-entitled` release read (`unauthorized`,
+ *  `channel_not_allowed`, …), the §7 step for a `bundle-rejected` import
+ *  (`bundle-claims-rejected`, …). It is the value the other SDKs put in their own `code`. */
 export class PolarisError extends Error {
   readonly code: PolarisErrorCode;
-  constructor(code: PolarisErrorCode, message?: string) {
+  readonly wireCode?: string;
+  constructor(code: PolarisErrorCode, message?: string, wireCode?: string) {
     super(message ?? code);
     this.name = "PolarisError";
     this.code = code;
+    if (wireCode !== undefined) this.wireCode = wireCode;
   }
 }
 
@@ -196,6 +235,36 @@ export interface PolarisAdapter {
   getSecret(key: string): string | null;
   /** True when a boolean entitlement is granted. */
   isEntitled(name: string): boolean;
+  /** The channels the licence grants: the `channels` entitlement's string values in order, or
+   *  `["stable"]` when it is absent or not an array — the Worker's answer, and every SDK's. */
+  entitledChannels(): string[];
+  /** `GET /<product>/config/schema` — the product's active config catalog, or `null` on ANY
+   *  failure. Unsigned and diagnostic: it never throws, and a product without Config is not
+   *  even probed (D-21). Desktop: the bridge's `fetchSchema`. */
+  fetchSchema(): Promise<ProductCatalog | null>;
+  /** `GET /<product>/release/changelog`, newest first. Throws `service-disabled` when the
+   *  product does not run Release, `not-entitled` (with the refusal's `wireCode`) for a 401 or
+   *  403. Desktop: `invoke("release", "changelog")`. */
+  changelog(): Promise<ChangelogEntry[]>;
+  /** The canonical install-script URL. Built, not fetched. */
+  installUrl(): Promise<string>;
+  /** The artifact URL `/<product>/release/dl/:version/:binary-:arch[.dmg][?checksum=sha256]`.
+   *  Built, not fetched: the caller streams it. */
+  downloadUrl(
+    version: string,
+    binary: string,
+    arch: string,
+    opts?: DownloadUrlOptions,
+  ): Promise<string>;
+  /** Import an offline activation bundle (§7). All-or-nothing: a refusal (`bundle-rejected`,
+   *  `wireCode` = the step that refused) changes nothing. A bundle carrying a licence leaves the
+   *  gate at `activation: "bundle"`. Desktop: the bridge's `importBundle` (protocol v3);
+   *  browser: verified in-page and kept in IndexedDB. */
+  importBundle(jws: string): Promise<ImportBundleResult>;
+  /** Post device telemetry now (`POST /<product>/devices/report`). Desktop only, through
+   *  `invoke("devices", "report")`; a browser holds no device bearer, so it throws
+   *  `report-unsupported` (a registered runtime N/A). */
+  report(): Promise<boolean>;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
 }

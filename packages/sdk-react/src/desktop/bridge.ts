@@ -1,4 +1,4 @@
-// The desktop IPC contract, version 2. In an Electron/Tauri app the main/native process owns
+// The desktop IPC contract, version 3. In an Electron/Tauri app the main/native process owns
 // the real `@polaris-key/node` client (token + keyring + loopback OIDC) and exposes THIS object to the
 // renderer (default: `window.polarisKey`, via a contextBridge preload). The React desktop
 // adapter is a thin renderer-side proxy over these methods — all credential and filesystem
@@ -19,6 +19,17 @@
 //   * `config` — the CONFIG document's entries. v3 split the fused document, so grants arrive
 //     on `doc` (a `LicenseDoc`) and settings arrive here.
 //   * `getSyncState()` and a versioned `invoke(service, method, args)` escape hatch.
+//
+// ── WHAT v3 CHANGED (P1b-07) ────────────────────────────────────────────────────────────────
+//
+//   * `importBundle(jws)` — offline activation (§7) through the host's
+//     `PolarisKeyClient.importBundle`, which verifies and writes the cache in the privileged
+//     process. OPTIONAL: a v2 host omits it and the adapter reports `bundle-import-unsupported`.
+//   * `fetchSchema()` returns the product catalog or `null` (the host's
+//     `client.config.fetchSchema()`), never a throw for a failed fetch.
+//   * The renderer reaches three more sub-client verbs through `invoke` — `release.changelog`,
+//     `release.installUrl` / `release.downloadUrl`, and `devices.report` — which need no
+//     interface change, only a host that answers them.
 //
 // ── THE @polaris-key/node MIRROR ───────────────────────────────────────────────────────────────────
 //
@@ -90,7 +101,13 @@ export type BridgeActivation =
 
 /** The bridge protocol revision this package speaks. A host may report its own via
  *  `version`; the adapter treats an absent value as 1 and degrades accordingly. */
-export const BRIDGE_VERSION = 2;
+export const BRIDGE_VERSION = 3;
+
+/** What `importBundle` landed. `@polaris-key/node`'s `ImportBundleResult`, field for field. */
+export interface BridgeImportBundle {
+  bundleId: string;
+  imported: ("license" | "config")[];
+}
 
 /**
  * The contract the native side implements and the renderer calls. Every method is async
@@ -124,8 +141,16 @@ export interface PolarisBridge {
    * A host that omits `invoke` simply has those capabilities reported as unsupported.
    */
   invoke?(service: string, method: string, args?: unknown): Promise<unknown>;
-  /** Optionally let the renderer fetch the product config schema/catalog. */
+  /** Optionally let the renderer fetch the product config catalog: the host's
+   *  `client.config.fetchSchema()`, which answers `null` on any failure. */
   fetchSchema?(): Promise<JSONValue>;
+  /**
+   * Protocol v3: verify and install an offline activation bundle (§7) in the privileged
+   * process — the host's `client.importBundle(jws)`. All-or-nothing; a refusal rejects with the
+   * §7 step that refused (`@polaris-key/node`'s `PolarisError.code`). Absent on a v2 host,
+   * which the adapter reports as `bundle-import-unsupported`.
+   */
+  importBundle?(jws: string): Promise<BridgeImportBundle>;
   /** Subscribe to pushed state changes; returns an unsubscribe. */
   on(event: "stateChanged", cb: (state: BridgeState) => void): () => void;
 }

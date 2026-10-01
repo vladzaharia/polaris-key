@@ -14,7 +14,16 @@
 //
 // The gate's `activation` input is `"token"` for an authenticated session: the session cookie
 // IS the credential here, standing in for the per-device `pkeyt_` token a native client holds.
-// A browser can never be `"bundle"`-activated — there is no local store to import one into.
+//
+// It is `"bundle"` for a page that imported an offline activation bundle (§7, P1b-07) and holds
+// no session: the bundle is verified in-page against the pinned keys (`trust`) for a RANDOM
+// device id kept in IndexedDB, and its signed artifacts are re-verified from IndexedDB on every
+// load (`./offline.ts`). A session supersedes a bundle, as a token does in every other SDK.
+//
+// ── WHAT A BROWSER CANNOT DO ────────────────────────────────────────────────────────────────
+//
+// Device telemetry (`report()`) needs a device bearer, which a cookie session does not hold, so
+// it throws `report-unsupported` — the `devices.report` web N/A the parity registry allows.
 //
 // Mode-parity: the adapter reduces the authenticated session read to the SAME `client-core`
 // `GateInput` the desktop bridge produces and runs the SAME `licenseState`, so a browser
@@ -33,6 +42,7 @@ import type {
   LicenseDoc,
 } from "@polaris-key/protocol/license";
 import { compareSemver, highWaterMark } from "@polaris-key/client-core";
+import type { ProductCatalog } from "@polaris-key/catalog";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import {
   configSource,
@@ -41,6 +51,7 @@ import {
   projectState,
   readConfig,
   readEntitled,
+  readEntitledChannels,
 } from "../core/adapter.js";
 import { createStore, type Store } from "../core/store.js";
 import {
@@ -54,6 +65,9 @@ import {
   type PolarisState,
   type UserConfigEntry,
   type VersionCheck,
+  type ChangelogEntry,
+  type DownloadUrlOptions,
+  type ImportBundleResult,
 } from "../core/index.js";
 import {
   copyServices,
@@ -67,6 +81,21 @@ import {
   type ServicesMap,
 } from "../core/services.js";
 import { discoverProduct } from "./discovery.js";
+import { fetchCatalog } from "./catalog.js";
+import {
+  buildDownloadUrl,
+  buildInstallUrl,
+  fetchChangelog,
+} from "./release.js";
+import {
+  ensureRecord,
+  importOfflineBundle,
+  indexedDbOfflineStore,
+  loadOffline,
+  type OfflineState,
+  type OfflineStore,
+  type TrustSet,
+} from "./offline.js";
 
 const DEFAULT_BASE = "https://key.plrs.im";
 
@@ -90,6 +119,13 @@ export interface BrowserAdapterOptions {
   /** What the host EXPECTS this product to run, used only while discovery has not answered
    *  (D-21). Defaults to license + config; never all-true. */
   expectServices?: ServicesMap;
+  /** The pinned trust keys (kid → raw Ed25519 public key, base64url). An offline bundle
+   *  verifies against these ONLY (§7.1), so without them `importBundle` throws
+   *  `bundle-import-unsupported` and no stored bundle is ever loaded. */
+  trust?: { pinnedKeys: TrustSet };
+  /** Where the random device id and an imported bundle live. Defaults to IndexedDB; `null`
+   *  (or a runtime without IndexedDB) makes bundle import unsupported. */
+  offlineStore?: OfflineStore | null;
 }
 
 /** The JSON shape the Worker's authenticated session endpoint returns. Unchanged by §R1's
@@ -165,6 +201,10 @@ export class BrowserAdapter implements PolarisAdapter {
   private csrf: string | null = null;
   private hadSession = false;
   private capabilities: ServicesMap;
+  private readonly pinned: TrustSet | null;
+  private readonly offline: OfflineStore | null;
+  /** The re-verified offline state (device id + imported bundle), once loaded. */
+  private offlineState: OfflineState | null = null;
 
   constructor(opts: BrowserAdapterOptions) {
     this.product = opts.productSlug;
@@ -180,6 +220,11 @@ export class BrowserAdapter implements PolarisAdapter {
     this.version = opts.version;
     // D-21: the pre-discovery belief. Never all-true.
     this.capabilities = copyServices(opts.expectServices ?? defaultServices());
+    this.pinned = opts.trust?.pinnedKeys ?? null;
+    this.offline =
+      opts.offlineStore === undefined
+        ? indexedDbOfflineStore()
+        : opts.offlineStore;
     this.store = createStore<PolarisState>(
       initialState("browser", this.capabilities, this.localOverrides),
     );
@@ -222,6 +267,11 @@ export class BrowserAdapter implements PolarisAdapter {
   ): void {
     if (s.csrfToken) this.csrf = s.csrfToken;
     this.hadSession = s.authenticated;
+    // §7: with no session, an imported bundle is the activation. A session supersedes it.
+    if (!s.authenticated && this.offlineState?.importedBundle) {
+      this.applyOffline(flags);
+      return;
+    }
     const docs = splitSessionDoc(s.doc);
     this.store.set(
       projectState(
@@ -246,6 +296,46 @@ export class BrowserAdapter implements PolarisAdapter {
         },
       ),
     );
+  }
+
+  /** Project the imported bundle's re-verified documents: `activation: "bundle"` when it
+   *  carried a licence, otherwise settings only (a config-only bundle grants nothing, D-08). */
+  private applyOffline(
+    flags: { busy?: ServiceBusyMap; error?: ServiceErrorMap } = {},
+  ): void {
+    const o = this.offlineState;
+    this.store.set(
+      projectState(
+        "browser",
+        { license: o?.license ?? null, config: o?.config?.config ?? {} },
+        {
+          activation: o?.license ? "bundle" : null,
+          now: this.clock(),
+          highWaterMark: o?.highWaterMark ?? 0,
+          lastSyncUnauthorized: false,
+          blocked: null,
+          lastVerifiedAt: o?.lastVerifiedAt ?? null,
+        },
+        {
+          ...flags,
+          localOverrides: this.localOverrides,
+          capabilities: this.capabilities,
+        },
+      ),
+    );
+  }
+
+  /** Re-verify whatever bundle IndexedDB holds. A store that cannot be read is "no bundle". */
+  private async loadOfflineState(): Promise<void> {
+    if (!this.offline || !this.pinned) return;
+    const record = await this.offline.read(this.product);
+    this.offlineState = record
+      ? await loadOffline(record, {
+          pinned: this.pinned,
+          product: this.product,
+          now: this.clock(),
+        })
+      : null;
   }
 
   /** Re-project the current snapshot with a new busy/error map (no transport round-trip). */
@@ -305,16 +395,24 @@ export class BrowserAdapter implements PolarisAdapter {
   private async load(): Promise<void> {
     const sessionRequest = this.fetchSession();
     const capabilities = this.loadCapabilities().catch(() => undefined);
+    const offline = this.loadOfflineState().catch(() => undefined);
     try {
       const session = await sessionRequest;
       await capabilities;
+      await offline;
       this.apply(session);
     } catch (e) {
       await capabilities;
+      await offline;
       const err =
         e instanceof PolarisError
           ? e
           : new PolarisError("network", (e as Error).message);
+      // Offline is exactly when an imported bundle matters: it still activates the page.
+      if (this.offlineState?.importedBundle) {
+        this.applyOffline({ error: withError(noErrors(), "identity", err) });
+        return;
+      }
       this.store.set(() =>
         projectState(
           "browser",
@@ -466,6 +564,14 @@ export class BrowserAdapter implements PolarisAdapter {
       }
       this.csrf = null;
       this.hadSession = false;
+      // A sign-out wipes local state, the imported bundle included (the device id stays: it is
+      // this browser's identity, not a credential).
+      if (this.offlineState?.importedBundle && this.offline) {
+        await this.offline.write(this.product, {
+          deviceId: this.offlineState.deviceId,
+        });
+      }
+      this.offlineState = null;
       this.store.set(() =>
         projectState(
           "browser",
@@ -569,6 +675,141 @@ export class BrowserAdapter implements PolarisAdapter {
           : new PolarisError("network", (e as Error).message),
       );
     }
+  }
+
+  /** The metadata a public read carries. */
+  private requestOpts() {
+    return {
+      baseUrl: this.base,
+      product: this.product,
+      fetchImpl: this.fetchImpl,
+      headers: this.metadataHeaders(),
+    };
+  }
+
+  /** D-21 for Release: refuse before any dial when the product does not run it. */
+  private requireRelease(): void {
+    if (!this.capabilities.release.enabled) {
+      throw this.fail(
+        "release",
+        new PolarisError(
+          "service-disabled",
+          "This product does not run the Release service.",
+        ),
+      );
+    }
+  }
+
+  async fetchSchema(): Promise<ProductCatalog | null> {
+    // D-21: a product without Config is not even probed. Diagnostic: never throws.
+    if (!this.capabilities.config.enabled) return null;
+    return fetchCatalog(this.requestOpts());
+  }
+
+  async changelog(): Promise<ChangelogEntry[]> {
+    this.requireRelease();
+    this.setBusy("release", true);
+    try {
+      const entries = await fetchChangelog(this.requestOpts());
+      this.patch((prev) => ({
+        busy: withBusy(prev.busy, "release", false),
+        error: withError(prev.error, "release", null),
+      }));
+      return entries;
+    } catch (e) {
+      throw this.fail(
+        "release",
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("network", (e as Error).message),
+      );
+    }
+  }
+
+  async installUrl(): Promise<string> {
+    this.requireRelease();
+    return buildInstallUrl(this.base, this.product);
+  }
+
+  async downloadUrl(
+    version: string,
+    binary: string,
+    arch: string,
+    opts: DownloadUrlOptions = {},
+  ): Promise<string> {
+    this.requireRelease();
+    return buildDownloadUrl(
+      this.base,
+      this.product,
+      version,
+      binary,
+      arch,
+      opts,
+    );
+  }
+
+  /** This browser's device id — the id an operator mints an offline bundle against. Minted
+   *  (randomly) and persisted on first use; `null` where there is nowhere to keep it. */
+  async offlineDeviceId(): Promise<string | null> {
+    if (!this.offline) return null;
+    return (await ensureRecord(this.offline, this.product)).deviceId;
+  }
+
+  async importBundle(jws: string): Promise<ImportBundleResult> {
+    if (!this.offline || !this.pinned) {
+      throw this.fail(
+        "license",
+        new PolarisError(
+          "bundle-import-unsupported",
+          this.offline
+            ? "Offline bundles need the pinned trust keys (pass { trust: { pinnedKeys } })."
+            : "This browser has no IndexedDB to keep an offline bundle in.",
+        ),
+      );
+    }
+    this.setBusy("license", true);
+    try {
+      const result = await importOfflineBundle(
+        this.offline,
+        this.product,
+        jws,
+        {
+          pinned: this.pinned,
+          now: this.clock(),
+        },
+      );
+      await this.loadOfflineState();
+      if (this.hadSession) {
+        // A session supersedes the bundle (§7): the gate does not move.
+        this.patch((prev) => ({
+          busy: withBusy(prev.busy, "license", false),
+          error: withError(prev.error, "license", null),
+        }));
+      } else {
+        this.applyOffline({ busy: noBusy(), error: noErrors() });
+      }
+      return result;
+    } catch (e) {
+      throw this.fail(
+        "license",
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("unknown", (e as Error).message),
+      );
+    }
+  }
+
+  /** `POST /<p>/devices/report` takes a device bearer, which a cookie session does not hold:
+   *  the `devices.report` web N/A (`runtime`), stated rather than silently skipped. */
+  async report(): Promise<boolean> {
+    throw new PolarisError(
+      "report-unsupported",
+      "Device telemetry needs a device token; a browser session has none.",
+    );
+  }
+
+  entitledChannels(): string[] {
+    return readEntitledChannels(this.store.get());
   }
 
   getConfig<T = JSONValue>(key: string, fallback: T): T {
