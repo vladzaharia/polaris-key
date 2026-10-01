@@ -908,11 +908,21 @@ describe("ingestReleaseDescriptor (CI)", () => {
     );
   });
 
-  it("refuses to enrich a synced row whose files the descriptor does not name", async () => {
+  it("refuses to enrich a synced row when it places on GitHub a file the row does not hold", async () => {
     const { db, ingest, fetchImpl } = await ciSetup();
     await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl);
     const before = await dump(db);
-    const res = await ingest(descriptor());
+    const d = descriptor();
+    d.builds[0].artifacts.push({
+      name: "Diceroll-1.2.3-macos.dmg.minisig",
+      role: "signature",
+      sha256: sha("minisig"),
+      size: 64,
+      locations: [
+        { provider: "github", asset: "Diceroll-1.2.3-macos.dmg.minisig" },
+      ],
+    });
+    const res = await ingest(d);
     expect(res).toMatchObject({ ok: false, reason: "release_exists" });
     expect(await dump(db)).toEqual(before);
   });
@@ -1043,6 +1053,44 @@ describe("the GitHub path: pkey-release.json during the truth-store sync", () =>
       status: "refused",
       reason: "digest_mismatch",
       assetId: 200,
+    });
+  });
+
+  it("an explicit seq on a release first seen in this sync is taken before the store numbers the rest", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const d = attachedDescriptor();
+    d.seq = 1;
+    const older = ghRelease({
+      tag_name: "v1.1.0",
+      published_at: "2026-08-01T00:00:00Z",
+      assets: [asset("Diceroll-1.1.0-macos.dmg", 90, "v1.1.0")],
+    });
+    const { fetchImpl } = github([withDescriptorAsset(), older], {
+      assets: { 200: JSON.stringify(d) },
+    });
+    expect(
+      await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl),
+    ).toBeGreaterThan(0);
+    const seqs = Object.fromEntries(
+      (await listReleaseMetadata(db, SLUG)).map((m) => [m.release_id, m.seq]),
+    );
+    expect(seqs).toEqual({ "v1.2.3": 1, "v1.1.0": 2 });
+  });
+
+  it("an oversized pkey-release.json is refused without being fetched", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const r = ghRelease();
+    r.assets.push({ ...asset("pkey-release.json", 200), size: 70_000 });
+    const { fetchImpl, assetFetches } = github([r], { assets: { 200: "{}" } });
+    await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl);
+    expect(assetFetches()).toBe(0);
+    const health = (await listReleaseHealth(db, SLUG)).find(
+      (h) => h.subject_id === "v1.2.3",
+    )!;
+    expect(JSON.parse(health.details_json!).descriptor).toEqual({
+      refused: "invalid_descriptor",
     });
   });
 

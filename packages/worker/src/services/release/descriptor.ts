@@ -390,19 +390,22 @@ export async function planDescriptorIngest(
     existingArtifacts.map((a) => [a.name, a.artifact_id]),
   );
   if (existing) {
-    // Enrichment: only a row the sync created for the SAME TAG, whose files the descriptor names.
-    const names = new Set(
-      d.builds.flatMap((b) => b.artifacts.map((a) => a.name)),
-    );
-    const unnamed = existingArtifacts
-      .map((a) => a.name)
-      .filter((n) => n !== DESCRIPTOR_ASSET_NAME && !names.has(n));
-    if (d.tag === undefined || unnamed.length > 0)
+    // Enrichment: only a row the sync created for the SAME TAG, and only when the files the
+    // descriptor places on GitHub are files that row already holds (its names match).
+    const held = new Set(existingArtifacts.map((a) => a.name));
+    const strangers = d.builds
+      .flatMap((b) => b.artifacts)
+      .filter(
+        (a) =>
+          a.locations.some((l) => l.provider === "github") && !held.has(a.name),
+      )
+      .map((a) => a.name);
+    if (d.tag === undefined || strangers.length > 0)
       return refuse(
         "release_exists",
         d.tag === undefined
           ? `${releaseId} already exists.`
-          : `${releaseId} already exists with files the descriptor does not name: ${unnamed.slice(0, 5).join(", ")}.`,
+          : `${releaseId} already exists, and its files do not include ${strangers.slice(0, 5).join(", ")}.`,
         { status: 409 },
       );
   }
@@ -869,27 +872,17 @@ export async function ingestGithubDescriptors(
 
   let reservedMaxSeq = 0;
   for (const { r, asset } of budget) {
-    let parsed: unknown;
-    try {
-      const text = await fetchTextAsset(
-        token,
-        cfg.gh_owner,
-        cfg.gh_repo,
-        asset.id,
-        fetchImpl,
-        MAX_DESCRIPTOR_BYTES,
-      );
-      parsed = JSON.parse(text);
-    } catch (err) {
-      if (err instanceof SyntaxError) parsed = undefined;
-      else continue; // transient: try again next sync
-    }
+    const read = await readAttachedDescriptor(cfg, token, asset, fetchImpl);
+    if (read === "transient") continue; // try again next sync
     const plan =
-      parsed === undefined
-        ? refuse("invalid_descriptor", "pkey-release.json is not JSON.")
+      read === "unreadable"
+        ? refuse(
+            "invalid_descriptor",
+            `pkey-release.json is not JSON of at most ${MAX_DESCRIPTOR_BYTES} bytes.`,
+          )
         : await planDescriptorIngest(db, {
             product,
-            descriptor: parsed,
+            descriptor: read.value,
             source: "github",
             now,
             cfg,
@@ -927,4 +920,36 @@ export async function ingestGithubDescriptors(
     });
   }
   return out;
+}
+
+/**
+ * Fetch and parse one `pkey-release.json`. `unreadable` (too large, or not JSON) is a refusal;
+ * `transient` (quota, a 404, a network failure) is retried by the next sync.
+ */
+async function readAttachedDescriptor(
+  cfg: { gh_owner: string; gh_repo: string },
+  token: string,
+  asset: ReleaseAsset,
+  fetchImpl: FetchImpl,
+): Promise<{ value: unknown } | "unreadable" | "transient"> {
+  // Over the cap it can never be accepted, so it is refused without spending a fetch.
+  if (asset.size > MAX_DESCRIPTOR_BYTES) return "unreadable";
+  let text: string;
+  try {
+    text = await fetchTextAsset(
+      token,
+      cfg.gh_owner,
+      cfg.gh_repo,
+      asset.id,
+      fetchImpl,
+      MAX_DESCRIPTOR_BYTES,
+    );
+  } catch {
+    return "transient";
+  }
+  try {
+    return { value: JSON.parse(text) as unknown };
+  } catch {
+    return "unreadable";
+  }
 }
