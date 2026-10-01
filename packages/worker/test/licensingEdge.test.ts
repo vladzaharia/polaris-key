@@ -229,6 +229,70 @@ describe("licensing edge cases", () => {
     expect(m!.last_seen).toBe(NOW + 5);
   });
 
+  it("report keeps engine and outlet, bounded (P1-05)", async () => {
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    const token = await activate(env, db, product, key, "dev-1");
+    const long = "x".repeat(300);
+    const send = (body: unknown, at: number) =>
+      handleReport(
+        mkReq("POST", { authorization: `Bearer ${token}` }, body),
+        env,
+        db,
+        product,
+        at,
+      );
+    const stored = async () =>
+      JSON.parse((await getDevice(db, "djdl", "dev-1"))!.reported_json!) as {
+        engine?: Record<string, unknown>;
+        outlet?: string;
+      };
+
+    const res = await send(
+      {
+        engine: {
+          id: "godot-4.7",
+          version: "4.7.2.stable.official",
+          renderer: "forward_plus",
+          videoAdapter: long,
+          videoVendor: "Apple",
+          videoApi: "Metal 3.2",
+          display: "macOS",
+          debug: false,
+          // Unknown fields are dropped.
+          shader: "opaque",
+          nested: { deep: true },
+        },
+        outlet: `steam-${long}`,
+      },
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    const first = await stored();
+    expect(first.engine).toEqual({
+      id: "godot-4.7",
+      version: "4.7.2.stable.official",
+      renderer: "forward_plus",
+      videoAdapter: "x".repeat(128),
+      videoVendor: "Apple",
+      videoApi: "Metal 3.2",
+      display: "macOS",
+      debug: false,
+    });
+    expect(first.outlet).toBe(`steam-${"x".repeat(58)}`);
+    expect(first.outlet).toHaveLength(64);
+
+    // A non-object engine and a non-string outlet are dropped whole.
+    expect(
+      (await send({ engine: ["godot"], outlet: 7, appVersion: "1.0.0" }, NOW))
+        .status,
+    ).toBe(200);
+    expect(await stored()).toEqual({ appVersion: "1.0.0" });
+
+    // A wrong-typed field inside engine is dropped; the rest survive.
+    await send({ engine: { id: 4, debug: "yes", version: "4.7" } }, NOW);
+    expect(await stored()).toEqual({ engine: { version: "4.7" } });
+  });
+
   it("report rejects an unknown token / invalid body", async () => {
     expect(
       (

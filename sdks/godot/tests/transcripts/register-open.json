@@ -154,7 +154,9 @@
                   "gate",
                   "config",
                   "entitlements",
-                  "timestamp"
+                  "timestamp",
+                  "engine",
+                  "outlet"
                 ]
               }
             },

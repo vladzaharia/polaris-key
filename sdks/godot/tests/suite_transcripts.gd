@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature core.discover core.sync core.cache
+# @pkey-feature core.discover core.sync core.cache devices.register devices.report
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -10,10 +10,10 @@ extends RefCounted
 # starts running the moment the manifest claims it. The SDK clock is pinned to each step's `now`:
 # the recorded documents were signed at a fixed instant and expire an hour later.
 #
-# Two hooks stand in for packages that have not landed, exactly where those packages plug in:
-# the 401 re-acquire is `POST /license/token` (P1-03 supplies the real strategies), and the
-# post-sync telemetry hook sends an empty `POST /devices/report` snapshot (P1-05 supplies the
-# real one). The recording still checks every header and body shape they send.
+# One hook stands in for a package that has not landed, exactly where it plugs in: the 401
+# re-acquire is `POST /license/token` (P1-03 supplies the real strategies). The post-sync report
+# is the SDK's own (PolarisKey.devices, P1-05); the recording checks every header and body shape
+# it sends, and that its keys are on the Worker's allowlist.
 
 const FLOOR := 4
 
@@ -76,8 +76,6 @@ static func replay(tr: Dictionary) -> Array:
 				return ""
 			var p := PKeyJson.parse_bytes(r.detail["body"])
 			return p["value"].get("token", "") if p["ok"] and p["value"] is Dictionary else "")
-		core.add_post_sync_hook(func(c: PKeyCore, _result: PKeySyncResult) -> void:
-			await c.request("POST", "devices/report", {"config": {}, "entitlements": {}}, true))
 		for i in tr["steps"].size():
 			var step: Dictionary = engine.begin_step(i)
 			clock[0] = step.get("now", tr["now"])
@@ -108,6 +106,11 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 				if r.documents[slice] != "skipped":
 					docs[slice] = r.documents[slice]
 			out["documents"] = docs
+		"register":
+			var r: PKeyResult = await sdk.devices.register()
+			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
+		"report":
+			out["result"] = await sdk.devices.report()
 		_:
 			out["unsupported"] = step["action"]
 	var services := {}

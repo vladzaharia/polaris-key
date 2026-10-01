@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature core.verify core.bundle
+# @pkey-feature core.verify core.bundle devices.fingerprint
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json and fingerprint.json, written by `pnpm gen:corpus`; never
 # edit them) through the shipped addon, mirroring conformance/runners/node/corpusV2.test.ts and
@@ -13,6 +13,9 @@ extends RefCounted
 #   clockFloorCases  the reload path + PKeyGate  highWaterMark, effectiveNow, status
 #   bundleCases      PKeyBundle.inspect          imports + docs, or the refusing step
 #   deviceIds        PKeyDeviceId.from_raw       the derived id (fingerprint.json)
+#   vectors          PKeyFingerprint             components and hwid (fingerprint.json)
+#   windowsCimCommand / windowsCim / linuxAnchor / ramBuckets
+#                    PKeyFingerprint             the §6.1 source rules (fingerprint.json)
 #
 # Under WIRE-CONTRACT-V3 §10, each string the generator lists in `expect.docNulReplaced` is
 # compared in its U+FFFD form, exactly.
@@ -28,6 +31,10 @@ const FLOORS := {
 	"clockFloorCases": 7,
 	"bundleCases": 9,
 	"deviceIds": 4,
+	"vectors": 6,
+	"windowsCim": 17,
+	"linuxAnchor": 10,
+	"ramBuckets": 13,
 }
 
 
@@ -45,6 +52,8 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	var fp = _load(t, FINGERPRINT)
 	if fp != null:
 		_device_ids(t, _section(t, fp, "deviceIds"))
+		_fingerprint_vectors(t, fp)
+		_source_rules(t, fp)
 	return true
 
 
@@ -353,3 +362,71 @@ func _device_ids(t: PKeyTestContext, vectors: Array) -> void:
 		evaluated += 1
 		t.check("device-id %s" % v["id"], got == v["expected"], "expect=%s got=%s" % [v["expected"], got])
 	_coverage(t, "deviceIds", evaluated, vectors.size(), _ms_since(t0))
+
+
+# ── fingerprint.json vectors (§6) and source rules (§6.1) ────────────────────────────────
+
+func _fingerprint_vectors(t: PKeyTestContext, fp: Dictionary) -> void:
+	t.check("fingerprintVersion", fp.get("fingerprintVersion") == float(PKeyConstants.FINGERPRINT_VERSION))
+	t.check("componentOrder is the SDK's canonical order", fp.get("componentOrder") == PKeyFingerprint.COMPONENTS, str(fp.get("componentOrder")))
+	t.check("component and hwid lengths", fp.get("componentHashLength") == float(PKeyFingerprint.COMPONENT_LENGTH) and fp.get("hwidLength") == float(PKeyFingerprint.HWID_LENGTH))
+	var vectors := _section(t, fp, "vectors")
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	for i in vectors.size():
+		var v = vectors[i]
+		var ok_shape: bool = v is Dictionary and v.get("id") is String and v.get("product") is String \
+				and v.get("raw") is Dictionary and v.get("components") is Dictionary and v.get("hwid") is String
+		if not t.check("vectors %d well-formed" % i, ok_shape):
+			continue
+		var got := PKeyFingerprint.hash_components(v["product"], v["raw"])
+		evaluated += 1
+		t.check("fingerprint %s components" % v["id"], got["components"] == v["components"], JSON.stringify(got["components"]))
+		t.check("fingerprint %s hwid" % v["id"], got["hwid"] == v["hwid"], "expect=%s got=%s" % [v["hwid"], got["hwid"]])
+	_coverage(t, "vectors", evaluated, vectors.size(), _ms_since(t0))
+
+
+func _source_rules(t: PKeyTestContext, fp: Dictionary) -> void:
+	t.check("windowsCimCommand: the SDK runs exactly the pinned command", fp.get("windowsCimCommand") == {
+		"program": PKeyFingerprint.WINDOWS_CIM_COMMAND["program"],
+		"args": PKeyFingerprint.WINDOWS_CIM_COMMAND["args"],
+		"stdin": PKeyFingerprint.WINDOWS_CIM_COMMAND["stdin"],
+		"timeoutMs": float(PKeyFingerprint.WINDOWS_CIM_COMMAND["timeoutMs"]),
+	}, JSON.stringify(fp.get("windowsCimCommand")))
+
+	var cim := _section(t, fp, "windowsCim")
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	for i in cim.size():
+		var c = cim[i]
+		if not t.check("windowsCim %d well-formed" % i, c is Dictionary and c.get("id") is String and c.get("stdout") is String and c.get("expected") is Dictionary):
+			continue
+		var got := PKeyFingerprint.parse_windows_cim(c["stdout"])
+		evaluated += 1
+		t.check("windowsCim %s" % c["id"], got == c["expected"], JSON.stringify(got))
+	_coverage(t, "windowsCim", evaluated, cim.size(), _ms_since(t0))
+
+	var anchors := _section(t, fp, "linuxAnchor")
+	evaluated = 0
+	t0 = Time.get_ticks_usec()
+	for i in anchors.size():
+		var c = anchors[i]
+		if not t.check("linuxAnchor %d well-formed" % i, c is Dictionary and c.get("id") is String and c.get("files") is Dictionary and (c.get("expected") == null or c["expected"] is Dictionary)):
+			continue
+		var got = PKeyFingerprint.linux_anchor_source(c["files"])
+		evaluated += 1
+		t.check("linuxAnchor %s" % c["id"], got == c["expected"] if c["expected"] != null else got == null, JSON.stringify(got))
+	_coverage(t, "linuxAnchor", evaluated, anchors.size(), _ms_since(t0))
+
+	var buckets := _section(t, fp, "ramBuckets")
+	evaluated = 0
+	t0 = Time.get_ticks_usec()
+	for i in buckets.size():
+		var c = buckets[i]
+		if not t.check("ramBuckets %d well-formed" % i, c is Dictionary and c.get("id") is String and c.get("bytes") is float and (c.get("bucket") == null or c["bucket"] is String)):
+			continue
+		var got := PKeyFingerprint.ram_bucket(int(c["bytes"]))
+		evaluated += 1
+		var want: String = c["bucket"] if c["bucket"] != null else ""
+		t.check("ramBuckets %s" % c["id"], got == want, "expect=%s got=%s" % [want, got])
+	_coverage(t, "ramBuckets", evaluated, buckets.size(), _ms_since(t0))

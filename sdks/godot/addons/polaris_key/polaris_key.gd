@@ -11,7 +11,8 @@ extends Node
 ## Every call that can wait is a coroutine returning a PKeyResult (or PKeySyncResult). Signals:
 ## `state_changed(state)` when the licence state changes, `sync_finished(result)` after every
 ## sync, `store_error(err)` when the store fails to read or write (also `last_store_error`).
-## `core` is the PKeyCore every service client builds on.
+## `core` is the PKeyCore every service client builds on. Sub-objects: `devices` (PKeyDevices:
+## fingerprint, keyless register, the device roster, telemetry after each sync).
 
 const SDK_VERSION := "0.1.0"
 
@@ -23,6 +24,8 @@ signal sync_finished(result: PKeySyncResult)
 signal store_error(err: Dictionary)
 
 var core: PKeyCore = null
+## The device principal's surface (services/devices.gd); null until configure().
+var devices: PKeyDevices = null
 var last_store_error: Dictionary = {}
 
 var _timer: Timer = null
@@ -40,6 +43,9 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	_stop_timer()
 	core = r.detail
 	core.store_error.connect(_on_store_error)
+	devices = PKeyDevices.new(core)
+	devices.install(core)
+	devices.on_wiped = _emit_state
 	return PKeyResult.success()
 
 

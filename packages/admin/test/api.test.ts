@@ -361,6 +361,25 @@ describe("api — every product-scoped resource is under its owning service", ()
     ],
     ["rotateProductKey", () => api.rotateProductKey("djdl"), "keys/rotate"],
     [
+      "outletCredentials",
+      () => api.outletCredentials("djdl"),
+      "outlet-credentials",
+    ],
+    [
+      "putOutletCredential",
+      () =>
+        api.putOutletCredential("djdl", "asc", {
+          kind: "asc-webhook-secret",
+          value: { secret: "s" },
+        }),
+      "outlet-credentials/asc",
+    ],
+    [
+      "deleteOutletCredential",
+      () => api.deleteOutletCredential("djdl", "asc"),
+      "outlet-credentials/asc",
+    ],
+    [
       "mintBundle",
       () =>
         api.mintBundle("djdl", {

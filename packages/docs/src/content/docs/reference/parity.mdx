@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 23 | 12 | 15 | 6 |
 | Python | `python` | 31 | 3 | 15 | 7 |
 | Swift | `macos`, `ios` | 32 | 3 | 15 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 7 | 0 | 46 | 3 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 12 | 0 | 41 | 3 |
 
 ## Core
 
@@ -67,11 +67,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `devices.fingerprint` | Components, hashing, device id | `fingerprint.json` + `fingerprint.json` `ramBuckets` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-05) | web, desktop-bridge: runtime |
-| `devices.facts` | Device facts and probes | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-05) | web, desktop-bridge: runtime |
-| `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-05) | web, desktop-bridge: runtime |
-| `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-05) | web: runtime |
-| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-05) | web: runtime |
+| `devices.fingerprint` | Components, hashing, device id | `fingerprint.json` + `fingerprint.json` `ramBuckets` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | web, desktop-bridge: runtime |
+| `devices.facts` | Device facts and probes | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
+| `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
+| `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | web: runtime |
+| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | web: runtime |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (P1-07) | web: runtime |
 

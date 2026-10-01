@@ -17,6 +17,7 @@ import type { ConfigDoc } from "@polaris-key/protocol/config";
 import djdlCatalog from "../../../products/djdl/catalog.json";
 import { D1Db } from "../src/db/d1.js";
 import { validatePayload } from "../src/core/payload.js";
+import { signJwtEs256, signJwtRs256 } from "../src/core/jwt.js";
 import {
   TEST_KID,
   TEST_PEM,
@@ -145,6 +146,72 @@ describe("JWS signing on workerd WebCrypto", () => {
     const jws = await signJws({ hello: "world" }, TEST_PEM, TEST_KID);
     const verified = await verifyJws<{ hello: string }>(jws, TRUST);
     expect(verified?.payload.hello).toBe("world");
+  });
+});
+
+describe("ES256 and RS256 JWT signing on workerd WebCrypto (core/jwt.ts, P5-01)", () => {
+  // Edge-mint, the GitHub App client and the outlet connectors (App Store Connect, Google) all
+  // sign through `core/jwt.ts`. Node's WebCrypto proves nothing about workerd's: this is the
+  // runtime that actually imports the PKCS#8 keys and produces the signatures.
+  async function pkcs8Pem(key: CryptoKey): Promise<string> {
+    const der = new Uint8Array(
+      (await crypto.subtle.exportKey("pkcs8", key)) as ArrayBuffer,
+    );
+    let bin = "";
+    for (const b of der) bin += String.fromCharCode(b);
+    return `-----BEGIN PRIVATE KEY-----\n${btoa(bin)}\n-----END PRIVATE KEY-----`;
+  }
+  const b64urlBytes = (s: string): Uint8Array =>
+    Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+      c.charCodeAt(0),
+    );
+
+  it("signs an ES256 JWT that verifies with the public key", async () => {
+    const pair = (await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    )) as CryptoKeyPair;
+    const jwt = await signJwtEs256(
+      { iss: "issuer", aud: "appstoreconnect-v1" },
+      await pkcs8Pem(pair.privateKey),
+      "KID",
+    );
+    const [h, p, sig] = jwt.split(".") as [string, string, string];
+    expect(
+      await crypto.subtle.verify(
+        { name: "ECDSA", hash: "SHA-256" },
+        pair.publicKey,
+        b64urlBytes(sig),
+        new TextEncoder().encode(`${h}.${p}`),
+      ),
+    ).toBe(true);
+  });
+
+  it("signs an RS256 JWT that verifies with the public key", async () => {
+    const pair = (await crypto.subtle.generateKey(
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["sign", "verify"],
+    )) as CryptoKeyPair;
+    const jwt = await signJwtRs256(
+      { iss: "svc@example.iam.gserviceaccount.com" },
+      await pkcs8Pem(pair.privateKey),
+    );
+    const [h, p, sig] = jwt.split(".") as [string, string, string];
+    expect(
+      await crypto.subtle.verify(
+        "RSASSA-PKCS1-v1_5",
+        pair.publicKey,
+        b64urlBytes(sig),
+        new TextEncoder().encode(`${h}.${p}`),
+      ),
+    ).toBe(true);
   });
 });
 

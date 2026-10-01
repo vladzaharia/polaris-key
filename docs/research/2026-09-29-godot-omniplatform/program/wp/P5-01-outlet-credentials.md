@@ -12,6 +12,50 @@
 | Human input | none (real credentials arrive with P5-02, P5-03 and P5-04)                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                      |
 
+## Corrections from implementation
+
+Recorded by the implementer where the code disagreed with this brief, or where the brief left a
+choice open:
+
+- **Migration number.** The latest migration on `main` was `0033_distribution_backfill.sql`, not
+  0021; the lead pre-assigned **`0034_outlet_credentials.sql`**.
+- **Admin handler location.** The routes are dispatched from `handleProductScopedResource`
+  beside `secrets`, but the handler lives in its own file,
+  `src/admin/handlers/outletCredentials.ts`, so the reach test can allowlist exactly the one file
+  that imports `core/outletCredentials` (not all of `products.ts`).
+- **Reach-test allowlists.** Five checks, not one: importers of `core/outletCredentials`
+  (distribution, `core/outletTokens.ts`, the admin handler); files naming the table (the owner,
+  `admin/handlers/products.ts` for `SEALED_TABLES`, `admin/repo.ts` for `deleteProduct`); files
+  spelling the `"outlet-credential"` AAD kind (`keyvault.ts`, the owner, `core/outletTokens.ts`,
+  the KEK sweep); files naming the writers `putOutletCredential` / `deleteOutletCredential` (the
+  owner and the admin handler only — Distribution may import the module to open, but no
+  connector, webhook handler or route in it can write); and importers of `core/outletTokens`
+  (distribution only — a token-cache hit hands out a store bearer token without an audited open,
+  so the cache is a custody boundary too).
+- **`openOutletCredential` signature.** `(env, db, product, credentialId, use, opts?)`, where
+  `opts` is `{ kind?, now? }`: `kind` narrows the result type and refuses another kind, `now`
+  keeps it testable. It returns `null` for every unusable case, and an opened credential carries
+  its `version` marker.
+- **Version marker.** `outletCredentialVersion(db, product, credentialId, kind?)` answers a
+  non-secret marker (the first 128 bits of SHA-256 over the sealed blob) without decrypting or
+  auditing, or `null` where an open would also fail before decrypting. It changes on rotation,
+  delete-and-recreate and KEK re-seal (the last only costs a cache miss).
+- **Token cache key and the token API (cache first).** The "scope hash" in
+  `token:<credential_id>:<scope hash>` is `outletTokenSlotHash(scope, version)` — the scopes and
+  the version marker, never key material — so rotating a value never serves its predecessor's
+  token **and** the slot is computable before an open. Accordingly the token functions take a
+  credential id rather than an opened credential: `ascToken(env, db, product, credentialId, use,
+now)` and `googleAccessToken(env, db, product, credentialId, scopes, use, now, fetchImpl)`
+  return `string | null`, check the cache (per-isolate memo for ASC, sealed KV for Google) by
+  version first, and call `openOutletCredential` only on a miss. A hit writes no audit row and no
+  `last_used_at`, which is what makes "tens of rows a day per credential" true.
+- **`meta_json`** also keeps the Partner Center client id and seller id (identifiers, not secrets).
+- **Google `token_uri`** must be exactly `https://oauth2.googleapis.com/token` (refused otherwise),
+  so a stored key can never redirect the signed assertion.
+- **Product-secret usage in the AAD.** `THREAT-MODEL.md` said binding `product_secrets.usage` into
+  the AAD was "deferred to the outlet-credential work (P5-01)". It is not in this brief's scope and
+  was not done; the threat model now records it as an open follow-up.
+
 ## Goal
 
 Store credentials (an App Store Connect `.p8`, a Google service-account key, a Partner Center
@@ -97,7 +141,7 @@ JWT-bearer exchange and a sealed token cache beside it.
 - `deleteProduct` deletes the product's outlet-credential rows in the same batch.
 - `src/core/jwt.ts`: `signJwtEs256` and `signJwtRs256` (PKCS#1 or PKCS#8 PEM), moved from `mint.ts`
   and `githubApp.ts`, which then import them. Output bytes unchanged.
-- `src/core/outletTokens.ts`: `ascToken(cred, now)` (ES256, header `kid`, claims `iss`,
+- `src/core/outletTokens.ts`: `ascToken(cred, now)` (signature corrected above; ES256, header `kid`, claims `iss`,
   `aud: "appstoreconnect-v1"`, `exp - iat ≤ 1200`, reused until 60 s before expiry) and
   `googleAccessToken(env, cred, scopes, now, fetchImpl)` (RS256 assertion, `aud`
   `https://oauth2.googleapis.com/token`, `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`,
@@ -147,20 +191,20 @@ JWT-bearer exchange and a sealed token cache beside it.
 
 ## Acceptance criteria
 
-- [ ] `outletCredentials.test.ts` covers: write-only PUT (value never echoed, never in `GET`),
+- [x] `outletCredentials.test.ts` covers: write-only PUT (value never echoed, never in `GET`),
       DELETE, audit rows for set, delete and every open, per-kind validation (a `.p8` that is not
       P-256 PKCS#8 is rejected at write), `meta_json` without secret fields.
-- [ ] A sealed outlet credential copied into `product_secrets` does not open; an edge-mint recipe
+- [x] A sealed outlet credential copied into `product_secrets` does not open; an edge-mint recipe
       naming an outlet credential id answers `misconfigured`.
-- [ ] `outletCredentialReach.test.ts` fails when a file under `src/services/config/` imports
+- [x] `outletCredentialReach.test.ts` fails when a file under `src/services/config/` imports
       `core/outletCredentials`.
-- [ ] `GET /manage/api/products/kek` counts the new table, and the reseal sweep re-seals its rows.
-- [ ] Deleting a product deletes its outlet credentials.
-- [ ] `edgeMint.test.ts` and the GitHub App tests pass unmodified; `ascToken` produces a token that
+- [x] `GET /manage/api/products/kek` counts the new table, and the reseal sweep re-seals its rows.
+- [x] Deleting a product deletes its outlet credentials.
+- [x] `edgeMint.test.ts` and the GitHub App tests pass unmodified; `ascToken` produces a token that
       verifies with the public key and has `exp - iat ≤ 1200`; `googleAccessToken` caches and
       re-uses a token, and refreshes it after expiry.
-- [ ] The data-model page is regenerated and `gen:check` passes; the threat model names the asset.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd`.
+- [x] The data-model page is regenerated and `gen:check` passes; the threat model names the asset.
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
 
 ## Verify
 
@@ -174,9 +218,15 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 ## Hand-off
 
 - `openOutletCredential(env, db, product, credentialId, use)` and the four kinds above are the
-  interface P5-02, P5-03 and P5-04 build on; `ascToken`, `googleAccessToken` and the sealed-cache
-  helper are theirs to reuse. P6-01, P6-02 and P6-03 add kinds and, for P6-02, one reviewed entry
-  in the reach-test allowlist.
+  interface P5-02, P5-03 and P5-04 build on; `ascToken`, `googleAccessToken` (cache first, by
+  credential id) and the sealed-cache helpers (`outletCredentialVersion`, `outletTokenSlot`,
+  `outletTokenSlotHash`, `readSealedToken`, `writeSealedToken`) are theirs to reuse. P5-04 caches
+  Entra tokens the same way: check by version, open only on a miss. P6-01, P6-02 and P6-03 add
+  kinds and, for P6-02, one reviewed entry in the reach-test allowlist.
+- **Constraint for P5-02.** A path that needs the raw value on every request (verifying inbound
+  App Store notifications against `asc-webhook-secret`) opens — and audits, two D1 writes — every
+  time. It must authenticate or rate-limit the request before the open, or it is an
+  unauthenticated write amplifier (the R1-04 class).
 - `signJwtEs256` and `signJwtRs256` in `core/jwt.ts` are the only JWT signers in the Worker.
 - Set the status in the completing PR:
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P5-01 done`.

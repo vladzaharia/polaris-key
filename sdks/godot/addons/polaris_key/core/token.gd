@@ -11,6 +11,17 @@ extends RefCounted
 ## and `POST /devices/register` (re-register on 401 for licence-less devices). Without one, a
 ## 401 is a hard 401.
 
+## How the current token was obtained (P1b-06's TokenSource), held in memory only: after a restart
+## the source is unknown (""), because persisting it would change the store contract.
+const SOURCE_ACTIVATE := "activate"
+const SOURCE_ENROLL := "enroll"
+const SOURCE_REGISTER := "register"
+const SOURCE_SIGNIN := "signin"
+const SOURCE_REACQUIRE := "reacquire"
+## The two routes the §5 single re-acquire can take (`choose_reacquire_route`).
+const ROUTE_LICENSE_TOKEN := "license-token"
+const ROUTE_DEVICES_REGISTER := "devices-register"
+
 ## Emitted when an in-flight re-acquire settles.
 signal reacquired(ok: bool)
 
@@ -21,6 +32,7 @@ var core_ref: WeakRef = null
 var attempts := 0
 
 var _token := ""
+var _source := ""
 var _reacquire: Callable
 var _in_flight := false
 var _attempted := false
@@ -33,6 +45,7 @@ func _init(p_store: PKeyStore) -> void:
 
 func load_token() -> void:
 	_token = store.get_token()
+	_source = ""
 
 
 func current() -> String:
@@ -43,19 +56,41 @@ func has_token() -> bool:
 	return _token != ""
 
 
-func set_token(token: String) -> bool:
+## How the current token was obtained in this process (SOURCE_*), or "" when it was loaded from
+## the store or none is held.
+func source() -> String:
+	return _source
+
+
+## Hold and persist `token`, obtained through `p_source` (SOURCE_*). False when the store could
+## not write it (the token is still held for this session; the store reported the failure).
+func set_token(token: String, p_source := "") -> bool:
 	_token = token
+	_source = p_source
 	return store.set_token(token)
 
 
 func clear() -> bool:
 	_token = ""
+	_source = ""
 	return store.clear_token()
 
 
-## `callable(core: PKeyCore, current_token: String) -> String`: the new token, or "" on failure
-## (sdk-node's `ReacquireFn(ctx, current)`). It may be a coroutine; it is awaited. Core is passed
-## in rather than captured, so the callable does not keep Core alive.
+## P1b-06's route rule for the §5 single re-acquire, the same in every SDK: License disabled for
+## the product, or a token this process minted by registering, re-registers
+## (ROUTE_DEVICES_REGISTER); anything else asks `POST /license/token` (ROUTE_LICENSE_TOKEN).
+## There is deliberately no restart heuristic: after a restart the source is "".
+static func choose_reacquire_route(license_enabled: bool, p_source: String) -> String:
+	if not license_enabled or p_source == SOURCE_REGISTER:
+		return ROUTE_DEVICES_REGISTER
+	return ROUTE_LICENSE_TOKEN
+
+
+## `callable(core: PKeyCore, current_token: String) -> Variant`: the new token String, or
+## {token, source} to name how it was obtained (a bare String counts as SOURCE_REACQUIRE), or
+## "" / null on failure (sdk-node's `ReacquireFn(ctx, current, source)`; the current source is
+## `core.tokens.source()`). It may be a coroutine; it is awaited. Core is passed in rather than
+## captured, so the callable does not keep Core alive.
 func set_reacquire(callable: Callable) -> void:
 	_reacquire = callable
 
@@ -81,9 +116,17 @@ func reacquire_once() -> bool:
 	attempts += 1
 	var current_token := _token
 	var next = await _reacquire.call(core_ref.get_ref() if core_ref != null else null, current_token)
-	var ok: bool = next is String and next != ""
+	var next_token := ""
+	var next_source := SOURCE_REACQUIRE
+	if next is String:
+		next_token = next
+	elif next is Dictionary and next.get("token") is String:
+		next_token = next["token"]
+		if next.get("source") is String and next["source"] != "":
+			next_source = next["source"]
+	var ok := next_token != ""
 	if ok:
-		set_token(next)
+		set_token(next_token, next_source)
 	_last_ok = ok
 	_in_flight = false
 	reacquired.emit(ok)

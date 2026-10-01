@@ -23,18 +23,19 @@ and what binary it installs next.
 
 ## 2. Assets, ranked by what their loss costs
 
-| #   | Asset                                                             | Where it lives                                                                   | Loss impact                                                                                                                                |
-| --- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| A1  | **`PLATFORM_KEK`**                                                | Worker secret                                                                    | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                 |
-| A2  | **Per-product Ed25519 signing keys**                              | `product_keys.enc_private_json`, sealed under A1                                 | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                   |
-| A3  | **The release channel**                                           | GitHub App key, webhook secret, `release_config`                                 | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                          |
-| A4  | **`ADMIN_SESSION_SECRET`**                                        | Worker secret                                                                    | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                               |
-| A5  | **Product secrets** (OIDC client secrets, edge-mint signing keys) | `product_secrets`, sealed under A1                                               | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                  |
-| A6  | **Customer PII**                                                  | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext                  | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                      |
-| A7  | **Licensing revenue**                                             | The whole enforcement path                                                       | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                       |
-| A8  | **Service availability**                                          | Worker, D1, KV, DO                                                               | A licensing outage can block paying customers from software they already bought.                                                           |
-| A9  | **The ability to recover**                                        | Rotation and revocation machinery                                                | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                      |
-| A10 | **The blob store** (release bytes)                                | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1 | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach. |
+| #   | Asset                                                             | Where it lives                                                                   | Loss impact                                                                                                                                 |
+| --- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | **`PLATFORM_KEK`**                                                | Worker secret                                                                    | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                  |
+| A2  | **Per-product Ed25519 signing keys**                              | `product_keys.enc_private_json`, sealed under A1                                 | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                    |
+| A3  | **The release channel**                                           | GitHub App key, webhook secret, `release_config`                                 | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                           |
+| A4  | **`ADMIN_SESSION_SECRET`**                                        | Worker secret                                                                    | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                |
+| A5  | **Product secrets** (OIDC client secrets, edge-mint signing keys) | `product_secrets`, sealed under A1                                               | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                   |
+| A6  | **Customer PII**                                                  | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext                  | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                       |
+| A7  | **Licensing revenue**                                             | The whole enforcement path                                                       | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                        |
+| A8  | **Service availability**                                          | Worker, D1, KV, DO                                                               | A licensing outage can block paying customers from software they already bought.                                                            |
+| A9  | **The ability to recover**                                        | Rotation and revocation machinery                                                | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                       |
+| A10 | **The blob store** (release bytes)                                | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1 | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach.  |
+| A11 | **Outlet credentials** (store API keys)                           | `outlet_credentials`, sealed under A1 (own AAD kind); minted tokens sealed in KV | Act as the operator in App Store Connect, Google Play or Partner Center: upload or release builds, change listings and prices. Equal to A3. |
 
 **A5 is scoped by usage.** Every product secret carries a usage — general (stored `NULL`) or
 `edge-mint` — and `openProductSecret` opens a secret only for the usage its caller requires: the
@@ -42,7 +43,14 @@ edge-mint route asks for `edge-mint`, the OIDC client-secret path for general, a
 reads as a missing secret (the value is never unsealed). The usage is written **only** by the admin
 API (`PUT …/secrets/<name>` with `"usage"`), audited as `secret.usage`, and never by a `.pkey/`
 manifest. The usage is not yet bound into the AEAD associated data; that is stronger but needs
-every secret re-sealed, and is deferred to the outlet-credential work (P5-01).
+every secret re-sealed. P5-01 did not do it: it took the stronger step for the material that
+needed it most, moving store credentials out of `product_secrets` altogether (A11, below), and
+left binding the product-secret usage into the AAD as an open follow-up.
+
+**A11 is separated from A5 by AAD, not only by table.** Outlet credentials are sealed under
+`pkey:v2:<product>:outlet-credential:<id>`, so a blob copied into `product_secrets` (under any
+name, with any usage) fails to open there, and the reverse fails too. See "Outlet credentials
+(P5-01)" in §3.
 
 ## 3. Trust boundaries
 
@@ -263,7 +271,8 @@ implied). In P2b-01 it has **no routes** (`handle` returns `null`, so every
 and no admin handler. Its attack surface is the discovery fragment (`{enabled, configured:false,
 endpoints:{}}`) and the two hooks below. Everything that will make it valuable to an attacker —
 byte serving, outlet credentials, rollouts — arrives in later packages (P2b-02 to P2b-04, P5-01)
-and reopens this section.
+and reopens this section. P5-01 has landed the credential custody (below) but no connector, so
+Distribution still opens nothing.
 
 **Descriptor hooks are a read-only, fail-closed boundary.** A service may import only Core and
 itself (`boundaries.test.ts`; the one exception is still `update → release`). Cross-service reads
@@ -306,6 +315,69 @@ console shows the error.
 `distribution` lost the `/<p>/distribution/appcast.xml` alias (its canonical
 `/<p>/update/distribution/appcast.xml` still works). A future service slug always shadows a
 channel of the same name; that is the safe direction (a channel can never shadow a service).
+
+### Outlet credentials (P5-01)
+
+**What they are.** The keys a store connector authenticates with (A11): an App Store Connect API
+key (`.p8`), the App Store Server Notifications webhook secret, a Google service-account key, a
+Partner Center client secret. Each is worth as much as the release channel (A3) — whoever holds
+one can ship to that store as the operator.
+
+**Why not a product secret.** Edge-mint opens any product secret an operator marked `edge-mint`
+(`services/config/mint.ts`) for **any device of the product**, and under open registration anyone
+can be a device. A `.p8` stored as a product secret would be one approval away from a public App
+Store Connect token mint. So outlet credentials have their own table, their own AAD kind and one
+accessor.
+
+**The boundary**, each line enforced by a test:
+
+- **Own table, own AAD kind.** `outlet_credentials.enc_value_json` is sealed under
+  `pkey:v2:<product>:outlet-credential:<credential_id>`. A blob copied into `product_secrets`
+  does not open there, a product secret copied in does not open here, and an edge-mint recipe
+  naming an outlet credential id answers `misconfigured`
+  (`test/attack/R12-outlet-credentials.test.ts`).
+- **One accessor, reachable from one service.** `core/outletCredentials.ts` is imported only by
+  `src/services/distribution/**`, `core/outletTokens.ts` and the Core admin handler
+  (`admin/handlers/outletCredentials.ts`); only the owner, the KEK re-seal sweep and
+  `deleteProduct` name the table; only the vault, the owner, the token helpers and the sweep spell
+  the AAD kind; and only the owner and the Core admin handler name the writers
+  `putOutletCredential` / `deleteOutletCredential` (`test/outletCredentialReach.test.ts`). In
+  particular Config (edge-mint) and `core/products.ts` (`openProductSecret`) cannot reach it, and
+  no manifest ingest, resync, service hook — nor a Distribution connector, webhook handler or
+  route, even though Distribution may import the module to open — can write or delete a row.
+- **Platform-admin, write-only.** `PUT …/outlet-credentials/<id>` (platform admin only, checked
+  again in the handler) validates per kind — a `.p8` must be a P-256 PKCS#8 key, a Google key must
+  be RSA and name exactly `https://oauth2.googleapis.com/token`, so a stored credential can never
+  make the Worker post a signed assertion to a host of the writer's choosing — and echoes the id
+  only. `GET` returns metadata (`meta_json`: key id, issuer id, client email, tenant, client and
+  seller ids) and health, never a value; the sealed column is never selected.
+- **Every use audited, fail closed.** `openOutletCredential(env, db, product, id, use)` appends an
+  `outlet_credential.use` row (actor `system:distribution`, the `use`, the outcome) on every call,
+  usable or not, and answers `null` — "unusable credential" — for an unknown id, a disabled row,
+  the wrong kind, a value that will not open or re-validate, or an invalid `use`.
+- **Tokens sealed at rest, checked before any open.** `core/outletTokens.ts` caches Google access
+  tokens in KV sealed under the same AAD kind (id `token:<credential_id>:<hash>`; a credential id
+  cannot contain `:`, so a token slot can never be opened as a credential). The slot is a hash of
+  the scopes and the credential's non-secret **version marker** (`outletCredentialVersion`: a hash
+  of the sealed blob, read without decrypting), so a rotated value never serves its predecessor's
+  token and the cache is checked before the credential is opened: a hit costs no decryption, no
+  audit row and no D1 write. App Store Connect JWTs (≤ 20 minutes) are memoised per isolate only,
+  keyed the same way. A failed exchange throws with the HTTP status, never the body. Because a hit
+  hands out a store bearer token without an audited open, `core/outletTokens.ts` is itself a
+  custody boundary: only `src/services/distribution/**` may import it (the reach test).
+- **Rotation and deletion.** The KEK sweep counts and re-seals the table like `product_secrets`;
+  deleting a product deletes its rows in the same batch.
+
+**Residual risk.** A11 is still under A1: a `PLATFORM_KEK` compromise opens every outlet
+credential. The admin plane (A4) can overwrite a credential (but not read one back). A connector
+bug in the Distribution service could misuse an opened value or a cached token; the audit row per
+open is the detection, and because token caches are checked first, opens stay at tens a day per
+credential, so that signal is not buried. A path that needs the raw value on every request —
+verifying an inbound App Store notification against `asc-webhook-secret` (P5-02) — opens it every
+time, and each open is two D1 writes; such a path must authenticate or rate-limit the request
+before the open, or it becomes an unauthenticated write amplifier (the R1-04 class). Least privilege per store (App Manager team key; one-app Play service account; Partner
+Center Manager role) is documented for operators in `admin/secrets-and-keys.md` but cannot be
+verified by the Worker.
 
 ### The device-code user-code page (P1-06)
 
@@ -663,7 +735,9 @@ changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
-and that no manifest can grant it); or a new way to obtain a device token or licence without an
+and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
+allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store
+credential, and the open must stay audited); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow).

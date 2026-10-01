@@ -95,6 +95,44 @@ export interface ProductModuleSummary {
 /** What a product secret may be used for. Set by an operator only — never by a manifest. */
 export type SecretUsage = "general" | "edge-mint";
 
+/** A store credential's kind (P5-01; worker `core/outletCredentials.ts`). */
+export type OutletCredentialKind =
+  | "asc-api-key"
+  | "asc-webhook-secret"
+  | "google-service-account"
+  | "ms-partner-center";
+
+/** One outlet credential as the admin API lists it: metadata and health, never the value. */
+export interface OutletCredentialInfo {
+  id: string;
+  kind: OutletCredentialKind | string;
+  outletId: string | null;
+  /** Non-secret display fields (key id, issuer id, client email, tenant id, …). */
+  meta: Record<string, string>;
+  status: string;
+  createdAt: number;
+  createdBy: string;
+  rotatedAt: number | null;
+  expiresAt: number | null;
+  lastUsedAt: number | null;
+  lastOkAt: number | null;
+  lastError: string | null;
+}
+
+export interface OutletCredentialsResponse {
+  ok: true;
+  kinds: OutletCredentialKind[];
+  credentials: OutletCredentialInfo[];
+}
+
+export interface PutOutletCredentialBody {
+  kind: OutletCredentialKind;
+  /** The kind's value object; a Google key may be its JSON file as a string. */
+  value: Record<string, unknown> | string;
+  outletId?: string | null;
+  expiresAt?: number | null;
+}
+
 /** The security-relevant recipe fields, exactly as the approve call must echo them. */
 export interface EdgeMintRecipeFields {
   alg: string;
@@ -971,6 +1009,23 @@ export const api = {
         body: JSON.stringify(usage ? { value, usage } : { value }),
       },
     ),
+  // ── outlet credentials (P5-01): platform admin, write-only ──────────────────
+  outletCredentials: (slug: string) =>
+    call<OutletCredentialsResponse>(`${p(slug)}/outlet-credentials`),
+  /** Write-only: the response echoes the id, never the value or its metadata. */
+  putOutletCredential: (
+    slug: string,
+    id: string,
+    body: PutOutletCredentialBody,
+  ) =>
+    call<{ ok: true; id: string }>(`${p(slug)}/outlet-credentials/${enc(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  deleteOutletCredential: (slug: string, id: string) =>
+    call<{ ok: true; id: string }>(`${p(slug)}/outlet-credentials/${enc(id)}`, {
+      method: "DELETE",
+    }),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
 

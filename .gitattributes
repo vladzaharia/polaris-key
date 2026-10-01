@@ -1,0 +1,5 @@
+# The Godot SDK runs on a Windows CI leg, where the runner's system git sets core.autocrlf=true.
+# Its shell scripts must keep LF (Git Bash reads `then\r` as a word), the pin file must keep LF
+# (fetch_godot.sh matches `<hash>  <file>$`), and the GDScript, fixtures and vectors are compared
+# byte for byte. text=auto still leaves any binary file alone.
+sdks/godot/** text=auto eol=lf
