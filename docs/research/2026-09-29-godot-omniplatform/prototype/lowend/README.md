@@ -126,9 +126,10 @@ Run these from `..`, the prototype directory:
 MOUNTS=/lowend=$PWD/lowend RESULTS_DIR=$PWD/lowend/results/posted \
   node content/runners/browser/server.mjs "$PWD/content" 8431 &
 node lowend/browser/drive.mjs chromium http://127.0.0.1:8431           # webkit works too; LARGE=1 for 37 MB
-GODOT=1 CPU=4 node lowend/browser/drive.mjs chromium http://127.0.0.1:8431
+GODOT=1 CPU=20 node lowend/browser/drive.mjs chromium http://127.0.0.1:8431   # 4/6 ≈ mid-range, 20 ≈ A53-class
 LARGE=1 lowend/browser/linux-matrix.sh                                   # Linux WebKit, Firefox, Chromium
-GODOT=1 lowend/browser/linux-matrix.sh webkit firefox
+GODOT=1 lowend/browser/linux-matrix.sh webkit
+GODOT=1 HEADFUL=1 lowend/browser/linux-matrix.sh firefox                 # headed under xvfb-run for WebGL2
 ```
 
 A page needs a secure context. For phones:
@@ -142,9 +143,11 @@ Results arrive as `results/posted/<tag>-<time>.json`.
 ## Caveats
 
 - **Timings on a shared host measure the host's contention too.** `collect.sh` records `uptime` in
-  each result.
+  each result. Run timing passes when the load average is well below the core count.
 - **Simulators and emulators run at host CPU speed.** They check correctness and give ratios, not
   phone timings.
 - **Playwright's macOS WebKit is not WebKitGTK.** Use `linux-matrix.sh` or `gtkprobe.py` for Linux.
-- **Headless Firefox in a GPU-less container has no WebGL2.** `drive.mjs` forces software GL for
-  the Godot export.
+- **Headless Firefox in a GPU-less container has no WebGL2,** even with the software-GL prefs
+  `drive.mjs` sets. Run the Godot export in Firefox with `HEADFUL=1` (under `xvfb-run`).
+- **CPU throttling (`CPU=<n>`) slows only the page's main thread,** not workers, so it models the
+  Godot web build and not the JavaScript matrix.

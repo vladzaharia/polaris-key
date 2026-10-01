@@ -107,17 +107,23 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 ## Design notes
 
 - **Off the main thread, with numbers ([S-04](../../notes/S-04-low-end-performance.md)).** A verify blocks one frame for its whole
-  duration. That is 90–176 ms for the 350 KB bundle on a desktop host, and an estimated
-  0.5–0.9 s (35–70 ms for a 252 B document) on a Cortex-A53 phone.
+  duration. For the 350 KB bundle that is 37 ms native and 75–160 ms on web on a desktop host,
+  1.6 s on web under a ×20 CPU throttle, and an estimated 0.5–0.9 s native (35–85 ms for a 252 B
+  document) on a Cortex-A53 phone.
   - Run every verify of a signing input over 4 KB, and every verify during gameplay, on
     `WorkerThreadPool` when `OS.has_feature("threads")`. That brings the worst frame back to
     idle.
   - On the no-threads web export, `WorkerThreadPool.add_task` runs the task inline (S-04
-    measured the same stall as the main thread), so slice across frames instead.
+    measured the same stall as the main thread).
+  - On web, verify through WebCrypto Ed25519 (`JavaScriptBridge`) wherever the browser has it
+    (Chrome ≥ 137, Firefox ≥ 129, Safari ≥ 17); it is 90–300× faster and asynchronous. Cap its
+    signing inputs at 60,000 B on GCrypt-backed WebKit: WebKitGTK 2.52.6 kills the web process at
+    about 64 KiB. The GDScript path stays the oracle.
+  - Without WebCrypto Ed25519, slice across frames.
     - Use a 6 ms default budget, configurable from 4 to 8 ms.
-    - At 4 ms the worst frame stayed at idle and the wall time was ×4.5; at 8 ms it was ×2.1.
-  - An optional WebCrypto accelerator must cap signing inputs at 60,000 B on GCrypt-backed WebKit.
-    WebKitGTK 2.52.6 kills the web process at about 64 KiB.
+    - At 4 ms the worst frame stayed within 4 ms of idle and the wall time was ×4–5; at 8 ms it was
+      ×2.0–2.3.
+    - On an A53-class phone a sliced bundle verify takes 6–12 s, so report it as progress.
 - **Verdicts come from the corpus, not from Godot.** Validate before `JSON` sees a byte. Two
   divergences are known and must be recorded, not tolerated: Godot rejects a lone surrogate
   that JS accepts, and U+0000 follows the P1-01 plan's decision. No corpus vector covers the

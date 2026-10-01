@@ -5,11 +5,12 @@
 # localhost, so the page is a secure context (WebCrypto, OPFS).
 # usage: lowend/browser/linux-matrix.sh [engines...]   (default: webkit firefox chromium)
 #        GODOT=1 runs the Godot web export instead of the JS matrix; LARGE, CPU, SKIP, EDMAX as in drive.mjs
+#        HEADFUL=1 runs the browsers headed under xvfb-run (Firefox needs it for WebGL2)
 set -euo pipefail
 P=$(cd "$(dirname "$0")/../.." && pwd)
 ENGINES=${*:-webkit firefox chromium}
 IMG=${PW_IMAGE:-mcr.microsoft.com/playwright:v1.63.0-noble}
-docker run --rm --ipc=host -v "$P:/p" -e ENGINES="$ENGINES" -e LARGE="${LARGE:-}" -e CPU="${CPU:-}" -e SKIP="${SKIP:-}" -e EDMAX="${EDMAX:-}" -e GODOT="${GODOT:-}" -e TIMEOUT_S="${TIMEOUT_S:-}" "$IMG" bash -c '
+docker run --rm --ipc=host -v "$P:/p" -e ENGINES="$ENGINES" -e LARGE="${LARGE:-}" -e CPU="${CPU:-}" -e SKIP="${SKIP:-}" -e EDMAX="${EDMAX:-}" -e GODOT="${GODOT:-}" -e TIMEOUT_S="${TIMEOUT_S:-}" -e HEADFUL="${HEADFUL:-}" "$IMG" bash -c '
   set -e
   cd /p
   MOUNTS=/lowend=/p/lowend RESULTS_DIR=/tmp/posted node content/runners/browser/server.mjs /p/content 8431 &
@@ -20,7 +21,8 @@ docker run --rm --ipc=host -v "$P:/p" -e ENGINES="$ENGINES" -e LARGE="${LARGE:-}
     # WebKitGTK/WPE crash on Ed25519 over >= ~64 KiB (see the note); time only the small input there.
     E="$USER_EDMAX"
     if [ "$e" = webkit ] && [ -z "$E" ]; then E=65000; fi
-    EDMAX="$E" node lowend/browser/drive.mjs "$e" http://127.0.0.1:8431 "$PFX-linux-$e${CPU:+-cpu$CPU}" || echo "driver failed for $e"
+    RUN=""; [ -n "$HEADFUL" ] && RUN="xvfb-run -a"
+    EDMAX="$E" $RUN node lowend/browser/drive.mjs "$e" http://127.0.0.1:8431 "$PFX-linux-$e${CPU:+-cpu$CPU}" || echo "driver failed for $e"
   done
   uname -a
 '
