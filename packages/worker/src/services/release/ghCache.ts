@@ -37,6 +37,7 @@
  */
 
 import type { Env } from "../../core/platform.js";
+import type { FetchImpl } from "./githubApp.js";
 import {
   isAllowedStorageHost,
   kvKey,
@@ -235,4 +236,68 @@ export async function dropCachedSignedUrl(
   } catch {
     /* it expires anyway */
   }
+}
+
+// ── Repository visibility (for the opt-in redirect mode) ────────────────────────────────────
+
+/** How long a repository's visibility answer is reused. A repo going private is rare and the
+ *  answer only ever decides whether a PUBLIC artifact may be redirected instead of streamed. */
+const REPO_VISIBILITY_TTL = 3600;
+
+/**
+ * Is the product's repository public? One `GET /repos/{owner}/{repo}` per hour per product, and
+ * only when a request asks for `?redirect=1`. Any failure — and every private answer — is
+ * `false`, which keeps the request on the streaming path: redirecting a private repository's
+ * client to GitHub would only hand it a 404 (or, with a signed URL, a credential).
+ */
+export async function isPublicRepository(
+  env: Env,
+  product: string,
+  owner: string,
+  repo: string,
+  token: () => Promise<string>,
+  fetchImpl: FetchImpl,
+): Promise<boolean> {
+  const key = kvKey(
+    product,
+    "gh-repo-public",
+    `${owner}/${repo}`.toLowerCase(),
+  );
+  try {
+    const hit = await env.HOT.get(key);
+    if (hit === "1" || hit === "0") return hit === "1";
+  } catch {
+    /* a miss */
+  }
+  let isPublic = false;
+  try {
+    const res = await fetchImpl(
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${await token()}`,
+          "User-Agent": "polaris-key-release",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      },
+    );
+    if (res.ok) {
+      const body = (await res.json()) as {
+        private?: unknown;
+        visibility?: unknown;
+      };
+      isPublic = body.private === false && body.visibility !== "internal";
+    }
+  } catch {
+    isPublic = false;
+  }
+  try {
+    await env.HOT.put(key, isPublic ? "1" : "0", {
+      expirationTtl: REPO_VISIBILITY_TTL,
+    });
+  } catch {
+    /* uncached */
+  }
+  return isPublic;
 }
