@@ -9,8 +9,10 @@
 //   * a 401 gets exactly one re-acquire and one retry;
 //   * a cached token is bound to the device token it was minted with: after `deactivate()` the
 //     next mint refuses with `unauthorized` and makes no request, and a different device token
-//     re-mints instead of reusing it.
+//     re-mints instead of reusing it;
+//   * a printed minted token (console.log, JSON.stringify) never shows the token itself.
 
+import { inspect } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
@@ -109,6 +111,20 @@ describe("config.mintToken", () => {
     // Memory only: nothing minted reaches the store.
     expect(JSON.stringify(await store.readCache())).not.toContain("minted");
     expect(await store.getToken()).toBe("pkeyt_device");
+  });
+
+  it("redacts the minted token from console.log and JSON.stringify", async () => {
+    const p = plane({
+      [MINT]: [json({ token: "minted-secret", expiresAt: T0 + 600 })],
+    });
+    const { c } = await client(p.fetchImpl);
+    const minted = await c.config.mintToken("musickit");
+    expect(minted.token).toBe("minted-secret");
+    for (const printed of [inspect(minted), JSON.stringify(minted)]) {
+      expect(printed).not.toContain("minted-secret");
+      expect(printed).toContain(String(T0 + 600));
+      expect(printed).toContain("[redacted]");
+    }
   });
 
   it("shares one request between two concurrent mints of the same recipe", async () => {

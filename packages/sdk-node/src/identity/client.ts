@@ -21,8 +21,10 @@
 import { PolarisError } from "@polaris-key/client-core";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
+import { redactOnPrint } from "../core/redact.js";
 
-/** What the host shows the player, plus the poll credential the SDK keeps using. */
+/** What the host shows the player, plus the poll credential the SDK keeps using. A prompt from
+ *  `beginSignIn` prints (`console.log`, `JSON.stringify`) with `deviceCode` redacted. */
 export interface SignInPrompt {
   /** The poll credential. Never show it, never put it in a URL. */
   deviceCode: string;
@@ -65,8 +67,20 @@ export interface WaitForSignInOptions {
   signal?: AbortSignal;
 }
 
-/** RFC 8628 §3.5: a `slow_down` without an interval adds five seconds. */
+/** RFC 8628 §3.5: a `slow_down` without an interval adds five seconds to the CURRENT interval,
+ *  so repeated interval-less answers keep lengthening it. */
 export const SLOW_DOWN_STEP_SECONDS = 5;
+
+/** The longest single `setTimeout` (2^31 - 1 ms); a longer one fires after 1 ms. */
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
+/** The seconds `waitForSignIn` actually sleeps: never under one second (a zero, negative or
+ *  non-finite interval would spin) and never past the code's own lifetime. */
+function pollDelay(interval: number, expiresIn: number): number {
+  const ceiling = Number.isFinite(expiresIn) && expiresIn >= 1 ? expiresIn : 1;
+  if (!Number.isFinite(interval)) return interval > 0 ? ceiling : 1;
+  return Math.min(Math.max(interval, 1), ceiling);
+}
 
 /** Transient failures `waitForSignIn` rides out at the current interval: the network, and a
  *  server that answered 5xx. Anything else ends the wait. */
@@ -129,15 +143,18 @@ export class IdentityClient {
         "device sign-in start answered without a complete prompt.",
       );
     }
-    return {
-      deviceCode: b.deviceCode,
-      userCode: b.userCode,
-      verificationUri: b.verificationUri,
-      verificationUriComplete: b.verificationUriComplete,
-      expiresIn: b.expiresIn,
-      interval: b.interval,
-      expiresAt: this.ctx.now() + b.expiresIn,
-    };
+    return redactOnPrint<SignInPrompt>(
+      {
+        deviceCode: b.deviceCode,
+        userCode: b.userCode,
+        verificationUri: b.verificationUri,
+        verificationUriComplete: b.verificationUriComplete,
+        expiresIn: b.expiresIn,
+        interval: b.interval,
+        expiresAt: this.ctx.now() + b.expiresIn,
+      },
+      ["deviceCode"],
+    );
   }
 
   /**
@@ -149,6 +166,15 @@ export class IdentityClient {
    * not folded into a status. `waitForSignIn` rides both out.
    */
   async pollSignIn(prompt: SignInPrompt): Promise<SignInPoll> {
+    return this.poll(prompt, prompt.interval);
+  }
+
+  /** One poll, where an interval-less `slow_down` lengthens `current` — the interval the caller
+   *  is pacing at — rather than the prompt's original one. */
+  private async poll(
+    prompt: SignInPrompt,
+    current: number,
+  ): Promise<SignInPoll> {
     this.ctx.requireService("identity");
     const res = await this.post("identity/auth/device/poll", {
       deviceCode: prompt.deviceCode,
@@ -172,7 +198,7 @@ export class IdentityClient {
         status: "slow-down",
         interval: isSeconds(body.interval)
           ? body.interval
-          : prompt.interval + SLOW_DOWN_STEP_SECONDS,
+          : current + SLOW_DOWN_STEP_SECONDS,
       };
     }
     if (res.status !== 200) {
@@ -215,11 +241,11 @@ export class IdentityClient {
     for (;;) {
       signal?.throwIfAborted();
       if (this.ctx.now() >= prompt.expiresAt) return { status: "expired" };
-      await sleep(interval, signal);
+      await sleep(pollDelay(interval, prompt.expiresIn), signal);
       if (this.ctx.now() >= prompt.expiresAt) return { status: "expired" };
       let poll: SignInPoll;
       try {
-        poll = await this.pollSignIn(prompt);
+        poll = await this.poll(prompt, interval);
       } catch (e) {
         if (e instanceof PolarisError && TRANSIENT.has(e.code)) continue;
         throw e;
@@ -260,18 +286,27 @@ async function errorCode(res: Response, fallback: string): Promise<string> {
   return b.error?.code ?? fallback;
 }
 
-/** Wait `seconds`, or reject with the signal's reason when it aborts first. */
+/** Wait `seconds`, or reject with the signal's reason when it aborts first. A wait longer than
+ *  one timer can hold is chained, so it never collapses into Node's 1 ms overflow fallback. */
 function sleep(seconds: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(signal.reason);
-    const timer = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, seconds * 1000);
+    let remaining = Math.max(0, seconds * 1000);
+    let timer: ReturnType<typeof setTimeout>;
     const onAbort = () => {
       clearTimeout(timer);
       reject(signal!.reason);
     };
+    const arm = () => {
+      const step = Math.min(remaining, MAX_TIMER_MS);
+      remaining -= step;
+      timer = setTimeout(() => {
+        if (remaining > 0) return arm();
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, step);
+    };
+    arm();
     signal?.addEventListener("abort", onAbort, { once: true });
   });
 }

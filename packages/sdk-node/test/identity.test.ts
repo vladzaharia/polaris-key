@@ -6,11 +6,16 @@
 //   * a `slow_down` lengthens the interval for every later poll — to the server's value, or by
 //     five seconds when it names none — and never shortens it;
 //   * a failed poll is retried at the SAME interval, never faster;
+//   * repeated interval-less `slow_down`s each add five seconds to the CURRENT interval;
+//   * the sleep is clamped to [1, expiresIn] seconds — a negative, fractional or huge interval
+//     neither spins nor outlives the code;
 //   * the prompt's expiry and the caller's AbortSignal both stop polling;
+//   * a printed prompt never shows the device code;
 //   * Identity off ⇒ `service-unavailable` before any request (D-21).
 //
 // The clock is Vitest's fake one (Date AND setTimeout), so every sleep is exact and instant.
 
+import { inspect } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PolarisError } from "@polaris-key/client-core";
 import { PolarisKeyClient } from "../src/client.js";
@@ -217,6 +222,65 @@ describe("waitForSignIn", () => {
     ).toEqual([2, 7, 7]);
   });
 
+  it("adds five seconds to the CURRENT interval on each interval-less slow_down (RFC 8628 §3.5)", async () => {
+    const { p, c, prompt } = await begin({
+      [POLL]: [
+        json({ error: "rate_limited" }, 429),
+        json({ error: "rate_limited" }, 429),
+        json({ error: "rate_limited" }, 429),
+        ready(),
+      ],
+    });
+    await settle(c.identity.waitForSignIn(prompt));
+    expect(
+      gaps(
+        polls(p.calls).map((x) => x.at),
+        T0,
+      ),
+    ).toEqual([2, 7, 12, 17]);
+  });
+
+  it("clamps a negative interval to one second", async () => {
+    const { p, c, prompt } = await begin({ [POLL]: [pending(), ready()] });
+    await settle(c.identity.waitForSignIn({ ...prompt, interval: -3 }));
+    expect(
+      gaps(
+        polls(p.calls).map((x) => x.at),
+        T0,
+      ),
+    ).toEqual([1, 1]);
+  });
+
+  it("clamps a 0.5-second interval up to one second", async () => {
+    const p = plane({
+      [START]: [started({ interval: 0.5 })],
+      [POLL]: [pending(), ready()],
+    });
+    const { c } = await client(p.fetchImpl);
+    const prompt = await c.identity.beginSignIn();
+    await settle(c.identity.waitForSignIn(prompt));
+    expect(
+      gaps(
+        polls(p.calls).map((x) => x.at),
+        T0,
+      ),
+    ).toEqual([1, 1]);
+  });
+
+  it("clamps a huge interval to the code's lifetime instead of a tight loop", async () => {
+    const p = plane({
+      [START]: [started({ interval: 1e12, expiresIn: 60 })],
+      [POLL]: [pending()],
+    });
+    const { c } = await client(p.fetchImpl);
+    const prompt = await c.identity.beginSignIn();
+    const result = await settle(c.identity.waitForSignIn(prompt));
+    expect(result).toEqual({ status: "expired" });
+    // One 60 s sleep, then expiry: no poll, and not a 1 ms timer overflow.
+    expect(polls(p.calls)).toHaveLength(0);
+    expect(Date.now() / 1000 - T0).toBeGreaterThanOrEqual(60);
+  });
+
   it("retries a failed poll at the same interval, never faster", async () => {
     const { p, c, prompt } = await begin({
       [POLL]: [
@@ -277,6 +341,21 @@ describe("waitForSignIn", () => {
     const result = await settle(c.identity.waitForSignIn(prompt));
     expect(result.status).toBe("error");
     expect(await store.getToken()).toBeNull();
+  });
+});
+
+describe("printing a prompt", () => {
+  it("redacts the device code from console.log and JSON.stringify", async () => {
+    const p = plane({ [START]: [started()] });
+    const { c } = await client(p.fetchImpl);
+    const prompt = await c.identity.beginSignIn();
+    expect(prompt.deviceCode).toBe("device-code-1");
+    expect(Object.keys(prompt)).toContain("deviceCode");
+    for (const printed of [inspect(prompt), JSON.stringify(prompt)]) {
+      expect(printed).not.toContain("device-code-1");
+      expect(printed).toContain("WDJB-MJHT");
+      expect(printed).toContain("[redacted]");
+    }
   });
 });
 

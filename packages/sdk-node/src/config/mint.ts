@@ -20,8 +20,9 @@
 import { PolarisError } from "@polaris-key/client-core";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
+import { redactOnPrint } from "../core/redact.js";
 
-/** What a mint returns. */
+/** What a mint returns. It prints (`console.log`, `JSON.stringify`) with `token` redacted. */
 export interface MintedToken {
   token: string;
   /** Epoch seconds. */
@@ -118,7 +119,10 @@ async function mintOnce(
       );
     }
     return {
-      minted: { token: b.token, expiresAt: b.expiresAt },
+      minted: redactOnPrint<MintedToken>(
+        { token: b.token, expiresAt: b.expiresAt },
+        ["token"],
+      ),
       // `get` refused locally when no token was presented, so it is a string here.
       deviceToken: presented as string,
     };

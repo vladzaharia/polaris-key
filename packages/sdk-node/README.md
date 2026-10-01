@@ -144,6 +144,16 @@ paces itself — an Electron bridge, say.
 `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
 identity's **own** licence; it does not attach a licence this device already held.
 
+**After `ready`, show on the device which account signed in.** Anyone holding the user code can
+complete the sign-in on the verification page, so the player must be able to see a mis-binding:
+`ready` carries no identity itself, but the post-acquisition sync has already run, so
+`client.license.getProfile()` returns the signed licence profile (`name`, `email`) to show — for
+example "Signed in as Ada Lovelace <ada@example.com>" with a way to sign out.
+
+A prompt from `beginSignIn` and a `MintedToken` print with the credential redacted:
+`console.log` and `JSON.stringify` show `deviceCode` / `token` as `[redacted]`, while the
+properties themselves read normally.
+
 ## Edge-mint
 
 `client.config.mintToken(recipeId)` asks the Worker to sign a short-lived third-party token
