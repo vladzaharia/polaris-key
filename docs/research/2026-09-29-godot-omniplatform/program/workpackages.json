@@ -651,7 +651,7 @@
       "optional": false,
       "refs": ["PARITY §5.1–§5.5 §8", "notes/A2 §9"],
       "brief": "wp/P1b-07-license-config-release-gaps.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-08",
