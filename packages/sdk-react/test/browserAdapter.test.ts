@@ -134,8 +134,9 @@ describe("BrowserAdapter — construction + first load", () => {
       string,
       string
     >;
-    expect(headers["X-PKey-Platform"]).toBe("browser");
-    expect(headers["X-PKey-SDK"]).toBe("@polaris-key/react");
+    expect(headers["X-PKey-Platform"]).toBe("web");
+    expect(headers["X-PKey-Arch"]).toBeUndefined();
+    expect(headers["X-PKey-SDK"]).toBe("react");
     expect(headers["X-PKey-Version"]).toBe("1.4.2");
     expect(Object.keys(headers).some((k) => k.startsWith("X-Polaris-"))).toBe(
       false,

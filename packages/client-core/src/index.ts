@@ -58,6 +58,8 @@ export {
   type UserConfigEntry,
 } from "./config.js";
 
+export { canonicalArch, canonicalPlatform } from "./headers.js";
+
 export {
   channelForVersion,
   compareSemver,

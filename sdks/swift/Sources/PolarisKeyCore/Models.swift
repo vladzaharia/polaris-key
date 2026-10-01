@@ -312,8 +312,9 @@ public let HEADER_ARCH = "X-PKey-Arch"
 public let HEADER_SDK_NAME = "X-PKey-SDK"
 public let HEADER_SDK_VERSION = "X-PKey-SDK-Version"
 
-/// SDK metadata sent with every product-scoped request.
-public let POLARIS_SDK_NAME = "PolarisKeySwift"
+/// SDK metadata sent with every product-scoped request: `X-PKey-SDK` is the short SDK id
+/// (WIRE-CONTRACT-V3 §5.2, the generated `SdkId`), and the version is `X-PKey-SDK-Version`.
+public let POLARIS_SDK_NAME = SdkId.swift
 public let POLARIS_SDK_VERSION = "0.2.0"
 
 /// The device credential prefix (§6). The withdrawn `plrst_` spelling is not accepted.

@@ -173,72 +173,32 @@ public actor ConfigClient {
         await doc()?.schemaVersion
     }
 
-    /// Resolve the effective value for `key`, honouring management state + the override layers.
+    /// The resolution inputs: the last verified document plus this client's override layers.
+    private func context() async -> ResolveContext {
+        ResolveContext(
+            remote: await doc()?.config, localOverrides: localOverrides, env: environment,
+            envPrefix: envPrefix)
+    }
+
+    /// Resolve the effective value for `key`, honouring management state + the override layers
+    /// (`ConfigResolution`, WIRE-CONTRACT-V3 §2.2.1).
     public func config(_ key: String, default fallback: JSONValue) async -> JSONValue {
-        let entry = await doc()?.config[key]
-        // enforced | hidden → the remote value is locked; local/env are ignored.
-        if let entry, entry.state == .enforced || entry.state == .hidden { return entry.value }
-        if let local = localOverrides[key] { return local }
-        if let env = envValue(for: key) { return env }
-        if let entry { return entry.value }
-        return fallback
+        ConfigResolution.resolveValue(await context(), key) ?? fallback
     }
 
     /// Where `config(key)` would source its value from (provenance, for settings UIs).
     public func configSource(_ key: String) async -> ConfigSource {
-        let entry = await doc()?.config[key]
-        if entry?.state == .enforced { return .enforced }
-        if entry?.state == .hidden { return .hidden }
-        if localOverrides[key] != nil { return .local }
-        if envValue(for: key) != nil { return .env }
-        if entry != nil { return .remoteDefault }
-        return .fallback
+        ConfigResolution.resolveSource(await context(), key)
     }
 
-    /// The user-visible catalog: every remote entry MINUS the `hidden` ones, each carrying its
-    /// effective value and whether it is `enforced`.
+    /// The user-visible catalog (§2.2.1 rule 4): every document entry MINUS the `hidden` ones,
+    /// each carrying its effective value and whether it is `enforced`.
     public func listUserConfig() async -> [UserConfigEntry] {
-        guard let config = await doc()?.config else { return [] }
-        var out: [UserConfigEntry] = []
-        for (key, entry) in config where entry.state != .hidden {
-            out.append(
-                UserConfigEntry(
-                    key: key,
-                    value: await self.config(key, default: entry.value),
-                    enforced: entry.state == .enforced))
-        }
-        return out
+        ConfigResolution.listUserEntries(await context())
     }
 
     /// A managed secret's value (string only), or nil. Secrets are never enumerated.
     public func secret(_ key: String) async -> String? {
         await doc()?.secrets[key]?.value.stringValue
-    }
-
-    /// Read + decode the env override for `key`, or nil if unset.
-    ///
-    /// The raw string is parsed as JSON when it LOOKS like JSON (so `"4"`→int, `true`→bool,
-    /// `[1,2]`→array) and kept as a plain string otherwise. The look-first test matters: a bare
-    /// `dark` is a perfectly good string value, and treating a parse failure as the signal would
-    /// make the behaviour depend on how permissive this platform's JSON parser happens to be.
-    private func envValue(for key: String) -> JSONValue? {
-        let name = envPrefix + key.replacingOccurrences(of: ".", with: "__")
-        guard let raw = environment[name] else { return nil }
-        guard looksLikeJson(raw), let data = raw.data(using: .utf8),
-            let parsed = try? JSONDecoder().decode(JSONValue.self, from: data)
-        else { return .string(raw) }
-        return parsed
-    }
-
-    private func looksLikeJson(_ s: String) -> Bool {
-        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let first = t.first else { return false }
-        if t == "true" || t == "false" || t == "null" { return true }
-        if first == "{" || first == "[" || first == "\"" { return true }
-        if first == "-" || first.isNumber {
-            return t.range(
-                of: #"^-?\d+(\.\d+)?([eE][+-]?\d+)?$"#, options: .regularExpression) != nil
-        }
-        return false
     }
 }

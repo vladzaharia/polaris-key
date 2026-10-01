@@ -40,6 +40,7 @@ import {
 import { handleConfigDocument } from "../src/services/config/document.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { handleActivate } from "../src/services/license/activation.js";
+import { handleLicenseDocument } from "../src/services/license/document.js";
 import { createBrowserSession } from "../src/services/identity/index.js";
 import {
   serializeServices,
@@ -472,13 +473,65 @@ describe("POST /<p>/devices/register — the device id", () => {
       "x-pkey-sdk-version": "0.9.0",
     });
     const row = await getDevice(w.db, "djdl", DEVICE);
+    // WIRE-CONTRACT-V3 §5.2 rule 3: a listed spelling is stored canonical; an unknown SDK name
+    // is stored as sent.
     expect(row).toMatchObject({
-      platform: "darwin",
+      platform: "macos",
       arch: "arm64",
       app_version: "4.5.6",
       sdk_name: "polaris-node",
       sdk_version: "0.9.0",
     });
+  });
+
+  it("stores canonical values for a pre-§5.2 SDK's spellings on /license/document", async () => {
+    const w = await world(SET.licensed, "open");
+    const { key } = await seedLicenseWithKey(w.db, "djdl");
+    const activated = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": DEVICE,
+      }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+    );
+    expect(activated.status).toBe(200);
+    const { token } = (await activated.json()) as { token: string };
+    const doc = await handleLicenseDocument(
+      mkReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-device": DEVICE,
+        "x-pkey-platform": "win32",
+        "x-pkey-arch": "x64",
+        "x-pkey-sdk": "@polaris-key/node",
+        "x-pkey-sdk-version": "0.9.0",
+      }),
+      w.env,
+      w.db,
+      w.product,
+      NOW + 1,
+    );
+    expect(doc.status).toBe(200);
+    expect(await getDevice(w.db, "djdl", DEVICE)).toMatchObject({
+      platform: "windows",
+      arch: "x86_64",
+      sdk_name: "node",
+    });
+    // An empty header is absent, so the stored value is kept rather than blanked.
+    await handleLicenseDocument(
+      mkReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-device": DEVICE,
+        "x-pkey-platform": "",
+      }),
+      w.env,
+      w.db,
+      w.product,
+      NOW + 2,
+    );
+    expect((await getDevice(w.db, "djdl", DEVICE))?.platform).toBe("windows");
   });
 
   it("treats the fingerprint as optional, and stores one when offered", async () => {

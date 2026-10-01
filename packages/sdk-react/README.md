@@ -89,8 +89,9 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 - **`<PolarisLogin>` / `<PolarisLogout>`** (`./identity`) — the sign-in card (OIDC button plus
   typed license-key entry, each shown only when its service is enabled) and a sign-out button.
 - **`<ConfigPanel>`** (`./config`) — a settings panel over the shipped
-  `listUserConfig`/`getConfigSource` data layer, with per-entry provenance badges and an
-  override affordance on `default`-state keys only.
+  `listUserConfig`/`getConfigSource` data layer (one row per document entry, `hidden` ones
+  excluded), with per-entry provenance badges and an override affordance on `default`-state
+  keys only.
 - **`<DeviceManager>`** (`./license`) — list / rename / disconnect, rendering the
   `device-management-unsupported` refusal as an explanation rather than an error.
 - **`<UpdatePrompt>`** (`./update`) — a polite banner (or a blocking dialog) over
@@ -128,10 +129,15 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 ```
 
 `enforced`/`hidden` values are locked to the server and cannot be overridden; `hidden` keys are
-additionally withheld from the user-facing list (`listUserConfig`) but still applied. The
-**environment** layer never applies in React: a browser has no environment and a renderer must
-not inherit the privileged process's, so env layering resolves in `@polaris-key/node` on the desktop
-side and nowhere at all in the browser.
+additionally withheld from the user-facing list (`listUserConfig`) but still applied. The list
+holds the document's entries only (WIRE-CONTRACT-V3 §2.2.1 rule 4): a key that only a local
+override supplies is not listed, though it stays in `config` and `get`. The **environment**
+layer never applies in React: a browser has no environment and a renderer must not inherit the
+privileged process's, so env layering resolves in `@polaris-key/node` on the desktop side and
+nowhere at all in the browser (rule 3; `config-matrix.json` pins it as `expectNoEnv`).
+
+The browser adapter sends `X-PKey-Platform: web`, `X-PKey-SDK: react` and no `X-PKey-Arch`
+(§5.2).
 
 ## Adapter verbs beyond the gate
 

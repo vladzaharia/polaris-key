@@ -84,12 +84,25 @@ A key's env var is the prefix (default `PKEY_CONFIG_`) plus the key with every `
 | `run.concurrency` | `PKEY_CONFIG_run__concurrency` |
 | `quality.floor`   | `PKEY_CONFIG_quality__floor`   |
 
-The value is JSON-parsed when it looks like JSON (`4` → number, `true` → boolean, `[…]`/`{…}` →
-array/object, anything else → string); a value that looks like JSON but fails to parse falls
-back to the raw string rather than erroring. `enforced`/`hidden` keys ignore the environment
-layer entirely — the remote value always wins for those, in every language. React is the one
-partial exception: a browser has no environment to read, so the env layer only ever resolves
-on the Node side of a desktop build, never in the browser transport.
+Nothing else about the name changes, case included, and a variable that is set counts even when
+it is empty. The value is the parsed JSON value when the raw string is one **strict** JSON text
+(`4` → number, `true` → boolean, `[…]`/`{…}` → array/object, `"…"` → string), and otherwise the
+raw string, unchanged; reading a variable never errors (WIRE-CONTRACT-V3 §2.2.1 rule 2, pinned
+by `conformance/corpus/v2/config-matrix.json`). Strict means RFC 8259 with no trailing comma,
+`NaN`, `Infinity`, leading zero or byte order mark, plus: no two members of the same name (names
+compare by Unicode scalar value, never normalized); no member name holding U+0000; no lone
+surrogate; every number zero or of magnitude 10^−307 up to below 10^308, judged from its
+digits; and at most 64 levels of nesting. Noncharacters such as U+FFFF are ordinary characters.
+Every SDK reaches the same verdict for every input. Two parsed values are a declared
+representation limit (WIRE-CONTRACT-V3 §10): Swift keeps only the first of two canonically
+equivalent member names, and Godot's number reader is not correctly rounded.
+
+`enforced`/`hidden` keys ignore the environment layer entirely — the remote value always wins
+for those, in every language. React is the one partial exception: a browser has no environment
+to read, so the env layer only ever resolves on the Node side of a desktop build, never in the
+browser transport (rule 3). A settings UI's list (`listUserConfig`) holds every document entry
+except `hidden` ones, each with its resolved value; a key that only a local override or the
+environment supplies is not listed (rule 4).
 
 ## In this section
 

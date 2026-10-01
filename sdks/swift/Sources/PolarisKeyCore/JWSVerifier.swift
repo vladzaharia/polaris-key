@@ -193,7 +193,11 @@ public enum JWSVerifier {
 /// the algorithm-downgrade guard giving opposite answers for identical signed bytes (audit
 /// finding R2-06). §1 resolves it by rejecting outright, so no implementation has to be "right"
 /// about which member wins.
-enum StrictJSON {
+///
+/// `decode` and `hasDuplicateKeys` are the JWS path and are unchanged by P1b-04. The four
+/// `package` scanners below serve the config environment rule (WIRE-CONTRACT-V3 §2.2.1 rule 2),
+/// and are the building blocks P3-02 reuses for documents.
+package enum StrictJSON {
     /// Decode `T`, first pre-scanning the RAW bytes for duplicate keys. `JSONDecoder` alone
     /// cannot help: duplicates are collapsed before any `Decodable` sees them.
     static func decode<T: Decodable>(_ type: T.Type, from data: Data) -> T? {
@@ -201,14 +205,32 @@ enum StrictJSON {
         return try? JSONDecoder().decode(type, from: data)
     }
 
-    /// True if any JSON object in `data` declares the same key twice.
-    ///
-    /// Scans the raw bytes tracking one key-set per open object (`nil` marks an array, whose
-    /// commas do not introduce keys). Mirrors `hasDuplicateKeys` in
-    /// `packages/shared-jws/src/index.ts` statement for statement.
+    /// True if any JSON object in `data` declares the same key twice. Names are keyed by
+    /// `String`, whose equality is canonical equivalence (the JWS path; P3-01 and P3-02 move it
+    /// to scalar keys). Mirrors `hasDuplicateKeys` in `packages/shared-jws/src/index.ts`.
     static func hasDuplicateKeys(_ data: Data) -> Bool {
+        scanMemberNames(data) { name in name }
+    }
+
+    /// §2.2.1 rule 2's member-name checks: true when an object declares two members whose names
+    /// are the same sequence of Unicode scalar values after unescaping (never normalized, so
+    /// `"\u00e9"` and `"e\u0301"` are two names), when a name holds U+0000, or when a name
+    /// cannot be decoded (a lone surrogate).
+    package static func hasRefusedMemberName(_ data: Data) -> Bool {
+        scanMemberNames(data) { name -> [Unicode.Scalar]? in
+            let scalars = Array(name.unicodeScalars)
+            return scalars.contains(Unicode.Scalar(0)) ? nil : scalars
+        }
+    }
+
+    /// The raw-text scanner behind both: it tracks one key set per open object (`nil` marks an
+    /// array, whose commas do not introduce keys) and stores `key(name)` for each member name.
+    /// A name for which `key` returns nil, or that cannot be unescaped, is refused.
+    private static func scanMemberNames<K: Hashable>(
+        _ data: Data, key makeKey: (String) -> K?
+    ) -> Bool {
         let bytes = [UInt8](data)
-        var stack: [Set<String>?] = []
+        var stack: [Set<K>?] = []
         var expectKey = false
         var i = 0
         while i < bytes.count {
@@ -228,8 +250,8 @@ enum StrictJSON {
                 i += 1
                 if expectKey {
                     if let top = stack.last, top != nil {
-                        guard let key = unescape(literal) else {
-                            return true  // unparseable key — refuse rather than guess
+                        guard let name = unescape(literal), let key = makeKey(name) else {
+                            return true  // unparseable or refused key — refuse rather than guess
                         }
                         if stack[stack.count - 1]!.contains(key) { return true }
                         stack[stack.count - 1]!.insert(key)
@@ -239,7 +261,7 @@ enum StrictJSON {
                 continue
             }
             if c == UInt8(ascii: "{") {
-                stack.append(Set<String>())
+                stack.append(Set<K>())
                 expectKey = true
             } else if c == UInt8(ascii: "[") {
                 stack.append(nil)
@@ -255,9 +277,173 @@ enum StrictJSON {
         return false
     }
 
+    /// True when more than `max` arrays and objects are open at some point (§2.2.1 rule 2).
+    /// String contents are skipped (a backslash skips the next byte). Exact for every text
+    /// `JSONDecoder` accepts, which also enforces no bound below 512 itself.
+    package static func nestingExceeds(_ data: Data, _ max: Int) -> Bool {
+        var depth = 0
+        var inString = false
+        var i = 0
+        let bytes = [UInt8](data)
+        while i < bytes.count {
+            let c = bytes[i]
+            if inString {
+                if c == UInt8(ascii: "\\") {
+                    i += 1
+                } else if c == UInt8(ascii: "\"") {
+                    inString = false
+                }
+            } else if c == UInt8(ascii: "\"") {
+                inString = true
+            } else if c == UInt8(ascii: "[") || c == UInt8(ascii: "{") {
+                depth += 1
+                if depth > max { return true }
+            } else if c == UInt8(ascii: "]") || c == UInt8(ascii: "}") {
+                depth -= 1
+            }
+            i += 1
+        }
+        return false
+    }
+
+    /// True when an object or array closes right after a comma (§2.2.1 rule 2). `JSONDecoder`
+    /// accepts `[1,2,]` and `{"a":1,}`; RFC 8259 does not.
+    package static func hasTrailingComma(_ data: Data) -> Bool {
+        let bytes = [UInt8](data)
+        var inString = false
+        var afterComma = false
+        var i = 0
+        while i < bytes.count {
+            let c = bytes[i]
+            if inString {
+                if c == UInt8(ascii: "\\") {
+                    i += 1
+                } else if c == UInt8(ascii: "\"") {
+                    inString = false
+                }
+                i += 1
+                continue
+            }
+            switch c {
+            case UInt8(ascii: " "), UInt8(ascii: "\t"), UInt8(ascii: "\n"), UInt8(ascii: "\r"):
+                break
+            case UInt8(ascii: ","):
+                afterComma = true
+            case UInt8(ascii: "]"), UInt8(ascii: "}"):
+                if afterComma { return true }
+            default:
+                afterComma = false
+                if c == UInt8(ascii: "\"") { inString = true }
+            }
+            i += 1
+        }
+        return false
+    }
+
+    /// True when every number token outside a string is in §2.2.1 rule 2's range. A token is the
+    /// run of digits, `.`, `e`, `E`, `+` and `-` at each `-` or digit.
+    package static func numbersInRange(_ data: Data) -> Bool {
+        let bytes = [UInt8](data)
+        var inString = false
+        var i = 0
+        while i < bytes.count {
+            let c = bytes[i]
+            if inString {
+                if c == UInt8(ascii: "\\") {
+                    i += 2
+                } else {
+                    if c == UInt8(ascii: "\"") { inString = false }
+                    i += 1
+                }
+                continue
+            }
+            if c == UInt8(ascii: "\"") {
+                inString = true
+                i += 1
+                continue
+            }
+            if c == UInt8(ascii: "-") || isDigit(c) {
+                let start = i
+                while i < bytes.count && isNumberRunByte(bytes[i]) { i += 1 }
+                if !numberTokenInRange(bytes[start..<i]) { return false }
+                continue
+            }
+            i += 1
+        }
+        return true
+    }
+
+    private static func isDigit(_ c: UInt8) -> Bool {
+        c >= UInt8(ascii: "0") && c <= UInt8(ascii: "9")
+    }
+
+    private static func isNumberRunByte(_ c: UInt8) -> Bool {
+        isDigit(c) || c == UInt8(ascii: ".") || c == UInt8(ascii: "e")
+            || c == UInt8(ascii: "E") || c == UInt8(ascii: "+") || c == UInt8(ascii: "-")
+    }
+
+    /// Judge one number token from its decimal digits, with no floating point. In range when its
+    /// exponent part has at most six significant digits and the number is zero or its first
+    /// non-zero digit's power of ten is from -307 to 307. Every byte is checked to be a digit
+    /// before `0x30` is subtracted, and every count stays far below `Int.max`, so a malformed
+    /// run such as `1e5-5` (which `JSONDecoder` refuses anyway) cannot trap.
+    package static func numberTokenInRange<C: Collection>(_ token: C) -> Bool
+    where C.Element == UInt8 {
+        let t = Array(token)
+        var i = 0
+        if i < t.count && t[i] == UInt8(ascii: "-") { i += 1 }
+        var intDigits = 0
+        var leadingZeros = 0
+        var sawNonZero = false
+        while i < t.count && isDigit(t[i]) {
+            if !sawNonZero {
+                if t[i] == UInt8(ascii: "0") { leadingZeros += 1 } else { sawNonZero = true }
+            }
+            intDigits += 1
+            i += 1
+        }
+        if i < t.count && t[i] == UInt8(ascii: ".") {
+            i += 1
+            while i < t.count && isDigit(t[i]) {
+                if !sawNonZero {
+                    if t[i] == UInt8(ascii: "0") { leadingZeros += 1 } else { sawNonZero = true }
+                }
+                i += 1
+            }
+        }
+        var exponent = 0
+        if i < t.count && (t[i] == UInt8(ascii: "e") || t[i] == UInt8(ascii: "E")) {
+            i += 1
+            var negative = false
+            if i < t.count && (t[i] == UInt8(ascii: "+") || t[i] == UInt8(ascii: "-")) {
+                negative = t[i] == UInt8(ascii: "-")
+                i += 1
+            }
+            var significant = 0
+            while i < t.count && isDigit(t[i]) {
+                let d = Int(t[i] - UInt8(ascii: "0"))
+                if significant > 0 || d != 0 {
+                    significant += 1
+                    if significant > maxExponentDigits { return false }
+                    exponent = exponent * 10 + d
+                }
+                i += 1
+            }
+            if negative { exponent = -exponent }
+        }
+        if !sawNonZero { return true }  // every digit is zero
+        let power = intDigits - 1 - leadingZeros + exponent
+        return power >= -maxDecimalExponent && power <= maxDecimalExponent
+    }
+
+    /// §2.2.1 rule 2's limits, restated as literals in every SDK.
+    package static let maxDepth = 64
+    private static let maxDecimalExponent = 307
+    private static let maxExponentDigits = 6
+
     /// Resolve a raw JSON string literal (escapes and all) to the key it denotes, so `"a"` and
-    /// `"a"` collide the way every JSON parser makes them collide. Wrapped in an array because
-    /// a bare string is a JSON fragment.
+    /// `"\u0061"` collide the way every JSON parser makes them collide. Wrapped in an array
+    /// because a bare string is a JSON fragment. `JSONDecoder` refuses a lone surrogate.
     private static func unescape(_ literal: ArraySlice<UInt8>) -> String? {
         var wrapped = Data([UInt8(ascii: "["), UInt8(ascii: "\"")])
         wrapped.append(contentsOf: literal)

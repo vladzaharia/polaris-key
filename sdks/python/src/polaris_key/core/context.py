@@ -56,6 +56,7 @@ from .semver import channel_for_version
 from .dirs import ProductDirs, default_dir_bases, resolve_dirs
 from .store import Store
 from .._version import SDK_NAME, SDK_VERSION
+from .headers import canonical_arch, canonical_platform
 from ..discovery import (
     DEFAULT_SERVICES,
     ServicesMap,
@@ -364,16 +365,24 @@ class CoreContext:
         return self.http().request(method, url, **kwargs)
 
     def headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-        """The ``X-PKey-*`` client metadata every product-scoped call carries (§5)."""
+        """The ``X-PKey-*`` client metadata every product-scoped call carries (§5).
+
+        Platform and arch are the canonical values of WIRE-CONTRACT-V3 §5.2, mapped from
+        ``platform.system()`` and ``platform.machine()``; a spelling with no value omits its
+        header rather than inventing one."""
         out = {
             HEADER_DEVICE: self._device_id,
             HEADER_VERSION: self.version,
             HEADER_CHANNEL: self.channel,
-            HEADER_PLATFORM: platform.system().lower(),
-            HEADER_ARCH: platform.machine(),
             HEADER_SDK_NAME: SDK_NAME,
             HEADER_SDK_VERSION: SDK_VERSION,
         }
+        platform_value = canonical_platform(platform.system())
+        if platform_value is not None:
+            out[HEADER_PLATFORM] = platform_value
+        arch_value = canonical_arch(platform.machine())
+        if arch_value is not None:
+            out[HEADER_ARCH] = arch_value
         if extra:
             out.update(extra)
         return out

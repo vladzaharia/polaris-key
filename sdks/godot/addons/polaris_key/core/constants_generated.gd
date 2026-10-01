@@ -275,6 +275,19 @@ class Arch:
 const ARCH_VALUES := ["arm64", "x86_64", "armv7", "wasm32"]
 
 
+## The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands.
+class SdkId:
+	const NODE := "node"
+	const REACT := "react"
+	const PYTHON := "python"
+	const SWIFT := "swift"
+	const GODOT := "godot"
+
+
+## Every `SdkId` value, in source order.
+const SDK_ID_VALUES := ["node", "react", "python", "swift", "godot"]
+
+
 ## Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal.
 class StoreBackend:
 	const KEYRING := "keyring"
@@ -368,3 +381,35 @@ const PR_CHANNEL_PATTERN := "^pr-?([0-9]+)$"
 
 ## Channel constant `PR_NUMBER_MAX_DIGITS` (`@polaris-key/protocol/core`).
 const PR_NUMBER_MAX_DIGITS := 7
+
+## Header-value table `ARCH_SPELLINGS`: a runtime's spelling, ASCII-lowercased, to its canonical value (WIRE-CONTRACT-V3 §5.2, `@polaris-key/protocol/core`).
+const ARCH_SPELLINGS := {
+	"arm64": "arm64",
+	"aarch64": "arm64",
+	"arm64-v8a": "arm64",
+	"x86_64": "x86_64",
+	"x64": "x86_64",
+	"amd64": "x86_64",
+	"armv7": "armv7",
+	"armv7l": "armv7",
+	"armv8l": "armv7",
+	"arm": "armv7",
+	"arm32": "armv7",
+	"armeabi-v7a": "armv7",
+	"wasm32": "wasm32",
+}
+
+## Header-value table `PLATFORM_SPELLINGS`: a runtime's spelling, ASCII-lowercased, to its canonical value (WIRE-CONTRACT-V3 §5.2, `@polaris-key/protocol/core`).
+const PLATFORM_SPELLINGS := {
+	"macos": "macos",
+	"darwin": "macos",
+	"maccatalyst": "macos",
+	"ios": "ios",
+	"ipados": "ios",
+	"android": "android",
+	"windows": "windows",
+	"win32": "windows",
+	"linux": "linux",
+	"web": "web",
+	"browser": "web",
+}

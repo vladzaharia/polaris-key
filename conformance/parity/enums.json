@@ -1,6 +1,6 @@
 {
   "$schema": "./enums.schema.json",
-  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen:constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values; the values each SDK sends today are aligned to them by P1b-04, not here. Outlets, transports, pack types, patch strategies and bindings are added when their owners define them (P2b-02, P4-01).",
+  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen:constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values. Outlets, transports, pack types, patch strategies and bindings are added when their owners define them (P2b-02, P4-01).",
   "enums": [
     {
       "name": "platform",
@@ -11,6 +11,11 @@
       "name": "arch",
       "description": "CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed.",
       "values": ["arm64", "x86_64", "armv7", "wasm32"]
+    },
+    {
+      "name": "sdkId",
+      "description": "The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands.",
+      "values": ["node", "react", "python", "swift", "godot"]
     },
     {
       "name": "storeBackend",

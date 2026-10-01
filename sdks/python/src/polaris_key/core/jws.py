@@ -56,6 +56,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from .b64url import b64url_decode, b64url_encode, b64url_encode_str
 from .models import MAX_DOC_BYTES, MAX_HEADER_BYTES
+from .strict_json import reject_duplicate_keys
 
 __all__ = [
     "TrustSet",
@@ -100,21 +101,8 @@ def _payload_cap_for(requested: Optional[int]) -> int:
     return max(MAX_DOC_BYTES, int(requested))
 
 
-def _reject_duplicate_keys(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
-    """``object_pairs_hook`` that refuses any object declaring the same key twice.
-
-    Duplicate members MUST cause failure — not last-wins (TS/Python) and not first-wins
-    (Swift's ``JSONSerialization``), because any silent resolution is a differential
-    across five implementations. ``{"alg":"none","kid":"x","alg":"EdDSA"}`` read as
-    ``EdDSA`` here and ``none`` in Swift: the algorithm-downgrade guard returning
-    opposite answers per language (R2-06).
-    """
-    out: Dict[str, Any] = {}
-    for key, value in pairs:
-        if key in out:
-            raise ValueError("duplicate JSON object key")
-        out[key] = value
-    return out
+#: The duplicate-member hook (R2-06), shared with the config environment rule.
+_reject_duplicate_keys = reject_duplicate_keys
 
 
 def _parse_strict_json(raw: bytes) -> Any:

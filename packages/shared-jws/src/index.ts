@@ -133,7 +133,7 @@ function base64UrlDecodeStrict(s: string): Uint8Array | null {
  * Scans the raw text tracking one key-set per open object (null marks an array, whose commas
  * do not introduce keys).
  */
-function hasDuplicateKeys(text: string): boolean {
+export function hasDuplicateKeys(text: string): boolean {
   const stack: (Set<string> | null)[] = [];
   let expectKey = false;
   let i = 0;
