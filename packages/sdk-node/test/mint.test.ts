@@ -167,7 +167,7 @@ describe("config.mintToken", () => {
   it("refuses a recipe id outside the router's alphabet before any request", async () => {
     const p = plane({});
     const { c } = await client(p.fetchImpl);
-    for (const bad of ["../license", "Music", "a/b", ""])
+    for (const bad of ["../license", "Music", "a/b", "", "musickit\n", "a\n"])
       await expect(c.config.mintToken(bad)).rejects.toMatchObject({
         code: "bad_request",
       });

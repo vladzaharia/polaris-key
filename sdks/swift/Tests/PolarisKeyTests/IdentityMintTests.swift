@@ -365,7 +365,7 @@ final class IdentityMintTests: XCTestCase {
     func testMintRefusesARecipeIdOutsideTheRoutersAlphabet() async throws {
         let plane = Plane(clock: ReplayClock(t0), [:])
         let (config, _) = try await mintClient(plane, services: [.config], token: "pkeyt_device")
-        for bad in ["../license", "Music", "a/b", ""] {
+        for bad in ["../license", "Music", "a/b", "", "musickit\n", "a\n"] {
             do {
                 _ = try await config.mintToken(bad)
                 XCTFail("expected bad_request for \(bad)")
