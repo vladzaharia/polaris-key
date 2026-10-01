@@ -150,7 +150,8 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
 - [ ] `enroll()` on a web export returns `unsupported` with reason `runtime`.
 - [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
 - [ ] `sdks/godot/parity.json` marks `license.gate`, `license.activate`, `license.enroll`
-      (`na` on web), `license.deactivate`, `license.entitlements`, `license.channels` and
+      (with an `except` entry for `web`, reason `runtime`; the manifest lists six runtimes, so
+      an `na` that does not cover all of them fails `parity:check`), `license.deactivate`, `license.entitlements`, `license.channels` and
       `license.reregister` implemented, with test tags (once P1b-01 has landed).
 
 ## Verify

@@ -1509,6 +1509,10 @@ GDExtensions on macOS.
 
   The list is in notes/A2 §5.4.
 
+- **Superseded by P1-01:** a generator-owned mirror at `sdks/godot/tests/corpus/v2/` replaces "no
+  mirror is needed", so the same runner (`tests/runner.gd`, the project's main loop) works from an
+  exported pack; CI fetches hash-pinned engines itself instead of `setup-godot`.
+
 - **Fix first:** the Node runner's port of the build gate is stale against `core/gate.ts`. It
   still has the dev-build bypass that finding R3-01 removed.
 
@@ -2066,6 +2070,9 @@ to run it.
 
 It is research code: not wired into the green gate, not a published SDK, no `sdks/godot/` yet.
 Moving it to `sdks/godot/` is the first task of P1.
+
+**Now in `sdks/godot/` (P1-01):** the verifier and its suites moved there with their history, as
+`PKeySha512`, `PKeyEd25519`, `PKeyEd25519Ref` and `PKeyJws`; the prototype keeps its probe harness.
 
 ---
 

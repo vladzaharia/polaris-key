@@ -172,9 +172,10 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
       long strings truncated; `routeCoverage` and the OpenAPI schema stay green.
 - [ ] No raw component value appears in any request body (a test asserts it on the fake server).
 - [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job and `pnpm format`.
-- [ ] `sdks/godot/parity.json` marks `devices.fingerprint` (`na` on web), `devices.facts`,
-      `devices.register`, `devices.manage` and `devices.report` implemented, with test tags (once
-      P1b-01 has landed).
+- [ ] `sdks/godot/parity.json` marks `devices.fingerprint` (with an `except` entry for `web`,
+      reason `runtime`), `devices.facts`, `devices.register`, `devices.manage` and
+      `devices.report` implemented, with test tags. Marking `devices.facts` implemented ships a
+      probe-level test tagged `@pkey-feature devices.facts` (the wave-1 line P1-01 handed on).
 
 ## Verify
 

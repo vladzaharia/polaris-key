@@ -19,6 +19,13 @@ It reuses the prototype's code rather than copying it into git:
 - the browser side extends `../content/runners/browser/` (`server.mjs` mounts and result POSTs;
   `worker.mjs` gains the `ed25519` and `lowbench` ops).
 
+**The verifier moved to `sdks/godot` in P1-01**, and `vectors/gen_corpus.mjs` went with it, so
+`sync.sh` no longer finds what it copies. Re-run this harness from a checkout of the parent of the
+move commit
+(`git log -1 --format=%h --no-renames --diff-filter=D -- docs/research/2026-09-29-godot-omniplatform/prototype/addons/polaris_key/jws.gd`),
+or port `sync.sh` to `sdks/godot` and the `PKey*` class names. The SDK runner also times the
+verifier directly: `godot --headless --path sdks/godot -- --pkey-test ed25519 bench 20`.
+
 ## What is here
 
 | Path                              | What                                                                                                                                                                                                 |

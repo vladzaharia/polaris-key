@@ -1,43 +1,48 @@
 # Pure-GDScript Ed25519 / JWS prototype (Godot 4.7)
 
-This is research code for [Godot on Polaris Key](../README.md). It shows that a GDScript client can
-verify Polaris Key's EdDSA compact JWS **without a GDExtension**.
+This is research code for [Godot on Polaris Key](../README.md). It showed that a GDScript client
+can verify Polaris Key's EdDSA compact JWS **without a GDExtension**.
 
 Godot 4.7 has no Ed25519 and no SHA-512: mbedTLS 3.6 has no EdDSA, and `HashingContext` stops at
-SHA-256. So both are implemented here in GDScript. This project is not part of the green gate and
-not a published SDK. Moving it to `sdks/godot/` is the first task of the SDK phase.
+SHA-256. So both were implemented here in GDScript.
+
+**The verifier now lives in [`sdks/godot/`](../../../../sdks/godot/README.md)** (P1-01), moved with
+its history: `PKeySha512`, `PKeyEd25519` (was `PKEd25519Fast`), `PKeyEd25519Ref` (was
+`PKEd25519Ref`) and `PKeyJws` (was `PKJws`), with the `sha512`, `ed25519`, `profile` and
+conformance suites and the hand-generated vectors. There they run in the green gate, on an editor
+and on an exported release template, against a generator-owned mirror of the corpus.
+
+What stays here is the spike-probe harness. This project is not part of the green gate.
 
 ## What is here
 
-| Path                                             | What                                                                                                                                                                                                                                        |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `addons/polaris_key/crypto/sha512.gd`            | `PKSha512`: FIPS 180-4 SHA-512                                                                                                                                                                                                              |
-| `addons/polaris_key/crypto/ed25519_fast.gd`      | `PKEd25519Fast`: ref10-style verify with unrolled field arithmetic and an interleaved double-scalar multiply. Rejects S ≥ L and non-canonical public keys, matching Node/OpenSSL                                                            |
-| `addons/polaris_key/crypto/ed25519_tweetnacl.gd` | `PKEd25519Ref`: a TweetNaCl port, about 18× slower, kept as a cross-check                                                                                                                                                                   |
-| `addons/polaris_key/jws.gd`                      | `PKJws`: the `packages/shared-jws` verify order (length caps, strict base64url, header cap and duplicate-key scan, alg/typ/kid, pinned trust lookup, Ed25519 over the ASCII signing input, then payload decode)                             |
-| `tests/`                                         | suites run through `tests/cli.gd` (`PKTestRunner`): `sha512`, `ed25519 [ref\|fast] [iters]`, `jws`, `platform`, `profile`; plus `http_probe.gd`                                                                                             |
-| `vectors/ed25519.json`                           | 26 vectors: RFC 8032 §7.1, Node-signed messages at SHA-512 block boundaries, and negatives whose verdicts come from Node                                                                                                                    |
-| `vectors/sha512.json`                            | 24 SHA-512 vectors (Python `hashlib`)                                                                                                                                                                                                       |
-| `vectors/gen_ed25519.mjs`                        | regenerates `ed25519.json` with Node's OpenSSL-backed crypto                                                                                                                                                                                |
-| `vectors/gen_corpus.mjs`                         | derives `corpus_jws.json` (the 36 `jwsCases`) and `corpus_sigs.json` (every distinct JWS in `cases.json`, with Node's raw verdict) from `conformance/corpus/v2/cases.json`. The outputs are git-ignored, so run this before the `jws` suite |
+| Path                      | What                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `tests/cli.gd`            | `PKTestRunner`, the probe runner. A suite that moved to `sdks/godot` prints where to run it and exits 1 |
+| `tests/suite_platform.gd` | `platform`: OS, engine and feature-tag facts, and `user://` paths                                       |
+| `tests/http_probe.gd`     | the HTTP probe (redirect credentials, gzip and `Range`, `download_file`, ETag, TLS name mismatch)       |
+| `lowend/`, `content/`, …  | other spikes; see [Other experiments](#other-experiments) and each directory's README                   |
 
 ## Run it
 
-Needs the Godot 4.7 standard editor binary (not .NET) and Node 22.
+Needs the Godot 4.7 standard editor binary (not .NET).
 
 ```sh
 cd docs/research/2026-09-29-godot-omniplatform/prototype
-node vectors/gen_corpus.mjs                      # corpus-derived vectors (git-ignored)
 godot --headless --path . --import               # registers class_name globals
-godot --headless --path . --script res://tests/cli.gd -- sha512
-godot --headless --path . --script res://tests/cli.gd -- ed25519 fast 20
-godot --headless --path . --script res://tests/cli.gd -- jws
 godot --headless --path . --script res://tests/cli.gd -- platform
 godot --headless --path . --script res://tests/http_probe.gd   # network; honours HTTPS_PROXY
 ```
 
+The verifier suites run from the SDK project instead:
+
+```sh
+godot --headless --path sdks/godot -- --pkey-test ci              # sha512, ed25519, conformance
+godot --headless --path sdks/godot -- --pkey-test ed25519 bench 20
+```
+
 Official 4.6+ export templates ignore `--path`, `--script` and `--main-pack`
-(godotengine/godot#111909). To benchmark a release template instead of the editor:
+(godotengine/godot#111909). To run a probe on a release template instead of the editor:
 
 1. Export the `Linux` preset with `--export-release`, which produces `build/pkey.x86_64` plus
    `build/pkey.pck`.
@@ -45,6 +50,8 @@ Official 4.6+ export templates ignore `--path`, `--script` and `--main-pack`
    `application/run/main_loop_type="PKTestRunner"`.
 
 ## Results (Godot 4.7.2-stable `ed1daf0bf`, 4-vCPU Xeon @ 2.1 GHz)
+
+Measured here before the move, with the prototype class names.
 
 | Check                                                 | Result                                        |
 | ----------------------------------------------------- | --------------------------------------------- |
@@ -58,7 +65,9 @@ Official 4.6+ export templates ignore `--path`, `--script` and `--main-pack`
 | 87 KB payload at cap / 350 KB bundle at cap (release) | 28 ms / 96 ms (dominated by GDScript SHA-512) |
 
 The one decoded-document difference is `valid-nul-byte-in-string`. Its verdict is correct, but a
-Godot `String` cannot hold U+0000, so the payload does not round-trip byte for byte.
+Godot `String` cannot hold U+0000, so the payload does not round-trip byte for byte. WIRE-CONTRACT-V3
+§10 now declares that limit: `PKeyJws` decodes `\u0000` as U+FFFD on every engine, and the SDK
+runner compares the generator's `expect.docNulReplaced` exactly.
 
 The HTTP probe records five behaviours:
 

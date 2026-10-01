@@ -129,7 +129,8 @@ never run ([notes/A7 §13](../../notes/A7-xlang-content.md#13-limits)). The resu
 node docs/research/2026-09-29-godot-omniplatform/program/check.mjs
 mise exec node@22 -- pnpm format
 # Desktop sanity run of the wrapper before any device run:
-godot --headless --path docs/research/2026-09-29-godot-omniplatform/prototype --script res://tests/cli.gd -- ed25519 fast 20
+godot --headless --path sdks/godot -- --pkey-test ed25519 bench 20   # the verifier moved in P1-01
+godot --headless --path sdks/godot -- --pkey-test profile
 ```
 
 ## Hand-off
