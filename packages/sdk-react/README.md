@@ -78,7 +78,7 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 | `@polaris-key/react/license`  | `useLicense`, `useLicenseGate`, `useImportBundle`, `<LicenseGate>`, `<DeviceManager>` |
 | `@polaris-key/react/config`   | `useManagedConfig`, `<ConfigPanel>`                                                   |
 | `@polaris-key/react/identity` | `usePolarisAuth`, `<PolarisLogin>`, `<PolarisLogout>`                                 |
-| `@polaris-key/react/update`   | `useLatestVersion`, `<UpdatePrompt>`                                                  |
+| `@polaris-key/react/update`   | `useLatestVersion`, `useUpdateDecision`, `<UpdatePrompt>`                             |
 | `@polaris-key/react/release`  | `useChangelog`                                                                        |
 
 ## Components
@@ -95,7 +95,9 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 - **`<DeviceManager>`** (`./license`) — list / rename / disconnect, rendering the
   `device-management-unsupported` refusal as an explanation rather than an error.
 - **`<UpdatePrompt>`** (`./update`) — a polite banner (or a blocking dialog) over
-  `useLatestVersion`.
+  `useLatestVersion`, or, with `source="decision"`, over wire v4's signed decision
+  (`useUpdateDecision`): one state per action, and a prompt the player cannot dismiss for a
+  mandatory offer and for `blocked` (below).
 
 All five are assembled from the exported primitives (`MessageScreen`, `Button`, `Panel`,
 `TextField`), so a custom screen inherits the same a11y contract instead of re-deriving it.
@@ -110,6 +112,7 @@ All five are assembled from the exported primitives (`MessageScreen`, `Button`, 
 | `useManagedConfig()`     | `{ config, get(key, fallback), listUserConfig, getConfigSource, enabled }`                   |
 | `usePolarisAuth()`       | profile + auth actions + `supportsOidcLogin` / `supportsKeyEntry`                            |
 | `useLatestVersion(opts)` | `{ latest, updateAvailable, busy, error, enabled, check }`                                   |
+| `useUpdateDecision(o)`   | `{ check, decision, boot, undismissable, busy, error, enabled, decide }` — wire v4 (below)   |
 | `useEntitlement(name)`   | `boolean`                                                                                    |
 | `useCapabilities()`      | the service map + `has(slug)`                                                                |
 | `useLicenseGate()`       | headless gate (`screen`, `state`, `theme`, `retry`) for a fully custom UI                    |
@@ -150,6 +153,8 @@ Both adapters implement the same verbs, so a hook never branches on transport:
 | `changelog()`, `installUrl()`, `downloadUrl()` | `GET /<p>/release/changelog`; URLs built here  | `invoke("release", …)`              |
 | `importBundle(jws)`                            | verified in-page, kept in IndexedDB            | the bridge's `importBundle` (v3)    |
 | `report()`                                     | throws `report-unsupported` (no device bearer) | `invoke("devices", "report")`       |
+| `decideUpdate({channel, staged, skipVersion})` | feed + record fetched and verified in-page     | `invoke("update", "decide", …)`     |
+| `buildUrl(version, buildId)` (optional)        | discovery's `distribution.endpoints.builds`    | — (absent)                          |
 
 A refused release read throws `release-refused`; `error.wireCode` carries the refusal body's own
 code (`unauthorized`, `channel_not_allowed`, …), which is what the other SDKs report as their
@@ -162,6 +167,47 @@ mint the bundle against that id). Pass the product's pinned keys as `trust: { pi
 a bundle verifies against those only. The imported artifacts are re-verified from IndexedDB on
 every load, so editing storage can remove an activation but never invent one; an authenticated
 session supersedes the bundle, and `signOut()` wipes it.
+
+## Signed update decisions (wire v4)
+
+`decideUpdate()` and `useUpdateDecision()` answer "what should this install do next?" from the
+signed channel feed (`pkey-feed+jws`) and the release record it pins (`pkey-release+jws`), with
+the same `@polaris-key/client-core` functions every SDK runs against `update-matrix.json`. The
+answer is an `UpdateCheck`: `channel` (the canonical channel, the feed's own claim, which a host
+records as `staged.channel`), `decision`, `feed` (`network` or `committed`), `record`
+(`network`, `cache` or `none`) and `errors`. `useLatestVersion` and the unsigned
+`/update/version` path are unchanged beside it.
+
+```tsx
+browserAdapter({
+  productSlug: "acme",
+  version: "1.4.0",
+  trust: { pinnedKeys: { "acme-2026": "<raw base64url>" } },
+  update: {
+    pinnedReleaseKeys: { "acme-release-2026": "<raw base64url>" },
+    // outlet: "web" is the default for a browser build (the synthesised stamp)
+  },
+});
+
+<UpdatePrompt source="decision" onAction={(ctx) => /* act on ctx.decision */} />;
+```
+
+- **Browser.** The adapter reads `update.endpoints.feed` and `release.endpoints.record` from
+  discovery (absent ⇒ `service-unavailable`: fall back to `checkUpdate()`), fetches the feed with
+  `?platform=web`, verifies it against the pinned product keys and the record against
+  `pinnedReleaseKeys` only (hash before signature; a release key that is also a trust pin throws
+  `invalid-options` at construction; an empty map makes `decideUpdate()` throw
+  `not-configured`). The `feeds` and `releaseRecords` slices persist in IndexedDB as signed JWSs
+  and are re-verified on every decision, so each channel's `seq` floor survives a reload, a
+  sign-out and a bundle import.
+- **Desktop.** The renderer forwards `{channel, staged, skipVersion}` through
+  `invoke("update", "decide", …)`; an Electron host answers with `client.update.decide()`.
+- **No v4 answer stops play.** `binary`, `store` and `platform` with `mandatory: true`, and
+  every `blocked {app-floor}`, are prompts the player cannot dismiss (`undismissable`), shown
+  over an app that keeps running; `boot` is never `required`. A non-mandatory `platform` answer
+  boots as `none`.
+- **Outlet.** A host's `update.outlet` (a kind, or `{id, kind, subkind?}`) wins; otherwise the
+  stamp (`WEB_OUTLET_STAMP` by default) goes through `resolveUpdateOutlet`. Detection is P3-11's.
 
 ## Desktop bridge contract (protocol v3)
 

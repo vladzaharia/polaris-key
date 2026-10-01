@@ -75,6 +75,15 @@ export interface PolarisThemeCopy {
   updateActionLabel: string;
   updateDismissLabel: string;
   updateUpToDateLabel: string;
+  /** wire v4 decisions (`<UpdatePrompt source="decision">`). */
+  updateReadyTitle: string;
+  updateReadyBody: string;
+  updateRestartLabel: string;
+  updateStoreLabel: string;
+  updatePlatformBody: string;
+  updateMandatoryBody: string;
+  updateBlockedTitle: string;
+  updateBlockedBody: string;
   // ── DeviceManager (./license) ────────────────────────────────────────────
   devicesTitle: string;
   devicesSubtitle: string;
@@ -162,6 +171,17 @@ export const defaultTheme: PolarisTheme = {
     updateActionLabel: "Get the update",
     updateDismissLabel: "Not now",
     updateUpToDateLabel: "You're up to date.",
+    updateReadyTitle: "An update is ready",
+    updateReadyBody: "Restart the app to finish updating.",
+    updateRestartLabel: "Restart now",
+    updateStoreLabel: "Open the store",
+    updatePlatformBody:
+      "A newer version is available. It installs through the store or platform you got this app from.",
+    updateMandatoryBody:
+      "This version is below the minimum supported version. Please update; you can keep using the app until you do.",
+    updateBlockedTitle: "This version is no longer supported",
+    updateBlockedBody:
+      "This version is below the minimum supported version, and no update is available here yet. You can keep using the app.",
     devicesTitle: "Your devices",
     devicesSubtitle: "Devices signed in with this license.",
     devicesEmpty: "No devices are registered to this license yet.",

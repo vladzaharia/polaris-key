@@ -33,7 +33,13 @@ export {
   type ChangelogEntry,
   type DownloadUrlOptions,
   type ImportBundleResult,
+  type UpdateDecideOptions,
 } from "./types.js";
+export type {
+  StagedUpdate,
+  UpdateCheck,
+  UpdateDecision,
+} from "@polaris-key/protocol/update";
 export type { ProductCatalog } from "@polaris-key/catalog";
 
 export {

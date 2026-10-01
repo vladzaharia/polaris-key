@@ -15,6 +15,7 @@ import type {
   LicenseStatus,
 } from "@polaris-key/protocol/license";
 import type { ConfigSource, LicenseState } from "@polaris-key/client-core";
+import type { StagedUpdate, UpdateCheck } from "@polaris-key/protocol/update";
 import type { ProductCatalog } from "@polaris-key/catalog";
 // `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
 // erased, so this value import creates no runtime cycle.
@@ -49,6 +50,20 @@ export type PolarisErrorCode =
   | "bundle-rejected"
   | "bundle-import-unsupported"
   | "report-unsupported"
+  // ── wire v4 update decisions (WIRE-CONTRACT-V4 §2.5's error map) ──
+  /** Discovery lacks `update.endpoints.feed` or `release.endpoints.record` (an older Worker,
+   *  or Update off): fall back to `checkUpdate()`. */
+  | "service-unavailable"
+  /** `decideUpdate()` without pinned release keys (or pinned product keys in a browser). */
+  | "not-configured"
+  /** A pinned release key that is also a trust pin, or a host outlet outside the vocabularies:
+   *  raised when the adapter is constructed. */
+  | "invalid-options"
+  /** A fetched feed refused at steps 3–7 with nothing committed to decide from; `detail`. */
+  | "feed-rejected"
+  | "feed-rollback"
+  | "record-rejected"
+  | "record-mismatch"
   | "unknown";
 
 /** One user-facing config row for a settings UI: `hidden` keys are excluded entirely, and
@@ -122,12 +137,33 @@ export interface ImportBundleResult {
 export class PolarisError extends Error {
   readonly code: PolarisErrorCode;
   readonly wireCode?: string;
-  constructor(code: PolarisErrorCode, message?: string, wireCode?: string) {
+  /** The refused step, for `feed-rejected` (`jws`, `claims`, `channel`, `selector`,
+   *  `freshness`): the `detail` of WIRE-CONTRACT-V4 §2.5's error map. */
+  readonly detail?: string;
+  constructor(
+    code: PolarisErrorCode,
+    message?: string,
+    wireCode?: string,
+    detail?: string,
+  ) {
     super(message ?? code);
     this.name = "PolarisError";
     this.code = code;
     if (wireCode !== undefined) this.wireCode = wireCode;
+    if (detail !== undefined) this.detail = detail;
   }
+}
+
+/** What `decideUpdate()` takes: the same three arguments as `@polaris-key/node`'s
+ *  `client.update.decide()`. */
+export interface UpdateDecideOptions {
+  /** The channel to ask about, as the host names it (an alias such as `latest` is fine: the
+   *  feed's own `channel` claim comes back as `UpdateCheck.channel`). Defaults to `stable`. */
+  channel?: string;
+  /** An update the host staged and verified, under the `UpdateCheck.channel` it was staged on. */
+  staged?: StagedUpdate | null;
+  /** The version the boot guard rolled back. */
+  skipVersion?: string | null;
 }
 
 /** The two documents a snapshot is projected from. v3 split the fused v2 artifact in two:
@@ -223,6 +259,20 @@ export interface PolarisAdapter {
   /** `GET /<product>/update/version` for the requested channel. Throws `service-disabled`
    *  when the product does not run the Update service. */
   checkUpdate(opts?: { channel?: string }): Promise<VersionCheck>;
+  /**
+   * The wire v4 update decision (WIRE-CONTRACT-V4 §2.5, plans/P3-01.md §2.8): the signed feed
+   * and the pinned release record, verified, then `decideUpdate`. Browser: fetched, verified and
+   * persisted in-page through `@polaris-key/client-core`. Desktop: the bridge's
+   * `invoke("update", "decide", opts)`, which the host answers with `client.update.decide()`.
+   * Throws `service-unavailable` when discovery lacks the v4 endpoints (fall back to
+   * `checkUpdate()`), `not-configured` without pinned release keys, and the §2.5 code when
+   * there is nothing committed to decide from.
+   */
+  decideUpdate(opts?: UpdateDecideOptions): Promise<UpdateCheck>;
+  /** The download URL of one build of a release, from discovery's
+   *  `distribution.endpoints.builds` template (`{selector}` = the version, `{buildId}` = the
+   *  build id), or null when discovery has none. Optional: the desktop bridge has no such verb. */
+  buildUrl?(version: string, buildId: string): Promise<string | null>;
   /** Read a single config value with a fallback, honoring v3 state + local overrides:
    *  `enforced`/`hidden` → remote value (locked); else `localOverrides[key] ?? remote ?? fallback`. */
   getConfig<T = JSONValue>(key: string, fallback: T): T;

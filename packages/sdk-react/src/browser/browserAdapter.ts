@@ -25,6 +25,14 @@
 // Device telemetry (`report()`) needs a device bearer, which a cookie session does not hold, so
 // it throws `report-unsupported` — the `devices.report` web N/A the parity registry allows.
 //
+// ── UPDATE DECISIONS (wire v4) ──────────────────────────────────────────────────────────────
+//
+// `decideUpdate()` fetches the signed channel feed and the pinned release record, verifies both
+// in-page through `@polaris-key/client-core` and decides (`./update.ts`). The `feeds` and
+// `releaseRecords` slices persist beside the bundle cache in IndexedDB, as signed JWSs only, and
+// are re-verified on every decision, so each channel's `seq` floor survives a reload. Without
+// IndexedDB they live for the page's lifetime.
+//
 // Mode-parity: the adapter reduces the authenticated session read to the SAME `client-core`
 // `GateInput` the desktop bridge produces and runs the SAME `licenseState`, so a browser
 // snapshot is shape-identical to a desktop one.
@@ -41,7 +49,22 @@ import type {
   DocProfile,
   LicenseDoc,
 } from "@polaris-key/protocol/license";
-import { compareSemver, highWaterMark } from "@polaris-key/client-core";
+import {
+  CACHE_VERSION,
+  compareSemver,
+  highWaterMark,
+  isValidHostOutlet,
+  resolveUpdateOutlet,
+  type DetectedOutlet,
+  type HostOutlet,
+  type OutletStamp,
+  type ResolvedOutlet,
+} from "@polaris-key/client-core";
+import type {
+  BinaryMethod,
+  InstalledBuild,
+  UpdateCheck,
+} from "@polaris-key/protocol/update";
 import type { ProductCatalog } from "@polaris-key/catalog";
 import { SDK_VERSION } from "../version.js";
 import {
@@ -69,6 +92,7 @@ import {
   type ChangelogEntry,
   type DownloadUrlOptions,
   type ImportBundleResult,
+  type UpdateDecideOptions,
 } from "../core/index.js";
 import {
   copyServices,
@@ -81,7 +105,12 @@ import {
   type ServiceErrorMap,
   type ServicesMap,
 } from "../core/services.js";
-import { discoverProduct } from "./discovery.js";
+import { discoverProduct, type DiscoveryDocument } from "./discovery.js";
+import {
+  buildDownloadUrlFor,
+  decideBrowserUpdate,
+  type UpdateSlices,
+} from "./update.js";
 import { fetchCatalog } from "./catalog.js";
 import {
   buildDownloadUrl,
@@ -99,6 +128,55 @@ import {
 } from "./offline.js";
 
 const DEFAULT_BASE = "https://key.plrs.im";
+
+/** The stamp a web runtime synthesises (plans/P3-01.md §2.9): a web build is a `web` outlet. */
+export const WEB_OUTLET_STAMP: OutletStamp = {
+  outlet: "web",
+  outletKind: "web",
+};
+
+/** What a browser page needs for wire v4 update decisions (`decideUpdate()`). */
+export interface BrowserUpdateConfig {
+  /** `kid` → raw 32-byte Ed25519 release key, base64url: the only keys a release record verifies
+   *  against. Compiled into the app, never persisted or extended from the network. Empty ⇒
+   *  `decideUpdate()` throws `not-configured`; a key that is also a trust pin ⇒ the adapter's
+   *  construction throws `invalid-options`. */
+  pinnedReleaseKeys: TrustSet;
+  /** The host's outlet: a kind (`"web"`) or `{id, kind, subkind?}`. It wins over the stamp; a
+   *  value outside the vocabularies throws `invalid-options` at construction. */
+  outlet?: HostOutlet;
+  /** The build stamp's outlet fields. Defaults to `WEB_OUTLET_STAMP`. */
+  stamp?: OutletStamp | null;
+  /** A detection result, until P3-11 detects in-page. */
+  detected?: DetectedOutlet | null;
+  /** The installed build. `version` defaults to the adapter's `version`; a browser is
+   *  `platform: "web"`, `arch: "wasm32"`, with no format, engine or build number. */
+  installed?: Partial<InstalledBuild>;
+  /** What this host can do. Default `["download"]`. */
+  methods?: BinaryMethod[];
+}
+
+function rawKeyBytes(key: string): string | null {
+  try {
+    const b64 = key.replace(/-/g, "+").replace(/_/g, "/");
+    return atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+  } catch {
+    return null;
+  }
+}
+
+/** True when a pinned release key is also a pinned product key (compared as raw bytes). */
+function releaseKeysOverlap(release: TrustSet, product: TrustSet): boolean {
+  const pins = new Set(
+    Object.values(product)
+      .map(rawKeyBytes)
+      .filter((k): k is string => k !== null),
+  );
+  return Object.values(release).some((k) => {
+    const raw = rawKeyBytes(k);
+    return raw !== null && pins.has(raw);
+  });
+}
 
 export interface BrowserAdapterOptions {
   /** The product slug — path-scopes every request (`/<product>/...`). */
@@ -127,6 +205,9 @@ export interface BrowserAdapterOptions {
   /** Where the random device id and an imported bundle live. Defaults to IndexedDB; `null`
    *  (or a runtime without IndexedDB) makes bundle import unsupported. */
   offlineStore?: OfflineStore | null;
+  /** Wire v4 update decisions (`decideUpdate()`). Absent ⇒ it throws `not-configured`. Needs
+   *  `trust.pinnedKeys` too: a feed verifies against the pinned product keys. */
+  update?: BrowserUpdateConfig;
 }
 
 /** The JSON shape the Worker's authenticated session endpoint returns. Unchanged by §R1's
@@ -206,6 +287,15 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly offline: OfflineStore | null;
   /** The re-verified offline state (device id + imported bundle), once loaded. */
   private offlineState: OfflineState | null = null;
+  private readonly updateConfig: BrowserUpdateConfig | null;
+  private readonly updateOutlet: ResolvedOutlet | null;
+  /** The verified discovery document, once it answered. */
+  private discovery: DiscoveryDocument | null = null;
+  private discovered: Promise<void> = Promise.resolve();
+  /** The update slices when there is no offline store to keep them in. */
+  private memorySlices: UpdateSlices = {};
+  /** Decisions run one at a time: each is a read-modify-write of the slices. */
+  private updateQueue: Promise<unknown> = Promise.resolve();
 
   constructor(opts: BrowserAdapterOptions) {
     this.product = opts.productSlug;
@@ -226,6 +316,26 @@ export class BrowserAdapter implements PolarisAdapter {
       opts.offlineStore === undefined
         ? indexedDbOfflineStore()
         : opts.offlineStore;
+    this.updateConfig = opts.update ?? null;
+    this.updateOutlet = null;
+    if (this.updateConfig) {
+      const u = this.updateConfig;
+      if (u.outlet !== undefined && !isValidHostOutlet(u.outlet))
+        throw new PolarisError(
+          "invalid-options",
+          "update.outlet is not an outlet kind or {id, kind, subkind?}.",
+        );
+      if (releaseKeysOverlap(u.pinnedReleaseKeys ?? {}, this.pinned ?? {}))
+        throw new PolarisError(
+          "invalid-options",
+          "A pinned release key is also a pinned product key; a release key is never a product key.",
+        );
+      this.updateOutlet = resolveUpdateOutlet({
+        host: u.outlet,
+        stamp: u.stamp === undefined ? WEB_OUTLET_STAMP : u.stamp,
+        detected: u.detected ?? null,
+      });
+    }
     this.store = createStore<PolarisState>(
       initialState("browser", this.capabilities, this.localOverrides),
     );
@@ -369,13 +479,19 @@ export class BrowserAdapter implements PolarisAdapter {
 
   /** Install the product's real capability map from discovery (D-21). A failed or rejected
    *  document leaves the constructor's `expectServices` belief in place. */
-  private async loadCapabilities(): Promise<void> {
-    const result = await discoverProduct({
-      baseUrl: this.base,
-      product: this.product,
-      fetchImpl: this.fetchImpl,
-    });
-    if (result.kind === "ok") this.capabilities = result.services;
+  private loadCapabilities(): Promise<void> {
+    this.discovered = (async () => {
+      const result = await discoverProduct({
+        baseUrl: this.base,
+        product: this.product,
+        fetchImpl: this.fetchImpl,
+      });
+      if (result.kind === "ok") {
+        this.capabilities = result.services;
+        this.discovery = result.document;
+      }
+    })().catch(() => undefined);
+    return this.discovered;
   }
 
   /** Read the authenticated session/config in one round-trip. */
@@ -570,8 +686,20 @@ export class BrowserAdapter implements PolarisAdapter {
       // A sign-out wipes local state, the imported bundle included (the device id stays: it is
       // this browser's identity, not a credential).
       if (this.offlineState?.importedBundle && this.offline) {
+        // The update slices are signed public documents, not credentials: they stay, so a
+        // channel's `seq` floor survives a sign-out.
+        const prior = await this.offline.read(this.product);
+        const slices = {
+          ...(prior?.cache?.feeds ? { feeds: prior.cache.feeds } : {}),
+          ...(prior?.cache?.releaseRecords
+            ? { releaseRecords: prior.cache.releaseRecords }
+            : {}),
+        };
         await this.offline.write(this.product, {
           deviceId: this.offlineState.deviceId,
+          ...(Object.keys(slices).length > 0
+            ? { cache: { v: CACHE_VERSION, ...slices } }
+            : {}),
         });
       }
       this.offlineState = null;
@@ -678,6 +806,110 @@ export class BrowserAdapter implements PolarisAdapter {
           : new PolarisError("network", (e as Error).message),
       );
     }
+  }
+
+  /**
+   * The wire v4 update decision (`./update.ts`): the feed and record verified in-page, the
+   * slices persisted, the `UpdateCheck` returned. Throws `not-configured` without
+   * `update.pinnedReleaseKeys` (or `trust.pinnedKeys`), `service-unavailable` when discovery
+   * lacks the v4 endpoints, and §2.5's code when nothing committed is left to decide from.
+   */
+  decideUpdate(opts: UpdateDecideOptions = {}): Promise<UpdateCheck> {
+    const run = this.updateQueue.then(() => this.decideNow(opts));
+    this.updateQueue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async decideNow(opts: UpdateDecideOptions): Promise<UpdateCheck> {
+    const u = this.updateConfig;
+    if (
+      !u ||
+      !this.updateOutlet ||
+      !this.pinned ||
+      Object.keys(u.pinnedReleaseKeys ?? {}).length === 0
+    ) {
+      throw this.fail(
+        "update",
+        new PolarisError(
+          "not-configured",
+          "Update decisions need update.pinnedReleaseKeys and trust.pinnedKeys.",
+        ),
+      );
+    }
+    this.setBusy("update", true);
+    try {
+      await this.discovered;
+      const record = this.offline
+        ? await ensureRecord(this.offline, this.product)
+        : null;
+      const slices: UpdateSlices = record
+        ? {
+            feeds: record.cache?.feeds ?? {},
+            releaseRecords: record.cache?.releaseRecords ?? {},
+          }
+        : this.memorySlices;
+      const result = await decideBrowserUpdate({
+        ...opts,
+        baseUrl: this.base,
+        product: this.product,
+        fetchImpl: this.fetchImpl,
+        headers: this.metadataHeaders(),
+        discovery: this.discovery,
+        trust: this.pinned,
+        releaseKeys: u.pinnedReleaseKeys,
+        now: this.clock(),
+        installId: record?.deviceId ?? null,
+        installed: {
+          version: this.version ?? "",
+          buildNumber: null,
+          platform: Platform.web,
+          arch: "wasm32",
+          format: null,
+          engine: null,
+          ...u.installed,
+        },
+        outlet: this.updateOutlet,
+        methods: u.methods ?? ["download"],
+        cache: slices,
+      });
+      await this.writeSlices(result.cache);
+      this.patch((prev) => ({
+        busy: withBusy(prev.busy, "update", false),
+        error: withError(prev.error, "update", null),
+      }));
+      return result.check;
+    } catch (e) {
+      throw this.fail(
+        "update",
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("network", (e as Error).message),
+      );
+    }
+  }
+
+  /** Core's read-modify-write of the update slices: everything else in the record stays. */
+  private async writeSlices(slices: Required<UpdateSlices>): Promise<void> {
+    if (!this.offline) {
+      this.memorySlices = slices;
+      return;
+    }
+    const record = await ensureRecord(this.offline, this.product);
+    await this.offline.write(this.product, {
+      ...record,
+      cache: {
+        ...(record.cache ?? { v: CACHE_VERSION }),
+        v: CACHE_VERSION,
+        feeds: slices.feeds,
+        releaseRecords: slices.releaseRecords,
+      },
+    });
+  }
+
+  /** A build's download URL, from discovery's `distribution.endpoints.builds` template. */
+  async buildUrl(version: string, buildId: string): Promise<string | null> {
+    await this.discovered;
+    return buildDownloadUrlFor(this.discovery, this.base, version, buildId);
   }
 
   /** The metadata a public read carries. */

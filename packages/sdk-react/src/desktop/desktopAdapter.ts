@@ -40,6 +40,8 @@ import {
   type DownloadUrlOptions,
   type ImportBundleResult,
   type ProductCatalog,
+  type UpdateCheck,
+  type UpdateDecideOptions,
 } from "../core/index.js";
 import { isCatalog } from "../browser/catalog.js";
 import {
@@ -408,6 +410,43 @@ export class DesktopAdapter implements PolarisAdapter {
     }
   }
 
+  /**
+   * The wire v4 update decision, made by the host: `invoke("update", "decide", opts)`, which an
+   * Electron host answers with `@polaris-key/node`'s `client.update.decide(opts)` (P3-04) and
+   * a Tauri host with its own (X-02). The privileged process holds the cache slices, the pinned
+   * release keys and the outlet; the renderer forwards the three arguments and returns the
+   * `UpdateCheck` it gets. `service-unavailable` when the product runs no Update service or the
+   * host has no `invoke`; a host refusal arrives as its own code.
+   */
+  async decideUpdate(opts: UpdateDecideOptions = {}): Promise<UpdateCheck> {
+    const unavailable = new PolarisError(
+      "service-unavailable",
+      "This desktop host does not decide signed updates; use checkUpdate().",
+    );
+    if (!this.capabilities.update.enabled)
+      throw this.fail("update", unavailable);
+    this.setBusy("update", true);
+    try {
+      const args: UpdateDecideOptions = {};
+      if (opts.channel !== undefined) args.channel = opts.channel;
+      if (opts.staged !== undefined) args.staged = opts.staged;
+      if (opts.skipVersion !== undefined) args.skipVersion = opts.skipVersion;
+      const result = await this.invoke<UpdateCheck>(
+        "update",
+        "decide",
+        args,
+        unavailable,
+      );
+      this.patch((prev) => ({
+        busy: withBusy(prev.busy, "update", false),
+        error: withError(prev.error, "update", null),
+      }));
+      return result;
+    } catch (e) {
+      throw this.fail("update", updateError(e));
+    }
+  }
+
   async fetchSchema(): Promise<ProductCatalog | null> {
     // D-21: not even asked for. Diagnostic: every failure, an absent host method included, is
     // null — the catalog drives no decision, so there is nothing to refuse.
@@ -603,4 +642,37 @@ export function desktopAdapter(
   opts: DesktopAdapterOptions = {},
 ): PolarisAdapter {
   return new DesktopAdapter(opts);
+}
+
+/** The host's §2.5 codes, which React's vocabulary carries as they are. */
+const UPDATE_CODES = [
+  "service-unavailable",
+  "not-configured",
+  "invalid-options",
+  "feed-rejected",
+  "feed-rollback",
+  "record-rejected",
+  "record-mismatch",
+] as const;
+
+/** An update-decision refusal from the host (`@polaris-key/node`'s `PolarisError`): a §2.5 code
+ *  keeps its name (and `detail`), a transport failure is `network`, anything else `unknown`; the
+ *  host's own code is always `wireCode`. */
+function updateError(e: unknown): PolarisError {
+  if (e instanceof PolarisError) return e;
+  const code = errorCode(e);
+  const message = (e as Error)?.message ?? String(e);
+  const rawDetail = (e as { detail?: unknown } | null)?.detail;
+  const detail = typeof rawDetail === "string" ? rawDetail : undefined;
+  const known = (UPDATE_CODES as readonly string[]).includes(code ?? "");
+  if (known)
+    return new PolarisError(
+      code as (typeof UPDATE_CODES)[number],
+      message,
+      code,
+      detail,
+    );
+  if (code === "network-error" || code === "network")
+    return new PolarisError("network", message, code);
+  return new PolarisError("unknown", message, code);
 }
