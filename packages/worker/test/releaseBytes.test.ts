@@ -23,6 +23,7 @@ import {
   recordRef,
 } from "../src/core/blobs.js";
 import { stmtSetArtifactModel } from "../src/services/release/model.js";
+import { checkReleaseHealth } from "../src/services/release/health.js";
 import {
   ASSET_BYTES,
   BYTES,
@@ -380,6 +381,30 @@ describe("GitHub caching (fetch-counting)", () => {
       ASSET_BYTES[201]!.slice(10, 20),
     );
     expect(s.gh.calls.api).toHaveLength(1);
+  });
+
+  it("the health check and the download paths share one cached resolution", async () => {
+    const s = await setup();
+    s.gh.calls.api.length = 0;
+    const health = await checkReleaseHealth(
+      s.env,
+      s.db,
+      SLUG,
+      NOW,
+      s.gh.fetchImpl,
+    );
+    expect(health.release?.tag).toBe("v1.1.0");
+    const lists = () =>
+      s.gh.calls.api.filter((u) => /\/releases\?per_page=/.test(u)).length;
+    expect(lists()).toBe(1);
+    for (const path of [
+      "/update/version",
+      "/update/appcast.xml?arch=arm64",
+      "/release/dl/latest/djdl-arm64?checksum=sha256",
+    ])
+      await get(s, `${CONSOLE}/${SLUG}${path}`);
+    await checkReleaseHealth(s.env, s.db, SLUG, NOW, s.gh.fetchImpl);
+    expect(lists()).toBe(1);
   });
 
   it("the cached signed URL is sealed in KV, never plaintext", async () => {

@@ -443,15 +443,15 @@ async function resolveSelectorLive(
   if (!policy.pointer || policy.yanked.has(policy.pointer))
     return moving.release;
   // An unpinned pointer (promote) is a member of the channel: one more candidate.
-  const pointer =
-    moving.listed.find((r) => r.tag_name === policy.pointer) ??
-    (await getReleaseByTag(
-      tok,
-      cfg.gh_owner,
-      cfg.gh_repo,
-      policy.pointer,
-      fetchImpl,
-    ));
+  // By tag, not from `moving.listed`: a cached listing carries no assets. The whole result is
+  // cached one level up, so this costs one call per 90 s at most.
+  const pointer = await getReleaseByTag(
+    tok,
+    cfg.gh_owner,
+    cfg.gh_repo,
+    policy.pointer,
+    fetchImpl,
+  );
   if (!pointer || pointer.draft) return moving.release;
   if (!moving.release) return pointer;
   return resolutionPolicy(cfg).compare(pointer, moving.release) > 0
@@ -502,10 +502,58 @@ export async function resolveMovingSelector(
   fetchImpl: FetchImpl,
   policy?: Pick<LegacyPolicy, "yanked">,
 ): Promise<MovingResolution> {
+  // The yanks always apply (P2-05): a caller that did not read them gets them read here, so the
+  // health check's per-channel regression checks and the live routes can never disagree.
+  const yanks =
+    policy ?? (await legacyPolicyFor(db, cfg.product, policyChannelOf(sel)));
+  // Cached like `resolveSelector` (`ghCache.ts`): the health check and the download paths pay
+  // at most one live resolution — list pages plus a floor lookup — per channel per 90 s
+  // (README §9.1 issue #3). The cached `listed` keeps what the health check reads of each
+  // release (tag, flags, date) but not its notes or assets; `release` and `offered` are whole.
+  // A channel that resolves to nothing (nothing matches, or an R6-10 regression) is never
+  // cached: it is re-checked live, so a 404 cannot stick.
+  const holder: { live?: MovingResolution } = {};
+  const cached = await cachedResolution<MovingResolution>(
+    env,
+    cfg.product,
+    `moving:${policyChannelOf(sel) ?? sel.raw}`,
+    async () => {
+      const live = await resolveMovingSelectorLive(
+        env,
+        db,
+        cfg,
+        tok,
+        sel,
+        now,
+        fetchImpl,
+        yanks,
+      );
+      holder.live = live;
+      if (!live.release) return null;
+      return {
+        ...live,
+        listed: live.listed.map((r) => ({ ...r, body: null, assets: [] })),
+      };
+    },
+  );
+  // On a miss, the caller gets the live result itself (assets and notes included).
+  return holder.live ?? (cached as MovingResolution);
+}
+
+async function resolveMovingSelectorLive(
+  env: Env,
+  db: Db,
+  cfg: ResolvedConfig,
+  tok: string,
+  sel: ChannelSelector,
+  now: number,
+  fetchImpl: FetchImpl,
+  policy: Pick<LegacyPolicy, "yanked">,
+): Promise<MovingResolution> {
   const candidates = resolutionPolicy(cfg);
-  const yanked = policy?.yanked;
+  const yanked = policy.yanked;
   const unyanked = (releases: Release[]) =>
-    yanked && yanked.size > 0
+    yanked.size > 0
       ? releases.filter((r) => !yanked.has(r.tag_name))
       : releases;
   const channelTags = await channelTagsFor(env, cfg, sel, now, fetchImpl);
@@ -534,7 +582,7 @@ export async function resolveMovingSelector(
     ? await getChannelFloor(db, cfg.product, floorName)
     : null;
   const floorYanked =
-    !!floor && !!floor.release_id && !!yanked?.has(floor.release_id);
+    !!floor && !!floor.release_id && yanked.has(floor.release_id);
   if (!floor || floorYanked || !isBelowFloor(offered, floor)) {
     return { release: offered, offered, floor, regressed: false, listed };
   }

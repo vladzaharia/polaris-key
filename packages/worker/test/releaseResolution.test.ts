@@ -32,6 +32,7 @@ import {
   type ReleaseAsset,
 } from "../src/services/release/github.js";
 import { syncReleaseStore } from "../src/services/release/sync.js";
+import { bumpReleaseGeneration } from "../src/services/release/ghCache.js";
 import { checkReleaseHealth } from "../src/services/release/health.js";
 import {
   getChannelFloor,
@@ -766,8 +767,15 @@ describe("channel floors (R6-10)", () => {
     expect(health.checks.map((c) => c.id)).not.toContain("channel-regressed");
     expect(health.release?.tag).toBe("v2.0.0");
 
-    // Gone: an error naming the floor and what the list now offers.
+    // Gone. P2-05 caches each channel's resolution for 90 s per release generation (README
+    // §9.1 issue #3: health and the download paths share one live resolution), so a deletion
+    // nobody reported is seen once the entry expires or the generation moves — a sync, a
+    // resync or any policy change. Within the window, health answers from the cache.
     state.byTag = {};
+    health = await checkReleaseHealth(env, db, SLUG, NOW, gh.fetchImpl);
+    expect(health.checks.map((c) => c.id)).not.toContain("channel-regressed");
+    await bumpReleaseGeneration(env, SLUG, NOW);
+    // …and once it moves: an error naming the floor and what the list now offers.
     health = await checkReleaseHealth(env, db, SLUG, NOW, gh.fetchImpl);
     const regressed = health.checks.find((c) => c.id === "channel-regressed");
     expect(regressed?.status).toBe("error");
