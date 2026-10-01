@@ -68,7 +68,9 @@ Packs (P4) need proper data and cache directories
   - Python `sdks/python/src/polaris_key/devices/store.py:170-231` and `core/context.py:125-128`;
   - Swift `sdks/swift/Sources/PolarisKeyCore/Store.swift:213-284` (`defaultConfigDir`, `setToken`)
     and `PolarisKey/PolarisKeyClient.swift:363` (`storeFailure()`).
-- The corpus generator: `tools/sign-corpus.ts:2116-2310` (`buildFingerprintCorpus`); the runners
+- The corpus generator: `tools/sign-corpus.ts:2117-2307` (the fingerprint helpers, then
+  `buildFingerprintCorpus` at `:2207-2307`; `main()` at `:2334-2379`; corrected by the P1b-09
+  plan); the runners
   `conformance/runners/node/fingerprint.test.ts`, `sdks/python/tests/test_fingerprint_conformance.py`,
   `sdks/swift/Tests/PolarisKeyTests/FingerprintConformanceTests.swift`,
   `packages/worker/test/fingerprintCorpus.test.ts`.
@@ -122,6 +124,10 @@ Packs (P4) need proper data and cache directories
 - **The research overstates the impact.** README #24 says one machine "counts as two devices", but
   the device id already derives from `/etc/machine-id` in both SDKs (Node `devices/deviceId.ts`,
   Python `devices/deviceid.py:71`), so the device is the same.
+  (Correction, P1b-09 plan: Node reads `/var/lib/dbus/machine-id` only when `/etc/machine-id` is
+  empty. When it is missing, Node falls back to a random UUID, and an empty dbus file hashes the
+  empty string. Where a machine-id file is readable, root and non-root still derive the same id,
+  because those files are world-readable.)
 - What differs by privilege is the fingerprint. Root adds `boardSerial` and a different
   `machineUuid`, so a strict-tier binding is retired and re-authorised whenever root and non-root
   alternate (`core/devices.ts:246-275`).
@@ -132,6 +138,10 @@ Packs (P4) need proper data and cache directories
 - The migration: a device that ran as root changes two components once. `normal` tolerates two;
   `strict` mismatches once and rebinds through the normal seat check. The plan states this, and the
   SDK changelogs repeat it.
+  (Correction, P1b-09 plan §7 and D3: on a host with no usable machine-id, which includes most
+  container images, a root process loses the anchor rather than changing it. Keyless enrolment
+  there then answers 403 `fingerprint_required`, because `computeEnrollHwid` returns `null`
+  without an anchor (`packages/worker/src/services/license/enroll.ts:207-214`).)
 - Pin the source-selection rule in a `linuxAnchor` section: which readable files give which anchor.
 
 **3. Directories.** `defaultConfigDir()` is `XDG_CONFIG_HOME` or `~/.config` on every OS in Node
@@ -152,6 +162,9 @@ but Python does too), and `~/.config` on macOS in Swift by design (`Store.swift:
 
 - Node's `KeyringStore` swallows every keyring failure and uses the file (`store.ts:139-210`). Inside
   a Node single-executable build the addon cannot load at all.
+  (Correction, P1b-09 plan: on Linux without a Secret Service, `@napi-rs/keyring` does not fail.
+  Since 1.1.2, and in the locked 1.3.0, it falls back to the kernel keyring (keyutils), which is
+  in memory and does not survive a reboot, and `setToken` then deletes the file copy.)
 - Python's `KeyringStore` does the same when the optional `keyring` extra is missing.
 - **Recommend** an optional `status(): Promise<StoreStatus>` on the `client-core` `Store` interface:
 
