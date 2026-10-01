@@ -18,7 +18,7 @@ extends RefCounted
 ##   12. Ed25519 over the bytes of "<header>.<payload>" exactly as received
 ##   13. ONLY THEN decode the payload, apply the cap and parse it strictly
 ##
-## Returns {"kid": String, "payload": Dictionary, "non_wire_integers": Dictionary}, or null on ANY
+## Returns {"kid": String, "payload": Dictionary, "non_wire_integers": PKeyJson.PointerSet}, or null on ANY
 ## failure. Header and payload are V4 §1.2 strict JSON (PKeyJson), and the payload is one object.
 ##
 ## Steps 1–11 are `prepare`, step 12 is a `PKeyEd25519Job`, step 13 is `finish`. `verify` runs

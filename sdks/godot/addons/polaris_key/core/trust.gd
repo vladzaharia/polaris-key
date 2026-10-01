@@ -42,7 +42,7 @@ static func verify_manifest(jws: String, opts: Dictionary) -> Dictionary:
 	now = float(now) if now != null else float(PKeyClaims.system_now())
 
 	# V4 §3: integer claims decided from their tokens. Supported schema versions: {1}.
-	var nw: Dictionary = v.get("non_wire_integers", {})
+	var nw: PKeyJson.PointerSet = v.get("non_wire_integers")
 	var sv = doc.get("schemaVersion")
 	if not (PKeyClaims.is_wire_integer(sv, "/schemaVersion", 1, nw) and float(sv) == 1.0):
 		return rejected

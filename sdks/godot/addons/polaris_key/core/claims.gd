@@ -29,12 +29,12 @@ const MAX_WIRE_INTEGER := 9007199254740991
 
 
 ## WIRE-CONTRACT-V4 §3: an integer claim. Its pointer is not in the verified payload's
-## `non_wire_integers` (so its token had no fraction or exponent part and at most 2^53 − 1 in
+## `non_wire_integers` (null for an object the caller built; so its token had no fraction or exponent part and at most 2^53 − 1 in
 ## its digits), and its value is a finite whole number from `minimum` to 2^53 − 1. The minimum
 ## is the claim's own: 0 for every timestamp, 1 for `schemaVersion` and every `seq`. Godot's
 ## parser is not correctly rounded, so the token rule, not the float, is what decides.
-static func is_wire_integer(v: Variant, pointer: String, minimum: int, non_wire_integers: Dictionary) -> bool:
-	if non_wire_integers.has(pointer):
+static func is_wire_integer(v: Variant, pointer: String, minimum: int, non_wire_integers: PKeyJson.PointerSet) -> bool:
+	if non_wire_integers != null and non_wire_integers.has(pointer):
 		return false
 	if not (v is float or v is int):
 		return false

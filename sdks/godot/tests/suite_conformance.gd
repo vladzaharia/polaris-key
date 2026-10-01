@@ -191,8 +191,9 @@ func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
 			var want := {}
 			for p in c.get("nonWireIntegers", []):
 				want[p] = true
-			var got: Dictionary = r.get("non_wire_integers", {})
-			t.check(where, got.keys().size() == want.keys().size() and want.keys().all(func(k): return got.has(k)), "got %s" % str(got.keys()))
+			var got: PKeyJson.PointerSet = r.get("non_wire_integers")
+			var listed := got.keys()
+			t.check(where, got.size() == want.size() and listed.size() == want.size() and want.keys().all(func(k): return got.has(k) and listed.has(k)), "got %s" % str(listed))
 	_coverage(t, "pointerSets", evaluated, total, _ms_since(t0))
 
 

@@ -55,7 +55,7 @@ static func _static_init() -> void:
 	_plain_int_re = RegEx.create_from_string("\\A-?(?:0|[1-9][0-9]*)\\z")
 
 
-## Parse `text` strictly. Returns `{"ok": true, "value": v, "non_wire_integers": {pointer: true}}`
+## Parse `text` strictly. Returns `{"ok": true, "value": v, "non_wire_integers": PointerSet}`
 ## or `{"ok": false, "error": why}`.
 static func parse(text: String) -> Dictionary:
 	var scan := walk(text)
@@ -101,7 +101,7 @@ static func validate(text: String) -> String:
 	return walk(text)["error"]
 
 
-## The token walk: `{"error": "" or why, "non_wire_integers": {pointer: true}}`. It runs on the
+## The token walk: `{"error": "" or why, "non_wire_integers": PointerSet}`. It runs on the
 ## RAW text, before `nul_as_fffd`, so a member name spelling a real `\u0000` is refused (V4 §1.2
 ## rule 7) rather than read as U+FFFD; value strings keep §10's replacement.
 static func walk(text: String) -> Dictionary:
@@ -113,7 +113,11 @@ static func walk(text: String) -> Dictionary:
 	var stack: Array = []
 	var segs: PackedStringArray = []
 	var idx: PackedInt64Array = []
-	var non_wire := {}
+	# `ids[k]`: the node in `non_wire` of the path `segs[0..k]`, once a number below it has been
+	# recorded (-1 until then). Never a pointer string per number: with long member names over
+	# many fractional numbers that grows with the square of the payload.
+	var ids: PackedInt64Array = []
+	var non_wire := PointerSet.new()
 	for m: RegExMatch in _token_re.search_all(text):
 		var start := m.get_start()
 		if start != pos:
@@ -136,6 +140,7 @@ static func walk(text: String) -> Dictionary:
 					stack.pop_back()
 					segs.resize(segs.size() - 1)
 					idx.resize(idx.size() - 1)
+					ids.resize(ids.size() - 1)
 					state = _after_value(stack)
 					continue
 				if c != 34:  # "
@@ -150,6 +155,7 @@ static func walk(text: String) -> Dictionary:
 					return _refused("duplicate key %s at %d" % [JSON.stringify(key), start])
 				seen[key] = true
 				segs[segs.size() - 1] = key
+				ids[ids.size() - 1] = -1
 				state = _COLON
 				continue
 			_COMMA_OR_CLOSE:
@@ -160,6 +166,7 @@ static func walk(text: String) -> Dictionary:
 					stack.pop_back()
 					segs.resize(segs.size() - 1)
 					idx.resize(idx.size() - 1)
+					ids.resize(ids.size() - 1)
 					state = _after_value(stack)
 				else:
 					return _refused("expected ',' or a closing bracket at %d" % start)
@@ -169,6 +176,7 @@ static func walk(text: String) -> Dictionary:
 			stack.pop_back()
 			segs.resize(segs.size() - 1)
 			idx.resize(idx.size() - 1)
+			ids.resize(ids.size() - 1)
 			state = _after_value(stack)
 			continue
 		if c == 125 or c == 93 or c == 58 or c == 44:
@@ -176,19 +184,29 @@ static func walk(text: String) -> Dictionary:
 		if not stack.is_empty() and stack.back() == null:  # an array element: its index
 			idx[idx.size() - 1] += 1
 			segs[segs.size() - 1] = str(idx[idx.size() - 1])
+			ids[ids.size() - 1] = -1
 		if c == 123 or c == 91:  # { [
 			if stack.size() + 1 > MAX_JSON_DEPTH:
 				return _refused("nesting past %d levels at %d" % [MAX_JSON_DEPTH, start])
 			stack.append({} if c == 123 else null)
 			segs.append("")
 			idx.append(-1)
+			ids.append(-1)
 			state = _KEY_OR_CLOSE if c == 123 else _VALUE_OR_CLOSE
 			continue
 		if c == 45 or (c >= 48 and c <= 57):  # a number
 			if not number_in_range(tok):
 				return _refused("number out of range at %d" % start)
 			if _is_non_wire(tok):
-				non_wire[_pointer(segs)] = true
+				# Resolve the open path from its deepest recorded level, then record the number.
+				var k := ids.size() - 1
+				while k >= 0 and ids[k] < 0:
+					k -= 1
+				var node := 0 if k < 0 else ids[k]
+				for j in range(k + 1, segs.size()):
+					node = non_wire.child(node, segs[j])
+					ids[j] = node
+				non_wire.add(node)
 		state = _after_value(stack)  # a string, number or literal
 	if pos != n:
 		return _refused("unexpected character at %d" % pos)
@@ -198,15 +216,112 @@ static func walk(text: String) -> Dictionary:
 
 
 static func _refused(why: String) -> Dictionary:
-	return {"error": why, "non_wire_integers": {}}
+	return {"error": why, "non_wire_integers": PointerSet.new()}
 
 
-## The RFC 6901 pointer of the open path: `~` is written `~0`, then `/` is written `~1`.
-static func _pointer(segs: PackedStringArray) -> String:
-	var out := ""
-	for s in segs:
-		out += "/" + s.replace("~", "~0").replace("/", "~1")
-	return out
+## WIRE-CONTRACT-V4 §3: the RFC 6901 pointers of the number tokens that cannot be wire integers,
+## held as a tree of raw (unescaped) reference tokens: one node per container on the way to a
+## recorded number, plus the number itself, each naming its parent. A member name is stored once
+## however many numbers sit under it, so the set is linear in the payload's size (V4 §1.2: the
+## verifier's work and memory are linear in the capped payload). `has` walks the tree; `keys`
+## builds the escaped pointers, for callers that list them (the conformance runner).
+class PointerSet extends RefCounted:
+	# Node 0 is the top-level value.
+	var _parent := PackedInt64Array([-1])
+	var _name := PackedStringArray([""])
+	var _children: Array = [null]  # per node: null, or {raw name: node}
+	var _leaf := PackedByteArray([0])
+	var _leaves := PackedInt64Array()
+
+	## A set from escaped pointers (an invalid pointer is skipped).
+	static func from_pointers(pointers: Array) -> PointerSet:
+		var out := PointerSet.new()
+		for p in pointers:
+			var tokens = PointerSet.tokens(p)
+			if tokens == null:
+				continue
+			var node := 0
+			for tk in tokens:
+				node = out.child(node, tk)
+			out.add(node)
+		return out
+
+	## RFC 6901: the raw reference tokens of an escaped pointer, or null when it is not one (no
+	## leading `/`, or a `~` not followed by `0` or `1`).
+	static func tokens(pointer: String) -> Variant:
+		if pointer == "":
+			return []
+		if not pointer.begins_with("/"):
+			return null
+		var out: Array = []
+		for part in pointer.substr(1).split("/", true):
+			var at := part.find("~")
+			while at != -1:
+				var next := part.substr(at + 1, 1)
+				if next != "0" and next != "1":
+					return null
+				at = part.find("~", at + 2)
+			out.append(part.replace("~1", "/").replace("~0", "~"))
+		return out
+
+	## The node for `name` under `node`, created when absent.
+	func child(node: int, name: String) -> int:
+		var m = _children[node]
+		if m == null:
+			m = {}
+			_children[node] = m
+		var id: int = m.get(name, -1)
+		if id == -1:
+			id = _parent.size()
+			_parent.append(node)
+			_name.append(name)
+			_children.append(null)
+			_leaf.append(0)
+			m[name] = id
+		return id
+
+	## Record the number at `node`.
+	func add(node: int) -> void:
+		if _leaf[node] == 1:
+			return
+		_leaf[node] = 1
+		_leaves.append(node)
+
+	func has(pointer: String) -> bool:
+		var path = PointerSet.tokens(pointer)
+		if path == null:
+			return false
+		var node := 0
+		for tk in path:
+			var m = _children[node]
+			if m == null:
+				return false
+			node = m.get(tk, -1)
+			if node == -1:
+				return false
+		return _leaf[node] == 1
+
+	func size() -> int:
+		return _leaves.size()
+
+	func is_empty() -> bool:
+		return _leaves.is_empty()
+
+	## Every pointer, escaped (`~` as `~0`, then `/` as `~1`), in document order.
+	func keys() -> Array:
+		var out: Array = []
+		for n in _leaves:
+			var parts := PackedStringArray()
+			var k := n
+			while k > 0:
+				parts.append(_name[k].replace("~", "~0").replace("/", "~1"))
+				k = _parent[k]
+			parts.reverse()
+			var pointer := ""
+			for part in parts:
+				pointer += "/" + part
+			out.append(pointer)
+		return out
 
 
 ## V4 §3: a number token that cannot be a wire integer.

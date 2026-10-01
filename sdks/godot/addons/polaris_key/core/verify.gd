@@ -17,7 +17,7 @@ extends RefCounted
 ##   offload                 run the signature off the calling thread (PKeyJws.verify_async)
 
 
-static func _is_valid_schema_version(v: Variant, non_wire_integers: Dictionary = {}) -> bool:
+static func _is_valid_schema_version(v: Variant, non_wire_integers: PKeyJson.PointerSet = null) -> bool:
 	# V4 §3: an integer claim decided from its token, minimum 1.
 	return PKeyClaims.is_wire_integer(v, "/schemaVersion", 1, non_wire_integers)
 
@@ -36,7 +36,7 @@ static func check_license_claims(doc: Dictionary) -> bool:
 
 ## `pkey-config+jws` (§2.2, D-08): an integer schemaVersion >= 1 (a catalog version, so a shape
 ## check and not an allow-list), and object `config` and `secrets`. No licence fields needed.
-static func check_config_claims(doc: Dictionary, non_wire_integers: Dictionary = {}) -> bool:
+static func check_config_claims(doc: Dictionary, non_wire_integers: PKeyJson.PointerSet = null) -> bool:
 	if not _is_valid_schema_version(doc.get("schemaVersion"), non_wire_integers):
 		return false
 	if not (doc.get("config") is Dictionary):
@@ -47,7 +47,7 @@ static func check_config_claims(doc: Dictionary, non_wire_integers: Dictionary =
 
 
 ## The shared envelope (§2/§3), checked once so the two documents can never drift apart.
-static func check_envelope(doc: Dictionary, opts: Dictionary, now: float, non_wire_integers: Dictionary = {}) -> bool:
+static func check_envelope(doc: Dictionary, opts: Dictionary, now: float, non_wire_integers: PKeyJson.PointerSet = null) -> bool:
 	if not _eq_str(doc.get("aud"), opts.get("expected_aud")):
 		return false
 	var iss = opts.get("expected_iss")
@@ -84,7 +84,7 @@ static func verify_doc(jws: String, typ: String, opts: Dictionary) -> Variant:
 		return null
 	var doc: Dictionary = v["payload"]
 	var now = opts.get("now")
-	var nw: Dictionary = v.get("non_wire_integers", {})
+	var nw: PKeyJson.PointerSet = v.get("non_wire_integers")
 	if not check_envelope(doc, opts, float(now) if now != null else float(PKeyClaims.system_now()), nw):
 		return null
 	match typ:

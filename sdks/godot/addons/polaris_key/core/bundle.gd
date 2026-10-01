@@ -49,7 +49,7 @@ static func inspect(jws: String, opts: Dictionary) -> Dictionary:
 	var issued = bundle.get("issuedAt")
 	var expires = bundle.get("expiresAt")
 	# V4 §3: integer claims decided from their tokens, minimum 0.
-	var nw: Dictionary = v.get("non_wire_integers", {})
+	var nw: PKeyJson.PointerSet = v.get("non_wire_integers")
 	if not (PKeyClaims.is_wire_integer(issued, "/issuedAt", 0, nw) and PKeyClaims.is_wire_integer(expires, "/expiresAt", 0, nw)):
 		return _refuse(CLAIMS_REJECTED)
 	if issued > now + PKeyClaims.CLOCK_SKEW_SECONDS:

@@ -16,21 +16,21 @@ func run(t: PKeyTestContext) -> void:
 	var saved := PKeyJws.mode
 	PKeyJws.mode = PKeyJws.Mode.AUTO
 	var r := await _timed(c, false)
-	t.check("offload: AUTO matches the synchronous result", r["result"] == want)
+	t.check("offload: AUTO matches the synchronous result", _same(r["result"], want))
 	if OS.has_feature("threads"):
 		t.check("offload: AUTO moves a 350 KB verify off the main thread", r["frames"] >= 2, "%d frames" % r["frames"])
 	t.info("offload: AUTO %s: %.1f ms over %d frames, worst frame %.1f ms" % ["thread" if OS.has_feature("threads") else "sliced", r["ms"], r["frames"], r["worst"]])
 
 	PKeyJws.mode = PKeyJws.Mode.THREAD
 	r = await _timed(c, false)
-	t.check("offload: THREAD matches and frames keep coming", r["result"] == want and r["frames"] >= 2, "%d frames" % r["frames"])
+	t.check("offload: THREAD matches and frames keep coming", _same(r["result"], want) and r["frames"] >= 2, "%d frames" % r["frames"])
 	t.info("offload: thread: %.1f ms over %d frames, worst frame %.1f ms" % [r["ms"], r["frames"], r["worst"]])
 
 	PKeyJws.mode = PKeyJws.Mode.SLICED
 	var budget := PKeyJws.slice_budget_usec
 	PKeyJws.set_slice_budget_ms(4.0)
 	r = await _timed(c, false)
-	t.check("offload: SLICED matches and spans frames", r["result"] == want and r["frames"] >= 2, "%d frames" % r["frames"])
+	t.check("offload: SLICED matches and spans frames", _same(r["result"], want) and r["frames"] >= 2, "%d frames" % r["frames"])
 	t.info("offload: sliced at 4 ms: %.1f ms over %d frames, worst frame %.1f ms" % [r["ms"], r["frames"], r["worst"]])
 	PKeyJws.slice_budget_usec = budget
 
@@ -51,6 +51,14 @@ func run(t: PKeyTestContext) -> void:
 
 	t.check("offload: the slice budget clamps to 4–8 ms", _clamped(2.0) == 4000 and _clamped(6.0) == 6000 and _clamped(20.0) == 8000)
 	PKeyJws.slice_budget_usec = budget
+
+
+## Two verify results are the same: kid, payload and the pointer set's pointers (a PointerSet is
+## an object, so `==` on the result Dictionaries would compare identities).
+static func _same(a: Variant, b: Variant) -> bool:
+	if not (a is Dictionary and b is Dictionary):
+		return a == b
+	return a["kid"] == b["kid"] and a["payload"] == b["payload"] and a["non_wire_integers"].keys() == b["non_wire_integers"].keys()
 
 
 static func _clamped(ms: float) -> int:

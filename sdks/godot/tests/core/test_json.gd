@@ -77,6 +77,32 @@ func run(t: PKeyTestContext) -> void:
 	var ptrs: Array = nw["non_wire_integers"].keys() if nw["ok"] else []
 	ptrs.sort()
 	t.check("json reports the non-wire-integer pointers", ptrs == ["/a~1b/1", "/a~1b/3", "/b", "/t~0/y"], str(ptrs))
+	var pset: PKeyJson.PointerSet = nw.get("non_wire_integers")
+	t.check("json pointer set: size", pset != null and pset.size() == 4)
+	for p in ["/a~1b/1", "/a~1b/3", "/b", "/t~0/y"]:
+		t.check("json pointer set has %s" % p, pset != null and pset.has(p))
+	for p in ["", "/seq", "/a/b/1", "/a~1b", "/a~1b/0", "/a~1b/2", "/a~1b/01", "/t~/y", "/t~2/y", "/t~0", "/t~0/x", "/t~0/y/0", "b"]:
+		t.check("json pointer set lacks %s" % JSON.stringify(p), pset != null and not pset.has(p))
+	var top := PKeyJson.parse("7.0")
+	t.check("json pointer set: a top-level number is the empty pointer", top["ok"] and top["non_wire_integers"].has("") and top["non_wire_integers"].keys() == [""])
+	# Long member names over many fractional numbers: one pointer string per number would cost
+	# 8 000 × 32 000 characters here (about 1.5 GB). The set stays linear in the payload.
+	var long_name := "a".repeat(32000)
+	var fractions := PackedStringArray()
+	fractions.resize(8000)
+	fractions.fill("1.5")
+	var long_text := "{\"config\":{\"k\":{\"value\":{\"" + long_name + "\":[" + ",".join(fractions) + "]}}}}"
+	var mem_before := OS.get_static_memory_usage()
+	var started := Time.get_ticks_msec()
+	var long_scan := PKeyJson.walk(long_text)
+	var elapsed := Time.get_ticks_msec() - started
+	var grown := OS.get_static_memory_usage() - mem_before
+	var long_set: PKeyJson.PointerSet = long_scan["non_wire_integers"]
+	t.check("json pointer set stays linear: accepted", long_text.length() < 65536 and long_scan["error"] == "", str(long_scan["error"]))
+	t.check("json pointer set stays linear: 8000 numbers", long_set.size() == 8000)
+	t.check("json pointer set stays linear: lookup", long_set.has("/config/k/value/" + long_name + "/7999") and not long_set.has("/config/k/value/" + long_name + "/8000"))
+	t.check("json pointer set stays linear: memory", grown < 64 * 1024 * 1024, "grew %d bytes" % grown)
+	t.check("json pointer set stays linear: time", elapsed < 5000, "%d ms" % elapsed)
 
 	# WIRE-CONTRACT-V3 §10: a real \u0000 escape becomes U+FFFD; an escaped backslash stays text.
 	var nul := PKeyJson.parse("{\"a\":\"x\\u0000y\",\"b\":\"x\\\\u0000y\"}")
@@ -142,9 +168,9 @@ func run(t: PKeyTestContext) -> void:
 		t.check("matches_whole refuses a trailing terminator %s" % str(term.unicode_at(0)), not PKeyClaims.matches_whole("[a-z][a-z0-9-]{0,63}", "direct" + term))
 	t.check("matches_whole accepts the whole value", PKeyClaims.matches_whole("[a-z][a-z0-9-]{0,63}", "direct"))
 	t.check("semver refuses 1.2.3 and a newline", PKeySemver.parse("1.2.3\n") == null)
-	t.check("is_wire_integer: 0 at minimum 0", PKeyClaims.is_wire_integer(0.0, "/issuedAt", 0, {}))
-	t.check("is_wire_integer: 2^53 - 1", PKeyClaims.is_wire_integer(9007199254740991.0, "/seq", 1, {}))
-	t.check("is_wire_integer refuses 2^53", not PKeyClaims.is_wire_integer(9007199254740992.0, "/seq", 1, {}))
-	t.check("is_wire_integer refuses a flagged pointer", not PKeyClaims.is_wire_integer(7.0, "/seq", 1, {"/seq": true}))
-	t.check("is_wire_integer refuses below the minimum", not PKeyClaims.is_wire_integer(0.0, "/seq", 1, {}))
-	t.check("is_wire_integer refuses a fraction and a bool", not PKeyClaims.is_wire_integer(7.5, "/seq", 1, {}) and not PKeyClaims.is_wire_integer(true, "/seq", 1, {}))
+	t.check("is_wire_integer: 0 at minimum 0", PKeyClaims.is_wire_integer(0.0, "/issuedAt", 0, null))
+	t.check("is_wire_integer: 2^53 - 1", PKeyClaims.is_wire_integer(9007199254740991.0, "/seq", 1, PKeyJson.PointerSet.new()))
+	t.check("is_wire_integer refuses 2^53", not PKeyClaims.is_wire_integer(9007199254740992.0, "/seq", 1, null))
+	t.check("is_wire_integer refuses a flagged pointer", not PKeyClaims.is_wire_integer(7.0, "/seq", 1, PKeyJson.PointerSet.from_pointers(["/seq"])))
+	t.check("is_wire_integer refuses below the minimum", not PKeyClaims.is_wire_integer(0.0, "/seq", 1, null))
+	t.check("is_wire_integer refuses a fraction and a bool", not PKeyClaims.is_wire_integer(7.5, "/seq", 1, null) and not PKeyClaims.is_wire_integer(true, "/seq", 1, null))
