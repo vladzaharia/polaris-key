@@ -302,8 +302,9 @@ prose would drift, and GitHub's is the one an author can correct after publishin
 ## Trusted publishing
 
 CI publishes a release without a long-lived secret in the product's repository (README §3.4, the
-npm/PyPI trusted-publishing model). The flow is three POSTs, all in the release namespace, so a
-product with Release off does not have them:
+npm/PyPI trusted-publishing model). `pkey release publish` and the `polaris-key/publish` Action
+drive the whole flow for you: see [Publishing from CI](/docs/build/ci/). Underneath, the flow is
+three POSTs, all in the release namespace, so a product with Release off does not have them:
 
 1. **`POST /<product>/release/publish/token`** with `{"token": "<GitHub Actions OIDC JWT>"}`.
    Request the OIDC token with the audience `https://key.plrs.im/<product>/release/publish` (the
@@ -322,7 +323,8 @@ product with Release off does not have them:
    not already reference must be an object of the ticket whose staged copy has the descriptor's
    size and SHA-256; the descriptor is then checked exactly as ingest checks it. Only when all of
    that passes is the ticket redeemed, the objects promoted into the blob store and the release
-   written. `dryRun: true` stops before writing anything. A failed submit gives the ticket back,
+   written. `dryRun: true` stops before writing anything, and may come before the uploads: an
+   object of the ticket not yet staged is judged as if it were and listed in `unverified`. A failed submit gives the ticket back,
    so you can fix an upload and submit again; a refusal carrying `"retryable": true` (a lost
    race with another writer, or a transient promote failure) may simply be sent again, and every
    other refusal is final. One descriptor per submit.
