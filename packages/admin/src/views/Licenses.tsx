@@ -39,6 +39,7 @@ import {
 import {
   ChannelList,
   ChannelMultiSelect,
+  useManualChannels,
   dateInputToEpoch,
   epochToDateInput,
   LicenseStatusBadge,
@@ -230,6 +231,7 @@ function CreateLicenseDialog({
 }): React.ReactElement {
   const toast = useToast();
   const tiersRes = useResource(`tiers:${slug}`, () => api.tiers(slug));
+  const manualChannels = useManualChannels(slug);
   const profilesRes = useResource(`profiles:${slug}`, () => api.profiles(slug));
   const tiers = tiersRes.data?.tiers ?? [];
   const profiles = profilesRes.data?.profiles ?? [];
@@ -466,6 +468,7 @@ function CreateLicenseDialog({
                       <ChannelMultiSelect
                         value={channels}
                         onChange={setChannels}
+                        manual={manualChannels}
                         idPrefix="create-license-channel"
                       />
                     </div>

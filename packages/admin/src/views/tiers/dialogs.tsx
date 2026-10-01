@@ -1,10 +1,10 @@
 import * as React from "react";
 import type { TierBody, TierSummary } from "../../api.js";
 import { docsUrl } from "../../lib/docsLinks.js";
+import { ChannelMultiSelect } from "../licenses/shared.js";
 import {
   Badge,
   Button,
-  Checkbox,
   Dialog,
   DialogActionBar,
   DialogBody,
@@ -25,13 +25,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../components/ui/index.js";
-
-/**
- * The known release channels a tier may grant. The wire accepts an arbitrary string list, but
- * surfacing a fixed, accessible checklist keeps the editor honest and discoverable. Stable + the
- * "stable + beta" path are the common shapes; the list mirrors the worker's channel vocabulary.
- */
-const CHANNELS = ["stable", "beta", "alpha", "nightly", "internal"] as const;
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 
@@ -122,13 +115,23 @@ function PolicyFields({
   );
 }
 
-/** An accessible channels checklist (labelled group of checkboxes). */
+/**
+ * The tier's channels: the same picker the licence editors use (WIRE-CONTRACT-V3 §5.1), so a
+ * tier offers the canonical channels and the product's manual channels, shows a legacy grant it
+ * already holds with its label, and keeps any value the picker does not offer.
+ */
 function ChannelPicker({
   selected,
-  onToggle,
+  onChange,
+  manual,
+  held,
+  idPrefix,
 }: {
   selected: string[];
-  onToggle: (channel: string, on: boolean) => void;
+  onChange: (next: string[]) => void;
+  manual: readonly string[];
+  held: readonly string[];
+  idPrefix: string;
 }): React.ReactElement {
   return (
     <fieldset className="flex flex-col gap-2">
@@ -138,25 +141,14 @@ function ChannelPicker({
       <p className="text-xs text-muted-foreground">
         Release channels this tier may receive updates from.
       </p>
-      <div className="flex flex-wrap gap-3 pt-1">
-        {CHANNELS.map((channel) => {
-          const id = `tier-channel-${channel}`;
-          const on = selected.includes(channel);
-          return (
-            <label
-              key={channel}
-              htmlFor={id}
-              className="flex items-center gap-2 text-sm"
-            >
-              <Checkbox
-                id={id}
-                checked={on}
-                onCheckedChange={(c) => onToggle(channel, c === true)}
-              />
-              {channel}
-            </label>
-          );
-        })}
+      <div className="pt-1">
+        <ChannelMultiSelect
+          value={selected}
+          onChange={onChange}
+          manual={manual}
+          held={held}
+          idPrefix={idPrefix}
+        />
       </div>
     </fieldset>
   );
@@ -169,6 +161,7 @@ export function CreateTierDialog({
   onOpenChange,
   profiles,
   existingIds,
+  manualChannels = [],
   saving,
   onCreate,
 }: {
@@ -176,6 +169,8 @@ export function CreateTierDialog({
   onOpenChange: (open: boolean) => void;
   profiles: ProfileOption[];
   existingIds: string[];
+  /** The product's declared channel names, for the channel picker. */
+  manualChannels?: readonly string[];
   saving: boolean;
   onCreate: (body: TierBody) => void;
 }): React.ReactElement {
@@ -345,13 +340,10 @@ export function CreateTierDialog({
               <TabsContent value="channels">
                 <ChannelPicker
                   selected={channels}
-                  onToggle={(channel, on) =>
-                    setChannels((prev) =>
-                      on
-                        ? [...prev, channel]
-                        : prev.filter((c) => c !== channel),
-                    )
-                  }
+                  onChange={setChannels}
+                  manual={manualChannels}
+                  held={[]}
+                  idPrefix="create-tier-channel"
                 />
               </TabsContent>
             </Tabs>
@@ -383,6 +375,7 @@ export function EditTierDialog({
   open,
   onOpenChange,
   profiles,
+  manualChannels = [],
   saving,
   onSave,
 }: {
@@ -390,6 +383,8 @@ export function EditTierDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profiles: ProfileOption[];
+  /** The product's declared channel names, for the channel picker. */
+  manualChannels?: readonly string[];
   saving: boolean;
   onSave: (id: string, body: TierBody) => void;
 }): React.ReactElement {
@@ -526,13 +521,10 @@ export function EditTierDialog({
               <TabsContent value="channels">
                 <ChannelPicker
                   selected={channels}
-                  onToggle={(channel, on) =>
-                    setChannels((prev) =>
-                      on
-                        ? [...prev, channel]
-                        : prev.filter((c) => c !== channel),
-                    )
-                  }
+                  onChange={setChannels}
+                  manual={manualChannels}
+                  held={tier.channels ?? []}
+                  idPrefix="edit-tier-channel"
                 />
               </TabsContent>
             </Tabs>
