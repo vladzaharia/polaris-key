@@ -62,11 +62,22 @@ per artifact, and so mislabels Steam, itch and sideload builds
     `android-app://` referrer.
   - Python: environment, PEP 376 `INSTALLER`, `sys.executable` (not `sys._MEIPASS`) path
     conventions, `ctypes` `GetCurrentPackageFullName` on Windows.
-  - Swift: `AppDistributor.current` behind `#available(iOS 17.4, *)` (the package floor is iOS 17);
-    `AppTransaction` on macOS; code-signature and Caskroom checks.
-  - Godot: `FLATPAK_ID`, `SNAP`, `APPIMAGE`, `SteamAppId`, the `pkey_outlet_*` feature tags and
-    the build stamp through `PolarisKey.build_info()` ([P1-11](P1-11-godot-export-plugin.md)); iOS and Android signals come from plugin hooks that return
-    "unavailable" until [P5-05](P5-05-apple-plugin-package.md) and [P5-06](P5-06-kotlin-aar.md).
+  - Swift: `AppDistributor.current` behind `#available(iOS 17.4, *)` (the package floor is iOS 17),
+    raced against a deadline (proposed 2 s; a timeout is `unavailable`, meaning no evidence;
+    [notes/S-06](../../notes/S-06-outlet-signals.md) §1), with the `web` case only behind
+    `#available(iOS 17.5, *)`; on macOS the `_MASReceipt` receipt, its `ProductionSandbox` marker
+    and the signing leaf (`SecCodeCopySigningInformation`), since `AppTransaction` is for commerce
+    only; Caskroom checks.
+  - Godot: `/.flatpak-info`, `FLATPAK_ID`, `SNAP_NAME`, `APPIMAGE`/`APPDIR`, `SteamAppId`, the
+    Steam library ACF, the itch receipt, the macOS receipt and Mach-O signing leaf, the
+    `pkey_outlet_*` feature tags and the build stamp through `PolarisKey.build_info()`
+    ([P1-11](P1-11-godot-export-plugin.md)). Android's `getInstallSourceInfo`, including the
+    initiator's certificate SHA-256 (`getInitiatingPackageSigningInfo().getApkContentsSigners()`
+    hashed with `HashingContext`), is pure GDScript through `AndroidRuntime` and
+    `JavaClassWrapper` (Godot 4.4+, measured on 4.7.2 in
+    [notes/S-06](../../notes/S-06-outlet-signals.md) §7), so it needs no plugin. iOS
+    `AppDistributor` and Windows package identity come from plugin hooks that return
+    "unavailable" until [P5-05](P5-05-apple-plugin-package.md) and a Windows native reader land.
 - **Wiring**: the update client uses the detected outlet when the host passes none; a host
   override always wins. The result is available to the host (for UI and support diagnostics).
 - Docs for each SDK page; `parity.json` in every SDK: `outlet.detect` → `implemented`.
@@ -85,13 +96,58 @@ per artifact, and so mislabels Steam, itch and sideload builds
   are unit-tested with faked environments, because each runtime sees different signals.
 - **Precedence** as the plan fixes it: first-party platform evidence (for example
   `AppDistributor`, MSIX `SignatureKind`) over installer-declared evidence (Android) over
-  environment and path heuristics over the build stamp; `unknown` when nothing applies, with the
-  restrictive capabilities the plan assigns.
+  environment and path heuristics over the build stamp, except that below attested evidence,
+  runtime evidence may only restrict the stamp or veto it (next bullet): a heuristic never turns a
+  `steam` or `itch` stamp into `direct`. `unknown` when nothing applies, with the restrictive
+  capabilities the plan assigns.
 - **Detection never widens capabilities.** It chooses an outlet; the outlet's compiled defaults and
   the feed's narrowing decide what the install may do.
-- **Unverified signals** (tagged `[I]` or `[M]` in notes/E9 §1.1, for example Steam's environment
-  variables and the ACF file) stay marked as such until S-06 reports; do not raise their
-  confidence here.
+- **Identity conditions and restrict-only evidence** ([notes/S-06](../../notes/S-06-outlet-signals.md),
+  proposed for `plans/P3-01.md`): a launcher signal counts only when it names this product (Flatpak
+  app id, snap name, Steam app id in the env or the library ACF, itch receipt `game.id`, `APPDIR`
+  containing the executable, Android installer equal to the initiator, and the MSIX package
+  family name equal to the product's before any `windows.*` row counts, because identity can be
+  inherited from an MSIX parent process). A signal with no identity condition in the note's
+  table is diagnostic only and never counts: `ITCHIO_APP=1` names no product (any child of an
+  itch-launched process inherits it), so `itch.appEnv` is recorded but never moves or keeps an
+  outlet, and `itch.receipt` is the only itch signal that counts. The receipt's `game.id` is a
+  JSON number, which Godot's `JSON` parses as a float, so compare `str(int(game.id))` with the
+  stamp's `itchGameId` string (and likewise compare the Steam app id as a decimal string). The
+  ids come from the
+  stamp: [P1-11](P1-11-godot-export-plugin.md)'s export plugin writes the product's outlet
+  identities (Steam app id, itch game id, Flatpak app id, snap name, cask token, MSIX package
+  family name, bundle or application id) into `build.json` (from its `polaris_key/outlet_ids`
+  option, which CI fills from [P2b-02](P2b-02-distribution-manifest.md)'s
+  `pkey distribution outlet-ids`), so detection works offline at first
+  launch, and the pure function receives them with the stamp. Non-attested evidence may
+  move the stamp only to an outlet with no wider `binaryUpdates`. Attested evidence overrides the
+  stamp only when it names a README §3.1 outlet. On macOS only two signing leaves select:
+  `Apple Mac OS Application Signing` (`app-store`) and `TestFlight Beta Distribution`
+  (`testflight`). A Developer ID, Apple Distribution, Apple Development or ad hoc leaf, or an
+  unsigned bundle (signal value `none`), is a veto and never selects `direct`, because Steam
+  macOS builds are Developer ID, ad hoc or unsigned (6/4/2 of 12 measured). A veto
+  drops the stamp and gives `unknown` when the stamp names the vetoed outlet, and changes nothing
+  otherwise: Android installer ≠ initiator against `play`; an iOS provisioning profile against
+  `app-store`; a non-store macOS leaf against `app-store`/`testflight`; a snap revision `x<n>`
+  against `snap`; a Windows `SignatureKind` of `Developer` or `Enterprise` against `ms-store`.
+  Windows package identity alone selects nothing (a sparse package has identity too): it gates the
+  other `windows.*` rows, and when none of them fires the stamp stands.
+  On Android only `play` can be `attested`, and only when the initiator digest equals the Play
+  Store's recorded digest; until P5-06's device checklist records it, Android `play` evidence is
+  `declared` (restricting only), in Godot and every SDK. Async platform calls get a deadline,
+  because `AppDistributor.current` hung on the simulator. If the plan does not adopt
+  these rules, follow the plan and report the gap.
+- **Verification status** comes from [notes/S-06](../../notes/S-06-outlet-signals.md) (its
+  signal-to-outlet table). `steam_appid.txt` is refuted as a dev-mode signal and the macOS
+  provisioning profile as a development-build signal: do not read either for detection;
+  `itch.appEnv` is diagnostic only (previous bullet). Each
+  signal takes the confidence in the note's table, including rows S-06 could not measure on a
+  device (Play tracks, iOS devices, Windows, Steam on Windows, Linux and Proton, real itch and
+  Snap launches). The attested rows backed only by documentation (`ios.appDistributor`,
+  `windows.packageIdentity`, `windows.signatureKind`, `windows.appInstallerUri`,
+  `windows.externalLocation`) are "attested per documentation"; P3-01 confirms or lowers them.
+  Do not downgrade them here: Swift, Node and Python have no stamp producer, so a lower
+  `ios.appDistributor` would make every stamp-less App Store install `unknown` (rule 7).
 - **Privacy** (AGENTS rule 7): read markers, never enumerate installed applications. Report only
   the detected outlet id, if the telemetry allowlist has an `outlet` key (P1-05).
 - **No typed N/A.** Every runtime can at least return the stamp or `unknown`.
@@ -111,8 +167,9 @@ per artifact, and so mislabels Steam, itch and sideload builds
 - [ ] Node (through `client-core`), Python, Swift and Godot pass every `outlet-matrix.json` row,
       with identical row names; React uses the `client-core` function.
 - [ ] Each SDK's readers have unit tests with faked signals for every outlet its runtime can see.
-- [ ] Swift's `AppDistributor` call is guarded for iOS 17.4 and the package still builds for its
-      iOS 17 floor.
+- [ ] Swift's `AppDistributor` call is guarded for iOS 17.4 (the `web` case for 17.5) and raced
+      against a deadline, a test with a never-resolving fake returns `unavailable` (no evidence),
+      and the package still builds for its iOS 17 floor.
 - [ ] Each update client uses the detected outlet when the host passes none, and the host's value
       when it does (a test per SDK).
 - [ ] The green gate passes (`AGENTS.md`), including the Python, Swift and Godot jobs.

@@ -45,6 +45,7 @@ import {
   err,
   readBody,
 } from "../../../core/adminApi.js";
+import { invalidateWidenedEdgeMintApprovals } from "../../../core/edgeMintApproval.js";
 import type { LicenseAdminContext } from "./index.js";
 
 export async function handleFingerprintPolicy(
@@ -59,6 +60,13 @@ export async function handleFingerprintPolicy(
   if (action === "revert") {
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
+    // P0-12: sweep before every console write of an edge-mint approval input (see the PATCH).
+    await invalidateWidenedEdgeMintApprovals(
+      db,
+      slug,
+      now,
+      "found widened before a console edit",
+    );
     await revertFingerprintPolicyToManifest(db, slug, now);
     await revertAutoIssueToManifest(db, slug, now);
     await audit(
@@ -159,6 +167,17 @@ export async function handleFingerprintPolicy(
   const policy = { enabled, defaultMode, probes };
   await setFingerprintPolicy(db, slug, JSON.stringify(policy), "admin", now);
   if (body.autoIssue !== undefined) {
+    // P0-12: the auto-issue policy decides whether the edge mint is public, so drop every
+    // approval the product has ALREADY widened before writing it — otherwise turning anonymous
+    // enrolment back off here, after a push that turned it on was killed before its own sweep,
+    // would make the approval apply again for the strangers who enrolled meanwhile. Same rule
+    // as `core/servicesAdmin.ts`.
+    await invalidateWidenedEdgeMintApprovals(
+      db,
+      slug,
+      now,
+      "found widened before a console edit",
+    );
     await setAutoIssuePolicy(db, slug, JSON.stringify(auto), "admin", now);
   }
   await audit(

@@ -1,20 +1,20 @@
 # S-01 Spike: Apple-hosted Background Assets from a Godot iOS export
 
-| Field       | Value                                                                                                                                                                                                             |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | S: Spikes                                                                                                                                                                                                         |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                              |
-| Depends on  | none                                                                                                                                                                                                              |
-| Unblocks    | [P5-05](P5-05-apple-plugin-package.md)                                                                                                                                                                            |
-| Role        | `pkey-spike-runner`                                                                                                                                                                                               |
-| Plan mode   | no                                                                                                                                                                                                                |
-| Gates       | none beyond `pnpm format` on the files it adds; no product code changes                                                                                                                                           |
-| Human input | Apple developer account; TestFlight (an internal tester group); an iOS 26 device. Also needed, not in the graph: a Mac with Xcode 26 or later, and an App Store Connect API key with the Developer role or higher |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                         |
+| Field       | Value                                                                                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | S: Spikes                                                                                                                                                                                                                                                        |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                             |
+| Depends on  | none                                                                                                                                                                                                                                                             |
+| Unblocks    | [P5-05](P5-05-apple-plugin-package.md)                                                                                                                                                                                                                           |
+| Role        | `pkey-spike-runner`                                                                                                                                                                                                                                              |
+| Plan mode   | no                                                                                                                                                                                                                                                               |
+| Gates       | none beyond `pnpm format` on the files it adds; no product code changes                                                                                                                                                                                          |
+| Human input | Apple developer account; TestFlight (an internal tester group); an iOS 26.4+ device (the shim's floor, notes/S-01 §Environment). Also needed, not in the graph: a Mac with Xcode 26 or later, and an App Store Connect API key with the Developer role or higher |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                        |
 
 ## Goal
 
-A research note, `notes/S-01-apple-background-assets.md`, answers four questions with evidence from
+A research note, `notes/S-01.md`, answers four questions with evidence from
 a real TestFlight install:
 
 1. Can a CI script add an Apple-hosted **Background Download extension** and an **App Group** to
@@ -127,7 +127,7 @@ spike.
 
 ## Acceptance criteria
 
-- [ ] `notes/S-01-apple-background-assets.md` exists with the notes' provenance blockquote, the
+- [ ] `notes/S-01.md` exists with the notes' provenance blockquote, the
       question, a short answer, method, environment (Godot, Xcode, iOS versions; device model),
       results with raw numbers, recommendation, affected briefs and sources, using the evidence
       tags [V], [M], [S], [I].

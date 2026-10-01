@@ -1,0 +1,14 @@
+[package]
+name = "s05launcher"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "S-05 (e): tiny Velopack launcher shim in front of a Godot export (research code)"
+
+[dependencies]
+velopack = "=1.2.161"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true

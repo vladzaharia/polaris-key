@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, initial-scale=1.0"
+    />
+    <title>$GODOT_PROJECT_NAME</title>
+    <style>
+      html,
+      body,
+      #canvas {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: #111;
+      }
+      #canvas {
+        display: block;
+      }
+    </style>
+    $GODOT_HEAD_INCLUDE
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <script src="$GODOT_URL"></script>
+    <script>
+      // S-05 (c) shell: exposes the Engine instance and two helpers to GDScript
+      // (through JavaScriptBridge.eval): fetch a pack into a non-user:// MEMFS path, and post a
+      // report back to the harness server.
+      const GODOT_CONFIG = $GODOT_CONFIG;
+      const engine = new Engine(GODOT_CONFIG);
+      window.s05 = {
+        engine,
+        t_script: performance.now(),
+        fetched: {},
+        errors: [],
+      };
+      // useCache: keep the pack in the Cache Storage API (explicit, survives reloads) and read it
+      // back from there on later boots; otherwise rely on the browser's HTTP cache.
+      const cached = (url) =>
+        caches
+          .open("pk-packs")
+          .then((c) =>
+            c
+              .match(url)
+              .then((hit) =>
+                hit
+                  ? { r: hit, hit: true }
+                  : fetch(url).then((r) =>
+                      c.put(url, r.clone()).then(() => ({ r, hit: false })),
+                    ),
+              ),
+          );
+      window.s05fetch = function (url, path, useCache) {
+        const t0 = performance.now();
+        window.s05.fetched[path] = { state: "pending" };
+        let hit = null;
+        (useCache ? cached(url).then((x) => ((hit = x.hit), x.r)) : fetch(url))
+          .then((r) => r.arrayBuffer().then((b) => ({ r, b })))
+          .then(({ r, b }) => {
+            const t1 = performance.now();
+            engine.copyToFS(path, b);
+            const e = performance
+              .getEntriesByName(new URL(url, location.href).href)
+              .pop();
+            window.s05.fetched[path] = {
+              state: "done",
+              status: r.status,
+              bytes: b.byteLength,
+              fetch_ms: t1 - t0,
+              copy_ms: performance.now() - t1,
+              transfer_size: e ? e.transferSize : -1,
+              cache_hit: hit,
+            };
+          })
+          .catch((err) => {
+            window.s05.fetched[path] = { state: "error", error: String(err) };
+          });
+        return true;
+      };
+      window.s05mem = function () {
+        const m = {
+          js_heap_used: performance.memory
+            ? performance.memory.usedJSHeapSize
+            : -1,
+        };
+        try {
+          m.wasm_heap =
+            engine.rtenv && engine.rtenv.HEAP8 ? engine.rtenv.HEAP8.length : -1;
+        } catch (e) {
+          m.wasm_heap = -1;
+        }
+        return JSON.stringify(m);
+      };
+      window.s05report = function (json) {
+        fetch("/report", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: json,
+        });
+        window.s05.last_report = json;
+        return true;
+      };
+      engine
+        .startGame({
+          onProgress: function () {},
+        })
+        .then(() => {
+          window.s05.t_started = performance.now();
+        })
+        .catch((err) => {
+          window.s05.errors.push(String(err));
+          fetch("/report", {
+            method: "POST",
+            body: JSON.stringify({ error: String(err) }),
+          });
+        });
+    </script>
+  </body>
+</html>

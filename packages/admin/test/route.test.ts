@@ -231,7 +231,14 @@ describe("SECTIONS", () => {
       SECTIONS.map((s) => [s.key, s.items.map((i) => i.tab)]),
     );
     expect(bySection).toEqual({
-      platform: ["overview", "services", "secrets", "activity", "settings"],
+      platform: [
+        "overview",
+        "services",
+        "devices",
+        "secrets",
+        "activity",
+        "settings",
+      ],
       license: ["licenses", "tiers", "fingerprints"],
       config: ["config", "profiles"],
       release: ["releases"],

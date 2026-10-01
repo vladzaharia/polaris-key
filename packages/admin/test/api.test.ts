@@ -305,6 +305,31 @@ describe("api — every product-scoped resource is under its owning service", ()
     ["resyncProduct", () => api.resyncProduct("djdl"), "release/resync"],
     ["releases", () => api.releases("djdl"), "release/releases"],
     ["updateSettings", () => api.updateSettings("djdl"), "update/settings"],
+    ["edgeMintRecipes", () => api.edgeMintRecipes("djdl"), "config/mint"],
+    [
+      "approveEdgeMintRecipe",
+      () =>
+        api.approveEdgeMintRecipe(
+          "djdl",
+          "music",
+          {
+            alg: "ES256",
+            signingKeySecret: "K",
+            kid: null,
+            claimsTemplateJson: null,
+            ttlSeconds: 60,
+            audience: null,
+          },
+          null,
+          true,
+        ),
+      "config/mint/music/approve",
+    ],
+    [
+      "revokeEdgeMintRecipe",
+      () => api.revokeEdgeMintRecipe("djdl", "music"),
+      "config/mint/music/revoke",
+    ],
     [
       "saveUpdateSettings",
       () => api.saveUpdateSettings("djdl", {}),
@@ -355,6 +380,58 @@ describe("api — every product-scoped resource is under its owning service", ()
       expect(calls[0]!.url).toBe(`/manage/api/products/djdl/${path}`);
     },
   );
+
+  it("putProductSecret sends usage only when one is chosen (P0-12)", async () => {
+    setCsrf("tok");
+    stubFetch(() => json({ ok: true, name: "S" }));
+    await api.putProductSecret("djdl", "S", "v");
+    await api.putProductSecret("djdl", "S", "v", "edge-mint");
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ value: "v" });
+    expect(JSON.parse(calls[1]!.init.body as string)).toEqual({
+      value: "v",
+      usage: "edge-mint",
+    });
+  });
+
+  it("approveEdgeMintRecipe echoes every field, the sign-in trust and License, and the acknowledgement only when given (P0-12)", async () => {
+    setCsrf("tok");
+    stubFetch(() => json({ ok: true }));
+    const fields = {
+      alg: "ES256",
+      signingKeySecret: "K",
+      kid: "k1",
+      claimsTemplateJson: '{"iss":"T"}',
+      ttlSeconds: 3600,
+      audience: null,
+    };
+    const identity = {
+      provider: "custom",
+      issuer: "https://id.example",
+      clientId: "c",
+      groupRoleMapJson: "{}",
+    };
+    await api.approveEdgeMintRecipe("djdl", "music", fields, null, true);
+    await api.approveEdgeMintRecipe(
+      "djdl",
+      "music",
+      fields,
+      identity,
+      false,
+      true,
+    );
+    expect(calls[0]!.init.method).toBe("POST");
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
+      ...fields,
+      identity: null,
+      licenseEnabled: true,
+    });
+    expect(JSON.parse(calls[1]!.init.body as string)).toEqual({
+      ...fields,
+      identity,
+      licenseEnabled: false,
+      acknowledgeOpenRegistration: true,
+    });
+  });
 
   it("services mutations send the right method and echo CSRF", async () => {
     setCsrf("tok-p");

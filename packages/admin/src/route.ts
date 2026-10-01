@@ -34,6 +34,7 @@ export type Tab =
   // platform / core
   | "overview"
   | "services"
+  | "devices"
   | "secrets"
   | "activity"
   | "settings"
@@ -113,6 +114,11 @@ export const SECTIONS: NavSection[] = [
         tab: "services",
         label: "Services",
         docs: "/docs/admin/services-enablement/",
+      },
+      {
+        tab: "devices",
+        label: "Devices",
+        docs: "/docs/admin/licenses-and-devices/",
       },
       {
         tab: "secrets",

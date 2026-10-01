@@ -20,13 +20,13 @@ All `pnpm` commands assume Node 22. If your default is newer, prefix them with
 
 Deep page: [The `.pkey/` manifest](/docs/build/manifest/) · Skill: `authoring-pkey-manifests`
 
-| #   | Step                    | Detail                                                                                                                                                                                                       |
-| --- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Scaffold                | `pkey init --product <slug> --name "<Name>" --modules licensing,config` writes `.pkey/product.yaml`, plus `schema.yaml` and `release.yaml` for the modules you selected                                      |
-| 2   | Get editor help         | The scaffold's `# yaml-language-server: $schema=…` header points at a **path** into `node_modules/@polaris-key/manifest/schemas/v1/` — the canonical `$id` URLs are on this gated site and cannot be fetched |
-| 3   | Fill in the three roles | `schema` = the config catalog · `product` = metadata, `modules`, `devices.registration`, OIDC, tiers, profiles, provisioning · `release` = provider coordinates and edge-mint recipes                        |
-| 4   | Avoid a reserved slug   | `docs`, `manage`, `api`, `assets`, `login`, `logout`, `callback`, `magic`, `download`, `webhooks`, `well-known` are refused with `reserved_slug`                                                             |
-| 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them                                                                                                                                        |
+| #   | Step                    | Detail                                                                                                                                                                                                                                  |
+| --- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Scaffold                | `pkey init --product <slug> --name "<Name>" --modules licensing,config` writes `.pkey/product.yaml` and `schema.yaml` (always written, with `catalog: []` unless `config` is selected), plus `release.yaml` when `releases` is selected |
+| 2   | Get editor help         | The scaffold's `# yaml-language-server: $schema=…` header points at a **path** into `node_modules/@polaris-key/manifest/schemas/v1/` — the canonical `$id` URLs are on this gated site and cannot be fetched                            |
+| 3   | Fill in the three roles | `schema` = the config catalog · `product` = metadata, `modules`, `devices.registration`, OIDC, tiers, profiles, provisioning · `release` = provider coordinates and edge-mint recipes                                                   |
+| 4   | Avoid a reserved slug   | `docs`, `manage`, `api`, `assets`, `login`, `logout`, `callback`, `magic`, `download`, `webhooks`, `well-known` are refused with `reserved_slug`                                                                                        |
+| 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them                                                                                                                                                                   |
 
 ```sh
 pkey validate      # exit 0, no error lines
@@ -52,14 +52,14 @@ curl -s https://key.plrs.im/<product>/.well-known/polaris.json | jq .services
 
 Deep page: [The config catalog](/docs/services/config/catalog/) · Skill: `adding-a-catalog-entry`
 
-| #   | Step                      | Detail                                                                                                                                                                                               |
-| --- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Pick the kind             | `config` = plaintext client setting · `secret` = redacted, keyring-delivered · `flag` = an entitlement, which rides the **license** document only                                                    |
-| 2   | Write the schema fragment | A Draft-07 **subset**. An unimplemented keyword or format makes the fragment unsupported — a 422 at publish, and a pruned value at request time. Never silently ignored, and `$ref` is not supported |
-| 3   | Pick enforcement          | `managementDefault` on config kinds: `default` overridable · `enforced` server wins · `hidden` enforced and withheld from enumeration                                                                |
-| 4   | Pick delivery             | `delivery` on secret kinds: `serverOnly` · `clientScoped` · `edgeMint`. Setting it on a non-secret entry is an error                                                                                 |
-| 5   | Decide on `schemaVersion` | Bump **only** on an incompatible shape change — adding a key is not one                                                                                                                              |
-| 6   | Publish                   | Push `.pkey/schema` (webhook resync, keeps the repo authoritative) or **Catalog → Publish new version** in the console                                                                               |
+| #   | Step                      | Detail                                                                                                                                                                                                      |
+| --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Pick the kind             | `config` = plaintext client setting · `secret` = redacted, delivered in the config document (cached in a `0600` file, not the keyring) · `flag` = an entitlement, which rides the **license** document only |
+| 2   | Write the schema fragment | A Draft-07 **subset**. An unimplemented keyword or format makes the fragment unsupported — a 422 at publish, and a pruned value at request time. Never silently ignored, and `$ref` is not supported        |
+| 3   | Pick enforcement          | `managementDefault` on config kinds: `default` overridable · `enforced` server wins · `hidden` enforced and withheld from enumeration                                                                       |
+| 4   | Pick delivery             | `delivery` on secret kinds: `serverOnly` · `clientScoped` · `edgeMint`. Setting it on a non-secret entry is an error                                                                                        |
+| 5   | Decide on `schemaVersion` | Bump **only** on an incompatible shape change — adding a key is not one                                                                                                                                     |
+| 6   | Publish                   | Push `.pkey/schema` (webhook resync, keeps the repo authoritative) or **Catalog → Publish new version** in the console                                                                                      |
 
 ```sh
 pnpm --filter @polaris-key/manifest test

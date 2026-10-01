@@ -111,16 +111,16 @@ issue #12 and [§6.2](../../README.md#62-administrator-operator) item 5 ("Device
 
 ## Acceptance criteria
 
-- [ ] Worker test: a product with two licensed devices and three licence-free devices lists all
+- [x] Worker test: a product with two licensed devices and three licence-free devices lists all
       five; `licensed=false` lists three with `licenseId: null`.
-- [ ] Worker test: paging with `limit=2` returns every device exactly once across pages.
-- [ ] Worker test: deauthorizing a licence-free device through the product route sets
+- [x] Worker test: paging with `limit=2` returns every device exactly once across pages.
+- [x] Worker test: deauthorizing a licence-free device through the product route sets
       `deauthorized`, removes its token record and writes an audit row; the licence route still
       refuses a device that belongs to another licence (unchanged behaviour).
-- [ ] Worker test: the summary counts match the fixture; a non-admin session gets 403.
-- [ ] Admin test: the Platform section shows **Devices** even when License is disabled.
-- [ ] `packages/worker/test/docsLinks.test.ts` and `pnpm --filter @polaris-key/docs check:links` pass.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] Worker test: the summary counts match the fixture; a non-admin session gets 403.
+- [x] Admin test: the Platform section shows **Devices** even when License is disabled.
+- [x] `packages/worker/test/docsLinks.test.ts` and `pnpm --filter @polaris-key/docs check:links` pass.
+- [x] The green gate passes (`AGENTS.md`). Python and Swift suites not run: no SDK, wire or corpus file changed.
 
 ## Verify
 

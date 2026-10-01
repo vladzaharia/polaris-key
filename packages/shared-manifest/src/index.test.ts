@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 // Used only to measure the quadratic path we deliberately turned OFF, as a control.
 import { parse as parseYaml } from "yaml";
 import {
+  APP_DELIVERABLE_ID,
+  ARTIFACT_ROLES,
   compileManualChannelRegex,
+  DELIVERABLE_KINDS,
+  isDeliverableId,
+  isIgnoreTag,
+  MAX_IGNORE_TAG_LENGTH,
+  MAX_DELIVERABLE_ID_LENGTH,
+  RELEASE_ARCHES,
+  RELEASE_PLATFORMS,
   DEFAULT_STABLE_TAG_PATTERN,
   issuerUrlProblem,
   isSafeIssuerUrl,
@@ -136,6 +145,15 @@ describe("release candidate filter (stableTagPattern, ignoreTags)", () => {
       expect(re.test(tag), tag).toBe(true);
     for (const tag of ["channels", "packs", "v1.2", "v01.2.3", "release-1.2.3"])
       expect(re.test(tag), tag).toBe(false);
+  });
+
+  it("counts an ignore tag's length in code points, as the schema's maxLength does", () => {
+    // 255 astral characters are 510 UTF-16 units: the schema accepts them, so must the validator.
+    expect(isIgnoreTag("\u{1F680}".repeat(MAX_IGNORE_TAG_LENGTH))).toBe(true);
+    expect(isIgnoreTag("\u{1F680}".repeat(MAX_IGNORE_TAG_LENGTH + 1))).toBe(
+      false,
+    );
+    expect(isIgnoreTag("a".repeat(MAX_IGNORE_TAG_LENGTH + 1))).toBe(false);
   });
 
   it("rejects an unsafe pattern and malformed ignore entries", () => {
@@ -1333,6 +1351,19 @@ describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
     );
   });
 
+  it("words the maxOfflineDays warning by whether it actually wins", () => {
+    const msg = (tier: Record<string, unknown>) =>
+      validateManifestDocuments(tiered(tier)).warnings.find(
+        (w) => w.path === "/licensing/tiers/0/maxOfflineDays",
+      )?.message;
+    expect(msg({ maxOfflineDays: 14 })).toContain("sets the licence expiry");
+    expect(msg({ maxOfflineDays: 14, policyExpiryDays: 30 })).not.toContain(
+      "sets the licence expiry",
+    );
+    expect(msg({ maxOfflineDays: 14, expiryDays: 30 })).toContain("wins");
+    expect(msg({ maxOfflineDays: "14" })).toContain("not a number");
+  });
+
   it("stays silent for the keys the normaliser reads", () => {
     const res = validateManifestDocuments(
       tiered({ policyDeviceLimit: 5, policyExpiryDays: 30 }),
@@ -1443,4 +1474,57 @@ describe("web.origins (P0-05)", () => {
       codes({ origins: ["https://diceroll.gg", "https://diceroll.gg"] }),
     ).toEqual(["invalid_web_origin"]);
   });
+});
+
+describe("release model vocabulary (P2-03)", () => {
+  it("names the README §3.1 vocabularies verbatim", () => {
+    expect(RELEASE_PLATFORMS).toEqual([
+      "macos",
+      "ios",
+      "android",
+      "windows",
+      "linux",
+      "web",
+    ]);
+    expect(RELEASE_ARCHES).toEqual([
+      "arm64",
+      "x86_64",
+      "universal",
+      "armv7",
+      "wasm32",
+      "any",
+    ]);
+    expect(ARTIFACT_ROLES).toEqual([
+      "payload",
+      "files-index",
+      "chunk-index",
+      "chunk-bundle",
+      "delta",
+      "signature",
+      "checksum",
+    ]);
+    expect(DELIVERABLE_KINDS).toEqual(["app", "pack"]);
+  });
+
+  it.each([APP_DELIVERABLE_ID, "diceroll.core3d", "l10n-de", "a.b-c.d0"])(
+    "accepts the deliverable id %s",
+    (id) => expect(isDeliverableId(id)).toBe(true),
+  );
+
+  it.each([
+    "",
+    "App",
+    "0app",
+    "-app",
+    "app.",
+    ".app",
+    "app..pack",
+    "app_pack",
+    "app pack",
+    "a".repeat(MAX_DELIVERABLE_ID_LENGTH + 1),
+    42,
+    null,
+  ])("rejects the deliverable id %j", (id) =>
+    expect(isDeliverableId(id)).toBe(false),
+  );
 });

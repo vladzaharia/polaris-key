@@ -7,7 +7,8 @@
  *
  * Minimal-viable scope (diff-then-update): we re-parse the manifest and update the catalog
  * (new active schema version), the release block (channel/binary/marker/pub), and the OIDC +
- * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here.
+ * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here, and
+ * edge-mint APPROVALS are never written here (P0-12) — only orphaned ones are deleted.
  */
 
 import { Catalog } from "@polaris-key/catalog";
@@ -19,12 +20,14 @@ import {
   getActiveSchema,
   getProduct,
   insertSchema,
+  invalidateWidenedEdgeMintApprovals,
   listProfiles,
   listTiers,
   nextSchemaVersion,
   setAutoIssuePolicy,
   setFingerprintPolicy,
   setServices,
+  stmtDeleteOrphanEdgeMintApprovals,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
   stmtInsertProfile,
@@ -74,6 +77,17 @@ async function readManifestFile(
  * protection and required review on `.pkey/`. Omitting the ref makes the Contents API serve
  * the DB-configured repo's own default branch, resolved by GitHub, with nothing
  * caller-supplied in the path.
+ *
+ * P0-12. Whatever the outcome, an edge-mint approval the product has WIDENED is deleted once the
+ * manifest has been applied (`invalidateWidenedEdgeMintApprovals`): the writes below are not one
+ * transaction, and a push refused half-way (a bad catalog, a tier still in use) — or one that
+ * THROWS half-way (a D1 constraint in the final batch) — can already have written `services_json`
+ * or `auto_issue_json`. The sweep therefore runs in a `finally`: a repo writer must not be able to
+ * skip it by making the ingest fail after the widening writes. A `finally` does not run when the
+ * Worker is KILLED after those writes (CPU limit, a cancelled webhook), so this is not the
+ * guarantee: every writer of an approval input sweeps BEFORE it writes — `applyRepoManifest`, and
+ * the console's services and License-policy edits (`core/servicesAdmin.ts`,
+ * `services/license/admin/policy.ts`) — so no revert can be the first thing to look.
  */
 export async function resyncRepo(
   env: Env,
@@ -81,6 +95,39 @@ export async function resyncRepo(
   slug: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
+): Promise<ResyncResult> {
+  let result: ResyncResult;
+  let dropped: string[];
+  try {
+    result = await applyRepoManifest(env, db, slug, now, fetchImpl);
+  } finally {
+    // Every manifest-owned input to an approval that this push got to write is written by now:
+    // `services_json` and `auto_issue_json` by the un-batched writes, `oidc_config` in the batch.
+    // An approval this push widened is dropped here, audited as `config.mint.invalidate`, and its
+    // recipe is `pending` until an operator re-approves it — a later push, or a console edit, that
+    // reverts the widening cannot restore it. Runs on the throw path too.
+    dropped = await invalidateWidenedEdgeMintApprovals(
+      db,
+      slug,
+      now,
+      "widened by a manifest push",
+    );
+  }
+  if (
+    result.ok &&
+    dropped.length > 0 &&
+    !result.updated.includes("edgeMintApprovals")
+  )
+    result.updated.push("edgeMintApprovals");
+  return result;
+}
+
+async function applyRepoManifest(
+  env: Env,
+  db: Db,
+  slug: string,
+  now: number,
+  fetchImpl: FetchImpl,
 ): Promise<ResyncResult> {
   const product = await getProduct(db, slug);
   if (!product) return { ok: false, error: "unknown product" };
@@ -174,6 +221,19 @@ export async function resyncRepo(
       if (refusal) return { ok: false, error: refusal };
     }
   }
+
+  // P0-12 — an edge-mint approval the product has WIDENED (public without acknowledgement,
+  // License turned off, sign-in trust changed) is deleted by the ingest, not merely skipped by
+  // the mint, so that a revert cannot bring it back while credentials issued in between keep
+  // working. Swept once here, before the first write, against the state the previous ingest
+  // left — so a sweep that failed after that ingest's writes is caught before this push can
+  // revert them — and once more after the last write, in `resyncRepo`.
+  const droppedBefore = await invalidateWidenedEdgeMintApprovals(
+    db,
+    slug,
+    now,
+    "found widened at resync",
+  );
 
   const updated: string[] = [];
 
@@ -423,6 +483,12 @@ export async function resyncRepo(
       }),
     );
   }
+  // P0-12: approvals are the operator's, so a resync never WRITES one — the re-inserted rows
+  // above stay approved only where they are column-for-column what an operator approved, and a
+  // changed field leaves the recipe inert (404) until it is approved again. What a resync does
+  // own is cleanup: a recipe id the manifest no longer declares takes its approval with it, so
+  // a later push re-adding that id with the same fields cannot inherit a stale approval.
+  stmts.push(stmtDeleteOrphanEdgeMintApprovals(slug));
   updated.push("edgeMint");
 
   // ── release truth store: the same pass, one extra GitHub read (P2.T2) ───────
@@ -452,5 +518,6 @@ export async function resyncRepo(
 
   if (stmts.length > 0) await db.batch(stmts);
 
+  if (droppedBefore.length > 0) updated.push("edgeMintApprovals");
   return { ok: true, updated };
 }

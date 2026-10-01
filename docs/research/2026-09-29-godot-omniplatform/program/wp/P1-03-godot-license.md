@@ -77,16 +77,18 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
 - Build-gate port and `gate-matrix.json` in the runner, faithful to the **server**
   (`worker/src/core/gate.ts`), not to the stale Node port.
 - `X-PKey-Channel` in P0-04's vocabulary: the canonical `stable`, `beta` and `pr-<n>`, or a
-  product's manual channel name (P0-04 proposes `^[a-z0-9][a-z0-9-]{0,63}$`); never the legacy
-  aliases `staging` or `dev` in new builds. `configure` refuses a malformed value, which the
-  server would answer with `channel-not-entitled`.
+  product's manual channel name (`^[a-z0-9][a-z0-9-]{0,63}$`). `dev` is a gate pseudo-channel, not
+  a legacy alias, so Godot sends it for `0.0.0-dev*` builds; it sends `pr` or `pr-<n>` for PR
+  builds (the server narrows the literal `pr` header to the build's number), and never `staging`.
+  `configure` refuses a malformed value, which the server would answer with
+  `channel-not-entitled`. The port follows P0-04 plan §2.1 and uses the row names in its §4.
 
 **Out** (and where it belongs instead):
 
 - Porting re-register-on-401 to Node, Python, Swift and React
   (→ [P1b-06](P1b-06-reregister-401.md)); `entitledChannels` in the other SDKs
   (→ [P1b-07](P1b-07-license-config-release-gaps.md)).
-- Fixing the Node runner's build-gate port (→ [P1b-05](P1b-05-runners.md)).
+- Fixing the Node runner's build-gate port (→ [P0-04](P0-04-channel-unification.md), plan D6).
 - Device-code sign-in, which also mints a licence-bound token (→ [P1-07](P1-07-godot-identity.md)).
 - The activation panel and gate screens (→ [P1-10](P1-10-godot-ui-kit.md)).
 - Headless `PKeyCli` commands for server builds (notes/A2 §9.1; unowned, optional).
@@ -117,8 +119,9 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
   with Apple 3.1.1 and Play payments (notes/A2 §13). The client does not enforce this; the README
   (P1-12) says so.
 - **Build-gate port:** the server refuses an unrecognised `X-PKey-Channel` and bypasses dev
-  builds only with a `dev` entitlement or `allowDevBuilds` (R3-01). Port that. If a matrix row
-  only passes with the stale Node semantics, stop and report it: the row, not the port, is wrong.
+  builds only with a `dev` entitlement or `allowDevBuilds` (R3-01). Port that, following P0-04
+  plan §2.1. Settled: once P0-04 retires the carried dev row, no matrix row needs the stale Node
+  semantics.
 - Channel ids and error codes become generated constants in P1b-02; keep them in one table.
 
 ## Steps

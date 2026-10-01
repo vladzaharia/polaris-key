@@ -150,6 +150,9 @@ function main(): void {
     );
   }
   for (const e of product.edgeMint) {
+    // P0-12: a seeded recipe is PENDING. It mints only once an operator marks its signing
+    // secret `edge-mint` and approves the recipe in the console (config/mint/<id>/approve).
+    out.push(`-- edge-mint recipe ${e.id}: pending operator approval`);
     out.push(
       `INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (${q(p)},${q(e.id)},${q(e.alg)},${q(e.signingKeySecret)},${e.kid ? q(e.kid) : "NULL"},${j(e.claimsTemplate)},${e.ttlSeconds},${e.audience ? q(e.audience) : "NULL"},NULL);`,
     );

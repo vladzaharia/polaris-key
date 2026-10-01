@@ -146,7 +146,9 @@ node docs/research/2026-09-29-godot-omniplatform/program/check.mjs
 mise exec node@22 -- pnpm format
 # Desktop control run of the mount probes before the device runs:
 # (set up the Godot binary, templates and test packs as prototype/patching/README.md describes)
+# tplrun.sh uses the Linux templates; on a macOS host run the macOS equivalent instead:
 ( cd docs/research/2026-09-29-godot-omniplatform/prototype/patching && ./tplrun.sh release T7Semantics newpath )
+( cd docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics && ./f_uid/run_f.sh )  # macOS, via tplrun_mac.sh
 ```
 
 ## Hand-off

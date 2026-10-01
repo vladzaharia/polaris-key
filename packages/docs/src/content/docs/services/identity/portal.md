@@ -117,7 +117,11 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   (`services_json`), and — for a `licensed`-access artifact — whether the account holds a usable
   license for that product. Minting a token is refused up front if the artifact's stored source
   URL is not a redirectable `https` GitHub-storage host, so nothing is ever minted that could
-  only fail later.
+  only fail later. The listing itself omits `signature` and `checksum` artifacts (`.sig` and
+  `.sha256` sidecars): they are verification material, not downloads. As shipped, a download
+  therefore needs a signed-in account **and** a license for the product linked to it (a usable
+  one for `licensed` access); there is no anonymous path, and the redirect target is always a
+  GitHub-storage host.
 - **`GET /download/<token>`** — redeems a minted token. Every one of those checks is run again
   here, at redemption, not assumed to still hold from mint time — portal enabled, releases
   enabled, account active, license still linked, licensed access still held — and the token is
