@@ -30,7 +30,8 @@ sdks/
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
                      + parity/ (features.json registry; each SDK keeps its own parity.json)
-tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts
+                     + transcripts/ (HTTP conversations recorded through the Worker router)
+tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-transcripts.mjs
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
                      security/ (threat model, wire contract v3, audit + findings)
@@ -78,6 +79,7 @@ already covers the source files.
 ```sh
 pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
+pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -110,7 +112,12 @@ and `pnpm typecheck`). A green hook is not a green gate.
 gate-matrix.json,fingerprint.json}` and the Swift mirror at
 `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` are output. Regenerate with `pnpm gen:corpus`
 and commit the result in the same change. `pnpm gen:corpus -- --check` regenerates in memory and
-fails on any difference, mirror included. Never weaken a runner to make a change "pass".
+fails on any difference, mirror included. Never weaken a runner to make a change "pass". The
+same holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Swift mirror at
+`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` are recorded by the Worker's scenario
+tests (`packages/worker/test/transcripts/`) through `pnpm gen:transcripts`; a Worker change that
+alters a recorded response regenerates them in the same change, and the SDK replayers then show
+which SDKs must follow.
 
 **2. A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** The constant lives in
 `packages/shared-protocol/src/core.ts` and is currently **3**. The signed document set is

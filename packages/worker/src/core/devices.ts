@@ -856,7 +856,7 @@ export async function handleDevices(
 // that isn't added here vanishes without an error anywhere — add the key here and a test in
 // licensingReport.test.ts together. The first six keys are the software-facts additions; the
 // rest are the original v1 set and must stay.
-const REPORT_KEYS = [
+export const REPORT_KEYS = [
   "os",
   "hardware",
   "runtime",

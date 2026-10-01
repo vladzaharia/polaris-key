@@ -15,6 +15,7 @@
     "dev": "turbo run dev --no-cache --continue",
     "gen:corpus": "tsx tools/sign-corpus.ts",
     "gen:mirrors": "tsx tools/gen-mirrors.ts",
+    "gen:transcripts": "node tools/gen-transcripts.mjs",
     "parity:check": "tsx tools/parity-check.ts",
     "prepare": "husky",
     "conformance": "turbo run test --filter=@polaris-key/conformance-node",

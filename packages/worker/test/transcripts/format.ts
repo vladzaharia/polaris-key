@@ -1,0 +1,182 @@
+// The HTTP transcript format, version 1 (P1b-03, PARITY §4.2).
+//
+// A transcript pins one CONVERSATION between an SDK and the Worker: the requests a client must
+// send, in the shape the contract fixes, and the Worker's real answers to them. The Worker's own
+// scenario tests (`./scenarios/`) record them through the real router; every SDK replays them
+// against a fake server that serves the canned responses and asserts each request.
+//
+// The files are GENERATED — `conformance/transcripts/<id>.json`, mirrored into the Swift test
+// bundle — and drift-checked by `pnpm gen:transcripts -- --check` and by the Worker suite. Never
+// hand-edit one: change the scenario and regenerate.
+//
+// ── WHICH SDK REPLAYS WHICH TRANSCRIPT ──────────────────────────────────────────────────────
+//
+//   An SDK replays a transcript when its parity manifest marks every id in `features`
+//   `implemented` AND marks none of the ids in `requires` `na`. `features` is what the
+//   conversation PROVES; `requires` is what it PRESUPPOSES without proving. Every conversation
+//   that authenticates with a `pkeyt_` device token requires `core.store`: a runtime with no
+//   credential store (the browser, the desktop renderer — both `na` in the React manifest) never
+//   has this conversation at all, while `planned` there only means the store's hardening is still
+//   open. `pnpm parity:check` applies the same rule when it demands a tagged replayer.
+//
+// ── READING A TRANSCRIPT ────────────────────────────────────────────────────────────────────
+//
+//   * `initial` is the client's state before the first step: the device id its store returns,
+//     the token it already holds (if any), the host version it reports, and the services it
+//     expects before discovery (`services`, the SDK's `expectedServices`; absent ⇒ the SDK
+//     default of license + config).
+//   * each step is ONE public SDK call (`action`), made with the SDK clock at `now` (the step's,
+//     else the transcript's), and every HTTP exchange that call makes — including the ones it
+//     makes implicitly, such as the sync an activation triggers.
+//   * `exchanges.ordered: false` (the default everywhere the protocol allows it, PARITY §2.3): a
+//     request is matched to the first not-yet-served item with the same method and path whose
+//     assertions it satisfies, so a client may issue parallel requests in any order and a
+//     sequential client may issue them one after the other. Placeholders are substituted when a
+//     request ARRIVES, from the bindings current at that moment, so a request that depends on a
+//     captured value (a rotated token) only matches once that value has been served.
+//     `ordered: true` additionally requires the items in their listed order.
+//   * request `headers` are asserted by VALUE, after `{name}` placeholders are substituted from
+//     `initial` (`{deviceId}`, `{version}`, `{token}`), the step's `args` (`{key}`) and earlier
+//     `capture`s. `requiredHeaders` are asserted by PRESENCE only. Names compare lowercased;
+//     order and casing are never asserted (PARITY §11 Q2).
+//   * request `body`: `null` ⇒ the request carries no body. Otherwise `json` compared under
+//     `match`:
+//       exact   deep equal;
+//       subset  every expected member present; objects recurse as subsets, arrays and scalars
+//               must be equal;
+//       shape   every expected member present with the same JSON type, recursing into objects
+//               (an expected `{}` accepts any object); values are not compared.
+//     `allowedKeys`, when present, bounds the top-level members the body may carry at all.
+//   * response `body` is a string served byte-for-byte (a compact JWS, an empty 304, a plain
+//     error) or a JSON value served as its compact serialization (member order is not
+//     significant to any client).
+//   * `expect` is the client-visible outcome after the step, in the vocabulary below. Each SDK
+//     maps its own result types onto it in one helper.
+//
+// ── THE `expect` VOCABULARY ─────────────────────────────────────────────────────────────────
+//
+//   result          discover: "ok" | "not-found" | "invalid" | "error"
+//                   activate / enroll: "ok" | "device-limit" | "unauthorized" |
+//                     "fingerprint-required" | "enroll-disabled" | "hardware-mismatch" | "error"
+//                   register: "ok" | "registration-closed" | "rate-limited" | "not-configured" |
+//                     "error"
+//                   report: true when the server accepted the report
+//   services        discover: the capability map afterwards, slug → enabled
+//   applied / unauthorized / blocked      sync: the SyncResult flags
+//   documents       sync: slice → "applied" | "unchanged" | "unauthorized" | "blocked" |
+//                   "device-cap" | "error" (only the slices the product runs)
+//   licenseStatus   the gate's status afterwards (client-core `licenseState`)
+//   tokenHeld       whether the client holds a device token afterwards
+//
+// Every key present is asserted; an absent key is not.
+
+export const TRANSCRIPT_VERSION = 1;
+
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export type BodyMatch = "exact" | "subset" | "shape";
+
+export interface RequestBody {
+  json: JsonValue;
+  match: BodyMatch;
+  allowedKeys?: string[];
+}
+
+export interface RecordedRequest {
+  method: string;
+  /** Path and query, e.g. `/djdl/license/document`. */
+  path: string;
+  /** Asserted by value; `{name}` placeholders allowed. Lowercased names. */
+  headers: Record<string, string>;
+  /** Asserted by presence. Lowercased names. */
+  requiredHeaders: string[];
+  body: RequestBody | null;
+}
+
+export interface RecordedResponse {
+  status: number;
+  /** Only the headers a client reads (`RECORDED_RESPONSE_HEADERS`), lowercased. */
+  headers: Record<string, string>;
+  body: string | JsonValue;
+}
+
+export interface Exchange {
+  request: RecordedRequest;
+  response: RecordedResponse;
+  /** Bind a value from the JSON response for later steps: name → `$.path.to.member`. */
+  capture?: Record<string, string>;
+}
+
+export type Action =
+  | "discover"
+  | "sync"
+  | "activate"
+  | "enroll"
+  | "register"
+  | "deactivate"
+  | "report";
+
+export interface Step {
+  action: Action;
+  /** What the step is about, for a human reading the file. Not asserted. */
+  note?: string;
+  args: Record<string, JsonValue>;
+  /** The client clock (epoch seconds) for this step; absent ⇒ the transcript's `now`. */
+  now?: number;
+  exchanges: { ordered: boolean; items: Exchange[] };
+  expect: Record<string, JsonValue>;
+}
+
+export interface Transcript {
+  transcriptVersion: typeof TRANSCRIPT_VERSION;
+  id: string;
+  description: string;
+  /** Registry feature ids (conformance/parity/features.json) this conversation PROVES. An SDK
+   *  replays the transcript only when its parity.json marks every one of them `implemented`. */
+  features: string[];
+  /** Registry feature ids the conversation PRESUPPOSES. An SDK whose manifest marks any of
+   *  them `na` never has this conversation, so it does not replay it. */
+  requires: string[];
+  product: string;
+  baseUrl: string;
+  now: number;
+  /** The pinned trust set: kid → raw Ed25519 public key (base64url). */
+  trust: Record<string, string>;
+  initial: {
+    deviceId: string;
+    token?: string;
+    version: string;
+    services?: string[];
+  };
+  steps: Step[];
+}
+
+/** The response headers a client acts on. Everything else the Worker sends (HSTS, CSP, CORS,
+ *  `vary`) is transport policy, not conversation, and recording it would make every security-
+ *  header change a transcript change. */
+export const RECORDED_RESPONSE_HEADERS = [
+  "cache-control",
+  "content-type",
+  "etag",
+  "retry-after",
+  "www-authenticate",
+] as const;
+
+/** The seven `X-PKey-*` metadata headers every device-authenticated product call carries (wire
+ *  contract v3 §5). Transcripts assert them by PRESENCE; `x-pkey-device` and `x-pkey-version`
+ *  are also asserted by value. The platform and arch VALUES are P1b-04's to pin. */
+export const METADATA_HEADERS = [
+  "x-pkey-device",
+  "x-pkey-version",
+  "x-pkey-channel",
+  "x-pkey-sdk",
+  "x-pkey-sdk-version",
+  "x-pkey-platform",
+  "x-pkey-arch",
+] as const;
