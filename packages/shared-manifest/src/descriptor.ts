@@ -122,6 +122,8 @@ export interface AndroidBuildMetadata {
   versionCode: number;
   versionName: string;
   minSdk?: number;
+  /** `targetSdkVersion`; an F-Droid index states `usesSdk` only when both SDKs are known. */
+  targetSdk?: number;
   /** ABIs under `lib/`; empty or absent for a pure-JVM APK. */
   nativecode?: string[];
   /** Lower-case hex SHA-256 of the signing certificate (DER). */
@@ -234,6 +236,15 @@ function buildMetadataProblem(platform: unknown, m: unknown): string | null {
     )
   )
     return "minSdk must be an integer from 1 to 1000";
+  if (
+    m.targetSdk !== undefined &&
+    !(
+      Number.isSafeInteger(m.targetSdk) &&
+      (m.targetSdk as number) >= 1 &&
+      (m.targetSdk as number) <= 1000
+    )
+  )
+    return "targetSdk must be an integer from 1 to 1000";
   const abis: readonly string[] = ANDROID_ABIS;
   if (
     m.nativecode !== undefined &&

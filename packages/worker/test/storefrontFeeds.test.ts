@@ -253,6 +253,7 @@ function metadataFor(
       versionCode: VERSION_CODES[version],
       versionName: version,
       minSdk: 24,
+      targetSdk: 35,
       nativecode: ["arm64-v8a", "armeabi-v7a"],
       signerSha256: SIGNER,
     };

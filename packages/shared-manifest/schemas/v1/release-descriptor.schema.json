@@ -267,6 +267,11 @@
           "minimum": 1,
           "maximum": 1000
         },
+        "targetSdk": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
         "nativecode": {
           "type": "array",
           "uniqueItems": true,

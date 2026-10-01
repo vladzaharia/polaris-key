@@ -1897,6 +1897,7 @@ const ANDROID_META = (): Record<string, any> => ({
   versionCode: 10203,
   versionName: "1.2.3",
   minSdk: 24,
+  targetSdk: 35,
   nativecode: ["arm64-v8a", "armeabi-v7a"],
   signerSha256: SHA_A,
 });
@@ -2175,6 +2176,14 @@ const DESCRIPTOR_MUTATIONS: DescriptorMutation[] = [
     mutate: (d) => {
       mac(d).platform = "android";
       mac(d).metadata = { ...ANDROID_META(), nativecode: ["arm64"] };
+    },
+  },
+  {
+    code: "invalid_build_metadata",
+    schema: "rejects",
+    mutate: (d) => {
+      mac(d).platform = "android";
+      mac(d).metadata = { ...ANDROID_META(), targetSdk: 0 };
     },
   },
 ];
