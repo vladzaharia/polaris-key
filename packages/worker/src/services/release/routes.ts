@@ -11,6 +11,7 @@
  *     /release/blobs/sha256/:hash                 GET|HEAD  (P2-05, also on the bytes host)
  *     /release/channels/:channel/{promote,pin,unpin}  POST, `pkeyci_` + release:promote
  *     /release/releases/:releaseId/yank               POST, `pkeyci_` + release:yank
+ *     /release/publish/{token,uploads,submit}         POST (P2-02, trusted publishing)
  *
  * Returning `null` for an unmatched segment is the registry contract (`core/registry.ts`): only
  * Core decides what "no route here" means, which is what makes a disabled service, an
@@ -27,6 +28,8 @@ import { normalizeArch } from "./assets.js";
 import { handleRelease } from "./surfaces.js";
 import { byteTargetOf, serveReleaseBytes } from "./bytes.js";
 import { getReleaseConfig } from "./config.js";
+import { readCiJson } from "./ciBody.js";
+import { handlePublishRoute } from "./publish.js";
 import {
   applyPointerOp,
   yank,
@@ -49,6 +52,10 @@ export async function handleReleaseRoutes(
       return handleRelease(req, env, db, product, "install", {});
     return null;
   }
+
+  // Trusted publishing (P2-02): the OIDC exchange, upload tickets and the submit.
+  if (rest.length === 2 && rest[0] === "publish")
+    return handlePublishRoute(ctx, rest[1] as string);
 
   // The three byte routes (P2-05) — the same handler the bytes host runs (`bytes.ts`).
   if (
@@ -96,25 +103,8 @@ export async function handleReleaseRoutes(
 const MAX_CI_BODY_BYTES = 16 * 1024;
 
 /** The JSON object a CI route was sent, or a 400 to answer with. */
-async function readCiBody(
-  req: Request,
-): Promise<Record<string, unknown> | Response> {
-  const bad = (message: string) =>
-    errorResponse(400, ErrorCode.BadRequest, message, { reason: "bad_body" });
-  const declared = Number(req.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > MAX_CI_BODY_BYTES)
-    return bad("request body too large");
-  const raw = await req.text();
-  if (raw.length > MAX_CI_BODY_BYTES) return bad("request body too large");
-  if (raw.trim() === "") return {};
-  try {
-    const v: unknown = JSON.parse(raw);
-    if (v && typeof v === "object" && !Array.isArray(v))
-      return v as Record<string, unknown>;
-  } catch {
-    /* fall through */
-  }
-  return bad("request body must be a JSON object");
+function readCiBody(req: Request): Promise<Record<string, unknown> | Response> {
+  return readCiJson(req, MAX_CI_BODY_BYTES);
 }
 
 function refusal(r: PolicyRefusal): Response {

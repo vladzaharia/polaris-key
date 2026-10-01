@@ -170,5 +170,16 @@ Tested only against stubbed fetches, not a real GitHub App installation.
       `verificationUri` (type a lower-case code with a space); confirm; reopen the same code → 404.
 - [ ] P0-03: subscribe the GitHub App to Release events, then publish a release on a linked repo
       and confirm the store updates within one delivery.
-- [ ] P2-05's byte routes are not in v0.5.1 (merged after); its post-deploy curl checks run after
-      the next tag.
+- [x] P2-05's byte routes are not in v0.5.1 (merged after); checked after v0.5.3 below.
+
+## v0.5.3 (2026-10-01): deployed and checked
+
+- [x] Deploy run 36859366875 succeeded (P2-05, P5-01 with migration `0034`, P1-05).
+- [x] `dl.plrs.im/djdl/release/blobs/sha256/<64 zeros>` → 404 JSON `not_found`, sandbox CSP, nosniff.
+- [x] `dl.plrs.im/djdl/release/files/v0.3.8/SHA256SUMS` → 200 `application/octet-stream`,
+      `Content-Disposition: attachment`, sandbox CSP, `immutable, no-transform`, no `Set-Cookie`;
+      with `Range: bytes=0-99` → 206 `bytes 0-99/402`.
+- [x] `dl.plrs.im/djdl/release/dl/latest/djdl-arm64` → 404 (legacy route not on the bytes host).
+- [x] Discovery advertises `endpoints.builds` and `endpoints.blobs` on `dl.plrs.im`.
+- [ ] For an `entitled` product: a pinned non-semver version (`/release/builds/1.2.3.4/<build>`) with
+      a valid device token → 403 `version_blocked` (needs a real device token).

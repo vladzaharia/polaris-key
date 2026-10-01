@@ -171,7 +171,7 @@ export async function handleReleaseAdmin(
   if (rest[0] !== "resync") return adminNotFound();
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
-  const result = await resyncRepo(env, db, slug, now);
+  const result = await resyncRepo(env, db, slug, now, fetch, ctx.ingest);
   if (!result.ok) {
     await upsertProductSyncState(db, {
       product: slug,

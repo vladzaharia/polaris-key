@@ -46,13 +46,15 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { fetchRepoFile } from "./github.js";
+import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
-import { MANIFEST_FILES } from "./manifestFiles.js";
+import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { serializeServices } from "../../core/services.js";
+import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
+import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 
 export type LinkRepoResult =
   | {
@@ -162,6 +164,7 @@ export async function linkRepo(
   repoUrl: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
+  ingest?: ManifestIngest,
 ): Promise<LinkRepoResult> {
   const parsed = parseRepoUrl(repoUrl);
   if (!parsed)
@@ -197,7 +200,7 @@ export async function linkRepo(
   // files surface as parseManifest errors below.
   const files: Record<string, string> = {};
   try {
-    for (const name of ["schema", "product", "release"] as const) {
+    for (const name of MANIFEST_FILE_NAMES) {
       const text = await readManifestFile(
         token,
         owner,
@@ -238,9 +241,10 @@ export async function linkRepo(
     env,
     db,
     manifest,
-    { owner, repo, installId },
+    { owner, repo, installId, token },
     now,
     fetchImpl,
+    ingest,
   );
 }
 
@@ -249,9 +253,10 @@ async function registerFromManifest(
   env: Env,
   db: Db,
   manifest: ParsedManifest,
-  gh: { owner: string; repo: string; installId: number },
+  gh: { owner: string; repo: string; installId: number; token: string },
   now: number,
   fetchImpl: FetchImpl,
+  ingest: ManifestIngest | undefined,
 ): Promise<LinkRepoResult> {
   const slug = manifest.product.slug;
   const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}`;
@@ -300,6 +305,36 @@ async function registerFromManifest(
       ok: false,
       error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
     };
+  }
+
+  // P2-02: a declared trusted publisher pins the repository's NUMERIC ids, resolved here from
+  // GitHub with the installation token — never taken from the manifest (a repo must not be able
+  // to name someone else's repository as its publisher). Before the batch, so a failed lookup
+  // refuses the link instead of registering a product without the policy it declared.
+  let publisherStmt: DbStatement | null = null;
+  if (rel?.trustedPublisher) {
+    try {
+      const identity = await getRepoIdentity(
+        gh.token,
+        gh.owner,
+        gh.repo,
+        fetchImpl,
+      );
+      publisherStmt = stmtUpsertManifestPublisher({
+        product: slug,
+        repositoryId: identity.id,
+        repositoryOwnerId: identity.ownerId,
+        repository: identity.fullName,
+        workflow: rel.trustedPublisher.workflow,
+        environment: rel.trustedPublisher.environment,
+        now,
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        error: `could not resolve the repository's ids for publishing.trustedPublisher: ${err instanceof Error ? err.message : "github lookup failed"}`,
+      };
+    }
   }
 
   const statements: DbStatement[] = [
@@ -438,6 +473,10 @@ async function registerFromManifest(
   if (rel)
     statements.push(...manifestDeliverableStatements(slug, rel.app, now));
 
+  // The trusted-publisher policy (P2-02), manifest-owned from the start. A row a previous product
+  // of the same slug left behind is replaced only if it is manifest-owned too.
+  if (publisherStmt) statements.push(publisherStmt);
+
   for (const e of manifest.edgeMint) {
     statements.push(
       stmtInsertEdgeMint({
@@ -461,6 +500,15 @@ async function registerFromManifest(
     sql: "DELETE FROM edge_mint_approvals WHERE product = ?",
     params: [slug],
   });
+
+  // Every enabled service's own manifest rows (P2b-02: Distribution's outlets and transports),
+  // through Core's ingest pipeline and in the same atomic batch, AFTER the product row they
+  // reference. A freshly linked product is manifest-owned, so the manifest's enablement is the
+  // product's enablement.
+  if (ingest)
+    statements.push(
+      ...ingest(manifest, slug, manifest.services, now).statements,
+    );
 
   await db.batch(statements);
 

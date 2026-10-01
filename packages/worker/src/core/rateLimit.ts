@@ -91,6 +91,11 @@ const FAIL_MODE: Record<string, FailMode> = {
   portalLogin: "closed",
   portalMagic: "closed",
   portalClaimKey: "closed",
+  // P2-02: the trusted-publisher exchange mints a `pkeyci_` token from a GitHub OIDC token —
+  // per caller IP (every request), and per product (charged only after the token passes the
+  // signature, audience and publisher policy, so no outsider can spend it).
+  ciPublishToken: "closed",
+  ciPublishTokenProduct: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

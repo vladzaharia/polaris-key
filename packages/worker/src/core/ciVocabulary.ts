@@ -1,0 +1,33 @@
+/**
+ * The CI credential vocabulary (P2-02): the token prefix, the scope set and the principal shape.
+ *
+ * A leaf module on purpose. `core/ciScope.ts` (the route guard), `core/ciTokens.ts` (the lookup
+ * seam P2-05's suite mocks) and `core/publisher.ts` (the store) all need these, and keeping them
+ * here means none of the three imports another for a constant.
+ */
+
+/** Every CI token starts with this; anything else is not a CI credential. */
+export const CI_TOKEN_PREFIX = "pkeyci_";
+
+/**
+ * The scope vocabulary so far (P2-02 design notes). Later packages add theirs here: P2b-04
+ * `distribution:rollout`, P2b-05 `distribution:feeds`.
+ */
+export const CI_SCOPES = [
+  "release:publish",
+  "release:promote",
+  "release:yank",
+  "distribution:report",
+] as const;
+export type CiScope = (typeof CI_SCOPES)[number];
+
+/** Who a valid `pkeyci_` token belongs to. */
+export interface CiPrincipal {
+  /** The product the token was issued for. A token is never valid for another product. */
+  readonly product: string;
+  /** The audit actor's subject: `github:<sub>#run:<id>` for a minted token, `static:<id>` for an
+   *  operator-issued one. */
+  readonly subject: string;
+  /** Granted scopes (`release:publish`, `release:promote`, `release:yank`, …). */
+  readonly scopes: readonly string[];
+}

@@ -24,6 +24,7 @@
 //    a table that is never pruned again. Failures are collected and re-thrown as one aggregate
 //    at the very end, so the invocation is still recorded as failed.
 
+import { pruneCiCredentials } from "./core/publisher.js";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { D1Db } from "./db/d1.js";
@@ -88,10 +89,11 @@ export const PRUNE_MAX_BATCHES = 20;
  * constraint simply stops being enforced.
  *
  * A test asserts this list and the newest `migrations/*_index_assertion.sql` (0018, then its
- * successors — 0027_i today) are the same set, so the two cannot drift apart.
+ * successors — 0035_b today) are the same set, so the two cannot drift apart.
  */
 export const REQUIRED_INDEXES: readonly string[] = [
   "idx_audit_time",
+  "idx_ci_tokens_jti",
   "idx_devices_license_status",
   "idx_devices_seat",
   "idx_licenses_email_lower",
@@ -220,6 +222,10 @@ export async function runScheduledMaintenance(
     );
     await step(report, `seats:${product}`, () =>
       releaseDormantSeats(db, product, now),
+    );
+    // P2-02: CI tokens and upload tickets that expired more than a day ago.
+    await step(report, `ciCredentials:${product}`, () =>
+      pruneCiCredentials(db, product, now),
     );
   }
 

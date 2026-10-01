@@ -9,7 +9,8 @@
  *
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
- * any service: `secrets/*`, `outlet-credentials/*`, `keys/rotate`, `activity`, `services[/revert]`, `bundles`. Everything
+ * any service: `secrets/*`, `outlet-credentials/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
+ * `activity`, `services[/revert]`, `bundles`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
  *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
@@ -65,11 +66,13 @@ import {
   handleProductScopedResource,
 } from "./handlers/products.js";
 import { handleActivity } from "./handlers/activity.js";
+import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { loadProduct } from "../core/products.js";
 import { buildHooks } from "../core/hooks.js";
+import { manifestIngestFor } from "../core/registry.js";
 import { SERVICES } from "../mount.js";
 import type { ServiceSlug } from "../core/services.js";
 
@@ -151,6 +154,8 @@ async function handleProductScoped(
         rest: rest.slice(1),
         now,
         session,
+        // Core's ingest pipeline over the same registry (P2b-02): Release's resync route runs it.
+        ingest: manifestIngestFor(SERVICES),
         // Same gate as the public path: a hook whose providing service is off answers `null`,
         // even though the admin route itself is reachable while its own service is off.
         hooks: buildHooks(SERVICES, loaded.services, {
@@ -186,6 +191,15 @@ async function handleProductScoped(
       now,
     );
   }
+
+  // Trusted publishing (P2-02): the publisher policy and static CI tokens. CORE, like the
+  // secrets: the credential store serves Release now and Distribution (P2b-03) later.
+  //   GET|PUT /products/<slug>/ci-publisher
+  //   GET|POST /products/<slug>/ci-tokens, DELETE /products/<slug>/ci-tokens/<tokenId>
+  if (resource === "ci-publisher")
+    return handleCiPublisher(req, env, db, session, slug, id, now);
+  if (resource === "ci-tokens")
+    return handleCiTokens(req, env, db, session, slug, id, now);
 
   // Which Polaris Key services this product runs (plan §R4). A CORE resource, not a per-service
   // one: a service cannot own its own off switch, because it would have to be running to be

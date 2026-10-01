@@ -56,12 +56,17 @@ const table = (headers, rows) =>
 
 // ── 1. Manifest validation codes ───────────────────────────────────────────────
 function manifestValidationCodes() {
-  const source = read("packages", "shared-manifest", "src", "index.ts");
+  // `.pkey/distribution`'s rules (P2b-02) live in their own module of the same validator.
+  // Each module is scanned on its own: the helper regex is lazy across lines, so running it over
+  // concatenated sources lets a match start in one file and end in the next.
+  const sources = ["index.ts", "distribution.ts"].map((f) =>
+    read("packages", "shared-manifest", "src", f),
+  );
   const rows = [];
   // add(errors|warnings, "<file>", <path>, "<code>", <message>)
   const addRe =
-    /add\(\s*(errors|warnings),\s*"(product|schema|release)",\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*(`[^`]*`|"(?:[^"\\]|\\.)*")/g;
-  for (const m of source.matchAll(addRe)) {
+    /add\(\s*(errors|warnings),\s*"(product|schema|release|distribution)",\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*(`[^`]*`|"(?:[^"\\]|\\.)*")/g;
+  for (const m of sources.flatMap((source) => [...source.matchAll(addRe)])) {
     rows.push([
       `\`${m[4]}\``,
       m[1] === "warnings" ? "warning" : "error",
@@ -73,7 +78,7 @@ function manifestValidationCodes() {
   // constrained/constrainedList/boundedText(errors, "<file>", value, <path>, "<code>", …, "<message>")
   const helperRe =
     /(?:constrained|constrainedList|boundedText)\(\s*errors,\s*"(product|schema|release)",\s*[\s\S]*?,\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*[\s\S]*?(`[^`]*`|"(?:[^"\\]|\\.)*")\s*,?\s*\)/g;
-  for (const m of source.matchAll(helperRe)) {
+  for (const m of sources.flatMap((source) => [...source.matchAll(helperRe)])) {
     rows.push([
       `\`${m[3]}\``,
       "error",
@@ -317,6 +322,9 @@ const TABLE_OWNERS = {
     "schema_index_assertion",
     "blob_objects",
     "blob_refs",
+    "ci_publishers",
+    "ci_tokens",
+    "ci_upload_tickets",
   ],
   license: ["licenses", "keys_index", "tiers", "license_profiles"],
   config: [
@@ -338,6 +346,7 @@ const TABLE_OWNERS = {
     "release_channel_policy",
     "release_yanks",
   ],
+  distribution: ["dist_outlets", "dist_transports"],
   identity: [
     "oidc_config",
     "provisioning_config",

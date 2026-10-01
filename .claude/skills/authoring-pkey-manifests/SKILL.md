@@ -1,6 +1,6 @@
 ---
 name: authoring-pkey-manifests
-description: Use when creating or editing a product's .pkey/ manifest (product, schema, release) — scaffolding with pkey init, wiring editor schema support, choosing module names, validating until clean, and registering or resyncing the product in the console.
+description: Use when creating or editing a product's .pkey/ manifest (product, schema, release, distribution) — scaffolding with pkey init, wiring editor schema support, choosing module names, validating until clean, and registering or resyncing the product in the console.
 ---
 
 # Authoring a `.pkey/` manifest
@@ -39,12 +39,13 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       URLs (`https://key.plrs.im/docs/schemas/v1/…`) are identifiers on the auth-gated docs site,
       not fetch targets — an editor cannot retrieve them.
 - [ ] In this monorepo, `.vscode/settings.json` already wires `json.schemas` and `yaml.schemas`
-      for `**/.pkey/{product,schema,release}.{json,yaml,yml}` and the `products/*` fixtures. YAML
+      for `**/.pkey/{product,schema,release,distribution}.{json,yaml,yml}` and the `products/*`
+      fixtures. YAML
       completion needs the `redhat.vscode-yaml` extension.
 - [ ] The schemas ship inside the `@polaris-key/manifest` npm package (`schemas/v1/`), so a
       product repo that installs the package gets them locally.
 
-### 3. Know what each of the three files owns
+### 3. Know what each of the four files owns
 
 - [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`. Maps to the
       `product_schema` row. For an entry's fields, use the `adding-a-catalog-entry` skill.
@@ -76,6 +77,30 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `kind: pack` entry only warns (`pack_deliverables_not_supported`) until packs land. CI may
       then attach a release descriptor (`pkey-release.json`, `release-descriptor.schema.json`)
       whose builds must match this map.
+- [ ] If CI should publish releases (P2-02 trusted publishing), declare the publisher in
+      `release` under `publishing.trustedPublisher` with a `workflow`
+      (`.github/workflows/<file>.yml`) and an optional `environment` (default `release`). Those
+      two fields are ALL the manifest can say: the repository's numeric ids come from GitHub at
+      link/resync, the protected-ref / GitHub-hosted-runner / allowed-event checks are fixed,
+      and scopes are an operator setting. Tell the owner the publishing ref needs a branch or
+      **tag ruleset** (`ref_protected`), and the environment should require reviewers. Codes:
+      `invalid_trusted_publisher_workflow`, `invalid_trusted_publisher_environment`.
+- [ ] **`distribution`** (optional; P2b-02) — where the product is distributed: `outlets` keyed
+      by outlet id (an id that is itself a kind such as `steam`, `play`, `app-store` needs no
+      `kind`, and any `kind` it does give must repeat the id — `outlet_kind_mismatch`;
+      `altstore-beta` needs `kind: altstore`, and once linked it can change kind only to one
+      that narrows its capability defaults), each with its kind's store identity
+      fields (`bundleId`, `packageName`, `steam.appId`, `itch.gameId`, `packageFamilyName`,
+      `homebrewCask`, …); `transports` (`default` — `pkey-cdn` or `embedded` —, `packs.<outlet>`,
+      `deliverables.<id>.<outlet>`); and `listing`. Maps to `dist_outlets` and `dist_transports`.
+      Absent = one implicit `direct` outlet by `pkey-cdn`. An `artifact` must name an id in the
+      release artifact map; `tracks`/`branches` keys must be declared channels.
+- [ ] **Never** put `capabilities` in `.pkey/distribution` — anywhere in it is an error
+      (`capabilities_not_manifest_writable`). Outlet capabilities default per kind and only an
+      operator narrows them, in the console.
+- [ ] For a Godot export, CI turns the build's outlet into the stamp's ids with
+      `pkey distribution outlet-ids --outlet <id>` (every value a string; `{}` with no file).
+      Full reference: `build/manifest/distribution.md`.
 - [ ] The base name selects the role; the extension is a pure format preference, tried
       `.json` → `.yaml` → `.yml` and resolved **per document**, so `product.yaml` may sit next to
       `schema.json`.
@@ -182,6 +207,10 @@ table, `tools/services.json`.
       downgrade an `entitled` product to the manifest's `public`. "Revert to manifest" hands
       ownership back and changes nothing else; the manifest re-applies on the **next** resync,
       not immediately.
+- [ ] The trusted-publisher policy (`ci_publishers`) is operator-claimable too: while
+      manifest-owned it follows `publishing.trustedPublisher` (a change is audited, and removing
+      the block removes the policy); once an operator claims it with a `PUT` to
+      `/manage/api/products/<slug>/ci-publisher`, a resync never touches it.
 - [ ] The operator-only artifact policy (`requireSparkleSignature`, `minimumSystemVersion`)
       has **no manifest spelling at all** — it lives in `release_config.operator_policy_json`,
       which no manifest path writes. Do not try to declare either key (or the `entitled` access

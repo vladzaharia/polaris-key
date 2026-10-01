@@ -489,6 +489,53 @@ export async function fetchRepoFile(
   return new TextDecoder().decode(bytes);
 }
 
+/** A repository's stable numeric identity (P2-02's publisher policy pins these, not names). */
+export interface RepoIdentity {
+  id: number;
+  ownerId: number;
+  /** `owner/repo` as GitHub spells it today. */
+  fullName: string;
+}
+
+/**
+ * `GET /repos/{owner}/{repo}` with the installation token: the numeric repository and owner ids
+ * the trusted-publisher policy compares OIDC claims against (notes/E5: pin the numbers, not
+ * `sub`, against name recycling). Always resolved from GitHub, never from a manifest. Throws
+ * `NotFoundError` on any refusal or unexpected shape.
+ */
+export async function getRepoIdentity(
+  token: string,
+  owner: string,
+  repo: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<RepoIdentity> {
+  const res = await fetchImpl(
+    `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+    { headers: apiHeaders(token, "application/vnd.github+json") },
+  );
+  throwIfRateLimited(res);
+  if (!res.ok)
+    throw new NotFoundError(`repository lookup failed: ${res.status}`);
+  const raw = await readCapped(res, MAX_REPO_FILE_BYTES, "repository");
+  let body: { id?: unknown; full_name?: unknown; owner?: { id?: unknown } };
+  try {
+    body = JSON.parse(raw) as typeof body;
+  } catch {
+    throw new NotFoundError("repository: unparseable response");
+  }
+  const id = body.id;
+  const ownerId = body.owner?.id;
+  if (
+    typeof id !== "number" ||
+    !Number.isSafeInteger(id) ||
+    typeof ownerId !== "number" ||
+    !Number.isSafeInteger(ownerId) ||
+    typeof body.full_name !== "string"
+  )
+    throw new NotFoundError("repository: unexpected shape");
+  return { id, ownerId, fullName: body.full_name };
+}
+
 /** Fetch a release asset's raw bytes, following (and SSRF-guarding) the storage redirect. */
 async function fetchAsset(
   token: string,
