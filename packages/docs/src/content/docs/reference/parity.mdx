@@ -35,7 +35,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.discover` | Discovery and capabilities, fail-closed | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | — |
-| `core.headers` | Canonical platform, arch and SDK header values | `headers.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `core.headers` | Canonical platform, arch and SDK header values | `headers.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.caps` | supports() and capability telemetry | unit | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | — |
 | `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P5-05) | web, desktop-bridge: runtime |
@@ -56,8 +56,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `config.resolve` | Precedence (enforced, default, local, environment) | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `config.resolve` | Precedence (enforced, default, local, environment) | unit + `config-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.secret` | getSecret | transcripts (not recorded) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 | `config.schema` | Catalog fetch (/config/schema) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | planned (unowned) | ✓ | ✓ | ✓ | — |
@@ -86,7 +86,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
 | `update.decide` | The update decision | `update-matrix.json` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | planned (P3-10) | ios: outlet |
-| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` (P1-09) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P3-10) | — |
+| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P3-10) | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` (P3-02) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | — |
 
 ## Packs
@@ -99,7 +99,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `packs.apply.file` | File apply with type-neutral container rebuild | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
 | `packs.apply.chunk` | Chunk sync from seeds, request runs | `content/` (P4-10) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |
 | `packs.apply.delta` | Raw-prefix delta | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | any: dependency; any: version |
-| `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` (P1-09) + unit | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
+| `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + unit | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
 | `packs.handlers` | Handler contract; registerHandler for custom types | unit | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
 | `packs.provides` | isAvailable(contentId) from provides | unit | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | — |
 | `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | planned (P5-08); N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
@@ -112,7 +112,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` (P1-09) | ✓ | ✓ | ✓ | ✓ | planned (P1-10) | — |
+| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | planned (P1-10) | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | planned (P1-10) | headless: runtime |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts (P6-01) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P6-01) | — |
 
