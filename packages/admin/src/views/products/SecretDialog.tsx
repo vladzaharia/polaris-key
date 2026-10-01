@@ -12,9 +12,16 @@ import {
   DialogTitle,
   Field,
   Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   useToast,
 } from "../../components/ui/index.js";
 import { errorMessage } from "./util.js";
+import { USAGE_CHOICES, type UsageChoice } from "../Secrets.js";
 
 /**
  * Set a product secret. Both the name and value are write-only over the wire — the value is
@@ -33,6 +40,7 @@ export function SecretDialog({
   const toast = useToast();
   const [name, setName] = React.useState("");
   const [value, setValue] = React.useState("");
+  const [usage, setUsage] = React.useState<UsageChoice>("keep");
   const [busy, setBusy] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
 
@@ -40,6 +48,7 @@ export function SecretDialog({
     if (open) {
       setName("");
       setValue("");
+      setUsage("keep");
       setFormError(null);
     }
   }, [open]);
@@ -57,7 +66,12 @@ export function SecretDialog({
     setBusy(true);
     setFormError(null);
     try {
-      await api.putProductSecret(product.slug, n, value);
+      await api.putProductSecret(
+        product.slug,
+        n,
+        value,
+        usage === "keep" ? undefined : usage,
+      );
       toast.success("Secret set", `“${n}” stored for ${product.slug}.`);
       onOpenChange(false);
     } catch (err) {
@@ -121,6 +135,25 @@ export function SecretDialog({
                   spellCheck={false}
                 />
               </Field>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="secret-dialog-usage">Usage</Label>
+                <Select
+                  value={usage}
+                  onValueChange={(next) => setUsage(next as UsageChoice)}
+                >
+                  <SelectTrigger id="secret-dialog-usage">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {USAGE_CHOICES.map((choice) => (
+                      <SelectItem key={choice.value} value={choice.value}>
+                        {choice.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {formError ? (
                 <p

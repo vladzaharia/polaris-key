@@ -1,0 +1,9 @@
+# Copied or derived by sync.sh (sources stay in ../addons, ../vectors, ../content).
+project/addons/
+project/vectors/
+project/lib/
+project/.godot/
+# Exports, keystores, Xcode projects, pulled results.
+build/
+results/
+*.keystore

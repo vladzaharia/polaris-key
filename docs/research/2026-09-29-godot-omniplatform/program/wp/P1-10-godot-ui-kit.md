@@ -93,6 +93,28 @@ already have partial kits to mirror (notes/A2 §10).
 
 ## Design notes
 
+- **Stage budgets on a low-end phone ([S-04](../../notes/S-04-low-end-performance.md), derived).**
+  - Natively, budget about 0.25 s for trust + licence + config (three small verifies), up to
+    about 0.9 s for one 350 KB bundle import, and 0.1 s or less for the cache.
+  - On the web build without WebCrypto Ed25519, budget about 0.45 s for the three small verifies
+    and 1.6 s (blocking) or 6–12 s (sliced) for the bundle.
+  - Show progress once a stage passes 250 ms.
+  - Never time a verify stage out in under 10 s natively or 30 s on sliced web: on an A53-class
+    phone a 1 s stage is normal, not a hang. A desktop host takes about 11 ms and 37 ms natively
+    (19–42 ms and 75–160 ms on web) for the same stages.
+
+- **MOUNT pacing** (S-05 §4.1): the `mount` stage starts after the first frame has been drawn and
+  mounts at most one pack per frame, on the main thread (`PackedData` and the UID registry are not
+  documented as thread-safe while the main thread loads resources; a `Thread` mount lowered the
+  hitch on an Android emulator but did not remove it, so that evidence is inconclusive). Mount cost
+  follows entry count, not bytes. A mount freezes the spinner for the whole call, so the budget is
+  at most 100 ms (6 frames at 60 Hz) per mount on a low-end phone: packs of up to 1,000 entries may
+  mount under the spinner (an estimated 48–80 ms on a phone assumed 3–5× slower than the emulator's
+  16 µs per entry cold); packs above 1,000 entries mount only while a loading screen (not just the
+  spinner) is shown. A mount in `_ready` held the first frame back by about its own call
+  time (the first `_process` came 88–276 ms after `_ready` for a 12,800-entry pack, against a
+  31 ms median without one).
+
 - **One machine, many views.** `PKeyBoot` never decides a transition itself; it performs a stage's
   work, sends the result to the machine and renders what the machine says. A game that wants its
   own visuals connects to the signals and hides the default view.

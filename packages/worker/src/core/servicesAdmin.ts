@@ -40,6 +40,7 @@ import { audit } from "../admin/audit.js";
 import { adminJson, err, notFound, readBody } from "../admin/lib/respond.js";
 import { ErrorCode } from "./errors.js";
 import { getProduct, revertServicesToManifest, setServices } from "../repo.js";
+import { invalidateWidenedEdgeMintApprovals } from "./edgeMintApproval.js";
 import {
   parseServices,
   resolveRegistration,
@@ -75,6 +76,13 @@ export async function handleServicesAdmin(
   if (action === "revert") {
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
+    // P0-12: sweep before every console write of an edge-mint approval input (see the PATCH).
+    await invalidateWidenedEdgeMintApprovals(
+      db,
+      slug,
+      now,
+      "found widened before a console edit",
+    );
     await revertServicesToManifest(db, slug, now);
     await audit(
       db,
@@ -152,6 +160,19 @@ export async function handleServicesAdmin(
     ...(registration === undefined ? {} : { registration }),
     ...(current.unknown ? { unknown: current.unknown } : {}),
   };
+  // P0-12: drop every edge-mint approval the product has ALREADY widened before the console
+  // writes an approval input. The ingest's own sweep is not enough on its own: a push whose
+  // Worker is killed after its un-batched widening writes (CPU limit, cancelled request) never
+  // reaches it, and an approve that races a push's sweep can land after it. Without this, an
+  // operator's natural fix — turning the widening back off here — would make the approval apply
+  // again for everyone who enrolled or signed in meanwhile. Sweeping first means no revert path
+  // can be the first thing to look at a widened approval.
+  await invalidateWidenedEdgeMintApprovals(
+    db,
+    slug,
+    now,
+    "found widened before a console edit",
+  );
   await setServices(db, slug, serializeServices(next), "admin", now);
 
   const enabled = SERVICE_SLUGS.filter((s) => services[s].enabled);

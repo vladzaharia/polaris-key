@@ -311,24 +311,40 @@ function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
         : undefined,
       actionLabel: "Set secrets",
     },
-    {
-      id: "license-defaults",
-      title: "License defaults",
-      description: `${product.defaultDeviceLimit} devices, ${product.defaultMaxOfflineDays} offline days by default.`,
-      status: "done",
-      href: hashFor({ kind: "product", slug: product.slug, view: "settings" }),
-      actionLabel: "Edit defaults",
-    },
-    {
-      id: "first-license",
-      title: "Issue a license",
-      description:
-        "Create a test license to verify keys, devices, and policy before rollout.",
-      status: "action",
-      href: hashFor({ kind: "product", slug: product.slug, view: "licenses" }),
-      actionLabel: "Create test license",
-    },
   ];
+
+  // License-only steps: a product running without License (a Godot game distributing builds
+  // only, say) has no defaults to edit and no licenses to issue. `services` is absent on older
+  // payloads, which meant "the defaults", and License is on by default.
+  if (product.services?.license?.enabled !== false) {
+    items.push(
+      {
+        id: "license-defaults",
+        title: "License defaults",
+        description: `${product.defaultDeviceLimit} devices, ${product.defaultMaxOfflineDays} offline days by default.`,
+        status: "done",
+        href: hashFor({
+          kind: "product",
+          slug: product.slug,
+          view: "settings",
+        }),
+        actionLabel: "Edit defaults",
+      },
+      {
+        id: "first-license",
+        title: "Issue a license",
+        description:
+          "Create a test license to verify keys, devices, and policy before rollout.",
+        status: "action",
+        href: hashFor({
+          kind: "product",
+          slug: product.slug,
+          view: "licenses",
+        }),
+        actionLabel: "Create test license",
+      },
+    );
+  }
 
   for (const [index, warning] of warnings.entries()) {
     items.push({

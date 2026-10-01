@@ -26,18 +26,20 @@
 
 import type { Db, DbStatement, Env } from "../../core/platform.js";
 import type { FetchImpl } from "./githubApp.js";
-import { listReleasePages, RELEASE_PAGE_CAP } from "./github.js";
+import { listReleasePages, RELEASE_PAGE_CAP, type Release } from "./github.js";
 import {
   getReleaseConfig,
   isResolved,
   type ReleaseConfigRow,
 } from "./config.js";
-import { installationToken } from "./gateway.js";
+import { floorRelease, installationToken } from "./gateway.js";
 import {
   listChannelFloors,
   listStoredReleaseIds,
   releaseStoreStatements,
+  type ReleaseChannelFloorRow,
 } from "./store.js";
+import { semverOfTag } from "./channels.js";
 
 // ── The platform-facing façade ───────────────────────────────────────────────
 
@@ -101,12 +103,20 @@ export async function releaseStoreSyncStatements(
       fetchImpl,
       { maxPages: RELEASE_PAGE_CAP.sync },
     );
+    const held = await heldFloorReleases(
+      token,
+      cfg,
+      floors,
+      listing.releases,
+      fetchImpl,
+    );
     return releaseStoreStatements(
       cfg.product,
       cfg,
       listing.releases,
       now,
       floors,
+      held,
       listing.complete ? stored : null,
     );
   } catch {
@@ -114,6 +124,38 @@ export async function releaseStoreSyncStatements(
     // entry in the sync result — and `release_health`'s unchanged `checked_at` — is the signal.
     return [];
   }
+}
+
+/**
+ * The floor releases a CAPPED release list did not reach, looked up by tag exactly as the live
+ * route does (`floorRelease`). A list shorter than the cap is the whole repository, so a floor
+ * release missing from it is gone and costs nothing more; only a repo above
+ * `RELEASE_PAGE_CAP.sync` pages pays one tag lookup per floor it did not see. Without this the
+ * store said `blocked` for a channel the live route still served through that same lookup
+ * (P2-03, wave-1 sync). A lookup that fails is treated as "not found" — the store keeps its
+ * conservative answer rather than failing the whole sync.
+ */
+async function heldFloorReleases(
+  token: string,
+  cfg: Parameters<typeof floorRelease>[1],
+  floors: ReleaseChannelFloorRow[],
+  listed: Release[],
+  fetchImpl: FetchImpl,
+): Promise<Release[]> {
+  if (floors.length === 0 || listed.length < 100 * RELEASE_PAGE_CAP.sync)
+    return [];
+  const held: Release[] = [];
+  for (const floor of floors) {
+    const seen = floor.release_id
+      ? listed.some((r) => r.tag_name === floor.release_id)
+      : listed.some((r) => semverOfTag(r.tag_name) === floor.version);
+    if (seen) continue;
+    const found = await floorRelease(token, cfg, floor, fetchImpl).catch(
+      () => null,
+    );
+    if (found && !found.draft) held.push(found);
+  }
+  return held;
 }
 
 /**

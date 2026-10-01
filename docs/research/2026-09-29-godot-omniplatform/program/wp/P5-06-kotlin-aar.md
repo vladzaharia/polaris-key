@@ -22,9 +22,14 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
 
 ## Why
 
-- Android install source (`com.android.vending`, `org.fdroid.fdroid`, `dev.imranr.obtainium`, …) is
-  only readable natively, and it decides the outlet
-  ([§5.5](../../README.md#55-distribution-layer-one-build-any-outlet)).
+- Android install source (`com.android.vending`, `org.fdroid.fdroid`, `dev.imranr.obtainium`, …)
+  decides the outlet ([§5.5](../../README.md#55-distribution-layer-one-build-any-outlet)). Godot
+  can already read it without the AAR, through `AndroidRuntime` and `JavaClassWrapper`, including
+  the initiator's signing-certificate digest ([notes/S-06](../../notes/S-06-outlet-signals.md) §7,
+  measured on 4.7.2). The AAR wraps the same reads for the Kotlin SDK; Godot's detection does not
+  depend on it. A `com.android.vending` claim is trusted (`attested`) only when that digest
+  equals the Play Store's, which S-06 could not record (no Play-enabled emulator image), so the
+  device checklist records it.
 - On Play, updates go through In-App Updates keyed on the priority P5-03 sets; direct APKs update
   through a verified `PackageInstaller` session; Play policy forbids self-update and
   `REQUEST_INSTALL_PACKAGES` in Play builds ([§4.2](../../README.md#42-android), notes/E2 §A2, §B2).
@@ -55,7 +60,10 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
     install permissions.
   - `direct`: install source, `PackageInstaller`, Keystore. No Play Core libraries.
 - Install source: `getInstallSourceInfo` (API 30+) with the `getInstallerPackageName` fallback,
-  returning the raw installer package name.
+  returning the raw installing and initiating package names, the initiator's signing-certificate
+  SHA-256 (`getInitiatingPackageSigningInfo`), `getPackageSource` (API 33+) and
+  `getUpdateOwnerPackageName` (API 34+). S-06 measured that the installing package alone is
+  forgeable (`adb install -i com.android.vending` records Play, with the shell as initiator).
 - In-App Updates: availability, allowed types, `updatePriority`, `clientVersionStalenessDays`,
   flexible and immediate flows, install-state progress, `completeUpdate`.
 - PAD: `fetch`, states (including `WAITING_FOR_WIFI` and `REQUIRES_USER_CONFIRMATION` with
@@ -99,9 +107,15 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
   (notes/E2 §A2).
 - **Staged rollouts.** In-App Updates availability is per device and staged-rollout aware, so the
   server's "latest" is advisory on Play (notes/E2 §A2). The facade reports what Play says.
-- **PAD paths.** Loading a `.pck` from `getPackLocation(...).assetsPath()` is unverified (notes/E2
-  §G). S-05 hands this package the PAD mounting rule; if it has not run, add a device check for it
-  to the checklist.
+- **PAD paths** (S-05 §4.2, emulator with `bundletool --local-testing`): after `fetch` reports
+  `COMPLETED`, mount `getPackLocation(<pack>).assetsPath() + "/<pack>.pck"` with
+  `ProjectSettings.load_resource_pack`. It is a plain file under
+  `/data/data/<pkg>/files/assetpacks/<pack>/<versionCode>/<versionCode>/assets/`
+  (`STORAGE_FILES`) and mounted in 2.5–4.4 ms for on-demand and fast-follow packs. Re-read the path
+  on every launch (it contains the `versionCode`) and never persist it; treat
+  `AssetPackStorageMethod.APK_ASSETS` (value 1) or an empty `assetsPath()` as not available. Install-time packs mount as `res://<path>.pck`. The
+  70-line reference plugin is `prototype/platform-mechanics/b_pad/`. Keep a device check on the
+  internal test track in the checklist, since Play delivery itself was not exercised.
 - **Existing plugins** (`dcryptoniun/Godot-Android-InAppUpdate`, `icecube092/GodotInAppUpdate`) are
   small and single-maintainer; read them, do not depend on them.
 - **What can be built before a human supplies anything:** everything behind interfaces, tested with
@@ -120,7 +134,9 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
 6. `parity.json` for the Godot SDK (`outlet.detect` signals, `update.driver` on Android,
    `core.store` on Android, `packs.transport.play` client).
 7. Device checklist (human): internal-track update offered with priority; flexible update completes;
-   a fast-follow pack arrives and mounts; a direct APK self-updates without a prompt on Android 14.
+   a fast-follow pack arrives and mounts; a direct APK self-updates without a prompt on Android 14;
+   an internal-track install reports installer and initiator `com.android.vending`, and the
+   initiator's certificate SHA-256 (record it for `outlet-matrix.json`; notes/S-06 §7).
 
 ## Acceptance criteria
 

@@ -1,0 +1,30 @@
+// Path B with Workers Caching (the cache in front of the Worker, launched 2026). Same script;
+// Cloudflare strips Range before invoking the Worker, stores the full 200 and slices ranges itself
+// (developers.cloudflare.com/workers/cache/configuration/#range-requests). Needs wrangler >= 4.69
+// for `cache.enabled`, >= 4.107 for `cross_version_cache` and per-entrypoint `exports`.
+//
+// DO NOT copy the top-level `"cache": { "enabled": true }` below into packages/worker. It turns
+// the cache on for every entrypoint of the Worker, which is right for this single-purpose probe and
+// wrong for the product Worker (console, API and bytes in one script). The production pattern is
+// in notes/S-02.md §6.1 rule 1: caching on for a named byte-serving entrypoint only. This config
+// does not exercise that gateway form; hand-off row H10 does.
+//
+// `--env live` binds the throwaway bucket `pk-s02-probe`, as in wrangler.jsonc.
+{
+  "name": "pk-r2-probe-wcache",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-30",
+  "workers_dev": true,
+  "r2_buckets": [
+    { "binding": "BUCKET", "bucket_name": "polaris-key-blobs-dev" },
+  ],
+  "vars": { "CACHE_FILL_ON_RANGE": "0", "WORKERS_CACHE": "1" },
+  "cache": { "enabled": true },
+  "env": {
+    "live": {
+      "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "pk-s02-probe" }],
+      "vars": { "CACHE_FILL_ON_RANGE": "0", "WORKERS_CACHE": "1" },
+      "cache": { "enabled": true },
+    },
+  },
+}

@@ -25,11 +25,12 @@ Returns the newest build on a channel:
 { "version": "1.2.3", "tag": "v1.2.3", "url": "https://github.com/…" }
 ```
 
-It takes one query parameter: `?channel=`, defaulting to `stable`. The value speaks the same
-selector vocabulary as a channel appcast's path segment — `stable`, `beta`, `pr-<n>`, a
-manifest-declared manual channel, or a pinned `X.Y.Z` — held to the same `[a-z0-9-]` alphabet
-(anything beyond it answers `404` before resolution, and a well-formed unknown name `404`s
-exactly like an unknown channel appcast). Under `entitled`, the gate evaluates the query
+It takes one query parameter: `?channel=`, defaulting to `stable`. The value is one of `stable`,
+`beta`, `pr-<n>` or a manifest-declared manual channel, held to the `[a-z0-9-]` alphabet. That
+alphabet has no dot, so a pinned `X.Y.Z` is **not** a valid `?channel=` value; to fetch a
+specific version, pin it in the download route's path segment instead. Anything outside the
+alphabet answers `404` before resolution, and a well-formed unknown name `404`s exactly like an
+unknown channel appcast. Under `entitled`, the gate evaluates the query
 channel precisely as it would the path spelling, so `?channel=beta` from a stable-only
 license answers `403 channel_not_allowed`. `?arch=` is accepted and discarded — the answer
 names a release, not an asset. The response carries `max-age=120`, the cache policy every
@@ -110,7 +111,9 @@ The console's [release health](/docs/services/release/truth-store/#health-checks
 `channel-regressed`, naming the floor and what the list now offers. The only way past a floor
 is an operator's decision. `POST /manage/api/products/<slug>/release/channels/<channel>/floor`
 with `{ "version": "1.0.0" }` lowers it, and `{ "clear": true }` removes it. Both are audited
-as `release.channel.floor`. A floor can only be lowered this way. Only a sync raises one.
+as `release.channel.floor`. A floor can only be lowered this way. Only a sync raises one. A
+floor whose channel is no longer floored (a manual channel since removed, or `beta` once a
+channel workflow is configured) can still be cleared, but not lowered.
 
 ## Access versus eligibility, restated
 

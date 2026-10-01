@@ -122,7 +122,7 @@ decision is conformance-tested like the licence gate, so these rows are what kee
   prompt or binary update.
 - **Narrowing** (CONTENT §6.6): effective binding = declared binding ∧ transport capability,
   evaluated per outlet when the feed is composed. `play-pad` narrows `compatible` to pinned;
-  `apple-ba` keeps it (the level is in the asset-pack id, e.g. `foes.c3`); `embedded` is a baseline
+  `apple-ba` keeps it (the level is in the asset-pack id, e.g. `foes-c3`); `embedded` is a baseline
   under a CDN overlay. Update reads distribution's transports through the Core descriptor hooks;
   the only service import stays `update → release`.
 - **Active set and `packSetId`.** The device's active set is its record's pins, then its holds

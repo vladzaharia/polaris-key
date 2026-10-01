@@ -277,10 +277,194 @@ async function bench({ z }) {
   return res;
 }
 
+// S-04: WebCrypto Ed25519 over the three lowend timing inputs (lowend/gen_bench_vectors.mjs).
+// maxBytes skips larger inputs (WebKitGTK's libgcrypt path kills the web process above ~64 KiB).
+async function ed25519({
+  url = "/lowend/project/vectors/ed25519_bench.json",
+  reps = 7,
+  maxBytes = Infinity,
+} = {}) {
+  const out = { available: false };
+  const unhex = (h) =>
+    new Uint8Array(h.match(/../g).map((x) => parseInt(x, 16)));
+  let vs;
+  try {
+    vs = await (await fetch(url)).json();
+  } catch (e) {
+    return { error: "no vectors: " + e };
+  }
+  try {
+    const k = await crypto.subtle.importKey(
+      "raw",
+      unhex(vs[0].pk),
+      { name: "Ed25519" },
+      false,
+      ["verify"],
+    );
+    out.available = !!k;
+  } catch (e) {
+    out.error = `${e.name}: ${e.message}`;
+    return out;
+  }
+  for (const v of vs) {
+    if (v.bytes > maxBytes) {
+      out[v.name] = { bytes: v.bytes, skipped: `over maxBytes ${maxBytes}` };
+      continue;
+    }
+    const pk = unhex(v.pk),
+      sig = unhex(v.sig),
+      msg = new TextEncoder().encode(v.signingInput);
+    const bad = sig.slice();
+    bad[5] ^= 1;
+    const imp = [],
+      ver = [];
+    let ok = true,
+      rejects = true;
+    for (let i = 0; i <= reps; i++) {
+      let t = performance.now();
+      const key = await crypto.subtle.importKey(
+        "raw",
+        pk,
+        { name: "Ed25519" },
+        false,
+        ["verify"],
+      );
+      const ti = performance.now() - t;
+      // Timers are coarsened (0.1 ms in Chromium, 1 ms in some engines), so time a batch.
+      const batch = v.bytes > 300000 ? 10 : v.bytes > 50000 ? 20 : 100;
+      let r = true;
+      t = performance.now();
+      for (let j = 0; j < batch; j++)
+        r &&= await crypto.subtle.verify({ name: "Ed25519" }, key, sig, msg);
+      const tv = (performance.now() - t) / batch;
+      if (i > 0) {
+        imp.push(ti);
+        ver.push(tv);
+      }
+      ok &&= r;
+      rejects &&= !(await crypto.subtle.verify(
+        { name: "Ed25519" },
+        key,
+        bad,
+        msg,
+      ));
+    }
+    const st = (xs) => {
+      const s = [...xs].sort((a, b) => a - b);
+      return { median: +s[s.length >> 1].toFixed(4), best: +s[0].toFixed(4) };
+    };
+    out[v.name] = {
+      bytes: v.bytes,
+      ok,
+      rejectsFlippedSig: rejects,
+      importMs: st(imp),
+      verifyMs: st(ver),
+    };
+  }
+  return out;
+}
+
+// S-04: set-agnostic throughput (both vector sets ship v1 as the full blob; v2 comes from the delta).
+async function lowbench({ set = "small", z = "custom", reps = 3 } = {}) {
+  const res = { set, z };
+  const B = `/vectors/${set}`;
+  const doc = await (await fetch(`${B}/cases.json`)).json();
+  const n1 = doc.payloads.v1.size,
+    n2 = doc.payloads.v2.size;
+  const get = async (n) =>
+    new Uint8Array(await (await fetch(`${B}/blobs/${n}`)).arrayBuffer());
+  const zp = await zstdPrim(z);
+  hw ??= await createSHA256();
+  const full1 = await get("payload/v1.full.zst");
+  const [msD, v1] = await timeit(() => zp(full1, { size: n1 }), reps);
+  res.zstdDecompress = {
+    outBytes: v1.length,
+    ms: +msD.toFixed(1),
+    MBps: mbps(v1.length, msD),
+  };
+  const [a] = await timeit(() => crypto.subtle.digest("SHA-256", v1), reps);
+  res.sha256_webcrypto_oneshot = mbps(n1, a);
+  const [c] = await timeit(() => {
+    hw.init();
+    for (let o = 0; o < v1.length; o += 1 << 20)
+      hw.update(v1.subarray(o, o + (1 << 20)));
+    return hw.digest("hex");
+  }, reps);
+  res.sha256_hashwasm_streaming = mbps(n1, c);
+  const [b] = await timeit(() => {
+    const h = nobleSha256.create();
+    for (let o = 0; o < v1.length; o += 1 << 20)
+      h.update(v1.subarray(o, o + (1 << 20)));
+    return h.digest();
+  }, reps);
+  res.sha256_noble_streaming = mbps(n1, b);
+  const [ff, okFull] = await timeit(async () => {
+    const out = zp(full1, { size: n1 });
+    return (
+      toHex(await crypto.subtle.digest("SHA-256", out)) ===
+      doc.payloads.v1.sha256
+    );
+  }, reps);
+  res.fullApply = { ms: +ff.toFixed(1), outMBps: mbps(n1, ff), ok: okFull };
+  const delta = await get("deltas/v1-v2.pf.zst");
+  const [e, v2] = await timeit(() => zp(delta, { dict: v1, size: n2 }), reps);
+  res.deltaApply = {
+    ms: +e.toFixed(1),
+    outMBps: mbps(n2, e),
+    ok: SHA.hashwasm(v2) === doc.payloads.v2.sha256,
+  };
+  const cc = doc.applyCases.find((x) => x.id === "chunk-v1-to-v2");
+  const p = { sha256: SHA.hashwasm, zstd: zp };
+  const tix = await get("chunks/v2.pkc"),
+    six = await get("chunks/v1.pkc");
+  const bundles = {};
+  for (const [h, ref] of Object.entries(cc.bundles))
+    bundles[h] = await get(ref.blob);
+  const [f, rr] = await timeit(
+    () =>
+      C.applyChunk(
+        p,
+        tix,
+        [[v1, six]],
+        async (h, o, l) => bundles[h].subarray(o, o + l),
+        cc.expectedSha256,
+        cc.expectedSize,
+        false,
+      ),
+    reps,
+  );
+  res.chunkReassembly_memory = {
+    ms: +f.toFixed(1),
+    outMBps: mbps(n2, f),
+    ...rr[1],
+  };
+  const ld = loader(B);
+  const [g, rr2] = await timeit(
+    () =>
+      C.applyChunk(
+        p,
+        tix,
+        [[v1, six]],
+        (h, o, l) => ld.range(cc.bundles[h].blob, o, l),
+        cc.expectedSha256,
+        cc.expectedSize,
+        false,
+      ),
+    2,
+  );
+  res.chunkReassembly_httpRange = {
+    ms: +g.toFixed(1),
+    outMBps: mbps(n2, g),
+    requestsMade: rr2[1].fetchedChunks,
+    runs: rr2[1].requests,
+  };
+  return res;
+}
+
 self.onmessage = async (ev) => {
   const { id, op, args } = ev.data;
   try {
-    const fn = { suite, caps, bench }[op];
+    const fn = { suite, caps, bench, ed25519, lowbench }[op];
     self.postMessage({ id, ok: true, value: await fn(args || {}) });
   } catch (e) {
     self.postMessage({ id, ok: false, error: String((e && e.stack) || e) });

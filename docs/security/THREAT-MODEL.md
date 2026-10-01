@@ -36,6 +36,14 @@ and what binary it installs next.
 | A9  | **The ability to recover**                                        | Rotation and revocation machinery                                                | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                      |
 | A10 | **The blob store** (release bytes)                                | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1 | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach. |
 
+**A5 is scoped by usage.** Every product secret carries a usage — general (stored `NULL`) or
+`edge-mint` — and `openProductSecret` opens a secret only for the usage its caller requires: the
+edge-mint route asks for `edge-mint`, the OIDC client-secret path for general, and a mismatch
+reads as a missing secret (the value is never unsealed). The usage is written **only** by the admin
+API (`PUT …/secrets/<name>` with `"usage"`), audited as `secret.usage`, and never by a `.pkey/`
+manifest. The usage is not yet bound into the AEAD associated data; that is stronger but needs
+every secret re-sealed, and is deferred to the outlet-credential work (P5-01).
+
 ## 3. Trust boundaries
 
 ```
@@ -187,7 +195,51 @@ under the victim product.
   JWS is verified once on fetch, then discarded; the decoded doc is reloaded with a bare
   `JSON.parse`. Worse, the cache can supply `trustedKeys` that _override pinned keys_.
 - **A linked GitHub repo is a control-plane input, not just a data source.** `.pkey/` manifests
-  rewrite tiers, OIDC issuer, artifact policy, and admin group on resync.
+  rewrite tiers, OIDC issuer, artifact policy, and admin group on resync. Edge-mint recipes are
+  the exception that is held back: a recipe from `.pkey/` is **inert until an operator approves
+  it** in the exact form it will run (`edge_mint_approvals`), and any push that changes a
+  security-relevant field makes it inert again. A repo writer can name a secret in a recipe but
+  cannot make that secret signable, nor make an unapproved recipe mint. An approval is also bound
+  to the three product settings that decide who can hold a device token the mint accepts, because
+  a push can change each of them without touching the recipe. (a) Whether the mint is public: the
+  open-registration acknowledgement is stored on the approval, so a push that makes the mint
+  public — declaring `devices.registration: open`, turning License off so the derived policy is
+  open, enabling anonymous `autoIssue` enrolment (which hands any caller a licence and a device
+  token while registration still reads `requires-license`), or turning on an OIDC default tier
+  with Identity on (every account the IdP signs in gets a licence) — widens an approval given
+  without it. (b) Whether licences are checked: the mint requires a usable licence only while
+  License is on, and with Identity on a push that turns License off keeps the mint closed
+  (`requires-identity`) while letting a device whose licence was disabled or expired mint again;
+  the approval records whether License was on, the approve call echoes it (`409` if it changed
+  since the console loaded), and the console warns while License is off, so a re-approval after
+  a License-off push cannot record "no licence checks" unseen. (c) The sign-in trust: on a closed product, signing
+  in is the other route to a device token, and the manifest writes the OIDC provider, issuer,
+  client id and `groupRoleMap` that decide who a sign-in licenses. The approval records them (and
+  whether Identity was on); while Identity is on, any change widens it. A widened approval stops
+  matching at once (every mint re-checks), **and it is deleted before anything can revert the
+  widening**: every writer of an approval input sweeps the approvals the product has ALREADY
+  widened before it writes — resync before its first write, and the console before every write of
+  `services_json` or `auto_issue_json` (the services and License-policy PATCH and revert) — and
+  audits each drop as `config.mint.invalidate`. The guarantee rests on that pre-write sweep. Resync
+  also sweeps after its last write, in a `finally`, so a push that throws half-way (say, a
+  duplicated recipe id) is caught at once; but a `finally` does not run when the Worker is killed
+  after the push's un-batched writes (a CPU-heavy manual-channel regex, a cancelled webhook), nor
+  does it see an approve that races it — the next push or console edit drops those before it
+  writes. So a push that aims sign-in at an issuer the pusher controls, opens
+  enrolment or turns License off, followed by a push that reverts it, leaves the recipe `pending`
+  rather than approved; it mints again only when an operator re-approves it. Recipe-field changes
+  are not swept (a changed recipe signs nothing meanwhile), so reverting one restores the
+  approval. The upgrade backfill records the acknowledgement only for recipes that were already
+  public mints at deploy, and the License and sign-in state as deployed. **Residuals:** (1) the
+  licences and device tokens issued while an approval was widened survive a re-approval — the
+  ingest drops the approval, not what was handed out meanwhile — so before re-approving, an
+  operator reviews the audit log from the `config.mint.invalidate` row on and disables what they
+  did not intend; (2) an approval trusts the identity provider itself — anyone that IdP signs in
+  with a mapped group (including accounts its administrator adds later) is covered, which is the
+  IdP weakness below, not something the approval can close; (3) a widening that no sweep has seen
+  yet (an operator's own console edit, or a push killed before its post-write sweep) lasts until
+  the next push or console edit drops the approval — the per-mint check refuses while it lasts,
+  but anonymous enrolments or sign-ins it allows in the meantime are issued, and fall under (1).
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -213,7 +265,7 @@ originating outside the trust boundary.
 | OIDC `groups`                   | **Platform admin authority**                                              | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                         |
 | OIDC `sub`                      | License identity                                                          | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                |
 | OIDC `email`                    | Portal license linking, cross-product                                     | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                           |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name             | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                                                                                                |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name             | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                         |
 | `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS) | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09). |
 | `X-PKey-Version` header         | Version and channel gating                                                | The client           | `0.0.0-dev` bypasses all of it.                                                                                                                                                                                                                                                                                                                                                          |
 | `X-PKey-Device` header          | Device identity                                                           | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                  |
@@ -242,7 +294,30 @@ defeat it.
 **Bounding the damage** is the achievable goal, and it rests on three properties — one of which
 currently holds:
 
-1. ✅ Secrets and minted tokens require a live server decision. **Holds.**
+1. ✅ Secrets and minted tokens require a live server decision. **Holds.** For an edge-mint token
+   that decision has two operator-held conditions besides the device token (and a usable licence
+   when License is on): the recipe's signing secret is marked usage `edge-mint`, and an approval
+   equal to the current recipe column for column exists. Neither can be set from a `.pkey/`
+   manifest; failing the first is `500 misconfigured`, failing the second is the same `404` as an
+   unknown recipe. While the mint is public — the product's effective registration is open,
+   auto-issue allows anonymous enrolment, or Identity is on with an OIDC default tier
+   (`mintIsPublic`) — an approval matches only if it carries an explicit, audited
+   acknowledgement that the token is publicly mintable. If it was given with License on, it
+   matches only while License is on, since the licence check runs only then. While Identity is on,
+   it matches only if the OIDC provider, issuer, client id and group map are the ones it recorded.
+   All three are checked on every mint, not only when approving, so a widening after an approval
+   (by push or by operator) makes the recipe `404` at once. A widening a manifest push causes is
+   also permanent: every writer of an approval input — resync, and the console's services and
+   License-policy edits — deletes the widened approval before it writes (`config.mint.invalidate`
+   in the audit log), so a later push or console edit that reverts the widening leaves the recipe
+   `pending` until an operator re-approves it, even when the widening push threw or its Worker was
+   killed before its own post-write sweep. What a re-approval cannot undo is what was issued while the approval
+   was widened — the operator reviews and disables it — and what an approval cannot bound is the
+   IdP it trusts: whoever that IdP signs in with a mapped group is covered (§3). The only
+   approvals not given by an operator are the upgrade backfill's (approved by `migration`), which
+   carry the acknowledgement only where the recipe was already a public mint before the upgrade,
+   and the License and sign-in state as deployed.
+   Every device is also capped at 30 mints a minute beside the per-IP budget.
 2. ❌ A tampered cache should not be able to change _which keys verify signatures_. **Does not hold**
    — the cache overrides pinned keys.
 3. ❌ A compromised signing key should be revocable. **Does not hold** — client trust sets only grow
@@ -283,8 +358,9 @@ Poison the release channel
 ├── Hold GITHUB_WEBHOOK_SECRET (one global secret, no per-repo binding, no replay protection)
 │   └── forge a push payload naming ANY linked repo, with an arbitrary `after` ref
 ├── Write access to a linked repo
-│   ├── publish a DMG + matching .sig (signature is passed through, never verified server-side)
-│   └── set `.pkey/release` requireSparkleSignature:false  ← repo disables its own control
+│   ├── set `.pkey/release` sparkleEd25519Pub to a key you hold  (the verifying key is repo-sourced: resync rewrites `sparkle_ed25519_pub` on every push-triggered resync, with no operator guard)
+│   ├── publish a DMG + a .sig made with that key (the appcast verifies the sidecar over the DMG bytes against `sparkle_ed25519_pub`, so a repo writer who swapped the key passes; only the client-side Sparkle `SUPublicEDKey` pin stops it)
+│   └── set `.pkey/release` requireSparkleSignature:false  (no effect: the requirement is operator-owned, read from `operator_policy_json`, which no manifest path writes)
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
 ```
 
@@ -301,5 +377,10 @@ onboarded; the portal gains write capability beyond device disconnect and key cl
 release channel or artifact type is added; a byte route is added to `BYTE_ROUTES`, a type to
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
-version increments; or any new field is added to `AdminSession` or `PortalSession` (see the
-domain-separation note in the audit report — the two realms share HMAC key material by default).
+version increments; any new field is added to `AdminSession` or `PortalSession` (see the
+domain-separation note in the audit report — the two realms share HMAC key material by default);
+a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
+and that no manifest can grant it); or a new way to obtain a device token or licence without an
+operator-issued key is added, or a check on one is made conditional on product state (it must be
+folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
+`core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow).

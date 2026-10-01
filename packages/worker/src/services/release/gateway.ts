@@ -447,9 +447,10 @@ export async function resolveMovingSelector(
 /**
  * Look a floor's release up: by its recorded tag (one call), or — for a floor an operator
  * lowered to a version the store never recorded — by the pinned `v<version>` / `<version>`
- * lookup. `null` when it no longer exists.
+ * lookup. `null` when it no longer exists. The truth-store sync uses it too, for a repo whose
+ * release list it could not read to the end (`sync.ts`), so the store and the live route agree.
  */
-async function floorRelease(
+export async function floorRelease(
   tok: string,
   cfg: ResolvedConfig,
   floor: ReleaseChannelFloorRow,
