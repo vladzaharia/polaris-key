@@ -75,6 +75,8 @@ func _ok_and_shape(t: PKeyTestContext) -> void:
 	var host: PKeyFakeHost = sdk.devices.fingerprint_host
 	var states: Array = []
 	sdk.state_changed.connect(func(s): states.append(s["status"]))
+	var synced: Array = []
+	sdk.sync_finished.connect(func(sr: PKeySyncResult): synced.append(sr.documents))
 	var r: PKeyActivationResult = await sdk.license.activate_with_key("  %s\n" % KEY)
 	t.check("activation: 200 -> ok", r.ok and r.kind == PKeyActivationResult.KIND_OK and r.code == &"" and r.status == 200 and r.schema_version == 2 and r.stored, str(r))
 	t.check("activation: the result never carries the token", not str(r).contains(TOKEN) and r.detail == null)
@@ -89,7 +91,7 @@ func _ok_and_shape(t: PKeyTestContext) -> void:
 		t.check("activation: the body is the hashed fingerprint", body["ok"] and body["value"] == {"fingerprint": expected_fp}, S.body_text(req))
 	var docs: Array = h.requests("GET", "/license/document")
 	t.check("activation: the forced sync ran with the new token before returning", docs.size() == 1 and S.bearer(docs[0]) == TOKEN and not docs[0]["headers"].has("if-none-match"))
-	t.check("activation: the licence is ok once activation returns", sdk.license.status()["status"] == "ok" and sdk.license.is_licensed() and sdk.license.activation() == &"token", str(sdk.license.status()))
+	t.check("activation: the licence is ok once activation returns", sdk.license.status()["status"] == "ok" and sdk.license.is_licensed() and sdk.license.activation() == &"token", "%s after %s" % [sdk.license.status(), synced])
 	t.check("activation: state_changed reported ok", states.has("ok"), str(states))
 	sdk.queue_free()
 
