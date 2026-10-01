@@ -353,7 +353,7 @@ def test_mint_refuses_before_any_request_when_config_is_off(clock) -> None:
     assert plane.calls == []
 
 
-@pytest.mark.parametrize("bad", ["../license", "Music", "a/b", ""])
+@pytest.mark.parametrize("bad", ["../license", "Music", "a/b", "", "musickit\n", "a\n"])
 def test_mint_refuses_a_recipe_id_outside_the_routers_alphabet(clock, bad: str) -> None:
     plane = Plane(clock, {})
     c = make(plane, ["config"], token="pkeyt_device")

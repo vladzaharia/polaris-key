@@ -38,7 +38,9 @@ __all__ = ["MintedToken", "MintCache", "MINT_REUSE_MARGIN_SECONDS", "MINT_ID", "
 MINT_REUSE_MARGIN_SECONDS = 30
 
 #: The router's recipe-id alphabet (``MINT_ID`` in the Worker's ``services/config/routes.ts``).
-MINT_ID = re.compile(r"^[a-z0-9-]+$")
+#: Anchored with ``\A``/``\Z`` (not ``^``/``$``): Python's ``$`` also matches before a trailing
+#: newline, which would let ``"musickit\n"`` past the guard.
+MINT_ID = re.compile(r"\A[a-z0-9-]+\Z")
 
 
 @dataclass(frozen=True)
@@ -65,7 +67,7 @@ def mint_token(
     recipe_id: str,
 ) -> MintedToken:
     ctx.require_service("config")
-    if not isinstance(recipe_id, str) or not MINT_ID.match(recipe_id):
+    if not isinstance(recipe_id, str) or not MINT_ID.fullmatch(recipe_id):
         raise PolarisError(
             "bad_request",
             f'"{recipe_id}" is not an edge-mint recipe id (lowercase letters, digits and "-").',
