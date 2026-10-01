@@ -94,6 +94,10 @@ SDKs is the repo's order (`AGENTS.md` rule 2), so this lands before any SDK appl
   subdirectories to their owner), and add the blob extensions to the `Conformance (Linux)`
   preset's `include_filter` so the exported pack carries them. Add `.prettierignore` for the blob
   directory and `.gitattributes` `binary`.
+- **Stage-matrix version 2.** Emit the pack rows P4-01 planned (`canPlayOffline: true` paths,
+  `play-offline` accepted in `offline`, fetch consent and progress) as `stageMatrixVersion: 2`, and
+  update the stage machine and its runner in every port that exists by then (Node `client-core`,
+  Python, Swift, Godot `PKeyStages`), per [P1-09's plan §4.5](../plans/P1-09.md).
 - **Docs and registry.** `corpusInventory` lists the content corpus and the plan matrix
   (regenerate `reference/corpus.mdx`); update `build/wire/corpus.md`. Once P1b-01 and P1b-02 have
   landed: feature ids in `conformance/parity/features.json` (every SDK `planned` for P4 v1) and the
