@@ -1919,7 +1919,7 @@
       "optional": false,
       "refs": ["README §12", "CONTENT §17 Q5"],
       "brief": "wp/S-05-godot-platform-mechanics.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "S-06",
