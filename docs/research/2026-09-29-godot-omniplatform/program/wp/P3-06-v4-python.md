@@ -122,17 +122,17 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
 
 ## Acceptance criteria
 
-- [ ] `pytest` passes every `feedCases`, `releaseRecordCases`, `update-matrix.json` row and
+- [x] `pytest` passes every `feedCases`, `releaseRecordCases`, `update-matrix.json` row and
       bucket vector, with the same ids as the other runners.
-- [ ] The suite passes on the lowest and highest CPython the SDK supports (3.9 and the newest in
+- [x] The suite passes on the lowest and highest CPython the SDK supports (3.9 and the newest in
       CI).
-- [ ] A reload refuses a feed with a lower `seq`, using a floor derived from a re-verified cached
+- [x] A reload refuses a feed with a lower `seq`, using a floor derived from a re-verified cached
       JWS.
-- [ ] A record with a mismatched hash is refused before signature verification; a record signed
+- [x] A record with a mismatched hash is refused before signature verification; a record signed
       by the product key is refused.
-- [ ] `check()` and `appcast_url()` behave as before.
-- [ ] The green gate passes (`AGENTS.md`), including the Python job.
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] `check()` and `appcast_url()` behave as before.
+- [x] The green gate passes (`AGENTS.md`), including the Python job.
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
 ## Corrections from the implementation
 
