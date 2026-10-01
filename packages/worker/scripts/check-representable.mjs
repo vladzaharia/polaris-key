@@ -15,8 +15,14 @@
 //     the one catalog column (`product_schema.catalog_json`) also with `catalogKeyIssue`,
 //     because each entry key is a member name in the documents that carry it;
 //   - with rule 8's range, `tiers.policy_device_limit`;
-//   - as warnings that do not block a deploy, `licenses.max_offline_days` and
-//     `products.default_max_offline_days` when not an integer from 1 to 365.
+//   - `licenses.max_offline_days` and `products.default_max_offline_days` twice. A count that
+//     makes `graceUntil` (`now + floor(days × 86400)`) something other than a safe integer of at
+//     least 0 is FLAGGED, because `signDoc` refuses that licence's documents with a 500 (about
+//     1.04e11 days or more, below about −20 000 days, or not a number). Any other count that is
+//     not an integer from 1 to 365 is a warning that does not block a deploy: the builders floor
+//     a fractional count. The manifest validator does not yet bound
+//     `licensing.defaultMaxOfflineDays` (plans/P3-01.md §8 risk 13), so a resync can still store
+//     a count this flags; run the check again after one.
 //
 // Text and JSON columns are read as `hex()`, so a lone surrogate the storage layer kept as
 // WTF-8 bytes is seen as the ill-formed UTF-8 it is rather than as the U+FFFD a JSON
@@ -48,7 +54,8 @@ const PAGE = 500;
 /**
  * Every column the check reads, by table. `json` columns are parsed and walked, `catalog`
  * columns too and their entry keys checked as the member names they become, `text` columns
- * are one string each, `number` columns take rule 8's range, `warn` columns the 1–365 rule.
+ * are one string each, `number` columns take rule 8's range, `warn` columns are flagged when
+ * they would trip the signer and warned on when otherwise outside 1–365.
  * `key` names the row in a report.
  */
 export const TABLES = [
@@ -95,7 +102,10 @@ export const TABLES = [
   { table: "product_keys", key: ["product", "kid"], text: ["kid"] },
 ];
 
-/** The 21 checked columns and the 2 warning columns, as `table.column`. */
+/**
+ * The 21 checked columns and the 2 day-count columns, as `table.column`. A day count is
+ * flagged only when it would trip the signer, and a warning otherwise outside 1–365.
+ */
 export const CHECKED_COLUMNS = TABLES.flatMap((t) =>
   [
     ...(t.json ?? []),
@@ -152,6 +162,21 @@ function offlineDaysOk(raw, nullable) {
   return Number.isInteger(raw) && raw >= 1 && raw <= 365;
 }
 
+const SECONDS_PER_DAY = 86_400;
+
+/**
+ * True when a stored day count would make the builders' `graceUntil` trip `signDoc`'s integer
+ * guard (a safe integer of at least 0, plans/P3-01.md §2.2). Mirrors `graceUntil` in
+ * src/core/documents.ts, coercion included; a null count falls back (licence) or reads as 0
+ * days (product) and signs. `nowSeconds` is the check's own clock: a count this close to the
+ * bound is absurd either way.
+ */
+export function offlineDaysTripSigner(raw, nowSeconds) {
+  if (raw === null || raw === undefined) return false;
+  const graceUntil = nowSeconds + Math.floor(Number(raw) * SECONDS_PER_DAY);
+  return !(Number.isSafeInteger(graceUntil) && graceUntil >= 0);
+}
+
 const quote = (name) => `"${name}"`;
 
 /** One page's SELECT for a table: key columns raw, checked text/JSON columns as hex. */
@@ -179,7 +204,13 @@ export function pageSql(spec, afterRowid) {
 }
 
 /** Inspect one table's rows; pushes into `issues` and `warnings`. */
-export function inspectRows(spec, rows, issues, warnings) {
+export function inspectRows(
+  spec,
+  rows,
+  issues,
+  warnings,
+  nowSeconds = Math.floor(Date.now() / 1000),
+) {
   for (const row of rows) {
     const key = Object.fromEntries(spec.key.map((k) => [k, row[`key:${k}`]]));
     for (const [kind, columns] of [
@@ -203,7 +234,16 @@ export function inspectRows(spec, rows, issues, warnings) {
     }
     for (const w of spec.warn ?? []) {
       const raw = row[`warn:${w.column}`];
-      if (!offlineDaysOk(raw, w.nullable))
+      if (offlineDaysTripSigner(raw, nowSeconds))
+        issues.push({
+          table: spec.table,
+          column: w.column,
+          key,
+          value: raw,
+          rule: "grace-until-out-of-range",
+          path: "",
+        });
+      else if (!offlineDaysOk(raw, w.nullable))
         warnings.push({
           table: spec.table,
           column: w.column,
@@ -330,7 +370,9 @@ function main() {
     const target = opts.local ? "local D1" : `${opts.database} (remote)`;
     for (const i of issues)
       console.log(
-        `FLAGGED  ${i.table}.${i.column} [${describeKey(i.key)}] ${i.path || "/"}: ${i.rule}`,
+        i.rule === "grace-until-out-of-range"
+          ? `FLAGGED  ${i.table}.${i.column} [${describeKey(i.key)}]: ${JSON.stringify(i.value)} days makes graceUntil unsignable (set an integer from 1 to 365)`
+          : `FLAGGED  ${i.table}.${i.column} [${describeKey(i.key)}] ${i.path || "/"}: ${i.rule}`,
       );
     for (const w of warnings)
       console.log(

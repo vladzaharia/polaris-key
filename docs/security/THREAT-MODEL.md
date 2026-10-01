@@ -1281,7 +1281,8 @@ guard with P3-12, each of which extends this section.
   as a signed document some SDKs reject: a divergent document is a denial of service against
   the stricter installs, and could become a forgery if verifiers ever disagreed about it. The
   refusal is not logged, because the Worker logs nothing (R12) and the value may be a secret.
-  Write checks keep stored operator data from turning into such refusals. One function,
+  Write checks keep stored operator data from turning into such refusals, apart from the
+  residuals below. One function,
   `representabilityIssue` in `shared-catalog` (lone surrogate, U+0000 in a member name, two
   sibling names equal after NFC, a number out of range, more than 32 levels inside the value),
   runs first in `validateEntryValue`, so licence overrides and profile payloads refuse such a
@@ -1305,6 +1306,14 @@ guard with P3-12, each of which extends this section.
   entitlement makes that licence's documents answer 500, and the check cannot open a sealed
   secret, which the prune drops at signing instead. A stored value that only fails a pattern
   (a channel `Beta Channel`) still signs and is refused the next time a write touches it.
+  **Residual (offline-day counts):** the builders floor a fractional day count, but a count of
+  about 1.04e11 days or more, or below about −20 000, makes `graceUntil` unsignable, and every
+  licence and config document that uses it answers 500. The admin paths refuse anything outside
+  1–365. The manifest sync does not yet: the validator leaves `licensing.defaultMaxOfflineDays`
+  unbounded (plans/P3-01.md §8 risk 13, an unscheduled rule-9 follow-up), and resync and repo
+  link store it in `products.default_max_offline_days`. Until that rule lands, only the
+  operator's product manifest can introduce such a count, and `pnpm check:representable` flags
+  it (not as a warning) wherever it is stored.
 - **The canonical channel and its residual.** A feed's `channel` claim is the canonical channel
   the Worker resolved, which keys the client's `seq` floor; a `latest` claim is refused, and no
   SDK resolves an alias itself. One residual is accepted (plan decision 4): a request for

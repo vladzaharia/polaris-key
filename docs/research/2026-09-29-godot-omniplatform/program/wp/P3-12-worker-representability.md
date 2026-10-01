@@ -155,6 +155,16 @@ sooner.
 - **`check:representable` reads only the active catalog** (`product_schema` rows with
   `active = 1`), the only one whose defaults reach a document, and reports a JSON column that
   does not parse as a warning, not a blocker (the Worker ignores such a column).
+- **An offline-day count can trip the signer, so the D1 check flags it** (found in review). The
+  plan treats both day-count columns as warnings, and §8 risk 13 says the manifest's unbounded
+  `licensing.defaultMaxOfflineDays` "changes no verdict". With `signDoc`'s integer guard that is
+  no longer true: a count of about 1.04e11 days or more, below about −20 000 days, or not a
+  number makes `graceUntil` something other than a safe integer of at least 0, and the licence
+  and config documents answer `500 document_not_representable`. `check:representable` therefore
+  reports such a count as FLAGGED (`grace-until-out-of-range`), mirroring `graceUntil` in
+  `core/documents.ts`, and keeps the 1–365 warning for every other count. The manifest sync
+  (resync, repo link) can still store such a product default until the risk-13 rule-9 follow-up
+  lands; THREAT-MODEL §3 and the RUNBOOK record that residual.
 
 ## Acceptance criteria
 
@@ -173,7 +183,8 @@ sooner.
       `policyDeviceLimit` above `MAX_WIRE_INTEGER`, and an offline-day count that is not an
       integer from 1 to 365.
 - [x] `check:representable` reports a seeded bad row in each of its 21 columns, and a warning for
-      each of its two warning columns, in a local D1, and nothing on a clean one.
+      each of its two warning columns, in a local D1, and nothing on a clean one. It flags a day
+      count whose `graceUntil` the signer would refuse, in either column.
 - [x] The Worker's capability table, `OUTLET_CAPABILITY_DEFAULTS` and `outlet-matrix.json#/kinds`
       are equal, and a stored override wider than a narrowed default reads back narrowed.
 - [x] The green gate passes (`AGENTS.md`), including schema-parity (rule 9), the generated-reference

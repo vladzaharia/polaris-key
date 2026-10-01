@@ -66,14 +66,22 @@ pnpm check:representable -- --json       # the same, machine-readable
 ```
 
 It reads 21 columns (8 JSON, 12 text, `tiers.policy_device_limit`; the active catalog's entry
-keys are checked as the member names they become) and prints one `FLAGGED`
-line per value, naming the table, column, row key and JSON pointer, then exits 1. Fix every
-flagged value in the console (licence, tier, profile or product editors) or in the product's
-`.pkey/` manifest and resync, then run the check again until it exits 0. Do not deploy while
-it flags anything. `warning` lines (an offline-day count that is not an integer from 1 to
-365, or a JSON column that does not parse) do not block a deploy: the builders floor a
-fractional day count, and the Worker ignores an unparseable column. Sealed secrets cannot be
-opened by the check; a flagged one is dropped from the config document at signing.
+keys are checked as the member names they become) and the two offline-day counts
+(`licenses.max_offline_days`, `products.default_max_offline_days`). It prints one `FLAGGED`
+line per value, naming the table, column, row key and JSON pointer, then exits 1. An
+offline-day count is `FLAGGED` when it makes `graceUntil` unsignable (about 1.04e11 days or
+more, below about −20 000 days, or not a number), because every licence and config document
+that uses it then answers `500 document_not_representable`. Fix every flagged value in the
+console (licence, tier, profile or product editors) or in the product's `.pkey/` manifest and
+resync, then run the check again until it exits 0. Do not deploy while it flags anything.
+`warning` lines do not block a deploy. They are any other offline-day count that is not an
+integer from 1 to 365, which the builders floor and sign, and a JSON column that does not
+parse, which the Worker ignores. Sealed secrets cannot be opened by the check; a flagged one
+is dropped from the config document at signing.
+
+The manifest validator does not yet bound `licensing.defaultMaxOfflineDays` (plans/P3-01.md
+§8 risk 13), so a resync can still store a product default the check flags. Until that rule
+lands, run the check again after a resync that changes the default.
 
 `--local [--persist-to DIR]` runs the same check against a local D1 (miniflare), which is how
 `packages/worker/test/checkRepresentable.test.ts` exercises it.

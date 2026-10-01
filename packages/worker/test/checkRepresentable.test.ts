@@ -5,8 +5,10 @@
  * The real migrations are applied to a throwaway store, a clean product is seeded and must
  * produce nothing, then one bad row per table is added so that every one of the 21 checked
  * columns holds a value the signer guard would trip on, and both warning columns hold a day
- * count outside 1–365. The check must flag exactly the 21 and warn on exactly the 2. A last
- * case seeds catalogs whose values are clean but whose entry keys could not be member names.
+ * count outside 1–365. The check must flag exactly the 21 and warn on exactly the 2. Later
+ * cases seed catalogs whose values are clean but whose entry keys could not be member names,
+ * and day counts whose graceUntil the signer would refuse (flagged, not warned). A unit block
+ * proves the day-count rule agrees with the real builder and signDoc's integer guard.
  *
  * Text columns get their lone surrogate as raw WTF-8 bytes (`CAST(X'…' AS TEXT)`), which is
  * how a storage layer that does not replace one keeps it; JSON columns get it as the ASCII
@@ -23,21 +25,30 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // @ts-expect-error — a plain ESM script with no type declarations.
 import * as check from "../scripts/check-representable.mjs";
+import { buildLicenseDoc } from "../src/core/documents.js";
+import { assertIntegerClaims } from "../src/core/signing.js";
 
 interface Finding {
   table: string;
   column: string;
   key: Record<string, unknown>;
   rule: string;
+  value?: unknown;
 }
 interface CheckModule {
   CHECKED_COLUMNS: string[];
   WARNING_COLUMNS: string[];
   runCheck(query: unknown): { issues: Finding[]; warnings: Finding[] };
   wranglerQuery(opts: Record<string, unknown>): unknown;
+  offlineDaysTripSigner(raw: unknown, nowSeconds: number): boolean;
 }
-const { CHECKED_COLUMNS, WARNING_COLUMNS, runCheck, wranglerQuery } =
-  check as CheckModule;
+const {
+  CHECKED_COLUMNS,
+  WARNING_COLUMNS,
+  runCheck,
+  wranglerQuery,
+  offlineDaysTripSigner,
+} = check as CheckModule;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, "..");
@@ -147,6 +158,52 @@ beforeAll(() => {
 
 afterAll(() => {
   if (persistTo) rmSync(persistTo, { recursive: true, force: true });
+});
+
+describe("check:representable's day-count rule", () => {
+  // The check must flag exactly the stored day counts that make the real builder's graceUntil
+  // trip signDoc's integer guard, and no others (a fractional count is floored and signs).
+  const NOW_S = 1_790_000_000;
+  const guardRefuses = (days: number): boolean => {
+    const doc = buildLicenseDoc({
+      aud: "djdl",
+      deviceId: "dev",
+      licenseId: "lic",
+      now: NOW_S,
+      maxOfflineDays: days,
+      profile: {} as never,
+      entitlements: {},
+    });
+    try {
+      assertIntegerClaims(doc, "pkey-license+jws");
+      return false;
+    } catch {
+      return true;
+    }
+  };
+  it.each([
+    30,
+    1.5,
+    0,
+    365,
+    366,
+    -1,
+    -20_000,
+    -20_800,
+    -1e6,
+    1e9,
+    1.04e11,
+    1.05e11,
+    1e20,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ])("agrees with the builder and signDoc's guard for %s days", (days) => {
+    expect(offlineDaysTripSigner(days, NOW_S)).toBe(guardRefuses(days));
+  });
+  it("lets a null count through (licence falls back, product reads 0 days)", () => {
+    expect(offlineDaysTripSigner(null, NOW_S)).toBe(false);
+  });
 });
 
 describe("check:representable on a local D1", () => {
@@ -265,5 +322,47 @@ describe("check:representable on a local D1", () => {
       },
       { product: "nulkey", rule: "nul-in-member-name", path: "/entries/1/key" },
     ]);
+  }, 60_000);
+  it("flags a day count whose graceUntil the signer would refuse, and still only warns on a fractional one", () => {
+    sql(
+      [
+        `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
+           default_max_offline_days, default_device_limit, created_at, modified_at)
+         VALUES ('farpast', 'Far past', 'farpast-1', 'pub', '0.0.0', '99.0.0', -1e6, 5, 1, 1)`,
+        `INSERT INTO licenses (product, id, status, name, email, tier_id, activated_at,
+           max_offline_days, overrides_json, channels_json, min_version, max_version, modified_at)
+         VALUES ('djdl', 'lic_forever', 'active', 'Ada', 'a@x.io', 'pro', 1, 1e20,
+           '{}', '["stable"]', '1.0.0', '9.0.0', 1),
+                ('djdl', 'lic_half', 'active', 'Ada', 'a@x.io', 'pro', 1, 2.5,
+           '{}', '["stable"]', '1.0.0', '9.0.0', 1)`,
+      ].join(";\n"),
+    );
+
+    const { issues, warnings } = local();
+    const grace = issues
+      .filter((i) => i.rule === "grace-until-out-of-range")
+      .map((i) => ({
+        column: `${i.table}.${i.column}`,
+        key: i.key,
+        value: i.value,
+      }));
+    expect(grace).toEqual([
+      {
+        column: "licenses.max_offline_days",
+        key: { product: "djdl", id: "lic_forever" },
+        value: 1e20,
+      },
+      {
+        column: "products.default_max_offline_days",
+        key: { slug: "farpast" },
+        value: -1e6,
+      },
+    ]);
+    // A fractional count is floored by the builders and signs: a warning, not a flag.
+    expect(
+      warnings.filter((w) => w.key.id === "lic_half").map((w) => w.rule),
+    ).toEqual(["offline-days-not-integer-1-365"]);
+    expect(issues.some((i) => i.key.id === "lic_half")).toBe(false);
+    expect(cli().status).toBe(1);
   }, 60_000);
 });
