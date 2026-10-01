@@ -118,12 +118,34 @@ if os.path.exists(ppath):
     for pk in dict.fromkeys(r["pack"] for r in rows):
         rs = [r for r in rows if r["pack"] == pk]
         n1 = [r for r in rs if r["class"] == "N-1"]
-        old = [r for r in rs if r["class"] != "N-1"][0]
+        old = max(rs, key=lambda r: int(r["class"][2:]))  # oldest -> latest
+        five = n1 + [old]
         ch = lambda rr, c, k: statistics.mean(r["chunk"][c][k] for r in rr)  # noqa: E731
         from collections import Counter
         pl = lambda w, key: ", ".join(f"{k}×{v}" for k, v in Counter(r["plan"][f"fa64m@{w}"][key] for r in n1).items())  # noqa: E731
         po = lambda w: f"{old['plan'][f'fa64m@{w}']['choice']} ({old['plan'][f'fa64m@{w}']['noDelta']})"  # noqa: E731
-        print(f"| {pk} | {n(n1[-1]['size'])} | {n(n1[-1]['full'])} | {sum(r['unchanged'] for r in rs)} | {n(statistics.mean(r['wholeDelta'] for r in n1))} | "
+        print(f"| {pk} | {n(n1[-1]['size'])} | {n(n1[-1]['full'])} | {sum(r['unchanged'] for r in five)} | {n(statistics.mean(r['wholeDelta'] for r in n1))} | "
               f"{n(ch(n1, 'fa64m', 'bytes'))} ({ch(n1, 'fa64m', 'requests'):.1f}) | {n(ch(n1, 'fa32m', 'bytes'))} ({ch(n1, 'fa32m', 'requests'):.1f}) | "
               f"{n(old['wholeDelta'])} | {n(old['chunk']['fa64m']['bytes'])} ({old['chunk']['fa64m']['requests']}) | "
               f"{pl(16384, 'choice')} / {pl(65536, 'choice')}; {pl(16384, 'noDelta')} / {pl(65536, 'noDelta')} | {po(16384)} / {po(65536)} |")
+
+    # Every pair for the packs that changed: CONTENT §8.2's rule (full + an N-1 delta, no chunk index
+    # below 16 MiB) against the planner with a chunk index and the same N-1-only delta policy.
+    print("\n## Per-pack, every pair: CONTENT §8.2 rule vs chunk index (N-1-only delta policy)\n")
+    print("| Pack | Pair | Class | full B | N-1 delta B | chunk fa64m B (req) | §8.2 rule B | planner @16K | planner @64K |")
+    print("| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |")
+    for pk in dict.fromkeys(r["pack"] for r in rows):
+        rs = [r for r in rows if r["pack"] == pk]
+        if all(r["unchanged"] for r in rs):
+            continue
+        for r in sorted(rs, key=lambda r: (int(r["class"][2:]), r["from"])):
+            n1 = r["class"] == "N-1"
+            rule = 0 if r["unchanged"] else (r["wholeDelta"] if n1 else r["full"])
+            c = r["chunk"]["fa64m"]
+
+            def pl(w):
+                p = r["plan"][f"fa64m@{w}"]
+                k, b = (p["choice"], p["bytes"]) if n1 else (p["noDelta"], p["noDeltaBytes"])
+                return f"{k} {n(b)}"
+            print(f"| {pk} | {r['from'].split('-')[-1]}→{r['to'].split('-')[-1]} | {r['class']} | {n(r['full'])} | "
+                  f"{n(r['wholeDelta']) if n1 else '—'} | {n(c['bytes'])} ({c['requests']}) | {n(rule)} | {pl(16384)} | {pl(65536)} |")

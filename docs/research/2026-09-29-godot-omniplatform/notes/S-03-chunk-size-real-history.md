@@ -21,7 +21,8 @@ re-chunked, so the default has to be right before P4-10 ships. The questions:
 
 - Which chunker and average size should the default be?
 - Which bundle size and bundle layout?
-- Do the planner's rules of thumb stand ("full under 4 MiB, chunk sync from about 16 MiB")?
+- Does CONTENT §8.2's rule of thumb stand ("full under 4 MiB; full plus one delta for small packs
+  that change every release; chunk sync from about 16 MiB up")?
 
 The only evidence so far was A6's single synthetic 36 MiB pair. This note measures real release
 history, for both the previous version (N−1) and older versions (N−2 and beyond, and oldest→latest).
@@ -50,11 +51,23 @@ history, for both the previous version (N−1) and older versions (N−2 and bey
    about 170 MB of decoder memory for this pack, though. At a 64 MiB budget the planner picks chunk
    sync in every pair, and for pairs CI never built a delta for, chunk sync is the only incremental
    path. Full (63.2 MB) never wins for the whole PCK. [M]
-5. **The size thresholds do not stand as written.** Sliced by the proposed packs, only the **base**
-   slice (4.7 MB raw, 3.83 MB full) changed in every release. For it, chunk sync cost 9–21% of full
-   at N−1 and 37% at oldest→latest. "Full under 4 MiB" would have sent 3.8 MB instead of 0.34–0.81
-   MB. Replace them with a CI rule: publish a chunk index for every container payload of 1 MiB or
-   more, and let the planner choose. The 1 MiB floor is an inference. [M]/[I]
+5. **The size rule of thumb holds at N−1 and fails for older installs.** CONTENT §8.2 has three
+   clauses: full under 4 MiB; full plus one delta for small packs that change every release; chunk
+   sync from about 16 MiB up. Sliced by the proposed packs (§4.10, an estimate), two packs changed:
+   - **base** (3.83 MB full, changed every release) is the second clause's case. At N−1 both the
+     rule and the planner send the N−1 delta (0.29–0.72 MB), so there is no gap. At N−2 to N−4
+     the rule has no delta and sends full (3.65–3.83 MB). A chunk index costs 0.95–1.42 MB
+     (9–75 requests) instead. At a 16 KiB request weight the planner takes chunk in all 6 older
+     pairs. At 64 KiB it takes chunk in 2 and full in 4, the same as the rule;
+   - **extra** (11.6 MB full, changed once) falls between 4 and 16 MiB, so the rule gives it no
+     chunk index. In 5 of 10 pairs the install has no N−1 delta to use, and the rule sends
+     11.6 MB where chunk sync sends **83 KB in 2 requests**;
+   - an SDK without delta support gets full under the rule at every pair, even N−1 (base 3.43–3.83
+     MB against 0.34–0.81 MB chunk).
+
+   Replace the rule with a CI rule: publish a chunk index plus the N−1 delta for every container
+   payload of 1 MiB or more, and let the planner choose. The 1 MiB floor is an inference. [M]/[I]
+
 6. **Re-import noise exists but is small.** Three of four releases rewrote Godot's order-insensitive
    caches in a new order (`.godot/uid_cache.bin` and `.godot/global_script_class_cache.cfg`, 232–238
    KB raw). Every release gave one hand-written scene a fresh random UID (4 bytes). In chunk-sync
@@ -62,6 +75,7 @@ history, for both the previous version (N−1) and older versions (N−2 and bey
    not a gate. [M]
 7. **Two cheap wins outside the chunk parameters.** First, store the `pkey-files/1` index as a zstd
    frame: 1.37 MB raw → 0.34 MB. The raw JSON is 64% of today's per-entry-delta and `file` bytes.
+   That changes the signed `files` reference, so it is a plan question for P4-01.
    Second, and larger, send the target chunk index as a `--patch-from` delta against the seed index
    the client already holds: **350 KB → 1.4–9 KB** (both [M]). That would make N−1 chunk sync about
    0.79 MB, near the whole-file delta and without its memory cost. It is a wire addition, proposed
@@ -147,7 +161,12 @@ For every ordered pair of releases (10 pairs; 4 N−1, 3 N−2, 2 N−3, 1 oldes
   - file-aware chunks never cross entries, so a slice's chunks are exactly the recipe's chunks
     inside its entries. Bundles are laid out per slice;
   - a slice is its entries concatenated, without the PCK header and directory, so this is an
-    **estimate** of per-pack deliverables.
+    **estimate** of per-pack deliverables;
+  - every one of the 10 pairs is costed. The harness builds a whole-slice delta for every pair.
+    The planner columns of the main table therefore assume CI published that exact pair's delta,
+    oldest→latest included. The every-pair table instead models the realistic policy, an N−1 delta
+    only: older pairs get the no-delta plan. It sets that against CONTENT §8.2's rule, which is
+    full, or the N−1 delta for an N−1 install, with no chunk index below 16 MiB.
 
 Commands (from `prototype/chunk-history/`; the download loop is in the README):
 
@@ -389,6 +408,11 @@ dearest chunk candidate (fa64m, oldest, 64 KiB weight) costs 7.2 M. The weight m
 
 ### 4.10 Per-pack estimate (desktop PCK sliced by the proposed packs; an estimate)
 
+The first table covers the five pairs in the original run (the four N−1 pairs and oldest→latest).
+Its "Oldest delta" and oldest planner columns assume CI published an rc.1→rc.5 delta. An N−1 plus
+hot-pairs policy would not publish that delta, so read the oldest pair under that policy from the
+no-delta column, or from the every-pair table below.
+
 | Pack   | Slice B (latest) |     Full B | Pairs unchanged (of 5) | N−1 whole delta B (mean) | N−1 chunk fa64m B (req) | N−1 chunk fa32m B (req) | Oldest delta B | Oldest chunk fa64m B (req) | Planner, N−1, 16 / 64 KiB (no-delta SDK) | Planner, oldest, 16 / 64 KiB (no-delta SDK) |
 | ------ | ---------------: | ---------: | ---------------------: | -----------------------: | ----------------------: | ----------------------: | -------------: | -------------------------: | ---------------------------------------- | ------------------------------------------- |
 | base   |        4,696,156 |  3,831,699 |                      0 |                  548,354 |           624,569 (2.0) |           618,754 (2.0) |      1,306,609 |             1,417,075 (75) | delta / delta (chunk / chunk)            | delta / delta (**chunk / full**)            |
@@ -402,13 +426,54 @@ dearest chunk candidate (fa64m, oldest, 64 KiB weight) costs 7.2 M. The weight m
 - **Only the base slice changed every release.** ui, core3d, audio, foes and nature never changed
   in this history. extra changed once, when a kit was added in rc.3. Split into packs, 94% of the
   PCK's bytes sit in packs that no N−1 update (or at most one) touched. [M]
-- **Base (4.7 MB raw, 3.83 MB full, 799 entries)** is the threshold case:
-  - N−1: delta 0.29–0.72 MB, chunk 0.34–0.81 MB (2 requests), full 3.83 MB;
-  - oldest→latest: delta 1.31 MB, chunk 1.42 MB (75 requests), full 3.83 MB. At 64 KiB,
-    75 × 64 KiB tips a no-delta SDK to full;
-  - so "full under 4 MiB" is wrong for a small pack that changes every release, while the request
-    weight correctly sends very old installs to full. The slice index is small (25–40 KB, 0.7–1.0%
-    of full), because a slice has no padding gaps. [M]
+- **Base (4.7 MB raw, 3.83 MB full, 799 entries)** is a small pack that changes every release, the
+  case for the second clause of CONTENT §8.2's rule (full plus one delta). Its slice index is small
+  (25–40 KB, 0.7–1.0% of full), because a slice has no padding gaps. [M]
+
+Every pair for the two packs that changed. Policy: CI publishes only the N−1 delta. "§8.2 rule" is
+the bytes under CONTENT §8.2's rule of thumb: full, or the N−1 delta for an N−1 install, and no
+chunk index below 16 MiB. The planner columns add a chunk index (fa64m, shared 4 MiB bundles) and
+plan at request weights 16 and 64 KiB. [M]
+
+| Pack  | Pair      | Class  |     Full B | N−1 delta B | Chunk fa64m B (req) | §8.2 rule B | Planner, 16 KiB | Planner, 64 KiB |
+| ----- | --------- | ------ | ---------: | ----------: | ------------------: | ----------: | --------------- | --------------- |
+| base  | rc.1→rc.2 | N−1    |  3,431,325 |     287,496 |         335,557 (2) |     287,496 | delta 287,496   | delta 287,496   |
+| base  | rc.2→rc.3 | N−1    |  3,652,928 |     666,089 |         769,339 (2) |     666,089 | delta 666,089   | delta 666,089   |
+| base  | rc.3→rc.4 | N−1    |  3,827,705 |     724,067 |         813,859 (2) |     724,067 | delta 724,067   | delta 724,067   |
+| base  | rc.4→rc.5 | N−1    |  3,831,699 |     515,763 |         579,520 (2) |     515,763 | delta 515,763   | delta 515,763   |
+| base  | rc.1→rc.3 | N−2    |  3,652,928 |           — |       1,044,113 (9) |   3,652,928 | chunk 1,044,113 | chunk 1,044,113 |
+| base  | rc.2→rc.4 | N−2    |  3,827,705 |           — |      1,278,101 (54) |   3,827,705 | chunk 1,278,101 | full 3,827,705  |
+| base  | rc.3→rc.5 | N−2    |  3,831,699 |           — |        952,261 (30) |   3,831,699 | chunk 952,261   | chunk 952,261   |
+| base  | rc.1→rc.4 | N−3    |  3,827,705 |           — |      1,327,906 (58) |   3,827,705 | chunk 1,327,906 | full 3,827,705  |
+| base  | rc.2→rc.5 | N−3    |  3,831,699 |           — |      1,380,739 (72) |   3,831,699 | chunk 1,380,739 | full 3,831,699  |
+| base  | rc.1→rc.5 | oldest |  3,831,699 |           — |      1,417,075 (75) |   3,831,699 | chunk 1,417,075 | full 3,831,699  |
+| extra | rc.1→rc.2 | N−1    | 11,559,877 |           0 |          53,248 (1) |           0 | noop            | noop            |
+| extra | rc.2→rc.3 | N−1    | 11,588,863 |      29,524 |          83,164 (2) |      29,524 | delta 29,524    | delta 29,524    |
+| extra | rc.3→rc.4 | N−1    | 11,588,863 |           0 |          53,872 (1) |           0 | noop            | noop            |
+| extra | rc.4→rc.5 | N−1    | 11,588,863 |           0 |          53,872 (1) |           0 | noop            | noop            |
+| extra | rc.1→rc.3 | N−2    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| extra | rc.2→rc.4 | N−2    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| extra | rc.3→rc.5 | N−2    | 11,588,863 |           — |          53,872 (1) |           0 | noop            | noop            |
+| extra | rc.1→rc.4 | N−3    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| extra | rc.2→rc.5 | N−3    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| extra | rc.1→rc.5 | oldest | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+
+- **At N−1 the rule and the planner agree.** Both send the N−1 delta for base (0.29–0.72 MB, mean
+  548,354 B) and for extra's one change (29.5 KB). That delta is also cheaper than chunk sync
+  (0.34–0.81 MB). So the base N−1 row does not contradict the rule. [M]
+- **The gap is at N−2 and older**, where no delta was published:
+  - base: the rule sends full (3.65–3.83 MB). At a 16 KiB weight (the default) the planner takes chunk in all 6
+    pairs (0.95–1.42 MB, 9–75 requests). At 64 KiB it takes chunk in 2 and full in 4, because
+    54–75 runs × 64 KiB outweigh the 2.4–2.6 MB saved. The request weight decides between them; the
+    rule's full is never cheaper in bytes;
+  - extra (11.6 MB full, in the 4–16 MiB band that the rule gives no chunk index): the rule sends
+    11.6 MB in 5 pairs where chunk sync sends **83 KB in 2 requests**, at either weight. [M]
+- **An SDK without delta support** gets full under the rule even at N−1 (base 3.43–3.83 MB). With
+  a chunk index it gets 0.34–0.81 MB in 2 requests (first table, no-delta column). [M]
+- **A wider delta policy would close the extra gap.** extra's rc.5 bytes equal its rc.3 bytes, and
+  its rc.1 bytes equal its rc.2 bytes. CONTENT §11's CI step allows deltas against the last _N_
+  releases, and the planner matches a delta's `from` against the installed payload (§8.1). With
+  _N_ ≥ 3, the 29.5 KB rc.2→rc.3 delta would serve those 5 pairs. The harness models N−1 only. [I]
 - A slice's whole-file delta needs only `memBytes` ≈ 2 × slice (9.4 MB for base), so **per-pack
   deltas fit mobile memory budgets** where the 85 MB PCK's 170 MB does not. [M]/[I]
 
@@ -451,11 +516,19 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
      cache findings may move it within 4–16 MiB with no byte cost;
    - the repacking of bundles below 50% live data (CONTENT §11) was not exercised: five releases
      never approach it.
-3. **Thresholds** (CONTENT §8.2 rule of thumb; §4.10 base row):
-   - drop "full under 4 MiB" and "chunk sync from about 16 MiB" as planner guidance. The planner is
-     already cost-based and chose correctly in every measured case;
-   - replace them with a CI publishing rule: publish a chunk index for every container payload of
-     at least **1 MiB**, plus the whole-file delta against N−1 (and hot pairs);
+3. **Thresholds** (CONTENT §8.2 rule of thumb; §4.10 every-pair table):
+   - the rule's three clauses (full under 4 MiB; full plus one delta for small packs that change
+     every release; chunk sync from about 16 MiB up) match the planner at N−1. Both send the N−1
+     delta, and that delta beats chunk sync. Keep the whole-file N−1 delta;
+   - they fall short for installs older than N−1 and for SDKs without delta support. base's
+     N−2–oldest rows: full 3.65–3.83 MB under the rule, against chunk 0.95–1.42 MB (9–75
+     requests), which the planner takes at the default 16 KiB weight. extra's N−2–oldest rows:
+     11.6 MB full under the rule, because the 4–16 MiB band gets no chunk index, against 83 KB in 2
+     requests;
+   - so replace the size bands with a CI publishing rule: publish a chunk index for every container
+     payload of at least **1 MiB**, plus the whole-file delta against N−1 (and hot pairs). The
+     planner, which is already cost-based, chooses per device. At a 64 KiB weight it still sends
+     the oldest base installs to full, as the rule did;
    - the 1 MiB floor is an inference. Chunk sync pays at least the index and two request weights
      (~130 KB at 64 KiB). Below about 1 MiB of full, that overhead is a large share of any likely
      saving. No measured pack is that small and changing.
@@ -468,8 +541,10 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
    - the Diceroll-side fixes (a `uid=` in hand-written scenes) belong to D-04 and are not needed
      for delivery.
 5. **Two adjacent wins to take up:**
-   - store the files index as one zstd frame (P4-01/P4-03): 1.37 MB → 0.34 MB, which halves the
-     `file` and per-entry-delta rows;
+   - store the files index as one zstd frame: 1.37 MB → 0.34 MB, which halves the `file` and
+     per-entry-delta rows. This changes the signed record's `files` reference (a `codec` and a
+     decoded `size`) and what every SDK downloads and parses. It is a plan-mode decision for P4-01
+     (its item 2), not a P4-03 change;
    - send the chunk index as a delta against the client's seed index (P4-10's plan decides, since it
      is a new artifact role). The whole-file delta can remain the desktop N−1 default.
 
@@ -481,7 +556,8 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 - **CONTENT §8.2** rule of thumb: replace "full under 4 MiB; full plus one delta for small packs
   that change every release; chunk sync from about 16 MiB up" with "every container pack of 1 MiB
   or more gets a chunk index and an N−1 delta; the planner chooses per device; below 1 MiB, full
-  plus one delta". Evidence: §4.10.
+  plus one delta". The N−1 behaviour does not change. The evidence is the N−2–oldest rows and the
+  no-delta SDK rows of §4.10's every-pair table.
 - **CONTENT §8.3 / §11:** the chunk-store "full" is 28% above one zstd frame on real content, not
   7% (§4.11).
 - **notes/A4 §2.1:** the desktop PCK is 85 MB (rc.1–rc.5), not ~73 MB.
@@ -491,7 +567,9 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 - **P4-10:** default parameters now include the padding-merge rule, with a pointer to this note;
   the bundle choice is now "shared, 4 MiB target (measured)"; the index delta against the seed is
   added as a plan question.
-- **P4-03:** the files index is stored as a zstd frame (proposal to the P4-01 plan); a warn-only
+- **P4-01:** a plan question under item 2: should the `files` reference gain `codec` and `size`, so
+  the index ships as a zstd frame (§4.5)?
+- **P4-03:** the files index is stored as P4-01 froze it (no shape change in P4-03); a warn-only
   nondeterminism report is added to the dry run.
 - **P4-11:** request-weight observations. With shared bundles an N−1 chunk sync is 2 requests; old
   installs need 33–85 runs, which 64 KiB weights price correctly. Chunk sync is the path at
@@ -535,6 +613,6 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
   §5.1 (pack units).
 - [S] notes/A6 §2.1, §2.3 (synthetic pair, file-aware halving, +7% chunk-store full); notes/A7 §3.1,
   §4.3 (index format, run rule); notes/A4 §2.1, §2.3 (pack stages); notes/E8 §2.4–§2.5.
-- [V] CONTENT §8.1–§8.2, §9, §11; P4-10, P4-03 and P4-11 briefs.
+- [V] CONTENT §8.1–§8.2, §9, §11; P4-01, P4-10, P4-03 and P4-11 briefs.
 - Code: `prototype/chunk-history/` (this note), `prototype/patching/tools/{pck.py,fastcdc.cjs}`,
   `prototype/content/gen/gen.py`, `prototype/content/runners/python/pkey_content.py`.

@@ -6,7 +6,7 @@ directory, so every slice is a few KB smaller than a real per-pack PCK). File-aw
 cross entries, so a slice's chunks are exactly the release recipe's chunks inside its entries;
 bundles are laid out per slice (one deliverable = one bundle history).
 
-Per slice and pair (N-1 and oldest->latest): full (zstd -19, CLI), whole-slice --patch-from (CLI),
+Per slice and pair (all ten ordered pairs, N-1 to oldest->latest): full (zstd -19, CLI), whole-slice --patch-from (CLI),
 chunk sync per file-aware chunker (shared 4 MiB bundles), and the planner's choice at 16/64 KiB.
 usage: python3 packs.py   (after matrix.py desktop) -> data/out/packs-desktop.json"""
 import bisect, json, os, re, sys, time
@@ -102,7 +102,7 @@ def zfile(src, out, extra=()):
 C = hist.clens()
 rows = []
 last = len(R) - 1
-pairs = [(i, i + 1) for i in range(last)] + [(0, last)]
+pairs = [(i, j) for i in range(last) for j in range(i + 1, last + 1)]  # all ten pairs
 for p in PACKS:
     lay = {ch: hist.layouts_shared([SL[p, r["dir"]]["recipe"][ch] for r in R], 4 * hist.MIB)
            for ch in SL[p, R[0]["dir"]]["recipe"]}

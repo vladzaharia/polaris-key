@@ -117,11 +117,10 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   files ship as blobs; removed files simply vanish. Skip a per-file delta that is not smaller than
   the file's blob.
 - **Marker placement.** Beside the payload, never inside it (it would change the hash it pins).
-- **Files index size (S-03).** For a 6,733-entry PCK the `pkey-files/1` JSON is 1.37 MB raw and
-  0.34 MB as one zstd frame. Raw, it is 64% of an N−1 per-entry delta set and of the `file`
-  strategy ([notes/S-03 §4.5](../../notes/S-03-chunk-size-real-history.md#45-reading-the-tables)).
-  Store it as a zstd frame (with `size`) unless P4-01's plan decided otherwise; if it did, raise it
-  there.
+- **Files index encoding.** Store the files index exactly as P4-01's approved plan froze the
+  record's `files` reference (raw, or a zstd frame with `codec` and `size`); see
+  [notes/S-03 §4.5](../../notes/S-03-chunk-size-real-history.md#45-reading-the-tables) for the
+  sizes. The encoding is a signed-shape decision, so do not change it here.
 - **Nondeterminism report (S-03, warn only).** Every real Diceroll release rewrote Godot's
   order-insensitive caches (`.godot/uid_cache.bin`, `.godot/global_script_class_cache.cfg`) in a
   new order, and gave a scene without a `uid=` a new random UID. That cost 0–5% of an N−1 chunk
