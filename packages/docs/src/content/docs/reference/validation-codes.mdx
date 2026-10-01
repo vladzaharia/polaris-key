@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 113 distinct emit sites.
+codes with their JSON-pointer paths. 114 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -37,6 +37,7 @@ the offending value, or the allowed set.
 | `invalid_auto_issue` | error | product | `/autoIssue` | autoIssue must be an object. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${cycle}` | channel $\{cycle\} includes itself through its includes chain. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes/${i}` | includes may only name stable, beta, a manual channel or another declared channel. |
+| `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes/${i}` | includes names must be canonical ($\{CANONICAL_CHANNEL_PATTERN.source\}, and not an alias such as $\{CHANNEL_ALIAS_NAMES.join(" or ")\}). |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes` | includes must be an array of channel names. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}` | each channel must be an object such as \{ includes: [stable] \}. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels` | deliverables.app.channels must be an object of at most $\{MAX_DELIVERABLE_CHANNELS\} channels. |
