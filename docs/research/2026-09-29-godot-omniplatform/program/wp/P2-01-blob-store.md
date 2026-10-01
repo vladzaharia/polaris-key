@@ -188,7 +188,7 @@ console's cookies ([notes/A3 §7.2](../../notes/A3-admin-dx.md#72-web-builds-and
     `Content-Range: bytes */<size>`; an end past the size is shortened; a multi-range, unparseable
     or non-`bytes` header → the full 200. `If-Range` not matching the ETag exactly and strongly
     (weak tags, dates and R2's MD5 all count as mismatches) → the full 200. `If-None-Match`
-    matching → 304, with no R2 read.
+    matching → 304, with no body read (one `head()` checks the stored hash first).
   - **The Worker parses `Range` and evaluates `If-Range` itself**, then calls `get(key, { range:
 {offset, length} | {suffix} })`. Never pass the request `Headers` as `range` or `onlyIf`. R2
     ignores `If-Range` ("all conditional headers aside from `If-Range` are supported"), so it
