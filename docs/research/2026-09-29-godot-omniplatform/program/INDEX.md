@@ -35,7 +35,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | ----------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------- | -------- | ------ |
 | [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋  | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner                 | —                                        | godot-engineer | 1–1.5    | done   |
 | [P1-02](wp/P1-02-godot-core.md)           | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence               | P1-01                                    | godot-engineer | 1.5–2    | done   |
-| [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | todo   |
+| [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | done   |
 | [P1-04](wp/P1-04-godot-config.md)         | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors          | P1-02, P0-12                             | godot-engineer | 1–1.25   | done   |
 | [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | done   |
 | [P1-06](wp/P1-06-rfc8628-page.md) ✋      | Serve an RFC 8628 user-code page for device-code sign-in                                   | P0-13                                    | implementer    | 0.5–0.75 | done   |
@@ -85,7 +85,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | ---------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------- | ----------- | ----- | ------ |
 | [P2b-01](wp/P2b-01-distribution-service.md) ✋ | Add the `distribution` service with Core descriptor hooks and coherence rules           | P0-09, P2-03         | implementer | 1–1.5 | done   |
 | [P2b-02](wp/P2b-02-distribution-manifest.md)   | `.pkey/distribution`: outlets, identities, listings and transports                      | P2b-01, P2-04        | implementer | 1     | done   |
-| [P2b-03](wp/P2b-03-availability-keys.md)       | Availability, submissions (CI-reported first) and the key inventory                     | P2b-02, P2-06        | implementer | 1     | todo   |
+| [P2b-03](wp/P2b-03-availability-keys.md)       | Availability, submissions (CI-reported first) and the key inventory                     | P2b-02, P2-06        | implementer | 1     | done   |
 | [P2b-04](wp/P2b-04-rollouts-delivery.md)       | Outlet-scoped rollouts and halts; delivery access and byte serving move to distribution | P2b-02, P2-05        | implementer | 1.5–2 | done   |
 | [P2b-05](wp/P2b-05-storefront-feeds.md)        | Storefront feeds: AltStore/SideStore/PAL, Obtainium, F-Droid, Scoop/Flathub JSON        | P2b-03, P2b-04, S-07 | implementer | 2–3   | todo   |
 | [P2b-06](wp/P2b-06-download-page-matrix.md)    | Public download page v1 and the console distribution matrix v1                          | P2b-03, P2b-04       | implementer | 1     | todo   |
