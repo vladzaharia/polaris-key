@@ -85,6 +85,7 @@ public enum ErrorCode {
     public static let invalidResponse = "invalid-response"
     public static let storeFailed = "store-failed"
     public static let noToken = "no-token"
+    public static let mintUnavailable = "mint-unavailable"
 }
 
 /// Every `ErrorCode` value, in source order.
@@ -163,6 +164,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "invalid-response",
     "store-failed",
     "no-token",
+    "mint-unavailable",
 ]
 
 /// The registry: every error code and its kind (`wire` or `client`).
@@ -241,6 +243,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "invalid-response": "client",
     "store-failed": "client",
     "no-token": "client",
+    "mint-unavailable": "client",
 ]
 
 /// Every feature id in the parity registry (conformance/parity/features.json).

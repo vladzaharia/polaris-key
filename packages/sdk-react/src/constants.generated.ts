@@ -81,6 +81,7 @@ export const ErrorCode = {
   invalidResponse: "invalid-response",
   storeFailed: "store-failed",
   noToken: "no-token",
+  mintUnavailable: "mint-unavailable",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -160,6 +161,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "invalid-response",
   "store-failed",
   "no-token",
+  "mint-unavailable",
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. */
@@ -241,6 +243,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "invalid-response": "client",
   "store-failed": "client",
   "no-token": "client",
+  "mint-unavailable": "client",
 };
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */

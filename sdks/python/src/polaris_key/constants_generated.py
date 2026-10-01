@@ -123,6 +123,7 @@ class ErrorCode:
     INVALID_RESPONSE: Final = "invalid-response"
     STORE_FAILED: Final = "store-failed"
     NO_TOKEN: Final = "no-token"
+    MINT_UNAVAILABLE: Final = "mint-unavailable"
 
 
 #: Every ``ErrorCode`` value, in source order.
@@ -201,6 +202,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "invalid-response",
     "store-failed",
     "no-token",
+    "mint-unavailable",
 )
 
 
@@ -281,6 +283,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "invalid-response": "client",
         "store-failed": "client",
         "no-token": "client",
+        "mint-unavailable": "client",
     }
 )
 
