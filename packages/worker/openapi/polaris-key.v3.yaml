@@ -3651,7 +3651,9 @@ paths:
         `staging` → `beta` unless the product declares a manual `staging`), which keys the
         client's `seq` floor. `seq` is shared by every selector of the channel and moves only
         when the composed content changes; `expiresAt = issuedAt + 900`; a stored copy is
-        re-signed once it is 450 s old. The channel-wide document (`selector: {}`) is served
+        re-signed once it is 450 s old. A channel that has never offered a target is signed at
+        the starting `seq` (1, or the ceiling after a `feed:seq-ceiling` recovery) with empty
+        `targets`, and nothing is stored for it. The channel-wide document (`selector: {}`) is served
         while its payload fits 65 536 bytes, else the per-platform one (`selector:
         {platform}`); a document that fails the composer's self-check (the v4 claims and the
         strict JSON profile) or does not fit is never signed: `500 feed_not_composable`.

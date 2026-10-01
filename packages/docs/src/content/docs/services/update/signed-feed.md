@@ -52,7 +52,8 @@ platform at once:
   capability you narrowed in the console.
 - **`seq`** moves only when the content changes (a pointer move, a floor, a rollout, a halt, a new
   release); every caller of a channel gets the same bytes, re-signed at most every 450 s, valid
-  for 900 s.
+  for 900 s. A channel that has never offered anything (an unused `pr-<n>` or manual channel)
+  answers an empty feed at `seq` 1 and is not stored.
 
 Nothing in the feed is device-specific: rollout buckets are computed on the device, and the
 feed carries no device, licence or bucket.

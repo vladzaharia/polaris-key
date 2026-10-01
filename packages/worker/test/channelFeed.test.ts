@@ -395,6 +395,53 @@ describe("GET /update/<channel>/feed.jws", () => {
     expect(JSON.parse(res.jws)).toEqual({ error: { code: "unauthorized" } });
   });
 
+  it("a channel that offers nothing and has no row is signed at seq 1 and stores nothing", async () => {
+    const rows = async () => ({
+      state: (
+        await w.db.all(
+          "SELECT channel FROM update_feed_state WHERE product = ?",
+          SLUG,
+        )
+      ).length,
+      docs: (
+        await w.db.all(
+          "SELECT channel FROM update_feed_docs WHERE product = ?",
+          SLUG,
+        )
+      ).length,
+    });
+    // A product with no app release yet.
+    const none = await getFeed(w, "stable");
+    expect(none.res.status).toBe(200);
+    expect(none.payload!.seq).toBe(1);
+    expect(none.payload!.app.targets).toEqual([]);
+    const v = await verifyJws(none.jws, TRUST, { typ: "pkey-feed+jws" });
+    expect(v).not.toBeNull();
+    expect(
+      feedClaims(v!.payload, {
+        expectedAud: SLUG,
+        channel: "stable",
+        platform: "macos",
+        nonWire: v!.nonWireIntegers,
+      }),
+    ).toBeNull();
+    expect(await rows()).toEqual({ state: 0, docs: 0 });
+
+    // Unused `pr-<n>` spellings and an unused manual channel, with releases on stable.
+    await publish(w, "1.3.0");
+    for (const ch of ["pr-1", "pr-01", "pr-0000001", "pr-9999999", "qa"]) {
+      const f = await getFeed(w, ch);
+      expect(f.res.status).toBe(200);
+      expect(f.payload!.seq).toBe(1);
+      expect(f.payload!.app.targets).toEqual([]);
+    }
+    expect(await rows()).toEqual({ state: 0, docs: 0 });
+
+    // A channel with content gets its row and stored document as before.
+    await getFeed(w, "stable");
+    expect(await rows()).toEqual({ state: 1, docs: 1 });
+  });
+
   it("the seq ceiling flag: a channel with no row starts at MAX_WIRE_INTEGER", async () => {
     await publish(w, "1.3.0");
     await w.db.run(
@@ -404,12 +451,20 @@ describe("GET /update/<channel>/feed.jws", () => {
     );
     const f = (await getFeed(w, "qa")).payload!;
     expect(f.seq).toBe(MAX_WIRE_INTEGER);
-    // A change of content at the ceiling re-signs at the ceiling with a newer issuedAt.
+    // The channel's first real content: its new row starts at the ceiling.
     tick(5);
     await publish(w, "1.4.0", { channel: "qa" });
     const g = (await getFeed(w, "qa")).payload!;
     expect(g.seq).toBe(MAX_WIRE_INTEGER);
     expect(g.issuedAt).toBeGreaterThan(f.issuedAt);
+    expect(target(g, "ios").release.version).toBe("1.4.0");
+    // A change of content at the ceiling re-signs at the ceiling with a newer issuedAt.
+    tick(5);
+    await publish(w, "1.5.0", { channel: "qa" });
+    const h = (await getFeed(w, "qa")).payload!;
+    expect(h.seq).toBe(MAX_WIRE_INTEGER);
+    expect(h.issuedAt).toBeGreaterThan(g.issuedAt);
+    expect(target(h, "ios").release.version).toBe("1.5.0");
     // The Worker has no log sink: the re-signing at the ceiling is in the audit trail.
     const audit = await w.db.all<{ target_id: string }>(
       "SELECT target_id FROM audit WHERE product = ? AND action = 'update.feed.ceiling'",

@@ -1305,8 +1305,9 @@ the composer and the `seq` ceiling script.
   half. `.pkey/release` `releaseKeys` is repo-owned like `sparkleEd25519Pub`, so a repo writer can
   declare a key they hold; that changes nothing on devices (they pin their own keys), and each
   declared key is also written to the key inventory as a `release`-purpose OBSERVATION (never an
-  entry; `dist_keys` `source = 'ci'`, capped like CI reports), which flags the purpose for the
-  operator until they adopt or dismiss it.
+  entry; `dist_keys` `source = 'ci'`, capped like CI reports, no per-observation audit row — see
+  "The key inventory is the independent control"), which flags the purpose for the operator
+  until they adopt or dismiss it.
 - **The record route** (`GET /<p>/release/records/<sha256>`) serves the stored bytes exactly
   (their hash is the path) under the release METADATA mode, in the blob route's order: the
   mode's request-level check first (under `entitled`, only a usable licence), then an unknown
@@ -1317,7 +1318,13 @@ the composer and the `seq` ceiling script.
 - **The feed route** (`GET /<p>/update/<channel>/feed.jws?platform=`) holds nothing
   device-specific: one stored document per (product, canonical channel, selector) in
   `update_feed_docs`, re-signed when the composed content's hash changes or the copy is 450 s
-  old, so one signing serves every caller. Access is the METADATA mode, checked per request
+  old, so one signing serves every caller. Only a channel that offers, or once offered,
+  something is stored: a channel with no target and no `update_feed_state` row — any of the ~10⁷
+  `pr-<n>` spellings, an unused manual channel, a product with no app release — is signed at the
+  starting `seq` (1, or the ceiling) and writes no row, so an unauthenticated caller choosing
+  channel names cannot grow D1 (R10). What is left is one Ed25519 signing per request, behind
+  the per-address 60/min `updateFeed` bucket (`clientIp`, no /64 grouping: R10-04b). Access is
+  the METADATA mode, checked per request
   before anything is composed or served; under `entitled` the licence must hold the CANONICAL
   channel. The composer is the first reader of `dist_rollouts` and `dist_availability` that
   decides what a device is offered, and it reads Distribution only through the `delivery` and

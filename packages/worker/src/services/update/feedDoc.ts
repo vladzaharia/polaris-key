@@ -15,6 +15,8 @@
  * One `seq` per (product, canonical channel) in `update_feed_state`, shared by every selector
  * document of the channel, so switching selectors never evades a client's floor. It moves only
  * when the content's hash changes, in one conditional write, to `min(seq + 1, MAX_WIRE_INTEGER)`.
+ * A channel with no targets and no row is signed at the starting seq and stores nothing (no row,
+ * no document), so unused channel names cost no storage.
  * A new row starts at 1, or at `MAX_WIRE_INTEGER` when the product's ceiling flag
  * (`update_feed_ceiling`, written by the `feed:seq-ceiling` recovery script) is set. At the
  * ceiling a change of content re-signs at the ceiling with a newer `issuedAt`, which clients
@@ -165,6 +167,21 @@ export async function feedSeqFor(
   return null;
 }
 
+/**
+ * The `seq` a channel WITHOUT a state row is signed at, read-only: 1, or the ceiling when the
+ * product's ceiling flag is set — exactly where `feedSeqFor` would start the row.
+ */
+export async function startingFeedSeq(
+  db: Db,
+  product: string,
+): Promise<number> {
+  const flag = await db.first<{ one: number }>(
+    "SELECT 1 AS one FROM update_feed_ceiling WHERE product = ?",
+    product,
+  );
+  return flag ? MAX_WIRE_INTEGER : 1;
+}
+
 /** The selector key a stored document is filed under. */
 export function selectorKey(platform: string | null): string {
   return platform === null ? "" : `platform=${platform}`;
@@ -290,6 +307,37 @@ export async function handleFeedRoute(
   );
   if (!composed) return null;
 
+  // A channel that offers nothing and has never offered anything (no state row) — an unused
+  // `pr-<n>` or manual channel, or a product with no app release yet — is signed at the seq a row
+  // would start at, and NOTHING is stored: an unauthenticated caller choosing channel names must
+  // not be able to grow `update_feed_state` / `update_feed_docs`. Step 8 accepts the channel's
+  // first real document at that same seq, since its `issuedAt` is newer.
+  if (composed.targets.length === 0) {
+    const existing = await db.first<{ seq: number }>(
+      "SELECT seq FROM update_feed_state WHERE product = ? AND channel = ?",
+      product.slug,
+      composed.channel,
+    );
+    if (!existing) {
+      const empty = feedPayload(
+        product.slug,
+        composed,
+        null,
+        [],
+        await startingFeedSeq(db, product.slug),
+        now,
+      );
+      if (!feedSelfCheck(empty, null)) return notComposable();
+      const signed = await signDoc(
+        empty,
+        product.signingKeyPem,
+        product.signingKid,
+        "pkey-feed+jws",
+      );
+      return feedResponse(req, signed, gated);
+    }
+  }
+
   const contentSha256 = await sha256Hex(
     canonicalDescriptorJson({
       channel: composed.channel,
@@ -370,6 +418,10 @@ export async function handleFeedRoute(
     );
   }
 
+  return feedResponse(req, jws, gated);
+}
+
+function feedResponse(req: Request, jws: string, gated: boolean): Response {
   return harden(
     new Response(req.method === "HEAD" ? null : jws, {
       status: 200,
