@@ -50,7 +50,9 @@ export interface AscApiKey {
   p8: string;
 }
 
-/** The shared secret App Store Server Notifications v2 webhooks are verified against. */
+/** The shared secret App Store Connect webhook notifications are signed with (HMAC-SHA256,
+ *  `x-apple-signature: hmacsha256=…`; P5-02). Not App Store Server Notifications v2, which are
+ *  JWS-signed by Apple and need no shared secret. */
 export interface AscWebhookSecret {
   secret: string;
 }

@@ -1,0 +1,392 @@
+{
+  "_comment": "App Store Connect resources the fake server (test/ascFake.ts) starts from. Shapes follow the ASC OpenAPI 4.5 / Apple documentation examples; ids are invented. No real app, key or account.",
+  "resources": [
+    {
+      "type": "apps",
+      "id": "1234567890",
+      "attributes": {
+        "name": "djdl",
+        "bundleId": "gg.acme.djdl",
+        "sku": "DJDL"
+      }
+    },
+    {
+      "type": "appStoreVersions",
+      "id": "asv-110",
+      "attributes": {
+        "platform": "IOS",
+        "versionString": "1.1.0",
+        "appStoreState": "PENDING_DEVELOPER_RELEASE",
+        "appVersionState": "PENDING_DEVELOPER_RELEASE",
+        "releaseType": "MANUAL",
+        "downloadable": true,
+        "createdDate": "2026-09-20T10:00:00.000Z"
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        },
+        "build": {
+          "data": {
+            "type": "builds",
+            "id": "bld-110-42"
+          }
+        },
+        "appStoreVersionPhasedRelease": {
+          "data": {
+            "type": "appStoreVersionPhasedReleases",
+            "id": "phr-110"
+          }
+        }
+      }
+    },
+    {
+      "type": "appStoreVersions",
+      "id": "asv-100",
+      "attributes": {
+        "platform": "IOS",
+        "versionString": "1.0.0",
+        "appStoreState": "REPLACED_WITH_NEW_VERSION",
+        "appVersionState": "REPLACED_WITH_NEW_VERSION",
+        "releaseType": "AFTER_APPROVAL",
+        "downloadable": false,
+        "createdDate": "2026-08-01T10:00:00.000Z"
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        },
+        "build": {
+          "data": {
+            "type": "builds",
+            "id": "bld-100-30"
+          }
+        },
+        "appStoreVersionPhasedRelease": {
+          "data": null
+        }
+      }
+    },
+    {
+      "type": "appStoreVersionPhasedReleases",
+      "id": "phr-110",
+      "attributes": {
+        "phasedReleaseState": "INACTIVE",
+        "startDate": null,
+        "totalPauseDuration": 0,
+        "currentDayNumber": 0
+      }
+    },
+    {
+      "type": "builds",
+      "id": "bld-110-42",
+      "attributes": {
+        "version": "42",
+        "uploadedDate": "2026-09-19T09:00:00.000Z",
+        "expirationDate": "2026-12-18T09:00:00.000Z",
+        "expired": false,
+        "minOsVersion": "16.0",
+        "processingState": "VALID",
+        "buildAudienceType": "APP_STORE_ELIGIBLE",
+        "usesNonExemptEncryption": false
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        },
+        "preReleaseVersion": {
+          "data": {
+            "type": "preReleaseVersions",
+            "id": "prv-110"
+          }
+        },
+        "buildBetaDetail": {
+          "data": {
+            "type": "buildBetaDetails",
+            "id": "bbd-110-42"
+          }
+        }
+      }
+    },
+    {
+      "type": "builds",
+      "id": "bld-100-30",
+      "attributes": {
+        "version": "30",
+        "uploadedDate": "2026-07-30T09:00:00.000Z",
+        "expirationDate": "2026-10-28T09:00:00.000Z",
+        "expired": false,
+        "minOsVersion": "16.0",
+        "processingState": "VALID",
+        "buildAudienceType": "APP_STORE_ELIGIBLE",
+        "usesNonExemptEncryption": false
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        },
+        "preReleaseVersion": {
+          "data": {
+            "type": "preReleaseVersions",
+            "id": "prv-100"
+          }
+        },
+        "buildBetaDetail": {
+          "data": {
+            "type": "buildBetaDetails",
+            "id": "bbd-100-30"
+          }
+        }
+      }
+    },
+    {
+      "type": "preReleaseVersions",
+      "id": "prv-110",
+      "attributes": {
+        "version": "1.1.0",
+        "platform": "IOS"
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        }
+      }
+    },
+    {
+      "type": "preReleaseVersions",
+      "id": "prv-100",
+      "attributes": {
+        "version": "1.0.0",
+        "platform": "IOS"
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        }
+      }
+    },
+    {
+      "type": "buildBetaDetails",
+      "id": "bbd-110-42",
+      "attributes": {
+        "autoNotifyEnabled": true,
+        "internalBuildState": "IN_BETA_TESTING",
+        "externalBuildState": "BETA_APPROVED"
+      },
+      "relationships": {
+        "build": {
+          "data": {
+            "type": "builds",
+            "id": "bld-110-42"
+          }
+        }
+      }
+    },
+    {
+      "type": "buildBetaDetails",
+      "id": "bbd-100-30",
+      "attributes": {
+        "autoNotifyEnabled": true,
+        "internalBuildState": "IN_BETA_TESTING",
+        "externalBuildState": "IN_BETA_TESTING"
+      },
+      "relationships": {
+        "build": {
+          "data": {
+            "type": "builds",
+            "id": "bld-100-30"
+          }
+        }
+      }
+    },
+    {
+      "type": "buildUploads",
+      "id": "bup-110-42",
+      "attributes": {
+        "cfBundleShortVersionString": "1.1.0",
+        "cfBundleVersion": "42",
+        "platform": "IOS",
+        "state": "COMPLETE",
+        "createdDate": "2026-09-19T08:50:00.000Z"
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        },
+        "build": {
+          "data": {
+            "type": "builds",
+            "id": "bld-110-42"
+          }
+        }
+      }
+    },
+    {
+      "type": "reviewSubmissions",
+      "id": "rvs-110",
+      "attributes": {
+        "platform": "IOS",
+        "state": "COMPLETE",
+        "submittedDate": "2026-09-20T11:00:00.000Z"
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        },
+        "appStoreVersionForReview": {
+          "data": {
+            "type": "appStoreVersions",
+            "id": "asv-110"
+          }
+        }
+      }
+    },
+    {
+      "type": "backgroundAssets",
+      "id": "ba-levels",
+      "attributes": {
+        "assetPackIdentifier": "dice.levels",
+        "archived": false,
+        "createdDate": "2026-09-01T00:00:00.000Z"
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        }
+      }
+    },
+    {
+      "type": "backgroundAssetVersions",
+      "id": "bav-1",
+      "attributes": {
+        "version": "1",
+        "state": "COMPLETE",
+        "platforms": ["IOS"],
+        "stateDetails": {
+          "errors": [],
+          "warnings": [],
+          "infos": []
+        },
+        "createdDate": "2026-09-02T00:00:00.000Z"
+      },
+      "relationships": {
+        "backgroundAsset": {
+          "data": {
+            "type": "backgroundAssets",
+            "id": "ba-levels"
+          }
+        }
+      }
+    },
+    {
+      "type": "backgroundAssetVersionInternalBetaReleases",
+      "id": "bavib-1",
+      "attributes": {
+        "state": "READY_FOR_TESTING"
+      },
+      "relationships": {
+        "backgroundAssetVersion": {
+          "data": {
+            "type": "backgroundAssetVersions",
+            "id": "bav-1"
+          }
+        }
+      }
+    },
+    {
+      "type": "backgroundAssetVersionExternalBetaReleases",
+      "id": "baveb-1",
+      "attributes": {
+        "state": "READY_FOR_TESTING"
+      },
+      "relationships": {
+        "backgroundAssetVersion": {
+          "data": {
+            "type": "backgroundAssetVersions",
+            "id": "bav-1"
+          }
+        }
+      }
+    },
+    {
+      "type": "backgroundAssetVersionAppStoreReleases",
+      "id": "bavas-1",
+      "attributes": {
+        "state": "READY_FOR_DISTRIBUTION"
+      },
+      "relationships": {
+        "backgroundAssetVersion": {
+          "data": {
+            "type": "backgroundAssetVersions",
+            "id": "bav-1"
+          }
+        }
+      }
+    },
+    {
+      "type": "betaGroups",
+      "id": "bg-public",
+      "attributes": {
+        "name": "Public testers",
+        "isInternalGroup": false,
+        "publicLinkEnabled": false,
+        "publicLinkId": "AbCdEf12",
+        "publicLink": "https://testflight.apple.com/join/AbCdEf12",
+        "publicLinkLimitEnabled": false,
+        "feedbackEnabled": true
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "1234567890"
+          }
+        }
+      }
+    },
+    {
+      "type": "betaGroups",
+      "id": "bg-other-app",
+      "attributes": {
+        "name": "Someone else's",
+        "isInternalGroup": false,
+        "publicLinkEnabled": false
+      },
+      "relationships": {
+        "app": {
+          "data": {
+            "type": "apps",
+            "id": "9999999999"
+          }
+        }
+      }
+    }
+  ]
+}

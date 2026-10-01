@@ -1,0 +1,23 @@
+{
+  "data": {
+    "type": "buildBetaDetailExternalBuildStateUpdated",
+    "id": "5f1c1e3a-0003-4b8e-9d2a-000000000003",
+    "version": 1,
+    "attributes": {
+      "newExternalBuildState": "IN_BETA_TESTING",
+      "oldExternalBuildState": "BETA_APPROVED",
+      "timestamp": "2026-09-30T17:00:00.000Z"
+    },
+    "relationships": {
+      "instance": {
+        "data": {
+          "type": "buildBetaDetails",
+          "id": "bbd-110-42"
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/buildBetaDetails/bbd-110-42"
+        }
+      }
+    }
+  }
+}
