@@ -129,14 +129,28 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
   single-file payload without a container index (an `ml.model`, say) is chunked whole with the
   bit clear.
 - **Parameters** are not in the binary index; they go in the record's `chunks.params` and never
-  change for a published release (CI never re-chunks history). Default: FastCDC average 64 KiB,
-  minimum average/4, maximum average×4, plus the padding rule above. S-03 confirmed this on five
-  real releases: averages of 16–128 KiB land within 5% of each other in every pair class, and
-  32 KiB's 3–4% N−1 gain is cancelled at older pairs by extra request runs
-  ([notes/S-03 §5](../../notes/S-03-chunk-size-real-history.md#5-recommendation)). A7's generator records
+  change for a published release (CI never re-chunks history). Default: FastCDC, minimum
+  average/4, maximum average×4, plus the padding rule above. **The average depends on the
+  index-on-wire question below; settle that first, because `avgSize` is frozen for every published
+  release.** Measured by S-03 on five real releases, at the 16 KiB request weight
+  ([notes/S-03 §4.7](../../notes/S-03-chunk-size-real-history.md#47-index-size-on-the-wire), cost
+  table):
+  - **Index sent raw or as one zstd frame: 64 KiB.** The averages 16–128 KiB land within 5% of each
+    other in every pair class. 32 KiB's 3.7–4.4% N−1 gain is roughly even at N−2 and is lost from
+    N−3 on (2.2–2.5% dearer), because it needs more request runs.
+  - **Index sent as a delta of the seed index: 32 KiB.** The index term then drops to 1.4–9 KB at
+    any average. 32 KiB is 9.7% cheaper at N−1 (741 KB against 821 KB) and 2.2% cheaper at N−2,
+    and 1.4–1.5% dearer at N−3 and older. At a 64 KiB weight it is 8.7% cheaper at N−1 and
+    1.7–5.5% dearer from N−2 on. N−1 is what mobile clients run as chunk sync (the whole-file delta
+    does not fit a 64 MiB budget), so take 32 KiB unless the plan expects many installs two or more
+    releases behind on high-latency links.
+
+  See [notes/S-03 §5](../../notes/S-03-chunk-size-real-history.md#5-recommendation). A7's generator records
   `{chunker: "fastcdc-2016-nc1", fileAware, avgSize, minSize, maxSize, bundleTarget, zstdLevel}`;
   notes/E8 §5.4 sketched `{alg, min, avg, max, id, codec}`. Use what P4-01 froze; otherwise the
-  plan picks A7's names. S-03 may move the default average; that changes CI config, not the format.
+  plan picks A7's names. The default average is CI config, not format, but it cannot change for a
+  release once published.
+
 - **Manifest.** README §3.12 sketches `patch.chunking: {alg: fastcdc, avg: 65536, fileAware: true}`
   in `.pkey/release`. If this package makes chunking configurable there, it is a rule-9 change:
   validator rule, mutation-table entry in `packages/shared-manifest/test/schema-parity.test.ts`,
@@ -160,7 +174,8 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
   ([notes/S-03 §4.7](../../notes/S-03-chunk-size-real-history.md#47-index-size-on-the-wire)).
   The plan decides whether v2 ships the index compressed, adds an index-delta artifact (a
   `pkey-patch/1` over the index blob, planner-visible), or defers both. Either is a record or
-  artifact-role change, so name it in the wire section.
+  artifact-role change, so name it in the wire section. Decide it before the default average
+  (Parameters above): with an index delta, 32 KiB beats 64 KiB at N−1 by about 10%.
 
 - **Storage.** R2 keys from P2-01's `bundleKey(sha256, {gated})` (`bundles/sha256/<h>`, or under
   `gated/` for gated deliverables); `release_artifacts` roles `chunk-index` and `chunk-bundle`

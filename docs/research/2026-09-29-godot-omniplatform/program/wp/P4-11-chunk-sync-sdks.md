@@ -127,8 +127,9 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
   `full`, then records the index as a seed (CONTENT §8.1).
 - **Request weight on real history (S-03).** With shared bundles an N−1 chunk sync of Diceroll's
   85 MB PCK is 2 requests, so the weight does not matter there. Syncs from 2–4 releases back need
-  33–79 requests. At 64 KiB that sends a 3.8 MB pack to `full` from its oldest release, which is
-  correct. The whole-file delta needs ~170 MB of memory for the 85 MB PCK, so at a 64 MiB
+  33–79 requests. At 64 KiB that sends the 3.8 MB main-PCK slice (a proxy for a small pack) to
+  `full` from its oldest release, which is correct.
+  The whole-file delta needs ~170 MB of memory for the 85 MB PCK, so at a 64 MiB
   `memBudget` chunk sync is what every mobile SDK will actually run
   ([notes/S-03 §4.9–§4.10](../../notes/S-03-chunk-size-real-history.md#49-planner-choices)).
   Repair from chunks costs up to 28% more than the full blob on real content (§4.11), so keep

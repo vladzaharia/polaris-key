@@ -112,6 +112,8 @@ if os.path.exists(npath):
 ppath = os.path.join(O, "packs-desktop.json")
 if os.path.exists(ppath):
     rows = json.load(open(ppath))
+    # base is the app's main PCK (ships inside the binary), not a content pack; label it so.
+    lab = lambda pk: "base (main PCK)" if pk == "base" else pk  # noqa: E731
     print("\n## Per-pack estimate (desktop PCK sliced by the proposed packs)\n")
     print("| Pack | slice B (latest) | full B | pairs unchanged (of 5) | N-1 mean: delta B | N-1 mean: chunk fa64m B (req) | N-1 mean: chunk fa32m B (req) | oldest: delta B | oldest: chunk fa64m B (req) | planner fa64m @16K / @64K (N-1; no-delta) | planner fa64m oldest @16K / @64K (no-delta) |")
     print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |")
@@ -124,7 +126,7 @@ if os.path.exists(ppath):
         from collections import Counter
         pl = lambda w, key: ", ".join(f"{k}×{v}" for k, v in Counter(r["plan"][f"fa64m@{w}"][key] for r in n1).items())  # noqa: E731
         po = lambda w: f"{old['plan'][f'fa64m@{w}']['choice']} ({old['plan'][f'fa64m@{w}']['noDelta']})"  # noqa: E731
-        print(f"| {pk} | {n(n1[-1]['size'])} | {n(n1[-1]['full'])} | {sum(r['unchanged'] for r in five)} | {n(statistics.mean(r['wholeDelta'] for r in n1))} | "
+        print(f"| {lab(pk)} | {n(n1[-1]['size'])} | {n(n1[-1]['full'])} | {sum(r['unchanged'] for r in five)} | {n(statistics.mean(r['wholeDelta'] for r in n1))} | "
               f"{n(ch(n1, 'fa64m', 'bytes'))} ({ch(n1, 'fa64m', 'requests'):.1f}) | {n(ch(n1, 'fa32m', 'bytes'))} ({ch(n1, 'fa32m', 'requests'):.1f}) | "
               f"{n(old['wholeDelta'])} | {n(old['chunk']['fa64m']['bytes'])} ({old['chunk']['fa64m']['requests']}) | "
               f"{pl(16384, 'choice')} / {pl(65536, 'choice')}; {pl(16384, 'noDelta')} / {pl(65536, 'noDelta')} | {po(16384)} / {po(65536)} |")
@@ -147,5 +149,30 @@ if os.path.exists(ppath):
                 p = r["plan"][f"fa64m@{w}"]
                 k, b = (p["choice"], p["bytes"]) if n1 else (p["noDelta"], p["noDeltaBytes"])
                 return f"{k} {n(b)}"
-            print(f"| {pk} | {r['from'].split('-')[-1]}→{r['to'].split('-')[-1]} | {r['class']} | {n(r['full'])} | "
+            print(f"| {lab(pk)} | {r['from'].split('-')[-1]}→{r['to'].split('-')[-1]} | {r['class']} | {n(r['full'])} | "
                   f"{n(r['wholeDelta']) if n1 else '—'} | {n(c['bytes'])} ({c['requests']}) | {n(rule)} | {pl(16384)} | {pl(65536)} |")
+
+# Chunk-sync cost by index encoding on the wire: missing stored bytes + index term + w × requests, for
+# the index sent raw, as one zstd frame, or as a --patch-from delta of the seed index (indexdelta.py).
+for fam in fams:
+    ipath = os.path.join(O, f"indexdelta-{fam}.json")
+    if not os.path.exists(ipath):
+        continue
+    M = json.load(open(os.path.join(O, f"matrix-{fam}.json")))
+    ID = {(r["chunker"], r["from"], r["to"]): r for r in json.load(open(ipath))}
+    print(f"\n## {fam}: chunk-sync cost by index encoding (shared 4 MiB bundles), mean per class\n")
+    print("Cost = missing stored B + index term + w × requests. Columns: index raw / zstd / delta of seed.\n")
+    print("| Class | Chunker | requests | raw, w=16K | zstd, w=16K | delta, w=16K | raw, w=64K | zstd, w=64K | delta, w=64K |")
+    print("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+    for cl in ["N-1", "N-2", "N-3", "oldest"]:
+        ps = [p for p in M["pairs"] if cl in p["classes"]]
+        for ch in M["chunkers"]:
+            if not all((ch, p["from"], p["to"]) in ID for p in ps):
+                continue
+            def cost(term, w):
+                return statistics.mean(p["chunk"][ch]["missingStored"] + term(p) + w * p["chunk"][ch]["layouts"]["shared-4"]["requests"] for p in ps)
+            raw = lambda p: p["chunk"][ch]["layouts"]["shared-4"]["indexBytes"]  # noqa: E731
+            zs = lambda p: ID[ch, p["from"], p["to"]]["zstd"]  # noqa: E731
+            dl = lambda p: ID[ch, p["from"], p["to"]]["patchFromSeed"]  # noqa: E731
+            rq = mean([p["chunk"][ch]["layouts"]["shared-4"]["requests"] for p in ps])
+            print(f"| {cl} | {ch} | {rq} | " + " | ".join(n(cost(t, w)) for w in (16384, 65536) for t in (raw, zs, dl)) + " |")

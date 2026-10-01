@@ -34,13 +34,24 @@ history, for both the previous version (N−1) and older versions (N−2 and bey
    means 1.39–1.47 MB). The index is 45% of those bytes, and it is sized by the ~6,700 entries, not
    by the average. Half its records are the exporter's **alignment-padding gaps** (1–15 bytes after
    each entry), each chunked as its own segment. [M]
-2. **Default:** FastCDC 2016, normalised level 1, file-aware, **average 64 KiB, minimum 16 KiB,
-   maximum 256 KiB (unchanged)**, plus one new segmentation rule: **a gap shorter than 64 bytes
-   joins the entry before it**. That rule halves the index (655 → 350 KB) and cuts the mean N−1
-   chunk-sync download by 21% (1.44 → 1.13 MB). It changes no missing-byte count and no request
-   count, and a chunk still never spans two entries. 32 KiB is 3–4% smaller at N−1. At N−2 the two
-   are even once the 16 KiB request weight is counted, and from N−3 on 64 KiB is cheaper, so the
-   sketch's 64 KiB stands. [M]
+2. **Default:** FastCDC 2016, normalised level 1, file-aware, plus one new segmentation rule: **a
+   gap shorter than 64 bytes joins the entry before it**. That rule halves the index (655 → 350 KB)
+   and cuts the mean N−1 chunk-sync download by 21% (1.44 → 1.13 MB). It changes no missing-byte
+   count and no request count, and a chunk still never spans two entries. [M] The best average
+   depends on how the index travels (item 7), so P4-10's plan must settle that before it freezes
+   `avgSize` (§4.7, cost table). Percentages are at the 16 KiB request weight:
+   - **Index sent raw or as one zstd frame: average 64 KiB** (minimum 16, maximum 256 KiB; the
+     sketch's value). 32 KiB is 3.7–4.4% cheaper at N−1, even at N−2 (0.2–0.5%), and 2.2–2.5%
+     dearer from N−3 on. [M]
+   - **Index sent as a delta of the seed index: average 32 KiB** (minimum 8, maximum 128 KiB). The
+     index term then shrinks to 1.4–9 KB at any average, which leaves only missing bytes and
+     requests. 32 KiB is **9.7% cheaper at N−1** (741 KB against 821 KB) and 2.2% cheaper at N−2.
+     It is 1.4–1.5% dearer at N−3 and oldest. At a 64 KiB weight the N−1 gain is the same 80 KB
+     (8.7%), but from N−2 on 32 KiB is 1.7–5.5% dearer (58–335 KB), because it needs more request
+     runs. 16 KiB is cheaper still at N−1 (708 KB), but 2.4–2.6% dearer from N−3 on, and its seed
+     index is larger (fa16 with the padding rule was not measured). N−1 is the update that mobile
+     clients run as chunk sync (item 4), so 32 KiB is the better default unless installs two or
+     more releases behind are common on high-latency links. [M]/[I]
 3. **Bundles:** share them across one deliverable's history, with new chunks only in each release's
    new bundles, and target **4 MiB**. With shared bundles an N−1 sync is **2 requests** (index plus
    one run); fresh-per-release bundles need 42. The 4, 8 and 16 MiB targets give identical request
@@ -51,22 +62,28 @@ history, for both the previous version (N−1) and older versions (N−2 and bey
    about 170 MB of decoder memory for this pack, though. At a 64 MiB budget the planner picks chunk
    sync in every pair, and for pairs CI never built a delta for, chunk sync is the only incremental
    path. Full (63.2 MB) never wins for the whole PCK. [M]
-5. **The size rule of thumb holds at N−1 and fails for older installs.** CONTENT §8.2 has three
-   clauses: full under 4 MiB; full plus one delta for small packs that change every release; chunk
-   sync from about 16 MiB up. Sliced by the proposed packs (§4.10, an estimate), two packs changed:
-   - **base** (3.83 MB full, changed every release) is the second clause's case. At N−1 both the
-     rule and the planner send the N−1 delta (0.29–0.72 MB), so there is no gap. At N−2 to N−4
-     the rule has no delta and sends full (3.65–3.83 MB). A chunk index costs 0.95–1.42 MB
-     (9–75 requests) instead. At a 16 KiB request weight the planner takes chunk in all 6 older
-     pairs. At 64 KiB it takes chunk in 2 and full in 4, the same as the rule;
+5. **The rule of thumb's 16 MiB clause fails on a real pack; its other two clauses are untested.**
+   CONTENT §8.2 has three clauses: full under 4 MiB; full plus one delta for small packs that change
+   every release; chunk sync from about 16 MiB up. Sliced by the proposed packs (§4.10, an
+   estimate), only one content pack changed in this history:
    - **extra** (11.6 MB full, changed once) falls between 4 and 16 MiB, so the rule gives it no
      chunk index. In 5 of 10 pairs the install has no N−1 delta to use, and the rule sends
-     11.6 MB where chunk sync sends **83 KB in 2 requests**;
-   - an SDK without delta support gets full under the rule at every pair, even N−1 (base 3.43–3.83
-     MB against 0.34–0.81 MB chunk).
+     11.6 MB where chunk sync sends **83 KB in 2 requests**. An SDK without delta support gets
+     11.6 MB under the rule even at N−1 (rc.2→rc.3), against 83 KB by chunk sync. [M]
+   - The only content pack under 4 MiB, **ui** (1.0 MB full), never changed. So neither the 4 MiB
+     clause nor the "full plus one delta" clause was tested on a real pack. [M]
+   - The **base** slice is not a content pack. It is the app's main PCK, which ships inside the
+     binary (notes/A4 §2.3, stage 0). It appears here only as an **[I] proxy** for a small pack
+     that changes every release (`l10n` or `events`, say). Under the rule the proxy gets its N−1
+     delta (0.29–0.72 MB), which is cheaper than chunk sync. From N−2 on it gets full (3.65–3.83
+     MB), where a chunk index costs 0.95–1.42 MB in 9–75 requests. The planner takes chunk in all
+     6 older pairs at the 16 KiB weight, and in 2 of 6 at 64 KiB. These are [M] on the slice and
+     [I] as a pack.
 
-   Replace the rule with a CI rule: publish a chunk index plus the N−1 delta for every container
-   payload of 1 MiB or more, and let the planner choose. The 1 MiB floor is an inference. [M]/[I]
+   Proposed: drop the 16 MiB clause, and publish a chunk index plus the N−1 delta for container
+   packs in the 4–16 MiB band too (measured on extra). Lowering the floor from 4 MiB to 1 MiB rests
+   only on the main-PCK proxy. It is an inference until a real small pack that changes is
+   measured. [M]/[I]
 
 6. **Re-import noise exists but is small.** Three of four releases rewrote Godot's order-insensitive
    caches in a new order (`.godot/uid_cache.bin` and `.godot/global_script_class_cache.cfg`, 232–238
@@ -78,8 +95,9 @@ history, for both the previous version (N−1) and older versions (N−2 and bey
    That changes the signed `files` reference, so it is a plan question for P4-01.
    Second, and larger, send the target chunk index as a `--patch-from` delta against the seed index
    the client already holds: **350 KB → 1.4–9 KB** (both [M]). That would make N−1 chunk sync about
-   0.79 MB, near the whole-file delta and without its memory cost. It is a wire addition, proposed
-   for P4-10's plan (§5, §7).
+   0.79 MB at 64 KiB (0.71 MB at 32 KiB), near the whole-file delta and without its memory cost.
+   It is a wire addition, proposed for P4-10's plan (§5, §7). If it is adopted, the default average
+   moves to 32 KiB (item 2).
 
 ## 3. Method
 
@@ -266,6 +284,9 @@ plus request runs. Bundles are shared unless a column says fresh. All rows [M].
   - With request weight counted, the order flips at older pairs. At w = 16 KiB, oldest→latest
     fa64m costs 1,971,841 + 79 × 16,384 = 3.27 M, and fa32m costs 1,950,175 + 85 × 16,384 =
     3.34 M. [M]
+  - All of this assumes the client downloads the raw index. Sent as a delta of the seed index, the
+    index term almost vanishes and 32 KiB wins at N−1 by ~10% (§4.7, cost table). [M]
+
 - **Where the index goes.** Records per release at fa64 are 13,628 for 7,196 unique chunks. 6,366
   records are the 1–15-byte alignment gaps after entries: 15 distinct ids repeated thousands of
   times, each 48 bytes. The only other gaps are the 112-byte header and the 680,172-byte
@@ -365,6 +386,41 @@ offset under shared bundles, so the target index is almost entirely a copy of th
 client that stores its seed index (P4-11 already does) could receive the next index as a
 `--patch-from` frame 0.4–2.5% of the index's size.
 
+**What the index encoding does to the choice of average.** Chunk-sync cost per pair is missing
+stored bytes, plus the index term, plus the request weight _w_ times the requests (shared 4 MiB
+bundles). Means per class; the "vs fa64m" columns compare the index-delta cost. fa16 and fa128 have
+no padding rule, which only affects their raw and zstd columns. [M] (`report.py`, last table)
+
+| Class  | Chunker | Requests | Index raw, w=16K | Index zstd, w=16K | Index delta, w=16K | vs fa64m | Index delta, w=64K | vs fa64m |
+| ------ | ------- | -------: | ---------------: | ----------------: | -----------------: | -------: | -----------------: | -------: |
+| N−1    | fa16    |        2 |        1,481,345 |         1,104,492 |            708,066 |   −13.7% |            806,370 |   −12.3% |
+| N−1    | fa32m   |        2 |        1,122,441 |         1,051,051 |            741,212 |    −9.7% |            839,516 |    −8.7% |
+| N−1    | fa64m   |        2 |        1,165,719 |         1,099,708 |            820,849 |        — |            919,153 |        — |
+| N−1    | fa128   |        2 |        1,502,096 |         1,146,497 |            868,319 |    +5.8% |            966,623 |    +5.2% |
+| N−2    | fa16    |       36 |        2,542,103 |         2,164,109 |          1,770,285 |    −3.2% |          3,539,757 |    +3.1% |
+| N−2    | fa32m   |     34.7 |        2,166,504 |         2,094,951 |          1,787,271 |    −2.2% |          3,491,207 |    +1.7% |
+| N−2    | fa64m   |     32.7 |        2,171,070 |         2,104,834 |          1,828,002 |        — |          3,433,634 |        — |
+| N−2    | fa128   |     31.3 |        2,452,139 |         2,095,261 |          1,819,192 |    −0.5% |          3,359,288 |    −2.2% |
+| N−3    | fa16    |       79 |        3,537,798 |         3,159,874 |          2,767,850 |    +2.6% |          6,650,858 |    +9.2% |
+| N−3    | fa32m   |       75 |        3,115,934 |         3,044,484 |          2,738,450 |    +1.5% |          6,424,850 |    +5.5% |
+| N−3    | fa64m   |       69 |        3,039,620 |         2,973,359 |          2,698,204 |        — |          6,089,692 |        — |
+| N−3    | fa128   |       65 |        3,262,622 |         2,905,386 |          2,631,114 |    −2.5% |          5,825,994 |    −4.3% |
+| oldest | fa16    |       89 |        3,764,548 |         3,386,642 |          2,995,035 |    +2.4% |          7,369,563 |    +8.2% |
+| oldest | fa32m   |       85 |        3,342,815 |         3,271,163 |          2,965,647 |    +1.4% |          7,143,567 |    +4.9% |
+| oldest | fa64m   |       79 |        3,266,177 |         3,199,922 |          2,925,107 |        — |          6,808,115 |        — |
+| oldest | fa128   |       75 |        3,489,121 |         3,131,886 |          2,857,959 |    −2.3% |          6,544,359 |    −3.9% |
+
+- With the index **raw or as zstd**, fa64m and fa32m are within 4.4% of each other in every class,
+  and fa64m wins from N−3 on. 64 KiB stands. [M]
+- With the index **as a delta**, the large index of the small averages no longer costs anything.
+  The ranking at N−1 then follows missing bytes: fa16 < fa32m < fa64m < fa128. From N−3 on, and
+  at N−2 with w = 64 KiB, it follows request runs: fa128 < fa64m < fa32m < fa16. At w = 16 KiB, fa32m saves 80 KB at N−1 and
+  41 KB at N−2, and costs 40–41 KB at N−3 and oldest. At w = 64 KiB it saves the same 80 KB at N−1
+  and costs 58 KB at N−2 and 335 KB at N−3 and oldest. [M]
+- So the default average is a function of the index encoding, the request weight and how far
+  behind installs usually are. P4-10's plan must settle the index-on-wire question first, because
+  `chunks.params` is frozen for each release's history. [I]
+
 ### 4.8 Second texture family: Android `assets/` tree (ETC2/ASTC)
 
 [M] The APK's `assets/` files (6,628–6,737 files, 84.7–85.4 MB decoded, ETC2/ASTC textures) were
@@ -413,63 +469,73 @@ Its "Oldest delta" and oldest planner columns assume CI published an rc.1→rc.5
 hot-pairs policy would not publish that delta, so read the oldest pair under that policy from the
 no-delta column, or from the every-pair table below.
 
-| Pack   | Slice B (latest) |     Full B | Pairs unchanged (of 5) | N−1 whole delta B (mean) | N−1 chunk fa64m B (req) | N−1 chunk fa32m B (req) | Oldest delta B | Oldest chunk fa64m B (req) | Planner, N−1, 16 / 64 KiB (no-delta SDK) | Planner, oldest, 16 / 64 KiB (no-delta SDK) |
-| ------ | ---------------: | ---------: | ---------------------: | -----------------------: | ----------------------: | ----------------------: | -------------: | -------------------------: | ---------------------------------------- | ------------------------------------------- |
-| base   |        4,696,156 |  3,831,699 |                      0 |                  548,354 |           624,569 (2.0) |           618,754 (2.0) |      1,306,609 |             1,417,075 (75) | delta / delta (chunk / chunk)            | delta / delta (**chunk / full**)            |
-| ui     |        1,886,686 |  1,028,901 |                      5 |                        0 |          15,952 (index) |          16,288 (index) |              0 |                     15,952 | noop                                     | noop                                        |
-| core3d |       17,401,898 | 15,107,008 |                      5 |                        0 |          65,584 (index) |          73,696 (index) |              0 |                     65,584 | noop                                     | noop                                        |
-| audio  |       20,791,064 | 19,605,667 |                      5 |                        0 |          29,440 (index) |          41,392 (index) |              0 |                     29,440 | noop                                     | noop                                        |
-| foes   |        5,713,215 |  4,617,142 |                      5 |                        0 |          15,664 (index) |          18,592 (index) |              0 |                     15,664 | noop                                     | noop                                        |
-| nature |       19,994,992 |  8,599,976 |                      5 |                        0 |         129,760 (index) |         134,704 (index) |              0 |                    129,760 | noop                                     | noop                                        |
-| extra  |       14,216,323 | 11,588,863 |                      3 |                    7,381 |            61,039 (1.2) |            67,231 (1.2) |         29,524 |                 83,164 (2) | noop ×3, delta ×1 (chunk ×1)             | delta / delta (chunk / chunk)               |
+| Pack            | Slice B (latest) |     Full B | Pairs unchanged (of 5) | N−1 whole delta B (mean) | N−1 chunk fa64m B (req) | N−1 chunk fa32m B (req) | Oldest delta B | Oldest chunk fa64m B (req) | Planner, N−1, 16 / 64 KiB (no-delta SDK) | Planner, oldest, 16 / 64 KiB (no-delta SDK) |
+| --------------- | ---------------: | ---------: | ---------------------: | -----------------------: | ----------------------: | ----------------------: | -------------: | -------------------------: | ---------------------------------------- | ------------------------------------------- |
+| base (main PCK) |        4,696,156 |  3,831,699 |                      0 |                  548,354 |           624,569 (2.0) |           618,754 (2.0) |      1,306,609 |             1,417,075 (75) | delta / delta (chunk / chunk)            | delta / delta (**chunk / full**)            |
+| ui              |        1,886,686 |  1,028,901 |                      5 |                        0 |          15,952 (index) |          16,288 (index) |              0 |                     15,952 | noop                                     | noop                                        |
+| core3d          |       17,401,898 | 15,107,008 |                      5 |                        0 |          65,584 (index) |          73,696 (index) |              0 |                     65,584 | noop                                     | noop                                        |
+| audio           |       20,791,064 | 19,605,667 |                      5 |                        0 |          29,440 (index) |          41,392 (index) |              0 |                     29,440 | noop                                     | noop                                        |
+| foes            |        5,713,215 |  4,617,142 |                      5 |                        0 |          15,664 (index) |          18,592 (index) |              0 |                     15,664 | noop                                     | noop                                        |
+| nature          |       19,994,992 |  8,599,976 |                      5 |                        0 |         129,760 (index) |         134,704 (index) |              0 |                    129,760 | noop                                     | noop                                        |
+| extra           |       14,216,323 | 11,588,863 |                      3 |                    7,381 |            61,039 (1.2) |            67,231 (1.2) |         29,524 |                 83,164 (2) | noop ×3, delta ×1 (chunk ×1)             | delta / delta (chunk / chunk)               |
 
-- **Only the base slice changed every release.** ui, core3d, audio, foes and nature never changed
-  in this history. extra changed once, when a kit was added in rc.3. Split into packs, 94% of the
-  PCK's bytes sit in packs that no N−1 update (or at most one) touched. [M]
-- **Base (4.7 MB raw, 3.83 MB full, 799 entries)** is a small pack that changes every release, the
-  case for the second clause of CONTENT §8.2's rule (full plus one delta). Its slice index is small
-  (25–40 KB, 0.7–1.0% of full), because a slice has no padding gaps. [M]
+- **Only the base slice (the main PCK, see next point) changed every release.** ui, core3d,
+  audio, foes and nature never changed in this history. extra changed once, when a kit was added
+  in rc.3. Split into packs, 94% of the PCK's bytes sit in packs that no N−1 update (or at most
+  one) touched. [M]
+- **base is not a content pack.** It is everything outside `assets/`: the compiled scripts,
+  `project.binary`, `build_info.json` and Godot's caches. That is the app's main PCK, which ships
+  inside the binary (notes/A4 §2.3, stage 0). CONTENT §15 lists no such pack, README §3.12 does not
+  deliver it, and P4-03's lint rejects its contents in any `godot.pck` pack. It is costed here only
+  as an **[I] proxy** for a small pack that changes every release (a future `l10n` or `events`
+  pack, CONTENT §15). Such a pack would hold data, not scripts, so its change pattern may differ.
+  The slice is 4.7 MB raw, 3.83 MB full and 799 entries; its index is small (25–40 KB, 0.7–1.0% of
+  full), because a slice has no padding gaps. [M] on the slice, [I] as a pack.
+- **No real content pack under 4 MiB changed.** The only one, ui (1.0 MB full), was identical in
+  every release. So CONTENT §8.2's 4 MiB clause and its "full plus one delta" clause are untested
+  here on a real pack. Only the 16 MiB clause has a real-pack row (extra). [M]
 
-Every pair for the two packs that changed. Policy: CI publishes only the N−1 delta. "§8.2 rule" is
-the bytes under CONTENT §8.2's rule of thumb: full, or the N−1 delta for an N−1 install, and no
-chunk index below 16 MiB. The planner columns add a chunk index (fa64m, shared 4 MiB bundles) and
+Every pair for the two slices that changed: one real content pack (extra) and the main-PCK proxy
+(base). Policy: CI publishes only the N−1 delta. "§8.2 rule" is the bytes under CONTENT §8.2's rule
+of thumb: full, or the N−1 delta for an N−1 install, and no chunk index below 16 MiB. The planner columns add a chunk index (fa64m, shared 4 MiB bundles) and
 plan at request weights 16 and 64 KiB. [M]
 
-| Pack  | Pair      | Class  |     Full B | N−1 delta B | Chunk fa64m B (req) | §8.2 rule B | Planner, 16 KiB | Planner, 64 KiB |
-| ----- | --------- | ------ | ---------: | ----------: | ------------------: | ----------: | --------------- | --------------- |
-| base  | rc.1→rc.2 | N−1    |  3,431,325 |     287,496 |         335,557 (2) |     287,496 | delta 287,496   | delta 287,496   |
-| base  | rc.2→rc.3 | N−1    |  3,652,928 |     666,089 |         769,339 (2) |     666,089 | delta 666,089   | delta 666,089   |
-| base  | rc.3→rc.4 | N−1    |  3,827,705 |     724,067 |         813,859 (2) |     724,067 | delta 724,067   | delta 724,067   |
-| base  | rc.4→rc.5 | N−1    |  3,831,699 |     515,763 |         579,520 (2) |     515,763 | delta 515,763   | delta 515,763   |
-| base  | rc.1→rc.3 | N−2    |  3,652,928 |           — |       1,044,113 (9) |   3,652,928 | chunk 1,044,113 | chunk 1,044,113 |
-| base  | rc.2→rc.4 | N−2    |  3,827,705 |           — |      1,278,101 (54) |   3,827,705 | chunk 1,278,101 | full 3,827,705  |
-| base  | rc.3→rc.5 | N−2    |  3,831,699 |           — |        952,261 (30) |   3,831,699 | chunk 952,261   | chunk 952,261   |
-| base  | rc.1→rc.4 | N−3    |  3,827,705 |           — |      1,327,906 (58) |   3,827,705 | chunk 1,327,906 | full 3,827,705  |
-| base  | rc.2→rc.5 | N−3    |  3,831,699 |           — |      1,380,739 (72) |   3,831,699 | chunk 1,380,739 | full 3,831,699  |
-| base  | rc.1→rc.5 | oldest |  3,831,699 |           — |      1,417,075 (75) |   3,831,699 | chunk 1,417,075 | full 3,831,699  |
-| extra | rc.1→rc.2 | N−1    | 11,559,877 |           0 |          53,248 (1) |           0 | noop            | noop            |
-| extra | rc.2→rc.3 | N−1    | 11,588,863 |      29,524 |          83,164 (2) |      29,524 | delta 29,524    | delta 29,524    |
-| extra | rc.3→rc.4 | N−1    | 11,588,863 |           0 |          53,872 (1) |           0 | noop            | noop            |
-| extra | rc.4→rc.5 | N−1    | 11,588,863 |           0 |          53,872 (1) |           0 | noop            | noop            |
-| extra | rc.1→rc.3 | N−2    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
-| extra | rc.2→rc.4 | N−2    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
-| extra | rc.3→rc.5 | N−2    | 11,588,863 |           — |          53,872 (1) |           0 | noop            | noop            |
-| extra | rc.1→rc.4 | N−3    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
-| extra | rc.2→rc.5 | N−3    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
-| extra | rc.1→rc.5 | oldest | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| Pack            | Pair      | Class  |     Full B | N−1 delta B | Chunk fa64m B (req) | §8.2 rule B | Planner, 16 KiB | Planner, 64 KiB |
+| --------------- | --------- | ------ | ---------: | ----------: | ------------------: | ----------: | --------------- | --------------- |
+| base (main PCK) | rc.1→rc.2 | N−1    |  3,431,325 |     287,496 |         335,557 (2) |     287,496 | delta 287,496   | delta 287,496   |
+| base (main PCK) | rc.2→rc.3 | N−1    |  3,652,928 |     666,089 |         769,339 (2) |     666,089 | delta 666,089   | delta 666,089   |
+| base (main PCK) | rc.3→rc.4 | N−1    |  3,827,705 |     724,067 |         813,859 (2) |     724,067 | delta 724,067   | delta 724,067   |
+| base (main PCK) | rc.4→rc.5 | N−1    |  3,831,699 |     515,763 |         579,520 (2) |     515,763 | delta 515,763   | delta 515,763   |
+| base (main PCK) | rc.1→rc.3 | N−2    |  3,652,928 |           — |       1,044,113 (9) |   3,652,928 | chunk 1,044,113 | chunk 1,044,113 |
+| base (main PCK) | rc.2→rc.4 | N−2    |  3,827,705 |           — |      1,278,101 (54) |   3,827,705 | chunk 1,278,101 | full 3,827,705  |
+| base (main PCK) | rc.3→rc.5 | N−2    |  3,831,699 |           — |        952,261 (30) |   3,831,699 | chunk 952,261   | chunk 952,261   |
+| base (main PCK) | rc.1→rc.4 | N−3    |  3,827,705 |           — |      1,327,906 (58) |   3,827,705 | chunk 1,327,906 | full 3,827,705  |
+| base (main PCK) | rc.2→rc.5 | N−3    |  3,831,699 |           — |      1,380,739 (72) |   3,831,699 | chunk 1,380,739 | full 3,831,699  |
+| base (main PCK) | rc.1→rc.5 | oldest |  3,831,699 |           — |      1,417,075 (75) |   3,831,699 | chunk 1,417,075 | full 3,831,699  |
+| extra           | rc.1→rc.2 | N−1    | 11,559,877 |           0 |          53,248 (1) |           0 | noop            | noop            |
+| extra           | rc.2→rc.3 | N−1    | 11,588,863 |      29,524 |          83,164 (2) |      29,524 | delta 29,524    | delta 29,524    |
+| extra           | rc.3→rc.4 | N−1    | 11,588,863 |           0 |          53,872 (1) |           0 | noop            | noop            |
+| extra           | rc.4→rc.5 | N−1    | 11,588,863 |           0 |          53,872 (1) |           0 | noop            | noop            |
+| extra           | rc.1→rc.3 | N−2    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| extra           | rc.2→rc.4 | N−2    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| extra           | rc.3→rc.5 | N−2    | 11,588,863 |           — |          53,872 (1) |           0 | noop            | noop            |
+| extra           | rc.1→rc.4 | N−3    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| extra           | rc.2→rc.5 | N−3    | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
+| extra           | rc.1→rc.5 | oldest | 11,588,863 |           — |          83,164 (2) |  11,588,863 | chunk 83,164    | chunk 83,164    |
 
-- **At N−1 the rule and the planner agree.** Both send the N−1 delta for base (0.29–0.72 MB, mean
-  548,354 B) and for extra's one change (29.5 KB). That delta is also cheaper than chunk sync
-  (0.34–0.81 MB). So the base N−1 row does not contradict the rule. [M]
-- **The gap is at N−2 and older**, where no delta was published:
-  - base: the rule sends full (3.65–3.83 MB). At a 16 KiB weight (the default) the planner takes chunk in all 6
-    pairs (0.95–1.42 MB, 9–75 requests). At 64 KiB it takes chunk in 2 and full in 4, because
-    54–75 runs × 64 KiB outweigh the 2.4–2.6 MB saved. The request weight decides between them; the
-    rule's full is never cheaper in bytes;
-  - extra (11.6 MB full, in the 4–16 MiB band that the rule gives no chunk index): the rule sends
-    11.6 MB in 5 pairs where chunk sync sends **83 KB in 2 requests**, at either weight. [M]
-- **An SDK without delta support** gets full under the rule even at N−1 (base 3.43–3.83 MB). With
-  a chunk index it gets 0.34–0.81 MB in 2 requests (first table, no-delta column). [M]
+- **extra, the one real content pack that changed, is where the rule fails.** It is 11.6 MB full,
+  in the 4–16 MiB band that the rule gives no chunk index. At N−1 the rule and the planner agree:
+  the install takes the 29.5 KB delta, or nothing. From N−2 on there is no published delta, and in
+  5 pairs the rule sends 11.6 MB where chunk sync sends **83 KB in 2 requests**, at either weight.
+  An SDK without delta support gets 11.6 MB under the rule at rc.2→rc.3 against 83 KB (first
+  table, no-delta column). [M]
+- **The main-PCK proxy (base)** fits the second clause at N−1. The rule and the planner both send
+  the N−1 delta (0.29–0.72 MB, mean 548,354 B), which beats chunk sync (0.34–0.81 MB). From N−2 on
+  the rule sends full (3.65–3.83 MB). At the default 16 KiB weight the planner takes chunk in all 6
+  of those pairs (0.95–1.42 MB, 9–75 requests). At 64 KiB it takes chunk in 2 and full in 4,
+  because 54–75 runs × 64 KiB outweigh the 2.4–2.6 MB saved. A no-delta SDK gets full under the
+  rule even at N−1 (3.43–3.83 MB), against 0.34–0.81 MB in 2 requests by chunk sync. These rows
+  are measured on the slice. That a real small, changing pack behaves the same way is [I].
 - **A wider delta policy would close the extra gap.** extra's rc.5 bytes equal its rc.3 bytes, and
   its rc.1 bytes equal its rc.2 bytes. CONTENT §11's CI step allows deltas against the last _N_
   releases, and the planner matches a delta's `from` against the installed payload (§8.1). With
@@ -487,7 +553,9 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 
 ## 5. Recommendation
 
-1. **Default `chunks.params` for P4-10** (row: fa64m in §4.1–§4.4 and §4.7):
+1. **Default `chunks.params` for P4-10.** It depends on the index-on-wire decision (item 5), which
+   P4-10's plan must take first, because the params are frozen per release. With the index sent
+   raw or as one zstd frame (row: fa64m in §4.1–§4.4 and §4.7):
 
    ```json
    {
@@ -503,6 +571,13 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
    }
    ```
 
+   With the index sent as a delta of the seed index, use `avgSize: 32768`, `minSize: 8192`,
+   `maxSize: 131072` and the same other fields (row: fa32m in §4.7's cost table). At the 16 KiB
+   request weight it is 9.7% cheaper than 64 KiB at N−1 and 2.2% cheaper at N−2, and 1.4–1.5%
+   dearer at N−3 and oldest. At a 64 KiB weight it is still 8.7% cheaper at N−1 but 1.7–5.5% dearer
+   from N−2 on. If the plan expects many installs two or more releases behind on high-latency links,
+   keep 64 KiB. [M]/[I]
+
    `padMerge`: a gap segment shorter than 64 bytes that directly follows an entry is chunked
    together with that entry. The header, the directory and longer gaps stay separate segments, and
    a chunk never spans two entries. This is a segmentation rule in CI; clients never chunk, so no
@@ -516,22 +591,24 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
      cache findings may move it within 4–16 MiB with no byte cost;
    - the repacking of bundles below 50% live data (CONTENT §11) was not exercised: five releases
      never approach it.
-3. **Thresholds** (CONTENT §8.2 rule of thumb; §4.10 every-pair table):
-   - the rule's three clauses (full under 4 MiB; full plus one delta for small packs that change
-     every release; chunk sync from about 16 MiB up) match the planner at N−1. Both send the N−1
-     delta, and that delta beats chunk sync. Keep the whole-file N−1 delta;
-   - they fall short for installs older than N−1 and for SDKs without delta support. base's
-     N−2–oldest rows: full 3.65–3.83 MB under the rule, against chunk 0.95–1.42 MB (9–75
-     requests), which the planner takes at the default 16 KiB weight. extra's N−2–oldest rows:
-     11.6 MB full under the rule, because the 4–16 MiB band gets no chunk index, against 83 KB in 2
-     requests;
-   - so replace the size bands with a CI publishing rule: publish a chunk index for every container
-     payload of at least **1 MiB**, plus the whole-file delta against N−1 (and hot pairs). The
-     planner, which is already cost-based, chooses per device. At a 64 KiB weight it still sends
-     the oldest base installs to full, as the rule did;
-   - the 1 MiB floor is an inference. Chunk sync pays at least the index and two request weights
-     (~130 KB at 64 KiB). Below about 1 MiB of full, that overhead is a large share of any likely
-     saving. No measured pack is that small and changing.
+3. **Thresholds** (CONTENT §8.2 rule of thumb; §4.10 every-pair table). Measured on a real pack,
+   only the 16 MiB clause was tested, and it fails:
+   - **The 16 MiB clause fails (measured on extra).** extra is 11.6 MB full, in the 4–16 MiB band
+     that gets no chunk index. At N−1 the rule matches the planner (the 29.5 KB delta, or nothing).
+     From N−2 on, and for no-delta SDKs, the rule sends 11.6 MB where chunk sync sends 83 KB in 2
+     requests. Publish a chunk index for container packs of 4 MiB and up, beside the N−1 delta
+     (and hot pairs), and let the cost-based planner choose per device. Keep the whole-file N−1
+     delta, which beats chunk sync where it exists. [M]
+   - **The 4 MiB clause and the "full plus one delta" clause are untested.** The only real pack
+     under 4 MiB (ui) never changed. The main-PCK slice (base) is the only small, changing payload
+     measured, and it is not a pack. As an [I] proxy it suggests that a small pack that changes
+     every release would also gain from a chunk index at N−2 and older: 0.95–1.42 MB in 9–75
+     requests against 3.65–3.83 MB full, taken by the planner in all 6 pairs at the 16 KiB weight
+     but only 2 of 6 at 64 KiB.
+   - **Lowering the floor from 4 MiB to 1 MiB is an inference only.** It rests on the proxy and on
+     overhead arithmetic: chunk sync pays at least the index and two request weights (~130 KB at
+     64 KiB), which is a large share of any likely saving below about 1 MiB of full. Measure a real
+     small pack that changes (a future `l10n` or `events` pack) before adopting it.
 4. **Re-import noise** is quantified (§4.6) and small: 0–5% of N−1 chunk bytes. Proposed P4-03 rule
    (warn, never fail):
    - `--dry-run` and publish list the entries whose bytes changed against the stored base but whose
@@ -540,7 +617,8 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
    - allow-list the CI version stamp (`project.binary`, a build-info file);
    - the Diceroll-side fixes (a `uid=` in hand-written scenes) belong to D-04 and are not needed
      for delivery.
-5. **Two adjacent wins to take up:**
+5. **Two adjacent wins to take up** (the second decides item 1's average):
+
    - store the files index as one zstd frame: 1.37 MB → 0.34 MB, which halves the `file` and
      per-entry-delta rows. This changes the signed record's `files` reference (a `codec` and a
      decoded `size`) and what every SDK downloads and parses. It is a plan-mode decision for P4-01
@@ -550,14 +628,20 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 
 ## 6. Proposed edits outside the briefs (not applied)
 
-- **README §3.12** sketch `patch.chunking: {alg: fastcdc, avg: 65536, fileAware: true}`: keep
-  `avg: 65536` and add the padding rule (`padMerge: 64` or an equivalent name) and
-  `bundles: {target: 4 MiB, layout: shared}`.
-- **CONTENT §8.2** rule of thumb: replace "full under 4 MiB; full plus one delta for small packs
-  that change every release; chunk sync from about 16 MiB up" with "every container pack of 1 MiB
-  or more gets a chunk index and an N−1 delta; the planner chooses per device; below 1 MiB, full
-  plus one delta". The N−1 behaviour does not change. The evidence is the N−2–oldest rows and the
-  no-delta SDK rows of §4.10's every-pair table.
+- **README §3.12** sketch `patch.chunking: {alg: fastcdc, avg: 65536, fileAware: true}`: add the
+  padding rule (`padMerge: 64` or an equivalent name) and
+  `bundles: {target: 4 MiB, layout: shared}`. Keep `avg: 65536` if the index ships raw or
+  compressed; change it to `avg: 32768` if P4-10 adopts the index delta (§5 item 1).
+- **CONTENT §8.2** rule of thumb, in two steps:
+  - **Measured (extra):** replace "chunk sync from about 16 MiB up" with "every container pack of
+    4 MiB or more gets a chunk index beside its N−1 delta, and the planner chooses per device". The
+    N−1 behaviour does not change. The evidence is extra's N−2–oldest and no-delta SDK rows in
+    §4.10.
+  - **Inference only (main-PCK proxy):** lowering that floor to 1 MiB, so that a small pack that
+    changes every release also gets a chunk index. This rests on the base slice, which is the app's
+    main PCK and not a pack. Leave "full under 4 MiB; full plus one delta for small packs that
+    change every release" in place until a real small pack that changes has been measured.
+
 - **CONTENT §8.3 / §11:** the chunk-store "full" is 28% above one zstd frame on real content, not
   7% (§4.11).
 - **notes/A4 §2.1:** the desktop PCK is 85 MB (rc.1–rc.5), not ~73 MB.
@@ -566,14 +650,16 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 
 - **P4-10:** default parameters now include the padding-merge rule, with a pointer to this note;
   the bundle choice is now "shared, 4 MiB target (measured)"; the index delta against the seed is
-  added as a plan question.
+  added as a plan question; the default average is conditional on that question (64 KiB with a
+  raw or zstd index, 32 KiB with an index delta), and the plan must settle it before freezing
+  `avgSize`.
 - **P4-01:** a plan question under item 2: should the `files` reference gain `codec` and `size`, so
   the index ships as a zstd frame (§4.5)?
 - **P4-03:** the files index is stored as P4-01 froze it (no shape change in P4-03); a warn-only
   nondeterminism report is added to the dry run.
 - **P4-11:** request-weight observations. With shared bundles an N−1 chunk sync is 2 requests; old
-  installs need 33–85 runs, which 64 KiB weights price correctly. Chunk sync is the path at
-  mobile memory budgets.
+  installs need 33–85 runs, which 64 KiB weights price correctly (shown on the 3.8 MB main-PCK
+  slice, a proxy). Chunk sync is the path at mobile memory budgets.
 
 ## 8. Measured, emulated, unmeasured
 
@@ -587,6 +673,8 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 | Android asset-tree family (ETC2/ASTC)                                   | measured, all 10 pairs                                                                 |
 | Per-pack results                                                        | **emulated**: slices of the desktop PCK, not per-pack exports                          |
 | Index as zstd and as a delta of the seed index                          | measured (bundle ids stood in)                                                         |
+| Chunk-sync cost per index encoding (§4.7 cost table)                    | measured: matrix rows plus index-delta sizes, combined by `report.py`                  |
+| Small content pack (under 4 MiB) that changes every release             | unmeasured: ui never changed; the base main-PCK slice stands in as an [I] proxy        |
 | Web PCK family                                                          | unmeasured: same size and entries as desktop; not run through the matrix               |
 | Wall-clock times (CI chunking, deltas, client apply)                    | unmeasured: host load 500–1,000; A6/A7 have clean timings                              |
 | Real R2/CDN request cost per run; Range behaviour per bundle size       | unmeasured here (S-02)                                                                 |
@@ -603,6 +691,9 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
   transport does multi-range requests or ~1 MB gap-filling (A7 §4.3 option), the older-pair runs
   shrink.
 - The per-pack numbers are slices: no per-pack PCK header or directory, and no per-pack export.
+  The only slice that changed every release (base) is the app's main PCK, not a content pack, so
+  CONTENT §8.2's small-pack clauses are untested.
+
 - Everything is S3TC desktop except §4.8 (all 10 pairs of the Android asset tree).
 
 ## 10. Sources
