@@ -214,12 +214,17 @@ _offered_ in the first place.
 
 ## The console: Update settings
 
-`GET|PATCH /manage/api/products/<product>/update/settings`. Six fields, edited together
-because every one of them decides which builds a product offers, and to whom:
+`GET|PATCH /manage/api/products/<product>/update/settings`, plus Distribution's delivery
+access, edited together because every one of them decides which builds a product offers, and
+to whom:
 
 - **Metadata access** — governs the version check (and, on Release's side, the changelog
   and install script).
-- **Artifact access** — governs the appcast and the download route.
+- **Artifact access** — governs the appcast, the downloads and the customer portal's download
+  mint. Since P2b-04 this is Distribution's
+  [delivery access](/docs/services/distribution/delivery/#delivery-access), saved to
+  `PUT /manage/api/products/<product>/distribution/access` with its own owner and revert;
+  `update/settings` refuses `artifactsAccess` by name.
 - **Compat min / Compat max** — the product-wide version window every license's own
   `entitled` window is intersected against, regardless of what any individual license
   grants.
@@ -238,12 +243,13 @@ access mode the form never touched.
 ### Who owns each field
 
 The access modes and the compatibility window are also written by `.pkey/`: a resync
-re-applies `release.access` and `product.compatMin`/`compatMax`. Saving either block here
-**claims** it — `accessSource` / `compatSource` in the response flips from `manifest` to
-`admin` — and a resync then skips a claimed block. That matters most for `entitled`, which
-no manifest can express: without the claim, the next push would quietly downgrade the product
-to the manifest's mode (default `public`). The two access modes share one owner, because the
-console saves them together.
+re-applies `release.access` and `product.compatMin`/`compatMax`. Saving one here **claims**
+it — `accessSource` / `compatSource` in the response flips from `manifest` to `admin` — and a
+resync then skips a claimed block. That matters most for `entitled`, which no manifest can
+express: without the claim, the next push would quietly downgrade the product to the
+manifest's mode (default `public`). Since P2b-04 the two access modes have separate owners:
+`accessSource` covers the metadata mode, and the delivery access carries its own `source` on
+Distribution's endpoint, with its own revert (`POST …/distribution/access/revert`).
 
 ```
 POST /manage/api/products/<product>/update/settings/revert

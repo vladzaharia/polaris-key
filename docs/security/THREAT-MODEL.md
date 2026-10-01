@@ -124,8 +124,8 @@ uploads. Its write paths, and nothing else:
   sets `ETag` to the SHA-256, adds `Repr-Digest` (RFC 9530), and checks that **this** product
   holds a ref to the key (`hasRef`) before serving it. A hash is never treated as a secret:
   gated content is authorised per request and served `private, no-store`. Until that per-request
-  check exists (P2b-04, P4-05), Release's build and file routes refuse a location under
-  `gated/` outright, whatever the product's access mode, and the blob route reads only the
+  check exists (P4-05), the build and file routes (Distribution's since P2b-04) refuse a location
+  under `gated/` outright, whatever the deliverable's delivery access, and the blob route reads only the
   ungated key and, under `entitled`, re-checks the licence against every release that carries
   the hash (§5; P2-05).
 - **Clients verify against the signed manifest, not the headers.** `Repr-Digest` and the ETag
@@ -166,8 +166,9 @@ published bytes — it is not permanent immutability. `staging/` is unlocked wit
 
 **Boundary: the bytes host.** The same Worker answers on `dl.plrs.im` (`dl-staging`, `dl-dev`),
 named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allowlist
-(`mount.ts` `BYTE_ROUTES`, dispatched by `core/bytesHost.ts`; since P2-05, Release's build,
-file and blob routes);
+(`mount.ts` `BYTE_ROUTES`, dispatched by `core/bytesHost.ts`; the build, file and blob routes,
+registered by Release in P2-05 and by Distribution since P2b-04, each matching its canonical
+`/<p>/distribution/…` path and its `/<p>/release/…` alias);
 `/manage`, `/docs`, the portal, discovery and every product route answer not-found there
 (`test/bytesHost.test.ts`). The host does not go through `dispatchService`, so it makes that
 function's enablement check itself: every byte route names its service, and one whose service
@@ -359,9 +360,9 @@ credential).
 **The `distribution` service.** The sixth opt-in service, between Release and Update in the chain
 release ← distribution ← update (`distribution_requires_release`, `update_requires_distribution`,
 enforced by `validateServices` and the manifest validator; `update_requires_release` is retired as
-implied). In P2b-01 it has **no routes** (`handle` returns `null`, so every
-`/<p>/distribution/…` path is the same not-found a disabled service gives), no tables, no secrets
-and no admin handler. Its attack surface is the discovery fragment (`{enabled, configured:false,
+implied). In P2b-01 it had **no routes** (`handle` returned `null`, so every
+`/<p>/distribution/…` path was the same not-found a disabled service gives), no tables, no secrets
+and no admin handler; P2b-04 gave it every byte route (below). Its attack surface is the discovery fragment (`{enabled, configured:false,
 endpoints:{}}`) and the two hooks below. Everything that will make it valuable to an attacker —
 byte serving, outlet credentials, rollouts — arrives in later packages (P2b-02 to P2b-04, P5-01)
 and reopens this section. P5-01 has landed the credential custody (below) but no connector, so
@@ -470,6 +471,94 @@ patterns, https-only URLs, no control characters); a repo writer can point a lis
 at any https host. Nothing serves listings yet — when storefront feeds do (P2b-05), they are
 untrusted display data and must be escaped by the feed, not trusted. The default capability table
 is the proposed one; P3-01's outlet matrix supersedes it.
+
+### Byte delivery, delivery access and rollouts (P2b-04)
+
+**Byte serving moved services, and access moved with it.** Distribution now serves every byte:
+the installer, the direct download and P2-05's build, file and blob routes, at canonical
+`/<p>/distribution/…` paths. The `/<p>/release/{install.sh,dl,builds,files,blobs}/…` spellings
+and `/<p>/install.sh` are router aliases that rewrite to the same `{kind:"service"}` route
+(`router.ts`, ahead of the namespace check), so an alias cannot answer differently from its
+canonical route (`test/distributionDelivery.test.ts` compares status, headers and bytes on both
+hosts). Every P2-05 guarantee is preserved in the moved code (`services/distribution/bytes.ts`):
+the `fixedVersion` rule (a file's release is checked by its stored version as one fixed, pinned
+version, now `core/entitledAccess.ts` `fixedReleaseSelector`, shared with Release), the
+non-semver refusal under a bounded window (`accessRefusal`, shared), the per-release check on
+the blob route under `entitled`, `hasRef` tenancy, the `gated/` fail-closed, the opt-in
+redirect for public artifacts of public repositories only, the same rate-limit buckets, and the
+bytes host's hardening. The release/R6/R9/R10 suites run unchanged against the alias paths.
+
+- **Enablement.** The byte routes are `ByteRoute`s with `service: "distribution"`. With
+  Distribution off, every byte route and alias is not served on either host: the console's
+  registry not-found, and the bytes host's flat not-found, each indistinguishable from an absent
+  route. A product that runs Release without Distribution serves no downloads by choice; the
+  `0033` backfill turned Distribution on for every Release product, so nothing that served
+  downloads stopped.
+- **No GitHub token in Distribution.** GitHub-held bytes are streamed by Release through the
+  `releaseCatalog` hook's `openSource(ref, req)`, with Release's installation token, its cached
+  signed URL and `streamAsset`'s SSRF guard; Release re-reads the artifact row itself, so the
+  name, type and `source_url` that reach a header or a redirect are never taken from the caller.
+  Distribution imports no Release module (`boundaries.test.ts`). `openSource` is the one hook
+  method that returns bytes rather than records; it writes nothing.
+- **The bytes host builds hooks.** `dispatchBytesHost` now builds the descriptor hooks for the
+  matched product under that product's own enablement (the same `buildHooks` gate
+  `dispatchService` uses), so a byte route on `dl.plrs.im` reads Release's catalog only while
+  Release is on. `HookContext.product` is the key-free `ProductPublic`.
+
+**One delivery-access answer (`dist_access`).** Who may download a deliverable is
+Distribution's, per deliverable, and the three surfaces that hand out bytes all read
+`delivery.accessMode()`: the byte routes, Update's appcast (through the gateway's
+`artifactsAccess`, which also decides whether the appcast is edge-cacheable), and the portal's
+download mint and redemption. Before, the feed and the download read access separately, so the
+feed could offer what the download refused. `release_config.artifacts_access` is no longer read;
+the `0038` migration copied it into each product's `app` row with its owner, and Release's
+`artifactPolicy` fails closed to `entitled` when no delivery access is supplied, never back to
+the old column.
+
+- **Ownership.** The `app` row is manifest-owned (`.pkey/release` `access.artifacts`, applied by
+  Distribution's ingest) until an operator sets it, which claims it; the ingest skips a claimed
+  row, so `entitled` (no manifest spelling) survives a push. A pack row is operator-only.
+  `update/settings` refuses `artifactsAccess` by name. Residual: a product that turns
+  Distribution on live after a manifest changed its mode while Distribution was off keeps the old
+  mode until its next resync (the ingest runs only for enabled services).
+- **Inheritance fails toward the app.** A deliverable with no row inherits the `app` row; no row
+  at all is `public`, the default the old column had. A stored mode outside the CHECK reads as
+  `entitled`. The blob route uses the strictest mode of the deliverables whose releases carry the
+  digest.
+- **The portal asks the same question of licences.** A portal account has no device token, so
+  `licensed` needs a usable linked licence and `entitled` one whose own grant
+  (`core/entitledAccess.ts` `licenseEntitled`, the device decision without the device layer)
+  holds the release's stored channel (stable when GitHub-derived) and window. This is stricter
+  than the byte routes' fixed-release check, which still reads a fixed release as the stable
+  channel (the residual in §5 stands for them). With Distribution off the portal offers and
+  mints nothing.
+- **R6-12, extended deliberately.** The portal's redirect may now also target this deployment's
+  bytes host (`isAllowedDownloadRedirectHost`, separate from the fetch-side
+  `isAllowedStorageHost`, which still allows only GitHub's storage hosts): only for a PUBLIC
+  deliverable with no GitHub download URL, only `https`, and only the exact `BLOB_ORIGIN`
+  hostname, with the URL minted by `delivery.deliveryUrl` from stored records. A non-public
+  deliverable is never redirected there.
+
+**Edge caching stays off.** The byte routes are not cached (no Workers Caching entrypoint, no
+`caches.default`), so S-02's open question — whether a public response to a request carrying
+`Authorization` is stored or bypassed (Cloudflare's configuration and examples pages disagree;
+hand-off row H10) — does not arise. If caching is turned on later, it must run on a named
+entrypoint that serves only ungated bytes-host reads, with `Authorization` and `Cookie`
+stripped by the default entrypoint and gated requests never routed to it; it must rely on that
+routing and stripping, never on an automatic bypass.
+
+**Rollouts and halts (`dist_rollouts`).** Percentage, pause, resume, halt and completion per
+outlet and channel. Principals: a console admin session, and CI with a `pkeyci_` token holding
+the **opt-in** `distribution:rollout` scope (not in the default grant). Transitions are a fixed
+table, applied conditionally on the state read (two concurrent verbs cannot both apply); a
+yanked release cannot be rolled out; a verb may pin the release it means (`stale_release`); a
+`mirrored` row (a store connector's) refuses every direct edit; every change is audited with its
+actor. **What a halt does today:** nothing reads `dist_rollouts` to decide what a device is
+offered until P3-03 composes the signed feed, so a halt is recorded and shown but the legacy
+feeds keep serving. A holder of `distribution:rollout` therefore cannot yet withhold or expose a
+build; the emergency stop is still a yank or a pin (`release:yank`, `release:promote`). The salt
+is random per release and the bucket is evaluated on the device, so the Worker serves one feed
+to everyone and a rollout leaks nothing about which devices are in it.
 
 ### Outlet credentials (P5-01)
 
@@ -902,7 +991,10 @@ operator; and denial of service originating from Cloudflare's own network contro
 Revisit this document when any of the following changes: a new tenant that is not first-party is
 onboarded; the portal gains write capability beyond device disconnect and key claim; a second
 release channel or artifact type is added; a service gains a route, a table or a secret, or a
-descriptor hook gains a method that writes or a new provider; a byte route is added to `BYTE_ROUTES`, a type to
+descriptor hook gains a method that writes or a new provider, or a method that returns bytes
+(today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
+is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
+offered (P3-03); a byte route is added to `BYTE_ROUTES`, a type to
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the

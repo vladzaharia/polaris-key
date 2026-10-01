@@ -177,6 +177,38 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 mise exec node@22 -- pnpm typecheck
 ```
 
+## Corrections from implementation
+
+Recorded where the code (or a dependency's state) disagreed with the text above.
+
+- **CLI subcommands deferred.** `pkey distribution rollout|halt|resume` were to sit "on P2-06's
+  plumbing", but P2-06 is not done and `packages/cli` has no HTTP client or CI-token handling
+  yet. Inventing that plumbing here would pre-empt P2-06's `ciClient`. The CI routes are live and
+  documented; P2-06 (or a follow-up after it) adds the three subcommands over them.
+- **`releaseCatalog` gained two more readers** than the three named: `accessSelector(selector)`
+  (channel classification for the `entitled` check is Release's model, and Distribution must
+  enforce it before resolving) and `installScript(origin)` (the template and binary name are
+  Release's data). `metadataAccess()` doubles as the "release configuration exists" check.
+- **Discovery is wire.** Removing the byte endpoints from Release's fragment would change the
+  discovery document (`test/discoveryGolden.test.ts`: plan mode). Release's fragment keeps its
+  keys, which now name the permanent aliases; Distribution's fragment, which P2b-01 added,
+  carries the canonical `download`, `install`, `builds` and `blobs` URLs.
+- **Bytes host.** Only `builds`, `files` and `blobs` (both spellings) are registered in
+  `BYTE_ROUTES`. The installer is a `text/x-shellscript` body and `?checksum=sha256` on `dl`
+  answers `text/plain`, both of which the bytes host refuses by type, so `install.sh` and `dl`
+  stay console-host routes, as they were.
+- **The installer and the appcast keep the `/release/dl` spelling** (a permanent alias), so the
+  script and every feed are byte-identical to what installed copies and published curl lines
+  already hold.
+- **The portal's `entitled` check** uses the release's stored channel (stable when
+  GitHub-derived) plus its version, through a new Core helper `licenseEntitled` (the device
+  decision without the device layer). With Distribution off the portal offers and mints no
+  download, since its access answer is Distribution's.
+- **No new error codes.** Rollout refusals use the existing flat `not_found` / `bad_request`
+  codes with a machine-readable `reason`, like P2-05's CI routes, so `errors.json` is unchanged.
+- **`dist_access.entitlement`** is stored and shown but not enforced; its meaning (a named
+  entitlement for gated packs) belongs to P4-05 / commerce.
+
 ## Hand-off
 
 - `dist_rollouts`, its states and `source` values, `delivery.rollout()` and the halt path are

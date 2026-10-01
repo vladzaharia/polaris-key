@@ -169,7 +169,13 @@ service route, with the same segments, as its canonical spelling.
 | `/<p>/appcast.xml`           | `/<p>/update/appcast.xml`           |
 | `/<p>/<channel>/appcast.xml` | `/<p>/update/<channel>/appcast.xml` |
 | `/<p>/version`               | `/<p>/update/version`               |
-| `/<p>/install.sh`            | `/<p>/release/install.sh`           |
+| `/<p>/install.sh`            | `/<p>/distribution/install.sh`      |
+
+P2b-04 moved every byte route from Release to Distribution and kept Release's old spellings the
+same way: `/<p>/release/install.sh`, `/<p>/release/dl/…`, `/<p>/release/builds/…`,
+`/<p>/release/files/…` and `/<p>/release/blobs/…` are permanent aliases of their
+`/<p>/distribution/…` routes (download URLs the SDKs build, and byte URLs discovery advertised).
+That rewrite runs before the service-namespace match, because `release` is itself a namespace.
 
 There is therefore no second handler to keep in step and no way for the two spellings to answer
 differently. A request carries an `alias` flag, but it exists so the route table can be asserted on
