@@ -575,6 +575,15 @@ product-wide switch is wanted later, the column is
 `Product` and passed as `allowDevBuilds` — the parameter is already in place and already wins over
 the entitlement when set (proven by a test).
 
+**Follow-up (P0-04, the channel vocabulary).** The gate now lives in `core/gate.ts` and reads
+channels through `core/channels.ts` (WIRE-CONTRACT-V3 §5.1). Change 3 still holds, in a refined
+form: a _malformed_ header (`STAGING`, `Beta.2`) is refused outright, and an unknown
+_well-formed_ name (`staging-2`, `nightly`) is checked as a grant of exactly that name, so it is
+never a free pass. `beta` is now a known channel and `staging` its legacy alias; a `staging` grant
+covers `beta`. The bypass is still opt-in by the `dev` grant. gate-matrix v2 retired the carried
+row that pinned the pre-R3-01 bypass and pins the opt-in behaviour instead, and the Worker now
+replays every gate-matrix row through `checkBuildGate` (`test/gateMatrixCorpus.test.ts`).
+
 ### R3-07 — worker and SDK agree on `0.0.0-pr-N` (Medium)
 
 `channelForVersion`'s regex is now `/^0\.0\.0-pr-?\d+/`, matching `sdks/*` (whose form is pinned by
@@ -587,6 +596,12 @@ whether it sends no header or claims `stable`.
 `/^pr-?\d+$/` — anchored at both ends, at least one digit. `prod`, `production`, `preview` and
 `prerelease` are no longer misfiled into the `pr` channel (where a `pr` entitlement would wrongly
 have satisfied them); they are unrecognised, and therefore refused per change 3.
+
+**Follow-up (P0-04).** `normalizeChannel` became `normalizeChannelHeader` in
+`core/channels.ts`, built on `PR_CHANNEL_PATTERN` (`^pr-?([0-9]+)$`, still anchored with at least
+one digit). A PR header is narrowed to `pr-<n>`, which a `pr` grant covers. `prod` and friends
+are well-formed names now, so they must be granted by name, and a `pr` grant still does not
+satisfy them.
 
 ### R3-03 — the enrolment dedupe key is a fixed projection (High)
 

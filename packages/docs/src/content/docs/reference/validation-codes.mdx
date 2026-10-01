@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 82 distinct emit sites.
+codes with their JSON-pointer paths. 86 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -87,6 +87,10 @@ the offending value, or the allowed set.
 | `missing_product` | error | product | `/` | .pkey/product is required at ingest. |
 | `missing_release` | error | release | `/` | Releases are enabled, so .pkey/release.yaml or release.json is required. |
 | `missing_schema` | error | schema | `/` | .pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries. |
+| `noncanonical_channel_name` | warning | product | `/licensing/tiers/${i}/channels/${j}` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V3 §5.1). |
+| `noncanonical_channel_name` | warning | release | `/release/artifactPolicy/channels/${j}` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1). |
+| `noncanonical_channel_name` | warning | release | `${at}/name` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1). |
+| `reserved_channel_name` | warning | release | `${at}/name` | This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1). |
 | `reserved_slug` | error | product | `/product/slug` | product.slug "$\{productSlug\}" collides with a reserved platform route. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/deviceLimit` | deviceLimit on a tier is ignored; use policyDeviceLimit. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry. |

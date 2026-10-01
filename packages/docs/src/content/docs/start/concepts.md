@@ -159,6 +159,13 @@ _capability_ of Config, not a unit of its own, so declaring it turns Config on.
 - **tier** — a named plan: an optional profile plus policy (default expiry, device limit, and —
   from the channels work — default upgrade channels and version window). (Not "plan".)
 - **profile** — a reusable managed-payload baseline that a tier or license can attach.
+- **channel** — a named release stream a build belongs to and a license may be granted, one
+  vocabulary for the license build gate, Release and every SDK (WIRE-CONTRACT-V3 §5.1): `stable`
+  (always granted), `beta`, `pr-<n>` (one pull request; a `pr` grant covers every PR), a
+  product's manual channels, and `dev`, the gate's pseudo-channel for `0.0.0-dev*` builds (Release
+  has none). `staging` is the legacy spelling of `beta` and `latest` names `stable`; both are
+  accepted, and no SDK sends them. Names match `^[a-z0-9][a-z0-9-]{0,63}$`. A license's channels
+  are the `channels` entitlement.
 - **entitlement** — a capability flag or value delivered to the client (the `flag` config kind),
   e.g. `polarisVpn`, `channels`, `app.minVersion`. Entitlements ride the **license** document and
   only it; the config document carries no grant data.
