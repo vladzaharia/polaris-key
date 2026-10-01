@@ -1,0 +1,11 @@
+[configuration]
+
+entry_symbol = "pkba_library_init"
+compatibility_minimum = "4.5"
+
+[libraries]
+
+macos.debug = "res://bin/libpkba.macos.dylib"
+macos.release = "res://bin/libpkba.macos.dylib"
+ios.debug = "res://bin/pkba.xcframework"
+ios.release = "res://bin/pkba.xcframework"
