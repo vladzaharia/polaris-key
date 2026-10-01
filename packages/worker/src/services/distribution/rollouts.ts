@@ -479,3 +479,92 @@ export async function applyRollout(
   const row = await getRollout(db, product, deliverable, outlet, channel);
   return { ok: true, rollout: rolloutRecord(row!) };
 }
+
+// ── Store mirrors (P5-02) ────────────────────────────────────────────────────────────────────
+
+/** What a store connector says a store's own staged rollout is doing. */
+export interface MirroredRollout {
+  deliverable: string;
+  outlet: string;
+  channel: string;
+  releaseId: string;
+  bp: number;
+  state: RolloutState;
+  /** The connector kind (`asc`, later `play`): the row's `source`. */
+  source: string;
+}
+
+/**
+ * Mirror a store's staged rollout into `dist_rollouts` as a `mirrored = 1` row (Apple's phased
+ * release, Play's `userFraction`). The store is the authority: the row is overwritten whatever
+ * its previous state or owner — an operator's own rollout on the same (deliverable, outlet,
+ * channel) included — and refuses direct edits from then on (`rollout_mirrored`). A new release
+ * starts a new row (fresh salt and `started_at`). Audited as `distribution.rollout.mirror`, only
+ * when something changed, with `audit`. Validation (the outlet, the release) is the caller's.
+ *
+ * The mirror is INFORMATIVE: Apple applies a phased release to automatic updates only, and anyone
+ * can download the version by hand at any time. It must never be read as an access control.
+ */
+export async function mirrorRollout(
+  ctx: { db: Db; product: string; now: number },
+  m: MirroredRollout,
+  audit: (targetId: string, summary: string) => Promise<void>,
+): Promise<{ changed: boolean; rollout: RolloutRecord }> {
+  const { db, product, now } = ctx;
+  const bp = Math.max(0, Math.min(FULL_ROLLOUT_BP, Math.round(m.bp)));
+  const existing = await getRollout(
+    db,
+    product,
+    m.deliverable,
+    m.outlet,
+    m.channel,
+  );
+  const fresh = !existing || existing.release_id !== m.releaseId;
+  const changed =
+    fresh ||
+    existing.state !== m.state ||
+    existing.rollout_bp !== bp ||
+    existing.mirrored !== 1 ||
+    existing.source !== m.source;
+  if (changed) {
+    await db.run(
+      `INSERT INTO dist_rollouts
+         (product, deliverable_id, outlet_id, channel, release_id, rollout_bp, rollout_salt,
+          state, mirrored, source, started_at, updated_at, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+       ON CONFLICT (product, deliverable_id, outlet_id, channel) DO UPDATE SET
+         release_id = excluded.release_id,
+         rollout_bp = excluded.rollout_bp,
+         rollout_salt = CASE WHEN ? THEN excluded.rollout_salt ELSE dist_rollouts.rollout_salt END,
+         state = excluded.state,
+         mirrored = 1,
+         source = excluded.source,
+         started_at = CASE WHEN ? THEN excluded.started_at ELSE dist_rollouts.started_at END,
+         updated_at = excluded.updated_at,
+         updated_by = excluded.updated_by`,
+      product,
+      m.deliverable,
+      m.outlet,
+      m.channel,
+      m.releaseId,
+      bp,
+      newRolloutSalt(),
+      m.state,
+      m.source,
+      now,
+      now,
+      `connector:${m.source}`,
+      fresh ? 1 : 0,
+      fresh ? 1 : 0,
+    );
+    await audit(
+      `${m.deliverable}:${m.outlet}:${m.channel}`,
+      `Mirrored the ${m.outlet} rollout of ${m.releaseId} on ${m.channel}: ${m.state} at ${bp / 100}%` +
+        (existing && existing.mirrored !== 1
+          ? ` (replacing a ${existing.source} rollout of ${existing.release_id})`
+          : ""),
+    );
+  }
+  const row = await getRollout(db, product, m.deliverable, m.outlet, m.channel);
+  return { changed, rollout: rolloutRecord(row!) };
+}

@@ -614,6 +614,36 @@ async function auditCi(
   });
 }
 
+/**
+ * Who writes an availability or submission row, and how the change is audited: CI (`source =
+ * 'ci'`, actor `ci:<subject>`) or a store connector (P5-02 on: `source` = the connector kind,
+ * e.g. `asc`, actor `connector:<kind>`). One implementation for both, so a connector's write
+ * follows exactly the vocabulary, `since` and audit rules a CI report does.
+ */
+export interface AvailabilityWriter {
+  /** The `source` column value. */
+  source: string;
+  /** Who the audit summary names ("CI", "App Store Connect"). */
+  label: string;
+  audit(
+    action: string,
+    target: { kind: string; id: string },
+    summary: string,
+  ): Promise<void>;
+}
+
+function ciWriter(
+  ctx: ReportContext,
+  principal: CiPrincipal,
+): AvailabilityWriter {
+  return {
+    source: "ci",
+    label: "CI",
+    audit: (action, target, summary) =>
+      auditCi(ctx, principal, action, target, summary),
+  };
+}
+
 /** `outlet` must be a live outlet the product declares. */
 async function liveOutlet(
   ctx: ReportContext,
@@ -745,7 +775,7 @@ export async function applyReport(
         `state must be one of ${SUBMISSION_STATES.join(", ")}`,
         ["state"],
       );
-    return reportSubmission(ctx, principal, {
+    return reportSubmission(ctx, ciWriter(ctx, principal), {
       release,
       outlet: outlet as string,
       state: body.state,
@@ -776,7 +806,7 @@ export async function applyReport(
     );
   const platformRef = objectField(body, "platformRef");
   if (isRefusal(platformRef)) return platformRef;
-  return reportAvailability(ctx, principal, {
+  return reportAvailability(ctx, ciWriter(ctx, principal), {
     release,
     outlet: outlet as string,
     buildId,
@@ -787,9 +817,14 @@ export async function applyReport(
   });
 }
 
-async function reportAvailability(
+/**
+ * Write one availability row (insert or update) and audit it when anything changed. Validation
+ * is the caller's: the release, build and outlet must already be known to exist, and `state` to
+ * be in the vocabulary. Exported for the store connectors (`connectors/`).
+ */
+export async function reportAvailability(
   ctx: ReportContext,
-  principal: CiPrincipal,
+  writer: AvailabilityWriter,
   r: {
     release: CatalogRelease;
     outlet: string;
@@ -828,7 +863,7 @@ async function reportAvailability(
     `INSERT INTO dist_availability
        (product, release_id, build_id, outlet_id, transport, state, since,
         platform_ref_json, detail_json, source, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ci', ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (product, release_id, build_id, outlet_id) DO UPDATE SET
        transport = excluded.transport,
        state = excluded.state,
@@ -846,6 +881,7 @@ async function reportAvailability(
     since,
     platformRef,
     detail,
+    writer.source,
     now,
   );
   const changed =
@@ -854,17 +890,15 @@ async function reportAvailability(
     existing.since !== since ||
     existing.platform_ref_json !== platformRef ||
     existing.detail_json !== detail ||
-    existing.source !== "ci";
+    existing.source !== writer.source;
   const what = `${release.releaseId}${buildId ? `/${buildId}` : ""}`;
   if (changed)
-    await auditCi(
-      ctx,
-      principal,
+    await writer.audit(
       "distribution.availability.report",
       { kind: "availability", id: `${what}:${outlet}` },
       existing && existing.state !== state
-        ? `CI reported ${what} on ${outlet}: ${existing.state} → ${state}`
-        : `CI reported ${what} on ${outlet}: ${state}`,
+        ? `${writer.label} reported ${what} on ${outlet}: ${existing.state} → ${state}`
+        : `${writer.label} reported ${what} on ${outlet}: ${state}`,
     );
   const row = (await db.first<DistAvailabilityRow>(
     `SELECT * FROM dist_availability
@@ -881,9 +915,10 @@ async function reportAvailability(
   };
 }
 
-async function reportSubmission(
+/** Write one submission row and audit it when anything changed (see `reportAvailability`). */
+export async function reportSubmission(
   ctx: ReportContext,
-  principal: CiPrincipal,
+  writer: AvailabilityWriter,
   r: {
     release: CatalogRelease;
     outlet: string;
@@ -915,7 +950,7 @@ async function reportSubmission(
     `INSERT INTO dist_submissions
        (product, release_id, outlet_id, state, submitted_at, reviewed_at, detail_json, source,
         updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'ci', ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (product, release_id, outlet_id) DO UPDATE SET
        state = excluded.state,
        submitted_at = excluded.submitted_at,
@@ -930,6 +965,7 @@ async function reportSubmission(
     submittedAt,
     reviewedAt,
     detail,
+    writer.source,
     now,
   );
   const changed =
@@ -937,16 +973,14 @@ async function reportSubmission(
     existing.submitted_at !== submittedAt ||
     existing.reviewed_at !== reviewedAt ||
     existing.detail_json !== detail ||
-    existing.source !== "ci";
+    existing.source !== writer.source;
   if (changed)
-    await auditCi(
-      ctx,
-      principal,
+    await writer.audit(
       "distribution.submission.report",
       { kind: "submission", id: `${release.releaseId}:${outlet}` },
       existing && existing.state !== state
-        ? `CI reported the ${outlet} submission of ${release.releaseId}: ${existing.state} → ${state}`
-        : `CI reported the ${outlet} submission of ${release.releaseId}: ${state}`,
+        ? `${writer.label} reported the ${outlet} submission of ${release.releaseId}: ${existing.state} → ${state}`
+        : `${writer.label} reported the ${outlet} submission of ${release.releaseId}: ${state}`,
     );
   const row = (await db.first<DistSubmissionRow>(
     `SELECT * FROM dist_submissions

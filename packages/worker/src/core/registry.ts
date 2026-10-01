@@ -16,7 +16,7 @@
 
 import type { ParsedManifest } from "@polaris-key/manifest";
 import type { Env } from "../env.js";
-import type { Product } from "./products.js";
+import type { Product, ProductPublic } from "./products.js";
 import type { Db, DbStatement } from "../db/types.js";
 import type { AdminSession } from "../admin/session.js";
 import { ErrorCode, json } from "./errors.js";
@@ -71,6 +71,13 @@ export interface ServiceContext {
    * without ever seeing — or importing — the services that answer. Built by Core like `hooks`.
    */
   ingest: ManifestIngest;
+  /**
+   * The runtime's `ExecutionContext.waitUntil`, when the request came through the Worker's
+   * `fetch` entry point (P5-02). A handler that must answer fast and finish work afterwards (a
+   * store webhook: 2xx first, then the follow-up API read) hands that work here; when absent —
+   * the Node tests, the transcript recorder — it must run the work inline before answering.
+   */
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 /** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks` and
@@ -114,6 +121,19 @@ export interface RegistrationAuthContext {
   product: Product;
   /** Epoch seconds for this request — the same value Core will stamp on the binding. */
   now: number;
+}
+
+/**
+ * What a service's `scheduled` hook is given: one product, outside any request. No `Request`,
+ * no `rest`; the product without its signing key (nothing periodic signs), and the same
+ * read-only hooks a request gets, gated on this product's enablement.
+ */
+export interface ScheduledServiceContext {
+  env: Env;
+  db: Db;
+  product: ProductPublic;
+  now: number;
+  hooks: ServiceHooks;
 }
 
 /**
@@ -190,6 +210,14 @@ export interface ServiceDescriptor extends DescriptorHooks {
    * an open door.
    */
   authorizeRegistration?(ctx: RegistrationAuthContext): Promise<boolean>;
+  /**
+   * Periodic work for one product, run on the connector cron (`scheduled.ts`,
+   * `CONNECTOR_POLL_CRON`) for every product that has this service ENABLED — the same gate as
+   * dispatch: a disabled service's code never runs (P5-02: Distribution's store-connector
+   * poller). Answers a summary for the cron report; a failure inside is the service's to
+   * contain, and a throw is recorded as that product's failure only.
+   */
+  scheduled?(ctx: ScheduledServiceContext): Promise<Record<string, unknown>>;
   // The descriptor hooks — `releaseCatalog?`, `delivery?`, `outletCapabilities?` — come from
   // `DescriptorHooks` (`core/hooks.ts`): read-only views one service offers the others, through
   // Core, under the same fail-closed enablement gate as `authorizeRegistration`.
@@ -332,4 +360,32 @@ export function manifestIngestStatements(
 export function manifestIngestFor(registry: ServiceRegistry): ManifestIngest {
   return (parsed, product, services, now) =>
     manifestIngestStatements(registry, parsed, product, services, now);
+}
+
+/**
+ * Run every ENABLED service's `scheduled` hook for one product (P5-02), in canonical
+ * `SERVICE_SLUGS` order, each fault-isolated: a throw is recorded under that service's slug and
+ * the next service still runs. A disabled service's hook never runs.
+ */
+export async function runScheduledServices(
+  registry: ServiceRegistry,
+  ctx: Omit<ScheduledServiceContext, "hooks">,
+): Promise<{
+  results: Partial<Record<ServiceSlug, Record<string, unknown>>>;
+  failures: Partial<Record<ServiceSlug, string>>;
+}> {
+  const results: Partial<Record<ServiceSlug, Record<string, unknown>>> = {};
+  const failures: Partial<Record<ServiceSlug, string>> = {};
+  const services = ctx.product.services;
+  const hooks = buildHooks(registry, services, ctx);
+  for (const slug of SERVICE_SLUGS) {
+    const descriptor = registry.get(slug);
+    if (!descriptor?.scheduled || !services[slug]?.enabled) continue;
+    try {
+      results[slug] = await descriptor.scheduled({ ...ctx, hooks });
+    } catch (e) {
+      failures[slug] = e instanceof Error ? e.message : String(e);
+    }
+  }
+  return { results, failures };
 }

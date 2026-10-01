@@ -96,6 +96,11 @@ const FAIL_MODE: Record<string, FailMode> = {
   // signature, audience and publisher policy, so no outsider can spend it).
   ciPublishToken: "closed",
   ciPublishTokenProduct: "closed",
+  // P5-02: App Store Connect webhook deliveries, per product, counted BEFORE the webhook secret
+  // is opened. Every open is an audit row and a D1 write (P5-01), so with the limiter gone an
+  // unsigned flood would become a write amplifier; a 429 makes Apple retry, and the poller
+  // reconciles whatever a lost delivery said.
+  ascWebhook: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
