@@ -72,6 +72,12 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
   no verified licence document and no imported bundle; otherwise `license/token`. The token
   source (`activate`, `enroll`, `register`, `identity`) is kept in memory only. Exactly one
   attempt per sync pass, whichever strategy.
+  _Correction (P1-03 implementation):_ the restart limb is not implemented, following P1b-06's
+  own correction (the `sync-errors` transcript pins a licensed device's restart state to
+  `license/token`, and a licence-less device after a restart looks identical). After a restart a
+  device on a product with License on asks `license/token`; License off still re-registers. The
+  in-memory sources are `token.gd`'s `activate`, `enroll`, `register`, `signin` (P1-07's
+  `identity`) and `reacquire`.
 - `deactivate()`: `POST /license/deauthorize` best-effort, then a mandatory local wipe (token and
   cache; the device id stays). A wipe failure is returned, never swallowed.
 - Build-gate port and `gate-matrix.json` in the runner, faithful to the **server**
@@ -112,6 +118,9 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
   as P1b-07 settles for every SDK: the `channels` entitlement's string values, in order,
   de-duplicated, and `["stable"]` when it is absent or not an array. Swift's `[]` is the outlier
   P1b-07 changes.
+  _Correction (P1-03 implementation):_ P1b-07 settled on **no** de-duplication (the Worker's
+  `arrEnt` only filters strings), so Godot returns the raw grants in order, duplicates and
+  `staging` kept, and `[]` for an empty array.
 - **Web and mobile:** `enroll()` needs the `machineUuid` anchor and is impossible on web
   (notes/A2 §3.4). On iOS a re-enrol after the vendor's apps are uninstalled mints a new free
   licence; document it, do not work around it.
@@ -145,11 +154,14 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
       `POST /devices/register` (no `Authorization`) and one retry; a licensed device triggers
       exactly one `POST /license/token`; two parallel 401s still cause one call; a 403
       `registration_closed` records the hard 401 with no second attempt.
+      _Correction:_ after a restart with License on the one call is `POST /license/token` (see
+      Scope); with License off it is `POST /devices/register`.
 - [ ] `deactivate()` with the server unreachable still wipes the token and cache, keeps the
       device id, and reports the remote failure.
 - [ ] `entitled_channels()` returns the de-duplicated string members of the `channels`
       entitlement in order, and `["stable"]` when it is absent or not an array; `is_entitled` is
       true only for `value == true`.
+      _Correction:_ not de-duplicated (see Design notes).
 - [ ] `enroll()` on a web export returns `unsupported` with reason `runtime`.
 - [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
 - [ ] `sdks/godot/parity.json` marks `license.gate`, `license.activate`, `license.enroll`

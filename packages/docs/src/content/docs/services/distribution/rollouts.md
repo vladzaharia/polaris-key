@@ -63,7 +63,18 @@ rollout that replaced it.
 
 **From CI** — a `pkeyci_` token with the `distribution:rollout` scope. The scope is
 **opt-in**: it is not in the default grant, so an operator adds it to the product's CI
-publisher deliberately.
+publisher deliberately. The CLI drives the routes on the same credential as
+`pkey release publish` ([Publishing from CI](/docs/build/ci/)):
+
+```sh
+pkey distribution rollout --product your-product --outlet direct --channel stable \
+  --release v1.4.0 --bp 2500            # 25%
+pkey distribution halt --product your-product --outlet direct --channel stable --release v1.4.0
+pkey distribution resume --product your-product --outlet direct --channel stable
+# also: pause, complete; --deliverable for a pack
+```
+
+The routes underneath:
 
 ```
 POST /<product>/distribution/rollouts/<outlet>/<channel>          { deliverable?, releaseId, bp }
