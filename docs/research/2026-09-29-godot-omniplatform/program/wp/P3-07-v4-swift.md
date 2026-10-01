@@ -1,16 +1,16 @@
 # P3-07 Wire v4 in the Swift SDK
 
-| Field       | Value                                                                              |
-| ----------- | ---------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                              |
-| Size        | 0.5–0.75 engineer-weeks                                                            |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md)                                          |
-| Unblocks    | [P4-07](P4-07-python-swift-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
-| Role        | `pkey-sdk-porter`                                                                  |
-| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                          |
-| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                   |
-| Human input | none (a macOS runner, as CI already uses for `swift test`)                         |
-| Repo        | `vladzaharia/polaris-key`                                                          |
+| Field       | Value                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                                                                  |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P3-05](P3-05-v4-react.md)                                                  |
+| Unblocks    | [P3-11](P3-11-outlet-detection.md), [P4-07](P4-07-python-swift-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
+| Role        | `pkey-sdk-porter`                                                                                                      |
+| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                                                              |
+| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                                                       |
+| Human input | none (a macOS runner, as CI already uses for `swift test`)                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                              |
 
 ## Goal
 
@@ -43,7 +43,7 @@ parts iOS needs must live in `PolarisKeyCore`.
 - `Sources/PolarisKeyUpdate/UpdateClient.swift`, `UpdateFeed.swift`, `SparkleUpdater.swift`.
 - `Tests/PolarisKeyTests/ConformanceTests.swift`, `GateMatrixTests.swift` (the matrix pattern:
   a deliberate independent port), `UpdateTests.swift`.
-- The reference implementation from [P3-05](P3-05-v4-react.md), when it has landed.
+- The reference implementation from [P3-05](P3-05-v4-react.md), a graph dependency.
 
 ## Scope
 
@@ -77,6 +77,30 @@ parts iOS needs must live in `PolarisKeyCore`.
 
 ## Design notes
 
+- **Plan amendments (`plans/P3-01.md` §8, approved).** Where this brief and the plan differ, the
+  plan wins:
+  - the function names, refusal reasons and steps in plan §2.7 and §2.5, including
+    `parseVersion`, `compareVersions`, `resolveUpdateOutlet` and
+    `effectiveCapabilities(kind, {platform, …})`;
+  - `decide()` returns an `UpdateCheck` (`channel`, `decision`, `feed`, `record`, `errors`) with
+    §2.5's error map, the record-body bound (`MAX_RECORD_JWS_BYTES`, 88 844 bytes, refused at
+    step 12 without hashing) included; the decision inputs are `outlet {id, kind}`, `subkind`,
+    `format` and `methods`;
+  - every pattern goes through the SDK's whole-string pattern helper, and member presence is as
+    plan §2.2 says (a required member present, an optional one absent or typed, never `null`);
+    `builds[].id` and `targets[].platform` are ASCII by `BUILD_ID_PATTERN` and
+    `FEED_PLATFORM_PATTERN`;
+  - the cache slices are `feeds` and `releaseRecords`; `bootDecision` never answers `required`,
+    and `mandatory` and `blocked` are prompts the player cannot dismiss; an empty
+    `pinnedReleaseKeys` raises `not-configured` and a release key that is also a trust pin raises
+    `invalid-options`;
+  - the canonical channel (§2.3, §2.5, §2.6): `feeds` and the floors are keyed by each feed's own
+    `channel` claim, `verifyFeed`'s `floors` map is read only after step 5, the fallback order,
+    the removal of the requested name's entry after an alias answer, and `UpdateCheck.channel`;
+    no SDK resolves an alias itself, and the decision has no `channel` input;
+  - this package's transcript replayer learns the `updateDecide` action and the `initial.update`
+    block in the same PR that flips `update.feed`, `release.record` and `update.decide`
+    (plan §5).
 - **Keep the port independent.** `GateMatrixTests.swift` explains why: the matrix proves that
   independent implementations agree, and a shared helper would prove only that they share one.
 - **Same order, same verdicts** as README §3.3: feed against the product trust set; record hash
@@ -91,7 +115,7 @@ parts iOS needs must live in `PolarisKeyCore`.
 
 ## Steps
 
-1. Confirm P3-02 is `done` (P3-05 ideally too); branch `wp/P3-07-v4-swift`.
+1. Confirm P3-02 and P3-05 are `done` (P3-05 is a graph dependency); branch `wp/P3-07-v4-swift`.
 2. `JwsTyp`, models and pure functions; conformance and matrix tests go green.
 3. Cache slices and the load path.
 4. `UpdateClient` and options.

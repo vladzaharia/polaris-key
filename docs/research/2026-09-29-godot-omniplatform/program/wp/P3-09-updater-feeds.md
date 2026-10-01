@@ -77,8 +77,10 @@ off to exactly these feeds.
 - **zsync**: a stable per-channel `.zsync` URL for each AppImage build whose `URL:` header points
   at the current AppImage's Range-capable distribution URL.
 - **Extended `/update/version`**: keep `version`, `tag` and `url` (today the GitHub release page);
-  add build number, SHA-256, size, a download URL, minimum OS and `critical`, selectable by
-  platform, arch and outlet, with stable field names Scoop and Flathub can read.
+  add `build`, `sha256`, `size`, `downloadUrl`, `minOS` and `critical` (the field names
+  `plans/P3-01.md` §6 fixes), selectable with `?platform=&arch=&outlet=`, documented in OpenAPI
+  only. No `shared-protocol` type, so this package stays non-plan-mode; SDKs keep reading the v3
+  fields in `check()` and use the signed feed for everything else.
 - Routes (proposed; final names in the PR and the spec): `/{product}/update/{channel}/winsparkle.xml`,
   `/{product}/update/{channel}/velopack/releases.{file}.json`,
   `/{product}/update/{channel}/app.appinstaller`,

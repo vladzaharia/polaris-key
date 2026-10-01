@@ -1,16 +1,16 @@
 # P3-11 Outlet detection in every SDK against `outlet-matrix.json`
 
-| Field       | Value                                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                              |
-| Size        | 1–1.5 engineer-weeks                                                                                    |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P1-02](P1-02-godot-core.md), [S-06](S-06-outlet-signals.md) |
-| Unblocks    | [P3-10](P3-10-godot-updater.md)                                                                         |
-| Role        | `pkey-sdk-porter`                                                                                       |
-| Plan mode   | no: the matrix and its vocabulary are fixed by `plans/P3-01.md`                                         |
-| Gates       | corpus (`outlet-matrix.json`); all SDKs                                                                 |
-| Human input | none. Device checks of the platform APIs belong to S-06 and P5                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                               |
+| Field       | Value                                                                                                                                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                                                          |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P1-02](P1-02-godot-core.md), [S-06](S-06-outlet-signals.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P3-08](P3-08-v4-godot.md) |
+| Unblocks    | [P3-10](P3-10-godot-updater.md)                                                                                                                                                                                                                     |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                   |
+| Plan mode   | no: the matrix and its vocabulary are fixed by `plans/P3-01.md`                                                                                                                                                                                     |
+| Gates       | corpus (`outlet-matrix.json`); all SDKs; rule 9 (the `direct.homebrewFormula` identity in `.pkey/distribution`)                                                                                                                                     |
+| Human input | none. Device checks of the platform APIs belong to S-06 and P5                                                                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                           |
 
 ## Goal
 
@@ -91,6 +91,22 @@ per artifact, and so mislabels Steam, itch and sideload builds
 - Changing `outlet-matrix.json`: that is plan-mode; report a missing row instead.
 
 ## Design notes
+
+- **Plan amendments (`plans/P3-01.md` §8, approved).** Where this brief and the plan differ, the
+  plan wins:
+  - S-06's rules run over outlet **kinds**, with plan §2.9's five steps and its `source` rule;
+    `android.installerMismatch` is its own signal;
+  - the result goes to `resolveUpdateOutlet` as `detected` (plan §2.8), never straight into the
+    decision;
+  - the signal value shapes, `platformData`, subkind narrowing, the web runtime's synthesised
+    stamp, and `AppDistributor.web` mapping to `direct`, as `outlet-matrix.json` fixes them;
+  - `signals[].verified` says which readers a device run must confirm first; no SDK branches on
+    it;
+  - this package adds the `direct.homebrewFormula` identity and the `homebrewFormula` and
+    `bundleId` keys of `pkey distribution outlet-ids` (P2b-02, done, did not add them), with gate
+    rule 9;
+  - it wires detection into the `decide()` each of [P3-04](P3-04-v4-node.md) to
+    [P3-08](P3-08-v4-godot.md) builds, so all five are graph dependencies.
 
 - **Mapping is shared, reading is not.** Only the pure function is conformance-tested; readers
   are unit-tested with faked environments, because each runtime sees different signals.

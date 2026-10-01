@@ -93,6 +93,16 @@ them once is cheaper than reconciling five PRs.
 
 ## Design notes: the decisions the plan must make
 
+**What P3-01's approved plan reserves for P4** (`plans/P3-01.md` §8). P4 stays inside wire v4 by
+filling these slots: in the record, `kind: pack`, `revocation` and `delegation`, and `content`;
+in the feed, `packSets`, `packFloors`, `revocations` and `deltas`, and new `selector` keys. A
+selector key a client did not ask for is never served to it. P4's stage-matrix bump is version 3
+(P3-02 takes version 2). `packs` is a reserved name, not a v4 action: this plan adds it to
+`UPDATE_ACTIONS`, the `updateAction` enum, `vocabulary.actions` and the `UpdateDecision` type
+together, with the `update-matrix.json` rows that produce it (plan §2.8). Every integer claim it
+adds follows plan §2.2's integer rule, with its minimum stated, and every new string compared for
+uniqueness or order is ASCII by pattern.
+
 **Contract** (wire v4, `pkey-release+jws`):
 
 1. **Version and sequencing.** P3-01 reserves `kind: pack`, `kind: revocation` and
