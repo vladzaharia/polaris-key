@@ -98,7 +98,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | ------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------- | --------- | ------ |
 | [P3-01](wp/P3-01-wire-v4-plan.md) ⚑               | Plan wire v4: `pkey-feed+jws`, `pkey-release+jws`, update and outlet matrices                       | P2-03, P2b-01                                         | wire-planner   | 1–1.5     | done   |
 | [P3-02](wp/P3-02-wire-v4-contract-corpus.md) ⚑    | Implement the wire v4 contract and corpus (feed, release, malleability, update and outlet matrices) | P3-01, S-06                                           | implementer    | 2.75–3.25 | done   |
-| [P3-03](wp/P3-03-feed-composition.md)             | Worker: ingest CI-signed release records and compose the signed channel feed                        | P3-02, P2b-04, P2-06, P2b-03                          | implementer    | 2.75–3.25 | todo   |
+| [P3-03](wp/P3-03-feed-composition.md)             | Worker: ingest CI-signed release records and compose the signed channel feed                        | P3-02, P2b-04, P2-06, P2b-03                          | implementer    | 2.75–3.25 | done   |
 | [P3-04](wp/P3-04-v4-node.md)                      | Wire v4 in the Node SDK: feed and release-record verification, update decision                      | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
 | [P3-05](wp/P3-05-v4-react.md)                     | Wire v4 in `client-core` and the React SDK                                                          | P3-02                                                 | sdk-porter     | 1.25–1.75 | done   |
 | [P3-06](wp/P3-06-v4-python.md)                    | Wire v4 in the Python SDK                                                                           | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
@@ -107,7 +107,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P3-09](wp/P3-09-updater-feeds.md)                | Update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync, extended `/version` | P3-03, P0-10, P0-05                                   | implementer    | 1.5–2     | todo   |
 | [P3-10](wp/P3-10-godot-updater.md)                | Godot updater: outlet adapters, sidecar-PCK swap, boot guard, Velopack and Sparkle hooks            | P3-08, P3-09, P3-11, P1-10, P1-11, S-05               | godot-engineer | 1.5–2     | todo   |
 | [P3-11](wp/P3-11-outlet-detection.md)             | Outlet detection in every SDK against `outlet-matrix.json`                                          | P3-02, P1-02, S-06, P3-04, P3-05, P3-06, P3-07, P3-08 | sdk-porter     | 1–1.5     | todo   |
-| [P3-12](wp/P3-12-worker-representability.md) ⚑ ✋ | Worker: representability write checks, signer guards and the D1 check                               | P3-01, P3-02                                          | implementer    | 1–1.5     | todo   |
+| [P3-12](wp/P3-12-worker-representability.md) ⚑ ✋ | Worker: representability write checks, signer guards and the D1 check                               | P3-01, P3-02                                          | implementer    | 1–1.5     | done   |
 
 ## P4: Packs
 
