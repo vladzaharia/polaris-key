@@ -220,7 +220,9 @@ async function resolveFile(
     releaseId: t.releaseId,
     name: t.name,
   });
-  return r?.kind === "file" ? r : { kind: "file" as const, release: null, artifact: null };
+  return r?.kind === "file"
+    ? r
+    : { kind: "file" as const, release: null, artifact: null };
 }
 
 async function resolveBlob(catalog: ReleaseCatalog, sha256: string) {

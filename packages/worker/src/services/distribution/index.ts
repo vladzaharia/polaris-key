@@ -39,7 +39,7 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { ParsedManifest } from "@polaris-key/manifest";
-import type { DbStatement } from "../../db/types.js";
+import type { DbStatement } from "../../core/platform.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import { handleDistributionAdmin } from "./admin.js";
 import { defaultCapabilities, effectiveCapabilities } from "./capabilities.js";
@@ -97,7 +97,12 @@ export const distributionService: ServiceDescriptor = {
    * `configured` says whether anything is there to download: the product needs a release
    * configuration (Release's, read through the catalog hook).
    */
-  discoveryFragment: async ({ product, env, base, hooks }: DiscoveryContext) => {
+  discoveryFragment: async ({
+    product,
+    env,
+    base,
+    hooks,
+  }: DiscoveryContext) => {
     const catalog = hooks.releaseCatalog();
     const configured = catalog
       ? (await catalog.metadataAccess()) !== null

@@ -29,7 +29,9 @@ const CHANNEL = /^[a-z0-9-]+$/;
 async function appcastAccess(
   ctx: ServiceContext,
 ): Promise<ReleaseAccess | undefined> {
-  return (await ctx.hooks.delivery()?.accessMode(APP_DELIVERABLE_ID)) ?? undefined;
+  return (
+    (await ctx.hooks.delivery()?.accessMode(APP_DELIVERABLE_ID)) ?? undefined
+  );
 }
 
 export async function handleUpdateRoutes(

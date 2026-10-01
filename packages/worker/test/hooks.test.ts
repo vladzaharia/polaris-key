@@ -532,12 +532,19 @@ describe("releaseCatalog (Release)", () => {
     const { db, env, product } = await world();
     await seedModel(db);
     const catalog = await catalogFor(db, env, product);
+    // P2b-04 added the five byte-delivery methods: still readers. `openSource` answers with
+    // bytes (Release's GitHub-located ones) rather than records, and writes nothing either.
     expect(Object.keys(catalog).sort()).toEqual([
+      "accessSelector",
       "artifacts",
       "builds",
       "channelPolicies",
       "deliverables",
+      "installScript",
+      "metadataAccess",
+      "openSource",
       "releases",
+      "resolve",
       "yanks",
     ]);
     const [artifact] = await catalog.artifacts("v1.1.0", "macos");
@@ -567,8 +574,8 @@ describe("releaseCatalog (Release)", () => {
 // 5. The distribution skeleton
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 
-describe("the distribution service (P2b-01 skeleton)", () => {
-  it("has no routes: every path is Core's not-found, enabled or not", async () => {
+describe("the distribution service (P2b-01 skeleton, P2b-04 routes)", () => {
+  it("answers no path outside its routes: Core's not-found, enabled or not", async () => {
     const { db, env, product } = await world();
     for (const services of [servicesWith(CHAIN), DEFAULT_SERVICES]) {
       for (const rest of [[], ["feeds"], ["altstore", "source.json"]]) {
@@ -584,7 +591,7 @@ describe("the distribution service (P2b-01 skeleton)", () => {
     }
   });
 
-  it("advertises itself as on and not configured, with no endpoints", async () => {
+  it("advertises the canonical byte routes, configured once Release is (P2b-04)", async () => {
     const { db, env } = await world();
     await setServices(
       db,
@@ -614,10 +621,16 @@ describe("the distribution service (P2b-01 skeleton)", () => {
     const body = (await res.json()) as {
       services: Record<string, unknown>;
     };
+    // No release configuration yet: on, but nothing to download.
     expect(body.services.distribution).toEqual({
       enabled: true,
       configured: false,
-      endpoints: {},
+      endpoints: {
+        download: `https://key.plrs.im/${SLUG}/distribution/dl`,
+        install: `https://key.plrs.im/${SLUG}/distribution/install.sh`,
+        builds: `https://key.plrs.im/${SLUG}/distribution/builds/{selector}/{buildId}`,
+        blobs: `https://key.plrs.im/${SLUG}/distribution/blobs/sha256/{sha256}`,
+      },
     });
     expect(Object.keys(body.services)).toEqual([...SERVICE_SLUGS]);
   });

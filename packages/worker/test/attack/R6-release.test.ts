@@ -181,7 +181,8 @@ async function seedReleaseConfig(
     row.artifact_policy_json,
     row.metadata_access,
     row.artifacts_access,
-  );  await seedDeliveryAccess(db, row.product, row.artifacts_access);
+  );
+  await seedDeliveryAccess(db, row.product, row.artifacts_access);
 }
 
 interface Call {

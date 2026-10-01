@@ -132,7 +132,8 @@ async function seedCfg(
     row.metadata_access,
     row.artifacts_access,
     row.operator_policy_json,
-  );  await seedDeliveryAccess(db, row.product, row.artifacts_access);
+  );
+  await seedDeliveryAccess(db, row.product, row.artifacts_access);
 }
 
 function envFor(): Env {

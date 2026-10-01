@@ -128,9 +128,10 @@ describe("update/settings", () => {
       PATH,
     );
     expect(res.status).toBe(200);
+    // `artifactsAccess` moved to Distribution's delivery access in P2b-04
+    // (`…/distribution/access`), so it is no longer reported here.
     expect(await res.json()).toEqual({
       metadataAccess: "public",
-      artifactsAccess: "public",
       // Never touched by an operator, so both claimable blocks are still the manifest's (P0-01).
       accessSource: "manifest",
       compatMin: "0.0.0",
@@ -149,20 +150,17 @@ describe("update/settings", () => {
       mkReq("PATCH", PATH, {
         cookie: auth.cookie,
         csrf: auth.csrf,
-        body: { metadataAccess: "public", artifactsAccess: "entitled" },
+        body: { metadataAccess: "entitled" },
       }),
       env,
       db,
       PATH,
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({
-      metadataAccess: "public",
-      artifactsAccess: "entitled",
-    });
-    // Validation is in CODE, not DDL: `release_config`'s two columns carry no CHECK, so the new
+    expect(await res.json()).toMatchObject({ metadataAccess: "entitled" });
+    // Validation is in CODE, not DDL: `release_config`'s columns carry no CHECK, so the new
     // value needed no migration (plan §R2).
-    expect((await getReleaseConfig(db, SLUG))?.artifacts_access).toBe(
+    expect((await getReleaseConfig(db, SLUG))?.metadata_access).toBe(
       "entitled",
     );
   });
@@ -232,7 +230,7 @@ describe("update/settings", () => {
     expect(await res.json()).toMatchObject({
       compatMin: "2.0.0",
       compatMax: "99.0.0",
-      artifactsAccess: "public",
+      metadataAccess: "public",
     });
   });
 
@@ -270,7 +268,7 @@ describe("update/settings", () => {
       mkReq("PATCH", PATH, {
         cookie: auth.cookie,
         csrf: auth.csrf,
-        body: { artifactsAccess: "entitled" },
+        body: { metadataAccess: "entitled" },
       }),
       env,
       db,
@@ -292,7 +290,7 @@ describe("update/settings", () => {
       mkReq("PATCH", PATH, {
         cookie: auth.cookie,
         csrf: auth.csrf,
-        body: { artifactsAccess: "licensed" },
+        body: { metadataAccess: "licensed" },
       }),
       env,
       db,

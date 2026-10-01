@@ -67,10 +67,7 @@ import {
 } from "../../src/services/update/appcast.js";
 import { applyOverrides } from "../../src/admin/lib/overrides.js";
 import { Catalog } from "@polaris-key/catalog";
-import {
-  handlePortalApi,
-  handlePortalDownload,
-} from "../portalHarness.js";
+import { handlePortalApi, handlePortalDownload } from "../portalHarness.js";
 import { handlePortalLogin } from "../../src/services/identity/portal/auth.js";
 import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
 import {
@@ -299,7 +296,8 @@ async function seedReleaseConfig(
     row.artifact_policy_json,
     row.metadata_access,
     row.artifacts_access,
-  );  await seedDeliveryAccess(db, row.product, row.artifacts_access);
+  );
+  await seedDeliveryAccess(db, row.product, row.artifacts_access);
 }
 
 /**

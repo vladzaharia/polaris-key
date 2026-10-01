@@ -12,7 +12,10 @@ import {
   type Env,
 } from "../../../core/platform.js";
 import type { Delivery, ServiceHooks } from "../../../core/hooks.js";
-import { loadProductPublic, type ProductPublic } from "../../../core/products.js";
+import {
+  loadProductPublic,
+  type ProductPublic,
+} from "../../../core/products.js";
 import { licenseEntitled } from "../../../core/entitledAccess.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
@@ -304,7 +307,10 @@ async function deliveryGate(
   return delivery ? { product: loaded, delivery } : null;
 }
 
-type ReleaseFacts = Pick<PortalReleaseRow, "deliverable_id" | "version" | "channel">;
+type ReleaseFacts = Pick<
+  PortalReleaseRow,
+  "deliverable_id" | "version" | "channel"
+>;
 
 /** May this account download a release under `mode`? (A linked licence is checked by callers.) */
 async function accountMayDownload(
@@ -826,9 +832,8 @@ async function handleReleases(
     : null;
   // Byte delivery is Distribution's: with it off (or no hooks to ask), nothing is minted.
   const gate = facts ? await deliveryGate(db, hooksFor, product, now) : null;
-  const mode = gate && facts
-    ? await gate.delivery.accessMode(facts.deliverable_id)
-    : null;
+  const mode =
+    gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
   // Refused at MINT time as well as at redemption: a token that could only ever be rejected is
   // a row written, a rate-limit charge spent and a URL handed to the user for nothing.
   if (
@@ -961,10 +966,11 @@ export async function handlePortalDownload(
   const facts = artifact
     ? await getPortalReleaseFacts(db, row.product, row.release_id)
     : null;
-  const gate = facts ? await deliveryGate(db, hooksFor, row.product, now) : null;
-  const mode = gate && facts
-    ? await gate.delivery.accessMode(facts.deliverable_id)
+  const gate = facts
+    ? await deliveryGate(db, hooksFor, row.product, now)
     : null;
+  const mode =
+    gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
   // R6-12: the ONLY value that may become a `Location` header. `null` here means the stored URL
   // is absent, unparseable, not https, or not a GitHub storage host — and, for a public
   // deliverable, that Distribution has no bytes-host URL for it either (`downloadTarget`) — all

@@ -9,9 +9,12 @@
  * key order and values exactly, so text equality here is byte equality with the original
  * compact output. If this fails, a wire shape moved — that is plan mode, not a fixture update.
  *
- * The one sanctioned edit since capture: P2b-01 added the sixth service, so each golden gained
+ * The sanctioned edits since capture: P2b-01 added the sixth service, so each golden gained
  * `services.distribution` (in table order, between `release` and `update`) and nothing else. A
- * new key under `services` is additive: clients ignore slugs they do not know (P0-08).
+ * new key under `services` is additive: clients ignore slugs they do not know (P0-08). P2b-04
+ * filled Distribution's own fragment in (its brief: it advertises download, install, builds and
+ * blobs, now that it serves every byte), inside the key P2b-01 added: `configured` and four
+ * `endpoints`. Release's fragment is untouched — its keys name the permanent aliases.
  */
 
 import { readFileSync } from "node:fs";

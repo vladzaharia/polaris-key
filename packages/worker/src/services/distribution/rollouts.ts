@@ -40,7 +40,7 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db } from "../../db/types.js";
+import type { Db } from "../../core/platform.js";
 import type {
   RolloutRecord,
   RolloutState,
@@ -291,7 +291,8 @@ export async function applyRollout(
     return refuse(422, "invalid_body", "deliverable must be a string", [
       "deliverable",
     ]);
-  const deliverable = (input.deliverable as string | undefined) ?? APP_DELIVERABLE_ID;
+  const deliverable =
+    (input.deliverable as string | undefined) ?? APP_DELIVERABLE_ID;
   const catalog = ctx.hooks.releaseCatalog();
   if (!catalog)
     return refuse(404, "unknown_deliverable", "no such deliverable");

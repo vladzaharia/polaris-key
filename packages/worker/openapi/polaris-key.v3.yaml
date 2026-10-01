@@ -68,16 +68,22 @@ tags:
   - name: config
     description: The catalog, the signed config document, and edge-mint secret delivery.
   - name: release
-    description: Release truth — changelog, install script, artifact downloads.
+    description: Release truth — changelog, channel policy, trusted publishing.
+  - name: distribution
+    description: >
+      Distribution — every byte delivered (install script, downloads, builds, files, blobs; on
+      the console host and the bytes host) and outlet rollouts (P2b-04).
   - name: update
     description: Update feed — Sparkle appcasts (per-arch), version checks, eligibility.
   - name: identity
     description: Product OIDC (browser + device flow) and browser sessions.
   - name: aliases
     description: >
-      The four permanent pre-namespace spellings (SUFeedURL values compiled into shipped
-      bundles; curl lines in published docs). Each is an exact rewrite of its canonical
-      route — same handler, same response — and is excluded from any future deprecation.
+      The permanent alias spellings: the four pre-namespace paths (SUFeedURL values compiled
+      into shipped bundles; curl lines in published docs) and Release's old byte paths, which
+      moved to Distribution in P2b-04 (download URLs SDKs build; byte URLs discovery
+      advertised). Each is an exact rewrite of its canonical route — same handler, same
+      response — and is excluded from any future deprecation.
 
 paths:
   # ── core ──────────────────────────────────────────────────────────────────────
@@ -204,7 +210,17 @@ paths:
                   value:
                     services:
                       license: { enabled: false }
-                      config: { enabled: true, schemaVersion: 3, endpoints: { document: https://key.plrs.im/cfg/config/document, schema: https://key.plrs.im/cfg/config/schema }, mint: { available: false } }
+                      config:
+                        {
+                          enabled: true,
+                          schemaVersion: 3,
+                          endpoints:
+                            {
+                              document: https://key.plrs.im/cfg/config/document,
+                              schema: https://key.plrs.im/cfg/config/schema,
+                            },
+                          mint: { available: false },
+                        }
                       release: { enabled: false }
                       distribution: { enabled: false }
                       update: { enabled: false }
@@ -304,7 +320,8 @@ paths:
               # The body is a base64url JWS string, so the shape a client actually consumes is
               # its DECODED payload. Named here rather than as `schema` because the wire body
               # really is a string.
-              x-polaris-decoded-payload: { $ref: "#/components/schemas/TrustManifestPayload" }
+              x-polaris-decoded-payload:
+                { $ref: "#/components/schemas/TrustManifestPayload" }
               examples:
                 manifest:
                   summary: The compact JWS as served
@@ -494,8 +511,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidJson: { value: { error: bad_request, message: invalid json } }
-                missingId: { value: { error: bad_request, message: missing device id } }
+                invalidJson:
+                  { value: { error: bad_request, message: invalid json } }
+                missingId:
+                  { value: { error: bad_request, message: missing device id } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: The target is visible but is not this token's own device — LEGACY FLAT.
@@ -504,7 +523,11 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 notSelf:
-                  value: { error: forbidden, message: a device token may only manage its own device }
+                  value:
+                    {
+                      error: forbidden,
+                      message: a device token may only manage its own device,
+                    }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     delete:
@@ -533,7 +556,11 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 notSelf:
-                  value: { error: forbidden, message: a device token may only manage its own device }
+                  value:
+                    {
+                      error: forbidden,
+                      message: a device token may only manage its own device,
+                    }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
@@ -578,7 +605,13 @@ paths:
               snapshot:
                 summary: A full snapshot with one declared probe (test/fingerprintActivation.test.ts)
                 value:
-                  os: { name: darwin, version: "15.1", build: 24B83, kernel: 24.1.0 }
+                  os:
+                    {
+                      name: darwin,
+                      version: "15.1",
+                      build: 24B83,
+                      kernel: 24.1.0,
+                    }
                   hardware: { cpuModel: Apple M3, cpuCores: 12, ramMb: 36864 }
                   runtime: { name: node, version: 22.13.1 }
                   locale: en-US
@@ -629,7 +662,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidBody: { value: { error: bad_request, message: invalid body } }
+                invalidBody:
+                  { value: { error: bad_request, message: invalid body } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "413":
@@ -641,7 +675,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                tooLarge: { value: { error: body_too_large, message: report body too large } }
+                tooLarge:
+                  {
+                    value:
+                      { error: body_too_large, message: report body too large },
+                  }
     options:
       operationId: preflightReportDeviceFacts
       tags: [core]
@@ -838,7 +876,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingDevice: { value: { error: bad_request, message: missing device id } }
+                missingDevice:
+                  { value: { error: bad_request, message: missing device id } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
@@ -850,10 +889,20 @@ paths:
               examples:
                 deviceLimit:
                   summary: test/licensing.test.ts
-                  value: { error: device_limit, message: device limit reached, limit: 1, deviceCount: 1 }
+                  value:
+                    {
+                      error: device_limit,
+                      message: device limit reached,
+                      limit: 1,
+                      deviceCount: 1,
+                    }
                 fingerprintRequired:
                   summary: test/fingerprintActivation.test.ts
-                  value: { error: fingerprint_required, message: this tier requires a hardware fingerprint }
+                  value:
+                    {
+                      error: fingerprint_required,
+                      message: this tier requires a hardware fingerprint,
+                    }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "409":
           description: >
@@ -869,14 +918,30 @@ paths:
                     error: hardware_mismatch
                     message: hardware changed; re-activation required
                     drift: 7
-                    changed: [machineUuid, boardSerial, cpuModel, primaryMac, bootVolumeUuid, ramBucket, machineModel]
+                    changed:
+                      [
+                        machineUuid,
+                        boardSerial,
+                        cpuModel,
+                        primaryMac,
+                        bootVolumeUuid,
+                        ramBucket,
+                        machineModel,
+                      ]
         "429":
           description: 30 activations per 60 s per client IP — LEGACY FLAT. No `Retry-After`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many activation attempts } }
+                limited:
+                  {
+                    value:
+                      {
+                        error: rate_limited,
+                        message: too many activation attempts,
+                      },
+                  }
     options:
       operationId: preflightActivate
       tags: [license]
@@ -975,7 +1040,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingDevice: { value: { error: bad_request, message: missing device id } }
+                missingDevice:
+                  { value: { error: bad_request, message: missing device id } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
@@ -986,15 +1052,31 @@ paths:
               examples:
                 noFingerprint:
                   summary: test/enroll.test.ts
-                  value: { error: fingerprint_required, message: enrollment requires a hardware fingerprint }
+                  value:
+                    {
+                      error: fingerprint_required,
+                      message: enrollment requires a hardware fingerprint,
+                    }
                 noAnchor:
                   summary: Same code, different message
-                  value: { error: fingerprint_required, message: enrollment requires a machine anchor in the hardware fingerprint }
+                  value:
+                    {
+                      error: fingerprint_required,
+                      message: enrollment requires a machine anchor in the hardware fingerprint,
+                    }
                 claimed:
-                  value: { error: enroll_claimed, message: "this machine's free license has been claimed; sign in to use it" }
+                  value:
+                    {
+                      error: enroll_claimed,
+                      message: "this machine's free license has been claimed; sign in to use it",
+                    }
                 disabled:
                   summary: Operator-disabled anonymous row
-                  value: { error: license_disabled, message: "this machine's free license has been disabled" }
+                  value:
+                    {
+                      error: license_disabled,
+                      message: "this machine's free license has been disabled",
+                    }
         "404":
           description: >
             Auto-issue is off for this product, or its configured tier is missing — LEGACY
@@ -1006,7 +1088,8 @@ paths:
               examples:
                 disabled:
                   summary: test/enroll.test.ts
-                  value: { error: enroll_disabled, message: enrollment is disabled }
+                  value:
+                    { error: enroll_disabled, message: enrollment is disabled }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "409":
           description: Hardware drift on the re-enrolling machine — LEGACY FLAT (as `activate`).
@@ -1015,7 +1098,13 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 hardwareMismatch:
-                  value: { error: hardware_mismatch, message: hardware changed; re-activation required, drift: 3, changed: [cpuModel, primaryMac, ramBucket] }
+                  value:
+                    {
+                      error: hardware_mismatch,
+                      message: hardware changed; re-activation required,
+                      drift: 3,
+                      changed: [cpuModel, primaryMac, ramBucket],
+                    }
         "429":
           description: >
             The product's `rateLimitPerHour` per client IP over a 3600 s window — LEGACY
@@ -1024,14 +1113,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many enrollment attempts } }
+                limited:
+                  {
+                    value:
+                      {
+                        error: rate_limited,
+                        message: too many enrollment attempts,
+                      },
+                  }
         "500":
           description: The license could not be issued — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                failed: { value: { error: enroll_failed, message: could not issue a license } }
+                failed:
+                  {
+                    value:
+                      {
+                        error: enroll_failed,
+                        message: could not issue a license,
+                      },
+                  }
     options:
       operationId: preflightEnroll
       tags: [license]
@@ -1078,7 +1181,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingDevice: { value: { error: bad_request, message: missing device id } }
+                missingDevice:
+                  { value: { error: bad_request, message: missing device id } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
@@ -1087,7 +1191,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many token requests } }
+                limited:
+                  {
+                    value:
+                      { error: rate_limited, message: too many token requests },
+                  }
     options:
       operationId: preflightReacquireToken
       tags: [license]
@@ -1176,7 +1284,8 @@ paths:
           content:
             application/jwt:
               schema: { $ref: "#/components/schemas/CompactJws" }
-              x-polaris-decoded-payload: { $ref: "#/components/schemas/LicenseDocPayload" }
+              x-polaris-decoded-payload:
+                { $ref: "#/components/schemas/LicenseDocPayload" }
               examples:
                 signed:
                   summary: Header `{"alg":"EdDSA","typ":"pkey-license+jws","kid":"test-kid"}`
@@ -1205,7 +1314,11 @@ paths:
                 channelNotAllowed:
                   summary: No `allowedRange` on this branch, deliberately
                   value:
-                    error: { code: channel_not_allowed, reason: channel-not-entitled }
+                    error:
+                      {
+                        code: channel_not_allowed,
+                        reason: channel-not-entitled,
+                      }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
       operationId: preflightGetLicenseDocument
@@ -1254,7 +1367,8 @@ paths:
           content:
             application/jwt:
               schema: { $ref: "#/components/schemas/CompactJws" }
-              x-polaris-decoded-payload: { $ref: "#/components/schemas/ConfigDocPayload" }
+              x-polaris-decoded-payload:
+                { $ref: "#/components/schemas/ConfigDocPayload" }
               examples:
                 signed:
                   summary: Header `{"alg":"EdDSA","typ":"pkey-config+jws","kid":"test-kid"}`
@@ -1355,7 +1469,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                noCatalog: { value: { error: not_found, message: no active schema for product } }
+                noCatalog:
+                  {
+                    value:
+                      {
+                        error: not_found,
+                        message: no active schema for product,
+                      },
+                  }
                 serviceDisabled:
                   summary: The registry's nested body, for contrast
                   value: { error: { code: not_found } }
@@ -1412,23 +1533,43 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                noRecipe: { value: { error: not_found, message: no such edge-mint recipe } }
+                noRecipe:
+                  {
+                    value:
+                      { error: not_found, message: no such edge-mint recipe },
+                  }
         "429":
           description: 60 mints per 60 s per client IP — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many mint requests } }
+                limited:
+                  {
+                    value:
+                      { error: rate_limited, message: too many mint requests },
+                  }
         "500":
           description: The recipe cannot be executed — LEGACY FLAT, one code, three messages.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                unsupportedAlg: { value: { error: misconfigured, message: unsupported alg HS256 } }
-                missingKey: { value: { error: misconfigured, message: missing mint key } }
-                badTemplate: { value: { error: misconfigured, message: mint claims template is not valid JSON } }
+                unsupportedAlg:
+                  {
+                    value:
+                      { error: misconfigured, message: unsupported alg HS256 },
+                  }
+                missingKey:
+                  { value: { error: misconfigured, message: missing mint key } }
+                badTemplate:
+                  {
+                    value:
+                      {
+                        error: misconfigured,
+                        message: mint claims template is not valid JSON,
+                      },
+                  }
     post:
       operationId: mintTokenPost
       tags: [config]
@@ -1466,21 +1607,30 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                noRecipe: { value: { error: not_found, message: no such edge-mint recipe } }
+                noRecipe:
+                  {
+                    value:
+                      { error: not_found, message: no such edge-mint recipe },
+                  }
         "429":
           description: 60 mints per 60 s per client IP — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many mint requests } }
+                limited:
+                  {
+                    value:
+                      { error: rate_limited, message: too many mint requests },
+                  }
         "500":
           description: The recipe cannot be executed — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingKey: { value: { error: misconfigured, message: missing mint key } }
+                missingKey:
+                  { value: { error: misconfigured, message: missing mint key } }
     options:
       operationId: preflightMintTokenGet
       tags: [config]
@@ -1584,14 +1734,18 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
-  /{product}/release/install.sh:
+  /{product}/distribution/install.sh:
     get:
       operationId: getInstallScript
-      tags: [release]
+      tags: [distribution]
       summary: The curl-pipe install script
       description: >
+        P2b-04: moved from Release to Distribution, which owns all byte delivery;
+        `/{product}/release/install.sh` and `/{product}/install.sh` are its permanent aliases.
         The `curl … | sh` bootstrap, rendered from the product's binary name and this
-        request's origin so the script it emits points back at this deployment. Makes no
+        request's origin so the script it emits points back at this deployment. Its download
+        base stays `/<product>/release/dl` (a permanent alias), so the script is byte-identical
+        under every spelling. Makes no
         GitHub call, but is still gated by the `metadata` access mode and metered on the
         metadata lane. 404 when the release config is missing or unresolved, and also when
         any rendered value (binary name, origin, install path, version env var) falls outside
@@ -1617,7 +1771,7 @@ paths:
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
     options:
       operationId: preflightGetInstallScript
-      tags: [release]
+      tags: [distribution]
       summary: CORS preflight
       description: >
         Browser preflight for a page on one of the product's `web.origins`. Answered
@@ -1627,16 +1781,19 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
-  /{product}/release/dl/{version}/{asset}:
+  /{product}/distribution/dl/{version}/{asset}:
     get:
       operationId: downloadArtifact
-      tags: [release]
+      tags: [distribution]
       summary: Download a release artifact
       description: >
-        Unifies the v2 `/cli/*` and `/dmg/*` families: `{asset}` is `<binary>-<arch>` or
-        `<binary>-<arch>.dmg` (arch ∈ arm64|aarch64|x86_64|amd64). Access-mode gated
-        (artifacts mode); `entitled` returns nested v3 errors (401 unauthorized /
-        403 channel_not_allowed / 403 version_blocked + allowedRange).
+        P2b-04: moved from Release to Distribution, which owns all byte delivery;
+        `/{product}/release/dl/{version}/{asset}` is its permanent alias. Unifies the v2
+        `/cli/*` and `/dmg/*` families: `{asset}` is `<binary>-<arch>` or `<binary>-<arch>.dmg`
+        (arch ∈ arm64|aarch64|x86_64|amd64). Gated by the `app` deliverable's delivery access
+        (`dist_access`, the answer the appcast and the portal read too); `entitled` returns
+        nested v3 errors (401 unauthorized / 403 channel_not_allowed / 403 version_blocked +
+        allowedRange). The bytes are GitHub's, streamed by Release through the catalog hook.
 
 
         ── WHICH ERROR SHAPE, AND WHY IT DIFFERS BY MODE ────────────────────────────────
@@ -1674,7 +1831,11 @@ paths:
         - name: asset
           in: path
           required: true
-          schema: { type: string, pattern: "^.+-(arm64|aarch64|x86_64|amd64)(\\.dmg)?$" }
+          schema:
+            {
+              type: string,
+              pattern: "^.+-(arm64|aarch64|x86_64|amd64)(\\.dmg)?$",
+            }
         - name: checksum
           in: query
           required: false
@@ -1715,7 +1876,7 @@ paths:
           description: Not modified, when the client sent a matching `If-None-Match`.
         "401":
           description: >
-            Two different bodies depending on the product's `artifacts` access mode — LEGACY
+            Two different bodies depending on the deliverable's delivery access — LEGACY
             FLAT under `authenticated`/`licensed`, NESTED under `entitled`.
           content:
             application/json:
@@ -1742,11 +1903,18 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many release requests } }
+                limited:
+                  {
+                    value:
+                      {
+                        error: rate_limited,
+                        message: too many release requests,
+                      },
+                  }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
     options:
       operationId: preflightDownloadArtifact
-      tags: [release]
+      tags: [distribution]
       summary: CORS preflight
       description: >
         Browser preflight for a page on one of the product's `web.origins`. Answered
@@ -1759,14 +1927,15 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
-  /{product}/release/builds/{selector}/{buildId}:
+  /{product}/distribution/builds/{selector}/{buildId}:
     get:
       operationId: downloadBuild
-      tags: [release]
+      tags: [distribution]
       summary: Download the payload of a declared build
       description: >
-        P2-05. Resolves `{selector}` for the deliverable (`?deliverable=`, default `app`) from the
-        release truth store — channel membership and `includes` (beta ⊇ stable), the channel's
+        P2-05; P2b-04 moved it to Distribution (`/{product}/release/builds/…` is its permanent
+        alias, on both hosts). Resolves `{selector}` for the deliverable (`?deliverable=`,
+        default `app`) from the release truth store — channel membership and `includes` (beta ⊇ stable), the channel's
         pointer and pin, yanks, the deliverable's version scheme, the tag filter — keeping only
         releases that have the build `{buildId}`, so a release missing one platform's build falls
         back to the newest release that has it. Then serves that build's `payload` artifact from
@@ -1775,10 +1944,13 @@ paths:
         cached, so a `Range` chunk costs no API call), then an external `https://` URL (302).
         Also answers `HEAD` with the same headers and no body. Served on the console host and on
         the bytes host (`BLOB_ORIGIN`, e.g. `dl.plrs.im`); discovery advertises the bytes-host
-        URL. Access follows the product's `artifacts` mode exactly as `/release/dl` does
-        (flat 401 under `authenticated`/`licensed`, nested under `entitled`), and requests count
-        against the artifact rate-limit lane. A moving selector is cached `public, max-age=120`,
-        a version selector `immutable`; a non-public product's bytes are `private, no-store`.
+        URL. Access follows the deliverable's delivery access (`dist_access`) exactly as
+        `/distribution/dl` does (flat 401 under `authenticated`/`licensed`, nested under
+        `entitled`), and requests count against the artifact rate-limit lane. A moving selector
+        is cached `public, max-age=120`, a version selector `immutable`; a non-public
+        deliverable's bytes are `private, no-store`. Served only while Distribution is enabled
+        for the product: otherwise the console answers the registry not-found and the bytes host
+        its flat `{"error":"not_found"}`.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: selector
@@ -1841,8 +2013,8 @@ paths:
           description: Not modified (`If-None-Match`).
         "401":
           description: >
-            The artifacts access mode refused the caller — LEGACY FLAT under
-            `authenticated`/`licensed`, NESTED under `entitled` (see `/release/dl`).
+            The delivery access refused the caller — LEGACY FLAT under
+            `authenticated`/`licensed`, NESTED under `entitled` (see `/distribution/dl`).
           content:
             application/json:
               schema:
@@ -1865,11 +2037,18 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many release requests } }
+                limited:
+                  {
+                    value:
+                      {
+                        error: rate_limited,
+                        message: too many release requests,
+                      },
+                  }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
     options:
       operationId: preflightDownloadBuild
-      tags: [release]
+      tags: [distribution]
       summary: CORS preflight
       description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
       parameters:
@@ -1879,18 +2058,21 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
-  /{product}/release/files/{releaseId}/{name}:
+  /{product}/distribution/files/{releaseId}/{name}:
     get:
       operationId: downloadReleaseFile
-      tags: [release]
+      tags: [distribution]
       summary: Download one exact file of one release
       description: >
-        P2-05. One file of one release by its exact name — payloads and sidecars alike
+        P2-05; P2b-04 moved it to Distribution (`/{product}/release/files/…` is its permanent
+        alias, on both hosts). One file of one release by its exact name — payloads and sidecars
+        alike
         (`.sig`, `.sha256`, an index). Immutable: the release id and the name fix the bytes, so a
         public response is cached `public, max-age=31536000, immutable`. Same locations, `HEAD`,
         `Range`, access mode, rate-limit lane and `?redirect=1` rule as `downloadBuild`; served
-        on the console host and on the bytes host. Under `entitled` the release's version is
-        checked against the caller's window.
+        on the console host and on the bytes host. Access is the release's deliverable's
+        delivery access; under `entitled` the release's STORED version is checked against the
+        caller's window as a fixed, pinned version (never re-read as a selector).
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: releaseId
@@ -1924,7 +2106,7 @@ paths:
         "304":
           description: Not modified (`If-None-Match`).
         "401":
-          description: The artifacts access mode refused the caller (see `downloadBuild`).
+          description: The delivery access refused the caller (see `downloadBuild`).
           content:
             application/json:
               schema:
@@ -1943,30 +2125,36 @@ paths:
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
     options:
       operationId: preflightDownloadReleaseFile
-      tags: [release]
+      tags: [distribution]
       summary: CORS preflight
       description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
       parameters:
         - { $ref: "#/components/parameters/Product" }
-        - { name: releaseId, in: path, required: true, schema: { type: string } }
+        - {
+            name: releaseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
         - { name: name, in: path, required: true, schema: { type: string } }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
-  /{product}/release/blobs/sha256/{sha256}:
+  /{product}/distribution/blobs/sha256/{sha256}:
     get:
       operationId: downloadBlob
-      tags: [release]
+      tags: [distribution]
       summary: Download a content-addressed object
       description: >
-        P2-05. The object stored under `blobs/sha256/{sha256}` — served only if an artifact (or a
-        pack object) of THIS product references it (`blob_refs`); another product's copy of the
+        P2-05; P2b-04 moved it to Distribution (`/{product}/release/blobs/…` is its permanent
+        alias, on both hosts). The object stored under `blobs/sha256/{sha256}` — served only if
+        an artifact (or a pack object) of THIS product references it (`blob_refs`); another product's copy of the
         same bytes does not count, and the answer is the same plain not-found as an unknown
         hash. `ETag` is the SHA-256 and `Repr-Digest` covers the whole representation (also on a
         206); `Range`, `If-Range` and `If-None-Match` are evaluated against it; `HEAD` returns
-        the same headers. Public products get `public, max-age=31536000, immutable,
-        no-transform`; others `private, no-store, no-transform` after the artifacts access mode
-        admits the caller. Served on the console host (always an octet-stream attachment) and on
+        the same headers. A public deliverable gets `public, max-age=31536000, immutable,
+        no-transform`; others `private, no-store, no-transform` after the delivery access (the
+        strictest of the deliverables whose releases carry the digest) admits the caller. Served on the console host (always an octet-stream attachment) and on
         the bytes host.
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -1990,7 +2178,7 @@ paths:
         "304":
           description: Not modified (`If-None-Match`).
         "401":
-          description: The artifacts access mode refused the caller (see `downloadBuild`).
+          description: The delivery access refused the caller (see `downloadBuild`).
           content:
             application/json:
               schema:
@@ -2010,7 +2198,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
     options:
       operationId: preflightDownloadBlob
-      tags: [release]
+      tags: [distribution]
       summary: CORS preflight
       description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
       parameters:
@@ -2018,6 +2206,492 @@ paths:
         - { name: sha256, in: path, required: true, schema: { type: string } }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/distribution/rollouts/{outlet}/{channel}:
+    post:
+      operationId: ciSetRollout
+      tags: [distribution]
+      summary: Start an outlet rollout, or set its percentage (CI)
+      description: >
+        P2b-04. Rolls `releaseId` of the deliverable (default `app`) out on one outlet's channel
+        to `bp` basis points (0–10000). A release new to the row starts a new rollout with a
+        fresh random 16-byte salt (state `active`); the same release changes its percentage while
+        `active` or `paused` and is refused while `halted` (resume first) or `complete` (409
+        `invalid_transition`). The bucket is evaluated ON THE DEVICE,
+        `u32(sha256(salt ‖ installId)[0..4]) mod 10000`, so the Worker never evaluates it. A
+        yanked release is refused (409 `release_yanked`); a row a store connector mirrors refuses
+        every direct edit (409 `rollout_mirrored`). Until P3-03 composes the signed feed, a
+        rollout and a halt are recorded, audited and shown, but legacy feeds keep serving; a yank
+        or a channel pin is today's emergency stop. Requires a `pkeyci_` token with the opt-in
+        `distribution:rollout` scope; audited as `ci:<subject>`. No CORS. Errors are LEGACY FLAT
+        with a machine-readable `reason` (`unknown_outlet`, `unknown_channel`,
+        `unknown_deliverable`, `unknown_release`, `no_rollout`, `invalid_body`).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: outlet
+          in: path
+          required: true
+          description: A live outlet the product declares in `.pkey/distribution` (`direct` when it declares none).
+          schema: { type: string }
+        - { $ref: "#/components/parameters/PolicyChannel" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [releaseId, bp]
+              properties:
+                deliverable: { type: string, default: app }
+                releaseId: { type: string }
+                bp: { type: integer, minimum: 0, maximum: 10000 }
+            examples:
+              quarter: { value: { releaseId: v1.1.0, bp: 2500 } }
+      responses:
+        "200":
+          description: The rollout after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, rollout]
+                properties:
+                  ok: { type: boolean, const: true }
+                  rollout:
+                    type: object
+                    required:
+                      [
+                        deliverableId,
+                        outletId,
+                        channel,
+                        releaseId,
+                        rolloutBp,
+                        rolloutSalt,
+                        state,
+                        mirrored,
+                        source,
+                        startedAt,
+                        updatedAt,
+                        updatedBy,
+                      ]
+                    properties:
+                      deliverableId: { type: string }
+                      outletId: { type: string }
+                      channel: { type: string }
+                      releaseId: { type: string }
+                      rolloutBp: { type: integer, minimum: 0, maximum: 10000 }
+                      rolloutSalt: { type: string, pattern: "^[0-9a-f]{32}$" }
+                      state:
+                        {
+                          type: string,
+                          enum: [active, paused, halted, complete],
+                        }
+                      mirrored: { type: boolean }
+                      source: { type: string }
+                      startedAt: { type: integer }
+                      updatedAt: { type: integer }
+                      updatedBy: { type: string }
+              examples:
+                started:
+                  summary: test/distributionRollouts.test.ts
+                  value:
+                    ok: true
+                    rollout:
+                      deliverableId: app
+                      outletId: direct
+                      channel: stable
+                      releaseId: v1.1.0
+                      rolloutBp: 2500
+                      rolloutSalt: 0f1e2d3c4b5a69788796a5b4c3d2e1f0
+                      state: active
+                      mirrored: false
+                      source: ci
+                      startedAt: 1700000000
+                      updatedAt: 1700000000
+                      updatedBy: "ci:static:tok_1"
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
+  /{product}/distribution/rollouts/{outlet}/{channel}/pause:
+    post:
+      operationId: ciRolloutPause
+      tags: [distribution]
+      summary: Pause an outlet rollout (CI)
+      description: >
+        P2b-04. `active` → `paused`. Same token, scope, audit and error shape as `ciSetRollout`; an optional
+        `releaseId` must match the rollout's release (409 `stale_release`).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: outlet
+          in: path
+          required: true
+          description: A live outlet the product declares in `.pkey/distribution` (`direct` when it declares none).
+          schema: { type: string }
+        - { $ref: "#/components/parameters/PolicyChannel" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deliverable: { type: string, default: app }
+                releaseId: { type: string }
+      responses:
+        "200":
+          description: The rollout after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, rollout]
+                properties:
+                  ok: { type: boolean, const: true }
+                  rollout:
+                    type: object
+                    required:
+                      [
+                        deliverableId,
+                        outletId,
+                        channel,
+                        releaseId,
+                        rolloutBp,
+                        rolloutSalt,
+                        state,
+                        mirrored,
+                        source,
+                        startedAt,
+                        updatedAt,
+                        updatedBy,
+                      ]
+                    properties:
+                      deliverableId: { type: string }
+                      outletId: { type: string }
+                      channel: { type: string }
+                      releaseId: { type: string }
+                      rolloutBp: { type: integer, minimum: 0, maximum: 10000 }
+                      rolloutSalt: { type: string, pattern: "^[0-9a-f]{32}$" }
+                      state:
+                        {
+                          type: string,
+                          enum: [active, paused, halted, complete],
+                        }
+                      mirrored: { type: boolean }
+                      source: { type: string }
+                      startedAt: { type: integer }
+                      updatedAt: { type: integer }
+                      updatedBy: { type: string }
+              examples:
+                started:
+                  summary: test/distributionRollouts.test.ts
+                  value:
+                    ok: true
+                    rollout:
+                      deliverableId: app
+                      outletId: direct
+                      channel: stable
+                      releaseId: v1.1.0
+                      rolloutBp: 2500
+                      rolloutSalt: 0f1e2d3c4b5a69788796a5b4c3d2e1f0
+                      state: active
+                      mirrored: false
+                      source: ci
+                      startedAt: 1700000000
+                      updatedAt: 1700000000
+                      updatedBy: "ci:static:tok_1"
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
+  /{product}/distribution/rollouts/{outlet}/{channel}/resume:
+    post:
+      operationId: ciRolloutResume
+      tags: [distribution]
+      summary: Resume an outlet rollout (CI)
+      description: >
+        P2b-04. `paused` → `active`, and `halted` → `active` (a halt is lifted only by an explicit resume). Same token, scope, audit and error shape as `ciSetRollout`; an optional
+        `releaseId` must match the rollout's release (409 `stale_release`).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: outlet
+          in: path
+          required: true
+          description: A live outlet the product declares in `.pkey/distribution` (`direct` when it declares none).
+          schema: { type: string }
+        - { $ref: "#/components/parameters/PolicyChannel" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deliverable: { type: string, default: app }
+                releaseId: { type: string }
+      responses:
+        "200":
+          description: The rollout after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, rollout]
+                properties:
+                  ok: { type: boolean, const: true }
+                  rollout:
+                    type: object
+                    required:
+                      [
+                        deliverableId,
+                        outletId,
+                        channel,
+                        releaseId,
+                        rolloutBp,
+                        rolloutSalt,
+                        state,
+                        mirrored,
+                        source,
+                        startedAt,
+                        updatedAt,
+                        updatedBy,
+                      ]
+                    properties:
+                      deliverableId: { type: string }
+                      outletId: { type: string }
+                      channel: { type: string }
+                      releaseId: { type: string }
+                      rolloutBp: { type: integer, minimum: 0, maximum: 10000 }
+                      rolloutSalt: { type: string, pattern: "^[0-9a-f]{32}$" }
+                      state:
+                        {
+                          type: string,
+                          enum: [active, paused, halted, complete],
+                        }
+                      mirrored: { type: boolean }
+                      source: { type: string }
+                      startedAt: { type: integer }
+                      updatedAt: { type: integer }
+                      updatedBy: { type: string }
+              examples:
+                started:
+                  summary: test/distributionRollouts.test.ts
+                  value:
+                    ok: true
+                    rollout:
+                      deliverableId: app
+                      outletId: direct
+                      channel: stable
+                      releaseId: v1.1.0
+                      rolloutBp: 2500
+                      rolloutSalt: 0f1e2d3c4b5a69788796a5b4c3d2e1f0
+                      state: active
+                      mirrored: false
+                      source: ci
+                      startedAt: 1700000000
+                      updatedAt: 1700000000
+                      updatedBy: "ci:static:tok_1"
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
+  /{product}/distribution/rollouts/{outlet}/{channel}/halt:
+    post:
+      operationId: ciRolloutHalt
+      tags: [distribution]
+      summary: Halt an outlet rollout (CI)
+      description: >
+        P2b-04. `active` or `paused` → `halted`. Recorded, audited and shown; until P3-03 composes the signed feed, legacy feeds keep serving — yank or pin to stop downloads now. Same token, scope, audit and error shape as `ciSetRollout`; an optional
+        `releaseId` must match the rollout's release (409 `stale_release`).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: outlet
+          in: path
+          required: true
+          description: A live outlet the product declares in `.pkey/distribution` (`direct` when it declares none).
+          schema: { type: string }
+        - { $ref: "#/components/parameters/PolicyChannel" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deliverable: { type: string, default: app }
+                releaseId: { type: string }
+      responses:
+        "200":
+          description: The rollout after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, rollout]
+                properties:
+                  ok: { type: boolean, const: true }
+                  rollout:
+                    type: object
+                    required:
+                      [
+                        deliverableId,
+                        outletId,
+                        channel,
+                        releaseId,
+                        rolloutBp,
+                        rolloutSalt,
+                        state,
+                        mirrored,
+                        source,
+                        startedAt,
+                        updatedAt,
+                        updatedBy,
+                      ]
+                    properties:
+                      deliverableId: { type: string }
+                      outletId: { type: string }
+                      channel: { type: string }
+                      releaseId: { type: string }
+                      rolloutBp: { type: integer, minimum: 0, maximum: 10000 }
+                      rolloutSalt: { type: string, pattern: "^[0-9a-f]{32}$" }
+                      state:
+                        {
+                          type: string,
+                          enum: [active, paused, halted, complete],
+                        }
+                      mirrored: { type: boolean }
+                      source: { type: string }
+                      startedAt: { type: integer }
+                      updatedAt: { type: integer }
+                      updatedBy: { type: string }
+              examples:
+                started:
+                  summary: test/distributionRollouts.test.ts
+                  value:
+                    ok: true
+                    rollout:
+                      deliverableId: app
+                      outletId: direct
+                      channel: stable
+                      releaseId: v1.1.0
+                      rolloutBp: 2500
+                      rolloutSalt: 0f1e2d3c4b5a69788796a5b4c3d2e1f0
+                      state: active
+                      mirrored: false
+                      source: ci
+                      startedAt: 1700000000
+                      updatedAt: 1700000000
+                      updatedBy: "ci:static:tok_1"
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
+  /{product}/distribution/rollouts/{outlet}/{channel}/complete:
+    post:
+      operationId: ciRolloutComplete
+      tags: [distribution]
+      summary: Complete an outlet rollout (CI)
+      description: >
+        P2b-04. `active` → `complete`, at 10000 basis points. Same token, scope, audit and error shape as `ciSetRollout`; an optional
+        `releaseId` must match the rollout's release (409 `stale_release`).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: outlet
+          in: path
+          required: true
+          description: A live outlet the product declares in `.pkey/distribution` (`direct` when it declares none).
+          schema: { type: string }
+        - { $ref: "#/components/parameters/PolicyChannel" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deliverable: { type: string, default: app }
+                releaseId: { type: string }
+      responses:
+        "200":
+          description: The rollout after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, rollout]
+                properties:
+                  ok: { type: boolean, const: true }
+                  rollout:
+                    type: object
+                    required:
+                      [
+                        deliverableId,
+                        outletId,
+                        channel,
+                        releaseId,
+                        rolloutBp,
+                        rolloutSalt,
+                        state,
+                        mirrored,
+                        source,
+                        startedAt,
+                        updatedAt,
+                        updatedBy,
+                      ]
+                    properties:
+                      deliverableId: { type: string }
+                      outletId: { type: string }
+                      channel: { type: string }
+                      releaseId: { type: string }
+                      rolloutBp: { type: integer, minimum: 0, maximum: 10000 }
+                      rolloutSalt: { type: string, pattern: "^[0-9a-f]{32}$" }
+                      state:
+                        {
+                          type: string,
+                          enum: [active, paused, halted, complete],
+                        }
+                      mirrored: { type: boolean }
+                      source: { type: string }
+                      startedAt: { type: integer }
+                      updatedAt: { type: integer }
+                      updatedBy: { type: string }
+              examples:
+                started:
+                  summary: test/distributionRollouts.test.ts
+                  value:
+                    ok: true
+                    rollout:
+                      deliverableId: app
+                      outletId: direct
+                      channel: stable
+                      releaseId: v1.1.0
+                      rolloutBp: 2500
+                      rolloutSalt: 0f1e2d3c4b5a69788796a5b4c3d2e1f0
+                      state: active
+                      mirrored: false
+                      source: ci
+                      startedAt: 1700000000
+                      updatedAt: 1700000000
+                      updatedBy: "ci:static:tok_1"
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
 
   /{product}/release/channels/{channel}/promote:
     post:
@@ -2162,7 +2836,14 @@ paths:
                   summary: test/releasePolicy.test.ts
                   value:
                     ok: true
-                    yank: { releaseId: v1.1.0, yanked: true, reason: crashes on launch, at: 1700000000, by: "ci:static:tok_1" }
+                    yank:
+                      {
+                        releaseId: v1.1.0,
+                        yanked: true,
+                        reason: crashes on launch,
+                        at: 1700000000,
+                        by: "ci:static:tok_1",
+                      }
         "400": { $ref: "#/components/responses/CiRefusal" }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }
@@ -2187,7 +2868,7 @@ paths:
         `runner_environment` is `github-hosted`; `event_name` is `push`, `release` or
         `workflow_dispatch`. The exchange is single-use per OIDC `jti`. On success it returns a
         `pkeyci_` token valid for 30 minutes with the policy's scopes (default
-        `release:publish`, `release:promote`, `distribution:report`; `release:yank` is opt-in).
+        `release:publish`, `release:promote`, `distribution:report`; `release:yank` and `distribution:rollout` are opt-in).
         Rate-limited per IP on every request, and per product only once a token has passed
         the signature, audience and policy checks, so no outsider can spend the product's
         budget (both fail closed). No CORS. Errors are LEGACY FLAT with
@@ -2418,10 +3099,12 @@ paths:
         `sparkle:version`, `sparkle:shortVersionString`, an optional
         `sparkle:minimumSystemVersion`, an optional CDATA `<description>` holding the curated
         changelog summary, and an `<enclosure>` whose `url` points back at
-        `/{product}/release/dl/…`. `sparkle:edSignature` is present only when a verified
-        sidecar signature exists and is omitted entirely otherwise. Gated by the ARTIFACTS
-        access mode (not metadata), so a product can leave `/update/version` public while
-        closing the feed.
+        `/{product}/release/dl/…` (the permanent alias of `/{product}/distribution/dl/…`).
+        `sparkle:edSignature` is present only when a verified sidecar signature exists and is
+        omitted entirely otherwise. Gated by the `app` deliverable's DELIVERY access
+        (Distribution's `dist_access`, P2b-04 — the same answer the download behind each
+        enclosure enforces), not the metadata mode, so a product can leave `/update/version`
+        public while closing the feed.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - { $ref: "#/components/parameters/Arch" }
@@ -2639,10 +3322,20 @@ paths:
                         activatedAt: 1690000000
                       payload:
                         config:
-                          app.theme: { state: enforced, value: dark, updatedAt: 1756252800 }
+                          app.theme:
+                            {
+                              state: enforced,
+                              value: dark,
+                              updatedAt: 1756252800,
+                            }
                         secrets: {}
                         entitlements:
-                          polarisVpn: { state: enforced, value: true, updatedAt: 1756252800 }
+                          polarisVpn:
+                            {
+                              state: enforced,
+                              value: true,
+                              updatedAt: 1756252800,
+                            }
                 blocked:
                   summary: The build gate refused this page's version
                   value:
@@ -2663,7 +3356,11 @@ paths:
               examples:
                 catalogUnavailable:
                   summary: test/browserSession.test.ts
-                  value: { error: catalog_unavailable, message: active catalog could not validate the config payload }
+                  value:
+                    {
+                      error: catalog_unavailable,
+                      message: active catalog could not validate the config payload,
+                    }
   /{product}/identity/session/license:
     post:
       operationId: sessionFromLicenseKey
@@ -2704,7 +3401,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidBody: { value: { error: bad_request, message: invalid body } }
+                invalidBody:
+                  { value: { error: bad_request, message: invalid body } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: The license's seat pool is exhausted — LEGACY FLAT.
@@ -2712,7 +3410,16 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                deviceLimit: { value: { error: device_limit, message: device limit reached, limit: 5, deviceCount: 5 } }
+                deviceLimit:
+                  {
+                    value:
+                      {
+                        error: device_limit,
+                        message: device limit reached,
+                        limit: 5,
+                        deviceCount: 5,
+                      },
+                  }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 30 attempts per 60 s per client IP — LEGACY FLAT.
@@ -2720,7 +3427,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many session attempts } }
+                limited:
+                  {
+                    value:
+                      {
+                        error: rate_limited,
+                        message: too many session attempts,
+                      },
+                  }
   /{product}/identity/auth/start:
     get:
       operationId: authStart
@@ -2760,22 +3474,35 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                crossOriginReturn: { value: { error: bad_request, message: return_to not allowed } }
-                redirectNotAllowListed: { value: { error: bad_request, message: redirect_uri not allow-listed } }
+                crossOriginReturn:
+                  {
+                    value:
+                      { error: bad_request, message: return_to not allowed },
+                  }
+                redirectNotAllowListed:
+                  {
+                    value:
+                      {
+                        error: bad_request,
+                        message: redirect_uri not allow-listed,
+                      },
+                  }
         "404":
           description: The product has no OIDC configuration — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                disabled: { value: { error: disabled, message: oidc is disabled } }
+                disabled:
+                  { value: { error: disabled, message: oidc is disabled } }
         "429":
           description: 60 starts per 60 s per client IP — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many requests } }
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
         "500":
           description: >
             The stored OIDC configuration cannot be used — LEGACY FLAT, one code and several
@@ -2785,9 +3512,30 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingCustom: { value: { error: misconfigured, message: custom oidc config missing } }
-                issuerNotPermitted: { value: { error: misconfigured, message: custom oidc issuer is not permitted } }
-                secretUnavailable: { value: { error: misconfigured, message: oidc client secret unavailable } }
+                missingCustom:
+                  {
+                    value:
+                      {
+                        error: misconfigured,
+                        message: custom oidc config missing,
+                      },
+                  }
+                issuerNotPermitted:
+                  {
+                    value:
+                      {
+                        error: misconfigured,
+                        message: custom oidc issuer is not permitted,
+                      },
+                  }
+                secretUnavailable:
+                  {
+                    value:
+                      {
+                        error: misconfigured,
+                        message: oidc client secret unavailable,
+                      },
+                  }
   /{product}/identity/auth/callback:
     get:
       operationId: authCallback
@@ -2824,7 +3572,7 @@ paths:
               examples:
                 signedIn:
                   summary: The page body, verbatim
-                  value: "<!doctype html><meta charset=utf-8><title>Signed in</title><body style=\"font-family:system-ui;padding:3rem;text-align:center\"><h1>You're signed in</h1><p>You can close this tab and return to the app.</p>"
+                  value: '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You''re signed in</h1><p>You can close this tab and return to the app.</p>'
         "302":
           description: >
             The BROWSER branch — the flow carried a `return_to`, so the session cookie is set
@@ -2841,7 +3589,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missing: { value: { error: bad_request, message: missing code/state } }
+                missing:
+                  { value: { error: bad_request, message: missing code/state } }
                 unknownState:
                   summary: Absent, corrupt, or already consumed
                   value: { error: bad_request, message: unknown state }
@@ -2853,8 +3602,13 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                idTokenInvalid: { value: { error: unauthorized, message: id token invalid } }
-                licenseUnavailable: { value: { error: unauthorized, message: license unavailable } }
+                idTokenInvalid:
+                  { value: { error: unauthorized, message: id token invalid } }
+                licenseUnavailable:
+                  {
+                    value:
+                      { error: unauthorized, message: license unavailable },
+                  }
         "403":
           description: The identity verified but is not entitled to this product — LEGACY FLAT.
           content:
@@ -2864,7 +3618,16 @@ paths:
                 notEntitled:
                   summary: test/oidcEdge.test.ts
                   value: { error: forbidden, message: not entitled }
-                deviceLimit: { value: { error: device_limit, message: device limit reached, limit: 5, deviceCount: 5 } }
+                deviceLimit:
+                  {
+                    value:
+                      {
+                        error: device_limit,
+                        message: device limit reached,
+                        limit: 5,
+                        deviceCount: 5,
+                      },
+                  }
         "429":
           description: >
             60 callbacks per 60 s per client IP AND 5 per 60 s per `state` — LEGACY FLAT. The
@@ -2873,16 +3636,26 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many requests } }
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
         "502":
           description: The IdP answered unusably — LEGACY FLAT, one code and three messages.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                exchangeFailed: { value: { error: oidc_error, message: token exchange failed } }
-                responseInvalid: { value: { error: oidc_error, message: token response invalid } }
-                noIdToken: { value: { error: oidc_error, message: no id_token } }
+                exchangeFailed:
+                  {
+                    value:
+                      { error: oidc_error, message: token exchange failed },
+                  }
+                responseInvalid:
+                  {
+                    value:
+                      { error: oidc_error, message: token response invalid },
+                  }
+                noIdToken:
+                  { value: { error: oidc_error, message: no id_token } }
   /{product}/identity/auth/poll:
     get:
       operationId: authPoll
@@ -2937,14 +3710,19 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missing: { value: { error: bad_request, message: missing state/device } }
+                missing:
+                  {
+                    value:
+                      { error: bad_request, message: missing state/device },
+                  }
         "429":
           description: 120 polls per 60 s per client IP AND 40 per 60 s per `state` — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many requests } }
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
     options:
       operationId: preflightAuthPoll
       tags: [identity]
@@ -2995,7 +3773,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                csrfMismatch: { value: { error: forbidden, message: csrf mismatch } }
+                csrfMismatch:
+                  { value: { error: forbidden, message: csrf mismatch } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /{product}/identity/auth/device/start:
     post:
@@ -3069,15 +3848,18 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidJson: { value: { error: bad_request, message: invalid json } }
-                missingDevice: { value: { error: bad_request, message: missing device id } }
+                invalidJson:
+                  { value: { error: bad_request, message: invalid json } }
+                missingDevice:
+                  { value: { error: bad_request, message: missing device id } }
         "404":
           description: The product has no OIDC configuration — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                disabled: { value: { error: disabled, message: oidc is disabled } }
+                disabled:
+                  { value: { error: disabled, message: oidc is disabled } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 60 starts per 60 s per client IP — LEGACY FLAT.
@@ -3085,14 +3867,22 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many requests } }
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
         "500":
           description: The stored OIDC configuration cannot be used — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                misconfigured: { value: { error: misconfigured, message: custom oidc issuer is not permitted } }
+                misconfigured:
+                  {
+                    value:
+                      {
+                        error: misconfigured,
+                        message: custom oidc issuer is not permitted,
+                      },
+                  }
         "503":
           description: >
             Five user codes in a row collided with live ones (in practice unreachable: the code
@@ -3101,7 +3891,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                unavailable: { value: { error: unavailable, message: try again } }
+                unavailable:
+                  { value: { error: unavailable, message: try again } }
     options:
       operationId: preflightDeviceAuthStart
       tags: [identity]
@@ -3183,7 +3974,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many requests } }
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
     post:
       operationId: deviceAuthEntry
       tags: [identity]
@@ -3243,7 +4035,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                confirmationFailed: { value: { error: forbidden, message: confirmation failed } }
+                confirmationFailed:
+                  { value: { error: forbidden, message: confirmation failed } }
         "404":
           description: >
             No `csrf` field and an unknown, expired or malformed code: the generic entry page,
@@ -3255,7 +4048,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                expired: { value: { error: not_found, message: device code expired } }
+                expired:
+                  { value: { error: not_found, message: device code expired } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: >
@@ -3265,7 +4059,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many requests } }
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
   /{product}/identity/auth/device/verify:
     parameters:
       - { $ref: "#/components/parameters/Product" }
@@ -3309,14 +4104,16 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingCode: { value: { error: bad_request, message: missing code } }
+                missingCode:
+                  { value: { error: bad_request, message: missing code } }
         "404":
           description: Unknown or lapsed device code — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                expired: { value: { error: not_found, message: device code expired } }
+                expired:
+                  { value: { error: not_found, message: device code expired } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 60 requests per 60 s per client IP — LEGACY FLAT.
@@ -3324,7 +4121,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many requests } }
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
     post:
       operationId: deviceAuthVerify
       tags: [identity]
@@ -3368,7 +4166,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingCode: { value: { error: bad_request, message: missing code } }
+                missingCode:
+                  { value: { error: bad_request, message: missing code } }
         "403":
           description: >
             A cross-site request, or a missing/mismatched `csrf` — LEGACY FLAT. One message for
@@ -3377,14 +4176,16 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                confirmationFailed: { value: { error: forbidden, message: confirmation failed } }
+                confirmationFailed:
+                  { value: { error: forbidden, message: confirmation failed } }
         "404":
           description: Unknown or lapsed device code, or the flow record is gone — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                expired: { value: { error: not_found, message: device code expired } }
+                expired:
+                  { value: { error: not_found, message: device code expired } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 60 requests per 60 s per client IP — LEGACY FLAT.
@@ -3392,7 +4193,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited: { value: { error: rate_limited, message: too many requests } }
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
   /{product}/identity/auth/device/poll:
     post:
       operationId: deviceAuthPoll
@@ -3442,15 +4244,24 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidJson: { value: { error: bad_request, message: invalid json } }
-                missing: { value: { error: bad_request, message: missing deviceCode/deviceId } }
+                invalidJson:
+                  { value: { error: bad_request, message: invalid json } }
+                missing:
+                  {
+                    value:
+                      {
+                        error: bad_request,
+                        message: missing deviceCode/deviceId,
+                      },
+                  }
         "401":
           description: The `deviceId` is not the one the flow was started for — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                mismatch: { value: { error: unauthorized, message: device mismatch } }
+                mismatch:
+                  { value: { error: unauthorized, message: device mismatch } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: >
@@ -3598,7 +4409,7 @@ paths:
     get:
       operationId: aliasInstall
       tags: [aliases]
-      summary: "Alias → /{product}/release/install.sh"
+      summary: "Alias → /{product}/distribution/install.sh"
       description: >
         Exact rewrite. Kept forever because it is the `curl … | sh` line in published
         documentation, which nobody can recall from the internet.
@@ -3675,6 +4486,169 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
+  /{product}/release/install.sh:
+    get:
+      operationId: aliasReleaseInstall
+      tags: [aliases]
+      summary: "Alias → /{product}/distribution/install.sh"
+      description: >
+        Exact rewrite (P2b-04). Release's canonical installer path until Distribution took over byte delivery; kept forever because published `curl … | sh` lines and SDKs name it.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "200":
+          description: Byte-identical to the canonical route's answer (same handler, same headers).
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429": { $ref: "#/components/responses/ReleaseRateLimited" }
+        "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightAliasReleaseInstall
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, exactly as on the
+        canonical route. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/release/dl/{version}/{asset}:
+    get:
+      operationId: aliasReleaseDownload
+      tags: [aliases]
+      summary: "Alias → /{product}/distribution/dl/{version}/{asset}"
+      description: >
+        Exact rewrite (P2b-04). The download URL every SDK builds and every appcast enclosure names, and the base the installer downloads from; kept forever. Also answers Range and If-None-Match exactly as the canonical route.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: version, in: path, required: true, schema: { type: string } }
+        - { name: asset, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Byte-identical to the canonical route's answer (same handler, same headers).
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429": { $ref: "#/components/responses/ReleaseRateLimited" }
+        "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightAliasReleaseDownload
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, exactly as on the
+        canonical route. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: version, in: path, required: true, schema: { type: string } }
+        - { name: asset, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/release/builds/{selector}/{buildId}:
+    get:
+      operationId: aliasReleaseBuild
+      tags: [aliases]
+      summary: "Alias → /{product}/distribution/builds/{selector}/{buildId}"
+      description: >
+        Exact rewrite (P2b-04), on the console host and the bytes host (`dl.plrs.im`). The URL P2-05 advertised in discovery before byte delivery moved to Distribution; kept forever. Also answers HEAD, Range, If-Range and If-None-Match exactly as the canonical route.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: selector, in: path, required: true, schema: { type: string } }
+        - { name: buildId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Byte-identical to the canonical route's answer (same handler, same headers).
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429": { $ref: "#/components/responses/ReleaseRateLimited" }
+        "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightAliasReleaseBuild
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, exactly as on the
+        canonical route. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: selector, in: path, required: true, schema: { type: string } }
+        - { name: buildId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/release/files/{releaseId}/{name}:
+    get:
+      operationId: aliasReleaseFile
+      tags: [aliases]
+      summary: "Alias → /{product}/distribution/files/{releaseId}/{name}"
+      description: >
+        Exact rewrite (P2b-04), on the console host and the bytes host. Kept forever.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - {
+            name: releaseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - { name: name, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Byte-identical to the canonical route's answer (same handler, same headers).
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429": { $ref: "#/components/responses/ReleaseRateLimited" }
+        "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightAliasReleaseFile
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, exactly as on the
+        canonical route. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - {
+            name: releaseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - { name: name, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/release/blobs/sha256/{sha256}:
+    get:
+      operationId: aliasReleaseBlob
+      tags: [aliases]
+      summary: "Alias → /{product}/distribution/blobs/sha256/{sha256}"
+      description: >
+        Exact rewrite (P2b-04), on the console host and the bytes host. The URL P2-05 advertised in discovery; kept forever.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: sha256, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Byte-identical to the canonical route's answer (same handler, same headers).
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429": { $ref: "#/components/responses/ReleaseRateLimited" }
+    options:
+      operationId: preflightAliasReleaseBlob
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, exactly as on the
+        canonical route. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: sha256, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 components:
   securitySchemes:
     ciToken:
@@ -3865,8 +4839,9 @@ components:
     CiRefusal:
       description: >
         LEGACY FLAT with a machine-readable `reason` (and `fields` where one field is at fault):
-        `unknown_channel`, `unknown_deliverable`, `unknown_release` (404); `bad_body` (400);
-        `bad_release`, `bad_reason` (422); `release_yanked` (409).
+        `unknown_channel`, `unknown_deliverable`, `unknown_release`, `unknown_outlet`,
+        `no_rollout` (404); `bad_body` (400); `bad_release`, `bad_reason`, `invalid_body` (422);
+        `release_yanked`, `invalid_transition`, `rollout_mirrored`, `stale_release` (409).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/FlatError" }
@@ -3884,7 +4859,12 @@ components:
           schema: { $ref: "#/components/schemas/FlatError" }
           examples:
             invalid:
-              value: { error: unauthorized, message: "unknown, expired or revoked CI token", reason: invalid_ci_token }
+              value:
+                {
+                  error: unauthorized,
+                  message: "unknown, expired or revoked CI token",
+                  reason: invalid_ci_token,
+                }
     CiForbidden:
       description: A valid token for this product that lacks the route's scope — LEGACY FLAT.
       content:
@@ -3892,7 +4872,13 @@ components:
           schema: { $ref: "#/components/schemas/FlatError" }
           examples:
             missingScope:
-              value: { error: forbidden, message: this token lacks the release:yank scope, reason: missing_scope, scope: "release:yank" }
+              value:
+                {
+                  error: forbidden,
+                  message: this token lacks the release:yank scope,
+                  reason: missing_scope,
+                  scope: "release:yank",
+                }
     CorsPreflight:
       description: >
         CORS preflight (P0-05). Always `204` with no body. When the request's `Origin` is
@@ -4020,7 +5006,11 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/FlatError" }
           examples:
-            limited: { value: { error: rate_limited, message: too many release requests } }
+            limited:
+              {
+                value:
+                  { error: rate_limited, message: too many release requests },
+              }
     UpstreamRateLimited:
       description: >
         GitHub's quota is exhausted, so release truth is momentarily unknowable — LEGACY
@@ -4035,7 +5025,14 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/FlatError" }
           examples:
-            upstream: { value: { error: upstream_rate_limited, message: release metadata is temporarily unavailable } }
+            upstream:
+              {
+                value:
+                  {
+                    error: upstream_rate_limited,
+                    message: release metadata is temporarily unavailable,
+                  },
+              }
   schemas:
     CompactJws:
       type: string
@@ -4070,7 +5067,10 @@ components:
           $ref: "#/components/schemas/AllowedRange"
       examples:
         - { error: { code: unauthorized } }
-        - { error: { code: version_blocked, reason: version-too-old }, allowedRange: { min: "2.0.0", max: "99.0.0" } }
+        - {
+            error: { code: version_blocked, reason: version-too-old },
+            allowedRange: { min: "2.0.0", max: "99.0.0" },
+          }
     FlatError:
       type: object
       description: >
@@ -4101,7 +5101,12 @@ components:
           items: { $ref: "#/components/schemas/FingerprintComponent" }
       examples:
         - { error: unauthorized }
-        - { error: device_limit, message: device limit reached, limit: 1, deviceCount: 1 }
+        - {
+            error: device_limit,
+            message: device limit reached,
+            limit: 1,
+            deviceCount: 1,
+          }
     AllowedRange:
       type: object
       description: >
@@ -4136,7 +5141,16 @@ components:
         One hashed hardware signal. `machineUuid` is the ANCHOR: when it matches, drift
         tolerance widens by one. The order here is canonical — the composite digest is built
         by iterating it, so every SDK must use this order rather than a native map ordering.
-      enum: [machineUuid, boardSerial, cpuModel, primaryMac, bootVolumeUuid, ramBucket, machineModel]
+      enum:
+        [
+          machineUuid,
+          boardSerial,
+          cpuModel,
+          primaryMac,
+          bootVolumeUuid,
+          ramBucket,
+          machineModel,
+        ]
     FingerprintEnvelope:
       type: object
       description: >
@@ -4159,7 +5173,8 @@ components:
               additionalProperties:
                 type: string
                 pattern: "^[A-Za-z0-9_-]{22}$"
-              propertyNames: { $ref: "#/components/schemas/FingerprintComponent" }
+              propertyNames:
+                { $ref: "#/components/schemas/FingerprintComponent" }
             hwid:
               type: string
               description: Ignored. Recomputed server-side from the components.
@@ -4176,7 +5191,19 @@ components:
         version is `protocolVersion`; the product's catalog version is `schemaVersion`. All
         three are deliberately different counters. `product` and `slug` are the same string,
         carried twice for client convenience.
-      required: [version, protocolVersion, schemaVersion, product, slug, name, baseUrl, core, trust, services]
+      required:
+        [
+          version,
+          protocolVersion,
+          schemaVersion,
+          product,
+          slug,
+          name,
+          baseUrl,
+          core,
+          trust,
+          services,
+        ]
       properties:
         version: { type: integer, const: 2 }
         protocolVersion: { type: integer, const: 3 }
@@ -4215,7 +5242,16 @@ components:
                   description: OMITTED when `registration` is `requires-license`.
         trust:
           type: object
-          required: [jwksUrl, trustManifestUrl, cacheSeconds, pinnedKeys, signingKid, signingPub, keys]
+          required:
+            [
+              jwksUrl,
+              trustManifestUrl,
+              cacheSeconds,
+              pinnedKeys,
+              signingKid,
+              signingPub,
+              keys,
+            ]
           properties:
             jwksUrl: { type: string, format: uri }
             trustManifestUrl: { type: string, format: uri }
@@ -4323,7 +5359,17 @@ components:
         each success, so a key's ABSENCE is its revocation. Entries that are not
         EdDSA/OKP/Ed25519 are skipped rather than fatal — a future-alg key must not brick
         current verifiers.
-      required: [schemaVersion, aud, iss, issuedAt, expiresAt, jwksUrl, cacheSeconds, keys]
+      required:
+        [
+          schemaVersion,
+          aud,
+          iss,
+          issuedAt,
+          expiresAt,
+          jwksUrl,
+          cacheSeconds,
+          keys,
+        ]
       properties:
         schemaVersion: { type: integer, const: 1 }
         aud: { type: string }
@@ -4386,7 +5432,17 @@ components:
         `app.minVersion`, `app.maxVersion`, `deviceLimit`) beside the catalog's own flags.
         Licence STATE (`ok`/`grace`/…) is never in the document; the client gate derives it.
         Carries no `config`, `secrets` or `payload`.
-      required: [iss, aud, deviceId, issuedAt, expiresAt, graceUntil, licenseId, entitlements]
+      required:
+        [
+          iss,
+          aud,
+          deviceId,
+          issuedAt,
+          expiresAt,
+          graceUntil,
+          licenseId,
+          entitlements,
+        ]
       properties:
         iss: { type: string, const: key.plrs.im }
         aud: { type: string }
@@ -4411,11 +5467,18 @@ components:
           expiresAt: 1756256400
           graceUntil: 1758844800
           licenseId: lic_djdl_1
-          profile: { name: Ada Lovelace, firstName: Ada, email: ada@example.com, activatedAt: 1690000000 }
+          profile:
+            {
+              name: Ada Lovelace,
+              firstName: Ada,
+              email: ada@example.com,
+              activatedAt: 1690000000,
+            }
           entitlements:
             polarisVpn: { state: default, value: true, updatedAt: 1756252800 }
             license.tier: { state: enforced, value: pro, updatedAt: 1756252800 }
-            channels: { state: enforced, value: [stable, beta], updatedAt: 1756252800 }
+            channels:
+              { state: enforced, value: [stable, beta], updatedAt: 1756252800 }
             deviceLimit: { state: enforced, value: 3, updatedAt: 1756252800 }
     ConfigDocPayload:
       type: object
@@ -4424,7 +5487,18 @@ components:
         envelope claims, not under a wrapper. Contains no licence fields whatsoever — that is
         the wire-level guarantee of service independence (D-08), since a config-enabled,
         licence-disabled product issues these to any registered device.
-      required: [iss, aud, deviceId, issuedAt, expiresAt, graceUntil, schemaVersion, config, secrets]
+      required:
+        [
+          iss,
+          aud,
+          deviceId,
+          issuedAt,
+          expiresAt,
+          graceUntil,
+          schemaVersion,
+          config,
+          secrets,
+        ]
       properties:
         iss: { type: string, const: key.plrs.im }
         aud: { type: string }
@@ -4458,7 +5532,22 @@ components:
         A device row as the wire renders it (`shapeDevice`). The token hash, seat number,
         stored overrides and last telemetry blob are deliberately NOT exposed. `licenseId` is
         the empty string for a device registered without a licence.
-      required: [id, licenseId, label, status, current, firstSeen, lastSeen, userAgent, platform, arch, appVersion, sdkName, sdkVersion]
+      required:
+        [
+          id,
+          licenseId,
+          label,
+          status,
+          current,
+          firstSeen,
+          lastSeen,
+          userAgent,
+          platform,
+          arch,
+          appVersion,
+          sdkName,
+          sdkVersion,
+        ]
       properties:
         id: { type: string }
         licenseId:
@@ -4553,7 +5642,8 @@ components:
             At most 32 entries; probe ids are truncated to 64 characters and an entry whose
             `present` is not a boolean is skipped.
           maxProperties: 32
-          additionalProperties: { $ref: "#/components/schemas/DeviceProbeResult" }
+          additionalProperties:
+            { $ref: "#/components/schemas/DeviceProbeResult" }
         sdk: { type: string }
         sdkVersion: { type: string }
         appVersion: { type: string }
@@ -4611,7 +5701,20 @@ components:
         A licence row as activation and enrollment render it (`shapeLicense`). `channels` is
         always an array — `[]` when the row carries none. The identity link, groups, stored
         overrides and enrollment hwid are not exposed.
-      required: [id, status, name, email, tierId, activatedAt, expiresAt, maxOfflineDays, channels, minVersion, maxVersion]
+      required:
+        [
+          id,
+          status,
+          name,
+          email,
+          tierId,
+          activatedAt,
+          expiresAt,
+          maxOfflineDays,
+          channels,
+          minVersion,
+          maxVersion,
+        ]
       properties:
         id: { type: string }
         status: { type: string }
@@ -4686,14 +5789,23 @@ components:
         ui:
           type: object
           properties:
-            widget: { type: string, enum: [password, select, textarea, switch, stepper] }
+            widget:
+              {
+                type: string,
+                enum: [password, select, textarea, switch, stepper],
+              }
             help: { type: string }
             placeholder: { type: string }
             order: { type: integer }
-            scopes: { type: array, items: { type: string, enum: [profile, license, device] } }
+            scopes:
+              {
+                type: array,
+                items: { type: string, enum: [profile, license, device] },
+              }
             advanced: { type: boolean }
             unit: { type: string }
-            optionLabels: { type: object, additionalProperties: { type: string } }
+            optionLabels:
+              { type: object, additionalProperties: { type: string } }
             adminSection: { type: string }
         dependsOn:
           type: object
@@ -4702,7 +5814,11 @@ components:
             key: { type: string }
             equals: {}
         appliesTo: { type: array, items: { type: string, enum: [cli, app] } }
-        accessor: { type: string, description: A dotted path into the client's own config object. }
+        accessor:
+          {
+            type: string,
+            description: A dotted path into the client's own config object.,
+          }
         deprecated: { type: boolean }
         since: { type: string }
     MintedToken:
@@ -4749,7 +5865,8 @@ components:
         no parameters, so it cannot vary by architecture or channel.
       required: [version, tag, url]
       properties:
-        version: { type: string, description: The tag with one leading `v` stripped. }
+        version:
+          { type: string, description: The tag with one leading `v` stripped. }
         tag: { type: string }
         url: { type: string, format: uri }
     ManagedPayload:
@@ -4775,7 +5892,19 @@ components:
         served UNSIGNED as JSON. Wire v3 split this into `pkey-license+jws` +
         `pkey-config+jws`; the browser session is the last minter, and this schema goes with it
         when the React SDK migrates. `deviceId` is always `browser:<licenseId>`.
-      required: [schemaVersion, aud, iss, licenseId, deviceId, issuedAt, expiresAt, graceUntil, profile, payload]
+      required:
+        [
+          schemaVersion,
+          aud,
+          iss,
+          licenseId,
+          deviceId,
+          issuedAt,
+          expiresAt,
+          graceUntil,
+          profile,
+          payload,
+        ]
       properties:
         schemaVersion: { type: integer }
         aud: { type: string }
@@ -4805,7 +5934,11 @@ components:
           description: Present only when the build gate refused this build.
           required: [reason]
           properties:
-            reason: { type: string, enum: [version-too-old, version-too-new, channel-not-entitled] }
+            reason:
+              {
+                type: string,
+                enum: [version-too-old, version-too-new, channel-not-entitled],
+              }
             allowedRange: { $ref: "#/components/schemas/AllowedRange" }
         csrfToken:
           type: string
@@ -4843,7 +5976,8 @@ components:
       required: [status, interval]
       properties:
         status: { type: string, const: slow_down }
-        interval: { type: integer, description: Seconds to wait before the next poll. }
+        interval:
+          { type: integer, description: Seconds to wait before the next poll. }
     DeviceAuthStartRequest:
       type: object
       description: >
@@ -4862,7 +5996,17 @@ components:
         `verificationUri` is the user-code entry page and `verificationUriComplete` the same page
         with `?user_code=` pre-filled, and neither carries the device code. `pollUrl` and
         `status` are additions RFC 8628 does not define.
-      required: [status, deviceCode, userCode, verificationUri, verificationUriComplete, expiresIn, interval, pollUrl]
+      required:
+        [
+          status,
+          deviceCode,
+          userCode,
+          verificationUri,
+          verificationUriComplete,
+          expiresIn,
+          interval,
+          pollUrl,
+        ]
       properties:
         status: { type: string, const: pending }
         deviceCode: { type: string }
@@ -4896,8 +6040,16 @@ components:
         confirmation page); `user_code` with a `csrf` field is a confirmation.
       required: [user_code]
       properties:
-        user_code: { type: string, description: Case-insensitive; spaces and hyphens ignored. }
-        csrf: { type: string, description: The single-use token the confirmation page embedded. }
+        user_code:
+          {
+            type: string,
+            description: Case-insensitive; spaces and hyphens ignored.,
+          }
+        csrf:
+          {
+            type: string,
+            description: The single-use token the confirmation page embedded.,
+          }
     DeviceAuthPollRequest:
       type: object
       description: >

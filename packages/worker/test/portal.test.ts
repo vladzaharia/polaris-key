@@ -17,10 +17,7 @@ import { loadProduct } from "../src/core/products.js";
 import { hashKey } from "../src/crypto.js";
 import { getTokenRecord } from "../src/kv.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
-import {
-  handlePortalApi,
-  handlePortalDownload,
-} from "./portalHarness.js";
+import { handlePortalApi, handlePortalDownload } from "./portalHarness.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import { handleMagicVerify } from "../src/services/identity/portal/auth.js";
 import {

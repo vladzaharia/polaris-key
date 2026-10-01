@@ -237,8 +237,7 @@ export async function serveReleaseSurface(
   const cacheable =
     req.method === "GET" &&
     CACHEABLE_KINDS.has(kind) &&
-    accessModeFor(artifactPolicy(cfg, opts.artifactsAccess), kind) ===
-      "public";
+    accessModeFor(artifactPolicy(cfg, opts.artifactsAccess), kind) === "public";
   const cache = cacheable ? edgeCache() : null;
   const cacheKey = cache
     ? releaseCacheKey(origin, product.slug, kind, params)

@@ -87,16 +87,23 @@ describe("matchRoute — service namespaces (every table slug)", () => {
       ["mint", "applemusic", "auth"],
     ],
     ["/djdl/release/changelog", "release", ["changelog"]],
-    ["/djdl/release/install.sh", "release", ["install.sh"]],
+    // P2b-04: byte delivery is Distribution's (the `/release/…` spellings are aliases, pinned in
+    // the aliases block below).
+    ["/djdl/distribution/install.sh", "distribution", ["install.sh"]],
     [
-      "/djdl/release/dl/1.2.3/djdl-arm64",
-      "release",
+      "/djdl/distribution/dl/1.2.3/djdl-arm64",
+      "distribution",
       ["dl", "1.2.3", "djdl-arm64"],
     ],
     [
-      "/djdl/release/dl/1.2.3/djdl-arm64.dmg",
-      "release",
+      "/djdl/distribution/dl/1.2.3/djdl-arm64.dmg",
+      "distribution",
       ["dl", "1.2.3", "djdl-arm64.dmg"],
+    ],
+    [
+      "/djdl/distribution/rollouts/direct/stable/halt",
+      "distribution",
+      ["rollouts", "direct", "stable", "halt"],
     ],
     ["/djdl/update/appcast.xml", "update", ["appcast.xml"]],
     ["/djdl/update/version", "update", ["version"]],
@@ -198,15 +205,38 @@ describe("matchRoute — service namespaces (every table slug)", () => {
 });
 
 // §R1 / D-07: four pre-namespace paths are kept FOREVER — they are compiled into shipped app
-// bundles (`SUFeedURL`) and printed in published `curl … | sh` lines. They are implemented by
+// bundles (`SUFeedURL`) and printed in published `curl … | sh` lines — and so, since P2b-04, are
+// Release's old byte paths (SDK-built download URLs, byte URLs discovery advertised). They are implemented by
 // REWRITING to the canonical route, which is what makes "byte-identical" a property of the
 // router rather than a promise about two handlers.
 describe("matchRoute — the permanent aliases", () => {
   const aliases: Array<[string, string]> = [
     ["/djdl/appcast.xml", "/djdl/update/appcast.xml"],
     ["/djdl/beta/appcast.xml", "/djdl/update/beta/appcast.xml"],
-    ["/djdl/install.sh", "/djdl/release/install.sh"],
+    ["/djdl/install.sh", "/djdl/distribution/install.sh"],
     ["/djdl/version", "/djdl/update/version"],
+    // P2b-04: Release's byte paths moved to Distribution and stay as permanent aliases.
+    ["/djdl/release/install.sh", "/djdl/distribution/install.sh"],
+    [
+      "/djdl/release/dl/1.2.3/djdl-arm64",
+      "/djdl/distribution/dl/1.2.3/djdl-arm64",
+    ],
+    [
+      "/djdl/release/dl/beta/djdl-arm64.dmg",
+      "/djdl/distribution/dl/beta/djdl-arm64.dmg",
+    ],
+    [
+      "/djdl/release/builds/stable/macos",
+      "/djdl/distribution/builds/stable/macos",
+    ],
+    [
+      "/djdl/release/files/v1.2.3/djdl.dmg",
+      "/djdl/distribution/files/v1.2.3/djdl.dmg",
+    ],
+    [
+      `/djdl/release/blobs/sha256/${"a".repeat(64)}`,
+      `/djdl/distribution/blobs/sha256/${"a".repeat(64)}`,
+    ],
   ];
 
   it.each(aliases)("routes %s exactly like %s", (aliasPath, canonical) => {
@@ -289,9 +319,10 @@ describe("matchRoute — downloads and devices", () => {
     }
   });
 
-  it("hands the whole dl path to the release service, arch and all", () => {
+  it("hands the whole dl path to the download route, arch and all", () => {
     // The router no longer parses the arch: the service does, because the arch aliases it
     // accepts (`aarch64`, `amd64`) are an asset-naming concern and `assets.ts` owns them.
+    // P2b-04: the route is Distribution's; `/release/dl/…` is its permanent alias.
     for (const leaf of [
       "djdl-arm64",
       "djdl-aarch64",
@@ -301,9 +332,10 @@ describe("matchRoute — downloads and devices", () => {
     ]) {
       expect(matchRoute(`/djdl/release/dl/1.2.3/${leaf}`)).toEqual({
         kind: "service",
-        slug: "release",
+        slug: "distribution",
         product: "djdl",
         rest: ["dl", "1.2.3", leaf],
+        alias: true,
       });
     }
   });

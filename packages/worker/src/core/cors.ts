@@ -3,8 +3,8 @@
  *
  * A browser page served from an origin a product lists under `web.origins` in `.pkey/product`
  * may READ that product's device-facing responses with `fetch`: discovery, JWKS, the trust
- * manifest, the device routes, License, Config, Release downloads, Update and the device-code
- * flow. Every other origin gets no `Access-Control-*` header at all, and so does every surface
+ * manifest, the device routes, License, Config, the downloads (Distribution's byte routes),
+ * Update and the device-code flow. Every other origin gets no `Access-Control-*` header at all, and so does every surface
  * that is not on the covered list below — the console (`/manage/*`), the portal (`/`, `/api/*`,
  * …), the docs site, the GitHub webhook, and the cookie-bearing or navigation-only identity
  * routes. Those share this origin with the admin cookie (THREAT-MODEL R1-09) and stay
@@ -89,11 +89,13 @@ export const CORS_MAX_AGE = "600";
  * Deliberately absent (cookie-bearing or navigation-only; they stay first-party):
  * `identity/session`, `identity/session/license`, `identity/auth/start`,
  * `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device`,
- * `identity/auth/device/verify`, `config/mint/{mintId}/auth`, and Release's CI policy routes
- * (`release/channels/{channel}/{promote,pin,unpin}`, `release/releases/{releaseId}/yank`), which
- * a CI job calls with a `pkeyci_` bearer and no browser page ever should.
+ * `identity/auth/device/verify`, `config/mint/{mintId}/auth`, and the CI routes — Release's
+ * policy routes (`release/channels/{channel}/{promote,pin,unpin}`,
+ * `release/releases/{releaseId}/yank`), its publishing routes and Distribution's rollout routes
+ * (`distribution/rollouts/{outlet}/{channel}[/{verb}]`) — which a CI job calls with a `pkeyci_`
+ * bearer and no browser page ever should.
  *
- * The four permanent aliases resolve to the same `{kind:"service"}` route as their targets
+ * The permanent aliases resolve to the same `{kind:"service"}` route as their targets
  * (`router.ts`), so they are covered exactly when their targets are.
  */
 export const CORS_SERVICE_PATHS: readonly string[] = [
@@ -106,12 +108,15 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "config/schema",
   "config/mint/{mintId}/token",
   "release/changelog",
-  "release/install.sh",
-  "release/dl/{version}/{asset}",
-  // P2-05: the byte routes. (On the bytes host CORS is applied by its own dispatcher.)
-  "release/builds/{selector}/{buildId}",
-  "release/files/{releaseId}/{name}",
-  "release/blobs/sha256/{sha256}",
+  // P2b-04: all byte delivery is Distribution's (P2-05's byte routes and the legacy download and
+  // installer, moved). Their `/release/…` and `/<p>/install.sh` spellings are router aliases
+  // that resolve to these same routes, so they are covered exactly when these are. (On the bytes
+  // host CORS is applied by its own dispatcher.)
+  "distribution/install.sh",
+  "distribution/dl/{version}/{asset}",
+  "distribution/builds/{selector}/{buildId}",
+  "distribution/files/{releaseId}/{name}",
+  "distribution/blobs/sha256/{sha256}",
   "update/appcast.xml",
   "update/{channel}/appcast.xml",
   "update/version",

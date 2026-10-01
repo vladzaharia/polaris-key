@@ -282,7 +282,7 @@ async function handleAccessAdmin(
     return err(422, ErrorCode.BadRequest, "deliverable must be a string", {
       fields: ["deliverable"],
     });
-  // A mode for a deliverable Release does not know would gate nothing and mislead the console.
+  // A mode for a deliverable Release does not know would gate nothing, and mislead the operator.
   const known = (await hooks.releaseCatalog()?.deliverables()) ?? [];
   if (
     deliverable !== APP_DELIVERABLE_ID &&

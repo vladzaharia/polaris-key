@@ -132,13 +132,34 @@ describe("bytes host: configuration", () => {
     }
   });
 
-  it("P2-05 registers exactly Release's three byte routes, each owned by the release service", () => {
+  it("registers exactly the three byte routes, each owned by the distribution service (P2b-04)", () => {
+    // P2-05 registered them for Release; P2b-04 moved all byte delivery to Distribution. Each
+    // route matches its canonical `/distribution/…` path AND its `/release/…` alias, so the URLs
+    // discovery advertised on the bytes host keep answering.
     expect(BYTE_ROUTES.map((r) => [r.name, r.service])).toEqual([
-      ["release.build", "release"],
-      ["release.file", "release"],
-      ["release.blob", "release"],
+      ["distribution.build", "distribution"],
+      ["distribution.file", "distribution"],
+      ["distribution.blob", "distribution"],
     ]);
     const hex = "a".repeat(64);
+    expect(
+      BYTE_ROUTES[0]!.match("/djdl/distribution/builds/stable/macos"),
+    ).toEqual({
+      product: "djdl",
+      params: { kind: "build", selector: "stable", buildId: "macos" },
+    });
+    expect(
+      BYTE_ROUTES[1]!.match("/djdl/distribution/files/v1.2.3/a.zip"),
+    ).toEqual({
+      product: "djdl",
+      params: { kind: "file", releaseId: "v1.2.3", name: "a.zip" },
+    });
+    expect(
+      BYTE_ROUTES[2]!.match(`/djdl/distribution/blobs/sha256/${hex}`),
+    ).toEqual({
+      product: "djdl",
+      params: { kind: "blob", sha256: hex },
+    });
     expect(BYTE_ROUTES[0]!.match("/djdl/release/builds/stable/macos")).toEqual({
       product: "djdl",
       params: { kind: "build", selector: "stable", buildId: "macos" },
@@ -154,6 +175,9 @@ describe("bytes host: configuration", () => {
     // Nothing else on the host: not the legacy download, not a short or bad hash.
     for (const path of [
       "/djdl/release/dl/latest/djdl-arm64",
+      "/djdl/distribution/dl/latest/djdl-arm64",
+      "/djdl/distribution/install.sh",
+      "/djdl/distribution/rollouts/direct/stable",
       `/djdl/release/blobs/sha256/${"A".repeat(64)}`,
       "/djdl/release/blobs/sha256/abc",
       "/djdl/release/builds/stable",
