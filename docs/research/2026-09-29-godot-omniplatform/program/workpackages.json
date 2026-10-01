@@ -973,7 +973,7 @@
       "optional": false,
       "refs": ["README §3.3", "README §3.6", "CONTENT §6.9", "PARITY §4.1"],
       "brief": "wp/P3-01-wire-v4-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P3-02",
@@ -981,7 +981,7 @@
       "phase": "P3",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
+      "estimateWeeks": [2.75, 3.25],
       "deps": ["P3-01", "S-06"],
       "planMode": true,
       "gates": [
@@ -989,7 +989,8 @@
         "protocol-version",
         "corpus",
         "all-sdks",
-        "docs-generated"
+        "docs-generated",
+        "threat-model"
       ],
       "humanInputs": [],
       "repo": "polaris-key",
@@ -1005,7 +1006,7 @@
       "phase": "P3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.75, 2.25],
+      "estimateWeeks": [2.75, 3.25],
       "deps": ["P3-02", "P2b-04", "P2-06", "P2b-03"],
       "planMode": false,
       "gates": [
@@ -1048,7 +1049,7 @@
       "stage": "sdk-wave",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.5, 0.75],
+      "estimateWeeks": [1.25, 1.75],
       "deps": ["P3-02"],
       "planMode": false,
       "gates": ["corpus"],
@@ -1067,7 +1068,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [0.5, 0.75],
-      "deps": ["P3-02"],
+      "deps": ["P3-02", "P3-05"],
       "planMode": false,
       "gates": ["corpus"],
       "humanInputs": [],
@@ -1085,7 +1086,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [0.5, 0.75],
-      "deps": ["P3-02"],
+      "deps": ["P3-02", "P3-05"],
       "planMode": false,
       "gates": ["corpus"],
       "humanInputs": [],
@@ -1103,7 +1104,7 @@
       "lane": "godot",
       "role": "pkey-godot-engineer",
       "estimateWeeks": [0.5, 0.75],
-      "deps": ["P3-02", "P1-02"],
+      "deps": ["P3-02", "P1-02", "P3-05"],
       "planMode": false,
       "gates": ["corpus"],
       "humanInputs": [],
@@ -1155,15 +1156,50 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.5],
-      "deps": ["P3-02", "P1-02", "S-06"],
+      "deps": [
+        "P3-02",
+        "P1-02",
+        "S-06",
+        "P3-04",
+        "P3-05",
+        "P3-06",
+        "P3-07",
+        "P3-08"
+      ],
       "planMode": false,
-      "gates": ["corpus", "all-sdks"],
+      "gates": ["corpus", "all-sdks", "rule-9"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": ["notes/E9 §1", "PARITY §7", "README §5.5"],
       "brief": "wp/P3-11-outlet-detection.md",
       "status": "todo"
+    },
+    {
+      "id": "P3-12",
+      "title": "Worker: representability write checks, signer guards and the D1 check",
+      "phase": "P3",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["P3-01", "P3-02"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "rule-9",
+        "threat-model",
+        "docs-generated",
+        "workerd"
+      ],
+      "humanInputs": [
+        "an operator runs check:representable against production D1 before the first deploy of a Worker containing P3-12, and fixes every value it flags"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/P3-01.md §2.2", "plans/P3-01.md §6", "plans/P3-01.md §7"],
+      "brief": "wp/P3-12-worker-representability.md",
+      "status": "todo",
+      "planRef": "P3-01"
     },
     {
       "id": "P4-01",

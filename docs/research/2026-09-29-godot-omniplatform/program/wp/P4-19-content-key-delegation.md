@@ -73,6 +73,9 @@ TUF-style delegation).
 
 ## Design notes
 
+- **From P3-01's approved plan** (`plans/P3-01.md` §8): `kind: delegation` is a reserved record
+  kind (verified, never acted on in v4), and `.pkey/release` `contentKeys` is a warning until this
+  package lands.
 - **Delegation body** (proposed; the plan freezes it). E8 §5.8 sketched
   `{keyid, packIdPrefix, types[], dataOnly: true}`; README §3.12 sketched
   `scope: {kinds: [pack], dataOnly: true}`; CONTENT §12 says "data-only types and a pack-id
