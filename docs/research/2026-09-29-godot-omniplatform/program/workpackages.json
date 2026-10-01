@@ -1058,7 +1058,7 @@
       "optional": false,
       "refs": ["README §3.6", "PARITY §5.5"],
       "brief": "wp/P3-05-v4-react.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P3-06",
