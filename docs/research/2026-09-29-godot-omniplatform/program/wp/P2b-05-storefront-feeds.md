@@ -45,7 +45,7 @@ Polaris Key never holds.
   [notes/E3 §A4 and §B2](../../notes/E3-windows-linux-web.md#a4-package-manager-surfaces-winget-scoop-chocolatey)
   (Scoop `checkver`/`autoupdate`, Flathub `x-checker-data`); [notes/A4](../../notes/A4-diceroll-mapping.md)
   (Diceroll's `altstore_source.py`).
-- [S-07](S-07-policy-recheck.md) rows 1–5, 12 and 14, read in [notes/S-07](../../notes/S-07.md) (re-checked 2026-09-30, all
+- [S-07](S-07-policy-recheck.md) rows 1–5, 12 and 14, read in [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) (re-checked 2026-09-30, all
   unchanged): F-Droid may now host an upstream developer-signed package beside its own (row 3);
   AltStore PAL serves the EU, Japan and Brazil with a 5% Core Technology Commission in each
   (rows 4–5); Flathub forbids AI-generated or AI-assisted manifest content and any AI tool opening

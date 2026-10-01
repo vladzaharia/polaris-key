@@ -36,7 +36,7 @@ purchase.
 - `AGENTS.md`; P5-01 (`openOutletCredential`, `signJwtEs256`), P5-02 and P5-03 hand-offs (the Play
   client is reused here).
 - [S-07](S-07-policy-recheck.md) rows 8, 9 and 15 (Play fee programmes, Billing Library, Steam
-  commerce), read in [notes/S-07](../../notes/S-07.md) (re-checked 2026-09-30). One clause changed: US developers in the
+  commerce), read in [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) (re-checked 2026-09-30). One clause changed: US developers in the
   external content links programme now have until 2026-12-01 to report successful downloads and
   pay the fees (notice of 2026-09-17); reporting for other US programme transactions still starts
   2026-10-01. Billing Library 8 or later is required since 2026-08-31. The Play service-fee

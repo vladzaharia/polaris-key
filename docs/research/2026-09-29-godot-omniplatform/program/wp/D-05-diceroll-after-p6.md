@@ -48,7 +48,7 @@ TestFlight and App Store installs can be told apart only at run time, through `A
   Action inputs, the asset-pack id `<pack>.c<contentApi>`), P5-05 (`PolarisKeyApple`, the per-preset
   Xcode patch that sideload IPAs skip), P5-06 (`PKeyAndroid`, In-App Updates, PAD), P6-01
   (`PolarisKey.commerce.get_binding()`, `PolarisKey.commerce.claim(store, payload)`) and S-01's note.
-- [notes/S-07](../../notes/S-07.md) rows 6, 8 and 9 (App Review clauses, Play fee programmes, Billing Library deadlines;
+- [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) rows 6, 8 and 9 (App Review clauses, Play fee programmes, Billing Library deadlines;
   re-checked 2026-09-30).
 - Research: [README §3.10](../../README.md#310-commerce-and-entitlements), [§4.1](../../README.md#41-ios-and-ipados), [§4.2](../../README.md#42-android), [§11](../../README.md#11-decisions-needed) decisions 8 and 12; [CONTENT §6.6](../../CONTENT.md#66-transport-imposed-binding-per-outlet), [§6.7](../../CONTENT.md#67-lifecycle-implications) items 1, 7 and 9, [§15](../../CONTENT.md#15-diceroll-mapping).
 
@@ -95,7 +95,7 @@ TestFlight and App Store installs can be told apart only at run time, through `A
   size before a first-launch download (4.2.3(ii)).
 - **Entitlements are per deliverable,** not per version: buying the skins entitles every compatible
   release of that pack ([CONTENT §6.7](../../CONTENT.md#67-lifecycle-implications) item 9).
-- Follow S-01's findings for the Xcode patch and [notes/S-07](../../notes/S-07.md) row 9 for the Billing Library version
+- Follow S-01's findings for the Xcode patch and [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) row 9 for the Billing Library version
   that `godot-google-play-billing` must bundle: since 2026-08-31 new apps and updates must use
   version 8 or later (extension to 2026-11-01), so bundle 8.x or, preferably, 9.1.0 (latest listed,
   2026-06-18; it carries the billing-choice APIs).

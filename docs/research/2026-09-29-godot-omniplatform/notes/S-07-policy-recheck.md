@@ -556,7 +556,6 @@ All edits are text pointers or verified facts; no decision moved.
 
 | Brief                                                                                           | Edit                                                                                               |
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| [S-07](../program/wp/S-07-policy-recheck.md)                                                    | Note path corrected to `notes/S-07.md`                                                             |
 | [D-01](../program/wp/D-01-diceroll-now.md)                                                      | "if it exists" replaced by the note and rows 1, 2, 7, 10                                           |
 | [D-05](../program/wp/D-05-diceroll-after-p6.md)                                                 | Billing Library floor (8 or later, 9.1.0 preferred) and note pointer                               |
 | [P2b-05](../program/wp/P2b-05-storefront-feeds.md)                                              | Rows 1-5, 12, 14 summary; deterministic Flathub renderer; winget final-URL rule                    |

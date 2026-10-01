@@ -38,7 +38,7 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 
 ## Read first
 
-- [S-07](S-07-policy-recheck.md) row 13, read in [notes/S-07](../../notes/S-07.md) (re-checked 2026-09-30): the data-only
+- [S-07](S-07-policy-recheck.md) row 13, read in [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) (re-checked 2026-09-30): the data-only
   rule for packs on store builds is still the safe reading on every store: App Review 2.5.2 is
   stricter than DPLA 3.3.1(B), Play exempts interpreted code only if it cannot violate Play policy,
   and Microsoft Store 10.2.2 bans dynamic code that changes described functionality. Scripts in

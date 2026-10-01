@@ -75,7 +75,7 @@ submits, publishes or changes a rollout.
   (e.g. `CommitStarted`, `PreProcessing`, `Certification`, `Release`, `Published`, and the
   `…Failed` states) with `statusDetails`; `packageRollout` (`isPackageRollout`,
   `packageRolloutPercentage`, `packageRolloutStatus`); flights under `…/listflights`. If the
-  documentation disagrees, the documentation wins and the fixtures follow it. [notes/S-07](../../notes/S-07.md) rows 11 and 18
+  documentation disagrees, the documentation wins and the fixtures follow it. [notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) rows 11 and 18
   re-checked these facts on 2026-09-30 and confirmed them; the full `status` list is `None`,
   `Canceled`, `PendingCommit`, `CommitStarted`, `CommitFailed`, `PendingPublication`, `Publishing`,
   `Published`, `PublishFailed`, `PreProcessing`, `PreProcessingFailed`, `Certification`,

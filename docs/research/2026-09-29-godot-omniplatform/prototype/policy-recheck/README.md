@@ -4,7 +4,7 @@ The S-07 checklist as a program. Each of the 18 dated policy, fee, deadline and 
 research is a row in `checks.mjs`, with the primary pages that state it and the exact wording that
 must still be there. `recheck.mjs` fetches the pages, extracts text, and reports which quotes
 survived. The results, with every quote and its URL, are in
-[notes/S-07.md](../../notes/S-07.md).
+[notes/S-07-policy-recheck.md](../../notes/S-07-policy-recheck.md).
 
 ## Run
 

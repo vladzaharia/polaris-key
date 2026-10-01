@@ -88,7 +88,7 @@ all built against recorded responses and a fake Google API before a real key exi
   The control asks for explicit confirmation in that case.
 - **Track ids.** `production`, `beta`, `alpha` and custom names are documented; the internal track
   may be `internal` or `qa`. Read the ids from `tracks.list`; never hard-code the internal one.
-- **Reporting API names are verified** ([notes/S-07](../../notes/S-07.md) row 17, read from the v1beta1 discovery document,
+- **Reporting API names are verified** ([notes/S-07-policy-recheck](../../notes/S-07-policy-recheck.md) row 17, read from the v1beta1 discovery document,
   revision 20260928): singleton resources `apps/{app}/crashRateMetricSet` and
   `apps/{app}/anrRateMetricSet` (`vitals.crashrate` and `vitals.anrrate`, methods `get` and `query`);
   metrics `crashRate`, `crashRate7dUserWeighted`, `crashRate28dUserWeighted`,
