@@ -402,15 +402,16 @@ final class IdentityMintTests: XCTestCase {
         let (core, store) = try await core(plane, services: services, token: token)
         let config = ConfigClient(
             core: core,
-            reacquire: { current in
+            reacquire: { current, _ in
                 guard
                     let response = try? await core.request(
                         core.endpoints.licenseToken, method: "POST",
                         headers: ["authorization": "Bearer \(current)"]),
                     response.status == 200,
-                    let body = try? JSONDecoder().decode([String: JSONValue].self, from: response.body)
+                    let body = try? JSONDecoder().decode([String: JSONValue].self, from: response.body),
+                    let token = body["token"]?.stringValue
                 else { return nil }
-                return body["token"]?.stringValue
+                return Reacquired(token: token, source: .reacquire)
             })
         return (config, store)
     }

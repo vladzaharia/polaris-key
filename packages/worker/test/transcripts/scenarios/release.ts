@@ -32,6 +32,7 @@ import {
   PRODUCT,
   productWorld,
   seedLicense,
+  servicesOn,
   setup,
   type Scenario,
 } from "../world.js";
@@ -40,13 +41,7 @@ import type { ServicesMap } from "../../../src/core/services.js";
 import { TEST_RSA_PKCS8 } from "../../releaseFixtures.js";
 
 /** License + Config + Release. Update stays off: these conversations are Release's alone. */
-const WITH_RELEASE: ServicesMap = {
-  license: { enabled: true },
-  config: { enabled: true },
-  release: { enabled: true },
-  update: { enabled: false },
-  identity: { enabled: false },
-};
+const WITH_RELEASE: ServicesMap = servicesOn("license", "config", "release");
 
 /** A fixed sha256 digest for the checksum sidecar. */
 const DIGEST = "a".repeat(64);

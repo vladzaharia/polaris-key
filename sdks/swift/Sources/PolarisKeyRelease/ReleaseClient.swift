@@ -59,14 +59,14 @@ public struct ReleaseClient: Sendable {
         if response.status == 401 || response.status == 403 {
             let code = Self.refusalCode(response.body)
             throw PolarisError(
-                code: code ?? (response.status == 401 ? "unauthorized" : "forbidden"),
+                code: code ?? (response.status == 401 ? ErrorCode.unauthorized : ErrorCode.forbidden),
                 message: response.status == 401
                     ? "\(path) refused: this feed needs a usable licence."
                     : "\(path) refused: this build is not entitled to that feed.")
         }
         guard response.isOK else {
             throw PolarisError(
-                code: "not_found", message: "\(path) failed with status \(response.status).")
+                code: ErrorCode.notFound, message: "\(path) failed with status \(response.status).")
         }
         guard
             case .object(let root)? = try? JSONDecoder().decode(JSONValue.self, from: response.body),

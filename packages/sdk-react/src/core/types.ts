@@ -45,7 +45,7 @@ export type PolarisErrorCode =
   | "refresh-failed"
   | "network"
   | "bridge-missing"
-  | "not-entitled"
+  | "release-refused"
   | "bundle-rejected"
   | "bundle-import-unsupported"
   | "report-unsupported"
@@ -116,7 +116,7 @@ export interface ImportBundleResult {
 /** A typed error every adapter throws so callers can branch on `.code` not on strings.
  *
  *  `code` is the UI vocabulary above. `wireCode`, when present, is the code the OTHER side
- *  named: the refusal body's own code for a `not-entitled` release read (`unauthorized`,
+ *  named: the refusal body's own code for a `release-refused` release read (`unauthorized`,
  *  `channel_not_allowed`, …), the §7 step for a `bundle-rejected` import
  *  (`bundle-claims-rejected`, …). It is the value the other SDKs put in their own `code`. */
 export class PolarisError extends Error {
@@ -243,7 +243,7 @@ export interface PolarisAdapter {
    *  even probed (D-21). Desktop: the bridge's `fetchSchema`. */
   fetchSchema(): Promise<ProductCatalog | null>;
   /** `GET /<product>/release/changelog`, newest first. Throws `service-disabled` when the
-   *  product does not run Release, `not-entitled` (with the refusal's `wireCode`) for a 401 or
+   *  product does not run Release, `release-refused` (with the refusal's `wireCode`) for a 401 or
    *  403. Desktop: `invoke("release", "changelog")`. */
   changelog(): Promise<ChangelogEntry[]>;
   /** The canonical install-script URL. Built, not fetched. */

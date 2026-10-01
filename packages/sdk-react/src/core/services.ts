@@ -50,8 +50,8 @@ export function noServices(): ServicesMap {
 
 /**
  * What a client believes when it has neither a discovery document nor a stated expectation:
- * licensing + settings distribution (the table's `defaultEnabled` rows). Distribution, updates
- * and identity are OFF, so their hooks/components refuse until something says otherwise.
+ * licensing + settings delivery (the table's `defaultEnabled` rows). Release, Distribution,
+ * Update and Identity are OFF, so their hooks/components refuse until something says otherwise.
  */
 export function defaultServices(): ServicesMap {
   return perService((slug) => ({

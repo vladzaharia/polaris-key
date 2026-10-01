@@ -39,23 +39,25 @@ not truncated.
 ## Both module vocabularies
 
 `.pkey/product`'s `modules` block accepts two vocabularies, and a manifest may mix them. The
-current one is the five service slugs; the pre-suite names are translated to slugs at ingest,
+current one is the six service slugs; the pre-suite names are translated to slugs at ingest,
 so only slugs are ever stored:
 
-| Declared (legacy) | Enables              | Note                                                                                                                                    |
-| ----------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `licensing`       | `license`            | rename                                                                                                                                  |
-| `releases`        | `release` + `update` | the legacy module meant "distributes software", which the suite splits into the truth store (`release`) and the feed over it (`update`) |
-| `oidc`            | `identity`           | rename                                                                                                                                  |
-| `edgeMint`        | `config`             | edge-minting is a secret-**delivery** capability of Config, not a service of its own                                                    |
+| Declared (legacy) | Enables                               | Note                                                                                                                                                       |
+| ----------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `licensing`       | `license`                             | rename                                                                                                                                                     |
+| `releases`        | `release` + `distribution` + `update` | the legacy module meant "distributes software", which the suite splits into the truth store (`release`), delivery (`distribution`) and the feed (`update`) |
+| `oidc`            | `identity`                            | rename                                                                                                                                                     |
+| `edgeMint`        | `config`                              | edge-minting is a secret-**delivery** capability of Config, not a service of its own                                                                       |
 
-The current names — `license`, `config`, `release`, `update`, `identity` — need no translation
+The current names — `license`, `config`, `release`, `distribution`, `update`, `identity` — need
+no translation
 and may appear in the same block alongside legacy ones.
 
 A manifest that declares no `modules` block — or one where nothing is `enabled: true` — runs
-**license + config**, matching every product's behavior before the service suite existed. Three
+**license + config**, matching every product's behavior before the service suite existed. These
 coherence rules are enforced at ingest and by the live enablement API alike:
-`update_requires_release`, `invalid_registration_policy`, and `config_without_activation` (a
+`distribution_requires_release`, `update_requires_distribution`, `invalid_registration_policy`,
+and `config_without_activation` (a
 warning at ingest, promoted to an error by the enablement API for the one combination that is
 genuinely unreachable). The full list, with JSON-pointer paths, is at
 [Manifest validation codes](/docs/reference/validation-codes/).

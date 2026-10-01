@@ -51,8 +51,8 @@ render-prop.
 
 ## Capabilities (D-21)
 
-`PolarisState.capabilities` is a `Record<ServiceSlug, { enabled: boolean }>` over the five
-services (`license`, `config`, `release`, `update`, `identity`). It is **fail-closed**:
+`PolarisState.capabilities` is a `Record<ServiceSlug, { enabled: boolean }>` over the six
+services (`license`, `config`, `release`, `distribution`, `update`, `identity`). It is **fail-closed**:
 
 | situation                       | what the client believes                         |
 | ------------------------------- | ------------------------------------------------ |
@@ -145,7 +145,7 @@ Both adapters implement the same verbs, so a hook never branches on transport:
 | `importBundle(jws)`                            | verified in-page, kept in IndexedDB            | the bridge's `importBundle` (v3)    |
 | `report()`                                     | throws `report-unsupported` (no device bearer) | `invoke("devices", "report")`       |
 
-A refused release read throws `not-entitled`; `error.wireCode` carries the refusal body's own
+A refused release read throws `release-refused`; `error.wireCode` carries the refusal body's own
 code (`unauthorized`, `channel_not_allowed`, …), which is what the other SDKs report as their
 error code. A refused bundle throws `bundle-rejected` with the §7 step as `wireCode` and writes
 nothing.

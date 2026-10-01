@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/parity/errors.schema.json",
+  "title": "Polaris Key error-code registry (conformance/parity/errors.json)",
+  "description": "Every error code the Worker or an SDK emits, with its kind, owning service and meaning (PARITY §2.1 'Same failures'). Hand-written; tools/gen-sdk-constants.ts validates it against this schema, checks it against the codes the Worker's source emits, and generates every SDK's ErrorCode constants from it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registryVersion", "codes"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "registryVersion": { "const": 1 },
+    "codes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/code" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "kind", "service", "description"],
+      "properties": {
+        "code": {
+          "description": "The exact string a host matches on. Wire codes are snake_case; client codes are mostly kebab-case. Recorded as they are: renaming one is a behaviour change.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$"
+        },
+        "kind": {
+          "description": "`wire`: appears in a Worker response body. `client`: raised only by an SDK.",
+          "enum": ["wire", "client"]
+        },
+        "service": {
+          "description": "The service whose behaviour the code reports, or `core` for the always-on substrate.",
+          "enum": [
+            "core",
+            "license",
+            "config",
+            "identity",
+            "release",
+            "update",
+            "distribution"
+          ]
+        },
+        "description": {
+          "description": "One sentence: what happened. Rendered on reference/error-codes.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

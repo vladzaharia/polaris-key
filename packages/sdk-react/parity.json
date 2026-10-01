@@ -30,7 +30,7 @@
       "note": "No local-only client in React; P1b-07 leaves it unowned."
     },
     "core.headers": { "status": "planned", "wp": "P1b-04" },
-    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
       "status": "na",
@@ -53,7 +53,7 @@
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers (P1b-06)."
+      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers inside its own sync (P1b-06); test/bridge.test.ts pins the renderer picking up the host's post-re-register state through refresh() and a pushed stateChanged."
     },
     "config.resolve": { "status": "implemented" },
     "config.list": { "status": "implemented" },

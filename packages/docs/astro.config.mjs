@@ -38,7 +38,7 @@ export default defineConfig({
     starlight({
       title: "Polaris Key",
       description:
-        "Licensing, managed config, releases, updates, and identity for multi-product apps — one worker, five services, four SDKs.",
+        "Licensing, managed config, releases, distribution, updates, and identity for multi-product apps — one worker, six services, four SDKs.",
       customCss: ["./src/styles/global.css"],
       sidebar: [
         {
@@ -57,6 +57,7 @@ export default defineConfig({
             { label: "License", autogenerate: { directory: "services/license" }, collapsed: true },
             { label: "Config", autogenerate: { directory: "services/config" }, collapsed: true },
             { label: "Release", autogenerate: { directory: "services/release" }, collapsed: true },
+            { label: "Distribution", autogenerate: { directory: "services/distribution" }, collapsed: true },
             { label: "Update", autogenerate: { directory: "services/update" }, collapsed: true },
             { label: "Identity", autogenerate: { directory: "services/identity" }, collapsed: true },
           ],

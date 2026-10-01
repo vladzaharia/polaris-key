@@ -1,6 +1,6 @@
 # Polaris Key — public wire, OpenAPI 3.1.
 #
-# Scope: the PUBLIC product-scoped API (wire contract v3) — Core routes plus the five service
+# Scope: the PUBLIC product-scoped API (wire contract v3) — Core routes plus the six service
 # namespaces and the four permanent aliases. The admin (/manage/api/*) and portal (/api/*)
 # APIs are session-authenticated browser surfaces and are documented narratively on the docs
 # site instead (they are not "wire" — no SDK speaks them). The offline-bundle mint is one of
@@ -46,7 +46,7 @@ info:
   title: Polaris Key public API
   version: "3.0.0"
   description: >
-    Per-product licensing, managed config, releases, updates, and identity over wire
+    Per-product licensing, managed config, releases, distribution, updates, and identity over wire
     contract v3 (PROTOCOL_VERSION 3). Every route is scoped by a product slug; signed
     documents are compact EdDSA JWS with typ-separated document kinds; clients verify
     against pinned keys plus a signed trust manifest.
@@ -97,8 +97,8 @@ paths:
         `version` is the DISCOVERY document's own version (still `2`) and `protocolVersion`
         is the wire version (`3`) — they are deliberately different numbers. `schemaVersion`
         is the product's catalog version, a third orthogonal counter. `services` always
-        carries all five slugs in the canonical order license, config, release, update,
-        identity, so a client can iterate it rather than probe. `core.endpoints.register`
+        carries all six slugs in the canonical order license, config, release, distribution,
+        update, identity, so a client can iterate it rather than probe. `core.endpoints.register`
         is OMITTED when the product's registration policy is `requires-license`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
@@ -169,6 +169,10 @@ paths:
                           changelog: https://key.plrs.im/djdl/release/changelog
                           install: https://key.plrs.im/djdl/release/install.sh
                           download: https://key.plrs.im/djdl/release/dl
+                      distribution:
+                        enabled: true
+                        configured: false
+                        endpoints: {}
                       update:
                         enabled: true
                         configured: true
@@ -194,12 +198,13 @@ paths:
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
                 configOnly:
-                  summary: A config-only product — the other four are bare `enabled:false`
+                  summary: A config-only product — the other five are bare `enabled:false`
                   value:
                     services:
                       license: { enabled: false }
                       config: { enabled: true, schemaVersion: 3, endpoints: { document: https://key.plrs.im/cfg/config/document, schema: https://key.plrs.im/cfg/config/schema }, mint: { available: false } }
                       release: { enabled: false }
+                      distribution: { enabled: false }
                       update: { enabled: false }
                       identity: { enabled: false }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
@@ -3492,7 +3497,9 @@ components:
             below; test/serviceTable.test.ts pins it to tools/services.json). Core knows the
             shape of no service: an enabled one contributes its own fragment verbatim, a
             disabled one is exactly `{"enabled": false}` and nothing else.
-          required: [license, config, release, update, identity]
+          required: [license, config, release, distribution, update, identity]
+          properties:
+            distribution: { $ref: "#/components/schemas/DistributionFragment" }
           additionalProperties: { $ref: "#/components/schemas/ServiceFragment" }
     ServiceFragment:
       type: object
@@ -3512,6 +3519,30 @@ components:
           endpoints:
             document: https://key.plrs.im/djdl/config/document
             schema: https://key.plrs.im/djdl/config/schema
+    DistributionFragment:
+      description: >
+        Distribution's fragment (P2b-01): how releases reach devices and outlets. `{"enabled":
+        false}` when off, like every service. When on, `configured` is `false` until the product
+        declares outlets (P2b-02) and `endpoints` is empty until distribution has routes
+        (P2b-03, P2b-04) — the service exists before anything is reachable through it.
+      oneOf:
+        - type: object
+          required: [enabled]
+          additionalProperties: false
+          properties:
+            enabled: { type: boolean, const: false }
+        - type: object
+          required: [enabled, configured, endpoints]
+          additionalProperties: true
+          properties:
+            enabled: { type: boolean, const: true }
+            configured: { type: boolean }
+            endpoints:
+              type: object
+              additionalProperties: { type: string }
+      examples:
+        - { enabled: false }
+        - { enabled: true, configured: false, endpoints: {} }
     Jwks:
       type: object
       description: >

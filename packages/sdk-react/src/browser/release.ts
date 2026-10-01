@@ -8,8 +8,9 @@
 //
 // A browser holds a cookie session, not a device bearer, so it never authenticates a release
 // read: under the `entitled` access mode the Worker refuses it 401, and that refusal surfaces as
-// `not-entitled` carrying the body's own code — never as a generic failure to retry.
+// `release-refused` carrying the body's own code — never as a generic failure to retry.
 
+import { ErrorCode } from "../constants.generated.js";
 import { PolarisError, type ChangelogEntry } from "../core/types.js";
 import type { DownloadUrlOptions } from "../core/types.js";
 
@@ -70,9 +71,9 @@ export async function fetchChangelog(
   if (res.status === 401 || res.status === 403) {
     const wire =
       (await refusalCode(res)) ??
-      (res.status === 401 ? "unauthorized" : "forbidden");
+      (res.status === 401 ? ErrorCode.unauthorized : ErrorCode.forbidden);
     throw new PolarisError(
-      "not-entitled",
+      ErrorCode.releaseRefused,
       res.status === 401
         ? "release/changelog refused: this feed needs a usable licence."
         : "release/changelog refused: this build is not entitled to that feed.",

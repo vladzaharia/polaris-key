@@ -25,7 +25,7 @@ had no way to say "there is no licence here, sync anyway".
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
 
 from ..core.cache import CacheManager
 from ..core.context import CoreContext, now_sec
@@ -42,12 +42,12 @@ from .gate import LicenseState, is_usable, license_state
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..devices.client import DevicesClient
+# The floor every licence holds (WIRE-CONTRACT-V3 §5.1), and the answer when a licence carries
+# no ``channels`` entitlement. Re-exported for hosts that imported it from here.
+from ..constants_generated import CHANNEL_STABLE
 
 __all__ = ["LicenseClient", "LicenseAcquiredListener", "CHANNEL_STABLE"]
 
-#: The floor every licence holds (WIRE-CONTRACT-V3 §5.1), and the answer when a licence
-#: carries no ``channels`` entitlement.
-CHANNEL_STABLE = "stable"
 
 #: Raised after a credential is minted, so the facade can sync without every activation
 #: path having to remember to.
@@ -154,17 +154,17 @@ class LicenseClient:
         tier."""
         r = enroll(self._ctx, self._fingerprint())
         if isinstance(r, ActivationOk):
-            self._acquire(r.token)
+            self._acquire(r.token, "enroll")
         return r
 
     def activate_with_key(self, key: str) -> ActivationResult:
         r = activate_with_key(self._ctx, key, self._fingerprint())
         if isinstance(r, ActivationOk):
-            self._acquire(r.token)
+            self._acquire(r.token, "activate")
         return r
 
-    def _acquire(self, token: str) -> None:
-        self._tokens.set(token)
+    def _acquire(self, token: str, source: Literal["activate", "enroll"]) -> None:
+        self._tokens.set(token, source)
         self._on_acquired("token")
 
     def deactivate(self) -> None:

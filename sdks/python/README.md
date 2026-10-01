@@ -69,6 +69,16 @@ re-pulls. The default `KeyringStore` stores credentials in the OS keyring when a
 fallback. Inject an `InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client`
 (e.g. with a `MockTransport`) for the transport.
 
+A 401 on a document gets exactly **one** re-acquire per `sync()` pass, then one retry of the
+failed fetch. A licensed device rotates its token with `POST /<product>/license/token`. A
+registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `devices.register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
+`Authorization` header). A refusal (403 `registration_closed`, 404, 429) spends the attempt and
+the hard 401 is recorded. After a restart the token's origin is not persisted, so a product
+with License on uses `license/token`. Under the `requires-identity` policy a native device
+cannot re-register (that needs a browser session) and lands on the hard 401.
+
 ## Sub-packages
 
 Every one is importable on its own, so a config-only daemon never pulls the licence module:
@@ -177,7 +187,7 @@ through an operator-approved recipe (`GET /<product>/config/mint/<recipe_id>/tok
 device token) and returns a `MintedToken(token, expiresAt)`. It is cached **in memory only** —
 never in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, and only
 while the client still holds the device token it was minted with — `deactivate()`, a cleared
-token or a different sign-in drops it. A 401 gets the usual single re-acquire and one retry. Failures raise `PolarisError`:
+token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures raise `PolarisError`:
 `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`) before any
 request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.

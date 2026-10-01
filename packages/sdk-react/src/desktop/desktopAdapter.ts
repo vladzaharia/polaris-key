@@ -23,6 +23,7 @@ import {
   readEntitled,
   readEntitledChannels,
 } from "../core/adapter.js";
+import { ErrorCode } from "../constants.generated.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -490,7 +491,7 @@ export class DesktopAdapter implements PolarisAdapter {
       throw this.fail(
         "license",
         new PolarisError(
-          "bundle-import-unsupported",
+          ErrorCode.bundleImportUnsupported,
           `This desktop bridge (protocol v${this.bridge.version ?? 1}) cannot import offline bundles; protocol v3 adds importBundle.`,
         ),
       );
@@ -511,7 +512,7 @@ export class DesktopAdapter implements PolarisAdapter {
         e instanceof PolarisError
           ? e
           : new PolarisError(
-              "bundle-rejected",
+              ErrorCode.bundleRejected,
               (e as Error)?.message ?? String(e),
               code,
             ),
@@ -526,7 +527,7 @@ export class DesktopAdapter implements PolarisAdapter {
       "report",
       undefined,
       new PolarisError(
-        "report-unsupported",
+        ErrorCode.reportUnsupported,
         "This desktop bridge does not expose device telemetry.",
       ),
     );
@@ -589,7 +590,7 @@ function releaseError(e: unknown): PolarisError {
   if (code === "not_found" || code === "local-only")
     return new PolarisError("network", message, code);
   return code
-    ? new PolarisError("not-entitled", message, code)
+    ? new PolarisError(ErrorCode.releaseRefused, message, code)
     : new PolarisError("unknown", message);
 }
 

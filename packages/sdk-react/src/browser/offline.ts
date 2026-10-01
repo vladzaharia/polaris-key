@@ -34,6 +34,7 @@ import {
 } from "@polaris-key/client-core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
+import { ErrorCode } from "../constants.generated.js";
 import { PolarisError, type ImportBundleResult } from "../core/types.js";
 
 /** The pinned keys (kid → raw Ed25519 public key, base64url) — `@polaris-key/jws`'s `TrustSet`. */
@@ -238,7 +239,7 @@ export async function importOfflineBundle(
   });
   if (!result.ok)
     throw new PolarisError(
-      "bundle-rejected",
+      ErrorCode.bundleRejected,
       MESSAGES[result.reason],
       result.reason,
     );

@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SqliteDb } from "../src/db/sqlite.js";
+import type { ServiceHooks } from "../src/core/hooks.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(here, "..", "migrations");
@@ -21,3 +22,14 @@ export function makeTestDb(): SqliteDb {
   for (const sql of MIGRATIONS) runScript(sql);
   return new SqliteDb(sqlite);
 }
+
+/**
+ * Descriptor hooks with every providing service off (`core/hooks.ts`). For a test that calls a
+ * handler or a discovery fragment directly, without Core building the context: every accessor
+ * answers `null`, exactly as it would for a product with Release and Distribution disabled.
+ */
+export const NO_HOOKS: ServiceHooks = {
+  releaseCatalog: () => null,
+  delivery: () => null,
+  outletCapabilities: async () => null,
+};

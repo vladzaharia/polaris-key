@@ -163,7 +163,10 @@ describe("config.mintToken", () => {
     });
     const { c } = await client(p.fetchImpl);
     expect((await c.config.mintToken("musickit")).token).toBe("minted-1");
-    await (c as unknown as { tokens: TokenManager }).tokens.set("pkeyt_other");
+    await (c as unknown as { tokens: TokenManager }).tokens.set(
+      "pkeyt_other",
+      "activate",
+    );
     expect((await c.config.mintToken("musickit")).token).toBe("minted-2");
     expect(p.calls.map((x) => x.authorization)).toEqual([
       "Bearer pkeyt_device",

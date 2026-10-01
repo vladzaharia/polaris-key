@@ -19,6 +19,9 @@
     "release": {
       "enabled": true
     },
+    "distribution": {
+      "enabled": true
+    },
     "update": {
       "enabled": true
     },

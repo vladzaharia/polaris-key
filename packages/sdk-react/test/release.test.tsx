@@ -119,7 +119,7 @@ describe("browser Release client", () => {
     expect(calls).toEqual([]);
   });
 
-  it("a refusal is not-entitled, carrying the body's own code", async () => {
+  it("a refusal is release-refused, carrying the body's own code", async () => {
     for (const [status, body, wire] of [
       [401, { error: { code: "unauthorized" } }, "unauthorized"],
       [401, { error: "download_auth_required" }, "download_auth_required"],
@@ -131,10 +131,10 @@ describe("browser Release client", () => {
       for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++)
         await new Promise((r) => setTimeout(r, 0));
       await expect(adapter.changelog()).rejects.toMatchObject({
-        code: "not-entitled",
+        code: "release-refused",
         wireCode: wire,
       });
-      expect(adapter.snapshot().error.release?.code).toBe("not-entitled");
+      expect(adapter.snapshot().error.release?.code).toBe("release-refused");
     }
   });
 
@@ -204,7 +204,7 @@ describe("desktop Release client", () => {
     const a = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(a);
     await expect(a.changelog()).rejects.toMatchObject({
-      code: "not-entitled",
+      code: "release-refused",
       wireCode: "unauthorized",
     });
     a.dispose();

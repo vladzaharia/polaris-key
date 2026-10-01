@@ -101,11 +101,22 @@ unsigned and diagnostic. `client.release` throws `service-unavailable` when the 
 run Release, forwards the device token when one is held, and throws a 401/403 with the refusal
 body's own code (`unauthorized`, `channel_not_allowed`, …).
 
+A 401 on a document gets exactly **one** re-acquire per `sync()` pass, then one retry of the
+failed fetch. A licensed device rotates its token with `POST /<product>/license/token`. A
+registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint when
+fingerprinting is enabled, and no `Authorization` header). Both documents share the attempt, so
+two parallel 401s make one call. A refusal (403 `registration_closed`, 404, 429) spends the
+attempt and the hard 401 is recorded. After a restart the token's origin is not persisted, so a
+product with License on uses `license/token`. Under the `requires-identity` policy a native
+device cannot re-register (that needs a browser session) and lands on the hard 401.
+
 ### Capabilities
 
 `client.capabilities()` reports which services the product runs. Resolution is: a discovery
 document loaded this session (`await client.discover()`) > `expectedServices` > the suite
-default (license + config; release/update/identity off). It is **fail-closed** (D-21): a
+default (license + config; release/distribution/update/identity off). It is **fail-closed** (D-21): a
 service the discovery document omits reads as disabled, never as "unknown, assume on".
 
 A product with the license service disabled gates `not-applicable` — `isLicensed()` is `true`
@@ -190,7 +201,7 @@ third-party token through an operator-approved recipe (`GET /<product>/config/mi
 with the device token) and returns a `MintedToken(token:expiresAt:)`. It is cached **in memory
 only** — never in the cache file or the keychain — and reused until 30 seconds before
 `expiresAt`, and only while the client still holds the device token it was minted with —
-`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire and one retry. Failures throw
+`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures throw
 `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`)
 before any request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.

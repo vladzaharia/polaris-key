@@ -70,6 +70,7 @@ const CONFIG_ONLY: ServicesMap = {
   license: { enabled: false },
   config: { enabled: true },
   release: { enabled: false },
+  distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: false },
 };
@@ -78,6 +79,7 @@ const LICENSE_ONLY: ServicesMap = {
   license: { enabled: true },
   config: { enabled: false },
   release: { enabled: false },
+  distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: false },
 };
@@ -86,6 +88,7 @@ const NEITHER: ServicesMap = {
   license: { enabled: false },
   config: { enabled: false },
   release: { enabled: false },
+  distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: false },
 };

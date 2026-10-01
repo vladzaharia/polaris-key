@@ -272,12 +272,13 @@ export type ParseManifestResult =
  *
  * The three interesting legacy rows:
  *
- *   `releases` -> release + update. The old module meant "this product distributes software",
- *   which the suite splits into the truth store (Release) and the feed (Update, D-05). Mapping
- *   it to Release alone would silently take the appcast and `/version` away from every product
- *   that already serves them, on the very change that is supposed to preserve behaviour. It
- *   also can never produce an `update_requires_release` violation, because Release comes with
- *   it by construction.
+ *   `releases` -> release + distribution + update. The old module meant "this product
+ *   distributes software", which the suite splits into the truth store (Release), delivery
+ *   (Distribution) and the feed (Update, D-05; README §3.2). Mapping it to Release alone would
+ *   silently take the appcast and `/version` away from every product that already serves them,
+ *   on the very change that is supposed to preserve behaviour. It also can never produce a
+ *   `distribution_requires_release` or `update_requires_distribution` violation, because the
+ *   whole chain comes with it by construction.
  *
  *   `oidc` -> identity. A rename, not a change of meaning (D-14).
  *
@@ -286,7 +287,7 @@ export type ParseManifestResult =
  */
 const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
 
-/** What a manifest that declares nothing runs: licensing + settings distribution, which is
+/** What a manifest that declares nothing runs: licensing + settings delivery, which is
  *  today's behaviour for every product (design spec §2.2). The table's `defaultEnabled`. */
 const DEFAULT_ENABLED: readonly ServiceSlug[] = DEFAULT_ENABLED_SERVICES;
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
@@ -1747,17 +1748,31 @@ function validateDocuments(
     );
   }
 
-  // Update renders a feed over Release's truth store (D-05). With Release off there are no
-  // releases, channels or artifacts to render, so the feed would answer every client with an
-  // empty document rather than an error — a silent failure, which is why this is an error and
-  // not a warning. `releases`/`release`+`update` manifests cannot trip it (see MODULE_SERVICES).
-  if (modules.includes("update") && !modules.includes("release")) {
+  // The chain is release ← distribution ← update (README §3.2): truth, then delivery, then
+  // decision. Both edges are errors, not warnings: each describes a service that would answer
+  // with an empty document rather than an error — a silent failure. The legacy `releases`
+  // module enables all three by construction, so it trips neither (see MODULE_SERVICES).
+  //
+  // Distribution delivers what Release says exists; with Release off there is nothing to
+  // deliver.
+  if (modules.includes("distribution") && !modules.includes("release")) {
+    add(
+      errors,
+      "product",
+      "/modules/distribution",
+      "distribution_requires_release",
+      "The distribution service delivers release artifacts, so release must be enabled too.",
+    );
+  }
+  // Update tells a device what to do next over what Distribution has delivered. This edge
+  // subsumes the retired `update_requires_release`: Distribution itself requires Release.
+  if (modules.includes("update") && !modules.includes("distribution")) {
     add(
       errors,
       "product",
       "/modules/update",
-      "update_requires_release",
-      "The update service renders a feed over release data, so release must be enabled too.",
+      "update_requires_distribution",
+      "The update service serves a feed over distribution's delivery state, so distribution must be enabled too.",
     );
   }
 

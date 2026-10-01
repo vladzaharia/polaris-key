@@ -53,6 +53,7 @@ import {
   readEntitled,
   readEntitledChannels,
 } from "../core/adapter.js";
+import { ErrorCode } from "../constants.generated.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -760,7 +761,7 @@ export class BrowserAdapter implements PolarisAdapter {
       throw this.fail(
         "license",
         new PolarisError(
-          "bundle-import-unsupported",
+          ErrorCode.bundleImportUnsupported,
           this.offline
             ? "Offline bundles need the pinned trust keys (pass { trust: { pinnedKeys } })."
             : "This browser has no IndexedDB to keep an offline bundle in.",
@@ -803,7 +804,7 @@ export class BrowserAdapter implements PolarisAdapter {
    *  the `devices.report` web N/A (`runtime`), stated rather than silently skipped. */
   async report(): Promise<boolean> {
     throw new PolarisError(
-      "report-unsupported",
+      ErrorCode.reportUnsupported,
       "Device telemetry needs a device token; a browser session has none.",
     );
   }

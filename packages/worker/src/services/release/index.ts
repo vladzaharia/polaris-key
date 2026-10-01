@@ -7,7 +7,8 @@
  * channel rules, the artifacts, the changelog, the installer, and the truth store those are
  * recorded in. Update renders a feed OVER this (`services/update/`), which is why
  * `update → release` is the one sanctioned cross-service import and why nothing here points
- * back the other way.
+ * back the other way. Every other reader — Distribution first — goes through the
+ * `releaseCatalog` hook below, which Core gates on this service's enablement.
  */
 
 import type {
@@ -19,12 +20,18 @@ import type { AdminSession } from "../../core/adminApi.js";
 import { handleReleaseRoutes } from "./routes.js";
 import { handleReleaseAdmin } from "./admin.js";
 import { getReleaseConfig } from "./config.js";
+import { releaseCatalog } from "./catalog.js";
 
 export const releaseService: ServiceDescriptor = {
   slug: "release",
   handle: handleReleaseRoutes,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleReleaseAdmin(ctx),
+  /**
+   * The `releaseCatalog` descriptor hook (`core/hooks.ts`): the read-only view of what exists
+   * that Distribution and later consumers read through Core instead of importing this service.
+   */
+  releaseCatalog,
   /**
    * Release's slice of `/.well-known/polaris.json` (design spec §4.3).
    *

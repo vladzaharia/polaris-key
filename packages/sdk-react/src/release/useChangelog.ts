@@ -23,7 +23,7 @@ export interface UseChangelog {
   entries: ChangelogEntry[];
   /** True while a load is in flight. */
   busy: boolean;
-  /** The last load's error (`not-entitled` with the refusal's `wireCode`, `network`, …). */
+  /** The last load's error (`release-refused` with the refusal's `wireCode`, `network`, …). */
   error: PolarisError | Error | null;
   /** False when the product does not run the Release service — nothing is requested. */
   enabled: boolean;

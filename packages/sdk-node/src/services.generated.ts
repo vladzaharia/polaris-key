@@ -9,6 +9,7 @@ export type ServiceSlug =
   | "license"
   | "config"
   | "release"
+  | "distribution"
   | "update"
   | "identity";
 
@@ -17,6 +18,7 @@ export const SERVICE_SLUGS: readonly ServiceSlug[] = [
   "license",
   "config",
   "release",
+  "distribution",
   "update",
   "identity",
 ];

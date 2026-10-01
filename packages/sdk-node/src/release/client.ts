@@ -12,6 +12,7 @@
 // code — rather than inventing a retry (pinned by the release-changelog transcripts).
 
 import { PolarisError } from "@polaris-key/client-core";
+import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 
@@ -90,7 +91,8 @@ export class ReleaseClient {
       const code =
         typeof body.error === "string" ? body.error : body.error?.code;
       throw new PolarisError(
-        code || (res.status === 401 ? "unauthorized" : "forbidden"),
+        code ||
+          (res.status === 401 ? ErrorCode.unauthorized : ErrorCode.forbidden),
         res.status === 401
           ? `${path} refused: this feed needs a usable licence.`
           : `${path} refused: this build is not entitled to that feed.`,

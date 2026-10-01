@@ -68,6 +68,7 @@ function base(): Docs {
         license: { enabled: true },
         config: { enabled: true },
         release: { enabled: true },
+        distribution: { enabled: true },
         update: { enabled: true },
         identity: { enabled: true },
       },
@@ -597,12 +598,23 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).autoIssue.rateLimitPerHour = -5),
   },
   {
-    code: "update_requires_release",
+    code: "distribution_requires_release",
     file: "product",
     schema: "rejects",
     mutate: (d) => {
-      p(d).modules = { update: { enabled: true } };
+      p(d).modules = {
+        distribution: { enabled: true },
+        update: { enabled: true },
+      };
       delete d.release;
+    },
+  },
+  {
+    code: "update_requires_distribution",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => {
+      p(d).modules = { release: { enabled: true }, update: { enabled: true } };
     },
   },
   {

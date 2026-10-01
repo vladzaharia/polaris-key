@@ -149,18 +149,21 @@ export class LicenseClient {
   /** Obtain a licence with no key and no sign-in, when the product offers a free tier. */
   async enroll(): Promise<ActivationResult> {
     const r = await enroll(this.ctx, this.fingerprint());
-    if (r.kind === "ok") await this.acquire(r.token);
+    if (r.kind === "ok") await this.acquire(r.token, "enroll");
     return r;
   }
 
   async activateWithKey(key: string): Promise<ActivationResult> {
     const r = await activateWithKey(this.ctx, key, this.fingerprint());
-    if (r.kind === "ok") await this.acquire(r.token);
+    if (r.kind === "ok") await this.acquire(r.token, "activate");
     return r;
   }
 
-  private async acquire(token: string): Promise<void> {
-    await this.tokens.set(token);
+  private async acquire(
+    token: string,
+    source: "activate" | "enroll",
+  ): Promise<void> {
+    await this.tokens.set(token, source);
     await this.onAcquired("token");
   }
 

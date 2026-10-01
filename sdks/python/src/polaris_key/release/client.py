@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 
+from ..constants_generated import ErrorCode
 from ..core.context import CoreContext
 from ..core.errors import PolarisError
 from ..core.token import TokenManager
@@ -121,11 +122,11 @@ class ReleaseClient:
             )
             if res.status_code == 401:
                 raise PolarisError(
-                    code or "unauthorized",
+                    code or ErrorCode.UNAUTHORIZED,
                     f"{path} refused: this feed needs a usable licence.",
                 )
             raise PolarisError(
-                code or "forbidden",
+                code or ErrorCode.FORBIDDEN,
                 f"{path} refused: this build is not entitled to that feed.",
             )
         if not res.is_success:
