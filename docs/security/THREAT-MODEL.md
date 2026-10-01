@@ -36,6 +36,8 @@ and what binary it installs next.
 | A9  | **The ability to recover**                                        | Rotation and revocation machinery                                                | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                       |
 | A10 | **The blob store** (release bytes)                                | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1 | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach.  |
 | A11 | **Outlet credentials** (store API keys)                           | `outlet_credentials`, sealed under A1 (own AAD kind); minted tokens sealed in KV | Act as the operator in App Store Connect, Google Play or Partner Center: upload or release builds, change listings and prices. Equal to A3. |
+| A12 | **CI credentials** (`pkeyci_` tokens, upload tickets)             | `ci_tokens`/`ci_upload_tickets` (peppered hashes only); held by CI jobs          | Publish, promote (and, if granted, yank) releases of one product for up to 30 min (minted) or 90 days (static). A route into A3/A10.        |
+| A13 | **The R2 parent token** and the temporary credentials it mints    | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h              | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.           |
 
 **A5 is scoped by usage.** Every product secret carries a usage — general (stored `NULL`) or
 `edge-mint` — and `openProductSecret` opens a secret only for the usage its caller requires: the
@@ -46,6 +48,14 @@ manifest. The usage is not yet bound into the AEAD associated data; that is stro
 every secret re-sealed. P5-01 did not do it: it took the stronger step for the material that
 needed it most, moving store credentials out of `product_secrets` altogether (A11, below), and
 left binding the product-secret usage into the AAD as an open follow-up.
+
+**A12 and A13 (P2-02).** A `pkeyci_` token is shown once and stored only as `hashKey` (HMAC under
+`KEY_HASH_PEPPER`), like device tokens; tickets likewise. The R2 parent token is an
+operator-created API token scoped to one environment's bucket with Object Read & Write; the Worker
+uses its secret only to sign temporary credentials locally and never sends it anywhere. A temporary
+credential can never exceed its parent, so the parent's bucket scope is the outer bound of every
+credential CI holds; revoking the parent kills all of them at once. See "Trusted publishing
+(P2-02)" in §3.
 
 **A11 is separated from A5 by AAD, not only by table.** Outlet credentials are sealed under
 `pkey:v2:<product>:outlet-credential:<id>`, so a blob copied into `product_secrets` (under any
@@ -66,7 +76,8 @@ name, with any usage) fails to open there, and the reverse fails too. See "Outle
                         │    └── R2  BLOBS (content-addressed bytes)│
  downloader ───────────►│  same Worker on dl.plrs.im (bytes host:   │
   (any client)          │    byte routes only — see below)          │
- CI (temp creds) ──────►│  R2 staging/ only; never a locked prefix  │
+ CI (temp creds) ──────►│  R2 staging/<p>/<ticket>/ only (Put+Head) │
+ CI (OIDC, pkeyci_) ───►│  /release/publish/*: see §3, §5           │
                         │                                          │
  GitHub (webhooks, ────►│  secrets: PLATFORM_KEK, session secrets,  │
   repo contents,        │           GitHub App key, webhook secret  │
@@ -195,10 +206,10 @@ serves, so who may make them is part of this boundary:
 - **Principals.** A console admin session authorised for the product, through the console's
   session- and CSRF-guarded routes, can do all of them. CI can do them for one product with a `pkeyci_` token: promote,
   pin and unpin need `release:promote`, a yank needs `release:yank`. The token store is P2-02's
-  and does not exist yet: `core/ciTokens.ts` `lookupCiToken` knows no token, so every CI route
-  answers 401 today. When P2-02 fills it with credentials derived from a repository's OIDC
-  identity, anyone who can run that repository's release workflow holds these scopes, and this
-  paragraph's consequences become theirs. Every write is audited with its actor (`admin:<sub>`
+  (`core/publisher.ts`): a token minted from a repository's OIDC identity carries the policy's
+  scopes, so anyone who can run that repository's declared release workflow in its declared
+  environment on a protected ref holds `release:promote` by default, and this paragraph's
+  consequences are theirs. `release:yank` is opt-in (an operator edits the policy's scopes). Every write is audited with its actor (`admin:<sub>`
   or `ci:<subject>`).
 - **A pin bypasses the anti-rollback floor.** A pinned channel serves its pointer exactly, with
   no floor check (`gateway.ts` `resolveSelectorLive`), and the pointer may be a yanked release.
@@ -260,6 +271,74 @@ the full blob; the delta path for that pair is then denied until the lock lapses
 that publish deltas (P4-03, P4-17) own the fix: product-scoped or content-named delta keys, or
 granting a delta ref only under the earn-a-ref rule above, so a squatted key is never served
 under the victim product.
+
+### Trusted publishing (P2-02)
+
+**What crosses.** A CI job reaches the Worker with one of two credentials and nothing else: a
+GitHub Actions OIDC token (exchanged once, at `POST /<p>/release/publish/token`, for a 30-minute
+`pkeyci_` token), or an operator-issued static `pkeyci_` token (≤ 90 days, for a CI that is not
+GitHub). Bytes never cross the Worker: with `release:publish` the job gets an upload ticket and R2
+temporary credentials, PUTs to `staging/<product>/<ticketId>/`, and submits a descriptor; the
+Worker verifies and promotes (`core/blobs.ts`) and ingests (`descriptor.ts`). Code:
+`core/publisher.ts`, `services/release/publish.ts`; tests: `test/publisher.test.ts`,
+`test/publishRoutes.test.ts`.
+
+**The OIDC token is verified, then judged.** RS256 only; the issuer is the constant
+`https://token.actions.githubusercontent.com` (no setting can change it — a configurable issuer
+is an attacker-chosen JWKS); the audience is product-bound (`<origin>/<product>/release/publish`),
+so a token minted for one product cannot be exchanged at another; `exp`/`nbf` with 60 s skew; the
+JWKS is cached in KV and an unknown `kid` refetches at most once a minute. The exchange is
+single-use: the token's `jti` goes into `ci_tokens` under a UNIQUE index (in the required-index
+assertion), so a replay inserts nothing, atomically. The policy is then applied (§5, "CI OIDC
+claims").
+
+**The repo cannot weaken its own control** (the R6-03 precedent). `.pkey/release` may name only
+`publishing.trustedPublisher.workflow` and `.environment`. The repository's numeric id and owner
+id are resolved from GitHub at link/resync with the installation token, never read from the
+manifest, so a manifest cannot name another repository as its publisher. The protected-ref,
+GitHub-hosted-runner and allowed-event checks are platform-fixed. A manifest-owned policy follows
+the manifest (and every change is audited as `ci.publisher.manifest`); once an operator claims it
+(`PUT …/ci-publisher`, `source = 'admin'`), resync skips it. Scopes are never manifest-settable:
+the default grant is `release:publish`, `release:promote`, `distribution:report`, and
+`release:yank` exists only if an operator adds it.
+
+**Upload credentials reach one prefix and cannot read or copy.** The temporary credential is an
+HS256 JWT signed with the parent secret naming one bucket, `actions: [PutObject, HeadObject]` and
+`prefixPaths: [staging/<product>/<ticketId>/]`. No `GetObject` or listing (CI never reads); no
+`CopyObject`/`UploadPartCopy`; no multipart. The copy exclusion is load-bearing: `promote`'s
+stored-checksum path trusts R2's recorded SHA-256 and never re-hashes the staged bytes, so a
+`CopyObject` from `gated/blobs/sha256/<h>` (another product's paid build) into the ticket prefix
+would carry that object, with its genuine checksum, into this product's staging, and a promote
+would then earn this product a ref to bytes it never had. With no copy action and no read on any
+other prefix, the only way to get bytes under the prefix is to PUT them. The multipart exclusion
+keeps the stored checksum meaningful: a multipart object's checksum is a hash of part hashes, not
+the object's SHA-256, so valid multipart uploads would fail closed (`digest_mismatch`); CI uploads
+each object as one PUT with `x-amz-checksum-sha256`. The rules are R2's documented authorisation
+model; `test/publisher.test.ts` asserts the minted claims and models those rules, and the
+real-R2 confirmation is an operator check (`docs/DEPLOYMENT.md`).
+
+**Earning a ref.** `promote` takes the product it promotes for and refuses, with `bad_key`, a
+staging key under any other product's prefix, so a submit can only promote its own product's
+uploads; it can only promote objects its ticket lists; the ticket is bound to the product and to
+the token that obtained it, expires with the token (≤ 1 h), and is redeemed once. Every staged
+object is verified, and the descriptor planned, before anything is promoted.
+
+**Residual risk: an existence oracle on other tenants' bytes.** `blob_objects` is shared, and
+`promote` short-circuits a target that already exists (`alreadyStored`: no copy). The submit
+route never reads that flag and answers identically either way, and `present` on a ticket
+reflects only this product's refs, so no response body says whether another product holds a
+hash. The **timing** still differs — a promote that finds the object stored skips a streamed
+copy — so a tenant who uploads the bytes of a file can, by timing its own submit, learn whether
+some other product already stored the same bytes. It learns nothing it could not compute (it
+holds the bytes), gains no ref it did not earn by uploading, and the signal is noisy at small
+sizes; it is accepted as residual and revisited if a tenant ever holds a hash whose bare
+existence is sensitive.
+
+**Residual risk: the parent token.** A13 can write locked prefixes directly (R2's age lock still
+refuses overwrites and deletes within 180 days). It lives only as Worker secrets; nothing logs it,
+and no response contains it (the tests assert it). Rotation: create a new token, set the three
+secrets in one bulk write, revoke the old token (which kills every outstanding temporary
+credential).
 
 ### Service boundaries and the descriptor hooks (P2b-01)
 
@@ -587,18 +666,27 @@ page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
 These deserve their own section because each is treated as trusted somewhere in the code while
 originating outside the trust boundary.
 
-| Input                           | Trusted for                                                               | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                  |
-| ------------------------------- | ------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC `groups`                   | **Platform admin authority**                                              | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                         |
-| OIDC `sub`                      | License identity                                                          | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                |
-| OIDC `email`                    | Portal license linking, cross-product                                     | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                           |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name             | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                         |
-| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS) | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09). |
-| `X-PKey-Version` header         | Version and channel gating                                                | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                       |
-| `X-PKey-Channel` header         | Channel gating                                                            | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                     |
-| `X-PKey-Device` header          | Device identity                                                           | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                  |
-| Fingerprint components          | Seat/hardware binding                                                     | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                            |
-| Cached `trustedKeys`            | **Signature verification**                                                | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                   |
+| Input                           | Trusted for                                                               | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OIDC `groups`                   | **Platform admin authority**                                              | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                            |
+| OIDC `sub`                      | License identity                                                          | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                   |
+| OIDC `email`                    | Portal license linking, cross-product                                     | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                              |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name             | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                            |
+| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS) | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).    |
+| `X-PKey-Version` header         | Version and channel gating                                                | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                          |
+| `X-PKey-Channel` header         | Channel gating                                                            | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                        |
+| `X-PKey-Device` header          | Device identity                                                           | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                     |
+| Fingerprint components          | Seat/hardware binding                                                     | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                               |
+| Cached `trustedKeys`            | **Signature verification**                                                | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                      |
+| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                   | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02). |
+
+**CI OIDC claims are only as strong as the repository's own settings.** The policy proves the
+token came from the declared workflow, in the declared environment, on a ref a branch or tag
+ruleset protects. It does not prove who could push to that ref or approve that environment: a
+repository whose rulesets let any writer push a tag, or whose `release` environment has no
+required reviewers, lets any writer publish. That is the trusted-publishing model's premise
+(npm, PyPI) and is stated in the publishing docs; the platform's part is that the manifest cannot
+relax any check, and that an operator can claim and tighten the policy.
 
 Under the `entitled` release access mode, a legacy `staging` grant now opens the beta feed and its
 artifacts, and a `beta` grant opens the `staging` alias of it: `staging` is the legacy spelling of
@@ -715,6 +803,14 @@ Poison the release channel
 │   ├── set `.pkey/release` sparkleEd25519Pub to a key you hold  (the verifying key is repo-sourced: resync rewrites `sparkle_ed25519_pub` on every push-triggered resync, with no operator guard)
 │   ├── publish a DMG + a .sig made with that key (the appcast verifies the sidecar over the DMG bytes against `sparkle_ed25519_pub`, so a repo writer who swapped the key passes; only the client-side Sparkle `SUPublicEDKey` pin stops it)
 │   └── set `.pkey/release` requireSparkleSignature:false  (no effect: the requirement is operator-owned, read from `operator_policy_json`, which no manifest path writes)
+├── Publish through a trusted publisher (P2-02)
+│   ├── run the declared workflow in the declared environment on a protected ref   (= repo write + whatever the rulesets/environment reviewers allow; the intended path)
+│   ├── present another repository's OIDC token  (refused: numeric repository_id/owner_id pinned from GitHub)
+│   ├── call a reusable workflow elsewhere, or the workflow from an unprotected ref  (refused: job_workflow_ref must be this repo's workflow at the triggering ref; ref_protected)
+│   ├── replay a leaked OIDC token  (refused: single-use jti, UNIQUE in D1; 5-10 min exp anyway)
+│   ├── edit `.pkey/release` to loosen the policy  (only workflow/environment are fields; an operator-claimed policy ignores the manifest)
+│   ├── steal a minted `pkeyci_` token from a job log  (30 min, one product, scoped; static tokens ≤ 90 days, revocable)
+│   └── copy another product's gated blob into the ticket prefix to earn a ref  (refused: credentials grant PutObject/HeadObject on one prefix only; promote refuses another product's staging key)
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
 ```
 
@@ -734,6 +830,8 @@ descriptor hook gains a method that writes or a new provider; a byte route is ad
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);
+a CI scope is added, the publisher policy gains a field, a manifest is allowed to set any part of
+it beyond the workflow and environment, or `UPLOAD_CREDENTIAL_ACTIONS` changes (P2-02);
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store

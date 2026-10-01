@@ -143,6 +143,39 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
   P2-04 is not `done`, land token, policy, uploads and ticket redemption first, and `submit` in a
   second PR after P2-04.
 
+## Corrections from the code (recorded during implementation)
+
+- **The CI-token seam already existed.** P2-05 shipped `core/ciScope.ts` (`requireCiScope`,
+  `ciActor`) and `core/ciTokens.ts` with a `lookupCiToken` that answered "unknown" for every
+  token. P2-02 fills it: `core/ciTokens.ts` re-exports `lookupCiToken` from `core/publisher.ts`,
+  and the token prefix, scope vocabulary and `CiPrincipal` moved to a leaf module,
+  `core/ciVocabulary.ts` (so the guard, the seam and the store import no one another for a
+  constant). Later packages add scopes there.
+- **R2 temporary credentials are scoped by action, not only by prefix.** Cloudflare's local
+  signing supports an `actions` claim, so the ticket's credentials grant exactly `PutObject` and
+  `HeadObject` on `staging/<product>/<ticketId>/`: no read, list, copy or multipart. That closes
+  the wave-1 "ticket credential scope" item (no copy source exists) and the "multipart checksums"
+  item (multipart is not granted, so CI uploads one PUT with `x-amz-checksum-sha256`) by
+  construction. Confirming the behaviour against a real bucket is an operator check
+  (`docs/DEPLOYMENT.md`).
+- **One more var.** The S3 API names a bucket and the `BLOBS` binding does not, so each
+  environment gains a `[vars]` `BLOBS_BUCKET_NAME` beside the three proposed secrets.
+- **Columns beyond the proposal.** `ci_publishers.repository` (`owner/repo`, the
+  `job_workflow_ref` prefix) and `modified_by`; `ci_tokens.token_id` (the id the operator lists
+  and revokes by; the hash is never shown) and `label`; `ci_upload_tickets.ticket_id` (the public
+  id in the staging prefix, distinct from the redeemable `pkeyup_` ticket). Migrations are
+  `0035_a_ci_publishing.sql` and `0035_b_index_assertion.sql`.
+- **Shapes as built.** `/publish/token` takes `{"token": "<jwt>"}`; release ids are
+  `<deliverable>@<version>` (`app@1.3.0`, P2-04's format); the operator paths are
+  `/manage/api/products/<slug>/ci-publisher` (GET, PUT) and `/ci-tokens[/<tokenId>]`
+  (GET, POST, DELETE).
+- **P2-04 hand-offs, decided.** (a) The lost-race `release_exists` carries `retryable: true`;
+  every other refusal is final. (b) GitHub owns `title`/`notes`/`published_at` wherever a GitHub
+  release with the same tag exists (every sync rewrites them); a CI-only release keeps the
+  descriptor's values — documented on the Artifacts page. (c) Submit takes exactly one
+  descriptor, so no batch planning arises. (d) `promote` takes the product it promotes for and
+  refuses another product's staging key with `bad_key`.
+
 ## Steps
 
 1. Migration, `TABLE_OWNERS` entries, `docs gen`; the replay index in the required-index list.

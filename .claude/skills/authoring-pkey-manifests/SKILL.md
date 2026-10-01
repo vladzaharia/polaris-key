@@ -76,6 +76,14 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `kind: pack` entry only warns (`pack_deliverables_not_supported`) until packs land. CI may
       then attach a release descriptor (`pkey-release.json`, `release-descriptor.schema.json`)
       whose builds must match this map.
+- [ ] If CI should publish releases (P2-02 trusted publishing), declare the publisher in
+      `release`: `publishing.trustedPublisher: { workflow: .github/workflows/<file>.yml,
+    environment: release }` (`environment` defaults to `release`). Those two fields are ALL
+      the manifest can say: the repository's numeric ids come from GitHub at link/resync, the
+      protected-ref / GitHub-hosted-runner / allowed-event checks are fixed, and scopes are an
+      operator setting. Tell the owner the publishing ref needs a branch or **tag ruleset**
+      (`ref_protected`), and the environment should require reviewers. Codes:
+      `invalid_trusted_publisher_workflow`, `invalid_trusted_publisher_environment`.
 - [ ] The base name selects the role; the extension is a pure format preference, tried
       `.json` → `.yaml` → `.yml` and resolved **per document**, so `product.yaml` may sit next to
       `schema.json`.
@@ -182,6 +190,10 @@ table, `tools/services.json`.
       downgrade an `entitled` product to the manifest's `public`. "Revert to manifest" hands
       ownership back and changes nothing else; the manifest re-applies on the **next** resync,
       not immediately.
+- [ ] The trusted-publisher policy (`ci_publishers`) is operator-claimable too: while
+      manifest-owned it follows `publishing.trustedPublisher` (a change is audited, and removing
+      the block removes the policy); once an operator claims it (`PUT
+    /manage/api/products/<slug>/ci-publisher`) a resync never touches it.
 - [ ] The operator-only artifact policy (`requireSparkleSignature`, `minimumSystemVersion`)
       has **no manifest spelling at all** — it lives in `release_config.operator_policy_json`,
       which no manifest path writes. Do not try to declare either key (or the `entitled` access
