@@ -32,7 +32,8 @@ class ChangelogEntry:
 
     version: str
     tag: str
-    summary: str
+    #: The curated summary, or ``None`` when the release body yielded none.
+    summary: Optional[str]
     url: str
     date: Optional[str] = None
 
@@ -41,7 +42,7 @@ class ChangelogEntry:
         return ChangelogEntry(
             version=str(d.get("version", "")),
             tag=str(d.get("tag", "")),
-            summary=str(d.get("summary", "")),
+            summary=d["summary"] if isinstance(d.get("summary"), str) else None,
             url=str(d.get("url", "")),
             date=d.get("date"),
         )
@@ -110,11 +111,21 @@ class ReleaseClient:
         res = self._ctx.request(
             "GET", self._ctx.url(path), headers=self._ctx.headers(extra)
         )
-        if res.status_code == 403:
+        if res.status_code in (401, 403):
+            # The refusal names itself: the nested v3 shape (``{"error":{"code":…}}``, the
+            # ``entitled`` mode) or the flat one (``{"error":"download_auth_required"}``).
             body = _json_or_empty(res)
-            error = body.get("error") if isinstance(body.get("error"), dict) else {}
+            raw = body.get("error")
+            code = raw if isinstance(raw, str) else (
+                raw.get("code") if isinstance(raw, dict) else None
+            )
+            if res.status_code == 401:
+                raise PolarisError(
+                    code or "unauthorized",
+                    f"{path} refused: this feed needs a usable licence.",
+                )
             raise PolarisError(
-                error.get("code") or "forbidden",
+                code or "forbidden",
                 f"{path} refused: this build is not entitled to that feed.",
             )
         if not res.is_success:

@@ -87,6 +87,30 @@ class ConfigClient:
         doc = self.doc
         return doc.schemaVersion if doc is not None else None
 
+    def fetch_schema(self) -> Optional[Dict[str, Any]]:
+        """``GET /<p>/config/schema`` — the product's active config catalog, parsed.
+
+        Unsigned, unauthenticated and DIAGNOSTIC: nothing security-relevant is ever read
+        from it (the values a client acts on arrive in the signed config document), so every
+        failure — a refusal, a network error, a body that is not a catalog, local-only mode,
+        a product that does not run Config (D-21: not even probed) — answers ``None``. It
+        never raises.
+        """
+        if not self._ctx.enabled("config"):
+            return None
+        try:
+            res = self._ctx.request(
+                "GET",
+                self._ctx.url("config/schema"),
+                headers=self._ctx.headers({"accept": "application/json"}),
+            )
+            if not res.is_success:
+                return None
+            body = res.json()
+        except Exception:  # noqa: BLE001 - diagnostic: any failure is "no catalog"
+            return None
+        return body if _is_catalog(body) else None
+
     @property
     def enabled(self) -> bool:
         """Whether the product runs Config at all — the config-side twin of the licence
@@ -99,3 +123,14 @@ class ConfigClient:
         legitimately ``None`` value."""
         return resolve(self._context(), key, fallback)
 
+
+
+def _is_catalog(value: Any) -> bool:
+    """The catalog's outer shape. The entries are the product's own data; the client does
+    not validate them, because nothing it decides depends on them."""
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("schemaVersion"), int)
+        and not isinstance(value.get("schemaVersion"), bool)
+        and isinstance(value.get("entries"), list)
+    )
