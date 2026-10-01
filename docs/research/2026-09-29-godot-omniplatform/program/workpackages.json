@@ -1936,7 +1936,7 @@
       "optional": false,
       "refs": ["notes/E9 §13"],
       "brief": "wp/S-06-outlet-signals.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "S-07",

@@ -182,7 +182,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [S-03](wp/S-03-chunk-size-real-history.md) ✋  | Spike: chunk size and reuse on real Diceroll PCK history                                                        | —          | spike-runner | 0.5–0.75 | done   |
 | [S-04](wp/S-04-low-end-performance.md) ✋      | Spike: crypto, hashing and zstd on low-end Android, iOS and mobile/WebKit browsers                              | —          | spike-runner | 1        | done   |
 | [S-05](wp/S-05-godot-platform-mechanics.md) ✋ | Spike: Godot platform mechanics (Android pack stall, PAD paths, web multi-pack, MSIX `user://`, Velopack hooks) | —          | spike-runner | 1.5–2    | done   |
-| [S-06](wp/S-06-outlet-signals.md) ✋           | Spike: outlet-detection signals the research could not verify                                                   | —          | spike-runner | 0.5–1    | todo   |
+| [S-06](wp/S-06-outlet-signals.md) ✋           | Spike: outlet-detection signals the research could not verify                                                   | —          | spike-runner | 0.5–1    | done   |
 | [S-07](wp/S-07-policy-recheck.md)              | Spike: re-check dated platform policies before connector work                                                   | —          | spike-runner | 0.25–0.5 | done   |
 
 ## D: Diceroll adoption (vladzaharia/diceroll)
