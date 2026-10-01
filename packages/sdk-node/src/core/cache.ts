@@ -123,11 +123,13 @@ export class CacheManager {
     releaseRecords: Record<string, string>;
   }): void {
     if (!this.record) return;
-    this.record = {
-      ...this.record,
-      feeds: { ...slices.feeds },
-      releaseRecords: { ...slices.releaseRecords },
-    };
+    const next: CacheRecordV3 = { ...this.record };
+    delete next.feeds;
+    delete next.releaseRecords;
+    if (Object.keys(slices.feeds).length > 0) next.feeds = { ...slices.feeds };
+    if (Object.keys(slices.releaseRecords).length > 0)
+      next.releaseRecords = { ...slices.releaseRecords };
+    this.record = next;
   }
 
   /** Re-verify the whole record and derive every counter from it (§4.1). */
