@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 24 | 12 | 14 | 6 |
 | Python | `python` | 32 | 3 | 14 | 7 |
 | Swift | `macos`, `ios` | 33 | 3 | 14 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 26 | 0 | 27 | 3 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 29 | 0 | 24 | 3 |
 
 ## Core
 
@@ -79,10 +79,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-08) | — |
-| `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-08) | — |
+| `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
-| `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | planned (P1-08) | — |
+| `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
 | `update.decide` | The update decision | `update-matrix.json` (P3-02) | planned (P3-04) | planned (P3-05) | planned (P3-06) | planned (P3-07) | planned (P3-08) | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | planned (P3-10) | ios: outlet |
