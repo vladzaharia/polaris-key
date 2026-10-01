@@ -273,6 +273,7 @@ const TABLE_OWNERS = {
     "products",
     "product_keys",
     "product_secrets",
+    "outlet_credentials",
     "devices",
     "device_fingerprints",
     "device_facts",
