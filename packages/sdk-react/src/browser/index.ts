@@ -4,8 +4,17 @@ export {
   BrowserAdapter,
   browserAdapter,
   splitSessionDoc,
+  WEB_OUTLET_STAMP,
   type BrowserAdapterOptions,
+  type BrowserUpdateConfig,
 } from "./browserAdapter.js";
+export {
+  buildDownloadUrlFor,
+  decideBrowserUpdate,
+  type BrowserDecideOptions,
+  type BrowserDecideResult,
+  type UpdateSlices,
+} from "./update.js";
 export {
   discoverProduct,
   parseDiscovery,

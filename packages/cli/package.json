@@ -25,7 +25,10 @@
     "bundle:action": "node scripts/bundle-action.mjs"
   },
   "dependencies": {
+    "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/jws": "workspace:*",
     "@polaris-key/manifest": "workspace:*",
+    "@polaris-key/protocol": "workspace:*",
     "yaml": "^2.6.1"
   },
   "devDependencies": {

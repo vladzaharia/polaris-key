@@ -204,6 +204,11 @@ export type IngestResult =
       dryRun: boolean;
       descriptorSha256: string;
       planned: PlannedRows | null;
+      /** The validated descriptor (P3-03: the record is checked against it). */
+      descriptor: ReleaseDescriptor;
+      /** The release's `seq`: the stored one, the descriptor's explicit one, or the next one
+       *  as of the plan's read. */
+      seq: number;
     }
   | {
       ok: false;
@@ -241,6 +246,16 @@ export interface IngestOptions {
    * Ignored without `dryRun`.
    */
   pendingPromotion?: ReadonlyMap<string, { sha256: string; size: number }>;
+  /**
+   * Statements that ride in the ingest's own batch, after the descriptor's rows (P3-03: the
+   * release record). Each must carry its own guard. For an `unchanged` descriptor they run in a
+   * batch of their own. Never run on a dry run or a refusal.
+   */
+  extraStatements?: (p: {
+    releaseId: string;
+    deliverableId: string;
+    descriptorSha256: string;
+  }) => DbStatement[];
   /** The tagged GitHub release, when the caller already holds it (the sync). */
   githubRelease?: Release | null;
   fetchImpl?: FetchImpl;
@@ -362,6 +377,10 @@ export type Plan =
        * order (`NEXT_SEQ_SQL`).
        */
       seq: number | null;
+      /** The validated descriptor. */
+      descriptor: ReleaseDescriptor;
+      /** The seq the release holds or takes (the stored, explicit or next one at this read). */
+      effectiveSeq: number;
     }
   | Extract<IngestResult, { ok: false }>;
 
@@ -428,6 +447,8 @@ export async function planDescriptorIngest(
         head: [],
         tail: [],
         seq: null,
+        descriptor: d,
+        effectiveSeq: existing?.seq ?? 0,
       };
     return refuse(
       "release_exists",
@@ -782,6 +803,8 @@ export async function planDescriptorIngest(
     head,
     tail: ownTail,
     seq: existing?.seq != null || d.seq === undefined ? null : d.seq,
+    descriptor: d,
+    effectiveSeq: seq ?? currentMax + 1,
   };
 }
 
@@ -931,8 +954,18 @@ export async function ingestReleaseDescriptor(
   const plan = await planDescriptorIngest(db, input);
   if (!plan.ok) return plan;
   const dryRun = opts.dryRun === true;
+  const extra =
+    !dryRun && opts.extraStatements
+      ? opts.extraStatements({
+          releaseId: plan.releaseId,
+          deliverableId: plan.descriptor.deliverable,
+          descriptorSha256: plan.descriptorSha256,
+        })
+      : [];
+  if (!dryRun && plan.outcome === "unchanged" && extra.length > 0)
+    await db.batch(extra);
   if (!dryRun && plan.outcome !== "unchanged") {
-    await db.batch([...plan.head, ...plan.tail]);
+    await db.batch([...plan.head, ...plan.tail, ...extra]);
     // The batch writes nothing when the store changed under the plan in a way that would have
     // refused it — a different descriptor for this release ingested, another release of this
     // version created, an explicit seq overtaken, or the row created by a sync with a seq other
@@ -972,6 +1005,8 @@ export async function ingestReleaseDescriptor(
     dryRun,
     descriptorSha256: plan.descriptorSha256,
     planned: plan.planned,
+    descriptor: plan.descriptor,
+    seq: plan.effectiveSeq,
   };
 }
 

@@ -11,254 +11,254 @@ keys, devices). _Optional_ work packages are off the required path.
 
 13 work packages, 6.1–9 weeks.
 
-| Id                                            | Title                                                                                    | Depends on   | Role        | Weeks    | Status |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------ | ----------- | -------- | ------ |
-| [P0-01](wp/P0-01-operator-ownership.md)       | Make operator-owned release settings survive a manifest resync                           | —            | implementer | 0.5–0.75 | done   |
-| [P0-02](wp/P0-02-release-resolution.md)       | Fix release resolution: tag filter, version ordering, pagination, upsert conflict, R6-10 | —            | implementer | 1–1.25   | done   |
-| [P0-03](wp/P0-03-release-webhook.md) ✋       | Refresh the release truth store on GitHub `release` webhook events                       | P0-02        | implementer | 0.25     | done   |
-| [P0-04](wp/P0-04-channel-unification.md) ⚑    | Unify the licence-gate and Release channel vocabularies                                  | —            | sdk-porter  | 1–1.25   | done   |
-| [P0-05](wp/P0-05-cors.md)                     | Add a per-product CORS allowlist to the Worker                                           | —            | implementer | 0.5–0.75 | done   |
-| [P0-06](wp/P0-06-product-devices.md)          | List and manage devices product-wide, not only per licence                               | —            | implementer | 0.25–0.5 | done   |
-| [P0-07](wp/P0-07-cli-init-validate.md)        | Fix the `pkey init` scaffold and the validate/link disagreement                          | —            | implementer | 0.25     | done   |
-| [P0-08](wp/P0-08-unknown-slug-tolerance.md)   | Tolerate unknown service slugs in `parseServices` (ship one deploy ahead)                | —            | implementer | 0.1–0.25 | done   |
-| [P0-09](wp/P0-09-service-table.md) ✋         | Make the service list data-driven, with a drift gate                                     | P0-08, P0-07 | implementer | 1–1.5    | done   |
-| [P0-10](wp/P0-10-sparkle-hardening.md) ✋     | Raise Swift's Sparkle floor to 2.9.6 and stream Sparkle verification                     | —            | implementer | 0.25–0.5 | done   |
-| [P0-11](wp/P0-11-docs-drift.md)               | Fix documentation drift and macOS-only assumptions in health and setup                   | —            | implementer | 0.25–0.5 | done   |
-| [P0-12](wp/P0-12-edge-mint-hardening.md) ✋   | Harden edge-mint: scope signing secrets and authorise minting                            | —            | implementer | 0.5–0.75 | done   |
-| [P0-13](wp/P0-13-oidc-flow-key-hashing.md) ✋ | Hash product OIDC `state` and device-code KV key names (finish R12-04)                   | —            | implementer | 0.25–0.5 | done   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P0-01](wp/P0-01-operator-ownership.md) | Make operator-owned release settings survive a manifest resync | — | implementer | 0.5–0.75 | done |
+| [P0-02](wp/P0-02-release-resolution.md) | Fix release resolution: tag filter, version ordering, pagination, upsert conflict, R6-10 | — | implementer | 1–1.25 | done |
+| [P0-03](wp/P0-03-release-webhook.md) ✋ | Refresh the release truth store on GitHub `release` webhook events | P0-02 | implementer | 0.25 | done |
+| [P0-04](wp/P0-04-channel-unification.md) ⚑ | Unify the licence-gate and Release channel vocabularies | — | sdk-porter | 1–1.25 | done |
+| [P0-05](wp/P0-05-cors.md) | Add a per-product CORS allowlist to the Worker | — | implementer | 0.5–0.75 | done |
+| [P0-06](wp/P0-06-product-devices.md) | List and manage devices product-wide, not only per licence | — | implementer | 0.25–0.5 | done |
+| [P0-07](wp/P0-07-cli-init-validate.md) | Fix the `pkey init` scaffold and the validate/link disagreement | — | implementer | 0.25 | done |
+| [P0-08](wp/P0-08-unknown-slug-tolerance.md) | Tolerate unknown service slugs in `parseServices` (ship one deploy ahead) | — | implementer | 0.1–0.25 | done |
+| [P0-09](wp/P0-09-service-table.md) ✋ | Make the service list data-driven, with a drift gate | P0-08, P0-07 | implementer | 1–1.5 | done |
+| [P0-10](wp/P0-10-sparkle-hardening.md) ✋ | Raise Swift's Sparkle floor to 2.9.6 and stream Sparkle verification | — | implementer | 0.25–0.5 | done |
+| [P0-11](wp/P0-11-docs-drift.md) | Fix documentation drift and macOS-only assumptions in health and setup | — | implementer | 0.25–0.5 | done |
+| [P0-12](wp/P0-12-edge-mint-hardening.md) ✋ | Harden edge-mint: scope signing secrets and authorise minting | — | implementer | 0.5–0.75 | done |
+| [P0-13](wp/P0-13-oidc-flow-key-hashing.md) ✋ | Hash product OIDC `state` and device-code KV key names (finish R12-04) | — | implementer | 0.25–0.5 | done |
 
 ## P1: Godot SDK core
 
 12 work packages, 10.5–14.5 weeks.
 
-| Id                                        | Title                                                                                      | Depends on                               | Role           | Weeks    | Status |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------- | -------- | ------ |
-| [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋  | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner                 | —                                        | godot-engineer | 1–1.5    | done   |
-| [P1-02](wp/P1-02-godot-core.md)           | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence               | P1-01                                    | godot-engineer | 1.5–2    | done   |
-| [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | done   |
-| [P1-04](wp/P1-04-godot-config.md)         | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors          | P1-02, P0-12                             | godot-engineer | 1–1.25   | done   |
-| [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | done   |
-| [P1-06](wp/P1-06-rfc8628-page.md) ✋      | Serve an RFC 8628 user-code page for device-code sign-in                                   | P0-13                                    | implementer    | 0.5–0.75 | done   |
-| [P1-07](wp/P1-07-godot-identity.md) ✋    | Godot identity: device-code sign-in with a QR code                                         | P1-02, P1-06                             | godot-engineer | 0.75–1   | done   |
-| [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | done   |
-| [P1-09](wp/P1-09-boot-stage-machine.md) ⚑ | Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`    | —                                        | sdk-porter     | 1–1.5    | done   |
-| [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                       | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | todo   |
-| [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                        | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | done   |
-| [P1-12](wp/P1-12-godot-release.md) ✋     | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)        | P1-05, P1-08, P1-10, P1-11, P0-05        | godot-engineer | 0.5–0.75 | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋ | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner | — | godot-engineer | 1–1.5 | done |
+| [P1-02](wp/P1-02-godot-core.md) | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence | P1-01 | godot-engineer | 1.5–2 | done |
+| [P1-03](wp/P1-03-godot-license.md) | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401 | P1-02, P0-04, P1-05 | godot-engineer | 1–1.25 | done |
+| [P1-04](wp/P1-04-godot-config.md) | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors | P1-02, P0-12 | godot-engineer | 1–1.25 | done |
+| [P1-05](wp/P1-05-godot-devices.md) | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02 | godot-engineer | 1–1.25 | done |
+| [P1-06](wp/P1-06-rfc8628-page.md) ✋ | Serve an RFC 8628 user-code page for device-code sign-in | P0-13 | implementer | 0.5–0.75 | done |
+| [P1-07](wp/P1-07-godot-identity.md) ✋ | Godot identity: device-code sign-in with a QR code | P1-02, P1-06 | godot-engineer | 0.75–1 | done |
+| [P1-08](wp/P1-08-godot-update-check.md) | Godot update-check parity with the existing SDKs | P1-02 | godot-engineer | 0.25–0.5 | done |
+| [P1-09](wp/P1-09-boot-stage-machine.md) ⚑ | Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core` | — | sdk-porter | 1–1.5 | done |
+| [P1-10](wp/P1-10-godot-ui-kit.md) | Godot UI kit v1 and `PKeyBoot` shell | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2 | todo |
+| [P1-11](wp/P1-11-godot-export-plugin.md) | Godot export plugin v1: build stamp and editor dock | P1-01, P1-02 | godot-engineer | 0.5–0.75 | done |
+| [P1-12](wp/P1-12-godot-release.md) ✋ | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library) | P1-05, P1-08, P1-10, P1-11, P0-05 | godot-engineer | 0.5–0.75 | todo |
 
 ## P1b: SDK parity
 
 10 work packages, 10–14.25 weeks.
 
-| Id                                                 | Title                                                                                                                        | Depends on           | Role        | Weeks    | Status |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------- | -------- | ------ |
-| [P1b-01](wp/P1b-01-parity-registry.md)             | Feature registry, per-SDK parity manifests and the `parity:check` gate                                                       | —                    | implementer | 1–1.5    | done   |
-| [P1b-02](wp/P1b-02-sdk-constants.md)               | Generate SDK constants: error codes, header values, enums, feature ids                                                       | P1b-01, P0-09        | implementer | 1        | done   |
-| [P1b-03](wp/P1b-03-http-transcripts.md)            | Capture HTTP transcripts from Worker tests and replay them in every SDK                                                      | P1b-01               | implementer | 2–3      | done   |
-| [P1b-04](wp/P1b-04-headers-config-corpora.md) ⚑    | Add `headers.json` and `config-matrix.json` to the corpus                                                                    | P1b-02               | sdk-porter  | 0.75–1   | done   |
-| [P1b-05](wp/P1b-05-runners.md)                     | Add Chromium and minimum-version runners                                                                                     | P0-04                | implementer | 0.5–0.75 | todo   |
-| [P1b-06](wp/P1b-06-reregister-401.md)              | Re-register on 401 for licence-less devices, in every SDK                                                                    | P1b-03               | sdk-porter  | 0.75–1   | done   |
-| [P1b-07](wp/P1b-07-license-config-release-gaps.md) | Close licence, config and release gaps: `entitledChannels`, catalog fetch, release client, React bundle import and telemetry | P1b-03               | sdk-porter  | 1.5–2    | done   |
-| [P1b-08](wp/P1b-08-devicecode-edgemint-ports.md)   | Port device-code sign-in and edge-mint to Node, Python and Swift                                                             | P1b-03, P1-06, P0-12 | sdk-porter  | 1–1.5    | done   |
-| [P1b-09](wp/P1b-09-fingerprint-storage-fixes.md) ⚑ | Fix fingerprint and storage issues: `wmic`, Linux anchor, config directories, keyring downgrade, macOS keychain              | P1b-01               | sdk-porter  | 1–1.5    | done   |
-| [P1b-10](wp/P1b-10-core-caps.md)                   | Typed "unsupported here" results and `supports()` in every SDK                                                               | P1b-01, P1b-02       | sdk-porter  | 0.5–1    | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P1b-01](wp/P1b-01-parity-registry.md) | Feature registry, per-SDK parity manifests and the `parity:check` gate | — | implementer | 1–1.5 | done |
+| [P1b-02](wp/P1b-02-sdk-constants.md) | Generate SDK constants: error codes, header values, enums, feature ids | P1b-01, P0-09 | implementer | 1 | done |
+| [P1b-03](wp/P1b-03-http-transcripts.md) | Capture HTTP transcripts from Worker tests and replay them in every SDK | P1b-01 | implementer | 2–3 | done |
+| [P1b-04](wp/P1b-04-headers-config-corpora.md) ⚑ | Add `headers.json` and `config-matrix.json` to the corpus | P1b-02 | sdk-porter | 0.75–1 | done |
+| [P1b-05](wp/P1b-05-runners.md) | Add Chromium and minimum-version runners | P0-04 | implementer | 0.5–0.75 | todo |
+| [P1b-06](wp/P1b-06-reregister-401.md) | Re-register on 401 for licence-less devices, in every SDK | P1b-03 | sdk-porter | 0.75–1 | done |
+| [P1b-07](wp/P1b-07-license-config-release-gaps.md) | Close licence, config and release gaps: `entitledChannels`, catalog fetch, release client, React bundle import and telemetry | P1b-03 | sdk-porter | 1.5–2 | done |
+| [P1b-08](wp/P1b-08-devicecode-edgemint-ports.md) | Port device-code sign-in and edge-mint to Node, Python and Swift | P1b-03, P1-06, P0-12 | sdk-porter | 1–1.5 | done |
+| [P1b-09](wp/P1b-09-fingerprint-storage-fixes.md) ⚑ | Fix fingerprint and storage issues: `wmic`, Linux anchor, config directories, keyring downgrade, macOS keychain | P1b-01 | sdk-porter | 1–1.5 | done |
+| [P1b-10](wp/P1b-10-core-caps.md) | Typed "unsupported here" results and `supports()` in every SDK | P1b-01, P1b-02 | sdk-porter | 0.5–1 | todo |
 
 ## P2: Release truth and publishing
 
 7 work packages, 6.5–10 weeks.
 
-| Id                                         | Title                                                                                       | Depends on          | Role        | Weeks | Status |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------- | ----------- | ----- | ------ |
-| [P2-01](wp/P2-01-blob-store.md) ✋         | Core blob store on R2: content-addressed, bucket-locked, on a separate domain               | —                   | implementer | 1–1.5 | done   |
-| [P2-02](wp/P2-02-trusted-publisher.md) ✋  | Trusted publishing: GitHub OIDC verification, publisher policy, scoped upload tickets       | P2-01, P2-04        | implementer | 1–1.5 | done   |
-| [P2-03](wp/P2-03-release-data-model.md)    | Release data model v2: deliverables, builds, artifact roles, channel policy, yanks          | P0-01, P0-02        | implementer | 1–1.5 | done   |
-| [P2-04](wp/P2-04-release-descriptor.md)    | Release descriptor ingest and the declared artifact map in `.pkey/release`                  | P2-03               | implementer | 1–1.5 | done   |
-| [P2-05](wp/P2-05-release-routes.md)        | Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching | P2-01, P2-03        | implementer | 1–1.5 | done   |
-| [P2-06](wp/P2-06-publish-cli-action.md) ✋ | `pkey release` publishing commands and the `polaris-key/publish` Action                     | P2-02, P2-04, P2-05 | implementer | 1–1.5 | done   |
-| [P2-07](wp/P2-07-console-builds.md)        | Console: builds and channels view in the Release section                                    | P2-05               | implementer | 0.5–1 | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P2-01](wp/P2-01-blob-store.md) ✋ | Core blob store on R2: content-addressed, bucket-locked, on a separate domain | — | implementer | 1–1.5 | done |
+| [P2-02](wp/P2-02-trusted-publisher.md) ✋ | Trusted publishing: GitHub OIDC verification, publisher policy, scoped upload tickets | P2-01, P2-04 | implementer | 1–1.5 | done |
+| [P2-03](wp/P2-03-release-data-model.md) | Release data model v2: deliverables, builds, artifact roles, channel policy, yanks | P0-01, P0-02 | implementer | 1–1.5 | done |
+| [P2-04](wp/P2-04-release-descriptor.md) | Release descriptor ingest and the declared artifact map in `.pkey/release` | P2-03 | implementer | 1–1.5 | done |
+| [P2-05](wp/P2-05-release-routes.md) | Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching | P2-01, P2-03 | implementer | 1–1.5 | done |
+| [P2-06](wp/P2-06-publish-cli-action.md) ✋ | `pkey release` publishing commands and the `polaris-key/publish` Action | P2-02, P2-04, P2-05 | implementer | 1–1.5 | done |
+| [P2-07](wp/P2-07-console-builds.md) | Console: builds and channels view in the Release section | P2-05 | implementer | 0.5–1 | todo |
 
 ## P2b: Distribution core
 
 6 work packages, 7.5–9.5 weeks.
 
-| Id                                             | Title                                                                                   | Depends on           | Role        | Weeks | Status |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------- | ----------- | ----- | ------ |
-| [P2b-01](wp/P2b-01-distribution-service.md) ✋ | Add the `distribution` service with Core descriptor hooks and coherence rules           | P0-09, P2-03         | implementer | 1–1.5 | done   |
-| [P2b-02](wp/P2b-02-distribution-manifest.md)   | `.pkey/distribution`: outlets, identities, listings and transports                      | P2b-01, P2-04        | implementer | 1     | done   |
-| [P2b-03](wp/P2b-03-availability-keys.md)       | Availability, submissions (CI-reported first) and the key inventory                     | P2b-02, P2-06        | implementer | 1     | done   |
-| [P2b-04](wp/P2b-04-rollouts-delivery.md)       | Outlet-scoped rollouts and halts; delivery access and byte serving move to distribution | P2b-02, P2-05        | implementer | 1.5–2 | done   |
-| [P2b-05](wp/P2b-05-storefront-feeds.md)        | Storefront feeds: AltStore/SideStore/PAL, Obtainium, F-Droid, Scoop/Flathub JSON        | P2b-03, P2b-04, S-07 | implementer | 2–3   | todo   |
-| [P2b-06](wp/P2b-06-download-page-matrix.md)    | Public download page v1 and the console distribution matrix v1                          | P2b-03, P2b-04       | implementer | 1     | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P2b-01](wp/P2b-01-distribution-service.md) ✋ | Add the `distribution` service with Core descriptor hooks and coherence rules | P0-09, P2-03 | implementer | 1–1.5 | done |
+| [P2b-02](wp/P2b-02-distribution-manifest.md) | `.pkey/distribution`: outlets, identities, listings and transports | P2b-01, P2-04 | implementer | 1 | done |
+| [P2b-03](wp/P2b-03-availability-keys.md) | Availability, submissions (CI-reported first) and the key inventory | P2b-02, P2-06 | implementer | 1 | done |
+| [P2b-04](wp/P2b-04-rollouts-delivery.md) | Outlet-scoped rollouts and halts; delivery access and byte serving move to distribution | P2b-02, P2-05 | implementer | 1.5–2 | done |
+| [P2b-05](wp/P2b-05-storefront-feeds.md) | Storefront feeds: AltStore/SideStore/PAL, Obtainium, F-Droid, Scoop/Flathub JSON | P2b-03, P2b-04, S-07 | implementer | 2–3 | todo |
+| [P2b-06](wp/P2b-06-download-page-matrix.md) | Public download page v1 and the console distribution matrix v1 | P2b-03, P2b-04 | implementer | 1 | todo |
 
 ## P3: Signed feed, decision, feeds (wire v4)
 
 12 work packages, 14.75–19.75 weeks.
 
-| Id                                                | Title                                                                                               | Depends on                                            | Role           | Weeks     | Status |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------- | --------- | ------ |
-| [P3-01](wp/P3-01-wire-v4-plan.md) ⚑               | Plan wire v4: `pkey-feed+jws`, `pkey-release+jws`, update and outlet matrices                       | P2-03, P2b-01                                         | wire-planner   | 1–1.5     | done   |
-| [P3-02](wp/P3-02-wire-v4-contract-corpus.md) ⚑    | Implement the wire v4 contract and corpus (feed, release, malleability, update and outlet matrices) | P3-01, S-06                                           | implementer    | 2.75–3.25 | done   |
-| [P3-03](wp/P3-03-feed-composition.md)             | Worker: ingest CI-signed release records and compose the signed channel feed                        | P3-02, P2b-04, P2-06, P2b-03                          | implementer    | 2.75–3.25 | todo   |
-| [P3-04](wp/P3-04-v4-node.md)                      | Wire v4 in the Node SDK: feed and release-record verification, update decision                      | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
-| [P3-05](wp/P3-05-v4-react.md)                     | Wire v4 in `client-core` and the React SDK                                                          | P3-02                                                 | sdk-porter     | 1.25–1.75 | todo   |
-| [P3-06](wp/P3-06-v4-python.md)                    | Wire v4 in the Python SDK                                                                           | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
-| [P3-07](wp/P3-07-v4-swift.md)                     | Wire v4 in the Swift SDK                                                                            | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
-| [P3-08](wp/P3-08-v4-godot.md)                     | Wire v4 in the Godot SDK                                                                            | P3-02, P1-02, P3-05                                   | godot-engineer | 0.5–0.75  | todo   |
-| [P3-09](wp/P3-09-updater-feeds.md)                | Update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync, extended `/version` | P3-03, P0-10, P0-05                                   | implementer    | 1.5–2     | todo   |
-| [P3-10](wp/P3-10-godot-updater.md)                | Godot updater: outlet adapters, sidecar-PCK swap, boot guard, Velopack and Sparkle hooks            | P3-08, P3-09, P3-11, P1-10, P1-11, S-05               | godot-engineer | 1.5–2     | todo   |
-| [P3-11](wp/P3-11-outlet-detection.md)             | Outlet detection in every SDK against `outlet-matrix.json`                                          | P3-02, P1-02, S-06, P3-04, P3-05, P3-06, P3-07, P3-08 | sdk-porter     | 1–1.5     | todo   |
-| [P3-12](wp/P3-12-worker-representability.md) ⚑ ✋ | Worker: representability write checks, signer guards and the D1 check                               | P3-01, P3-02                                          | implementer    | 1–1.5     | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P3-01](wp/P3-01-wire-v4-plan.md) ⚑ | Plan wire v4: `pkey-feed+jws`, `pkey-release+jws`, update and outlet matrices | P2-03, P2b-01 | wire-planner | 1–1.5 | done |
+| [P3-02](wp/P3-02-wire-v4-contract-corpus.md) ⚑ | Implement the wire v4 contract and corpus (feed, release, malleability, update and outlet matrices) | P3-01, S-06 | implementer | 2.75–3.25 | done |
+| [P3-03](wp/P3-03-feed-composition.md) | Worker: ingest CI-signed release records and compose the signed channel feed | P3-02, P2b-04, P2-06, P2b-03 | implementer | 2.75–3.25 | done |
+| [P3-04](wp/P3-04-v4-node.md) | Wire v4 in the Node SDK: feed and release-record verification, update decision | P3-02, P3-05 | sdk-porter | 0.5–0.75 | done |
+| [P3-05](wp/P3-05-v4-react.md) | Wire v4 in `client-core` and the React SDK | P3-02 | sdk-porter | 1.25–1.75 | done |
+| [P3-06](wp/P3-06-v4-python.md) | Wire v4 in the Python SDK | P3-02, P3-05 | sdk-porter | 0.5–0.75 | todo |
+| [P3-07](wp/P3-07-v4-swift.md) | Wire v4 in the Swift SDK | P3-02, P3-05 | sdk-porter | 0.5–0.75 | todo |
+| [P3-08](wp/P3-08-v4-godot.md) | Wire v4 in the Godot SDK | P3-02, P1-02, P3-05 | godot-engineer | 0.5–0.75 | done |
+| [P3-09](wp/P3-09-updater-feeds.md) | Update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync, extended `/version` | P3-03, P0-10, P0-05 | implementer | 1.5–2 | todo |
+| [P3-10](wp/P3-10-godot-updater.md) | Godot updater: outlet adapters, sidecar-PCK swap, boot guard, Velopack and Sparkle hooks | P3-08, P3-09, P3-11, P1-10, P1-11, S-05 | godot-engineer | 1.5–2 | todo |
+| [P3-11](wp/P3-11-outlet-detection.md) | Outlet detection in every SDK against `outlet-matrix.json` | P3-02, P1-02, S-06, P3-04, P3-05, P3-06, P3-07, P3-08 | sdk-porter | 1–1.5 | todo |
+| [P3-12](wp/P3-12-worker-representability.md) ⚑ ✋ | Worker: representability write checks, signer guards and the D1 check | P3-01, P3-02 | implementer | 1–1.5 | done |
 
 ## P4: Packs
 
 20 work packages, 24–32.25 weeks.
 
-| Id                                                | Title                                                                                              | Depends on                               | Role           | Weeks    | Status |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | -------- | ------ |
-| [P4-01](wp/P4-01-packs-plan.md) ⚑                 | Plan packs on the wire: `kind: pack` records, bindings, content corpus, `plan-matrix.json`         | P3-01                                    | wire-planner   | 0.5–0.75 | todo   |
-| [P4-02](wp/P4-02-pack-deliverables.md)            | Release: pack deliverables, `pinned` binding, embedded baselines, `contentApi` on app releases     | P4-01, P3-03                             | implementer    | 1–1.5    | todo   |
-| [P4-03](wp/P4-03-ci-patch-artifacts.md)           | CI: files index with gaps blob, per-entry deltas, pack lint and marker in `pkey release publish`   | P4-01, P2-06, P3-03                      | implementer    | 1–1.5    | todo   |
-| [P4-04](wp/P4-04-content-corpus-v1.md) ⚑          | Content corpus v1: index parsing, full/file/delta apply, path rules, `plan-matrix.json`            | P4-01                                    | implementer    | 1.5–2    | todo   |
-| [P4-05](wp/P4-05-pack-transports-cdn.md)          | Distribution: CDN and embedded transports for packs, availability and gated delivery               | P4-02, P2b-04, P2b-03                    | implementer    | 0.75–1   | todo   |
-| [P4-06](wp/P4-06-client-core-packs.md)            | `client-core` packs: planner, appliers, path rules, install state; Node and React wiring           | P4-04, P3-04, P3-05, P1b-09              | sdk-porter     | 1.5–2.5  | todo   |
-| [P4-07](wp/P4-07-python-swift-packs.md)           | Python and Swift pack facets: appliers, handlers, install state                                    | P4-04, P3-06, P3-07, P1b-09              | sdk-porter     | 1–1.5    | todo   |
-| [P4-08](wp/P4-08-godot-packs.md)                  | Godot packs: `godot.pck` handler, delta bake, directory check, `PKeyBoot` pack stages              | P4-04, P1-10, P3-08, P3-10, S-05         | godot-engineer | 2.5–3    | todo   |
-| [P4-09](wp/P4-09-console-pack-views.md)           | Console: pack deliverables and releases, and which app releases pin which packs                    | P4-02, P2-07                             | implementer    | 0.5      | todo   |
-| [P4-10](wp/P4-10-chunk-indexes.md) ⚑              | Chunk indexes and chunk bundles in CI; content corpus v2                                           | P4-03, P4-04, S-03, S-02                 | implementer    | 1–1.5    | todo   |
-| [P4-11](wp/P4-11-chunk-sync-sdks.md)              | Chunk sync from seeds in every SDK                                                                 | P4-10, P4-06, P4-07, P4-08, S-02, P4-05  | sdk-porter     | 1.5–2    | todo   |
-| [P4-12](wp/P4-12-compat-resolution.md)            | Release: `compatible`/`standalone` resolution per live `contentApi`, holds, floors, publish checks | P4-02                                    | implementer    | 1.5–2    | todo   |
-| [P4-13](wp/P4-13-revocation-floors-decision.md) ⚑ | Revocation records, pack floors in the feed, and `update-matrix.json` rows for content             | P4-12, P3-04, P3-05, P3-06, P3-07, P3-08 | implementer    | 3–4      | todo   |
-| [P4-14](wp/P4-14-readiness-gc-rollouts.md)        | Distribution: outlet readiness holds, per-outlet pack rollouts and halts, server GC                | P4-12, P2b-04, P4-13                     | implementer    | 1–1.5    | todo   |
-| [P4-15](wp/P4-15-console-compat-matrix.md)        | Console: compatibility matrix and the "what does this device get?" simulator                       | P4-12, P4-13, P4-14                      | implementer    | 1        | todo   |
-| [P4-16](wp/P4-16-more-pack-types.md)              | More pack types in every SDK: `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`      | P4-06, P4-07, P4-08                      | sdk-porter     | 1–1.5    | todo   |
-| [P4-17](wp/P4-17-lazy-deltas.md) ✋               | Lazy hot-pair delta generation from install telemetry                                              | P4-10, P3-03                             | implementer    | 1–1.5    | todo   |
-| [P4-18](wp/P4-18-web-dcz.md)                      | Web deltas via Compression Dictionary Transport, with the WASM decoder fallback                    | P4-11, P4-05, P1b-05                     | implementer    | 1        | todo   |
-| [P4-19](wp/P4-19-content-key-delegation.md) ⚑     | Content-key delegation for data-only packs                                                         | P4-13                                    | implementer    | 0.75–1   | todo   |
-| [P4-20](wp/P4-20-save-compat.md)                  | Save compatibility: `provides`/`removes` checks, `isAvailable`, content-interface fingerprint      | P4-12, P4-08, P4-06, P4-07               | implementer    | 1        | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P4-01](wp/P4-01-packs-plan.md) ⚑ | Plan packs on the wire: `kind: pack` records, bindings, content corpus, `plan-matrix.json` | P3-01 | wire-planner | 0.5–0.75 | todo |
+| [P4-02](wp/P4-02-pack-deliverables.md) | Release: pack deliverables, `pinned` binding, embedded baselines, `contentApi` on app releases | P4-01, P3-03 | implementer | 1–1.5 | todo |
+| [P4-03](wp/P4-03-ci-patch-artifacts.md) | CI: files index with gaps blob, per-entry deltas, pack lint and marker in `pkey release publish` | P4-01, P2-06, P3-03 | implementer | 1–1.5 | todo |
+| [P4-04](wp/P4-04-content-corpus-v1.md) ⚑ | Content corpus v1: index parsing, full/file/delta apply, path rules, `plan-matrix.json` | P4-01 | implementer | 1.5–2 | todo |
+| [P4-05](wp/P4-05-pack-transports-cdn.md) | Distribution: CDN and embedded transports for packs, availability and gated delivery | P4-02, P2b-04, P2b-03 | implementer | 0.75–1 | todo |
+| [P4-06](wp/P4-06-client-core-packs.md) | `client-core` packs: planner, appliers, path rules, install state; Node and React wiring | P4-04, P3-04, P3-05, P1b-09 | sdk-porter | 1.5–2.5 | todo |
+| [P4-07](wp/P4-07-python-swift-packs.md) | Python and Swift pack facets: appliers, handlers, install state | P4-04, P3-06, P3-07, P1b-09 | sdk-porter | 1–1.5 | todo |
+| [P4-08](wp/P4-08-godot-packs.md) | Godot packs: `godot.pck` handler, delta bake, directory check, `PKeyBoot` pack stages | P4-04, P1-10, P3-08, P3-10, S-05 | godot-engineer | 2.5–3 | todo |
+| [P4-09](wp/P4-09-console-pack-views.md) | Console: pack deliverables and releases, and which app releases pin which packs | P4-02, P2-07 | implementer | 0.5 | todo |
+| [P4-10](wp/P4-10-chunk-indexes.md) ⚑ | Chunk indexes and chunk bundles in CI; content corpus v2 | P4-03, P4-04, S-03, S-02 | implementer | 1–1.5 | todo |
+| [P4-11](wp/P4-11-chunk-sync-sdks.md) | Chunk sync from seeds in every SDK | P4-10, P4-06, P4-07, P4-08, S-02, P4-05 | sdk-porter | 1.5–2 | todo |
+| [P4-12](wp/P4-12-compat-resolution.md) | Release: `compatible`/`standalone` resolution per live `contentApi`, holds, floors, publish checks | P4-02 | implementer | 1.5–2 | todo |
+| [P4-13](wp/P4-13-revocation-floors-decision.md) ⚑ | Revocation records, pack floors in the feed, and `update-matrix.json` rows for content | P4-12, P3-04, P3-05, P3-06, P3-07, P3-08 | implementer | 3–4 | todo |
+| [P4-14](wp/P4-14-readiness-gc-rollouts.md) | Distribution: outlet readiness holds, per-outlet pack rollouts and halts, server GC | P4-12, P2b-04, P4-13 | implementer | 1–1.5 | todo |
+| [P4-15](wp/P4-15-console-compat-matrix.md) | Console: compatibility matrix and the "what does this device get?" simulator | P4-12, P4-13, P4-14 | implementer | 1 | todo |
+| [P4-16](wp/P4-16-more-pack-types.md) | More pack types in every SDK: `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*` | P4-06, P4-07, P4-08 | sdk-porter | 1–1.5 | todo |
+| [P4-17](wp/P4-17-lazy-deltas.md) ✋ | Lazy hot-pair delta generation from install telemetry | P4-10, P3-03 | implementer | 1–1.5 | todo |
+| [P4-18](wp/P4-18-web-dcz.md) | Web deltas via Compression Dictionary Transport, with the WASM decoder fallback | P4-11, P4-05, P1b-05 | implementer | 1 | todo |
+| [P4-19](wp/P4-19-content-key-delegation.md) ⚑ | Content-key delegation for data-only packs | P4-13 | implementer | 0.75–1 | todo |
+| [P4-20](wp/P4-20-save-compat.md) | Save compatibility: `provides`/`removes` checks, `isAvailable`, content-interface fingerprint | P4-12, P4-08, P4-06, P4-07 | implementer | 1 | todo |
 
 ## P5: Distribution connectors and native plugins
 
 8 work packages, 13–17.5 weeks.
 
-| Id                                               | Title                                                                                                            | Depends on                                      | Role        | Weeks | Status |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------- | ----- | ------ |
-| [P5-01](wp/P5-01-outlet-credentials.md)          | Outlet-credential custody and shared JWT signing (ES256, RS256)                                                  | P2b-01                                          | implementer | 1–1.5 | done   |
-| [P5-02](wp/P5-02-asc-connector.md) ✋            | App Store Connect connector: webhooks, TestFlight, phased release, Background Assets states                      | P5-01, P2b-03, P2b-04, S-07                     | implementer | 2     | done   |
-| [P5-03](wp/P5-03-play-connector.md) ✋           | Google Play connector: tracks, staged rollout, halt, update priority, Reporting API                              | P5-01, P2b-03, P2b-04, S-07                     | implementer | 1.5–2 | done   |
-| [P5-04](wp/P5-04-msstore-connector.md) ✋        | Microsoft Store status connector                                                                                 | P5-01, P2b-03, S-07                             | implementer | 0.5–1 | todo   |
-| [P5-05](wp/P5-05-apple-plugin-package.md) ✋     | Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding | P3-10, S-01                                     | implementer | 2–3   | todo   |
-| [P5-06](wp/P5-06-kotlin-aar.md) ✋               | Kotlin AAR: install source, In-App Updates, PAD, PackageInstaller, Keystore; Godot Android binding               | P3-10, S-05                                     | implementer | 2–3   | todo   |
-| [P5-07](wp/P5-07-desktop-plugins.md) ✋          | Desktop plugins: macOS Sparkle bridge; Windows Velopack, WinSparkle and StoreContext                             | P3-10, S-05                                     | implementer | 2–3   | todo   |
-| [P5-08](wp/P5-08-platform-pack-transports.md) ✋ | Platform pack transports: Background Assets, Play Asset Delivery, Steam depots, with CI steps                    | P5-02, P5-05, P5-06, P4-14, P4-08, P4-03, P5-03 | implementer | 2     | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P5-01](wp/P5-01-outlet-credentials.md) | Outlet-credential custody and shared JWT signing (ES256, RS256) | P2b-01 | implementer | 1–1.5 | done |
+| [P5-02](wp/P5-02-asc-connector.md) ✋ | App Store Connect connector: webhooks, TestFlight, phased release, Background Assets states | P5-01, P2b-03, P2b-04, S-07 | implementer | 2 | done |
+| [P5-03](wp/P5-03-play-connector.md) ✋ | Google Play connector: tracks, staged rollout, halt, update priority, Reporting API | P5-01, P2b-03, P2b-04, S-07 | implementer | 1.5–2 | done |
+| [P5-04](wp/P5-04-msstore-connector.md) ✋ | Microsoft Store status connector | P5-01, P2b-03, S-07 | implementer | 0.5–1 | todo |
+| [P5-05](wp/P5-05-apple-plugin-package.md) ✋ | Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding | P3-10, S-01 | implementer | 2–3 | todo |
+| [P5-06](wp/P5-06-kotlin-aar.md) ✋ | Kotlin AAR: install source, In-App Updates, PAD, PackageInstaller, Keystore; Godot Android binding | P3-10, S-05 | implementer | 2–3 | todo |
+| [P5-07](wp/P5-07-desktop-plugins.md) ✋ | Desktop plugins: macOS Sparkle bridge; Windows Velopack, WinSparkle and StoreContext | P3-10, S-05 | implementer | 2–3 | todo |
+| [P5-08](wp/P5-08-platform-pack-transports.md) ✋ | Platform pack transports: Background Assets, Play Asset Delivery, Steam depots, with CI steps | P5-02, P5-05, P5-06, P4-14, P4-08, P4-03, P5-03 | implementer | 2 | todo |
 
 ## P6: Commerce, ops, web
 
 5 work packages, 5–7 weeks for the required ones.
 
-| Id                                            | Title                                                                        | Depends on                           | Role        | Weeks | Status |
-| --------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------ | ----------- | ----- | ------ |
-| [P6-01](wp/P6-01-commerce-bridge.md) ✋       | Commerce bridge: store purchases become licence entitlements per deliverable | P5-02, P5-03, P5-05, S-07            | implementer | 3–4   | todo   |
-| [P6-02](wp/P6-02-trust-tiers.md) ✋           | Device trust tiers from App Attest and Play Integrity                        | P5-05, P5-06, P5-01                  | implementer | 1–1.5 | todo   |
-| [P6-03](wp/P6-03-update-funnel-autohalt.md)   | Update funnel, auto-halt from telemetry, and Sentry integration              | P3-03, P2b-04                        | implementer | 1–1.5 | todo   |
-| [P6-04](wp/P6-04-hosted-web.md) ✋ _optional_ | Optional: Polaris-hosted, channel-pinned web builds                          | P2-01, P0-05, P2b-04, P2-05          | implementer | 1–1.5 | todo   |
-| [P6-05](wp/P6-05-kotlin-sdk.md) ✋ _optional_ | Optional: the Kotlin SDK at full parity                                      | P5-06, P1b-01, P3-02, P1b-03, P1b-02 | sdk-porter  | 6–8   | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [P6-01](wp/P6-01-commerce-bridge.md) ✋ | Commerce bridge: store purchases become licence entitlements per deliverable | P5-02, P5-03, P5-05, S-07 | implementer | 3–4 | todo |
+| [P6-02](wp/P6-02-trust-tiers.md) ✋ | Device trust tiers from App Attest and Play Integrity | P5-05, P5-06, P5-01 | implementer | 1–1.5 | todo |
+| [P6-03](wp/P6-03-update-funnel-autohalt.md) | Update funnel, auto-halt from telemetry, and Sentry integration | P3-03, P2b-04 | implementer | 1–1.5 | todo |
+| [P6-04](wp/P6-04-hosted-web.md) ✋ _optional_ | Optional: Polaris-hosted, channel-pinned web builds | P2-01, P0-05, P2b-04, P2-05 | implementer | 1–1.5 | todo |
+| [P6-05](wp/P6-05-kotlin-sdk.md) ✋ _optional_ | Optional: the Kotlin SDK at full parity | P5-06, P1b-01, P3-02, P1b-03, P1b-02 | sdk-porter | 6–8 | todo |
 
 ## X: Optional SDKs
 
 2 work packages, all optional.
 
-| Id                                            | Title                                                            | Depends on                    | Role        | Weeks | Status |
-| --------------------------------------------- | ---------------------------------------------------------------- | ----------------------------- | ----------- | ----- | ------ |
-| [X-01](wp/X-01-dotnet-sdk.md) ✋ _optional_   | Optional: the C#/.NET SDK (desktop, MAUI, Unity, Godot C#)       | P1b-01, P4-11, P1b-03, P1b-04 | sdk-porter  | 10–14 | todo   |
-| [X-02](wp/X-02-tauri-plugin.md) ✋ _optional_ | Optional: a first-party Tauri plugin (Rust) beside the React SDK | P1b-01, P3-05, P1b-09, P1b-04 | implementer | 2–3   | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [X-01](wp/X-01-dotnet-sdk.md) ✋ _optional_ | Optional: the C#/.NET SDK (desktop, MAUI, Unity, Godot C#) | P1b-01, P4-11, P1b-03, P1b-04 | sdk-porter | 10–14 | todo |
+| [X-02](wp/X-02-tauri-plugin.md) ✋ _optional_ | Optional: a first-party Tauri plugin (Rust) beside the React SDK | P1b-01, P3-05, P1b-09, P1b-04 | implementer | 2–3 | todo |
 
 ## S: Spikes
 
 7 work packages, 5.25–7.25 weeks.
 
-| Id                                             | Title                                                                                                           | Depends on | Role         | Weeks    | Status |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------- | ------------ | -------- | ------ |
-| [S-01](wp/S-01-apple-background-assets.md) ✋  | Spike: Apple-hosted Background Assets from a Godot iOS export                                                   | —          | spike-runner | 1–1.5    | done   |
-| [S-02](wp/S-02-r2-range.md) ✋                 | Spike: Range, If-Range and cold-miss behaviour of R2 behind a custom domain                                     | —          | spike-runner | 0.5      | done   |
-| [S-03](wp/S-03-chunk-size-real-history.md) ✋  | Spike: chunk size and reuse on real Diceroll PCK history                                                        | —          | spike-runner | 0.5–0.75 | done   |
-| [S-04](wp/S-04-low-end-performance.md) ✋      | Spike: crypto, hashing and zstd on low-end Android, iOS and mobile/WebKit browsers                              | —          | spike-runner | 1        | done   |
-| [S-05](wp/S-05-godot-platform-mechanics.md) ✋ | Spike: Godot platform mechanics (Android pack stall, PAD paths, web multi-pack, MSIX `user://`, Velopack hooks) | —          | spike-runner | 1.5–2    | done   |
-| [S-06](wp/S-06-outlet-signals.md) ✋           | Spike: outlet-detection signals the research could not verify                                                   | —          | spike-runner | 0.5–1    | done   |
-| [S-07](wp/S-07-policy-recheck.md)              | Spike: re-check dated platform policies before connector work                                                   | —          | spike-runner | 0.25–0.5 | done   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [S-01](wp/S-01-apple-background-assets.md) ✋ | Spike: Apple-hosted Background Assets from a Godot iOS export | — | spike-runner | 1–1.5 | done |
+| [S-02](wp/S-02-r2-range.md) ✋ | Spike: Range, If-Range and cold-miss behaviour of R2 behind a custom domain | — | spike-runner | 0.5 | done |
+| [S-03](wp/S-03-chunk-size-real-history.md) ✋ | Spike: chunk size and reuse on real Diceroll PCK history | — | spike-runner | 0.5–0.75 | done |
+| [S-04](wp/S-04-low-end-performance.md) ✋ | Spike: crypto, hashing and zstd on low-end Android, iOS and mobile/WebKit browsers | — | spike-runner | 1 | done |
+| [S-05](wp/S-05-godot-platform-mechanics.md) ✋ | Spike: Godot platform mechanics (Android pack stall, PAD paths, web multi-pack, MSIX `user://`, Velopack hooks) | — | spike-runner | 1.5–2 | done |
+| [S-06](wp/S-06-outlet-signals.md) ✋ | Spike: outlet-detection signals the research could not verify | — | spike-runner | 0.5–1 | done |
+| [S-07](wp/S-07-policy-recheck.md) | Spike: re-check dated platform policies before connector work | — | spike-runner | 0.25–0.5 | done |
 
 ## D: Diceroll adoption (vladzaharia/diceroll)
 
 5 work packages, 6–9.5 weeks.
 
-| Id                                      | Title                                                                                     | Depends on                  | Role           | Weeks | Status |
-| --------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------- | -------------- | ----- | ------ |
-| [D-01](wp/D-01-diceroll-now.md) ✋      | Diceroll: fix updater issues that need no Polaris Key changes                             | —                           | godot-engineer | 1.5–2 | todo   |
-| [D-02](wp/D-02-diceroll-after-p1.md) ✋ | Diceroll: adopt the Godot SDK for config, licensing, identity and update checks           | P1-12, P0-02, P0-05         | godot-engineer | 1–1.5 | todo   |
-| [D-03](wp/D-03-diceroll-after-p3.md) ✋ | Diceroll: publish through the Action, take feeds from Polaris Key, delete the old updater | P3-10, P2b-05, P2-06, P5-07 | godot-engineer | 1–2   | todo   |
-| [D-04](wp/D-04-diceroll-after-p4.md)    | Diceroll: packs as release deliverables, with `PKeyBoot` driving the boot shell           | P4-08, P4-12, P4-03, P4-05  | godot-engineer | 1.5–2 | todo   |
-| [D-05](wp/D-05-diceroll-after-p6.md) ✋ | Diceroll: Background Assets, in-app updates and paid packs                                | P5-08, P6-01                | godot-engineer | 1–2   | todo   |
+| Id | Title | Depends on | Role | Weeks | Status |
+| --- | --- | --- | --- | --- | --- |
+| [D-01](wp/D-01-diceroll-now.md) ✋ | Diceroll: fix updater issues that need no Polaris Key changes | — | godot-engineer | 1.5–2 | todo |
+| [D-02](wp/D-02-diceroll-after-p1.md) ✋ | Diceroll: adopt the Godot SDK for config, licensing, identity and update checks | P1-12, P0-02, P0-05 | godot-engineer | 1–1.5 | todo |
+| [D-03](wp/D-03-diceroll-after-p3.md) ✋ | Diceroll: publish through the Action, take feeds from Polaris Key, delete the old updater | P3-10, P2b-05, P2-06, P5-07 | godot-engineer | 1–2 | todo |
+| [D-04](wp/D-04-diceroll-after-p4.md) | Diceroll: packs as release deliverables, with `PKeyBoot` driving the boot shell | P4-08, P4-12, P4-03, P4-05 | godot-engineer | 1.5–2 | todo |
+| [D-05](wp/D-05-diceroll-after-p6.md) ✋ | Diceroll: Background Assets, in-app updates and paid packs | P5-08, P6-01 | godot-engineer | 1–2 | todo |
 
 ## Plans
 
 Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementation. The plan is written by `pkey-wire-planner`; after approval the package's own role implements it.
 
-| Id                                               | Plan file                            | Implemented by |
-| ------------------------------------------------ | ------------------------------------ | -------------- |
-| [P0-04](wp/P0-04-channel-unification.md)         | `plans/P0-04.md`                     | sdk-porter     |
-| [P1-01](wp/P1-01-godot-scaffold.md)              | `plans/P1-01.md`                     | godot-engineer |
-| [P1-09](wp/P1-09-boot-stage-machine.md)          | `plans/P1-09.md`                     | sdk-porter     |
-| [P1b-04](wp/P1b-04-headers-config-corpora.md)    | `plans/P1b-04.md`                    | sdk-porter     |
-| [P1b-09](wp/P1b-09-fingerprint-storage-fixes.md) | `plans/P1b-09.md`                    | sdk-porter     |
-| [P3-01](wp/P3-01-wire-v4-plan.md)                | `plans/P3-01.md`                     | planning only  |
-| [P3-02](wp/P3-02-wire-v4-contract-corpus.md)     | `plans/P3-01.md` (shared with P3-01) | implementer    |
-| [P3-12](wp/P3-12-worker-representability.md)     | `plans/P3-01.md` (shared with P3-01) | implementer    |
-| [P4-01](wp/P4-01-packs-plan.md)                  | `plans/P4-01.md`                     | planning only  |
-| [P4-04](wp/P4-04-content-corpus-v1.md)           | `plans/P4-04.md`                     | implementer    |
-| [P4-10](wp/P4-10-chunk-indexes.md)               | `plans/P4-10.md`                     | implementer    |
-| [P4-13](wp/P4-13-revocation-floors-decision.md)  | `plans/P4-13.md`                     | implementer    |
-| [P4-19](wp/P4-19-content-key-delegation.md)      | `plans/P4-19.md`                     | implementer    |
+| Id | Plan file | Implemented by |
+| --- | --- | --- |
+| [P0-04](wp/P0-04-channel-unification.md) | `plans/P0-04.md` | sdk-porter |
+| [P1-01](wp/P1-01-godot-scaffold.md) | `plans/P1-01.md` | godot-engineer |
+| [P1-09](wp/P1-09-boot-stage-machine.md) | `plans/P1-09.md` | sdk-porter |
+| [P1b-04](wp/P1b-04-headers-config-corpora.md) | `plans/P1b-04.md` | sdk-porter |
+| [P1b-09](wp/P1b-09-fingerprint-storage-fixes.md) | `plans/P1b-09.md` | sdk-porter |
+| [P3-01](wp/P3-01-wire-v4-plan.md) | `plans/P3-01.md` | planning only |
+| [P3-02](wp/P3-02-wire-v4-contract-corpus.md) | `plans/P3-01.md` (shared with P3-01) | implementer |
+| [P3-12](wp/P3-12-worker-representability.md) | `plans/P3-01.md` (shared with P3-01) | implementer |
+| [P4-01](wp/P4-01-packs-plan.md) | `plans/P4-01.md` | planning only |
+| [P4-04](wp/P4-04-content-corpus-v1.md) | `plans/P4-04.md` | implementer |
+| [P4-10](wp/P4-10-chunk-indexes.md) | `plans/P4-10.md` | implementer |
+| [P4-13](wp/P4-13-revocation-floors-decision.md) | `plans/P4-13.md` | implementer |
+| [P4-19](wp/P4-19-content-key-delegation.md) | `plans/P4-19.md` | implementer |
 
 ## Human inputs
 
 What a person must supply, per work package. Ask early: several sit on the critical path.
 
-| Id                                            | Needs                                                                                                                                                                                    |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [P0-03](wp/P0-03-release-webhook.md)          | subscribe the GitHub App to Release events after deploy (docs/DEPLOYMENT.md lists Push only)                                                                                             |
-| [P0-09](wp/P0-09-service-table.md)            | P0-08 deployed to production first                                                                                                                                                       |
-| [P0-10](wp/P0-10-sparkle-hardening.md)        | sign-off on a new Worker runtime dependency (@noble/curves)                                                                                                                              |
-| [P0-12](wp/P0-12-edge-mint-hardening.md)      | review of the secrets the migration marks as edge-mint signers                                                                                                                           |
-| [P0-13](wp/P0-13-oidc-flow-key-hashing.md)    | a deploy (in-flight sign-ins retry once)                                                                                                                                                 |
-| [P1-01](wp/P1-01-godot-scaffold.md)           | make the new `godot` CI job a required check                                                                                                                                             |
-| [P1-06](wp/P1-06-rfc8628-page.md)             | a production deploy before P1-07's end-to-end check and before D-02                                                                                                                      |
-| [P1-07](wp/P1-07-godot-identity.md)           | a deployed Worker for one manual QR scan                                                                                                                                                 |
-| [P1-12](wp/P1-12-godot-release.md)            | the addon's licence (the repository has no root LICENSE); the first version number and the tag push; the Asset Store upload and the Asset Library submission (neither has an upload API) |
-| [P2-01](wp/P2-01-blob-store.md)               | Cloudflare R2 buckets per environment; a separate registrable domain for bytes                                                                                                           |
-| [P2-02](wp/P2-02-trusted-publisher.md)        | an R2 parent API token per environment, stored as a Worker secret                                                                                                                        |
-| [P2-06](wp/P2-06-publish-cli-action.md)       | a GitHub repository and Marketplace listing for polaris-key/publish@v1                                                                                                                   |
-| [P2b-01](wp/P2b-01-distribution-service.md)   | P0-08 deployed to production first; djdl adds `distribution` to its .pkey/product before its next push                                                                                   |
-| [P3-12](wp/P3-12-worker-representability.md)  | an operator runs check:representable against production D1 before the first deploy of a Worker containing P3-12, and fixes every value it flags                                          |
-| [P4-17](wp/P4-17-lazy-deltas.md)              | Cloudflare Queues, Workflows and Containers enabled (Workers Paid); an R2 event-notification rule; a container registry                                                                  |
-| [P5-02](wp/P5-02-asc-connector.md)            | App Store Connect API key                                                                                                                                                                |
-| [P5-03](wp/P5-03-play-connector.md)           | Play service account                                                                                                                                                                     |
-| [P5-04](wp/P5-04-msstore-connector.md)        | Partner Center app registration                                                                                                                                                          |
-| [P5-05](wp/P5-05-apple-plugin-package.md)     | Apple developer account; test devices                                                                                                                                                    |
-| [P5-06](wp/P5-06-kotlin-aar.md)               | Play Console test track; test devices                                                                                                                                                    |
-| [P5-07](wp/P5-07-desktop-plugins.md)          | code-signing certificates; a Partner Center app for StoreContext testing                                                                                                                 |
-| [P5-08](wp/P5-08-platform-pack-transports.md) | Apple developer account; Play Console; Steamworks partner account                                                                                                                        |
-| [P6-01](wp/P6-01-commerce-bridge.md)          | App Store Server Notifications; Play RTDN Pub/Sub; Steam Web API key; an App Store Server API (In-App Purchase) key                                                                      |
-| [P6-02](wp/P6-02-trust-tiers.md)              | App Attest capability and Team ID; a Google Cloud project linked in Play Console; test devices                                                                                           |
-| [P6-04](wp/P6-04-hosted-web.md)               | DNS and a Worker route for the hosting hostname                                                                                                                                          |
-| [P6-05](wp/P6-05-kotlin-sdk.md)               | Maven Central account and signing key; go/no-go decision (README decision 10)                                                                                                            |
-| [X-01](wp/X-01-dotnet-sdk.md)                 | go/no-go decision; NuGet publishing account                                                                                                                                              |
-| [X-02](wp/X-02-tauri-plugin.md)               | go/no-go decision; crates.io and npm publishing accounts                                                                                                                                 |
-| [S-01](wp/S-01-apple-background-assets.md)    | Apple developer account; TestFlight; an iOS 26 device; a Mac with Xcode 26 or later; an App Store Connect API key                                                                        |
-| [S-02](wp/S-02-r2-range.md)                   | Cloudflare account with R2; a Cloudflare zone for the custom domain                                                                                                                      |
-| [S-03](wp/S-03-chunk-size-real-history.md)    | read access to vladzaharia/diceroll releases                                                                                                                                             |
-| [S-04](wp/S-04-low-end-performance.md)        | low-end Android and iOS devices                                                                                                                                                          |
-| [S-05](wp/S-05-godot-platform-mechanics.md)   | an Android phone; a Windows 10/11 machine; Safari on macOS and iOS                                                                                                                       |
-| [S-06](wp/S-06-outlet-signals.md)             | devices and store accounts for the platforms it checks                                                                                                                                   |
-| [D-01](wp/D-01-diceroll-now.md)               | Android developer verification registration; the App Store Apple ID; the release keystore in CI; machines for the desktop exports                                                        |
-| [D-02](wp/D-02-diceroll-after-p1.md)          | a platform admin registers the product and links the repository                                                                                                                          |
-| [D-03](wp/D-03-diceroll-after-p3.md)          | a `release` GitHub Environment holding the Ed25519 release key; trusted-publisher setup; the F-Droid repo key; go-ahead to retire the `channels` release                                 |
-| [D-05](wp/D-05-diceroll-after-p6.md)          | an App Store Connect API key for CI; the App Group and extension App ID; store products; store notification setup                                                                        |
+| Id | Needs |
+| --- | --- |
+| [P0-03](wp/P0-03-release-webhook.md) | subscribe the GitHub App to Release events after deploy (docs/DEPLOYMENT.md lists Push only) |
+| [P0-09](wp/P0-09-service-table.md) | P0-08 deployed to production first |
+| [P0-10](wp/P0-10-sparkle-hardening.md) | sign-off on a new Worker runtime dependency (@noble/curves) |
+| [P0-12](wp/P0-12-edge-mint-hardening.md) | review of the secrets the migration marks as edge-mint signers |
+| [P0-13](wp/P0-13-oidc-flow-key-hashing.md) | a deploy (in-flight sign-ins retry once) |
+| [P1-01](wp/P1-01-godot-scaffold.md) | make the new `godot` CI job a required check |
+| [P1-06](wp/P1-06-rfc8628-page.md) | a production deploy before P1-07's end-to-end check and before D-02 |
+| [P1-07](wp/P1-07-godot-identity.md) | a deployed Worker for one manual QR scan |
+| [P1-12](wp/P1-12-godot-release.md) | the addon's licence (the repository has no root LICENSE); the first version number and the tag push; the Asset Store upload and the Asset Library submission (neither has an upload API) |
+| [P2-01](wp/P2-01-blob-store.md) | Cloudflare R2 buckets per environment; a separate registrable domain for bytes |
+| [P2-02](wp/P2-02-trusted-publisher.md) | an R2 parent API token per environment, stored as a Worker secret |
+| [P2-06](wp/P2-06-publish-cli-action.md) | a GitHub repository and Marketplace listing for polaris-key/publish@v1 |
+| [P2b-01](wp/P2b-01-distribution-service.md) | P0-08 deployed to production first; djdl adds `distribution` to its .pkey/product before its next push |
+| [P3-12](wp/P3-12-worker-representability.md) | an operator runs check:representable against production D1 before the first deploy of a Worker containing P3-12, and fixes every value it flags |
+| [P4-17](wp/P4-17-lazy-deltas.md) | Cloudflare Queues, Workflows and Containers enabled (Workers Paid); an R2 event-notification rule; a container registry |
+| [P5-02](wp/P5-02-asc-connector.md) | App Store Connect API key |
+| [P5-03](wp/P5-03-play-connector.md) | Play service account |
+| [P5-04](wp/P5-04-msstore-connector.md) | Partner Center app registration |
+| [P5-05](wp/P5-05-apple-plugin-package.md) | Apple developer account; test devices |
+| [P5-06](wp/P5-06-kotlin-aar.md) | Play Console test track; test devices |
+| [P5-07](wp/P5-07-desktop-plugins.md) | code-signing certificates; a Partner Center app for StoreContext testing |
+| [P5-08](wp/P5-08-platform-pack-transports.md) | Apple developer account; Play Console; Steamworks partner account |
+| [P6-01](wp/P6-01-commerce-bridge.md) | App Store Server Notifications; Play RTDN Pub/Sub; Steam Web API key; an App Store Server API (In-App Purchase) key |
+| [P6-02](wp/P6-02-trust-tiers.md) | App Attest capability and Team ID; a Google Cloud project linked in Play Console; test devices |
+| [P6-04](wp/P6-04-hosted-web.md) | DNS and a Worker route for the hosting hostname |
+| [P6-05](wp/P6-05-kotlin-sdk.md) | Maven Central account and signing key; go/no-go decision (README decision 10) |
+| [X-01](wp/X-01-dotnet-sdk.md) | go/no-go decision; NuGet publishing account |
+| [X-02](wp/X-02-tauri-plugin.md) | go/no-go decision; crates.io and npm publishing accounts |
+| [S-01](wp/S-01-apple-background-assets.md) | Apple developer account; TestFlight; an iOS 26 device; a Mac with Xcode 26 or later; an App Store Connect API key |
+| [S-02](wp/S-02-r2-range.md) | Cloudflare account with R2; a Cloudflare zone for the custom domain |
+| [S-03](wp/S-03-chunk-size-real-history.md) | read access to vladzaharia/diceroll releases |
+| [S-04](wp/S-04-low-end-performance.md) | low-end Android and iOS devices |
+| [S-05](wp/S-05-godot-platform-mechanics.md) | an Android phone; a Windows 10/11 machine; Safari on macOS and iOS |
+| [S-06](wp/S-06-outlet-signals.md) | devices and store accounts for the platforms it checks |
+| [D-01](wp/D-01-diceroll-now.md) | Android developer verification registration; the App Store Apple ID; the release keystore in CI; machines for the desktop exports |
+| [D-02](wp/D-02-diceroll-after-p1.md) | a platform admin registers the product and links the repository |
+| [D-03](wp/D-03-diceroll-after-p3.md) | a `release` GitHub Environment holding the Ed25519 release key; trusted-publisher setup; the F-Droid repo key; go-ahead to retire the `channels` release |
+| [D-05](wp/D-05-diceroll-after-p6.md) | an App Store Connect API key for CI; the App Group and extension App ID; store products; store notification setup |

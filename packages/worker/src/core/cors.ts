@@ -110,6 +110,9 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "config/schema",
   "config/mint/{mintId}/token",
   "release/changelog",
+  // P3-03: a CI-signed release record, and (below) the signed channel feed — what a browser SDK
+  // fetches and verifies to decide an update.
+  "release/records/{sha256}",
   // P2b-04: all byte delivery is Distribution's (P2-05's byte routes and the legacy download and
   // installer, moved). Their `/release/…` and `/<p>/install.sh` spellings are router aliases
   // that resolve to these same routes, so they are covered exactly when these are. (On the bytes
@@ -130,6 +133,7 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "distribution/flathub/{channel}.json",
   "update/appcast.xml",
   "update/{channel}/appcast.xml",
+  "update/{channel}/feed.jws",
   "update/version",
   "identity/auth/poll",
   "identity/auth/device/start",

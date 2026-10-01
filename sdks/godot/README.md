@@ -10,7 +10,9 @@ licence and config claims, the trust manifest, the clock floor, the verified cac
 store, bundle import, discovery and capabilities, an HTTP transport that never leaks the bearer,
 and `sync()`, behind the `PolarisKey` autoload. The service clients build on `PolarisKey.core`;
 `PolarisKey.config` (P1-04), `license` (P1-03), `devices` (P1-05), `update` and `release` (P1-08)
-are in; identity follows in a later work package.
+are in, and `identity` (P1-07). Wire v4 (P3-08) adds the signed channel feed and release record,
+verified in pure GDScript, and the conformance-tested update decision behind
+`PolarisKey.update.decide()`.
 
 ## Layout
 
@@ -40,8 +42,14 @@ sdks/godot/
                               401 re-acquire it installs into Core (license/token or
                               devices/register, P1b-06's rule)
     services/license/         PKeyActivationResult (both error spellings), PKeyLicenseEndpoints
-    services/update.gd        PKeyUpdate (PolarisKey.update): check -> PKeyVersionCheck
-                              (services/update/), update_available(check), appcast_url
+    services/update.gd        PKeyUpdate (PolarisKey.update): decide -> PKeyUpdateCheck, feed ->
+                              PKeyUpdateFeed, release_record -> PKeyReleaseRecordResult (wire
+                              v4); check -> PKeyVersionCheck (v3); update_available(result),
+                              appcast_url
+    services/update/          flow.gd (PKeyUpdateFlow: §2.5 steps 2–18, client-core
+                              `runUpdateCheck`) and the result classes
+    distribution/decision.gd  PKeyDecision: rollout_bucket, effective_capabilities (the compiled
+                              outlet tables), resolve_update_outlet, decide_update, boot_decision
     services/release.gd       PKeyRelease (PolarisKey.release): changelog -> PKeyChangelogResult
                               of PKeyChangelogEntry (services/release/), install_url,
                               download_url
@@ -60,7 +68,14 @@ sdks/godot/
     core/verify.gd, claims.gd envelope, licence and config claims
     core/trust.gd, clock.gd   trust manifest (pins terminal) and the clock floor
     core/gate.gd, bundle.gd   license_state and bundle inspect/import
-    core/cache.gd             PKeyCache: CacheRecordV3, verified at load, one write per sync
+    core/cache.gd             PKeyCache: CacheRecordV3 (the `feeds` and `releaseRecords` slices
+                              included), verified at load, one write per sync
+    core/version.gd           PKeyVersion: parse_version, compare_versions (semver, semver+build,
+                              4part; digit strings, no floats)
+    core/feed.gd              PKeyFeed: feed_claims, verify_feed, feed_floor, reload_feeds,
+                              commit_feed (`pkey-feed+jws`)
+    core/release_record.gd    PKeyReleaseRecord: record_hash, release_record_claims,
+                              verify_release_record (`pkey-release+jws`, hash before signature)
     core/store/               PKeyStore, PKeyFileStore (0600, temp + rename), PKeyMemoryStore
     core/transport.gd         PKeyTransport: redirects by hand, credentials dropped cross-origin
     core/discovery.gd, sync.gd, token.gd, headers.gd, errors.gd, result.gd, semver.gd, device_id.gd
@@ -272,16 +287,71 @@ runs) without a final `PKEY-TEST SUMMARY … failed=0`.
 ## Update and release (`PolarisKey.update`, `PolarisKey.release`)
 
 ```gdscript
-PolarisKey.update.update_available.connect(_on_update)   # fires only when this build is behind
-var check := await PolarisKey.update.check()             # or check("beta"); a PKeyVersionCheck
-if check.ok and check.update_available: print(check.version, " ", check.url)
+# res://polaris_key.tres: pinned_release_keys = {kid: raw Ed25519 key, base64url}; and, when the
+# stamp's outlet is not the whole story, update_outlet (a kind), update_outlet_id,
+# update_outlet_subkind, update_methods (default ["download"]), update_format.
+PolarisKey.update.update_available.connect(_on_update)   # something to show the player
+var check := await PolarisKey.update.decide()            # or decide("beta"); a PKeyUpdateCheck
+if check.ok:
+    match check.decision["action"]:
+        "binary", "store", "platform", "code-ready", "blocked": show_prompt(check)  # P3-10, P1-10
+        "none": pass                                     # check.decision["reason"] says why
 var notes := await PolarisKey.release.changelog()        # notes.entries: Array[PKeyChangelogEntry]
-var url := PolarisKey.release.download_url("1.2.3", "diceroll", "x86_64", true)  # ?checksum=sha256
 ```
 
-- Today's v3 check, the same as sdk-node's and Python's, and no more: the outlet-aware decision,
-  the signed feed and installing builds are P3-08 and P3-10. In P1 the answer is informational on
-  every outlet; a Steam, itch or store build must not act on it by itself.
+**The decision (wire v4, P3-08).** `decide(channel, staged, skip_version)` runs plans/P3-01.md
+§2.5 in the same order as every SDK: it reads `update.endpoints.feed` and
+`release.endpoints.record` from discovery (running `discover()` first when this session has not),
+fetches `GET …/update/{channel}/feed.jws?platform=` with the REQUESTED channel name, verifies the
+feed against the effective product trust set (`pkey-feed+jws`, PKeyFeed), binds its `channel`
+claim to the request, checks the selector and freshness at the effective clock
+`max(system, highWaterMark)` and the `seq` floor of that canonical channel, commits it, then
+fetches the record the target for this platform pins and verifies it hash first, against
+`pinned_release_keys` only (`pkey-release+jws`, PKeyReleaseRecord), and ends in the pure
+`PKeyDecision.decide_update`.
+
+- **The answer** is a `PKeyUpdateCheck`: `channel` (the canonical one the feed claims; `latest`
+  answers as `stable`; record THIS as a staged update's channel), `decision` (a Dictionary with
+  `update-matrix.json`'s members), `feed` (`network` | `committed`), `record` (`network` |
+  `cache` | `none`), `errors` ({code, detail}: what went wrong on the way), `boot` (`none` |
+  `optional`; no v4 answer stops play) and `undismissable` (a mandatory offer or any `blocked`:
+  a prompt the player cannot dismiss over a game that keeps running). `feed_doc` and
+  `record_doc` are the verified documents P3-10's adapters act on.
+- **After a refusal** it decides from the committed feed (the canonical channel the Worker named,
+  else the requested name, else its alias target); a stale committed feed answers
+  `none {stale}`. It fails only with nothing to decide from (`feed-rejected` with its step,
+  `feed-rollback`, or the transport's or Worker's code), and before dialling with
+  `not-configured` (no `configure()`, or empty `pinned_release_keys`) or `service-unavailable`
+  (Update off, or a Worker without the signed feed: fall back to `check()`).
+- **Inputs** come from `PolarisKey.build_info()` (the stamp's version, build, platform, arch,
+  engine and, when stamped, format; the project's settings without a stamp), the outlet from
+  `PKeyDecision.resolve_update_outlet` (`update_outlet` wins, else the stamp's outlet, else
+  `unknown`, which is never offered anything), `update_methods`, and the device id as the
+  rollout bucket's install id. `configure()` refuses (`invalid-options`) a release key that is
+  also a trust pin (compared as raw bytes), an outlet outside the 17 kinds, an id outside
+  `^[a-z][a-z0-9-]{0,63}$`, an unknown subkind or method.
+- **The cache.** `managed.json` gains `feeds` (keyed by each feed's own `channel` claim) and
+  `releaseRecords` (keyed by SHA-256), signed artifacts only, written atomically with the rest
+  of the record. On load each feed is re-verified (no freshness, its claim equal to its key)
+  and each record re-verified and kept only while a surviving feed pins it; the floors are
+  derived from what survived and never stored. A bundle import keeps both slices.
+- **Off the first frame.** Every Ed25519 verify in `decide()` and in the cache load runs on a
+  `WorkerThreadPool` task where the build has threads and in frame slices where it has none. A
+  feed plus a record is about 10 ms on a desktop release template (the conformance suite logs
+  the timing on every run).
+- `update_available(result)` fires for a decision worth showing (`boot == "optional"`), and for
+  the v3 `check()` when this build is behind; test `result is PKeyUpdateCheck`.
+- `feed(channel)` runs steps 1–9 alone (a `PKeyUpdateFeed`) and `release_record(sha256)` one
+  record by hash (a `PKeyReleaseRecordResult`; cross-checked and kept only when a committed feed
+  pins it).
+- Out of scope here: acting on a decision (the outlet adapters, the sidecar-PCK swap, the boot
+  guard and PKeyBoot's DECIDE stage are P3-10's), outlet detection (P3-11; until then the stamp's
+  outlet is the input) and packs (P4-08).
+
+**The v3 check (P1-08).** `check()` is today's check, the same as sdk-node's and Python's:
+`GET /<p>/update/version`, informational on every outlet; a Steam, itch or store build must not
+act on it by itself.
+
 - `update_available` compares `PKeyOptions.version` (the game's, never the SDK's) with
   PKeySemver, the gate's own semver, so a pre-release sorts below its release.
 - `check("")` sends no `?channel=`. Any other value must be a channel name: an alias goes out

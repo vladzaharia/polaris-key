@@ -390,10 +390,38 @@ describe("resolution helpers", () => {
     expect(parsesInScheme("semver", "1.2.3-rc.1+7")).toBe(true);
     expect(compareVersions("4part", "1.2.3.10", "1.2.3.9")).toBeGreaterThan(0);
     expect(compareVersions("semver", "1.2.3", "1.2.3-rc.1")).toBeGreaterThan(0);
+    // client-core's ordering (P3-03): SemVer 2.0's grammar and precedence, exact past 2^53.
+    expect(parsesInScheme("semver", "1.2.3-01")).toBe(false);
+    expect(parsesInScheme("semver", "v1.2.3")).toBe(false);
+    expect(
+      compareVersions("semver", "1.2.3-alpha.10", "1.2.3-alpha.9"),
+    ).toBeGreaterThan(0);
+    expect(
+      compareVersions(
+        "4part",
+        "1.2.3.9007199254740993",
+        "1.2.3.9007199254740992",
+      ),
+    ).toBeGreaterThan(0);
+    expect(
+      compareVersions("semver+build", "1.2.3+45", "1.2.3+9"),
+    ).toBeGreaterThan(0);
+    expect(compareVersions("semver", "1.2.3", "not a version")).toBe(0);
+    // P3-03: def_json is P2-04's ManifestAppDeliverable, so the scheme is versioning.scheme.
+    expect(
+      versionSchemeOf({
+        def_json:
+          '{"kind":"app","versioning":{"scheme":"4part","buildNumber":null},"channels":{},"artifacts":[]}',
+      }),
+    ).toBe("4part");
+    expect(
+      versionSchemeOf({ def_json: '{"versioning":{"scheme":"semver+build"}}' }),
+    ).toBe("semver+build");
+    expect(
+      versionSchemeOf({ def_json: '{"versioning":{"scheme":"weird"}}' }),
+    ).toBe("semver");
+    // The shape P2-05 read, which no writer ever produced, is not a scheme.
     expect(versionSchemeOf({ def_json: '{"versionScheme":"4part"}' })).toBe(
-      "4part",
-    );
-    expect(versionSchemeOf({ def_json: '{"versionScheme":"weird"}' })).toBe(
       "semver",
     );
     expect(versionSchemeOf(null)).toBe("semver");

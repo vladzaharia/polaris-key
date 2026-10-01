@@ -42,7 +42,10 @@ import {
 } from "@polaris-key/manifest";
 import { CHANNEL_ALIASES, CHANNEL_NAME_PATTERN } from "@polaris-key/protocol";
 import type { Db } from "../../core/platform.js";
-import { compareSemver, parseSemver } from "../../core/entitlements.js";
+import {
+  compareVersions as compareVersionsV4,
+  parseVersion,
+} from "@polaris-key/client-core/version";
 import {
   parseIgnoreTags,
   parseManualChannels,
@@ -89,59 +92,49 @@ export function isVersionSelector(selector: string): boolean {
 export const VERSION_SCHEMES = ["semver", "semver+build", "4part"] as const;
 export type VersionScheme = (typeof VERSION_SCHEMES)[number];
 
-function parseFourPart(v: string): number[] | null {
-  const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(v);
-  return m ? m.slice(1, 5).map(Number) : null;
-}
-
-/** The numeric build metadata of `1.2.3+45`, or null. */
-function buildMetadata(v: string): number | null {
-  const m = /\+(\d+)$/.exec(v);
-  return m ? Number(m[1]) : null;
-}
-
-/** Does `v` parse in `scheme`? A version that does not cannot be ordered against the rest. */
+/**
+ * Does `v` parse in `scheme`? A version that does not cannot be ordered against the rest.
+ * client-core's `parseVersion` (P3-02): SemVer 2.0's own grammar for `semver` and
+ * `semver+build`, P2-04's four-part grammar for `4part` — the parser every v4 SDK runs, so the
+ * Worker and the clients agree on what a version is (P3-03).
+ */
 export function parsesInScheme(scheme: VersionScheme, v: string): boolean {
-  return scheme === "4part" ? parseFourPart(v) !== null : !!parseSemver(v);
+  return parseVersion(scheme, v) !== null;
 }
 
 /**
- * Precedence in `scheme`: > 0 when `a` is newer. Callers compare only versions that parse
- * (`parsesInScheme`); an unparseable pair compares equal, so `seq` decides.
+ * Precedence in `scheme`: > 0 when `a` is newer. client-core's `compareVersions` (P3-03: one
+ * ordering, the clients'), with an unparseable pair comparing equal so `seq` decides — callers
+ * compare only versions that parse (`parsesInScheme`).
  *
- *   semver        P0-02's comparator (build metadata ignored, as SemVer says);
- *   semver+build  semver, then the numeric `+N` build metadata (`1.2.3+45` > `1.2.3+9`);
- *   4part         `a.b.c.d`, numerically (MSIX, Android-style versions).
+ *   semver        SemVer 2.0 §11 precedence (build metadata ignored);
+ *   semver+build  semver, then digit-only `+N` build metadata (`1.2.3+45` > `1.2.3+9`);
+ *   4part         `a.b.c.d`, numerically on digit strings (no precision limit).
  */
 export function compareVersions(
   scheme: VersionScheme,
   a: string,
   b: string,
 ): number {
-  if (scheme === "4part") {
-    const pa = parseFourPart(a);
-    const pb = parseFourPart(b);
-    if (!pa || !pb) return 0;
-    for (let i = 0; i < 4; i++) {
-      const d = (pa[i] as number) - (pb[i] as number);
-      if (d !== 0) return d;
-    }
-    return 0;
-  }
-  const c = compareSemver(a, b);
-  if (c !== 0 || scheme === "semver") return c;
-  return (buildMetadata(a) ?? -1) - (buildMetadata(b) ?? -1);
+  return compareVersionsV4(scheme, a, b) ?? 0;
 }
 
-/** The scheme a deliverable declares in its definition (`versionScheme`), default `semver`. */
+/**
+ * The scheme a deliverable declares (`def_json` is P2-04's `ManifestAppDeliverable`, so the
+ * scheme is `versioning.scheme`), default `semver`. P2-05 read a top-level `versionScheme`
+ * member no writer ever set, so every product resolved as `semver` until P3-03.
+ */
 export function versionSchemeOf(
   deliverable: Pick<ReleaseDeliverableRow, "def_json"> | null,
 ): VersionScheme {
   if (!deliverable?.def_json) return "semver";
   try {
-    const def = JSON.parse(deliverable.def_json) as { versionScheme?: unknown };
-    return (VERSION_SCHEMES as readonly unknown[]).includes(def.versionScheme)
-      ? (def.versionScheme as VersionScheme)
+    const def = JSON.parse(deliverable.def_json) as {
+      versioning?: { scheme?: unknown } | null;
+    };
+    const scheme = def?.versioning?.scheme;
+    return (VERSION_SCHEMES as readonly unknown[]).includes(scheme)
+      ? (scheme as VersionScheme)
       : "semver";
   } catch {
     return "semver";
@@ -480,17 +473,31 @@ function policyView(row: ReleaseChannelPolicyRow): PolicyView {
 }
 
 /**
- * Resolve a selector for one deliverable from the truth store. `cfg` is the product's release
- * configuration when the caller already holds it (its tag filter and manual channels); omitted,
- * it is read.
+ * Everything resolution reads for one deliverable, in four queries: the deliverable, its
+ * releases, their builds, the product's yanks and the deliverable's channel policies. Read once
+ * and resolved many times (`resolveInState`): the signed feed (P3-03) resolves one channel for
+ * every platform from one read.
  */
-export async function resolveBuild(
+export interface DeliverableState {
+  deliverableId: string;
+  deliverable: ReleaseDeliverableRow;
+  scheme: VersionScheme;
+  config: ReleaseConfigRow | null;
+  manual: ManualChannel[];
+  rows: ReleaseMetadataRow[];
+  buildsByRelease: Map<string, ReleaseBuildRow[]>;
+  yanked: Set<string>;
+  /** Policy rows of THIS deliverable, by (canonical) channel. */
+  policyRows: Map<string, ReleaseChannelPolicyRow>;
+  candidates: Candidate[];
+}
+
+export async function loadDeliverableState(
   db: Db,
   product: string,
-  opts: ResolveBuildOptions,
+  deliverableId: string,
   cfg?: ReleaseConfigRow | null,
-): Promise<BuildResolution | null> {
-  const deliverableId = opts.deliverable ?? APP_DELIVERABLE_ID;
+): Promise<DeliverableState | null> {
   const deliverable = await db.first<ReleaseDeliverableRow>(
     "SELECT * FROM release_deliverables WHERE product = ? AND deliverable_id = ?",
     product,
@@ -499,66 +506,11 @@ export async function resolveBuild(
   if (!deliverable) return null;
   const config = cfg === undefined ? await getReleaseConfig(db, product) : cfg;
   const manual = parseManualChannels(config?.manual_channels_json);
-
-  let selector: Selector;
-  let channel: string | null = null;
-  if (isVersionSelector(opts.selector)) {
-    selector = { type: "version", version: opts.selector };
-  } else {
-    channel = canonicalChannel(opts.selector, manual);
-    if (!channel) return null;
-    selector = { type: "channel", channel };
-  }
-
-  const loaded = await loadCandidates(db, product, deliverable, manual);
-  if (!loaded) return null;
-  const { rows, buildsByRelease, input } = loaded;
-  const resolved = resolveCandidates({
-    ...input,
-    stableTagPattern: config?.stable_tag_pattern ?? null,
-    ignoreTags: parseIgnoreTags(config?.ignore_tags_json),
-    selector,
-    target: {
-      ...(opts.platform !== undefined ? { platform: opts.platform } : {}),
-      ...(opts.arch !== undefined ? { arch: opts.arch } : {}),
-      ...(opts.buildId !== undefined ? { buildId: opts.buildId } : {}),
-    },
-  });
-  if (!resolved) return null;
-  const release = rows.find(
-    (r) => r.release_id === resolved.release.releaseId,
-  ) as ReleaseMetadataRow;
-  const build = resolved.build
-    ? ((buildsByRelease.get(release.release_id) ?? []).find(
-        (b) => b.build_id === resolved.build?.buildId,
-      ) ?? null)
-    : null;
-  return { release, build, via: resolved.via, channel };
-}
-
-/** Everything resolution reads for one deliverable, as rows and as the pure core's input. */
-interface LoadedCandidates {
-  rows: ReleaseMetadataRow[];
-  buildsByRelease: Map<string, ReleaseBuildRow[]>;
-  input: Omit<
-    ResolveInput,
-    "selector" | "target" | "stableTagPattern" | "ignoreTags"
-  >;
-}
-
-async function loadCandidates(
-  db: Db,
-  product: string,
-  deliverable: ReleaseDeliverableRow,
-  manual: readonly ManualChannel[],
-): Promise<LoadedCandidates | null> {
-  const deliverableId = deliverable.deliverable_id;
   const rows = await db.all<ReleaseMetadataRow>(
     "SELECT * FROM release_metadata WHERE product = ? AND deliverable_id = ?",
     product,
     deliverableId,
   );
-  if (rows.length === 0) return null;
   const builds = await db.all<ReleaseBuildRow>(
     `SELECT b.* FROM release_builds b
        JOIN release_metadata m ON m.product = b.product AND m.release_id = b.release_id
@@ -595,19 +547,86 @@ async function loadCandidates(
       arch: b.arch,
     })),
   }));
-
   return {
+    deliverableId,
+    deliverable,
+    scheme: versionSchemeOf(deliverable),
+    config,
+    manual,
     rows,
     buildsByRelease,
-    input: {
-      deliverable: deliverableId,
-      scheme: versionSchemeOf(deliverable),
-      releases: candidates,
-      yanked: new Set(yanks.map((y) => y.release_id)),
-      policies: new Map(policies.map((p) => [p.channel, policyView(p)])),
-      manualChannels: manual,
-    },
+    yanked: new Set(yanks.map((y) => y.release_id)),
+    policyRows: new Map(policies.map((p) => [p.channel, p])),
+    candidates,
   };
+}
+
+/** Resolve one selector against a loaded state (pure; see `resolveCandidates`). */
+export function resolveInState(
+  state: DeliverableState,
+  opts: Omit<ResolveBuildOptions, "deliverable">,
+): BuildResolution | null {
+  let selector: Selector;
+  let channel: string | null = null;
+  if (isVersionSelector(opts.selector)) {
+    selector = { type: "version", version: opts.selector };
+  } else {
+    channel = canonicalChannel(opts.selector, state.manual);
+    if (!channel) return null;
+    selector = { type: "channel", channel };
+  }
+  if (state.rows.length === 0) return null;
+  const resolved = resolveCandidates({
+    deliverable: state.deliverableId,
+    scheme: state.scheme,
+    selector,
+    releases: state.candidates,
+    yanked: state.yanked,
+    policies: new Map(
+      [...state.policyRows].map(([c, p]) => [c, policyView(p)]),
+    ),
+    manualChannels: state.manual,
+    stableTagPattern: state.config?.stable_tag_pattern ?? null,
+    ignoreTags: parseIgnoreTags(state.config?.ignore_tags_json),
+    target: {
+      ...(opts.platform !== undefined ? { platform: opts.platform } : {}),
+      ...(opts.arch !== undefined ? { arch: opts.arch } : {}),
+      ...(opts.buildId !== undefined ? { buildId: opts.buildId } : {}),
+    },
+  });
+  if (!resolved) return null;
+  const release = state.rows.find(
+    (r) => r.release_id === resolved.release.releaseId,
+  ) as ReleaseMetadataRow;
+  const build = resolved.build
+    ? ((state.buildsByRelease.get(release.release_id) ?? []).find(
+        (b) => b.build_id === resolved.build?.buildId,
+      ) ?? null)
+    : null;
+  return { release, build, via: resolved.via, channel };
+}
+
+/**
+ * Resolve a selector for one deliverable from the truth store. `cfg` is the product's release
+ * configuration when the caller already holds it (its tag filter and manual channels); omitted,
+ * it is read.
+ */
+export async function resolveBuild(
+  db: Db,
+  product: string,
+  opts: ResolveBuildOptions,
+  cfg?: ReleaseConfigRow | null,
+): Promise<BuildResolution | null> {
+  const state = await loadDeliverableState(
+    db,
+    product,
+    opts.deliverable ?? APP_DELIVERABLE_ID,
+    cfg,
+  );
+  if (!state) return null;
+  // A selector that is neither a version nor a channel name resolves nothing (as before the
+  // state split, which read nothing past the deliverable for it).
+  return resolveInState(state, opts);
 }
 
 /**
@@ -639,7 +658,8 @@ export async function knownChannels(
  * The releases of `deliverable` that `channel` may serve, newest first (`channelCandidates`), as
  * release rows. Null when the deliverable does not exist or the channel is not one the product
  * declares (`knownChannels`): a well-formed but undeclared name (`nope`) is null, not an empty
- * list, so no feed, repository or cache entry can be minted for it.
+ * list, so no feed, repository or cache entry can be minted for it. The channel is checked
+ * before the deliverable's history is read, so an undeclared name costs two reads.
  */
 export async function resolveChannelReleases(
   db: Db,
@@ -648,25 +668,28 @@ export async function resolveChannelReleases(
   rawChannel: string,
   cfg?: ReleaseConfigRow | null,
 ): Promise<{ channel: string; releases: ReleaseMetadataRow[] } | null> {
-  const deliverable = await db.first<ReleaseDeliverableRow>(
-    "SELECT * FROM release_deliverables WHERE product = ? AND deliverable_id = ?",
-    product,
-    deliverableId,
-  );
-  if (!deliverable) return null;
-  const config = cfg === undefined ? await getReleaseConfig(db, product) : cfg;
-  const manual = parseManualChannels(config?.manual_channels_json);
   if (isVersionSelector(rawChannel)) return null;
-  const channel = canonicalChannel(rawChannel, manual);
+  const config = cfg === undefined ? await getReleaseConfig(db, product) : cfg;
+  const channel = canonicalChannel(
+    rawChannel,
+    parseManualChannels(config?.manual_channels_json),
+  );
   if (!channel) return null;
   if (!(await knownChannels(db, product, config)).includes(channel))
     return null;
-  const loaded = await loadCandidates(db, product, deliverable, manual);
-  if (!loaded) return { channel, releases: [] };
-  const byId = new Map(loaded.rows.map((r) => [r.release_id, r]));
+  const state = await loadDeliverableState(db, product, deliverableId, config);
+  if (!state) return null;
+  const byId = new Map(state.rows.map((r) => [r.release_id, r]));
   const ordered = channelCandidates(
     {
-      ...loaded.input,
+      deliverable: state.deliverableId,
+      scheme: state.scheme,
+      releases: state.candidates,
+      yanked: state.yanked,
+      policies: new Map(
+        [...state.policyRows].map(([c, p]) => [c, policyView(p)]),
+      ),
+      manualChannels: state.manual,
       stableTagPattern: config?.stable_tag_pattern ?? null,
       ignoreTags: parseIgnoreTags(config?.ignore_tags_json),
     },

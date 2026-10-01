@@ -22,8 +22,20 @@ import {
   type PreparedSchema,
 } from "./validate.js";
 import type { ConfigEntry, ConfigKind, ProductCatalog } from "./types.js";
+import {
+  describeRepresentabilityIssue,
+  representabilityIssue,
+  type RepresentabilityIssue,
+} from "./representable.js";
 
-export type ValidationResult = { ok: true } | { ok: false; errors: string[] };
+/**
+ * A failed validation carries `representability` when the value breaks one of the five
+ * representability rules (`representabilityIssue`), so a write path can answer
+ * `value_not_representable` rather than a schema failure.
+ */
+export type ValidationResult =
+  | { ok: true }
+  | { ok: false; errors: string[]; representability?: RepresentabilityIssue };
 
 /** A fragment that failed analysis: every value under it is invalid, and we say why once. */
 interface RejectedSchema {
@@ -93,8 +105,19 @@ export class Catalog {
     return result;
   }
 
-  /** Validate a value against a known entry's schema fragment. */
+  /**
+   * Validate a value against a known entry's schema fragment. Representability runs first
+   * (plans/P3-01.md §2.2): a value no signed document could carry is invalid whatever its
+   * schema says, so the write paths refuse it and the catalog prune drops one already stored.
+   */
   validateEntryValue(entry: ConfigEntry, value: unknown): ValidationResult {
+    const issue = representabilityIssue(value);
+    if (issue)
+      return {
+        ok: false,
+        errors: [describeRepresentabilityIssue(issue, entry.key)],
+        representability: issue,
+      };
     const analysed = this.analyse(entry);
     // Fail closed: an uninterpretable fragment must not be read as "no constraints".
     if (isRejected(analysed))

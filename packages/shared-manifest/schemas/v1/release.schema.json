@@ -58,6 +58,9 @@
     },
     "publishing": {
       "$ref": "#/$defs/publishing"
+    },
+    "releaseKeys": {
+      "$ref": "#/$defs/releaseKeys"
     }
   },
   "$defs": {
@@ -115,6 +118,31 @@
         },
         "publishing": {
           "$ref": "#/$defs/publishing"
+        },
+        "releaseKeys": {
+          "$ref": "#/$defs/releaseKeys"
+        }
+      }
+    },
+    "releaseKeys": {
+      "description": "The Ed25519 public keys CI signs release records (pkey-release+jws) with (P3-03, WIRE-CONTRACT-V4 §2.4). The private halves stay in CI (a GitHub Environment secret); `pkey release keys generate` prints an entry. A release key is never a product signing key (refused at sync, release_key_is_product_key) nor release.sparkleEd25519Pub (release_key_reused). Validator-only: non-canonical or small-order points (weak_release_key) and duplicate kids or keys (duplicate_release_key). `contentKeys` is reserved for P4-19 and ignored with a warning.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["kid", "publicKey"],
+        "properties": {
+          "kid": {
+            "description": "The JWS header kid the records are signed under.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "publicKey": {
+            "description": "The raw 32-byte Ed25519 public key, unpadded base64url (the TrustSet encoding).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"
+          }
         }
       }
     },

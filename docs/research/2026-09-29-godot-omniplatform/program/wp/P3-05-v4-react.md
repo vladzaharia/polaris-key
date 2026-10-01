@@ -147,19 +147,47 @@ mistake once, in the reference, instead of in five languages.
 
 ## Acceptance criteria
 
-- [ ] `conformance/runners/node` passes every `feedCases`, `releaseRecordCases` and
+- [x] `conformance/runners/node` passes every `feedCases`, `releaseRecordCases` and
       `update-matrix.json` row and bucket vector through `client-core`.
-- [ ] `client-core` exports the plan's functions through the barrel and one subpath each; the
+- [x] `client-core` exports the plan's functions through the barrel and one subpath each; the
       package stays isomorphic (no Node built-ins; `pnpm --filter @polaris-key/client-core build`
       and the React browser bundle build).
-- [ ] A record whose hash does not match the pin is refused without a signature check, and a
+- [x] A record whose hash does not match the pin is refused without a signature check, and a
       record signed by the product key is refused (unit tests).
-- [ ] The React hook reports the decision for the browser and desktop adapters;
+- [x] The React hook reports the decision for the browser and desktop adapters;
       `updateMatrixParity.test.ts` and `updatePrompt.test.tsx` cover every action the plan
       defines for v4.
-- [ ] `useLatestVersion` and today's `/update/version` path still work unchanged.
-- [ ] The green gate passes (`AGENTS.md`).
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] `useLatestVersion` and today's `/update/version` path still work unchanged.
+- [x] The green gate passes (`AGENTS.md`).
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+
+## Corrections from the implementation
+
+Recorded by P3-05 where the code or the plan made this brief's text inexact:
+
+- **Names.** The plan's §2.7 signatures win over the "proposed" ones in Scope: `verifyFeed(jws,
+{trust, expectedAud, channel, platform, now?, checkFreshness?, floors?})` and
+  `verifyReleaseRecord(jws, {releaseKeys, productTrust, expectedAud, expectedHash, pin?})`.
+  The floor helper is `feedFloor`, with `reloadFeeds` (the reload path, which derives the floors),
+  `commitFeed` (step 9's write) and `reloadReleaseRecords`. `decide.ts` also exports
+  `outletEntry`, `feedTarget`, `isValidHostOutlet` and `isUndismissable`.
+- **`resolveUpdateOutlet` never throws** (plan §2.7: "None of them throws"): it answers `null`
+  for an invalid host value, and the SDK raises `invalid-options` at construction.
+- **`runUpdateCheck` (new subpath `/check`).** §2.5's order, fallback and error map are shared by
+  both JavaScript SDKs as one I/O-free function that takes the two fetches as callbacks and the
+  cache slices, and returns the `UpdateCheck` plus the slices to write. P3-04 builds
+  `client.update.decide()` on it.
+- **Browser trust.** A browser holds no verified trust manifest, so its feeds verify against the
+  pinned product keys (`trust.pinnedKeys`), which `decideUpdate()` requires beside
+  `update.pinnedReleaseKeys`. The slices persist in the IndexedDB record beside the bundle cache
+  and survive a sign-out and a bundle import.
+- **Transcripts.** P3-03's `update-feed-rollback` and `update-record-by-hash` require
+  `core.store`, which React declares `na`, so they never apply to React. The React replayer
+  learns `updateDecide` and `initial.update` all the same, proven by a synthetic transcript in
+  `test/transcripts.test.ts`.
+- **Chromium runner.** P1b-05 has not landed, so no Chromium job runs the new sections yet.
+- **Status.** The lead sets the package's status at merge; this branch does not run
+  `check.mjs --set`.
 
 ## Verify
 

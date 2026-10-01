@@ -3,9 +3,11 @@
 /**
  * The Update service descriptor — the FEED over Release's truth (design spec §5.1, D-05).
  *
- * Update owns the Sparkle appcast, the version check, and the eligibility rules that decide
- * which build a given caller is offered. It owns no tables: every row it reads is Release's,
- * which is why `update → release` is the one sanctioned cross-service import in the worker.
+ * Update owns the Sparkle appcast, the version check, the eligibility rules that decide which
+ * build a given caller is offered, and (P3-03) the signed channel feed (`pkey-feed+jws`,
+ * `compose.ts` + `feedDoc.ts`). Its only tables are the feed's own — `update_feed_state`,
+ * `update_feed_ceiling` and `update_feed_docs`; every release row it reads is Release's, which is
+ * why `update → release` is the one sanctioned cross-service import in the worker.
  *
  * The chain is release ← distribution ← update (README §3.2): `validateServices` refuses Update
  * without Distribution (`update_requires_distribution`), and Distribution without Release, so
@@ -58,6 +60,9 @@ export const updateService: ServiceDescriptor = {
         version: `${base}/update/version`,
         appcast: `${base}/update/appcast.xml`,
         channelAppcast: `${base}/update/{channel}/appcast.xml`,
+        // P3-03: the signed channel feed; `{channel}` is the requested name, and the SDK always
+        // adds `?platform=`.
+        feed: `${base}/update/{channel}/feed.jws`,
       },
       /** `?arch=` on either appcast URL; omitted means `arm64` (see `feed.ts`). */
       archParameter: ["arm64", "x86_64"],

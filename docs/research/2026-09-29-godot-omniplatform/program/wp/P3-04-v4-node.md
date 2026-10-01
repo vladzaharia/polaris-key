@@ -130,17 +130,48 @@ conformance runner sections. P3-05 is a graph dependency.
 
 ## Acceptance criteria
 
-- [ ] `client.update.decide()` returns the plan's decision shape; every `update-matrix.json` row
+- [x] `client.update.decide()` returns the plan's decision shape; every `update-matrix.json` row
       passes through the projection suite.
-- [ ] Every `feedCases` and `releaseRecordCases` vector gives the expected verdict through
+- [x] Every `feedCases` and `releaseRecordCases` vector gives the expected verdict through
       `UpdateClient` (fake fetch).
-- [ ] After a `FileStore` reload, a feed with a lower `seq` is refused, and the floor came from a
+- [x] After a `FileStore` reload, a feed with a lower `seq` is refused, and the floor came from a
       re-verified cached JWS rather than a stored number.
-- [ ] A record whose SHA-256 differs from the feed's pin is refused before signature
+- [x] A record whose SHA-256 differs from the feed's pin is refused before signature
       verification; a record signed by a key outside `pinnedReleaseKeys` is refused.
-- [ ] `check()` and `appcastUrl()` behave as before (existing tests unchanged).
-- [ ] The green gate passes (`AGENTS.md`).
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] `check()` and `appcastUrl()` behave as before (existing tests unchanged).
+- [x] The green gate passes (`AGENTS.md`).
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+
+## Corrections from the implementation
+
+- **Branch.** The branch is `wp/P3-04-node-v4`.
+- **Options.** `UpdateClientOptions` also carries `stamp` and `detected` (as React's
+  `BrowserUpdateConfig` does, through `resolveUpdateOutlet`), and `binaryVersion`, `engine`,
+  `platform` and `arch` (defaulting to the version and to `os.platform()`/`os.arch()`'s canonical
+  values). Without them the projection suite could not map every `update-matrix.json` row's
+  installed state (rows on `ios`, `android` and `web`, code-pack rows with an `engine`, rows
+  whose binary and code versions differ). Each is validated at construction (`invalid-options`).
+- **Surface.** `feed({channel})` returns `{channel, feed, source, errors}` and runs
+  `runUpdateCheck` itself with the record fetch withheld, so its order, floors and fallback are
+  `decide()`'s; `releaseRecord(hash)` returns `{sha256, record, source, pinned}`, cross-checks
+  and commits only when a committed feed pins the hash. `buildUrl(version, buildId)` is the
+  builds route (plan decision 5). Raised refusals are `UpdateError` (a `PolarisError` with
+  `detail`); Core's D-21 gate and `local-only` stay plain `PolarisError`.
+- **Discovery.** `decide()` loads discovery itself when the session has not (after the D-21
+  gate, which reads `expectedServices`); when discovery is unreachable the fetches fail as a
+  transport failure and the committed feed decides. The bearer goes only to the control plane's
+  origin.
+- **Cache.** `init()` runs the reload path over the slices, and `decide()` runs it again. The
+  slices survive `deactivate()` and a bundle import (signed public documents carrying the seq
+  floors, as in React).
+- **Transcripts.** P3-03 landed while this package was in flight. The Node replayer learns
+  `updateDecide` and `initial.update` (with React's standard-discovery fallback for a transcript
+  that loads none, since `decide()` loads discovery itself) and replays `update-feed-rollback`
+  and `update-record-by-hash`; a synthetic transcript in
+  `conformance/runners/node/transcripts.test.ts` also proves the replayer fails on doctored
+  traffic.
+- **Docs.** `build/sdks/node.mdx` renders `packages/sdk-node/README.md` whole, so the README is
+  the one page edited.
 
 ## Verify
 

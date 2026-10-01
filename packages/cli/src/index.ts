@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { SERVICE_SLUGS } from "@polaris-key/manifest";
 import {
@@ -37,6 +38,11 @@ import {
 } from "./distribution.js";
 import { writeManifestSchemas } from "./schemas.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
+import {
+  generatedKeyText,
+  generateReleaseKey,
+  KEYS_USAGE,
+} from "./releaseKeys.js";
 
 export {
   ciClient,
@@ -71,6 +77,17 @@ export {
   type PublishResult,
 } from "./publish.js";
 export { movePointer, yankRelease, CHANNEL_USAGE } from "./channels.js";
+export {
+  checkSignedRecord,
+  fingerprintOf,
+  generatedKeyText,
+  generateReleaseKey,
+  kidFor,
+  KEYS_USAGE,
+  publicKeyOfPem,
+  recordSigner,
+  RELEASE_KEY_ENV,
+} from "./releaseKeys.js";
 export {
   DISTRIBUTION_CI_USAGE,
   driveRollout,
@@ -602,7 +619,33 @@ async function cmdRelease(
         source: flagString(parsed, "source") as PublishSource | undefined,
         meta: flagString(parsed, "meta"),
         dryRun: flagBool(parsed, "dry-run"),
+        ...(flagString(parsed, "release-key-file")
+          ? {
+              releaseKeyPem: await readFile(
+                path.resolve(cwd, flagString(parsed, "release-key-file")!),
+                "utf8",
+              ),
+            }
+          : {}),
+        ...(flagString(parsed, "min-supported-seq") !== undefined
+          ? { minSupportedSeq: Number(flagString(parsed, "min-supported-seq")) }
+          : {}),
+        noRecord: flagBool(parsed, "no-record"),
       });
+      return 0;
+    }
+    case "keys": {
+      // `pkey release keys generate --kid <kid> --out <file>` (P3-03).
+      const kid = flagString(parsed, "kid");
+      const outFile = flagString(parsed, "out");
+      if (parsed.positional[1] !== "generate" || !kid || !outFile)
+        throw new Error(KEYS_USAGE);
+      const generated = await generateReleaseKey({
+        kid,
+        out: path.resolve(cwd, outFile),
+        force: flagBool(parsed, "force"),
+      });
+      stdout.write(generatedKeyText(generated));
       return 0;
     }
     case "promote":
@@ -715,7 +758,9 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey auth github-oidc --product slug [--base-url url]
   pkey release publish --product slug --version v --dir path [--deliverable app]
               [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json]
-              [--base-url url] [--dry-run]
+              [--base-url url] [--release-key-file pem] [--min-supported-seq n]
+              [--no-record] [--dry-run]
+  pkey release keys generate --kid kid --out file [--force]
   pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
   pkey release unpin --channel c --product slug [--deliverable id]
   pkey release yank releaseId --reason text --product slug
@@ -734,6 +779,10 @@ pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
 them, uploads what Polaris Key does not already hold, and submits the release descriptor.
 --dry-run prints the descriptor and the server's verdict and uploads and writes nothing.
+With a release key (PKEY_RELEASE_KEY, or --release-key-file) it also signs the release record
+(pkey-release+jws) under the .pkey/release releaseKeys entry whose public key matches, checks it,
+and submits it with the descriptor; a dry run prints the record unsigned. pkey release keys
+generate writes a new private release key to --out and prints its releaseKeys entry.
 --meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
 payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
 read into the descriptor for the storefront feeds. The CI commands

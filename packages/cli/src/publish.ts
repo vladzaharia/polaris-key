@@ -24,18 +24,26 @@
  * `--source github` uploads nothing: every file is located as an asset of the tagged GitHub
  * release, which the Worker requires to be IMMUTABLE and whose digests it cross-checks.
  *
- * ── SEQ ─────────────────────────────────────────────────────────────────────────────────────
+ * ── SEQ AND THE RELEASE RECORD (P3-03) ───────────────────────────────────────────────────────
  *
- * The descriptor carries no `seq`, so the Worker assigns the next one (P2-04). Copying the
- * ticket's `nextSeq` in would make a re-run of the same publish a DIFFERENT descriptor (the
- * first run moved `nextSeq` on) and turn the intended no-op into `release_exists`.
+ * The ticket request names the release (`releases: [{deliverable, version}]`), and the answer's
+ * `seqs` carries its `seq`: the stored one when the release exists (the GitHub sync may have
+ * created it), else the next one. A re-run gets the stored value again, so the descriptor — which
+ * now carries that `seq` — is the same descriptor and the re-run stays a no-op. (`nextSeq` alone
+ * could not do that: the first run moved it on.)
+ *
+ * With a release key (`PKEY_RELEASE_KEY`, or `--release-key-file`), the descriptor is then moved
+ * into a release record (`descriptorToRecord`, plans/P3-01.md §2.4), signed as `pkey-release+jws`
+ * through the `signRecord` seam, checked here with `verifyJws` and `releaseRecordClaims`, and
+ * submitted as `record` beside the descriptor. The key never leaves this process: it is not
+ * logged, and no request carries it. A product that declares `releaseKeys` must sign (or say
+ * `--no-record`); a key that `.pkey/release` does not declare is refused before any request.
+ * `--dry-run` prints the record unsigned and signs nothing.
  *
  * ── WHAT IS NOT HERE ────────────────────────────────────────────────────────────────────────
  *
  * Building, exporting, signing binaries, notarising and store uploads (vendor tools do those;
- * Polaris Key is not a build server). Signing the release RECORD with the release key is wire v4
- * (P3-02/P3-03): `signRecord` is the seam it plugs into, called on the validated descriptor
- * before the submit.
+ * Polaris Key is not a build server).
  */
 
 import { createHash } from "node:crypto";
@@ -44,6 +52,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   APP_DELIVERABLE_ID,
+  descriptorToRecord,
   matchesArtifactGlob,
   parseManifest,
   validateReleaseDescriptor,
@@ -51,18 +60,26 @@ import {
   type DescriptorBuild,
   type DescriptorManifest,
   type ManifestArtifactEntry,
+  type ManifestReleaseKey,
   type ReleaseDescriptor,
 } from "@polaris-key/manifest";
+import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { ciClient, CiRequestError, type Out, type Sleep } from "./ci.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { MAX_SINGLE_PUT_BYTES, putFile } from "./s3.js";
 import { buildMetadataFor } from "./buildMetadata.js";
+import {
+  checkSignedRecord,
+  recordSigner,
+  RELEASE_KEY_ENV,
+} from "./releaseKeys.js";
 
 export const PUBLISH_USAGE =
   "Usage: pkey release publish --product <slug> --version <v> --dir <path> " +
   "[--deliverable app] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] " +
-  "[--meta builds.json] [--base-url <url>] [--dry-run]";
+  "[--meta builds.json] [--base-url <url>] [--release-key-file <pem>] " +
+  "[--min-supported-seq <n>] [--no-record] [--dry-run]";
 
 /** The sidecar suffixes picked up beside a matched file, and the role each plays. */
 const SIDECARS = [
@@ -93,8 +110,23 @@ export interface PublishOptions {
   stderr: Out;
   fetchImpl?: typeof fetch;
   sleep?: Sleep;
-  /** The wire-v4 seam (P3-03, P4-03): sign the release record. Not called with a value yet. */
-  signRecord?: (descriptor: ReleaseDescriptor) => Promise<void>;
+  /**
+   * The release key's PKCS#8 PEM (`--release-key-file`'s contents). Absent: `PKEY_RELEASE_KEY`
+   * from `env`. Never logged, never sent.
+   */
+  releaseKeyPem?: string;
+  /** `--min-supported-seq`: the record's `minSupportedSeq` (a floor for the targets it pins). */
+  minSupportedSeq?: number;
+  /** `--no-record`: publish without a release record although `releaseKeys` are declared. */
+  noRecord?: boolean;
+  /**
+   * P2-06's seam, implemented here (P3-03; P4-03 reuses it for pack records): sign the release
+   * record and return the compact JWS. Default: the release key, under the declared `kid` whose
+   * public half matches it (`releaseKeys.ts`).
+   */
+  signRecord?: (record: ReleaseRecordDoc) => Promise<string>;
+  /** Epoch seconds for the record's `issuedAt` (tests). */
+  now?: number;
 }
 
 export interface PublishResult {
@@ -103,6 +135,10 @@ export interface PublishResult {
   dryRun: boolean;
   /** The server's answer to the submit; absent when a dry run had no credential. */
   server?: Record<string, unknown>;
+  /** The release record (unsigned on a dry run), once the release's `seq` is known. */
+  record?: ReleaseRecordDoc;
+  /** The signed record, when one was submitted. */
+  recordJws?: string;
   /** Storage keys uploaded, and those skipped as already held by the product. */
   uploaded: string[];
   skipped: string[];
@@ -407,7 +443,7 @@ export function descriptorManifestOf(docs: {
   schema?: unknown;
   release?: unknown;
   distribution?: unknown;
-}): DescriptorManifest {
+}): DescriptorManifest & { releaseKeys: ManifestReleaseKey[] } {
   const files: Record<string, string> = {};
   for (const [name, doc] of Object.entries(docs))
     if (doc !== undefined) files[name] = JSON.stringify(doc);
@@ -420,6 +456,7 @@ export function descriptorManifestOf(docs: {
       app: res.manifest.release?.app ?? null,
       manualChannels: res.manifest.release?.manualChannels ?? [],
     },
+    releaseKeys: res.manifest.release?.releaseKeys ?? [],
   };
 }
 
@@ -435,6 +472,8 @@ interface TicketObjectAnswer {
 
 interface TicketAnswer {
   ticket: string;
+  /** P3-03: each named release's `seq` (absent from an older Worker). */
+  seqs?: { deliverable: string; version: string; seq: number }[];
   credentials: {
     endpoint: string;
     bucket: string;
@@ -573,7 +612,31 @@ export async function publishRelease(
         .map((e) => `  ${e.path} ${e.code}: ${e.message}`)
         .join("\n")}`,
     );
-  await opts.signRecord?.(descriptor);
+  // The release record (P3-03): who signs it, decided before any request.
+  if (
+    opts.minSupportedSeq !== undefined &&
+    (!Number.isSafeInteger(opts.minSupportedSeq) || opts.minSupportedSeq < 1)
+  )
+    throw new Error(
+      "--min-supported-seq must be a whole number of at least 1.",
+    );
+  // The key is read, never echoed: no `::add-mask::` either (that would put it on stdout; a
+  // GitHub secret is masked by the runner already).
+  const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? undefined;
+  const declared = context.releaseKeys;
+  let sign: ((record: ReleaseRecordDoc) => Promise<string>) | null = null;
+  if (!opts.noRecord && !opts.dryRun) {
+    if (opts.signRecord) sign = opts.signRecord;
+    else if (pem) sign = recordSigner(pem, declared);
+    else if (declared.length > 0)
+      throw new Error(
+        `.pkey/release declares releaseKeys, so pkey signs a release record: set ${RELEASE_KEY_ENV} ` +
+          "(the release-key input of polaris-key/publish) or --release-key-file, or pass --no-record.",
+      );
+  }
+  const wantsRecord =
+    !opts.noRecord &&
+    (sign !== null || (opts.dryRun === true && (pem || declared.length > 0)));
   const result: PublishResult = {
     descriptor,
     releaseId: local.releaseId,
@@ -603,6 +666,19 @@ export async function publishRelease(
     });
   } catch (e) {
     if (opts.dryRun && !(e instanceof CiRequestError)) {
+      if (wantsRecord) {
+        // No ticket, so no seq yet: the record is shown without it.
+        const { seq: _seq, ...record } = descriptorToRecord(descriptor, {
+          seq: 1,
+          issuedAt: opts.now ?? Math.floor(Date.now() / 1000),
+          ...(opts.minSupportedSeq !== undefined
+            ? { minSupportedSeq: opts.minSupportedSeq }
+            : {}),
+        });
+        out.write(
+          `\nRelease record (unsigned; seq is the upload route's answer):\n${JSON.stringify(record, null, 2)}\n`,
+        );
+      }
       out.write(`Server validation: skipped (${(e as Error).message})\n`);
       return result;
     }
@@ -627,6 +703,7 @@ export async function publishRelease(
           sha256: f.sha256,
           size: f.size,
         })),
+        releases: [{ deliverable, version }],
       },
     }),
     client.url("release/publish/uploads"),
@@ -634,6 +711,50 @@ export async function publishRelease(
   mask(opts.env, out, ticket.ticket);
   mask(opts.env, out, ticket.credentials.secretAccessKey);
   mask(opts.env, out, ticket.credentials.sessionToken);
+
+  // The release's seq, into the descriptor and the record.
+  const answered = Array.isArray(ticket.seqs)
+    ? ticket.seqs.find(
+        (s) => s.deliverable === deliverable && s.version === version,
+      )
+    : undefined;
+  if (answered && Number.isSafeInteger(answered.seq) && answered.seq >= 1) {
+    descriptor.seq = answered.seq;
+    const again = validateReleaseDescriptor(descriptor, context);
+    if (!again.ok)
+      throw new Error(
+        `The release descriptor does not validate with seq ${answered.seq}:\n${again.errors
+          .map((e) => `  ${e.path} ${e.code}: ${e.message}`)
+          .join("\n")}`,
+      );
+  } else if (wantsRecord) {
+    throw new Error(
+      `${client.url("release/publish/uploads")} answered no seq for ${deliverable} ${version} (an older Polaris Key?); a release record needs it. Pass --no-record to publish without one.`,
+    );
+  }
+  let recordJws: string | undefined;
+  if (wantsRecord && descriptor.seq !== undefined) {
+    const record = descriptorToRecord(descriptor, {
+      seq: descriptor.seq,
+      issuedAt: opts.now ?? Math.floor(Date.now() / 1000),
+      ...(opts.minSupportedSeq !== undefined
+        ? { minSupportedSeq: opts.minSupportedSeq }
+        : {}),
+    });
+    result.record = record;
+    if (opts.dryRun) {
+      out.write(
+        `\nRelease record (unsigned; a dry run signs nothing):\n${JSON.stringify(record, null, 2)}\n`,
+      );
+    } else if (sign) {
+      recordJws = await sign(record);
+      await checkSignedRecord(recordJws, record, declared);
+      result.recordJws = recordJws;
+      out.write(
+        `Signed the release record (seq ${record.seq}, sha256 ${createHash("sha256").update(recordJws).digest("hex").slice(0, 12)}…)\n`,
+      );
+    }
+  }
 
   if (source === "r2") {
     for (const o of ticket.objects) {
@@ -672,6 +793,7 @@ export async function publishRelease(
     body: {
       ticket: ticket.ticket,
       descriptor,
+      ...(recordJws !== undefined ? { record: recordJws } : {}),
       ...(opts.dryRun ? { dryRun: true } : {}),
     },
   });

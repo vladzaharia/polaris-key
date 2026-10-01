@@ -18,6 +18,7 @@ import { Catalog } from "@polaris-key/catalog";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema, insertSchema } from "../../../core/data.js";
 import {
+  catalogRepresentabilityResponse,
   adminJson,
   adminNotFound,
   audit,
@@ -56,6 +57,14 @@ export async function handleCatalog(
         fields: [e instanceof Error ? e.message : "invalid catalog"],
       });
     }
+    // plans/P3-01.md §2.2: a catalog default is a config value the document carries and each
+    // key is a member name in it. The prune would drop a flagged default at signing but checks
+    // no key, so an unsignable key (U+0000, an NFC pair) or one the manifest's ID_RE refuses
+    // is refused here.
+    const unrepresentable = catalogRepresentabilityResponse({
+      entries: catalog.entries,
+    });
+    if (unrepresentable) return unrepresentable;
     const version = await nextSchemaVersion(db, slug);
     await deactivateSchemas(db, slug);
     await insertSchema(db, {

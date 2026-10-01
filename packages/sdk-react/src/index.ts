@@ -41,6 +41,11 @@ export {
   type UseLatestVersionOptions,
 } from "./update/useLatestVersion.js";
 export {
+  useUpdateDecision,
+  type UseUpdateDecision,
+  type UseUpdateDecisionOptions,
+} from "./update/useUpdateDecision.js";
+export {
   useChangelog,
   type UseChangelog,
   type UseChangelogOptions,

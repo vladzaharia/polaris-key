@@ -70,24 +70,27 @@ jobs:
           tag: ${{ github.ref_name }}
           channel: beta
           dir: dist
+          release-key: ${{ secrets.PKEY_RELEASE_KEY }} # when .pkey/release declares releaseKeys
 ```
 
 Until the Action is listed as `polaris-key/publish@v1`, reference it by a full commit SHA of this
 repository, as above. It runs on the current Node runtime GitHub supports and needs no install
 step.
 
-| Input         | Default               | Meaning                                                                                                              |
-| ------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `product`     | (required)            | The product slug; must equal `.pkey/product`'s.                                                                      |
-| `dir`         | (required)            | The built files, searched recursively, relative to the workspace.                                                    |
-| `tag`         |                       | The git tag, which is also the release id. It must spell the version (the tag minus a leading `v`).                  |
-| `version`     | `tag` without its `v` | The version; must parse under the deliverable's version scheme.                                                      |
-| `channel`     |                       | The canonical channel the release is published to: `stable`, `beta`, or one the product declares.                    |
-| `deliverable` | `app`                 | Only `app` until pack releases land.                                                                                 |
-| `source`      | `r2`                  | `r2` uploads the bytes to Polaris Key. `github` uploads nothing and locates every file on the tagged GitHub release. |
-| `meta`        |                       | A JSON file of per-build facts (below).                                                                              |
-| `base-url`    | `https://key.plrs.im` | The Polaris Key origin.                                                                                              |
-| `dry-run`     | `false`               | `true` prints the descriptor and the server's verdict, and uploads and writes nothing.                               |
+| Input               | Default               | Meaning                                                                                                              |
+| ------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `product`           | (required)            | The product slug; must equal `.pkey/product`'s.                                                                      |
+| `dir`               | (required)            | The built files, searched recursively, relative to the workspace.                                                    |
+| `tag`               |                       | The git tag, which is also the release id. It must spell the version (the tag minus a leading `v`).                  |
+| `version`           | `tag` without its `v` | The version; must parse under the deliverable's version scheme.                                                      |
+| `channel`           |                       | The canonical channel the release is published to: `stable`, `beta`, or one the product declares.                    |
+| `deliverable`       | `app`                 | Only `app` until pack releases land.                                                                                 |
+| `source`            | `r2`                  | `r2` uploads the bytes to Polaris Key. `github` uploads nothing and locates every file on the tagged GitHub release. |
+| `meta`              |                       | A JSON file of per-build facts (below).                                                                              |
+| `base-url`          | `https://key.plrs.im` | The Polaris Key origin.                                                                                              |
+| `release-key`       |                       | The release key's PEM (an environment secret). Required when `.pkey/release` declares `releaseKeys`.                 |
+| `min-supported-seq` |                       | The record's `minSupportedSeq`: installs below that release on its platforms are prompted (never blocked).           |
+| `dry-run`           | `false`               | `true` prints the descriptor (and the release record, unsigned) and the server's verdict, and writes nothing.        |
 
 The step sets two outputs: `release-id` and `outcome` (`created`, `enriched`, or `unchanged`). A
 refusal fails the step with the server's reason as an error annotation.
@@ -119,12 +122,25 @@ editor's `yaml-language-server: $schema=` header can point at a local copy.
 3. **Describe.** The descriptor carries the version, tag, channel, every build and its files with
    their roles, sizes and SHA-256s, and provenance: the commit (`GITHUB_SHA`) and the workflow
    run's URL. It is validated locally with the same function the Worker uses, so a mistake fails
-   before anything is sent. It carries no `seq`: the Worker numbers the release.
+   before anything is sent. Its `seq` is the one the upload ticket answers for the release (the
+   stored one on a re-run, so a re-run is still the same descriptor).
 4. **Upload.** The step asks for an upload ticket, which says which files the product already
    holds; only the others are uploaded, each as one PUT carrying its SHA-256, which the blob store
    checks on arrival.
-5. **Submit.** The Worker verifies every uploaded object, checks the descriptor against your
-   declaration, and only then writes the release.
+5. **Sign.** With a release key, the descriptor is moved into a release record
+   (`pkey-release+jws`: the same fields, minus file locations), signed with the key under the
+   `.pkey/release` `releaseKeys` entry whose public key matches, and checked with the claims every
+   v4 SDK runs. The key is never printed or sent. A product that declares `releaseKeys` and runs
+   without the key fails here (pass `--no-record` to publish an unsigned release on purpose).
+6. **Submit.** The Worker verifies every uploaded object, checks the descriptor against your
+   declaration and the record against the descriptor and your declared keys
+   (`release_record_rejected` with a reason otherwise), and only then writes the release. Only
+   releases with a record appear in the [signed feed](/docs/services/update/signed-feed/).
+
+**The release key.** `pkey release keys generate --kid ci-2026 --out release-key.pem` writes a new
+key and prints the `releaseKeys` entry for `.pkey/release`; store the file's contents as the
+publishing environment's secret `PKEY_RELEASE_KEY` and delete the file. Apps pin the same public
+key. See [Release keys](/docs/build/manifest/authoring/#release-keys-releasekeys).
 
 **Build metadata.** For an `ios` build whose format is `ipa`, and an `android` build whose
 format is `apk`, the step reads the facts the

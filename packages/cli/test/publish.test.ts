@@ -297,7 +297,9 @@ describe("pkey release publish", () => {
           "https://github.com/vladzaharia/diceroll/actions/runs/4242",
       },
     });
-    expect(d.seq).toBeUndefined(); // the Worker assigns it; a re-run stays the same descriptor
+    // P3-03: the seq the upload route answered for this release (the stored one on a re-run, so a
+    // re-run stays the same descriptor).
+    expect(d.seq).toBe(7);
     expect(d.builds.map((b: any) => b.id)).toEqual([
       "macos",
       "windows",
@@ -818,32 +820,4 @@ describe("pkey release promote|pin|unpin|yank", () => {
   });
 });
 
-// ── The API, directly ────────────────────────────────────────────────────────────────────────
-
-describe("publishRelease", () => {
-  it("calls the signRecord seam with the validated descriptor before submitting", async () => {
-    const cwd = await repo();
-    const server = fakeServer();
-    const seen: unknown[] = [];
-    const io = capture();
-    const result = await publishRelease({
-      cwd,
-      product: SLUG,
-      tag: "v0.3.0",
-      dir: "dist",
-      baseUrl: BASE,
-      env: actionsEnv(),
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: server.fetchImpl,
-      sleep: instant,
-      signRecord: async (d) => {
-        seen.push(d);
-        expect(server.to("/publish/submit")).toEqual([]);
-      },
-    });
-    expect(seen).toEqual([result.descriptor]);
-    expect(result.releaseId).toBe("v0.3.0");
-    expect(result.uploaded).toHaveLength(8);
-  });
-});
+// The signRecord seam and the release record: test/releaseRecord.test.ts (P3-03).

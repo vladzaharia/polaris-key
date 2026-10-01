@@ -85,13 +85,20 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       and scopes are an operator setting. Tell the owner the publishing ref needs a branch or
       **tag ruleset** (`ref_protected`), and the environment should require reviewers. Codes:
       `invalid_trusted_publisher_workflow`, `invalid_trusted_publisher_environment`.
+- [ ] If the product ships signed updates (wire v4), declare `releaseKeys: [{ kid, publicKey }]`
+      in `release` (1–4 entries; `publicKey` is the raw Ed25519 key in 43-character base64url,
+      as `pkey release keys generate` prints it). The private key is a CI secret
+      (`PKEY_RELEASE_KEY`), never committed. Never reuse a product signing key (the sync refuses
+      it, `release_key_is_product_key`) or the Sparkle key (`release_key_reused`). Codes:
+      `invalid_release_key`, `weak_release_key`, `duplicate_release_key`, `release_key_reused`;
+      `contentKeys` only warns (`content_keys_not_supported`).
 - [ ] **`distribution`** (optional; P2b-02) — where the product is distributed: `outlets` keyed
       by outlet id (an id that is itself a kind such as `steam`, `play`, `app-store` needs no
       `kind`, and any `kind` it does give must repeat the id — `outlet_kind_mismatch`;
       `altstore-beta` needs `kind: altstore`, and once linked it can change kind only to one
       that narrows its capability defaults), each with its kind's store identity
       fields (`bundleId`, `packageName`, `steam.appId`, `itch.gameId`, `packageFamilyName`,
-      `homebrewCask`, `direct.scoop {bin, shortcuts}`, …); `transports` (`default` — `pkey-cdn` or `embedded` —, `packs.<outlet>`,
+      `homebrewCask`, `testflight.publicLink`, `direct.scoop {bin, shortcuts}`, …); `transports` (`default` — `pkey-cdn` or `embedded` —, `packs.<outlet>`,
       `deliverables.<id>.<outlet>`); and `listing`. Maps to `dist_outlets` and `dist_transports`.
       Absent = one implicit `direct` outlet by `pkey-cdn`. An `artifact` must name an id in the
       release artifact map; `tracks`/`branches` keys must be declared channels.

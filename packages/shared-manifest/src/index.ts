@@ -1,4 +1,7 @@
-import { type ProductCatalog } from "@polaris-key/catalog";
+import {
+  representabilityIssue,
+  type ProductCatalog,
+} from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
   CHANNEL_ALIASES,
@@ -10,6 +13,16 @@ import {
   PR_CHANNEL_PATTERN,
 } from "@polaris-key/protocol/core";
 import { parse as parseYaml } from "yaml";
+import {
+  MAX_RELEASE_KEYS,
+  RELEASE_KEY_KID_PATTERN,
+  decodeBase64Loose,
+  isWeakEd25519Key,
+  normalizeReleaseKeys,
+  releaseKeyBytes,
+  sameKeyBytes,
+  type ManifestReleaseKey,
+} from "./releaseKeys.js";
 
 import {
   DEFAULT_ENABLED_SERVICES,
@@ -232,6 +245,12 @@ export interface ManifestRelease {
    * configurable — a repo cannot weaken its own control.
    */
   trustedPublisher: ManifestTrustedPublisher | null;
+  /**
+   * `releaseKeys` (P3-03): the CI-held Ed25519 keys that sign this product's release records
+   * (`pkey-release+jws`). `[]` when undeclared, and then no publish carries a record. Persisted
+   * to `release_config.release_keys_json`; never a product signing key (checked at sync).
+   */
+  releaseKeys: ManifestReleaseKey[];
 }
 
 /** `publishing.trustedPublisher` as persisted to `ci_publishers` (workflow, environment). */
@@ -359,9 +378,12 @@ const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
  *  today's behaviour for every product (design spec §2.2). The table's `defaultEnabled`. */
 const DEFAULT_ENABLED: readonly ServiceSlug[] = DEFAULT_ENABLED_SERVICES;
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
-const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
+/** Tier, profile and probe ids. Exported (P3-12) so the Worker's admin handlers check the same
+ *  values the same way (plans/P3-01.md §2.2's inventory); no rule is added by exporting it. */
+export const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
 const SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;
-const SEMVER_RE =
+/** Exported (P3-12) for the admin handlers' version bounds, as `ID_RE` is. */
+export const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 // Release strings reach a shell (`install.sh`), a GitHub API path, or a RegExp source. Every
 // one of them is character-class-bounded HERE, at the ingest boundary, so a `.pkey/` push can
@@ -420,10 +442,12 @@ const RESERVED_PROPERTY_NAMES = new Set([
 ]);
 /** `oidc.clientId` — echoed into the authorize query, the token POST body, and `aud`. */
 const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$/;
-/** `edgeMint[].kid` — emitted verbatim in a JWS protected header. */
-const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-/** Channel / architecture names — they reach URL path segments and asset-match patterns. */
-const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+/** `edgeMint[].kid` — emitted verbatim in a JWS protected header. Exported (P3-12) for the
+ *  admin product handler's `signingKid`, as `ID_RE` is. */
+export const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+/** Channel / architecture names — they reach URL path segments and asset-match patterns.
+ *  Exported (P3-12) for the admin tier and licence handlers' channels, as `ID_RE` is. */
+export const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 /** `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`). */
 export const MANUAL_CHANNEL_REGEX_MAX = 80;
 /**
@@ -1539,6 +1563,7 @@ function validateDocuments(
       }
       validateDeliverables(errors, warnings, relRoot);
       validatePublishing(errors, relRoot);
+      validateReleaseKeys(errors, warnings, relRoot);
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
         add(
           errors,
@@ -2027,6 +2052,53 @@ function validateDocuments(
     }
   }
 
+  // Representability (plans/P3-01.md §2.2): every value of every `.pkey/` document, member
+  // names included, must be one a signed document can carry and every wire-v4 verifier accept.
+  // This is the only write check on the values the manifest sync alone stores (catalog
+  // defaults, provisioning entitlement values, edge-mint claims templates), so it runs over
+  // each whole parsed document rather than field by field, and reports the first value that
+  // breaks a rule. An absent document has nothing to flag.
+  const productIssue = representabilityIssue(productRoot);
+  if (productIssue) {
+    add(
+      errors,
+      "product",
+      `${productIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${productIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`,
+    );
+  }
+  const schemaIssue = representabilityIssue(manifest.schema);
+  if (schemaIssue) {
+    add(
+      errors,
+      "schema",
+      `${schemaIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${schemaIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`,
+    );
+  }
+  const releaseIssue = representabilityIssue(manifest.release);
+  if (releaseIssue) {
+    add(
+      errors,
+      "release",
+      `${releaseIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${releaseIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`,
+    );
+  }
+  const distributionIssue = representabilityIssue(manifest.distribution);
+  if (distributionIssue) {
+    add(
+      errors,
+      "distribution",
+      `${distributionIssue.path || "/"}`,
+      "value_not_representable",
+      `This value cannot be carried by a signed document (${distributionIssue.rule}): a lone surrogate, U+0000 in a member name, two sibling member names equal after NFC normalization, a number outside 1e-307 to 1e308 in magnitude, or more than 32 levels of nesting.`,
+    );
+  }
+
   return {
     ok: errors.length === 0,
     errors,
@@ -2148,6 +2220,112 @@ function validatePublishing(
       "invalid_trusted_publisher_environment",
       "publishing.trustedPublisher.environment must be a GitHub environment name of at most 100 characters (letters, digits, space, . _ -).",
     );
+  }
+}
+
+/**
+ * `releaseKeys` (P3-03, plans/P3-01.md §3): the CI-held keys that sign release records. The
+ * Worker adds the one check a document cannot make, `release_key_is_product_key`, at sync.
+ */
+function validateReleaseKeys(
+  errors: ValidationMessage[],
+  warnings: ValidationMessage[],
+  relRoot: Record<string, unknown>,
+): void {
+  if (relRoot.contentKeys !== undefined) {
+    add(
+      warnings,
+      "release",
+      "/release/contentKeys",
+      "content_keys_not_supported",
+      "release.contentKeys is reserved for content-key delegation (P4-19) and is ignored.",
+    );
+  }
+  const raw = relRoot.releaseKeys;
+  if (raw === undefined) return;
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_RELEASE_KEYS) {
+    add(
+      errors,
+      "release",
+      "/release/releaseKeys",
+      "invalid_release_key",
+      `release.releaseKeys must be an array of 1 to ${MAX_RELEASE_KEYS} { kid, publicKey } entries.`,
+    );
+    return;
+  }
+  const sparkle =
+    typeof relRoot.sparkleEd25519Pub === "string" &&
+    SPARKLE_PUB_RE.test(relRoot.sparkleEd25519Pub)
+      ? decodeBase64Loose(relRoot.sparkleEd25519Pub)
+      : null;
+  const kids = new Set<string>();
+  const keys: Uint8Array[] = [];
+  for (const [i, entry] of raw.entries()) {
+    const at = `/release/releaseKeys/${i}`;
+    if (!isRecord(entry)) {
+      add(
+        errors,
+        "release",
+        at,
+        "invalid_release_key",
+        "Each release key must be a { kid, publicKey } object.",
+      );
+      continue;
+    }
+    if (
+      typeof entry.kid !== "string" ||
+      !RELEASE_KEY_KID_PATTERN.test(entry.kid)
+    ) {
+      add(
+        errors,
+        "release",
+        `${at}/kid`,
+        "invalid_release_key",
+        `releaseKeys[].kid must match ${RELEASE_KEY_KID_PATTERN.source}.`,
+      );
+    }
+    const bytes = releaseKeyBytes(entry.publicKey);
+    if (!bytes) {
+      add(
+        errors,
+        "release",
+        `${at}/publicKey`,
+        "invalid_release_key",
+        "releaseKeys[].publicKey must be a raw 32-byte Ed25519 public key in unpadded base64url (43 characters), as `pkey release keys generate` prints it.",
+      );
+    } else if (isWeakEd25519Key(bytes)) {
+      add(
+        errors,
+        "release",
+        `${at}/publicKey`,
+        "weak_release_key",
+        "releaseKeys[].publicKey is a non-canonical or small-order Ed25519 point, which no v4 verifier accepts a signature from (WIRE-CONTRACT-V4 §1.1).",
+      );
+    }
+    const dupKid = typeof entry.kid === "string" && kids.has(entry.kid);
+    const dupKey = bytes !== null && keys.some((k) => sameKeyBytes(k, bytes));
+    if (dupKid || dupKey) {
+      add(
+        errors,
+        "release",
+        at,
+        "duplicate_release_key",
+        "Each release key's kid and key must be unique.",
+      );
+    }
+    if (typeof entry.kid === "string") kids.add(entry.kid);
+    if (bytes) {
+      keys.push(bytes);
+      if (sparkle && sameKeyBytes(sparkle, bytes)) {
+        add(
+          errors,
+          "release",
+          `${at}/publicKey`,
+          "release_key_reused",
+          "A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs.",
+        );
+      }
+    }
   }
 }
 
@@ -2715,6 +2893,7 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     access: normalizeReleaseAccess(rel.access),
     app,
     trustedPublisher: normalizeTrustedPublisher(rel.publishing),
+    releaseKeys: normalizeReleaseKeys(rel.releaseKeys),
   };
 }
 
@@ -3594,3 +3773,4 @@ function add(
 export * from "./descriptor.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
+export * from "./releaseKeys.js";

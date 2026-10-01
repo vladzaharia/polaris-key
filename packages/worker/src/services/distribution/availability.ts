@@ -49,8 +49,13 @@
  * and every CI observation is audited.
  */
 
-import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db } from "../../core/platform.js";
+import { createHash } from "node:crypto";
+import {
+  APP_DELIVERABLE_ID,
+  releaseKeyBytes,
+  type ParsedManifest,
+} from "@polaris-key/manifest";
+import type { Db, DbStatement } from "../../core/platform.js";
 import { randomId } from "../../core/platform.js";
 import { appendAudit } from "../../core/data.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
@@ -1247,3 +1252,66 @@ export async function deleteKey(
 }
 
 export { short as shortFingerprint };
+
+// ── Declared release keys → key observations (P3-03) ─────────────────────────
+
+/**
+ * The `.pkey/release` `releaseKeys` as `release`-purpose OBSERVATIONS in the key inventory, on
+ * every link and resync while Distribution is on (`manifestIngest`). A repo declaring a release
+ * key is a pipeline claim, exactly like a CI key report: it never becomes an inventory entry by
+ * itself. A fingerprint the operator already holds only gets `observed_json` refreshed; a new one
+ * is stored as a `ci`-sourced observation that flags the purpose until an operator adopts or
+ * dismisses it — the independent control against a repo writer swapping the release key.
+ *
+ * Statements only (the ingest contract): the observation cap (`MAX_KEY_OBSERVATIONS`) is applied
+ * in SQL, so a manifest can never grow the table past it. The fingerprint is lowercase hex
+ * SHA-256 of the raw 32-byte key, as `dist_keys` records Ed25519 keys and as discovery's
+ * `release.releaseKeyFingerprints` advertises them.
+ */
+export function releaseKeyObservationStatements(
+  parsed: ParsedManifest,
+  product: string,
+  now: number,
+): DbStatement[] {
+  const keys = parsed.release?.releaseKeys ?? [];
+  const out: DbStatement[] = [];
+  for (const key of keys) {
+    const raw = releaseKeyBytes(key.publicKey);
+    if (!raw) continue;
+    const sha256 = createHash("sha256").update(raw).digest("hex");
+    const observed = JSON.stringify({
+      at: now,
+      by: "manifest",
+      outletId: null,
+    } satisfies KeyObservation);
+    out.push(
+      {
+        // An entry or an earlier observation of the same fingerprint: refresh `observed_json`
+        // only (and an observation's `modified_at`), exactly as a CI key report does.
+        sql: `UPDATE dist_keys
+                 SET observed_json = ?,
+                     modified_at = CASE WHEN source = 'ci' THEN ? ELSE modified_at END
+               WHERE product = ? AND purpose = 'release' AND fingerprint_sha256 = ?`,
+        params: [observed, now, product, sha256],
+      },
+      {
+        sql: `INSERT INTO dist_keys
+                (product, purpose, fingerprint_sha256, outlet_id, notes, registered_at, source,
+                 observed_json, created_at, modified_at)
+              SELECT ?, 'release', ?, NULL, NULL, NULL, 'ci', ?, ?, ?
+               WHERE (SELECT COUNT(*) FROM dist_keys WHERE product = ? AND source = 'ci') < ?
+              ON CONFLICT (product, purpose, fingerprint_sha256) DO NOTHING`,
+        params: [
+          product,
+          sha256,
+          observed,
+          now,
+          now,
+          product,
+          MAX_KEY_OBSERVATIONS,
+        ],
+      },
+    );
+  }
+  return out;
+}

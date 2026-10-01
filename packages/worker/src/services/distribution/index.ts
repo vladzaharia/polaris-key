@@ -50,6 +50,7 @@ import { handleDistributionAdmin } from "./admin.js";
 import { defaultCapabilities, effectiveCapabilities } from "./capabilities.js";
 import { delivery } from "./delivery.js";
 import { accessIngestStatements } from "./access.js";
+import { releaseKeyObservationStatements } from "./availability.js";
 import { handleDistributionRoutes } from "./routes.js";
 import { pollConnectors } from "./connectors/index.js";
 import {
@@ -79,13 +80,17 @@ async function outletCapabilities(
   return { outletId, ...effectiveCapabilities(defaults, override) };
 }
 
-/** Distribution's `manifestIngest` (enabled only): outlets and transports. */
+/** Distribution's `manifestIngest` (enabled only): outlets and transports, and the declared
+ *  release keys as key-inventory observations (P3-03). */
 function manifestIngest(
   parsed: ParsedManifest,
   product: string,
   now: number,
 ): DbStatement[] {
-  return outletIngestStatements(parsed, product, now);
+  return [
+    ...outletIngestStatements(parsed, product, now),
+    ...releaseKeyObservationStatements(parsed, product, now),
+  ];
 }
 
 /**

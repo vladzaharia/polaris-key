@@ -71,6 +71,12 @@ type Docs = {
   distribution?: unknown;
 };
 
+/** Raw Ed25519 keys in base64url: RFC 8032 test vectors 1 and 2, the order-1 point, and y = p. */
+const RELEASE_KEY_A = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo";
+const RELEASE_KEY_B = "PUAXw-hDiVqStwqnTRt-vJyYLM8uxJaMwM1V8Sr0Zgw";
+const SMALL_ORDER_KEY = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const NON_CANONICAL_KEY = "7f_______________________________________38";
+
 /** A rich, fully-valid manifest exercising every block the validator knows. */
 function base(): Docs {
   return {
@@ -189,6 +195,8 @@ function base(): Docs {
         betaBranch: "main",
         summaryMarker: "pkey:summary",
         sparkleEd25519Pub: "AbCd1234",
+        // P3-03: the CI-held release keys (RFC 8032 test vector 1's public key).
+        releaseKeys: [{ kid: "ci-2026", publicKey: RELEASE_KEY_A }],
         manualChannels: [{ name: "nightly", regex: "v.*-nightly\\..*" }],
         stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
         ignoreTags: ["channels", "packs"],
@@ -278,7 +286,7 @@ function base(): Docs {
           },
         },
         "app-store": { appleId: "1234567890", bundleId: "com.acme.desktop" },
-        testflight: { bundleId: "com.acme.desktop" },
+        testflight: { bundleId: "com.acme.desktop", publicLink: "AbCdEf12" },
         altstore: { artifact: "ipa-sideload", bundleId: "com.acme.desktop" },
         "altstore-beta": {
           kind: "altstore",
@@ -860,6 +868,68 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) => (rel(d).sparkleEd25519Pub = "not base64!!"),
   },
+  // P3-03: release keys (plans/P3-01.md §3).
+  {
+    code: "invalid_release_key",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).releaseKeys[0].publicKey = "short"),
+  },
+  {
+    code: "invalid_release_key",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).releaseKeys[0].kid = "-leading-dash"),
+  },
+  {
+    code: "invalid_release_key",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).releaseKeys = []),
+  },
+  {
+    // The order-1 point: well-formed base64url, and a key no v4 verifier accepts.
+    code: "weak_release_key",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (rel(d).releaseKeys[0].publicKey = SMALL_ORDER_KEY),
+  },
+  {
+    // y = p: a non-canonical encoding.
+    code: "weak_release_key",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (rel(d).releaseKeys[0].publicKey = NON_CANONICAL_KEY),
+  },
+  {
+    code: "duplicate_release_key",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) =>
+      rel(d).releaseKeys.push({ kid: "ci-2026", publicKey: RELEASE_KEY_B }),
+  },
+  {
+    code: "duplicate_release_key",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) =>
+      rel(d).releaseKeys.push({ kid: "ci-2027", publicKey: RELEASE_KEY_A }),
+  },
+  {
+    // The same raw key as the Sparkle archive key, spelled in standard base64.
+    code: "release_key_reused",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) =>
+      (rel(d).sparkleEd25519Pub =
+        "11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo="),
+  },
+  {
+    code: "content_keys_not_supported",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (rel(d).contentKeys = [{ kid: "content" }]),
+  },
   {
     code: "invalid_architecture",
     file: "release",
@@ -1205,6 +1275,47 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).web.origins[0] = "https://app.acme.example:443"),
   },
 
+  // ── value_not_representable (P3-12, plans/P3-01.md §2.2) ──
+  // Validator-only: JSON Schema cannot say "no lone surrogate", "no U+0000 in a member name",
+  // "no two names equal after NFC" or "no number below 1e-307" over arbitrary values, and these
+  // land on the values the manifest sync alone writes (provisioning values, catalog defaults,
+  // edge-mint claims templates), which the schemas type loosely on purpose.
+  {
+    code: "value_not_representable",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) =>
+      (p(d).provisioning[0].entitlementValue = { "a\u0000b": true }),
+  },
+  {
+    code: "value_not_representable",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).provisioning[0].entitlementValue = "x\ud800"),
+  },
+  {
+    code: "value_not_representable",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) =>
+      ((d.schema as Record<string, any>).entries[0].examples = [
+        { "\u00e9": 1, "e\u0301": 2 },
+      ]),
+  },
+  {
+    code: "value_not_representable",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) =>
+      ((d.schema as Record<string, any>).entries[0].examples = [1e-320]),
+  },
+  {
+    code: "value_not_representable",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (mint(d).claimsTemplate = { sub: "\udc00" }),
+  },
+
   // ── .pkey/distribution (P2b-02) ──
   {
     code: "invalid_distribution",
@@ -1404,6 +1515,12 @@ const MUTATIONS: Mutation[] = [
     file: "distribution",
     schema: "rejects",
     mutate: (d) => (outlet(d, "obtainium").artifact = "Not An Id"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "testflight").publicLink = "join/AbCd"),
   },
   {
     code: "invalid_outlet_identity",
