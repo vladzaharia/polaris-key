@@ -25,8 +25,9 @@ extends RefCounted
 # releaseRecords}` seeds the store's record, and carries from step to step as the SDK writes it.
 # The endpoints come from the last discovery the transcript ran, else the Worker's standard
 # templates. Its `expect` keys are the five UpdateCheck members (PKeyUpdateCheck.to_dictionary),
-# or `result: "error"` and `code`. Until P3-03 records its two update transcripts, the synthetic
-# one at the end of this file (corpus-signed: the SDK has no signer) holds the mapping to them.
+# or `result: "error"` and `code`. P3-03's `update-feed-rollback` and `update-record-by-hash`
+# replay through it; the synthetic transcripts at the end of this file (corpus-signed: the SDK has
+# no signer) add an alias request and prove the mapping fails on a doctored recording.
 
 const FLOOR := 4
 
@@ -322,7 +323,7 @@ static func _mentions(fails: Array, needle: String) -> bool:
 	return false
 
 
-# ── updateDecide over a synthetic transcript (P3-03 records the real two) ─────────────────
+# ── updateDecide over synthetic transcripts (beside P3-03's two) ───────────────────────────
 
 ## The shape of P3-03's update transcripts (`initial.update`, `action: "updateDecide"`,
 ## `args.channel`, `expect: {channel, feed, record, errors, decision}`), built from the corpus's

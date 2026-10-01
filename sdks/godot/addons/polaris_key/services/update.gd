@@ -281,7 +281,8 @@ func _flow_opts(ready: Dictionary, channel: String, staged: Variant, skip_versio
 ## stamp's, else this Core's), buildNumber (the stamp's `build` as a string; null for 0), the
 ## platform, the device's arch (the stamp's unless it says `universal`), format
 ## (PKeyOptions.update_format, else the stamp's `format`, else null) and engine
-## (`godot-<major>.<minor>`).
+## (`godot-<major>.<minor>`: the stamp's, or the running engine's without a stamp; null for a
+## stamp that names none).
 static func installed_build(core: PKeyCore, info: Dictionary) -> Dictionary:
 	var version = info.get("version")
 	if not (version is String) or version == "":
@@ -303,7 +304,7 @@ static func installed_build(core: PKeyCore, info: Dictionary) -> Dictionary:
 		"platform": core.update_platform(),
 		"arch": arch,
 		"format": format,
-		"engine": engine if engine is String and engine != "" else PKeyBuildStamp.engine_id(),
+		"engine": engine if engine is String and engine != "" else null,
 	}
 
 
