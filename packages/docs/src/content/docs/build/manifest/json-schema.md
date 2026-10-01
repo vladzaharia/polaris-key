@@ -68,8 +68,8 @@ plugin, …) reads the same two schema files; only the settings syntax differs.
 ### The headers `pkey init` emits
 
 Running `pkey init` (`@polaris-key/cli`, `packages/cli/README.md`) scaffolds
-`.pkey/product.yaml`, and `schema.yaml`/`release.yaml` when those services are
-selected, each opening with a `yaml-language-server` directive that points straight at the
+`.pkey/product.yaml` and `schema.yaml` (always written, with `catalog: []` unless the
+`config` module is selected), plus `release.yaml` when `releases` is selected, each opening with a `yaml-language-server` directive that points straight at the
 package copy with no editor configuration required at all:
 
 ```yaml
@@ -87,7 +87,8 @@ Code settings above use a path.
 
 ## The parity-test guarantee
 
-`validateManifestDocuments` (the TypeScript validator in `@polaris-key/manifest`) is
+`validateManifestDocuments` and `validateIngestDocuments` (the TypeScript validators in
+`@polaris-key/manifest`; the second adds the presence rules such as `missing_product`) are
 **authoritative**; these schemas exist for editor completion and other machine consumers, and
 nothing stops the two from drifting apart on their own. `packages/shared-manifest/test/schema-parity.test.ts`
 is the drift gate, and it pins three properties on every CI run:

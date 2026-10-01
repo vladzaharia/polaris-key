@@ -32,7 +32,7 @@ independent paths to it, not one reading from the other.
 A floor table, `release_channel_floors`, sits beside them. A sync raises it and an operator
 lowers it (see [below](#release_channel_floors)).
 
-A fifth table, `release_config`, anchors all four — it is the one row per product carrying
+A further table, `release_config`, anchors them all — it is the one row per product carrying
 the linked repository's coordinates, binary name, Sparkle key, and access modes, and it is
 what [GitHub sync](/docs/services/release/github-sync/) describes in full. The truth store
 is downstream of it, not a replacement for it.

@@ -283,8 +283,8 @@ Poison the release channel
 ├── Hold GITHUB_WEBHOOK_SECRET (one global secret, no per-repo binding, no replay protection)
 │   └── forge a push payload naming ANY linked repo, with an arbitrary `after` ref
 ├── Write access to a linked repo
-│   ├── publish a DMG + matching .sig (signature is passed through, never verified server-side)
-│   └── set `.pkey/release` requireSparkleSignature:false  ← repo disables its own control
+│   ├── publish a DMG + matching .sig (the appcast verifies the sidecar over the DMG bytes against the product's configured Sparkle key; a sidecar that does not verify is refused, so the attacker also needs that key's private half)
+│   └── set `.pkey/release` requireSparkleSignature:false  (no effect: the requirement is operator-owned, read from `operator_policy_json`, which no manifest path writes)
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
 ```
 
