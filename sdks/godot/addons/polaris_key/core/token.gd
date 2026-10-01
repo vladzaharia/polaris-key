@@ -67,6 +67,26 @@ func begin_pass() -> void:
 	_last_ok = false
 
 
+## The single re-acquire for an authenticated call made OUTSIDE a sync pass (an edge-mint): one
+## attempt per call, never a loop, through the same injected route a document 401 takes. The
+## caller retries its request once when this returns true and fails on a second 401. It does not
+## touch the sync pass's budget; an attempt already in flight is joined. A coroutine.
+func reacquire() -> bool:
+	if _in_flight:
+		return await reacquired
+	if _token == "" or not _reacquire.is_valid():
+		return false
+	_in_flight = true
+	attempts += 1
+	var next = await _reacquire.call(core_ref.get_ref() if core_ref != null else null, _token)
+	var ok: bool = next is String and next != ""
+	if ok:
+		set_token(next)
+	_in_flight = false
+	reacquired.emit(ok)
+	return ok
+
+
 ## At most one re-acquire per pass, shared by every concurrent 401. True when a NEW token is in
 ## hand and the caller should retry once. A coroutine.
 func reacquire_once() -> bool:

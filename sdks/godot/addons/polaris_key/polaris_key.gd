@@ -12,6 +12,9 @@ extends Node
 ## `state_changed(state)` when the licence state changes, `sync_finished(result)` after every
 ## sync, `store_error(err)` when the store fails to read or write (also `last_store_error`).
 ## `core` is the PKeyCore every service client builds on.
+##
+## Sub-clients: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
+## `config_changed(keys)` fires after start, each sync and each bundle import).
 
 const SDK_VERSION := "0.1.0"
 
@@ -24,6 +27,8 @@ signal store_error(err: Dictionary)
 
 var core: PKeyCore = null
 var last_store_error: Dictionary = {}
+## Managed config. Usable before `configure()` (every key falls back).
+var config := PKeyConfig.new()
 
 var _timer: Timer = null
 var _syncing := false
@@ -40,6 +45,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	_stop_timer()
 	core = r.detail
 	core.store_error.connect(_on_store_error)
+	config.attach(core)
 	return PKeyResult.success()
 
 
@@ -51,6 +57,7 @@ func start() -> PKeyResult:
 	if r.ok:
 		_start_timer()
 		_emit_state()
+		config.refresh()
 	return r
 
 
@@ -78,6 +85,7 @@ func sync(force := false) -> PKeySyncResult:
 	_syncing = true
 	var r := await core.sync(force)
 	_syncing = false
+	config.refresh()
 	sync_finished.emit(r)
 	_emit_state()
 	return r
@@ -94,6 +102,7 @@ func import_bundle(text: String) -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	var r := await core.import_bundle(text)
 	_emit_state()
+	config.refresh()
 	return r
 
 
