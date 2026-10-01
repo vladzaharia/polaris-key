@@ -29,6 +29,7 @@ const IDENTITY: ServicesMap = {
   license: { enabled: true },
   config: { enabled: true },
   release: { enabled: false },
+  distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: true },
 };
