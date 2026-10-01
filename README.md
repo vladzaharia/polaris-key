@@ -34,7 +34,7 @@ conformance/         corpus/v2 (one signer's golden vectors) + the Node runner
 tools/               sign-corpus.ts · gen-mirrors.ts · gen-services.ts + services.json (the service table)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                CONCEPTS · ADOPTER-GUIDE · CONFIG-AUTHORING · RUNBOOK · DEPLOYMENT
-                     security/ (threat model, wire contract v3, audit + findings)
+                     security/ (threat model, wire contract v4, audit + findings)
 ```
 
 ## The frozen wire contract
@@ -49,16 +49,19 @@ compact JWS  = signingInput "." base64url(signature)
 ```
 
 The verifying key is selected by the header `kid` from a trust set (never from the
-document); `alg` is asserted `EdDSA` before any signature math. Wire v3 domain-separates
-four artifacts by `typ` over one shared envelope (`iss` + `aud` + `deviceId` + `issuedAt`
-/ `expiresAt` / `graceUntil`): `pkey-license+jws` carries the grants, `pkey-config+jws`
-carries config + secrets, `pkey-trust+jws` is the trust manifest, and `pkey-bundle+jws`
-is the offline activation bundle. Splitting the old fused document in two is what makes
-the services independent on the wire, not just in the router — a config document mentions
-no licence at all. The encoding is pinned byte-for-byte by
-`conformance/corpus/v2/cases.json`, which **every SDK and the worker verify identically**
-— that is how five languages agree on the wire. `docs/security/WIRE-CONTRACT-V3.md` is the
-normative spec.
+document); `alg` is asserted `EdDSA` before any signature math. Wire v4 domain-separates
+six artifacts by `typ`. Licence and config documents share one envelope (`iss` + `aud` +
+`deviceId` + `issuedAt` / `expiresAt` / `graceUntil`): `pkey-license+jws` carries the grants
+and `pkey-config+jws` carries config + secrets, so a config document mentions no licence at
+all. `pkey-trust+jws` is the trust manifest, `pkey-bundle+jws` the offline activation bundle,
+and `pkey-feed+jws` the device-less channel feed that says what each platform should run. The
+sixth, `pkey-release+jws`, is a release record signed in CI by a **release key** — never a
+product key — and verified only against the release keys the app pins, so the Worker alone can
+never ship bytes no release key signed. Every verifier is equally strict about Ed25519
+encodings, JSON, numbers and depth, and decides every integer claim from its token. The
+encoding is pinned byte-for-byte by `conformance/corpus/v2/cases.json`, which **every SDK and
+the worker verify identically** — that is how five languages agree on the wire.
+`docs/security/WIRE-CONTRACT-V4.md` is the normative spec.
 
 ## Architecture at a glance
 

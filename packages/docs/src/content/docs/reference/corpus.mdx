@@ -15,20 +15,27 @@ over the source and both generator-owned mirrors (the Swift test resources and t
 `res://` mirror at `sdks/godot/tests/corpus/v2/`). Corpus v1 is deleted — v2 is the
 only corpus. `corpusVersion 2`,
 `gateMatrixVersion 2`, `fingerprintVersion 1`,
-`stageMatrixVersion 1`, `headersVersion 1`,
-`configMatrixVersion 1`.
+`stageMatrixVersion 2`, `headersVersion 1`,
+`configMatrixVersion 1`,
+`updateMatrixVersion 1`, `outletMatrixVersion 1`.
+Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
+`releaseRecordCases` families, the strict-verifier `jwsCases`, a `nonWireIntegers` member
+beside `expect` on every case whose payload holds a number that cannot be a wire integer, and the
+two decision tables below.
 
 ## Case families (`cases.json`)
 
 | Family | Cases |
 | --- | --- |
-| `keys` | 2 |
-| `jwsCases` | 36 |
-| `licenseDocCases` | 16 |
-| `configDocCases` | 18 |
-| `trustCases` | 11 |
+| `keys` | 4 |
+| `jwsCases` | 80 |
+| `licenseDocCases` | 25 |
+| `configDocCases` | 21 |
+| `trustCases` | 20 |
 | `clockFloorCases` | 7 |
-| `bundleCases` | 9 |
+| `bundleCases` | 16 |
+| `feedCases` | 77 |
+| `releaseRecordCases` | 49 |
 
 ## Gate matrix (`gate-matrix.json`): 38 rows
 
@@ -36,9 +43,9 @@ only corpus. `corpusVersion 2`,
 
 Source-rule sections (WIRE-CONTRACT-V3 §6.1): `windowsCim` 17, `linuxAnchor` 10, `ramBuckets` 13, plus the pinned `windowsCimCommand`.
 
-## Stage matrix (`stage-matrix.json`): 56 rows, 7 guard cases
+## Stage matrix (`stage-matrix.json`): 56 rows, 7 guard cases, 6 confirm cases
 
-Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach.
+Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach. Version 2's confirm cases pin `bootConfirmation(outcome)`, with `bootOkSeconds` 10.
 
 ## Header values (`headers.json`): 31 platform and 31 arch spellings
 
@@ -47,3 +54,11 @@ WIRE-CONTRACT-V3 §5.2: each runtime spelling and its canonical `X-PKey-Platform
 ## Config resolution (`config-matrix.json`): 24 resolve, 82 environment-value and 8 list cases
 
 WIRE-CONTRACT-V3 §2.2.1: the precedence, the variable name, the strict environment value and the user-visible list. React runs the no-environment answers.
+
+## Update decision (`update-matrix.json`): 25 version, 10 capability and 12 outlet cases, 6 bucket vectors, 65 decision rows
+
+WIRE-CONTRACT-V4 §11.1, client behaviour beside the contract: `compareVersions`, `effectiveCapabilities`, `resolveUpdateOutlet`, `rolloutBucket` and `decideUpdate` with its `bootDecision`. The generator recomputes every case and row with its own reference implementation.
+
+## Outlets (`outlet-matrix.json`): 18 kinds (with `unknown`), 25 signals, 48 detection rows
+
+WIRE-CONTRACT-V4 §11.2: the capability defaults per outlet kind and their narrowing, the listing-URL prefixes, and `detectOutlet`. The generator recomputes every detection row.

@@ -190,6 +190,15 @@ vectors today, so backends can diverge silently
 - **Size budget.** Keep `cases.json` growth modest; there is no need for large cap vectors beyond
   one feed at the plan's cap.
 
+- **Corrections found while implementing (P3-02):** the work ran on
+  `wp/P3-02-wire-v4-contract-corpus`, not `wp/P3-02-wire-v4`. The parity registry entries
+  `release.record`, `update.feed`, `update.decide` and `outlet.detect` already pointed at P3-02's
+  proofs (P1b-01) and every SDK manifest already listed them `planned` under its wave package, so
+  no manifest changes here (plan §5). Godot has no `core/stages.gd` yet (P1-10 has not landed), so
+  its stage-matrix v2 port is P1-10's, as plan §4.8 allows. `outlet-matrix.json#/platformData`
+  also carries `macosStoreLeaves` (the two store signing-leaf names from S-06), which the
+  `macos.signingLeaf` rows need and the plan's sketch omitted.
+
 ## Steps
 
 1. Confirm `plans/P3-01.md` is merged and `check.mjs --show P3-02` shows P3-01 `done`. Branch
