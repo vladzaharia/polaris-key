@@ -9,6 +9,7 @@ import {
   getReleaseConfig,
   isManifestPath,
   resyncRepo,
+  syncReleaseStore,
   type FetchImpl,
 } from "./services/release/sync.js";
 
@@ -35,6 +36,26 @@ interface ChangedCommit {
   added?: string[];
   modified?: string[];
   removed?: string[];
+}
+
+/**
+ * The three fields a `release` delivery is read for. Everything else in it — `release.*`
+ * included — is ignored: once the secret leaks the body is attacker-shaped, and the sync
+ * re-reads GitHub with the installation token rather than trusting any of it (P0-03).
+ */
+interface ReleasePayload {
+  action?: unknown;
+  installation?: { id?: unknown } | null;
+  repository?: { name?: unknown; owner?: { login?: unknown } | null } | null;
+}
+
+/** The per-product result of a `release` delivery. */
+interface ReleaseEventResult {
+  product: string;
+  ok: boolean;
+  /** Truth-store statements applied; 0 when the product was refused or the sync did not run. */
+  statements: number;
+  error?: string;
 }
 
 function hexToBytes(hex: string): Uint8Array | null {
@@ -104,6 +125,103 @@ function repoCoordinates(payload: PushPayload): {
   return { owner, repo };
 }
 
+const INSTALLATION_MISMATCH = "installation id does not match the linked repo";
+
+/**
+ * Bind a delivery to the installation that owns this product's repo (R6-05). One webhook secret
+ * covers every installation, so without this a single secret compromise is a cross-tenant
+ * forgery capability: a delivery naming repo X must also carry the installation id that owns X.
+ * Both the `push` and the `release` paths call this before writing anything for `product`.
+ */
+async function installationMatches(
+  db: Db,
+  product: string,
+  installationId: unknown,
+): Promise<boolean> {
+  const cfg = await getReleaseConfig(db, product);
+  const expected = cfg?.gh_installation_id ?? null;
+  return expected === null || installationId === expected;
+}
+
+/**
+ * `x-github-event: release` (P0-03). Every action — published, unpublished, created, edited,
+ * deleted, prereleased, released — is handled the same way: refresh the release truth store of
+ * each product linked to the repo, through the ordinary paginated, floor-aware sync.
+ *
+ * It deliberately does NOT re-read `.pkey/`, touch any manifest-owned row, or write
+ * `product_sync_state`: that row records the MANIFEST sync, and a release event overwriting it
+ * would hide a failed `.pkey/` sync. `release_health.checked_at` is the release sync's record.
+ */
+async function handleReleaseEvent(
+  raw: Uint8Array,
+  env: Env,
+  db: Db,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<Response> {
+  let payload: ReleasePayload;
+  try {
+    payload = JSON.parse(new TextDecoder().decode(raw)) as ReleasePayload;
+  } catch {
+    return errorResponse(400, "bad_request", "invalid JSON payload");
+  }
+  if (!payload || typeof payload !== "object") {
+    return errorResponse(400, "bad_request", "invalid JSON payload");
+  }
+  const action = typeof payload.action === "string" ? payload.action : null;
+  const owner = payload.repository?.owner?.login;
+  const repo = payload.repository?.name;
+  if (
+    typeof owner !== "string" ||
+    !owner ||
+    typeof repo !== "string" ||
+    !repo
+  ) {
+    return errorResponse(400, "bad_request", "repository missing");
+  }
+  const installationId = payload.installation?.id;
+
+  const products = await listProductsByGithubRepo(db, owner, repo);
+  const results: ReleaseEventResult[] = [];
+  for (const product of products) {
+    if (!(await installationMatches(db, product.slug, installationId))) {
+      results.push({
+        product: product.slug,
+        ok: false,
+        statements: 0,
+        error: INSTALLATION_MISMATCH,
+      });
+      continue;
+    }
+    // Idempotent and bounded (P0-02's capped pagination), so it is safe on every delivery;
+    // bursts are not coalesced. `syncReleaseStore` never throws and applies all or nothing.
+    const statements = await syncReleaseStore(
+      env,
+      db,
+      product.slug,
+      now,
+      fetchImpl,
+    );
+    results.push(
+      statements > 0
+        ? { product: product.slug, ok: true, statements }
+        : {
+            product: product.slug,
+            ok: false,
+            statements: 0,
+            error: "release store sync did not run",
+          },
+    );
+  }
+
+  return json({
+    ok: results.every((result) => result.ok),
+    event: "release",
+    action,
+    results,
+  });
+}
+
 export async function handleGithubWebhook(
   req: Request,
   env: Env,
@@ -152,6 +270,9 @@ export async function handleGithubWebhook(
   });
 
   const event = req.headers.get("x-github-event") ?? "";
+  if (event === "release") {
+    return handleReleaseEvent(raw, env, db, now, fetchImpl);
+  }
   if (event !== "push") {
     return json({ ok: true, ignored: event || "unknown-event" });
   }
@@ -205,16 +326,12 @@ export async function handleGithubWebhook(
 
   const installationId = payload.installation?.id;
   for (const product of products) {
-    // Bind the delivery to the installation that owns this product's repo (R6-05). One
-    // webhook secret covers every installation, so without this a single secret compromise
-    // is a cross-tenant forgery capability.
-    const cfg = await getReleaseConfig(db, product.slug);
-    const expected = cfg?.gh_installation_id ?? null;
-    if (expected !== null && installationId !== expected) {
+    // Bind the delivery to the installation that owns this product's repo (R6-05).
+    if (!(await installationMatches(db, product.slug, installationId))) {
       results.push({
         product: product.slug,
         ok: false,
-        error: "installation id does not match the linked repo",
+        error: INSTALLATION_MISMATCH,
       });
       continue;
     }
