@@ -46,7 +46,7 @@ import {
   createPortalDownloadToken,
   markPortalDownloadUsed,
 } from "../src/services/identity/portal/repo.js";
-import { handlePortalDownload } from "../src/services/identity/portal/api.js";
+import { enableDownloads, handlePortalDownload } from "./portalHarness.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 
@@ -846,6 +846,8 @@ describe("R6-12 /download/<token>", () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), [SLUG]);
     await seedProduct(db, SLUG);
+    // Release + Distribution: the services that serve a download (P2b-04).
+    await enableDownloads(db, SLUG);
     const accountId = await seedPortalAccount(db);
     await seedDownloadable(db, env, sourceUrl);
     const token = await createPortalDownloadToken(env, db, {

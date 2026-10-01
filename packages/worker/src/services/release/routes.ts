@@ -4,11 +4,6 @@
  * Release's own sub-router, over the path segments AFTER `/<product>/release`.
  *
  *     /release/changelog
- *     /release/install.sh            (+ the permanent alias `/<p>/install.sh`)
- *     /release/dl/:version/:binary-:arch[.dmg]
- *     /release/builds/:selector/:buildId          GET|HEAD  (P2-05, also on the bytes host)
- *     /release/files/:releaseId/:name             GET|HEAD  (P2-05, also on the bytes host)
- *     /release/blobs/sha256/:hash                 GET|HEAD  (P2-05, also on the bytes host)
  *     /release/channels/:channel/{promote,pin,unpin}  POST, `pkeyci_` + release:promote
  *     /release/releases/:releaseId/yank               POST, `pkeyci_` + release:yank
  *     /release/publish/{token,uploads,submit}         POST (P2-02, trusted publishing)
@@ -17,18 +12,17 @@
  * Core decides what "no route here" means, which is what makes a disabled service, an
  * unregistered slug and a bad path indistinguishable from outside.
  *
- * The alias reaches this file having been rewritten by the core router into the canonical
- * segments, so there is exactly one code path per surface and the two spellings cannot drift.
+ * BYTES ARE NOT HERE (P2b-04). `/release/dl/…`, `/release/install.sh`, `/release/builds/…`,
+ * `/release/files/…` and `/release/blobs/…` are permanent aliases the core router rewrites to
+ * Distribution's canonical `/<p>/distribution/…` routes before dispatch, so none of them reaches
+ * this file; Distribution reads what it needs from Release through the `releaseCatalog` hook.
  */
 
 import type { ServiceContext } from "../../core/registry.js";
 import { errorResponse, ErrorCode, json } from "../../core/errors.js";
-import { requireCiScope } from "../../core/ciScope.js";
-import { normalizeArch } from "./assets.js";
+import { readCiJson, requireCiScope } from "../../core/ciScope.js";
 import { handleRelease } from "./surfaces.js";
-import { byteTargetOf, serveReleaseBytes } from "./bytes.js";
 import { getReleaseConfig } from "./config.js";
-import { readCiJson } from "./ciBody.js";
 import { handlePublishRoute } from "./publish.js";
 import {
   applyPointerOp,
@@ -36,9 +30,6 @@ import {
   type PointerOp,
   type PolicyRefusal,
 } from "./policy.js";
-
-/** `<binary>-<arch>` with the arch aliases the old `/cli/` and `/dmg/` routes accepted. */
-const ARCH_SUFFIX = /^(?:[^/]+)-(arm64|aarch64|x86_64|amd64)$/;
 
 export async function handleReleaseRoutes(
   ctx: ServiceContext,
@@ -48,23 +39,12 @@ export async function handleReleaseRoutes(
   if (rest.length === 1) {
     if (rest[0] === "changelog")
       return handleRelease(req, env, db, product, "changelog", {});
-    if (rest[0] === "install.sh")
-      return handleRelease(req, env, db, product, "install", {});
     return null;
   }
 
   // Trusted publishing (P2-02): the OIDC exchange, upload tickets and the submit.
   if (rest.length === 2 && rest[0] === "publish")
     return handlePublishRoute(ctx, rest[1] as string);
-
-  // The three byte routes (P2-05) — the same handler the bytes host runs (`bytes.ts`).
-  if (
-    rest.length === 3 &&
-    (rest[0] === "builds" || rest[0] === "files" || rest[0] === "blobs")
-  ) {
-    const target = byteTargetOf(rest);
-    return target ? serveReleaseBytes(req, env, db, product, target) : null;
-  }
 
   // The CI policy routes (P2-05): `pkeyci_` token with the operation's scope.
   if (
@@ -78,20 +58,6 @@ export async function handleReleaseRoutes(
   if (rest.length === 3 && rest[0] === "releases" && rest[2] === "yank") {
     if (req.method !== "POST") return null;
     return handleCiYank(ctx, rest[1] as string);
-  }
-
-  // /release/dl/<version>/<binary>-<arch>[.dmg]
-  if (rest.length === 3 && rest[0] === "dl") {
-    const version = rest[1] as string;
-    const leaf = rest[2] as string;
-    const dmg = leaf.endsWith(".dmg");
-    const name = dmg ? leaf.slice(0, -".dmg".length) : leaf;
-    const arch = normalizeArch(name.match(ARCH_SUFFIX)?.[1]);
-    if (!arch) return null;
-    return handleRelease(req, env, db, product, dmg ? "dmg" : "cli", {
-      version,
-      arch,
-    });
   }
 
   return null;

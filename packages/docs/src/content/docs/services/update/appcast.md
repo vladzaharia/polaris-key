@@ -161,16 +161,17 @@ surface, version or channel, and architecture — never the raw query string —
 attacker probing with distinct, meaningless query values can't mint unbounded cache entries
 that all miss.
 
-## The four permanent aliases
+## The permanent aliases
 
 Four URLs predate the current `/<product>/<service>/…` namespace, and they are kept
-**forever**:
+**forever** (the byte routes' `/release/…` spellings are permanent aliases too, of
+Distribution's routes — see [Byte delivery](/docs/services/distribution/delivery/#permanent-aliases)):
 
 | Alias                              | Canonical                                 |
 | ---------------------------------- | ----------------------------------------- |
 | `/<product>/appcast.xml`           | `/<product>/update/appcast.xml`           |
 | `/<product>/<channel>/appcast.xml` | `/<product>/update/<channel>/appcast.xml` |
-| `/<product>/install.sh`            | `/<product>/release/install.sh`           |
+| `/<product>/install.sh`            | `/<product>/distribution/install.sh`      |
 | `/<product>/version`               | `/<product>/update/version`               |
 
 The router recognizes these exact path shapes and rewrites them to precisely the same

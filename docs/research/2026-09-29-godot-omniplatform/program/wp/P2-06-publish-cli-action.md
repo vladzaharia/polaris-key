@@ -67,11 +67,12 @@ Diceroll's adoption (D-03) publishes through this Action and deletes `update_man
      `--meta` (`{"<buildId>": {buildNumber, minOS, requires}}`);
   3. request a ticket, upload objects not already `present` with a single-part S3 `PUT` carrying
      `x-amz-checksum-sha256` (SigV4 with the session token), retrying transient failures;
-  4. build the descriptor (`seq` from the ticket's `nextSeq`, `provenance` from `GITHUB_SHA` and
-     the run URL), validate it locally with `validateReleaseDescriptor`, and submit it.
+  4. build the descriptor (no `seq`, so the Worker assigns the next one — corrected, see below;
+     `provenance` from `GITHUB_SHA` and the run URL), validate it locally with
+     `validateReleaseDescriptor`, and submit it.
      `--source github` uploads nothing and lists `github` locations; the tagged release must be
      immutable.
-- `pkey release promote|pin|unpin <releaseId> --channel <c>` and
+- `pkey release promote|pin <releaseId> --channel <c>`, `pkey release unpin --channel <c>` and
   `pkey release yank <releaseId> --reason <text>`, calling P2-05's CI routes.
 - **The Action** at `actions/publish/action.yml` (`runs.using` the current Node runtime GitHub
   supports), inputs `product`, `deliverable`, `version`, `tag`, `channel`, `dir`, `source`, `meta`,
@@ -149,6 +150,28 @@ mise exec node@22 -- pnpm --filter @polaris-key/cli bundle:action -- --check
 mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 mise exec node@22 -- pnpm typecheck
 ```
+
+## Corrections from the code (P2-06 implementation)
+
+- **No `seq` in the descriptor.** The brief said to copy the ticket's `nextSeq`. The Worker hashes
+  the submitted descriptor to recognise "the same release again", and `nextSeq` moves on once the
+  first publish lands, so a re-run would become a different descriptor and be refused
+  `release_exists` instead of being the no-op acceptance requires. P2-04's ingest assigns the next
+  `seq` when it is absent, which is what the P2-02 hand-off recommends for CI.
+- **`unpin` takes no release id.** P2-05's `POST …/channels/<c>/unpin` reads none.
+- **A dry run before the uploads needed a Worker change.** P2-02's submit verified staged objects
+  before honouring `dryRun`, so a dry run that uploads nothing was always refused
+  `staged_object_missing`. The submit now judges a ticket object that is not yet staged as if it
+  were and lists it in `unverified` (dry run only; a staged copy that is present must still
+  verify). OpenAPI, the artifacts page and the threat model say so.
+- **`--source github` still requests a ticket**: submit requires one, so the uploads route (and
+  the blob store's R2 configuration) must exist even when nothing is uploaded.
+- **The bundle's freshness gate is a CI step, not a vitest test**: it reads the built
+  `dist/` of `@polaris-key/manifest`, `@polaris-key/catalog` and `@polaris-key/protocol`, so it
+  runs after `pnpm build` (AGENTS.md rule 3 and the green gate list it). The CLI suite proves the
+  `--check` mechanics on a temporary copy.
+- The Action runs on `node24`; the bundle targets Node 20 so `node pkey.mjs` runs on older
+  runtimes too.
 
 ## Hand-off
 

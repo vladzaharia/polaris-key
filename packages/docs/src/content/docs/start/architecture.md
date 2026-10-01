@@ -53,20 +53,30 @@ interface ServiceDescriptor {
   adminHandle?(
     ctx: ServiceContext & { session: AdminSession },
   ): Promise<Response | null>;
-  manifestIngest?(parsed: ParsedManifest, product: string): DbStatement[];
+  manifestIngest?(
+    parsed: ParsedManifest,
+    product: string,
+    now: number,
+  ): DbStatement[];
+  manifestIngestAlways?(
+    parsed: ParsedManifest,
+    product: string,
+    now: number,
+  ): DbStatement[];
   authorizeRegistration?(ctx: RegistrationAuthContext): Promise<boolean>;
 }
 ```
 
-| Member                   | What it is                                                                                                                                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `slug`                   | the one word used as the directory, the route namespace, the SDK sub-client and the console section.                                                                                                |
-| `handle`                 | handles a product-scoped request. `ctx.rest` is the path _after_ `/<product>/<service>`, already split; the service owns its sub-routing from there.                                                |
-| `discoveryFragment`      | this service's slice of `/<product>/.well-known/polaris.json`. **Only called when enabled** — Core emits `{"enabled": false}` and nothing else for the rest.                                        |
-| `adminHandle?`           | handles `/manage/api/products/<slug>/<service>/…`. Every service but Distribution implements it.                                                                                                    |
-| `manifestIngest?`        | rows this service wants written when a product manifest is ingested. **Declared but currently unimplemented** — see below.                                                                          |
-| `authorizeRegistration?` | may this caller be given a device credential? Only Identity implements it.                                                                                                                          |
-| descriptor hooks         | `releaseCatalog?` (Release), `delivery?` and `outletCapabilities?` (Distribution): read-only views another service reads through `ctx.hooks`, gated on the provider's enablement (`core/hooks.ts`). |
+| Member                   | What it is                                                                                                                                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slug`                   | the one word used as the directory, the route namespace, the SDK sub-client and the console section.                                                                                                     |
+| `handle`                 | handles a product-scoped request. `ctx.rest` is the path _after_ `/<product>/<service>`, already split; the service owns its sub-routing from there.                                                     |
+| `discoveryFragment`      | this service's slice of `/<product>/.well-known/polaris.json`. **Only called when enabled** — Core emits `{"enabled": false}` and nothing else for the rest.                                             |
+| `adminHandle?`           | handles `/manage/api/products/<slug>/<service>/…`. Every service implements it.                                                                                                                          |
+| `manifestIngest?`        | rows this service wants written when a product manifest is ingested (link or resync). **Run only while the service is enabled.** Distribution implements it (P2b-02).                                    |
+| `manifestIngestAlways?`  | rows kept current on every ingest **whatever the enablement**, for a record that must already be right when the service is turned on. Distribution's `app` delivery-access row is its one user (P2b-04). |
+| `authorizeRegistration?` | may this caller be given a device credential? Only Identity implements it.                                                                                                                               |
+| descriptor hooks         | `releaseCatalog?` (Release), `delivery?` and `outletCapabilities?` (Distribution): read-only views another service reads through `ctx.hooks`, gated on the provider's enablement (`core/hooks.ts`).      |
 
 Three details in that interface are load-bearing:
 
@@ -75,13 +85,14 @@ whether "no match" should be a `404`, a fall-through to the alias table, or a re
 centralising that decision is what keeps the not-found response byte-identical whether a service is
 disabled, absent, or simply has no such route.
 
-**`manifestIngest` is a reserved seam, not a live hook.** The signature exists on the interface;
-no descriptor implements it and nothing in the worker calls it today. Ingest is Core-owned and
-writes every service's rows itself. Treat it as the declared shape a future per-service ingest
-would take — do not write code that assumes it fires. It also fixes one real constraint by
-existing: it returns the repo's own `DbStatement`, not a `D1PreparedStatement`, because every batch
-site in the worker goes through the `Db` abstraction so the same code runs on D1 and on the
-in-memory SQLite the tests use.
+**`manifestIngest` runs inside Release's link and resync batch.** Core's pipeline
+(`manifestIngestStatements`) runs each enabled service's hook and hands the statements to the
+ingest, so a service's rows land atomically with the rest without Release importing the service.
+A disabled service's hook does not run. `manifestIngestAlways` is the one exception: Core runs it
+whatever the enablement, because turning a service on in the console runs no ingest. It may write
+only a record that does nothing until its service is on. Both return the repo's own `DbStatement`,
+not a `D1PreparedStatement`, because every batch site in the worker goes through the `Db`
+abstraction so the same code runs on D1 and on the in-memory SQLite the tests use.
 
 **`authorizeRegistration` is the one place Core delegates an authorization decision to a service.**
 It exists because one of the three registration policies is named after a service:
@@ -169,7 +180,13 @@ service route, with the same segments, as its canonical spelling.
 | `/<p>/appcast.xml`           | `/<p>/update/appcast.xml`           |
 | `/<p>/<channel>/appcast.xml` | `/<p>/update/<channel>/appcast.xml` |
 | `/<p>/version`               | `/<p>/update/version`               |
-| `/<p>/install.sh`            | `/<p>/release/install.sh`           |
+| `/<p>/install.sh`            | `/<p>/distribution/install.sh`      |
+
+P2b-04 moved every byte route from Release to Distribution and kept Release's old spellings the
+same way: `/<p>/release/install.sh`, `/<p>/release/dl/…`, `/<p>/release/builds/…`,
+`/<p>/release/files/…` and `/<p>/release/blobs/…` are permanent aliases of their
+`/<p>/distribution/…` routes (download URLs the SDKs build, and byte URLs discovery advertised).
+That rewrite runs before the service-namespace match, because `release` is itself a namespace.
 
 There is therefore no second handler to keep in step and no way for the two spellings to answer
 differently. A request carries an `alias` flag, but it exists so the route table can be asserted on

@@ -26,13 +26,18 @@ All packages are currently at **`0.0.0`** — nothing has published yet.
    `.changeset/config.json` sets `access: "restricted"` and `baseBranch: "main"`; internal
    `@polaris-key/*` cross-dependencies bump by `patch` automatically.
 
-Keep changesets focused — one logical change each. As of this writing there are eleven pending:
-`boot-stage-machine`, `channel-vocabulary`, `device-code-edge-mint`, `distribution-service`,
-`edge-mint-hardening`, `free-tier-and-relicensing`, `hardware-fingerprinting`, `initial-release`,
-`pkey-init-validate`, `sdk-constants` and `service-table`, together covering `@polaris-key/protocol`,
-`@polaris-key/jws`, `@polaris-key/catalog`, `@polaris-key/manifest`, `@polaris-key/client-core`,
-`@polaris-key/cli`, `@polaris-key/node`, `@polaris-key/react`, and the private `@polaris-key/worker`
-and `@polaris-key/admin`.
+Keep changesets focused — one logical change each. As of this writing there are fourteen pending:
+`boot-stage-machine`, `channel-vocabulary`, `ci-publishing`, `device-code-edge-mint`,
+`distribution-service`, `edge-mint-hardening`, `fingerprint-storage-fixes`,
+`free-tier-and-relicensing`, `hardware-fingerprinting`, `initial-release`,
+`p1b07-license-config-release-gaps`, `pkey-init-validate`, `sdk-constants` and `service-table`,
+together covering `@polaris-key/protocol`, `@polaris-key/jws`, `@polaris-key/catalog`,
+`@polaris-key/manifest`, `@polaris-key/client-core`, `@polaris-key/cli`, `@polaris-key/node`,
+`@polaris-key/react`, and the private `@polaris-key/worker` and `@polaris-key/admin`.
+
+`release.yml` also checks the `polaris-key/publish` Action bundle is fresh
+(`pnpm --filter @polaris-key/cli bundle:action -- --check`) and, when Changesets publishes
+`@polaris-key/cli`, attaches the standalone `pkey.mjs` to that GitHub release.
 
 ## Python SDK: `python-v*` tags
 

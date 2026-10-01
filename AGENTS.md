@@ -21,7 +21,7 @@ packages/
   client-core/       @polaris-key/client-core  isomorphic verify/trust/gate/clock floor
   worker/            @polaris-key/worker       the Cloudflare Worker (core/ + services/<slug>/)
   admin/             @polaris-key/admin        the admin SPA + customer portal (React + Vite)
-  cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint)
+  cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint, CI publishing)
   sdk-node/          @polaris-key/node         full client + CLI adapters
   sdk-react/         @polaris-key/react        browser-OIDC + desktop-over-node + login UI
   docs/              @polaris-key/docs         the Astro Starlight docs site served at /docs
@@ -35,6 +35,7 @@ conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node run
                      + transcripts/ (HTTP conversations recorded through the Worker router)
 tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-transcripts.mjs ·
                      gen-services.ts + services.json · gen-sdk-constants.ts
+actions/publish/     the polaris-key/publish GitHub Action (committed dist/ bundle of the CLI)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
                      security/ (threat model, wire contract v3, audit + findings)
@@ -92,6 +93,7 @@ pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in pl
 pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
 pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
+pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift gate (after pnpm build)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -141,7 +143,7 @@ license / config / trust / bundle (`pkey-license+jws`, `pkey-config+jws`, `pkey-
 `graceUntil`). Changing the encoding is a deliberate, all-languages event: contract → catalog →
 corpus → SDKs, in that order, and a feature is not done until all five implementations pass.
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Four families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Five families:
 
 | File(s)                                                                                                   | Written by                                                                                                                    |
 | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -149,11 +151,14 @@ corpus → SDKs, in that order, and a feature is not done until all five impleme
 | `packages/docs/src/content/docs/reference/*.mdx`                                                          | `pnpm --filter @polaris-key/docs gen`                                                                                         |
 | `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`          | `pnpm gen:services` from `tools/services.json`                                                                                |
 | `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd` | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core` |
+| `actions/publish/dist/index.js`                                                                           | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports  |
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
-table, `pnpm gen:constants -- --check` for the SDK constants), so a hand edit fails CI rather
-than shipping. A new error code needs an entry in `conformance/parity/errors.json` first: the
+table, `pnpm gen:constants -- --check` for the SDK constants, `pnpm --filter @polaris-key/cli
+bundle:action -- --check` for the Action bundle), so a hand edit fails CI rather than shipping. The
+Action bundle inlines `@polaris-key/manifest`, `@polaris-key/catalog` and `@polaris-key/protocol`
+from their built `dist/`, so a change to any of them, or to the CLI, rebundles after `pnpm build`. A new error code needs an entry in `conformance/parity/errors.json` first: the
 constants generator refuses a Worker code it lacks (and a boot-stage code pinned in
 `stage-matrix.json`), and each SDK's registry test refuses an SDK code it lacks. The service table is the one declaration
 of the opt-in services; adding one is the checklist at

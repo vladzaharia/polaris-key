@@ -24,7 +24,11 @@ import {
   handlePortalLogin,
   handlePortalLogout,
 } from "./auth.js";
-import { handlePortalApi, handlePortalDownload } from "./api.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+  type PortalHooksFor,
+} from "./api.js";
 import { portalSecurityHeaders } from "./headers.js";
 
 function portalShell(): Response {
@@ -69,7 +73,12 @@ export async function handlePortal(
   env: Env,
   db: Db,
   path: string,
-  opts: { now?: number } = {},
+  opts: {
+    now?: number;
+    /** One product's descriptor hooks, from the composition root (`dispatch.ts`): the portal's
+     *  downloads read Distribution's delivery access through them (P2b-04). */
+    hooksFor?: PortalHooksFor;
+  } = {},
 ): Promise<Response> {
   const now = opts.now ?? Math.floor(Date.now() / 1000);
   const clean =
@@ -80,7 +89,7 @@ export async function handlePortal(
   if (clean === "/logout") return handlePortalLogout(req);
   if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);
   if (clean === "/api" || clean.startsWith("/api/")) {
-    return handlePortalApi(req, env, db, clean, now);
+    return handlePortalApi(req, env, db, clean, now, opts.hooksFor);
   }
   const download = clean.match(/^\/download\/([^/]+)$/);
   if (download?.[1]) {
@@ -90,6 +99,7 @@ export async function handlePortal(
       db,
       decodeURIComponent(download[1]),
       now,
+      opts.hooksFor,
     );
   }
   return servePortalAsset(req, env, clean);

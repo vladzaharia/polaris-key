@@ -647,6 +647,91 @@ describe("POST /release/publish/submit", () => {
     ).toBe(200);
   });
 
+  it("a dryRun before the uploads judges the ticket's objects as if staged, and names them unverified (P2-06)", async () => {
+    const { token, ticket, prefix } = await staged();
+    upload(prefix, WEB); // one staged, one not yet
+    const res = await post(
+      "submit",
+      { ticket, descriptor: descriptor(), dryRun: true },
+      token,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      ok: true,
+      dryRun: true,
+      outcome: "created",
+      unverified: [`blobs/sha256/${LINUX_SHA}`],
+    });
+    expect(await tableCounts()).toEqual({ objects: 0, refs: 0, releases: 0 });
+    // A staged copy that IS there must still verify, dry run or not.
+    r2.seed(`${prefix}${LINUX_SHA}`, new TextEncoder().encode("short"));
+    const bad = await post(
+      "submit",
+      { ticket, descriptor: descriptor(), dryRun: true },
+      token,
+    );
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toMatchObject({
+      reason: "staged_object_mismatch",
+    });
+    // And the real submit still refuses an object that was never uploaded.
+    const { token: k2, ticket: t2, prefix: p2 } = await staged();
+    upload(p2, WEB);
+    const real = await post(
+      "submit",
+      { ticket: t2, descriptor: descriptor() },
+      k2,
+    );
+    expect(real.status).toBe(400);
+    expect(await real.json()).toMatchObject({
+      reason: "staged_object_missing",
+    });
+  });
+
+  it("a promote failure is 409 promote_failed with retryable: true, and gives the ticket back", async () => {
+    const { token, ticket, prefix } = await staged();
+    upload(prefix, WEB);
+    upload(prefix, LINUX);
+    // Other bytes squat the target key: promote finds a conflict, not its own object.
+    r2.seed(
+      `blobs/sha256/${WEB_SHA}`,
+      new TextEncoder().encode("not the web build at all"),
+      { withSha256: true },
+    );
+    const res = await post(
+      "submit",
+      { ticket, descriptor: descriptor() },
+      token,
+    );
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      reason: "promote_failed",
+      retryable: true,
+    });
+    expect((await tableCounts()).releases).toBe(0);
+    // The ticket was given back: the same submit is judged again, not refused ticket_redeemed.
+    const again = await post(
+      "submit",
+      { ticket, descriptor: descriptor() },
+      token,
+    );
+    expect(await again.json()).toMatchObject({ reason: "promote_failed" });
+  });
+
+  it("a final refusal carries no retryable flag", async () => {
+    const { token, ticket, prefix } = await staged();
+    upload(prefix, WEB);
+    const res = await post(
+      "submit",
+      { ticket, descriptor: descriptor() },
+      token,
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.reason).toBe("staged_object_missing");
+    expect(body.retryable).toBeUndefined();
+  });
+
   const refusals: Array<[string, (prefix: string) => void, string]> = [
     [
       "a staged object is missing",

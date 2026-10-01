@@ -1,6 +1,6 @@
 import * as React from "react";
 import { AlertTriangle, Boxes, Truck } from "lucide-react";
-import { api, type ServicesResponse } from "../api.js";
+import { api, type RolloutsResponse, type ServicesResponse } from "../api.js";
 import { useResource } from "../context.js";
 import {
   Badge,
@@ -15,15 +15,14 @@ import {
 } from "../components/ui/index.js";
 
 /**
- * The Distribution section's overview (P2b-01) — how releases reach devices and outlets.
+ * The Distribution section's overview — how releases reach devices and outlets.
  *
- * Distribution ships as a skeleton first: no outlets, no routes, and the Core descriptor hooks
- * that later packages fill (P2b-02 outlets, P2b-03 availability, P2b-04 rollouts and byte
- * serving). So this view shows what is TRUE today and nothing more: whether the chain
- * release ← distribution ← update is coherent for this product, and which hook each service
- * offers or consumes. It reads only the services projection the shell already loads — there is
- * no Distribution admin API yet, and drawing controls for state that does not exist would invite
- * an operator to configure nothing.
+ * It shows what is TRUE today: whether the chain release ← distribution ← update is coherent for
+ * this product, which hook each service offers or consumes, and (P2b-04) the outlet rollouts
+ * recorded for it. The rollouts list is read-only here — the per-cell controls are P2b-06's
+ * matrix — and it carries the caveat the worker sends with it: until the signed feed (P3-03)
+ * carries rollouts and halts, a halt is recorded and shown but the legacy feeds keep serving, so
+ * today's emergency stop is a yank or a channel pin.
  */
 
 type Enabled = ServicesResponse["services"];
@@ -42,13 +41,14 @@ const HOOKS: readonly HookRow[] = [
     provider: "release",
     consumer: "Distribution",
     today:
-      "Deliverables, releases, builds, artifact records, channel policy and yanks.",
+      "Deliverables, releases, builds, artifact records, channel policy and yanks; resolution and GitHub-held bytes for the byte routes.",
   },
   {
     name: "delivery",
     provider: "distribution",
     consumer: "Update",
-    today: "Default transport pkey-cdn; no availability records yet.",
+    today:
+      "Default transport pkey-cdn, delivery access, outlet rollouts and delivery URLs; no availability records yet.",
   },
   {
     name: "outletCapabilities",
@@ -105,6 +105,7 @@ export function Distribution({ slug }: { slug: string }): React.ReactElement {
       ) : (
         <>
           <ChainCard services={data.services} />
+          <RolloutsCard slug={slug} />
           <HooksCard services={data.services} />
         </>
       )}
@@ -165,9 +166,10 @@ function ChainCard({ services }: { services: Enabled }): React.ReactElement {
           ))}
         </ol>
         <p className="mt-4 text-xs text-muted-foreground">
-          Outlets, transports, availability and rollouts arrive with the
-          distribution manifest. Until then every deliverable is delivered by
-          Polaris Key’s own CDN (<code>pkey-cdn</code>).
+          Distribution serves every download — the installer, the direct
+          downloads and the build, file and blob routes — by Polaris Key’s own
+          CDN (<code>pkey-cdn</code>) unless an outlet names another transport.
+          With Distribution off, none of them is served.
         </p>
       </CardContent>
     </Card>
@@ -218,6 +220,106 @@ function HooksCard({ services }: { services: Enabled }): React.ReactElement {
             </tbody>
           </table>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const STATE_VARIANT: Record<
+  string,
+  "success" | "outline" | "warning" | "destructive"
+> = {
+  active: "success",
+  paused: "warning",
+  halted: "destructive",
+  complete: "outline",
+};
+
+/** The outlet rollouts recorded for this product (P2b-04), read-only, with today's caveat. */
+function RolloutsCard({ slug }: { slug: string }): React.ReactElement {
+  const { data, error } = useResource<RolloutsResponse>(
+    `distribution-rollouts:${slug}`,
+    () => api.rollouts(slug),
+  );
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Rollouts</CardTitle>
+        <CardDescription>
+          Percentage, pause, halt and completion, per outlet and channel. Set
+          from CI (<code>distribution:rollout</code>) or the admin API.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div
+          role="note"
+          className="flex items-start gap-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm"
+        >
+          <AlertTriangle
+            aria-hidden
+            className="mt-0.5 size-4 shrink-0 text-warning"
+          />
+          <p className="text-muted-foreground">
+            A halt is recorded and shown, but it does not stop devices yet: the
+            legacy feeds keep serving until the signed feed carries rollouts. To
+            stop a release reaching devices now, yank it or pin the channel
+            under Releases.
+          </p>
+        </div>
+        {error ? (
+          <p className="text-sm text-muted-foreground">
+            Couldn’t load rollouts: {error}
+          </p>
+        ) : !data ? (
+          <Skeleton className="h-10 w-full" />
+        ) : data.rollouts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No rollouts recorded: every outlet serves its channel’s release to
+            everyone.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th className="py-2 pr-4 font-medium">Deliverable</th>
+                  <th className="py-2 pr-4 font-medium">Outlet</th>
+                  <th className="py-2 pr-4 font-medium">Channel</th>
+                  <th className="py-2 pr-4 font-medium">Release</th>
+                  <th className="py-2 pr-4 font-medium">Rollout</th>
+                  <th className="py-2 pr-4 font-medium">State</th>
+                  <th className="py-2 font-medium">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rollouts.map((r) => (
+                  <tr
+                    key={`${r.deliverableId}:${r.outletId}:${r.channel}`}
+                    className="border-t"
+                  >
+                    <td className="py-2 pr-4 font-mono text-xs">
+                      {r.deliverableId}
+                    </td>
+                    <td className="py-2 pr-4">{r.outletId}</td>
+                    <td className="py-2 pr-4">{r.channel}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">
+                      {r.releaseId}
+                    </td>
+                    <td className="py-2 pr-4">{r.rolloutBp / 100}%</td>
+                    <td className="py-2 pr-4">
+                      <Badge variant={STATE_VARIANT[r.state] ?? "outline"}>
+                        {r.state}
+                      </Badge>
+                    </td>
+                    <td className="py-2 text-muted-foreground">
+                      {r.mirrored ? `${r.source} (mirrored)` : r.source}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

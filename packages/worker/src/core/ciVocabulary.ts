@@ -10,14 +10,16 @@
 export const CI_TOKEN_PREFIX = "pkeyci_";
 
 /**
- * The scope vocabulary so far (P2-02 design notes). Later packages add theirs here: P2b-04
- * `distribution:rollout`, P2b-05 `distribution:feeds`.
+ * The scope vocabulary so far (P2-02 design notes). Later packages add theirs here: P2b-05
+ * `distribution:feeds`. `distribution:rollout` (P2b-04) is opt-in like `release:yank`: it is not
+ * in `DEFAULT_CI_SCOPES` (`core/publisher.ts`), so an operator grants it deliberately.
  */
 export const CI_SCOPES = [
   "release:publish",
   "release:promote",
   "release:yank",
   "distribution:report",
+  "distribution:rollout",
 ] as const;
 export type CiScope = (typeof CI_SCOPES)[number];
 

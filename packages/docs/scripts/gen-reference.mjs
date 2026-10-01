@@ -299,9 +299,10 @@ function routeTable() {
   return page(
     "Public route table",
     "Every public wire route by owning service, generated from the OpenAPI spec (which the route-coverage test pins to the router).",
-    `The public API, one row per operation. The \`aliases\` rows are the four permanent
-pre-namespace spellings — exact rewrites of their canonical routes, kept forever because
-they are compiled into shipped app bundles and published curl lines. Removed v2 spellings
+    `The public API, one row per operation. The \`aliases\` rows are the permanent alias
+spellings — the four pre-namespace paths and Release's old byte paths (moved to Distribution
+in P2b-04) — exact rewrites of their canonical routes, kept forever because they are compiled
+into shipped app bundles, built by SDKs and printed in published curl lines. Removed v2 spellings
 (\`/activate\`, \`/config\`, \`/auth/*\`, \`/cli/*\`, \`/dmg/*\`, …) 404 outright.`,
     table(["Method", "Path", "Service", "Summary"], rows),
   );
@@ -346,7 +347,12 @@ const TABLE_OWNERS = {
     "release_channel_policy",
     "release_yanks",
   ],
-  distribution: ["dist_outlets", "dist_transports"],
+  distribution: [
+    "dist_outlets",
+    "dist_transports",
+    "dist_rollouts",
+    "dist_access",
+  ],
   identity: [
     "oidc_config",
     "provisioning_config",

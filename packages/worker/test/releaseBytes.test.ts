@@ -807,9 +807,20 @@ describe("discovery", () => {
   it("advertises the templated builds and blobs endpoints on the bytes host when BLOB_ORIGIN is set", async () => {
     const s = await setup();
     const res = await get(s, `${CONSOLE}/${SLUG}/.well-known/polaris.json`);
+    // P2b-04: byte delivery is Distribution's, and its fragment advertises the CANONICAL URLs.
     const body = (await res.json()) as {
-      services: { release: { endpoints: Record<string, string> } };
+      services: {
+        release: { endpoints: Record<string, string> };
+        distribution: { endpoints: Record<string, string> };
+      };
     };
+    expect(body.services.distribution.endpoints).toMatchObject({
+      download: `${CONSOLE}/${SLUG}/distribution/dl`,
+      install: `${CONSOLE}/${SLUG}/distribution/install.sh`,
+      builds: `${BYTES}/${SLUG}/distribution/builds/{selector}/{buildId}`,
+      blobs: `${BYTES}/${SLUG}/distribution/blobs/sha256/{sha256}`,
+    });
+    // Release's own keys stay (the document is wire); they name the permanent aliases.
     expect(body.services.release.endpoints).toMatchObject({
       download: `${CONSOLE}/${SLUG}/release/dl`,
       builds: `${BYTES}/${SLUG}/release/builds/{selector}/{buildId}`,

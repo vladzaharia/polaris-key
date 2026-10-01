@@ -106,7 +106,11 @@ import {
   versionFromTag,
   type ManualChannel,
 } from "./channels.js";
-import { artifactPolicy, type ReleaseConfigRow } from "./config.js";
+import {
+  artifactPolicy,
+  artifactsAccessSnapshot,
+  type ReleaseConfigRow,
+} from "./config.js";
 import {
   NEXT_SEQ_SQL,
   roleOfKind,
@@ -870,7 +874,7 @@ export function releaseStoreStatements(
   const policy = artifactPolicy(cfg);
   const candidates = resolutionPolicy(cfg);
   const metadataAccess = storeAccess(policy.access.metadata);
-  const artifactsAccess = storeAccess(policy.access.artifacts);
+  const artifactsAccess = storeAccess(artifactsAccessSnapshot(cfg));
   // Drafts are not published software. They are visible to the installation token and invisible
   // to everyone the portal serves, so ingesting them would list a release nobody can download.
   const published = releases.filter((r) => !r.draft);

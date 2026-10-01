@@ -36,7 +36,10 @@ import { handleActivate } from "../../src/services/license/activation.js";
 import { handleConfigDocument } from "../../src/services/config/document.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 import { handleCatalog as handleAdminCatalog } from "../../src/services/config/admin/catalog.js";
-import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
+import {
+  handleReleaseSurface as handleRelease,
+  seedDeliveryAccess,
+} from "../releaseSurface.js";
 import { matchRoute } from "../../src/router.js";
 import { rateLimitOk } from "../../src/core/rateLimit.js";
 import { RateLimitDO } from "../../src/rateLimitDo.js";
@@ -355,10 +358,17 @@ describe("R10-01 knock-on: catalog `pattern` cannot be turned into a CPU bomb", 
 
   it("its cost grows linearly, not exponentially, with the input length", () => {
     const catalog = new Catalog(evilCatalog("(x+x+)+y"));
+    // Upper-bound timings fail only when a sample is INFLATED (GC, a scheduler stall), so take the
+    // fastest of three: a real regression to backtracking costs seconds-to-minutes on every run,
+    // so the minimum still catches it, while a one-off stall no longer fails the suite.
     const time = (n: number): number => {
-      const t0 = Date.now();
-      catalog.validateKeyValue("evil", "x".repeat(n));
-      return Date.now() - t0;
+      let best = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < 3; i++) {
+        const t0 = Date.now();
+        catalog.validateKeyValue("evil", "x".repeat(n));
+        best = Math.min(best, Date.now() - t0);
+      }
+      return best;
     };
     // Under Ajv each extra character doubled the runtime. 28 -> 40 is 4096x there.
     expect(time(28)).toBeLessThan(250);
@@ -521,6 +531,7 @@ async function seedReleaseCfg(db: Db): Promise<void> {
     "public",
     "public",
   );
+  await seedDeliveryAccess(db, "djdl", "public");
 }
 
 function stubReleaseFetch(rel: Release): FetchImpl {
@@ -535,18 +546,19 @@ function stubReleaseFetch(rel: Release): FetchImpl {
 }
 
 describe("R10-02 arch alias is never normalized ⇒ unhandled TypeError", () => {
-  it("the router hands `aarch64`/`amd64` through verbatim to the release service", () => {
+  it("the router hands `aarch64`/`amd64` through verbatim to the download route", () => {
     // P2.T1 removed `/cli` and `/dmg` and moved arch parsing off the router entirely: the
-    // canonical `/release/dl/…` route hands the whole leaf to `services/release/routes.ts`,
-    // which is where `normalizeArch` runs. The finding's premise — an un-normalised alias
-    // reaching a handler — is therefore what these paths still deliver, and the two tests
-    // below still prove the handler survives it.
+    // `/release/dl/…` route hands the whole leaf to its service, and `normalizeArch` runs in
+    // Release's `source.ts` (P2b-04 moved the route to Distribution; `/release/dl/…` is now its
+    // permanent alias). The finding's premise — an un-normalised alias reaching a handler — is
+    // therefore what these paths still deliver, and the two tests below still prove the handler
+    // survives it.
     expect(matchRoute("/djdl/release/dl/1.2.3/app-aarch64.dmg")).toMatchObject({
-      slug: "release",
+      slug: "distribution",
       rest: ["dl", "1.2.3", "app-aarch64.dmg"],
     });
     expect(matchRoute("/djdl/release/dl/1.2.3/djdl-amd64")).toMatchObject({
-      slug: "release",
+      slug: "distribution",
       rest: ["dl", "1.2.3", "djdl-amd64"],
     });
   });
@@ -1025,6 +1037,19 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
     return Date.now() - t0;
   }
 
+  /**
+   * The ratio tests below fail only when their DENOMINATOR is inflated (JIT warm-up, GC or a
+   * scheduler stall); noise in the larger sample only helps them. So warm the pattern up once and
+   * take the minimum of `runs` samples for the denominator: the minimum is the best estimate of
+   * the true cost, and it is cheap because the denominator is the short input.
+   */
+  function minTime(len: number, count: number, runs = 3): number {
+    timeMatch(len, count);
+    let best = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < runs; i++) best = Math.min(best, timeMatch(len, count));
+    return Math.max(best, 1);
+  }
+
   it("an 8-character pattern under the cap backtracks catastrophically", () => {
     expect(EVIL.length).toBeLessThanOrEqual(80);
     // Non-pathological matching is sub-millisecond; past 250ms is catastrophic backtracking.
@@ -1033,13 +1058,13 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
   }, 20_000);
 
   it("runtime doubles per extra input character (exponential, not linear)", () => {
-    const short = Math.max(timeMatch(22, 1), 1);
+    const short = minTime(22, 1);
     const longer = timeMatch(27, 1); // +5 chars ⇒ ~32x
     expect(longer).toBeGreaterThan(short * 8);
   }, 20_000);
 
   it("cost is multiplied by the release list length (up to 3 pages of 100 per request since P0-02)", () => {
-    const single = Math.max(timeMatch(24, 1), 1);
+    const single = minTime(24, 1);
     const batch = timeMatch(24, 10);
     expect(batch).toBeGreaterThan(single * 5);
   }, 20_000);

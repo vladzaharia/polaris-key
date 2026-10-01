@@ -42,6 +42,11 @@ import { errorResponse, notFound } from "./errors.js";
 import { BLOB_CSP, BYTES_HOST_TYPES } from "./blobs.js";
 import { corsPreflight, withCors } from "./cors.js";
 import { loadProductPublic, type ProductPublic } from "./products.js";
+import {
+  buildHooks,
+  type DescriptorHooks,
+  type ServiceHooks,
+} from "./hooks.js";
 
 /**
  * What a byte route's `match` returns: the product that owns the path, plus its parameters.
@@ -66,7 +71,19 @@ export interface ByteRouteContext {
   readonly product: ProductPublic;
   readonly params: Record<string, string>;
   readonly now: number;
+  /**
+   * The read-only descriptor hooks (`core/hooks.ts`) for this product, gated on ITS enablement
+   * exactly as `dispatchService` gates them on the console (P2b-04: Distribution's byte routes
+   * read Release's catalog and their own delivery access through these).
+   */
+  readonly hooks: ServiceHooks;
 }
+
+/** The registry, as far as building hooks needs it (structural, so Core imports no service). */
+export type ByteHookRegistry = ReadonlyMap<
+  ServiceSlug,
+  { slug: ServiceSlug } & DescriptorHooks
+>;
 
 /** One route that may answer on the bytes host. */
 export interface ByteRoute {
@@ -183,9 +200,9 @@ function withoutCookies(req: Request): Request {
 
 /**
  * Dispatch a request that arrived on the bytes host. Only `routes` can answer (`dispatch.ts`
- * passes `mount.ts`'s `BYTE_ROUTES`); anything else, an unknown product, a route whose service
- * is disabled for that product, and any route answer whose type breaks the host's rule
- * (`refusedType`), becomes the plain not-found.
+ * passes `mount.ts`'s `BYTE_ROUTES`, and the service registry the routes' hooks are built from);
+ * anything else, an unknown product, a route whose service is disabled for that product, and any
+ * route answer whose type breaks the host's rule (`refusedType`), becomes the plain not-found.
  *
  * CORS (P0-05) runs here exactly as `dispatch.ts` runs it for the console's covered routes:
  * the product's own `web.origins` decide; a preflight is answered before the handler runs (so
@@ -198,10 +215,11 @@ export async function dispatchBytesHost(
   env: Env,
   db: Db,
   routes: readonly ByteRoute[],
+  registry: ByteHookRegistry = new Map(),
 ): Promise<Response> {
   let res: Response;
   try {
-    res = await answer(req, env, db, routes);
+    res = await answer(req, env, db, routes, registry);
   } catch {
     // P2-05. A throw from a route, from the product load or from D1 would otherwise escape the
     // Worker and become Cloudflare's own HTML error page — on this host, without `nosniff` or
@@ -217,6 +235,7 @@ async function answer(
   env: Env,
   db: Db,
   routes: readonly ByteRoute[],
+  registry: ByteHookRegistry,
 ): Promise<Response> {
   const pathname = new URL(req.url).pathname;
   for (const route of routes) {
@@ -231,12 +250,14 @@ async function answer(
     // Enablement next, before any route code runs (`dispatchService`'s rule). Same not-found
     // as an unknown product, so a disabled service cannot be told apart from a missing one.
     if (!product.services[route.service]?.enabled) return notFound();
+    const now = Math.floor(Date.now() / 1000);
     let res = await route.handle(withoutCookies(req), {
       env,
       db,
       product,
       params: matched.params,
-      now: Math.floor(Date.now() / 1000),
+      now,
+      hooks: buildHooks(registry, product.services, { env, db, product, now }),
     });
     // A refused type is replaced silently: the worker logs nothing (R12), and the not-found
     // answer is indistinguishable from a route that does not exist.

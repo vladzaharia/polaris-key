@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
+  DeliveryAccess,
+  ReleaseAccess,
   UpdateSettings as UpdateSettingsDto,
   UpdateSettingsBlock,
   UpdateSettingsBody,
@@ -18,6 +20,13 @@ const revertUpdateSettings =
   vi.fn<
     (slug: string, fields: UpdateSettingsBlock[]) => Promise<UpdateSettingsDto>
   >();
+// P2b-04: Artifact access is Distribution's delivery access, on its own endpoints.
+const deliveryAccess = vi.fn<(slug: string) => Promise<DeliveryAccess>>();
+const saveDeliveryAccess =
+  vi.fn<
+    (slug: string, body: { mode: ReleaseAccess }) => Promise<DeliveryAccess>
+  >();
+const revertDeliveryAccess = vi.fn<(slug: string) => Promise<DeliveryAccess>>();
 
 // `ApiError` comes through REAL: the 422 branch that turns `fields` into inline errors is guarded
 // by `err instanceof ApiError`, so a stand-in class would send every rejection to the toast branch
@@ -33,6 +42,10 @@ vi.mock("../src/api.js", async () => {
         saveUpdateSettings(slug, body),
       revertUpdateSettings: (slug: string, fields: UpdateSettingsBlock[]) =>
         revertUpdateSettings(slug, fields),
+      deliveryAccess: (slug: string) => deliveryAccess(slug),
+      saveDeliveryAccess: (slug: string, body: { mode: ReleaseAccess }) =>
+        saveDeliveryAccess(slug, body),
+      revertDeliveryAccess: (slug: string) => revertDeliveryAccess(slug),
     },
   };
 });
@@ -42,7 +55,6 @@ const { UpdateSettings } = await import("../src/views/UpdateSettings.js");
 
 const SETTINGS: UpdateSettingsDto = {
   metadataAccess: "authenticated",
-  artifactsAccess: "licensed",
   accessSource: "manifest",
   compatMin: "1.0.0",
   compatMax: "2.0.0",
@@ -50,6 +62,12 @@ const SETTINGS: UpdateSettingsDto = {
   minimumSystemVersion: null,
   requireSparkleSignature: true,
   configured: true,
+};
+
+const DELIVERY: DeliveryAccess = {
+  modes: ["public", "authenticated", "licensed", "entitled"],
+  app: { deliverableId: "app", mode: "licensed", source: "manifest" },
+  deliverables: [],
 };
 
 function renderSettings() {
@@ -73,6 +91,12 @@ beforeEach(() => {
   updateSettings.mockResolvedValue(SETTINGS);
   saveUpdateSettings.mockResolvedValue(SETTINGS);
   revertUpdateSettings.mockResolvedValue(SETTINGS);
+  deliveryAccess.mockReset();
+  saveDeliveryAccess.mockReset();
+  revertDeliveryAccess.mockReset();
+  deliveryAccess.mockResolvedValue(DELIVERY);
+  saveDeliveryAccess.mockResolvedValue(DELIVERY);
+  revertDeliveryAccess.mockResolvedValue(DELIVERY);
   // jsdom lacks these Radix-needed APIs.
   (
     Element.prototype as unknown as { hasPointerCapture: () => boolean }
@@ -99,7 +123,8 @@ describe("Update settings — feed access", () => {
         .textContent,
     ).toContain("Authenticated");
     expect(
-      screen.getByRole("combobox", { name: "Artifact access" }).textContent,
+      (await screen.findByRole("combobox", { name: "Artifact access" }))
+        .textContent,
     ).toContain("Licensed");
     expect(
       (screen.getByLabelText(/Compat min/) as HTMLInputElement).value,
@@ -142,6 +167,45 @@ describe("Update settings — feed access", () => {
     // Access modes and the compat window land in DIFFERENT tables. Resending an untouched access
     // mode at a product with no release row would 422 the request and take the compat edit with it.
     expect("artifactsAccess" in body).toBe(false);
+    // …and the untouched delivery access is not claimed either.
+    expect(saveDeliveryAccess).not.toHaveBeenCalled();
+  });
+
+  it("saves Artifact access to Distribution's delivery access, not update/settings (P2b-04)", async () => {
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Artifact access" });
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("combobox", { name: "Artifact access" })
+          .hasAttribute("disabled"),
+      ).toBe(false),
+    );
+
+    await pick("Artifact access", "Entitled");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save update settings" }),
+    );
+
+    await waitFor(() => expect(saveDeliveryAccess).toHaveBeenCalledTimes(1));
+    expect(saveDeliveryAccess.mock.calls[0]).toEqual([
+      "djdl",
+      { mode: "entitled" },
+    ]);
+    // Nothing else changed, so update/settings is not written at all.
+    expect(saveUpdateSettings).not.toHaveBeenCalled();
+  });
+
+  it("keeps Artifact access disabled while the delivery access cannot be read", async () => {
+    deliveryAccess.mockRejectedValue(new Error("offline"));
+    renderSettings();
+    const artifacts = await screen.findByRole("combobox", {
+      name: "Artifact access",
+    });
+    expect(artifacts.hasAttribute("disabled")).toBe(true);
+    expect(
+      await screen.findByText(/Couldn’t load the delivery access/),
+    ).toBeTruthy();
   });
 
   it("disables the access selects for a product with no release configuration", async () => {
@@ -342,7 +406,9 @@ describe("Update settings — ownership (P0-01)", () => {
       screen.getByRole("button", { name: "Revert feed access to manifest" }),
     );
     expect(
-      await screen.findByText("Return the access modes to the manifest?"),
+      await screen.findByText(
+        "Return the metadata access mode to the manifest?",
+      ),
     ).toBeTruthy();
     expect(revertUpdateSettings).not.toHaveBeenCalled();
     await userEvent.click(
@@ -353,6 +419,40 @@ describe("Update settings — ownership (P0-01)", () => {
     expect(revertUpdateSettings.mock.calls[0]).toEqual(["djdl", ["access"]]);
     // A revert is not a save: nothing else is written.
     expect(saveUpdateSettings).not.toHaveBeenCalled();
+  });
+});
+
+describe("Update settings — delivery access ownership (P2b-04)", () => {
+  it("badges the delivery access with its own owner and reverts it through Distribution", async () => {
+    deliveryAccess.mockResolvedValue({
+      ...DELIVERY,
+      app: { ...DELIVERY.app, source: "admin" },
+    });
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+    await waitFor(() =>
+      expect(screen.getByTestId("delivery-source").textContent).toBe(
+        "admin-owned",
+      ),
+    );
+    // The metadata mode keeps its own owner.
+    expect(screen.getByTestId("access-source").textContent).toBe(
+      "manifest-owned",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Revert delivery access to manifest",
+      }),
+    );
+    expect(
+      await screen.findByText("Return the delivery access to the manifest?"),
+    ).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Return to manifest" }),
+    );
+    await waitFor(() => expect(revertDeliveryAccess).toHaveBeenCalledTimes(1));
+    expect(revertUpdateSettings).not.toHaveBeenCalled();
   });
 });
 

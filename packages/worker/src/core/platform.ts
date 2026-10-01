@@ -36,6 +36,8 @@ export {
   isSameOriginNavigation,
 } from "../http.js";
 
+export { isAllowedDownloadRedirectHost } from "./bytesHostname.js";
+
 export {
   hashKey,
   mintDeviceToken,

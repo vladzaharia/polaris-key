@@ -98,8 +98,10 @@ registry for it:
 - `authorizeRegistration(ctx)` — "may this caller be given a device credential?" This is the
   one authorization decision Core delegates, and it exists because one registration policy is
   named after a service. Everything about what a _refusal_ looks like stays Core's.
-- `manifestIngest(parsed, product)` — the rows a service wants written when a `.pkey/` manifest
-  is ingested.
+- `manifestIngest(parsed, product, now)` — the rows a service wants written when a `.pkey/`
+  manifest is ingested, run only while the service is enabled. `manifestIngestAlways` is the
+  same shape, run whatever the enablement, for a record that must already be right when the
+  service is turned on (Distribution's `app` delivery access).
 - `handle(ctx)` returns `null`, never a 404, when nothing inside the service matched — only
   Core knows whether "no match" should be a 404, an alias fall-through, or a redirect.
 

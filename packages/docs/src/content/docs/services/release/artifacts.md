@@ -5,6 +5,15 @@ title: "Artifacts, changelog & install"
 description: "The unified download route, the build, file and blob routes, the bytes host, architecture matching, the four access modes, and the curl-pipe installer."
 ---
 
+:::note[Served by Distribution]
+Every byte route on this page — the download, the build, file and blob routes, and the install
+script — is a [Distribution](/docs/services/distribution/delivery/) route since P2b-04, at
+`/<product>/distribution/…`. The `/<product>/release/…` spellings used below (and
+`/<product>/install.sh`) are **permanent aliases** that answer byte-identically. Who may
+download is Distribution's **delivery access**; with Distribution off, none of these routes is
+served. Release still resolves selectors and fetches GitHub-held bytes for them.
+:::
+
 Three things make up what a human or an install script actually touches: downloading a
 binary (as a bare CLI executable or a macOS disk image — two content types behind one
 route), reading the changelog, and running the installer. The first two resolve against
@@ -21,7 +30,8 @@ are the opposite: they resolve from the truth store and touch GitHub only for th
 One route replaced the old `/<product>/cli/…` and `/<product>/dmg/…` pair:
 
 ```
-GET /<product>/release/dl/<version>/<binary>-<arch>[.dmg]
+GET /<product>/distribution/dl/<version>/<binary>-<arch>[.dmg]
+GET /<product>/release/dl/<version>/<binary>-<arch>[.dmg]        (permanent alias)
 ```
 
 They were always the same handler wearing two content types and two asset matchers; the
@@ -93,10 +103,12 @@ records rather than what GitHub's asset names suggest. Each answers `GET` and `H
 console host and on the **bytes host** (`dl.plrs.im`, see below):
 
 ```
-GET /<product>/release/builds/<selector>/<buildId>   [?deliverable=<id>] [?checksum=sha256] [?redirect=1]
-GET /<product>/release/files/<releaseId>/<name>      [?redirect=1]
-GET /<product>/release/blobs/sha256/<hash>
+GET /<product>/distribution/builds/<selector>/<buildId>   [?deliverable=<id>] [?checksum=sha256] [?redirect=1]
+GET /<product>/distribution/files/<releaseId>/<name>      [?redirect=1]
+GET /<product>/distribution/blobs/sha256/<hash>
 ```
+
+Each also answers at its `/<product>/release/…` alias, on both hosts.
 
 - **builds** resolves `<selector>` for a deliverable (default `app`) and serves the payload of
   the build `<buildId>` — an id from the deliverable's artifact map, such as `macos` or `apk`.
@@ -127,9 +139,9 @@ Streaming is the default because winget refuses redirects and App Installer and 
 `Range`. `?redirect=1` asks for a 302 to GitHub's own download URL instead; it is honoured
 only for a public artifact of a public repository, and everything else keeps streaming.
 
-All three routes count against the artifact rate-limit lane and follow the product's
-`artifacts` access mode (below). A moving selector is cached for two minutes, a version
-selector, a file and a blob for a year (immutable); a non-public product's bytes are
+All three routes count against the artifact rate-limit lane and follow the deliverable's
+delivery access (below). A moving selector is cached for two minutes, a version selector, a
+file and a blob for a year (immutable); a non-public deliverable's bytes are
 `private, no-store`. Every byte response carries `no-transform`, so the edge never recompresses
 bytes whose length, ranges and digest are fixed.
 
@@ -137,18 +149,21 @@ bytes whose length, ranges and digest are fixed.
 
 The byte routes are also served on a second hostname, the bytes host (`BLOB_ORIGIN`,
 `https://dl.plrs.im` in production), and discovery advertises them there as
-`endpoints.builds` and `endpoints.blobs`. Only these routes exist on that host; everything
+`endpoints.builds` and `endpoints.blobs` (Distribution's canonical URLs; Release's fragment
+keeps the alias spellings). Only these routes exist on that host; everything
 else answers not-found. Every response there carries `X-Content-Type-Options: nosniff` and a
 `sandbox` Content-Security-Policy, sets no cookie, and may carry a real inert type (such as
-`application/wasm`) instead of `application/octet-stream`. A product that turns Release off
-stops serving them there at once. The host's configuration is in the repository's
+`application/wasm`) instead of `application/octet-stream`. A product that turns Distribution
+(or Release) off stops serving them there at once, with the host's flat
+`{"error":"not_found"}`. The host's configuration is in the repository's
 `docs/DEPLOYMENT.md`.
 
 ## Access modes
 
-Every surface in Release answers under one of four modes, set independently for the
-_metadata_ surfaces (changelog, install script) and the _artifact_ surfaces (the download
-route itself):
+Every surface answers under one of four modes, set independently for the _metadata_ surfaces
+(changelog, version check, install script — Release's `metadata_access`) and the _artifact_
+surfaces (the downloads and the appcast — Distribution's
+[delivery access](/docs/services/distribution/delivery/#delivery-access), per deliverable):
 
 | Mode            | Who                                                                   | Notes                                                                       |
 | --------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -167,9 +182,12 @@ the exact 401/403 outcomes — are covered on Update's
 [Eligibility](/docs/services/update/eligibility/) page, since the identical check governs
 the feed.
 
-The changelog and the install script are governed by **metadata access**; the download
-route itself is governed by **artifacts access**. A product can, for instance, let anyone
-read its changelog while requiring a license to actually download the binary it describes.
+The changelog and the install script are governed by **metadata access**; the downloads, the
+appcast and the customer portal's download mint by **delivery access**, one answer read by all
+three, so the feed can no longer offer what the download refuses. A product can, for instance,
+let anyone read its changelog while requiring a license to actually download the binary it
+describes. `release_config.artifacts_access`, where the artifacts mode used to live, is no
+longer read.
 
 ## Two error grammars
 
@@ -302,8 +320,9 @@ prose would drift, and GitHub's is the one an author can correct after publishin
 ## Trusted publishing
 
 CI publishes a release without a long-lived secret in the product's repository (README §3.4, the
-npm/PyPI trusted-publishing model). The flow is three POSTs, all in the release namespace, so a
-product with Release off does not have them:
+npm/PyPI trusted-publishing model). `pkey release publish` and the `polaris-key/publish` Action
+drive the whole flow for you: see [Publishing from CI](/docs/build/ci/). Underneath, the flow is
+three POSTs, all in the release namespace, so a product with Release off does not have them:
 
 1. **`POST /<product>/release/publish/token`** with `{"token": "<GitHub Actions OIDC JWT>"}`.
    Request the OIDC token with the audience `https://key.plrs.im/<product>/release/publish` (the
@@ -322,7 +341,8 @@ product with Release off does not have them:
    not already reference must be an object of the ticket whose staged copy has the descriptor's
    size and SHA-256; the descriptor is then checked exactly as ingest checks it. Only when all of
    that passes is the ticket redeemed, the objects promoted into the blob store and the release
-   written. `dryRun: true` stops before writing anything. A failed submit gives the ticket back,
+   written. `dryRun: true` stops before writing anything, and may come before the uploads: an
+   object of the ticket not yet staged is judged as if it were and listed in `unverified`. A failed submit gives the ticket back,
    so you can fix an upload and submit again; a refusal carrying `"retryable": true` (a lost
    race with another writer, or a transient promote failure) may simply be sent again, and every
    other refusal is final. One descriptor per submit.
@@ -348,7 +368,8 @@ release needs a tag ruleset, and the environment should require reviewers if not
 may publish.
 
 The default scopes are `release:publish`, `release:promote` and `distribution:report`;
-`release:yank` is opt-in. Scopes are an operator setting, never a manifest one: in the console's
+`release:yank` and `distribution:rollout` (the
+[rollout controls](/docs/services/distribution/rollouts/)) are opt-in. Scopes are an operator setting, never a manifest one: in the console's
 admin API an operator can read the policy (`GET /manage/api/products/<slug>/ci-publisher`),
 claim and edit it (`PUT`, which also stops resync from changing it), and issue, list and revoke
 **static** `pkeyci_` tokens for a CI that is not GitHub (`/manage/api/products/<slug>/ci-tokens`;
@@ -376,7 +397,9 @@ this is the same extraction the appcast's `<description>` uses for its release n
 ## The install script
 
 ```
-GET /<product>/release/install.sh
+GET /<product>/distribution/install.sh
+GET /<product>/release/install.sh        (permanent alias)
+GET /<product>/install.sh                (permanent alias)
 ```
 
 Renders either an operator-supplied template — substituting `{{binaryName}}`,

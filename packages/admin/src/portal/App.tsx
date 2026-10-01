@@ -1055,7 +1055,9 @@ function Downloads(): React.ReactElement {
                           ? undefined
                           : artifact.access === "licensed"
                             ? "A usable license is required for this artifact."
-                            : "This artifact is not available for download."
+                            : artifact.access === "entitled"
+                              ? "Your license does not include this release's channel or version."
+                              : "This artifact is not available for download."
                       }
                       onClick={() => void download(release, artifact)}
                     >
@@ -1064,7 +1066,9 @@ function Downloads(): React.ReactElement {
                         ? "Download"
                         : artifact.access === "licensed"
                           ? "License required"
-                          : "Unavailable"}
+                          : artifact.access === "entitled"
+                            ? "Not in your license"
+                            : "Unavailable"}
                     </Button>
                   </div>
                 ))}

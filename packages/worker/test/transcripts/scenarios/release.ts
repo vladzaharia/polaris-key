@@ -39,9 +39,20 @@ import {
 import type { World } from "../recorder.js";
 import type { ServicesMap } from "../../../src/core/services.js";
 import { TEST_RSA_PKCS8 } from "../../releaseFixtures.js";
+import { seedDeliveryAccess } from "../../releaseSurface.js";
 
-/** License + Config + Release. Update stays off: these conversations are Release's alone. */
-const WITH_RELEASE: ServicesMap = servicesOn("license", "config", "release");
+/**
+ * License + Config + Release, and Distribution: since P2b-04 the installer and the download the
+ * scenario requests outside the recording are Distribution's routes (`/release/…` is their
+ * permanent alias), and P2b-01 backfilled Distribution onto every Release product. Update stays
+ * off: the recorded conversations are Release's alone.
+ */
+const WITH_RELEASE: ServicesMap = servicesOn(
+  "license",
+  "config",
+  "release",
+  "distribution",
+);
 
 /** A fixed sha256 digest for the checksum sidecar. */
 const DIGEST = "a".repeat(64);
@@ -145,6 +156,9 @@ async function releaseWorld(metadataAccess: string): Promise<World> {
     "public",
     null,
   );
+  // The `dist_access` row migration 0038 (or any link/resync) writes for this configuration: no
+  // row reads fail-closed as `entitled` (P2b-04).
+  await seedDeliveryAccess(world.db, PRODUCT, "public");
   return world;
 }
 

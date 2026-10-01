@@ -3,19 +3,28 @@
 /**
  * Update's admin surface — `GET|PATCH /manage/api/products/<slug>/update/settings` (§R1).
  *
- * Six settings, and they are here because they are all answers to ONE question — which builds
+ * Five settings, and they are here because they are all answers to ONE question — which builds
  * this product offers, and to whom:
  *
- *   metadataAccess / artifactsAccess   who may read the feed, and who may download what it
- *                                      points at (`public` | `authenticated` | `licensed` |
+ *   metadataAccess                     who may read the changelog, the version check and the
+ *                                      installer (`public` | `authenticated` | `licensed` |
  *                                      `entitled`, D-13)
  *   compatMin / compatMax              the global version window every grant is intersected with
  *   minimumSystemVersion               the operator-only `sparkle:minimumSystemVersion`
  *   requireSparkleSignature            the operator-only signature requirement (R6-03)
  *
+ * ── THE ARTIFACTS MODE MOVED (P2b-04) ───────────────────────────────────────────────────────
+ *
+ * `artifactsAccess` — who may read the appcast and download what it points at — is
+ * Distribution's delivery access now (`dist_access`, per deliverable), set at
+ * `GET|PUT …/distribution/access`. One answer for the appcast, the downloads and the portal, so
+ * the feed can no longer offer what the download refuses. A PATCH that still sends it is refused
+ * (422 naming the field), never silently ignored: the console would appear to save and the value
+ * would not change.
+ *
  * ── OPERATOR OWNERSHIP (P0-01) ──────────────────────────────────────────────────────────────
  *
- * The access pair and the compat window are ALSO written by a manifest resync. Saving either
+ * The metadata mode and the compat window are ALSO written by a manifest resync. Saving either
  * here claims it (`access_source` / `compat_source` → `admin`), and resync's own UPDATE skips a
  * claimed block — the rule `services_source` established. `POST …/update/settings/revert` with
  * `{ "fields": ["access" | "compat"] }` hands a block back and changes nothing else: the values
@@ -34,9 +43,9 @@
  * silently ignored by one endpoint while another owns it is worse than a moved field, because
  * the console would appear to save and the value would not change.
  *
- * ── WHY UPDATE OWNS THE ACCESS MODES ────────────────────────────────────────────────────────
+ * ── WHY UPDATE OWNS THE METADATA MODE ───────────────────────────────────────────────────────
  *
- * The columns are Release's (`release_config`, spec §5.2), so the WRITE goes through Release's
+ * The column is Release's (`release_config`, spec §5.2), so the WRITE goes through Release's
  * own `setReleaseAccess` across the one sanctioned cross-service edge rather than as SQL issued
  * from here. What Update owns is the POLICY: `entitled` exists to gate a feed, and the operator
  * setting it is thinking about update eligibility.
@@ -54,11 +63,11 @@ import {
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
   accessSourceOf,
-  artifactPolicy,
   getReleaseConfig,
   isReleaseAccess,
   MINIMUM_SYSTEM_VERSION_RE,
   operatorPolicy,
+  readAccessMode,
   revertReleaseAccessToManifest,
   setOperatorPolicy,
   setReleaseAccess,
@@ -75,8 +84,7 @@ type Revertible = (typeof REVERTIBLE)[number];
 
 interface UpdateSettingsView {
   metadataAccess: ReleaseAccess;
-  artifactsAccess: ReleaseAccess;
-  /** Who owns BOTH access modes: `admin` once an operator saved one here, and resync skips them. */
+  /** Who owns the metadata mode: `admin` once an operator saved it here, and resync skips it. */
   accessSource: Source;
   compatMin: string;
   compatMax: string;
@@ -96,17 +104,14 @@ async function settingsView(
 ): Promise<UpdateSettingsView> {
   const slug = ctx.product.slug;
   const cfg = await getReleaseConfig(ctx.db, slug);
-  const access = cfg
-    ? artifactPolicy(cfg).access
-    : { metadata: "public" as const, artifacts: "public" as const };
+  const metadataAccess = cfg ? readAccessMode(cfg.metadata_access) : "public";
   const operator = cfg
     ? operatorPolicy(cfg)
     : { requireSparkleSignature: true, minimumSystemVersion: undefined };
   // Read fresh rather than from `ctx.product`: that was loaded before this request's write.
   const compat = await getCompatWindow(ctx.db, slug);
   return {
-    metadataAccess: access.metadata,
-    artifactsAccess: access.artifacts,
+    metadataAccess,
     accessSource: cfg ? accessSourceOf(cfg) : "manifest",
     compatMin: compat?.min ?? ctx.product.compatMin,
     compatMax: compat?.max ?? ctx.product.compatMax,
@@ -147,11 +152,6 @@ async function handleSettings(
     if (isReleaseAccess(body.metadataAccess)) metadata = body.metadataAccess;
     else fields.push("metadataAccess");
   }
-  let artifacts: ReleaseAccess | undefined;
-  if (body.artifactsAccess !== undefined) {
-    if (isReleaseAccess(body.artifactsAccess)) artifacts = body.artifactsAccess;
-    else fields.push("artifactsAccess");
-  }
   let compatMin: string | undefined;
   if (body.compatMin !== undefined) {
     if (typeof body.compatMin === "string" && SEMVER.test(body.compatMin))
@@ -187,8 +187,16 @@ async function handleSettings(
     return err(422, ErrorCode.BadRequest, "invalid update settings", {
       fields,
     });
+  // Moved to Distribution's delivery access (P2b-04): refused by name, never ignored.
+  if (body.artifactsAccess !== undefined)
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "artifactsAccess moved to the Distribution service's delivery access (PUT …/distribution/access)",
+      { fields: ["artifactsAccess"] },
+    );
 
-  const touchesAccess = metadata !== undefined || artifacts !== undefined;
+  const touchesAccess = metadata !== undefined;
   const touchesPolicy =
     minimumSystemVersion !== undefined || requireSparkleSignature !== undefined;
   const cfg =
@@ -201,11 +209,11 @@ async function handleSettings(
       422,
       ErrorCode.BadRequest,
       touchesAccess
-        ? "product has no release configuration to set access modes on"
+        ? "product has no release configuration to set the metadata access mode on"
         : "product has no release configuration to set an artifact policy on",
       {
         fields: [
-          ...(touchesAccess ? ["metadataAccess", "artifactsAccess"] : []),
+          ...(touchesAccess ? ["metadataAccess"] : []),
           ...(minimumSystemVersion !== undefined
             ? ["minimumSystemVersion"]
             : []),
@@ -218,10 +226,7 @@ async function handleSettings(
   }
 
   if (touchesAccess) {
-    await setReleaseAccess(db, slug, {
-      ...(metadata !== undefined ? { metadata } : {}),
-      ...(artifacts !== undefined ? { artifacts } : {}),
-    });
+    await setReleaseAccess(db, slug, { metadata });
   }
   if (compatMin !== undefined || compatMax !== undefined) {
     await setCompatWindow(
