@@ -23,8 +23,17 @@
 //   releaseRecordCases step 14 over every case that reaches it        → releaseRecordClaims
 //
 // with `outlet-matrix.json`'s capability tables asserted against `@polaris-key/protocol/
-// distribution`. The full feed and record verifiers, the rest of `update-matrix.json` and
-// detection are the SDK wave's (P3-05, P3-11).
+// distribution`; and, from P3-05 (plans/P3-01.md §5 order 1), the full verifiers and the rest
+// of the update matrix:
+//
+//   feedCases         steps 3–8, every case                            → verifyFeed
+//   releaseRecordCases steps 12–15, every case                         → verifyReleaseRecord
+//   capabilityCases   update-matrix.json, §2.9's narrowing             → effectiveCapabilities
+//   outletCases       update-matrix.json, the decision's outlet        → resolveUpdateOutlet
+//   bucketVectors     update-matrix.json, the rollout bucket           → rolloutBucket
+//   rows              update-matrix.json, every decision and boot      → decideUpdate, bootDecision
+//
+// Detection (`outlet-matrix.json`'s rows) is P3-11's.
 //
 // The fourth file in `corpus/v2/`, `stage-matrix.json` (the boot stage machine, client boot
 // behaviour outside the wire contract), has its own runner: `stageMatrix.test.ts`, through
@@ -57,6 +66,8 @@ import {
   FEED_VERSION_SCHEMES,
   NONE_REASONS,
   UPDATE_ACTIONS,
+  type UpdateDecision,
+  type UpdateDecisionInput,
 } from "@polaris-key/protocol/update";
 import {
   CHANNEL_ALIASES,
@@ -80,8 +91,15 @@ import {
   MAX_BUNDLE_BYTES,
   channelForVersion,
   compareVersions,
+  bootDecision,
+  decideUpdate,
+  effectiveCapabilities,
   feedClaims,
   releaseRecordClaims,
+  resolveUpdateOutlet,
+  rolloutBucket,
+  verifyFeed,
+  verifyReleaseRecord,
   compareSemver,
   effectiveNow,
   highWaterMark,
@@ -774,6 +792,35 @@ interface UpdateMatrix {
     b: string;
     expect: -1 | 0 | 1 | null;
   }[];
+  capabilityCases: {
+    name: string;
+    kind: string;
+    platform: string;
+    subkind: string | null;
+    server: Record<string, unknown>;
+    expect: Record<string, unknown>;
+  }[];
+  outletCases: {
+    name: string;
+    host: unknown;
+    stamp: Record<string, string> | null;
+    detected: Record<string, string | null> | null;
+    expect: { id: string | null; kind: string; subkind: string | null };
+  }[];
+  bucketVectors: {
+    name: string;
+    salt: string;
+    installId: string;
+    sha256: string;
+    first4: string;
+    u32: number;
+    bucket: number;
+  }[];
+  rows: {
+    name: string;
+    input: UpdateDecisionInput;
+    expect: { decision: UpdateDecision; boot: string };
+  }[];
 }
 interface OutletMatrix {
   outletMatrixVersion: number;
@@ -886,4 +933,125 @@ describe(`conformance corpus v${corpus.corpusVersion} — record claims (V4 §2.
       expect(ok, c.description).toBe(step !== "claims");
     });
   }
+});
+
+// ── plans/P3-01.md §5 order 1 (P3-05) — the full verifiers and the rest of the update matrix ──
+
+// @pkey-feature update.feed
+describe(`conformance corpus v${corpus.corpusVersion} — channel feeds (V4 §2.5 steps 3–8)`, () => {
+  it("has every feed case of plans/P3-01.md §4.4", () => {
+    expect(corpus.feedCases.length).toBe(77);
+  });
+  for (const c of corpus.feedCases) {
+    const want = c.expect.verify === "ok" ? "ok" : c.expect.reason;
+    it(`${c.id} → ${want}`, async () => {
+      const r = await verifyFeed(c.jws, {
+        trust: c.trust,
+        expectedAud: c.expectedAud,
+        channel: c.channel,
+        platform: c.platform,
+        now: c.now,
+        checkFreshness: c.checkFreshness,
+        floors: c.floors,
+      });
+      if (c.expect.verify === "ok") {
+        expect(r, c.description).toMatchObject({ ok: true });
+        if (!r.ok) return;
+        expect(r.feed.seq).toBe(c.expect.seq);
+        expect(r.feed.issuedAt).toBe(c.expect.issuedAt);
+        if (c.expect.doc !== undefined) expect(r.feed).toEqual(c.expect.doc);
+      } else {
+        expect(r.ok, c.description).toBe(false);
+        if (r.ok) return;
+        expect(r.reason, c.description).toBe(c.expect.reason);
+      }
+    });
+  }
+});
+
+// @pkey-feature release.record
+describe(`conformance corpus v${corpus.corpusVersion} — release records (V4 §2.5 steps 12–15)`, () => {
+  it("has every record case of plans/P3-01.md §4.5", () => {
+    expect(corpus.releaseRecordCases.length).toBe(49);
+  });
+  for (const c of corpus.releaseRecordCases) {
+    const want = c.expect.verify === "ok" ? "ok" : c.expect.step;
+    it(`${c.id} → ${want}`, async () => {
+      const r = await verifyReleaseRecord(c.jws, {
+        releaseKeys: c.releaseKeys,
+        productTrust: c.productTrust,
+        expectedAud: c.expectedAud,
+        expectedHash: c.expectedHash,
+        ...(c.pin ? { pin: c.pin } : {}),
+      });
+      if (c.expect.verify === "ok") {
+        expect(r, c.description).toMatchObject({ ok: true });
+        if (!r.ok) return;
+        expect(r.record.kind).toBe(c.expect.kind);
+        if (c.expect.doc !== undefined) expect(r.record).toEqual(c.expect.doc);
+      } else {
+        expect(r.ok, c.description).toBe(false);
+        if (r.ok) return;
+        expect(r.step, c.description).toBe(c.expect.step);
+      }
+    });
+  }
+});
+
+// @pkey-feature update.decide
+describe(`update-matrix v${updateMatrix.updateMatrixVersion} — capabilities, outlets, buckets and rows`, () => {
+  it("has every case of plans/P3-01.md §4.6", () => {
+    expect(updateMatrix.capabilityCases.length).toBe(10);
+    expect(updateMatrix.outletCases.length).toBe(12);
+    expect(updateMatrix.bucketVectors.length).toBe(6);
+    expect(updateMatrix.rows.length).toBe(65);
+  });
+  for (const c of updateMatrix.capabilityCases) {
+    it(`capability ${c.name}`, () => {
+      expect(
+        effectiveCapabilities(c.kind, {
+          platform: c.platform,
+          subkind: c.subkind,
+          server: c.server,
+        }),
+      ).toEqual(c.expect);
+    });
+  }
+  for (const c of updateMatrix.outletCases) {
+    it(`outlet ${c.name}`, () => {
+      expect(
+        resolveUpdateOutlet({
+          host: c.host,
+          stamp: c.stamp,
+          detected: c.detected as never,
+        }),
+      ).toEqual(c.expect);
+    });
+  }
+  it("refuses a host outlet outside the vocabularies (invalid-options)", () => {
+    for (const host of [
+      "epic",
+      { id: "Direct Build", kind: "direct" },
+      { id: "direct", kind: "epic" },
+      { id: "direct", kind: "direct", subkind: "brew" },
+    ])
+      expect(resolveUpdateOutlet({ host })).toBeNull();
+  });
+  for (const v of updateMatrix.bucketVectors) {
+    it(`bucket ${v.name}`, async () => {
+      expect(await rolloutBucket(v.salt, v.installId)).toBe(v.bucket);
+      expect(v.u32 % 10000).toBe(v.bucket);
+    });
+  }
+  for (const row of updateMatrix.rows) {
+    it(`row ${row.name}`, () => {
+      const decision = decideUpdate(row.input);
+      expect(decision).toEqual(row.expect.decision);
+      expect(bootDecision(decision)).toBe(row.expect.boot);
+    });
+  }
+  it("every v4 boot value is none or optional: no floor stops play", () => {
+    for (const row of updateMatrix.rows)
+      expect(["none", "optional"]).toContain(row.expect.boot);
+  });
 });
