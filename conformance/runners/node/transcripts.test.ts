@@ -3,11 +3,11 @@
 // against a fake server that serves the Worker's recorded answers and asserts every request.
 //
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
-// @pkey-feature license.deactivate devices.register devices.report
+// @pkey-feature license.deactivate license.reregister devices.register devices.report
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
-// transcript for a feature Node has not implemented (register-reregister-401, until P1b-06) is
-// listed as skipped rather than failing, and starts running the moment the manifest claims it.
+// transcript for a feature Node has not implemented is listed as skipped rather than failing,
+// and starts running the moment the manifest claims it.
 //
 // The SDK clock is Vitest's frozen `Date`, moved to each step's `now`: the recorded documents
 // were signed at a fixed instant and expire an hour later, so replaying them against the wall

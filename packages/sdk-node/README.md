@@ -107,6 +107,15 @@ read-modify-write of the cache record → the clock floor → best-effort teleme
 `POST /<product>/devices/report`. A 401 gets exactly **one** `POST /<product>/license/token`
 re-acquire for the whole pass, then one retry of the failed fetch.
 
+A registered device without a licence **re-registers** instead: when License is off for the
+product, or the token came from `devices.register()` in this process, the one attempt is
+`POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
+`Authorization` header). It shares the single-attempt budget, so two parallel 401s still make one
+call. A refusal (403 `registration_closed`, 404, 429) spends the attempt and the hard 401 is
+recorded. After a restart the token's origin is not persisted, so a product with License on uses
+`license/token`. Under the `requires-identity` policy a native device cannot re-register (that
+needs a browser session) and lands on the hard 401.
+
 `client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
 lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 

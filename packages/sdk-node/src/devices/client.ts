@@ -97,6 +97,19 @@ export class DevicesClient {
    * token replaces whatever was stored.
    */
   async register(): Promise<RegisterResult> {
+    const r = await this.requestRegistration();
+    if (r.kind === "ok") await this.tokens.set(r.token, "register");
+    return r;
+  }
+
+  /**
+   * The registration request alone, without storing the token. `register()` stores it; the §5
+   * re-register on 401 (P1b-06) lets `TokenManager.reacquireOnce` store it instead, so the one
+   * request is byte-identical on both paths: the fingerprint when enabled, never a bearer.
+   *
+   * @internal
+   */
+  async requestRegistration(): Promise<RegisterResult> {
     const fingerprint = this.fingerprint();
     // Outside the try — see `license/endpoints.ts`: a local-only refusal is a configuration
     // error the host can fix, not a transport outcome to be reported as one.
@@ -124,7 +137,6 @@ export class DevicesClient {
     }
     if (res.status === 200) {
       const body = (await res.json()) as { token: string; deviceId: string };
-      await this.tokens.set(body.token);
       return { kind: "ok", token: body.token, deviceId: body.deviceId };
     }
     if (res.status === 403) return { kind: "registration-closed" };
