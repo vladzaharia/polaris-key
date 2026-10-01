@@ -28,6 +28,9 @@ vi.mock("../src/api.js", async (importOriginal) => {
       edgeMintRecipes: vi.fn(),
       approveEdgeMintRecipe: vi.fn(),
       revokeEdgeMintRecipe: vi.fn(),
+      outletCredentials: vi.fn(),
+      putOutletCredential: vi.fn(),
+      deleteOutletCredential: vi.fn(),
     },
   };
 });
@@ -40,6 +43,9 @@ const mockApi = api as unknown as {
   edgeMintRecipes: ReturnType<typeof vi.fn>;
   approveEdgeMintRecipe: ReturnType<typeof vi.fn>;
   revokeEdgeMintRecipe: ReturnType<typeof vi.fn>;
+  outletCredentials: ReturnType<typeof vi.fn>;
+  putOutletCredential: ReturnType<typeof vi.fn>;
+  deleteOutletCredential: ReturnType<typeof vi.fn>;
 };
 
 const PRODUCT: ProductDetail = {
@@ -133,6 +139,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockApi.product.mockResolvedValue({ product: PRODUCT });
   mockApi.edgeMintRecipes.mockResolvedValue(recipes([]));
+  mockApi.outletCredentials.mockResolvedValue({
+    ok: true,
+    kinds: [],
+    credentials: [],
+  });
   // jsdom lacks these Radix-needed APIs.
   (
     Element.prototype as unknown as { hasPointerCapture: () => boolean }
@@ -588,6 +599,147 @@ describe("Edge-mint recipes card (P0-12)", () => {
         IDENTITY,
         true,
         true,
+      ),
+    );
+  });
+});
+
+describe("Outlet credentials card (P5-01)", () => {
+  const CRED = {
+    id: "asc-team-key",
+    kind: "asc-api-key",
+    outletId: "app-store",
+    meta: { keyId: "ABC123DEFG", issuerId: "issuer-1" },
+    status: "active",
+    createdAt: 1_700_000_000,
+    createdBy: "admin-1",
+    rotatedAt: null,
+    expiresAt: null,
+    lastUsedAt: null,
+    lastOkAt: null,
+    lastError: "401 from App Store Connect",
+  };
+
+  it("lists metadata and health, never a value", async () => {
+    mockApi.outletCredentials.mockResolvedValue({
+      ok: true,
+      kinds: [],
+      credentials: [CRED],
+    });
+    renderSecrets();
+    const table = await screen.findByRole("table", {
+      name: "Outlet credentials",
+    });
+    expect(within(table).getByText("asc-team-key")).toBeTruthy();
+    expect(within(table).getByText("App Store Connect API key")).toBeTruthy();
+    expect(within(table).getByText("ABC123DEFG · issuer-1")).toBeTruthy();
+    expect(within(table).getByText("app-store")).toBeTruthy();
+    expect(within(table).getByText("never")).toBeTruthy();
+    expect(within(table).getByText("Error")).toBeTruthy();
+  });
+
+  it("sets an App Store Connect key write-only and clears the form", async () => {
+    mockApi.putOutletCredential.mockResolvedValue({
+      ok: true,
+      id: "asc-team-key",
+    });
+    renderSecrets();
+    const form = await screen.findByRole("form", {
+      name: "Set an outlet credential",
+    });
+    await userEvent.type(
+      within(form).getByLabelText("Credential id"),
+      "asc-team-key",
+    );
+    await userEvent.type(
+      within(form).getByLabelText("Outlet (optional)"),
+      "app-store",
+    );
+    await userEvent.type(within(form).getByLabelText("Key ID"), "ABC123DEFG");
+    await userEvent.type(within(form).getByLabelText("Issuer ID"), "issuer-1");
+    await userEvent.type(within(form).getByLabelText(".p8 private key"), "PEM");
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Set credential" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.putOutletCredential).toHaveBeenCalledWith(
+        "djdl",
+        "asc-team-key",
+        {
+          kind: "asc-api-key",
+          value: { keyId: "ABC123DEFG", issuerId: "issuer-1", p8: "PEM" },
+          outletId: "app-store",
+        },
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        (within(form).getByLabelText(".p8 private key") as HTMLTextAreaElement)
+          .value,
+      ).toBe(""),
+    );
+  });
+
+  it("sends a Google key as its JSON file", async () => {
+    mockApi.putOutletCredential.mockResolvedValue({ ok: true, id: "play" });
+    renderSecrets();
+    const form = await screen.findByRole("form", {
+      name: "Set an outlet credential",
+    });
+    await userEvent.type(within(form).getByLabelText("Credential id"), "play");
+    await pick("Kind", "Google service account");
+    await userEvent.type(within(form).getByLabelText("JSON key file"), "{{}");
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Set credential" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.putOutletCredential).toHaveBeenCalledWith("djdl", "play", {
+        kind: "google-service-account",
+        value: "{}",
+        outletId: null,
+      }),
+    );
+  });
+
+  it("requires an id and every field of the kind", async () => {
+    renderSecrets();
+    const form = await screen.findByRole("form", {
+      name: "Set an outlet credential",
+    });
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Set credential" }),
+    );
+    expect(within(form).getByText("A credential id is required.")).toBeTruthy();
+    await userEvent.type(within(form).getByLabelText("Credential id"), "x");
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Set credential" }),
+    );
+    expect(within(form).getByText("Key ID is required.")).toBeTruthy();
+    expect(mockApi.putOutletCredential).not.toHaveBeenCalled();
+  });
+
+  it("deletes a credential after confirmation", async () => {
+    mockApi.outletCredentials.mockResolvedValue({
+      ok: true,
+      kinds: [],
+      credentials: [CRED],
+    });
+    mockApi.deleteOutletCredential.mockResolvedValue({
+      ok: true,
+      id: "asc-team-key",
+    });
+    renderSecrets();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Delete asc-team-key" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.deleteOutletCredential).toHaveBeenCalledWith(
+        "djdl",
+        "asc-team-key",
       ),
     );
   });

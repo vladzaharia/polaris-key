@@ -9,7 +9,7 @@
  *
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
- * any service: `secrets/*`, `keys/rotate`, `activity`, `services[/revert]`, `bundles`. Everything
+ * any service: `secrets/*`, `outlet-credentials/*`, `keys/rotate`, `activity`, `services[/revert]`, `bundles`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
  *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
@@ -169,7 +169,12 @@ async function handleProductScoped(
   // which is why they are not under one:
   //   PUT  /products/<slug>/secrets/<name>
   //   POST /products/<slug>/keys/rotate
-  if (resource === "secrets" || resource === "keys") {
+  //   GET|PUT|DELETE /products/<slug>/outlet-credentials[/<id>]   (P5-01)
+  if (
+    resource === "secrets" ||
+    resource === "keys" ||
+    resource === "outlet-credentials"
+  ) {
     return handleProductScopedResource(
       req,
       env,
