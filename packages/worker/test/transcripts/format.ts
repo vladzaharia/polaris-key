@@ -120,7 +120,11 @@ export type Action =
   | "enroll"
   | "register"
   | "deactivate"
-  | "report";
+  | "report"
+  | "fetchSchema"
+  | "changelog"
+  | "installUrl"
+  | "downloadUrl";
 
 export interface Step {
   action: Action;
