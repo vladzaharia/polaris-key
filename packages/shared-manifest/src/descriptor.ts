@@ -344,7 +344,9 @@ export interface RecordFields {
 /**
  * The `pkey-release+jws` payload a descriptor MOVES into (plans/P3-01.md §2.4): `product` becomes
  * `aud`, `descriptorVersion` becomes `schemaVersion: 1`, `publishedAt` and every artifact's
- * `locations` are dropped (locations change after signing), and everything else moves unchanged.
+ * `locations` are dropped (locations change after signing), a build's `metadata` is dropped (CI's
+ * unsigned claim for the storefront feeds, P2b-05; the record's build shape has no such field),
+ * and everything else moves unchanged.
  * An optional field the descriptor omits stays absent, and a store-only build keeps
  * `artifacts: []`. The CLI signs exactly this object (`pkey release publish`), and the Worker's
  * ingest refuses a record that is not this object for the descriptor it arrived with
