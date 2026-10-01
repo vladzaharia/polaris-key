@@ -82,9 +82,11 @@ export { getReleaseConfig } from "./config.js";
  * Release descriptors (P2-04): a release carrying a `pkey-release.json` with no ingested
  * descriptor yet is ingested in the same pass (`ingestGithubDescriptors`, a bounded number per
  * sync), and the product's declared artifact map — `app`, when the caller has just parsed it,
- * else the persisted declaration — replaces filename sniffing for every other release. The
- * described releases' rows go FIRST in the returned list (so an explicit `seq` is taken before
- * the store numbers new releases) and their builds and files LAST (after the rows they enrich).
+ * else the persisted declaration — replaces filename sniffing for every other release. Each
+ * described release's row goes in that release's own publication-order slot among the store's
+ * upserts (so `seq` stays publication order, and an explicit `seq` is checked against the value
+ * the batch will have reached there), and its builds and files go LAST (after the rows they
+ * enrich).
  *
  * Returns `[]` — never throws, never partially applies — when the product has no GitHub
  * coordinates or GitHub is unavailable. The truth store is a CACHE of upstream state; failing a
@@ -129,12 +131,12 @@ export async function releaseStoreSyncStatements(
       cfg,
       token,
       listing.releases,
+      held,
       app,
       now,
       fetchImpl,
     );
     return [
-      ...descriptors.head,
       ...releaseStoreStatements(
         cfg.product,
         cfg,
@@ -147,6 +149,7 @@ export async function releaseStoreSyncStatements(
           app,
           described: descriptors.described,
           refused: descriptors.refused,
+          describedRows: descriptors.rows,
         },
       ),
       ...descriptors.tail,

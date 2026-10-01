@@ -1066,26 +1066,213 @@ describe("the GitHub path: pkey-release.json during the truth-store sync", () =>
     });
   });
 
-  it("an explicit seq on a release first seen in this sync is taken before the store numbers the rest", async () => {
+  /** v1.1.0 (August) with its macOS file and, when `d` is given, a `pkey-release.json` (id 201). */
+  function augustRelease(withDescriptor: boolean): Release {
+    const r = ghRelease({
+      tag_name: "v1.1.0",
+      published_at: "2026-08-01T00:00:00Z",
+      html_url: `https://github.com/${OWNER}/${REPO}/releases/tag/v1.1.0`,
+      assets: [asset("Diceroll-1.1.0-macos.dmg", 90, "v1.1.0")],
+    });
+    if (withDescriptor)
+      r.assets.push({
+        ...asset("pkey-release.json", 201, "v1.1.0"),
+        digest: null,
+      });
+    return r;
+  }
+
+  /** The descriptor CI would attach to `augustRelease`. */
+  function augustDescriptor(): Record<string, any> {
+    const name = "Diceroll-1.1.0-macos.dmg";
+    return {
+      descriptorVersion: 1,
+      product: SLUG,
+      deliverable: "app",
+      kind: "app",
+      version: "1.1.0",
+      tag: "v1.1.0",
+      builds: [
+        {
+          id: "macos",
+          platform: "macos",
+          arch: "universal",
+          format: "dmg",
+          artifacts: [
+            {
+              name,
+              role: "payload",
+              sha256: sha(name),
+              size: 1090,
+              locations: [{ provider: "github", asset: name }],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  async function seqs(db: Db): Promise<Record<string, number | null>> {
+    return Object.fromEntries(
+      (await listReleaseMetadata(db, SLUG)).map((m) => [m.release_id, m.seq]),
+    );
+  }
+
+  async function descriptorStatus(db: Db, releaseId: string) {
+    const meta = (await listReleaseMetadata(db, SLUG)).find(
+      (m) => m.release_id === releaseId,
+    )!;
+    return JSON.parse(meta.metadata_json!).descriptor as {
+      status: string;
+      reason?: string;
+    };
+  }
+
+  it("a described release first seen with older new releases takes its seq in publication order", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const july = ghRelease({
+      tag_name: "v1.0.0",
+      published_at: "2026-07-01T00:00:00Z",
+      assets: [asset("Diceroll-1.0.0-macos.dmg", 80, "v1.0.0")],
+    });
+    // Listed newest first, as GitHub lists them.
+    const { fetchImpl } = github(
+      [withDescriptorAsset(), augustRelease(false), july],
+      { assets: { 200: JSON.stringify(attachedDescriptor()) } },
+    );
+    expect(
+      await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl),
+    ).toBeGreaterThan(0);
+    expect(await seqs(db)).toEqual({ "v1.0.0": 1, "v1.1.0": 2, "v1.2.3": 3 });
+    expect(await descriptorStatus(db, "v1.2.3")).toMatchObject({
+      status: "ingested",
+    });
+  });
+
+  it("an explicit seq above every new release published before it is taken", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const d = attachedDescriptor();
+    d.seq = 5;
+    const { fetchImpl } = github(
+      [withDescriptorAsset(), augustRelease(false)],
+      {
+        assets: { 200: JSON.stringify(d) },
+      },
+    );
+    await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl);
+    expect(await seqs(db)).toEqual({ "v1.1.0": 1, "v1.2.3": 5 });
+    expect(await descriptorStatus(db, "v1.2.3")).toMatchObject({
+      status: "ingested",
+    });
+  });
+
+  it("an explicit seq an older new release in the same sync takes is refused, and the sync still applies", async () => {
     const db = makeTestDb();
     await seedLinked(db);
     const d = attachedDescriptor();
     d.seq = 1;
-    const older = ghRelease({
-      tag_name: "v1.1.0",
-      published_at: "2026-08-01T00:00:00Z",
-      assets: [asset("Diceroll-1.1.0-macos.dmg", 90, "v1.1.0")],
+    const { fetchImpl } = github(
+      [withDescriptorAsset(), augustRelease(false)],
+      {
+        assets: { 200: JSON.stringify(d) },
+      },
+    );
+    expect(
+      await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl),
+    ).toBeGreaterThan(0);
+    expect(await seqs(db)).toEqual({ "v1.1.0": 1, "v1.2.3": 2 });
+    expect(await descriptorStatus(db, "v1.2.3")).toMatchObject({
+      status: "refused",
+      reason: "seq_not_increasing",
     });
-    const { fetchImpl } = github([withDescriptorAsset(), older], {
-      assets: { 200: JSON.stringify(d) },
+  });
+
+  it("two descriptors in one sync: an explicit seq equal to the one an older no-seq descriptor takes is refused, not a failed batch", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const newer = attachedDescriptor();
+    newer.seq = 1;
+    const { fetchImpl } = github([withDescriptorAsset(), augustRelease(true)], {
+      assets: {
+        200: JSON.stringify(newer),
+        201: JSON.stringify(augustDescriptor()),
+      },
     });
     expect(
       await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl),
     ).toBeGreaterThan(0);
-    const seqs = Object.fromEntries(
-      (await listReleaseMetadata(db, SLUG)).map((m) => [m.release_id, m.seq]),
-    );
-    expect(seqs).toEqual({ "v1.2.3": 1, "v1.1.0": 2 });
+    expect(await seqs(db)).toEqual({ "v1.1.0": 1, "v1.2.3": 2 });
+    expect(await descriptorStatus(db, "v1.1.0")).toMatchObject({
+      status: "ingested",
+    });
+    expect(await descriptorStatus(db, "v1.2.3")).toMatchObject({
+      status: "refused",
+      reason: "seq_not_increasing",
+    });
+    const health = (await listReleaseHealth(db, SLUG)).find(
+      (h) => h.subject_id === "v1.2.3",
+    )!;
+    expect(JSON.parse(health.details_json!).descriptor).toEqual({
+      refused: "seq_not_increasing",
+    });
+  });
+
+  it("the same two descriptors carried by a manifest resync do not fail the resync", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const newer = attachedDescriptor();
+    newer.seq = 1;
+    const { fetchImpl } = github([withDescriptorAsset(), augustRelease(true)], {
+      assets: {
+        200: JSON.stringify(newer),
+        201: JSON.stringify(augustDescriptor()),
+      },
+    });
+    const res = await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    expect(res).toMatchObject({ ok: true });
+    expect((res as { updated: string[] }).updated).toContain("releases");
+    expect(await seqs(db)).toEqual({ "v1.1.0": 1, "v1.2.3": 2 });
+    expect(await descriptorStatus(db, "v1.2.3")).toMatchObject({
+      status: "refused",
+      reason: "seq_not_increasing",
+    });
+  });
+
+  it("two descriptors in one sync with ascending seqs are both ingested in publication order", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const older = augustDescriptor();
+    older.seq = 3;
+    const newer = attachedDescriptor();
+    newer.seq = 4;
+    const { fetchImpl } = github([withDescriptorAsset(), augustRelease(true)], {
+      assets: {
+        200: JSON.stringify(newer),
+        201: JSON.stringify(older),
+      },
+    });
+    await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl);
+    expect(await seqs(db)).toEqual({ "v1.1.0": 3, "v1.2.3": 4 });
+    expect(await descriptorStatus(db, "v1.1.0")).toMatchObject({
+      status: "ingested",
+    });
+    expect(await descriptorStatus(db, "v1.2.3")).toMatchObject({
+      status: "ingested",
+    });
+  });
+
+  it("a release newer than a described one with an explicit seq takes the seq after it", async () => {
+    const db = makeTestDb();
+    await seedLinked(db);
+    const older = augustDescriptor();
+    older.seq = 10;
+    const { fetchImpl } = github([ghRelease(), augustRelease(true)], {
+      assets: { 201: JSON.stringify(older) },
+    });
+    await syncReleaseStore(envFor(), db, SLUG, NOW, fetchImpl);
+    expect(await seqs(db)).toEqual({ "v1.1.0": 10, "v1.2.3": 11 });
   });
 
   it("an oversized pkey-release.json is refused without being fetched", async () => {

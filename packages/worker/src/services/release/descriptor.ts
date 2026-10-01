@@ -84,6 +84,7 @@ import {
 import {
   artifactContentType,
   artifactKind,
+  releasesInPublicationOrder,
   storeAccess,
   type ReleaseArtifactRow,
   type ReleaseMetadataRow,
@@ -281,8 +282,12 @@ interface PlanInput {
   app: ManifestAppDeliverable | null;
   github: Release | null;
   promoted: ReadonlySet<string>;
-  /** Seqs already taken by descriptors planned earlier in the same batch (the sync). */
-  reservedMaxSeq?: number;
+  /**
+   * The highest `seq` the deliverable will hold when this release's row is written, counting
+   * rows written earlier in the same batch (the sync: every new release published before this
+   * one, in publication order). An explicit `seq` on a new release must exceed it.
+   */
+  seqFloor?: number;
 }
 
 export type Plan =
@@ -296,7 +301,11 @@ export type Plan =
       head: DbStatement[];
       /** Builds, artifacts and refs — after the row (and, in the sync, after the store's rows). */
       tail: DbStatement[];
-      /** The descriptor's explicit seq for a new release (the sync reserves it). */
+      /**
+       * The explicit seq the row newly takes — a release with no stored seq whose descriptor
+       * names one. Null when the row keeps its stored seq or takes the next one in statement
+       * order (`NEXT_SEQ_SQL`).
+       */
       seq: number | null;
     }
   | Extract<IngestResult, { ok: false }>;
@@ -416,7 +425,7 @@ export async function planDescriptorIngest(
     product,
     d.deliverable,
   );
-  const currentMax = Math.max(maxRow?.m ?? 0, input.reservedMaxSeq ?? 0);
+  const currentMax = Math.max(maxRow?.m ?? 0, input.seqFloor ?? 0);
   let seq: number | null = existing?.seq ?? null;
   if (d.seq !== undefined) {
     if (seq !== null && d.seq !== seq)
@@ -656,7 +665,7 @@ export async function planDescriptorIngest(
     planned,
     head,
     tail,
-    seq: existing ? null : seq,
+    seq: existing?.seq != null || d.seq === undefined ? null : d.seq,
   };
 }
 
@@ -803,8 +812,12 @@ export async function ingestReleaseDescriptor(
 export const MAX_DESCRIPTOR_FETCHES_PER_SYNC = 5;
 
 export interface GithubDescriptorOutcome {
-  /** Statements that must run BEFORE the store's own (the described releases' rows). */
-  head: DbStatement[];
+  /**
+   * The release rows of the descriptors ingested in this pass, by release id. The store emits
+   * each in that release's publication-order slot (`StoreClassificationOptions.describedRows`),
+   * so seq stays publication order.
+   */
+  rows: Map<string, DbStatement[]>;
   /** Statements that must run AFTER the store's own. */
   tail: DbStatement[];
   /** Releases with an ingested descriptor, including the ones ingested in this pass. */
@@ -819,12 +832,21 @@ export interface GithubDescriptorOutcome {
  * remembered by asset id, so the same refusal is not fetched again until the asset changes.
  * A fetch that fails (quota, a 404) is skipped silently and retried by the next sync — the
  * truth store is a cache, and this pass must never fail the resync carrying it.
+ *
+ * SEQ. The descriptors are planned in publication order (`releasesInPublicationOrder`, the order
+ * the store writes the rows in), tracking the `seq` each new release will take when its row is
+ * written: the stored maximum, plus one for every new release published before it — or that
+ * release's own explicit `seq`. A descriptor's explicit `seq` must exceed that running value,
+ * else it is refused `seq_not_increasing` and the release is numbered like any other. So an
+ * explicit seq can never collide with one the same batch computes (the unique index would fail
+ * the whole batch), and seq never runs against publication order.
  */
 export async function ingestGithubDescriptors(
   db: Db,
   cfg: ReleaseConfigRow & { gh_owner: string; gh_repo: string },
   token: string,
   releases: readonly Release[],
+  held: readonly Release[],
   app: ManifestAppDeliverable | null,
   now: number,
   fetchImpl: FetchImpl,
@@ -837,14 +859,15 @@ export async function ingestGithubDescriptors(
     if (m.status === "ingested") described.add(id);
   }
   const out: GithubDescriptorOutcome = {
-    head: [],
+    rows: new Map(),
     tail: [],
     described,
     refused,
   };
 
-  const candidates = releases
-    .filter((r) => !r.draft && !described.has(r.tag_name))
+  const ordered = releasesInPublicationOrder(releases, held);
+  const candidates = ordered
+    .filter((r) => !described.has(r.tag_name))
     .map((r) => ({
       r,
       asset: r.assets.find((a) => a.name === DESCRIPTOR_ASSET_NAME),
@@ -860,64 +883,87 @@ export async function ingestGithubDescriptors(
       refused.set(c.r.tag_name, m.reason);
     else toFetch.push(c);
   }
-  // Newest first for the budget, then planned oldest first so explicit seqs ascend.
+  // The newest ones, for the budget.
   const budget = toFetch
     .sort(
       (a, b) =>
         (publishedSeconds(b.r.published_at) ?? 0) -
         (publishedSeconds(a.r.published_at) ?? 0),
     )
-    .slice(0, MAX_DESCRIPTOR_FETCHES_PER_SYNC)
-    .reverse();
-
-  let reservedMaxSeq = 0;
-  for (const { r, asset } of budget) {
-    const read = await readAttachedDescriptor(cfg, token, asset, fetchImpl);
-    if (read === "transient") continue; // try again next sync
-    const plan =
-      read === "unreadable"
-        ? refuse(
-            "invalid_descriptor",
-            `pkey-release.json is not JSON of at most ${MAX_DESCRIPTOR_BYTES} bytes.`,
-          )
-        : await planDescriptorIngest(db, {
-            product,
-            descriptor: read.value,
-            source: "github",
-            now,
-            cfg,
-            app,
-            github: r,
-            promoted: new Set(),
-            reservedMaxSeq,
-          });
-    if (plan.ok) {
-      if (plan.seq !== null)
-        reservedMaxSeq = Math.max(reservedMaxSeq, plan.seq);
-      out.head.push(...plan.head);
-      out.tail.push(...plan.tail);
-      described.add(r.tag_name);
-      continue;
+    .slice(0, MAX_DESCRIPTOR_FETCHES_PER_SYNC);
+  const reads = new Map<
+    string,
+    {
+      asset: ReleaseAsset;
+      read: Awaited<ReturnType<typeof readAttachedDescriptor>>;
     }
-    refused.set(r.tag_name, plan.reason);
-    out.tail.push({
-      // After the store's own upsert of the row, which this then annotates. Never over an
-      // ingested descriptor.
-      sql: `UPDATE release_metadata
-               SET metadata_json = json_set(COALESCE(metadata_json, '{}'), '$.descriptor', json(?))
-             WHERE product = ? AND release_id = ?
-               AND COALESCE(json_extract(metadata_json, '$.descriptor.status'), '') <> 'ingested'`,
-      params: [
-        JSON.stringify({
-          status: "refused",
-          reason: plan.reason,
-          assetId: asset.id,
-          at: now,
-        } satisfies DescriptorMarker),
-        product,
-        r.tag_name,
-      ],
+  >();
+  for (const { r, asset } of budget)
+    reads.set(r.tag_name, {
+      asset,
+      read: await readAttachedDescriptor(cfg, token, asset, fetchImpl),
     });
+
+  // Planned in publication order, tracking the seq the batch will have reached at each slot.
+  const stored = await db.all<{ release_id: string; seq: number | null }>(
+    "SELECT release_id, seq FROM release_metadata WHERE product = ? AND deliverable_id = ?",
+    product,
+    APP_DELIVERABLE_ID,
+  );
+  const storedSeq = new Map(stored.map((x) => [x.release_id, x.seq]));
+  let running = stored.reduce((m, x) => Math.max(m, x.seq ?? 0), 0);
+  for (const r of ordered) {
+    // A row with no stored seq (new, or written before P2-03) takes one in this batch.
+    const takesSeq = (storedSeq.get(r.tag_name) ?? null) === null;
+    let explicit: number | null = null;
+    const fetched = reads.get(r.tag_name);
+    if (fetched && fetched.read !== "transient") {
+      const { asset, read } = fetched;
+      const plan =
+        read === "unreadable"
+          ? refuse(
+              "invalid_descriptor",
+              `pkey-release.json is not JSON of at most ${MAX_DESCRIPTOR_BYTES} bytes.`,
+            )
+          : await planDescriptorIngest(db, {
+              product,
+              descriptor: read.value,
+              source: "github",
+              now,
+              cfg,
+              app,
+              github: r,
+              promoted: new Set(),
+              seqFloor: running,
+            });
+      if (plan.ok) {
+        explicit = plan.seq;
+        out.rows.set(r.tag_name, plan.head);
+        out.tail.push(...plan.tail);
+        described.add(r.tag_name);
+      } else {
+        refused.set(r.tag_name, plan.reason);
+        out.tail.push({
+          // After the store's own upsert of the row, which this then annotates. Never over an
+          // ingested descriptor.
+          sql: `UPDATE release_metadata
+                   SET metadata_json = json_set(COALESCE(metadata_json, '{}'), '$.descriptor', json(?))
+                 WHERE product = ? AND release_id = ?
+                   AND COALESCE(json_extract(metadata_json, '$.descriptor.status'), '') <> 'ingested'`,
+          params: [
+            JSON.stringify({
+              status: "refused",
+              reason: plan.reason,
+              assetId: asset.id,
+              at: now,
+            } satisfies DescriptorMarker),
+            product,
+            r.tag_name,
+          ],
+        });
+      }
+    }
+    if (takesSeq) running = explicit ?? running + 1;
   }
   return out;
 }

@@ -112,6 +112,12 @@ export interface StoreClassificationOptions {
   described?: ReadonlySet<string>;
   /** Releases whose `pkey-release.json` was refused, with the reason (degrades their health). */
   refused?: ReadonlyMap<string, string>;
+  /**
+   * The release rows of descriptors ingested in this pass, by release id. Each is emitted in
+   * that release's own publication-order slot, just before the store's upsert of the same row,
+   * so a new described release takes its `seq` in publication order like any other (P2-03).
+   */
+  describedRows?: ReadonlyMap<string, readonly DbStatement[]>;
 }
 
 // ── Row shapes ───────────────────────────────────────────────────────────────
@@ -662,6 +668,41 @@ function floorStatement(
 }
 
 /**
+ * The releases the store records from a listing — the published ones plus the `held` floor
+ * releases the list did not reach — in publication order, the same order 0027_h's backfill
+ * numbers `seq` in: an undated release first (SQLite sorts NULL low), then by date, ties by tag.
+ * `releaseStoreStatements` upserts the rows in exactly this order, so it is also the order in
+ * which new releases take their `seq`; the descriptor ingest (P2-04) plans explicit seqs against
+ * it.
+ */
+export function releasesInPublicationOrder(
+  releases: readonly Release[],
+  held: readonly Release[] = [],
+): Release[] {
+  const published = releases.filter((r) => !r.draft);
+  return [
+    ...published,
+    ...held.filter(
+      (h) => !h.draft && !published.some((p) => p.tag_name === h.tag_name),
+    ),
+  ]
+    .map((release) => ({
+      release,
+      at: publishedAtSeconds(release.published_at),
+    }))
+    .sort(
+      (a, b) =>
+        (a.at ?? -Infinity) - (b.at ?? -Infinity) ||
+        (a.release.tag_name < b.release.tag_name
+          ? -1
+          : a.release.tag_name > b.release.tag_name
+            ? 1
+            : 0),
+    )
+    .map((x) => x.release);
+}
+
+/**
  * The statements that make the truth store agree with a fetched GitHub release list.
  *
  * Returned rather than executed so the caller can put them in ITS batch: `resyncRepo` already
@@ -672,7 +713,9 @@ function floorStatement(
  * `release_metadata(product, release_id)`, which D1 enforces per statement inside a batch, so
  * every metadata row is emitted before anything that references it — and the `app` deliverable
  * before everything. The metadata rows themselves go out oldest first, (published_at,
- * release_id), because each new one takes the next `seq` in statement order (P2-03).
+ * release_id), because each new one takes the next `seq` in statement order (P2-03). A release
+ * whose descriptor this pass ingested (`opts.describedRows`) has its descriptor row emitted in
+ * that same slot, so an explicit or computed `seq` never jumps ahead of an older new release.
  *
  * ABSENT UPSTREAM (P0-03). `storedReleaseIds` is what the store held before this sync, and the
  * caller passes it ONLY when `releases` is the whole upstream list (the paginated read reached a
@@ -708,12 +751,7 @@ export function releaseStoreStatements(
   // Drafts are not published software. They are visible to the installation token and invisible
   // to everyone the portal serves, so ingesting them would list a release nobody can download.
   const published = releases.filter((r) => !r.draft);
-  const recorded = [
-    ...published,
-    ...held.filter(
-      (h) => !h.draft && !published.some((p) => p.tag_name === h.tag_name),
-    ),
-  ];
+  const inPublishOrder = releasesInPublicationOrder(releases, held);
 
   const metadata: DbStatement[] = [];
   const artifacts: DbStatement[] = [];
@@ -723,26 +761,15 @@ export function releaseStoreStatements(
   const mappedBuildKeys: string[] = [];
   const undescribedReleaseIds: string[] = [];
 
-  // Publication order, the same order 0027_h's backfill numbers `seq` in: an undated release
-  // first (SQLite sorts NULL low), then by date, ties by tag.
-  const inPublishOrder = recorded
-    .map((release) => ({
-      release,
-      at: publishedAtSeconds(release.published_at),
-    }))
-    .sort(
-      (a, b) =>
-        (a.at ?? -Infinity) - (b.at ?? -Infinity) ||
-        (a.release.tag_name < b.release.tag_name
-          ? -1
-          : a.release.tag_name > b.release.tag_name
-            ? 1
-            : 0),
-    )
-    .map((x) => x.release);
+  // A described release's row that has no slot here (none should) still goes before anything
+  // that references it.
+  const slotted = new Set(inPublishOrder.map((r) => r.tag_name));
+  for (const [releaseId, rows] of opts.describedRows ?? [])
+    if (!slotted.has(releaseId)) metadata.push(...rows);
 
   for (const release of inPublishOrder) {
     const releaseId = release.tag_name;
+    metadata.push(...(opts.describedRows?.get(releaseId) ?? []));
     metadata.push(
       stmtUpsertMetadata({
         product,
@@ -861,7 +888,7 @@ export function releaseStoreStatements(
   }
 
   if (storedReleaseIds) {
-    const upstream = new Set(recorded.map((r) => r.tag_name));
+    const upstream = new Set(inPublishOrder.map((r) => r.tag_name));
     for (const releaseId of storedReleaseIds) {
       if (upstream.has(releaseId)) continue;
       health.push(

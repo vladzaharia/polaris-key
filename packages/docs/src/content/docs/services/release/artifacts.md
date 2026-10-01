@@ -174,7 +174,8 @@ nothing — when:
   descriptor again is a no-op, and a descriptor may **enrich** the row the GitHub sync created
   for the same tag when it names every file of that release;
 - its `seq` is not above the deliverable's current maximum (new release) or not the stored one
-  (existing release);
+  (existing release). In a sync that also records other new releases, the maximum counts every
+  new release published before this one, since each takes the next `seq` in publication order;
 - GitHub holds bytes and the tagged release is not an **immutable release**, or a file's
   GitHub digest or size differs from the descriptor's;
 - an `r2` key is not stored with that file's hash and size, or the product neither just

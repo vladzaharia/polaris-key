@@ -153,8 +153,13 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
     RegExp: `*`-heavy globs compile to polynomially backtracking patterns, and both sides are
     repo-controlled.
   - The `release_exists` and `seq` rules need the GitHub path to put a described release's row
-    FIRST in the sync batch (so an explicit `seq` is taken before the store numbers new
-    releases) and its builds and files LAST; `ingestGithubDescriptors` returns `head`/`tail`.
+    in that release's own publication-order slot among the store's upserts (so `seq` stays
+    publication order) and its builds and files LAST; `ingestGithubDescriptors` returns the
+    rows by release id (`rows`, emitted by `releaseStoreStatements`) plus a `tail`. It plans
+    descriptors in publication order and checks an explicit `seq` on a new release against the
+    value the batch will have reached at that slot (stored maximum plus one per new release
+    published before it), refusing `seq_not_increasing` otherwise, so an explicit seq can never
+    collide with a computed one in the same batch.
 
 ## Steps
 
