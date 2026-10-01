@@ -33,7 +33,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 | Id                                        | Title                                                                                      | Depends on                               | Role           | Weeks    | Status      |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------- | -------- | ----------- |
-| [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋  | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner                 | —                                        | godot-engineer | 1–1.5    | in-progress |
+| [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋  | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner                 | —                                        | godot-engineer | 1–1.5    | done        |
 | [P1-02](wp/P1-02-godot-core.md)           | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence               | P1-01                                    | godot-engineer | 1.5–2    | todo        |
 | [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | todo        |
 | [P1-04](wp/P1-04-godot-config.md)         | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors          | P1-02, P0-12                             | godot-engineer | 1–1.25   | todo        |
