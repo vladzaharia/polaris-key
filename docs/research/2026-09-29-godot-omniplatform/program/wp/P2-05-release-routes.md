@@ -152,10 +152,11 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
   one-function seam, `core/ciTokens.ts` `lookupCiToken`, which knows no token until P2-02 fills
   it. Until then the CI routes answer 401 to every request (fail closed); the suites mock only
   that seam. P2-02 should implement `lookupCiToken` (or re-export its own) and keep the shape.
-- **`CHANNEL_ALIASES` has not landed** (P0-04 is in progress). `services/release/resolve.ts`
-  carries `LEGACY_CHANNEL_ALIASES` with the plan's values (`staging → beta`, `latest → stable`)
-  and `canonicalChannel`; swap in the shared constant when P0-04 merges. `classifyChannel` is
-  left to P0-04.
+- **Channel aliases come from `@polaris-key/protocol`.** While P0-04 was in progress,
+  `services/release/resolve.ts` carried a local `LEGACY_CHANNEL_ALIASES`. Since P0-04 merged,
+  `canonicalChannel` uses the shared `CHANNEL_ALIASES` and `CHANNEL_NAME_PATTERN`, with an
+  own-key lookup (`Object.hasOwn`), so a prototype key such as `constructor` is a plain channel
+  name. `classifyChannel` (P0-04's) and `canonicalChannel` now agree that `staging` is `beta`.
 - **No version scheme is declared anywhere yet.** Resolution reads `versionScheme` from the
   deliverable's `def_json` (`semver` | `semver+build` | `4part`), default `semver`; P2-04's
   manifest work can declare it.
@@ -179,6 +180,13 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
   lowered to the newest unyanked stored release below it, never removed (`yankedFloorFallback`);
   computed per resolution because the sync does not read yanks. (4) The threat model and R6-10's
   remediation cover the CI write routes, pin's floor bypass and external-location redirects.
+- **Second review round.** (1) After merging P0-04, P0-04's staging-floor test bumps the
+  release generation before its upstream change, as the sibling regression case does, since the
+  90 s resolution cache is keyed per generation. (2) `canonicalChannel` uses the shared alias
+  table (above). (3) Under `entitled`, a pinned version that does not parse as semver
+  (`1.2.3.4`, `2.0.0.1`) is refused with `version_blocked` whenever the window is bounded
+  (`access.ts` `enforceReleaseAccess`, so `/release/dl` is covered too): `compareSemver` calls
+  an unparseable version equal to both bounds, which let it pass any window.
 
 ## Steps
 

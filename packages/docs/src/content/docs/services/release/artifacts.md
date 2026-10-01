@@ -199,6 +199,12 @@ document's own build gate answers with:
 { "error": { "code": "version_blocked" }, "allowedRange": { "min": "2.0.0" } }
 ```
 
+The window is compared as semver. A pinned version that does not parse as semver (a
+four-part `1.2.3.4`, a `2.0.0.1` tag, `3.0.0beta`) cannot be placed in it, so whenever the
+window is bounded (a licence, tier or the product's compatibility range sets a minimum or
+maximum) such a version is refused with `version_blocked` rather than waved through. This
+applies to `/release/dl`, `/release/builds` and `/release/files` alike.
+
 A client that already handles the nested shape for license documents needs nothing new to
 handle an `entitled` refusal on a download.
 

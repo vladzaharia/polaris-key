@@ -36,6 +36,7 @@ import type { Env, Db } from "../../core/platform.js";
 import { bearer } from "../../core/platform.js";
 import type { ProductPublic } from "../../core/products.js";
 import { errorResponse, wireError } from "../../core/errors.js";
+import { parseSemver } from "../../core/entitlements.js";
 import {
   entitledAccessCheck,
   usableLicensedDevice,
@@ -129,15 +130,31 @@ export async function enforceReleaseAccess(
   if (mode === "public") return null;
 
   if (mode === "entitled") {
+    const selector = entitledSelectorFor(cfg, kind, params);
     const decision = await entitledAccessCheck(
       env,
       db,
       product,
       bearer(req),
-      entitledSelectorFor(cfg, kind, params),
+      selector,
       now,
     );
-    if (decision.ok) return null;
+    if (decision.ok) {
+      // Fail closed on a version the window cannot order. `versionInWindow` compares with
+      // `compareSemver`, which calls anything it cannot parse EQUAL to both bounds, so
+      // `1.2.3.4`, `2.0.0.1` or `3.0.0beta` would pass any window. A pinned version that is
+      // not semver is therefore refused whenever the window is bounded (a licence, tier or the
+      // product's compat range sets a min or max); an unbounded window has nothing to enforce.
+      const { allowedRange } = decision;
+      if (
+        selector.version &&
+        !parseSemver(selector.version) &&
+        (allowedRange.min || allowedRange.max)
+      ) {
+        return wireError(403, "version_blocked", { allowedRange });
+      }
+      return null;
+    }
     if (decision.code === "version_blocked") {
       return wireError(403, "version_blocked", {
         allowedRange: decision.allowedRange,

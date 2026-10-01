@@ -21,8 +21,9 @@
  *
  * Every request goes through the release gateway (`serveReleaseSurface`): the product's release
  * configuration must exist, the `artifacts` access mode is enforced (a pinned selector or a
- * file's release is version-checked under `entitled`), and the request counts against the
- * ARTIFACT rate-limit lane. Nothing here is put in the edge cache.
+ * file's release is version-checked under `entitled`, and a version the window cannot order,
+ * such as a four-part `1.2.3.4`, is refused whenever the window is bounded: `access.ts`), and
+ * the request counts against the ARTIFACT rate-limit lane. Nothing here is put in the edge cache.
  *
  * ── WHERE THE BYTES COME FROM ───────────────────────────────────────────────────────────────
  *

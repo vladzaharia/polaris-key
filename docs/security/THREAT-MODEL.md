@@ -465,7 +465,10 @@ originating outside the trust boundary.
 
 Under the `entitled` release access mode, a legacy `staging` grant now opens the beta feed and its
 artifacts, and a `beta` grant opens the `staging` alias of it: `staging` is the legacy spelling of
-`beta` (WIRE-CONTRACT-V3 §5.1, P0-04 §2.4).
+`beta` (WIRE-CONTRACT-V3 §5.1, P0-04 §2.4). Its version window is compared as semver, and
+`compareSemver` calls an unparseable version equal to both bounds, so a pinned version that is not
+semver (a four-part `1.2.3.4`, a tag like `2.0.0.1`) is refused with `version_blocked` whenever the
+window is bounded, on `/release/dl`, `/release/builds` and `/release/files` alike (P2-05).
 
 ## 6. What the licensing enforcement actually promises
 

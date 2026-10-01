@@ -22,7 +22,12 @@ import {
   recordObject,
   recordRef,
 } from "../src/core/blobs.js";
-import { stmtSetArtifactModel } from "../src/services/release/model.js";
+import {
+  stmtSetArtifactModel,
+  stmtUpsertBuild,
+} from "../src/services/release/model.js";
+import { loadProduct } from "../src/core/products.js";
+import { handleActivate } from "../src/services/license/activation.js";
 import { checkReleaseHealth } from "../src/services/release/health.js";
 import {
   ASSET_BYTES,
@@ -33,13 +38,14 @@ import {
   enableServices,
   envFor,
   github,
+  release,
   RELEASES,
   seedReleaseProduct,
   sha256Hex,
   SLUG,
   syncAndDescribe,
 } from "./releaseRoutesFixture.js";
-import { NOW, seedProduct } from "./seed.js";
+import { mkReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 
 const BLOB = bytesOf(4096, 9);
 const BLOB_HEX = sha256Hex(BLOB);
@@ -389,6 +395,96 @@ describe("build and file routes", () => {
       "public, max-age=31536000, immutable, no-transform",
     );
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(ASSET_BYTES[102]);
+  });
+});
+
+describe("the entitled access mode on the build and file routes", () => {
+  /** v1.0.0, v1.1.0 and a four-part `v1.2.3.4`, each with the `cli-arm64` build. */
+  async function entitledSetup(window: { maxVersion: string }) {
+    const db = makeTestDb();
+    await seedReleaseProduct(db, { artifacts_access: "entitled" });
+    const env = envFor({ blobOrigin: BYTES });
+    const fourPart = release("v1.2.3.4", [
+      {
+        id: 301,
+        name: "djdl-arm64",
+        size: ASSET_BYTES[301]!.length,
+        content_type: "application/octet-stream",
+        browser_download_url:
+          "https://github.com/acme/djdl/releases/download/v1.2.3.4/djdl-arm64",
+      },
+    ]);
+    const gh = github({ releases: [fourPart, ...RELEASES] });
+    await syncAndDescribe(env, db, gh.fetchImpl);
+    const b = stmtUpsertBuild(
+      {
+        product: SLUG,
+        releaseId: "v1.2.3.4",
+        buildId: "cli-arm64",
+        platform: "macos",
+        arch: "arm64",
+        format: "binary",
+      },
+      NOW,
+    );
+    await db.run(b.sql, ...b.params);
+    const a = stmtSetArtifactModel({
+      product: SLUG,
+      releaseId: "v1.2.3.4",
+      artifactId: "301",
+      buildId: "cli-arm64",
+      role: "payload",
+      sha256: sha256Hex(ASSET_BYTES[301]!),
+    });
+    await db.run(a.sql, ...a.params);
+
+    const { key } = await seedLicenseWithKey(db, SLUG, window);
+    const product = (await loadProduct(env, db, SLUG))!;
+    const act = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(act.status).toBe(200);
+    const token = ((await act.json()) as { token: string }).token;
+    return { env, db, gh, token };
+  }
+
+  it("a version the window cannot order (four-part, non-semver) is refused, never waved through", async () => {
+    // `compareSemver` calls an unparseable version equal to both bounds, so without the
+    // fail-closed rule `1.2.3.4` passes a licence capped at 1.0.0.
+    const s = await entitledSetup({ maxVersion: "1.0.0" });
+    const auth = { headers: { authorization: `Bearer ${s.token}` } };
+    for (const origin of [BYTES, CONSOLE]) {
+      for (const [p, code] of [
+        ["/release/builds/1.2.3.4/cli-arm64", "version_blocked"],
+        ["/release/files/v1.2.3.4/djdl-arm64", "version_blocked"],
+        // A `v`-prefixed selector is not a version selector: an unknown channel, refused.
+        ["/release/builds/v1.2.3.4/cli-arm64", "channel_not_allowed"],
+        // …and the semver control: outside the window, refused as before.
+        ["/release/builds/1.1.0/cli-arm64", "version_blocked"],
+        ["/release/files/v1.1.0/djdl-arm64", "version_blocked"],
+      ] as const) {
+        const res = await get(s, `${origin}/${SLUG}${p}`, auth);
+        expect(res.status, `${origin}${p}`).toBe(403);
+        expect(await res.json(), `${origin}${p}`).toMatchObject({
+          error: { code },
+        });
+      }
+      // Inside the window, served.
+      const ok = await get(
+        s,
+        `${origin}/${SLUG}/release/builds/1.0.0/cli-arm64`,
+        auth,
+      );
+      expect(ok.status, origin).toBe(200);
+      expect(new Uint8Array(await ok.arrayBuffer())).toEqual(ASSET_BYTES[101]);
+    }
   });
 });
 
