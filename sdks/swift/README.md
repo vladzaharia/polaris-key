@@ -149,14 +149,18 @@ via `ConfigClientOptions`.
 
 **The keychain.** The token goes to the data-protection keychain with
 `kSecAttrAccessibleAfterFirstUnlock`. A macOS process without the entitlement it needs (an
-unsigned CLI, a test bundle) gets `errSecMissingEntitlement` and keeps using the file-based login
-keychain, which ignores the accessibility attribute. Reads try the data-protection keychain
+unsigned CLI, a test bundle) has its writes refused with `errSecMissingEntitlement` and keeps
+using the file-based login keychain, which ignores the accessibility attribute. Its reads of the
+data-protection keychain answer "not found" rather than that error, so `status()` follows a "not
+found" with a delete of a sentinel item that never exists, which does answer
+`errSecMissingEntitlement`. Reads try the data-protection keychain
 first and migrate a legacy item into it when it is available; `clearToken()` deletes from both.
 iOS always uses the data-protection keychain.
 
 **Store status.** `await client.storeStatus()` returns a `StoreStatus` (`backend`, `degraded`), or
 `nil` for a host store that does not implement `status()` (the protocol's default). The default
-store reports `.keychain`, degraded by `.legacyKeychain` on an unentitled macOS process and by
+store reports `.keychain`, degraded by `.legacyKeychain` on an unentitled macOS process (and on an entitled one whose
+token has not yet been migrated out of the legacy keychain) and by
 `.keyringError` when the keychain refuses; `InMemoryStore` reports `.memory`.
 
 **Directories.** `CoreOptions` takes `dataDir`, `cacheDir` and `stateDir` (bases; `<product>` is

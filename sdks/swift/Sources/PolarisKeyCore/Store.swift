@@ -291,8 +291,9 @@ struct SystemKeychain: KeychainAPI {
 /// (`kSecUseDataProtectionKeychain`) with `kSecAttrAccessibleAfterFirstUnlock`. Without that
 /// flag macOS writes the legacy file-based keychain, which ignores the accessibility attribute
 /// (R4-11). A macOS process without the entitlement the data-protection keychain needs (an
-/// unsigned CLI, a test bundle) gets `errSecMissingEntitlement`; it then keeps using the legacy
-/// keychain, as before, and `status()` says so (`legacy-keychain`). Reads try data protection
+/// unsigned CLI, a test bundle) has its writes refused with `errSecMissingEntitlement` (its
+/// reads answer "not found"); it then keeps using the legacy keychain, as before, and `status()`
+/// says so (`legacy-keychain`). Reads try data protection
 /// first and fall back to the legacy item, migrating it when the data-protection keychain is
 /// available; clears delete from both. iOS always uses the data-protection keychain, so the
 /// legacy branch is `#if os(macOS)`.
@@ -378,8 +379,9 @@ public actor KeychainStore: Store {
             let (legacyStatus, legacy) = readItem(dataProtection: false)
             if legacyStatus == errSecItemNotFound { return nil }
             guard legacyStatus == errSecSuccess else { throw StoreError.keychain(legacyStatus) }
-            // The data-protection keychain is AVAILABLE (it answered "not found"): migrate the
-            // legacy item into it. A failed migration still returns the token.
+            // Migrate the legacy item into the data-protection keychain. An unentitled process
+            // also answers "not found" to the read above, so its migration write fails with
+            // −34018; a failed migration still returns the token and keeps the legacy item.
             if status == errSecItemNotFound, let legacy,
                 writeItem(legacy, dataProtection: true) == errSecSuccess {
                 _ = keychain.delete(itemQuery(dataProtection: false))
@@ -426,30 +428,69 @@ public actor KeychainStore: Store {
         #endif
     }
 
-    /// An attribute-only probe of the data-protection keychain: it never reads the secret.
+    /// The account of an item that never exists: the target of the side-effect-free entitlement
+    /// probe in `status()`.
+    static let entitlementProbeAccount = "pkey-status-probe"
+
+    /// An attribute-only probe: it never reads the secret.
+    ///
+    /// An unentitled macOS process cannot tell from a READ that the data-protection keychain is
+    /// closed to it — measured on macOS 27: `SecItemCopyMatching` answers errSecItemNotFound
+    /// (−25300) while add, update and delete answer errSecMissingEntitlement (−34018). So a
+    /// "not found" is followed by a DELETE of a sentinel item that never exists: −34018 means the
+    /// token goes to the legacy keychain (`legacy-keychain`); "not found" means the process is
+    /// entitled. An entitled process whose token still sits in the legacy keychain (not yet
+    /// migrated by a read) also reports `legacy-keychain`.
     public func status() async -> StoreStatus? {
-        var query = itemQuery(dataProtection: true)
-        query[kSecReturnAttributes as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-        let (status, _) = keychain.copyMatching(query)
-        if status == errSecSuccess || status == errSecItemNotFound {
-            return StoreStatus(backend: .keychain)
-        }
+        let status = probeAttributes(dataProtection: true)
+        if status == errSecSuccess { return StoreStatus(backend: .keychain) }
         #if os(macOS)
-        if status == errSecMissingEntitlement {
+        if status == errSecMissingEntitlement { return Self.legacyKeychainStatus }
+        if status == errSecItemNotFound {
+            var sentinel = itemQuery(dataProtection: true)
+            sentinel[kSecAttrAccount as String] = Self.entitlementProbeAccount
+            let probe = keychain.delete(sentinel)
+            if probe == errSecMissingEntitlement { return Self.legacyKeychainStatus }
+            if probe == errSecSuccess || probe == errSecItemNotFound {
+                if probeAttributes(dataProtection: false) == errSecSuccess {
+                    return StoreStatus(
+                        backend: .keychain,
+                        degraded: .init(
+                            reason: .legacyKeychain,
+                            detail:
+                                "the token is still in the file-based login keychain; "
+                                + "the next read migrates it to the data-protection keychain"))
+                }
+                return StoreStatus(backend: .keychain)
+            }
             return StoreStatus(
                 backend: .keychain,
-                degraded: .init(
-                    reason: .legacyKeychain,
-                    detail:
-                        "no data-protection keychain entitlement (errSecMissingEntitlement); "
-                        + "the file-based login keychain is used"))
+                degraded: .init(reason: .keyringError, detail: Self.describe(probe)))
         }
+        #else
+        if status == errSecItemNotFound { return StoreStatus(backend: .keychain) }
         #endif
         return StoreStatus(
             backend: .keychain,
             degraded: .init(reason: .keyringError, detail: Self.describe(status)))
     }
+
+    private func probeAttributes(dataProtection: Bool) -> OSStatus {
+        var query = itemQuery(dataProtection: dataProtection)
+        query[kSecReturnAttributes as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        return keychain.copyMatching(query).0
+    }
+
+    #if os(macOS)
+    private static let legacyKeychainStatus = StoreStatus(
+        backend: .keychain,
+        degraded: .init(
+            reason: .legacyKeychain,
+            detail:
+                "no data-protection keychain entitlement (errSecMissingEntitlement); "
+                + "the file-based login keychain is used"))
+    #endif
 
     private static func describe(_ status: OSStatus) -> String {
         if let message = SecCopyErrorMessageString(status, nil) as String? {

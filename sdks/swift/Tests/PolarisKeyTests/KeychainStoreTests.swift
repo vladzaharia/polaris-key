@@ -2,8 +2,11 @@
 // KeychainStore against an injected fake keychain (P1b-09 plan §5.6, security finding R4-11):
 // the data-protection keychain first, the legacy file-based keychain on
 // errSecMissingEntitlement (−34018) with a `legacy-keychain` status, migration on read, and
-// deletion from both. A real unsigned test bundle cannot reach the data-protection keychain at
-// all, so every branch here runs through the seam; H4 (a signed app) is a hand-off.
+// deletion from both. The fake reproduces what an unentitled macOS process measurably gets
+// (macOS 27): reads of the data-protection keychain answer errSecItemNotFound, writes and
+// deletes answer −34018. A real unsigned test bundle cannot reach the data-protection keychain
+// at all; the last tests check its status against the real keychain. H4 (a signed app) is a
+// hand-off.
 
 import Foundation
 import Security
@@ -17,14 +20,18 @@ private final class FakeKeychain: KeychainAPI, @unchecked Sendable {
     private let lock = NSLock()
     var dp: Data?
     var legacy: Data?
-    /// The data-protection keychain answers −34018 to everything (no entitlement).
+    /// No entitlement, as measured: data-protection READS answer errSecItemNotFound, while
+    /// add, update and delete answer −34018.
     var missingEntitlement = false
+    /// Older behaviour some hosts may show: a data-protection read also answers −34018.
+    var missingEntitlementOnRead = false
     /// Force a status on the data-protection side's copy / write.
     var dpCopyStatus: OSStatus?
     var dpWriteStatus: OSStatus?
     /// Every query, for asserting attributes.
     private(set) var queries: [[String: Any]] = []
     private(set) var writes: [(dataProtection: Bool, attributes: [String: Any])] = []
+    private(set) var deletes: [[String: Any]] = []
 
     private func isDP(_ q: [String: Any]) -> Bool {
         (q[kSecUseDataProtectionKeychain as String] as? Bool) == true
@@ -35,7 +42,8 @@ private final class FakeKeychain: KeychainAPI, @unchecked Sendable {
         defer { lock.unlock() }
         queries.append(query)
         if isDP(query) {
-            if missingEntitlement { return (errSecMissingEntitlement, nil) }
+            if missingEntitlementOnRead { return (errSecMissingEntitlement, nil) }
+            if missingEntitlement { return (errSecItemNotFound, nil) }
             if let forced = dpCopyStatus { return (forced, nil) }
             guard let dp else { return (errSecItemNotFound, nil) }
             return (errSecSuccess, (query[kSecReturnData as String] as? Bool) == true ? dp : nil)
@@ -51,7 +59,7 @@ private final class FakeKeychain: KeychainAPI, @unchecked Sendable {
         writes.append((dataProtection, attributes))
         let data = attributes[kSecValueData as String] as? Data
         if dataProtection {
-            if missingEntitlement { return errSecMissingEntitlement }
+            if missingEntitlement || missingEntitlementOnRead { return errSecMissingEntitlement }
             if let forced = dpWriteStatus { return forced }
             dp = data
         } else {
@@ -67,7 +75,7 @@ private final class FakeKeychain: KeychainAPI, @unchecked Sendable {
         writes.append((dataProtection, attributes))
         let data = attributes[kSecValueData as String] as? Data
         if dataProtection {
-            if missingEntitlement { return errSecMissingEntitlement }
+            if missingEntitlement || missingEntitlementOnRead { return errSecMissingEntitlement }
             if let forced = dpWriteStatus { return forced }
             guard dp != nil else { return errSecItemNotFound }
             dp = data
@@ -81,8 +89,9 @@ private final class FakeKeychain: KeychainAPI, @unchecked Sendable {
     func delete(_ query: [String: Any]) -> OSStatus {
         lock.lock()
         defer { lock.unlock() }
+        deletes.append(query)
         if isDP(query) {
-            if missingEntitlement { return errSecMissingEntitlement }
+            if missingEntitlement || missingEntitlementOnRead { return errSecMissingEntitlement }
             guard dp != nil else { return errSecItemNotFound }
             dp = nil
         } else {
@@ -145,6 +154,62 @@ final class KeychainStoreTests: XCTestCase {
         XCTAssertFalse((status?.degraded?.detail ?? "").contains("pkeyt_legacy"))
     }
 
+    func testAnUnentitledProcessWithNoTokenYetStillReportsLegacyKeychain() async {
+        // The finding behind this test: the read probe answers "not found" for an unentitled
+        // process, so `status()` must not stop there.
+        let fake = FakeKeychain()
+        fake.missingEntitlement = true
+        let status = await store(fake).status()
+        XCTAssertEqual(status?.degraded?.reason, .legacyKeychain)
+        let probe = try? XCTUnwrap(fake.deletes.last)
+        XCTAssertEqual(
+            probe?[kSecAttrAccount as String] as? String, KeychainStore.entitlementProbeAccount,
+            "the entitlement probe deletes a sentinel item, never the token")
+        XCTAssertEqual(probe?[kSecUseDataProtectionKeychain as String] as? Bool, true)
+    }
+
+    func testAnUnentitledReadOfALegacyTokenKeepsItWhenMigrationIsRefused() async throws {
+        let fake = FakeKeychain()
+        fake.missingEntitlement = true
+        fake.legacy = Data("pkeyt_stay".utf8)
+        let s = store(fake)
+        let token = try await s.getToken()
+        XCTAssertEqual(token, "pkeyt_stay")
+        XCTAssertEqual(string(fake.legacy), "pkeyt_stay")
+        XCTAssertNil(fake.dp)
+        let status = await s.status()
+        XCTAssertEqual(status?.degraded?.reason, .legacyKeychain)
+    }
+
+    func testAMissingEntitlementAnsweredOnReadIsAlsoLegacyKeychain() async throws {
+        let fake = FakeKeychain()
+        fake.missingEntitlementOnRead = true
+        let s = store(fake)
+        try await s.setToken("pkeyt_legacy")
+        XCTAssertEqual(string(fake.legacy), "pkeyt_legacy")
+        let token = try await s.getToken()
+        XCTAssertEqual(token, "pkeyt_legacy")
+        let status = await s.status()
+        XCTAssertEqual(status?.degraded?.reason, .legacyKeychain)
+    }
+
+    func testAnEntitledProcessWithAnUnmigratedLegacyTokenReportsLegacyKeychainUntilARead() async throws {
+        let fake = FakeKeychain()
+        fake.legacy = Data("pkeyt_old".utf8)
+        let s = store(fake)
+        let before = await s.status()
+        XCTAssertEqual(before?.degraded?.reason, .legacyKeychain)
+        XCTAssertFalse((before?.degraded?.detail ?? "").contains("pkeyt_old"))
+        _ = try await s.getToken()
+        let after = await s.status()
+        XCTAssertEqual(after, StoreStatus(backend: .keychain))
+    }
+
+    func testAnEntitledProcessWithNoTokenIsNotDegraded() async {
+        let status = await store(FakeKeychain()).status()
+        XCTAssertEqual(status, StoreStatus(backend: .keychain))
+    }
+
     func testALegacyItemIsMigratedOnReadWhenTheDataProtectionKeychainIsAvailable() async throws {
         let fake = FakeKeychain()
         fake.legacy = Data("pkeyt_migrate".utf8)
@@ -201,19 +266,56 @@ final class KeychainStoreTests: XCTestCase {
     }
 
     func testStatusIsAnAttributeOnlyProbe() async {
-        let fake = FakeKeychain()
-        _ = await store(fake).status()
-        let probe = try? XCTUnwrap(fake.queries.last)
-        XCTAssertEqual(probe?[kSecReturnAttributes as String] as? Bool, true)
-        XCTAssertNil(probe?[kSecReturnData as String], "status() never reads the secret")
+        for entitled in [true, false] {
+            let fake = FakeKeychain()
+            fake.missingEntitlement = !entitled
+            fake.legacy = Data("pkeyt_secret".utf8)
+            _ = await store(fake).status()
+            XCTAssertFalse(fake.queries.isEmpty)
+            for probe in fake.queries {
+                XCTAssertEqual(probe[kSecReturnAttributes as String] as? Bool, true)
+                XCTAssertNil(probe[kSecReturnData as String], "status() never reads the secret")
+            }
+            XCTAssertTrue(fake.writes.isEmpty, "status() writes nothing")
+            for deleted in fake.deletes {
+                XCTAssertEqual(
+                    deleted[kSecAttrAccount as String] as? String,
+                    KeychainStore.entitlementProbeAccount)
+            }
+            XCTAssertEqual(string(fake.legacy), "pkeyt_secret")
+        }
     }
 
-    func testTheRealKeychainStoreReportsTheKeychainBackend() async {
-        // Whatever this host's entitlement situation, the backend is the keychain; an unsigned
-        // macOS test bundle is expected to report `legacy-keychain`.
-        let status = await KeychainStore(productSlug: "djdl", configDir: root).status()
+    #if os(macOS)
+    func testTheRealKeychainStoreReportsLegacyKeychainWhenThisProcessIsUnentitled() async throws {
+        // Ask the real keychain the same side-effect-free question `status()` asks, with a
+        // throwaway service so no real product's item is ever touched.
+        let service = "pkey:pkey-test-\(UUID().uuidString)"
+        let sentinel: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: KeychainStore.entitlementProbeAccount,
+            kSecUseDataProtectionKeychain as String: true,
+        ]
+        let entitled = SecItemDelete(sentinel as CFDictionary) != errSecMissingEntitlement
+        let slug = String(service.dropFirst("pkey:".count))
+        let status = await KeychainStore(productSlug: slug, configDir: root).status()
         XCTAssertEqual(status?.backend, .keychain)
+        if entitled {
+            XCTAssertNil(status?.degraded, "an entitled process with no token is not degraded")
+        } else {
+            XCTAssertEqual(
+                status?.degraded?.reason, .legacyKeychain,
+                "an unsigned test bundle writes the legacy keychain and must say so")
+        }
     }
+    #else
+    func testTheRealKeychainStoreReportsTheKeychainBackend() async {
+        let status = await KeychainStore(productSlug: "pkey-test-\(UUID().uuidString)", configDir: root)
+            .status()
+        XCTAssertEqual(status, StoreStatus(backend: .keychain))
+    }
+    #endif
 
     func testInMemoryStoreReportsMemoryAndAHostStoreReportsNil() async {
         let memory = await InMemoryStore(productSlug: "djdl").status()
