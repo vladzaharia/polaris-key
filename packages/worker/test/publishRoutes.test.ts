@@ -186,8 +186,8 @@ async function seedPolicy(): Promise<void> {
   await db.run(s.sql, ...s.params);
 }
 
-beforeEach(async () => {
-  vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+/** A new database, KV and bucket with the product, its deliverable and its publisher policy. */
+async function freshWorld(): Promise<void> {
   db = makeTestDb();
   env = envFor({ kv: new KvMock() });
   env.KEY_HASH_PEPPER = "pepper";
@@ -198,6 +198,11 @@ beforeEach(async () => {
   await seedReleaseProduct(db, {}, "other");
   await db.batch(manifestDeliverableStatements(SLUG, appDeclaration(), NOW));
   await seedPolicy();
+}
+
+beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+  await freshWorld();
   setPublishJwksFetcherForTests(async () => ({ keys: [jwk] }));
 });
 
@@ -785,42 +790,90 @@ describe("POST /release/publish/submit", () => {
   });
 
   it("answers identically whether or not another product already stored the bytes", async () => {
-    // Product `other` publishes the same two objects first (its own upload, its own refs).
-    await db.run(
-      `INSERT INTO ci_publishers (product, provider, repository_id, repository_owner_id, repository,
-         workflow, environment, scopes_json, source, created_at, modified_at)
-       VALUES ('other', 'github', 1, 1, 'x/y', '.github/workflows/r.yml', 'release', '[]', 'admin', 0, 0)`,
-    );
-    const first = await staged();
-    upload(first.prefix, WEB);
-    upload(first.prefix, LINUX);
-    const a = await post(
-      "submit",
-      { ticket: first.ticket, descriptor: descriptor("1.3.0") },
-      first.token,
-    );
-    const second = await staged();
-    upload(second.prefix, WEB);
-    upload(second.prefix, LINUX);
-    // Same bytes again (already stored now), new version: CI must see the same shape.
-    const b = await post(
-      "submit",
-      { ticket: second.ticket, descriptor: descriptor("1.4.0") },
-      second.token,
-    );
+    const targets = [`blobs/sha256/${WEB_SHA}`, `blobs/sha256/${LINUX_SHA}`];
+    const etags = async () =>
+      Promise.all(targets.map(async (k) => (await r2.head(k))?.etag ?? null));
+    const refs = async (product: string) =>
+      (await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM blob_refs WHERE product = ?",
+        product,
+      ))!.n;
+
+    // World A: a fresh bucket. This product's submit copies both objects into place.
+    const a = await (async () => {
+      const { token, ticket, prefix } = await staged();
+      upload(prefix, WEB);
+      upload(prefix, LINUX);
+      expect(await etags()).toEqual([null, null]);
+      return post("submit", { ticket, descriptor: descriptor() }, token);
+    })();
     expect(a.status).toBe(200);
-    expect(b.status).toBe(200);
-    const [ja, jb] = [
-      (await a.json()) as Record<string, unknown>,
-      (await b.json()) as Record<string, unknown>,
-    ];
-    expect(Object.keys(ja).sort()).toEqual(Object.keys(jb).sort());
-    expect(JSON.stringify(jb)).not.toMatch(/alreadyStored|already/i);
-    expect({ ...ja, releaseId: 0, descriptorSha256: 0 }).toEqual({
-      ...jb,
-      releaseId: 0,
-      descriptorSha256: 0,
+    expect((await etags()).every((e) => e !== null)).toBe(true);
+
+    // World B: product `other` really publishes the same two objects first — its own static
+    // CI token, its own deliverable, ticket, upload and submit, through the same routes.
+    await freshWorld();
+    await db.batch(
+      manifestDeliverableStatements("other", appDeclaration(), NOW),
+    );
+    const otherCi = await issueStaticCiToken(env, db, {
+      product: "other",
+      scopes: ["release:publish"],
+      expiresAt: NOW + 3600,
+      label: null,
+      createdBy: "u1",
+      now: NOW,
     });
+    const otherTicket = (await (
+      await post("uploads", { objects: OBJECTS }, otherCi.token, "other")
+    ).json()) as Record<string, any>;
+    upload(otherTicket.prefix, WEB);
+    upload(otherTicket.prefix, LINUX);
+    const byOther = await post(
+      "submit",
+      {
+        ticket: otherTicket.ticket,
+        descriptor: { ...descriptor(), product: "other" },
+      },
+      otherCi.token,
+      "other",
+    );
+    expect(byOther.status).toBe(200);
+    expect(await refs("other")).toBeGreaterThan(0);
+    expect(await refs(SLUG)).toBe(0);
+    const stored = await etags();
+    expect(stored.every((e) => e !== null)).toBe(true);
+
+    // Now this product, with no refs of its own, uploads and submits the same bytes. Nothing
+    // marks them present (they are not ITS refs), so it must upload and promote them...
+    const { token, ticket, prefix, present } = await (async () => {
+      const t = await ciToken();
+      const { body } = await ticketFor(t);
+      return {
+        token: t,
+        ticket: body.ticket as string,
+        prefix: body.prefix as string,
+        present: (body.objects as { present: boolean }[]).map((o) => o.present),
+      };
+    })();
+    expect(present).toEqual([false, false]);
+    upload(prefix, WEB);
+    upload(prefix, LINUX);
+    const attemptsBefore = r2.putAttempts.length;
+    const b = await post("submit", { ticket, descriptor: descriptor() }, token);
+    expect(b.status).toBe(200);
+    // ...and `promote` took the alreadyStored path: it tried the conditional put on each
+    // target, found the other product's object, and left it untouched (same etags, no copy).
+    expect(
+      r2.putAttempts.slice(attemptsBefore).filter((k) => targets.includes(k)),
+    ).toHaveLength(2);
+    expect(await etags()).toEqual(stored);
+    expect(await refs(SLUG)).toBeGreaterThan(0);
+
+    // The two answers are the same bytes: CI cannot tell the worlds apart from the body.
+    const [ja, jb] = [await a.json(), await b.json()];
+    expect(jb).toEqual(ja);
+    expect(JSON.stringify(jb)).not.toMatch(/alreadyStored|already/i);
   });
 
   it("a resubmit of the same descriptor is unchanged, not an error", async () => {
