@@ -72,7 +72,8 @@ tags:
   - name: distribution
     description: >
       Distribution — every byte delivered (install script, downloads, builds, files, blobs; on
-      the console host and the bytes host) and outlet rollouts (P2b-04).
+      the console host and the bytes host), outlet rollouts (P2b-04) and the CI report of
+      availability, submissions and signing keys (P2b-03).
   - name: update
     description: Update feed — Sparkle appcasts (per-arch), version checks, eligibility.
   - name: identity
@@ -2697,6 +2698,197 @@ paths:
         "409": { $ref: "#/components/responses/CiRefusal" }
         "422": { $ref: "#/components/responses/CiRefusal" }
 
+  /{product}/distribution/report:
+    post:
+      operationId: ciDistributionReport
+      tags: [distribution]
+      summary: Report availability, a submission state or a signing key (CI)
+      description: >
+        P2b-03. Until the store connectors exist (P5-02 to P5-04), CI reports what a store says.
+        `type: availability` records whether release R (build B, or the whole release when
+        `buildId` is omitted) is available on outlet O: `pending`, `processing`, `in-review`,
+        `approved`, `live`, `rejected` or `removed`. `type: submission` records where R stands
+        in O's review lifecycle: `prepared`, `submitted`, `in-review`, `approved`, `rejected`,
+        `pending-developer-release`, `released` or `cancelled`. Name the release by `releaseId`,
+        or by `version` (with `deliverable`, default `app`). The outlet must be declared and not
+        removed; the release and build must exist. A report may move a state backwards (a
+        rejection after review): the row keeps the current state and every change is audited as
+        `ci:<subject>`. Store-assigned ids go in `platformRef` (availability only); omit it to
+        keep the stored one, `null` to clear it. Self-hosted outlets need no report: their
+        availability is derived from Release's truth. `type: key` reports the SHA-256 fingerprint
+        (64 lower-case hex) CI signed with for a purpose (`android-app-signing`,
+        `android-upload`, `android-sideload`, `fdroid-repo`, `sparkle-ed25519`, `release`,
+        `msix-publisher`): it never changes the operator-owned key inventory; one that matches
+        no entry is stored as an observation and flagged (`match: false`). A refused report
+        writes nothing. Requires a `pkeyci_` token with `distribution:report` (in the default
+        CI grant). No CORS. Errors are LEGACY FLAT with a machine-readable `reason`
+        (`unknown_outlet`, `unknown_release`, `unknown_build` 404; `invalid_state`,
+        `unknown_purpose`, `invalid_fingerprint`, `invalid_body` 422; `too_many_observations`
+        409, past 64 unreviewed key observations; `bad_body` 400).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [availability, submission, key] }
+                releaseId: { type: string, description: "Not with `version`." }
+                version: { type: string, description: "Not with `releaseId`." }
+                deliverable:
+                  {
+                    type: string,
+                    default: app,
+                    description: "With `version` only.",
+                  }
+                outlet:
+                  {
+                    type: string,
+                    description: "Required for availability and submission; optional for key.",
+                  }
+                buildId:
+                  {
+                    type: string,
+                    description: "Availability only; omitted = the whole release.",
+                  }
+                state:
+                  { type: string, description: "From the type's vocabulary." }
+                since:
+                  {
+                    type: integer,
+                    description: "Epoch seconds the state was entered; default now (or unchanged while the state is).",
+                  }
+                platformRef:
+                  {
+                    type: [object, "null"],
+                    description: "Availability only: store-assigned ids.",
+                  }
+                detail: { type: [object, "null"] }
+                purpose:
+                  type: string
+                  enum:
+                    [
+                      android-app-signing,
+                      android-upload,
+                      android-sideload,
+                      fdroid-repo,
+                      sparkle-ed25519,
+                      release,
+                      msix-publisher,
+                    ]
+                sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+            examples:
+              availability:
+                value:
+                  {
+                    type: availability,
+                    releaseId: v1.1.0,
+                    outlet: app-store,
+                    buildId: ios,
+                    state: in-review,
+                    platformRef: { ascBuildId: abc-123 },
+                  }
+              submission:
+                value:
+                  {
+                    type: submission,
+                    version: 1.1.0,
+                    outlet: app-store,
+                    state: submitted,
+                  }
+              key:
+                value:
+                  {
+                    type: key,
+                    purpose: android-app-signing,
+                    sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+                    outlet: play,
+                  }
+      responses:
+        "200":
+          description: The record after the report (`availability`, `submission`), or the key verdict.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, type]
+                properties:
+                  ok: { type: boolean, const: true }
+                  type: { type: string, enum: [availability, submission, key] }
+                  availability:
+                    type: object
+                    properties:
+                      deliverableId: { type: string }
+                      releaseId: { type: string }
+                      buildId: { type: string }
+                      outletId: { type: string }
+                      transport: { type: string }
+                      state: { type: string }
+                      since: { type: integer }
+                      platformRef: { type: [object, "null"] }
+                      detail: { type: [object, "null"] }
+                      source: { type: string }
+                      derived: { type: boolean, const: false }
+                      updatedAt: { type: integer }
+                  submission:
+                    type: object
+                    properties:
+                      deliverableId: { type: string }
+                      releaseId: { type: string }
+                      outletId: { type: string }
+                      state: { type: string }
+                      submittedAt: { type: [integer, "null"] }
+                      reviewedAt: { type: [integer, "null"] }
+                      detail: { type: [object, "null"] }
+                      source: { type: string }
+                      updatedAt: { type: integer }
+                  key:
+                    type: object
+                    properties:
+                      purpose: { type: string }
+                      sha256: { type: string }
+                      match: { type: boolean }
+                      flagged: { type: boolean }
+              examples:
+                availability:
+                  summary: test/distributionAvailability.test.ts
+                  value:
+                    ok: true
+                    type: availability
+                    availability:
+                      deliverableId: app
+                      releaseId: v1.1.0
+                      buildId: cli-arm64
+                      outletId: app-store
+                      transport: pkey-cdn
+                      state: in-review
+                      since: 1700000000
+                      platformRef: { ascBuildId: abc-123 }
+                      detail: null
+                      source: ci
+                      derived: false
+                      updatedAt: 1700000000
+                keyMismatch:
+                  summary: test/distributionAvailability.test.ts
+                  value:
+                    ok: true
+                    type: key
+                    key:
+                      purpose: android-app-signing
+                      sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+                      match: false
+                      flagged: true
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+        "422": { $ref: "#/components/responses/CiRefusal" }
+
   /{product}/release/channels/{channel}/promote:
     post:
       operationId: ciPromoteChannel
@@ -4865,8 +5057,10 @@ components:
       description: >
         LEGACY FLAT with a machine-readable `reason` (and `fields` where one field is at fault):
         `unknown_channel`, `unknown_deliverable`, `unknown_release`, `unknown_outlet`,
-        `no_rollout` (404); `bad_body` (400); `bad_release`, `bad_reason`, `invalid_body` (422);
-        `release_yanked`, `invalid_transition`, `rollout_mirrored`, `stale_release` (409).
+        `unknown_build`, `no_rollout` (404); `bad_body` (400); `bad_release`, `bad_reason`,
+        `invalid_body`, `invalid_state`, `unknown_purpose`, `invalid_fingerprint` (422);
+        `release_yanked`, `invalid_transition`, `rollout_mirrored`, `stale_release`,
+        `too_many_observations` (409).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/FlatError" }

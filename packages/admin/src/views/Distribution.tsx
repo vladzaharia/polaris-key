@@ -48,7 +48,7 @@ const HOOKS: readonly HookRow[] = [
     provider: "distribution",
     consumer: "Update",
     today:
-      "Default transport pkey-cdn, delivery access, outlet rollouts and delivery URLs; no availability records yet.",
+      "Default transport pkey-cdn, delivery access, outlet rollouts, delivery URLs, availability and submissions per outlet (CI-reported, or derived for self-hosted outlets) and the signing-key inventory.",
   },
   {
     name: "outletCapabilities",

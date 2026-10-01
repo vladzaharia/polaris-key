@@ -34,32 +34,31 @@
       "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent); the Keychain binding is P5-05's and the Keystore binding P5-06's; no work package owns a desktop keyring."
     },
     "license.gate": {
-      "status": "planned",
-      "wp": "P1-03"
+      "status": "implemented"
     },
     "license.activate": {
-      "status": "planned",
-      "wp": "P1-03"
+      "status": "implemented"
     },
     "license.enroll": {
-      "status": "planned",
-      "wp": "P1-03"
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
     },
     "license.deactivate": {
-      "status": "planned",
-      "wp": "P1-03"
+      "status": "implemented"
     },
     "license.entitlements": {
-      "status": "planned",
-      "wp": "P1-03"
+      "status": "implemented"
     },
     "license.channels": {
-      "status": "planned",
-      "wp": "P1-03"
+      "status": "implemented"
     },
     "license.reregister": {
-      "status": "planned",
-      "wp": "P1-03"
+      "status": "implemented"
     },
     "config.resolve": {
       "status": "implemented",

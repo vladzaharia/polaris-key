@@ -42,6 +42,7 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | GET | `/{product}/distribution/dl/{version}/{asset}` | distribution | Download a release artifact |
 | GET | `/{product}/distribution/files/{releaseId}/{name}` | distribution | Download one exact file of one release |
 | GET | `/{product}/distribution/install.sh` | distribution | The curl-pipe install script |
+| POST | `/{product}/distribution/report` | distribution | Report availability, a submission state or a signing key (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/complete` | distribution | Complete an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/halt` | distribution | Halt an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/pause` | distribution | Pause an outlet rollout (CI) |

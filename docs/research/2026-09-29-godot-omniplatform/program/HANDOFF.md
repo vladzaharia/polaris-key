@@ -183,3 +183,21 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 - [x] Discovery advertises `endpoints.builds` and `endpoints.blobs` on `dl.plrs.im`.
 - [ ] For an `entitled` product: a pinned non-semver version (`/release/builds/1.2.3.4/<build>`) with
       a valid device token → 403 `version_blocked` (needs a real device token).
+
+## v0.6.0 (2026-10-01): deployed and checked
+
+- [x] Deploy run 36886345061 succeeded (P2-02, P2-06, P2b-02, P2b-04, P1-04; migrations `0035_a/b`,
+      `0036`, `0038`). `0038` backfilled `dist_access` `app` rows from `release_config`, so no
+      product flipped to `entitled`.
+- [x] Discovery: `services.distribution` is `configured: true` with `download`, `install`, `builds`,
+      `blobs`.
+- [x] `install.sh` is byte-identical on `/djdl/install.sh`, `/release/install.sh` and
+      `/distribution/install.sh`.
+- [x] `/djdl/release/dl/latest/djdl-arm64` and `/djdl/distribution/dl/latest/djdl-arm64` both 200
+      with the same ETag; `dl.plrs.im/djdl/release/files/…` still serves (permanent alias).
+- [ ] djdl's appcast still answers 404, as it has since before this program (v0.3.0 log): Sparkle
+      signatures are required and djdl has no `sparkle_ed25519_pub`. Configure the key (or the
+      operator policy) to serve it.
+- [ ] Grant `distribution:rollout` to a product's CI publisher before its CI calls the rollout routes
+      (not in the default grant). Trusted publishing stays off (404) until the R2 parent-token
+      secrets exist (see P2-02 above).

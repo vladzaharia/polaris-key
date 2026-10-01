@@ -10,6 +10,8 @@
  *     /distribution/blobs/sha256/:hash                       GET|HEAD, also on the bytes host
  *     /distribution/rollouts/:outlet/:channel                POST, `pkeyci_` + distribution:rollout
  *     /distribution/rollouts/:outlet/:channel/{pause,resume,halt,complete}   POST, same
+ *     /distribution/report                                   POST, `pkeyci_` + distribution:report
+ *                                                            (P2b-03, `availability.ts`)
  *
  * The permanent aliases (`/<p>/release/{install.sh,dl,builds,files,blobs}/…`, `/<p>/install.sh`)
  * reach this file already rewritten into the canonical segments by the core router, so there is
@@ -27,8 +29,10 @@ import {
   type RolloutRefusal,
   type RolloutVerb,
 } from "./rollouts.js";
+import { applyReport } from "./availability.js";
 
-/** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`). */
+/** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`); a report carries at most two small
+ *  JSON objects (`platformRef`, `detail`). */
 const MAX_CI_BODY_BYTES = 16 * 1024;
 
 export async function handleDistributionRoutes(
@@ -45,6 +49,11 @@ export async function handleDistributionRoutes(
           : null;
     if (!verb || req.method !== "POST") return null;
     return handleCiRollout(ctx, rest[1] as string, rest[2] as string, verb);
+  }
+
+  if (rest[0] === "report" && rest.length === 1) {
+    if (req.method !== "POST") return null;
+    return handleCiReport(ctx);
   }
 
   const target = byteTargetOf(rest);
@@ -106,4 +115,31 @@ async function handleCiRollout(
   );
   if (!result.ok) return rolloutRefusal(result);
   return json({ ok: true, rollout: result.rollout });
+}
+
+/**
+ * `POST /<p>/distribution/report` — `distribution:report` (in the default CI grant). Records
+ * availability or a submission state for (release, outlet), or the fingerprint CI signed with
+ * (`availability.ts` `applyReport`). A refused report writes nothing.
+ */
+async function handleCiReport(ctx: ServiceContext): Promise<Response> {
+  const { req, env, db, product, hooks, now } = ctx;
+  const principal = await requireCiScope(
+    req,
+    env,
+    db,
+    product.slug,
+    "distribution:report",
+    now,
+  );
+  if (principal instanceof Response) return principal;
+  const body = await readCiJson(req, MAX_CI_BODY_BYTES);
+  if (body instanceof Response) return body;
+  const result = await applyReport(
+    { db, product: product.slug, hooks, now },
+    body,
+    principal,
+  );
+  if (!result.ok) return rolloutRefusal(result);
+  return json(result);
 }

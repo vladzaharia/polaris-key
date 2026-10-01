@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 24 | 12 | 14 | 6 |
 | Python | `python` | 32 | 3 | 14 | 7 |
 | Swift | `macos`, `ios` | 33 | 3 | 14 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 19 | 0 | 34 | 3 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 26 | 0 | 27 | 3 |
 
 ## Core
 
@@ -44,13 +44,13 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `license.gate` | Gate evaluation, every status | `gate-matrix.json` | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
-| `license.activate` | Activate with a key (+ fingerprint) | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
-| `license.enroll` | Keyless enrolment | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-03) | web, desktop-bridge: runtime |
-| `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
-| `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
-| `license.channels` | entitledChannels() | unit | ✓ | ✓ | ✓ | ✓ | planned (P1-03) | — |
-| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P1-03) | web, desktop-bridge: runtime |
+| `license.gate` | Gate evaluation, every status | `gate-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `license.activate` | Activate with a key (+ fingerprint) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `license.enroll` | Keyless enrolment | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | web, desktop-bridge: runtime |
+| `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `license.channels` | entitledChannels() | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 
 ## Config
 

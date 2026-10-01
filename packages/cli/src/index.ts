@@ -27,6 +27,14 @@ import {
   type PublishSource,
 } from "./publish.js";
 import { CHANNEL_USAGE, movePointer, yankRelease } from "./channels.js";
+import {
+  DISTRIBUTION_CI_USAGE,
+  ROLLOUT_COMMANDS,
+  driveRollout,
+  reportDistribution,
+  type ReportType,
+  type RolloutCommand,
+} from "./distribution.js";
 import { writeManifestSchemas } from "./schemas.js";
 
 export {
@@ -62,6 +70,15 @@ export {
   type PublishResult,
 } from "./publish.js";
 export { movePointer, yankRelease, CHANNEL_USAGE } from "./channels.js";
+export {
+  DISTRIBUTION_CI_USAGE,
+  driveRollout,
+  normalizeFingerprint,
+  reportBody,
+  reportDistribution,
+  type ReportOptions,
+  type RolloutOptions,
+} from "./distribution.js";
 export { MAX_SINGLE_PUT_BYTES, objectUrl, putFile, signV4 } from "./s3.js";
 export { manifestSchemas, writeManifestSchemas } from "./schemas.js";
 
@@ -136,7 +153,7 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
       case "validate":
         return await cmdValidate(cwd, stdout);
       case "distribution":
-        return await cmdDistribution(parsed, cwd, stdout, stderr);
+        return await cmdDistribution(parsed, cwd, stdout, stderr, ci);
       case "doctor":
         return await cmdDoctor(parsed, cwd, stdout);
       case "bundle":
@@ -266,7 +283,7 @@ function located(
   return `${msg.file}${msg.path}${file ? ` (${path.relative(cwd, file)})` : ""}`;
 }
 
-const DISTRIBUTION_USAGE = "Usage: pkey distribution outlet-ids --outlet <id>";
+const DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>\n${DISTRIBUTION_CI_USAGE}`;
 
 /**
  * `pkey distribution outlet-ids --outlet <id>` (P2b-02): print the build outlet's `outletIds`
@@ -282,9 +299,12 @@ async function cmdDistribution(
   cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
   stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
 ): Promise<number> {
-  if (parsed.positional[0] !== "outlet-ids")
-    throw new Error(DISTRIBUTION_USAGE);
+  const sub = parsed.positional[0];
+  if (sub === "report" || ROLLOUT_COMMANDS.includes(sub as RolloutCommand))
+    return cmdDistributionCi(parsed, stdout, stderr, ci);
+  if (sub !== "outlet-ids") throw new Error(DISTRIBUTION_USAGE);
   const outlet = flagString(parsed, "outlet");
   if (!outlet) throw new Error(DISTRIBUTION_USAGE);
 
@@ -309,6 +329,64 @@ async function cmdDistribution(
     return 1;
   }
   stdout.write(`${JSON.stringify(ids)}\n`);
+  return 0;
+}
+
+/**
+ * `pkey distribution report availability|submission|key` and `pkey distribution
+ * rollout|pause|resume|halt|complete` (P2b-03, `distribution.ts`): CI reports and outlet rollout
+ * controls on the CI token plumbing. A key report the inventory does not hold exits 1.
+ */
+async function cmdDistributionCi(
+  parsed: ParsedArgs,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const [sub, type] = parsed.positional;
+  const product = flagString(parsed, "product");
+  if (!product) throw new Error(DISTRIBUTION_CI_USAGE);
+  const common = {
+    product,
+    baseUrl: flagString(parsed, "base-url"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep,
+  };
+  if (sub === "report") {
+    if (type !== "availability" && type !== "submission" && type !== "key")
+      throw new Error(DISTRIBUTION_CI_USAGE);
+    const result = await reportDistribution({
+      ...common,
+      type: type as ReportType,
+      outlet: flagString(parsed, "outlet"),
+      releaseId: flagString(parsed, "release"),
+      version: flagString(parsed, "version"),
+      deliverable: flagString(parsed, "deliverable"),
+      buildId: flagString(parsed, "build"),
+      state: flagString(parsed, "state"),
+      since: flagString(parsed, "since"),
+      platformRef: flagString(parsed, "platform-ref"),
+      detail: flagString(parsed, "detail"),
+      purpose: flagString(parsed, "purpose"),
+      sha256: flagString(parsed, "sha256"),
+    });
+    return result.ok ? 0 : 1;
+  }
+  const outlet = flagString(parsed, "outlet");
+  const channel = flagString(parsed, "channel");
+  if (!outlet || !channel) throw new Error(DISTRIBUTION_CI_USAGE);
+  await driveRollout({
+    ...common,
+    command: sub as RolloutCommand,
+    outlet,
+    channel,
+    releaseId: flagString(parsed, "release"),
+    deliverable: flagString(parsed, "deliverable"),
+    bp: flagString(parsed, "bp"),
+  });
   return 0;
 }
 
@@ -584,6 +662,14 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
   pkey release unpin --channel c --product slug [--deliverable id]
   pkey release yank releaseId --reason text --product slug
+  pkey distribution report availability|submission --product slug --outlet id
+              (--release id | --version v [--deliverable id]) --state s [--build id]
+              [--since epoch] [--platform-ref json] [--detail json]
+  pkey distribution report key --product slug --purpose p --sha256 hex [--outlet id]
+  pkey distribution rollout --product slug --outlet id --channel c --release id --bp n
+              [--deliverable id]
+  pkey distribution pause|resume|halt|complete --product slug --outlet id --channel c
+              [--release id] [--deliverable id]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -592,6 +678,15 @@ them, uploads what Polaris Key does not already hold, and submits the release de
 --meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. The CI commands
 exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret
 is stored in the repository. See /docs/build/ci/.
+
+pkey distribution report tells Polaris Key what a store says until its connector exists:
+availability (pending, processing, in-review, approved, live, rejected, removed) and the
+submission state (prepared, submitted, in-review, approved, rejected,
+pending-developer-release, released, cancelled) of a release on an outlet. report key
+sends the SHA-256 fingerprint the job signed with (colons allowed); one that is not in the
+product's key inventory is flagged for an operator and the command exits 1. rollout, pause,
+resume, halt and complete drive the outlet rollout; --bp is basis points (2500 = 25%), and
+they need a token an operator granted distribution:rollout.
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.

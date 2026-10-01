@@ -43,7 +43,8 @@ var _discovered_services = null
 
 
 ## Validate `opts` and build a Core. ok with detail = the PKeyCore, or a failure:
-## `insecure-base-url`, `invalid-options`. Nothing touches the disk or the network.
+## `insecure-base-url`, `invalid-options` (including a malformed `default_channel`; an alias is
+## kept as its canonical name, PKeyChannel.header_for). Nothing touches the disk or the network.
 static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKeyResult:
 	if opts == null:
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "No PKeyOptions given.")
@@ -58,6 +59,9 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	for k in opts.pinned_trust_keys:
 		if not (k is String and opts.pinned_trust_keys[k] is String):
 			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "pinned_trust_keys must map kid strings to base64url key strings.")
+	var channel = PKeyChannel.header_for(opts.default_channel, v)
+	if channel == null:
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "default_channel must be a channel name (stable, beta, pr-<n>, dev or a manual channel matching %s), got '%s'." % [PKeyConstants.CHANNEL_NAME_PATTERN, opts.default_channel])
 	for s in opts.expected_services:
 		if not PKeyServices.SLUGS.has(s):
 			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "expected_services names an unknown service '%s'." % s)
@@ -66,7 +70,7 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	core.product = opts.product
 	core.base_url = base.detail
 	core.version = v
-	core.channel = opts.default_channel if opts.default_channel != "" else PKeySemver.channel_for_version(v)
+	core.channel = channel
 	core.sdk_version = p_sdk_version
 	core.local_only = opts.local_only
 	core.trust_refresh = opts.trust_refresh
