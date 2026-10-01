@@ -431,6 +431,8 @@ describe("Google Play connector on workerd (P5-03)", () => {
       kind: "google-service-account",
       outletId: null,
       value: { client_email: email, private_key: pem },
+      // The operator's pin (P5-02f): the connector runs only for the package it names.
+      pin: "gg.acme.djdl",
       expiresAt: null,
       actor: "admin-1",
       now: NOW,

@@ -485,6 +485,11 @@ describe("the admin API", () => {
         field: "appleId",
         label: "App Store Connect app id (Apple ID)",
       },
+      // P5-03 adopted the pin for the Play service account (`playPin.test.ts`).
+      "google-service-account": {
+        field: "packageName",
+        label: "Google Play package name",
+      },
     });
     expect(body.credentials.find((c) => c.id === "asc")!.meta.appleId).toBe(
       APPLE_ID,

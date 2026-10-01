@@ -21,6 +21,10 @@
  * so nothing here assumes the change is live. A Google refusal (a release in review, an invalid
  * transition) is relayed as `store_refused` with the status only.
  *
+ * Every control first resolves the setup (`setup.ts`): while the `google-service-account`
+ * credential is not pinned to the package the manifest names (P5-02f's pin), each answers 409
+ * `credential_pin_missing` / `credential_pin_mismatch` before any token is minted or request sent.
+ *
  * `applyPlayControl` is the single halt path: the vitals auto-halt (`vitals.ts`, actor
  * `connector:play-vitals`) and the telemetry auto-halt P6-03 adds call it too.
  */
@@ -48,7 +52,7 @@ import {
 } from "./policy.js";
 import { releaseOf, resolveVersionCodes, syncPlay } from "./poll.js";
 import { finishRun, playRun, type PlayRun } from "./run.js";
-import { PLAY_TRACK, playSetup } from "./setup.js";
+import { isPinReason, PLAY_TRACK, resolvePlaySetup } from "./setup.js";
 
 export interface ControlContext {
   env: Env;
@@ -335,13 +339,19 @@ async function withRun(
   c: ControlContext,
   fn: (run: PlayRun) => Promise<ControlResult>,
 ): Promise<ControlResult> {
-  const setup = await playSetup(c.db, c.product);
-  if (!setup)
+  const { setup, inert } = await resolvePlaySetup(c.db, c.product);
+  if (!setup) {
+    // The operator's pin and the manifest disagree (or there is no pin): refuse with the reason,
+    // before any token is minted or any request is sent — a halt, a ramp or a completion aimed at
+    // an app the operator did not choose is exactly what the pin exists to stop.
+    if (isPinReason(inert.reason))
+      return refuse(409, `credential_${inert.reason}`, inert.message);
     return refuse(
       404,
       "not_configured",
-      "Google Play is not configured: declare a play or play-testing outlet with a packageName and tracks, and store a google-service-account credential",
+      "Google Play is not configured: declare a play or play-testing outlet with a packageName and tracks, and store a google-service-account credential pinned to that package",
     );
+  }
   const run = playRun({
     env: c.env,
     db: c.db,
@@ -502,8 +512,16 @@ const priorityControl: ConnectorControl = (c, body) => {
   );
 };
 
-/** The operator's settings: validated, merged over the stored ones, audited. No Play call. */
+/**
+ * The operator's settings: validated, merged over the stored ones, audited. No Play call. Refused
+ * like every other control while the credential's pin is missing or names another package: the
+ * settings (the vitals auto-halt above all) are for the app the operator pinned, so they wait
+ * until the pin and the manifest agree. With no outlet or credential yet they can be set ahead.
+ */
 const settingsControl: ConnectorControl = async (c, body) => {
+  const { inert } = await resolvePlaySetup(c.db, c.product);
+  if (inert && isPinReason(inert.reason))
+    return refuse(409, `credential_${inert.reason}`, inert.message);
   const current = await readPlaySettings(c.db, c.product);
   const patched = patchPlaySettings(current, body);
   if (!patched.ok)

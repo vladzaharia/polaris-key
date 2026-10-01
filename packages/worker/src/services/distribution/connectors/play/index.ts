@@ -14,7 +14,7 @@ import {
   PLAY_CONNECTOR,
   PLAY_LABEL,
   PLAY_OUTLET_KINDS,
-  playSetup,
+  resolvePlaySetup,
 } from "./setup.js";
 import { VITALS_READING_OBJECT, VITALS_TRIP_OBJECT } from "./vitals.js";
 
@@ -25,7 +25,7 @@ export const playConnector: DistributionConnector = {
   poll: pollPlay,
   controls: PLAY_CONTROLS,
   async status({ db, product }) {
-    const setup = await playSetup(db, product);
+    const { setup, inert } = await resolvePlaySetup(db, product);
     const settings = await readPlaySettings(db, product);
     const tracks = await listObjects(db, product, PLAY_CONNECTOR, {
       types: [TRACK_OBJECT],
@@ -38,6 +38,9 @@ export const playConnector: DistributionConnector = {
     });
     return {
       configured: setup !== null,
+      // Why it does not run (the pin reasons are the operator's to fix): the manifest's package,
+      // the chosen credential's id and the package it is pinned to — never a credential value.
+      inert,
       // Ids and outlet bindings only — never a credential value or its metadata.
       setup: setup
         ? {

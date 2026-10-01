@@ -3,8 +3,9 @@
  * Distribution on, v1.0.0 and v1.1.0 synced), android builds — v1.0.0 `android` (version code
  * 100), v1.1.0 `android-armv7` (110) and `android-arm64` (111) — a `play` outlet for
  * `gg.acme.djdl` mapping `stable → production` and `beta → beta`, a `google-service-account`
- * credential whose RSA key is generated here, and the fake Google (`playFake.ts`). No real key,
- * app or account anywhere.
+ * credential whose RSA key is generated here, pinned by the operator to that package (P5-02f's
+ * pin; `pin` overrides it, `pin: null` stores the credential unpinned), and the fake Google
+ * (`playFake.ts`). No real key, app or account anywhere.
  */
 
 import { generateKeyPairSync } from "node:crypto";
@@ -84,6 +85,8 @@ export const PLAY_OUTLET_IDENTITY = {
 export async function playWorld(
   opts: {
     credential?: boolean;
+    /** The operator's pin on the credential (default: the outlet's package; `null`: none). */
+    pin?: string | null;
     outlets?: boolean;
     /** Extra outlets, e.g. a `play-testing` one mapping an internal channel. */
     extraOutlets?: Array<{
@@ -136,6 +139,7 @@ export async function playWorld(
         private_key: keys.privatePem,
         token_uri: "https://oauth2.googleapis.com/token",
       },
+      ...(opts.pin === null ? {} : { pin: opts.pin ?? PLAY_PACKAGE }),
       expiresAt: null,
       actor: "admin-1",
       now: NOW,

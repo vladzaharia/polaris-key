@@ -61,7 +61,12 @@ import {
 } from "./map.js";
 import { readPlaySettings } from "./policy.js";
 import { errorLine, finishRun, playRun, type PlayRun } from "./run.js";
-import { PLAY_CONNECTOR, PLAY_LABEL, playSetup } from "./setup.js";
+import {
+  isPinReason,
+  PLAY_CONNECTOR,
+  PLAY_LABEL,
+  resolvePlaySetup,
+} from "./setup.js";
 import { runVitals } from "./vitals.js";
 
 /** The connector object type of one track. */
@@ -379,11 +384,15 @@ export async function syncPlay(
  */
 export async function pollPlay(ctx: ConnectorContext): Promise<PollOutcome> {
   const product = ctx.product.slug;
-  const setup = await playSetup(ctx.db, product);
+  const { setup, inert } = await resolvePlaySetup(ctx.db, product);
+  // An unpinned or mismatched credential is skipped like a missing one (no call, no open, no
+  // mirror write, no vitals read), but says so.
   if (!setup)
     return {
       connector: PLAY_CONNECTOR,
-      skipped: "not-configured",
+      skipped: isPinReason(inert.reason)
+        ? `credential-${inert.reason.replace("_", "-")}`
+        : "not-configured",
       calls: 0,
       applied: 0,
     };

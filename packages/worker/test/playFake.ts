@@ -45,6 +45,8 @@ export interface RecordedRequest {
   host: string;
   /** The path below the app (`edits/1/tracks`, `crashRateMetricSet:query`), or the full path. */
   path: string;
+  /** The package the request named (`null`: none), checked against the one app it may see. */
+  app: string | null;
   query: Record<string, string>;
   body: unknown;
   authorization: string | null;
@@ -184,6 +186,7 @@ export class PlayFake {
       method,
       host: url.hostname,
       path: decodeURIComponent(path),
+      app: pkg,
       query: Object.fromEntries(url.searchParams),
       body,
       authorization,

@@ -49,15 +49,18 @@ The connector runs for a product when all of these hold:
    naming another package is ignored; the connector serves one app per product.
 
 2. A **`google-service-account` outlet credential** is stored on the Secrets tab — the service
-   account's JSON key file. See
+   account's JSON key file — **pinned** to this product's app: the same package name as the
+   `packageName` above (see [Pinning the app](#pinning-the-app)). See
    [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
    one of the Play outlets (`outletId`) is preferred over an unbound one.
 
 3. **The first release is made by hand** in Play Console. Google requires the first bundle of a
    new app to be uploaded there before the API can manage it.
 
-Without the credential, or without a Play outlet, the connector does not exist for the product:
-the poller skips it and every control answers `not_configured`.
+Without the credential, without a Play outlet, or with a credential that is not pinned to the
+outlet's package, the connector does not run for the product: the poller skips it and every
+control is refused. `GET …/distribution/connectors/play` says why in `inert` (`no_outlet`,
+`no_credential`, `pin_missing` or `pin_mismatch`, with a sentence on what to do).
 
 ### Least privilege for the service account
 
@@ -74,6 +77,42 @@ little as works:
 - Keep CI's upload key separate from this account if you want uploads and rollout control apart.
 - To rotate, create a new key in Google Cloud, store it under the same credential id (cached
   tokens drop with the old value), then delete the old key in Google Cloud.
+
+## Pinning the app
+
+A service account can be invited to more than one app in your Play developer account, and its
+controls can change any of them. The app the connector works on is named by the `packageName` in
+`.pkey/distribution`, and every resync takes that from the repo. Without a pin, whoever can push
+that file could point your service account — and the rollout controls, a halt that rolls a
+completed release back among them, and the vitals auto-halt — at another app it can see.
+
+So the credential carries a **pin** that only a platform admin sets: the package name it may be
+used for in this product. The connector runs only while the manifest's `packageName` equals the
+pin.
+
+- **Set it with the key.** The Secrets tab asks for the package name with the key file. Over the
+  API, send it as `pin`:
+
+  ```http
+  PUT /manage/api/products/<slug>/outlet-credentials/play
+  {"kind": "google-service-account", "value": { …the JSON key file… }, "pin": "gg.acme.dice"}
+  ```
+
+- **Re-pin without the key.** The pin icon on the credential's row, or a `PUT` with the pin and no
+  value: `{"kind": "google-service-account", "pin": "gg.acme.dice"}`. The key itself, its cached
+  tokens and its health are untouched. Rotating the key without a `pin` keeps the old one.
+- **Every change is audited** as `outlet_credential.pin`, with the old and the new package name.
+- **A credential stored without a pin does nothing** (`pin_missing`); so does one stored before
+  the connector required pins. Pin it before you expect the connector to run.
+
+If the manifest's `packageName` changes — a new app, a typo, or someone pointing the product at
+another app — the connector stops (`pin_mismatch`): no reads, no mirroring, no vitals check, every
+control (`settings` too) refused with `409 credential_pin_mismatch` before any token is minted or
+request sent. It stays stopped until the manifest names the pinned package again, or until you
+**check that the new package really is this product's app** and re-pin. The pin is checked on the
+credential the connector chooses (one bound to a Play outlet before an unbound one); another
+credential's pin never stands in for it. Inviting the account to one app only ([above](#least-privilege-for-the-service-account)) is still
+the best protection if the key is ever stolen.
 
 ## What it reads
 
@@ -182,8 +221,9 @@ not fight it. With the setting off, the connector makes no Reporting API call at
 ## Security
 
 - The connector calls only `androidpublisher.googleapis.com` and
-  `playdeveloperreporting.googleapis.com`, for the one package your outlet names; nothing in a
-  response can redirect it.
+  `playdeveloperreporting.googleapis.com`, for the one package your outlet names and your pin
+  allows; nothing in a response can redirect it, and a manifest naming another package stops it
+  ([Pinning the app](#pinning-the-app)).
 - The service-account key never leaves custody: the connector uses short-lived access tokens
   minted from it (one per API scope), every open of the key is in the activity log, and errors
   record an HTTP status, never a response.

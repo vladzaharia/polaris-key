@@ -134,6 +134,15 @@ text above.
   minimum sample counts user-hours (Google warns `distinctUsers` does not add across periods).
   Thresholds compare with Google's decimal as a fraction of users — confirm on the first real
   read. Row 17 re-ran PASS at the start of the package (discovery revision now 20260930).
+- **The service account is pinned to the package (P5-02f's pin).** The brief let the manifest's
+  `packageName` alone choose the app; the account is operator-owned and may see several apps, so a
+  repo writer could have aimed the controls and the vitals auto-halt at another app. After the
+  merge of main (P5-02f), `google-service-account` is in `OUTLET_CREDENTIAL_PINS` (field
+  `packageName`), `resolvePlaySetup` checks the pin before anything opens, and a missing or
+  different pin leaves the connector inert: every control (`settings` too) answers 409
+  `credential_pin_missing` / `credential_pin_mismatch`, the poll skips, the status shows `inert`.
+  The console form requires the package name; `test/playPin.test.ts` covers it. Connector
+  migrations renumbered on main: `dist_connector_*` is 0041, this package's settings stay 0042.
 - **Fixtures are recorded-shape, not recorded.** No Play account exists; `test/fixtures/play/`
   holds payloads in the documented shapes, labelled as such, to re-record with the first real key.
 

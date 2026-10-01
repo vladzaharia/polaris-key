@@ -4,26 +4,43 @@
  * It runs when the product declares a live `play` or `play-testing` outlet in
  * `.pkey/distribution` whose identity names the Android `packageName` and a `tracks` map
  * (declared channel → Play track id, e.g. `{ stable: "production", beta: "beta" }`), AND an
- * operator has stored an active `google-service-account` outlet credential (P5-01). Without both
- * the poller skips the product before any call and every control answers `not_configured`.
+ * operator has stored an active `google-service-account` outlet credential (P5-01), AND that
+ * credential is PINNED to the same `packageName` (`OUTLET_CREDENTIAL_PINS`, the P5-02f pin).
+ * Without all three the poller skips the product before any call, every control is refused, and
+ * the console's `GET …/distribution/connectors/play` says why (`inert`).
+ *
+ * **Why the pin.** The `packageName` is manifest-owned — every resync rewrites `dist_outlets`
+ * from the repo — while the service account is the operator's, and one account can be invited to
+ * every app of a Play developer account. Without the pin a repo writer could aim the operator's
+ * account, and the console's controls (rollout fraction, halt, resume, complete, update
+ * priority) and the vitals auto-halt, at any app it can see (THREAT-MODEL.md, "Who picks the
+ * outlet's app"). With it, the manifest can only name the app the operator already chose; a
+ * manifest that changes its `packageName` makes the connector inert until a platform admin
+ * re-pins (`PUT …/outlet-credentials/<id>` with `{kind, pin}`, audited `outlet_credential.pin`).
+ * A missing pin is refused like a wrong one, so a credential stored before the pin existed does
+ * nothing.
  *
  * **One app per product.** Every Play outlet of the product that names the same package is part
  * of the setup (a `play` outlet for production and beta, a `play-testing` one for an internal
- * track, say); an outlet naming another package is not this connector's — the service account is
- * invited to one app, and the brief's threat model keeps it there. The `play` kind wins the tie
- * for which package that is, then the lowest outlet id.
+ * track, say); an outlet naming another package is not this connector's. The `play` kind wins the
+ * tie for which package the manifest names, then the lowest outlet id; the pin is then checked
+ * against that package — another outlet's matching package never stands in for it.
  *
  * **Track ids are data.** The map comes from the manifest and the track list from Play's own
  * `edits.tracks.list`; nothing here knows that the internal-testing track is `internal` or `qa`
  * (notes/E2 §A1 "Tracks"), and a track Play lists that no outlet maps is shown, never written.
  *
  * Credential choice: a credential bound to one of the product's Play outlets (`outletId`) wins
- * over an unbound one; ties go to the lowest id. Only metadata is read here — listing never
- * selects the sealed column — so resolving the setup opens nothing.
+ * over an unbound one; ties go to the lowest id. The pin is checked on the credential chosen —
+ * another credential's matching pin never stands in for it. Only metadata is read here — listing
+ * never selects the sealed column — so resolving the setup opens nothing.
  */
 
 import type { Db } from "../../../../core/platform.js";
-import { listOutletCredentials } from "../../../../core/outletCredentials.js";
+import {
+  checkOutletCredentialPin,
+  listOutletCredentials,
+} from "../../../../core/outletCredentials.js";
 import { listOutlets, parseJsonColumn } from "../../outlets.js";
 
 export const PLAY_CONNECTOR = "play";
@@ -62,6 +79,51 @@ export interface PlaySetup {
   credentialId: string;
 }
 
+/** Why the connector does not run for a product. The pin reasons are the operator's to fix. */
+export type PlayInertReason =
+  | "no_outlet"
+  | "no_credential"
+  | "pin_missing"
+  | "pin_mismatch";
+
+export interface PlayInert {
+  reason: PlayInertReason;
+  /** A sentence for the console: what is missing and who fixes it. */
+  message: string;
+  /** The package the manifest's outlet names, when it names one. */
+  manifestPackageName: string | null;
+  /** The `google-service-account` credential the setup chose, when there is one. */
+  credential: string | null;
+  /** The package that credential is pinned to (`null`: not pinned). */
+  pinnedPackageName: string | null;
+}
+
+export type PlaySetupResolution =
+  | { setup: PlaySetup; inert: null }
+  | { setup: null; inert: PlayInert };
+
+/** Whether an inert reason is the operator's pin (refused 409 by the controls). */
+export function isPinReason(
+  reason: PlayInertReason,
+): reason is "pin_missing" | "pin_mismatch" {
+  return reason === "pin_missing" || reason === "pin_mismatch";
+}
+
+const inert = (
+  reason: PlayInertReason,
+  message: string,
+  rest: Partial<Omit<PlayInert, "reason" | "message">> = {},
+): PlaySetupResolution => ({
+  setup: null,
+  inert: {
+    reason,
+    message,
+    manifestPackageName: rest.manifestPackageName ?? null,
+    credential: rest.credential ?? null,
+    pinnedPackageName: rest.pinnedPackageName ?? null,
+  },
+});
+
 function identityOf(json: string): Record<string, unknown> {
   const v = parseJsonColumn(json);
   return v && typeof v === "object" && !Array.isArray(v)
@@ -87,6 +149,14 @@ export async function playSetup(
   db: Db,
   product: string,
 ): Promise<PlaySetup | null> {
+  return (await resolvePlaySetup(db, product)).setup;
+}
+
+/** The product's Play setup, or why the connector does not run for it. */
+export async function resolvePlaySetup(
+  db: Db,
+  product: string,
+): Promise<PlaySetupResolution> {
   const candidates = (await listOutlets(db, product))
     .filter(
       (o) =>
@@ -112,9 +182,14 @@ export async function playSetup(
   // `listOutlets` orders by id; the `play` kind names the app when both kinds are declared.
   const primary =
     candidates.find((o) => o.kind === "play") ?? candidates[0] ?? null;
-  if (!primary) return null;
+  if (!primary)
+    return inert(
+      "no_outlet",
+      "declare a play or play-testing outlet with a packageName and tracks in .pkey/distribution",
+    );
+  const packageName = primary.packageName!;
   const outlets = candidates
-    .filter((o) => o.packageName === primary.packageName)
+    .filter((o) => o.packageName === packageName)
     .map(({ outletId, kind, tracks }) => ({ outletId, kind, tracks }));
 
   const playOutlets = new Set(outlets.map((o) => o.outletId));
@@ -124,7 +199,25 @@ export async function playSetup(
   const credential =
     creds.find((c) => c.outletId !== null && playOutlets.has(c.outletId)) ??
     creds.find((c) => c.outletId === null);
-  if (!credential) return null;
+  if (!credential)
+    return inert(
+      "no_credential",
+      "a platform admin must store a google-service-account outlet credential pinned to this app",
+      { manifestPackageName: packageName },
+    );
+  const pin = checkOutletCredentialPin(credential, packageName);
+  if (!pin.ok)
+    return inert(
+      pin.reason,
+      pin.reason === "pin_missing"
+        ? `the google-service-account credential ${credential.id} is not pinned to an app: a platform admin must pin it to ${packageName} (PUT …/outlet-credentials/${credential.id} with {"kind":"google-service-account","pin":"${packageName}"}) after checking that this is the product's app`
+        : `.pkey/distribution names package ${packageName}, but the google-service-account credential ${credential.id} is pinned to package ${pin.pinned}: nothing is read or changed until the manifest names the pinned package again, or a platform admin re-pins the credential to ${packageName} after checking that this is the product's app`,
+      {
+        manifestPackageName: packageName,
+        credential: credential.id,
+        pinnedPackageName: pin.pinned,
+      },
+    );
 
   const routes = new Map<string, PlayOutletRoute[]>();
   for (const o of outlets)
@@ -134,10 +227,13 @@ export async function playSetup(
       routes.set(track, list);
     }
   return {
-    product,
-    packageName: primary.packageName!,
-    outlets,
-    routes,
-    credentialId: credential.id,
+    setup: {
+      product,
+      packageName,
+      outlets,
+      routes,
+      credentialId: credential.id,
+    },
+    inert: null,
   };
 }

@@ -749,7 +749,7 @@ describe("Outlet credentials card (P5-01)", () => {
     );
   });
 
-  it("sends a Google key as its JSON file", async () => {
+  it("sends a Google key as its JSON file, with its package-name pin", async () => {
     mockApi.putOutletCredential.mockResolvedValue({ ok: true, id: "play" });
     renderSecrets();
     const form = await screen.findByRole("form", {
@@ -758,6 +758,18 @@ describe("Outlet credentials card (P5-01)", () => {
     await userEvent.type(within(form).getByLabelText("Credential id"), "play");
     await pick("Kind", "Google service account");
     await userEvent.type(within(form).getByLabelText("JSON key file"), "{{}");
+    // The pin is required with the key (P5-03 adopts P5-02f's pin).
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Set credential" }),
+    );
+    expect(
+      within(form).getByText("Google Play package name is required."),
+    ).toBeTruthy();
+    expect(mockApi.putOutletCredential).not.toHaveBeenCalled();
+    await userEvent.type(
+      within(form).getByLabelText("Google Play package name"),
+      "gg.acme.djdl",
+    );
     await userEvent.click(
       within(form).getByRole("button", { name: "Set credential" }),
     );
@@ -765,6 +777,7 @@ describe("Outlet credentials card (P5-01)", () => {
       expect(mockApi.putOutletCredential).toHaveBeenCalledWith("djdl", "play", {
         kind: "google-service-account",
         value: "{}",
+        pin: "gg.acme.djdl",
         outletId: null,
       }),
     );
