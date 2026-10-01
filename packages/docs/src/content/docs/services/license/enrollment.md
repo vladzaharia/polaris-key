@@ -189,12 +189,16 @@ anonymous row, and re-enrolling around it would bypass the operator's deliberate
 ## Claim and migrate
 
 Identity's `activateFromIdentity` can merge an anonymously enrolled license into an identity
-rather than abandon it, when its caller names the license the device is currently on. **No
-sign-in route does that today.** The device-code callback used to, but a device-code flow is
-confirmed with a public user code, so the merge let whoever confirmed the flow take the device's
-license over. A sign-in now gets only the identity's own license, and the enrolled license stays
-anonymous and active. An explicit opt-in, made on the device after the player accepts the
-signed-in identity, is planned. The rules below are what a merge does when it runs.
+rather than abandon it, when its caller names the license the device is currently on. **The
+only caller that does is `/device/poll`, on the device-code holder's opt-in.** The device-code
+callback used to, but a device-code flow is confirmed with a public user code, so the merge let
+whoever confirmed the flow take the device's license over. A device-code callback now stores the
+verified identity and activates nothing; the poll activates it. Without the opt-in a sign-in gets
+only the identity's own license, and the enrolled license stays anonymous and active. With it,
+the device is first shown the identity (`confirmIdentity` → `confirm`), and after the player
+accepts it on the device the next poll sends `attachLicense: true` with the device's own bearer.
+See [attaching the device's anonymous license](/docs/services/identity/device-flow/#attaching-the-devices-anonymous-license). The rules below are what a merge does when
+it runs.
 
 A license is **claimable** only if it is `origin = 'enroll'` with a null `sub`. Anything else —
 an admin or OIDC license the device happens to hold — is left strictly alone, and the sign-in

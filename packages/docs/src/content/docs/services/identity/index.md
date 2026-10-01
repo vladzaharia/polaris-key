@@ -98,9 +98,12 @@ mint-or-locate-a-license step (`activateFromIdentity`, covered in
 
 - A browser flow started with a `return_to` gets a `pkey_<product>_session` **cookie**, set
   directly on the callback's redirect. See [Browser sessions](/docs/services/identity/sessions/).
-- A flow with no `return_to` — which is what the device-code flow always is — leaves the minted
-  license sitting on the flow record for a poller to redeem into a raw device **token** instead.
-  See [The device-code flow](/docs/services/identity/device-flow/).
+- A flow with no `return_to` hands its result to a poller, which redeems it into a raw device
+  **token** instead. A device-code flow (which never has a `return_to`) goes one step further:
+  its callback only stores the verified identity, and `/device/poll` activates it, so the
+  device-code holder can be shown the identity first and opt in to
+  [attaching the device's anonymous license](/docs/services/identity/device-flow/#attaching-the-devices-anonymous-license). See
+  [The device-code flow](/docs/services/identity/device-flow/).
 
 Both paths authorize the _same_ device principal Core defines; they just hand the result back in
 the shape their caller can actually use — a page can hold a cookie, a headless client cannot.
