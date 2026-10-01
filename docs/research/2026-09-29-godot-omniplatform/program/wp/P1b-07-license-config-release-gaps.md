@@ -94,8 +94,18 @@ least one SDK, so this is porting, not design, with one semantic fix (`entitledC
   sync, PARITY §5.4 footnote 3).
 - **Transcripts** through P1b-03's harness: `config-schema-fetch`, and `release-changelog` covering
   the changelog and the entitled 403.
+  _Correction (P1b-07):_ `/release/changelog` cannot answer 403 — it names no channel, which
+  `entitledSelectorFor` classifies as stable, the channel every grant holds — so the transcript
+  pins the `entitled` mode's **401** (`unauthorized`, surfaced by its code). It also pins the
+  install and download URLs (zero-exchange `installUrl` / `downloadUrl` steps, so
+  `release.download` has its transcript), and a third transcript, `release-changelog-entitled`,
+  pins the bearer forwarded under `entitled` (it requires `core.store`, so React skips it).
 - Manifests and tags; the SDK docs pages (`build/sdks/*.mdx`).
 - **Wave-1 sync:** **License entitlement corpus (from P1b-01).** Add a `licenseDocCases` expectation for entitlements, profile and licence id to the corpus, then a corpus proof for `license.entitlements` in the parity registry; align `PARITY.md` §5, which still names `cases.json` for `license.entitlements` and `gen-mirrors --check` for `config.mirror`, with the registry.
+  _Correction (P1b-07):_ the corpus half is declined here — corpus changes are plan-mode and the
+  corpus lane belongs to P1b-09 — so `license.entitlements` keeps its `unit` proof. `PARITY.md` §5
+  is aligned with the registry (`unit` for `license.entitlements`, `license.channels` and
+  `config.mirror`).
 
 **Out** (and where it belongs instead):
 
@@ -118,9 +128,14 @@ returns the `channels` entitlement's string values, or `["stable"]` when it is a
 
 - Every SDK returns the Worker's answer: string values only, in order, deduplicated, and `["stable"]`
   when the entitlement is absent or not an array.
+  _Correction (P1b-07):_ the Worker does **not** deduplicate (`arrEnt` filters strings only), and
+  `entitledChannels` keeps returning the raw grants, so no SDK deduplicates either; an empty array
+  is `[]`, as on the Worker.
 - Swift's `UpdateFeed.allowedChannels(from:)` already treats empty as "stable only", so change
   `LicenseClient.entitledChannels()` and check `SparkleUpdater.swift:45`. Record it in the Swift
   changelog.
+  _Correction (P1b-07):_ the Swift SDK has no changelog file; the change is recorded on its README
+  (rendered at `build/sdks/swift`) and in the changeset.
 - If P0-04 has landed, use its vocabulary. `entitledChannels` keeps returning the raw grants. Any
   channel predicate an SDK adds must be the plan's entitlement rule (`channelEntitled`, with
   `CHANNEL_ALIASES`; P0-04 plan §2.1 rule 4), not a literal string match; the corpus case goes to a
@@ -141,6 +156,10 @@ for the lead.
 **Swift target.** Follow the package's per-service split (`Package.swift` header comment): add
 `PolarisKeyRelease` to `products` and `targets`, add it to the test target's dependencies, and
 re-export it from the umbrella only if the other service modules are.
+_As built:_ License and Config are re-exported and Update is not only because it is macOS-only, so
+the cross-platform `PolarisKeyRelease` is re-exported and reachable as `client.release`. Its
+`installURL()` and `downloadURL(…)` are `async throws` (the D-21 check is on the `CoreContext`
+actor).
 
 ## Steps
 
@@ -153,17 +172,18 @@ re-export it from the umbrella only if the other service modules are.
 
 ## Acceptance criteria
 
-- [ ] For the same fixtures, every SDK's `entitledChannels` returns identical lists, including
+- [x] For the same fixtures, every SDK's `entitledChannels` returns identical lists, including
       `["stable"]` when the entitlement is absent.
-- [ ] `config-schema-fetch` replays green in Node, Python, Swift and React, and a failed fetch returns
+- [x] `config-schema-fetch` replays green in Node, Python, Swift and React, and a failed fetch returns
       `null` without throwing.
-- [ ] `release-changelog` replays green in Node, Python, Swift and React; Swift's
+- [x] `release-changelog` replays green in Node, Python, Swift and React; Swift's
       `PolarisKeyRelease` builds on macOS and iOS, and a disabled Release raises `service-unavailable`
-      in every SDK.
-- [ ] React imports a corpus bundle vector in the desktop adapter (bridge fixture) and in the browser
+      in every SDK. (React's vocabulary spells it `service-disabled`, as its `checkUpdate` does; iOS
+      is proven by a simulator build of the target and the umbrella.)
+- [x] React imports a corpus bundle vector in the desktop adapter (bridge fixture) and in the browser
       adapter (fake IndexedDB), and the gate reports `activation: "bundle"`.
-- [ ] React's desktop `report()` reaches the bridge's `invoke("devices", "report")`.
-- [ ] `parity.json` manifests are updated for every SDK this changes (`license.channels`,
+- [x] React's desktop `report()` reaches the bridge's `invoke("devices", "report")`.
+- [x] `parity.json` manifests are updated for every SDK this changes (`license.channels`,
       `config.schema`, `release.changelog`, `release.download`, `core.bundle`, `devices.report`), and
       `pnpm parity:check` passes.
 - [ ] The green gate passes (`AGENTS.md`), including `pnpm gen:transcripts -- --check`.
