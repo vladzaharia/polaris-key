@@ -164,6 +164,7 @@ function buildMetadataProblem(platform: unknown, m: unknown): string | null {
           "versionCode",
           "versionName",
           "minSdk",
+          "targetSdk",
           "nativecode",
           "signerSha256",
         ];
