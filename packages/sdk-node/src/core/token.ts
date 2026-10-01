@@ -69,6 +69,20 @@ export class TokenManager {
   }
 
   /**
+   * The single re-acquire for an authenticated call made OUTSIDE a sync pass (an edge-mint).
+   * One attempt per call, never a loop: the caller retries its request once when this returns
+   * true and fails on a second 401. It does not touch the sync pass's budget.
+   */
+  async reacquire(): Promise<boolean> {
+    const current = this.token;
+    if (!current) return false;
+    const next = await this.reacquireFn(this.ctx, current).catch(() => null);
+    if (!next) return false;
+    await this.set(next);
+    return true;
+  }
+
+  /**
    * At most one re-acquire per sync pass, shared across every concurrent 401.
    *
    * Returns true when a NEW token is in hand and the caller should retry its fetch once;

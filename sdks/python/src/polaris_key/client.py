@@ -50,6 +50,7 @@ from .devices.client import (
     RegisterResult,
 )
 from .devices.facts import ProbeDeclaration
+from .identity.client import IdentityClient
 from .discovery import (
     DiscoveryOk,
     ServicesMap,
@@ -109,8 +110,8 @@ class DeviceInfo:
 
 
 class PolarisKeyClient:
-    """Core plus ``client.license`` / ``.config`` / ``.devices`` / ``.release`` /
-    ``.update``."""
+    """Core plus ``client.license`` / ``.config`` / ``.devices`` / ``.identity`` /
+    ``.release`` / ``.update``."""
 
     def __init__(
         self,
@@ -188,7 +189,12 @@ class PolarisKeyClient:
             local_overrides=local_overrides,
             env_prefix=env_prefix,
             env=env,
+            tokens=self._tokens,
         )
+        # Device-code sign-in raises the same acquisition event activation does: a
+        # signed-in device holds a licensed token exactly as an activated one does, and
+        # syncs the same way.
+        self.identity = IdentityClient(self.core, self._tokens, self._on_license_acquired)
         self.release = ReleaseClient(self.core, self._tokens)
         self.update = UpdateClient(self.core, self._tokens, lambda: self._discovery_doc)
 

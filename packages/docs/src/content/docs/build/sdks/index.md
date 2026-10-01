@@ -31,13 +31,14 @@ conformance corpus. See `packages/client-core/README.md` for why that split exis
 Every SDK composes one always-on **Core** (device id, credential, trust, the offline cache,
 `sync()`) with one **sub-client per enabled service**, addressed as `client.<service>.<verb>`:
 
-| Sub-client       | Owns                                                                       |
-| ---------------- | -------------------------------------------------------------------------- |
-| `client.license` | activation, enrollment, deactivation, status, entitlements, profile        |
-| `client.config`  | the signed config document + layered resolution (`getConfig`, `getSecret`) |
-| `client.devices` | registration, the roster, fingerprint/facts                                |
-| `client.release` | changelog, install script, artifact URLs                                   |
-| `client.update`  | version check, the Sparkle appcast URL                                     |
+| Sub-client        | Owns                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| `client.license`  | activation, enrollment, deactivation, status, entitlements, profile                                 |
+| `client.config`   | the signed config document + layered resolution (`getConfig`, `getSecret`), edge-mint (`mintToken`) |
+| `client.devices`  | registration, the roster, fingerprint/facts                                                         |
+| `client.identity` | device-code sign-in (`beginSignIn`, `waitForSignIn`)                                                |
+| `client.release`  | changelog, install script, artifact URLs                                                            |
+| `client.update`   | version check, the Sparkle appcast URL                                                              |
 
 A handful of calls — `status`/`isLicensed`, `getConfig`, `sync`, `importBundle` — are also kept
 on the top-level client, for the code a host writes before it knows which service it's talking

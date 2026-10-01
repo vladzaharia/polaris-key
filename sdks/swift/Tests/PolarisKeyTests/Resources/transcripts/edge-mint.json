@@ -1,0 +1,235 @@
+{
+  "transcriptVersion": 1,
+  "id": "edge-mint",
+  "description": "Edge-mint (Config). mintToken() GETs the recipe's token route with the device bearer and returns { token, expiresAt }. A second call for the same recipe inside its lifetime makes no request: minted tokens are cached in memory until expiresAt minus 30 seconds (never on disk). An unknown recipe is 404 not_found. Past the cache window, a device that has spent its per-device budget (30 a minute) gets 429 rate_limited. After the owner deauthorizes the device, the mint 401s; the client makes its one re-acquire (POST /license/token), which also 401s, and reports unauthorized.",
+  "features": ["config.mint"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_MIQpPdt7zN54ocCqAbfauR8CLEBUN7Eaj5mIwp989wM",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "mintToken",
+      "args": { "recipeId": "transcript-token" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/config/mint/transcript-token/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "token": "eyJhbGciOiJFZERTQSIsImtpZCI6InRyYW5zY3JpcHQtbWludCJ9.eyJpc3MiOiJ0cmFuc2NyaXB0LXRlYW0iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAwMDYwMCwiYXVkIjoiaHR0cHM6Ly9hcGkuZXhhbXBsZSJ9.T4KlnnakEMYOBH6Y2wqUv4ToA-Ddm7qeuncXnTmkxYLvvw8GBLqsHctDOrMqADgJMXed5_VPPQzpOEHLrpLEDw",
+                "expiresAt": 1700000600
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "token": "eyJhbGciOiJFZERTQSIsImtpZCI6InRyYW5zY3JpcHQtbWludCJ9.eyJpc3MiOiJ0cmFuc2NyaXB0LXRlYW0iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAwMDYwMCwiYXVkIjoiaHR0cHM6Ly9hcGkuZXhhbXBsZSJ9.T4KlnnakEMYOBH6Y2wqUv4ToA-Ddm7qeuncXnTmkxYLvvw8GBLqsHctDOrMqADgJMXed5_VPPQzpOEHLrpLEDw",
+        "expiresAt": 1700000600
+      }
+    },
+    {
+      "action": "mintToken",
+      "note": "Inside the lifetime: served from memory, no request.",
+      "args": { "recipeId": "transcript-token" },
+      "now": 1700000060,
+      "exchanges": { "ordered": false, "items": [] },
+      "expect": {
+        "result": "ok",
+        "token": "eyJhbGciOiJFZERTQSIsImtpZCI6InRyYW5zY3JpcHQtbWludCJ9.eyJpc3MiOiJ0cmFuc2NyaXB0LXRlYW0iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAwMDYwMCwiYXVkIjoiaHR0cHM6Ly9hcGkuZXhhbXBsZSJ9.T4KlnnakEMYOBH6Y2wqUv4ToA-Ddm7qeuncXnTmkxYLvvw8GBLqsHctDOrMqADgJMXed5_VPPQzpOEHLrpLEDw",
+        "expiresAt": 1700000600
+      }
+    },
+    {
+      "action": "mintToken",
+      "args": { "recipeId": "no-such-recipe" },
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/config/mint/no-such-recipe/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "not_found",
+                "message": "no such edge-mint recipe"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "not_found" }
+    },
+    {
+      "action": "mintToken",
+      "note": "Past expiresAt - 30, so the cache no longer answers; the budget is spent.",
+      "args": { "recipeId": "transcript-token" },
+      "now": 1700000600,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/config/mint/transcript-token/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 429,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "rate_limited",
+                "message": "too many mint requests"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "rate_limited" }
+    },
+    {
+      "action": "mintToken",
+      "note": "Deauthorized: the mint 401s, the one re-acquire 401s, and the call fails.",
+      "args": { "recipeId": "transcript-token" },
+      "now": 1700000720,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/config/mint/transcript-token/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 401,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "unauthorized" }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/license/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 401,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "unauthorized" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "unauthorized", "tokenHeld": true }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from .client import ConfigClient
 from .fetch import CONFIG_DOCUMENT_PATH, fetch_config_document
+from .mint import MINT_REUSE_MARGIN_SECONDS, MintedToken
 from .resolve import (
     DEFAULT_ENV_PREFIX,
     UNSET,
@@ -24,6 +25,8 @@ __all__ = [
     "ConfigClient",
     "CONFIG_DOCUMENT_PATH",
     "fetch_config_document",
+    "MintedToken",
+    "MINT_REUSE_MARGIN_SECONDS",
     "DEFAULT_ENV_PREFIX",
     "UNSET",
     "ResolveContext",
