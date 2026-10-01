@@ -102,6 +102,9 @@ const isString = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0;
 const isSeconds = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v) && v > 0;
+/** A server's seconds rounded UP, so a 0.5 is one second rather than a sub-second spin. Same as
+ *  the Python and Swift SDKs. */
+const wholeSeconds = (v: number): number => Math.ceil(v);
 
 export class IdentityClient {
   constructor(
@@ -149,9 +152,9 @@ export class IdentityClient {
         userCode: b.userCode,
         verificationUri: b.verificationUri,
         verificationUriComplete: b.verificationUriComplete,
-        expiresIn: b.expiresIn,
-        interval: b.interval,
-        expiresAt: this.ctx.now() + b.expiresIn,
+        expiresIn: wholeSeconds(b.expiresIn),
+        interval: wholeSeconds(b.interval),
+        expiresAt: this.ctx.now() + wholeSeconds(b.expiresIn),
       },
       ["deviceCode"],
     );
@@ -197,7 +200,7 @@ export class IdentityClient {
       return {
         status: "slow-down",
         interval: isSeconds(body.interval)
-          ? body.interval
+          ? wholeSeconds(body.interval)
           : current + SLOW_DOWN_STEP_SECONDS,
       };
     }

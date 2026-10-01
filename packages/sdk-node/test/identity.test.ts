@@ -258,6 +258,7 @@ describe("waitForSignIn", () => {
     });
     const { c } = await client(p.fetchImpl);
     const prompt = await c.identity.beginSignIn();
+    expect(prompt.interval).toBe(1);
     await settle(c.identity.waitForSignIn(prompt));
     expect(
       gaps(
