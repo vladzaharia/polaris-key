@@ -41,8 +41,41 @@ pnpm test
 pnpm lint
 cd packages/worker
 npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
+pnpm check:representable          # see "Representability check" below; must report clean
 npx wrangler deploy --env prod
 ```
+
+### Representability check
+
+The Worker refuses to sign a document a wire-v4 verifier would refuse (a lone surrogate,
+U+0000 in a member name, two member names equal after NFC normalization, a number outside
+1e-307 to 1e308, more than 32 levels of nesting, or an integer claim that is not a safe
+integer), and its write paths refuse such values at write. Values stored before those checks
+existed are still in D1. One that trips the signer is pruned from the config document or
+turns that product's licence documents into `500 document_not_representable`, for v3 clients
+too (docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md §2.2).
+
+**Before the first production deploy of a Worker that contains P3-12** (manual, or the `v*`
+tag that CI deploys, which does not run the check), and again after any manual D1 edit, run the check against production D1 from `packages/worker` (it needs the
+operator's Cloudflare credentials, as `wrangler d1 migrations apply` does):
+
+```sh
+cd packages/worker
+pnpm check:representable                 # --env prod --remote polaris_key_prod (the default)
+pnpm check:representable -- --json       # the same, machine-readable
+```
+
+It reads 21 columns (8 JSON, 12 text, `tiers.policy_device_limit`) and prints one `FLAGGED`
+line per value, naming the table, column, row key and JSON pointer, then exits 1. Fix every
+flagged value in the console (licence, tier, profile or product editors) or in the product's
+`.pkey/` manifest and resync, then run the check again until it exits 0. Do not deploy while
+it flags anything. `warning` lines (an offline-day count that is not an integer from 1 to
+365, or a JSON column that does not parse) do not block a deploy: the builders floor a
+fractional day count, and the Worker ignores an unparseable column. Sealed secrets cannot be
+opened by the check; a flagged one is dropped from the config document at signing.
+
+`--local [--persist-to DIR]` runs the same check against a local D1 (miniflare), which is how
+`packages/worker/test/checkRepresentable.test.ts` exercises it.
 
 CI deploy:
 

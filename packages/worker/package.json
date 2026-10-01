@@ -13,6 +13,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "dryrun": "wrangler deploy --dry-run",
+    "check:representable": "node scripts/check-representable.mjs",
     "clean": "rm -rf dist"
   },
   "dependencies": {
