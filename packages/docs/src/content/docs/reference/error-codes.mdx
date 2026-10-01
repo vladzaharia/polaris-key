@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(50 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(53 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -66,6 +66,8 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `transport` | `core` | Swift: the transport returned something that is not an HTTP response. |
 | `network` | `core` | React: the request failed, or the server answered with an unexpected status. |
 | `refresh-failed` | `core` | React: refreshing the session or documents failed. |
+| `sync-failed` | `core` | Boot stage machine: sync returned an unusable answer and boot cannot continue, so it stops in the error stage. |
+| `fetch-failed` | `core` | Boot stage machine: fetching required content failed and required packs are still missing, so boot stops in the error stage. |
 | `bridge-missing` | `core` | React desktop: the host bridge the adapter talks through is not installed. |
 | `unknown` | `core` | React desktop: the host bridge threw something that carries no code. |
 | `device-management-unsupported` | `core` | Remote device management needs a credential or backend this client does not have. |

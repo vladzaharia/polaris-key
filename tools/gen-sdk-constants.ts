@@ -24,8 +24,11 @@
 // object, and every `errorResponse(…)` / `wireError(…)` call site and `error:` / `code:` literal
 // under packages/worker/src (the console API in src/admin/ is not an SDK surface and is not
 // scanned) — and refuses to generate when errors.json lacks a code the Worker emits, or lists a
-// `wire` code the Worker no longer emits. Client codes (raised only by an SDK) are checked by
-// each SDK's own registry test, against the module generated here.
+// `wire` code the Worker no longer emits. The boot stage machine's own error codes are checked
+// the same way, from the `error` emits pinned in conformance/corpus/v2/stage-matrix.json (a code
+// that only echoes the host's `fail` event is the host's, not the SDK's). Other client codes
+// (raised only by an SDK) are checked by each SDK's own registry test, against the module
+// generated here.
 //
 // WHY conformance/parity/ AND NOT shared-protocol. Editing `shared-protocol` or `client-core` is
 // plan mode (CLAUDE.md); importing their exports is not. The same reason gives Node and React a
@@ -265,6 +268,60 @@ export function checkCoverage(
   return problems;
 }
 
+/**
+ * The error codes the boot stage machine itself originates, from the stage matrix's pinned
+ * emits: every `{ type: "error", code }` emit whose code is not the step's own `fail` event
+ * code echoed back (that one is the host's, passed through). Code → `rows[i].steps[j]` sites.
+ */
+export function scanStageMatrix(matrix: unknown): ScannedCodes {
+  const found: ScannedCodes = new Map();
+  const rows = (matrix as { rows?: unknown }).rows;
+  if (!Array.isArray(rows))
+    throw new Error("conformance/corpus/v2/stage-matrix.json has no rows");
+  rows.forEach((row: { steps?: unknown }, i) => {
+    const steps = Array.isArray(row.steps) ? row.steps : [];
+    steps.forEach(
+      (
+        step: { event?: { type?: unknown; code?: unknown }; emits?: unknown },
+        j,
+      ) => {
+        const echoed =
+          step.event?.type === "fail" ? step.event.code : undefined;
+        for (const emit of Array.isArray(step.emits) ? step.emits : []) {
+          const { type, code } = emit as { type?: unknown; code?: unknown };
+          if (type !== "error" || typeof code !== "string" || code === echoed)
+            continue;
+          const where = `stage-matrix.json rows[${i}].steps[${j}]`;
+          found.set(code, [...(found.get(code) ?? []), where]);
+        }
+      },
+    );
+  });
+  return found;
+}
+
+/** errors.json against the stage machine's own codes: each must be registered as `client`. */
+export function checkStageCoverage(
+  errors: readonly ErrorEntry[],
+  scanned: ScannedCodes,
+): string[] {
+  const byCode = new Map(errors.map((e) => [e.code, e]));
+  const problems: string[] = [];
+  for (const [code, where] of scanned) {
+    const entry = byCode.get(code);
+    if (!entry) {
+      problems.push(
+        `the boot stage machine emits "${code}" (${where[0]}) but conformance/parity/errors.json has no entry — add one`,
+      );
+    } else if (entry.kind !== "client") {
+      problems.push(
+        `"${code}" is emitted by the boot stage machine (${where[0]}) but errors.json marks it kind "${entry.kind}" — it is "client"`,
+      );
+    }
+  }
+  return problems;
+}
+
 function walkTs(dir: string): string[] {
   const out: string[] = [];
   for (const name of readdirSync(dir).sort()) {
@@ -308,13 +365,20 @@ export function loadSources(root = ROOT): Sources {
     "enums.schema.json",
     validateEnums,
   );
-  const coverage = checkCoverage(
-    errors.codes,
-    scanWorkerSource(readWorkerSource(root)),
-  );
+  const coverage = [
+    ...checkCoverage(errors.codes, scanWorkerSource(readWorkerSource(root))),
+    ...checkStageCoverage(
+      errors.codes,
+      scanStageMatrix(
+        readJson(
+          join(root, "conformance", "corpus", "v2", "stage-matrix.json"),
+        ),
+      ),
+    ),
+  ];
   if (coverage.length > 0) {
     throw new Error(
-      `conformance/parity/errors.json is out of step with the Worker:\n  ${coverage.join("\n  ")}`,
+      `conformance/parity/errors.json is out of step with the Worker or the boot stage machine:\n  ${coverage.join("\n  ")}`,
     );
   }
   const features = readJson(

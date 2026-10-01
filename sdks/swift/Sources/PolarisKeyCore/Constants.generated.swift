@@ -33,6 +33,7 @@ public enum ErrorCode {
     public static let catalogUnavailable = "catalog_unavailable"
     public static let disabled = "disabled"
     public static let oidcError = "oidc_error"
+    public static let unavailable = "unavailable"
     public static let authMethodDisabled = "auth_method_disabled"
     public static let emailNotConfigured = "email_not_configured"
     public static let downloadAuthRequired = "download_auth_required"
@@ -50,6 +51,8 @@ public enum ErrorCode {
     public static let transport = "transport"
     public static let network = "network"
     public static let refreshFailed = "refresh-failed"
+    public static let syncFailed = "sync-failed"
+    public static let fetchFailed = "fetch-failed"
     public static let bridgeMissing = "bridge-missing"
     public static let unknown = "unknown"
     public static let deviceManagementUnsupported = "device-management-unsupported"
@@ -87,6 +90,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "catalog_unavailable",
     "disabled",
     "oidc_error",
+    "unavailable",
     "auth_method_disabled",
     "email_not_configured",
     "download_auth_required",
@@ -104,6 +108,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "transport",
     "network",
     "refresh-failed",
+    "sync-failed",
+    "fetch-failed",
     "bridge-missing",
     "unknown",
     "device-management-unsupported",
@@ -141,6 +147,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "catalog_unavailable": "wire",
     "disabled": "wire",
     "oidc_error": "wire",
+    "unavailable": "wire",
     "auth_method_disabled": "wire",
     "email_not_configured": "wire",
     "download_auth_required": "wire",
@@ -158,6 +165,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "transport": "client",
     "network": "client",
     "refresh-failed": "client",
+    "sync-failed": "client",
+    "fetch-failed": "client",
     "bridge-missing": "client",
     "unknown": "client",
     "device-management-unsupported": "client",

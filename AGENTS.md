@@ -149,8 +149,8 @@ All are committed on purpose (reviewable diffs; the site and packages build with
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
 table, `pnpm gen:constants -- --check` for the SDK constants), so a hand edit fails CI rather
 than shipping. A new error code needs an entry in `conformance/parity/errors.json` first: the
-constants generator refuses a Worker code it lacks, and each SDK's registry test refuses an SDK
-code it lacks. The service table is the one declaration
+constants generator refuses a Worker code it lacks (and a boot-stage code pinned in
+`stage-matrix.json`), and each SDK's registry test refuses an SDK code it lacks. The service table is the one declaration
 of the opt-in services; adding one is the checklist at
 `packages/docs/src/content/docs/contribute/layout.md` ("Adding a service").
 

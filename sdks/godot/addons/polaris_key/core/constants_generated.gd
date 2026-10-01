@@ -36,6 +36,7 @@ class ErrorCode:
 	const CATALOG_UNAVAILABLE := "catalog_unavailable"
 	const DISABLED := "disabled"
 	const OIDC_ERROR := "oidc_error"
+	const UNAVAILABLE := "unavailable"
 	const AUTH_METHOD_DISABLED := "auth_method_disabled"
 	const EMAIL_NOT_CONFIGURED := "email_not_configured"
 	const DOWNLOAD_AUTH_REQUIRED := "download_auth_required"
@@ -53,6 +54,8 @@ class ErrorCode:
 	const TRANSPORT := "transport"
 	const NETWORK := "network"
 	const REFRESH_FAILED := "refresh-failed"
+	const SYNC_FAILED := "sync-failed"
+	const FETCH_FAILED := "fetch-failed"
 	const BRIDGE_MISSING := "bridge-missing"
 	const UNKNOWN := "unknown"
 	const DEVICE_MANAGEMENT_UNSUPPORTED := "device-management-unsupported"
@@ -65,7 +68,7 @@ class ErrorCode:
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "bridge-missing", "unknown", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -93,6 +96,7 @@ const ERROR_CODE_KINDS := {
 	"catalog_unavailable": "wire",
 	"disabled": "wire",
 	"oidc_error": "wire",
+	"unavailable": "wire",
 	"auth_method_disabled": "wire",
 	"email_not_configured": "wire",
 	"download_auth_required": "wire",
@@ -110,6 +114,8 @@ const ERROR_CODE_KINDS := {
 	"transport": "client",
 	"network": "client",
 	"refresh-failed": "client",
+	"sync-failed": "client",
+	"fetch-failed": "client",
 	"bridge-missing": "client",
 	"unknown": "client",
 	"device-management-unsupported": "client",

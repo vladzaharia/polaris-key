@@ -93,7 +93,10 @@ Today:
 - `tools/gen-sdk-constants.test.ts`: renderers, casing and collision checks, `--check` behaviour, and
   a source test. The source test extracts every wire code from `PolarisErrorCode`, the Worker's
   `ErrorCode` and the `errorResponse(…)` call sites, in the same way `gen-reference.mjs` reads source,
-  and fails if `errors.json` misses one.
+  and fails if `errors.json` misses one. (Correction, review: the boot stage machine's own error
+  codes, `sync-failed` and `fetch-failed`, are client codes no `PolarisError` scan sees; the
+  generator also checks every `error` emit in `conformance/corpus/v2/stage-matrix.json` that is not
+  the host's `fail` code echoed back.)
 - Per SDK, a test that every code the SDK raises is in the generated registry. For TypeScript, scan
   `src/**` for `PolarisError("…")` literals; for Python and Swift, check their code constants.
 - Extend the `errorCodes()` emitter to list the client codes from `errors.json`, then regenerate

@@ -8,6 +8,7 @@ import {
   camelName,
   CHANNEL_EXPORT,
   checkCoverage,
+  checkStageCoverage,
   compileSchema,
   loadSources,
   pascalToUpper,
@@ -18,6 +19,7 @@ import {
   renderSwift,
   renderTs,
   run,
+  scanStageMatrix,
   scanWorkerSource,
   TARGETS,
   upperName,
@@ -190,6 +192,59 @@ describe("the source test: errors.json against the Worker", () => {
     );
     expect(checkCoverage(mislabelled, scanned)).toEqual([
       expect.stringContaining(`"not_found" is emitted by the Worker`),
+    ]);
+  });
+});
+
+describe("the source test: errors.json against the boot stage machine", () => {
+  const MATRIX = JSON.parse(
+    readFileSync(
+      join(ROOT, "conformance", "corpus", "v2", "stage-matrix.json"),
+      "utf8",
+    ),
+  ) as { rows: unknown[] };
+  const failRow = (code: string, emitted: string) => ({
+    name: "fixture",
+    init: {},
+    steps: [
+      {
+        event: { type: "fail", code },
+        emits: [
+          { type: "stage_changed", stage: "error", previous: "sync" },
+          { type: "error", code: emitted },
+        ],
+      },
+    ],
+    expect: {},
+  });
+
+  it("every code the stage machine originates is registered as a client code", () => {
+    const scanned = scanStageMatrix(MATRIX);
+    expect([...scanned.keys()].sort()).toEqual(["fetch-failed", "sync-failed"]);
+    expect(checkStageCoverage(SOURCES.errors, scanned)).toEqual([]);
+  });
+
+  it("a host's fail code echoed back is the host's, not the SDK's", () => {
+    const scanned = scanStageMatrix({ rows: [failRow("my-code", "my-code")] });
+    expect(scanned.size).toBe(0);
+  });
+
+  it("fails when a new stage error code appears without an entry, or is marked wire (fixture)", () => {
+    const scanned = scanStageMatrix({
+      rows: [...MATRIX.rows, failRow("host-code", "pack-failed")],
+    });
+    expect(checkStageCoverage(SOURCES.errors, scanned)).toEqual([
+      expect.stringContaining(
+        `emits "pack-failed" (stage-matrix.json rows[${MATRIX.rows.length}].steps[0])`,
+      ),
+    ]);
+    const mislabelled = SOURCES.errors.map((e) =>
+      e.code === "sync-failed" ? { ...e, kind: "wire" as const } : e,
+    );
+    expect(checkStageCoverage(mislabelled, scanStageMatrix(MATRIX))).toEqual([
+      expect.stringContaining(
+        `"sync-failed" is emitted by the boot stage machine`,
+      ),
     ]);
   });
 });

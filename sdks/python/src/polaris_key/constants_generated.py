@@ -61,6 +61,7 @@ class ErrorCode:
     CATALOG_UNAVAILABLE: Final = "catalog_unavailable"
     DISABLED: Final = "disabled"
     OIDC_ERROR: Final = "oidc_error"
+    UNAVAILABLE: Final = "unavailable"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_NOT_CONFIGURED: Final = "email_not_configured"
     DOWNLOAD_AUTH_REQUIRED: Final = "download_auth_required"
@@ -78,6 +79,8 @@ class ErrorCode:
     TRANSPORT: Final = "transport"
     NETWORK: Final = "network"
     REFRESH_FAILED: Final = "refresh-failed"
+    SYNC_FAILED: Final = "sync-failed"
+    FETCH_FAILED: Final = "fetch-failed"
     BRIDGE_MISSING: Final = "bridge-missing"
     UNKNOWN: Final = "unknown"
     DEVICE_MANAGEMENT_UNSUPPORTED: Final = "device-management-unsupported"
@@ -115,6 +118,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "catalog_unavailable",
     "disabled",
     "oidc_error",
+    "unavailable",
     "auth_method_disabled",
     "email_not_configured",
     "download_auth_required",
@@ -132,6 +136,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "transport",
     "network",
     "refresh-failed",
+    "sync-failed",
+    "fetch-failed",
     "bridge-missing",
     "unknown",
     "device-management-unsupported",
@@ -171,6 +177,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "catalog_unavailable": "wire",
         "disabled": "wire",
         "oidc_error": "wire",
+        "unavailable": "wire",
         "auth_method_disabled": "wire",
         "email_not_configured": "wire",
         "download_auth_required": "wire",
@@ -188,6 +195,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "transport": "client",
         "network": "client",
         "refresh-failed": "client",
+        "sync-failed": "client",
+        "fetch-failed": "client",
         "bridge-missing": "client",
         "unknown": "client",
         "device-management-unsupported": "client",
