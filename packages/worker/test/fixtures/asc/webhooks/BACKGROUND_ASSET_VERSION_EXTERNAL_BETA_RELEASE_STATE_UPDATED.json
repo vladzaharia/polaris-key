@@ -1,0 +1,21 @@
+{
+  "data": {
+    "type": "backgroundAssetVersionExternalBetaReleaseStateUpdated",
+    "id": "5f1c1e3a-0008-4b8e-9d2a-000000000008",
+    "version": 1,
+    "attributes": {
+      "newState": "READY_FOR_TESTING",
+      "oldState": "PROCESSING_FOR_TESTING",
+      "timestamp": "2026-09-30T17:00:00.000Z"
+    },
+    "relationships": {
+      "instance": {
+        "type": "backgroundAssetVersionExternalBetaReleases",
+        "id": "baveb-1",
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/backgroundAssetVersionExternalBetaReleases/baveb-1"
+        }
+      }
+    }
+  }
+}

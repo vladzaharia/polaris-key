@@ -43,12 +43,18 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "service",
 ]);
 
+/** The slice of the runtime's `ExecutionContext` dispatch uses (P5-02). */
+export interface DispatchExecution {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
 export async function dispatch(
   req: Request,
   env: Env,
   db: Db,
+  exec?: DispatchExecution,
 ): Promise<Response> {
-  return dispatchWith(req, env, db, Math.floor(Date.now() / 1000));
+  return dispatchWith(req, env, db, Math.floor(Date.now() / 1000), exec);
 }
 
 /**
@@ -65,6 +71,7 @@ export async function dispatchWith(
   env: Env,
   db: Db,
   now: number,
+  exec?: DispatchExecution,
 ): Promise<Response> {
   const url = new URL(req.url);
   // The bytes host (P2-01) reaches ONLY its byte-route allowlist — never the console, the
@@ -90,13 +97,13 @@ export async function dispatchWith(
     // added only after the handler returns, so nothing a handler stores in the edge cache
     // carries one origin's allow header to the next.
     if (!isCorsCoveredRoute(route)) {
-      return dispatchProductRoute(req, env, db, product, route, now);
+      return dispatchProductRoute(req, env, db, product, route, now, exec);
     }
     if (req.method === "OPTIONS") return corsPreflight(product, req);
     return withCors(
       product,
       req,
-      await dispatchProductRoute(req, env, db, product, route, now),
+      await dispatchProductRoute(req, env, db, product, route, now, exec),
     );
   }
 
@@ -148,6 +155,7 @@ async function dispatchProductRoute(
   product: Product,
   route: Route & { product: string },
   now: number,
+  exec?: DispatchExecution,
 ): Promise<Response> {
   // Services first: `dispatchService` checks THIS product's enablement before the
   // descriptor is consulted, so a service a product has not enabled never runs a line of
@@ -162,6 +170,9 @@ async function dispatchProductRoute(
       rest: route.rest,
       now,
       ...(route.alias ? { alias: true } : {}),
+      ...(exec
+        ? { waitUntil: (p: Promise<unknown>) => exec.waitUntil(p) }
+        : {}),
     });
   }
 

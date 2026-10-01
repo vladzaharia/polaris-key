@@ -2,7 +2,11 @@
  * The Core admin handler for outlet credentials (P5-01), beside `secrets`:
  *
  *   GET    /api/products/<slug>/outlet-credentials        — metadata and health, never values
- *   PUT    /api/products/<slug>/outlet-credentials/<id>   — write-only; echoes the id only
+ *   PUT    /api/products/<slug>/outlet-credentials/<id>   — write-only; echoes the id only.
+ *          `{kind: "asc-webhook-secret", generate: true}` (no `value`) has the Worker generate
+ *          the secret (32 random bytes, hex) and store it without ever returning it: the App
+ *          Store Connect connector's "register webhook" control then opens it and hands it to
+ *          Apple (P5-02). No Distribution code may write a credential, so generation lives here.
  *   DELETE /api/products/<slug>/outlet-credentials/<id>
  *
  * Writes are audited as `outlet_credential.set` / `outlet_credential.delete` with the session's
@@ -115,6 +119,30 @@ export async function handleOutletCredentials(
   }
   // A Google key is pasted as the JSON file it arrives as; accept that string form for it.
   let value: unknown = body.value;
+  if (body.generate !== undefined) {
+    if (body.generate !== true || body.kind !== "asc-webhook-secret")
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "generate: true is accepted only for an asc-webhook-secret",
+        { fields: ["generate"] },
+      );
+    if (body.value !== undefined)
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "give value or generate, not both",
+        {
+          fields: ["value"],
+        },
+      );
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    value = {
+      secret: Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
+        "",
+      ),
+    };
+  }
   if (body.kind === "google-service-account" && typeof value === "string") {
     try {
       value = JSON.parse(value) as unknown;
@@ -154,7 +182,7 @@ export async function handleOutletCredentials(
     now,
     "outlet_credential.set",
     { kind: "outlet_credential", id },
-    `${result.created ? "Set" : "Rotated"} outlet credential ${id} (${body.kind})`,
+    `${result.created ? "Set" : "Rotated"} outlet credential ${id} (${body.kind}${body.generate === true ? ", generated" : ""})`,
   );
   // NEVER echo the value, its metadata or anything derived from it — the id only.
   return adminJson({ ok: true, id });

@@ -1,0 +1,20 @@
+{
+  "data": {
+    "type": "alternativeDistributionTerritoryAvailabilityUpdated",
+    "id": "5f1c1e3a-0012-4b8e-9d2a-000000000012",
+    "version": 1,
+    "attributes": {
+      "territory": "FRA",
+      "timestamp": "2026-09-30T17:00:00.000Z"
+    },
+    "relationships": {
+      "instance": {
+        "type": "alternativeDistributionTerritoryAvailabilities",
+        "id": "adta-1",
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/alternativeDistributionTerritoryAvailabilities/adta-1"
+        }
+      }
+    }
+  }
+}
