@@ -6,11 +6,18 @@ import { describe, expect, it } from "vitest";
 
 import * as barrel from "../src/index.js";
 import * as core from "../src/core.js";
+import * as distribution from "../src/distribution.js";
+import * as release from "../src/release.js";
+import * as update from "../src/update.js";
 import { DEFAULT_RELEASE_ACCESS } from "../src/release.js";
 
 describe("@polaris-key/protocol layout", () => {
-  it("core carries wire contract v3", () => {
-    expect(core.PROTOCOL_VERSION).toBe(3);
+  it("core carries wire contract v4", () => {
+    expect(core.PROTOCOL_VERSION).toBe(4);
+    expect(core.MAX_WIRE_INTEGER).toBe(Number.MAX_SAFE_INTEGER);
+    expect(core.MAX_JSON_DEPTH).toBe(64);
+    // verifyJws's encoded caps: header 1 370 + "." + payload 87 386 + "." + signature 86.
+    expect(core.MAX_RECORD_JWS_BYTES).toBe(1370 + 1 + 87386 + 1 + 86);
     expect(core.ISSUER).toBe("key.plrs.im");
     expect(core.HEADER_DEVICE).toBe("X-PKey-Device");
     expect(core.HEADER_SDK_NAME).toBe("X-PKey-SDK");
@@ -101,5 +108,81 @@ describe("@polaris-key/protocol layout", () => {
   it("the gate vocabulary includes not-applicable", () => {
     const status: barrel.LicenseStatus = "not-applicable";
     expect(status).toBe("not-applicable");
+  });
+
+  it("the v4 feed, record and decision constants (WIRE-CONTRACT-V4 §2.3, §2.4)", () => {
+    expect(update.FEED_VERSION_SCHEMES).toEqual([
+      "semver",
+      "semver+build",
+      "4part",
+    ]);
+    expect(update.FEED_TTL_SECONDS).toBe(900);
+    expect(update.MAX_FEED_TTL_SECONDS).toBe(3600);
+    expect(update.ROLLOUT_BUCKETS).toBe(10000);
+    expect(update.FEED_PLATFORM_PATTERN.source).toBe("^[a-z][a-z0-9-]{0,63}$");
+    expect(update.UPDATE_ACTIONS).toEqual([
+      "none",
+      "code-ready",
+      "binary",
+      "store",
+      "platform",
+      "blocked",
+    ]);
+    expect(update.BLOCKED_REASONS).toEqual(["app-floor"]);
+    expect(update.BINARY_METHODS).toEqual([
+      "native",
+      "download",
+      "sidecar-pck",
+    ]);
+    expect(update.NONE_REASONS).toHaveLength(10);
+    expect(release.BUILD_ID_PATTERN.source).toBe("^[a-z0-9][a-z0-9._-]{0,63}$");
+    expect(release.RESERVED_RECORD_KINDS).toEqual([
+      "pack",
+      "revocation",
+      "delegation",
+    ]);
+    expect(barrel.FEED_VERSION_SCHEMES).toBe(update.FEED_VERSION_SCHEMES);
+    expect(barrel.BUILD_ID_PATTERN).toBe(release.BUILD_ID_PATTERN);
+    expect(barrel.MAX_WIRE_INTEGER).toBe(core.MAX_WIRE_INTEGER);
+  });
+
+  it("the /distribution subpath: kinds, capabilities and narrowing (plans/P3-01.md §2.9)", () => {
+    expect(distribution.OUTLET_KINDS).toHaveLength(17);
+    expect(distribution.OUTLET_ID_PATTERN.source).toBe(
+      "^[a-z][a-z0-9-]{0,63}$",
+    );
+    expect(distribution.OUTLET_UNKNOWN).toBe("unknown");
+    expect(Object.keys(distribution.OUTLET_CAPABILITY_DEFAULTS).sort()).toEqual(
+      [...distribution.OUTLET_KINDS, "unknown"].sort(),
+    );
+    for (const kind of [...distribution.OUTLET_KINDS, "unknown"] as const) {
+      expect(distribution.OUTLET_CAPABILITY_DEFAULTS[kind]).toBeDefined();
+      expect(distribution.OUTLET_PLATFORMS[kind]).toBeDefined();
+    }
+    expect(distribution.OUTLET_CAPABILITY_DEFAULTS.web.binaryUpdates).toBe(
+      "none",
+    );
+    expect(distribution.OUTLET_CAPABILITY_DEFAULTS.steam.commerce).toBe(
+      "steam",
+    );
+    expect(distribution.PLATFORM_NARROWING.ios!.direct).toEqual({
+      binaryUpdates: "store",
+      codeUpdates: false,
+      downloadedScripts: false,
+    });
+    expect(distribution.BINARY_UPDATES_ORDER).toEqual([
+      "none",
+      "store",
+      "self",
+    ]);
+    expect(distribution.OUTLET_SUBKINDS).toHaveLength(8);
+    expect(distribution.SUBKIND_NARROWING.appimage).toEqual({});
+    expect(distribution.OUTLET_CONFIDENCES).toEqual([
+      "attested",
+      "declared",
+      "heuristic",
+      "stamp",
+    ]);
+    expect(barrel.OUTLET_KINDS).toBe(distribution.OUTLET_KINDS);
   });
 });

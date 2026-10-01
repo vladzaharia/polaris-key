@@ -1,12 +1,26 @@
-// @polaris-key/protocol/core — wire contract v3 Core substrate types: the shared document
+// @polaris-key/protocol/core — wire contract v4 Core substrate types: the shared document
 // envelope, device principal, telemetry, errors, and transport headers. Types only, no
-// runtime, no crypto. Normative source: docs/security/WIRE-CONTRACT-V3.md. Any field drift
+// runtime, no crypto. Normative source: docs/security/WIRE-CONTRACT-V4.md. Any field drift
 // is wire-breaking: bump PROTOCOL_VERSION and regenerate conformance/corpus/v2.
 //
 // Times are epoch SECONDS (matching the JOSE world the Worker signs in), never millis.
 
 /** Bumped on any wire-breaking change to the document shapes or HTTP contract. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
+
+/** The largest value an integer claim may carry, 2^53 − 1 (WIRE-CONTRACT-V4 §3). An integer
+ *  claim is a plain integer token (`-?(0|[1-9][0-9]*)`, no fraction, no exponent) from the
+ *  claim's minimum to this value, decided from the token and never from a parsed number. */
+export const MAX_WIRE_INTEGER = 9007199254740991;
+
+/** The deepest an object or array may nest in a signed header or payload, counting the
+ *  top-level object as level 1 (WIRE-CONTRACT-V4 §1.2 rule 9). */
+export const MAX_JSON_DEPTH = 64;
+
+/** The longest compact JWS that can be a release record a feed pins: `verifyJws`'s own encoded
+ *  caps, 1 370 + 1 + 87 386 + 1 + 86 bytes. A longer body, or one with a byte outside ASCII,
+ *  is refused before it is hashed (WIRE-CONTRACT-V4 §3, client step 12). */
+export const MAX_RECORD_JWS_BYTES = 88844;
 
 /** The `iss` every Polaris Key document carries. A FIXED string, never derived from the base URL
  *  or the serving host — an attacker-controlled host must not be able to name its own issuer.
