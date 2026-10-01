@@ -1,5 +1,8 @@
 node_modules/
 dist/
+# The polaris-key/publish Action runs its committed bundle (P2-06; AGENTS.md rule 3) — the bare
+# `dist/` above would otherwise swallow it and the Action would ship with no entry point.
+!actions/publish/dist/
 .turbo/
 *.tsbuildinfo
 coverage/

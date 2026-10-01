@@ -337,6 +337,26 @@ uploads; it can only promote objects its ticket lists; the ticket is bound to th
 the token that obtained it, expires with the token (≤ 1 h), and is redeemed once. Every staged
 object is verified, and the descriptor planned, before anything is promoted.
 
+**A dry run may precede the uploads (P2-06).** `dryRun: true` judges a ticket object that is not
+yet staged as if it were, and lists its key in `unverified`; a staged copy that is present must
+still verify. Nothing is claimed, promoted or written, so it earns no ref. It is not an oracle:
+an unverified key is judged by the ticket alone (the plan's pending set overrides whatever
+`blob_objects` holds), and objects outside the ticket are still refused `object_not_in_ticket`.
+
+**The CI client (P2-06).** `pkey release publish` and the `polaris-key/publish` Action
+(`packages/cli/src/{oidc,ci,s3,publish}.ts`) hold three secrets for the life of one job: the
+`pkeyci_` token, the ticket, and the temporary credential. Inside Actions each is passed to
+`::add-mask::` before anything else touches it (tests assert that no other output line carries
+one); outside Actions nothing is printed at all. `pkey auth github-oidc` hands the token to later
+steps only through `$GITHUB_ENV`, never stdout. The CLI refuses a non-https `--base-url` (other
+than `localhost`), so a token never crosses plain HTTP, and requests the OIDC token for the
+product-bound audience itself. Retries are limited to what the Worker marks `retryable: true`, a
+`429` on the exchange (each attempt with a fresh OIDC token, since the exchange is single-use), and
+transient failures of the content-addressed PUT. Supply chain: the Action runs the committed
+`actions/publish/dist/index.js`, an esbuild bundle with no install step, whose freshness check
+fails CI on any difference from the reviewed source; workflows pin it by commit SHA until a
+Marketplace `v1` tag exists.
+
 **Residual risk: an existence oracle on other tenants' bytes.** `blob_objects` is shared, and
 `promote` short-circuits a target that already exists (`alreadyStored`: no copy). The submit
 route never reads that flag and answers identically either way, and `present` on a ticket

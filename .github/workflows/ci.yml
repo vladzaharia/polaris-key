@@ -47,6 +47,10 @@ jobs:
       # enums, feature ids, versions) must match its sources, and conformance/parity/errors.json
       # must list every wire code the Worker's source emits (tools/gen-sdk-constants.ts).
       - run: pnpm gen:constants -- --check
+      # Action-bundle drift (P2-06): actions/publish/dist/index.js is the committed esbuild bundle
+      # of @polaris-key/cli that the polaris-key/publish Action runs (and the standalone pkey.mjs
+      # attached to releases). Rebuilt in memory from the built workspace; exit 1 on any difference.
+      - run: pnpm --filter @polaris-key/cli bundle:action -- --check
       # Mirror drift: a `pnpm gen:mirrors -- --check` gate is intentionally omitted.
       # tools/gen-mirrors.ts supports --check, but it REQUIRES --catalog <path> and
       # --out-dir <dir> (no defaults) and no product currently emits typed mirrors

@@ -21,10 +21,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "bundle:action": "node scripts/bundle-action.mjs"
   },
   "dependencies": {
     "@polaris-key/manifest": "workspace:*",
     "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.7"
   }
 }

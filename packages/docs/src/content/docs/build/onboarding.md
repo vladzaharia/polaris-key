@@ -287,7 +287,9 @@ it — `entitled` survives the next resync; `POST …/update/settings/revert` wi
 
 1. Land the engine/app edits + README + tests on a branch; merge; tag `vX.Y.Z`. The
    unchanged sign/notarize/appcast pipeline publishes the GitHub Release; Polaris Key
-   proxies it.
+   proxies it. A product with a `deliverables.app` artifact map can instead (or as well) publish
+   each release from CI with `pkey release publish` or the `polaris-key/publish` Action, with
+   no secret in the repository: see [Publishing from CI](/docs/build/ci/).
 2. Verify end-to-end against `key.plrs.im/djdl`: `license/activate` → both documents verify
    under the new kid; anti-replay/device-bind pass; the appcast alias and its canonical
    spelling both serve; Sparkle downloads and verifies; OIDC loopback mints a license + token;

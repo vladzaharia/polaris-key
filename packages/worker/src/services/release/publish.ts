@@ -30,7 +30,8 @@
  *     promotes nothing.
  *  3. The descriptor is planned as a dry run, with the verified objects treated as promoted —
  *     so every descriptor refusal also happens before anything is promoted. `dryRun: true` stops
- *     here.
+ *     here. A dry run may precede the uploads (P2-06's `--dry-run` uploads nothing): a ticket
+ *     object not yet staged is then judged as if it were, and listed in `unverified`.
  *  4. The ticket is claimed (atomically, one submit), the objects promoted, and the descriptor
  *     ingested with them as `promoted`. A failure gives the claim back, so CI can fix and resend.
  *
@@ -434,11 +435,20 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       staging: stagingKey(product.slug, ticket.ticketId, loc.sha256),
     });
   }
+  // A dry run may come BEFORE the uploads (`pkey release publish --dry-run` uploads nothing): an
+  // object of the ticket not yet staged is judged as if it were, and named in `unverified`. A
+  // staged copy that IS there must still verify. Nothing here depends on another product's
+  // objects — a pending key is judged by the ticket alone (THREAT-MODEL §3).
+  const unverified: string[] = [];
   for (const [key, n] of needed) {
     const v = await verifyStaged(bucket, n.staging, {
       sha256: n.sha256,
       size: n.size,
     });
+    if (!v.ok && dryRun && v.reason === "missing") {
+      unverified.push(key);
+      continue;
+    }
     if (!v.ok)
       return refusal(
         400,
@@ -482,6 +492,7 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       outcome: plan.outcome,
       descriptorSha256: plan.descriptorSha256,
       planned: plan.planned,
+      unverified,
     });
 
   // 4. Claim, promote, ingest.

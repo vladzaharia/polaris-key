@@ -2341,7 +2341,10 @@ paths:
         obtained. Every `r2` location the product does not already reference must be an object
         of the ticket, and its staged copy must verify (present, exact size, exact SHA-256);
         the descriptor is then checked exactly as P2-04's ingest checks it, all before anything
-        is promoted. `dryRun: true` stops there and writes nothing. Otherwise the ticket is
+        is promoted. `dryRun: true` stops there and writes nothing; a dry run may come before
+        the uploads (P2-06's `pkey release publish --dry-run` uploads nothing), and a ticket
+        object not yet staged is then judged as if it were and listed in `unverified` (a
+        staged copy that is present must still verify). Otherwise the ticket is
         redeemed (once), the objects are promoted into the blob store, and the descriptor is
         ingested. A failure gives the ticket back. The answer is the same whether or not the
         bytes were already stored (no cross-tenant signal). One descriptor per submit.
@@ -2389,6 +2392,10 @@ paths:
                       type: [object, "null"],
                       description: "`dryRun` only: the rows that would be written.",
                     }
+                  unverified:
+                    type: array
+                    items: { type: string }
+                    description: "`dryRun` only: storage keys of ticket objects not yet uploaded, judged as if they were."
               examples:
                 created:
                   summary: test/publishRoutes.test.ts

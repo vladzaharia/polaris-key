@@ -20,6 +20,50 @@ import {
   type ProductModule,
   type ValidationMessage,
 } from "./manifest.js";
+import { authGithubOidc, CI_TOKEN_ENV, type CiEnv } from "./oidc.js";
+import {
+  PUBLISH_USAGE,
+  publishRelease,
+  type PublishSource,
+} from "./publish.js";
+import { CHANNEL_USAGE, movePointer, yankRelease } from "./channels.js";
+import { writeManifestSchemas } from "./schemas.js";
+
+export {
+  ciClient,
+  CiRequestError,
+  normalizeBaseUrl,
+  renderRefusal,
+  type CiClient,
+  type CiClientOptions,
+} from "./ci.js";
+export {
+  authGithubOidc,
+  canRequestGithubOidc,
+  CI_TOKEN_ENV,
+  exchangeGithubOidc,
+  publishAudience,
+  requestGithubOidcToken,
+  resolveCiToken,
+  type CiEnv,
+} from "./oidc.js";
+export {
+  blobKey,
+  buildDescriptor,
+  descriptorManifestOf,
+  hashFile,
+  matchArtifacts,
+  provenanceFrom,
+  publishRelease,
+  readMeta,
+  scanDir,
+  PUBLISH_USAGE,
+  type PublishOptions,
+  type PublishResult,
+} from "./publish.js";
+export { movePointer, yankRelease, CHANNEL_USAGE } from "./channels.js";
+export { MAX_SINGLE_PUT_BYTES, objectUrl, putFile, signV4 } from "./s3.js";
+export { manifestSchemas, writeManifestSchemas } from "./schemas.js";
 
 export {
   ADMIN_COOKIE_ENV,
@@ -55,6 +99,12 @@ export interface CliIo {
   cwd?: string;
   stdout?: Pick<NodeJS.WriteStream, "write">;
   stderr?: Pick<NodeJS.WriteStream, "write">;
+  /** The environment the CI commands read (default `process.env`). */
+  env?: CiEnv;
+  /** The test seam for every network call the CI commands make. */
+  fetchImpl?: typeof fetch;
+  /** The back-off seam (tests pass an instant one). */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 interface ParsedArgs {
@@ -68,6 +118,11 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
   const cwd = io.cwd ?? process.cwd();
   const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
+  const ci = {
+    env: io.env ?? (process.env as CiEnv),
+    fetchImpl: io.fetchImpl,
+    sleep: io.sleep,
+  };
 
   try {
     switch (parsed.command) {
@@ -90,6 +145,12 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return cmdTrust(parsed, stdout);
       case "sdk":
         return cmdSdk(parsed, stdout);
+      case "auth":
+        return await cmdAuth(parsed, stdout, stderr, ci);
+      case "release":
+        return await cmdRelease(parsed, cwd, stdout, stderr, ci);
+      case "manifest":
+        return await cmdManifest(parsed, cwd, stdout);
       default:
         stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
         return 2;
@@ -368,6 +429,124 @@ function cmdSdk(
   return 0;
 }
 
+interface CiIo {
+  env: CiEnv;
+  fetchImpl?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+const AUTH_USAGE =
+  "Usage: pkey auth github-oidc --product <slug> [--base-url <url>]";
+
+/**
+ * `pkey auth github-oidc` — exchange the Actions job's OIDC token for a `pkeyci_` token, mask it,
+ * and write `PKEY_CI_TOKEN` to `$GITHUB_ENV` for the job's later steps (`oidc.ts`).
+ */
+async function cmdAuth(
+  parsed: ParsedArgs,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const product = flagString(parsed, "product");
+  if (parsed.positional[0] !== "github-oidc" || !product)
+    throw new Error(AUTH_USAGE);
+  const issued = await authGithubOidc({
+    baseUrl: flagString(parsed, "base-url"),
+    product,
+    env: ci.env,
+    out: stdout,
+    log: stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep,
+  });
+  stdout.write(
+    `Exchanged the job's OIDC token for a CI token (${issued.scopes.join(", ") || "no scopes"}); ` +
+      `${CI_TOKEN_ENV} is set for the job's later steps.\n`,
+  );
+  return 0;
+}
+
+/** `pkey release publish|promote|pin|unpin|yank` (`publish.ts`, `channels.ts`). */
+async function cmdRelease(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const [sub, releaseId] = parsed.positional;
+  const product = flagString(parsed, "product");
+  const common = {
+    baseUrl: flagString(parsed, "base-url"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep,
+  };
+  switch (sub) {
+    case "publish": {
+      const dir = flagString(parsed, "dir");
+      if (!product || !dir) throw new Error(PUBLISH_USAGE);
+      await publishRelease({
+        ...common,
+        cwd,
+        product,
+        dir,
+        deliverable: flagString(parsed, "deliverable"),
+        version: flagString(parsed, "version"),
+        tag: flagString(parsed, "tag"),
+        channel: flagString(parsed, "channel"),
+        source: flagString(parsed, "source") as PublishSource | undefined,
+        meta: flagString(parsed, "meta"),
+        dryRun: flagBool(parsed, "dry-run"),
+      });
+      return 0;
+    }
+    case "promote":
+    case "pin":
+    case "unpin": {
+      const channel = flagString(parsed, "channel");
+      if (!product || !channel) throw new Error(CHANNEL_USAGE);
+      await movePointer({
+        ...common,
+        product,
+        op: sub,
+        channel,
+        releaseId,
+        deliverable: flagString(parsed, "deliverable"),
+      });
+      return 0;
+    }
+    case "yank": {
+      const reason = flagString(parsed, "reason");
+      if (!product || !releaseId || !reason) throw new Error(CHANNEL_USAGE);
+      await yankRelease({ ...common, product, releaseId, reason });
+      return 0;
+    }
+    default:
+      throw new Error(`${PUBLISH_USAGE}\n${CHANNEL_USAGE}`);
+  }
+}
+
+const MANIFEST_USAGE = "Usage: pkey manifest schemas --out <dir>";
+
+/** `pkey manifest schemas --out <dir>` — vendor the `.pkey/` JSON Schemas (`schemas.ts`). */
+async function cmdManifest(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+): Promise<number> {
+  const outDir = flagString(parsed, "out");
+  if (parsed.positional[0] !== "schemas" || !outDir)
+    throw new Error(MANIFEST_USAGE);
+  const written = await writeManifestSchemas(path.resolve(cwd, outDir));
+  stdout.write(`Wrote ${written.length} schemas:\n`);
+  for (const file of written) stdout.write(`- ${path.relative(cwd, file)}\n`);
+  return 0;
+}
+
 function flagString(parsed: ParsedArgs, name: string): string | undefined {
   const value = parsed.flags[name];
   return typeof value === "string" && value.trim() ? value : undefined;
@@ -395,6 +574,27 @@ Commands:
   pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
   pkey bundle --product slug --device id --grace-days n [--no-config] [--license id]
               [--base-url url] [--out file] [--force]
+  pkey manifest schemas --out dir
+
+CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
+  pkey auth github-oidc --product slug [--base-url url]
+  pkey release publish --product slug --version v --dir path [--deliverable app]
+              [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json]
+              [--base-url url] [--dry-run]
+  pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
+  pkey release unpin --channel c --product slug [--deliverable id]
+  pkey release yank releaseId --reason text --product slug
+
+pkey release publish matches the files under --dir against .pkey/release's
+deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
+them, uploads what Polaris Key does not already hold, and submits the release descriptor.
+--dry-run prints the descriptor and the server's verdict and uploads and writes nothing.
+--meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. The CI commands
+exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret
+is stored in the repository. See /docs/build/ci/.
+
+pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
+repository with no node_modules.
 
 pkey bundle mints one offline activation bundle and writes it to a file (default
 <product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}).
@@ -413,8 +613,11 @@ Environment:
                       console tab: devtools -> Application -> Cookies -> the console origin.
                       It is a SHORT-LIVED session credential carrying full admin authority:
                       do not commit it, and do not export it into a shared shell.
+  ${CI_TOKEN_ENV}       Optional for the CI commands: a static pkeyci_ token an operator
+                      issued, for CI that is not GitHub Actions. Unset in Actions, where
+                      the job's OIDC token is exchanged instead.
 
-Note: --no-config and --force take no value. A valueless flag swallows the next bare word, so
-pass them last or as --no-config=true / --force=true.
+Note: --no-config, --force and --dry-run take no value. A valueless flag swallows the next bare word, so
+pass them last or as --no-config=true / --force=true / --dry-run=true.
 `;
 }
