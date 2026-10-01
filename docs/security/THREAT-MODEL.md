@@ -475,9 +475,16 @@ checks) passes that release's STORED version as a fixed, pinned version (`fixedV
 as a route selector: the sync stores the tag minus its `v`, so a release tagged `latest`,
 `stable`, `beta`, `pr-5` or a manual channel's name stores that word, and read as a selector it
 would be a moving channel with no window check. As a fixed version it is window-checked and, not
-being semver, refused whenever the window is bounded (P2-05 security round). Like a pinned
-selector it is checked as the stable channel: under an unbounded window a stable-only licence can
-still fetch a prerelease by exact file, as it can by pinned version on `/release/dl`.
+being semver, refused whenever the window is bounded (P2-05 security round). The window is
+always bounded in practice: `products.compat_min` and `compat_max` are `NOT NULL` with defaults
+`0.0.0` and `99.0.0`, and every writer requires semver, so a stored version that is not semver is
+always refused. **Residual (open):** like a pinned selector, a fixed release is checked as the
+stable channel, not by the release's own stored channel or its prerelease flag. A stable-only
+licence can therefore fetch any release whose stored version is semver and inside its window (a
+GitHub prerelease such as `v1.2.0-beta.1`, or a release stored on a channel the licence does not
+hold) by exact file, by hash, and by pinned version on `/release/builds` and `/release/dl`. Under
+the default window `[0.0.0, 99.0.0]` that covers nearly every prerelease. Channel gating holds only
+for moving selectors (`/release/dl/beta`, `/release/builds/beta/…`).
 `/release/blobs` names a hash rather than a release, so the gateway's decision there proves only
 a usable licence; under `entitled` a blob is served only if a release of this product whose
 artifact carries that digest passes the `/release/files` check for its stored version, and a hash

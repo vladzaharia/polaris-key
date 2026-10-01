@@ -205,6 +205,13 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
   is missing is never served on a check that saw no version. The audit found no other call site
   that passes a stored version (`/release/dl`, `/release/builds`, appcasts and the version
   check all pass the request's own selector).
+- **Security round, docs follow-up.** THREAT-MODEL §5 understated the residual. It said only an
+  unbounded window lets a stable-only licence fetch a prerelease by exact file, but no product
+  has an unbounded window: `compat_min` and `compat_max` are `NOT NULL` with defaults `0.0.0` and
+  `99.0.0`. The real residual is that a fixed or pinned release is checked as the stable channel,
+  so any release whose stored version is semver and inside the window (for example
+  `v1.2.0-beta.1`) is served by file, by hash and by pinned version. §5 and the artifacts page
+  now state this. No code changed.
 
 ## Steps
 

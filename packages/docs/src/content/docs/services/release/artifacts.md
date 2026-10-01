@@ -211,6 +211,16 @@ applies to `/release/dl`, `/release/builds` and `/release/files` alike.
 selector. A release tagged `latest`, `stable`, `beta`, `pr-5` or a manual channel's name stores
 that word as its version; it is window-checked like any pinned version, so under a bounded
 window it is refused with `version_blocked` rather than treated as the moving channel it spells.
+Every window is bounded in practice, because the product's compatibility range defaults to
+`0.0.0`–`99.0.0`, so a stored version that is not semver is always refused.
+
+A fixed release, like a pinned version, is checked as the stable channel, not by the release's
+own channel or prerelease flag. A licence that holds only `stable` can therefore fetch a release
+whose stored version is semver and inside its window, such as a GitHub prerelease
+`v1.2.0-beta.1`, by exact file, by hash, or by pinned version on `/release/builds` and
+`/release/dl`. Channel restrictions apply to moving selectors (`/release/dl/beta`,
+`/release/builds/beta/...`). Do not rely on a channel grant to keep a prerelease's bytes from a
+stable-only licence.
 
 A blob URL names a hash, not a release, and a hash is no secret: signed manifests publish it.
 Under `entitled`, `/release/blobs` therefore serves an object only if at least one release of
