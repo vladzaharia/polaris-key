@@ -25,6 +25,7 @@
 import Foundation
 import PolarisKeyConfig
 import PolarisKeyCore
+import PolarisKeyIdentity
 import PolarisKeyLicense
 
 public struct PolarisKeyClientOptions: Sendable {
@@ -130,6 +131,8 @@ public actor PolarisKeyClient {
     public nonisolated let core: CoreContext
     public nonisolated let license: LicenseClient
     public nonisolated let config: ConfigClient
+    /// Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity.
+    public nonisolated let identity: IdentityClient
 
     private let probes: [ProbeDeclaration]
     private let refreshIntervalSeconds: Double?
@@ -140,7 +143,21 @@ public actor PolarisKeyClient {
         self.product = options.core.productSlug
         let core = try CoreContext(options: options.core)
         self.core = core
-        self.config = ConfigClient(core: core, options: options.config)
+        self.config = ConfigClient(
+            core: core, options: options.config,
+            reacquire: { token in
+                // An edge-mint 401 gets the same single re-acquire a document fetch does, on the
+                // route the license module owns.
+                guard case .ok(let next, _) = await LicenseEndpoints.reacquireToken(
+                    core, token: token)
+                else { return nil }
+                return next
+            })
+        // A completed device-code sign-in raises the same acquisition event activation does: a
+        // signed-in device holds a licensed token exactly as an activated one does.
+        self.identity = IdentityClient(core: core) {
+            await PolarisKeyClient.syncAfterAcquisition(core: core, probes: options.probes)
+        }
         self.probes = options.probes
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         // The activation event: mint a credential, then sync. `devices.register()` deliberately

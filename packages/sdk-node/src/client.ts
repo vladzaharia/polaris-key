@@ -8,7 +8,8 @@
 //
 //   * `onLicenseAcquired` → `sync()`. Activation used to call refresh inline, so every mint
 //     path had to remember to, and a config-only product had no way to say "there is no licence
-//     here, sync anyway". Now the license client raises an EVENT and the facade decides.
+//     here, sync anyway". Now the license client — and the identity client, when a device-code
+//     sign-in completes — raises an EVENT and the facade decides.
 //   * `getSyncState()`, the React bridge contract — one snapshot of everything the UI layer
 //     needs, assembled from the managers that own each piece.
 //
@@ -44,6 +45,7 @@ import {
   DeviceManagementUnsupportedError,
   type DevicesClientOptions,
 } from "./devices/client.js";
+import { IdentityClient } from "./identity/client.js";
 import { ReleaseClient } from "./release/client.js";
 import { UpdateClient } from "./update/client.js";
 import {
@@ -112,6 +114,7 @@ export class PolarisKeyClient {
   readonly license: LicenseClient;
   readonly config: ConfigClient;
   readonly devices: DevicesClient;
+  readonly identity: IdentityClient;
   readonly release: ReleaseClient;
   readonly update: UpdateClient;
 
@@ -160,7 +163,17 @@ export class PolarisKeyClient {
       () => this.onLicenseAcquired(),
       opts.license ?? {},
     );
-    this.config = new ConfigClient(this.core, this.cache, opts.config ?? {});
+    this.config = new ConfigClient(
+      this.core,
+      this.cache,
+      opts.config ?? {},
+      this.tokens,
+    );
+    // Device-code sign-in raises the same acquisition event activation does: a signed-in
+    // device holds a licensed token exactly as an activated one does, and syncs the same way.
+    this.identity = new IdentityClient(this.core, this.tokens, () =>
+      this.onLicenseAcquired(),
+    );
     this.release = new ReleaseClient(this.core, this.tokens);
     this.update = new UpdateClient(
       this.core,

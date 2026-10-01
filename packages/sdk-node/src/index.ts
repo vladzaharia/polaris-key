@@ -1,8 +1,8 @@
 // `@polaris-key/node` — the Polaris Key Node SDK.
 //
 // The barrel is the convenience surface: `PolarisKeyClient` plus the types a host touches. Every
-// module also has a subpath (`@polaris-key/node/core`, `/license`, `/config`, `/devices`, `/release`,
-// `/update`, `/local`, `/cli`) so a config-only daemon can import the Config client without
+// module also has a subpath (`@polaris-key/node/core`, `/license`, `/config`, `/devices`, `/identity`,
+// `/release`, `/update`, `/local`, `/cli`) so a config-only daemon can import the Config client without
 // pulling the license module, and a bundler can drop what nobody imported.
 //
 // Pure verification logic is NOT re-exported here. `verifyLicenseDoc`, `licenseState`,
@@ -63,8 +63,16 @@ export {
   ConfigClient,
   type ConfigClientOptions,
   type ConfigSource,
+  type MintedToken,
   type UserConfigEntry,
 } from "./config/client.js";
+export {
+  IdentityClient,
+  type SignInPoll,
+  type SignInPrompt,
+  type SignInResult,
+  type WaitForSignInOptions,
+} from "./identity/client.js";
 export {
   DevicesClient,
   type AccountDevice,

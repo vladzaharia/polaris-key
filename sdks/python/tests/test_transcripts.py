@@ -13,6 +13,7 @@ were signed at a fixed instant and expire an hour later.
 
 # @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 # @pkey-feature license.deactivate devices.register devices.report
+# @pkey-feature identity.devicecode config.mint
 
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ from typing import Any, Dict, Optional
 import httpx
 import pytest
 
-from polaris_key import PolarisKeyClient
+from polaris_key import PolarisError, PolarisKeyClient
 from polaris_key.core.store import CacheRecord
 
 from transcript_replay import (
@@ -75,12 +76,45 @@ class TranscriptStore:
         self._cache = None
 
 
-def _act(client: PolarisKeyClient, store: TranscriptStore, step: Dict[str, Any]) -> Dict[str, Any]:
-    """THE mapping from transcript verbs and ``expect`` keys onto the Python SDK."""
+def _act(
+    client: PolarisKeyClient,
+    store: TranscriptStore,
+    step: Dict[str, Any],
+    session: Dict[str, Any],
+) -> Dict[str, Any]:
+    """THE mapping from transcript verbs and ``expect`` keys onto the Python SDK.
+
+    ``session`` carries the prompt the last ``beginSignIn`` returned between steps."""
     out: Dict[str, Any] = {}
     action = step["action"]
     args = step["args"]
-    if action == "discover":
+    if action == "beginSignIn":
+        p = client.identity.begin_sign_in(device_name=args.get("deviceName"))
+        session["prompt"] = p
+        out["prompt"] = {
+            "userCode": p.userCode,
+            "verificationUri": p.verificationUri,
+            "verificationUriComplete": p.verificationUriComplete,
+            "expiresIn": p.expiresIn,
+            "interval": p.interval,
+        }
+    elif action == "pollSignIn":
+        poll = client.identity.poll_sign_in(session["prompt"])
+        out["result"] = poll.status
+        if poll.status == "slow-down":
+            out["interval"] = poll.interval
+    elif action == "waitForSignIn":
+        out["result"] = client.identity.wait_for_sign_in(session["prompt"]).status
+    elif action == "mintToken":
+        try:
+            minted = client.config.mint_token(args["recipeId"])
+        except PolarisError as e:
+            out["result"] = e.code
+        else:
+            out["result"] = "ok"
+            out["token"] = minted.token
+            out["expiresAt"] = minted.expiresAt
+    elif action == "discover":
         out["result"] = client.discover().kind
     elif action == "sync":
         r = client.sync(force=args.get("force") is True)
@@ -132,11 +166,12 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     )
     client.devices.fingerprint = lambda: FINGERPRINT  # type: ignore[method-assign]
     client.init()
+    session: Dict[str, Any] = {}
     try:
         for i, _ in enumerate(t["steps"]):
             step = server.begin_step(i)
             clock["now"] = float(step.get("now", t["now"]))
-            observed = _act(client, store, step)
+            observed = _act(client, store, step, session)
             server.end_step()
             for key, want in step["expect"].items():
                 assert observed.get(key) == want, (

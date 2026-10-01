@@ -113,15 +113,16 @@ one PowerShell `Get-CimInstance` call, run with no console window and a null std
 
 Every one is importable on its own, so a config-only daemon never pulls the licence module:
 
-| Import                | Owns                                                                                                                 |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `polaris_key.core`    | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto |
-| `polaris_key.license` | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate                                 |
-| `polaris_key.config`  | the signed config document + layered resolution                                                                      |
-| `polaris_key.devices` | registration, the roster, fingerprint / facts / device-id, the stores                                                |
-| `polaris_key.release` | changelog, install script, artifact URLs                                                                             |
-| `polaris_key.update`  | version check + the Sparkle appcast URL                                                                              |
-| `polaris_key.local`   | the transportless profile                                                                                            |
+| Import                 | Owns                                                                                                                 |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `polaris_key.core`     | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto |
+| `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate                                 |
+| `polaris_key.config`   | the signed config document + layered resolution, edge-mint (`mint_token`)                                            |
+| `polaris_key.devices`  | registration, the roster, fingerprint / facts / device-id, the stores                                                |
+| `polaris_key.identity` | device-code sign-in (RFC 8628): `begin_sign_in` / `poll_sign_in` / `wait_for_sign_in`                                |
+| `polaris_key.release`  | changelog, install script, artifact URLs                                                                             |
+| `polaris_key.update`   | version check + the Sparkle appcast URL                                                                              |
+| `polaris_key.local`    | the transportless profile                                                                                            |
 
 ### Capabilities (fail-closed)
 
@@ -164,6 +165,54 @@ against your pins.
 `not-applicable` is what a product that does not enable the License service reports: it has
 no licence to be missing, so it boots **usable** rather than sitting on `needs-activation`
 forever.
+
+## Device-code sign-in
+
+For a host that cannot complete a browser redirect — a CLI over SSH, a daemon, a kiosk —
+`client.identity` signs in with a device code (RFC 8628). It needs the Identity service
+(`expected_services` or discovery); with it off, every call raises
+`PolarisError("service-unavailable")` before any request.
+
+```python
+prompt = client.identity.begin_sign_in(device_name="Build agent 7")
+# Show prompt.userCode; render prompt.verificationUriComplete as a QR code (the verification
+# page with the code filled in); show prompt.verificationUri as the short URL.
+result = client.identity.wait_for_sign_in(prompt, timeout=300, cancel=stop_event)
+if result.status == "ready":
+    ...  # the device token is stored and the post-activation sync has already run
+```
+
+`wait_for_sign_in` waits at least `prompt.interval` seconds before each poll; a `slow_down`
+lengthens the interval for every later poll (to the server's value, or by five seconds), and a
+poll that fails on the network or with a 5xx is retried at the same interval, never faster. It
+returns `expired` once `prompt.expiresAt` has passed without asking the server again, raises
+`TimeoutError` when `timeout` runs out first, and raises `PolarisError("cancelled")` when the
+`cancel` event (a `threading.Event`) is set. `poll_sign_in(prompt)` makes exactly one poll
+(`pending`, `slow-down` with an `interval`, `ready`, `expired` or `error`).
+
+`prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
+identity's **own** licence; it does not attach a licence this device already held.
+
+**After `ready`, show on the device which account signed in.** Anyone holding the user code can
+complete the sign-in on the verification page, so the player must be able to see a mis-binding:
+`ready` carries no identity itself, but the post-acquisition sync has already run, so
+`client.license.get_profile()` returns the signed licence profile (`name`, `email`) to show — for
+example "Signed in as Ada Lovelace <ada@example.com>" with a way to sign out.
+
+The prompt's `repr` leaves out `deviceCode`, and a `MintedToken`'s leaves out `token`, so
+logging either object does not leak the credential.
+
+## Edge-mint
+
+`client.config.mint_token(recipe_id)` asks the Worker to sign a short-lived third-party token
+through an operator-approved recipe (`GET /<product>/config/mint/<recipe_id>/token`, with the
+device token) and returns a `MintedToken(token, expiresAt)`. It is cached **in memory only** —
+never in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, and only
+while the client still holds the device token it was minted with — `deactivate()`, a cleared
+token or a different sign-in drops it. A 401 gets the usual single re-acquire and one retry. Failures raise `PolarisError`:
+`service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`) before any
+request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
+`rate_limited` / `misconfigured`.
 
 ## Layered config
 
