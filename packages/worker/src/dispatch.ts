@@ -155,7 +155,7 @@ async function dispatchProductRoute(
 
   switch (route.kind) {
     case "discovery":
-      return handleDiscovery(req, env, db, product, SERVICES);
+      return handleDiscovery(req, env, db, product, SERVICES, now);
     case "devices":
       return handleDevices(req, env, db, product, now, route.deviceId);
     case "report":

@@ -49,6 +49,7 @@ const ALL_ON: ServicesResponse = {
     license: { enabled: true },
     config: { enabled: false },
     release: { enabled: true },
+    distribution: { enabled: true },
     update: { enabled: true },
     identity: { enabled: true },
   },
@@ -182,6 +183,7 @@ describe("Services — what the product runs", () => {
     expect(slug).toBe("djdl");
     expect(Object.keys(body.services ?? {}).sort()).toEqual([
       "config",
+      "distribution",
       "identity",
       "license",
       "release",
@@ -192,6 +194,7 @@ describe("Services — what the product runs", () => {
       license: { enabled: true },
       config: { enabled: false },
       release: { enabled: true },
+      distribution: { enabled: true },
       update: { enabled: false },
       identity: { enabled: true },
     });
@@ -202,11 +205,17 @@ describe("Services — what the product runs", () => {
   it("renders a coherence rejection beside the switch it indicts, not as a toast", async () => {
     services.mockResolvedValue(
       state({
-        services: { release: { enabled: false }, update: { enabled: false } },
+        services: {
+          release: { enabled: false },
+          distribution: { enabled: false },
+          update: { enabled: false },
+        },
       }),
     );
     updateServices.mockRejectedValue(
-      new ApiError(422, undefined, "bad_request", ["update_requires_release"]),
+      new ApiError(422, undefined, "bad_request", [
+        "update_requires_distribution",
+      ]),
     );
     renderServices();
     await screen.findByRole("switch", { name: "License" });
@@ -219,11 +228,12 @@ describe("Services — what the product runs", () => {
     // The mapped copy — not the raw code — is what the operator reads.
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe(
-      SERVICE_ERROR_MESSAGES.update_requires_release,
+      SERVICE_ERROR_MESSAGES.update_requires_distribution,
     );
     // …and it is bound to the control at fault, so a screen reader reaches it from the switch
     // rather than having to find a sentence floating elsewhere on the page.
     expect(toggle("Update").getAttribute("aria-invalid")).toBe("true");
+    expect(toggle("Distribution").hasAttribute("aria-invalid")).toBe(false);
     expect(toggle("Release").hasAttribute("aria-invalid")).toBe(false);
 
     // A toast would dismiss itself and sit in the corner, away from the switch that was just
@@ -267,11 +277,17 @@ describe("Services — what the product runs", () => {
   it("clears a rejection as soon as the operator changes the set it was about", async () => {
     services.mockResolvedValue(
       state({
-        services: { release: { enabled: false }, update: { enabled: false } },
+        services: {
+          release: { enabled: false },
+          distribution: { enabled: false },
+          update: { enabled: false },
+        },
       }),
     );
     updateServices.mockRejectedValue(
-      new ApiError(422, undefined, "bad_request", ["update_requires_release"]),
+      new ApiError(422, undefined, "bad_request", [
+        "update_requires_distribution",
+      ]),
     );
     renderServices();
     await screen.findByRole("switch", { name: "License" });
@@ -282,9 +298,10 @@ describe("Services — what the product runs", () => {
     );
     await screen.findByRole("alert");
 
-    // The verdict was on one specific proposed set. Turning Release on is the operator answering
-    // it; leaving the sentence up would have them reading a judgement they already withdrew.
-    await userEvent.click(toggle("Release"));
+    // The verdict was on one specific proposed set. Turning Distribution on is the operator
+    // answering it; leaving the sentence up would have them reading a judgement they already
+    // withdrew.
+    await userEvent.click(toggle("Distribution"));
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

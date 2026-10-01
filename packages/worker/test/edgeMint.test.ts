@@ -4,7 +4,7 @@ import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { makeTestDb } from "./helpers.js";
+import { makeTestDb, NO_HOOKS } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
   UNKNOWN_DEVICE_TOKEN,
@@ -723,6 +723,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       env,
       db,
       base: "https://key.plrs.im/djdl",
+      hooks: NO_HOOKS,
     })) as { mint: { available: boolean } };
     expect(fragment.mint.available).toBe(false);
 
@@ -820,6 +821,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       env,
       db,
       base: "https://key.plrs.im/djdl",
+      hooks: NO_HOOKS,
     })) as { mint: { available: boolean } };
     expect(fragment.mint.available).toBe(false);
 
@@ -1035,6 +1037,7 @@ describe("P0-12 the approval binds the sign-in trust it was given under", () => 
       env,
       db,
       base: "https://key.plrs.im/djdl",
+      hooks: NO_HOOKS,
     })) as { mint: { available: boolean } };
     expect(fragment.mint.available).toBe(false);
 
@@ -1393,6 +1396,7 @@ describe("P0-12 discovery: config.mint.available", () => {
         env,
         db,
         base: "https://key.plrs.im/djdl",
+        hooks: NO_HOOKS,
       })) as { mint: { available: boolean } };
 
     expect((await fragment()).mint.available).toBe(false);

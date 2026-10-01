@@ -169,6 +169,10 @@ paths:
                           changelog: https://key.plrs.im/djdl/release/changelog
                           install: https://key.plrs.im/djdl/release/install.sh
                           download: https://key.plrs.im/djdl/release/dl
+                      distribution:
+                        enabled: true
+                        configured: false
+                        endpoints: {}
                       update:
                         enabled: true
                         configured: true
@@ -193,12 +197,13 @@ paths:
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
                 configOnly:
-                  summary: A config-only product — the other four are bare `enabled:false`
+                  summary: A config-only product — the other five are bare `enabled:false`
                   value:
                     services:
                       license: { enabled: false }
                       config: { enabled: true, schemaVersion: 3, endpoints: { document: https://key.plrs.im/cfg/config/document, schema: https://key.plrs.im/cfg/config/schema }, mint: { available: false } }
                       release: { enabled: false }
+                      distribution: { enabled: false }
                       update: { enabled: false }
                       identity: { enabled: false }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
@@ -3301,7 +3306,9 @@ components:
             below; test/serviceTable.test.ts pins it to tools/services.json). Core knows the
             shape of no service: an enabled one contributes its own fragment verbatim, a
             disabled one is exactly `{"enabled": false}` and nothing else.
-          required: [license, config, release, update, identity]
+          required: [license, config, release, distribution, update, identity]
+          properties:
+            distribution: { $ref: "#/components/schemas/DistributionFragment" }
           additionalProperties: { $ref: "#/components/schemas/ServiceFragment" }
     ServiceFragment:
       type: object
@@ -3321,6 +3328,30 @@ components:
           endpoints:
             document: https://key.plrs.im/djdl/config/document
             schema: https://key.plrs.im/djdl/config/schema
+    DistributionFragment:
+      description: >
+        Distribution's fragment (P2b-01): how releases reach devices and outlets. `{"enabled":
+        false}` when off, like every service. When on, `configured` is `false` until the product
+        declares outlets (P2b-02) and `endpoints` is empty until distribution has routes
+        (P2b-03, P2b-04) — the service exists before anything is reachable through it.
+      oneOf:
+        - type: object
+          required: [enabled]
+          additionalProperties: false
+          properties:
+            enabled: { type: boolean, const: false }
+        - type: object
+          required: [enabled, configured, endpoints]
+          additionalProperties: true
+          properties:
+            enabled: { type: boolean, const: true }
+            configured: { type: boolean }
+            endpoints:
+              type: object
+              additionalProperties: { type: string }
+      examples:
+        - { enabled: false }
+        - { enabled: true, configured: false, endpoints: {} }
     Jwks:
       type: object
       description: >

@@ -48,6 +48,8 @@ export type Tab =
   | "profiles"
   // release
   | "releases"
+  // distribution
+  | "distribution"
   // update
   | "updates"
   // identity
@@ -175,6 +177,20 @@ export const SECTIONS: NavSection[] = [
         tab: "releases",
         label: "Releases",
         docs: "/docs/services/release/truth-store/",
+      },
+    ],
+  },
+  {
+    key: "distribution",
+    label: "Distribution",
+    accent: "distribution",
+    service: "distribution",
+    docs: "/docs/services/distribution/",
+    items: [
+      {
+        tab: "distribution",
+        label: "Overview",
+        docs: "/docs/services/distribution/",
       },
     ],
   },

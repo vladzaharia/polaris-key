@@ -5,9 +5,14 @@
  *
  * Update owns the Sparkle appcast, the version check, and the eligibility rules that decide
  * which build a given caller is offered. It owns no tables: every row it reads is Release's,
- * which is why `update → release` is the one sanctioned cross-service import in the worker and
- * why `validateServices` refuses a product that enables Update without Release — a feed with no
- * truth behind it would serve an empty answer and call it one.
+ * which is why `update → release` is the one sanctioned cross-service import in the worker.
+ *
+ * The chain is release ← distribution ← update (README §3.2): `validateServices` refuses Update
+ * without Distribution (`update_requires_distribution`), and Distribution without Release, so
+ * Update never runs over an empty truth store. What Distribution knows (transports,
+ * availability, outlet capabilities) reaches Update only through Core's descriptor hooks
+ * (`ctx.hooks.delivery()`, `ctx.hooks.outletCapabilities()`), which answer `null` while
+ * Distribution is off — never through an import.
  */
 
 import type {

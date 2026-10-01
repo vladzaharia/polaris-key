@@ -67,6 +67,9 @@
       "release": {
         "enabled": false
       },
+      "distribution": {
+        "enabled": false
+      },
       "update": {
         "enabled": false
       },
@@ -153,6 +156,11 @@
           "install": "https://key.plrs.im/full/release/install.sh",
           "download": "https://key.plrs.im/full/release/dl"
         }
+      },
+      "distribution": {
+        "enabled": true,
+        "configured": false,
+        "endpoints": {}
       },
       "update": {
         "enabled": true,
@@ -243,6 +251,9 @@
         }
       },
       "release": {
+        "enabled": false
+      },
+      "distribution": {
         "enabled": false
       },
       "update": {

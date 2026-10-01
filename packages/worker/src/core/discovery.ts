@@ -41,6 +41,7 @@ import type { Product } from "./products.js";
 import { loadPublicSigningKey, loadPublicSigningKeys } from "./products.js";
 import { methodNotAllowed } from "./errors.js";
 import type { DiscoveryContext, ServiceRegistry } from "./registry.js";
+import { buildHooks } from "./hooks.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./services.js";
 
 /** The one fragment shape a disabled service gets, everywhere. */
@@ -52,6 +53,7 @@ export async function handleDiscovery(
   db: Db,
   product: Product,
   registry: ServiceRegistry,
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
 
@@ -70,7 +72,13 @@ export async function handleDiscovery(
   if (signingPublicKey && Object.keys(trustKeys).length === 0)
     trustKeys[signingKid] = signingPublicKey;
 
-  const ctx: DiscoveryContext = { product, env, db, base };
+  const ctx: DiscoveryContext = {
+    product,
+    env,
+    db,
+    base,
+    hooks: buildHooks(registry, product.services, { env, db, product, now }),
+  };
   // Keys in canonical table order — the order clients read. Every slug gets a fragment.
   const services = {} as Record<ServiceSlug, Record<string, unknown>>;
   for (const slug of SERVICE_SLUGS) {

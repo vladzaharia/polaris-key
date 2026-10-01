@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -29,6 +29,10 @@ import {
   setServices,
 } from "../src/repo.js";
 import { loadProduct } from "../src/core/products.js";
+import type { ServiceHooks } from "../src/core/hooks.js";
+import type { ServiceDescriptor } from "../src/core/registry.js";
+import { releaseService } from "../src/services/release/index.js";
+import { updateService } from "../src/services/update/index.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
@@ -1278,6 +1282,7 @@ describe("admin services enablement", () => {
     license: { enabled: false },
     config: { enabled: false },
     release: { enabled: false },
+    distribution: { enabled: false },
     update: { enabled: false },
     identity: { enabled: false },
   };
@@ -1329,6 +1334,7 @@ describe("admin services enablement", () => {
       license: { enabled: true },
       config: { enabled: true },
       release: { enabled: false },
+      distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
     });
@@ -1341,7 +1347,11 @@ describe("admin services enablement", () => {
   it("PATCH merges, claims the row, and is visible to loadProduct", async () => {
     const w = await world();
     const { status, body } = await call(w, "PATCH", "", {
-      services: { release: { enabled: true }, update: { enabled: true } },
+      services: {
+        release: { enabled: true },
+        distribution: { enabled: true },
+        update: { enabled: true },
+      },
     });
     expect(status).toBe(200);
     expect(body.source).toBe("admin");
@@ -1350,6 +1360,7 @@ describe("admin services enablement", () => {
       license: { enabled: true },
       config: { enabled: true },
       release: { enabled: true },
+      distribution: { enabled: true },
       update: { enabled: true },
       identity: { enabled: false },
     });
@@ -1362,7 +1373,7 @@ describe("admin services enablement", () => {
     await setServices(
       w.db,
       "djdl",
-      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"distribution":{"enabled":true}}',
+      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"zeta":{"enabled":true}}',
       "manifest",
       NOW,
     );
@@ -1372,11 +1383,11 @@ describe("admin services enablement", () => {
     expect(status).toBe(200);
     const row = await getProduct(w.db, "djdl");
     expect(row?.services_json).toBe(
-      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"update":{"enabled":false},"identity":{"enabled":false},"distribution":{"enabled":true}}',
+      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"zeta":{"enabled":true}}',
     );
     // The console still cannot patch a slug it does not know.
     const bad = await call(w, "PATCH", "", {
-      services: { distribution: { enabled: false } },
+      services: { zeta: { enabled: false } },
     });
     expect(bad.status).toBe(422);
   });
@@ -1387,11 +1398,65 @@ describe("admin services enablement", () => {
       services: { update: { enabled: true } },
     });
     expect(bad.status).toBe(422);
-    expect(bad.body.errors).toEqual(["update_requires_release"]);
+    expect(bad.body.errors).toEqual(["update_requires_distribution"]);
     // Nothing was written: the row is still manifest-owned with the defaults.
     const after = await call(w, "GET");
     expect(after.body.source).toBe("manifest");
     expect(after.body.services).toMatchObject({ update: { enabled: false } });
+  });
+
+  it("a service's admin context carries Core's hooks, gated on the product's enablement (P2b-01)", async () => {
+    // The admin route itself is reachable while its own service is off (configure before
+    // enabling), but a HOOK still answers only while its providing service is on.
+    const w = await world();
+    const seen: ServiceHooks[] = [];
+    const admin = vi
+      .spyOn(updateService as Required<ServiceDescriptor>, "adminHandle")
+      .mockImplementation(async (ctx) => {
+        seen.push(ctx.hooks);
+        return new Response("{}", { status: 200 });
+      });
+    const catalog = vi.spyOn(
+      releaseService as Required<ServiceDescriptor>,
+      "releaseCatalog",
+    );
+    try {
+      const at = "/api/products/djdl/update/settings";
+      const hit = () =>
+        dispatch(
+          mkReq("GET", at, { cookie: w.cookie, csrf: w.csrf }),
+          w.env,
+          w.db,
+          at,
+        );
+      // Defaults: Release and Distribution off.
+      expect((await hit()).status).toBe(200);
+      expect(seen[0]!.releaseCatalog()).toBeNull();
+      expect(seen[0]!.delivery()).toBeNull();
+      expect(catalog).not.toHaveBeenCalled();
+      // The whole chain on.
+      await setServices(
+        w.db,
+        "djdl",
+        JSON.stringify({
+          license: { enabled: true },
+          config: { enabled: true },
+          release: { enabled: true },
+          distribution: { enabled: true },
+          update: { enabled: true },
+          identity: { enabled: false },
+        }),
+        "manifest",
+        NOW,
+      );
+      expect((await hit()).status).toBe(200);
+      expect(seen[1]!.releaseCatalog()).not.toBeNull();
+      expect(seen[1]!.delivery()?.defaultTransport).toBe("pkey-cdn");
+      expect(catalog).toHaveBeenCalledTimes(1);
+    } finally {
+      admin.mockRestore();
+      catalog.mockRestore();
+    }
   });
 
   it("PATCH refuses a registration policy nothing could satisfy", async () => {
@@ -1461,6 +1526,7 @@ describe("admin services enablement", () => {
         license: { enabled: true },
         config: { enabled: true },
         release: { enabled: true },
+        distribution: { enabled: true },
         update: { enabled: true },
         identity: { enabled: true },
       }),
@@ -1570,6 +1636,7 @@ describe("admin product setup: Sparkle warning", () => {
       license: { enabled: true },
       config: { enabled: true },
       release: { enabled: true },
+      distribution: { enabled: true },
       update: { enabled: opts.update },
       identity: { enabled: false },
     };
