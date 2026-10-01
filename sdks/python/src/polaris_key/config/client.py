@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Mapping, Optional
 from ..core.cache import CacheManager
 from ..core.context import CoreContext
 from ..core.models import ConfigDoc
+from ..core.token import TokenManager
+from .mint import MintCache, MintedToken, mint_token
 from .resolve import (
     DEFAULT_ENV_PREFIX,
     UNSET,
@@ -24,7 +26,7 @@ from .resolve import (
     resolve_source,
 )
 
-__all__ = ["ConfigClient", "DEFAULT_ENV_PREFIX", "UNSET"]
+__all__ = ["ConfigClient", "DEFAULT_ENV_PREFIX", "UNSET", "MintedToken"]
 
 
 class ConfigClient:
@@ -36,9 +38,15 @@ class ConfigClient:
         local_overrides: Optional[Mapping[str, Any]] = None,
         env_prefix: str = DEFAULT_ENV_PREFIX,
         env: Optional[Mapping[str, str]] = None,
+        tokens: Optional[TokenManager] = None,
     ) -> None:
         self._ctx = ctx
         self._cache = cache
+        # The device credential edge-mint authenticates with. Without it `mint_token` has
+        # nothing to present and refuses with `unauthorized`, as a client holding no token
+        # does.
+        self._tokens = tokens
+        self._minted = MintCache()
         self._local_overrides: Dict[str, Any] = dict(local_overrides or {})
         self._env_prefix = env_prefix
         self._env: Mapping[str, str] = os.environ if env is None else env
@@ -86,6 +94,23 @@ class ConfigClient:
         """The product's active catalog version, as the last verified document stated it."""
         doc = self.doc
         return doc.schemaVersion if doc is not None else None
+
+    def mint_token(self, recipe_id: str) -> MintedToken:
+        """Mint a third-party token through the product's edge-mint recipe ``recipe_id``
+        (``GET /<p>/config/mint/<recipe_id>/token``, authenticated with the device token).
+
+        Minted tokens are cached IN MEMORY ONLY, per recipe, and reused until 30 seconds
+        before ``expiresAt``: they are short-lived secrets and never reach the cache file or
+        the keyring. A 401 gets the one re-acquire every authenticated call gets (§5), then
+        one retry.
+
+        Raises :class:`~polaris_key.core.errors.PolarisError`: ``service-unavailable`` (no
+        Config service, before any request), ``bad_request`` (a recipe id the router could
+        never match, before any request), ``unauthorized`` (no token, or still 401 after the
+        re-acquire), or the Worker's code — ``not_found`` for an unknown or unapproved
+        recipe, ``rate_limited``, ``misconfigured``.
+        """
+        return mint_token(self._ctx, self._tokens, self._minted, recipe_id)
 
     @property
     def enabled(self) -> bool:
