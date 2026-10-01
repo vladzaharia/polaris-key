@@ -179,8 +179,12 @@ paths:
                           blobs: https://dl.plrs.im/djdl/release/blobs/sha256/{sha256}
                       distribution:
                         enabled: true
-                        configured: false
-                        endpoints: {}
+                        configured: true
+                        endpoints:
+                          download: https://key.plrs.im/djdl/distribution/dl
+                          install: https://key.plrs.im/djdl/distribution/install.sh
+                          builds: https://dl.plrs.im/djdl/distribution/builds/{selector}/{buildId}
+                          blobs: https://dl.plrs.im/djdl/distribution/blobs/sha256/{sha256}
                       update:
                         enabled: true
                         configured: true
@@ -5308,10 +5312,16 @@ components:
             schema: https://key.plrs.im/djdl/config/schema
     DistributionFragment:
       description: >
-        Distribution's fragment (P2b-01): how releases reach devices and outlets. `{"enabled":
-        false}` when off, like every service. When on, `configured` is `false` until the product
-        declares outlets (P2b-02) and `endpoints` is empty until distribution has routes
-        (P2b-03, P2b-04) — the service exists before anything is reachable through it.
+        Distribution's fragment (P2b-01, P2b-04): how releases reach devices and outlets.
+        `{"enabled": false}` when off, like every service. When on, `configured` is `true` when
+        the product has a release configuration (Release's `releaseCatalog` answers one), so its
+        byte routes can serve something; it is `false` otherwise, and every byte route then
+        answers not-found. `endpoints` always carries the four canonical byte URLs (P2b-04):
+        `download` (`/{product}/distribution/dl`, the legacy binary download) and `install`
+        (`/{product}/distribution/install.sh`) on this origin; `builds` (templated
+        `{selector}` and `{buildId}`) and `blobs` (templated `{sha256}`) on the bytes host when
+        `BLOB_ORIGIN` is set, else on this origin. Release's fragment keeps its own `install`,
+        `download`, `builds` and `blobs` keys, which name the permanent `/release/…` aliases.
       oneOf:
         - type: object
           required: [enabled]
@@ -5329,7 +5339,20 @@ components:
               additionalProperties: { type: string }
       examples:
         - { enabled: false }
-        - { enabled: true, configured: false, endpoints: {} }
+        - enabled: true
+          configured: true
+          endpoints:
+            download: https://key.plrs.im/djdl/distribution/dl
+            install: https://key.plrs.im/djdl/distribution/install.sh
+            builds: https://dl.plrs.im/djdl/distribution/builds/{selector}/{buildId}
+            blobs: https://dl.plrs.im/djdl/distribution/blobs/sha256/{sha256}
+        - enabled: true
+          configured: false
+          endpoints:
+            download: https://key.plrs.im/acme/distribution/dl
+            install: https://key.plrs.im/acme/distribution/install.sh
+            builds: https://key.plrs.im/acme/distribution/builds/{selector}/{buildId}
+            blobs: https://key.plrs.im/acme/distribution/blobs/sha256/{sha256}
     Jwks:
       type: object
       description: >
