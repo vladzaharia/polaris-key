@@ -26,12 +26,13 @@ All packages are currently at **`0.0.0`** — nothing has published yet.
    `.changeset/config.json` sets `access: "restricted"` and `baseBranch: "main"`; internal
    `@polaris-key/*` cross-dependencies bump by `patch` automatically.
 
-Keep changesets focused — one logical change each. As of this writing there are eight pending:
-`boot-stage-machine`, `channel-vocabulary`, `edge-mint-hardening`, `free-tier-and-relicensing`,
-`hardware-fingerprinting`, `initial-release`, `pkey-init-validate` and `service-table`, together
-covering `@polaris-key/protocol`, `@polaris-key/jws`, `@polaris-key/catalog`,
-`@polaris-key/manifest`, `@polaris-key/client-core`, `@polaris-key/cli`, `@polaris-key/node`,
-`@polaris-key/react`, and the private `@polaris-key/worker` and `@polaris-key/admin`.
+Keep changesets focused — one logical change each. As of this writing there are nine pending:
+`boot-stage-machine`, `channel-vocabulary`, `distribution-service`, `edge-mint-hardening`,
+`free-tier-and-relicensing`, `hardware-fingerprinting`, `initial-release`, `pkey-init-validate`
+and `service-table`, together covering `@polaris-key/protocol`, `@polaris-key/jws`,
+`@polaris-key/catalog`, `@polaris-key/manifest`, `@polaris-key/client-core`, `@polaris-key/cli`,
+`@polaris-key/node`, `@polaris-key/react`, and the private `@polaris-key/worker` and
+`@polaris-key/admin`.
 
 ## Python SDK: `python-v*` tags
 
