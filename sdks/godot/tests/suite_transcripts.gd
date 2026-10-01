@@ -1,5 +1,6 @@
 extends RefCounted
 # @pkey-feature core.discover core.sync core.cache devices.register devices.report
+# @pkey-feature license.activate license.enroll license.deactivate license.reregister
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -10,10 +11,10 @@ extends RefCounted
 # starts running the moment the manifest claims it. The SDK clock is pinned to each step's `now`:
 # the recorded documents were signed at a fixed instant and expire an hour later.
 #
-# One hook stands in for a package that has not landed, exactly where it plugs in: the 401
-# re-acquire is `POST /license/token` (P1-03 supplies the real strategies). The post-sync report
-# is the SDK's own (PolarisKey.devices, P1-05); the recording checks every header and body shape
-# it sends, and that its keys are on the Worker's allowlist.
+# Nothing is stubbed: the 401 re-acquire is the SDK's own (PolarisKey.license installs P1b-06's
+# route rule, P1-03), and so is the post-sync report (PolarisKey.devices, P1-05); the recording
+# checks every header and body shape they send, and that the report's keys are on the Worker's
+# allowlist.
 
 const FLOOR := 4
 
@@ -69,13 +70,6 @@ static func replay(tr: Dictionary) -> Array:
 		fails.append("configure: %s" % cr)
 	else:
 		await sdk.start()
-		var core: PKeyCore = sdk.core
-		core.tokens.set_reacquire(func(c: PKeyCore, _current: String) -> String:
-			var r: PKeyResult = await c.request("POST", "license/token", null, true)
-			if not r.ok:
-				return ""
-			var p := PKeyJson.parse_bytes(r.detail["body"])
-			return p["value"].get("token", "") if p["ok"] and p["value"] is Dictionary else "")
 		for i in tr["steps"].size():
 			var step: Dictionary = engine.begin_step(i)
 			clock[0] = step.get("now", tr["now"])
@@ -106,6 +100,15 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 				if r.documents[slice] != "skipped":
 					docs[slice] = r.documents[slice]
 			out["documents"] = docs
+		"activate":
+			var r: PKeyActivationResult = await sdk.license.activate_with_key(step["args"]["key"])
+			out["result"] = String(r.kind)
+		"enroll":
+			var r: PKeyActivationResult = await sdk.license.enroll()
+			out["result"] = String(r.kind)
+		"deactivate":
+			var r: PKeyResult = await sdk.license.deactivate()
+			out["result"] = "ok" if r.ok else String(r.code)
 		"register":
 			var r: PKeyResult = await sdk.devices.register()
 			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
