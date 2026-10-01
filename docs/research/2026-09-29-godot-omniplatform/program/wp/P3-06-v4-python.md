@@ -134,6 +134,33 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
 - [ ] The green gate passes (`AGENTS.md`), including the Python job.
 - [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
+## Corrections from the implementation
+
+- **Branch.** The branch is `wp/P3-06-python-v4`.
+- **Already landed.** P3-02 had added `TYP_FEED`, `TYP_RELEASE`, `MAX_WIRE_INTEGER` and the
+  `_wire_int` minimums to `core/models.py`, and the generated constants carry
+  `MAX_RECORD_JWS_BYTES`, the error codes and the enums; nothing was re-declared.
+- **Modules.** The pure functions live in `core/version.py`, `core/feed.py`,
+  `core/release_record.py` (GDScript's file name) and `core/decide.py`; the compiled outlet
+  tables in `core/outlets.py`, asserted equal to `outlet-matrix.json`; and `core/check.py` ports
+  client-core's `runUpdateCheck` (steps 2–18, the fallback order and the error map), so
+  `update/client.py` is transport, storage and options only, as in Node. The dataclasses are in
+  `core/models.py`; `UpdateDecision.to_dict()` emits exactly the members of its action.
+- **Results.** `verify_feed` and `verify_release_record` return frozen result objects
+  (`VerifyFeedResult(ok, feed, reason, channel)`, `VerifyReleaseRecordResult(ok, record, step)`)
+  rather than `None`, so the refusal step travels with them; neither raises.
+- **Options.** `PolarisKeyClient(update=UpdateClientOptions(...))` (or a mapping of its fields),
+  as Node's `PolarisKeyClientOptions.update`: `pinned_release_keys`, `outlet`, `stamp`,
+  `detected`, `build_number`, `format`, `methods`, `binary_version`, `engine`, `platform`,
+  `arch`. Validation raises `invalid-options` from the constructor. Errors are `UpdateError`, a
+  `PolarisError` with a `detail`.
+- **Docs.** `packages/docs/src/content/docs/build/sdks/python.mdx` renders
+  `sdks/python/README.md` whole, so the README is the one file edited.
+- **Deactivate and bundle import** carry the two update slices (as Node and React do), so a
+  replayed older feed cannot pass the floor after a deactivation.
+- **CPython range.** CI runs 3.12 only; the suite was run locally on 3.9.6, 3.12 and 3.14.6.
+  Adding a version matrix to `ci.yml` is outside this brief.
+
 ## Verify
 
 ```sh
