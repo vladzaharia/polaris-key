@@ -1200,6 +1200,47 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).web.origins[0] = "https://app.acme.example:443"),
   },
 
+  // ── value_not_representable (P3-12, plans/P3-01.md §2.2) ──
+  // Validator-only: JSON Schema cannot say "no lone surrogate", "no U+0000 in a member name",
+  // "no two names equal after NFC" or "no number below 1e-307" over arbitrary values, and these
+  // land on the values the manifest sync alone writes (provisioning values, catalog defaults,
+  // edge-mint claims templates), which the schemas type loosely on purpose.
+  {
+    code: "value_not_representable",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) =>
+      (p(d).provisioning[0].entitlementValue = { "a\u0000b": true }),
+  },
+  {
+    code: "value_not_representable",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).provisioning[0].entitlementValue = "x\ud800"),
+  },
+  {
+    code: "value_not_representable",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) =>
+      ((d.schema as Record<string, any>).entries[0].examples = [
+        { "\u00e9": 1, "e\u0301": 2 },
+      ]),
+  },
+  {
+    code: "value_not_representable",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) =>
+      ((d.schema as Record<string, any>).entries[0].examples = [1e-320]),
+  },
+  {
+    code: "value_not_representable",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (mint(d).claimsTemplate = { sub: "\udc00" }),
+  },
+
   // ── .pkey/distribution (P2b-02) ──
   {
     code: "invalid_distribution",
