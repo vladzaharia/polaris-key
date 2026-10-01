@@ -85,7 +85,19 @@ if [ "$need_editor" = 1 ]; then
     MINGW* | MSYS* | CYGWIN*)
       editor="Godot_v${VERSION}-stable_win64"
       fetch "$editor.exe.zip"
-      unzip -q -o "$WORK/$editor.exe.zip" -d "$DIR"
+      # Git Bash may lack unzip; the runner image has 7-Zip, and PowerShell is always there.
+      if command -v unzip >/dev/null 2>&1; then
+        unzip -q -o "$WORK/$editor.exe.zip" -d "$DIR"
+      elif command -v 7z >/dev/null 2>&1; then
+        7z x -y -bd "-o$(cygpath -w "$DIR")" "$(cygpath -w "$WORK/$editor.exe.zip")" >/dev/null
+      else
+        powershell.exe -NoProfile -NonInteractive -Command \
+          "Expand-Archive -Force -LiteralPath '$(cygpath -w "$WORK/$editor.exe.zip")' -DestinationPath '$(cygpath -w "$DIR")'"
+      fi
+      [ -f "$DIR/${editor}_console.exe" ] || {
+        echo "fetch_godot: ${editor}_console.exe missing after extraction" >&2
+        exit 1
+      }
       rm -f "$WORK/$editor.exe.zip"
       wrap "$DIR/${editor}_console.exe"
       ;;

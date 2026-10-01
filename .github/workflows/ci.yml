@@ -177,6 +177,10 @@ jobs:
             template: ""
             suites: "platform,devices"
     steps:
+      # windows-latest's system git sets core.autocrlf=true; check out byte for byte (LF) so the
+      # bash tools, the pin file and the corpus the suites verify reach the job as committed.
+      # .gitattributes pins sdks/godot to LF as well.
+      - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
         with:
