@@ -82,6 +82,15 @@ per artifact, and so mislabels Steam, itch and sideload builds
   override always wins. The result is available to the host (for UI and support diagnostics).
 - Docs for each SDK page; `parity.json` in every SDK: `outlet.detect` → `implemented`.
 
+- **The Godot build stamp's v4 fields** (moved here from P1-11, which merged before plan P3-01
+  §8 could change its brief): the stamp's `outlet` becomes the product's outlet id
+  (`^[a-z][a-z0-9-]{0,63}$`); a new `outletKind` (export option `polaris_key/outlet_kind`, env
+  `PKEY_BUILD_OUTLET_KIND`) defaults to `outlet` when that value is a kind, the export dialog warns
+  when the kind is not one of the 17, and at runtime such a kind decides as `unknown`; optional
+  `format` and `outletSubkind`; `outletIds` gains optional `homebrewFormula` and `bundleId`, which
+  `pkey distribution outlet-ids` emits once this package adds them. Change P1-11's export plugin
+  and `PKeyBuildStamp` accordingly, with export tests.
+
 **Out** (and where it belongs instead):
 
 - Verifying the unverified signals on real devices (→ [S-06](S-06-outlet-signals.md)).

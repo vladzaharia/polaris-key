@@ -122,9 +122,10 @@ harder failure than any local warning.
 
 ### `pkey trust`
 
-Formats one `kid`/public-key pair as ready-to-paste snippets for all four SDKs at once — JSON,
-the Node/React `trust: { pinnedKeys: {…} }` shape, Python's `trusted_keys = {…}`, and Swift's
-`let trustedKeys = […]` — so wiring a newly-minted or rotated signing key into every codebase
+Formats one `kid`/public-key pair as ready-to-paste snippets for every SDK at once — JSON,
+the Node/React `trust: { pinnedKeys: {…} }` shape, Python's `trusted_keys = {…}`, Swift's
+`let trustedKeys = […]`, and Godot's `const PINNED_TRUST_KEYS := {…}` (for
+`PKeyOptions.pinned_trust_keys`, or the setup dock's pinned-keys field) — so wiring a newly-minted or rotated signing key into every codebase
 that consumes it is one copy per language, not one hand-transcription per language.
 
 ```sh

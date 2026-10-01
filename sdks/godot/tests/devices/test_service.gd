@@ -297,7 +297,7 @@ func _report(t: PKeyTestContext) -> void:
 	t.check("report: the gate verdict", body.get("gate") == {"status": "ok"}, JSON.stringify(body.get("gate")))
 	t.check("report: engine facts", body.get("engine") is Dictionary and String(body["engine"].get("id", "")).begins_with("godot-"), JSON.stringify(body.get("engine")))
 	t.check("report: runtime is godot", body.get("runtime", {}).get("name") == "godot")
-	t.check("report: no outlet without a build stamp", FileAccess.file_exists(PKeyFacts.BUILD_STAMP) or not body.has("outlet"))
+	t.check("report: no outlet without a build stamp", not body.has("outlet"), str(body.get("outlet")))
 	_no_raw(t, "report", _body(req), PKeyFakeHost.load_host("linux"))
 
 	var ok: bool = await sdk.devices.report()

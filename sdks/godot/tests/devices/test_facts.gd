@@ -94,4 +94,5 @@ func _engine(t: PKeyTestContext) -> void:
 			only_known = only_known and e[k] is String and e[k] != ""
 	t.check("engine: only the Worker's known fields, no empty strings", only_known, JSON.stringify(e))
 	t.check("engine: renderer is the rendering method", e.get("renderer", "") in ["forward_plus", "mobile", "gl_compatibility", "dummy", ""], str(e.get("renderer")))
-	t.check("outlet: no build stamp means no outlet", FileAccess.file_exists(PKeyFacts.BUILD_STAMP) or PKeyFacts.outlet() == "")
+	t.check("outlet: no build stamp means no outlet", PKeyFacts.outlet("") == "" and PKeyFacts.outlet("res://tests/fixtures/missing.json") == "")
+	t.check("outlet: the stamped outlet", PKeyFacts.outlet("res://tests/fixtures/build_stamp.json") == "itch")

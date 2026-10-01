@@ -1,3 +1,4 @@
+@tool
 class_name PKeyJson
 extends RefCounted
 ## Strict JSON for everything Polaris Key parses: RFC 8259 exactly as `JSON.parse` reads it, plus

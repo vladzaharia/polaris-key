@@ -1,3 +1,4 @@
+@tool
 class_name PKeyJws
 extends RefCounted
 ## Compact-JWS verify (WIRE-CONTRACT-V4 §1, §10): a port of packages/shared-jws `verifyJws`, in

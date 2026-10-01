@@ -1,3 +1,4 @@
+@tool
 class_name PKeyChannel
 extends RefCounted
 ## The channel vocabulary (WIRE-CONTRACT-V3 §5.1), in one table built from the generated
