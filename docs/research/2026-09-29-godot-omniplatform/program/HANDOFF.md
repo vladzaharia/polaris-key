@@ -14,6 +14,18 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
+## BLOCKED: GitHub Actions billing (2026-10-02)
+
+- [ ] **GitHub refuses to start any Actions job** ("recent account payments have failed or your
+      spending limit needs to be increased"). Fix it in GitHub → Settings → Billing & plans. Until
+      then nothing deploys and CI cannot run. v0.7.1's deploy stopped at a CI-runner test timeout
+      (fixed in `1ebd47f6`). v0.7.2 (same contents plus that fix) was refused before starting.
+      Production is still v0.7.0. After billing is fixed, re-run the v0.7.2 Deploy workflow
+      (`gh run rerun 36962716112`) and CI on main, or ask the lead to.
+- Consider the cost: P1b-05 added macOS jobs (WebKit on macos-15, Python 3.12 on macos-14), on top
+  of the Swift and Godot macOS legs. macOS minutes bill at 10× Linux. If the spending limit is
+  tight, the lead can move the WebKit leg to run only on a schedule or on tags.
+
 ## Production check:representable (P3-12): done 2026-10-01
 
 - [x] **Before the first wire v4 deploy:** the operator ran `pnpm check:representable` against
