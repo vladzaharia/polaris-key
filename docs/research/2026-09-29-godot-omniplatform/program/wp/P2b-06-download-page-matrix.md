@@ -118,16 +118,16 @@ matrix first among new console surfaces ([§6.2](../../README.md#62-administrato
 
 ## Acceptance criteria
 
-- [ ] On the bytes host `GET /{product}/distribution/download` returns HTML with its own CSP, no
+- [x] On the bytes host `GET /{product}/distribution/download` returns HTML with its own CSP, no
       `Set-Cookie`, and one primary action per platform fixture; on the console host it is
       not-found; `/{product}` on the bytes host serves the same page.
-- [ ] A listing with `<script>`, quotes and a `javascript:` URL renders inert (test).
-- [ ] The model lists SHA-256, size and minimum OS per build and the key inventory's
+- [x] A listing with `<script>`, quotes and a `javascript:` URL renders inert (test).
+- [x] The model lists SHA-256, size and minimum OS per build and the key inventory's
       fingerprints; a yanked, non-live or halted release is absent.
-- [ ] The matrix shows availability, submission and rollout per (release, outlet) and each
+- [x] The matrix shows availability, submission and rollout per (release, outlet) and each
       control calls the right P2b-04 route; mirrored rows have controls disabled.
-- [ ] `routeCoverage`, the docs-link drift test and `pnpm --filter @polaris-key/admin build` pass.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `routeCoverage`, the docs-link drift test and `pnpm --filter @polaris-key/admin build` pass.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
