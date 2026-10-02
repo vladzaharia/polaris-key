@@ -105,6 +105,7 @@
     "@polaris-key/protocol": "workspace:*"
   },
   "devDependencies": {
+    "@polaris-key/zstd-wasm": "workspace:*",
     "@types/node": "^22.14.0"
   }
 }

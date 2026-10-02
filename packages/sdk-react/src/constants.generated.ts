@@ -112,6 +112,8 @@ export const ErrorCode = {
   planNoStrategy: "plan-no-strategy",
   packNoVariant: "pack-no-variant",
   packTypeUnsupported: "pack-type-unsupported",
+  packNotPinned: "pack-not-pinned",
+  packNotEntitled: "pack-not-entitled",
   markerRejected: "marker-rejected",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -223,6 +225,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "plan-no-strategy",
   "pack-no-variant",
   "pack-type-unsupported",
+  "pack-not-pinned",
+  "pack-not-entitled",
   "marker-rejected",
 ];
 
@@ -336,6 +340,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "plan-no-strategy": "client",
   "pack-no-variant": "client",
   "pack-type-unsupported": "client",
+  "pack-not-pinned": "client",
+  "pack-not-entitled": "client",
   "marker-rejected": "client",
 };
 

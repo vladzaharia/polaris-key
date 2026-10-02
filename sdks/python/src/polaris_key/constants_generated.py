@@ -214,6 +214,8 @@ class ErrorCode:
     PLAN_NO_STRATEGY: Final = "plan-no-strategy"
     PACK_NO_VARIANT: Final = "pack-no-variant"
     PACK_TYPE_UNSUPPORTED: Final = "pack-type-unsupported"
+    PACK_NOT_PINNED: Final = "pack-not-pinned"
+    PACK_NOT_ENTITLED: Final = "pack-not-entitled"
     MARKER_REJECTED: Final = "marker-rejected"
 
 
@@ -324,6 +326,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "plan-no-strategy",
     "pack-no-variant",
     "pack-type-unsupported",
+    "pack-not-pinned",
+    "pack-not-entitled",
     "marker-rejected",
 )
 
@@ -436,6 +440,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "plan-no-strategy": "client",
         "pack-no-variant": "client",
         "pack-type-unsupported": "client",
+        "pack-not-pinned": "client",
+        "pack-not-entitled": "client",
         "marker-rejected": "client",
     }
 )

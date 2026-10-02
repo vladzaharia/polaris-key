@@ -211,6 +211,9 @@ importers:
         specifier: workspace:*
         version: link:../shared-protocol
     devDependencies:
+      '@polaris-key/zstd-wasm':
+        specifier: workspace:*
+        version: link:../zstd-wasm
       '@types/node':
         specifier: ^22.14.0
         version: 22.20.0
@@ -260,6 +263,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
+      '@polaris-key/zstd-wasm':
+        specifier: workspace:*
+        version: link:../zstd-wasm
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
