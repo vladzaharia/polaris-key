@@ -310,7 +310,8 @@ package, and every decision in §8.1 that names it as owner, override this brief
   text scan, `RSCC` is refused under any name (`content-binary-extensions`), and `files.tree`
   outputs get the same scan (N5, `PKeyPck.tree_check`). (B3) a packs-only rollback re-fetched the
   same record on the next FETCH and looped. The install state gains `held` (pack id → {record SHA,
-  count}); a held record is not planned or fetched until the stamp pins another, the restored
+  count}); a held record is not planned or fetched until the stamp pins another (committing a different
+  release clears the hold; re-review), the restored
   install counts as active, and `ensure` fails with the new code `pack-rolled-back`. (B4)
   THREAT-MODEL.md gains "Pack bytes on the device (P4-08)". N1: `on_bake` returns bool and a
   journal that cannot be written uses a copy host. N2/N3: the bake journal is a list naming only

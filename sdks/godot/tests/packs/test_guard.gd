@@ -106,6 +106,18 @@ func _packs_only(t: PKeyTestContext, v1: Dictionary, v2: Dictionary, tr: PKeyPac
 	var r: PKeyResult = await l3.update.packs.ensure(["djdl.extra"])
 	var failed: Array = l3.devices.snapshot().get("updates", []).filter(func(e): return e["event"] == "pack_failed")
 	t.check("guard: a refused pack goes on the device report as pack_failed (its code, the pinned version)", not r.ok and failed.size() == 1 and failed[0]["deliverable"] == "djdl.extra" and failed[0]["code"] == "record-mismatch" and failed[0]["release"] == "9.9.9" and not failed[0].has("fromRelease"), "%s %s" % [r, S.canon(failed)])
+	# A new release pinned and installed clears the hold (the stamp has moved on).
+	var v3 := F.tree_pack("djdl.l10n", "1.2.0", 3, {"a.txt": "three", "b.txt": "b"})
+	(tr as F.FakeTransport).add(v3)
+	var moved := F.stamp_for([v3])
+	l3.update.packs.content = moved
+	l3.update.packs.engine.stamp = moved
+	t.check("guard: the hold is still there before the stamp moves on", l3.update.packs.engine.doc["held"].has("djdl.l10n"))
+	var r3: PKeyResult = await l3.update.packs.ensure(["djdl.l10n"])
+	var doc3: Dictionary = l3.update.packs.engine.doc
+	t.check("guard: a different release pinned and installed clears the hold", r3.ok and doc3["active"]["djdl.l10n"]["recordSha256"] == v3["recordSha256"] and not doc3["held"].has("djdl.l10n"), "%s %s" % [r3, S.canon(doc3["held"])])
+	var reread := PKeyPackState.parse(FileAccess.get_file_as_string(String(inst["dir"]).path_join("pkey/content/state.json")))
+	t.check("guard: …and the persisted state no longer holds it", reread["active"].get("djdl.l10n", {}).get("recordSha256") == v3["recordSha256"] and not reread["held"].has("djdl.l10n"), S.canon(reread))
 	l3.queue_free()
 	sup.free_server()
 	S.remove_tree(inst["dir"])

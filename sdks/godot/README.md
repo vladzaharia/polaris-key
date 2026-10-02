@@ -754,7 +754,8 @@ did not run is active, and its `roll-back` puts each such pack back to `previous
 the binary; a packs-only rollback needs no restart (the guard runs before MOUNT). Each pack rolled
 back queues `boot_rolled_back` with the pack id and the restored `packSetId`, and its record is
 **held** (`held` in the install state, with a count): the restored install stays active and the
-held record is not fetched again until the stamp pins a different one (an explicit `ensure` of it
+held record is not fetched again until the stamp pins a different one (installing that one
+clears the hold) (an explicit `ensure` of it
 fails with `pack-rolled-back`), so a broken pack costs two failed boots once. A pack that cannot
 install (any code but a transient `network-error`) queues `pack_failed` with its code, both on the
 device report's `updates` while the updater is active. A confirmed launch confirms the running

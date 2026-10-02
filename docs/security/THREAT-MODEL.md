@@ -2042,11 +2042,13 @@ committed or mounted:
   directory names twice, before a rule is evaluated. Every `.remap` and `.import` target must
   itself be such a path, under `res://`, and an entry of this pack: a target in the base game's
   `.godot/imported/` or `.godot/exported/` is refused, so a pack loads only its own files.
-- **Resources are scanned by content, never by extension.** Godot's binary loader takes
-  `.material`, `.mesh`, `.anim` and every other resource extension, and its text loader takes
-  any file with a `[gd_scene` / `[gd_resource` head, so every entry's head is sniffed: `RSRC`
-  bytes get the binary scan for an embedded `GDScript`, `CSharpScript` or `script/source`, a text
-  head gets the text scan, whatever the file is called. A compressed resource (`RSCC`) cannot be
+- **The extension never exempts a resource from the scan.** Godot picks a loader by extension:
+  its text loader takes the text-resource extensions (`.tres`, `.tscn`, `.escn`), and its binary
+  loader takes `.res`, `.scn` and every resource type's own extension (`.material`, `.mesh`,
+  `.anim`, …), then requires the `RSRC` magic. So the binary scan (for an embedded `GDScript`,
+  `CSharpScript` or `script/source`) runs on every entry whose bytes start `RSRC`, whatever it is
+  called. The text scan runs on the text-resource extensions and, as a defensive extra, on any
+  entry with a sniffed `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) cannot be
   scanned and is refused under any name.
 - **A pack's uid cache may name only the pack's own files.** A 4.4/4.5 exporter writes the whole
   project's `uid_cache.bin` into a pack, excluded files included; mounted with

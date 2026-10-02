@@ -185,13 +185,17 @@ static func abandon_install(state: Dictionary, pack_id: String) -> Dictionary:
 
 
 ## Commit a verified install: the pointer swap. `active` becomes the new install, the install it
-## replaces becomes `previous` (unless it is the same release), and the journal is closed.
+## replaces becomes `previous` (unless it is the same release), and the journal is closed. A
+## different release becoming active clears the pack's hold: the stamp has moved on.
 static func commit_install(state: Dictionary, install: Dictionary) -> Dictionary:
 	var out := state.duplicate(true)
 	var id: String = install["packId"]
 	var old = out["active"].get(id)
 	if old is Dictionary and old["recordSha256"] != install["recordSha256"]:
 		out["previous"][id] = old
+	var h = out["held"].get(id)
+	if h is Dictionary and h.get("recordSha256") != install["recordSha256"]:
+		out["held"].erase(id)
 	out["inflight"].erase(id)
 	out["active"][id] = install.duplicate(true)
 	return out
