@@ -27,6 +27,8 @@ export type ReportSnapshot = {
    *  Worker overwrites the stored report each time, so a list sent only on change would vanish
    *  from it at the next report. */
   caps?: string[];
+  /** The active pack set (plans/P4-01.md §2.11): its `packSetId`, when the host has packs. */
+  content?: { packSetId: string };
 } & Partial<DeviceFacts>;
 
 /** Assemble the report body from re-verified content plus this host's software facts. */
@@ -34,6 +36,7 @@ export function buildSnapshot(
   cache: CacheManager,
   probes: ProbeDeclaration[],
   caps?: string[],
+  packSetId: string | null = null,
 ): ReportSnapshot {
   const config: Record<string, JSONValue> = {};
   const entitlements: Record<string, JSONValue> = {};
@@ -52,7 +55,13 @@ export function buildSnapshot(
   } catch {
     // Facts are diagnostic; failing to gather them must never break a sync.
   }
-  return { ...facts, config, entitlements, ...(caps ? { caps } : {}) };
+  return {
+    ...facts,
+    config,
+    entitlements,
+    ...(caps ? { caps } : {}),
+    ...(packSetId !== null ? { content: { packSetId } } : {}),
+  };
 }
 
 /** POST the snapshot. Returns whether the server accepted it; callers ignore that. */

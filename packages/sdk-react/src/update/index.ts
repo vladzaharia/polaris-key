@@ -23,3 +23,5 @@ export type {
   UpdateDecision,
   VersionCheck,
 } from "../core/index.js";
+// `update.packs` for the web transport (P4-06).
+export * from "../packs/index.js";

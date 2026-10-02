@@ -142,10 +142,10 @@ describe("supports() — Node's capability table", () => {
 
   it("a planned feature, and an id this SDK does not know, are version", async () => {
     const c = await client();
-    const planned = c.supports(Feature.packsPlan);
+    const planned = c.supports(Feature.packsProvides);
     expect(planned).toMatchObject({ supported: false, reason: "version" });
     expect(!planned.supported && planned.detail).toMatch(
-      /^@polaris-key\/node \S+ does not implement packs\.plan yet$/,
+      /^@polaris-key\/node \S+ does not implement packs\.provides yet$/,
     );
     expect(reasonOf(c.supports("future.feature"))).toBe(
       UnsupportedReason.version,

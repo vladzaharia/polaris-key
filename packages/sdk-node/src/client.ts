@@ -219,6 +219,9 @@ export class PolarisKeyClient {
       },
     );
 
+    // `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).
+    this.devices.packSetId = () => this.update.packs.packSetId();
+
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
     this.onChange = opts.onChange;
 
@@ -383,10 +386,11 @@ export class PolarisKeyClient {
     if (!token) return;
     // A token write since init() may have fallen back to the file; report what is true now.
     await this.storeStatus();
+    const packSetId = await this.update.packs.packSetId().catch(() => null);
     await reportSnapshot(
       this.core,
       token,
-      buildSnapshot(this.cache, this.probes ?? [], this.caps()),
+      buildSnapshot(this.cache, this.probes ?? [], this.caps(), packSetId),
     );
   }
 
