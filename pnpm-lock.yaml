@@ -51,6 +51,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../../../packages/shared-protocol
+      '@polaris-key/zstd-wasm':
+        specifier: workspace:*
+        version: link:../../../packages/zstd-wasm
     devDependencies:
       '@vitest/browser':
         specifier: 3.2.6
@@ -76,6 +79,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../../../packages/shared-protocol
+      '@polaris-key/zstd-wasm':
+        specifier: workspace:*
+        version: link:../../../packages/zstd-wasm
 
   packages/admin:
     dependencies:
@@ -426,6 +432,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../packages/shared-protocol
+      '@polaris-key/zstd-wasm':
+        specifier: workspace:*
+        version: link:../packages/zstd-wasm
       ajv:
         specifier: ^8.20.0
         version: 8.20.0

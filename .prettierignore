@@ -63,3 +63,7 @@ docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/n
 
 # @polaris-key/zstd-wasm's fetched zstd sources (git-ignored by the package's .gitignore).
 packages/zstd-wasm/wasm/zstd-1.5.7/
+
+# The content corpus's generator INPUTS (plans/P4-01.md §4.2): blobs and refs.json, hash-checked by
+# `pnpm gen:corpus` and never rewritten by a normal or `--check` run, so prettier must not either.
+conformance/corpus/v2/content/blobs/

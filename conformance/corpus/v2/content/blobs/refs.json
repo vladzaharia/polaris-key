@@ -1,0 +1,29 @@
+{
+  "zstd": "1.5.7",
+  "refs": {
+    "files/v1.gaps.zst": {
+      "sha256": "6f49667cde45b7078ea884a6fe5c974f6358c472d7b2913b484633f3b682743d",
+      "bytes": 4828,
+      "size": 13010,
+      "codec": "zstd"
+    },
+    "payload/v2.full.zst": {
+      "sha256": "f39470328966bb9e551d6906f249238ed43b790b33636ebc80a1ce58956aae02",
+      "bytes": 1260884,
+      "size": 5256232,
+      "codec": "zstd"
+    },
+    "tree/v1.full.zst": {
+      "sha256": "bbd22ecd826164951825a1f97f78c8e0d9d401b0da151d9e52d6bab524d82ba0",
+      "bytes": 1173510,
+      "size": 5245950,
+      "codec": "zstd"
+    },
+    "tree/v2.full.zst": {
+      "sha256": "32334872718fbfdcfa7ad06a969780fb5f0b7f5e18997c1c8d73fc1204adc17e",
+      "bytes": 1251930,
+      "size": 5242880,
+      "codec": "zstd"
+    }
+  }
+}

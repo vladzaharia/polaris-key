@@ -1,6 +1,7 @@
 // @pkey-feature core.verify
-// WIRE-CONTRACT-V4 §4.1 — the non-wire-integer pointer sets, over the seven JWS families of
-// `conformance/corpus/v2/cases.json` (the feed and record families included). Every family's
+// WIRE-CONTRACT-V4 §4.1 — the non-wire-integer pointer sets, over the nine JWS families of
+// `conformance/corpus/v2/cases.json` (the feed and record families included, and the two pack
+// families of plans/P4-01.md §4.6, where a marker's JWS is its `release` member). Every family's
 // JWS goes through this SDK's own `JWSVerifier.verify` with the family's keys, `typ` and cap.
 // Whenever it accepts, `nonWireIntegers` must equal the case's member as a set of Unicode-scalar
 // arrays (an absent member is the empty set), and a case that carries the member must verify.
@@ -18,6 +19,7 @@ private struct PointerCase: Decodable {
     let trust: TrustSet?
     let pinned: TrustSet?
     let releaseKeys: TrustSet?
+    let marker: String?
     let typ: String?
     let maxPayloadBytes: Int?
     let nonWireIntegers: [String]?
@@ -31,10 +33,21 @@ private struct PointerCorpus: Decodable {
     let bundleCases: [PointerCase]
     let feedCases: [PointerCase]
     let releaseRecordCases: [PointerCase]
+    let packRecordCases: [PointerCase]
+    let markerCases: [PointerCase]
+}
+
+/// A marker's `release`, when its text is a JSON object holding a string there; else "".
+private func markerRelease(_ text: String?) -> String {
+    guard let text, let data = text.data(using: .utf8),
+        let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        let release = object["release"] as? String
+    else { return "" }
+    return release
 }
 
 final class PointerSetTests: XCTestCase {
-    func testEveryCaseOfTheSevenFamilies() throws {
+    func testEveryCaseOfTheNineFamilies() throws {
         let corpus = try CorpusBundleLoader.load(PointerCorpus.self, "cases")
         typealias View = (jws: String, keys: TrustSet, typ: JwsTyp, cap: Int?)
         let families: [(String, [PointerCase], (PointerCase) -> View)] = [
@@ -45,6 +58,8 @@ final class PointerSetTests: XCTestCase {
             ("bundleCases", corpus.bundleCases, { ($0.bundleJws!, $0.pinned!, .bundle, MAX_BUNDLE_BYTES) }),
             ("feedCases", corpus.feedCases, { ($0.jws!, $0.trust!, .feed, nil) }),
             ("releaseRecordCases", corpus.releaseRecordCases, { ($0.jws!, $0.releaseKeys!, .release, nil) }),
+            ("packRecordCases", corpus.packRecordCases, { ($0.jws!, $0.releaseKeys!, .release, nil) }),
+            ("markerCases", corpus.markerCases, { (markerRelease($0.marker), $0.releaseKeys!, .release, nil) }),
         ]
         var checked = 0
         for (family, cases, view) in families {

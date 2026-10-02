@@ -560,6 +560,84 @@
       "kind": "client",
       "service": "release",
       "description": "The build's embedded content stamp (`pkey-content.json`, `pkey-content/1`) is not strict JSON, has another `format`, or breaks the app record's `content` claims (plans/P4-01.md §2.6, §2.8)."
+    },
+    {
+      "code": "full-corrupt",
+      "kind": "client",
+      "service": "update",
+      "description": "A pack's `full` object was refused: its ref is unusable, its declared size differs from the payload's, its stored bytes or decoded length differ from the ref, or the decoded bytes do not hash to the payload (a tree: a file's SHA-256 differs) (plans/P4-01.md §2.9)."
+    },
+    {
+      "code": "delta-artifact-mismatch",
+      "kind": "client",
+      "service": "update",
+      "description": "A pack delta's stored object (a `payload` delta's artifact, or a `files` set's descriptor or data) differs from its ref, or the `pkey-patch/1` descriptor breaks its member rules (plans/P4-01.md §2.7, §2.9)."
+    },
+    {
+      "code": "delta-base-mismatch",
+      "kind": "client",
+      "service": "update",
+      "description": "The installed base of a pack delta does not hash to the delta's `from` (a `files` set: no installed file with the entry's `from`; `path` names it) (plans/P4-01.md §2.9)."
+    },
+    {
+      "code": "delta-apply-failed",
+      "kind": "client",
+      "service": "update",
+      "description": "A `zstd-patch-from` frame was refused or failed: its header window is unreadable or above 2^windowLogMax (checked before decoding), or the raw-prefix decode, its length or its SHA-256 failed; `path` names the file of a `files` set (plans/P4-01.md §2.7 rule 3, §2.9)."
+    },
+    {
+      "code": "file-corrupt",
+      "kind": "client",
+      "service": "update",
+      "description": "A pack file's blob (or a set's blob entry) failed its ref, its decode or its SHA-256, or a tree's reused file no longer hashes to its index entry; `path` names it (plans/P4-01.md §2.9)."
+    },
+    {
+      "code": "file-source-missing",
+      "kind": "client",
+      "service": "update",
+      "description": "A target file of the `file` strategy has no installed file with its hash and no source to fetch it from; `path` names it (plans/P4-01.md §2.9)."
+    },
+    {
+      "code": "payload-hash-mismatch",
+      "kind": "client",
+      "service": "update",
+      "description": "A container pack rebuilt by the `file` strategy does not hash to the variant's `payload.sha256` (plans/P4-01.md §2.9)."
+    },
+    {
+      "code": "plan-transport-unsupported",
+      "kind": "client",
+      "service": "update",
+      "description": "The install planner's result: the target is platform-bound and the host lists no transport for it (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown."
+    },
+    {
+      "code": "plan-insufficient-disk",
+      "kind": "client",
+      "service": "update",
+      "description": "The install planner's result: no feasible strategy fits the host's free disk (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown."
+    },
+    {
+      "code": "plan-no-strategy",
+      "kind": "client",
+      "service": "update",
+      "description": "The install planner's result: no strategy the host allows can reach the target (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown."
+    },
+    {
+      "code": "pack-no-variant",
+      "kind": "client",
+      "service": "update",
+      "description": "No variant of a pack record is eligible on this host: none is usable, matches the host's engine, or has a value in the host's preference list for every axis it declares (plans/P4-01.md §2.9)."
+    },
+    {
+      "code": "pack-type-unsupported",
+      "kind": "client",
+      "service": "update",
+      "description": "A pack record's `type` is one this SDK cannot hold (v1: `files.tree` everywhere, `godot.pck` in Godot), so the pack is unusable (plans/P4-01.md §2.2)."
+    },
+    {
+      "code": "marker-rejected",
+      "kind": "client",
+      "service": "release",
+      "description": "An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8)."
     }
   ]
 }

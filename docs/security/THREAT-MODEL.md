@@ -1687,13 +1687,24 @@ markers. P4-21 lands the claims, the formats' parsers and the corpus; P4-02 (ing
   value select a code path. Cross-record rules (every expected pack pinned, `embeds` ⊆ pins, no
   entitlement on a required pack) are publish rules, enforced by the CLI and ingest, never
   trusted from a client.
-- **Decoding is bounded before it starts.** `@polaris-key/zstd-wasm`, the decoder-only libzstd
-  1.5.7 WASM the Worker and the browser use, decodes exactly one frame whose declared content
-  size is the caller's, and with a raw-content prefix refuses a frame whose header window is
-  above 2^`windowLogMax` before decoding, because libzstd enforces its own limit only when it
-  streams through a small buffer. Its workerd entry instantiates the module per decode, so no
-  decode's linear memory outlives the call. A files index is refused above
-  `MAX_FILES_INDEX_BYTES` (32 MiB) on a client before it is fetched or decoded.
+- **Decoding is bounded before it starts.** Every decoded length is declared by a signed ref
+  and checked before allocation: a files index or patch descriptor against
+  `MAX_FILES_INDEX_BYTES` (32 MiB) on a client before it is fetched or decoded, its entries
+  against `MAX_INDEX_FILES`, and every object's stored SHA-256 and length against its ref before a
+  byte is decoded, the decoded length against `size` after. Every `zstd-patch-from` frame's header
+  window (`frameWindow`, read from the bytes alone) is checked against
+  2^`windowLogMax(memBytes)` before it is decoded, by the applier itself in every SDK, and refused
+  as `delta-apply-failed`: libzstd enforces its own window limit only when it streams through a
+  small buffer (one-shot decodes, a full-size output buffer and Godot's engine decoder accept the
+  window), so a decoder parameter is never relied on (plans/P4-01.md §2.7 rule 3). The content
+  corpus pins the rule (`frameWindowCases`, `delta-whole-window-over-mem-bytes`,
+  `file-delta-tree-small-window`). `@polaris-key/zstd-wasm`, the decoder-only libzstd 1.5.7 WASM,
+  makes the same check itself: it decodes exactly one frame whose declared content size is the
+  caller's, and with a raw-content prefix refuses a frame whose header window is above
+  2^`windowLogMax` before decoding. Its workerd entry instantiates the module per decode, so no
+  decode's linear memory outlives the call. Today only the corpus generator and the conformance
+  runners call it; the Worker's index ingest (P4-02) and the browser SDK (P4-06) are its first
+  production consumers, and the SDK appliers land in P4-06 to P4-08.
 
 **Pack ingest (P4-02).** The Worker still signs no record: a pack record is CI-signed, and ingest
 (`services/release/packs/`) only verifies it, checks it against the pack's declaration and the
