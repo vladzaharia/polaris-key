@@ -26,6 +26,7 @@ import { putOutletCredential } from "../src/core/outletCredentials.js";
 import {
   readUpdateHealth,
   recordUpdateEvents,
+  staticScope,
 } from "../src/core/updateHealth.js";
 import type { Env as WorkerEnv } from "../src/env.js";
 import type { ServiceHooks } from "../src/core/hooks.js";
@@ -494,10 +495,11 @@ describe("update-health counters on a real Durable Object (P6-03)", () => {
     expect(ns).toBeDefined();
     const workerEnv = env as unknown as WorkerEnv;
     const now = Math.floor(Date.now() / 1000);
-    const scope = {
-      outlets: new Set(["direct"]),
-      channels: new Set(["stable"]),
-    };
+    const scope = staticScope({
+      outlets: ["direct"],
+      channels: ["stable"],
+      releases: ["app|v9.9.9-workerd"],
+    });
     const entry = {
       eventId: "workerd-1",
       event: "update_reverted" as const,

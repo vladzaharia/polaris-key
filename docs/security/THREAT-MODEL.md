@@ -1306,6 +1306,14 @@ can do more than the paths below allow.
   devices enlarge the denominator until the true revert rate falls under the threshold. The
   auto-halt is a safety net, not a guarantee; the funnel, Sentry candidates and the operator's
   own halt remain the controls.
+- **Object bounds.** An event's (deliverable, release) must be a release Release knows (its
+  catalog hook's `releases(deliverable)`, read once per deliverable per report); an event naming
+  any other release counts nothing and creates no counter object. One report touches at most two
+  (deliverable, release) objects; further groups are dropped, and the two calls run in parallel
+  before the device's 200. So the NUMBER of objects is bounded by the product's real releases,
+  and each object by the caps below: objects ≤ real releases, storage per object ≤ devices × one
+  record (≤ 64 event ids, ≤ 8 pairs) + hours × declared pairs × 7 buckets. Report rate moves
+  only work per request, never what is kept.
 - **Key bounds.** An event's outlet and channel are checked at ingest against the product's
   declarations, read through Core's hooks (Distribution's live outlets, Release's
   `knownChannels`; AGENTS.md rule 6): anything else is counted in ONE `unknown` bucket that is
@@ -1314,12 +1322,10 @@ can do more than the paths below allow.
   at most 64 events are ever counted (beyond that the device counts nothing there) and at most 8
   distinct (outlet, channel) pairs introduced (further pairs go to `unknown`); each device has
   exactly one record holding its dedupe list. No per-device rate limit is added on the report:
-  the caps bound what any number of reports can store, the report is device-authenticated and
-  16 KiB-capped, and a limiter would add a Durable Object round trip to every report. A read
-  sums every bucket page by page; past a 500,000-key ceiling it says `truncated` and the
-  auto-halt treats that as no data. Residual: a device can name any well-formed release id and
-  so create an idle counter object; it holds nothing an operator sees and empties itself after
-  30 days (cost only).
+  with the object bounds above, the caps bound what any number of reports can store, the report
+  is device-authenticated and 16 KiB-capped, and a limiter would add a Durable Object round trip
+  to every report. A read sums every bucket page by page; past a 500,000-key ceiling it says
+  `truncated` and the auto-halt treats that as no data.
 - **Retention.** The object's alarm deletes buckets older than 30 days (hour-keyed, a range from
   the start) and device records idle that long (a scan paginated with a `startAfter` cursor that
   persists between alarms), working until done or until a 10 s budget is spent, then re-arming in
@@ -1339,6 +1345,8 @@ its caller. It never touches a `mirrored` (store) rollout — it records an aler
 — and trips once per (deliverable, outlet, channel, release), so an operator's resume is not
 fought. A halt `applyRollout` refuses (a race: the rollout or its outlet moved since it was
 listed) is recorded on the tick's reading and judged again next tick; it does not fail the cron.
+The first refusal per trip is audited (`distribution.auto_halt.refused`), so a halt refused for
+a lasting reason is visible.
 Residual: a coordinated set of registered devices that crosses `minSample` with false reverts can
 halt a self-hosted rollout — the safe direction — but never expose a build (and see Dilution
 above for the opposite direction).

@@ -149,6 +149,13 @@ Where the code disagreed with this brief, the code won:
   into overflow). Per device and per object: at most 64 events counted, at most 8 pairs
   introduced. No per-device rate limit was added on the report: the caps bound storage and a
   limiter would add a Durable Object hop to every report.
+- **Releases are checked at ingest too** (security review, round 2): an event's (deliverable,
+  release) must be one Release knows (`hooks.releaseCatalog().releases(deliverable)`, once per
+  deliverable per report), or it counts nothing and creates no object; one report touches at
+  most two objects (`MAX_REPORT_GROUPS`), called in parallel and awaited. The real bound is:
+  objects ≤ the product's real releases, each bounded by the per-object caps (devices × one
+  record of ≤ 64 ids and ≤ 8 pairs, plus hours × declared pairs × 7 buckets). The first auto-halt
+  refusal per trip is audited (`distribution.auto_halt.refused`).
 - **Storage is one record per device plus hourly buckets.** Reads are paginated (a 500,000-key
   ceiling marks `truncated`, which the auto-halt treats as no data). The sweep pages device
   records with a `startAfter` cursor and a 10 s budget, re-arming in a minute while work remains.

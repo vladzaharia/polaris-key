@@ -135,15 +135,23 @@ export function boundedUpdates(input: unknown): UpdateEventEntry[] | undefined {
 }
 
 /**
- * What a product declares, against which an event's outlet and channel are checked at ingest: its
- * live outlets (Distribution's `delivery` hook) and the channels it can serve (Release's
- * `knownChannels`). An event naming anything else is counted in ONE `unknown` bucket, so a device
- * cannot invent outlets or channels to mint bucket keys or crowd out a real pair. A provider that
- * is off answers an empty set, so everything is `unknown`.
+ * What a product declares, against which an event is checked at ingest:
+ *
+ *   - its live outlets (Distribution's `delivery` hook) and the channels it can serve (Release's
+ *     `knownChannels`). An event naming anything else is counted in ONE `unknown` bucket, so a
+ *     device cannot invent outlets or channels to mint bucket keys or crowd out a real pair;
+ *   - its releases (Release's `releases(deliverable)`, looked up once per deliverable per report).
+ *     An event naming a (deliverable, release) Release does not know counts NOTHING and creates
+ *     no counter object, so the number of objects is bounded by real releases, not by what a
+ *     device names.
+ *
+ * A provider that is off answers empty sets, so nothing is declared and no release is known.
  */
 export interface UpdateScope {
   outlets: ReadonlySet<string>;
   channels: ReadonlySet<string>;
+  /** Whether Release knows this (deliverable, release). Memoised per deliverable. */
+  knownRelease(deliverable: string, release: string): Promise<boolean>;
 }
 
 /** The scope from the product's hooks (Core-mediated: AGENTS.md rule 6). Never throws. */
@@ -162,8 +170,49 @@ export async function updateScope(hooks: ServiceHooks): Promise<UpdateScope> {
   } catch {
     /* no channels: everything is unknown */
   }
-  return { outlets, channels };
+  const releases = new Map<string, Promise<ReadonlySet<string>>>();
+  const releasesOf = (deliverable: string): Promise<ReadonlySet<string>> => {
+    let p = releases.get(deliverable);
+    if (!p) {
+      p = (async () => {
+        try {
+          const list =
+            (await hooks.releaseCatalog()?.releases(deliverable)) ?? [];
+          return new Set(list.map((r) => r.releaseId));
+        } catch {
+          return new Set<string>();
+        }
+      })();
+      releases.set(deliverable, p);
+    }
+    return p;
+  };
+  return {
+    outlets,
+    channels,
+    knownRelease: async (deliverable, release) =>
+      (await releasesOf(deliverable)).has(release),
+  };
 }
+
+/** A scope that knows the given releases (`deliverable|release`) — for callers outside a
+ *  request (tests, the workerd smoke) that already know what is declared. */
+export function staticScope(s: {
+  outlets: Iterable<string>;
+  channels: Iterable<string>;
+  releases: Iterable<string>;
+}): UpdateScope {
+  const known = new Set(s.releases);
+  return {
+    outlets: new Set(s.outlets),
+    channels: new Set(s.channels),
+    knownRelease: async (d, r) => known.has(`${d}|${r}`),
+  };
+}
+
+/** Distinct (deliverable, release) objects one report may touch; further groups are dropped. A
+ *  real device reports on the release it moved to (and at most the one it came from). */
+export const MAX_REPORT_GROUPS = 2;
 
 /** The object of one (product, deliverable, release). */
 function objectName(product: string, deliverable: string, release: string) {
@@ -171,8 +220,9 @@ function objectName(product: string, deliverable: string, release: string) {
 }
 
 /**
- * Count one device's validated events: one object call per (deliverable, release) they name.
- * An outlet or channel outside `scope` is counted as (`unknown`, `unknown`).
+ * Count one device's validated events: one object call per (deliverable, release) they name —
+ * only releases `scope` knows, at most `MAX_REPORT_GROUPS` of them. An outlet or channel outside
+ * `scope` is counted as (`unknown`, `unknown`).
  * Answers how many were newly counted (a retry counts 0). Never throws.
  */
 export async function recordUpdateEvents(
@@ -191,7 +241,14 @@ export async function recordUpdateEvents(
     const at = Math.min(e.at, now);
     if (at < now - RETENTION_SECONDS) continue;
     const name = objectName(product, e.deliverable, e.release);
-    const list = groups.get(name) ?? [];
+    let list = groups.get(name);
+    if (!list) {
+      // A new object only for a release Release knows, and at most MAX_REPORT_GROUPS per report.
+      if (groups.size >= MAX_REPORT_GROUPS) continue;
+      if (!(await scope.knownRelease(e.deliverable, e.release))) continue;
+      list = [];
+      groups.set(name, list);
+    }
     const declared =
       scope.outlets.has(e.outlet) && scope.channels.has(e.channel);
     list.push({
@@ -201,24 +258,28 @@ export async function recordUpdateEvents(
       channel: declared ? e.channel : UNKNOWN,
       at,
     });
-    groups.set(name, list);
   }
-  let counted = 0;
-  for (const [name, events] of groups) {
-    try {
-      const stub = ns.get(ns.idFromName(name));
-      const res = await stub.fetch("https://update-health/record", {
-        method: "POST",
-        body: JSON.stringify({ op: "record", now, deviceId, events }),
-      });
-      if (!res.ok) continue;
-      const body = (await res.json()) as { counted?: unknown };
-      if (typeof body.counted === "number") counted += body.counted;
-    } catch {
-      /* fail open: the report was stored; a retry of the same events counts them then */
-    }
-  }
-  return counted;
+  // In parallel and awaited (not `waitUntil`): at most two calls, so the latency is one round
+  // trip, and the counts are written before the device's 200 — a retry or the next auto-halt tick
+  // sees them (read-your-writes), and a failure here cannot outlive the request.
+  const results = await Promise.all(
+    [...groups].map(async ([name, events]) => {
+      try {
+        const stub = ns.get(ns.idFromName(name));
+        const res = await stub.fetch("https://update-health/record", {
+          method: "POST",
+          body: JSON.stringify({ op: "record", now, deviceId, events }),
+        });
+        if (!res.ok) return 0;
+        const body = (await res.json()) as { counted?: unknown };
+        return typeof body.counted === "number" ? body.counted : 0;
+      } catch {
+        /* fail open: the report was stored; a retry of the same events counts them then */
+        return 0;
+      }
+    }),
+  );
+  return results.reduce((a, b) => a + b, 0);
 }
 
 export interface UpdateHealthQuery {

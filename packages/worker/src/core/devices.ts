@@ -96,6 +96,7 @@ import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
 import {
   boundedUpdates,
   recordUpdateEvents,
+  staticScope,
   updateScope,
 } from "./updateHealth.js";
 import type { ServiceHooks } from "./hooks.js";
@@ -1112,7 +1113,7 @@ export async function handleReport(
       now,
       hooks
         ? await updateScope(hooks)
-        : { outlets: new Set(), channels: new Set() },
+        : staticScope({ outlets: [], channels: [], releases: [] }),
     );
   return json({ ok: true });
 }

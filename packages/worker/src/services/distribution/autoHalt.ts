@@ -65,6 +65,7 @@ export const AUTO_HALT_LABEL = "Auto-halt (update telemetry)";
 export const TRIP_OBJECT = "trip";
 export const ALERT_OBJECT = "alert";
 export const READING_OBJECT = "reading";
+export const REFUSAL_OBJECT = "refusal";
 
 // ── Settings ─────────────────────────────────────────────────────────────────────────────────
 
@@ -412,6 +413,35 @@ export async function runAutoHalt(
       const reading = readings[readings.length - 1];
       if (reading) reading.refused = result.reason;
       refused++;
+      // The FIRST refusal per trip id is audited (and marked), so a halt refused for a lasting
+      // reason is visible to the operator without an audit row on every tick.
+      if (
+        !(await getObject(db, product, AUTO_HALT_CONNECTOR, REFUSAL_OBJECT, id))
+      ) {
+        await upsertObject(write, AUTO_HALT_CONNECTOR, {
+          type: REFUSAL_OBJECT,
+          id,
+          outletId: row.outlet_id,
+          releaseId: row.release_id,
+          buildId: "",
+          storeState: null,
+          state: "refused",
+          ref: { deliverable: row.deliverable_id, channel: row.channel },
+          detail: { at: now, reason: result.reason, message: result.message },
+          terminal: false,
+        });
+        await auditConnector(
+          write,
+          AUTO_HALT_CONNECTOR,
+          AUTO_HALT_LABEL,
+          "distribution.auto_halt.refused",
+          {
+            kind: "rollout",
+            id: `${row.deliverable_id}:${row.outlet_id}:${row.channel}`,
+          },
+          `The auto-halt tripped on the ${row.outlet_id} rollout of ${row.release_id} on ${row.channel} but the halt was refused (${result.reason}); it retries every tick: ${reason}`,
+        );
+      }
       continue;
     }
     await upsertObject(write, AUTO_HALT_CONNECTOR, {

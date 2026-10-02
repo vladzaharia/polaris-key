@@ -31,8 +31,10 @@ import {
   boundedUpdates,
   countsFor,
   MAX_UPDATE_EVENTS,
+  MAX_REPORT_GROUPS,
   readUpdateHealth,
   recordUpdateEvents,
+  staticScope,
   UPDATE_EVENTS,
 } from "../src/core/updateHealth.js";
 import {
@@ -118,14 +120,29 @@ const HOOKS = {
   delivery: () => ({
     outlets: async () => [{ outletId: "direct" }, { outletId: "play" }],
   }),
-  releaseCatalog: () => ({ knownChannels: async () => ["stable", "beta"] }),
+  releaseCatalog: () => ({
+    knownChannels: async () => ["stable", "beta"],
+    // Release knows v1.4.0 and v1.5.0 of the app, sixteen more app releases, and pack p-1.
+    releases: async (deliverable: string) =>
+      (deliverable === "app"
+        ? [
+            "v1.4.0",
+            "v1.5.0",
+            ...Array.from({ length: 16 }, (_, i) => `v2.${i}.0`),
+          ]
+        : deliverable === "levels"
+          ? ["p-1"]
+          : []
+      ).map((releaseId) => ({ releaseId })),
+  }),
   outletCapabilities: async () => null,
 } as unknown as ServiceHooks;
 
-const SCOPE = {
-  outlets: new Set(["direct", "play"]),
-  channels: new Set(["stable", "beta"]),
-};
+const SCOPE = staticScope({
+  outlets: ["direct", "play"],
+  channels: ["stable", "beta"],
+  releases: ["app|v1.4.0"],
+});
 
 function record(w: World, device: string, events: unknown[]) {
   return w.ns.instance("djdl|app|v1.4.0").obj.fetch(
@@ -344,20 +361,63 @@ describe("POST /devices/report with updates", () => {
     expect(countsFor(r.counts, "direct", "stable").update_applied).toBe(2);
   });
 
-  it("splits events across releases: one object per (deliverable, release)", async () => {
+  it("splits events across releases: one object per (deliverable, release), at most two", async () => {
     const w = await world();
     const tok = await token(w);
     await report(w, tok, {
       updates: [
         event({ eventId: "a", release: "v1.4.0" }),
-        event({ eventId: "b", release: "v1.5.0" }),
         event({ eventId: "c", deliverable: "levels", release: "p-1" }),
+        event({ eventId: "b", release: "v1.5.0" }),
       ],
     });
     expect([...w.ns.instances.keys()].sort()).toEqual([
       "djdl|app|v1.4.0",
-      "djdl|app|v1.5.0",
       "djdl|levels|p-1",
+    ]);
+  });
+
+  it("an unknown release counts nothing and creates no object", async () => {
+    const w = await world();
+    const tok = await token(w);
+    expect(
+      (
+        await report(w, tok, {
+          updates: [
+            event({ eventId: "a", release: "v9.9.9" }),
+            event({ eventId: "b", deliverable: "nopack", release: "x-1" }),
+          ],
+        })
+      ).status,
+    ).toBe(200);
+    expect(w.ns.instances.size).toBe(0);
+    expect(w.ns.calls).toEqual([]);
+    expect(
+      await recordUpdateEvents(
+        w.env,
+        "djdl",
+        DEVICE,
+        [event({ release: "v9.9.9" }) as never],
+        NOW,
+        SCOPE,
+      ),
+    ).toBe(0);
+    expect(w.ns.instances.size).toBe(0);
+  });
+
+  it("a report naming 16 distinct real releases touches at most two objects", async () => {
+    const w = await world();
+    const tok = await token(w);
+    await report(w, tok, {
+      updates: Array.from({ length: 16 }, (_, i) =>
+        event({ eventId: `r${i}`, release: `v2.${i}.0` }),
+      ),
+    });
+    expect(w.ns.instances.size).toBe(MAX_REPORT_GROUPS);
+    expect(new Set(w.ns.calls).size).toBe(MAX_REPORT_GROUPS);
+    expect([...w.ns.instances.keys()].sort()).toEqual([
+      "djdl|app|v2.0.0",
+      "djdl|app|v2.1.0",
     ]);
   });
 

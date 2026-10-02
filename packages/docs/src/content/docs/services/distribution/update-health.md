@@ -75,7 +75,9 @@ hourly buckets, it keeps two numbers:
 
 An event naming an outlet the product does not declare, or a channel it does not know (the
 built-in channels, its manual channels and any channel an app release was published to), is
-counted in one `unknown` bucket: shown, never judged, and unable to crowd out a real outlet. One
+counted in one `unknown` bucket: shown, never judged, and unable to crowd out a real outlet. An event
+naming a release Release does not know counts nothing, and one report is counted for at most two
+releases. One
 device counts at most 64 events per release and introduces at most 8 (outlet, channel) pairs;
 beyond that its events count nothing, or count as `unknown`. Buckets older than 30 days, and the
 per-device records (the event ids it counted) of a device idle for 30 days, are deleted. See

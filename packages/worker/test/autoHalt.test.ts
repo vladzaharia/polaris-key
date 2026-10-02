@@ -637,6 +637,12 @@ describe("the auto-halt tick", () => {
     expect(await rollout(w)).toMatchObject({ state: "active" });
     expect(JSON.stringify(report.results)).toContain('"refused":1');
     expect((await tick(w)).failures).toEqual({});
+    // The first refusal is audited once; later ticks add no row.
+    const refusals = (await auditRows(w.db)).filter(
+      (r) => r.action === "distribution.auto_halt.refused",
+    );
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]!.actor_sub).toBe("connector:auto-halt");
   });
 
   it("judges nothing when the counters cannot be read", async () => {
