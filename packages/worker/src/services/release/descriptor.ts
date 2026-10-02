@@ -194,6 +194,8 @@ export interface PlannedArtifact {
   locations: DescriptorLocation[];
   /** GitHub's URL, and only GitHub's (R6-12). */
   sourceUrl: string | null;
+  /** A delta's `deltaFrom` (P3-09), stored in `release_artifacts.metadata_json`. */
+  deltaFrom: string | null;
 }
 
 export interface PlannedRows {
@@ -677,6 +679,7 @@ export async function planDescriptorIngest(
           asset && a.locations.some((l) => l.provider === "github")
             ? asset.browser_download_url
             : null,
+        deltaFrom: a.deltaFrom ?? null,
       });
       for (const l of a.locations) {
         if (l.provider !== "r2") continue;
@@ -808,7 +811,12 @@ export async function planDescriptorIngest(
         sha256: a.sha256,
         storageKey: a.storageKey,
         locationsJson: JSON.stringify(a.locations),
-        metadataJson: null,
+        // The descriptor's per-artifact facts the record does not carry (P3-09: a delta's
+        // `deltaFrom`, which the Sparkle appcast renders).
+        metadataJson:
+          a.deltaFrom !== null
+            ? JSON.stringify({ deltaFrom: a.deltaFrom })
+            : null,
       }),
     );
   }

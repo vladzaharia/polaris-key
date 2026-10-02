@@ -346,6 +346,11 @@
           "maxLength": 127,
           "pattern": "^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$"
         },
+        "deltaFrom": {
+          "description": "A delta artifact only (the validator checks the role): the build number the delta updates from, rendered as sparkle:deltaFrom (P3-09).",
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
+        },
         "locations": {
           "type": "array",
           "minItems": 1,

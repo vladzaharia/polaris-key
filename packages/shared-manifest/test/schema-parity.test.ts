@@ -353,7 +353,16 @@ function base(): Docs {
           productId: "9NBLGGH4NNS1",
           packageFamilyName: "Acme.Desktop_abcdefghjkmnp",
         },
-        "app-installer": { packageFamilyName: "Acme.Desktop_1a2b3c4d5e6f7" },
+        "app-installer": {
+          packageFamilyName: "Acme.Desktop_1a2b3c4d5e6f7",
+          publisher: "CN=Acme Corporation, O=Acme Corporation, C=US",
+          updateSettings: {
+            hoursBetweenUpdateChecks: 12,
+            showPrompt: true,
+            updateBlocksActivation: true,
+            automaticBackgroundTask: true,
+          },
+        },
         steam: { appId: 480, branches: { beta: "beta", nightly: "nightly" } },
         itch: { target: "acme/desktop", gameId: "1001" },
         flathub: { appId: "com.acme.Desktop" },
@@ -1700,6 +1709,41 @@ const MUTATIONS: Mutation[] = [
       (outlet(d, "app-installer").packageFamilyName = "Acme.Desktop"),
   },
   {
+    // app-installer.publisher (P3-09): the certificate subject DN, CN= first.
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "app-installer").publisher = "O=Acme, CN=Acme"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (outlet(d, "app-installer").updateSettings = {
+        hoursBetweenUpdateChecks: 256,
+      }),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (outlet(d, "app-installer").updateSettings = {
+        forceUpdateFromAnyVersion: true,
+      }),
+  },
+  {
+    // UpdateBlocksActivation is ignored without ShowPrompt.
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (outlet(d, "app-installer").updateSettings = {
+        updateBlocksActivation: true,
+      }),
+  },
+  {
     code: "invalid_outlet_identity",
     file: "distribution",
     schema: "rejects",
@@ -2501,6 +2545,19 @@ const DESCRIPTOR_MUTATIONS: DescriptorMutation[] = [
     code: "invalid_descriptor_artifact",
     schema: "rejects",
     mutate: (d) => (dmg(d).locations = []),
+  },
+  {
+    code: "invalid_delta_from",
+    schema: "rejects",
+    mutate: (d) => {
+      dmg(d).role = "delta";
+      dmg(d).deltaFrom = "1.2 3";
+    },
+  },
+  {
+    code: "invalid_delta_from",
+    schema: "accepts",
+    mutate: (d) => (dmg(d).deltaFrom = "4020"),
   },
   {
     code: "duplicate_artifact_name",

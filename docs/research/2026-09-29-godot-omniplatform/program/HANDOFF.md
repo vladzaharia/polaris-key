@@ -14,15 +14,18 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
-## DEPLOY GATE NOW: run check:representable against production D1 (P3-12)
+## Production check:representable (P3-12): done 2026-10-01
 
-- [ ] **Before the next production deploy** (main now carries wire v4: P3-02, P3-03, P3-05, P3-12):
-      `cd packages/worker && npx wrangler login && pnpm check:representable` (defaults to
-      `--env prod --remote polaris_key_prod`). Exit 0 = deploy may proceed (warnings may list
-      offline-day counts outside 1–365); exit 1 = fix every flagged value in the console or
-      manifest first, then re-run. Plan P3-01 §7: no SDK release built after P3-02 is published
-      before this Worker is deployed with a clean check. Tell the lead the result; the lead then
-      tags the deploy.
+- [x] **Before the first wire v4 deploy:** the operator ran `pnpm check:representable` against
+      `polaris_key_prod` (remote): clean, 21 columns checked, 0 warnings. The lead tags v0.7.0.
+
+## Required checks for P1b-05's CI jobs (after it merges)
+
+- [ ] On `main`'s branch protection or ruleset, add the new jobs as required checks: "Node floor
+      (engines.node)", "Browser conformance (Chromium)", "Browser conformance (Firefox, Linux)",
+      "Browser conformance (WebKit, macOS)" and the renamed Python matrix legs (3.9 and 3.14 on
+      ubuntu, 3.12 on macos-14). The old "Python SDK (ubuntu-latest)" and "Python SDK (macos-14)"
+      names stop reporting. No required checks are configured on `main` today.
 
 ## Storing a real App Store Connect key (P5-02, P5-02f)
 

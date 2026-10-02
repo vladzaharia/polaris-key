@@ -42,6 +42,8 @@ import {
   type CatalogChannelRelease,
   type CatalogSourceArtifact,
   type Delivery,
+  type FeedSelectionArtifact,
+  type FeedSelectionEntry,
   type ReleaseCatalog,
   type ServiceHooks,
 } from "../../../core/hooks.js";
@@ -59,7 +61,7 @@ import {
   type DistOutletRow,
 } from "../outlets.js";
 import { FULL_ROLLOUT_BP, type DistRolloutRow } from "../rollouts.js";
-import type { RenderEntry, RenderListing } from "./render.js";
+import type { RenderListing } from "./render.js";
 
 /** The most versions a feed lists, and the most releases it reads to find them (newest first). */
 export const MAX_FEED_VERSIONS = 20;
@@ -98,12 +100,25 @@ export interface FeedSpec {
   allBuilds?: boolean;
   /** An outlet predicate beyond its kind (Scoop: a `direct` outlet covering Windows). */
   accepts?: (o: FeedOutlet) => boolean;
+  // ── P3-09's app-updater feeds (`Delivery.feedSelection`) ──
+  /** Keep only builds of these arches. */
+  arches?: readonly string[];
+  /** Keep only these build ids. */
+  buildIds?: readonly string[];
+  /** Keep only builds whose payload name ends with one of these (ASCII case-insensitive). */
+  payloadSuffixes?: readonly string[];
+  /** Consider only these releases (the ones with a stored release record). */
+  releaseIds?: readonly string[];
+  /** See `FeedSelectionQuery.rollouts` (`core/hooks.ts`). Default `hold`. */
+  rollouts?: "hold" | "phase";
+  /** Also return each listed build's other artifacts, with their delivery URLs. */
+  withArtifacts?: boolean;
 }
 
 export interface FeedSelection {
   channel: string;
   outlet: FeedOutlet;
-  entries: RenderEntry[];
+  entries: FeedSelectionEntry[];
   /** Release notes are public (the metadata access mode). */
   notesPublic: boolean;
 }
@@ -164,29 +179,71 @@ export function buildMatchesOutlet(
   return true;
 }
 
-/** Releases held back on `outlet` (step 4): any rollout there that is not complete. */
-async function heldReleases(
+/** A release's standing on the outlet's rollouts (step 4). */
+interface RolloutStanding {
+  held: Set<string>;
+  /** `phase` mode: the releases listed while their rollout is active, and that rollout. */
+  phased: Map<string, { bp: number; salt: string; startedAt: number }>;
+}
+
+/**
+ * Releases held back on `outlet` (step 4): under `hold`, any rollout there that is not complete,
+ * on any channel; under `phase`, a paused or halted one on any channel, or one of `channel`'s own
+ * active at 0 bp — `channel`'s own active rollout above 0 bp lists its release with THAT rollout,
+ * for a client that phases itself (Sparkle). Another channel's active rollout never phases or
+ * holds this channel's feed: dist_rollouts holds one row per (outlet, channel), and the signed
+ * feed reads only the matching one (compose.ts).
+ */
+async function rolloutStanding(
   db: Db,
   product: string,
   outletId: string,
-): Promise<Set<string>> {
+  mode: "hold" | "phase",
+  channel: string,
+): Promise<RolloutStanding> {
   const rows = await db.all<
-    Pick<DistRolloutRow, "release_id" | "rollout_bp" | "state">
+    Pick<
+      DistRolloutRow,
+      | "release_id"
+      | "rollout_bp"
+      | "rollout_salt"
+      | "state"
+      | "started_at"
+      | "channel"
+    >
   >(
-    `SELECT release_id, rollout_bp, state FROM dist_rollouts
+    `SELECT release_id, rollout_bp, rollout_salt, state, started_at, channel FROM dist_rollouts
       WHERE product = ? AND deliverable_id = ? AND outlet_id = ?`,
     product,
     APP_DELIVERABLE_ID,
     outletId,
   );
   const held = new Set<string>();
+  const phased = new Map<
+    string,
+    { bp: number; salt: string; startedAt: number }
+  >();
   for (const r of rows) {
     const done =
       r.state === "complete" ||
       (r.state === "active" && r.rollout_bp >= FULL_ROLLOUT_BP);
-    if (!done) held.add(r.release_id);
+    if (done) continue;
+    if (mode === "phase" && r.state === "active") {
+      // Only the rendered channel's own row phases (or, at 0 bp, holds) its release.
+      if (r.channel !== channel) continue;
+      if (r.rollout_bp > 0) {
+        phased.set(r.release_id, {
+          bp: r.rollout_bp,
+          salt: r.rollout_salt,
+          startedAt: r.started_at,
+        });
+        continue;
+      }
+    }
+    held.add(r.release_id);
   }
-  return held;
+  for (const id of held) phased.delete(id);
+  return { held, phased };
 }
 
 /** The readers a feed needs, or `null` (= not-found) when the product cannot serve one. */
@@ -284,6 +341,19 @@ export async function selectFeed(
 ): Promise<FeedSelection | null> {
   const readers = await feedReaders(ctx);
   if (!readers) return null;
+  return selectFeedWith(ctx, readers, rawChannel, spec);
+}
+
+/**
+ * `selectFeed` without the public-access rule: the caller has decided access itself
+ * (`Delivery.feedSelection`, P3-09, whose callers run the release gateway's access check).
+ */
+export async function selectFeedWith(
+  ctx: FeedReadContext,
+  readers: { catalog: ReleaseCatalog; notesPublic: boolean },
+  rawChannel: string,
+  spec: FeedSpec,
+): Promise<FeedSelection | null> {
   const { catalog, notesPublic } = readers;
   const slug = ctx.product.slug;
   const outlet = await pickOutlet(ctx.db, slug, spec);
@@ -305,13 +375,21 @@ export async function selectFeed(
     spec.liveness === "availability"
       ? await outletLiveness(ctx.db, slug, outlet, transport)
       : null;
-  const held = await heldReleases(ctx.db, slug, outlet.id);
+  const standing = await rolloutStanding(
+    ctx.db,
+    slug,
+    outlet.id,
+    spec.rollouts ?? "hold",
+    history.channel,
+  );
+  const only = spec.releaseIds ? new Set(spec.releaseIds) : null;
   const limit = spec.limit ?? MAX_FEED_VERSIONS;
-  const entries: RenderEntry[] = [];
+  const entries: FeedSelectionEntry[] = [];
   let releasesListed = 0;
   for (const release of history.releases.slice(0, MAX_FEED_SCAN)) {
     if (releasesListed >= limit) break;
-    if (release.yanked || held.has(release.releaseId)) continue;
+    if (release.yanked || standing.held.has(release.releaseId)) continue;
+    if (only && !only.has(release.releaseId)) continue;
     // A store outlet is live only where reported: a release with no live report costs nothing.
     if (
       liveness &&
@@ -319,8 +397,11 @@ export async function selectFeed(
       !(liveness.reports.get(release.releaseId) ?? []).some((r) => r.live)
     )
       continue;
-    const builds = (await catalog.builds(release.releaseId)).filter((b) =>
-      buildMatchesOutlet(outlet, b, spec.platform),
+    const builds = (await catalog.builds(release.releaseId)).filter(
+      (b) =>
+        buildMatchesOutlet(outlet, b, spec.platform) &&
+        (!spec.arches || spec.arches.includes(b.arch)) &&
+        (!spec.buildIds || spec.buildIds.includes(b.buildId)),
     );
     if (!builds.length) continue;
     const artifacts = await catalog.artifacts(release.releaseId);
@@ -331,13 +412,35 @@ export async function selectFeed(
       );
       if (!payload) continue;
       if (
+        spec.payloadSuffixes &&
+        !spec.payloadSuffixes.some((x) =>
+          payload.name.toLowerCase().endsWith(x.toLowerCase()),
+        )
+      )
+        continue;
+      if (
         liveness &&
         !isLive(liveness, outlet, release.releaseId, build, payload)
       )
         continue;
       const url = servedUrl(ctx, release.releaseId, payload, artifacts);
       if (!url) continue;
-      entries.push(entryFor(release, build, payload, url, notesPublic));
+      const entry = entryFor(release, build, payload, url, notesPublic);
+      entry.rollout = standing.phased.get(release.releaseId) ?? null;
+      if (spec.withArtifacts)
+        entry.artifacts = artifacts
+          .filter(
+            (a) =>
+              a.artifactId !== payload.artifactId &&
+              (a.buildId === build.buildId || a.buildId === null),
+          )
+          .map(
+            (a): FeedSelectionArtifact => ({
+              ...a,
+              url: servedUrl(ctx, release.releaseId, a, artifacts),
+            }),
+          );
+      entries.push(entry);
       any = true;
       if (!spec.allBuilds) break;
     }
@@ -374,7 +477,7 @@ function entryFor(
   payload: CatalogSourceArtifact,
   url: string,
   notesPublic: boolean,
-): RenderEntry {
+): FeedSelectionEntry {
   return {
     releaseId: release.releaseId,
     version: release.version,
@@ -384,6 +487,7 @@ function entryFor(
     buildId: build.buildId,
     platform: build.platform,
     arch: build.arch,
+    format: build.format,
     buildNumber: build.buildNumber,
     minOs: build.minOs,
     metadata: build.metadata,
@@ -391,5 +495,8 @@ function entryFor(
     sha256: payload.sha256,
     size: payload.sizeBytes,
     url,
+    payload,
+    rollout: null,
+    artifacts: [],
   };
 }

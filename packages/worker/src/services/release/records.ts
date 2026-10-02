@@ -512,6 +512,28 @@ export async function getRecordForRelease(
 }
 
 /** Every record of a deliverable, by release id (the composer reads them in one query). */
+/**
+ * The release ids that have a stored record of `kind` for one deliverable, sorted (P3-09). Reads
+ * ONE column: Update's feeds run this on every request (it feeds their cache stamp), so it must
+ * never pull the records' JWS bytes. `(product, deliverable_id, seq)`'s unique index covers it.
+ */
+export async function recordedReleaseIds(
+  db: Db,
+  product: string,
+  deliverableId: string,
+  kind: string,
+): Promise<string[]> {
+  const rows = await db.all<{ release_id: string }>(
+    `SELECT DISTINCT release_id FROM release_records
+      WHERE product = ? AND deliverable_id = ? AND kind = ?
+      ORDER BY release_id`,
+    product,
+    deliverableId,
+    kind,
+  );
+  return rows.map((r) => r.release_id);
+}
+
 export async function recordsByRelease(
   db: Db,
   product: string,

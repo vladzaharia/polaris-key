@@ -199,7 +199,7 @@ the offending value, or the allowed set.
 `validateReleaseDescriptor` (`@polaris-key/manifest`, P2-04) checks a release descriptor
 (`pkey-release.json`) against its own shape and the product's declared artifact map. Every
 problem is an error; the Worker reports them under the ingest refusal reason
-`invalid_descriptor`. 59 distinct emit sites.
+`invalid_descriptor`. 61 distinct emit sites.
 
 | Code | Path | Message |
 | --- | --- | --- |
@@ -214,6 +214,8 @@ problem is an error; the Worker reports them under the ingest refusal reason
 | `invalid_artifact_location` | `/builds/${bi}/artifacts/${ai}/locations/${li}` | a store location carries no bytes: no key, asset or url. |
 | `invalid_build_metadata` | `/builds/${bi}/metadata` | $\{problem\}. |
 | `invalid_build_payload` | `/builds/${bi}/artifacts` | build $\{b.id\} must carry exactly one $\{entry.role\} file (it has $\{declared.length\}). |
+| `invalid_delta_from` | `/builds/${bi}/artifacts/${ai}/deltaFrom` | deltaFrom applies only to an artifact whose role is delta. |
+| `invalid_delta_from` | `/builds/${bi}/artifacts/${ai}/deltaFrom` | deltaFrom must be 1-64 version characters: the build number the delta updates from. |
 | `invalid_descriptor_artifact` | `/builds/${bi}/artifacts/${ai}/contentType` | contentType must be a lower-case type/subtype. |
 | `invalid_descriptor_artifact` | `/builds/${bi}/artifacts/${ai}/locations` | locations must be an array of 1 to $\{MAX_ARTIFACT_LOCATIONS\} locations. |
 | `invalid_descriptor_artifact` | `/builds/${bi}/artifacts/${ai}/name` | name must be a file name of 1-255 characters with no '/', '\' or control characters. |

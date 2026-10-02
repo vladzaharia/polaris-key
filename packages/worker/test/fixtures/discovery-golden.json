@@ -181,7 +181,11 @@
           "version": "https://key.plrs.im/full/update/version",
           "appcast": "https://key.plrs.im/full/update/appcast.xml",
           "channelAppcast": "https://key.plrs.im/full/update/{channel}/appcast.xml",
-          "feed": "https://key.plrs.im/full/update/{channel}/feed.jws"
+          "feed": "https://key.plrs.im/full/update/{channel}/feed.jws",
+          "winsparkle": "https://key.plrs.im/full/update/{channel}/winsparkle.xml",
+          "velopack": "https://key.plrs.im/full/update/{channel}/velopack/releases.{velopackChannel}.json",
+          "appInstaller": "https://key.plrs.im/full/update/{channel}/app.appinstaller",
+          "zsync": "https://key.plrs.im/full/update/{channel}/{buildId}.AppImage.zsync"
         },
         "archParameter": ["arm64", "x86_64"]
       },

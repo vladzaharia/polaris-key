@@ -81,10 +81,15 @@ export const PUBLISH_USAGE =
   "[--meta builds.json] [--base-url <url>] [--release-key-file <pem>] " +
   "[--min-supported-seq <n>] [--no-record] [--dry-run]";
 
-/** The sidecar suffixes picked up beside a matched file, and the role each plays. */
+/**
+ * The sidecar suffixes picked up beside a matched file, and the role each plays. A `.zsync` is an
+ * AppImage's zsync control file (`appimagetool -u`, `zsyncmake`): the Worker serves it at the
+ * build's stable per-channel URL with its `URL:` rewritten (P3-09).
+ */
 const SIDECARS = [
   [".sig", "signature"],
   [".sha256", "checksum"],
+  [".zsync", "checksum"],
 ] as const;
 
 export type PublishSource = "r2" | "github";

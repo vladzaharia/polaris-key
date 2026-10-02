@@ -118,6 +118,14 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/update/{channel}/appcast.xml", ["get"]],
   // P3-03: the signed channel feed.
   ["/{product}/update/{channel}/feed.jws", ["get"]],
+  // P3-09: the app-updater feeds.
+  ["/{product}/update/{channel}/winsparkle.xml", ["get"]],
+  [
+    "/{product}/update/{channel}/velopack/releases.{velopackChannel}.json",
+    ["get"],
+  ],
+  ["/{product}/update/{channel}/app.appinstaller", ["get"]],
+  ["/{product}/update/{channel}/{buildId}.AppImage.zsync", ["get"]],
   ["/{product}/update/version", ["get"]],
   ["/{product}/identity/session", ["get"]],
   ["/{product}/identity/session/license", ["post"]],
@@ -267,6 +275,13 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/hooks/asc",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/feeds/fdroid/{channel}",
+  // P3-09: the app-updater feeds are read by native updaters (WinSparkle, Velopack, App
+  // Installer, AppImageUpdate), never by a browser page; no CORS is added for them (the brief:
+  // the only CORS is P0-05's allowlist, on the routes it already covers).
+  "/{product}/update/{channel}/winsparkle.xml",
+  "/{product}/update/{channel}/velopack/releases.{velopackChannel}.json",
+  "/{product}/update/{channel}/app.appinstaller",
+  "/{product}/update/{channel}/{buildId}.AppImage.zsync",
 ]);
 
 /** Every product path the router serves, from the three tables above. */
@@ -292,6 +307,7 @@ function concrete(template: string): string {
     sha256: "a".repeat(64),
     outlet: "direct",
     path: "entry.jar",
+    velopackChannel: "win-x64",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

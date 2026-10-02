@@ -103,6 +103,7 @@ function artifactRecord(a: ReleaseArtifactRow): CatalogArtifact {
     contentType: a.content_type,
     sizeBytes: a.size_bytes,
     sha256: a.sha256,
+    metadata: parseObject(a.metadata_json),
   };
 }
 

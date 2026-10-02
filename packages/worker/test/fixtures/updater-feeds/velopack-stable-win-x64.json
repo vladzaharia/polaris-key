@@ -1,0 +1,26 @@
+{
+  "Assets": [
+    {
+      "PackageId": "Djdl",
+      "Version": "1.1.0",
+      "Type": "Full",
+      "FileName": "https://dl.example.test/djdl/distribution/files/app%401.1.0/Djdl-1.1.0-full.nupkg",
+      "SHA1": "5D3716234AEBCEF59CD7C2020D8A3C254DC99294",
+      "SHA256": "C679977EADD7F75F2AD0CC7211A4FAA24BCF57577E44DA4051C43CC47C938589",
+      "Size": 31,
+      "NotesMarkdown": "What's new in 1.1.0 <b>bold</b>.",
+      "NotesHTML": "<p>What&apos;s new in 1.1.0 &lt;b&gt;bold&lt;/b&gt;.</p>"
+    },
+    {
+      "PackageId": "Djdl",
+      "Version": "1.1.0",
+      "Type": "Delta",
+      "FileName": "https://dl.example.test/djdl/distribution/files/app%401.1.0/Djdl-1.1.0-delta.nupkg",
+      "SHA1": "FC244ECFBAF93827C54FB1D0332A48014E7DEDCA",
+      "SHA256": "E078A2B409B31550CC6D16E604655ABF07B89721E003A86C0027F9F939ADB8C5",
+      "Size": 32,
+      "NotesMarkdown": "What's new in 1.1.0 <b>bold</b>.",
+      "NotesHTML": "<p>What&apos;s new in 1.1.0 &lt;b&gt;bold&lt;/b&gt;.</p>"
+    }
+  ]
+}

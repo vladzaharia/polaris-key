@@ -38,6 +38,47 @@ export interface AppcastItemInput {
   minimumSystemVersion?: string;
   /** Optional HTML release notes embedded as the item <description>. */
   descriptionHtml?: string;
+  // ── P3-09: the extended appcast (Sparkle 2.9–2.10, notes/E1) and WinSparkle ──
+  /** `<sparkle:hardwareRequirements>` (Sparkle 2.9+): `arm64` for an Apple-silicon-only build. */
+  hardwareRequirements?: string;
+  /**
+   * `<sparkle:criticalUpdate/>`: `{}` for an update critical to everyone, `{ version }` for one
+   * critical only to installs whose bundle version is below `version`.
+   */
+  criticalUpdate?: { version?: string };
+  /** `<sparkle:phasedRolloutInterval>` seconds (Sparkle phases over seven groups). */
+  phasedRolloutInterval?: number;
+  /** `<sparkle:deltas>`: one enclosure per old build the delta updates from. */
+  deltas?: AppcastDelta[];
+  /** WinSparkle: `sparkle:os` on the enclosure (`windows-x64`, `windows-arm64`, `windows`). */
+  os?: string;
+  /** WinSparkle: `sparkle:installerArguments` on the enclosure. */
+  installerArguments?: string;
+  /**
+   * WinSparkle: further enclosures of the same item (one per Windows architecture), each with
+   * its own `sparkle:os`. WinSparkle 0.8.3+ picks the one matching its machine.
+   */
+  extraEnclosures?: AppcastEnclosure[];
+  /** WinSparkle reads the versions from the enclosure: repeat them there as attributes. */
+  versionOnEnclosure?: boolean;
+}
+
+/** One `<sparkle:deltas>` enclosure. */
+export interface AppcastDelta {
+  url: string;
+  length: number;
+  /** The build number (`sparkle:version`) the delta updates FROM. */
+  deltaFrom: string;
+  edSignature?: string;
+}
+
+/** One further enclosure of an item (WinSparkle's per-architecture installers). */
+export interface AppcastEnclosure {
+  url: string;
+  length: number;
+  edSignature?: string;
+  os?: string;
+  installerArguments?: string;
 }
 
 export interface AppcastInput {
@@ -91,25 +132,73 @@ export function proseToHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => XML_ESCAPES[c] ?? c);
 }
 
+function enclosureAttrs(item: AppcastItemInput, e: AppcastEnclosure): string {
+  const versions = item.versionOnEnclosure
+    ? ` sparkle:version="${xmlEscape(item.build)}" sparkle:shortVersionString="${xmlEscape(item.shortVersion)}"`
+    : "";
+  const os = e.os ? ` sparkle:os="${xmlEscape(e.os)}"` : "";
+  const args = e.installerArguments
+    ? ` sparkle:installerArguments="${xmlEscape(e.installerArguments)}"`
+    : "";
+  // When the pipeline didn't publish a sibling `.sig`, omit the attribute rather than 404 —
+  // the feed is still valid; Sparkle clients that require signing simply won't auto-update.
+  const ed = e.edSignature
+    ? ` sparkle:edSignature="${xmlEscape(e.edSignature)}"`
+    : "";
+  return `url="${xmlEscape(e.url)}"${versions}${os}${args} type="application/octet-stream" length="${e.length}"${ed}`;
+}
+
 /** Render one `<item>`. The DMG enclosure carries the Sparkle EdDSA attributes. */
 function renderItem(item: AppcastItemInput): string {
   const minSys = item.minimumSystemVersion
     ? `\n      <sparkle:minimumSystemVersion>${xmlEscape(item.minimumSystemVersion)}</sparkle:minimumSystemVersion>`
     : "";
+  const hw = item.hardwareRequirements
+    ? `\n      <sparkle:hardwareRequirements>${xmlEscape(item.hardwareRequirements)}</sparkle:hardwareRequirements>`
+    : "";
+  const critical = item.criticalUpdate
+    ? item.criticalUpdate.version
+      ? `\n      <sparkle:criticalUpdate sparkle:version="${xmlEscape(item.criticalUpdate.version)}" />`
+      : `\n      <sparkle:criticalUpdate />`
+    : "";
+  const phased =
+    item.phasedRolloutInterval !== undefined
+      ? `\n      <sparkle:phasedRolloutInterval>${item.phasedRolloutInterval}</sparkle:phasedRolloutInterval>`
+      : "";
   const desc = item.descriptionHtml
     ? `\n      <description><![CDATA[${neutralizeCdata(item.descriptionHtml)}]]></description>`
     : "";
-  // When the pipeline didn't publish a sibling `.sig`, omit the attribute rather than 404 —
-  // the feed is still valid; Sparkle clients that require signing simply won't auto-update.
-  const ed = item.edSignature
-    ? ` sparkle:edSignature="${xmlEscape(item.edSignature)}"`
+  const enclosures = [
+    {
+      url: item.url,
+      length: item.length,
+      ...(item.edSignature ? { edSignature: item.edSignature } : {}),
+      ...(item.os ? { os: item.os } : {}),
+      ...(item.installerArguments
+        ? { installerArguments: item.installerArguments }
+        : {}),
+    },
+    ...(item.extraEnclosures ?? []),
+  ]
+    .map((e) => `\n      <enclosure ${enclosureAttrs(item, e)} />`)
+    .join("");
+  const deltas = item.deltas?.length
+    ? `\n      <sparkle:deltas>${item.deltas
+        .map(
+          (d) =>
+            `\n        <enclosure url="${xmlEscape(d.url)}" sparkle:version="${xmlEscape(item.build)}" sparkle:shortVersionString="${xmlEscape(item.shortVersion)}" sparkle:deltaFrom="${xmlEscape(d.deltaFrom)}" type="application/octet-stream" length="${d.length}"${
+              d.edSignature
+                ? ` sparkle:edSignature="${xmlEscape(d.edSignature)}"`
+                : ""
+            } />`,
+        )
+        .join("")}\n      </sparkle:deltas>`
     : "";
   return `    <item>
       <title>${xmlEscape(item.title)}</title>
       <pubDate>${xmlEscape(item.pubDate)}</pubDate>
       <sparkle:version>${xmlEscape(item.build)}</sparkle:version>
-      <sparkle:shortVersionString>${xmlEscape(item.shortVersion)}</sparkle:shortVersionString>${minSys}${desc}
-      <enclosure url="${xmlEscape(item.url)}" type="application/octet-stream" length="${item.length}"${ed} />
+      <sparkle:shortVersionString>${xmlEscape(item.shortVersion)}</sparkle:shortVersionString>${minSys}${hw}${critical}${phased}${desc}${enclosures}${deltas}
     </item>`;
 }
 
@@ -121,11 +210,18 @@ export function renderAppcast(input: AppcastInput): string {
   <channel>
     <title>${xmlEscape(input.channelTitle)}</title>
     <link>${xmlEscape(input.link)}</link>
-${items}
-  </channel>
+${items ? `${items}\n` : ""}  </channel>
 </rss>
 `;
 }
+
+/** Format epoch seconds (or null, = the epoch) as an RFC-1123 pubDate. */
+export function rfc1123Seconds(seconds: number | null): string {
+  return new Date((seconds ?? 0) * 1000).toUTCString();
+}
+
+/** XML-escape a value for an attribute or text node (exported for the other XML renderers). */
+export { xmlEscape };
 
 /** Format an ISO timestamp (or null) to an RFC-1123 pubDate. Falls back to epoch. */
 function rfc1123(iso: string | null): string {

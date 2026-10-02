@@ -17,6 +17,8 @@
  * `endpoints`. Release's fragment keeps its keys — they name the permanent aliases — and gained
  * only additive members: P3-03's `endpoints.record` and `releaseKeyFingerprints`, then P4-02's
  * `packs: true` (plans/P4-01.md §6, decision 24: the CLI refuses to publish a pack without it).
+ * P3-03 added Update's `endpoints.feed`, and P3-09 the four app-updater feed templates after it
+ * (`winsparkle`, `velopack`, `appInstaller`, `zsync`): additive keys a client ignores.
  */
 
 import { readFileSync } from "node:fs";
