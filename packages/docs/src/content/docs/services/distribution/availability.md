@@ -82,13 +82,13 @@ through that outlet's transport (CONTENT §6.4). Distribution computes readiness
 and standalone packs of the stored pack sets at its contentApi level on every channel it is live
 on, for the platforms the outlet serves. Then, per required pack release and its transport there:
 
-| Transport                              | Ready when                                                                                             |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `embedded`, `play-pad`, `steam-depot`  | always: the build carries it                                                                            |
-| `pkey-cdn`, `web`                      | every object its record names is stored and held, and the pack is fetchable (an `entitled` pack with no gate is not) |
-| `apple-ba`                             | a stored availability record on the outlet says `approved` or `live`, for the level's asset pack (`<pack>-c<contentApi>`) |
-| `msix-optional`, `flatpak-ext`         | a stored availability record says `approved` or `live`                                                  |
-| anything else                          | never (fail closed)                                                                                     |
+| Transport                             | Ready when                                                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `embedded`, `play-pad`, `steam-depot` | always: the build carries it                                                                                              |
+| `pkey-cdn`, `web`                     | every object its record names is stored and held, and the pack is fetchable (an `entitled` pack with no gate is not)      |
+| `apple-ba`                            | a stored availability record on the outlet says `approved` or `live`, for the level's asset pack (`<pack>-c<contentApi>`) |
+| `msix-optional`, `flatpak-ext`        | a stored availability record says `approved` or `live`                                                                    |
+| anything else                         | never (fail closed)                                                                                                       |
 
 The state is `pending` (the set cannot be computed yet, for example while sets are unresolved),
 `blocked` (with the first blocking pack release), `ready` or `overridden`. On an outlet Polaris
@@ -198,16 +198,16 @@ Every operator change is audited (`distribution.key.upsert`, `distribution.key.d
 
 Narrative-only (not in the wire spec), under `/manage/api/products/<slug>/distribution`:
 
-| Method   | Path                         | Does                                                                                                                                             |
-| -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET`    | `availability?release=<id>`  | the release on every outlet: stored and derived records, records on removed outlets flagged `outletRemoved`                                      |
-| `GET`    | `submissions[?release=<id>]` | submission records, newest first                                                                                                                 |
-| `GET`    | `keys`                       | `{ purposes, keys, observations }` — the inventory and the CI observations outside it                                                            |
-| `PUT`    | `keys`                       | `{ purpose, sha256, outlet?, notes?, registered? }` — add or update an entry by purpose and fingerprint (adopting an observation); `null` clears |
-| `DELETE` | `keys/<purpose>/<sha256>`    | remove an entry, or dismiss an observation                                                                                                       |
-| `GET`    | `readiness[?release=<id>]`   | the readiness snapshot, or one app release's readiness computed now, per outlet                                                                  |
-| `POST`   | `readiness/refresh`          | recompute the snapshot                                                                                                                           |
-| `POST`   | `readiness/<id>/<outlet>/override` · `…/clear` | `{ reason }` — release the hold (audited), or hand it back to the computation                                                  |
+| Method   | Path                                           | Does                                                                                                                                             |
+| -------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`    | `availability?release=<id>`                    | the release on every outlet: stored and derived records, records on removed outlets flagged `outletRemoved`                                      |
+| `GET`    | `submissions[?release=<id>]`                   | submission records, newest first                                                                                                                 |
+| `GET`    | `keys`                                         | `{ purposes, keys, observations }` — the inventory and the CI observations outside it                                                            |
+| `PUT`    | `keys`                                         | `{ purpose, sha256, outlet?, notes?, registered? }` — add or update an entry by purpose and fingerprint (adopting an observation); `null` clears |
+| `DELETE` | `keys/<purpose>/<sha256>`                      | remove an entry, or dismiss an observation                                                                                                       |
+| `GET`    | `readiness[?release=<id>]`                     | the readiness snapshot, or one app release's readiness computed now, per outlet                                                                  |
+| `POST`   | `readiness/refresh`                            | recompute the snapshot                                                                                                                           |
+| `POST`   | `readiness/<id>/<outlet>/override` · `…/clear` | `{ reason }` — release the hold (audited), or hand it back to the computation                                                                    |
 
 Availability and submissions are read-only in the console: CI reports them, and store connectors
 write them (`source: asc` for App Store Connect).

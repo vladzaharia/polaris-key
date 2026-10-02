@@ -126,11 +126,11 @@ routes). The signed channel feed carries them as **gates** under
 `packSets.outlets.<outletId>.gates`, keyed by the target release's record hash, for every rollout
 on the feed's channel whose release a stored pack set offers, on an outlet where the pack floats:
 
-| Rollout state                         | Gate                                                                |
-| ------------------------------------- | ------------------------------------------------------------------- |
-| `active` or `paused`, below 100%      | `{ halted: false, rollout: { bp, salt }, fallback }`                |
-| `halted`                              | `{ halted: true, fallback }`: a pack-only rollback                  |
-| `complete`, at 100%, or mirrored      | none (a mirrored rollout gates only when halted)                    |
+| Rollout state                    | Gate                                                 |
+| -------------------------------- | ---------------------------------------------------- |
+| `active` or `paused`, below 100% | `{ halted: false, rollout: { bp, salt }, fallback }` |
+| `halted`                         | `{ halted: true, fallback }`: a pack-only rollback   |
+| `complete`, at 100%, or mirrored | none (a mirrored rollout gates only when halted)     |
 
 A device outside the bucket, or on a halted gate, takes `fallback` instead: the release the sets
 name **without** the gated releases (the previous set), or `null` when its rows disagree, in which
