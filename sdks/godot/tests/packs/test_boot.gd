@@ -208,5 +208,18 @@ func _godot_pck(t: PKeyTestContext) -> void:
 	var at_mount := log.find("stage:mount")
 	t.check("boot: …set_changed(restart) in FETCH, pack_ready in MOUNT", log.find("set_changed:restart") > log.find("stage:fetch") and log.find("set_changed:restart") < at_mount and log.find("pack_ready:diceroll.core3d") > at_mount, S.canon(log))
 	t.check("boot: the mounted pack's files read through res://", FileAccess.file_exists("res://assets/kaykit/data/level_000.json"))
+	var root: String = packs.root
 	b.queue_free()
 	sdk.queue_free()
+	# The next launch's stamp wants nothing at boot (the pack is on-demand): FETCH starts nothing,
+	# and MOUNT still mounts the installed godot.pck.
+	var on_demand := F.stamp_for([v1], [{"pack": "diceroll.core3d", "required": false, "delivery": "on-demand"}])
+	var sdk2 := await _sdk("pck-next", on_demand, F.FakeTransport.new())
+	var packs2: PKeyPacks = sdk2.update.packs
+	packs2.root = root
+	var host2 := Host.new(sdk2)
+	var b2 := _boot(sdk2, host2, {}, [])
+	var r2: PKeyBootResult = await b2.run({"host": host2, "sync_timeout_seconds": 60})
+	t.check("boot: an installed godot.pck mounts at the next boot even when the stamp fetches nothing", r2.outcome == PKeyBoot.READY and packs2.mounted.has("diceroll.core3d"), "%s %s" % [r2, S.canon(packs2.mounted.keys())])
+	b2.queue_free()
+	sdk2.queue_free()

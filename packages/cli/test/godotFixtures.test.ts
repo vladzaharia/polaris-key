@@ -111,7 +111,11 @@ function checkFixtures(): CheckFixture[] {
   const exported = ".godot/exported/9/export-ffff-x.scn";
   return [
     { name: "kaykit-v1", files: kaykitV1() },
-    { name: "kaykit-unstripped", files: kaykitUnstripped(), opts: { flags: 0 } },
+    {
+      name: "kaykit-unstripped",
+      files: kaykitUnstripped(),
+      opts: { flags: 0 },
+    },
     { name: "kaykit-forbidden", files: kaykitForbidden() },
     {
       name: "remap-script-gdextension-engine",
@@ -164,7 +168,10 @@ function checkFixtures(): CheckFixture[] {
           binaryResource(["PackedScene", "GDScript"], ["nodes"], 4),
         ],
         ["assets/kaykit/b.res", beScript],
-        ["assets/kaykit/c.res", binaryResource(["Resource"], ["data"], 5, "RSCC")],
+        [
+          "assets/kaykit/c.res",
+          binaryResource(["Resource"], ["data"], 5, "RSCC"),
+        ],
         ["assets/kaykit/d.scn", enc("not a resource")],
         ["assets/kaykit/e.res", binaryResource(["Mesh"], ["surfaces"], 6)],
       ],
@@ -369,7 +376,13 @@ describe("the Godot SDK's pack fixtures (P4-08)", () => {
       expect(v.payload).toEqual({ size: bytes.byteLength, sha256: sha(bytes) });
       expect(sha(open(v.full))).toBe(sha(bytes));
       const index = JSON.parse(new TextDecoder().decode(open(v.files))) as {
-        files: { path: string; offset: number; size: number; sha256: string; blob: { sha256: string; codec: string } }[];
+        files: {
+          path: string;
+          offset: number;
+          size: number;
+          sha256: string;
+          blob: { sha256: string; codec: string };
+        }[];
       };
       const dir = readPck(bytes);
       expect(index.files.map((f) => [f.path, f.offset, f.size])).toEqual(
@@ -400,7 +413,14 @@ describe("the Godot SDK's pack fixtures (P4-08)", () => {
     const patch = JSON.parse(
       new TextDecoder().decode(open(filesDelta.patch!)),
     ) as {
-      entries: { path: string; op: string; to: string; offset: number; length: number; codec?: string }[];
+      entries: {
+        path: string;
+        op: string;
+        to: string;
+        offset: number;
+        length: number;
+        codec?: string;
+      }[];
     };
     const data = obj(filesDelta.data!.sha256);
     const v1dir = readPck(v1);

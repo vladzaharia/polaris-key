@@ -196,25 +196,28 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 
 ## Acceptance criteria
 
-- [ ] Every content case and plan row passes on the Godot 4.7.2 editor and the official
-      `linux_release` template in CI.
-- [ ] A v1→v2 `godot.pck` update by `delta`, by `file` and by `full` each produces a pack whose
+- [x] Every content case and plan row passes on the Godot 4.7.2 editor and the official
+      `linux_release` template in CI. (Locally: the 4.7.2 editor and the official macOS release
+      template; CI's `godot` job runs the same `run_tests.sh` on `linux_release`. The 4.4.1 floor
+      passes too, with the delta decode cases held to fail closed.)
+- [x] A v1→v2 `godot.pck` update by `delta`, by `file` and by `full` each produces a pack whose
       SHA-256 equals CI's, mounted at the next boot from `user://pkey/store/<sha256>.pck`.
-- [ ] The bake over a base that is currently mounted leaves the running session's reads correct
-      and restores the base byte for byte (SHA-256 re-checked).
-- [ ] The directory check refuses a pack with a script, `project.binary`,
+      (`engine` group: the payload delta and the files delta separately.)
+- [x] The bake over a base that is currently mounted leaves the running session's reads correct
+      and restores the base byte for byte (SHA-256 re-checked). (`bake` group.)
+- [x] The directory check refuses a pack with a script, `project.binary`,
       `.godot/global_script_class_cache.cfg` or an out-of-prefix path before mounting, and admits
       a stripped `--export-pack` pack (in-prefix `.remap`/`.import` files, the `.godot/exported/`
       and `.godot/imported/` files they name, `.godot/uid_cache.bin`); a tampered unpatched entry
       fails the whole-pack hash.
-- [ ] Two independently built, stripped packs mounted with `replace_files=true` resolve their own
+- [x] Two independently built, stripped packs mounted with `replace_files=true` resolve their own
       and the main pack's `uid://` references, and `get_global_class_list()` is unchanged (S-05
       §4.6's `f_uid` case, on the release template).
-- [ ] After two failed boots with a new set, `previous` is active again and a report says so.
-- [ ] `PKeyBoot` with a missing required pack goes FETCH → MOUNT → READY with size disclosure,
+- [x] After two failed boots with a new set, `previous` is active again and a report says so.
+- [x] `PKeyBoot` with a missing required pack goes FETCH → MOUNT → READY with size disclosure,
       and offline with the required set present goes to READY; the four signals fire in order.
-- [ ] The green gate passes (plus the Godot CI job).
-- [ ] The Godot `parity.json` marks the v1 pack features implemented (once P1b-01 has landed).
+- [x] The green gate passes (plus the Godot CI job).
+- [x] The Godot `parity.json` marks the v1 pack features implemented (once P1b-01 has landed).
 
 ## Verify
 

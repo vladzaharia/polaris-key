@@ -162,9 +162,18 @@ func fetch_with(_required: Array, send: Callable, opts: Dictionary) -> Dictionar
 
 func mount(required: Array = []) -> Dictionary:
 	var p := packs()
-	if p == null or not p.configured() or p.engine == null:
+	if p == null or not p.configured():
 		await PKeyPacks.after_first_frame()
 		return {"type": "mount.done"}
+	# FETCH starts packs only when the stamp wants something; installed and embedded godot.pck
+	# packs mount at every boot all the same.
+	if p.engine == null:
+		var started: PKeyResult = await p.start()
+		if not started.ok:
+			if not required.is_empty():
+				return _fail(started.code)
+			await PKeyPacks.after_first_frame()
+			return {"type": "mount.done"}
 	var r: Dictionary = await p.mount()
 	for x in r["refused"]:
 		if required.has(x["packId"]):
