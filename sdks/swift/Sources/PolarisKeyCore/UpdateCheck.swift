@@ -105,12 +105,15 @@ public struct UpdateCheckInput: Sendable {
     public var feeds: [String: String]
     /// The `releaseRecords` slice as stored.
     public var releaseRecords: [String: String]
+    /// The content decision's inputs (plans/P4-13.md §2.5 steps 10–14, §2.6). Nil: no content
+    /// decision, every answer is P3-01's.
+    public var content: UpdateCheckContent?
 
     public init(
         channel: String, expectedAud: String, trust: TrustSet, releaseKeys: TrustSet, now: Int,
         installId: String?, installed: InstalledBuild, outlet: UpdateOutlet, subkind: String?,
         staged: StagedUpdate? = nil, skipVersion: String? = nil, methods: [String],
-        feeds: [String: String], releaseRecords: [String: String]
+        feeds: [String: String], releaseRecords: [String: String], content: UpdateCheckContent? = nil
     ) {
         self.channel = channel
         self.expectedAud = expectedAud
@@ -126,7 +129,59 @@ public struct UpdateCheckInput: Sendable {
         self.methods = methods
         self.feeds = feeds
         self.releaseRecords = releaseRecords
+        self.content = content
     }
+}
+
+/// What a host with packs hands the update check (plans/P4-13.md §2.5, §2.6).
+public struct UpdateCheckContent: Sendable {
+    /// The running build's content stamp, with its holds (`stampHolds`: nil when unusable).
+    public var stamp: UpdateContentStamp
+    /// The pack state's active installs, embedded baselines included, by pack id.
+    public var active: [String: ReleasePin]
+    /// The host's engine (`godot-<major>.<minor>`, nil outside Godot) and variant axes.
+    public var engine: String?
+    public var axes: [String: [String]]
+    /// The stored, verified revocations, by target (the pack engine's `revocations()`).
+    public var revoked: [String: VerifiedRevocation]
+    /// Packs whose revocations must be re-learned (the engine's `relearn`).
+    public var relearn: [String]
+    /// Whether a verified replacement record has a variant for this host (`selectVariant` over
+    /// its `variants` with `engine` and `axes`). Core cannot see the packs target, so the host
+    /// hands its selection in; `PacksClient.contentInput()` does.
+    public var selectsVariant: @Sendable (_ variants: [JSONValue]) -> Bool
+
+    public init(
+        stamp: UpdateContentStamp, active: [String: ReleasePin], engine: String?,
+        axes: [String: [String]], revoked: [String: VerifiedRevocation], relearn: [String] = [],
+        selectsVariant: @escaping @Sendable (_ variants: [JSONValue]) -> Bool
+    ) {
+        self.stamp = stamp
+        self.active = active
+        self.engine = engine
+        self.axes = axes
+        self.revoked = revoked
+        self.relearn = relearn
+        self.selectsVariant = selectsVariant
+    }
+}
+
+/// A revocation this check fetched and verified, with its compact JWS, to store (the pack
+/// engine's `recordRevocations`).
+public struct LearnedRevocation: Sendable, Equatable {
+    public let revocation: VerifiedRevocation
+    public let jws: String
+
+    public init(revocation: VerifiedRevocation, jws: String) {
+        self.revocation = revocation
+        self.jws = jws
+    }
+}
+
+/// With `content`: the revocations a check learned and the packs whose `relearn` it cleared.
+public struct UpdateCheckRevocations: Sendable, Equatable {
+    public let learned: [LearnedRevocation]
+    public let relearnCleared: [String]
 }
 
 /// A completed run: the answer, the verified documents it used, and the slices to write back
@@ -137,6 +192,8 @@ public struct UpdateCheckRun: Sendable, Equatable {
     public let record: ReleaseRecordDoc?
     public let feeds: [String: String]
     public let releaseRecords: [String: String]
+    /// With `content`: what to store and which `relearn` entries to clear.
+    public let revocations: UpdateCheckRevocations?
 }
 
 public enum UpdateCheckOutcome: Sendable, Equatable {
@@ -284,16 +341,150 @@ public func runUpdateCheck(
     if let rollout = entry?.rollout, let installId = input.installId {
         bucket = rolloutBucket(salt: rollout.salt, installId: installId)
     }
+    // plans/P4-13.md §2.5 content steps 10–14. The feed and the record carry their own non-wire
+    // pointers, so the decision applies the token rule to their content members itself.
+    var contentInput: UpdateContentInput?
+    var revocations: UpdateCheckRevocations?
+    if let content = input.content {
+        let steps = await contentSteps(
+            input, content, feed.content, feedSource: feedSource, errors: &errors, fetchRecord: fetchRecord)
+        contentInput = steps.input
+        revocations = steps.revocations
+    }
+
     let decision = decideUpdate(
         UpdateDecisionInput(
             now: input.now, feed: feed, record: record, installed: input.installed,
             outlet: input.outlet, subkind: input.subkind, staged: input.staged,
-            skipVersion: input.skipVersion, bucket: bucket, methods: input.methods))
+            skipVersion: input.skipVersion, bucket: bucket, methods: input.methods,
+            content: contentInput))
 
     return .ok(
         UpdateCheckRun(
             check: UpdateCheck(
                 channel: feed.channel, decision: decision, feed: feedSource, record: recordSource,
                 errors: errors),
-            feed: feed, record: record, feeds: feeds, releaseRecords: releaseRecords))
+            feed: feed, record: record, feeds: feeds, releaseRecords: releaseRecords,
+            revocations: revocations))
+}
+
+/// plans/P4-13.md §2.5 content steps 10–13: the relevant revocations (fetched and verified
+/// against the pinned release keys, at most `MAX_FEED_REVOCATIONS` per check, superseding by
+/// `newerRevocation`), their replacements (fetched, verified as pack records, not revoked, and
+/// with a variant for this host), the gate buckets, and the decision's content input. A failed
+/// fetch retries at the next check; a failed verification is ignored and never trusted.
+private func contentSteps(
+    _ input: UpdateCheckInput, _ c: UpdateCheckContent, _ fc: FeedContent,
+    feedSource: UpdateCheck.FeedSource, errors: inout [UpdateCheckError],
+    fetchRecord: @Sendable (String) async -> FetchOutcome
+) async -> (input: UpdateContentInput, revocations: UpdateCheckRevocations) {
+    let platform = input.installed.platform
+    let engine = input.installed.engine ?? ""
+
+    // H: the active pack records, the stamp's pins and holds, and the feed targets §2.6 selects
+    // (gate fallbacks included).
+    var H = Set<String>()
+    for pin in c.active.values { H.insert(pin.sha256) }
+    for p in c.stamp.pins { H.insert(p.release.sha256) }
+    for h in c.stamp.holds ?? [] { H.insert(h.release.sha256) }
+    if let ps = fc.packSets {
+        let targets = selectPackRows(
+            ps, contentApi: c.stamp.contentApi, platform: platform, engine: engine, axes: c.axes)
+        for h in targets.values {
+            H.insert(h)
+            for o in (ps.outlets ?? [:]).values {
+                for (g, gate) in o.gates ?? [:] where g == h {
+                    if let f = gate.fallback { H.insert(f) }
+                }
+            }
+        }
+    }
+
+    // Step 11.
+    var stored = c.revoked
+    var learned: [LearnedRevocation] = []
+    // The feed entries step 11 considers (target in H) that are now known: already stored with
+    // that record, or fetched and verified in this check (a newer stored one may still win).
+    var known = Set<String>()
+    var fetches = 0
+    for entry in fc.revocations ?? [] {
+        guard H.contains(entry.target) else { continue }
+        let have = stored[entry.target]
+        if let have, have.record == entry.record {
+            known.insert(entry.record)
+            continue
+        }
+        if fetches >= MAX_FEED_REVOCATIONS { break }
+        fetches += 1
+        let body: String
+        switch await fetchRecord(entry.record) {
+        case .failed(let code):
+            errors.append(UpdateCheckError(code: code))
+            continue
+        case .ok(let b): body = b
+        }
+        let r = verifyRevocation(
+            body,
+            options: VerifyRevocationOptions(
+                releaseKeys: input.releaseKeys, productTrust: input.trust,
+                expectedAud: input.expectedAud, entry: entry))
+        guard let rev = r.revocation else {
+            errors.append(UpdateCheckError(code: ErrorCode.recordRejected, detail: r.step?.rawValue))
+            continue
+        }
+        known.insert(entry.record)
+        if have == nil || newerRevocation(rev, have!) == rev {
+            stored[entry.target] = rev
+            learned.append(LearnedRevocation(revocation: rev, jws: body))
+        }
+    }
+
+    // Step 12: the replacements of the relevant stored revocations.
+    var revInput: [ContentRevocationInput] = []
+    for target in stored.keys.sorted() {
+        let rev = stored[target]!
+        var usable = false
+        if let rep = rev.replacement, H.contains(target), stored[rep.sha256] == nil,
+            case .ok(let body) = await fetchRecord(rep.sha256)
+        {
+            let v = verifyReleaseRecord(
+                body,
+                options: VerifyReleaseRecordOptions(
+                    releaseKeys: input.releaseKeys, productTrust: input.trust,
+                    expectedAud: input.expectedAud, expectedHash: rep.sha256,
+                    pin: ReleaseRecordPin(kind: "pack", deliverable: rev.pack, version: rep.version, seq: rep.seq)))
+            if let record = v.record {
+                usable = c.selectsVariant(record.json.objectValue?["variants"]?.arrayValue ?? [])
+            }
+        }
+        revInput.append(
+            ContentRevocationInput(target: target, pack: rev.pack, replacement: rev.replacement, replacementUsable: usable))
+    }
+
+    // Step 13: the bucket of every gate salt.
+    var buckets: [String: Int?] = [:]
+    for o in (fc.packSets?.outlets ?? [:]).values {
+        for gate in (o.gates ?? [:]).values {
+            guard let rollout = gate.rollout, buckets[rollout.salt] == nil else { continue }
+            buckets[rollout.salt] = .some(input.installId.map { rolloutBucket(salt: rollout.salt, installId: $0) })
+        }
+    }
+
+    // `relearn` clears only on a fresh, network-verified feed with a usable `revocations` member,
+    // once step 11 has fetched, verified and stored every revocation it considers for that pack
+    // (the entries whose target is in H). Entries for releases outside H (an older release the
+    // device does not hold) are not considered and never keep a pack in `relearn`.
+    var relearnCleared: [String] = []
+    if feedSource == .network, let revs = fc.revocations {
+        for p in c.relearn {
+            let all = revs.filter { $0.pack == p && H.contains($0.target) }.allSatisfy { known.contains($0.record) }
+            if all { relearnCleared.append(p) }
+        }
+    }
+
+    return (
+        UpdateContentInput(
+            stamp: c.stamp, active: c.active, axes: c.axes, revocations: revInput, buckets: buckets),
+        UpdateCheckRevocations(learned: learned, relearnCleared: relearnCleared)
+    )
 }

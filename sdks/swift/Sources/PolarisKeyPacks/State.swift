@@ -143,16 +143,24 @@ public struct PackStateDoc: Sendable, Equatable {
     public var observed: [String: JSONValue] = [:]
     public var confirmedBootSeq = 0
     public var bootSeq = 0
+    /// Set by the engine, in the same atomic write sequence, when it first stores a revocation in
+    /// the sibling `revocations.json` (plans/P4-13.md §2.5): written before the sibling file, never
+    /// cleared. False (and absent from the document) for a product that has never had a
+    /// revocation. With an unreadable `revocations.json`, it is what makes the engine refuse the
+    /// stamp's embedded baselines.
+    public var revocationsStored = false
 
     public init() {}
 
     public var json: JSONValue {
-        .object([
+        var o: [String: JSONValue] = [
             "v": .int(v), "active": .object(active.mapValues(\.json)),
             "previous": .object(previous.mapValues(\.json)),
             "inflight": .object(inflight.mapValues(\.json)), "observed": .object(observed),
             "confirmedBootSeq": .int(confirmedBootSeq), "bootSeq": .int(bootSeq),
-        ])
+        ]
+        if revocationsStored { o["revocationsStored"] = .bool(true) }
+        return .object(o)
     }
 }
 
@@ -275,6 +283,7 @@ public func parsePackState(_ text: String?) -> PackStateDoc {
     if let c = nat(doc["confirmedBootSeq"]) { out.confirmedBootSeq = c }
     if let b = nat(doc["bootSeq"]) { out.bootSeq = b }
     if out.confirmedBootSeq > out.bootSeq { out.confirmedBootSeq = out.bootSeq }
+    if doc["revocationsStored"] == .bool(true) { out.revocationsStored = true }
     return out
 }
 
@@ -301,6 +310,7 @@ public func reloadPackState(_ state: PackStateDoc, _ verify: PackStateVerifier) 
     out.observed = state.observed
     out.confirmedBootSeq = state.confirmedBootSeq
     out.bootSeq = state.bootSeq + 1
+    out.revocationsStored = state.revocationsStored
     for id in state.active.keys.sorted() {
         let i = state.active[id]!
         if (try? await verify.install(i)) == true { out.active[id] = i }

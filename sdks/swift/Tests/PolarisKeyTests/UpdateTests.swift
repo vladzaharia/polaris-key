@@ -431,7 +431,7 @@ final class UpdateDecideTests: XCTestCase {
         XCTAssertEqual(first.feed, .network)
         XCTAssertEqual(first.record, .network)
         XCTAssertEqual(first.errors, [])
-        guard case .binary(let method, let release, let build, false, false, [], false) = first.decision
+        guard case .binary(let method, let release, let build, false, false, [], false, nil) = first.decision
         else { return XCTFail("\(first.decision)") }
         XCTAssertEqual(method, BinaryMethod.download)
         XCTAssertEqual(release, DecisionRelease(version: "1.3.0", seq: 1, sha256: recordHash(record)))

@@ -1,4 +1,4 @@
-// @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record
+// @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record update.content
 //
 // The content corpus (`conformance/corpus/v2/content/cases.json`, plans/P4-01.md §4.4, P4-04)
 // through PolarisKeyPacks' production code:
@@ -7,7 +7,8 @@
 //   pathCases         §2.7's path rules                        → checkPaths
 //   filesIndexCases   §2.7's parseFilesIndex, steps 1–5         → parseFilesIndex
 //   packSetIdCases    §2.9's packSetId                          → packSetId
-//   stampCases        §2.8's content stamp                      → parseContentStamp
+//   stampCases        §2.8's content stamp                      → parseContentStamp, and
+//                     `expect.holds` (when present)             → holdsOf (stampHolds)
 //   frameWindowCases  §2.7 rule 3's header window               → frameWindow
 //   applyCases        §2.9's appliers, verdicts and counters    → applyFull, applyDelta, applyFile
 //
@@ -230,13 +231,18 @@ final class ContentConformanceTests: XCTestCase {
     func testStampCases() throws {
         for c in try XCTUnwrap(ContentCorpus.load()["stampCases"]?.arrayValue) {
             let o = try XCTUnwrap(c.objectValue)
-            // `parseContentStamp`'s result is unchanged by P4-13: `expect.holds`, where present, is
-            // `holdsOf` over the parsed stamp (plans/P4-13.md §2.4), which P4-23 ports and checks.
+            // `parseContentStamp`'s result is unchanged by P4-13; holds are read beside it
+            // (`holdsOf`, plans/P4-13.md §2.4), and only checked where `expect.holds` is present.
             var expect = try XCTUnwrap(o["expect"]?.objectValue)
-            expect.removeValue(forKey: "holds")
+            let holds = expect.removeValue(forKey: "holds")
+            let stamp = try XCTUnwrap(o["stamp"]?.stringValue)
             XCTAssertEqual(
-                parseContentStamp(try XCTUnwrap(o["stamp"]?.stringValue)).json, normalisedJSON(.object(expect)),
+                parseContentStamp(stamp).json, normalisedJSON(.object(expect)),
                 "\(o["id"]!): \(o["description"]!)")
+            guard let holds else { continue }
+            XCTAssertEqual(
+                stampHolds(stamp).map { JSONValue.array($0.map(\.json)) } ?? .null, normalisedJSON(holds),
+                "\(o["id"]!) holds: \(o["description"]!)")
         }
     }
 

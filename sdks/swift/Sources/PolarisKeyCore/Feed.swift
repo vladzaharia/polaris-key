@@ -65,7 +65,7 @@ func matchesWhole(_ pattern: String, _ value: String) -> Bool {
 // ── The verified document ─────────────────────────────────────────────────────────────────────
 
 /// `targets[].release`: the pin.
-public struct FeedRelease: Sendable, Equatable {
+public struct FeedRelease: Sendable, Equatable, Hashable {
     public let sha256: String
     public let seq: Int
     public let version: String
@@ -75,7 +75,16 @@ public struct FeedRelease: Sendable, Equatable {
         self.seq = seq
         self.version = version
     }
+
+    /// `{sha256, seq, version}`.
+    public var json: JSONValue {
+        .object(["sha256": .string(sha256), "seq": .int(seq), "version": .string(version)])
+    }
 }
+
+/// A release named by its record hash, `seq` and version: a feed target's pin, a content pin or
+/// hold, a revocation's replacement (`ReleasePin` in client-core).
+public typealias ReleasePin = FeedRelease
 
 /// `targets[].floor` when it is not null: this platform's floor.
 public struct FeedTargetFloor: Sendable, Equatable {
@@ -180,11 +189,26 @@ public struct ChannelFeedDoc: Sendable, Equatable {
     public let app: FeedApp
     /// The payload as decoded, reserved members (`packSets`, …) included.
     public let json: JSONValue
+    /// The verified payload's non-wire integer pointers (V4 §3.1), for the content members'
+    /// token rule (`feedContent`). Empty for a feed built from a decoded object. They describe the
+    /// payload's token form, not its values, so equality ignores them.
+    public let nonWireIntegers: NonWireIntegers
+
+    public static func == (a: ChannelFeedDoc, b: ChannelFeedDoc) -> Bool {
+        a.schemaVersion == b.schemaVersion && a.iss == b.iss && a.aud == b.aud
+            && a.channel == b.channel && a.selectorPlatform == b.selectorPlatform && a.seq == b.seq
+            && a.issuedAt == b.issuedAt && a.expiresAt == b.expiresAt && a.app == b.app
+            && a.json == b.json
+    }
+
+    /// `feedContent` over this payload with its own non-wire pointers (plans/P4-13.md §2.5 step
+    /// 10).
+    public var content: FeedContent { feedContent(json, nonWire: nonWireIntegers) }
 
     public init(
         schemaVersion: Int = 1, iss: String = POLARIS_ISSUER, aud: String, channel: String,
         selectorPlatform: String? = nil, seq: Int, issuedAt: Int, expiresAt: Int, app: FeedApp,
-        json: JSONValue = .null
+        json: JSONValue = .null, nonWireIntegers: NonWireIntegers = []
     ) {
         self.schemaVersion = schemaVersion
         self.iss = iss
@@ -196,12 +220,13 @@ public struct ChannelFeedDoc: Sendable, Equatable {
         self.expiresAt = expiresAt
         self.app = app
         self.json = json
+        self.nonWireIntegers = nonWireIntegers
     }
 
     /// The typed view of a feed object, or nil when it lacks a member or a member has the
     /// wrong type. It checks SHAPE only — `feedClaims` is the contract; a payload that passed
     /// it always converts.
-    public init?(json: JSONValue) {
+    public init?(json: JSONValue, nonWireIntegers: NonWireIntegers = []) {
         guard let o = json.objectValue,
             let schemaVersion = o["schemaVersion"]?.exactInt,
             let iss = o["iss"]?.stringValue, let aud = o["aud"]?.stringValue,
@@ -224,7 +249,7 @@ public struct ChannelFeedDoc: Sendable, Equatable {
             selectorPlatform: selector["platform"]?.stringValue, seq: seq, issuedAt: issuedAt,
             expiresAt: expiresAt,
             app: FeedApp(deliverable: deliverable, versionScheme: scheme, targets: targets),
-            json: json)
+            json: json, nonWireIntegers: nonWireIntegers)
     }
 }
 
@@ -549,7 +574,9 @@ public func verifyFeed(_ jws: String, options opts: VerifyFeedOptions) -> Verify
         nonWire: v.nonWireIntegers)
     if refusal == .claims { return .refused(.claims, channel: nil) }
     if refusal == .channel { return .refused(.channel, channel: nil) }
-    guard let feed = ChannelFeedDoc(json: payload) else { return .refused(.claims, channel: nil) }
+    guard let feed = ChannelFeedDoc(json: payload, nonWireIntegers: v.nonWireIntegers) else {
+        return .refused(.claims, channel: nil)
+    }
     // From here on the claim is the canonical channel (step 5).
     let channel = feed.channel
     if refusal == .selector { return .refused(.selector, channel: channel) }
