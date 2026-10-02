@@ -10,7 +10,11 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CORPUS_FILES, defineCorpusSuites, type CorpusFiles } from "./suites.js";
+import {
+  CORPUS_FILES,
+  defineCorpusSuites,
+  type CorpusFiles,
+} from "./suites.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = <K extends keyof CorpusFiles>(key: K): CorpusFiles[K] =>
