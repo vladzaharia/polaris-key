@@ -73,6 +73,7 @@ func run(t: PKeyTestContext) -> void:
 		t.info("pck: the nested-mount probe needs a 4.7 engine (the fixture is PCK v4)")
 
 	_review_repros(t)
+	_script_kinds_api(t)
 
 	# remap_targets and embedded_code (the CLI's unit probes).
 	S.check_same(t, "pck: remap_targets reads path, path.<x> and dest_files", Array(PKeyPck.remap_targets('[remap]\npath.s3tc="res://a/b.ctex"\npath.etc2="res://a/c.ctex"\n[deps]\ndest_files=["res://a/b.ctex", "res://a/c.ctex"]\nsource_file="res://x.png"\n')), ["a/b.ctex", "a/c.ctex"])
@@ -134,3 +135,48 @@ func _review_repros(t: PKeyTestContext) -> void:
 	t.check("pck repro: a .material (RSRC) with an embedded GDScript is refused by content", saved == OK and bytes.slice(0, 4).get_string_from_ascii() == "RSRC" and not chk["ok"] and chk["code"] == PKeyPck.DIRECTORY_REFUSED and chk.get("path") == "packs/a/look.material", S.canon(chk))
 	t.check("pck repro: embedded_code decides by content, whatever the extension", PKeyPck.embedded_code("packs/a/look.material", bytes) != "" and PKeyPck.embedded_code("packs/a/look.png", bytes) != "")
 	S.remove_tree(scratch)
+
+
+## A loader that claims an extension for `Script`, as a GDExtension language's would.
+class _FakeScriptLoader extends ResourceFormatLoader:
+	func _get_recognized_extensions() -> PackedStringArray:
+		return PackedStringArray(["pkeyscript"])
+
+	func _handles_type(type: StringName) -> bool:
+		return type == &"Script"
+
+	func _get_resource_type(path: String) -> String:
+		return "Script" if path.get_extension() == "pkeyscript" else ""
+
+
+## P4-08 audit GAP 5: the device refuses what THIS engine counts as a script, read through
+## ResourceLoader.get_recognized_extensions_for_type("Script") (minus the generic resource
+## containers) and ClassDB.get_inheriters_from_class("Script").
+func _script_kinds_api(t: PKeyTestContext) -> void:
+	PKeyPck.refresh_script_kinds()
+	var kinds: Dictionary = PKeyPck._script_kinds()
+	var exts: Dictionary = kinds["exts"]
+	t.check("pck: the Script extensions come from the engine (gd, gdc), without the resource containers", exts.has("gd") and exts.has("gdc") and not exts.has("tres") and not exts.has("res"), S.canon(exts.keys()))
+	var markers: PackedStringArray = kinds["markers"]
+	var inheriters := ClassDB.get_inheriters_from_class("Script")
+	var all_in := true
+	for c in inheriters:
+		all_in = all_in and markers.has(String(c))
+	t.check("pck: every class inheriting Script is a marker (%s)" % ", ".join(inheriters), all_in and markers.slice(0, 5) == PKeyPck.script_markers(), S.canon(Array(markers)))
+	var scratch := S.scratch("pck-kinds")
+	var out := scratch.path_join("kinds.pck")
+	var pack_ok := PKeyPck.write(out, [{"path": "res://packs/a/brain.pkeyscript", "bytes": "print(1)\n".to_utf8_buffer()}], PKeyPck.helper_version()) == OK
+	var rec := {"handler": {"prefixes": ["res://packs/a/"]}}
+	var before := PKeyGodotPckHandler.check(PKeyByteSource.file(out), rec, {})
+	var loader := _FakeScriptLoader.new()
+	ResourceLoader.add_resource_format_loader(loader)
+	PKeyPck.refresh_script_kinds()
+	var during := PKeyGodotPckHandler.check(PKeyByteSource.file(out), rec, {})
+	ResourceLoader.remove_resource_format_loader(loader)
+	PKeyPck.refresh_script_kinds()
+	var after := PKeyGodotPckHandler.check(PKeyByteSource.file(out), rec, {})
+	t.check("pck: an extension no loader claims for Script is data (admitted)", pack_ok and before["ok"], S.canon(before))
+	t.check("pck: once a loader claims it for Script, the same entry is refused as a script (the API path)", not during["ok"] and during["code"] == PKeyPck.DIRECTORY_REFUSED and during.get("path") == "packs/a/brain.pkeyscript" and String(during.get("detail", "")).contains("a script"), S.canon(during))
+	t.check("pck: …and admitted again when the loader is gone", after["ok"], S.canon(after))
+	S.remove_tree(scratch)
+

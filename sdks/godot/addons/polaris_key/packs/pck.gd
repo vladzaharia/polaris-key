@@ -52,6 +52,9 @@ const HEADER_V2 := 96
 
 static var _helper_version := -1
 static var _res: Dictionary = {}
+## The engine's script kinds (P4-08 audit GAP 5), filled on the main thread by `warm()`:
+## {exts: {extension: true}, markers: PackedStringArray}.
+static var _kinds: Dictionary = {}
 
 
 static func _re(pattern: String) -> RegEx:
@@ -62,10 +65,43 @@ static func _re(pattern: String) -> RegEx:
 	return re
 
 
-## Compile every pattern on the main thread before a worker runs the directory check.
+## Compile every pattern and read the engine's script kinds on the main thread before a worker
+## runs the directory check.
 static func warm() -> void:
-	for p in [_SCRIPT, _NATIVE, _NATIVE_DIR, _TEXT_RES, _BINARY_RES, _SECTION, _TYPE, _SOURCE, _GD_HEAD, _REMAP_PATH, _REMAP_DEST, _QUOTED]:
+	for p in [_SCRIPT, _NATIVE, _NATIVE_DIR, _TEXT_RES, _BINARY_RES, _GD_HEAD, _PATH_KEY, _PATH_LINE, _DEST_LINE, _QUOTED]:
 		_re(p)
+	refresh_script_kinds()
+
+
+## Re-read what this engine counts as a script (P4-08 audit GAP 5): every extension a loader
+## recognises for `Script` except the generic resource containers (`tres`, `res`, `tscn`, `scn`,
+## whose CONTENT the scan judges), and every class that inherits `Script` (a GDExtension language
+## included) as a marker beside the known ones. Main thread only.
+static func refresh_script_kinds() -> void:
+	var exts := {}
+	for e in ResourceLoader.get_recognized_extensions_for_type("Script"):
+		var x := String(e).to_lower()
+		if x != "tres" and x != "res" and x != "tscn" and x != "scn":
+			exts[x] = true
+	var markers := script_markers()
+	var extra: Array = Array(ClassDB.get_inheriters_from_class("Script"))
+	extra.sort()
+	for c in extra:
+		if not markers.has(String(c)):
+			markers.append(String(c))
+	_kinds = {"exts": exts, "markers": markers}
+
+
+## The markers the scans refuse whatever the engine says (packLint.ts `SCRIPT_MARKERS`, the same
+## order): the script types, then the properties that hold a script's source.
+static func script_markers() -> PackedStringArray:
+	return PackedStringArray(["GDScript", "CSharpScript", "ScriptExtension", "script/source", "source_code"])
+
+
+static func _script_kinds() -> Dictionary:
+	if _kinds.is_empty():
+		refresh_script_kinds()
+	return _kinds
 
 
 const _SCRIPT := "(?i)\\.(gd|gdc|cs)$"
@@ -73,12 +109,13 @@ const _NATIVE := "(?i)\\.(so|dll|dylib|wasm|gdextension)$|\\.so\\.\\d+(\\.\\d+)*
 const _NATIVE_DIR := "(?i)\\.(framework|xcframework)$"
 const _TEXT_RES := "(?i)\\.(tscn|tres|escn)$"
 const _BINARY_RES := "(?i)\\.(scn|res)$"
-const _SECTION := "(?m)^\\s*\\[([a-z_]+)\\b[^\\]\\n]*\\]"
-const _TYPE := "\\btype\\s*=\\s*\"([^\"]*)\""
-const _SOURCE := "(?m)^\\s*script/source\\s*="
-const _GD_HEAD := "^[ \\t\\n\\v\\f\\r]*\\[gd_(scene|resource)\\b"
-const _REMAP_PATH := "(?m)^\\s*path(?:\\.[A-Za-z0-9_-]+)?\\s*=\\s*\"([^\"]*)\""
-const _REMAP_DEST := "(?m)^\\s*dest_files\\s*=\\s*\\[([^\\]]*)\\]"
+# Whitespace is an explicit class in every pattern (never \s or \v, which PCRE2 and JS read
+# differently), and lines are split by hand after CR → LF (P4-08 audit GAP 2, GAP 6).
+const _GD_HEAD := "^[ \\t\\n\\r\\f\\x0B]*\\[gd_(scene|resource)\\b"
+## A .remap/.import line whose key starts with `path` (quoted or not): it must be _PATH_LINE.
+const _PATH_KEY := "^[ \\t\\f\\x0B]*\"?path"
+const _PATH_LINE := "^[ \\t\\f\\x0B]*path(?:\\.[A-Za-z0-9_-]+)?[ \\t\\f\\x0B]*=[ \\t\\f\\x0B]*\"([^\"\\\\]*)\"[ \\t\\f\\x0B]*$"
+const _DEST_LINE := "^[ \\t\\f\\x0B]*dest_files[ \\t\\f\\x0B]*=[ \\t\\f\\x0B]*\\[([^\\]]*)\\]"
 const _QUOTED := "\"([^\"]*)\""
 
 
@@ -253,7 +290,9 @@ static func lint_lines(source: PKeyByteSource, dir: Dictionary, prefixes: Array,
 
 
 static func _is_script(p: String) -> bool:
-	return _re(_SCRIPT).search(p) != null
+	if _re(_SCRIPT).search(p) != null:
+		return true
+	return (_script_kinds()["exts"] as Dictionary).has(p.get_extension().to_lower())
 
 
 static func _is_native(p: String) -> bool:
@@ -275,16 +314,87 @@ static func _res_path(p: String) -> String:
 ## something the pack loads), in order, without duplicates.
 static func remap_values(text: String) -> PackedStringArray:
 	var out := PackedStringArray()
-	for m in _re(_REMAP_PATH).search_all(text):
-		var v := m.get_string(1)
-		if not out.has(v):
-			out.append(v)
-	for m in _re(_REMAP_DEST).search_all(text):
+	var lines := _lines(text)
+	for line in lines:
+		var m := _re(_PATH_LINE).search(line)
+		if m != null and not out.has(m.get_string(1)):
+			out.append(m.get_string(1))
+	for line in lines:
+		var m := _re(_DEST_LINE).search(line)
+		if m == null:
+			continue
 		for q in _re(_QUOTED).search_all(m.get_string(1)):
 			var v := q.get_string(1)
 			if not out.has(v):
 				out.append(v)
 	return out
+
+
+static func _lines(text: String) -> PackedStringArray:
+	return text.replace("\r", "\n").split("\n")
+
+
+## Why a .remap or .import cannot be read the way the engine would read it, or "" (P4-08 audit
+## GAP 4, GAP 6): a NUL byte, invalid UTF-8 or a byte-order mark, or a line whose key starts
+## with `path` (quoted or not) that is not exactly `path[.<x>] = "<plain literal>"` (no
+## StringName `&`, NodePath `^` or escape, no second key segment).
+static func remap_problem(data: PackedByteArray) -> String:
+	if data.find(0) != -1:
+		return "a .remap or .import with a NUL byte"
+	if not utf8_valid(data):
+		return "a .remap or .import that is not valid UTF-8"
+	if find_bytes(data, PackedByteArray([0xEF, 0xBB, 0xBF])) != -1:
+		return "a .remap or .import with a byte-order mark"
+	for line in _lines(data.get_string_from_utf8()):
+		if _re(_PATH_KEY).search(line) != null and _re(_PATH_LINE).search(line) == null:
+			return "a path line the engine could read differently (%s)" % line
+	return ""
+
+
+## Strict UTF-8 (the Unicode table: no overlong form, no surrogate, nothing above U+10FFFF), so
+## the device and the CLI never decode the same bytes differently.
+static func utf8_valid(b: PackedByteArray) -> bool:
+	var i := 0
+	var n := b.size()
+	while i < n:
+		var c := b[i]
+		if c < 0x80:
+			i += 1
+			continue
+		var need := 0
+		var lo := 0x80
+		var hi := 0xBF
+		if c >= 0xC2 and c <= 0xDF:
+			need = 1
+		elif c == 0xE0:
+			need = 2
+			lo = 0xA0
+		elif (c >= 0xE1 and c <= 0xEC) or c == 0xEE or c == 0xEF:
+			need = 2
+		elif c == 0xED:
+			need = 2
+			hi = 0x9F
+		elif c == 0xF0:
+			need = 3
+			lo = 0x90
+		elif c >= 0xF1 and c <= 0xF3:
+			need = 3
+		elif c == 0xF4:
+			need = 3
+			hi = 0x8F
+		else:
+			return false
+		if i + need >= n:
+			return false
+		var x := b[i + 1]
+		if x < lo or x > hi:
+			return false
+		for k in range(2, need + 1):
+			var y := b[i + k]
+			if y < 0x80 or y > 0xBF:
+				return false
+		i += need + 1
+	return true
 
 
 ## The files a `.remap` or `.import` points to, as index paths (its `res://` values only).
@@ -312,7 +422,10 @@ static func uid_cache_problem(data: PackedByteArray, in_pack: Dictionary) -> Str
 		var ln := data.decode_u32(p + 8)
 		if p + 12 + ln > data.size():
 			return "a malformed uid cache"
-		var raw := data.slice(p + 12, p + 12 + ln).get_string_from_utf8()
+		var raw_bytes := data.slice(p + 12, p + 12 + ln)
+		if raw_bytes.find(0) != -1:
+			return "names a path with a NUL byte"
+		var raw := raw_bytes.get_string_from_utf8()
 		p += 12 + ln
 		var t := _res_path(raw)
 		if t == "" or not path_ok(t) or not (in_pack.has(t) or in_pack.has(t + ".remap") or in_pack.has(t + ".import")):
@@ -323,11 +436,10 @@ static func uid_cache_problem(data: PackedByteArray, in_pack: Dictionary) -> Str
 
 
 ## Why a resource entry carries code, or "" when it carries none (P4-03's `embeddedCode`, the
-## same rules and wording): a TEXT resource (`.tscn`, `.tres`, `.escn`) with a section naming
-## GDScript or CSharpScript, or a `script/source` property; a BINARY resource (`.scn`, `.res`, or
-## anything under `.godot/exported/`) holding one of `GDScript`, `CSharpScript` or
-## `script/source` as a length-prefixed string in either byte order, an `RSCC` (compressed)
-## resource, or one that is neither binary (`RSRC`) nor a text resource. Fails closed.
+## same rules and wording, hardened by the P4-08 audit): an `RSCC` (compressed) resource under any
+## name; an `RSRC` resource whose bytes name a script marker anywhere (`_binary_code`); a text
+## resource (a `[gd_scene`/`[gd_resource` head, or a `.tscn`/`.tres`/`.escn` name) that fails the
+## content rule (`_text_code`); a `.scn`/`.res`/exported file that is neither. Fails closed.
 static func embedded_code(p: String, data: PackedByteArray) -> String:
 	# By CONTENT first: Godot's binary loader takes `.material`, `.mesh`, `.anim` and every other
 	# binary resource extension, so the extension never decides whether bytes are scanned.
@@ -357,23 +469,19 @@ static func sniffs_text_resource(data: PackedByteArray) -> bool:
 
 
 static func _binary_code(data: PackedByteArray) -> String:
-	for s in PackedStringArray(["GDScript", "CSharpScript", "script/source"]):
-		# The UTF-8 bytes plus the NUL `ResourceFormatSaverBinary` writes (a String cannot hold one).
-		var str_bytes := s.to_utf8_buffer()
-		str_bytes.append(0)
-		for order in 2:
-			var needle := PackedByteArray()
-			needle.resize(4)
-			if order == 0:
-				needle.encode_u32(0, str_bytes.size())
-			else:
-				needle[0] = (str_bytes.size() >> 24) & 0xFF
-				needle[1] = (str_bytes.size() >> 16) & 0xFF
-				needle[2] = (str_bytes.size() >> 8) & 0xFF
-				needle[3] = str_bytes.size() & 0xFF
-			needle.append_array(str_bytes)
-			if find_bytes(data, needle) != -1:
-				return "a binary resource with an embedded script's source (script/source)" if s == "script/source" else "a binary resource with an embedded %s sub-resource" % s
+	# The raw bytes anywhere, without the u32 length prefix (P4-08 audit GAP 3): the engine's
+	# string reader stops at the first NUL, so a padded string with a larger length still decodes
+	# to the type. Fails closed: a coincidental match refuses, never admits.
+	var m := _marker(data)
+	return "" if m == "" else "a binary resource that names %s (an embedded script or its source)" % m
+
+
+## The first script marker (in `script_markers()` order, then the engine's extra Script classes)
+## whose UTF-8 bytes occur anywhere in `data`, or "".
+static func _marker(data: PackedByteArray) -> String:
+	for s in (_script_kinds()["markers"] as PackedStringArray):
+		if find_bytes(data, s.to_utf8_buffer()) != -1:
+			return s
 	return ""
 
 
@@ -399,14 +507,20 @@ static func _latin1(b: PackedByteArray) -> String:
 	return s
 
 
+## The text scan (P4-08 audit GAP 1, GAP 6): no regex over sections (VariantParser reads
+## newlines as whitespace and fields as Variants: StringName, escapes, inline `Object(…)`), but a
+## fail-closed content rule. Refused: a NUL byte, invalid UTF-8, any script marker anywhere, or
+## any `\u` / `\U` escape (which can spell one).
 static func _text_code(data: PackedByteArray) -> String:
-	var text := data.get_string_from_utf8()
-	for m in _re(_SECTION).search_all(text):
-		var t := _re(_TYPE).search(m.get_string(0))
-		if t != null and (t.get_string(1) == "GDScript" or t.get_string(1) == "CSharpScript"):
-			return "an embedded script ([%s type=\"%s\"])" % [m.get_string(1), t.get_string(1)]
-	if _re(_SOURCE).search(text) != null:
-		return "an embedded script's source (script/source)"
+	if data.find(0) != -1:
+		return "a text resource with a NUL byte, which cannot be inspected for embedded scripts"
+	if not utf8_valid(data):
+		return "a text resource that is not valid UTF-8, which cannot be inspected for embedded scripts"
+	var m := _marker(data)
+	if m != "":
+		return "a text resource that names %s (an embedded script or its source)" % m
+	if find_bytes(data, PackedByteArray([0x5C, 0x75])) != -1 or find_bytes(data, PackedByteArray([0x5C, 0x55])) != -1:
+		return "a text resource with a \\u escape, which can spell a script type"
 	return ""
 
 
@@ -471,6 +585,10 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 			continue
 		if in_prefix:
 			if needs_bytes:
+				var problem := remap_problem(data)
+				if problem != "":
+					errors.append({"path": p, "why": "%s; a pack loads only its own files." % problem})
+					continue
 				var text := data.get_string_from_utf8()
 				var targets := remap_targets(text)
 				var src := p.substr(0, p.rfind("."))

@@ -93,6 +93,25 @@ function unzstd(frame: Uint8Array, patchFrom?: Uint8Array): Uint8Array {
   return new Uint8Array(readFileSync(path.join(d, "out")));
 }
 
+/** A binary resource string with `pad` extra NULs counted in its (enlarged) u32 length. */
+function paddedString(text: string, pad: number): Uint8Array {
+  const b = enc(`${text}\0`);
+  const out = new Uint8Array(4 + b.length + pad);
+  new DataView(out.buffer).setUint32(0, b.length + pad, true);
+  out.set(b, 4);
+  return out;
+}
+
+/** `RSRC`, the header words, then the given strings and opaque data. */
+function binaryRaw(strings: Uint8Array[]): Uint8Array {
+  const head = new Uint8Array(20);
+  head.set(enc("RSRC"));
+  new DataView(head.buffer).setUint32(8, 4, true);
+  return new Uint8Array(
+    Buffer.concat([head, ...strings, new Uint8Array(64).fill(0x41)]),
+  );
+}
+
 interface CheckFixture {
   name: string;
   files: [string, Uint8Array][];
@@ -281,6 +300,153 @@ function checkFixtures(): CheckFixture[] {
             ]
           : [p, b],
       ),
+    },
+    // P4-08 validator audit, GAP 1: every spelling of an embedded script in a text resource is
+    // refused by the fail-closed content rule, not by a section regex.
+    {
+      name: "audit-text-spellings",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/inline.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[resource]\nname = "x" [sub_resource type="GDScript" id="s"]\n',
+          ),
+        ],
+        [
+          "assets/kaykit/multiline.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[sub_resource\ntype="GDScript"\nid="s"]\nscript/source = "extends Resource"\n',
+          ),
+        ],
+        [
+          "assets/kaykit/bracket.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[sub_resource id="a]b" type="GDScript"]\n',
+          ),
+        ],
+        [
+          "assets/kaykit/stringname.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[sub_resource type=&"GDScript" id="s"]\n',
+          ),
+        ],
+        [
+          "assets/kaykit/escaped.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[sub_resource type="GD\\u0053cript" id="s"]\n',
+          ),
+        ],
+        [
+          "assets/kaykit/objinline.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[resource]\nscript = Object(GDScript,"script/source":"extends Resource")\n',
+          ),
+        ],
+      ],
+    },
+    {
+      name: "audit-text-legit",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/material.tres",
+          enc(
+            '[gd_resource type="StandardMaterial3D" format=3 uid="uid://mat"]\n\n[resource]\nalbedo_color = Color(1, 0.5, 0.2, 1)\nmetallic = 0.3\n',
+          ),
+        ],
+      ],
+    },
+    // GAP 2: CR-only line endings (JS's `m` flag breaks lines at CR; PCRE2 in Godot at LF).
+    {
+      name: "audit-cr",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/cr.tres",
+          enc(
+            '[gd_scene load_steps=2 format=3 uid="uid://probe"]\n\n[sub_resource type="GDScript" id="GDScript_x"]\nscript/source = "extends Node\nfunc _ready(): OS.execute(\\"sh\\", [])"\n\n[node name="Probe" type="Node"]\nscript = SubResource("GDScript_x")\n'.replace(
+              /\n/g,
+              "\r",
+            ),
+          ),
+        ],
+      ],
+    },
+    // GAP 3: NUL-padded strings with enlarged lengths still decode to the type in the engine.
+    {
+      name: "audit-binary-padded",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/padded.res",
+          binaryRaw([
+            paddedString("Resource", 0),
+            paddedString("script/source", 7),
+            paddedString("GDScript", 9),
+          ]),
+        ],
+      ],
+    },
+    // Threat model (a): a binary reference to an app script (ext type `Script`) names no marker
+    // and is ADMITTED, the same residual as the text `[ext_resource type="Script"]`.
+    {
+      name: "audit-binary-extref",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/extref.res",
+          binaryRaw([
+            paddedString("Resource", 0),
+            paddedString("Script", 0),
+            paddedString("res://scripts/die.gd", 0),
+          ]),
+        ],
+      ],
+    },
+    // GAP 4: a path key the engine reads that the target scan would not.
+    {
+      name: "audit-remap-dodges",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/a.png.import",
+          enc('[remap]\n\nimporter="texture"\npath.s3tc.x="res://main.gd"\n'),
+        ],
+        [
+          "assets/kaykit/b.tres.remap",
+          enc('[remap]\n\npath=&"res://assets/kaykit/data/level_000.json"\n'),
+        ],
+      ],
+    },
+    // GAP 6: a NUL byte in a text resource is refused; a non-resource whose first byte (0x85, a
+    // PCRE2 \v) hides a head is not a resource to either side, and nothing loads a `.bin`.
+    {
+      name: "audit-nul",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/nulbyte.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\0\n[sub_resource type="GDScript" id="s"]\n',
+          ),
+        ],
+      ],
+    },
+    {
+      name: "audit-x-bin",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/x.bin",
+          new Uint8Array([
+            0x85,
+            ...enc(
+              '[gd_resource type="Resource" format=3]\n\n[sub_resource type="GDScript" id="s"]\n',
+            ),
+          ]),
+        ],
+      ],
     },
     // The reader: layouts it reads, and the header and entry flags it refuses with a path.
     {

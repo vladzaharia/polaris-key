@@ -322,3 +322,16 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `store/<64 hex>.pck`. N4: a 403 from the blob route is `pack-not-entitled`. N6: `.remap`/`.import`
   targets and uid cache entries must be in the pack (`remap-outside-pack`,
   `uid-cache-outside-pack`).
+- **Validator audit (GAP 1–6).** Both validators replaced their regex scans with fail-closed
+  content rules, with identical verdicts pinned by new `audit-*` fixtures in `verdicts.json`:
+  any script marker (`GDScript`, `CSharpScript`, `ScriptExtension`, `script/source`,
+  `source_code`) anywhere in a text or binary resource, without the binary length prefix; a NUL,
+  invalid UTF-8 (one explicit validator) or a `\u` escape in a text resource; a NUL, invalid UTF-8,
+  a BOM or a non-strict `path…` line in a `.remap`/`.import`; a NUL in a uid-cache path;
+  explicit whitespace classes and hand-split lines after CR → LF. The device also refuses what its
+  engine counts as a script (`ResourceLoader.get_recognized_extensions_for_type("Script")` minus
+  the resource containers, `ClassDB.get_inheriters_from_class("Script")` as markers), proved with a
+  test loader; the CLI takes `scriptExtensions`/`scriptTypes`. `audit-binary-extref` and
+  `ext-script-ok` pin the admitted residual (references to app scripts), restated in the threat
+  model. `audit-x-bin` (a 0x85 byte before a `[gd_resource` head) is admitted by both: neither side
+  sees a resource, and nothing loads a `.bin`.

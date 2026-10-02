@@ -2083,9 +2083,9 @@ libraries and GDExtensions by extension, it refuses every resource that carries 
 a text resource (`.tscn`, `.tres`, `.escn`) whose section headers name `GDScript` or
 `CSharpScript` or that sets `script/source`, and a binary resource (`.scn`, `.res`, anything under
 `.godot/exported/`) containing `GDScript`, `CSharpScript` or `script/source` as a Godot
-length-prefixed string, or that is compressed (`RSCC`) or otherwise not inspectable. The binary
-scan fails closed (it also refuses a binary scene that merely references an app script). The CLI
-lint is a publisher-side guard, not a trust boundary: a repo writer with the release key can sign
+length-prefixed string, or that is compressed (`RSCC`) or otherwise not inspectable. (P4-08's
+audit replaced both scans with the fail-closed content rules below.) The CLI lint is a
+publisher-side guard, not a trust boundary: a repo writer with the release key can sign
 any record, so P4-08's device-side directory check must apply the same rule (the same fixtures,
 `packages/cli/test/packFixtures.ts`) before a pack is mounted.
 
@@ -2117,13 +2117,35 @@ committed or mounted:
   itself be such a path, under `res://`, and an entry of this pack: a target in the base game's
   `.godot/imported/` or `.godot/exported/` is refused, so a pack loads only its own files.
 - **The extension never exempts a resource from the scan.** Godot picks a loader by extension:
-  its text loader takes the text-resource extensions (`.tres`, `.tscn`, `.escn`), and its binary
-  loader takes `.res`, `.scn` and every resource type's own extension (`.material`, `.mesh`,
-  `.anim`, …), then requires the `RSRC` magic. So the binary scan (for an embedded `GDScript`,
-  `CSharpScript` or `script/source`) runs on every entry whose bytes start `RSRC`, whatever it is
-  called. The text scan runs on the text-resource extensions and, as a defensive extra, on any
-  entry with a sniffed `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) cannot be
-  scanned and is refused under any name.
+  in 4.x its runtime text loader takes `.tres` and `.tscn`, and its binary loader takes `.res`,
+  `.scn` and every resource type's own extension (`.material`, `.mesh`, `.anim`, …), then
+  requires the `RSRC` magic. So the binary scan runs on every entry whose bytes start `RSRC`,
+  whatever it is called. The text scan runs on the text-resource extensions (`.tres`, `.tscn`,
+  and `.escn`, which is an import format rather than a runtime text-loader extension in 4.x and is
+  scanned because stricter is free) and, as a defensive extra, on any entry with a sniffed
+  `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) cannot be scanned and is
+  refused under any name.
+- **The scans are fail-closed content rules, not parsers (P4-08 validator audit).** Godot's
+  VariantParser reads newlines as whitespace and fields as Variants (StringName `&"…"`, `\u`
+  escapes, an inline `Object(GDScript, …)`), and its binary string reader stops at the first NUL,
+  so no rule depends on how a header is spelled or a length is written. A text resource is
+  refused when it holds a NUL byte, is not valid UTF-8 (one explicit validator on both sides), or
+  contains anywhere a script marker (`GDScript`, `CSharpScript`, `ScriptExtension`,
+  `script/source`, `source_code`, and on the device every class the running engine says inherits
+  `Script`) or any `\u` / `\U` escape. A binary resource is refused when the raw bytes of any marker
+  occur anywhere in it, without the length prefix. A `.remap` or `.import` is refused for a NUL,
+  invalid UTF-8 or a byte-order mark, and for any line whose key starts with `path` (quoted or
+  not) that is not exactly `path[.<x>] = "<plain literal>"`. Lines are split by hand after CR →
+  LF and whitespace is an explicit class, because JS and PCRE2 disagree on `\s`, `\v` and line
+  breaks. A uid-cache path with a NUL is refused. Every rule has fixtures that both validators
+  must give the same verdict on, run on 4.7.2 and 4.4.1.
+- **What counts as a script comes from the engine on the device.** Besides `.gd`, `.gdc` and
+  `.cs`, the device refuses every extension a loader recognises for `Script`
+  (`ResourceLoader.get_recognized_extensions_for_type`, minus the generic `tres`/`res`/`tscn`/`scn`
+  containers whose content is scanned) and uses every `Script` subclass as a marker, so a
+  GDExtension script language installed in the app is covered on the device. The CLI cannot ask
+  an engine: `lintPck` takes `scriptExtensions` and `scriptTypes` for such a language, but
+  `pkey release publish` does not expose them yet, so today the device check alone refuses it.
 - **A pack's uid cache may name only the pack's own files.** A 4.4/4.5 exporter writes the whole
   project's `uid_cache.bin` into a pack, excluded files included; mounted with
   `replace_files=true`, a foreign entry re-points one of the app's own UIDs at the pack's file
@@ -2145,11 +2167,19 @@ committed or mounted:
 
 Residuals not closed by P4-08:
 
-- **A text resource may reference app scripts.** `[ext_resource type="Script" …]` naming a
-  script already in the build passes, since that code ships in the app and is not downloaded.
-  A pack can therefore instantiate any of the app's scripts with property values it chooses;
-  a game whose scripts act on untrusted properties must treat pack data as input. (The binary
-  scan refuses even such references, since it cannot tell them from embedded scripts.)
+- **A pack may attach and configure scripts the app already ships.** A reference to an app
+  script names no marker, in either format: `[ext_resource type="Script" path="res://…gd"]` in a
+  text resource, or a binary resource's external-resource table entry typed `Script` (the binary
+  loader resolves it by the path's extension). Both pass the scan (pinned by the `ext-script-ok`
+  and `audit-binary-extref` fixtures). A pack can therefore instantiate any script class the build
+  contains, including debug or tool scripts, with exported property values it chooses, and run
+  whatever side effects their `_init` or `_ready` have. That is not downloaded code, but the app
+  must treat pack data as untrusted input. Integrity rests on the release-key signature over the
+  record. Follow-up: an app-declared allow-list of the script paths or UIDs a pack may attach.
+- **Another script language is refused on the device only.** The device asks its engine what a
+  script is; the CLI lint only knows `.gd`, `.gdc`, `.cs` and the built-in markers. An app with a
+  GDExtension script language must declare its extensions and types for CI to refuse them too.
+  Follow-up: expose `scriptExtensions`/`scriptTypes` as a publish setting.
 - **Data replacement under a pack-chosen name.** An in-pack `.godot/imported/…` or
   `.godot/exported/…` file whose name equals the base game's replaces it under
   `replace_files=true`. That changes data, not code, and the record is release-key signed.

@@ -276,8 +276,8 @@ describe("code embedded in a resource (the data-only rule, P4-03 review)", () =>
         ["assets/kaykit/sneaky.tres", sourceOnly],
       ]),
     ).toEqual([
-      'assets/kaykit/probe.tscn: an embedded script ([sub_resource type="GDScript"]); a pack carries data only.',
-      "assets/kaykit/sneaky.tres: an embedded script's source (script/source); a pack carries data only.",
+      "assets/kaykit/probe.tscn: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+      "assets/kaykit/sneaky.tres: a text resource that names script/source (an embedded script or its source); a pack carries data only.",
     ]);
   });
 
@@ -288,7 +288,7 @@ describe("code embedded in a resource (the data-only rule, P4-03 review)", () =>
     expect(lintWith([["assets/kaykit/die.tscn", scene]])).toEqual([]);
   });
 
-  it("refuses a binary resource holding a GDScript or script/source, in either byte order, and one it cannot inspect", () => {
+  it("refuses a binary resource naming a GDScript or script/source anywhere, and one it cannot inspect", () => {
     const be = binaryResource(["PackedScene"], ["nodes"], 3);
     const beScript = new Uint8Array(
       Buffer.concat([
@@ -312,8 +312,8 @@ describe("code embedded in a resource (the data-only rule, P4-03 review)", () =>
         ["assets/kaykit/e.res", binaryResource(["Mesh"], ["surfaces"], 6)],
       ]),
     ).toEqual([
-      "assets/kaykit/a.scn: a binary resource with an embedded GDScript sub-resource; a pack carries data only.",
-      "assets/kaykit/b.res: a binary resource with an embedded script's source (script/source); a pack carries data only.",
+      "assets/kaykit/a.scn: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
+      "assets/kaykit/b.res: a binary resource that names script/source (an embedded script or its source); a pack carries data only.",
       "assets/kaykit/c.res: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
       "assets/kaykit/d.scn: not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts; a pack carries data only.",
     ]);
@@ -336,11 +336,38 @@ describe("code embedded in a resource (the data-only rule, P4-03 review)", () =>
       ],
     ];
     expect(lintWith(files)).toEqual([
-      `${exported}: a binary resource with an embedded GDScript sub-resource; a pack carries data only.`,
+      `${exported}: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.`,
     ]);
     expect(
       embeddedCode(".godot/imported/t.png-1.s3tc.ctex", enc("GST2 GDScript")),
     ).toBeNull();
+  });
+});
+
+describe("another script language (P4-08 audit GAP 5)", () => {
+  const enc = (t: string) => new TextEncoder().encode(t);
+  it("refuses the extensions and types an app lists, beside the known set", () => {
+    const bytes = writeTestPck([
+      ...kaykitV1(),
+      ["assets/kaykit/brain.lua", enc("print(1)\n")],
+      [
+        "assets/kaykit/npc.tres",
+        enc(
+          '[gd_resource type="Resource" format=3]\n\n[sub_resource type="LuaScript" id="s"]\n',
+        ),
+      ],
+    ]);
+    expect(lintPck(readPck(bytes), bytes, lintOpts).errors).toEqual([]);
+    expect(
+      lintPck(readPck(bytes), bytes, {
+        ...lintOpts,
+        scriptExtensions: ["LUA"],
+        scriptTypes: ["LuaScript"],
+      }).errors,
+    ).toEqual([
+      "assets/kaykit/brain.lua: a script; a pack carries data only (S-07 row 13).",
+      "assets/kaykit/npc.tres: a text resource that names LuaScript (an embedded script or its source); a pack carries data only.",
+    ]);
   });
 });
 

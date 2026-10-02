@@ -34,8 +34,8 @@
     },
     "embedded-text": {
       "errors": [
-        "assets/kaykit/probe.tscn: an embedded script ([sub_resource type=\"GDScript\"]); a pack carries data only.",
-        "assets/kaykit/sneaky.tres: an embedded script's source (script/source); a pack carries data only."
+        "assets/kaykit/probe.tscn: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/sneaky.tres: a text resource that names script/source (an embedded script or its source); a pack carries data only."
       ],
       "warnings": []
     },
@@ -45,8 +45,8 @@
     },
     "embedded-binary": {
       "errors": [
-        "assets/kaykit/a.scn: a binary resource with an embedded GDScript sub-resource; a pack carries data only.",
-        "assets/kaykit/b.res: a binary resource with an embedded script's source (script/source); a pack carries data only.",
+        "assets/kaykit/a.scn: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/b.res: a binary resource that names script/source (an embedded script or its source); a pack carries data only.",
         "assets/kaykit/c.res: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
         "assets/kaykit/d.scn: not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts; a pack carries data only."
       ],
@@ -54,7 +54,7 @@
     },
     "exported-script": {
       "errors": [
-        ".godot/exported/9/export-ffff-x.scn: a binary resource with an embedded GDScript sub-resource; a pack carries data only."
+        ".godot/exported/9/export-ffff-x.scn: a binary resource that names GDScript (an embedded script or its source); a pack carries data only."
       ],
       "warnings": []
     },
@@ -69,11 +69,11 @@
     },
     "content-binary-extensions": {
       "errors": [
-        "assets/kaykit/look.material: a binary resource with an embedded GDScript sub-resource; a pack carries data only.",
-        "assets/kaykit/walk.anim: a binary resource with an embedded script's source (script/source); a pack carries data only.",
-        "assets/kaykit/m.mesh: a binary resource with an embedded CSharpScript sub-resource; a pack carries data only.",
+        "assets/kaykit/look.material: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/walk.anim: a binary resource that names script/source (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/m.mesh: a binary resource that names CSharpScript (an embedded script or its source); a pack carries data only.",
         "assets/kaykit/z.material: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
-        "assets/kaykit/level.cfg: an embedded script ([sub_resource type=\"GDScript\"]); a pack carries data only."
+        "assets/kaykit/level.cfg: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
       ],
       "warnings": []
     },
@@ -89,6 +89,54 @@
       "errors": [
         ".godot/uid_cache.bin: names a path outside the pack (res://main_res/base.tres); a pack registers only its own UIDs."
       ],
+      "warnings": []
+    },
+    "audit-text-spellings": {
+      "errors": [
+        "assets/kaykit/inline.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/multiline.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/bracket.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/stringname.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/escaped.tres: a text resource with a \\u escape, which can spell a script type; a pack carries data only.",
+        "assets/kaykit/objinline.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-text-legit": {
+      "errors": [],
+      "warnings": []
+    },
+    "audit-cr": {
+      "errors": [
+        "assets/kaykit/cr.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-binary-padded": {
+      "errors": [
+        "assets/kaykit/padded.res: a binary resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-binary-extref": {
+      "errors": [],
+      "warnings": []
+    },
+    "audit-remap-dodges": {
+      "errors": [
+        "assets/kaykit/a.png.import: a path line the engine could read differently (path.s3tc.x=\"res://main.gd\"); a pack loads only its own files.",
+        "assets/kaykit/b.tres.remap: a path line the engine could read differently (path=&\"res://assets/kaykit/data/level_000.json\"); a pack loads only its own files."
+      ],
+      "warnings": []
+    },
+    "audit-nul": {
+      "errors": [
+        "assets/kaykit/nulbyte.tres: a text resource with a NUL byte, which cannot be inspected for embedded scripts; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-x-bin": {
+      "errors": [],
       "warnings": []
     },
     "reader-v2-res": {
