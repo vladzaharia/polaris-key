@@ -1567,6 +1567,83 @@ describe("console pack views (P4-09)", () => {
     ).toBe(404);
   });
 
+  it("a gated pack's views never name its gated/ objects", async () => {
+    await setGate(SKINS, "skins");
+    const variants = [await treeVariant({}, "skins-gated-view")];
+    await stageOk(SKINS, variants[0]!.objects, true);
+    const jws = await signRecord(
+      packRecord({
+        aud: SLUG,
+        deliverable: SKINS,
+        version: "1.0.0",
+        seq: 1,
+        issuedAt: NOW,
+        type: "files.tree",
+        entitlement: "skins",
+        variants: variants.map((v) => v.variant),
+      }),
+    );
+    expect((await post("submit", { record: jws })).status).toBe(200);
+    const id = encodeURIComponent(SKINS);
+    const releases = await getJson(`/deliverables/${id}/releases`);
+    expect(releases.releases[0].entitlement).toBe("skins");
+    expect(releases.releases[0].variants[0].fullBytes).toBeGreaterThan(0);
+    const files = await getJson(
+      `/deliverables/${id}/releases/${encodeURIComponent(`${SKINS}@1.0.0`)}/files?variant=`,
+    );
+    expect(files.total).toBeGreaterThan(0);
+    for (const body of [releases, files, await getJson("/deliverables")]) {
+      const raw = JSON.stringify(body);
+      expect(raw).not.toContain("gated/");
+      expect(raw).not.toContain('"key"');
+    }
+  });
+
+  it("a 100-release pack page reads in a bounded number of queries", async () => {
+    let core = "";
+    for (let i = 1; i <= 100; i++) core = await publishCore(`1.0.${i}`, i);
+    const res = await submitApp(
+      appDescriptor(
+        "1.5.0",
+        15,
+        content([{ pack: CORE, sha256: core, seq: 100, version: "1.0.100" }]),
+      ),
+    );
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    let queries = 0;
+    const counting = new Proxy(db, {
+      get(target, prop, receiver) {
+        const v = Reflect.get(target, prop, receiver);
+        if (typeof v !== "function") return v;
+        return (...args: unknown[]) => {
+          if (
+            ["all", "first", "run", "runChanges", "batch"].includes(
+              String(prop),
+            )
+          )
+            queries++;
+          return (v as (...a: unknown[]) => unknown).apply(target, args);
+        };
+      },
+    });
+    const out = await admin(
+      env,
+      counting,
+      "GET",
+      `/deliverables/${encodeURIComponent(CORE)}/releases`,
+    );
+    expect(out.status).toBe(200);
+    const body = (await out.json()) as Record<string, any>;
+    expect(body.releases).toHaveLength(100);
+    expect(body.releases[0].pinnedBy.map((p: any) => p.appVersion)).toEqual([
+      "1.5.0",
+    ]);
+    expect(body.releases[1].pinnedBy).toEqual([]);
+    expect(body.releases.every((r: any) => r.variants.length === 2)).toBe(true);
+    // The session, the product and the page itself; never one query per release.
+    expect(queries).toBeLessThanOrEqual(16);
+  }, 60_000);
+
   it("an app release carries its contentApi, its pins and each build's embeds", async () => {
     const core = await seedPins();
     const body = await getJson("/releases");

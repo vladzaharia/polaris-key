@@ -315,7 +315,7 @@ describe("a pack's page", () => {
     expect(
       await screen.findByText("Not pinned by any app release"),
     ).toBeTruthy();
-    expect(screen.getByText("No releases yet")).toBeTruthy();
+    expect(await screen.findByText("No releases yet")).toBeTruthy();
   });
 
   it("expands a release into its variants: payload, full download and the delta menu", async () => {

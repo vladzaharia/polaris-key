@@ -14,12 +14,14 @@
 
 import type {
   CatalogPackObject,
+  CatalogPin,
   CatalogPackRelease,
   Delivery,
   ReleaseCatalog,
 } from "../../../core/hooks.js";
 import type { Db } from "../../../core/platform.js";
 import { listYanks, type ReleaseYankRow } from "../model.js";
+import { packReleasesMany } from "./catalog.js";
 
 /** The app deliverable's id; every other deliverable id names a pack. */
 const APP = "app";
@@ -270,10 +272,20 @@ export async function packReleasesView(
     ).map((r) => [r.release_id, r.version]),
   );
   const out: PackReleaseView[] = [];
-  const all = await catalog.releases(deliverable);
-  for (const r of all.slice(0, MAX_PACK_RELEASES_VIEW)) {
-    const pr = await catalog.packRelease(deliverable, r.releaseId);
-    const pins = await catalog.pinnedBy(r.releaseId);
+  const listed = (await catalog.releases(deliverable)).slice(
+    0,
+    MAX_PACK_RELEASES_VIEW,
+  );
+  const ids = listed.map((r) => r.releaseId);
+  // Bounded: the records and the pins of the whole page in chunked `IN` reads, never one query
+  // per release.
+  const records = await packReleasesMany(db, slug, deliverable, ids);
+  const pinsOf = new Map<string, CatalogPin[]>();
+  for (const p of await catalog.pinnedByMany(ids))
+    pinsOf.set(p.packReleaseId, [...(pinsOf.get(p.packReleaseId) ?? []), p]);
+  for (const r of listed) {
+    const pr = records.get(r.releaseId) ?? null;
+    const pins = pinsOf.get(r.releaseId) ?? [];
     out.push({
       releaseId: r.releaseId,
       version: r.version,
@@ -356,30 +368,45 @@ export interface AppPinView {
   recordSha256: string;
 }
 
-/** Every app release's pins, keyed by app release id: one query for the whole product. */
+/** App release ids per `IN` list: one parameter is the product, D1 binds at most 100. */
+const PIN_IN_IDS = 90;
+
+interface AppPinRow {
+  app_release_id: string;
+  pack_deliverable: string;
+  pack_release_id: string;
+  record_sha256: string;
+  required: number;
+  delivery: string;
+  version: string | null;
+}
+
+/** The pins of the listed app releases, keyed by app release id: one chunked `IN` read per
+ *  `PIN_IN_IDS` releases, never the whole product's pins. */
 export async function appPinsByRelease(
   db: Db,
   slug: string,
+  appReleaseIds: readonly string[],
   yanks: ReadonlyMap<string, ReleaseYankRow>,
 ): Promise<Map<string, AppPinView[]>> {
-  const rows = await db.all<{
-    app_release_id: string;
-    pack_deliverable: string;
-    pack_release_id: string;
-    record_sha256: string;
-    required: number;
-    delivery: string;
-    version: string | null;
-  }>(
-    `SELECT p.app_release_id, p.pack_deliverable, p.pack_release_id, p.record_sha256,
-            p.required, p.delivery, m.version
-       FROM release_pins p
-       LEFT JOIN release_metadata m
-         ON m.product = p.product AND m.release_id = p.pack_release_id
-      WHERE p.product = ?
-      ORDER BY p.app_release_id, p.pack_deliverable`,
-    slug,
-  );
+  const unique = [...new Set(appReleaseIds)];
+  const rows: AppPinRow[] = [];
+  for (let i = 0; i < unique.length; i += PIN_IN_IDS) {
+    const ids = unique.slice(i, i + PIN_IN_IDS);
+    rows.push(
+      ...(await db.all<AppPinRow>(
+        `SELECT p.app_release_id, p.pack_deliverable, p.pack_release_id, p.record_sha256,
+              p.required, p.delivery, m.version
+         FROM release_pins p
+         LEFT JOIN release_metadata m
+           ON m.product = p.product AND m.release_id = p.pack_release_id
+        WHERE p.product = ? AND p.app_release_id IN (${ids.map(() => "?").join(", ")})
+        ORDER BY p.app_release_id, p.pack_deliverable`,
+        slug,
+        ...ids,
+      )),
+    );
+  }
   const out = new Map<string, AppPinView[]>();
   for (const r of rows) {
     const list = out.get(r.app_release_id) ?? [];

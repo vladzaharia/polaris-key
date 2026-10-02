@@ -136,7 +136,12 @@ export async function handleReleaseAdmin(
       (await listYanks(db, slug)).map((y) => [y.release_id, y]),
     );
     // P4-09: what each app release pins (one query for the product), beside its contentApi.
-    const pins = await appPinsByRelease(db, slug, yanks);
+    const pins = await appPinsByRelease(
+      db,
+      slug,
+      releases.map((r) => r.release_id),
+      yanks,
+    );
     return adminJson({
       releases: await Promise.all(
         releases.map(async (row) => {

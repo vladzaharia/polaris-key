@@ -154,3 +154,7 @@ package, and every decision in §8.1 that names it as owner, override this brief
   shared `admin()` helper in `test/releaseRoutesFixture.ts` now passes the pathname without the
   query to `handleAdmin`, as the router does.
 - **P4-12 not on main** while this ran: no pack sets, holds or floors are shown (follow-up below).
+- **Bounded reads (review).** A pack page reads its records with `packReleasesMany` (a chunked
+  `IN` helper in `packs/catalog.ts`, sharing `packRelease`'s row mapping) and its pins with P4-05's
+  `pinnedByMany`, grouped by pack release; a 100-release page takes 12 queries (the test's ceiling
+  is 16). The app releases' pins are read for the listed app release ids only, in chunked `IN`s.
