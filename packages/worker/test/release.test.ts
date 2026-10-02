@@ -31,7 +31,11 @@ import {
   seedDeliveryAccess,
 } from "./releaseSurface.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
-import { checkReleaseHealth } from "../src/services/release/health.js";
+import {
+  checkReleaseHealth,
+  type ReleaseHealthCheck,
+} from "../src/services/release/health.js";
+import { upsertDeliverable } from "../src/services/release/model.js";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -835,67 +839,152 @@ describe("handleRelease", () => {
 });
 
 describe("release health", () => {
-  it("reports healthy release setup when required assets and signatures exist", async () => {
-    const db = makeTestDb();
-    await seedReleaseConfig(db);
+  async function healthFor(db: Db, assets: ReleaseAsset[]) {
     const { env } = envFor();
-    const rel = release({
-      assets: [
-        asset("djdl-arm64.dmg"),
-        asset("djdl-arm64.dmg.sig"),
-        asset("djdl-x86_64.dmg"),
-        asset("djdl-arm64"),
-        asset("djdl-x86_64"),
-      ],
-    });
     const { fetchImpl } = stubFetch([
       [
         "/releases?per_page",
-        () => new Response(JSON.stringify([rel]), { status: 200 }),
+        () =>
+          new Response(JSON.stringify([release({ assets })]), { status: 200 }),
       ],
     ]);
+    return checkReleaseHealth(env, db, SLUG, 1_700_000_100, fetchImpl);
+  }
+  const byId = (h: { checks: { id: string }[] }, id: string) =>
+    h.checks.find((c) => c.id === id) as
+      | (ReleaseHealthCheck & { id: string })
+      | undefined;
 
-    const health = await checkReleaseHealth(
-      env,
+  /** Persist a declared artifact map as resync would (`release_deliverables.def_json`). */
+  async function declareMap(
+    db: Db,
+    artifacts: Array<{
+      id: string;
+      platform: string;
+      arch: string;
+      format: string;
+      match: string;
+    }>,
+  ): Promise<void> {
+    await upsertDeliverable(
       db,
-      SLUG,
-      1_700_000_100,
-      fetchImpl,
+      {
+        product: SLUG,
+        deliverableId: "app",
+        kind: "app",
+        defJson: JSON.stringify({
+          kind: "app",
+          versioning: { scheme: "semver", buildNumber: null },
+          channels: {},
+          artifacts: artifacts.map((a) => ({ ...a, role: "payload" })),
+        }),
+      },
+      1_700_000_000,
     );
+  }
+
+  const GODOT_MAP = [
+    {
+      id: "macos",
+      platform: "macos",
+      arch: "universal",
+      format: "dmg",
+      match: "Diceroll-*-macos.dmg",
+    },
+    {
+      id: "win",
+      platform: "windows",
+      arch: "x86_64",
+      format: "zip",
+      match: "Diceroll-*-windows.zip",
+    },
+    {
+      id: "linux",
+      platform: "linux",
+      arch: "x86_64",
+      format: "tar.gz",
+      match: "Diceroll-*-linux.tar.gz",
+    },
+  ];
+
+  it("lists what a release carries and assumes no DMG or CLI when no map is declared", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const health = await healthFor(db, [asset("djdl-linux-x86_64.tar.gz")]);
     expect(health.status).toBe("healthy");
-    expect(health.release?.tag).toBe("v1.2.3");
-    expect(
-      health.checks.find((c) => c.id === "sparkle-signature")?.status,
-    ).toBe("ok");
+    const listed = byId(health, "release-artifacts");
+    expect(listed?.status).toBe("ok");
+    expect(listed?.label).toBe("Release artifacts");
+    expect(listed?.files).toEqual([
+      { name: "djdl-linux-x86_64.tar.gz", platform: "linux", arch: "x86_64" },
+    ]);
+    const ids = health.checks.map((c) => c.id);
+    for (const gone of ["dmg-arm64", "dmg-x86_64", "cli-arm64", "cli-x86_64"])
+      expect(ids).not.toContain(gone);
+    expect(health.checks.some((c) => c.status === "warning")).toBe(false);
   });
 
-  it("reports missing Sparkle signature when a public key is configured", async () => {
+  it("caps the listed files at 20 and counts the rest", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db);
-    const { env } = envFor();
-    const rel = release({
-      assets: [
-        asset("djdl-arm64.dmg"),
-        asset("djdl-arm64"),
-        asset("djdl-x86_64"),
-      ],
-    });
-    const { fetchImpl } = stubFetch([
-      [
-        "/releases?per_page",
-        () => new Response(JSON.stringify([rel]), { status: 200 }),
-      ],
-    ]);
-
-    const health = await checkReleaseHealth(
-      env,
-      db,
-      SLUG,
-      1_700_000_100,
-      fetchImpl,
+    const names = Array.from(
+      { length: 23 },
+      (_, i) => `pack-${String(i).padStart(2, "0")}.bin`,
     );
+    const health = await healthFor(
+      db,
+      names.map((n, i) => asset(n, i + 1)),
+    );
+    const listed = byId(health, "release-artifacts");
+    expect(listed?.files).toHaveLength(20);
+    expect(listed?.files?.[0]).toEqual({ name: "pack-00.bin" });
+    expect(listed?.message).toContain("23 files");
+    expect(listed?.message).toContain("3 more");
+  });
+
+  it("reports healthy with the Sparkle signature present (djdl-shaped, no policy)", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const health = await healthFor(db, [
+      asset("djdl-arm64.dmg"),
+      asset("djdl-arm64.dmg.sig"),
+      asset("djdl-x86_64.dmg"),
+      asset("djdl-arm64"),
+      asset("djdl-x86_64"),
+    ]);
+    expect(health.status).toBe("healthy");
+    expect(health.release?.tag).toBe("v1.2.3");
+    expect(byId(health, "sparkle-signature")?.status).toBe("ok");
+    expect(byId(health, "release-artifacts")?.files).toContainEqual({
+      name: "djdl-arm64.dmg",
+      platform: "macos",
+      arch: "arm64",
+    });
+  });
+
+  it("reports a missing Sparkle signature when a public key is configured", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const health = await healthFor(db, [
+      asset("djdl-arm64.dmg"),
+      asset("djdl-arm64"),
+      asset("djdl-x86_64"),
+    ]);
     expect(health.status).toBe("needs-setup");
     expect(health.missing).toContain("djdl-arm64.dmg.sig");
+  });
+
+  it("does not require a DMG from a djdl-shaped product without a policy", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const health = await healthFor(db, [
+      asset("djdl-arm64"),
+      asset("djdl-x86_64"),
+    ]);
+    expect(health.status).toBe("healthy");
+    expect(health.checks.map((c) => c.id)).not.toContain("dmg");
+    // The Sparkle gating is unchanged: the key check still runs for a no-policy product.
+    expect(byId(health, "sparkle-key")?.status).toBe("ok");
   });
 
   it("is healthy with no DMG and no Sparkle key when the policy requires no DMG", async () => {
@@ -904,127 +993,169 @@ describe("release health", () => {
       sparkle_ed25519_pub: null,
       artifact_policy_json: JSON.stringify({ requireDmg: false }),
     });
-    const { env } = envFor();
-    const rel = release({
-      assets: [asset("djdl-linux-x86_64.tar.gz"), asset("djdl-arm64")],
-    });
-    const { fetchImpl } = stubFetch([
-      [
-        "/releases?per_page",
-        () => new Response(JSON.stringify([rel]), { status: 200 }),
-      ],
+    const health = await healthFor(db, [
+      asset("djdl-linux-x86_64.tar.gz"),
+      asset("djdl-arm64"),
     ]);
-
-    const health = await checkReleaseHealth(
-      env,
-      db,
-      SLUG,
-      1_700_000_100,
-      fetchImpl,
-    );
     expect(health.status).toBe("healthy");
     const ids = health.checks.map((c) => c.id);
-    expect(ids).not.toContain("dmg-arm64");
-    expect(ids).not.toContain("dmg-x86_64");
     expect(ids).not.toContain("sparkle-signature");
     expect(ids).not.toContain("sparkle-key");
   });
 
-  it("still checks DMGs when requireDmg is false but the latest release ships one", async () => {
+  it("still checks the Sparkle signature when requireDmg is false but the release ships a DMG", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db, {
       artifact_policy_json: JSON.stringify({ requireDmg: false }),
     });
-    const { env } = envFor();
-    const rel = release({
-      assets: [asset("djdl-arm64.dmg"), asset("djdl-arm64.dmg.sig")],
-    });
-    const { fetchImpl } = stubFetch([
-      [
-        "/releases?per_page",
-        () => new Response(JSON.stringify([rel]), { status: 200 }),
-      ],
+    const health = await healthFor(db, [
+      asset("djdl-arm64.dmg"),
+      asset("djdl-arm64.dmg.sig"),
     ]);
-
-    const health = await checkReleaseHealth(
-      env,
-      db,
-      SLUG,
-      1_700_000_100,
-      fetchImpl,
-    );
     expect(health.status).toBe("healthy");
-    expect(health.checks.find((c) => c.id === "dmg-arm64")?.status).toBe("ok");
-    // The missing Intel DMG is advisory, honouring requireDmg: false like the arm64 check.
-    expect(health.checks.find((c) => c.id === "dmg-x86_64")?.status).toBe(
-      "warning",
-    );
-    expect(
-      health.checks.find((c) => c.id === "sparkle-signature")?.status,
-    ).toBe("ok");
+    expect(byId(health, "sparkle-signature")?.status).toBe("ok");
+    expect(byId(health, "sparkle-key")?.status).toBe("ok");
   });
 
-  it("keeps a missing arm64 DMG as needs-setup for djdl-shaped products (no policy)", async () => {
+  it("requires a CLI only when the policy says so (any arch without architectures)", async () => {
     const db = makeTestDb();
-    await seedReleaseConfig(db);
-    const { env } = envFor();
-    const rel = release({
-      assets: [asset("djdl-arm64"), asset("djdl-x86_64")],
+    await seedReleaseConfig(db, {
+      artifact_policy_json: JSON.stringify({ requireCli: true }),
     });
-    const { fetchImpl } = stubFetch([
-      [
-        "/releases?per_page",
-        () => new Response(JSON.stringify([rel]), { status: 200 }),
-      ],
-    ]);
+    const missing = await healthFor(db, [asset("djdl-linux-x86_64.tar.gz")]);
+    expect(missing.status).toBe("needs-setup");
+    expect(byId(missing, "cli")?.status).toBe("missing");
+    expect(missing.missing).toContain("CLI asset");
 
-    const health = await checkReleaseHealth(
-      env,
-      db,
-      SLUG,
-      1_700_000_100,
-      fetchImpl,
-    );
+    const present = await healthFor(db, [asset("djdl-arm64")]);
+    expect(present.status).toBe("healthy");
+    expect(byId(present, "cli")?.status).toBe("ok");
+  });
+
+  it("scopes required checks to the policy's architectures", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      artifact_policy_json: JSON.stringify({
+        requireDmg: true,
+        requireCli: true,
+        architectures: ["arm64", "x86_64"],
+      }),
+    });
+    const health = await healthFor(db, [
+      asset("djdl-arm64.dmg"),
+      asset("djdl-arm64.dmg.sig"),
+      asset("djdl-arm64"),
+    ]);
     expect(health.status).toBe("needs-setup");
-    expect(health.checks.find((c) => c.id === "dmg-arm64")?.status).toBe(
-      "missing",
+    expect(byId(health, "dmg-arm64")?.status).toBe("ok");
+    expect(byId(health, "dmg-x86_64")?.status).toBe("missing");
+    expect(byId(health, "cli-arm64")?.status).toBe("ok");
+    expect(byId(health, "cli-x86_64")?.status).toBe("missing");
+    expect(health.missing).toEqual(
+      expect.arrayContaining(["x86_64 DMG asset", "x86_64 CLI asset"]),
     );
-    expect(health.missing).toContain("arm64 DMG asset");
   });
 
   it("requires a Sparkle key by default so appcasts fail closed", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db, { sparkle_ed25519_pub: null });
-    const { env } = envFor();
-    const rel = release({
-      assets: [
-        asset("djdl-arm64.dmg"),
-        asset("djdl-arm64"),
-        asset("djdl-x86_64"),
-      ],
-    });
-    const { fetchImpl } = stubFetch([
-      [
-        "/releases?per_page",
-        () => new Response(JSON.stringify([rel]), { status: 200 }),
-      ],
+    const health = await healthFor(db, [
+      asset("djdl-arm64.dmg"),
+      asset("djdl-arm64"),
+      asset("djdl-x86_64"),
     ]);
-
-    const health = await checkReleaseHealth(
-      env,
-      db,
-      SLUG,
-      1_700_000_100,
-      fetchImpl,
-    );
     expect(health.status).toBe("needs-setup");
-    expect(health.checks.find((c) => c.id === "sparkle-key")?.status).toBe(
-      "warning",
-    );
-    expect(
-      health.checks.find((c) => c.id === "sparkle-signature")?.status,
-    ).toBe("missing");
+    expect(byId(health, "sparkle-key")?.status).toBe("warning");
+    expect(byId(health, "sparkle-signature")?.status).toBe("missing");
     expect(health.missing).toContain("Sparkle public key");
+  });
+
+  describe("with a declared artifact map", () => {
+    it("is healthy when every declared entry is present, and checks the declared DMG's signature", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db);
+      await declareMap(db, GODOT_MAP);
+      const health = await healthFor(db, [
+        asset("Diceroll-1.2.3-macos.dmg"),
+        asset("Diceroll-1.2.3-macos.dmg.sig"),
+        asset("Diceroll-1.2.3-windows.zip"),
+        asset("Diceroll-1.2.3-linux.tar.gz"),
+      ]);
+      expect(health.status).toBe("healthy");
+      expect(health.checks.map((c) => c.id)).not.toContain("release-artifacts");
+      const mac = byId(health, "artifact-macos");
+      expect(mac?.status).toBe("ok");
+      expect(mac?.label).toBe("macos (macos universal dmg)");
+      expect(mac?.files).toEqual([
+        {
+          name: "Diceroll-1.2.3-macos.dmg",
+          platform: "macos",
+          arch: "universal",
+          format: "dmg",
+        },
+      ]);
+      expect(byId(health, "artifact-win")?.status).toBe("ok");
+      expect(byId(health, "artifact-linux")?.status).toBe("ok");
+      const sig = byId(health, "sparkle-signature");
+      expect(sig?.status).toBe("ok");
+      expect(sig?.message).toContain("Diceroll-1.2.3-macos.dmg.sig");
+    });
+
+    it("is missing, not healthy, when one declared entry is absent", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db);
+      await declareMap(db, GODOT_MAP);
+      const health = await healthFor(db, [
+        asset("Diceroll-1.2.3-macos.dmg"),
+        asset("Diceroll-1.2.3-macos.dmg.sig"),
+        asset("Diceroll-1.2.3-linux.tar.gz"),
+      ]);
+      expect(health.status).toBe("needs-setup");
+      expect(health.healthy).toBe(false);
+      const win = byId(health, "artifact-win");
+      expect(win?.status).toBe("missing");
+      expect(win?.missing).toEqual([
+        "win: file matching Diceroll-*-windows.zip",
+      ]);
+      expect(byId(health, "artifact-linux")?.status).toBe("ok");
+    });
+
+    it("names the candidates of an ambiguous entry and treats it as missing", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db);
+      await declareMap(db, GODOT_MAP);
+      const health = await healthFor(db, [
+        asset("Diceroll-1.2.3-macos.dmg"),
+        asset("Diceroll-1.2.3-macos.dmg.sig"),
+        asset("Diceroll-1.2.3-windows.zip"),
+        asset("Diceroll-1.2.3-rc-windows.zip"),
+        asset("Diceroll-1.2.3-linux.tar.gz"),
+      ]);
+      expect(health.status).toBe("needs-setup");
+      const win = byId(health, "artifact-win");
+      expect(win?.status).toBe("missing");
+      expect(win?.files?.map((f) => f.name)).toEqual([
+        "Diceroll-1.2.3-rc-windows.zip",
+        "Diceroll-1.2.3-windows.zip",
+      ]);
+      expect(win?.message).toContain("2 files match");
+    });
+
+    it("assumes no Sparkle payload beyond the map when no macOS DMG is declared", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db, {
+        artifact_policy_json: JSON.stringify({ requireDmg: false }),
+      });
+      await declareMap(db, GODOT_MAP.slice(1));
+      const health = await healthFor(db, [
+        asset("Diceroll-1.2.3-windows.zip"),
+        asset("Diceroll-1.2.3-linux.tar.gz"),
+      ]);
+      expect(health.status).toBe("healthy");
+      const ids = health.checks.map((c) => c.id);
+      expect(ids).not.toContain("sparkle-signature");
+      expect(ids).not.toContain("release-artifacts");
+    });
   });
 });
 

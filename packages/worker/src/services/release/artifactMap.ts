@@ -37,6 +37,9 @@ export interface MapClassification {
   files: Map<string, ClassifiedFile>;
   /** The builds the release carries: one per entry that matched exactly one file. */
   builds: ManifestArtifactEntry[];
+  /** Entry id → the files it matched, for every entry that matched MORE than one (and so
+   *  classified none). Release health names these candidates; nothing serves them. */
+  ambiguous: Map<string, string[]>;
 }
 
 /** True when the product declares a non-empty artifact map; otherwise sniffing applies. */
@@ -80,8 +83,10 @@ export function classifyByMap(
 
   const files = new Map<string, ClassifiedFile>();
   const builds: ManifestArtifactEntry[] = [];
+  const ambiguous = new Map<string, string[]>();
   for (const entry of app.artifacts) {
     const matched = matchesOf.get(entry.id) ?? [];
+    if (matched.length > 1) ambiguous.set(entry.id, matched);
     if (matched.length !== 1) continue; // none, or ambiguous
     const name = matched[0]!;
     builds.push(entry);
@@ -94,7 +99,7 @@ export function classifyByMap(
     if (!owner || owner.role !== "payload") continue;
     files.set(name, { ...owner, role });
   }
-  return { files, builds };
+  return { files, builds, ambiguous };
 }
 
 function fileOf(

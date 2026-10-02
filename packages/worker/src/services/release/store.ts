@@ -472,7 +472,7 @@ export function artifactKind(name: string): string {
   return "cli";
 }
 
-function artifactPlatform(kind: string, name: string): string | null {
+export function artifactPlatform(kind: string, name: string): string | null {
   if (kind === "dmg" || kind === "pkg") return "macos";
   const lower = name.toLowerCase();
   if (lower.includes("darwin") || lower.includes("macos")) return "macos";
