@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v1)                                                                                                                                                                   |
 | Size        | 1.25–1.75 engineer-weeks                                                                                                                                                         |
 | Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md), [P4-06](P4-06-client-core-packs.md) |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md)                                                                              |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md), [P4-23](P4-23-content-decision-python-swift.md)                             |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                |
 | Plan mode   | no                                                                                                                                                                               |
 | Gates       | corpus: the content corpus and `plan-matrix.json` pass in pytest (lowest and highest supported CPython) and `swift test`                                                         |

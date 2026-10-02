@@ -180,3 +180,8 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
 - The `apple_ba`, `play_pad` and `steam` transports behind P4-08's transport interface.
 - The asset-pack id convention `<pack>-c<contentApi>`.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P5-08 done`.
+
+## Plan amendments (P4-13)
+
+The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

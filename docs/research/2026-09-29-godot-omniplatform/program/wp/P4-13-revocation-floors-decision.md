@@ -3,9 +3,9 @@
 | Field       | Value                                                                                                                                                                                                                                                    |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v2)                                                                                                                                                                                                                                           |
-| Size        | 3–4 engineer-weeks                                                                                                                                                                                                                                       |
+| Size        | 2.5–3 engineer-weeks                                                                                                                                                                                                                                     |
 | Depends on  | [P4-12](P4-12-compat-resolution.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P3-08](P3-08-v4-godot.md)                                                                          |
-| Unblocks    | [P4-14](P4-14-readiness-gc-rollouts.md), [P4-15](P4-15-console-compat-matrix.md), [P4-19](P4-19-content-key-delegation.md)                                                                                                                               |
+| Unblocks    | [P4-14](P4-14-readiness-gc-rollouts.md), [P4-15](P4-15-console-compat-matrix.md), [P4-19](P4-19-content-key-delegation.md), [P4-23](P4-23-content-decision-python-swift.md), [P4-24](P4-24-content-decision-godot.md)                                    |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                    |
 | Plan mode   | yes: `program/plans/P4-13.md` is written and approved before any code                                                                                                                                                                                    |
 | Gates       | plan mode; corpus (`cases.json` feed and release-record cases, `update-matrix.json`, Swift and Godot mirrors, generated `corpus.mdx`); all SDKs; `PROTOCOL_VERSION` only if the plan says the fields were not reserved in v4; rule 10 if a route changes |
@@ -229,4 +229,9 @@ Set the status in the PR that completes the work:
 ## Plan amendments (P4-10)
 
 The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Plan amendments (P4-13)
+
+The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
