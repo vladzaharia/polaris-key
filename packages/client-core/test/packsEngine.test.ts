@@ -1,0 +1,1171 @@
+// Unit proofs for the pack install-state machine and the pipeline (plans/P4-01.md §2.13, P4-06;
+// CONTENT §9–§10). The appliers, planner and selection are pinned by the content corpus and
+// `plan-matrix.json` in the conformance runners; these pin what no corpus row can: commit and
+// the pointer swap, resume, rollback, garbage-collection roots, embedded baselines and the
+// state reload that trusts nothing it reads back.
+//
+// @pkey-feature packs.state packs.handlers
+
+import { createHash } from "node:crypto";
+import { describe, expect, it } from "vitest";
+import {
+  decode as wasmDecode,
+  decodeWithPrefix as wasmDecodeWithPrefix,
+} from "@polaris-key/zstd-wasm";
+import {
+  PackEngine,
+  PackError,
+  applyDelta,
+  bootPackOptions,
+  bootTransition,
+  commitInstall,
+  initialBootState,
+  runBootFetch,
+  type BootEvent,
+  emptyPackState,
+  gcRoots,
+  memoryPackStateStore,
+  memoryPackStorage,
+  memorySource,
+  packSetId,
+  parsePackState,
+  reloadPackState,
+  rollbackInstall,
+  serializePackState,
+  type PackEngineOptions,
+  type PackHandler,
+  type PackInstall,
+  type PackStateStore,
+  type Sha256Port,
+  type ZstdPort,
+} from "../src/index.js";
+import {
+  PRODUCT,
+  PRODUCT_TRUST,
+  PROBE_BASE,
+  PROBE_TARGET,
+  RELEASE_KEYS,
+  byteServer,
+  markerFor,
+  sha,
+  stampFor,
+  treePack,
+  type TreePack,
+} from "./packFixtures.js";
+
+const zstd: ZstdPort = {
+  pointerBits: 30,
+  decode: wasmDecode,
+  decodeWithPrefix: wasmDecodeWithPrefix,
+};
+
+/** A streaming SHA-256 that counts the bytes it is fed. */
+function countingSha256(): { port: Sha256Port; fed: () => number } {
+  let fed = 0;
+  return {
+    fed: () => fed,
+    port: () => {
+      const h = createHash("sha256");
+      return {
+        update(b) {
+          fed += b.byteLength;
+          h.update(b);
+        },
+        digest: () => h.digest("hex"),
+      };
+    },
+  };
+}
+
+let plans = 0;
+function engine(
+  o: Partial<PackEngineOptions> & {
+    server: ReturnType<typeof byteServer>;
+  },
+): PackEngine {
+  const { server, ...rest } = o;
+  return new PackEngine({
+    product: PRODUCT,
+    releaseKeys: RELEASE_KEYS,
+    productTrust: () => PRODUCT_TRUST,
+    stamp: null,
+    prefs: { engine: null, axes: {} },
+    zstd,
+    sha256: countingSha256().port,
+    patchMethods: ["zstd-patch-from"],
+    memBudget: 1 << 30,
+    storage: memoryPackStorage(),
+    state: memoryPackStateStore(),
+    fetchRecord: (h) => server.fetchRecord(h),
+    fetchObject: (r) => server.fetchObject(r),
+    now: () => 1759400000,
+    newPlanId: () => `plan-${++plans}`,
+    ...rest,
+  });
+}
+
+const v1Files = {
+  "fr/strings.json": '{"hello":"bonjour"}',
+  "fr/menu.json": '{"play":"jouer"}',
+  "probe.txt": PROBE_BASE,
+  "big.bin": "x".repeat(50000),
+};
+
+async function releases(): Promise<{
+  v1: TreePack;
+  v2: TreePack;
+  v3: TreePack;
+}> {
+  const v1 = await treePack({
+    packId: "djdl.l10n",
+    version: "1.0.0",
+    seq: 1,
+    files: v1Files,
+  });
+  const v2 = await treePack({
+    packId: "djdl.l10n",
+    version: "1.1.0",
+    seq: 2,
+    files: { ...v1Files, "fr/strings.json": '{"hello":"salut"}' },
+  });
+  const v3 = await treePack({
+    packId: "djdl.l10n",
+    version: "1.2.0",
+    seq: 3,
+    files: {
+      ...v1Files,
+      "fr/strings.json": '{"hello":"salut"}',
+      "probe.txt": PROBE_TARGET,
+      "fr/new.json": "{}",
+    },
+    from: v2,
+  });
+  return { v1, v2, v3 };
+}
+
+function treeOf(
+  storage: ReturnType<typeof memoryPackStorage>,
+  location: string,
+): Record<string, string> {
+  const t = storage.store.get(location)?.tree;
+  return Object.fromEntries([...(t ?? [])].map(([p, b]) => [p, sha(b)]));
+}
+const hashes = (files: Record<string, Uint8Array>) =>
+  Object.fromEntries(Object.entries(files).map(([p, b]) => [p, sha(b)]));
+
+describe("the probe vector fixture", () => {
+  it("is the zstd 1.5.7 --patch-from target", () => {
+    expect(sha(PROBE_TARGET)).toBe(
+      "cb0e436ee45ab5d453e18dd20612ce36c56e371dbf940bc5cabd20fd0ef27c27",
+    );
+  });
+});
+
+describe("the install-state machine (pure)", () => {
+  const install = (packId: string, n: number): PackInstall => ({
+    packId,
+    record: `r${n}`,
+    recordSha256: sha(`r${n}`),
+    version: `1.${n}.0`,
+    seq: n,
+    type: "files.tree",
+    variant: "",
+    layout: "tree",
+    payloadSha256: sha(`p${n}`),
+    payloadSize: n,
+    activation: "hot",
+    location: `${packId}/${n}`,
+    installedAt: n,
+  });
+
+  it("commit swaps the pointer and keeps the replaced install as previous; rollback restores it", () => {
+    let s = commitInstall(emptyPackState(), install("a", 1));
+    s = commitInstall(s, install("a", 2));
+    expect(s.active.a!.seq).toBe(2);
+    expect(s.previous.a!.seq).toBe(1);
+    const r = rollbackInstall(s, "a");
+    expect(r.rolledBack).toBe(true);
+    expect(r.state.active.a!.seq).toBe(1);
+    expect(r.state.previous.a).toBeUndefined();
+    expect(rollbackInstall(r.state, "a").rolledBack).toBe(false);
+  });
+
+  it("GC keeps active, previous, in-flight and embedded roots", () => {
+    let s = commitInstall(emptyPackState(), install("a", 1));
+    s = commitInstall(s, install("a", 2));
+    s = {
+      ...s,
+      inflight: {
+        b: {
+          planId: "p9",
+          packId: "b",
+          record: "x",
+          recordSha256: sha("x"),
+          variant: "",
+          strategy: "full",
+          objects: [],
+          startedAt: 0,
+        },
+      },
+    };
+    const roots = gcRoots(s, [{ location: "emb/c" }]);
+    expect([...roots.locations].sort()).toEqual(["a/1", "a/2", "emb/c"]);
+    expect([...roots.plans]).toEqual(["p9"]);
+  });
+
+  it("parses nothing it cannot read and reload keeps only what the verifier accepts", async () => {
+    expect(parsePackState("not json")).toEqual(emptyPackState());
+    expect(parsePackState(JSON.stringify({ v: 2 }))).toEqual(emptyPackState());
+    const s = commitInstall(
+      commitInstall(emptyPackState(), install("a", 1)),
+      install("b", 2),
+    );
+    const text = serializePackState(s).replace(
+      '"payloadSize":2',
+      '"payloadSize":-2',
+    );
+    const parsed = parsePackState(text);
+    expect(Object.keys(parsed.active)).toEqual(["a"]);
+    const reloaded = await reloadPackState(s, {
+      install: async (i) => i.packId === "b",
+      journal: async () => true,
+    });
+    expect(Object.keys(reloaded.active)).toEqual(["b"]);
+    expect(reloaded.bootSeq).toBe(s.bootSeq + 1);
+  });
+});
+
+describe("PackEngine: a files.tree pack through the pipeline", () => {
+  it("installs a first release by full, reports its packSetId, and keeps the index", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const e = engine({ server, storage, stamp: stampFor(v1) });
+    await e.load();
+    const progress: number[] = [];
+    e.on((p) => progress.push(p.done));
+    const [i] = await e.ensure(["djdl.l10n"]);
+    expect(i!.recordSha256).toBe(v1.recordSha256);
+    expect(i!.payloadSha256).toBe(v1.treeDigest);
+    expect(treeOf(storage, i!.location)).toEqual(hashes(v1.files));
+    expect(storage.store.get(i!.location)!.index?.files.length).toBe(4);
+    expect(e.state().running["djdl.l10n"]!.recordSha256).toBe(v1.recordSha256);
+    expect(await e.packSetId()).toBe(
+      await packSetId([
+        { packId: "djdl.l10n", releaseSha256: v1.recordSha256 },
+      ]),
+    );
+    expect(server.calls.map((c) => c.sha256)).toEqual([
+      v1.indexSha256,
+      v1.fullSha256,
+    ]);
+    expect(progress.at(-1)).toBeGreaterThan(0);
+    // Ensuring the same pin again is a no-op that fetches nothing.
+    await e.ensure(["djdl.l10n"]);
+    expect(server.calls.length).toBe(2);
+  });
+
+  it("updates by the file strategy (only the changed file's blob) and by a files delta set", async () => {
+    const { v1, v2, v3 } = await releases();
+    const server = byteServer(v1, v2, v3);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    let e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    await e.ensure(["djdl.l10n"]);
+
+    server.calls.length = 0;
+    e = engine({ server, storage, state, stamp: stampFor(v2) });
+    await e.load();
+    const [i2] = await e.ensure(["djdl.l10n"]);
+    expect(treeOf(storage, i2!.location)).toEqual(hashes(v2.files));
+    expect(server.calls.map((c) => c.sha256)).toEqual([
+      v2.indexSha256,
+      sha('{"hello":"salut"}'),
+    ]);
+
+    server.calls.length = 0;
+    // Request weight makes a two-file change cheaper by `file` than by a three-object set, so
+    // this host lists only `delta` and `full`.
+    e = engine({
+      server,
+      storage,
+      state,
+      stamp: stampFor(v3),
+      strategies: ["delta", "full"],
+    });
+    await e.load();
+    const [i3] = await e.ensure(["djdl.l10n"]);
+    expect(treeOf(storage, i3!.location)).toEqual(hashes(v3.files));
+    // The delta set: index, descriptor, data (the probe frame for probe.txt, a blob for the new file).
+    expect(
+      server.calls
+        .map((c) => c.sha256)
+        .slice(1)
+        .sort(),
+    ).toEqual(
+      [...v3.objects.keys()]
+        .filter(
+          (h) =>
+            !v2.objects.has(h) &&
+            h !== v3.indexSha256 &&
+            h !== v3.fullSha256 &&
+            h !== sha(PROBE_TARGET) &&
+            h !== sha("{}"),
+        )
+        .sort(),
+    );
+    expect(e.state().previous["djdl.l10n"]!.recordSha256).toBe(v2.recordSha256);
+    // GC: only active (v3) and previous (v2) stay.
+    expect([...storage.store.keys()].sort()).toEqual(
+      [i2!.location, i3!.location].sort(),
+    );
+    expect(storage.staging.size).toBe(0);
+  });
+
+  it("a crash after staging (before the state's pointer swap) leaves active untouched", async () => {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    let e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    const before = state.text;
+
+    // The process dies as it writes the committed state: the payload is in the store, the
+    // document on disk still has the journal and the old pointer.
+    const dying = {
+      ...state,
+      read: state.read,
+      replace: async (text: string) => {
+        const doc = JSON.parse(text) as {
+          active: Record<string, { seq: number }>;
+        };
+        if (doc.active["djdl.l10n"]?.seq === 2) throw new Error("killed");
+        await state.replace(text);
+      },
+    };
+    e = engine({ server, storage, state: dying, stamp: stampFor(v2) });
+    await e.load();
+    await expect(e.ensure(["djdl.l10n"])).rejects.toThrow("killed");
+    expect(JSON.parse(state.text!).active["djdl.l10n"].seq).toBe(1);
+    expect(state.text).not.toBe(before); // the journal was written
+
+    // Relaunch: active is still v1, the orphaned v2 payload is collected, the journal resumes.
+    e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    expect(e.state().active["djdl.l10n"]!.recordSha256).toBe(v1.recordSha256);
+    expect([...storage.store.keys()]).toEqual([i1!.location]);
+  });
+
+  it("resumes an interrupted download with Range and If-Range, re-hashing what is staged", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const hash = countingSha256();
+    let e = engine({
+      server,
+      storage,
+      state,
+      stamp: stampFor(v1),
+      sha256: hash.port,
+      checkpointBytes: 1,
+    });
+    await e.load();
+    server.cut = null;
+    // Interrupt the full object (the second object) after 1,000 bytes.
+    const orig = server.fetchObject;
+    let n = 0;
+    server.fetchObject = async (req) => {
+      if (++n === 2) server.cut = 1000;
+      return orig(req);
+    };
+    await expect(e.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "network-error",
+    });
+    const journal = JSON.parse(state.text!).inflight["djdl.l10n"];
+    expect(
+      journal.objects.find(
+        (o: { sha256: string }) => o.sha256 === v1.fullSha256,
+      ).done,
+    ).toBe(1000);
+
+    server.fetchObject = orig;
+    server.calls.length = 0;
+    const relaunch = countingSha256();
+    e = engine({
+      server,
+      storage,
+      state,
+      stamp: stampFor(v1),
+      sha256: relaunch.port,
+    });
+    await e.load();
+    expect(e.state().inflight["djdl.l10n"]).toBeDefined();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    expect(treeOf(storage, i!.location)).toEqual(hashes(v1.files));
+    const resumed = server.calls.find((c) => c.sha256 === v1.fullSha256)!;
+    expect(resumed).toEqual({
+      sha256: v1.fullSha256,
+      offset: 1000,
+      ifRange: `"${v1.fullSha256}"`,
+    });
+    // The 1,000 staged bytes were hashed again on resume.
+    expect(relaunch.fed()).toBeGreaterThanOrEqual(1000 + v1.size);
+  });
+
+  it("refetches from the start when the staged prefix no longer hashes", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    let e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const orig = server.fetchObject;
+    let n = 0;
+    server.fetchObject = async (req) => {
+      if (++n === 2) server.cut = 1000;
+      return orig(req);
+    };
+    await expect(e.ensure(["djdl.l10n"])).rejects.toBeInstanceOf(PackError);
+    server.fetchObject = orig;
+    // Corrupt the staged prefix: it must not be trusted.
+    for (const objs of storage.staging.values()) {
+      const b = objs.get(v1.fullSha256);
+      if (b) b[0] = b[0]! ^ 1;
+    }
+    server.calls.length = 0;
+    e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    expect(treeOf(storage, i!.location)).toEqual(hashes(v1.files));
+    expect(
+      server.calls
+        .filter((c) => c.sha256 === v1.fullSha256)
+        .map((c) => c.offset),
+    ).toEqual([1000, 0]);
+  });
+
+  it("rolls back to previous, and a hot handler is deactivated and activated", async () => {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const events: string[] = [];
+    const handler: PackHandler = {
+      type: "files.tree",
+      layout: "tree",
+      activation: "hot",
+      supports: (fv) => fv === 1,
+      activate: (i) => void events.push(`on ${i.version}`),
+      deactivate: (i) => void events.push(`off ${i.version}`),
+    };
+    let e = engine({
+      server,
+      storage,
+      state,
+      stamp: stampFor(v1),
+      handlers: [handler],
+    });
+    await e.load();
+    await e.ensure(["djdl.l10n"]);
+    e = engine({
+      server,
+      storage,
+      state,
+      stamp: stampFor(v2),
+      handlers: [handler],
+    });
+    await e.load();
+    await e.ensure(["djdl.l10n"]);
+    expect(await e.rollback("djdl.l10n")).toBe(true);
+    expect(e.state().active["djdl.l10n"]!.version).toBe("1.0.0");
+    expect(e.state().running["djdl.l10n"]!.version).toBe("1.0.0");
+    expect(events).toEqual([
+      "on 1.0.0",
+      "on 1.0.0",
+      "off 1.0.0",
+      "on 1.1.0",
+      "off 1.1.0",
+      "on 1.0.0",
+    ]);
+    expect(await e.rollback("djdl.l10n")).toBe(false);
+    await e.confirm();
+    expect(JSON.parse(state.text!).confirmedBootSeq).toBe(e.state().bootSeq);
+  });
+
+  it("uses a verified embedded baseline as installed state and keeps it as a GC root", async () => {
+    const { v1 } = await releases();
+    const other = await treePack({
+      packId: "djdl.extra",
+      version: "1.0.0",
+      seq: 1,
+      files: { "a.txt": "a" },
+    });
+    const server = byteServer(v1, other);
+    const storage = memoryPackStorage();
+    storage.store.set("embedded/djdl.l10n", {
+      layout: "tree",
+      tree: new Map(Object.entries(v1.files)),
+      index: null,
+    });
+    const baseline = {
+      marker: markerFor(v1),
+      payload: { kind: "tree" as const, treeDigest: v1.treeDigest },
+      location: "embedded/djdl.l10n",
+    };
+    const e = engine({ server, storage, stamp: stampFor(v1, other) });
+    expect((await e.load([baseline])).refused).toEqual([]);
+    const [i] = await e.ensure(["djdl.l10n"]);
+    expect(i!.embedded).toBe(true);
+    expect(server.calls.length).toBe(0);
+    // Installing another pack runs garbage collection; the embedded payload is a root.
+    await e.ensure(["djdl.extra"]);
+    expect(storage.store.has("embedded/djdl.l10n")).toBe(true);
+    expect(await e.packSetId()).toBe(
+      await packSetId([
+        { packId: "djdl.l10n", releaseSha256: v1.recordSha256 },
+        { packId: "djdl.extra", releaseSha256: other.recordSha256 },
+      ]),
+    );
+
+    // A marker whose bytes do not match, or whose release the stamp does not pin, is refused.
+    const v2 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.1.0",
+      seq: 2,
+      files: { a: "b" },
+    });
+    const bad = await engine({ server, storage, stamp: stampFor(v1) }).load([
+      { ...baseline, payload: { kind: "tree", treeDigest: v2.treeDigest } },
+    ]);
+    expect(bad.refused).toEqual([
+      { location: "embedded/djdl.l10n", step: "payload" },
+    ]);
+    const unpinned = await engine({
+      server,
+      storage,
+      stamp: stampFor(v2),
+    }).load([baseline]);
+    expect(unpinned.refused).toEqual([
+      { location: "embedded/djdl.l10n", step: "pin" },
+    ]);
+    const forged = await engine({ server, storage, stamp: stampFor(v1) }).load([
+      { ...baseline, marker: markerFor(v1).replace('"1.0.0"', '"1.0.1"') },
+    ]);
+    expect(forged.refused).toEqual([
+      { location: "embedded/djdl.l10n", step: "cross-check" },
+    ]);
+  });
+
+  it("re-verifies the stored state on load and drops what fails", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    // A forged record JWS in the stored state.
+    state.text = state.text!.replace(v1.jws, v1.jws.slice(0, -4) + "AAAA");
+    const e2 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e2.load();
+    expect(e2.state().active["djdl.l10n"]).toBeUndefined();
+    expect(storage.store.has(i!.location)).toBe(false);
+    // A payload that changed on disk is dropped too.
+    const state3 = memoryPackStateStore();
+    const e3 = engine({ server, storage, state: state3, stamp: stampFor(v1) });
+    await e3.load();
+    const [j] = await e3.ensure(["djdl.l10n"]);
+    storage.store
+      .get(j!.location)!
+      .tree!.set("fr/menu.json", new TextEncoder().encode("{}"));
+    const e4 = engine({ server, storage, state: state3, stamp: stampFor(v1) });
+    await e4.load();
+    expect(e4.state().active["djdl.l10n"]).toBeUndefined();
+  });
+
+  it("refuses with typed codes: no stamp, unpinned, unknown type, entitlement, forged record", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const noStamp = engine({ server });
+    await noStamp.load();
+    await expect(noStamp.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "not-configured",
+    });
+    const e = engine({ server, stamp: stampFor(v1) });
+    await e.load();
+    await expect(e.ensure(["djdl.other"])).rejects.toMatchObject({
+      code: "pack-not-pinned",
+    });
+
+    const table = await treePack({
+      packId: "djdl.table",
+      version: "1.0.0",
+      seq: 1,
+      files: { a: "1" },
+      type: "l10n.table",
+    });
+    const t = engine({ server: byteServer(table), stamp: stampFor(table) });
+    await t.load();
+    await expect(t.ensure(["djdl.table"])).rejects.toMatchObject({
+      code: "pack-type-unsupported",
+    });
+
+    const paid = await treePack({
+      packId: "djdl.hd",
+      version: "1.0.0",
+      seq: 1,
+      files: { a: "1" },
+      entitlement: "hd",
+    });
+    const p = engine({
+      server: byteServer(paid),
+      stamp: stampFor(paid),
+      entitlements: () => new Set(["other"]),
+    });
+    await p.load();
+    await expect(p.ensure(["djdl.hd"])).rejects.toMatchObject({
+      code: "pack-not-entitled",
+    });
+    const p2 = engine({
+      server: byteServer(paid),
+      stamp: stampFor(paid),
+      entitlements: () => new Set(["hd"]),
+    });
+    await p2.load();
+    await expect(p2.ensure(["djdl.hd"])).resolves.toHaveLength(1);
+
+    const forged = byteServer(v1);
+    forged.fetchRecord = async () => ({ ok: true, body: v1.jws + "x" });
+    const f = engine({ server: forged, stamp: stampFor(v1) });
+    await f.load();
+    await expect(f.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "record-rejected",
+      detail: "hash",
+    });
+  });
+
+  it("registerHandler validates its handler", () => {
+    const e = engine({ server: byteServer() });
+    expect(() =>
+      e.registerHandler({ type: "x" } as unknown as PackHandler),
+    ).toThrow(PackError);
+  });
+});
+
+describe("applyDelta and rule 5 (a base that starts with the dictionary magic)", () => {
+  it("is refused before any decoder sees it", async () => {
+    let called = false;
+    const spy: ZstdPort = {
+      pointerBits: 31,
+      decode: () => new Uint8Array(),
+      decodeWithPrefix: () => {
+        called = true;
+        return new Uint8Array();
+      },
+    };
+    const base = new Uint8Array([0x37, 0xa4, 0x30, 0xec, 1, 2, 3]);
+    const frame = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd, 0x20, 0x05, 0, 0]);
+    const variant = {
+      variant: {},
+      payload: { size: 5, sha256: sha("hello") },
+      full: { sha256: sha("f"), bytes: 1, size: 5, codec: "zstd" },
+      files: {
+        format: "pkey-files/1",
+        layout: "container",
+        sha256: sha("i"),
+        bytes: 1,
+        size: 1,
+        codec: "zstd",
+      },
+      deltas: [
+        {
+          method: "zstd-patch-from",
+          scope: "payload" as const,
+          from: sha(base),
+          memBytes: 64,
+          artifact: { sha256: sha(frame), bytes: frame.byteLength },
+        },
+      ],
+    };
+    const r = await applyDelta(variant, 0, memorySource(base), {
+      objects: async () => memorySource(frame),
+      zstd: spy,
+    });
+    expect(r.verdict).toEqual({ ok: false, error: "delta-apply-failed" });
+    expect(called).toBe(false);
+  });
+});
+
+describe("the stage machine's host side (plans/P4-01.md §2.10)", () => {
+  async function toFetch(stamp: ReturnType<typeof stampFor>) {
+    let state = initialBootState(bootPackOptions(stamp));
+    const emits: string[] = [];
+    const send = (event: BootEvent) => {
+      const t = bootTransition(state, event);
+      state = t.state;
+      for (const e of t.emits)
+        emits.push(e.type === "blocked" ? `blocked:${e.reason}` : e.type);
+    };
+    for (const e of [
+      { type: "start" },
+      { type: "shell.done" },
+      { type: "guard.done", result: "ok" },
+      { type: "sync.done", result: "ok" },
+      { type: "gate.status", status: "ok" },
+      { type: "decide.done", decision: "none" },
+    ] as BootEvent[])
+      send(e);
+    return { send, emits, state: () => state };
+  }
+
+  it("asks on a metered network, downloads with progress and reaches ready", async () => {
+    const { v1 } = await releases();
+    const stamp = stampFor(v1);
+    const e = engine({ server: byteServer(v1), stamp });
+    await e.load();
+    const boot = await toFetch(stamp);
+    expect(boot.state().stage).toBe("fetch");
+    let asked = 0;
+    const r = await runBootFetch(e, {
+      stamp,
+      send: boot.send,
+      metered: true,
+      answer: async (bytes) => {
+        asked = bytes;
+        return true;
+      },
+    });
+    expect(r).toEqual({ result: "ok", installed: ["djdl.l10n"] });
+    expect(asked).toBeGreaterThan(0);
+    expect(boot.state().stage).toBe("mount");
+    boot.send({ type: "mount.done" });
+    expect(boot.state().outcome).toBe("ready");
+    expect(boot.emits).toContain("consent_needed");
+    expect(
+      boot.emits.filter((x) => x === "fetch_progress").length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("a declined required download blocks with content-declined, never error", async () => {
+    const { v1 } = await releases();
+    const stamp = stampFor(v1);
+    const e = engine({ server: byteServer(v1), stamp });
+    await e.load();
+    const boot = await toFetch(stamp);
+    const r = await runBootFetch(e, {
+      stamp,
+      send: boot.send,
+      consent: "always",
+      answer: async () => false,
+    });
+    expect(r.result).toBe("declined");
+    expect(boot.state().stage).toBe("blocked");
+    expect(boot.emits).toContain("blocked:content-declined");
+  });
+
+  it("an unreachable byte server is offline; essential-only content can still play", async () => {
+    const { v1 } = await releases();
+    const stamp = {
+      ...stampFor(v1),
+      expects: [{ pack: "djdl.l10n", required: false, delivery: "essential" }],
+    };
+    const server = byteServer(v1);
+    server.fetchObject = async () => {
+      throw new Error("offline");
+    };
+    const e = engine({ server, stamp });
+    await e.load();
+    const boot = await toFetch(stamp);
+    const r = await runBootFetch(e, {
+      stamp,
+      send: boot.send,
+      consent: "never",
+    });
+    expect(r).toEqual({ result: "offline", installed: [] });
+    expect(boot.state()).toMatchObject({
+      stage: "offline",
+      canPlayOffline: true,
+    });
+  });
+});
+
+describe("PackEngine: a load never loses what it could not judge", () => {
+  it("holds a torn state document aside and collects nothing until recoverState()", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    const torn = state.text!.slice(0, 20);
+    state.text = torn;
+
+    const e2 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e2.load();
+    expect(e2.state().stateIssue).toBe("torn");
+    expect(state.torn).toBe(torn);
+    expect(storage.store.has(i!.location)).toBe(true);
+
+    // The second load: the replaced document parses, the torn one is still held, still no GC.
+    const e3 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e3.load();
+    expect(e3.state().stateIssue).toBe("torn");
+    expect(storage.store.has(i!.location)).toBe(true);
+    // Installing again is allowed (the content-addressed payload is reused), and recovery
+    // resumes collection.
+    await e3.ensure(["djdl.l10n"]);
+    await e3.recoverState();
+    expect(state.torn).toBeNull();
+    expect(e3.state().stateIssue).toBeNull();
+    expect(e3.state().active["djdl.l10n"]!.location).toBe(i!.location);
+    expect(storage.store.has(i!.location)).toBe(true);
+  });
+
+  it("keeps an install whose check threw, out of use, and restores it on the next load", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    const flaky = {
+      ...storage,
+      verify: async () => {
+        throw new Error("EIO");
+      },
+    };
+    const e2 = engine({ server, storage: flaky, state, stamp: stampFor(v1) });
+    await e2.load();
+    expect(e2.state().active["djdl.l10n"]).toBeUndefined();
+    expect(e2.state().running["djdl.l10n"]).toBeUndefined();
+    expect(storage.store.has(i!.location)).toBe(true);
+    expect(JSON.parse(state.text!).active["djdl.l10n"].location).toBe(
+      i!.location,
+    );
+
+    // The second load, with the disk readable again: the install is back.
+    const e3 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e3.load();
+    expect(e3.state().active["djdl.l10n"]!.recordSha256).toBe(v1.recordSha256);
+    expect(e3.state().running["djdl.l10n"]).toBeDefined();
+  });
+
+  it("writes nothing and installs nothing when the state cannot be read", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    const before = state.text;
+    const broken = {
+      ...state,
+      read: async (): Promise<string | null> => {
+        throw new Error("EACCES");
+      },
+    };
+    const e2 = engine({ server, storage, state: broken, stamp: stampFor(v1) });
+    await e2.load();
+    expect(e2.state().stateIssue).toBe("unreadable");
+    await expect(e2.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-state-unreadable",
+    });
+    expect(state.text).toBe(before);
+    expect(storage.store.has(i!.location)).toBe(true);
+
+    // The second load, readable again: nothing was lost.
+    const e3 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e3.load();
+    expect(e3.state().active["djdl.l10n"]!.location).toBe(i!.location);
+  });
+
+  it("a no-op commit over the embedded copy stays embedded", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    // An active install of another release makes the embedded copy a planner seed, so the
+    // plan for the pinned release is a no-op commit over the embedded location.
+    const other = await treePack({
+      packId: "djdl.l10n",
+      version: "0.9.0",
+      seq: 1,
+      files: { "a.txt": "a" },
+    });
+    const state = memoryPackStateStore();
+    const first = engine({
+      server: byteServer(other),
+      storage,
+      state,
+      stamp: stampFor(other),
+    });
+    await first.load();
+    await first.ensure(["djdl.l10n"]);
+    // The app updates to a build that embeds v1 (in its own resources, never the store).
+    storage.store.set("embedded/djdl.l10n", {
+      layout: "tree",
+      tree: new Map(Object.entries(v1.files)),
+      index: null,
+    });
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load([
+      {
+        marker: markerFor(v1),
+        payload: { kind: "tree", treeDigest: v1.treeDigest },
+        location: "embedded/djdl.l10n",
+      },
+    ]);
+    const [i] = await e.ensure(["djdl.l10n"]);
+    expect(i!.location).toBe("embedded/djdl.l10n");
+    expect(i!.embedded).toBe(true);
+    expect(JSON.parse(state.text!).active["djdl.l10n"].embedded).toBe(true);
+  });
+
+  it("refuses an index over the size limit before staging a byte of it", async () => {
+    const big = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+      indexBytes: 33554433,
+    });
+    const server = byteServer(big);
+    const e = engine({ server, stamp: stampFor(big) });
+    await e.load();
+    // A tree whose index is not readable here is not a usable variant (plans/P4-01.md §2.9), so
+    // it is refused before anything is fetched; a container's optional index is simply skipped.
+    await expect(e.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-no-variant",
+    });
+    expect(server.calls).toEqual([]);
+  });
+});
+
+describe("PackEngine: round-2 state safety", () => {
+  it("keeps a previous whose check threw, across two loads", async () => {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    let e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    e = engine({ server, storage, state, stamp: stampFor(v2) });
+    await e.load();
+    await e.ensure(["djdl.l10n"]);
+    const flakyPrev = {
+      ...storage,
+      verify: async (i: PackInstall) => {
+        if (i.location === i1!.location) throw new Error("EIO");
+        return storage.verify(i);
+      },
+    };
+    for (let n = 0; n < 2; n++) {
+      const f = engine({
+        server,
+        storage: flakyPrev,
+        state,
+        stamp: stampFor(v2),
+      });
+      await f.load();
+      expect(f.state().previous["djdl.l10n"]).toBeUndefined();
+      expect(JSON.parse(state.text!).previous["djdl.l10n"].location).toBe(
+        i1!.location,
+      );
+      expect(storage.store.has(i1!.location)).toBe(true);
+    }
+    const ok = engine({ server, storage, state, stamp: stampFor(v2) });
+    await ok.load();
+    expect(ok.state().previous["djdl.l10n"]!.version).toBe("1.0.0");
+    expect(await ok.rollback("djdl.l10n")).toBe(true);
+  });
+
+  it("a fresh commit carries a deferred active over as previous, re-verified at rollback", async () => {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    let broken = true;
+    const flaky = {
+      ...storage,
+      verify: async (i: PackInstall) => {
+        if (broken && i.location === i1!.location) throw new Error("EIO");
+        return storage.verify(i);
+      },
+    };
+    const f = engine({ server, storage: flaky, state, stamp: stampFor(v2) });
+    await f.load();
+    await f.ensure(["djdl.l10n"]);
+    expect(f.state().previous["djdl.l10n"]!.location).toBe(i1!.location);
+    // Still unreadable: the rollback refuses rather than switch to unverified bytes.
+    expect(await f.rollback("djdl.l10n")).toBe(false);
+    broken = false;
+    expect(await f.rollback("djdl.l10n")).toBe(true);
+    expect(f.state().active["djdl.l10n"]!.version).toBe("1.0.0");
+  });
+
+  it("a custom store without the quarantine members treats a torn document as unreadable", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const good = memoryPackStateStore();
+    const e = engine({ server, storage, state: good, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    let text: string | null = good.text!.slice(0, 15);
+    const minimal = {
+      read: async () => text,
+      replace: async (t: string) => {
+        text = t;
+      },
+    } as unknown as PackStateStore;
+    const events: string[] = [];
+    const f = engine({ server, storage, state: minimal, stamp: stampFor(v1) });
+    f.on((p) => events.push(`${p.phase}:${p.issue ?? ""}`));
+    await f.load();
+    expect(f.state().stateIssue).toBe("unreadable");
+    expect(events).toEqual(["state-issue:unreadable"]);
+    expect(text).toBe(good.text!.slice(0, 15));
+    expect(storage.store.has(i!.location)).toBe(true);
+    await expect(f.estimate(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-state-unreadable",
+    });
+    await expect(f.confirm()).rejects.toMatchObject({
+      code: "pack-state-unreadable",
+    });
+  });
+
+  it("a custom store with the quarantine members holds a torn document", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const good = memoryPackStateStore();
+    const e = engine({ server, storage, state: good, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    let text: string | null = good.text!.slice(0, 15);
+    let aside: string | null = null;
+    const custom: PackStateStore = {
+      read: async () => text,
+      replace: async (t) => {
+        text = t;
+      },
+      quarantine: async (t) => {
+        aside ??= t;
+      },
+      quarantined: async () => aside !== null,
+      clearQuarantine: async () => {
+        aside = null;
+      },
+    };
+    const f = engine({ server, storage, state: custom, stamp: stampFor(v1) });
+    await f.load();
+    expect(f.state().stateIssue).toBe("torn");
+    expect(aside).toBe(good.text!.slice(0, 15));
+    expect(storage.store.has(i!.location)).toBe(true);
+  });
+
+  it("bounds the torn hold: what existed is kept, what the held process leaves is collected", async () => {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    let e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    state.text = state.text!.slice(0, 15);
+    storage.staging.set("old-orphan", new Map());
+    e = engine({ server, storage, state, stamp: stampFor(v2) });
+    await e.load();
+    expect(e.state().stateIssue).toBe("torn");
+    // Garbage this process creates during the hold is not protected by it.
+    storage.staging.set("new-orphan", new Map());
+    storage.store.set("djdl.l10n/new-orphan", {
+      layout: "tree",
+      tree: new Map(),
+      index: null,
+    });
+    await e.ensure(["djdl.l10n"]);
+    expect(storage.store.has(i1!.location)).toBe(true);
+    expect(storage.staging.has("old-orphan")).toBe(true);
+    expect(storage.staging.has("new-orphan")).toBe(false);
+    expect(storage.store.has("djdl.l10n/new-orphan")).toBe(false);
+  });
+});
+
+describe("PackEngine: the torn hold's snapshot (round 3)", () => {
+  async function tornSetup() {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    state.text = state.text!.slice(0, 15);
+    return { v1, v2, server, storage, state, i1: i1! };
+  }
+  const later = {
+    layout: "tree",
+    tree: new Map<string, Uint8Array>(),
+    index: null,
+  };
+
+  it("a listing that errors holds GC entirely", async () => {
+    const { v2, server, storage, state, i1 } = await tornSetup();
+    const failing = {
+      ...storage,
+      list: async () => Promise.reject(new Error("EACCES")),
+    };
+    const e = engine({ server, storage: failing, state, stamp: stampFor(v2) });
+    await e.load();
+    storage.store.set("djdl.l10n/new-orphan", later);
+    await e.ensure(["djdl.l10n"]);
+    expect(storage.store.has(i1.location)).toBe(true);
+    expect(storage.store.has("djdl.l10n/new-orphan")).toBe(true);
+  });
+
+  it("saves the first snapshot and reuses it on later loads, so the store stays bounded", async () => {
+    const { v1, server, storage, state, i1 } = await tornSetup();
+    await engine({ server, storage, state, stamp: stampFor(v1) }).load();
+    expect(JSON.parse(state.holdList!).locations).toEqual([i1.location]);
+    // Between restarts something unnamed appears: the saved snapshot does not protect it.
+    storage.store.set("djdl.l10n/later", later);
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    expect(e.state().stateIssue).toBe("torn");
+    expect(storage.store.has(i1.location)).toBe(true);
+    expect(storage.store.has("djdl.l10n/later")).toBe(false);
+    await e.recoverState();
+    expect(state.holdList).toBeNull();
+  });
+
+  it("an unreadable saved snapshot holds GC entirely", async () => {
+    const { v1, server, storage, state, i1 } = await tornSetup();
+    await engine({ server, storage, state, stamp: stampFor(v1) }).load();
+    storage.store.set("djdl.l10n/later", later);
+    const broken = {
+      ...state,
+      readHoldList: async (): Promise<string | null> => {
+        throw new Error("EIO");
+      },
+    };
+    await engine({
+      server,
+      storage,
+      state: broken,
+      stamp: stampFor(v1),
+    }).load();
+    expect(storage.store.has(i1.location)).toBe(true);
+    expect(storage.store.has("djdl.l10n/later")).toBe(true);
+  });
+});

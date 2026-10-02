@@ -116,6 +116,9 @@ export const ErrorCode = {
   planNoStrategy: "plan-no-strategy",
   packNoVariant: "pack-no-variant",
   packTypeUnsupported: "pack-type-unsupported",
+  packNotPinned: "pack-not-pinned",
+  packNotEntitled: "pack-not-entitled",
+  packStateUnreadable: "pack-state-unreadable",
   markerRejected: "marker-rejected",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -231,6 +234,9 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "plan-no-strategy",
   "pack-no-variant",
   "pack-type-unsupported",
+  "pack-not-pinned",
+  "pack-not-entitled",
+  "pack-state-unreadable",
   "marker-rejected",
 ];
 
@@ -348,6 +354,9 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "plan-no-strategy": "client",
   "pack-no-variant": "client",
   "pack-type-unsupported": "client",
+  "pack-not-pinned": "client",
+  "pack-not-entitled": "client",
+  "pack-state-unreadable": "client",
   "marker-rejected": "client",
 };
 
@@ -1222,16 +1231,16 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "update.driver": { status: "planned", service: "update", na: [] },
   "update.bootguard": { status: "planned", service: "update", na: [] },
   "outlet.detect": { status: "implemented", service: "update", na: [] },
-  "packs.record": { status: "planned", service: "release", na: [] },
-  "packs.plan": { status: "planned", service: "release", na: [] },
-  "packs.index.files": { status: "planned", service: "release", na: [] },
+  "packs.record": { status: "implemented", service: "release", na: [] },
+  "packs.plan": { status: "implemented", service: "release", na: [] },
+  "packs.index.files": { status: "implemented", service: "release", na: [] },
   "packs.index.chunks": { status: "planned", service: "release", na: [] },
-  "packs.apply.full": { status: "planned", service: "release", na: [] },
-  "packs.apply.file": { status: "planned", service: "release", na: [] },
+  "packs.apply.full": { status: "implemented", service: "release", na: [] },
+  "packs.apply.file": { status: "implemented", service: "release", na: [] },
   "packs.apply.chunk": { status: "planned", service: "release", na: [] },
-  "packs.apply.delta": { status: "planned", service: "release", na: [] },
-  "packs.state": { status: "planned", service: "release", na: [] },
-  "packs.handlers": { status: "planned", service: "release", na: [] },
+  "packs.apply.delta": { status: "implemented", service: "release", na: [] },
+  "packs.state": { status: "implemented", service: "release", na: [] },
+  "packs.handlers": { status: "implemented", service: "release", na: [] },
   "packs.provides": { status: "planned", service: "release", na: [] },
   "packs.transport.apple": {
     status: "na",
@@ -1280,4 +1289,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "2a375d00f8bf4459f8676a0750691e671e72029abe3d808c537dcd54792797d1";
+  "7ca401fd75256af3b964e54e751309f6b8aabf1f276f818828b5b47a6f8470d0";

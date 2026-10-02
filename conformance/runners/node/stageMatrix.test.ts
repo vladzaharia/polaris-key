@@ -1,4 +1,4 @@
-// @pkey-feature ui.stages
+// @pkey-feature ui.stages packs.state
 // The Node conformance runner for `conformance/corpus/v2/stage-matrix.json`: the boot stage
 // machine of `@polaris-key/client-core/stages`. It covers React too, since both JS SDKs drive
 // the same `client-core`. The Python (`sdks/python/tests/test_stage_matrix.py`) and Swift

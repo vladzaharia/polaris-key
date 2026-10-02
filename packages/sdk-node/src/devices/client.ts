@@ -70,6 +70,8 @@ export class DevicesClient {
   private readonly probes: ProbeDeclaration[];
   private readonly fingerprintEnabled: boolean;
   private readonly caps?: () => string[];
+  /** The active pack set's id for the report's `content` (P4-06), set by the facade. */
+  packSetId: () => Promise<string | null> = async () => null;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -201,10 +203,11 @@ export class DevicesClient {
   async report(): Promise<boolean> {
     const token = this.tokens.current;
     if (!token) return false;
+    const packSetId = await this.packSetId().catch(() => null);
     return reportSnapshot(
       this.ctx,
       token,
-      buildSnapshot(this.cache, this.probes, this.caps?.()),
+      buildSnapshot(this.cache, this.probes, this.caps?.(), packSetId),
     );
   }
 

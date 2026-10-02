@@ -658,6 +658,24 @@
       "description": "A pack record's `type` is one this SDK cannot hold (v1: `files.tree` everywhere, `godot.pck` in Godot), so the pack is unusable (plans/P4-01.md §2.2)."
     },
     {
+      "code": "pack-not-pinned",
+      "kind": "client",
+      "service": "update",
+      "description": "`update.packs.ensure` named a pack the running build's content stamp does not pin, so there is no release to install (plans/P4-01.md §2.8: the stamp is the only source of pins in v1)."
+    },
+    {
+      "code": "pack-not-entitled",
+      "kind": "client",
+      "service": "update",
+      "description": "A pinned pack record carries an `entitlement` the device's licence does not grant, so the pack is left out of the plan (plans/P4-01.md §2.3; CONTENT §6.7 item 9)."
+    },
+    {
+      "code": "pack-state-unreadable",
+      "kind": "client",
+      "service": "update",
+      "description": "The pack install state could not be read (an I/O error, not a missing file), so the pack pipeline refuses to write it or install anything this process: an install recorded over an unread state could lose the installs it holds."
+    },
+    {
       "code": "marker-rejected",
       "kind": "client",
       "service": "release",

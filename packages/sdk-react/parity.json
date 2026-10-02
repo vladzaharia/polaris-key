@@ -137,20 +137,40 @@
       "status": "implemented",
       "note": "client-core's detectOutlet, re-exported; the browser adapter reads the page's display mode (readOutletSignals) and detects over the synthesised web stamp when the host names no outlet. The desktop adapter defers to the host (Node's detection)."
     },
-    "packs.record": { "status": "planned", "wp": "P4-06" },
-    "packs.plan": { "status": "planned", "wp": "P4-06" },
-    "packs.index.files": { "status": "planned", "wp": "P4-06" },
+    "packs.record": {
+      "status": "implemented",
+      "note": "client-core verifyReleaseRecord with pin.kind and verifyMarker; the Node and Chromium runners drive every packRecordCases and markerCases vector."
+    },
+    "packs.plan": {
+      "status": "implemented",
+      "note": "client-core plan, selectVariant and planTarget; every plan-matrix.json row and case in the Node and Chromium runners."
+    },
+    "packs.index.files": {
+      "status": "implemented",
+      "note": "client-core parseFilesIndex, checkPaths and treeDigest; filesIndexCases in Chromium through @polaris-key/zstd-wasm's browser entry."
+    },
     "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
-    "packs.apply.full": { "status": "planned", "wp": "P4-06" },
-    "packs.apply.file": { "status": "planned", "wp": "P4-06" },
+    "packs.apply.full": {
+      "status": "implemented",
+      "note": "client-core applyFull; applyCases in Chromium under the WASM decoder."
+    },
+    "packs.apply.file": {
+      "status": "implemented",
+      "note": "client-core applyFile with the type-neutral container rebuild; applyCases in Chromium under the WASM decoder."
+    },
     "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
     "packs.apply.delta": {
-      "status": "planned",
-      "wp": "P4-06",
-      "note": "The WASM decoder in P4-06; dcz in Chromium in P4-18."
+      "status": "implemented",
+      "note": "@polaris-key/zstd-wasm's browser entry (wasm32, P = 30, memBudget at most 2^30); the window check runs in the applier. dcz in Chromium is P4-18."
     },
-    "packs.state": { "status": "planned", "wp": "P4-06" },
-    "packs.handlers": { "status": "planned", "wp": "P4-06" },
+    "packs.state": {
+      "status": "implemented",
+      "note": "createBrowserPacks (update.packs) over client-core's PackEngine: OPFS staging and store (or an explicit in-memory store), journal, Range/If-Range resume, re-verified reload, confirm, rollback, GC roots; packSetId() for the host (a browser cannot post devices/report)."
+    },
+    "packs.handlers": {
+      "status": "implemented",
+      "note": "update.packs.registerHandler; files.tree built in."
+    },
     "packs.provides": { "status": "planned", "wp": "P4-20" },
     "packs.transport.apple": {
       "status": "na",

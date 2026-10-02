@@ -1307,7 +1307,7 @@
       "optional": false,
       "refs": ["CONTENT §8.1 §10 §13", "notes/A7 §4 §11.4"],
       "brief": "wp/P4-06-client-core-packs.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-07",

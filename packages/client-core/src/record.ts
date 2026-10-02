@@ -361,6 +361,9 @@ export async function recordHash(jws: string): Promise<string> {
 
 /** What a target pins, for the cross-check (step 15). */
 export interface ReleaseRecordPin {
+  /** The record kind the pin names: `app` when absent (a feed target), `pack` for a content
+   *  pin (plans/P4-01.md §2.6). */
+  kind?: string;
   deliverable: string;
   version: string;
   seq: number;
@@ -434,7 +437,8 @@ const fail = (step: ReleaseRecordStep): VerifyReleaseRecordResult => ({
  *  13. the key is selected by `kid` from `releaseKeys` only, refused if its raw bytes are also
  *      in `productTrust`, then `verifyJws` with that one key and `typ` `pkey-release+jws`;
  *  14. the claims (`releaseRecordClaims`);
- *  15. with a `pin`: `kind` is `app`, and `deliverable`, `version` and `seq` equal the pin's.
+ *  15. with a `pin`: `kind` equals the pin's `kind` (`app` when the pin names none), and
+ *      `deliverable`, `version` and `seq` equal the pin's (plans/P4-01.md §2.6).
  *
  * Never throws.
  */
@@ -477,7 +481,10 @@ export async function verifyReleaseRecord(
     // 15. The cross-check against the pin.
     const pin = opts.pin;
     if (pin) {
-      if (record.kind !== "app" || record.deliverable !== pin.deliverable)
+      if (
+        (record.kind as string) !== (pin.kind ?? "app") ||
+        record.deliverable !== pin.deliverable
+      )
         return fail("cross-check");
       if (record.version !== pin.version || record.seq !== pin.seq)
         return fail("cross-check");

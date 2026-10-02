@@ -1844,9 +1844,13 @@ markers. P4-21 lands the claims, the formats' parsers and the corpus; P4-02 (ing
   makes the same check itself: it decodes exactly one frame whose declared content size is the
   caller's, and with a raw-content prefix refuses a frame whose header window is above
   2^`windowLogMax` before decoding. Its workerd entry instantiates the module per decode, so no
-  decode's linear memory outlives the call. Today only the corpus generator and the conformance
-  runners call it; the Worker's index ingest (P4-02) and the browser SDK (P4-06) are its first
-  production consumers, and the SDK appliers land in P4-06 to P4-08.
+  decode's linear memory outlives the call. The corpus generator, the conformance runners, the
+  Worker's index ingest (P4-02), `@polaris-key/react`'s pack facet (its browser entry) and
+  `@polaris-key/node`'s fallback below `node:zlib`'s dictionary floor (P4-06) call it. The JS
+  appliers (`@polaris-key/client-core/packs`, P4-06) run the header check before every prefix
+  decode whichever decoder is injected, refuse a base that starts with the dictionary magic before
+  any decoder sees it (rule 5), and take every decoded length from a signed ref; Python, Swift and
+  Godot follow in P4-07 and P4-08.
 
 **Pack ingest (P4-02).** The Worker still signs no record: a pack record is CI-signed, and ingest
 (`services/release/packs/`) only verifies it, checks it against the pack's declaration and the

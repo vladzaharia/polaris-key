@@ -273,3 +273,34 @@ delivery access and, for a gated pack, its current gate; a pack's files are neve
 `embedded` in v1) decides where it is live. See
 [Pack bytes](/docs/services/distribution/delivery/#pack-bytes) and
 [Availability](/docs/services/distribution/availability/).
+
+## Installing packs on a device
+
+A build learns its pins from the **content stamp** (`pkey-content.json`) it ships, never from the
+network: a build without one has no packs. The SDK fetches each pinned pack record by hash,
+verifies it against the app's pinned release keys, picks the variant for the device, plans the
+cheapest way from what is installed (a delta, the changed files, or the whole payload), verifies
+every byte against the record and swaps the installed release atomically. Embedded baselines are
+verified once from their markers and then count as installed. Devices report the id of the pack
+set they run (`content.packSetId`) on `devices/report`.
+
+The install state is never trusted from storage. Every load re-verifies each pack record and
+re-hashes the active and previous payloads. When the state document itself cannot be trusted,
+the SDK reports it as `state().stateIssue` and emits a `state-issue` pack event:
+
+- **`torn`**: the document exists but does not parse (a write cut short). It is kept aside as
+  `state.json.torn`. The payloads that existed when the hold started are never collected until
+  an operator calls `recoverState()`; anything installed and later dropped during the hold is
+  collected as usual. The installs the torn document named are not recovered: `ensure`
+  reinstalls them, reusing their content-addressed payloads.
+- **`unreadable`**: the document could not be read (an I/O or permission error, not a missing
+  file). Nothing is fetched, written, installed or collected in that process: `ensure`,
+  `estimate`, `confirm` and `rollback` raise `pack-state-unreadable` until a restart can read it.
+
+A payload whose check fails with an I/O error stays in the state and on disk, out of use for that
+load, and comes back on the next load that can read it.
+
+- Node: `client.update.packs` — see the [Node SDK](/docs/build/sdks/node/).
+- Web: `createBrowserPacks` (OPFS storage) — see the [React SDK](/docs/build/sdks/react/).
+- Python, Swift and Godot follow the same reference implementation
+  (`@polaris-key/client-core/packs`) and the same conformance vectors.

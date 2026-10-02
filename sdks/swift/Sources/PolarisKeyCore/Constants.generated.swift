@@ -120,6 +120,9 @@ public enum ErrorCode {
     public static let planNoStrategy = "plan-no-strategy"
     public static let packNoVariant = "pack-no-variant"
     public static let packTypeUnsupported = "pack-type-unsupported"
+    public static let packNotPinned = "pack-not-pinned"
+    public static let packNotEntitled = "pack-not-entitled"
+    public static let packStateUnreadable = "pack-state-unreadable"
     public static let markerRejected = "marker-rejected"
 }
 
@@ -234,6 +237,9 @@ public let ERROR_CODE_VALUES: [String] = [
     "plan-no-strategy",
     "pack-no-variant",
     "pack-type-unsupported",
+    "pack-not-pinned",
+    "pack-not-entitled",
+    "pack-state-unreadable",
     "marker-rejected",
 ]
 
@@ -348,6 +354,9 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "plan-no-strategy": "client",
     "pack-no-variant": "client",
     "pack-type-unsupported": "client",
+    "pack-not-pinned": "client",
+    "pack-not-entitled": "client",
+    "pack-state-unreadable": "client",
     "marker-rejected": "client",
 ]
 
