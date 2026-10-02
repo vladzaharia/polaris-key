@@ -49,14 +49,24 @@ public struct UpdateClientOptions: Sendable, Equatable {
     /// `invalid-options` (a release key is never a product key).
     public var pinnedReleaseKeys: TrustSet
     /// Where this install came from: `.kind("app-store")`, read as `{id: kind, kind}`, or the
-    /// product's outlet id with its kind. It wins over `stamp` and `detected`. Without any of the
-    /// three the outlet is `unknown`, which is never offered an update, so THIS is the option
-    /// that turns offers on (until P3-11 detects the outlet in-process).
+    /// product's outlet id with its kind. It wins over `stamp` and `detected`. Without it the
+    /// client detects the outlet (`detect`) at its first decision; with no stamp and no attested
+    /// evidence (an App Store receipt, `AppDistributor`) the outlet is `unknown`, which is never
+    /// offered an update.
     public var outlet: HostOutlet?
-    /// The build stamp's outlet fields (P1-11), when the host ships one.
+    /// The build stamp's outlet fields (P1-11), when the host ships one, with the product's
+    /// `outletIds` that launcher signals must name.
     public var stamp: OutletStamp?
-    /// An outlet detection result, until P3-11 detects in-process.
+    /// An outlet detection result the host computed itself. When it is absent and `outlet` is
+    /// too, the client detects in-process (`detect`).
     public var detected: DetectedOutlet?
+    /// Detect the outlet when neither `outlet` nor `detected` is given: this process's signals
+    /// (`readOutletSignals`, with `AppDistributor.current` raced against a 2 s deadline) and the
+    /// stamp, through `detectOutlet`, whose result goes to `resolveUpdateOutlet` as `detected`
+    /// (plans/P3-01.md §2.9). Default true.
+    public var detect: Bool
+    /// What the readers look at; this process by default (tests pass a fake install).
+    public var outletEnvironment: OutletReaderEnvironment?
     /// The installed build's build number (informational in v4). Default: the main bundle's
     /// `CFBundleVersion`.
     public var buildNumber: String?
@@ -80,6 +90,8 @@ public struct UpdateClientOptions: Sendable, Equatable {
         outlet: HostOutlet? = nil,
         stamp: OutletStamp? = nil,
         detected: DetectedOutlet? = nil,
+        detect: Bool = true,
+        outletEnvironment: OutletReaderEnvironment? = nil,
         buildNumber: String? = UpdateClientOptions.bundleBuildNumber,
         format: String? = nil,
         methods: [String] = UpdateClientOptions.defaultMethods,
@@ -92,6 +104,8 @@ public struct UpdateClientOptions: Sendable, Equatable {
         self.outlet = outlet
         self.stamp = stamp
         self.detected = detected
+        self.detect = detect
+        self.outletEnvironment = outletEnvironment
         self.buildNumber = buildNumber
         self.format = format
         self.methods = methods
@@ -143,7 +157,9 @@ public struct ReleaseRecordCheck: Sendable, Equatable {
 /// The validated options.
 private struct ConfiguredUpdate: Sendable {
     let releaseKeys: TrustSet
-    let outlet: ResolvedOutlet
+    /// The outlet, when no detection is needed (the host named one or passed `detected`, or
+    /// turned detection off); nil until the first decision detects it.
+    let outlet: ResolvedOutlet?
     let options: UpdateClientOptions
 }
 
@@ -180,7 +196,9 @@ private func configure(_ opts: UpdateClientOptions, pinnedTrust: TrustSet) throw
     }
     guard let outlet = resolveUpdateOutlet(host: opts.outlet, stamp: opts.stamp, detected: opts.detected)
     else { throw invalidOptions("update outlet is not a valid outlet.") }
-    return ConfiguredUpdate(releaseKeys: opts.pinnedReleaseKeys, outlet: outlet, options: opts)
+    // §2.9: detection runs at every launch, at the first decision (AppDistributor is async).
+    let detects = opts.outlet == nil && opts.detected == nil && opts.detect
+    return ConfiguredUpdate(releaseKeys: opts.pinnedReleaseKeys, outlet: detects ? nil : outlet, options: opts)
 }
 
 /// Substitute `{name}` placeholders, each percent-encoded as `encodeURIComponent` does, and
@@ -222,6 +240,8 @@ public struct VersionCheck: Sendable, Equatable {
 public actor UpdateClient {
     private let core: CoreContext
     private let configured: ConfiguredUpdate?
+    /// The in-process detection, once it ran: never cached past this client (§2.9).
+    private var detection: (outlet: ResolvedOutlet, detected: DetectedOutlet?)?
     /// The v4 calls run one at a time: each is a read-modify-write of the cache slices, and the
     /// actor alone would let two interleave at their network awaits.
     private var tail: Task<Void, Never>?
@@ -239,6 +259,36 @@ public actor UpdateClient {
     public init(core: CoreContext, options: UpdateClientOptions) throws {
         self.core = core
         self.configured = try configure(options, pinnedTrust: core.pinnedTrust)
+    }
+
+    /// The outlet `decide()` uses (`resolveUpdateOutlet`'s answer), detecting it first when the
+    /// host named none; nil without update options. For support diagnostics and UI.
+    public func outlet() async -> ResolvedOutlet? {
+        guard let configured else { return nil }
+        return await resolvedOutlet(configured).outlet
+    }
+
+    /// The detection result `outlet()` was resolved from (in-process, or the host's
+    /// `detected`); nil when the host named the outlet, turned detection off, or configured no
+    /// updates.
+    public func detected() async -> DetectedOutlet? {
+        guard let configured else { return nil }
+        return await resolvedOutlet(configured).detected
+    }
+
+    private func resolvedOutlet(_ c: ConfiguredUpdate) async -> (outlet: ResolvedOutlet, detected: DetectedOutlet?) {
+        if let outlet = c.outlet { return (outlet, c.options.outlet == nil ? c.options.detected : nil) }
+        if let detection { return detection }
+        let stamp = detectionStamp(c.options.stamp)
+        let signals = await readOutletSignals(
+            c.options.outletEnvironment ?? .process(), outletIds: stamp?.outletIds ?? [:])
+        let detected = detectOutlet(stamp: stamp, signals: signals)
+        let outlet =
+            resolveUpdateOutlet(host: nil, stamp: c.options.stamp, detected: detected)
+            ?? ResolvedOutlet(id: nil, kind: OUTLET_UNKNOWN, subkind: nil)
+        let result = (outlet: outlet, detected: Optional(detected))
+        detection = result
+        return result
     }
 
     /// `GET /<p>/update/version` — the newest build, and whether we are behind it.
@@ -486,6 +536,7 @@ extension UpdateClient {
         let c = try requireKeys()
         try await core.requireService(.update)
         let installed = try installed()
+        let outlet = await resolvedOutlet(c).outlet
         let ep = try await endpoints(feed: true, record: true)
         let slices = await core.updateSlices()
         let deviceId = await core.deviceId
@@ -495,7 +546,7 @@ extension UpdateClient {
             // §2.5: the effective clock, max(system, highWaterMark) (V3 §4.2).
             now: await core.now(),
             installId: deviceId.isEmpty ? nil : deviceId, installed: installed,
-            outlet: c.outlet.outlet, subkind: c.outlet.subkind, staged: staged,
+            outlet: outlet.outlet, subkind: outlet.subkind, staged: staged,
             skipVersion: skipVersion, methods: c.options.methods, feeds: slices.feeds,
             releaseRecords: slices.releaseRecords)
         let feedTemplate = ep?.feed

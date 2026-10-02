@@ -66,7 +66,10 @@
       "unowned": true,
       "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
-    "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "outlet.detect": {
+      "status": "implemented",
+      "note": "PolarisKeyCore detectOutlet over PolarisKeyUpdate readOutletSignals: AppDistributor.current behind #available(iOS 17.4) (web from 17.5) raced against the 2 s deadline, AltStore's ALTBundleIdentifier, embedded.mobileprovision, the macOS _MASReceipt and ProductionSandbox, the signing leaf (SecCodeCopySigningInformation) and the product's Caskroom link. UpdateClient detects at its first decision when the host names no outlet."
+    },
     "packs.plan": { "status": "planned", "wp": "P4-07" },
     "packs.index": { "status": "planned", "wp": "P4-07" },
     "packs.apply.full": { "status": "planned", "wp": "P4-07" },
