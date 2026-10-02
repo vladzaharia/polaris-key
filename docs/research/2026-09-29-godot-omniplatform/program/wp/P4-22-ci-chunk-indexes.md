@@ -58,7 +58,63 @@ transport (P4-17).
 
 ## Acceptance
 
-- [ ] The plan's §9 P4-22 block passes.
-- [ ] A bundle holding only another pack's ref is refused at ingest (workerd test).
-- [ ] An index over 8 MiB makes the CLI omit `chunks` with a warning.
-- [ ] The full green gate passes.
+- [x] The plan's §9 P4-22 block passes.
+- [x] A bundle holding only another pack's ref is refused at ingest (workerd test).
+- [x] An index over 8 MiB makes the CLI omit `chunks` with a warning.
+- [x] The full green gate passes.
+
+## Corrections from implementation
+
+Where the brief or the plan and the code disagreed, the code was the fact:
+
+1. **No index is exactly 8 MiB.** A `pkey-chunks/1` index is 64 + 48 × (records + bundles)
+   bytes, which never equals 8,388,608. So the workerd cases are: the largest valid index under
+   the bound (8,388,592 bytes, 174,760 records and one bundle) parsed and its bundle checked
+   inside the isolate; an index of exactly 8,388,608 bytes, read and parsed (it fails
+   `chunks-bad-length`, which proves the bound is inclusive and the read happened); and one a byte
+   over, refused before any read.
+2. **The CLI test of the 8 MiB omission lowers the bound.** An index over 8 MiB needs about
+   175,000 chunks (≈ 10 GiB of payload), so `PackPublishOptions` gains two test-only options,
+   `chunkMinPayloadBytes` and `maxChunkIndexBytes` (not CLI flags). The default path uses
+   `CHUNK_MIN_PAYLOAD_BYTES` (4 MiB) and `MAX_PUBLISHED_INDEX_BYTES`.
+3. **The chunker mirrors the generator rather than importing it.** `tools/gen-content-chunks.ts`
+   imports nothing it checks (P3-02's rule) and `tools` is not a CLI dependency, so
+   `packages/cli/src/packChunks.ts` restates `fastcdc`, `containerSegments`, `chunkPayload`,
+   `layoutChunks` and `writeChunkIndex`. The corpus test (`packCorpus.test.ts`) pins it to
+   `chunks/v1.pkc` and `chunks/v2.pkc` id for id and length for length.
+4. **The chunk lints decode with `@polaris-key/zstd-wasm`, so the Action inlines it.** Its Node
+   entry reads `zdec.wasm` beside itself, which a one-file bundle lacks; `bundle-action.mjs`
+   resolves the package to the same decoder over the committed `zdec.wasm`, inlined with esbuild's
+   `binary` loader (the bundle grows by about 118 KB).
+5. **P4-14's hook point assumed `bundles/` keys.** `CatalogPackChunk.bundleKey` was documented
+   as `bundles/sha256/<hex>`, and the collector protected only `bundles/` keys while `packChunks`
+   was absent. Pack bundles are blobs (plans/P4-10.md decision 4), so a pack bundle under
+   `blobs/` was not protected at all. The doc now says `blobKey`. The collector now reads a chunk
+   index only for a variant whose record names one (a `chunk-index` object), and an index that
+   cannot be read, or a catalog without `packChunks`, makes the plan incomplete (no `pack-upload`
+   drops); P4-14 called `packChunks` for every variant and ignored a null answer.
+6. **The bundle live-data view.** `bundleLiveness` read only `blob_objects.kind = 'bundle'`,
+   which packs never write. It now also lists the blob-keyed bundles that live indexes name.
+   A bundle no live index names any more is not listed, because nothing marks a blob as a bundle
+   (proposed follow-up below).
+7. **Content admission.** The publish lint (`packLint.ts`, P4-03) chose the data-only scan by
+   extension. On the lead's instruction it now chooses it by the content's head first: any
+   `RSRC` entry gets the binary scan, any `RSCC` entry is refused, and any `[gd_scene` or
+   `[gd_resource` head gets the text scan, whatever the file is called. Chunks and bundles are cut
+   only after the whole payload passes the lint, and a bundle carries no path.
+8. **The chain base and the presence check.** The plan's "latest proven cached release" is read
+   as the newest proven cached release whose record gives this variant a chunk index of the same
+   gating class (a gate change skips releases of the other class). `--bases` is now read when
+   deltas are off but `chunk` is on. Presence is asked through upload tickets for the base
+   index's bundles before the layout (unredeemed tickets expire). A dry run without a credential
+   assumes the cached bundles are stored, with a warning, and takes the gating class from the
+   manifest's assertion.
+9. **Ingest's stricter check covers the index too.** The chunk index object, not only its
+   bundles, must hold a `pack-upload` ref of this pack. It is left out of P4-02's generic
+   named-object check and checked by the new `missingHeldObjects` (one `json_each` batch, the
+   pack id as one more parameter). A dry run also lists an index neither stored nor staged.
+10. **No transcript or validation-codes change.** The recorded transcripts do not carry
+    Release's discovery fragment, so `gen:transcripts -- --check` stays fresh, and the
+    discovery golden fixture, `surfaces.test.ts` and the OpenAPI example gain `chunks: true`.
+    `validation-codes.mdx` renders `invalid_pack_patch`'s message template literally, so
+    `docs gen` leaves it unchanged.
