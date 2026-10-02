@@ -1019,7 +1019,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "core.local": { status: "implemented", service: "core", na: [] },
   "core.headers": { status: "implemented", service: "core", na: [] },
   "core.errors": { status: "implemented", service: "core", na: [] },
-  "core.caps": { status: "planned", service: "core", na: [] },
+  "core.caps": { status: "implemented", service: "core", na: [] },
   "core.store": {
     status: "implemented",
     service: "core",
@@ -1100,4 +1100,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "58f12af262a955dd3f8a9a89f6ab596c63b5041bc43a17f2d8b166a417e864e0";
+  "32c77bad6f9c04cf7739b27cc6f6f8e6ebbf78b83662d4c8a2b8a8db38af7ce3";

@@ -25,11 +25,26 @@ import type {
   DocProfile,
   LicenseDoc,
 } from "@polaris-key/protocol/license";
-import type {
-  BlockedState,
-  LicenseState,
-  StoreStatus,
+import {
+  detectorKey,
+  detectorProblems,
+  evaluateSupport,
+  supportedFeatures,
+  type BlockedState,
+  type CapabilityContext,
+  type CapabilityDetectors,
+  type LicenseState,
+  type StoreStatus,
+  type Support,
 } from "@polaris-key/client-core";
+import {
+  CAPABILITIES,
+  CAPABILITY_RUNTIMES,
+  Feature,
+  UnsupportedReason,
+} from "./constants.generated.js";
+import { SERVICE_SLUGS, type ServiceSlug } from "./services.generated.js";
+import { SDK_NAME, SDK_VERSION } from "./version.js";
 import { CacheManager } from "./core/cache.js";
 import { CoreContext, nowSec, type CoreOptions } from "./core/context.js";
 import { importBundle, type ImportBundleResult } from "./core/bundle.js";
@@ -61,6 +76,9 @@ import {
 } from "./discovery.js";
 
 export { DeviceManagementUnsupportedError };
+
+/** The registry runtime id of this SDK (packages/sdk-node/parity.json). */
+const NODE_RUNTIME = "node";
 
 export interface PolarisKeyClientOptions extends CoreOptions {
   /** Config service inputs (override layers). */
@@ -136,6 +154,10 @@ export class PolarisKeyClient {
   private readonly probes: DevicesClientOptions["probes"];
   private timer: ReturnType<typeof setInterval> | null = null;
   private discoveryDoc: ProductDiscoveryDocument | null = null;
+  /** The token store's last `status()`, read at `init()` and before every report, so
+   *  `supports()` can answer offline and synchronously. */
+  private lastStoreStatus: StoreStatus | null = null;
+  private readonly capabilityContext: CapabilityContext;
 
   constructor(opts: PolarisKeyClientOptions & { localOnly?: boolean }) {
     this.product = opts.productSlug;
@@ -197,6 +219,35 @@ export class PolarisKeyClient {
 
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
     this.onChange = opts.onChange;
+
+    // The conditional N/As parity.json declares for Node, each decided here from state the
+    // client already holds (P1b-10). `detectorProblems` refuses a table and detector set that
+    // disagree, so a manifest edit cannot ship without the code that decides it.
+    const detectors: CapabilityDetectors = {
+      [detectorKey(Feature.coreStore, UnsupportedReason.dependency)]: () => {
+        const degraded = this.lastStoreStatus?.degraded;
+        if (degraded?.reason !== "keyring-unavailable") return null;
+        return `no OS keyring: the token is kept in a 0600 file${degraded.detail ? ` (${degraded.detail})` : ""}`;
+      },
+    };
+    const problems = detectorProblems(
+      CAPABILITIES,
+      NODE_RUNTIME,
+      CAPABILITY_RUNTIMES,
+      detectors,
+    );
+    if (problems.length > 0)
+      throw new Error(
+        `capability table and detectors disagree: ${problems.join("; ")}`,
+      );
+    this.capabilityContext = {
+      table: CAPABILITIES,
+      runtime: NODE_RUNTIME,
+      sdkLabel: `${SDK_NAME} ${SDK_VERSION}`,
+      serviceSlugs: SERVICE_SLUGS,
+      serviceEnabled: (slug) => this.core.enabled(slug as ServiceSlug),
+      detectors,
+    };
   }
 
   static async create(
@@ -211,6 +262,7 @@ export class PolarisKeyClient {
    *  able to render its gate before it has ever reached the control plane. */
   async init(): Promise<void> {
     await this.core.init();
+    await this.storeStatus();
     await this.tokens.load();
     await this.cache.load();
     // Wire v4's update slices go through the same reload path: every committed feed and record
@@ -251,6 +303,25 @@ export class PolarisKeyClient {
   /** What this client currently believes the product runs. */
   capabilities(): ServicesMap {
     return this.core.services();
+  }
+
+  /**
+   * Whether `feature` works here, and if not why (PARITY §2.2): `{ supported: true }`, or
+   * `{ supported: false, reason, detail }` with `reason` one of `runtime` (Node cannot do it),
+   * `product` (discovery, or the fail-closed fallback before it, says the owning service is
+   * off), `dependency` (no loadable OS keyring for `core.store`) or `version` (this SDK does not
+   * implement the feature yet, or does not know the id). Offline, synchronous and side-effect
+   * free: it reads the generated capability table, the cached capability map and the store
+   * status read at `init()`.
+   */
+  supports(feature: Feature | string): Support {
+    return evaluateSupport(this.capabilityContext, feature);
+  }
+
+  /** The feature ids `supports()` answers Supported for, in registry order. Every device
+   *  report carries this list as `caps`. */
+  caps(): string[] {
+    return supportedFeatures(this.capabilityContext);
   }
 
   // ── Sync ──────────────────────────────────────────────────────────────────────────────
@@ -308,10 +379,12 @@ export class PolarisKeyClient {
   private async reportOnce(): Promise<void> {
     const token = this.tokens.current;
     if (!token) return;
+    // A token write since init() may have fallen back to the file; report what is true now.
+    await this.storeStatus();
     await reportSnapshot(
       this.core,
       token,
-      buildSnapshot(this.cache, this.probes ?? []),
+      buildSnapshot(this.cache, this.probes ?? [], this.caps()),
     );
   }
 
@@ -355,12 +428,16 @@ export class PolarisKeyClient {
    */
   async storeStatus(): Promise<StoreStatus | null> {
     const store = this.core.store;
-    if (typeof store.status !== "function") return null;
-    try {
-      return await store.status();
-    } catch {
-      return null;
+    let status: StoreStatus | null = null;
+    if (typeof store.status === "function") {
+      try {
+        status = await store.status();
+      } catch {
+        status = null;
+      }
     }
+    this.lastStoreStatus = status;
+    return status;
   }
 
   isLicensed(now = nowSec()): boolean {
