@@ -72,6 +72,8 @@ this page or fails the freshness gate.
 | `release_holds` | 0046_a_pack_sets.sql | `product`, `app_release_id`, `pack_deliverable`, `pack_release_id`, `record_sha256`, `reason`, `created_at` |
 | `release_pack_floors` | 0046_a_pack_sets.sql | `product`, `deliverable_id`, `channel`, `content_api`, `min_version`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `release_revocations` | 0047_release_revocations.sql | `product`, `deliverable_id`, `target_release_id`, `target_sha256`, `record_sha256`, `kid`, `jws`, `replacement_release_id`, `replacement_sha256`, `reason`, `issued_at`, `ingested_at` |
+| `release_delegations` | 0049_release_delegations.sql | `product`, `record_sha256`, `deliverable_id`, `seq`, `version`, `kid`, `jws`, `public_key`, `types_json`, `issued_at`, `expires_at`, `ingested_at`, `origin`, `revocation_sha256`, `revocation_jws`, `revocation_kid`, `revocation_reason`, `revocation_issued_at` |
+| `release_delegated_records` | 0049_release_delegations.sql | `product`, `record_sha256`, `delegation_sha256` |
 
 ## distribution
 

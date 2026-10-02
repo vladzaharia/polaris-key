@@ -237,11 +237,20 @@ export async function loadResolutionState(
       variantsBy.set(b.release_id, list);
     }
     // P4-13: a revoked release leaves every candidate list, a pinned pointer included (a yank
-    // alone would still resolve as a pinned pointer).
+    // alone would still resolve as a pinned pointer). P4-19: so does one signed under a revoked
+    // delegation.
     const revoked = new Set(
       (
         await db.all<{ target_release_id: string }>(
-          "SELECT target_release_id FROM release_revocations WHERE product = ?",
+          `SELECT target_release_id FROM release_revocations WHERE product = ?
+           UNION
+           SELECT r.release_id FROM release_records r
+             JOIN release_delegated_records d
+               ON d.product = r.product AND d.record_sha256 = r.record_sha256
+             JOIN release_delegations g
+               ON g.product = d.product AND g.record_sha256 = d.delegation_sha256
+            WHERE r.product = ? AND g.revocation_sha256 IS NOT NULL`,
+          product,
           product,
         )
       ).map((r) => r.target_release_id),

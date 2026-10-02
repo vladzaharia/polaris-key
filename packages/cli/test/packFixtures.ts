@@ -452,6 +452,27 @@ export interface PackServer {
   chunks: boolean;
   /** Submitted revocation records (P4-13), in order. */
   revoked: string[];
+  /** Discovery's `release.delegations` (P4-19). */
+  delegations: boolean;
+  /** Stored delegations (P4-19): what `…/publish/delegations` lists. */
+  delegationRows: {
+    sha256: string;
+    deliverable: string;
+    seq: number;
+    keyFingerprint: string;
+    issuedAt: number;
+    expiresAt: number;
+    origin: "submit" | "revocation";
+    revoked: boolean;
+    version: string;
+    jws: string;
+  }[];
+  /** Records the record route serves, by hash (P4-19). */
+  records: Map<string, string>;
+  /** Submit bodies (P4-19 adds the supplied `delegation`), in order. */
+  submits: Record<string, unknown>[];
+  /** Answer the next submit with this status (consumed). */
+  failSubmit: number | null;
   /** Stored releases: `<deliverable>@<version>` → seq and record hash. */
   stored: Map<string, { seq: number; recordSha256: string; jws?: string }>;
   /** Stage-round failures to inject (consumed one per stage call). */
@@ -501,6 +522,11 @@ export function packServer(): PackServer {
     revocations: true,
     chunks: true,
     revoked: [],
+    delegations: true,
+    delegationRows: [],
+    records: new Map(),
+    submits: [],
+    failSubmit: null,
     stored,
     failStage: 0,
     dropFromTicket: false,
@@ -544,10 +570,17 @@ export function packServer(): PackServer {
             enabled: true,
             ...(server.packs ? { packs: true } : {}),
             ...(server.revocations ? { revocations: true } : {}),
+            ...(server.delegations ? { delegations: true } : {}),
             ...(server.chunks ? { chunks: true } : {}),
           },
         },
       });
+    if (method === "GET" && route.startsWith("/release/records/")) {
+      const jws = server.records.get(route.slice("/release/records/".length));
+      return jws === undefined
+        ? json({ error: "not_found" }, 404)
+        : new Response(jws, { status: 200 });
+    }
     rec.body = init?.body ? JSON.parse(String(init.body)) : undefined;
     const body = rec.body as Record<string, unknown>;
     switch (route) {
@@ -645,7 +678,37 @@ export function packServer(): PackServer {
           present: [],
         });
       }
+      case "/release/publish/delegations": {
+        const d = body.deliverable as string | undefined;
+        const rows = server.delegationRows;
+        return json({
+          delegations: rows,
+          ...(d !== undefined
+            ? {
+                nextSeq:
+                  1 +
+                  Math.max(
+                    0,
+                    ...rows
+                      .filter(
+                        (r) => r.deliverable === d && r.origin === "submit",
+                      )
+                      .map((r) => r.seq),
+                  ),
+              }
+            : {}),
+        });
+      }
       case "/release/publish/submit": {
+        server.submits.push(body);
+        if (server.failSubmit !== null) {
+          const status = server.failSubmit;
+          server.failSubmit = null;
+          return json(
+            { error: "conflict", reason: "seq", message: "x" },
+            status,
+          );
+        }
         const jws = body.record as string | undefined;
         if (body.descriptor === undefined && jws) {
           const payload = JSON.parse(
@@ -657,6 +720,35 @@ export function packServer(): PackServer {
             kind?: string;
           };
           const id = `${payload.deliverable}@${payload.version}`;
+          if (payload.kind === "delegation") {
+            const p = payload as unknown as {
+              seq: number;
+              issuedAt: number;
+              expiresAt: number;
+              delegate: { publicKey: string };
+            };
+            server.records.set(sha(jws), jws);
+            server.delegationRows.push({
+              sha256: sha(jws),
+              deliverable: payload.deliverable,
+              seq: p.seq,
+              keyFingerprint: sha(
+                new Uint8Array(Buffer.from(p.delegate.publicKey, "base64url")),
+              ),
+              issuedAt: p.issuedAt,
+              expiresAt: p.expiresAt,
+              origin: "submit",
+              revoked: false,
+              version: payload.version,
+              jws,
+            });
+            return json({
+              ok: true,
+              releaseId: id,
+              outcome: "created",
+              record: { sha256: sha(jws), stored: true },
+            });
+          }
           if (payload.kind === "revocation") {
             server.revoked.push(jws);
             return json({

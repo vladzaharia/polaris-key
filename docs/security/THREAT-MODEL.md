@@ -38,6 +38,7 @@ and what binary it installs next.
 | A11 | **Outlet credentials** (store API keys)                           | `outlet_credentials`, sealed under A1 (own AAD kind); minted tokens sealed in KV | Act as the operator in App Store Connect, Google Play or Partner Center: upload or release builds, change listings and prices. Equal to A3. |
 | A12 | **CI credentials** (`pkeyci_` tokens, upload tickets)             | `ci_tokens`/`ci_upload_tickets` (peppered hashes only); held by CI jobs          | Publish, promote (and, if granted, yank) releases of one product for up to 30 min (minted) or 90 days (static). A route into A3/A10.        |
 | A13 | **The R2 parent token** and the temporary credentials it mints    | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h              | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.           |
+| A14 | **Delegated content keys** (P4-19)                                | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team            | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands. |
 
 **A5 is scoped by usage.** Every product secret carries a usage — general (stored `NULL`) or
 `edge-mint` — and `openProductSecret` opens a secret only for the usage its caller requires: the
@@ -1854,6 +1855,75 @@ Residuals, stated rather than defended:
   packs are stopped until a binary pins a rotated key; on load, an entry whose key is no longer
   pinned is forgotten.
 
+### Content-key delegation (P4-19)
+
+P4-19 (`plans/P4-19.md`; WIRE-CONTRACT-V4 §1, §2.5.4, §2.8, §3.4 step 11, §3.5 steps 13 and 16) fills
+the reserved record kind `delegation`. A pinned release key may delegate one content key, through a
+CI-signed `kind: delegation` record, the right to sign pack records of the data-only types
+(`DELEGABLE_PACK_TYPES`: `files.tree`, `data.json`, `l10n.table`) under one pack-id scope, inside a
+signing window of at most 366 days. It adds no `typ`, no claim and no device route; it adds one CI
+read route (`POST /{product}/release/publish/delegations`) and the console's read-only Content keys
+table.
+
+The new trust boundary is **content CI ↔ device**, mediated by a release-key signature:
+
+- **The Worker cannot forge or widen a delegation.** A delegation verifies against the **pinned
+  release keys** only (never the product trust set), so the Worker, which holds only the product
+  key, can withhold a delegation (its packs then cannot install) or its revocation, but never mint
+  one or change its scope, types or window. A delegated record names its delegation by hash in its
+  header `kid` (`pkd1-<sha256>`), so the chain never depends on a Worker-signed member.
+- **One level only.** A delegation never verifies through another delegation, so a content key
+  cannot re-delegate. Its key bytes must equal no pinned release key and no product key.
+- **Release-key surfaces stay release-key surfaces.** The delegated path is allowed only on a
+  compatible or standalone pack's feed target and on the reload of a stored delegated install.
+  App records, stamp and record pins, holds, revocations, replacements, markers and embedded
+  baselines never pass a delegation, so a content-key signature fails there at `jws`. Ingest
+  refuses a pin or hold naming a delegated release (`pin-delegated`, `hold-delegated`).
+- **Data only.** A delegated release must be tree layout (a container is never delegable), and
+  every file passes the data-only rule: an already-normalised path, an extension allow-list (the
+  real control, because Godot picks its loader by extension), a head and tail magic sniff that
+  fails closed (defence in depth, which also refuses a full 64-byte head window it cannot see
+  past), and, for text files, a whole-file rule refusing P4-08's script markers (even split by
+  backslashes), `\u`/`\U` escapes that could spell ASCII, invalid UTF-8 and NUL (Amendment A1); ordinary text mentioning a marker is refused too, so publishers rename such keys or text. It runs on the device before
+  activation (a `noop` reuse re-sniffs the reused install), in the CLI lint before signing and,
+  for the extension rule only, at ingest (`delegation-data-only`). **What it cannot do:** the
+  sniffs recognise binary and structured magics plus those text markers; they cannot recognise
+  GDScript in general (a script may start with a comment, `func`, `var` and more). Apps must
+  parse delegated text only with pure JSON or CSV parsers (`JSON.parse`, `JSON.parse_string`),
+  never `str_to_var`, `ConfigFile` or `JSON.to_native(..., allow_objects)`, and must never write
+  delegated bytes under a code extension.
+- **Revocation is P4-13's record unchanged.** A CI revocation naming the delegation's hash revokes
+  every release signed under it (`recordRevoked`, `pack-revoked` detail `delegation`); ingest yanks
+  those releases and the feed lists the entry with `kind: "delegation"`, never dropped under the
+  64 cap. Only a release key revokes. One key maps to one delegation, so revoking a delegation
+  revokes its key for every delegation the release-key holder has.
+
+Residuals, stated rather than defended (`plans/P4-19.md` §8.2):
+
+- **With a compromised Worker, a stolen content key can sign indefinitely.** Devices check only
+  that `record.issuedAt` lies inside the window, never their own clock, so the thief backdates
+  `issuedAt` and that Worker ingests and serves the result. Only a revocation of the delegation
+  that reaches devices (which that Worker can withhold) or a binary that rotates the pinned
+  release keys bounds it. Expiry bounds a thief only through an honest Worker (which refuses a
+  record more than a day old or outside the window).
+- **A delegation revocation also stops legitimate releases** signed under it; a required pack
+  then blocks (`revoked-content`) until releases under a new delegation arrive. The RUNBOOK says
+  to re-publish first, then revoke, unless the key is actively abused.
+- **Data handlers parse untrusted data.** P4-16's handlers must parse and never evaluate it; the
+  data-only rule cannot police what host code does with a JSON file. No SDK or handler may pass a
+  delegated file to `load_resource_pack` or any engine API that mounts or loads code.
+- **The sniff cannot enumerate formats.** A format hidden inside an allowed extension that no magic
+  catches passes rules 3 and 4; the allow-list and the handlers are what stand behind it.
+- **Old live builds** never install delegated releases; a product delegates only once every live
+  build it cares about embeds a P4-19 SDK.
+- **A delegation the release-key holder does not hold cannot be revoked by hash.** One minted by a
+  thief who stole the release key never reaches an honest Worker, and revocation ingest accepts an
+  unstored delegation only when it is supplied alongside. Rotating the pinned release keys is the
+  remedy.
+- **Publisher policy is unchanged.** Content CI runs the declared workflow in an environment holding
+  only `PKEY_CONTENT_KEY`; the signature, not the token, limits what is accepted. A publisher entry
+  scoped to packs under a prefix is a P2-02 follow-up.
+
 ### Readiness holds, pack gates and the blob collector (P4-14)
 
 P4-14 adds Distribution's outlet readiness (`dist_readiness`), per-outlet pack gates in the signed
@@ -2458,7 +2528,22 @@ Poison the release channel
 │   ├── CANNOT downgrade a pack below what is installed (a feed target installs only at a higher `seq`)
 │   ├── CANNOT install a release the device knows is revoked
 │   ├── NOTE: a device remembers at most 256 revoked targets; more revocations push the oldest out (`plans/P4-13.md` §2.5)
+│   ├── CANNOT forge a delegation or widen its scope, types or window (P4-19: release-key signed, verified against pinned release keys only)
+│   ├── CAN withhold a delegation record (packs under it then cannot install) or its revocation (as for any revocation) (P4-19)
 │   └── CANNOT stop an install from running, except through a CI-signed revocation of a required pack (the licence documents it also signs are AT-1's subject)
+├── Hold a delegated content key (P4-19)
+│   ├── CAN publish data-only pack releases (types ∩ `DELEGABLE_PACK_TYPES`) of compatible or standalone packs under its scope, signed inside its window, through the trusted publisher; handlers must refuse malformed or offensive data safely
+│   ├── CAN keep its releases installed after the window closes; only a CI revocation of the delegation stops them
+│   ├── CANNOT sign an app record, a revocation, a delegation, a `godot.pck`, `godot.zip`, `audio.bank`, `ml.model`, `custom.*` or unknown-type pack, or a pack outside its scope (`jws`, `delegation` or `scope` in every SDK)
+│   ├── CANNOT ship a container-layout pack, or a file outside the extension allow-list: the device's check, the CLI lint and ingest all refuse them. The allow-list is the real control; the head and tail sniff (Godot resource, PCK, script, archive and native-binary magics, a trailing `GDPC`, a zip end record in the last 65,557 bytes) is defence in depth that fails closed but cannot enumerate every format hidden inside an allowed one
+│   ├── CANNOT smuggle a resource or script behind leading whitespace (a full 64-byte head window it cannot see past is refused) or an inline `Object(GDScript, …)` in a text file (the text rule refuses script markers, backslash-split markers and `\u`/`\U` escapes that could spell ASCII); NOTE: GDScript in general is not recognisable, so apps parse delegated text with pure JSON/CSV parsers only, never `str_to_var`, `ConfigFile` or `to_native(allow_objects)`, and never write delegated bytes under a code extension (Amendment A1)
+│   ├── CANNOT reach a pin, hold, embedded baseline or replacement
+│   ├── CANNOT re-delegate (a delegation verifies against pinned release keys only, one level deep)
+│   ├── CANNOT sign outside its window through an honest Worker
+│   ├── CAN, with a compromised Worker, sign indefinitely by backdating `issuedAt` into the window; only a revocation of the delegation that reaches devices (which that Worker can withhold) or a binary that rotates the pinned release keys bounds it
+│   └── NOTE: delegation revocations count toward a device's 256 stored targets
+├── Hold a release key (CI)
+│   └── CAN mint delegations, which is no worse than the key itself; a delegation the holder never sees cannot be revoked by hash (revocation ingest accepts an unstored delegation only when it is supplied alongside), so rotating the pinned release keys is the remedy
 ├── Control the unsigned v3 `/version` answer (a compromised Worker, or its `url` field)
 │   └── CAN offer any page, but the Godot UI kit's prompt opens only an `https://` URL (P1-10): a `file:`, `http:` or custom-scheme `url` gets no action, so `OS.shell_open` never reaches a local handler
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
@@ -2506,4 +2591,9 @@ allowlist in `test/outletCredentialReach.test.ts` (it must say why that file nee
 credential, and the open must stay audited); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
-`core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow).
+`core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for
+content-key delegation (P4-19), `DELEGABLE_PACK_TYPES` or `DATA_ONLY_EXTENSIONS` grows, a delegation
+gains a scope dimension, the delegated path is allowed on a surface beyond a compatible or
+standalone pack's feed target and the reload of a stored delegated install, any SDK or handler
+passes a delegated file to `load_resource_pack` or to any other engine API that mounts or loads
+code, or a non-tree layout becomes delegable, or the head or tail sniff is narrowed.

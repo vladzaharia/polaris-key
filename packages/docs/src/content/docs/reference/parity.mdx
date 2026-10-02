@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 47 | 3 | 3 | 7 |
-| React | `web`, `desktop-bridge` | 39 | 12 | 3 | 6 |
-| Python | `python` | 47 | 3 | 3 | 7 |
-| Swift | `macos`, `ios` | 48 | 3 | 3 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 47 | 0 | 10 | 3 |
+| Node | `node` | 48 | 3 | 3 | 7 |
+| React | `web`, `desktop-bridge` | 40 | 12 | 3 | 6 |
+| Python | `python` | 47 | 3 | 4 | 7 |
+| Swift | `macos`, `ios` | 48 | 3 | 4 | 6 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 47 | 0 | 11 | 3 |
 
 ## Core
 
@@ -96,6 +96,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `packs.record` | Verify kind: pack records, app content and embeds, and embedded-pack markers | `cases.json` `packRecordCases` + `cases.json` `markerCases` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.revoke` | Revocation records: verify, supersede, persist, refuse revoked mounts | `cases.json` `revocationCases` + unit | ✓ | ✓ | ✓ | ✓ | planned (P4-24) | — |
+| `packs.delegation` | Content-key delegation: delegated pack records, the data-only rule, delegation revocations | `cases.json` `delegationCases` + `content/` + unit | ✓ | ✓ | planned (P4-25) | planned (P4-25) | planned (P4-26) | — |
 | `packs.plan` | The install planner | `plan-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.index.files` | Files index parsing (`pkey-files/1`), path rules, `treeDigest` | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.index.chunks` | Chunk index parsing | `content/` | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |

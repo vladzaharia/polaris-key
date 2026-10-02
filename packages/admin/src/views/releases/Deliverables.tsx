@@ -18,6 +18,7 @@ import {
   type ColumnDef,
 } from "../../components/ui/index.js";
 import { absoluteTime, relativeTime } from "../format.js";
+import { ContentKeys } from "./ContentKeys.js";
 
 /**
  * The Release section's Deliverables tab (P4-09): the app and every pack the product declares,
@@ -213,6 +214,7 @@ export function Deliverables({ slug }: { slug: string }): React.ReactElement {
           ) : null}
         </CardContent>
       </Card>
+      <ContentKeys slug={slug} />
     </section>
   );
 }

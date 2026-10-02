@@ -12,12 +12,15 @@ import {
 } from "@polaris-key/jws";
 import {
   MAX_BUILD_EMBEDS,
+  MAX_DELEGATION_TTL_SECONDS,
+  MAX_DELEGATION_TYPES,
   MAX_PACK_VARIANTS,
   MAX_RECORD_JWS_BYTES,
   MAX_VARIANT_DELTAS,
   REVOCATION_REASON_MAX_BYTES,
 } from "@polaris-key/protocol/core";
 import {
+  DELEGABLE_PACK_TYPES,
   ENGINE_PATTERN,
   ENTITLEMENT_PATTERN,
   HANDLER_PREFIX_PATTERN,
@@ -29,6 +32,7 @@ import {
 } from "@polaris-key/protocol/packs";
 import {
   BUILD_ID_PATTERN,
+  DELEGATED_KID_PATTERN,
   type ReleaseRecordDoc,
 } from "@polaris-key/protocol/release";
 import type { FeedRevocation, ReleasePin } from "@polaris-key/protocol/update";
@@ -395,10 +399,37 @@ export interface VerifyReleaseRecordOptions {
   expectedHash: string;
   /** The pin to cross-check against (step 15). Omit to verify only (a reserved kind). */
   pin?: ReleaseRecordPin;
+  /**
+   * The compact JWS of the delegation a `pkd1-` kid names (plans/P4-19.md §2.3), fetched by the
+   * caller from the record route by `delegationHashOf(jws)`. Only the surfaces of §2.4 pass it (a
+   * compatible or standalone pack's feed target, and the reload of a stored delegated install);
+   * without it the behaviour is byte-for-byte P4-13's. Ignored when the kid is a pinned release
+   * key.
+   */
+  delegation?: string;
 }
 
-/** Why `verifyReleaseRecord` refused, by client step (`releaseRecordCases` `expect.step`). */
-export type ReleaseRecordStep = "hash" | "jws" | "claims" | "cross-check";
+/** Why `verifyReleaseRecord` refused, by client step (`releaseRecordCases` `expect.step`).
+ *  `delegation` and `scope` are the delegated path's (plans/P4-19.md §2.3). */
+export type ReleaseRecordStep =
+  | "hash"
+  | "jws"
+  | "claims"
+  | "cross-check"
+  | "delegation"
+  | "scope";
+
+/** The delegation a delegated record verified through (plans/P4-19.md §2.3). */
+export interface RecordDelegation {
+  /** The delegation's record hash (the kid's hex). */
+  sha256: string;
+  /** The scope root. */
+  deliverable: string;
+  /** The effective types (`types ∩ DELEGABLE_PACK_TYPES`), in the delegation's order. */
+  types: string[];
+  issuedAt: number;
+  expiresAt: number;
+}
 
 export type VerifyReleaseRecordResult =
   | {
@@ -406,6 +437,8 @@ export type VerifyReleaseRecordResult =
       record: ReleaseRecordDoc;
       /** The verified payload's non-wire integer pointers (for `revocationOf`, `holdsOf`). */
       nonWireIntegers: NonWireIntegers;
+      /** The delegation, when a content key signed the record; null for a release key. */
+      delegation: RecordDelegation | null;
     }
   | { ok: false; step: ReleaseRecordStep };
 
@@ -447,16 +480,32 @@ const fail = (step: ReleaseRecordStep): VerifyReleaseRecordResult => ({
   step,
 });
 
+/** True when any key of `set` has the raw bytes `raw`. */
+function inTrust(raw: Uint8Array, set: TrustSet): boolean {
+  for (const k of Object.values(set)) {
+    const other = rawKey(k);
+    if (other !== null && bytesEqual(raw, other)) return true;
+  }
+  return false;
+}
+
 /**
- * Client steps 12–15 (plans/P3-01.md §2.5), in the contract's order:
+ * Client steps 12–16 (plans/P3-01.md §2.5, plans/P4-19.md §2.3), in the contract's order:
  *
  *  12. a body over `MAX_RECORD_JWS_BYTES` (88 844) or with a byte outside ASCII is refused
  *      without hashing; otherwise its SHA-256 must equal `expectedHash`, before any Ed25519 work;
  *  13. the key is selected by `kid` from `releaseKeys` only, refused if its raw bytes are also
- *      in `productTrust`, then `verifyJws` with that one key and `typ` `pkey-release+jws`;
+ *      in `productTrust`, then `verifyJws` with that one key and `typ` `pkey-release+jws`.
+ *      Otherwise, with `delegation` supplied and a `pkd1-` kid: the delegation is verified
+ *      against the pinned release keys (`verifyDelegation`, its hash the kid's hex), its key must
+ *      equal no pinned release key and no product key (both step `delegation`), then `verifyJws`
+ *      with the delegated key (step `jws`);
  *  14. the claims (`releaseRecordClaims`);
  *  15. with a `pin`: `kind` equals the pin's `kind` (`app` when the pin names none), and
- *      `deliverable`, `version` and `seq` equal the pin's (plans/P4-01.md §2.6).
+ *      `deliverable`, `version` and `seq` equal the pin's (plans/P4-01.md §2.6);
+ *  16. a delegated record only (`scope`): `kind: pack`, `deliverable` the scope root or under it
+ *      by whole segments, `type` in the effective types, every variant's `files.layout` `tree`,
+ *      and `delegation.issuedAt ≤ issuedAt ≤ delegation.expiresAt`.
  *
  * Never throws.
  */
@@ -471,18 +520,36 @@ export async function verifyReleaseRecord(
       return fail("hash");
     if ((await recordHash(jws)) !== opts.expectedHash) return fail("hash");
 
-    // 13. The pinned release keys only, and never a product key.
+    // 13. The pinned release keys only, and never a product key; or one delegation from them.
     const kid = headerKid(jws);
-    if (kid === null || !has(opts.releaseKeys, kid)) return fail("jws");
-    const key = opts.releaseKeys[kid]!;
-    const raw = rawKey(key);
-    if (raw === null) return fail("jws");
-    for (const productKey of Object.values(opts.productTrust)) {
-      const other = rawKey(productKey);
-      if (other !== null && bytesEqual(raw, other)) return fail("jws");
+    if (kid === null) return fail("jws");
+    let delegation: VerifiedDelegation | null = null;
+    let one: TrustSet;
+    if (has(opts.releaseKeys, kid)) {
+      const key = opts.releaseKeys[kid]!;
+      const raw = rawKey(key);
+      if (raw === null) return fail("jws");
+      if (inTrust(raw, opts.productTrust)) return fail("jws");
+      // A computed key is an own property even for `__proto__`.
+      one = { [kid]: key };
+    } else {
+      const hash = delegationHashOf(jws);
+      if (typeof opts.delegation !== "string" || hash === null)
+        return fail("jws");
+      const d = await verifyDelegation(opts.delegation, {
+        releaseKeys: opts.releaseKeys,
+        productTrust: opts.productTrust,
+        expectedAud: opts.expectedAud,
+        expectedHash: hash,
+      });
+      if (!d.ok) return fail("delegation");
+      const raw = rawKey(d.delegation.publicKey);
+      if (raw === null) return fail("delegation");
+      if (inTrust(raw, opts.releaseKeys) || inTrust(raw, opts.productTrust))
+        return fail("delegation");
+      delegation = d.delegation;
+      one = { [kid]: d.delegation.publicKey };
     }
-    // A computed key is an own property even for `__proto__`.
-    const one: TrustSet = { [kid]: key };
     const v = await verifyJws<unknown>(jws, one, { typ: "pkey-release+jws" });
     if (!v) return fail("jws");
 
@@ -507,10 +574,46 @@ export async function verifyReleaseRecord(
       if (record.version !== pin.version || record.seq !== pin.seq)
         return fail("cross-check");
     }
-    return { ok: true, record, nonWireIntegers: v.nonWireIntegers };
+
+    // 16. The delegation's scope.
+    if (delegation !== null && !inScope(record, delegation))
+      return fail("scope");
+    return {
+      ok: true,
+      record,
+      nonWireIntegers: v.nonWireIntegers,
+      delegation:
+        delegation === null
+          ? null
+          : {
+              sha256: delegation.sha256,
+              deliverable: delegation.deliverable,
+              types: [...delegation.types],
+              issuedAt: delegation.issuedAt,
+              expiresAt: delegation.expiresAt,
+            },
+    };
   } catch {
     return fail("jws");
   }
+}
+
+/** Step 16 (plans/P4-19.md §2.3) over a record whose claims passed. */
+function inScope(record: ReleaseRecordDoc, d: VerifiedDelegation): boolean {
+  const r = record as unknown as Record<string, unknown>;
+  if (r.kind !== "pack") return false;
+  if (!coversPack(d.deliverable, record.deliverable)) return false;
+  if (typeof r.type !== "string" || !d.types.includes(r.type)) return false;
+  const variants = r.variants as { files: { layout: unknown } }[];
+  if (!variants.every((x) => x.files.layout === "tree")) return false;
+  return d.issuedAt <= record.issuedAt && record.issuedAt <= d.expiresAt;
+}
+
+/** Whether pack id `pack` is the scope root `root` or under it by whole segments
+ *  (plans/P4-19.md §2.3 step 16): `djdl.events` covers `djdl.events.halloween`, never
+ *  `djdl.eventsx`. */
+export function coversPack(root: string, pack: string): boolean {
+  return pack === root || pack.startsWith(`${root}.`);
 }
 
 /**
@@ -677,4 +780,162 @@ export function newerRevocation<T extends { issuedAt: number; record: string }>(
 ): T {
   if (a.issuedAt !== b.issuedAt) return a.issuedAt > b.issuedAt ? a : b;
   return a.record >= b.record ? a : b;
+}
+
+// ── P4-19: content-key delegation (plans/P4-19.md §2.2–§2.6, WIRE-CONTRACT-V4 §2.5.4) ──────
+
+/** 32 raw bytes in strict base64url (V4 §1): 43 characters, no padding, zero trailing bits. */
+const KEY_B64URL_RE = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
+
+/**
+ * The delegation hash a delegated record's header names (plans/P4-19.md §2.2): the hex of a
+ * `pkd1-<sha256>` kid, read from the protected header only. Null for any other kid. Never throws.
+ */
+export function delegationHashOf(jws: unknown): string | null {
+  if (typeof jws !== "string") return null;
+  const kid = headerKid(jws);
+  if (kid === null || !DELEGATED_KID_PATTERN.test(kid)) return null;
+  return kid.slice(5);
+}
+
+/** The delegated kid of a delegation record hash: `pkd1-<sha256>`. */
+export function delegatedKid(delegationSha256: string): string {
+  return `pkd1-${delegationSha256}`;
+}
+
+/** A usable delegation body, as `delegationOf` reads it. */
+export interface DelegationBody {
+  /** The scope root, a pack id. */
+  deliverable: string;
+  seq: number;
+  /** The content key: base64url of its 32 raw Ed25519 bytes. */
+  publicKey: string;
+  /** The effective types: `types ∩ DELEGABLE_PACK_TYPES`, in the record's order (never empty). */
+  types: string[];
+  /** The record's `types` as listed (unknown and non-delegable entries included). */
+  listedTypes: string[];
+  issuedAt: number;
+  expiresAt: number;
+}
+
+/**
+ * The delegation body (plans/P4-19.md §2.2), read beside the claims: usable when `kind` is
+ * `delegation`, `deliverable` is a pack id, `delegate.publicKey` is strict base64url of 32 bytes,
+ * `types` is 1–`MAX_DELEGATION_TYPES` unique `PACK_TYPE_PATTERN` strings whose intersection with
+ * `DELEGABLE_PACK_TYPES` is non-empty, and `expiresAt` is an integer by token (minimum 1) with
+ * `issuedAt < expiresAt ≤ issuedAt + MAX_DELEGATION_TTL_SECONDS`. `builds`, `content` and unknown
+ * members are ignored. Null when unusable. Never throws.
+ */
+export function delegationOf(
+  doc: unknown,
+  nonWire: NonWireIntegers = NO_NON_WIRE_INTEGERS,
+): DelegationBody | null {
+  try {
+    if (!isObject(doc) || doc.kind !== "delegation") return null;
+    if (!isPackId(doc.deliverable)) return null;
+    const delegate = doc.delegate;
+    if (!isObject(delegate)) return null;
+    const publicKey = delegate.publicKey;
+    if (typeof publicKey !== "string" || !KEY_B64URL_RE.test(publicKey))
+      return null;
+    const types = doc.types;
+    if (
+      !Array.isArray(types) ||
+      types.length < 1 ||
+      types.length > MAX_DELEGATION_TYPES
+    )
+      return null;
+    const seen = new Set<string>();
+    for (const t of types) {
+      if (typeof t !== "string" || !PACK_TYPE_PATTERN.test(t) || seen.has(t))
+        return null;
+      seen.add(t);
+    }
+    const effective = (types as string[]).filter((t) =>
+      (DELEGABLE_PACK_TYPES as readonly string[]).includes(t),
+    );
+    if (effective.length === 0) return null;
+    if (!isWireInteger(doc.expiresAt, "/expiresAt", 1, nonWire)) return null;
+    if (!isWireInteger(doc.issuedAt, "/issuedAt", 0, nonWire)) return null;
+    if (!isWireInteger(doc.seq, "/seq", 1, nonWire)) return null;
+    const issuedAt = doc.issuedAt;
+    const expiresAt = doc.expiresAt;
+    if (!(issuedAt < expiresAt)) return null;
+    if (expiresAt > issuedAt + MAX_DELEGATION_TTL_SECONDS) return null;
+    return {
+      deliverable: doc.deliverable,
+      seq: doc.seq,
+      publicKey,
+      types: effective,
+      listedTypes: [...(types as string[])],
+      issuedAt,
+      expiresAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** A verified delegation: its body and its record hash. */
+export interface VerifiedDelegation extends DelegationBody {
+  /** The delegation record's hash. */
+  sha256: string;
+}
+
+export interface VerifyDelegationOptions {
+  /** The PINNED release keys only: never the Worker's trust set, never a delegated key. */
+  releaseKeys: TrustSet;
+  /** The effective product trust set: a release key whose bytes are in it is refused. */
+  productTrust: TrustSet;
+  expectedAud: string;
+  /** The delegation's hash: the delegated record's kid hex, or a feed entry's target. */
+  expectedHash: string;
+}
+
+export type VerifyDelegationResult =
+  | { ok: true; delegation: VerifiedDelegation }
+  | { ok: false; step: ReleaseRecordStep | "delegation" };
+
+/**
+ * Verify a delegation record (plans/P4-19.md §2.3 step 13.1): steps 12–14 against the pinned
+ * release keys only (the ASCII bound, the hash, the product-key refusal, the signature, the
+ * claims), then `kind === "delegation"` and `delegationOf`. A delegation is never verified
+ * through another delegation, so a content key cannot re-delegate. Never throws.
+ */
+export async function verifyDelegation(
+  jws: string,
+  opts: VerifyDelegationOptions,
+): Promise<VerifyDelegationResult> {
+  const r = await verifyReleaseRecord(jws, {
+    releaseKeys: opts.releaseKeys,
+    productTrust: opts.productTrust,
+    expectedAud: opts.expectedAud,
+    expectedHash: opts.expectedHash,
+  });
+  if (!r.ok) return r;
+  if ((r.record.kind as string) !== "delegation")
+    return { ok: false, step: "delegation" };
+  const body = delegationOf(r.record, r.nonWireIntegers);
+  if (body === null) return { ok: false, step: "delegation" };
+  return { ok: true, delegation: { ...body, sha256: opts.expectedHash } };
+}
+
+/**
+ * The one rule for applying revocations to a release (plans/P4-19.md §2.3): `record` when the
+ * release's own hash is revoked, else `delegation` when the delegation it was signed under is,
+ * else null. `revoked` holds revoked target hashes. Pure.
+ */
+export function recordRevoked(
+  recordSha256: string,
+  delegationSha256: string | null,
+  revoked: ReadonlySet<string> | Readonly<Record<string, unknown>>,
+): "record" | "delegation" | null {
+  const hasTarget = (h: string): boolean =>
+    revoked instanceof Set
+      ? revoked.has(h)
+      : Object.prototype.hasOwnProperty.call(revoked, h);
+  if (hasTarget(recordSha256)) return "record";
+  if (delegationSha256 !== null && hasTarget(delegationSha256))
+    return "delegation";
+  return null;
 }

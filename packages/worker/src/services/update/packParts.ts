@@ -24,6 +24,8 @@
  *               baseline is pinned) and no row lists it. It is REFERENCED when a live app release
  *               pins or holds it or a row lists it. Above `MAX_FEED_REVOCATIONS` the unreferenced
  *               go first, then the oldest by `issuedAt` (audit `update.feed.revocations_truncated`).
+ *               P4-19: a delegation's revocation (`kind: "delegation"`, `pack` the scope root) is
+ *               never dropped by that rule and is always referenced.
  *
  * Every member is checked with client-core's `feedContent` before signing (`feedDoc.ts`); one that
  * would read as unusable is omitted and audited, never signed. Update reads Distribution only
@@ -143,8 +145,9 @@ export function effectivePackBindings(
   return out;
 }
 
-/** Truncate the revocation list to `MAX_FEED_REVOCATIONS`: unreferenced first, then oldest. */
-function truncateRevocations(
+/** Truncate the revocation list to `MAX_FEED_REVOCATIONS`: unreferenced first, then oldest.
+ *  Exported for its test (a delegation's revocation, always referenced, survives). */
+export function truncateRevocations(
   list: (FeedRevocation & { issuedAt: number })[],
   referenced: ReadonlySet<string>,
 ): { kept: (FeedRevocation & { issuedAt: number })[]; dropped: number } {
@@ -560,6 +563,22 @@ async function compose(
       for (const h of sets) listed.add(h);
     const list: (FeedRevocation & { issuedAt: number })[] = [];
     for (const r of revocationsInForce) {
+      // P4-19 (plans/P4-19.md §6.3): a delegation's revocation names no release, so no pin,
+      // hold or set ever lists its target. It is always listed, with `pack` the scope root, and
+      // counts as referenced: never dropped under the cap, kept at size step 3.
+      if (r.kind === "delegation") {
+        referenced.add(r.recordSha256);
+        list.push({
+          record: r.recordSha256,
+          pack: r.deliverableId,
+          target: r.targetSha256,
+          version: r.version,
+          seq: r.seq,
+          kind: "delegation",
+          issuedAt: r.issuedAt,
+        });
+        continue;
+      }
       const keep = byChannel.has(r.targetSha256) || listed.has(r.targetSha256);
       if (!keep) continue;
       if (byLive.has(r.targetSha256) || listed.has(r.targetSha256))

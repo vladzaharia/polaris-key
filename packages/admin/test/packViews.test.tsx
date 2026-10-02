@@ -16,6 +16,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
+  DelegationsResponse,
   DeliverablesResponse,
   PackFilesResponse,
   PackReleasesResponse,
@@ -25,6 +26,7 @@ import { resetCache } from "../src/context.js";
 import { sha } from "./releaseFixture.js";
 
 const deliverables = vi.fn<(slug: string) => Promise<DeliverablesResponse>>();
+const delegations = vi.fn<(slug: string) => Promise<DelegationsResponse>>();
 const packReleases =
   vi.fn<(slug: string, id: string) => Promise<PackReleasesResponse>>();
 const packFiles =
@@ -40,6 +42,7 @@ vi.mock("../src/api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/api.js")>()),
   api: {
     deliverables: (slug: string) => deliverables(slug),
+    delegations: (slug: string) => delegations(slug),
     packReleases: (slug: string, id: string) => packReleases(slug, id),
     packFiles: (slug: string, id: string, releaseId: string, variant: string) =>
       packFiles(slug, id, releaseId, variant),
@@ -196,6 +199,7 @@ const RELEASES: PackReleasesResponse = {
 beforeEach(() => {
   resetCache();
   deliverables.mockReset().mockResolvedValue(LIST);
+  delegations.mockReset().mockResolvedValue({ delegations: [] });
   packReleases.mockReset().mockResolvedValue(RELEASES);
   packFiles.mockReset();
 });
@@ -480,5 +484,64 @@ describe("an app release's content", () => {
     );
     expect(screen.queryByText(/Content API/)).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Embeds" })).toBeNull();
+  });
+});
+
+describe("Content keys (P4-19)", () => {
+  it("lists each delegation read-only: scope, types, status, signer, key and releases", async () => {
+    delegations.mockResolvedValue({
+      delegations: [
+        {
+          sha256: sha(900),
+          scope: "diceroll.events",
+          types: ["files.tree", "godot.pck"],
+          effectiveTypes: ["files.tree"],
+          seq: 2,
+          issuedAt: 1_719_000_000,
+          expiresAt: 1_734_000_000,
+          status: "active",
+          origin: "submit",
+          signedBy: "diceroll-release-2026",
+          keyFingerprint: "ab".repeat(32),
+          releaseCount: 3,
+          revocation: null,
+        },
+        {
+          sha256: sha(901),
+          scope: "diceroll.l10n",
+          types: ["l10n.table"],
+          effectiveTypes: ["l10n.table"],
+          seq: 1,
+          issuedAt: 1_700_000_000,
+          expiresAt: 1_710_000_000,
+          status: "revoked",
+          origin: "submit",
+          signedBy: "diceroll-release-2026",
+          keyFingerprint: "cd".repeat(32),
+          releaseCount: 0,
+          revocation: {
+            sha256: sha(902),
+            kid: "diceroll-release-2026",
+            reason: "key leaked",
+            issuedAt: 1_705_000_000,
+          },
+        },
+      ],
+    });
+    render(<Deliverables slug={SLUG} />);
+    expect(await screen.findByText("Content keys")).toBeTruthy();
+    const row = (await screen.findByText("diceroll.events.*")).closest("tr")!;
+    expect(within(row).getByText("files.tree")).toBeTruthy();
+    expect(within(row).queryByText("godot.pck")).toBeNull();
+    expect(within(row).getByText("active")).toBeTruthy();
+    expect(within(row).getByText("diceroll-release-2026")).toBeTruthy();
+    expect(within(row).getByText("3")).toBeTruthy();
+    const revoked = screen.getByText("diceroll.l10n.*").closest("tr")!;
+    expect(within(revoked).getByText("revoked")).toBeTruthy();
+    expect(within(revoked).getByText("key leaked")).toBeTruthy();
+    // No write controls: minting and revoking are CI acts.
+    expect(
+      screen.queryByRole("button", { name: /revoke|delegate/i }),
+    ).toBeNull();
   });
 });

@@ -145,8 +145,20 @@ describe("@polaris-key/protocol layout", () => {
     ]);
     expect(update.NONE_REASONS).toHaveLength(10);
     expect(release.BUILD_ID_PATTERN.source).toBe("^[a-z0-9][a-z0-9._-]{0,63}$");
-    expect(release.RECORD_KINDS).toEqual(["app", "pack", "revocation"]);
-    expect(release.RESERVED_RECORD_KINDS).toEqual(["delegation"]);
+    expect(release.RECORD_KINDS).toEqual([
+      "app",
+      "pack",
+      "revocation",
+      "delegation",
+    ]);
+    expect(release.RESERVED_RECORD_KINDS).toEqual([]);
+    // plans/P4-19.md §2.2: 69 bytes, longer than any declared release-key kid.
+    expect(release.DELEGATED_KID_PATTERN.test(`pkd1-${"a".repeat(64)}`)).toBe(
+      true,
+    );
+    expect(release.DELEGATED_KID_PATTERN.test(`pkd1-${"A".repeat(64)}`)).toBe(
+      false,
+    );
     expect(barrel.FEED_VERSION_SCHEMES).toBe(update.FEED_VERSION_SCHEMES);
     expect(barrel.BUILD_ID_PATTERN).toBe(release.BUILD_ID_PATTERN);
     expect(barrel.MAX_WIRE_INTEGER).toBe(core.MAX_WIRE_INTEGER);
@@ -251,5 +263,24 @@ describe("@polaris-key/protocol layout", () => {
     expect(barrel.PACK_TYPES).toBe(packs.PACK_TYPES);
     expect(barrel.MAX_FILES_INDEX_BYTES).toBe(core.MAX_FILES_INDEX_BYTES);
     expect(barrel.RECORD_KINDS).toBe(release.RECORD_KINDS);
+  });
+
+  it("the delegation constants (plans/P4-19.md §2.2, §2.5)", () => {
+    expect(packs.DELEGABLE_PACK_TYPES).toEqual([
+      "files.tree",
+      "data.json",
+      "l10n.table",
+    ]);
+    expect(packs.DATA_ONLY_EXTENSIONS).toHaveLength(14);
+    expect(core.MAX_DELEGATION_TTL_SECONDS).toBe(366 * 86400);
+    expect(core.MAX_DELEGATION_TYPES).toBe(8);
+    expect(core.DATA_ONLY_HEAD_BYTES).toBe(64);
+    expect(core.DATA_ONLY_TAIL_BYTES).toBe(22 + 65535);
+    expect(core.MAX_DELEGATIONS_PER_CHECK).toBe(16);
+    expect(barrel.DELEGABLE_PACK_TYPES).toBe(packs.DELEGABLE_PACK_TYPES);
+    expect(barrel.DELEGATED_KID_PATTERN).toBe(release.DELEGATED_KID_PATTERN);
+    expect(barrel.MAX_DELEGATIONS_PER_CHECK).toBe(
+      core.MAX_DELEGATIONS_PER_CHECK,
+    );
   });
 });

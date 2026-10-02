@@ -93,6 +93,7 @@
       "status": "implemented",
       "note": "core/release_record.py verify_revocation and newer_revocation; the PackEngine keeps verified revocations in the sibling revocations.json (revocationsStored, relearn, 256 targets) and refuses revoked mounts with pack-revoked."
     },
+    "packs.delegation": { "status": "planned", "wp": "P4-25" },
     "packs.plan": {
       "status": "implemented",
       "note": "update.packs plan, select_variant and plan_target; every plan-matrix.json row, variant case and target case in test_plan_matrix."

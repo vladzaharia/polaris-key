@@ -310,6 +310,12 @@ const strings = await packs.readFile("diceroll.l10n", "fr/strings.json");
   reports. On desktop the host's `@polaris-key/node` client reports it.
 - Errors are client-core's `PackError` (`code`, `detail`, `path`), exported from
   `@polaris-key/react` and `@polaris-key/react/update`.
+- **Delegated content** (P4-19). Content-key releases of compatible or standalone packs install
+  through the same engine, on the web and through the desktop bridge: the delegation is fetched
+  by the hash in the record's `pkd1-` kid and verified against `pinnedReleaseKeys` only, every
+  file passes the data-only rule (`pack-not-data-only`, with the `path`), and a release under a
+  revoked delegation is `pack-revoked`, detail `delegation`. A pinned release kid matching
+  `pkd1-<64 hex>` is `invalid-options`. There is no UI change.
 
 ## Desktop bridge contract (protocol v3)
 

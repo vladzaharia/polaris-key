@@ -162,7 +162,8 @@
         "releaseKeyFingerprints": [],
         "packs": true,
         "chunks": true,
-        "revocations": true
+        "revocations": true,
+        "delegations": true
       },
       "distribution": {
         "enabled": true,

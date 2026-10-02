@@ -42,9 +42,10 @@
  *   i. the `GC_KEEP_RECENT_RELEASES` newest not-yanked, not-revoked releases of each pack.
  *
  * REVOKED releases are never live (plans/P4-13.md §8.5): no client installs one, whatever pins it.
- * Only `kind: record` revocations name a release; any other kind (P4-19's `delegation`) is ignored
- * here. Whichever of P4-14 and P4-19 lands second excludes delegation-revoked releases from (a),
- * (e) and (f).
+ * A `kind: record` revocation names its release; a `kind: delegation` revocation (P4-19) names the
+ * releases signed under the delegation (`delegatedReleaseIds`), which are no live reference either
+ * (plans/P4-19.md §8.5) — not through (a), (e) or (f), nor any other rule. Any other kind is
+ * ignored.
  * A yanked release stays live only through (a), (e) or (f).
  *
  * ── WHICH REFS ARE DROPPED ──────────────────────────────────────────────────────────────────
@@ -249,10 +250,16 @@ export async function livePackReleases(
   // Only RECORD revocations name a release (P4-19 adds `kind: "delegation"` entries, whose target
   // is a delegation hash): any other kind, or a target that is no release of this product, is
   // ignored here, never read as a release id.
-  const revocations = (await catalog.revocations()).filter(
+  const all = await catalog.revocations();
+  const revocations = all.filter(
     (r) => (r.kind ?? "record") === "record" && byId.has(r.targetReleaseId),
   );
   const revoked = new Set(revocations.map((r) => r.targetReleaseId));
+  // P4-19: the releases a delegation revocation yanks are dead too, from every rule.
+  for (const r of all)
+    if (r.kind === "delegation")
+      for (const id of r.delegatedReleaseIds ?? [])
+        if (byId.has(id)) revoked.add(id);
   const live = new Set<string>();
   const add = (id: string | null | undefined) => {
     if (id && byId.has(id) && !revoked.has(id)) live.add(id);

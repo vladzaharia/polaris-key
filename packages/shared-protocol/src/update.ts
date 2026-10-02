@@ -158,6 +158,9 @@ export interface FeedRevocation {
   target: string;
   version: string;
   seq: number;
+  /** `delegation` when the target is a delegation record (plans/P4-19.md §2.7); absent for a
+   *  pack record target. */
+  kind?: "delegation";
 }
 
 /** `feedContent`'s answer: each member parsed, or null when absent or unusable. */

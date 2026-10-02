@@ -127,3 +127,46 @@ withholds a revocation cannot bring the target back.
 
 `cases.json` pins the members in `feedContentCases` and the record in `revocationCases`;
 `update-matrix.json` pins the decision in `contentRows`.
+
+## Delegated content keys and the data-only rule
+
+P4-19 (spec §1, §2.5.4, §2.8, §3.5 steps 13 and 16) lets a product's release key delegate a
+**content key** that may sign pack records of data-only types under one pack-id scope, so a content
+team can publish events, localisation and data without code-release power. It stays inside v4: the
+reserved record kind `delegation` is filled, a feed `revocations` entry may carry
+`kind: "delegation"`, and nothing else changes.
+
+| Piece                     | What it is                                                                                                                                                                                                                                                   | Read by                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| `kind: delegation` record | CI-signed with a pinned release key: `deliverable` is the scope root (a pack id), `delegate.publicKey` the content key, `types` (1–8; only `files.tree`, `data.json` and `l10n.table` count) and a signing window `issuedAt`–`expiresAt` of at most 366 days | `delegationOf`, `verifyDelegation`                          |
+| The delegated kid         | A pack record signed by the content key carries `kid: pkd1-<the delegation's record hash>`; the device fetches that delegation from the record route                                                                                                         | `delegationHashOf`, `verifyReleaseRecord` with `delegation` |
+| Scope (step 16)           | `kind: pack`; the pack id is the scope root or under it by whole segments (`djdl.events` covers `djdl.events.halloween`, never `djdl.eventsx`); the type is delegated; every variant is tree layout; the record's `issuedAt` is inside the window            | `verifyReleaseRecord` (`scope`)                             |
+| Revocation                | P4-13's revocation record naming the delegation's hash; every release signed under it is then refused                                                                                                                                                        | `verifyRevocation`, `recordRevoked`                         |
+| The data-only rule        | Every file of a delegated release: an already-normalised path, an extension on the allow-list, and no Godot, archive, native-code or script magic in its first 64 or last 65,557 bytes                                                                       | `dataOnlyRefusal`                                           |
+
+A delegation verifies only against the **pinned release keys**, one level deep, so the Worker can
+neither forge nor widen one, and a content key cannot re-delegate. The delegated path is allowed
+only for a compatible or standalone pack's feed target and for the reload of a stored delegated
+install; app records, pins, holds, revocations, replacements and embedded baselines never take it,
+so a content-key signature fails there at `jws`. Devices check the record's `issuedAt` against the
+window, never their own clock, so an installed release stays valid after the window closes; only a
+revocation stops it. An SDK that predates P4-19 refuses a delegated record at step 13 and keeps
+what it runs.
+
+**The data-only rule** (spec §2.8). The extension allow-list is the real control: `json`, `csv`,
+`tsv`, `po`, `txt`, `png`, `jpg`, `jpeg`, `webp`, `ogg`, `wav`, `mp3`, `ttf`, `otf`, compared after
+the last `.` of the final segment, ASCII-lowercased. Godot picks its loader by extension, so `.tres`,
+`.res`, `.gd`, `.translation`, `.import` and every other loader extension are refused because they
+are not listed. A path that is not already normalised (an empty, `.` or `..` segment, a leading or
+trailing `/`) is refused too, so Godot's `simplify_path()` never changes an admitted path. Two
+sniffs, by content and never by extension, fail closed: the head (after a UTF-8 BOM and ASCII
+whitespace) must not start with `RSRC`, `RSCC`, `GDPC`, `GDEC`, `GCPF`, `GDSC`, `[gd_`, a zip local
+header, ELF, `MZ`, a Mach-O magic, `\0asm`, `#!`, `@tool`, `extends ` or `class_name `; and the tail
+must not end with `GDPC` or hold a zip end record (`PK\x05\x06`), which catches a PNG or OGG with a
+mountable archive appended. The device runs the extension rule over the files index before any
+payload object is fetched and the sniffs as each file is written; a refusal is
+`pack-not-data-only` with the path. No SDK or handler ever passes a delegated file to
+`load_resource_pack`.
+
+`cases.json` pins the chain in `delegationCases`; `content/cases.json` pins the rule in
+`dataOnlyCases`.

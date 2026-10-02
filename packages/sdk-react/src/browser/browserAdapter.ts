@@ -38,6 +38,7 @@
 // snapshot is shape-identical to a desktop one.
 
 import type { ManagedEntry } from "@polaris-key/protocol/core";
+import { DELEGATED_KID_PATTERN } from "@polaris-key/protocol/release";
 import {
   HEADER_PLATFORM,
   HEADER_SDK_NAME,
@@ -360,6 +361,16 @@ export class BrowserAdapter implements PolarisAdapter {
         throw new PolarisError(
           "invalid-options",
           "update.outlet is not an outlet kind or {id, kind, subkind?}.",
+        );
+      // plans/P4-19.md §2.2: a delegated kid is never a pinned release key.
+      if (
+        Object.keys(u.pinnedReleaseKeys ?? {}).some((kid) =>
+          DELEGATED_KID_PATTERN.test(kid),
+        )
+      )
+        throw new PolarisError(
+          "invalid-options",
+          "update.pinnedReleaseKeys names a pkd1- kid: a delegated content key is reached only through a delegation, never pinned.",
         );
       if (releaseKeysOverlap(u.pinnedReleaseKeys ?? {}, this.pinned ?? {}))
         throw new PolarisError(

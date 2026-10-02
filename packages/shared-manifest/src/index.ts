@@ -2484,7 +2484,7 @@ function validateReleaseKeys(
       "release",
       "/release/contentKeys",
       "content_keys_not_supported",
-      "release.contentKeys is reserved for content-key delegation (P4-19) and is ignored.",
+      "release.contentKeys is not used: delegate a content key with `pkey release delegate`; the signed delegation is the only grant (P4-19).",
     );
   }
   const raw = relRoot.releaseKeys;

@@ -68,6 +68,20 @@ export const MAX_FEED_REVOCATIONS = 64;
 /** A revocation record's `reason`: 1–this many UTF-8 bytes, display only (§2.3). */
 export const REVOCATION_REASON_MAX_BYTES = 512;
 
+// ── Content-key delegation (plans/P4-19.md §2.2, §2.3, §2.5) ─────────────────────────────────
+
+/** A delegation's signing window: `expiresAt − issuedAt` is at most this many seconds (366 days). */
+export const MAX_DELEGATION_TTL_SECONDS = 31622400;
+/** A delegation's `types`: 1–this many unique pack types. */
+export const MAX_DELEGATION_TYPES = 8;
+/** The data-only head sniff reads at most this many leading decoded bytes of a file (§2.5 rule 3). */
+export const DATA_ONLY_HEAD_BYTES = 64;
+/** The data-only tail sniff reads at most this many trailing decoded bytes of a file: the 22-byte
+ *  zip end record plus its 65,535-byte comment (§2.5 rule 4). */
+export const DATA_ONLY_TAIL_BYTES = 65557;
+/** A client fetches at most this many distinct delegations per update check or `ensure` (§2.3). */
+export const MAX_DELEGATIONS_PER_CHECK = 16;
+
 /** The `iss` every Polaris Key document carries. A FIXED string, never derived from the base URL
  *  or the serving host — an attacker-controlled host must not be able to name its own issuer.
  *  (Amendment A1: the host-neutral `plrs.im` spelling was withdrawn; a future host move is a

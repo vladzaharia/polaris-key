@@ -41,6 +41,10 @@
  * before the yank its revocation also wrote). App releases already stored keep their signed pins;
  * devices refuse the revoked release themselves (plans/P4-13.md §2.6);
  *
+ * and, since P4-19, `pin-delegated` and `hold-delegated`: the pinned or held release was signed
+ * by a delegated content key (a pin or hold is the release key vouching for exact bytes; `embeds`
+ * ⊆ pins, so this covers embedded baselines too, plans/P4-19.md §2.4);
+ *
  * then the resolution check (`checks.ts`: pack-channels-conflict, content-unsatisfied,
  * hold-unsatisfiable, pack-sets-bound), whose report the submit returns.
  *
@@ -228,13 +232,16 @@ export async function planAppContent(
     version: string | null;
     yanked: number;
     revoked: number;
+    delegated: number;
   }>(
     `SELECT r.record_sha256, r.kind, r.deliverable_id, r.release_id, r.seq, r.jws,
             m.version AS version,
             EXISTS (SELECT 1 FROM release_yanks y
                      WHERE y.product = r.product AND y.release_id = r.release_id) AS yanked,
             EXISTS (SELECT 1 FROM release_revocations v
-                     WHERE v.product = r.product AND v.target_sha256 = r.record_sha256) AS revoked
+                     WHERE v.product = r.product AND v.target_sha256 = r.record_sha256) AS revoked,
+            EXISTS (SELECT 1 FROM release_delegated_records d
+                     WHERE d.product = r.product AND d.record_sha256 = r.record_sha256) AS delegated
        FROM release_records r
        LEFT JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id
       WHERE r.product = ? AND r.record_sha256 IN (SELECT value FROM json_each(?))`,
@@ -269,6 +276,11 @@ export async function planAppContent(
       return refuse(
         "pin-mismatch",
         `record ${p.release.sha256} is ${r.kind === "pack" ? `${r.deliverable_id} ${r.version ?? "?"} (seq ${r.seq})` : `a ${r.kind} record`}, not ${p.pack} ${p.release.version} (seq ${p.release.seq}).`,
+      );
+    if (r.delegated)
+      return refuse(
+        "pin-delegated",
+        `${p.pack} ${p.release.version} was signed by a delegated content key; an app release pins (or embeds) only releases its release key signed (plans/P4-19.md §2.4).`,
       );
     if (r.revoked)
       return refuse(
@@ -331,6 +343,11 @@ export async function planAppContent(
       return refuse(
         "hold-binding",
         `${h.pack} is ${bindingOf.get(h.pack) ?? "not declared"}; only a compatible pack is held (a pinned pack is pinned).`,
+      );
+    if (r.delegated)
+      return refuse(
+        "hold-delegated",
+        `${h.pack} ${h.release.version} was signed by a delegated content key; an app release holds only releases its release key signed (plans/P4-19.md §2.4).`,
       );
     if (r.revoked)
       return refuse(

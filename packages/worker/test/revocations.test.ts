@@ -682,3 +682,57 @@ describe("the composed feed (plans/P4-13.md §2.2, §6.3)", () => {
     expect(parts.packSets?.outlets).toEqual({ play: { pinned: [FOES] } });
   });
 });
+
+describe("delegation revocations in the composed feed (plans/P4-19.md §6.3)", () => {
+  it("lists a delegation's revocation with kind delegation though no pin, hold or row names its target", async () => {
+    const { foesOld } = await world({ holdOld: true });
+    const r = await revoke(revocation(foesOld));
+    expect(r.status).toBe(200);
+    const target = sha("pkey-delegation:djdl.foes.events:1");
+    const record = sha("pkey-delegation-revocation:djdl.foes.events:1");
+    await db.run(
+      `INSERT INTO release_delegations
+         (product, record_sha256, deliverable_id, seq, version, kid, jws, public_key, types_json,
+          issued_at, expires_at, ingested_at, origin, revocation_sha256, revocation_jws,
+          revocation_kid, revocation_reason, revocation_issued_at)
+       VALUES (?, ?, 'djdl.foes.events', 1, '1', ?, 'x.y.z', ?, '["files.tree"]', ?, ?, ?,
+               'submit', ?, 'a.b.c', ?, 'retired', ?)`,
+      SLUG,
+      target,
+      RELEASE_KID,
+      "A".repeat(43),
+      NOW - 10,
+      NOW + 86400,
+      NOW,
+      record,
+      RELEASE_KID,
+      NOW - 5,
+    );
+    const cfg = (await getReleaseConfig(db, SLUG))!;
+    const parts = await composePackParts(
+      { db, product: SLUG, hooks: await hooks(), cfg },
+      "stable",
+    );
+    expect(parts.revocations).toEqual([
+      {
+        record: r.sha256,
+        pack: FOES,
+        target: foesOld.sha256,
+        version: "1.0.0",
+        seq: 1,
+      },
+      {
+        record,
+        pack: "djdl.foes.events",
+        target,
+        version: "1",
+        seq: 1,
+        kind: "delegation",
+      },
+    ]);
+    expect(parts.referenced.has(record)).toBe(true);
+    expect(feedContent({ revocations: parts.revocations }).revocations).toEqual(
+      parts.revocations,
+    );
+  });
+});

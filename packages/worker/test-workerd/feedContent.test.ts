@@ -125,4 +125,20 @@ describe("feed content on workerd (P4-13)", () => {
     // real budget is the isolate's CPU limit, which a runaway loop here would exceed.
     expect(Date.now() - t0).toBeLessThan(5000);
   });
+
+  it("P4-19: a delegation's revocation (kind delegation) is kept and passes the self-check inside the isolate", async () => {
+    const c = await worstCase();
+    const revocations = [...(c.content.revocations ?? [])];
+    revocations[0] = { ...revocations[0]!, kind: "delegation" as const };
+    const d = documentFor(
+      "djdl",
+      { ...c, content: { ...c.content, packSets: null, revocations } },
+      "web",
+      7,
+      1_700_000_000,
+    );
+    expect(feedSelfCheck(d.doc, d.platform)).toBe(true);
+    const listed = d.doc.revocations as { kind?: string }[] | undefined;
+    expect(listed?.some((r) => r.kind === "delegation")).toBe(true);
+  });
 });

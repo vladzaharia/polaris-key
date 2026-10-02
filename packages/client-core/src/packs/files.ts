@@ -51,7 +51,7 @@ const asciiLower = (s: string): string =>
   s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
 
 /** Path rules 1–3 (A7 §3.3) and the `.pkey` addition (plans/P4-01.md §2.7). */
-function pathSafe(path: string): boolean {
+export function pathSafe(path: string): boolean {
   const n = utf8Length(path);
   if (n < 1 || n > MAX_PACK_PATH_BYTES) return false;
   for (let i = 0; i < path.length; i++) {
