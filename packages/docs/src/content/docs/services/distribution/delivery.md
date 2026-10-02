@@ -235,7 +235,10 @@ collector runs on the nightly maintenance cron:
 `BLOB_GC_MODE=off` stops it. Every dropped or restored ref and every deletion is logged in
 `blob_gc_log`, and each product's drops are audited (`core.blob_gc.refs_dropped`). The console's
 dry run is `GET /manage/api/products/<slug>/blob-gc`, and `…/blob-gc/bundles` shows each chunk
-bundle's live-data ratio (unknown until chunk indexes are stored server-side).
+bundle a live release's index names with its live-data ratio (the share of its bytes live
+indexes still read). A pack's chunk bundles are blobs, so a bundle stays as long as any live
+release's chunk index names it, even after the release that uploaded it is dead; a live variant
+whose chunk index cannot be read keeps every `pack-upload` ref that night.
 
 ## See also
 

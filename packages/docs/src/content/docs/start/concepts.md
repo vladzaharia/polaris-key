@@ -284,7 +284,9 @@ for product.
 - **artifact role** — what an artifact (a file of a build, or a sidecar) is for: `payload`,
   `files-index`, `chunk-index`, `chunk-bundle`, `delta`, `signature` or `checksum`. A pack
   release's objects take `payload` (the whole payload), `files-index`, `files-gaps`, `delta`,
-  `patch` or `patch-data`.
+  `patch`, `patch-data` or `chunk-index` (a variant's `pkey-chunks/1` chunk index). A pack's
+  chunk bundles are blobs held by the pack's uploads, not artifacts, so `chunk-bundle` is an app
+  artifact role only.
 - **promote / pin / yank** — move a channel's pointer to a release (which makes it a member of
   the channel) / freeze the channel at its pointer / make a release unservable except through an
   explicit pin. A yank never deletes anything, and a release deleted on GitHub is not a yank.
