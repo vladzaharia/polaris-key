@@ -658,7 +658,9 @@ export type DeliverableKind = (typeof DELIVERABLE_KINDS)[number];
 /**
  * What a pack release's objects are FOR (`release_artifacts.role` of a pack release's rows):
  * `payload` is the variant's `full` object, then the files index, the gaps object, a `payload`
- * delta's frame, and a `files` delta's descriptor and packed data. App artifact maps keep using
+ * delta's frame, a `files` delta's descriptor and packed data, and (P4-22) the variant's
+ * `pkey-chunks/1` chunk index. A chunk bundle has no row: its `pack-upload` refs hold it, as a
+ * file blob's do (`chunk-bundle` stays an app artifact role only). App artifact maps keep using
  * {@link ARTIFACT_ROLES}.
  */
 export const PACK_OBJECT_ROLES = [
@@ -668,6 +670,7 @@ export const PACK_OBJECT_ROLES = [
   "delta",
   "patch",
   "patch-data",
+  "chunk-index",
 ] as const;
 export type PackObjectRole = (typeof PACK_OBJECT_ROLES)[number];
 
@@ -699,8 +702,13 @@ export type PackBinding = (typeof PACK_BINDINGS)[number];
 /** Whether a pack ships inside app builds (`embedded`) or only over the network (`none`). */
 export const PACK_BASELINES = ["embedded", "none"] as const;
 export type PackBaseline = (typeof PACK_BASELINES)[number];
-/** The patch strategies a pack may ask CI to publish (`patch.strategies`). */
-export const PACK_PATCH_STRATEGIES = ["delta", "file"] as const;
+/**
+ * The patch strategies a pack may ask CI to publish (`patch.strategies`), and the default when
+ * the declaration lists none. `chunk` (P4-22, plans/P4-10.md §3) makes CI write a `pkey-chunks/1`
+ * index and shared chunk bundles for every container variant of 4 MiB or more; an explicit list
+ * without it (`[delta, file]`) opts out.
+ */
+export const PACK_PATCH_STRATEGIES = ["delta", "file", "chunk"] as const;
 export type PackPatchStrategy = (typeof PACK_PATCH_STRATEGIES)[number];
 /** Pack fields a later package brings (P4-20); refused until then. */
 export const PACK_FIELDS_NOT_SUPPORTED = ["provides", "removes"] as const;
@@ -3818,7 +3826,7 @@ function normalizePackDeliverable(
         ? raw.entitlement
         : null,
     patch: {
-      strategies: strategies.length > 0 ? strategies : ["delta", "file"],
+      strategies: strategies.length > 0 ? strategies : [...PACK_PATCH_STRATEGIES],
       deltaBases:
         Number.isSafeInteger(patch.deltaBases) &&
         (patch.deltaBases as number) >= 0 &&
