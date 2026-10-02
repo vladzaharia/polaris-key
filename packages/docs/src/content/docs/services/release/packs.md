@@ -125,3 +125,12 @@ its variants and objects, a variant's files (read from its index), what an app r
 which app releases pin a pack release, and what a build embeds. Discovery's Release fragment
 carries `packs: true` on a Worker that ingests packs; `pkey release publish` refuses to publish a
 pack or stamp `content` without it.
+
+## Delivering packs
+
+Distribution serves a pack's objects by SHA-256 on the blob route only, under the pack's own
+delivery access and, for a gated pack, its current gate; a pack's files are never served by the
+`files` or `builds` routes. Each outlet's transport for the pack (`pkey-cdn`, `web` or
+`embedded` in v1) decides where it is live. See
+[Pack bytes](/docs/services/distribution/delivery/#pack-bytes) and
+[Availability](/docs/services/distribution/availability/).

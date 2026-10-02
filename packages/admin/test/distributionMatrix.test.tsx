@@ -89,14 +89,22 @@ const MATRIX: DistributionMatrix = {
       kind: "direct",
       transport: "pkey-cdn",
       derives: true,
+      supported: true,
     },
     {
       outletId: "app-store",
       kind: "app-store",
+      transport: "apple-ba",
+      derives: false,
+      supported: false,
+    },
+    {
+      outletId: "play",
+      kind: "play",
       transport: "pkey-cdn",
       derives: false,
+      supported: true,
     },
-    { outletId: "play", kind: "play", transport: "pkey-cdn", derives: false },
   ],
   releases: [
     {
@@ -230,6 +238,9 @@ describe("Distribution — matrix", () => {
     expect(within(direct).getByText("25%")).toBeTruthy();
     const store = cellOf("v0.4.2", "app-store");
     expect(within(store).getByText("in-review")).toBeTruthy();
+    // A transport v1 does not act on is named in its column header (P4-05).
+    expect(screen.getByText("apple-ba: not supported yet")).toBeTruthy();
+    expect(screen.queryAllByText(/not supported yet/)).toHaveLength(1);
     expect(within(store).getByText("submitted")).toBeTruthy();
     expect(
       within(cellOf("v0.4.0", "direct")).getByText("not available"),

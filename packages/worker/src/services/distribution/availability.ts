@@ -26,6 +26,10 @@
  * GitHub-synced release no descriptor described) is matched by its artifacts, as one per-release
  * record (`buildId: ''`).
  *
+ * A PACK release has its own rule (P4-05, `packDerivedAvailability`): `pkey-cdn`/`web` per
+ * variant once every object its record names is stored and held, `embedded` per (app release,
+ * outlet) from the builds' `embeds`.
+ *
  * A stored row wins: a report of (release, build, outlet) replaces the derived record of that
  * build, and a per-release report (`buildId: ''`) replaces every derived record of that outlet.
  *
@@ -63,6 +67,8 @@ import {
   DEFAULT_TRANSPORT,
   type AvailabilityRecord,
   type CatalogArtifact,
+  type CatalogBuildEmbeds,
+  type CatalogPackRelease,
   type CatalogRelease,
   type KeyObservation,
   type KeyRecord,
@@ -70,7 +76,16 @@ import {
   type ServiceHooks,
   type SubmissionRecord,
 } from "../../core/hooks.js";
-import { getOutlet, listOutlets, parseJsonColumn } from "./outlets.js";
+import {
+  getOutlet,
+  listOutlets,
+  listTransports,
+  parseJsonColumn,
+  SUPPORTED_TRANSPORTS,
+  type DistOutletRow,
+  type DistTransportRow,
+} from "./outlets.js";
+import { referencedKeys, storedObjects } from "../../core/blobs.js";
 
 // ── Vocabulary ───────────────────────────────────────────────────────────────────────────────
 
@@ -116,12 +131,8 @@ export const FINGERPRINT_PATTERN = /^[0-9a-f]{64}$/;
 export const REPORT_TYPES = ["availability", "submission", "key"] as const;
 export type ReportType = (typeof REPORT_TYPES)[number];
 
-/** Transports over which Polaris Key itself delivers the bytes. */
-export const DERIVED_TRANSPORTS: readonly string[] = [
-  "pkey-cdn",
-  "embedded",
-  "web",
-];
+/** Transports over which Polaris Key itself delivers the bytes: the v1 set (`outlets.ts`). */
+export const DERIVED_TRANSPORTS: readonly string[] = SUPPORTED_TRANSPORTS;
 
 /**
  * Outlet kinds Polaris Key hosts itself (no third party reviews or serves the build): the direct
@@ -296,18 +307,29 @@ export interface AvailabilityReadContext {
   hooks: ServiceHooks;
 }
 
-/** A release and its deliverable, found by id across the product's deliverables. */
+/** A release of one of the product's declared deliverables, found by id (two reads). */
 export async function findRelease(
   catalog: ReleaseCatalog,
   releaseId: string,
 ): Promise<CatalogRelease | null> {
-  for (const d of await catalog.deliverables()) {
-    const hit = (await catalog.releases(d.id)).find(
-      (r) => r.releaseId === releaseId,
-    );
-    if (hit) return hit;
-  }
-  return null;
+  const hit = await catalog.release(releaseId);
+  if (!hit) return null;
+  return (await catalog.deliverables()).some((d) => d.id === hit.deliverableId)
+    ? hit
+    : null;
+}
+
+/** A transport lookup over the product's `dist_transports` rows, read once (`listTransports`). */
+export type TransportLookup = (deliverable: string, outlet: string) => string;
+
+export function transportLookup(
+  rows: readonly DistTransportRow[],
+): TransportLookup {
+  const map = new Map(
+    rows.map((r) => [`${r.deliverable_id}\u0000${r.outlet_id}`, r.transport]),
+  );
+  return (deliverable, outlet) =>
+    map.get(`${deliverable}\u0000${outlet}`) ?? DEFAULT_TRANSPORT;
 }
 
 /** The transport a deliverable uses on an outlet: its `dist_transports` row, else the default. */
@@ -351,13 +373,27 @@ async function derivedAvailability(
   ctx: AvailabilityReadContext,
   catalog: ReleaseCatalog,
   release: CatalogRelease,
+  allOutlets: readonly DistOutletRow[],
+  transportOf: TransportLookup,
 ): Promise<AvailabilityRecord[]> {
   if (release.yanked) return [];
-  const { db, product } = ctx;
-  const outlets = (await listOutlets(db, product)).filter(
+  const outlets = allOutlets.filter(
     (o) => o.removed_at === null && DERIVED_OUTLET_KINDS.includes(o.kind),
   );
   if (!outlets.length) return [];
+  // Every deliverable that is not the app is a pack (`DELIVERABLE_KINDS`): its own rule.
+  if (release.deliverableId !== APP_DELIVERABLE_ID)
+    return (
+      (
+        await packDerivedAvailability(
+          ctx,
+          catalog,
+          [release],
+          outlets,
+          packDeriveShared(catalog, transportOf),
+        )
+      ).get(release.releaseId) ?? []
+    );
 
   const builds = await catalog.builds(release.releaseId);
   const artifacts = await catalog.artifacts(release.releaseId);
@@ -382,12 +418,7 @@ async function derivedAvailability(
 
   const out: AvailabilityRecord[] = [];
   for (const outlet of outlets) {
-    const transport = await transportOf(
-      db,
-      product,
-      release.deliverableId,
-      outlet.outlet_id,
-    );
+    const transport = transportOf(release.deliverableId, outlet.outlet_id);
     if (!DERIVED_TRANSPORTS.includes(transport)) continue;
     const identity = objectColumn(outlet.identity_json) ?? {};
     const record = (buildId: string): AvailabilityRecord => ({
@@ -431,6 +462,239 @@ async function derivedAvailability(
 }
 
 /**
+ * The derived `live` records of one PACK release (P4-05, CONTENT §6.4 "outlet readiness"), for
+ * the live self-hosted `outlets` given. Per outlet, by the pack's transport there:
+ *
+ *   - `pkey-cdn` and `web`: one record per VARIANT (`buildId` = its build id) once every object
+ *     its signed record names — `full`, the files index, its gaps, every delta — is stored with
+ *     the recorded SHA-256 and length AND held by a ref of this product (Core's blob store, the
+ *     same possession rule the blob route serves under). One object missing, or its ref gone,
+ *     keeps the variant not live. A pack variant is platform-independent, so it matches every
+ *     outlet. The file blobs an index names were checked at ingest (`pack-object`) and are held
+ *     by `pack-upload` refs that nothing removes before P4-14's collector, which must keep this
+ *     rule; they are not re-read here, because that would decode an index per variant per call.
+ *   - `embedded`: ready by construction, with no report and no bytes of ours (the build carries
+ *     them; the SDK verifies its marker and hash on the device, P4-06 to P4-08). One record per
+ *     (app release, outlet) for each unyanked app release that PINS this pack release and has a
+ *     build matching the outlet that EMBEDS the pack (its `embeds`, or every `baseline: embedded`
+ *     pack when its descriptor said nothing): `buildId` `''`, `since` the app release's, and
+ *     `detail: {appReleaseId, buildIds}`.
+ *   - anything else (`apple-ba`, `steam-depot`, …: `SUPPORTED_TRANSPORTS` excludes it): nothing.
+ *     The transport row is stored and listed unsupported; a store reports its own state.
+ *
+ * Reads only through Release's catalog hook and Core's blob store. A yanked release derives
+ * nothing (the caller checks), as for the app.
+ */
+export async function packDerivedAvailability(
+  ctx: AvailabilityReadContext,
+  catalog: ReleaseCatalog,
+  releases: readonly CatalogRelease[],
+  outlets: readonly DistOutletRow[],
+  shared: PackDeriveShared,
+): Promise<Map<string, AvailabilityRecord[]>> {
+  const { db, product } = ctx;
+  const out = new Map<string, AvailabilityRecord[]>();
+  // One record read per release (the record is the truth of its objects).
+  const packs: CatalogPackRelease[] = [];
+  for (const r of releases) {
+    if (r.yanked) continue;
+    const pack = await catalog.packRelease(r.deliverableId, r.releaseId);
+    if (pack) packs.push(pack);
+  }
+  if (!packs.length || !outlets.length) return out;
+
+  // Every object of every release, stored and held: one bulk read of each (chunked by Core).
+  const keys = [
+    ...new Set(
+      packs.flatMap((p) =>
+        p.variants.flatMap((v) => v.objects.map((o) => o.key)),
+      ),
+    ),
+  ];
+  const [stored, held] = await Promise.all([
+    storedObjects(db, keys),
+    referencedKeys(db, product, keys),
+  ]);
+  const completeOf = (pack: CatalogPackRelease): string[] =>
+    pack.variants
+      .filter((v) =>
+        v.objects.every((o) => {
+          const s = stored.get(o.key);
+          return (
+            s !== undefined &&
+            s.sha256 === o.sha256 &&
+            s.size === o.bytes &&
+            held.has(o.key)
+          );
+        }),
+      )
+      .map((v) => v.buildId);
+
+  // The embedding app releases, in bulk, only for the releases an `embedded` outlet asks about.
+  const embeddedPacks = packs.filter((p) =>
+    outlets.some(
+      (o) =>
+        shared.transport(p.release.deliverableId, o.outlet_id) === "embedded",
+    ),
+  );
+  const embedding = await embeddingReleases(
+    catalog,
+    embeddedPacks.map((p) => p.release),
+    shared,
+  );
+
+  for (const pack of packs) {
+    const release = pack.release;
+    const complete = completeOf(pack);
+    const records: AvailabilityRecord[] = [];
+    for (const outlet of outlets) {
+      const transport = shared.transport(
+        release.deliverableId,
+        outlet.outlet_id,
+      );
+      if (!DERIVED_TRANSPORTS.includes(transport)) continue;
+      const base = {
+        deliverableId: release.deliverableId,
+        releaseId: release.releaseId,
+        outletId: outlet.outlet_id,
+        transport,
+        state: "live",
+        platformRef: null,
+        source: "derived",
+        derived: true,
+        updatedAt: null,
+      } as const;
+      if (transport !== "embedded") {
+        for (const buildId of complete)
+          records.push({
+            ...base,
+            buildId,
+            since: release.publishedAt,
+            detail: null,
+          });
+        continue;
+      }
+      const identity = objectColumn(outlet.identity_json) ?? {};
+      for (const app of embedding.get(release.releaseId) ?? []) {
+        const buildIds = app.builds
+          .filter((b) =>
+            outletMatches(outlet.kind, identity, b.buildId, b.platform),
+          )
+          .map((b) => b.buildId);
+        if (!buildIds.length) continue;
+        records.push({
+          ...base,
+          buildId: "",
+          since: app.publishedAt,
+          detail: { appReleaseId: app.releaseId, buildIds },
+        });
+      }
+    }
+    out.set(release.releaseId, records);
+  }
+  return out;
+}
+
+/**
+ * Reads the pack rule shares across every pack release of one availability call or one matrix
+ * page: the transport rows (read once by the caller), the app's releases and the pack
+ * declarations (each read once, on first use).
+ */
+export interface PackDeriveShared {
+  transport: TransportLookup;
+  appReleases(): Promise<Map<string, CatalogRelease>>;
+  /** Pack id → whether it is a `baseline: embedded` pack. */
+  embeddedByDefault(): Promise<Map<string, boolean>>;
+}
+
+export function packDeriveShared(
+  catalog: ReleaseCatalog,
+  transport: TransportLookup,
+): PackDeriveShared {
+  let apps: Promise<Map<string, CatalogRelease>> | undefined;
+  let declared: Promise<Map<string, boolean>> | undefined;
+  return {
+    transport,
+    appReleases: () =>
+      (apps ??= catalog
+        .releases(APP_DELIVERABLE_ID)
+        .then((rs) => new Map(rs.map((r) => [r.releaseId, r])))),
+    embeddedByDefault: () =>
+      (declared ??= catalog
+        .packDeliverables()
+        .then(
+          (ps) => new Map(ps.map((p) => [p.id, p.baseline === "embedded"])),
+        )),
+  };
+}
+
+/** An unyanked app release pinning a pack release, with its builds that embed the pack. */
+interface EmbeddingRelease {
+  releaseId: string;
+  publishedAt: number | null;
+  builds: Array<{ buildId: string; platform: string | null }>;
+}
+
+/**
+ * Per pack release in `releases`: the unyanked app releases that pin it and embed its pack in at
+ * least one build. Bulk: one pins read, one app-release read, one builds-with-embeds read (each
+ * chunked by Release), whatever the number of releases, pins or builds.
+ */
+async function embeddingReleases(
+  catalog: ReleaseCatalog,
+  releases: readonly CatalogRelease[],
+  shared: PackDeriveShared,
+): Promise<Map<string, EmbeddingRelease[]>> {
+  const out = new Map<string, EmbeddingRelease[]>();
+  if (!releases.length) return out;
+  const pins = await catalog.pinnedByMany(releases.map((r) => r.releaseId));
+  if (!pins.length) return out;
+  const apps = await shared.appReleases();
+  const live = [...new Set(pins.map((p) => p.appReleaseId))].filter((id) => {
+    const app = apps.get(id);
+    return app !== undefined && !app.yanked;
+  });
+  if (!live.length) return out;
+  const byDefault = await shared.embeddedByDefault();
+  const builds = new Map<string, CatalogBuildEmbeds[]>();
+  for (const b of await catalog.embedsOf(live)) {
+    const list = builds.get(b.releaseId) ?? [];
+    list.push(b);
+    builds.set(b.releaseId, list);
+  }
+  for (const release of releases) {
+    const pack = release.deliverableId;
+    const list: EmbeddingRelease[] = [];
+    const appIds = [
+      ...new Set(
+        pins
+          .filter((p) => p.packReleaseId === release.releaseId)
+          .map((p) => p.appReleaseId),
+      ),
+    ].sort();
+    for (const appReleaseId of appIds) {
+      const app = apps.get(appReleaseId);
+      if (!app || app.yanked) continue;
+      const embedding = (builds.get(appReleaseId) ?? [])
+        .filter((b) =>
+          b.embeds === null
+            ? byDefault.get(pack) === true
+            : b.embeds.includes(pack),
+        )
+        .map((b) => ({ buildId: b.buildId, platform: b.platform }));
+      if (embedding.length)
+        list.push({
+          releaseId: appReleaseId,
+          publishedAt: app.publishedAt,
+          builds: embedding,
+        });
+    }
+    out.set(release.releaseId, list);
+  }
+  return out;
+}
+
+/**
  * Availability of one release: stored rows plus derived records, a stored row winning. Live
  * outlets only, unless `includeRemoved` (the console shows history on removed outlets too).
  */
@@ -456,7 +720,10 @@ export async function availabilityFor(
   const stored = rows
     .filter((r) => opts.includeRemoved || live.has(r.outlet_id))
     .map((r) => availabilityRecord(r, release.deliverableId));
-  const derived = (await derivedAvailability(ctx, catalog, release)).filter(
+  const transports = transportLookup(await listTransports(ctx.db, ctx.product));
+  const derived = (
+    await derivedAvailability(ctx, catalog, release, outlets, transports)
+  ).filter(
     (d) =>
       !stored.some(
         (s) =>
@@ -468,8 +735,15 @@ export async function availabilityFor(
     (a, b) =>
       cmp(a.outletId, b.outletId) ||
       cmp(a.buildId, b.buildId) ||
-      Number(a.derived) - Number(b.derived),
+      Number(a.derived) - Number(b.derived) ||
+      cmp(embeddedIn(a), embeddedIn(b)),
   );
+}
+
+/** The app release an `embedded` pack record is about (`''` for any other record). */
+export function embeddedIn(r: AvailabilityRecord): string {
+  const v = r.detail?.appReleaseId;
+  return typeof v === "string" ? v : "";
 }
 
 function cmp(a: string, b: string): number {
