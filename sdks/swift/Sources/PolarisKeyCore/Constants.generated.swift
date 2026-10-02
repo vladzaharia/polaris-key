@@ -97,6 +97,9 @@ public enum ErrorCode {
     public static let feedRollback = "feed-rollback"
     public static let recordRejected = "record-rejected"
     public static let recordMismatch = "record-mismatch"
+    public static let payloadMismatch = "payload-mismatch"
+    public static let swapRefused = "swap-refused"
+    public static let swapFailed = "swap-failed"
     public static let filesIndexInvalid = "files-index-invalid"
     public static let filesUnsafePath = "files-unsafe-path"
     public static let filesDuplicatePath = "files-duplicate-path"
@@ -207,6 +210,9 @@ public let ERROR_CODE_VALUES: [String] = [
     "feed-rollback",
     "record-rejected",
     "record-mismatch",
+    "payload-mismatch",
+    "swap-refused",
+    "swap-failed",
     "files-index-invalid",
     "files-unsafe-path",
     "files-duplicate-path",
@@ -317,6 +323,9 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "feed-rollback": "client",
     "record-rejected": "client",
     "record-mismatch": "client",
+    "payload-mismatch": "client",
+    "swap-refused": "client",
+    "swap-failed": "client",
     "files-index-invalid": "client",
     "files-unsafe-path": "client",
     "files-duplicate-path": "client",

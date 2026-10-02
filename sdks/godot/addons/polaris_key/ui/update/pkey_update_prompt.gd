@@ -9,12 +9,16 @@ extends PKeyUiView
 ## centre. A mandatory or blocked answer is LOCKED: always the banner, with no dismiss control,
 ## whatever `modal` says — it never covers a game that keeps running (no v4 answer stops play).
 ##
-## P1 never downloads: a direct build opens the release page (`release_url`, or the v3 answer's
-## url), a store answer opens its listing, and a store, Steam or itch build shows the store link
-## or nothing. Installing and restarting are P3-10's.
+## The action is the outlet's (README §6.3, PKeyOutletAdapter): a store opens its listing or
+## source page, Steam, itch and the other platforms stay silent with their own message, a web
+## export reloads, and a direct build installs through its native updater (or the download
+## link), downloads a code pack, or restarts into a staged one ("Restart now"). With an SDK the
+## button runs PolarisKey.update.apply(result); every link it opens is https.
 
 ## The player chose the action (after the URL, if any, was opened).
 signal action_taken(result: PKeyResult)
+## What the action did (PolarisKey.update.apply(), for a v4 answer with an SDK).
+signal action_applied(applied: PKeyApplyResult)
 ## The player dismissed a dismissable answer.
 signal dismissed()
 
@@ -39,6 +43,7 @@ var _dismiss: Button
 var _bound := false
 var _covering := false
 var _fit_queued := false
+var _page_link := false
 
 
 func _build() -> void:
@@ -100,13 +105,34 @@ func show_result(r: PKeyResult) -> void:
 	refresh_view()
 
 
+## The outlet KIND the prompt renders for: `outlet`, else this install's (PolarisKey.update.outlet(),
+## detection included), else the stamp's outlet; "" (read as direct) in the editor.
 func _outlet() -> String:
 	if outlet != "":
 		return outlet
+	if sdk != null and sdk.get("update") != null and sdk.get("core") != null:
+		var k = sdk.update.outlet().get("kind")
+		return k if k is String and k != PKeyDecision.OUTLET_UNKNOWN else ""
 	if sdk != null and sdk.has_method("build_info"):
 		var o = sdk.build_info().get("outlet")
 		return o if o is String else ""
 	return ""
+
+
+## The adapter's plan for the answer, with this install's context, when an SDK is configured and
+## no `outlet` override is set; {} otherwise (the controller then plans from `outlet`).
+func _plan() -> Dictionary:
+	_page_link = false
+	if outlet != "" or sdk == null or sdk.get("core") == null or sdk.get("update") == null or not sdk.update.has_method("plan"):
+		return {}
+	var p: Dictionary = sdk.update.plan(result)
+	if p.is_empty():
+		return p
+	# A game-given release page backs a download answer when discovery named no build URL.
+	if p.get("behaviour") == PKeyApplyResult.SILENT and release_url != "" and result is PKeyUpdateCheck and result.decision.get("action") == "binary" and _outlet() == "direct":
+		_page_link = true
+		return PKeyOutletAdapter.link_or_silent(release_url, "update_action")
+	return p
 
 
 ## The mode in use: "banner" or "modal" ("" when hidden).
@@ -118,7 +144,7 @@ func presentation() -> String:
 
 func _render() -> void:
 	var t := c()
-	model = PKeyUpdatePromptController.model(result, _outlet(), release_url, show_when_current)
+	model = PKeyUpdatePromptController.model(result, _outlet(), release_url, show_when_current, _plan())
 	var locked: bool = model["locked"]
 	visible = model["visible"] and (locked or not is_dismissed)
 	var as_modal := modal and not locked
@@ -149,7 +175,12 @@ func _focus_chain() -> Array:
 
 
 func _on_action() -> void:
-	if model.get("action_url", "") != "":
+	if result is PKeyUpdateCheck and not _page_link and sdk != null and sdk.get("core") != null and sdk.get("update") != null and sdk.update.has_method("apply") and outlet == "":
+		action_taken.emit(result)
+		var applied: PKeyApplyResult = await sdk.update.apply(result)
+		action_applied.emit(applied)
+		return
+	if model.get("behaviour", "") == PKeyApplyResult.LINK and PKeyOutletAdapter.is_https(model.get("action_url", "")):
 		OS.shell_open(model["action_url"])
 	action_taken.emit(result)
 

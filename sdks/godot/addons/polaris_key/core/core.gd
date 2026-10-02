@@ -45,6 +45,9 @@ var started := false
 var last_store_error: Dictionary = {}
 ## Callables `(core: PKeyCore, result: PKeySyncResult)`, awaited after each sync's write.
 var post_sync_hooks: Array[Callable] = []
+## The update-event queue (PKeyUpdater): pending_events() goes into the device report's `updates`
+## key (P6-03) and mark_reported(ids) runs once the Worker accepted it. Null: none.
+var update_events: Object = null
 ## The last discovery manifest this session, or null.
 var discovery_manifest = null
 
@@ -134,6 +137,9 @@ static func check_update_options(opts: PKeyOptions) -> String:
 	for m in opts.update_methods:
 		if not PKeyConstants.BINARY_METHOD_VALUES.has(m):
 			return "update_methods may hold only %s; got '%s'." % [", ".join(PKeyConstants.BINARY_METHOD_VALUES), m]
+	for u in [opts.update_release_url, opts.update_page_url]:
+		if u != "" and not PKeyOutletAdapter.is_https(u):
+			return "update_release_url and update_page_url must be https URLs; got '%s'." % u
 	return ""
 
 

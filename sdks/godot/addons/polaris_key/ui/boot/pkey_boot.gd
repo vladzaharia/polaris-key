@@ -208,6 +208,8 @@ func run(opts: Dictionary = {}) -> PKeyBootResult:
 	gate.sdk = sdk
 	gate.activation.sdk = sdk
 	prompt.sdk = sdk
+	# Follow later answers too: a staged code pack turns the offer into code-ready mid-boot.
+	prompt.follow_updates()
 	_running = true
 	set_process(true)
 	refresh_view()
@@ -224,7 +226,10 @@ func send(event: Dictionary) -> bool:
 	if tr["emits"].is_empty():
 		return false
 	var before: String = state["stage"]
+	var before_outcome: String = state["outcome"]
 	state = tr["state"]
+	if state["outcome"] != before_outcome:
+		_note_outcome(state["outcome"])
 	var entered := false
 	for e in tr["emits"]:
 		_emit(e)
@@ -246,6 +251,14 @@ func send(event: Dictionary) -> bool:
 func retry() -> void:
 	_retried = true
 	send({"type": "retry"})
+
+
+## The boot-confirmation rule (plans/P3-01.md §2.10): every outcome the machine reaches goes to
+## PolarisKey.update, which confirms the launch at once (waiting, blocked, offline) or after
+## BOOT_OK_SECONDS at ready.
+func _note_outcome(outcome: String) -> void:
+	if sdk != null and sdk.get("update") != null and sdk.update.has_method("note_boot_outcome"):
+		sdk.update.note_boot_outcome(outcome)
 
 
 ## Accepted only at an OFFLINE stop that can play what is present (`state.canPlayOffline`, stage
