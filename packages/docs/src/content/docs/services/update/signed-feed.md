@@ -58,6 +58,28 @@ platform at once:
 Nothing in the feed is device-specific: rollout buckets are computed on the device, and the
 feed carries no device, licence or bucket.
 
+## Which outlet an install is
+
+The decision reads the feed entry of the install's own outlet, so every SDK first works out
+where the install came from. A host that names its outlet (`update.outlet`) always wins.
+Otherwise the SDK combines the build stamp (the outlet a Godot export was stamped with) with what
+the device can see:
+
+- **attested** evidence the platform vouches for — an App Store or TestFlight receipt and signing
+  certificate on macOS, iOS `AppDistributor`, `/.flatpak-info` — names the outlet even over the
+  stamp;
+- **declared** and **heuristic** evidence — an installer or launcher that says so (Android's
+  install source, the Steam library, the itch receipt, a snap or AppImage environment, a
+  Homebrew, WinGet or Scoop path) — can only move the stamp to an outlet that updates no more
+  widely, and a launcher signal counts only when it names this product (the Steam app id, itch
+  game id, Flatpak app id and so on, which CI stamps from `pkey distribution outlet-ids`);
+- a contradiction (a Developer ID build stamped `app-store`, Android's installer forged by the
+  shell) gives **unknown**, which is never offered an update.
+
+Detection runs at every launch, reads markers only (never a list of installed applications) and
+never sends a raw signal anywhere. The rules are one function, pinned row for row by
+`outlet-matrix.json` in every SDK.
+
 ## Floors prompt, they never block
 
 A floor — the channel's `min_supported`, or a release published with

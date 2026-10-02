@@ -344,9 +344,21 @@ fetches the record the target for this platform pins and verifies it hash first,
 - `feed(channel)` runs steps 1–9 alone (a `PKeyUpdateFeed`) and `release_record(sha256)` one
   record by hash (a `PKeyReleaseRecordResult`; cross-checked and kept only when a committed feed
   pins it).
+- **Outlet detection** (P3-11). With `PKeyOptions.update_outlet` empty and `update_detect` on
+  (the default), `PKeyCore.update_outlet()` resolves the stamp moved by run-time evidence:
+  `PKeyOutletSignals` reads `/.flatpak-info`, `SNAP_*`, `APPIMAGE`/`APPDIR`, the product's Steam
+  `appmanifest_<steamAppId>.acf` and `SteamAppId`, the itch receipt, the macOS receipt,
+  `ProductionSandbox` and the Mach-O signing leaf, the product's Caskroom link, the Windows
+  WinGet/Scoop/Chocolatey paths, Android's `getInstallSourceInfo` with the initiator's
+  certificate digest (pure GDScript through `JavaClassWrapper`, no plugin) and a web export's
+  display mode; `PKeyOutlet.detect_outlet` maps them, with the stamp, exactly as every SDK does
+  (`outlet-matrix.json`). The iOS `AppDistributor` and Windows package-identity readers are hooks
+  on `PKeyOutletEnv` that answer "unavailable" until P5-05 and a Windows native reader land. A
+  build without `build.json` falls back to its `pkey_outlet_<kind>` feature tag; a web export
+  synthesises `outletKind: web`. The device report carries the detected outlet id
+  (`PKeyCore.reported_outlet()`), never a raw signal.
 - Out of scope here: acting on a decision (the outlet adapters, the sidecar-PCK swap, the boot
-  guard and PKeyBoot's DECIDE stage are P3-10's), outlet detection (P3-11; until then the stamp's
-  outlet is the input) and packs (P4-08).
+  guard and PKeyBoot's DECIDE stage are P3-10's) and packs (P4-08).
 
 **The v3 check (P1-08).** `check()` is today's check, the same as sdk-node's and Python's:
 `GET /<p>/update/version`, informational on every outlet; a Steam, itch or store build must not
