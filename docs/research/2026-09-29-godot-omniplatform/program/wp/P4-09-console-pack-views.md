@@ -126,3 +126,31 @@ P4-14 adds per-outlet pack state. Then
 
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+- **Data source.** The views read Release's own `releaseCatalog` hook (`deliverables`, `releases`,
+  `packDeliverables`, `packRelease`, `packFiles`, `pinnedBy`) through `ctx.hooks`, plus one
+  product-wide query each over `release_pins` (pin counts, and every app release's pins with the
+  pinned release's version) where the hook answers one release at a time. The read model lives in
+  `services/release/packs/adminView.ts`; `admin.ts` only routes.
+- **Routes as built** (all `GET`, narrative-only, documented on `services/release/packs.md` and
+  the operator table on `services/release/channels.md`): `…/release/deliverables`,
+  `…/release/deliverables/<id>/releases` (at most 100 releases, newest first) and, per the P4-01
+  §8.4 amendment ("files through `packFiles`, one index per request"),
+  `…/release/deliverables/<id>/releases/<releaseId>/files?variant=<key>` (at most 2,000 files with
+  a `total`). The variant key rides in the query because the unvaried key is `""`. `GET
+…/release/releases` gains `contentApi`, `pins[]` and `builds[].embeds`.
+- **Gate beside the signed entitlement.** Per the §8.4 amendment, the deliverables row carries
+  `gate` (`delivery.entitlement`) and `latest.entitlement` (the latest pack record's); the console
+  shows both when they differ. `gateKnown` is false while Distribution is off, so an unknown gate
+  is not shown as "ungated".
+- **No object keys.** No response names an object's blob-store key (a gated pack's `gated/`
+  path); only sizes, codecs and hashes.
+- **The pack page is a route leaf**, `#/p/<slug>/deliverables/<id>` (`Leaf` in `route.ts`, with
+  `LEAF_PARENT` generalised), so a pack's page deep-links like a license or profile.
+- **Worker tests** live in `test/packs.test.ts` ("console pack views (P4-09)"), not
+  `test/admin.test.ts`: that file holds P4-02's pack fixtures (staging, signed records, pins). The
+  shared `admin()` helper in `test/releaseRoutesFixture.ts` now passes the pathname without the
+  query to `handleAdmin`, as the router does.
+- **P4-12 not on main** while this ran: no pack sets, holds or floors are shown (follow-up below).
