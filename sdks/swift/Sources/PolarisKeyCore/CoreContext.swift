@@ -296,6 +296,10 @@ public actor CoreContext {
     private var clock = MonotonicClock()
     private var record: CacheRecord?
     private var loaded = LoadedCache()
+    /// Wire contract v4: each canonical channel's `seq` floor, DERIVED from the committed feed
+    /// that re-verified against the current effective trust set (plans/P3-01.md §2.5, §2.6).
+    /// Never persisted.
+    private var feedFloorsValue: [String: FeedFloor] = [:]
     private var lastStoreErrorValue: StoreError?
     /// §5's single re-acquire budget, re-armed once per `sync()` pass. `spent` is the budget;
     /// `inFlight` is the SHARED attempt — see `reacquireOnce`.
@@ -370,20 +374,35 @@ public actor CoreContext {
         tokenSourceValue = source
     }
 
-    /// Wipe every credential and artifact, in memory and on disk. Throws if the local wipe could
-    /// not be completed — the caller needs to know the credential is still there.
+    /// Wipe every credential and artifact, in memory and on disk, except the v4 update slices
+    /// (below). Throws if the local wipe could not be completed — the caller needs to know the
+    /// credential is still there.
     public func clearAll() async throws {
+        // Wire v4: a deactivation removes every credential and grant, not the feeds' `seq`
+        // floors — a floor that a deactivation reset could be rolled back. The signed update
+        // slices are carried over and re-verified against the (now pinned-only) trust set.
+        let carriedFeeds = record?.feeds ?? [:]
+        let carriedRecords = record?.releaseRecords ?? [:]
         tokenValue = nil
         tokenSourceValue = nil
         record = nil
         loaded = LoadedCache()
+        feedFloorsValue = [:]
         manifestKeys = [:]
         manifest = nil
         clock.reset()
 
         var failure: Error?
         do { try await store.clearToken() } catch { failure = error }
-        do { try await store.clearCache() } catch { failure = failure ?? error }
+        if carriedFeeds.isEmpty && carriedRecords.isEmpty {
+            do { try await store.clearCache() } catch { failure = failure ?? error }
+        } else {
+            record = CacheRecord(feeds: carriedFeeds, releaseRecords: carriedRecords)
+            reloadUpdateSlices()
+            do {
+                try await store.writeCache(record ?? CacheRecord())
+            } catch { failure = failure ?? error }
+        }
         if let failure { throw failure }
     }
 
@@ -454,6 +473,9 @@ public actor CoreContext {
             let jws = String(data: response.body, encoding: .utf8),
             applyTrustManifest(jws, checkFreshness: true)  // network path: freshness enforced
         else { return false }
+        // The effective trust set may have changed: the committed feeds are re-verified against
+        // it, so a feed whose key left the set is dropped together with its floor (V4 §4).
+        reloadUpdateSlices()
         // Persist the SIGNED manifest, never the bare keys it carries (§4.1).
         await patchCache { $0.trustJws = jws }
         return true
@@ -522,14 +544,18 @@ public actor CoreContext {
     /// One request, with this client's metadata headers and deadline already applied. Every
     /// service module goes through here, which is what keeps a new endpoint from shipping
     /// without a timeout on it (R4-08).
+    ///
+    /// `maxBodyBytes` bounds the response body: a transport that can stop reading (the default
+    /// `URLSessionTransport` streams) returns at most that many bytes. A caller that needs the
+    /// bound to hold whatever the transport does truncates again itself.
     public func request(
         _ url: URL, method: String = "GET", headers extra: [String: String] = [:],
-        body: Data? = nil
+        body: Data? = nil, maxBodyBytes: Int? = nil
     ) async throws -> PolarisResponse {
         try await transport.send(
             PolarisRequest(
                 url: url, method: method, headers: headers(extra), body: body,
-                timeoutSeconds: requestTimeoutSeconds))
+                timeoutSeconds: requestTimeoutSeconds, maxBodyBytes: maxBodyBytes))
     }
 
     /// GET one signed document with conditional-request support, mapping the whole §5 status
@@ -609,6 +635,7 @@ public actor CoreContext {
         manifest = nil
         clock.reset()
         loaded = LoadedCache()
+        feedFloorsValue = [:]
 
         guard let stored, stored.v == CACHE_RECORD_VERSION else {
             record = nil
@@ -654,6 +681,60 @@ public actor CoreContext {
         loaded.lastVerifiedAt =
             newestIssuedAt > 0 && newestIssuedAt < Int.max / 1000 ? newestIssuedAt * 1000 : nil
         record = next
+        // After the manifest: the feeds verify against the EFFECTIVE trust set.
+        reloadUpdateSlices()
+    }
+
+    // ── Wire v4 update slices (plans/P3-01.md §2.5 "Reload path", §2.6) ─────────────────────
+
+    /// The reload path over the `feeds` and `releaseRecords` slices, run on cache load and again
+    /// whenever the effective trust set changes:
+    ///
+    ///   * each `feeds[k]` through steps 3–6 with `k` as the requested name, freshness off and no
+    ///     floor, its claim equal to `k`; each survivor gives `floors[k] = feedFloor(feeds[k])`;
+    ///   * each `releaseRecords[h]` is kept only while a surviving feed's target pins `h`.
+    ///
+    /// Anything that fails is dropped from the in-memory record (the next write persists that).
+    /// Core does not hold the release keys or know the update client's platform, so it leaves
+    /// the selector's platform and the records' signatures to `UpdateClient`, which runs the
+    /// same reload with both on every call (`runUpdateCheck`).
+    private func reloadUpdateSlices() {
+        guard var next = record else {
+            feedFloorsValue = [:]
+            return
+        }
+        let reloaded = reloadFeeds(next.feeds, trust: trust, expectedAud: product, platform: nil)
+        feedFloorsValue = reloaded.floors
+        next.feeds = reloaded.feeds.mapValues(\.jws)
+        var pinned = Set<String>()
+        for committed in reloaded.feeds.values {
+            for target in committed.feed.app.targets { pinned.insert(target.release.sha256) }
+        }
+        next.releaseRecords = next.releaseRecords.filter { pinned.contains($0.key) }
+        record = next
+    }
+
+    /// Each canonical channel's `seq` floor, derived from the committed feed that re-verified
+    /// against the current effective trust set. Never read from a stored number.
+    public var feedFloors: [String: FeedFloor] { feedFloorsValue }
+
+    /// The `feeds` and `releaseRecords` slices as Core holds them (re-verified on load).
+    package func updateSlices() -> (feeds: [String: String], releaseRecords: [String: String]) {
+        (record?.feeds ?? [:], record?.releaseRecords ?? [:])
+    }
+
+    /// Write the update slices through Core's read-modify-write (§4.1's only mutation path), and
+    /// re-derive the floors from what was written. `nil` leaves that slice as it is.
+    package func commitUpdateSlices(
+        feeds: [String: String]? = nil, releaseRecords: [String: String]? = nil
+    ) async {
+        await patchCache { rec in
+            if let feeds { rec.feeds = feeds }
+            if let releaseRecords { rec.releaseRecords = releaseRecords }
+        }
+        let reloaded = reloadFeeds(
+            record?.feeds ?? [:], trust: trust, expectedAud: product, platform: nil)
+        feedFloorsValue = reloaded.floors
     }
 
     /// Re-verify a CACHED document. Every §3 claim is checked exactly as on the network path,
@@ -731,9 +812,12 @@ public actor CoreContext {
         var docs: [DocumentSlice: String] = [:]
         if let license = bundle.license { docs[.license] = license.jws }
         if let config = bundle.config { docs[.config] = config.jws }
+        // The v4 update slices are not provisioning: they carry the `seq` floors, which an import
+        // must not reset (a floor that could be reset could be rolled back).
         let fresh = CacheRecord(
             trustJws: bundle.trustJws, docs: docs,
-            importedBundle: ImportedBundle(bundleId: bundle.bundleId, importedAt: stamp))
+            importedBundle: ImportedBundle(bundleId: bundle.bundleId, importedAt: stamp),
+            feeds: record?.feeds ?? [:], releaseRecords: record?.releaseRecords ?? [:])
         record = fresh
         do {
             try await store.writeCache(fresh)

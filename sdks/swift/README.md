@@ -7,7 +7,7 @@ network dependency for verification. The same cross-language conformance corpus 
 Node/Python/React SDKs is verified here byte-for-byte (`conformance/corpus/v2`, mirrored into
 `Tests/PolarisKeyTests/Resources/v2/`).
 
-Wire contract: `docs/security/WIRE-CONTRACT-V3.md`.
+Wire contract: `docs/security/WIRE-CONTRACT-V4.md`.
 
 ## Targets
 
@@ -15,16 +15,16 @@ Polaris Key is a suite of opt-in services over an always-on Core, and on Apple p
 division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
 a product with no license service does not carry the gate.
 
-| Product              | Contents                                                                                      | Depends on                               |
-| -------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import | Core, License, Config, Identity, Release |
-| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles       | —                                        |
-| `PolarisKeyLicense`  | the gate, activation, entitlements                                                            | Core                                     |
-| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch           | Core                                     |
-| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                | Core                                     |
-| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                              | Core                                     |
-| `PolarisKeyUpdate`   | Sparkle wiring. **macOS only**                                                                | Core, Sparkle ≥ 2.9.6                    |
-| `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                            | Core, License, Config                    |
+| Product              | Contents                                                                                                                                             | Depends on                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import                                                        | Core, License, Config, Identity, Release |
+| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles, and wire v4's feed and record verifiers and update decision | —                                        |
+| `PolarisKeyLicense`  | the gate, activation, entitlements                                                                                                                   | Core                                     |
+| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch                                                                  | Core                                     |
+| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                                                                       | Core                                     |
+| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                                                                                     | Core                                     |
+| `PolarisKeyUpdate`   | wire v4's `UpdateClient` (macOS **and** iOS), and the Sparkle wiring (**macOS only**)                                                                | Core, Sparkle ≥ 2.9.6 (macOS only)       |
+| `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                                                                                   | Core, License, Config                    |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -39,9 +39,9 @@ targets: [
     .target(name: "MyApp", dependencies: [
         .product(name: "PolarisKey", package: "PolarisKey"),
         .product(name: "PolarisKeyUI", package: "PolarisKey"),
-        // macOS only — see "Updates" below.
-        .product(name: "PolarisKeyUpdate", package: "PolarisKey",
-                 condition: .when(platforms: [.macOS])),
+        // The signed update decision (macOS and iOS). Sparkle is linked on macOS only — see
+        // "Updates" below.
+        .product(name: "PolarisKeyUpdate", package: "PolarisKey"),
     ])
 ]
 ```
@@ -263,10 +263,13 @@ Application Support and Caches come from `FileManager` (the container's inside a
 ### What the cache holds
 
 Only **signed artifacts** (§4.1): the compact JWS of each per-service document and of the trust
-manifest, per-document ETags, an offline-bundle import marker, and two fail-closed hints
-(`blocked`, `lastSyncUnauthorized`). Every JWS is re-verified on load — the manifest against the
+manifest, per-document ETags, an offline-bundle import marker, two fail-closed hints
+(`blocked`, `lastSyncUnauthorized`), and wire v4's two update slices — `feeds` (each committed
+`pkey-feed+jws`, keyed by its own `channel` claim) and `releaseRecords` (each `pkey-release+jws`,
+keyed by its SHA-256, kept only while a committed feed pins it). Every JWS is re-verified on load — the manifest against the
 **pinned** keys only — and every counter (the per-type anti-replay floors, the monotonic clock
-floor, `lastVerifiedAt`) is derived from that re-verified content. A record from any other cache
+floor, `lastVerifiedAt`, each channel's feed `seq` floor) is derived from that re-verified
+content; `core.feedFloors` shows the floors. A record from any other cache
 version is **discarded, never migrated**.
 
 ## Offline
@@ -354,6 +357,94 @@ app that ships Sparkle without it does not fail to build, launch, or check for u
 simply installs unsigned payloads. A Polaris Key-side signature check would be a second, weaker
 anchor beside the real one.
 
+## Signed update decisions (wire v4)
+
+`UpdateClient.decide()` answers "what should this install do next?" from the signed channel feed
+(`pkey-feed+jws`) and the release record it pins (`pkey-release+jws`). It works on **iOS and
+macOS** alike: an iOS app (App Store, TestFlight, a marketplace) is a "decide only" host, and a
+macOS direct build hands a `binary` answer to Sparkle or its own installer. Nothing it needs
+imports Sparkle: the verifiers and the decision are pure functions in `PolarisKeyCore`
+(`verifyFeed`, `verifyReleaseRecord`, `decideUpdate`, `rolloutBucket`, `effectiveCapabilities`,
+`resolveUpdateOutlet`, `bootDecision`, `runUpdateCheck`), held to every `feedCases`,
+`releaseRecordCases` and `update-matrix.json` row. `check(channel:)` and the Sparkle helpers
+below are unchanged beside it.
+
+```swift
+import PolarisKeyUpdate
+
+let update = try UpdateClient(
+    core: client.core,
+    options: UpdateClientOptions(
+        pinnedReleaseKeys: ["acme-release-2026": "<raw base64url>"],
+        outlet: .kind("app-store"),   // turns offers on; without one the install is `unknown`
+        format: "ipa"))
+
+let check = try await update.decide(channel: "latest")
+// check.channel == "stable" (the feed's own claim), check.feed == .network, check.errors == []
+switch check.decision {
+case .store(_, let listingUrl, _, _, _):
+    // open listingUrl, or the page you compiled in when it is nil (AltStore, iOS web distribution)
+    _ = listingUrl
+case .binary(_, let release, let build, _, _, _, _):
+    let url = await update.buildURL(version: release.version, buildId: build)
+    // download, check the payload's `size` and `sha256` against the record, then stage
+case .none, .codeReady, .platform, .blocked:
+    break
+}
+if isUndismissable(check.decision) {
+    // a persistent notice the user cannot dismiss, over an app that keeps running
+}
+```
+
+The answer is an `UpdateCheck`: `channel` (the canonical channel — record it as
+`StagedUpdate.channel` when you stage), `decision`, `feed` (`.network` or `.committed`), `record`
+(`.network`, `.cache` or `.none`) and `errors` (`[UpdateCheckError]`, each a `code` and a
+`detail`). `check.json` spells it as the transcripts and the other SDKs do.
+
+| `UpdateClientOptions` | Notes                                                                                                                                                                                     |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pinnedReleaseKeys`   | `[kid: raw Ed25519 key, base64url]`: the **only** keys a release record verifies against. Compiled in; never merged with the trust pins, never persisted, never learned from the network. |
+| `outlet`              | `.kind("direct")`, or `.outlet(id:kind:subkind:)` for a product outlet id. Wins over `stamp` and `detected`. Until P3-11 detects the outlet, this is the option that turns offers on.     |
+| `stamp`, `detected`   | The build stamp's outlet fields and a detection result, through `resolveUpdateOutlet`.                                                                                                    |
+| `buildNumber`         | Informational in v4. Default: the main bundle's `CFBundleVersion`.                                                                                                                        |
+| `format`              | The installed build's format; a binary build of another format is never offered. Default nil (any).                                                                                       |
+| `methods`             | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["native", "download"]` on macOS, where Sparkle is linked; `["download"]` on iOS.  |
+| `binaryVersion`       | The executable's version when it differs from `CoreOptions.version`. Defaults to `version`.                                                                                               |
+| `engine`              | `godot-<major>.<minor>` for a host that runs Godot code packs; nil otherwise.                                                                                                             |
+| `platform`, `arch`    | Default to this binary's (`macos`/`ios`, `arm64`/`x86_64`).                                                                                                                               |
+
+- **Refusals.** A bad option, or a release key whose bytes are also a trust pin, makes the
+  initializer throw `invalid-options`; an empty `pinnedReleaseKeys` (or `UpdateClient(core:)`)
+  makes `decide()` throw `not-configured`. A product that runs no Update service is refused
+  before dialling (`service-unavailable`, D-21), and so is a Worker whose discovery document has
+  no `update.endpoints.feed` or `release.endpoints.record` — fall back to `check()`.
+- **Discovery.** `decide()` loads discovery when this session has not. The feed is
+  `GET …/update/{channel}/feed.jws?platform=…` with the channel as requested (`latest` is fine:
+  the Worker answers with the canonical `stable` feed); the record is
+  `GET …/release/records/{sha256}`, read at most 88 845 bytes (`PolarisRequest.maxBodyBytes`,
+  streamed by `URLSessionTransport`) and hashed before any signature work. The device bearer goes
+  only to the control plane's own origin.
+- **After a refusal** it decides from the committed feed and reports the refusal in `errors`
+  (`feed-rejected` with the step as `detail`, `feed-rollback`, `record-rejected`,
+  `record-mismatch`, `network-error` or the Worker's wire code). It throws a `PolarisError` (with
+  `detail`) only when nothing committed is left to decide from. Offline, the committed feed
+  decides; once it is past `expiresAt + 300` the answer is `none {stale}`.
+- **The cache.** The `feeds` and `releaseRecords` slices hold signed JWSs only, through Core's
+  read-modify-write. Every load, every trust change and every decision re-verifies them; each
+  channel's `seq` floor is derived from the committed feed that survives, never stored, so it
+  survives a restart and cannot be edited on disk. A deactivation or a bundle import keeps them.
+- **The clock** is the effective clock, `max(system clock, highWaterMark)`: winding the system
+  clock back cannot revive an expired feed.
+- **No v4 answer stops the app.** `bootDecision` never answers `.required`. `binary`, `store` and
+  `platform` with `mandatory: true`, and every `blocked {app-floor}`, are prompts the user cannot
+  dismiss (`isUndismissable`): show them as a persistent notice with no dismiss control over an
+  app that keeps running, never as a sheet that covers it.
+- `channelFeed(channel:)` returns the verified feed `decide()` would use, without the record and
+  without release keys (it is named apart from `feed(channel:)`, the Sparkle helper);
+  `releaseRecord(hash:)` verifies one record by hash (cross-checked and cached when a committed
+  feed pins it); `buildURL(version:buildId:)` is the `distribution/builds` route, never the
+  R2-only blob route.
+
 ## Channels
 
 The channel names are WIRE-CONTRACT-V3 §5.1's: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and a
@@ -398,16 +489,21 @@ signature verifies. `verifyLicenseDoc`/`verifyConfigDoc` then check `aud`, `iss`
 host-neutral), `deviceId`, the per-type monotonic `issuedAt` floor, the 365-day grace ceiling,
 and the whole signed validity window with a 300 s clock skew.
 
-Four document types, domain-separated by `typ`: `pkey-license+jws`, `pkey-config+jws`,
-`pkey-trust+jws`, `pkey-bundle+jws`.
+Six document types, domain-separated by `typ`: `pkey-license+jws`, `pkey-config+jws`,
+`pkey-trust+jws`, `pkey-bundle+jws`, and wire v4's `pkey-feed+jws` (the channel feed, signed by
+the product key) and `pkey-release+jws` (the release record, signed by a CI-held release key and
+verified against `pinnedReleaseKeys` only, after its SHA-256 matches the feed's pin).
 
 ## Develop
 
 ```sh
 swift build
 swift test    # includes the cross-language conformance corpus (v2)
+swift test --filter UpdateMatrixTests   # wire v4's update-matrix.json, row for row
 
-# The Sparkle conditioning: PolarisKeyUpdate must build for iOS without linking a macOS framework.
+# The Sparkle conditioning: PolarisKeyUpdate must build for iOS without linking a macOS framework,
+# and the decision lives in PolarisKeyCore, which iOS needs whole.
+xcodebuild -scheme PolarisKeyCore -destination 'generic/platform=iOS' build
 xcodebuild -scheme PolarisKeyUpdate -destination 'generic/platform=iOS' build
 ```
 

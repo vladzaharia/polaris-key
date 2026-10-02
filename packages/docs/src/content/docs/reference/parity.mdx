@@ -22,7 +22,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Node | `node` | 35 | 3 | 11 | 7 |
 | React | `web`, `desktop-bridge` | 27 | 12 | 11 | 6 |
 | Python | `python` | 35 | 3 | 11 | 7 |
-| Swift | `macos`, `ios` | 33 | 3 | 14 | 6 |
+| Swift | `macos`, `ios` | 36 | 3 | 11 | 6 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 33 | 0 | 20 | 3 |
 
 ## Core
@@ -81,10 +81,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` + transcripts | ✓ | ✓ | ✓ | planned (P3-07) | ✓ | — |
+| `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | planned (P3-07) | ✓ | — |
-| `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | planned (P3-07) | ✓ | — |
+| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | planned (P3-10) | ios: outlet |
 | `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P3-10) | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | — |

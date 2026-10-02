@@ -1,4 +1,4 @@
-// @pkey-feature core.verify core.bundle
+// @pkey-feature core.verify core.bundle update.feed release.record
 // The Swift conformance runner for wire contract v4 (v3's documents, unchanged). It drives EVERY case in
 // `conformance/corpus/v2` through the native CryptoKit verifier and asserts the expected
 // outcome — the Node runner (`conformance/runners/node/corpusV2.test.ts`) mirrors this file
@@ -13,6 +13,12 @@
 //   trustCases        §1     trust merge / prune / revocation   → verifyTrustManifest + mergeTrust
 //   clockFloorCases   §4.2   the monotonic floor over 3 kinds   → reload path + licenseState
 //   bundleCases       §7     all-or-nothing bundle import       → inspectBundle
+//
+// Wire contract v4 adds two more, at the end of this file:
+//
+//   feedCases          §2.3, steps 3–8   the channel feed            → feedClaims, verifyFeed
+//   releaseRecordCases §2.4, steps 12–15 the release record          → releaseRecordClaims,
+//                                                                      verifyReleaseRecord
 //
 // v4's pointer-set section (§4.1), over the seven JWS families with `feedCases` and
 // `releaseRecordCases`, is `PointerSetTests.swift`.
@@ -486,5 +492,194 @@ final class ConformanceTests: XCTestCase {
                     payloadJSON: payload(padLen: atCapPad + 1), typ: JwsTyp.license.rawValue),
                 trust: signer.trust, typ: .license),
             "payload over the cap must be rejected before decode")
+    }
+}
+
+// ── Wire contract v4: feeds and release records (plans/P3-01.md §4.4, §4.5) ──────────────────
+
+struct V4Corpus: Decodable {
+    let feedCases: [CorpusFeedCase]
+    let releaseRecordCases: [CorpusRecordCase]
+}
+
+/// WIRE-CONTRACT-V4 §2.3: one `feedCases` vector.
+struct CorpusFeedCase: Decodable {
+    struct Floor: Decodable {
+        let seq: Int
+        let issuedAt: Int
+    }
+    struct Expect: Decodable {
+        let verify: String
+        let reason: String?
+        let seq: Int?
+        let issuedAt: Int?
+        let doc: JSONValue?
+    }
+    let id: String
+    let description: String
+    let jws: String
+    let trust: TrustSet
+    let expectedAud: String
+    let channel: String
+    let platform: String
+    let now: Int
+    let checkFreshness: Bool
+    /// Keyed by CANONICAL channel.
+    let floors: [String: Floor]?
+    let expect: Expect
+}
+
+/// WIRE-CONTRACT-V4 §2.4: one `releaseRecordCases` vector.
+struct CorpusRecordCase: Decodable {
+    struct Pin: Decodable {
+        let deliverable: String
+        let version: String
+        let seq: Int
+    }
+    struct Expect: Decodable {
+        let verify: String
+        let step: String?
+        let kind: String?
+        let doc: JSONValue?
+    }
+    let id: String
+    let description: String
+    let jws: String
+    let releaseKeys: TrustSet
+    let productTrust: TrustSet
+    let expectedAud: String
+    let expectedHash: String
+    let pin: Pin?
+    let expect: Expect
+}
+
+extension ConformanceTests {
+    private func v4Corpus() throws -> V4Corpus { try CorpusBundleLoader.load(V4Corpus.self, "cases") }
+
+    /// Steps 4–6 alone, over every feed case that reaches them: the case's reason where it fails
+    /// at the claims, the channel binding or the selector, no refusal otherwise.
+    func testFeedClaimsOverEveryCaseThatReachesThem() throws {
+        let corpus = try v4Corpus()
+        let claimReasons: Set<String> = ["claims", "channel", "selector"]
+        let reachable = claimReasons.union(["freshness", "not-newer", "rollback"])
+        var checked = 0
+        for c in corpus.feedCases {
+            let reason = c.expect.verify == "ok" ? nil : c.expect.reason
+            if let reason, !reachable.contains(reason) { continue }
+            let v = try XCTUnwrap(
+                JWSVerifier.verify(c.jws, trust: c.trust, typ: .feed), "\(c.id) reaches the claims step")
+            let payload = try JSONDecoder().decode(JSONValue.self, from: v.payload)
+            let got = feedClaims(
+                payload, expectedAud: c.expectedAud, channel: c.channel, platform: c.platform,
+                nonWire: v.nonWireIntegers)
+            let want = reason.flatMap { claimReasons.contains($0) ? $0 : nil }
+            XCTAssertEqual(got?.rawValue, want, "\(c.id): \(c.description)")
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 50)
+    }
+
+    /// Steps 3–8 through `verifyFeed`, every case, with the same ids as the other runners.
+    func testAllFeedCases() throws {
+        let corpus = try v4Corpus()
+        XCTAssertEqual(corpus.feedCases.count, 77)
+        for c in corpus.feedCases {
+            let r = verifyFeed(
+                c.jws,
+                options: VerifyFeedOptions(
+                    trust: c.trust, expectedAud: c.expectedAud, channel: c.channel,
+                    platform: c.platform, now: c.now, checkFreshness: c.checkFreshness,
+                    floors: (c.floors ?? [:]).mapValues { FeedFloor(seq: $0.seq, issuedAt: $0.issuedAt) }))
+            if c.expect.verify == "ok" {
+                guard let feed = r.feed else {
+                    XCTFail("\(c.id) → ok, got \(String(describing: r.refusal)): \(c.description)")
+                    continue
+                }
+                XCTAssertEqual(feed.seq, c.expect.seq, c.id)
+                XCTAssertEqual(feed.issuedAt, c.expect.issuedAt, c.id)
+                if let doc = c.expect.doc {
+                    XCTAssertEqual(feed.json, doc, c.id)
+                    // The typed view carries the same values as the payload.
+                    XCTAssertEqual(ChannelFeedDoc(json: doc), feed, c.id)
+                }
+            } else {
+                XCTAssertEqual(r.refusal?.rawValue, c.expect.reason, "\(c.id): \(c.description)")
+            }
+        }
+    }
+
+    /// Step 14 alone, over every record case that reaches it (key selection from the pinned
+    /// release keys only, as step 13 does).
+    func testRecordClaimsOverEveryCaseThatReachesThem() throws {
+        let corpus = try v4Corpus()
+        var checked = 0
+        for c in corpus.releaseRecordCases {
+            let step = c.expect.verify == "ok" ? nil : c.expect.step
+            if let step, step != "claims", step != "cross-check" { continue }
+            let header = try JSONDecoder().decode(
+                JSONValue.self,
+                from: try XCTUnwrap(Base64URL.decode(String(c.jws.split(separator: ".")[0]))))
+            let kid = try XCTUnwrap(header.objectValue?["kid"]?.stringValue)
+            let v = try XCTUnwrap(
+                JWSVerifier.verify(c.jws, trust: [kid: c.releaseKeys[kid]!], typ: .release),
+                "\(c.id) reaches the claims step")
+            let payload = try JSONDecoder().decode(JSONValue.self, from: v.payload)
+            XCTAssertEqual(
+                releaseRecordClaims(payload, expectedAud: c.expectedAud, nonWire: v.nonWireIntegers),
+                step != "claims", "\(c.id): \(c.description)")
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 30)
+    }
+
+    /// Steps 12–15 through `verifyReleaseRecord`, every case.
+    func testAllReleaseRecordCases() throws {
+        let corpus = try v4Corpus()
+        XCTAssertEqual(corpus.releaseRecordCases.count, 49)
+        for c in corpus.releaseRecordCases {
+            let r = verifyReleaseRecord(
+                c.jws,
+                options: VerifyReleaseRecordOptions(
+                    releaseKeys: c.releaseKeys, productTrust: c.productTrust,
+                    expectedAud: c.expectedAud, expectedHash: c.expectedHash,
+                    pin: c.pin.map {
+                        ReleaseRecordPin(deliverable: $0.deliverable, version: $0.version, seq: $0.seq)
+                    }))
+            if c.expect.verify == "ok" {
+                guard let record = r.record else {
+                    XCTFail("\(c.id) → ok, got \(String(describing: r.step)): \(c.description)")
+                    continue
+                }
+                XCTAssertEqual(record.kind, c.expect.kind, c.id)
+                if let doc = c.expect.doc {
+                    XCTAssertEqual(record.json, doc, c.id)
+                    XCTAssertEqual(ReleaseRecordDoc(json: doc), record, c.id)
+                }
+            } else {
+                XCTAssertEqual(r.step?.rawValue, c.expect.step, "\(c.id): \(c.description)")
+            }
+        }
+    }
+
+    /// §2.5 step 12: a body of 88 845 bytes is refused at `hash` WITHOUT hashing, even when its
+    /// hash is the pin (the corpus does not carry one; P3-02's size budget).
+    func testRecordBodyBoundIsRefusedBeforeHashing() {
+        let body = String(repeating: "a", count: MAX_RECORD_JWS_BYTES + 1)
+        let r = verifyReleaseRecord(
+            body,
+            options: VerifyReleaseRecordOptions(
+                releaseKeys: ["k": String(repeating: "A", count: 43)], productTrust: [:],
+                expectedAud: "djdl", expectedHash: recordHash(body)))
+        XCTAssertEqual(r, .refused(.hash))
+        // A non-ASCII body is refused at the same step.
+        let wide = "é" + String(repeating: "a", count: 10)
+        XCTAssertEqual(
+            verifyReleaseRecord(
+                wide,
+                options: VerifyReleaseRecordOptions(
+                    releaseKeys: [:], productTrust: [:], expectedAud: "djdl",
+                    expectedHash: recordHash(wide))),
+            .refused(.hash))
+        XCTAssertEqual(MAX_RECORD_JWS_BYTES, 1_370 + 1 + 87_386 + 1 + 86)
     }
 }

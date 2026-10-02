@@ -43,6 +43,14 @@ public struct CacheRecord: Sendable, Codable, Equatable {
     public var lastSyncUnauthorized: Bool?
     /// Fail-CLOSED hint: the last `/license/document` returned a 403 version/channel block.
     public var blocked: BlockInfoRecord?
+    /// Wire contract v4 (plans/P3-01.md §2.6): the committed channel feeds (`pkey-feed+jws`,
+    /// verbatim), keyed by the CANONICAL channel — each feed's own `channel` claim, never the
+    /// requested name. Each channel's `seq` floor is DERIVED from the entry that re-verifies on
+    /// load, never stored. Additive, so `v` stays 3: an older loader ignores the member.
+    public var feeds: [String: String]
+    /// The release records (`pkey-release+jws`, verbatim), keyed by lowercase hex SHA-256; kept
+    /// only while a committed feed pins one.
+    public var releaseRecords: [String: String]
 
     public init(
         trustJws: String? = nil,
@@ -51,6 +59,8 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         importedBundle: ImportedBundle? = nil,
         lastSyncUnauthorized: Bool? = nil,
         blocked: BlockInfoRecord? = nil,
+        feeds: [String: String] = [:],
+        releaseRecords: [String: String] = [:],
         v: Int = CACHE_RECORD_VERSION
     ) {
         self.v = v
@@ -60,6 +70,8 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         self.importedBundle = importedBundle
         self.lastSyncUnauthorized = lastSyncUnauthorized
         self.blocked = blocked
+        self.feeds = feeds
+        self.releaseRecords = releaseRecords
     }
 
     /// `docs`/`etags` are keyed by a `DocumentSlice` enum, and Swift's `Codable` would otherwise
@@ -67,7 +79,8 @@ public struct CacheRecord: Sendable, Codable, Equatable {
     /// on-disk shape disagree with `{"docs":{"license":"…"}}` in every other SDK. These coding
     /// keys keep the JSON an object, per §4.1.
     private enum CodingKeys: String, CodingKey {
-        case v, trustJws, docs, etags, importedBundle, lastSyncUnauthorized, blocked
+        case v, trustJws, docs, etags, importedBundle, lastSyncUnauthorized, blocked, feeds,
+            releaseRecords
     }
 
     public init(from decoder: Decoder) throws {
@@ -81,6 +94,10 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         importedBundle = try c.decodeIfPresent(ImportedBundle.self, forKey: .importedBundle)
         lastSyncUnauthorized = try c.decodeIfPresent(Bool.self, forKey: .lastSyncUnauthorized)
         blocked = try c.decodeIfPresent(BlockInfoRecord.self, forKey: .blocked)
+        // A slice that does not decode is no slice: nothing in it could be re-verified anyway.
+        feeds = (try? c.decodeIfPresent([String: String].self, forKey: .feeds)) ?? [:]
+        releaseRecords =
+            (try? c.decodeIfPresent([String: String].self, forKey: .releaseRecords)) ?? [:]
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -92,6 +109,9 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         try c.encodeIfPresent(importedBundle, forKey: .importedBundle)
         try c.encodeIfPresent(lastSyncUnauthorized, forKey: .lastSyncUnauthorized)
         try c.encodeIfPresent(blocked, forKey: .blocked)
+        // No empty slices in the record, as in every other SDK.
+        if !feeds.isEmpty { try c.encode(feeds, forKey: .feeds) }
+        if !releaseRecords.isEmpty { try c.encode(releaseRecords, forKey: .releaseRecords) }
     }
 
     /// An unrecognised slice name is DROPPED rather than decoded — a future service's document
@@ -298,8 +318,9 @@ struct SystemKeychain: KeychainAPI {
 /// available; clears delete from both. iOS always uses the data-protection keychain, so the
 /// legacy branch is `#if os(macOS)`.
 public actor KeychainStore: Store {
-    /// Largest cache file we will read. The record is at most three compact JWSs plus hints.
-    private static let maxCacheBytes = 1024 * 1024
+    /// Largest cache file we will read. The record is the trust manifest and two documents, plus
+    /// the v4 update slices (a feed per channel the host asked for, a record per pin), and hints.
+    private static let maxCacheBytes = 4 * 1024 * 1024
 
     private let productSlug: String
     private let service: String
