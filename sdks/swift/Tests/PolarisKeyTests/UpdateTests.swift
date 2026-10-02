@@ -515,6 +515,25 @@ final class UpdateDecideTests: XCTestCase {
         XCTAssertEqual(check.errors, [])
     }
 
+    /// A deactivation removes every credential and grant, not the feeds' `seq` floors.
+    func testADeactivationKeepsTheFloors() async throws {
+        let record = recordJws()
+        let feed = feedJws(seq: 3, issuedAt: t0, pin: recordHash(record))
+        await serve(feed: feed, record: record)
+        let store = InMemoryStore(productSlug: "djdl", deviceId: "dev-1")
+        await store.setToken("pkeyt_secret")
+        let core = try await makeCore(store: store, clock: ReplayClock(t0))
+        _ = try await UpdateClient(core: core, options: options()).decide()
+        try await core.clearAll()
+        let token = await store.getToken()
+        XCTAssertNil(token)
+        let cached = await store.readCache()
+        XCTAssertEqual(cached?.feeds, ["stable": feed])
+        XCTAssertEqual(cached?.releaseRecords, [recordHash(record): record])
+        let floors = await core.feedFloors
+        XCTAssertEqual(floors, ["stable": FeedFloor(seq: 3, issuedAt: t0)])
+    }
+
     /// The cached slices survive a write by another path (a document sync) untouched.
     func testCacheRecordCodableRoundTrip() throws {
         let record = CacheRecord(

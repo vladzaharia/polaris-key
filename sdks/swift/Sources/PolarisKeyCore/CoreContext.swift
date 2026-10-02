@@ -374,9 +374,15 @@ public actor CoreContext {
         tokenSourceValue = source
     }
 
-    /// Wipe every credential and artifact, in memory and on disk. Throws if the local wipe could
-    /// not be completed — the caller needs to know the credential is still there.
+    /// Wipe every credential and artifact, in memory and on disk, except the v4 update slices
+    /// (below). Throws if the local wipe could not be completed — the caller needs to know the
+    /// credential is still there.
     public func clearAll() async throws {
+        // Wire v4: a deactivation removes every credential and grant, not the feeds' `seq`
+        // floors — a floor that a deactivation reset could be rolled back. The signed update
+        // slices are carried over and re-verified against the (now pinned-only) trust set.
+        let carriedFeeds = record?.feeds ?? [:]
+        let carriedRecords = record?.releaseRecords ?? [:]
         tokenValue = nil
         tokenSourceValue = nil
         record = nil
@@ -388,7 +394,15 @@ public actor CoreContext {
 
         var failure: Error?
         do { try await store.clearToken() } catch { failure = error }
-        do { try await store.clearCache() } catch { failure = failure ?? error }
+        if carriedFeeds.isEmpty && carriedRecords.isEmpty {
+            do { try await store.clearCache() } catch { failure = failure ?? error }
+        } else {
+            record = CacheRecord(feeds: carriedFeeds, releaseRecords: carriedRecords)
+            reloadUpdateSlices()
+            do {
+                try await store.writeCache(record ?? CacheRecord())
+            } catch { failure = failure ?? error }
+        }
         if let failure { throw failure }
     }
 
