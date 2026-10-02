@@ -93,6 +93,9 @@ the features, because "done" means "done in every SDK".
 - **Same capability, idiomatic surface.** Names are identical up to casing: `camelCase` in
   TypeScript, Swift, Kotlin and C#, `snake_case` in Python and GDScript. The mapping is
   generated (§4.4), not remembered.
+  - **Accepted exception (lead, P3-07):** Swift's signed-feed call is `UpdateClient.channelFeed(channel:)`, not
+    `feed(channel:)`, because `feed(channel:arch:entitlements:)` is the Sparkle appcast helper that must keep its
+    behaviour. Node, Python and Godot keep `feed`.
 - **Same verdicts.** Wherever a feature has a corpus file, every SDK reproduces its expected
   outcomes and output bytes.
 - **Same requests.** Wherever a feature talks to the Worker, every SDK produces the same
