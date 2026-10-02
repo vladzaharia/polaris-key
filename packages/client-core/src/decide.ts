@@ -150,11 +150,14 @@ export type HostOutlet =
   | OutletKind
   | { id: string; kind: OutletKind; subkind?: OutletSubkind | null };
 
-/** The build stamp's outlet fields (P1-11). */
+/** The build stamp's outlet fields (P1-11; the v4 fields of plans/P3-01.md §8). `outletIds`
+ *  are the product's outlet identities, which outlet detection (`detectOutlet`) compares launcher
+ *  signals against; `resolveUpdateOutlet` does not read them. */
 export interface OutletStamp {
   outlet?: string;
   outletKind?: string;
   outletSubkind?: string;
+  outletIds?: Record<string, string>;
 }
 
 /** A detection result (P3-11's `detectOutlet`). */

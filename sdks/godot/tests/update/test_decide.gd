@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature update.feed release.record update.decide
+# @pkey-feature update.feed release.record update.decide outlet.detect
 # PolarisKey.update.decide(), feed() and release_record() (wire v4, P3-08) against a loopback
 # server answering like the Worker's discovery, `/update/{channel}/feed.jws` and
 # `/release/records/{sha256}`, with the corpus's signed feeds and records (the SDK has no signer):
@@ -18,7 +18,10 @@ extends RefCounted
 #     without any Ed25519 work, and an 88 845-byte body whose hash IS the pin is refused at the
 #     same step, unhashed, both directly and through the transport's cap;
 #   - offline: a transport failure decides from the committed feed; nothing committed raises;
-#   - a restart on the file store reloads both slices and the floor.
+#   - a restart on the file store reloads both slices and the floor;
+#   - the detected outlet (P3-11): with no PKeyOptions.update_outlet, run-time detection moves
+#     the stamp (an App Store receipt makes the direct stamp app-store: up-to-date), a plain
+#     install keeps it, update_detect = false and a host outlet both leave detection out.
 
 const NOW := 1700000100.0
 const STAMP := "res://tests/fixtures/build_stamp_update.json"
@@ -47,6 +50,7 @@ func run(t: PKeyTestContext) -> void:
 	server = PKeyTestFixtures.new_server(_answer)
 	await _refusals(t)
 	await _happy(t)
+	await _detected(t)
 	await _alias(t)
 	await _floor(t)
 	await _hash_first(t)
@@ -226,6 +230,50 @@ func _happy(t: PKeyTestContext) -> void:
 	r = await got[0].update.decide()
 	t.check("decide: a host outlet wins over the stamp (steam is not on the macOS target here: not-available)", r.ok and r.decision.get("action") == "none" and r.decision.get("reason") == "not-available" and seen.is_empty(), str(r))
 	t.check("decide: an answer with nothing to show leaves last_available null", got[0].update.last_available == null)
+	got[0].queue_free()
+
+
+func _mac_install(store_build: bool) -> PKeyFakeOutletEnv:
+	var e := PKeyFakeOutletEnv.new()
+	e.platform_name = "macos"
+	e.exe = "/Applications/Diceroll.app/Contents/MacOS/Diceroll"
+	var leaf := "Apple Mac OS Application Signing" if store_build else "Developer ID Application: X (T)"
+	e.files[e.exe] = ("MACHO...." + leaf + "....").to_utf8_buffer()
+	if store_build:
+		e.files["/Applications/Diceroll.app/Contents/_MASReceipt/receipt"] = "Production"
+	return e
+
+
+func _detected(t: PKeyTestContext) -> void:
+	_serve(feeds["feed-valid"]["jws"])
+	var got := await _sdk(_store())
+	var sdk: Node = got[0]
+	sdk.core.outlet_env = _mac_install(false)
+	var r: PKeyUpdateCheck = await sdk.update.decide()
+	t.check("detected: a plain Developer ID install keeps the direct stamp (offered the dmg)", r.ok and r.decision.get("action") == "binary", str(r))
+	t.check("detected: detected_outlet() is the stamp's, and update_outlet() {direct, direct}", sdk.core.detected_outlet() == {"kind": "direct", "confidence": "stamp", "source": "stamp", "subkind": null} \
+			and sdk.core.update_outlet() == {"id": "direct", "kind": "direct", "subkind": null}, str(sdk.core.detected_outlet()))
+	sdk.core.outlet_env = _mac_install(true)
+	r = await sdk.update.decide()
+	t.check("detected: an App Store receipt and leaf move the direct stamp to app-store (its store entry is live at 1.4.0: up-to-date, never the direct dmg)", r.ok and r.decision.get("action") == "none" and r.decision.get("reason") == "up-to-date", str(r))
+	t.check("detected: the attested source is reported", sdk.core.detected_outlet().get("source") == "macos.masReceipt" and sdk.core.update_outlet() == {"id": null, "kind": "app-store", "subkind": null})
+	t.check("detected: the device report carries the detected kind", sdk.core.reported_outlet() == "app-store")
+	t.check("detected: PolarisKey.update.outlet() and detected() are the core's update_outlet() and detected_outlet()", sdk.update.outlet() == sdk.core.update_outlet() and sdk.update.detected() == sdk.core.detected_outlet())
+	sdk.queue_free()
+
+	_serve(feeds["feed-valid"]["jws"])
+	got = await _sdk(_store(), func(o): o.update_detect = false)
+	got[0].core.outlet_env = _mac_install(true)
+	r = await got[0].update.decide()
+	t.check("detected: update_detect = false leaves the stamp alone", r.ok and r.decision.get("action") == "binary" and got[0].core.detected_outlet() == null, str(r))
+	got[0].queue_free()
+
+	_serve(feeds["feed-valid"]["jws"])
+	got = await _sdk(_store(), func(o): o.update_outlet = "direct")
+	got[0].core.outlet_env = _mac_install(true)
+	r = await got[0].update.decide()
+	t.check("detected: the host's update_outlet wins over detection", r.ok and r.decision.get("action") == "binary" and got[0].core.detected_outlet() == null, str(r))
+	t.check("detected: with a host outlet update.detected() is null and update.outlet() is the host's", got[0].update.detected() == null and got[0].update.outlet().get("id") == "direct")
 	got[0].queue_free()
 
 

@@ -95,6 +95,19 @@ export {
 } from "./decide.js";
 
 export {
+  OUTLET_PLATFORM_DATA,
+  OUTLET_SIGNALS,
+  UNKNOWN_DETECTION,
+  WEB_DETECTION_STAMP,
+  detectOutlet,
+  detectionStamp,
+  type DetectionStamp,
+  type OutletIds,
+  type OutletSignalSpec,
+  type OutletSignals,
+} from "./outlet.js";
+
+export {
   runUpdateCheck,
   type FetchOutcome,
   type RunUpdateCheckOptions,

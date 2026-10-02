@@ -381,7 +381,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       ]
     },
     "outlet_direct": {
-      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, scoop. Other keys are ignored.",
+      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, homebrewFormula, scoop. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -392,6 +392,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         },
         "homebrewCask": {
           "$ref": "#/$defs/homebrewCask"
+        },
+        "homebrewFormula": {
+          "$ref": "#/$defs/homebrewFormula"
         },
         "scoop": {
           "$ref": "#/$defs/scoop"
@@ -814,6 +817,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "The Homebrew cask token.",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@-]{0,99}$"
+    },
+    "homebrewFormula": {
+      "description": "The Homebrew formula name, for runtime outlet detection (an executable under Cellar/<formula>/).",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.@+_-]{0,99}$"
     },
     "msixPublisher": {
       "description": "The MSIX package Publisher (P3-09): the signing certificate's subject DN exactly as the package manifest states it.",
@@ -10471,7 +10479,7 @@ var TRANSPORT_OUTLET_KINDS = {
 };
 var IMPLICIT_OUTLET_ID = "direct";
 var OUTLET_IDENTITY_FIELDS = {
-  direct: ["platforms", "homebrewCask", "scoop"],
+  direct: ["platforms", "homebrewCask", "homebrewFormula", "scoop"],
   "app-store": ["appleId", "bundleId"],
   testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
@@ -10507,6 +10515,7 @@ var MAX_FLATPAK_ID_LENGTH = 255;
 var SNAP_NAME_RE = /^[a-z0-9](?:-?[a-z0-9]){0,39}$/;
 var WINGET_ID_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$/;
 var HOMEBREW_CASK_PATTERN = /^[a-z0-9][a-z0-9.@-]{0,99}$/;
+var HOMEBREW_FORMULA_PATTERN = /^[a-z0-9][a-z0-9.@+_-]{0,99}$/;
 var MAX_CHANNEL_MAP_ENTRIES = 32;
 var SCOOP_PATH_PATTERN = /^(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[A-Za-z0-9 ._()+-]{1,128}(?:[\\/][A-Za-z0-9 ._()+-]{1,128}){0,7}$/;
 var SCOOP_SHORTCUT_NAME_RE = /^[^\u0000-\u001f\u007f\\/:*?"<>|]{1,100}$/;
@@ -10583,6 +10592,11 @@ function fieldCheck(kind, field) {
       return pattern(
         HOMEBREW_CASK_PATTERN,
         "a Homebrew cask token (lower-case letters, digits, -, . and @)"
+      );
+    case "homebrewFormula":
+      return pattern(
+        HOMEBREW_FORMULA_PATTERN,
+        "a Homebrew formula name (lower-case letters, digits, ., @, +, _ and -)"
       );
     case "scoop":
       return scoopCheck;
@@ -11096,8 +11110,19 @@ function distributionOutletIds(dist, outletId) {
   put("flatpakId", entryOf("flathub")?.identity.appId);
   put("snapName", entryOf("snap")?.identity.name);
   put("caskToken", entryOf("direct")?.identity.homebrewCask);
+  put("homebrewFormula", entryOf("direct")?.identity.homebrewFormula);
   if (build.kind === "ms-store" || build.kind === "app-installer")
     put("msixFamilyName", build.identity.packageFamilyName);
+  const apple = [
+    "app-store",
+    "testflight",
+    "altstore",
+    "altstore-pal"
+  ];
+  put(
+    "bundleId",
+    (apple.includes(build.kind) ? build.identity.bundleId : void 0) ?? apple.map((k) => entryOf(k)?.identity.bundleId).find((v) => !!v)
+  );
   return sortedRecord(out);
 }
 function isRecord(v) {
@@ -18836,7 +18861,7 @@ Copy that file to the air-gapped machine and import it there.
 
 pkey distribution outlet-ids prints the build outlet's store ids from .pkey/distribution as
 one JSON object of strings (steamAppId, itchGameId, flatpakId, snapName, caskToken,
-msixFamilyName), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no
+homebrewFormula, msixFamilyName, bundleId), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no
 .pkey/distribution it prints {}.
 
 Environment:

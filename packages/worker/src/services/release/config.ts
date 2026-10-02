@@ -10,8 +10,10 @@
  * the split is meant to prevent.
  */
 
+import type { ManifestAppDeliverable } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db } from "../../core/platform.js";
+import { hasArtifactMap } from "./artifactMap.js";
 
 export interface ReleaseConfigRow {
   product: string;
@@ -200,30 +202,55 @@ export function accessSourceOf(
 }
 
 /**
- * Does the operator's artifact policy require a macOS DMG? Absent or unparseable policy means
- * yes (djdl's behaviour), and only an explicit `requireDmg: false` opts out.
+ * Does the manifest's artifact policy EXPLICITLY require a macOS DMG? Only `requireDmg: true`
+ * does — the manifest normaliser's own reading. No policy, an unreadable one, or one that does
+ * not say so requires nothing.
  */
-export function requiresDmg(policyJson: string | null | undefined): boolean {
-  if (!policyJson) return true;
+export function policyRequiresDmg(
+  policyJson: string | null | undefined,
+): boolean {
+  if (!policyJson) return false;
   try {
-    const parsed = JSON.parse(policyJson) as { requireDmg?: unknown };
-    return parsed.requireDmg !== false;
+    const parsed = JSON.parse(policyJson) as { requireDmg?: unknown } | null;
+    return parsed?.requireDmg === true;
   } catch {
-    return true;
+    return false;
   }
 }
 
-/**
- * The "ships DMGs" predicate shared by release health and the console's setup state: the
- * product requires a DMG, or its latest release already carries one. A product for which this
- * is false has no Sparkle appcast to sign, so DMG and Sparkle checks do not apply to it.
- * P2-04 replaces this with the declared artifact map.
- */
-export function shipsDmgs(
-  policyJson: string | null | undefined,
-  latestReleaseHasDmg: boolean,
+/** Does a declared artifact map name a macOS `dmg` build? */
+export function mapDeclaresDmg(
+  app: ManifestAppDeliverable | null | undefined,
 ): boolean {
-  return requiresDmg(policyJson) || latestReleaseHasDmg;
+  return (
+    hasArtifactMap(app) &&
+    app.artifacts.some((e) => e.platform === "macos" && e.format === "dmg")
+  );
+}
+
+/**
+ * The "ships DMGs" predicate — the gate on every Sparkle check — shared by release health and
+ * the console's setup state so the two cannot drift. Decided from EVIDENCE, never from a missing
+ * policy:
+ *
+ *   - the policy explicitly requires a DMG (`requireDmg: true`); or
+ *   - the product declares an artifact map and it names a macOS `dmg` build (the map is the
+ *     declaration, so an undeclared `.dmg` upload does not count); or
+ *   - it declares no map and its latest release carries a `.dmg`.
+ *
+ * Anything else — a Linux-only product with no policy, say — ships no DMGs, has no appcast to
+ * sign, and gets no Sparkle key or signature checks. A stored `requireDmg: false` does not
+ * override the evidence above: the manifest normaliser writes `false` for every policy block
+ * that merely omits the field, so it cannot be told apart from "unstated".
+ */
+export function shipsDmgs(evidence: {
+  policyJson: string | null | undefined;
+  app: ManifestAppDeliverable | null | undefined;
+  latestReleaseHasDmg: boolean;
+}): boolean {
+  if (policyRequiresDmg(evidence.policyJson)) return true;
+  if (hasArtifactMap(evidence.app)) return mapDeclaresDmg(evidence.app);
+  return evidence.latestReleaseHasDmg;
 }
 
 /**

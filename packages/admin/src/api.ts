@@ -290,6 +290,16 @@ export interface ReleaseHealthCheck {
   status: ReleaseHealthCheckStatus;
   message?: string;
   missing?: string[];
+  /** Files the check is about: what the latest release carries (`release-artifacts`), the file
+   *  a declared artifact entry matched, or an ambiguous entry's candidates. */
+  files?: ReleaseHealthFile[];
+}
+
+export interface ReleaseHealthFile {
+  name: string;
+  platform?: string;
+  arch?: string;
+  format?: string;
 }
 
 export interface ReleaseHealth {

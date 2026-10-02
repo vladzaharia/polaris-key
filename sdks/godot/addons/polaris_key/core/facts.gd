@@ -198,7 +198,8 @@ static func _put(d: Dictionary, key: String, value: String) -> void:
 
 
 ## The outlet the build was stamped with (P1-11's `res://.polaris_key/build.json`), or "" when
-## there is no stamp or it names none. Never detected at runtime here (that is P3-11's).
+## there is no stamp or it names none. What the build says: the device report carries the
+## detected outlet instead (PKeyCore.reported_outlet(), P3-11).
 static func outlet(path := PKeyBuildStamp.PATH) -> String:
 	var stamp = PKeyBuildStamp.read(path)
 	return stamp["outlet"].strip_edges() if stamp != null else ""

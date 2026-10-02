@@ -1,7 +1,24 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import type { Db, Env } from "../../core/platform.js";
-import { findBinaryAsset, matchAsset, sigAssetName } from "./assets.js";
+import type {
+  ManifestAppDeliverable,
+  ManifestArtifactEntry,
+} from "@polaris-key/manifest";
+import {
+  archOf,
+  isCliBinary,
+  matchAsset,
+  nameHasToken,
+  normalizeArch,
+  sigAssetName,
+  type Arch,
+} from "./assets.js";
+import {
+  classifyByMap,
+  hasArtifactMap,
+  type MapClassification,
+} from "./artifactMap.js";
 import {
   classifyChannel,
   parseManualChannels,
@@ -17,9 +34,19 @@ import {
 } from "./config.js";
 import { resolveMovingSelector, type MovingResolution } from "./gateway.js";
 import { legacyPolicyFor } from "./resolve.js";
-import { NotFoundError, UpstreamRateLimitedError } from "./github.js";
+import { readAppDeliverable } from "./descriptor.js";
+import {
+  NotFoundError,
+  UpstreamRateLimitedError,
+  type ReleaseAsset,
+} from "./github.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
-import { isBelowFloor, listChannelFloors } from "./store.js";
+import {
+  artifactKind,
+  artifactPlatform,
+  isBelowFloor,
+  listChannelFloors,
+} from "./store.js";
 
 export type ReleaseHealthStatus =
   | "healthy"
@@ -35,6 +62,17 @@ export interface ReleaseHealthCheck {
   status: ReleaseHealthCheckStatus;
   message?: string;
   missing?: string[];
+  /** Files the check is about: what the latest release carries (`release-artifacts`), the file
+   *  a declared entry matched, or an ambiguous entry's candidates. Platform/arch/format only
+   *  where the map declares them or the name yields them. */
+  files?: ReleaseHealthFile[];
+}
+
+export interface ReleaseHealthFile {
+  name: string;
+  platform?: string;
+  arch?: string;
+  format?: string;
 }
 
 export interface ReleaseHealth {
@@ -74,34 +112,299 @@ function summarize(checks: ReleaseHealthCheck[]): ReleaseHealthStatus {
 }
 
 /**
- * What the health check expects of a release. `requireDmg`/`requireCli` are MANIFEST-owned and
- * come from `artifact_policy_json`; `requireSparkleSignature` is OPERATOR-owned and comes from
- * `operator_policy_json` (P0-01) through the same reader the feed uses. Unreadable JSON falls
- * back to the fail-safe defaults: a DMG and a signature required, no CLI.
+ * What the health check expects of a release. `requireDmg`/`requireCli`/`architectures` are
+ * MANIFEST-owned and come from `artifact_policy_json`; `requireSparkleSignature` is
+ * OPERATOR-owned and comes from `operator_policy_json` (P0-01) through the same reader the feed
+ * uses.
+ *
+ * An artifact is required only when the policy says so EXPLICITLY (`requireDmg: true`,
+ * `requireCli: true`) — the same reading the manifest normaliser gives the fields. No policy,
+ * or an unreadable one, requires nothing: health lists what a release carries instead of
+ * assuming a macOS/CLI shape. (The Sparkle checks are gated by the evidence-based `shipsDmgs`.)
  */
 function artifactPolicy(cfg: ReleaseConfigRow): {
   requireDmg: boolean;
   requireCli: boolean;
+  architectures: string[];
   requireSparkleSignature: boolean;
 } {
   const { requireSparkleSignature } = operatorPolicy(cfg);
+  const none = {
+    requireDmg: false,
+    requireCli: false,
+    architectures: [],
+    requireSparkleSignature,
+  };
   const raw = cfg.artifact_policy_json;
-  if (!raw) {
-    return { requireDmg: true, requireCli: false, requireSparkleSignature };
-  }
+  if (!raw) return none;
   try {
     const parsed = JSON.parse(raw) as {
       requireDmg?: unknown;
       requireCli?: unknown;
+      architectures?: unknown;
     };
+    if (!parsed || typeof parsed !== "object") return none;
     return {
-      requireDmg: parsed.requireDmg !== false,
+      requireDmg: parsed.requireDmg === true,
       requireCli: parsed.requireCli === true,
+      architectures: Array.isArray(parsed.architectures)
+        ? [
+            ...new Set(
+              parsed.architectures.filter(
+                (a): a is string => typeof a === "string" && a.length > 0,
+              ),
+            ),
+          ]
+        : [],
       requireSparkleSignature,
     };
   } catch {
-    return { requireDmg: true, requireCli: false, requireSparkleSignature };
+    return none;
   }
+}
+
+/** How many files the `release-artifacts` check lists before summarising the rest. */
+const LISTED_FILES_CAP = 20;
+
+function fileWord(n: number): string {
+  return `${n} file${n === 1 ? "" : "s"}`;
+}
+
+/**
+ * No declared artifact map: one informational check listing what the latest release carries.
+ * Platform and arch are the truth store's own sniffing (`artifactPlatform`, `archOf`), shown
+ * only where the name yields them. Never anything but `ok` — an absence here assumes nothing.
+ */
+function availableArtifactsCheck(
+  tag: string,
+  names: readonly string[],
+): ReleaseHealthCheck {
+  const sorted = [...names].sort();
+  const files = sorted.slice(0, LISTED_FILES_CAP).map((name) => {
+    const platform = artifactPlatform(artifactKind(name), name);
+    const arch = archOf(name);
+    return {
+      name,
+      ...(platform ? { platform } : {}),
+      ...(arch ? { arch } : {}),
+    };
+  });
+  const more = sorted.length - files.length;
+  return {
+    ...check(
+      "release-artifacts",
+      "Release artifacts",
+      "ok",
+      sorted.length === 0
+        ? `${tag} carries no files.`
+        : `${tag} carries ${fileWord(sorted.length)}` +
+            (more > 0
+              ? `; the first ${files.length} are listed, and ${more} more.`
+              : "."),
+    ),
+    ...(files.length ? { files } : {}),
+  };
+}
+
+function entryLabel(entry: ManifestArtifactEntry): string {
+  return `${entry.id} (${entry.platform} ${entry.arch} ${entry.format})`;
+}
+
+/**
+ * A declared artifact map is the expected set: one `artifact-<buildId>` check per entry, judged
+ * by the SAME classification the truth store uses (`classifyByMap`). Exactly one match is `ok`;
+ * none is `missing`; more than one is also `missing` — the map classifies none of them, so
+ * nothing serves that build until the glob or the upload is fixed — and lists the candidates.
+ */
+function mapChecks(
+  app: ManifestAppDeliverable,
+  classified: MapClassification,
+  names: readonly string[],
+): ReleaseHealthCheck[] {
+  const payloadOf = new Map<string, string>();
+  for (const name of names) {
+    const file = classified.files.get(name);
+    if (file && file.role === "payload" && !payloadOf.has(file.buildId))
+      payloadOf.set(file.buildId, name);
+  }
+  // A non-payload entry (an index, a delta) is matched under its own role; find it by build.
+  const matchedOf = (entryId: string): string | undefined =>
+    payloadOf.get(entryId) ??
+    names.find((n) => classified.files.get(n)?.buildId === entryId);
+
+  return app.artifacts.map((entry) => {
+    const id = `artifact-${entry.id}`;
+    const label = entryLabel(entry);
+    const fileOf = (name: string) => ({
+      name,
+      platform: entry.platform,
+      arch: entry.arch,
+      format: entry.format,
+    });
+    const candidates = classified.ambiguous.get(entry.id);
+    if (candidates && candidates.length > 1) {
+      return {
+        ...check(
+          id,
+          label,
+          "missing",
+          `${candidates.length} files match ${JSON.stringify(entry.match)}, so none is served; ` +
+            "narrow the glob or remove the extra upload.",
+          [
+            `${entry.id}: one file matching ${entry.match} (found ${candidates.length})`,
+          ],
+        ),
+        files: candidates.map(fileOf),
+      };
+    }
+    const matched = classified.builds.some((b) => b.id === entry.id)
+      ? matchedOf(entry.id)
+      : undefined;
+    if (matched) {
+      return {
+        ...check(id, label, "ok", `Found ${matched}.`),
+        files: [fileOf(matched)],
+      };
+    }
+    const shadowed = classified.shadowed.get(entry.id) ?? [];
+    return check(
+      id,
+      label,
+      "missing",
+      shadowed.length
+        ? `${shadowed.map((f) => `${f.name} matches ${JSON.stringify(entry.match)} but was claimed by entry ${f.by}`).join("; ")} ` +
+            "(the first entry in declaration order wins a file)."
+        : `No file in the latest release matches ${JSON.stringify(entry.match)}.`,
+      [`${entry.id}: file matching ${entry.match}`],
+    );
+  });
+}
+
+/** `universal` and `any` are satisfied by a file of either arch (or of none). */
+function isAnyArch(arch: string): boolean {
+  const lower = arch.toLowerCase();
+  return lower === "universal" || lower === "any";
+}
+
+/**
+ * Explicit requirements from the manifest's `artifactPolicy`. With `architectures` declared, one
+ * check per architecture (`dmg-<arch>`, `cli-<arch>`); without, one check (`dmg`, `cli`) that any
+ * matching file satisfies. A requirement the policy does not state produces no check at all.
+ */
+function policyChecks(
+  cfg: ReleaseConfigRow,
+  product: string,
+  assets: ReleaseAsset[],
+): ReleaseHealthCheck[] {
+  const policy = artifactPolicy(cfg);
+  const binaryName = cfg.binary_name ?? product;
+  const out: ReleaseHealthCheck[] = [];
+  const cliCandidates = assets.filter((a) => isCliBinary(a.name, binaryName));
+  const kinds: {
+    required: boolean;
+    id: "dmg" | "cli";
+    label: string;
+    noun: string;
+    /** Every file that counts as this kind, on any arch. */
+    candidates: ReleaseAsset[];
+    /** The file for a canonical arch. */
+    find: (arch: Arch) => ReleaseAsset | null;
+  }[] = [
+    {
+      required: policy.requireDmg,
+      id: "dmg",
+      label: "macOS DMG",
+      noun: "DMG asset",
+      candidates: assets.filter((a) => artifactKind(a.name) === "dmg"),
+      // What the appcast and DMG routes would select for this arch.
+      find: (arch) => matchAsset(assets, { arch, ext: "dmg", binaryName }),
+    },
+    {
+      required: policy.requireCli,
+      id: "cli",
+      label: "CLI binary",
+      noun: "CLI asset",
+      candidates: cliCandidates,
+      // Any CLI binary of that arch (`djdl-arm64`, `djdl_aarch64`, `djdl-1.2.3-arm64`) — the same
+      // `isCliBinary` definition the arch-less check uses, so the two agree.
+      find: (arch) =>
+        cliCandidates.find((a) => archOf(a.name) === arch) ?? null,
+    },
+  ];
+  for (const kind of kinds) {
+    if (!kind.required) continue;
+    const why = "required by the manifest's artifactPolicy";
+    if (policy.architectures.length === 0) {
+      const found = kind.candidates;
+      out.push(
+        check(
+          kind.id,
+          kind.label,
+          found.length ? "ok" : "missing",
+          found.length
+            ? `Found ${found.map((a) => a.name).join(", ")}.`
+            : `No ${kind.noun} was found (${why}).`,
+          found.length ? [] : [kind.noun],
+        ),
+      );
+      continue;
+    }
+    for (const raw of policy.architectures) {
+      const canonical = normalizeArch(raw);
+      // Canonical arm64/x86_64 use the alias-aware matcher; `universal`/`any` accept a file of
+      // any arch; any other token must appear as whole filename tokens (`x86` is not `x86_64`).
+      const found = canonical
+        ? kind.find(canonical)
+        : isAnyArch(raw)
+          ? (kind.candidates[0] ?? null)
+          : (kind.candidates.find((a) => nameHasToken(a.name, raw)) ?? null);
+      const arch = canonical ?? raw;
+      out.push(
+        check(
+          `${kind.id}-${arch}`,
+          `${kind.label} (${arch})`,
+          found ? "ok" : "missing",
+          found
+            ? `Found ${found.name}.`
+            : `No ${arch} ${kind.noun} was found (${why}).`,
+          found ? [] : [`${arch} ${kind.noun}`],
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+/**
+ * The DMG whose `.sig` sidecar the Sparkle check looks for: the declared macOS `dmg` payload when
+ * the map classifies one (arm64 first, then universal, then any), otherwise the arm64 DMG the
+ * appcast route itself selects by name.
+ */
+function sparklePayload(
+  cfg: ReleaseConfigRow,
+  product: string,
+  assets: ReleaseAsset[],
+  classified: MapClassification | null,
+): string | null {
+  if (classified) {
+    const dmgs = [...classified.files.entries()].filter(
+      ([, f]) =>
+        f.role === "payload" && f.platform === "macos" && f.format === "dmg",
+    );
+    const rank = (arch: string) =>
+      arch === "arm64" ? 0 : arch === "universal" ? 1 : 2;
+    dmgs.sort(
+      ([a, fa], [b, fb]) => rank(fa.arch) - rank(fb.arch) || a.localeCompare(b),
+    );
+    if (dmgs[0]) return dmgs[0][0];
+  }
+  return (
+    matchAsset(assets, {
+      arch: "arm64",
+      ext: "dmg",
+      binaryName: cfg.binary_name ?? product,
+    })?.name ?? null
+  );
 }
 
 export async function checkReleaseHealth(
@@ -167,10 +470,18 @@ export async function checkReleaseHealth(
         ? "Sparkle appcasts will fail closed when a signature is missing."
         : "No Sparkle public key is configured; appcasts may render unsigned.",
     );
-  // A product that requires no DMG only gets the Sparkle key check once its latest release
-  // turns out to ship one (see `ships` below).
-  const policyRequiresDmg = artifactPolicy(cfg).requireDmg;
-  if (policyRequiresDmg) checks.push(sparkleKeyCheck());
+  // The Sparkle key check runs only for a product that ships DMGs (`shipsDmgs`). The evidence
+  // known before GitHub is read — an explicit `requireDmg: true`, or a declared macOS dmg
+  // build — reports it up front, so it shows even when the release list cannot be read; a
+  // product whose only evidence is its latest release gets it once that release is read.
+  const app = await readAppDeliverable(db, product);
+  const map = hasArtifactMap(app) ? app : null;
+  const keyCheckedEarly = shipsDmgs({
+    policyJson: cfg.artifact_policy_json,
+    app,
+    latestReleaseHasDmg: false,
+  });
+  if (keyCheckedEarly) checks.push(sparkleKeyCheck());
 
   // The SAME resolution the live routes run (P0-02): candidate filter, semver order, live page
   // cap, channel floor. Health used to take the first non-draft entry of a 25-release page,
@@ -278,51 +589,36 @@ export async function checkReleaseHealth(
     ),
   );
 
-  const binaryName = cfg.binary_name ?? product;
-  const policy = artifactPolicy(cfg);
-  const latestHasDmg = latest.assets.some((asset) =>
-    asset.name.toLowerCase().endsWith(".dmg"),
-  );
-  const ships = shipsDmgs(cfg.artifact_policy_json, latestHasDmg);
+  const names = latest.assets.map((a) => a.name);
+  const classified = map ? classifyByMap(map, names) : null;
+
+  // What the release carries. A declared artifact map is the expected set: one check per entry.
+  // Without one, nothing is assumed — the files are listed, and only an explicit policy below
+  // can make an absence matter.
+  if (map && classified) {
+    checks.push(...mapChecks(map, classified, names));
+  } else {
+    checks.push(availableArtifactsCheck(latest.tag_name, names));
+  }
+  checks.push(...policyChecks(cfg, product, latest.assets));
 
   // DMG and Sparkle checks apply only to products that ship DMGs: a Godot or Linux-only
   // product is not told forever that it "needs setup" for artifacts it never builds.
-  if (ships) {
-    if (!policyRequiresDmg) checks.push(sparkleKeyCheck());
-    const armDmg = matchAsset(latest.assets, {
-      arch: "arm64",
-      ext: "dmg",
-      binaryName,
-    });
-    checks.push(
-      check(
-        "dmg-arm64",
-        "macOS arm64 DMG",
-        armDmg ? "ok" : policy.requireDmg ? "missing" : "warning",
-        armDmg
-          ? `Found ${armDmg.name}.`
-          : "The appcast and DMG endpoint need an arm64 DMG asset.",
-        armDmg || !policy.requireDmg ? [] : ["arm64 DMG asset"],
-      ),
-    );
-
-    const x64Dmg = matchAsset(latest.assets, {
-      arch: "x86_64",
-      ext: "dmg",
-      binaryName,
-    });
-    checks.push(
-      check(
-        "dmg-x86_64",
-        "macOS x86_64 DMG",
-        x64Dmg ? "ok" : policy.requireDmg ? "missing" : "warning",
-        x64Dmg
-          ? `Found ${x64Dmg.name}.`
-          : "No x86_64 DMG asset was found; Intel macOS downloads will 404.",
-      ),
-    );
-
-    if (!cfg.sparkle_ed25519_pub && policy.requireSparkleSignature) {
+  const latestHasDmg = latest.assets.some((asset) =>
+    asset.name.toLowerCase().endsWith(".dmg"),
+  );
+  if (
+    shipsDmgs({
+      policyJson: cfg.artifact_policy_json,
+      app,
+      latestReleaseHasDmg: latestHasDmg,
+    })
+  ) {
+    if (!keyCheckedEarly) checks.push(sparkleKeyCheck());
+    if (
+      !cfg.sparkle_ed25519_pub &&
+      artifactPolicy(cfg).requireSparkleSignature
+    ) {
       checks.push(
         check(
           "sparkle-signature",
@@ -332,45 +628,25 @@ export async function checkReleaseHealth(
           ["Sparkle public key"],
         ),
       );
-    } else if (cfg.sparkle_ed25519_pub && armDmg) {
-      const sigName = sigAssetName(armDmg.name);
-      const sig = latest.assets.find((asset) => asset.name === sigName);
-      checks.push(
-        check(
-          "sparkle-signature",
-          "Sparkle signature",
-          sig ? "ok" : "missing",
-          sig
-            ? `Found ${sig.name}.`
-            : `Expected Sparkle signature sidecar ${sigName}.`,
-          sig ? [] : [sigName],
-        ),
-      );
+    } else if (cfg.sparkle_ed25519_pub) {
+      const payload = sparklePayload(cfg, product, latest.assets, classified);
+      if (payload) {
+        const sigName = sigAssetName(payload);
+        const sig = latest.assets.find((asset) => asset.name === sigName);
+        checks.push(
+          check(
+            "sparkle-signature",
+            "Sparkle signature",
+            sig ? "ok" : "missing",
+            sig
+              ? `Found ${sig.name}.`
+              : `Expected Sparkle signature sidecar ${sigName}.`,
+            sig ? [] : [sigName],
+          ),
+        );
+      }
     }
   }
-
-  const armCli = findBinaryAsset(latest.assets, binaryName, "arm64");
-  const x64Cli = findBinaryAsset(latest.assets, binaryName, "x86_64");
-  checks.push(
-    check(
-      "cli-arm64",
-      "CLI arm64 asset",
-      armCli ? "ok" : policy.requireCli ? "missing" : "warning",
-      armCli
-        ? `Found ${armCli.name}.`
-        : "No arm64 CLI asset was found; CLI installers may be unavailable.",
-    ),
-  );
-  checks.push(
-    check(
-      "cli-x86_64",
-      "CLI x86_64 asset",
-      x64Cli ? "ok" : policy.requireCli ? "missing" : "warning",
-      x64Cli
-        ? `Found ${x64Cli.name}.`
-        : "No x86_64 CLI asset was found; CLI installers may be unavailable.",
-    ),
-  );
 
   const status = summarize(checks);
   return {

@@ -62,7 +62,7 @@
     },
     "update.decide": {
       "status": "implemented",
-      "note": "client.update.decide() over client-core's runUpdateCheck; the outlet is the host's update.outlet (or stamp / detected) until P3-11 detects it, and is unknown, never offered an update, without one."
+      "note": "client.update.decide() over client-core's runUpdateCheck; the outlet is the host's update.outlet, else the in-process detection result (P3-11) over the stamp, and is unknown, never offered an update, with no stamp and no attested evidence."
     },
     "update.driver": {
       "status": "planned",
@@ -74,7 +74,10 @@
       "unowned": true,
       "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
-    "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "outlet.detect": {
+      "status": "implemented",
+      "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. Windows SignatureKind needs WinRT and is not read."
+    },
     "packs.record": { "status": "planned", "wp": "P4-06" },
     "packs.plan": { "status": "planned", "wp": "P4-06" },
     "packs.index.files": { "status": "planned", "wp": "P4-06" },

@@ -280,6 +280,7 @@ function base(): Docs {
         direct: {
           platforms: ["macos", "windows", "linux"],
           homebrewCask: "acme",
+          homebrewFormula: "acme@2",
           scoop: {
             bin: "Acme/acme.exe",
             shortcuts: [["Acme/acme.exe", "Acme"]],
@@ -1490,6 +1491,13 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     // direct.homebrewCask (notes/S-06): lower-case letters, digits, -, . and @ only.
     mutate: (d) => (outlet(d, "direct").homebrewCask = "Acme Desktop"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    // direct.homebrewFormula (P3-11): lower-case, starting with a letter or digit.
+    mutate: (d) => (outlet(d, "direct").homebrewFormula = "Acme/Formula"),
   },
   {
     code: "invalid_outlet_identity",

@@ -833,3 +833,112 @@ final class UpdateDecideTests: XCTestCase {
             v20, "channel=beta")
     }
 }
+
+// ── P3-11: the detected outlet is the default (plans/P3-01.md §2.9) ─────────────────────────────
+
+// @pkey-feature outlet.detect
+extension UpdateDecideTests {
+    private func detectingOptions(
+        outlet: HostOutlet? = nil, detected: DetectedOutlet? = nil, detect: Bool = true,
+        env: OutletReaderEnvironment
+    ) -> UpdateClientOptions {
+        UpdateClientOptions(
+            pinnedReleaseKeys: releaseKey.trust, outlet: outlet,
+            stamp: OutletStamp(outlet: "direct", outletKind: "direct", outletIds: OUTLET_TEST_IDS),
+            detected: detected, detect: detect, outletEnvironment: env, buildNumber: "120", format: "dmg",
+            methods: [BinaryMethod.download], platform: Platform.macos, arch: Arch.arm64)
+    }
+
+    func testDecideUsesTheDetectedOutletWhenTheHostNamesNone() async throws {
+        let record = recordJws()
+        await serve(feed: feedJws(seq: 1, issuedAt: t0, pin: recordHash(record)), record: record)
+        let core = try await makeCore(
+            store: InMemoryStore(productSlug: "djdl", deviceId: "dev-1"), clock: ReplayClock(t0))
+
+        // A Developer ID build with the direct stamp: direct, so the direct build is offered.
+        let plain = try UpdateClient(core: core, options: detectingOptions(env: fakeMac()))
+        let plainOutlet = await plain.outlet()
+        XCTAssertEqual(plainOutlet, ResolvedOutlet(id: "direct", kind: "direct", subkind: nil))
+        let plainDetected = await plain.detected()
+        XCTAssertEqual(plainDetected, DetectedOutlet(kind: "direct", confidence: "stamp", source: "stamp"))
+        guard case .binary = try await plain.decide().decision else { return XCTFail() }
+
+        // The same build carrying an App Store receipt and the store leaf: app-store, attested,
+        // which the feed has no entry for.
+        let store = fakeMac(
+            files: ["/Applications/Diceroll.app/Contents/_MASReceipt/receipt": Data("r".utf8)],
+            leaf: "Apple Mac OS Application Signing")
+        let mas = try UpdateClient(core: core, options: detectingOptions(env: store))
+        let masOutlet = await mas.outlet()
+        XCTAssertEqual(masOutlet, ResolvedOutlet(id: nil, kind: "app-store", subkind: nil))
+        guard case .none(let reason, _, _) = try await mas.decide().decision else { return XCTFail() }
+        XCTAssertEqual(reason, "not-available")
+    }
+
+    func testTheHostsOutletWinsAndDetectFalseLeavesTheStamp() async throws {
+        let core = try await makeCore(
+            store: InMemoryStore(productSlug: "djdl", deviceId: "dev-1"), clock: ReplayClock(t0))
+        let store = fakeMac(
+            files: ["/Applications/Diceroll.app/Contents/_MASReceipt/receipt": Data("r".utf8)],
+            leaf: "Apple Mac OS Application Signing")
+        let host = try UpdateClient(core: core, options: detectingOptions(outlet: .kind("direct"), env: store))
+        let hostOutlet = await host.outlet()
+        XCTAssertEqual(hostOutlet, ResolvedOutlet(id: "direct", kind: "direct", subkind: nil))
+        let hostDetected = await host.detected()
+        XCTAssertNil(hostDetected)
+
+        let off = try UpdateClient(core: core, options: detectingOptions(detect: false, env: store))
+        let offOutlet = await off.outlet()
+        XCTAssertEqual(offOutlet, ResolvedOutlet(id: "direct", kind: "direct", subkind: nil))
+
+        let given = try UpdateClient(
+            core: core,
+            options: detectingOptions(detected: DetectedOutlet(kind: "steam", confidence: "declared"), env: store))
+        let givenOutlet = await given.outlet()
+        XCTAssertEqual(givenOutlet, ResolvedOutlet(id: nil, kind: "steam", subkind: nil))
+    }
+
+    func testTheHostsDetectedIsReportedWhenItsOutletWins() async throws {
+        let core = try await makeCore(
+            store: InMemoryStore(productSlug: "djdl", deviceId: "dev-1"), clock: ReplayClock(t0))
+        let steam = DetectedOutlet(kind: "steam", confidence: "declared")
+        let both = try UpdateClient(
+            core: core, options: detectingOptions(outlet: .kind("direct"), detected: steam, env: fakeMac()))
+        let bothOutlet = await both.outlet()
+        XCTAssertEqual(bothOutlet, ResolvedOutlet(id: "direct", kind: "direct", subkind: nil))
+        let bothDetected = await both.detected()
+        XCTAssertEqual(bothDetected, steam)
+    }
+
+    func testConcurrentCallsShareOneDetection() async throws {
+        let core = try await makeCore(
+            store: InMemoryStore(productSlug: "djdl", deviceId: "dev-1"), clock: ReplayClock(t0))
+        let reads = ReadCounter()
+        // An iOS environment whose AppDistributor read is slow, so the calls overlap.
+        let env = OutletReaderEnvironment(
+            platform: "ios", bundlePath: "/var/containers/Bundle/Application/X/Diceroll.app",
+            appDistributor: {
+                reads.increment()
+                try? await Task.sleep(for: .milliseconds(100))
+                return "other"
+            })
+        let client = try UpdateClient(core: core, options: detectingOptions(env: env))
+        async let first = client.outlet()
+        async let second = client.detected()
+        async let third = client.outlet()
+        let (a, b, c) = await (first, second, third)
+        XCTAssertNotNil(a)
+        XCTAssertNotNil(b)
+        XCTAssertEqual(a, c)
+        XCTAssertEqual(reads.value, 1)
+        _ = await client.outlet()
+        XCTAssertEqual(reads.value, 1)
+    }
+}
+
+private final class ReadCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func increment() { lock.lock(); count += 1; lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+}

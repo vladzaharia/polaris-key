@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers
-# @pkey-feature update.feed release.record update.decide
+# @pkey-feature update.feed release.record update.decide outlet.detect
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json, gate-matrix.json, fingerprint.json and headers.json, written by
 # `pnpm gen:corpus`; never
@@ -28,7 +28,8 @@ extends RefCounted
 #                    outletCases (resolve_update_outlet), bucketVectors (rollout_bucket), rows
 #                    (decide_update, compared by value, and boot_decision)
 #   outlet-matrix    PKeyDecision's compiled tables equal kinds, platformNarrowing, subkinds and
-#                    platformData.listingUrlPrefixes (detection rows are P3-11's)
+#                    platformData.listingUrlPrefixes; PKeyOutlet's signal table and platform data
+#                    equal signals and platformData; every row (PKeyOutlet.detect_outlet, P3-11)
 #   timings          INFO only: one feed and one record verify, median of a few runs
 #   gate-matrix rows the build-gate port + PKeyGate status, usable, reason, allowedRange
 #   deviceIds        PKeyDeviceId.from_raw       the derived id (fingerprint.json)
@@ -66,6 +67,7 @@ const FLOORS := {
 	"versionCases": 25,
 	"capabilityCases": 10,
 	"outletCases": 12,
+	"outletRows": 48,
 	"bucketVectors": 6,
 	"updateRows": 65,
 	"gate-matrix": 38,
@@ -99,6 +101,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	var om = _load(t, OUTLET_MATRIX)
 	if om != null:
 		_outlet_tables(t, om)
+		_outlet_detection(t, om)
 	await _update_timings(t, corpus)
 	var matrix = _load(t, GATE_MATRIX)
 	if matrix != null:
@@ -469,7 +472,7 @@ func _update_matrix(t: PKeyTestContext, m: Dictionary) -> void:
 		t.check("rows comparator rejects an extra member", not _json_eq(d, cases[0]["expect"]["decision"]))
 
 
-# ── outlet-matrix.json: the compiled tables (detection rows are P3-11's) ───────────────────
+# ── outlet-matrix.json: the compiled tables ────────────────────────────────────────────────
 
 func _outlet_tables(t: PKeyTestContext, m: Dictionary) -> void:
 	t.check("outletMatrixVersion", _json_eq(m.get("outletMatrixVersion"), PKeyConstants.OUTLET_MATRIX_VERSION))
@@ -488,6 +491,39 @@ func _outlet_tables(t: PKeyTestContext, m: Dictionary) -> void:
 			and _json_eq(vocab.get("kinds"), PKeyConstants.OUTLET_KIND_VALUES) \
 			and _json_eq(vocab.get("subkinds"), PKeyConstants.OUTLET_SUBKIND_VALUES) \
 			and _json_eq(vocab.get("confidence"), PKeyConstants.OUTLET_CONFIDENCE_VALUES))
+
+
+# ── outlet-matrix.json: detection (plans/P3-01.md §2.9, P3-11) ─────────────────────────────
+
+func _outlet_detection(t: PKeyTestContext, m: Dictionary) -> void:
+	var t0 := Time.get_ticks_usec()
+	var names: Array = []
+	var specs: Array = []
+	for spec in PKeyOutlet.OUTLET_SIGNALS:
+		names.append(spec[0])
+		specs.append({"signal": spec[0], "confidence": spec[1]})
+	var vocab = m.get("vocabulary")
+	t.check("OUTLET_SIGNALS is the signal vocabulary, in order", vocab is Dictionary and _json_eq(names, vocab.get("signals")))
+	var listed: Array = []
+	for s in m.get("signals", []):
+		if s is Dictionary:
+			listed.append({"signal": s.get("signal"), "confidence": s.get("confidence")})
+	t.check("OUTLET_SIGNALS carries each signal's confidence", _json_eq(listed, specs), JSON.stringify(listed))
+	var pd = m.get("platformData")
+	var data := {}
+	if pd is Dictionary:
+		data = (pd as Dictionary).duplicate()
+		data.erase("listingUrlPrefixes")
+	t.check("PLATFORM_DATA equals outlet-matrix platformData", _json_eq(PKeyOutlet.PLATFORM_DATA, data), JSON.stringify(data))
+	var rows: Array = m.get("rows", []) if m.get("rows") is Array else []
+	var evaluated := 0
+	for row in rows:
+		if not t.check("outlet-matrix row %s well-formed" % str(row.get("name") if row is Dictionary else row), row is Dictionary and row.get("name") is String and row.get("expect") is Dictionary):
+			continue
+		evaluated += 1
+		var got := PKeyOutlet.detect_outlet(row.get("stamp"), row.get("signals"))
+		t.check("detect %s" % row["name"], _json_eq(got, row["expect"]), JSON.stringify(got))
+	_coverage(t, "outletRows", evaluated, rows.size(), _ms_since(t0))
 
 
 # ── timings (INFO): one feed verify and one record verify ──────────────────────────────────

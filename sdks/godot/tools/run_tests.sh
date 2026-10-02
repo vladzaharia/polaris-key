@@ -13,7 +13,7 @@
 #   Extra arguments are passed to every suite after the selection.
 #
 # Steps: import (retried once on a signal exit), the untracked-.uid check, the editor run, the
-# build-stamp exports (four ZIP exports with the P1-11 env overrides, checked by the
+# build-stamp exports (six ZIP exports with the P1-11 and P3-11 env overrides, checked by the
 # export_stamps suite in the editor; --export-pack needs no templates), then export + template
 # run. Every step runs under a log watchdog: a fatal line (below) kills and
 # fails it at once, as do the timeout and a non-zero exit, and a run without a final
@@ -139,7 +139,8 @@ if [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; then
     local name="$1"
     shift
     # shellcheck disable=SC2086
-    step "export-stamp-$name" plain env -u PKEY_OUTLET_IDS $STAMP_ENV "$@" "$GODOT" --headless \
+    step "export-stamp-$name" plain env -u PKEY_OUTLET_IDS -u PKEY_BUILD_OUTLET_KIND -u PKEY_BUILD_OUTLET_SUBKIND \
+      -u PKEY_BUILD_FORMAT $STAMP_ENV "$@" "$GODOT" --headless \
       --path "$PROJECT" --export-pack "Conformance (Linux)" "$STAMPS/$name.zip"
   }
   export_stamp steam || exit 1
@@ -156,6 +157,10 @@ if [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; then
   trap - EXIT
   export_stamp env 'PKEY_OUTLET_IDS={"itchGameId":"2002","steamAppId":"999"}' || exit 1
   export_stamp bad 'PKEY_OUTLET_IDS={"itchGameId":1001}' || exit 1
+  # The v4 fields (P3-11): a custom outlet id with its kind, subkind and format; and one with no
+  # kind, which warns and stamps an empty outletKind (it decides as unknown at run time).
+  export_stamp kind PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch PKEY_BUILD_FORMAT=zip || exit 1
+  export_stamp nokind PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_SUBKIND=brew || exit 1
   step stamps run "$GODOT" --headless --path "$PROJECT" -- --pkey-test export_stamps "$STAMPS" "$LOGS" || exit 1
 fi
 
