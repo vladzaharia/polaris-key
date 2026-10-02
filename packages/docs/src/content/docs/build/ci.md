@@ -241,7 +241,11 @@ What the step does, in order:
    head) that names `GDScript`, `CSharpScript`, `ScriptExtension`, `script/source` or
    `source_code` anywhere; a text resource with a NUL byte, invalid UTF-8 or a `\u` escape; and a
    compressed `RSCC` resource, which cannot be inspected. A `.remap` or `.import` whose `path` lines
-   are not plain `path[.<x>] = "res://…"` literals fails too. A reference to a script the game
+   are not plain `path[.<x>] = "res://…"` literals fails too, and so does one with a backslash or a
+   control byte anywhere: an escaped quote in a node name under `_subresources` is enough, so
+   rename that node in the source asset and re-import. Godot writes an imported 3D scene
+   (`.glb`, `.gltf`, `.blend`, `.fbx`) as a compressed `.scn` (`RSCC`), which the lint cannot
+   inspect, so packs that carry imported models are refused for now. A reference to a script the game
    already ships (`[ext_resource type="Script" …]`) names none of these and passes. The lint knows
    the built-in script set only; for another script language (a GDExtension) the device check,
    which asks its engine what a script is, is the one that refuses it. The header's engine must be `requires.engine`; more than

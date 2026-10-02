@@ -116,7 +116,9 @@ const _BINARY_RES := "(?i)\\.(scn|res)$"
 const _GD_HEAD := "^[ \\t\\n\\r\\f\\x0B]*\\[gd_(scene|resource)\\b"
 ## A `path` key (quoted or not, with any `.<x>` segments) ANYWHERE in a .remap/.import line
 ## (P4-08 audit GAP B: the engine's tag parser needs no line start): the line must be _PATH_LINE.
-const _PATH_ANY := "(^|[^A-Za-z0-9_])\"?path(\\.[A-Za-z0-9_-]+)*\"?[ \\t\\f\\x0B]*="
+## A key preceded by `/`, `.` or `-` is another key (`import_script/path` in every scene import's
+## [params], GAP C), so those characters do not start one.
+const _PATH_ANY := "(^|[^A-Za-z0-9_/.-])\"?path(\\.[A-Za-z0-9_-]+)*\"?[ \\t\\f\\x0B]*="
 const _PATH_LINE := "^[ \\t\\f\\x0B]*path(?:\\.[A-Za-z0-9_-]+)?[ \\t\\f\\x0B]*=[ \\t\\f\\x0B]*\"([^\"\\\\]*)\"[ \\t\\f\\x0B]*$"
 const _DEST_LINE := "^[ \\t\\f\\x0B]*dest_files[ \\t\\f\\x0B]*=[ \\t\\f\\x0B]*\\[([^\\]]*)\\]"
 const _QUOTED := "\"([^\"]*)\""

@@ -112,6 +112,13 @@ function binaryRaw(strings: Uint8Array[]): Uint8Array {
   );
 }
 
+/** A file the real Godot 4.7.2 editor wrote (test/fixtures/godot-real-imports/), verbatim. */
+function realImport(name: string): Uint8Array {
+  return new Uint8Array(
+    readFileSync(path.join(here, "fixtures", "godot-real-imports", name)),
+  );
+}
+
 interface CheckFixture {
   name: string;
   files: [string, Uint8Array][];
@@ -479,6 +486,35 @@ function checkFixtures(): CheckFixture[] {
               '[gd_resource type="Resource" format=3]\n\n[sub_resource type="GDScript" id="s"]\n',
             ),
           ]),
+        ],
+      ],
+    },
+    // GAP C: a texture and a model imported by the real 4.7.2 editor (`--headless --import` in a
+    // scratch project with the assets under res://assets/kaykit/), verbatim: the .import files
+    // with their [params] (`import_script/path=""`, `materials/extract_path=""`, …) and the
+    // files they name. The texture pack is ADMITTED on both sides. In the model pack the
+    // .glb.import itself passes (GAP C), but the scene importer writes its .scn COMPRESSED (RSCC,
+    // FileAccessCompressed with zstd blocks), which the scan refuses under any name: pinned here
+    // until a decision on inspecting RSCC (decompressing and scanning it).
+    {
+      name: "audit-real-import-texture",
+      files: [
+        ...kaykitV1(),
+        ["assets/kaykit/red.png.import", realImport("red.png.import")],
+        [
+          ".godot/imported/red.png-744f559d28819288f09084fd723b7b8b.ctex",
+          realImport("red.png-744f559d28819288f09084fd723b7b8b.ctex"),
+        ],
+      ],
+    },
+    {
+      name: "audit-real-import-model",
+      files: [
+        ...kaykitV1(),
+        ["assets/kaykit/tri.glb.import", realImport("tri.glb.import")],
+        [
+          ".godot/imported/tri.glb-6ed0665643de460f848bf1abf5ed7ae0.scn",
+          realImport("tri.glb-6ed0665643de460f848bf1abf5ed7ae0.scn"),
         ],
       ],
     },

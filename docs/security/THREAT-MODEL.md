@@ -2141,6 +2141,8 @@ committed or mounted:
   mark. It is also refused for any line with a `path` key anywhere in it (quoted or not, after
   `[remap]`, another key or a metadata `}`) unless the whole line is exactly
   `path[.<x>] = "<plain literal>"`: the engine's tag parser does not need a key to start a line.
+  A key that ends in `/path`, `.path` or `-path` (`import_script/path` in every scene import's
+  `[params]`) is a different key to the engine and is excluded from that rule.
   Lines are split by hand after CR → LF and whitespace is an explicit class, because JS and PCRE2
   disagree on `\s`, `\v` and line breaks. A uid-cache path with a NUL is refused. Every rule has
   fixtures (`audit-*` in `verdicts.json`) that both validators must give the same verdict on, run

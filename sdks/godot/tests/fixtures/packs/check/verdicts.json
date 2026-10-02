@@ -146,6 +146,16 @@
       "errors": [],
       "warnings": []
     },
+    "audit-real-import-texture": {
+      "errors": [],
+      "warnings": []
+    },
+    "audit-real-import-model": {
+      "errors": [
+        ".godot/imported/tri.glb-6ed0665643de460f848bf1abf5ed7ae0.scn: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only."
+      ],
+      "warnings": []
+    },
     "reader-v2-res": {
       "errors": [
         "the PCK header says engine 4.3.0, outside requires.engine godot-4.7."

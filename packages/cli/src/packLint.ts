@@ -128,8 +128,13 @@ export function remapTargets(text: string): string[] {
 // Whitespace is an explicit class in every pattern (never `\s` or `\v`, which JS and PCRE2 read
 // differently), and lines are split by hand after CR → LF, never with the `m` flag (JS breaks
 // lines at CR, U+2028 and U+2029 too) — P4-08 audit GAP 2, GAP 6.
-/** A `path` key anywhere in a line (P4-08 audit GAP B: the engine's tag parser needs no line start). */
-const PATH_ANY_RE = /(^|[^A-Za-z0-9_])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
+/**
+ * A `path` key anywhere in a line (P4-08 audit GAP B: the engine's tag parser needs no line
+ * start). A key preceded by `/`, `.` or `-` is another key (`import_script/path` in every scene
+ * import's [params], GAP C), so those characters do not start one.
+ */
+const PATH_ANY_RE =
+  /(^|[^A-Za-z0-9_/.-])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 const PATH_LINE_RE =
   /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 const DEST_LINE_RE =

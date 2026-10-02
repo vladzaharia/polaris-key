@@ -20886,7 +20886,7 @@ function remapTargets(text) {
   }
   return [...out];
 }
-var PATH_ANY_RE = /(^|[^A-Za-z0-9_])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
+var PATH_ANY_RE = /(^|[^A-Za-z0-9_/.-])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 var PATH_LINE_RE = /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 var DEST_LINE_RE = /^[ \t\f\x0B]*dest_files[ \t\f\x0B]*=[ \t\f\x0B]*\[([^\]]*)\]/;
 function lines(text) {

@@ -343,3 +343,11 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `kaykit-v1`'s Godot-shaped `.import` (`[remap]`, `path.s3tc`, multi-line `metadata`, `[deps]`,
   `dest_files`) stays admitted. The static `_kinds` is written only by `warm()` /
   `refresh_script_kinds()`; before that, `_script_kinds()` returns an unstored built-in set.
+- **GAP C and real imports.** The path-key rule's leading class is now `(^|[^A-Za-z0-9_/.-])`, so
+  `import_script/path=""` (every scene import's `[params]`) is no longer a path key. Real 4.7.2
+  imports (`--headless --import` of a script-written `.glb` and `.png`, files verbatim in
+  `packages/cli/test/fixtures/godot-real-imports/`) pin it: `audit-real-import-texture` is
+  admitted; in `audit-real-import-model` the `.glb.import` passes but the imported `.scn` is
+  `RSCC` (FileAccessCompressed, zstd blocks of 4096) and is refused by the RSCC rule. Every
+  imported model is therefore refused today: a decision is needed on inspecting RSCC
+  (decompress the zstd blocks, bounded, and scan) in both validators.
