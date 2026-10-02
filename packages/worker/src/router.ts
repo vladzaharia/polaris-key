@@ -31,11 +31,13 @@
 //   /<p>/appcast.xml, /<p>/<channel>/appcast.xml, /<p>/version    → /<p>/update/…   (D-07)
 //   /<p>/install.sh, /<p>/release/install.sh                       → /<p>/distribution/install.sh
 //   /<p>/release/{dl,builds,files,blobs}/…                         → /<p>/distribution/{…}/…
+//   /<p>                                                           → /<p>/distribution/download
 //
 // The last two rows are P2b-04's: all byte delivery moved from Release to Distribution
 // (README §3.5). Their rewrite runs BEFORE the service-namespace check, because `release` is
 // itself a namespace and would otherwise claim the path.
 
+import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
 import { SERVICE_SLUGS, type ServiceSlug } from "./core/services.js";
 
 /**
@@ -133,6 +135,13 @@ export function matchRoute(pathname: string): Route {
       kind: "portalDownload",
       token: decodeURIComponent(portalDownload[1]),
     };
+
+  // `/<p>` alone — the public download page's alias (P2b-06). Only the bytes host serves the page
+  // (`services/distribution/page/`); on the console host the rewritten route is Distribution's
+  // not-found, exactly as `/<p>` was before, so no repo-authored HTML reaches this origin.
+  const bare = path.match(/^\/([a-z0-9-]+)$/);
+  if (bare?.[1] && !RESERVED_PRODUCT_SLUGS.includes(bare[1]))
+    return alias("distribution", bare[1], ["download"]);
 
   // Product-scoped: /<product>/<rest>
   const m = path.match(/^\/([a-z0-9-]+)\/(.+)$/);

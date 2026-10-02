@@ -19,8 +19,8 @@ import {
  *
  * It shows what is TRUE today: whether the chain release ← distribution ← update is coherent for
  * this product, which hook each service offers or consumes, and (P2b-04) the outlet rollouts
- * recorded for it. The rollouts list is read-only here — the per-cell controls are P2b-06's
- * matrix — and it carries the caveat the worker sends with it: until the signed feed (P3-03)
+ * recorded for it. The rollouts list is read-only here — the per-cell controls are on the Matrix
+ * tab (P2b-06, `distribution/Matrix.tsx`) — and it carries the caveat the worker sends with it: until the signed feed (P3-03)
  * carries rollouts and halts, a halt is recorded and shown but the legacy feeds keep serving, so
  * today's emergency stop is a yank or a channel pin.
  */

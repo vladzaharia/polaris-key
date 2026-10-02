@@ -249,6 +249,11 @@ and could try to toss `Domain=plrs.im` cookies at it. The compensations, each te
   `text/*` all become not-found; an error answer may carry only the platform's JSON error type
   or an allowlisted type; and `Content-Disposition` is forced to `attachment` unless the type
   is allowlisted and the route asked for `inline`;
+  the ONE exception is the public download page (P2b-06, below): a route registered as a
+  `document` may answer `text/html; charset=utf-8`, and only under its own policy, which the
+  dispatcher checks (`inertDocumentPolicy`) and refuses unless it is itself a `sandbox` without
+  `allow-scripts` or `allow-same-origin` (so the page still runs no script and has an opaque
+  origin) with `default-src 'none'` and nothing but hashed styles;
 - no cookie is read or set on the host: `Cookie` is stripped before a byte route sees the
   request and `Set-Cookie` from every response;
 - the console's session cookies are host-only: `__Host-pkey_admin` and `__Host-pkey_portal`
@@ -761,6 +766,67 @@ the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK 
   which releases the self-hosted feeds list (P2b-03 above). Build metadata is CI's claim: it
   decides what a feed lists, never the bytes behind a URL. A wrong `appPermissions` makes AltStore refuse the install, and a wrong `signerSha256`
   makes F-Droid refuse the APK.
+
+### The public download page (P2b-06)
+
+**What arrived.** A public, cookie-free download page per product (`services/distribution/
+page/`; tests: `test/downloadPage.test.ts`): `GET /<p>/distribution/download` and its alias
+`GET /<p>`, HTML, served ONLY on the bytes host; and its model, `GET /<p>/distribution/
+download.json`, JSON, served only on the console host. It is the first HTML a stranger can load
+that shows repo-authored text: the `.pkey/distribution` listings and identities, which any repo
+writer can push.
+
+- **Never on the console's origin.** Same-origin script there is a control-plane takeover
+  (R1-09), so on the console host both page paths and `/<p>` are the plain not-found (the
+  Distribution route returns `null`; the router rewrites `/<p>` to the page path, which answers
+  nothing there).
+- **Inert on the bytes host.** The bytes host admits HTML only from a `document` route and only
+  under a policy the dispatcher checks itself before the answer leaves (`inertDocumentPolicy`,
+  `core/bytesHost.ts`): directives limited to `sandbox` (with at most `allow-downloads` and
+  `allow-top-navigation-to-custom-protocols`, so a click can download a file or open an
+  `altstore://`/`obtainium://` link; never `allow-scripts`, `allow-same-origin`, `allow-forms`
+  or `allow-popups`), `default-src 'none'`, `style-src` hash sources, `img-src data:`, and
+  `'none'` for `frame-ancestors`, `base-uri` and `form-action`; a status of 200, the exact type
+  `text/html; charset=utf-8` and no `Content-Disposition`. Anything else becomes the plain
+  not-found. The policy is therefore still a sandbox: the document has an opaque origin and runs
+  no script, which is the property §3's same-site compensation rests on, and no request leaves it
+  to any host. The page needs no script: platform detection is server-side (UA Client Hints, then
+  the User-Agent), and the iPad case (Safari reports a Mac) is a pointer media query.
+  `nosniff`, `Referrer-Policy: no-referrer`, the cookie stripping and the HSTS backstop apply as
+  to every bytes-host answer. A document route answers no CORS and no preflight.
+- **Escaped and Worker-built.** Every string is HTML-escaped (text and double-quoted attributes
+  alike); there is no inline handler and no `style=` attribute. Identity fields are re-validated
+  against the manifest's shapes before a URL is built from them, store URLs are built from those
+  ids, deep links (`altstore://`, `sidestore://`, `altstore-pal://`, `obtainium://`,
+  `fdroidrepos://`, `ms-windows-store://`, `steam://`) from Worker-minted feed URLs with
+  `encodeURIComponent`, and every `href` passes `safeHref`, which admits only an `https:` URL or
+  one of those schemes. A listing's `website` is kept only as a parsed `https:` URL; its icon and
+  screenshots are not loaded at all (no third-party request). A listing carrying `<script>`,
+  quotes and a `javascript:` URL is pinned to render inert.
+- **Public only, by the feeds' rules.** The model exists only while the app deliverable's
+  delivery access is `public`, and lists releases exactly as the storefront feeds do (P2b-05,
+  the same selection code): the `stable` channel's history, live on the outlet, not yanked, not
+  held by a paused, halted or partial rollout, with an immutable delivery URL. A store link
+  appears only once the channel has a release reported live there. Entitled-only links
+  (TestFlight, Play testing) are never shown. Notes appear only while metadata is public. So a
+  non-public deliverable, an undeclared channel or a gated object never reaches the page.
+- **Fingerprints come from the operator.** The page shows the key inventory's operator entries
+  (never a CI observation, never the Android upload key), and the F-Droid link carries a
+  fingerprint only when the inventory holds exactly one `fdroid-repo` entry. A pipeline cannot
+  put its own key on the page.
+- **Cost (DoS).** Both routes are public: they share the feeds' 60-per-minute-per-IP budget
+  (fails open), check delivery access on every request, and keep the built model in the feed
+  cache under the feeds' stamp plus the key inventory's. A build is one selection per declared
+  outlet over memoised catalog reads (bounded by `MAX_OUTLETS` and `MAX_FEED_SCAN`; a ceiling
+  test pins a ten-outlet product). Release notes are repo-writer text and the cache keeps only a
+  finished answer, so the notes summary reads at most the first 8,192 characters and uses only
+  linear-time patterns (no lazy body between the `pkey:summary` markers, no `\s` at a line
+  start); a test pins 20,000-character adversarial notes finishing in well under a second.
+- **Residual.** The page is rendered from what CI and the operator recorded: a CI report can make
+  a store link appear (a `live` claim) or a self-hosted release disappear, as for the feeds
+  above; a wrong listing is the repo writer's own text, shown escaped. A visitor reaching the
+  page through a stale link sees a release up to five minutes old. QR codes carry the same URLs
+  the links do; one too long for the encoder (an Obtainium app config) is simply not drawn.
 
 ### App-updater feeds (P3-09)
 

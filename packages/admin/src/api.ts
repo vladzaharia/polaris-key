@@ -567,6 +567,72 @@ export interface RolloutsResponse {
   effect: { reachesDevices: boolean; note: string };
 }
 
+// ── distribution: the matrix (P2b-06) ────────────────────────────────────────
+export type RolloutVerb = "pause" | "resume" | "halt" | "complete";
+
+/** One availability record (worker `core/hooks.ts` `AvailabilityRecord`). */
+export interface AvailabilityRecordDto {
+  releaseId: string;
+  /** `''` = the whole release. */
+  buildId: string;
+  outletId: string;
+  transport: string;
+  state: string;
+  since: number | null;
+  source: string;
+  /** No report: a self-hosted outlet is live wherever our bytes are. */
+  derived: boolean;
+  updatedAt: number | null;
+}
+
+/** One submission record (worker `core/hooks.ts` `SubmissionRecord`). */
+export interface SubmissionRecordDto {
+  releaseId: string;
+  outletId: string;
+  state: string;
+  submittedAt: number | null;
+  reviewedAt: number | null;
+  source: string;
+  updatedAt: number;
+}
+
+export interface MatrixRolloutDto extends Rollout {
+  /** The verbs the state allows; empty for a mirrored rollout. */
+  controls: RolloutVerb[];
+}
+
+export interface MatrixCellDto {
+  releaseId: string;
+  outletId: string;
+  /** The best state among the records, or `null`. */
+  availability: string | null;
+  records: AvailabilityRecordDto[];
+  submission: SubmissionRecordDto | null;
+  rollouts: MatrixRolloutDto[];
+}
+
+/** `GET …/distribution/matrix` (worker `services/distribution/matrix.ts`). */
+export interface DistributionMatrix {
+  deliverableId: string;
+  limit: number;
+  outlets: Array<{
+    outletId: string;
+    kind: string;
+    transport: string;
+    derives: boolean;
+  }>;
+  releases: Array<{
+    releaseId: string;
+    version: string;
+    channel: string | null;
+    publishedAt: number | null;
+    yanked: boolean;
+  }>;
+  cells: MatrixCellDto[];
+  states: { availability: string[]; submission: string[]; rollout: string[] };
+  effect: { reachesDevices: string; note: string };
+}
+
 // ── release truth store ───────────────────────────────────────────────────────
 /**
  * Where an artifact's bytes live (`@polaris-key/manifest` `DescriptorLocation`, P2-04). Every
@@ -1324,6 +1390,32 @@ export const api = {
     }),
   rollouts: (slug: string) =>
     call<RolloutsResponse>(`${p(slug)}/distribution/rollouts`),
+  /** The release × outlet matrix (P2b-06). */
+  distributionMatrix: (
+    slug: string,
+    opts: { deliverable?: string; limit?: number } = {},
+  ) => {
+    const q = new URLSearchParams();
+    if (opts.deliverable) q.set("deliverable", opts.deliverable);
+    if (opts.limit !== undefined) q.set("limit", String(opts.limit));
+    const qs = q.toString();
+    return call<DistributionMatrix>(
+      `${p(slug)}/distribution/matrix${qs ? `?${qs}` : ""}`,
+    );
+  },
+  /** A rollout verb on one outlet's channel (P2b-04's admin route). `releaseId` guards against
+   *  acting on a rollout that moved to another release since the matrix was read. */
+  rolloutAction: (
+    slug: string,
+    outlet: string,
+    channel: string,
+    verb: RolloutVerb,
+    body: { deliverable: string; releaseId: string },
+  ) =>
+    call<{ rollout: Rollout }>(
+      `${p(slug)}/distribution/rollouts/${encodeURIComponent(outlet)}/${encodeURIComponent(channel)}/${verb}`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
 
   // ── config: catalog ───────────────────────────────────────────────────────────
   schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/config/catalog`),

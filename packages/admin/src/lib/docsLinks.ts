@@ -31,10 +31,12 @@ export const DOCS_LINKS = {
   fingerprintRevert: "/docs/services/license/policy/",
   updateSettingsRevert: "/docs/services/update/eligibility/",
   releaseChannels: "/docs/services/release/channels/",
+  rolloutControl: "/docs/admin/distribution-matrix/",
   // Inline explainer callouts
   manifestNote: "/docs/build/manifest/",
   updateAccessNote: "/docs/services/update/eligibility/",
   identityOidcNote: "/docs/services/identity/oidc/",
+  downloadPage: "/docs/users/downloads/",
   // Editors + policy surfaces
   managedPayloads: "/docs/services/config/profiles/",
   managementStates: "/docs/services/config/management-states/",

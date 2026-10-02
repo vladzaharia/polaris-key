@@ -17,6 +17,37 @@ switch channels later, remove one source and add the other.
 The product's download page has buttons and QR codes for all of these. The rest of this page
 explains what each one does.
 
+## The download page
+
+Every product that publishes downloads to everyone has a public download page at its short link
+on the download host, `https://dl.plrs.im/<product>`. You do not need an account to open it, and
+it sets no cookies.
+
+The page works out which device you are on and leads with one button for it: the App Store or
+Google Play listing when the product is there, otherwise a direct download of the right build for
+your system. On an iPad, which reports itself as a Mac to websites, the page shows the iPhone and
+iPad option on touch screens. If the page cannot tell, it offers every platform.
+
+Below the button, **Other ways to get it** lists everything else: the other stores, the
+AltStore, SideStore and F-Droid sources described below with a QR code to scan from your phone,
+the Obtainium link, and the Scoop and Homebrew commands. **All downloads** lists every build with
+its version, size, minimum system version and SHA-256 checksum, and **Signing keys** lists the
+fingerprints of the keys the product signs with.
+
+### Checking a download
+
+Before you install something you downloaded directly, you can check it is the file the product
+published:
+
+- **Checksum.** Compare the file's SHA-256 with the one on the page. On macOS and Linux run
+  `shasum -a 256 <file>`; on Windows run `Get-FileHash <file>` in PowerShell.
+- **Signing key (Android).** Apps such as AppVerifier compare an installed app's signing
+  certificate with a published fingerprint. Use the Android app signing certificate under
+  **Signing keys**.
+
+The page only lists versions that are released to everyone. While a product is rolling an update
+out gradually, or has paused it, the page keeps offering the previous version.
+
 ## Adding a source
 
 ### AltStore and SideStore (iPhone and iPad)

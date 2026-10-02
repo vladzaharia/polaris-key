@@ -167,3 +167,4 @@ export const distributionService: ServiceDescriptor = {
 };
 
 export { DISTRIBUTION_BYTE_ROUTES } from "./bytes.js";
+export { DOWNLOAD_PAGE_ROUTE } from "./page/index.js";
