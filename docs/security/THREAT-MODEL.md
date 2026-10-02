@@ -1916,6 +1916,20 @@ markers. P4-21 lands the claims, the formats' parsers and the corpus; P4-02 (ing
   decode whichever decoder is injected, refuse a base that starts with the dictionary magic before
   any decoder sees it (rule 5), and take every decoded length from a signed ref; Python, Swift and
   Godot follow in P4-07 and P4-08.
+- **Chunk indexes and bundles (P4-10, plans/P4-10.md §2.3–§2.5).** A variant's `chunks` names a
+  binary `pkey-chunks/1` index by an object ref; the claims refuse a malformed one (checks
+  81–83). Bundles are untrusted containers: every chunk is checked against its `clen`, decoded
+  one-shot to its `len` and hashed against its `id` before it is used, and the whole payload is
+  hashed again before it is installed. A chunk's `len` is declared by the signed index and bounded
+  by `MAX_CHUNK_BYTES` (4 MiB), which `planTarget` enforces before anything is fetched (an index
+  holding a longer chunk makes the strategy unusable), so an applier never allocates more than
+  one chunk's `clen + len`; `MAX_CHUNK_INDEX_BYTES` (16 MiB) bounds the index, not a chunk, and is
+  checked before the index is fetched or decoded. The index length is compared in exact
+  arithmetic and every u64 is two u32 reads saturated at 2^53, so no SDK's integer width changes a
+  verdict. A `Range` is only ever answered from a bundle the signed index names (the request
+  names the bundle by its SHA-256 and carries `If-Range` on it), and a short or clipped answer is
+  `chunk-bundle-truncated`, never a partial install. Applying chunks lands in P4-11; ingest of
+  `chunks` in P4-22.
 
 **Pack ingest (P4-02).** The Worker still signs no record: a pack record is CI-signed, and ingest
 (`services/release/packs/`) only verifies it, checks it against the pack's declaration and the

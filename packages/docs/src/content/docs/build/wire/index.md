@@ -137,8 +137,8 @@ them is the most common way to misread a document (spec §9).
 | `stageMatrixVersion`   | `3`   | The boot stage machine (client boot behaviour, outside this contract), owned by `client-core/src/stages.ts`. |
 | `updateMatrixVersion`  | `1`   | The update decision (client behaviour, outside this contract), `update-matrix.json`.                         |
 | `outletMatrixVersion`  | `1`   | Outlet capabilities and detection (client behaviour), `outlet-matrix.json`.                                  |
-| `planMatrixVersion`    | `1`   | The install planner, variant selection and target mapping (client behaviour), `plan-matrix.json`.            |
-| `contentCorpusVersion` | `1`   | The content corpus, `content/cases.json`: pack byte formats and appliers (spec §2.6).                        |
+| `planMatrixVersion`    | `2`   | The install planner, variant selection and target mapping (client behaviour), `plan-matrix.json`.            |
+| `contentCorpusVersion` | `2`   | The content corpus, `content/cases.json`: pack byte formats and appliers (spec §2.6).                        |
 
 Two more `schemaVersion` fields exist and neither is a wire version:
 

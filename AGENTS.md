@@ -139,9 +139,11 @@ and the generator-owned mirrors at
 Regenerate with `pnpm gen:corpus` and commit the result in the same change.
 `pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,
 and on a stray JSON file in any of them. `conformance/corpus/v2/content/blobs/` is the opposite:
-generator **inputs** (the zstd blobs and `refs.json`), hash-checked against `content/cases.json`'s
-`blobs` table and never rewritten by a normal or `--check` run; only the explicit
-`--rebuild-content-blobs` mode, pinned to zstd 1.5.7, writes them, in a PR of its own. Never weaken a runner to make a change "pass". The same
+generator **inputs** (the zstd blobs, the `pkey-chunks/1` indexes and bundles, and `refs.json`),
+hash-checked against `content/cases.json`'s `blobs` table and never rewritten by a normal or
+`--check` run; only the explicit `--rebuild-content-blobs` mode, pinned to zstd 1.5.7, writes them,
+and it may only **add** blobs and `refs.json` entries: it throws, writing nothing, if an existing
+one would change (plans/P4-10.md decision 15). Changing an existing blob is a PR of its own. Never weaken a runner to make a change "pass". The same
 holds for the HTTP transcripts: `conformance/transcripts/*.json` and their mirrors at
 `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` and `sdks/godot/tests/transcripts/` are
 recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) through

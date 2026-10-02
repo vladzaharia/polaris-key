@@ -24,6 +24,7 @@ below byte for byte.
 | `pkey-patch/1`   | A `files`-scope delta set's descriptor: one `delta` entry per changed file (a bare `zstd --patch-from` frame against the base file) and one `blob` entry per added file, all packed into one data object                            | `delta-artifact-mismatch`                |
 | `pkey-marker/1`  | The marker beside an embedded pack (`X.pkey.json`, or `D/.pkey/pack.json` inside a tree): the pack id, the version and the pack record's JWS                                                                                        | `marker-rejected`                        |
 | `pkey-content/1` | The content stamp a build embeds (`pkey-content.json`): the app record's `content`, so the running build knows its pins offline                                                                                                     | `content-stamp-invalid`                  |
+| `pkey-chunks/1`  | The binary chunk index a variant's `chunks` ref names (below): one 48-byte record per content-defined chunk and per bundle, at most 16 MiB on a client                                                                              | the 13 `chunks-*` codes                  |
 
 Side objects are parsed with the same strict JSON as a JWS payload (spec §1.2), and every integer
 in them is decided by the token rule (spec §3.1).
@@ -58,13 +59,40 @@ integers (P is 31 for a 64-bit decoder and 30 for a 32-bit or wasm32 one). The c
 applier's own, in every SDK, because libzstd enforces its own window limit only when it streams
 through a small buffer: without the check, one verdict would depend on how each SDK buffers.
 
+## The chunk index
+
+A container variant of 4 MiB or more may carry `chunks`, an object ref
+`{format, sha256, bytes, size, codec, params}` naming a binary `pkey-chunks/1` index (spec §2.5.1,
+§2.6; `plans/P4-10.md` §2.2–§2.5). The claims refuse only a malformed one (`chunks` not an
+object, a bad `format`, `params` not an object, or a bad object ref); an unknown `format` or
+codec only makes the chunk strategy unusable, and other members are ignored.
+
+The index is little-endian: a 64-byte header (`PKEYCHNK`, version 1, record size 48, flags with
+bit 0 `fileAware`, the chunk and bundle counts, `payloadSize` and `payloadSha256`), then one record
+per chunk in payload order (`id`, the SHA-256 of the uncompressed chunk, then `len`, `clen`,
+`bundle` and `offset`), then one record per bundle (`sha256`, `size`, a zero `reserved`).
+`clen == len` means the chunk is stored raw; `clen < len` means one zstd frame whose content size
+is `len`. Every SDK reads a u64 as two u32 words, low first, saturated at 2^53, never with a
+native 64-bit read, and reads through a `DataView` or an aligned copy.
+
+`parseChunkIndex` returns the first failure in a fixed order: the stored object against its ref
+(`chunks-ref-mismatch`, including a `size` above `MAX_CHUNK_INDEX_BYTES`, checked before anything
+is decoded), then length, magic, version, record size, flags, the exact length, each bundle's
+`reserved`, each chunk's `len`, `clen`, bundle reference and bundle range, the sum of the lengths
+and, given the variant's payload, the binding (`chunks-payload-mismatch`). `planTarget` maps
+`chunks` to inline records only when the index is usable and bound to the payload and no chunk
+is longer than `MAX_CHUNK_BYTES` (4 MiB). Bundles are ordinary blobs, so a chunk is fetched with
+a single-range request and hashed before use. Applying chunks (`applyChunk`, seeds and
+`chunk-bundle-truncated` / `chunk-corrupt`) is P4-11's.
+
 ## What the content corpus pins
 
 | Section            | Pins                                                                                                       |
 | ------------------ | ---------------------------------------------------------------------------------------------------------- |
 | `pathCases`        | The path rules                                                                                             |
 | `filesIndexCases`  | `parseFilesIndex`, its five steps in order                                                                 |
-| `applyCases`       | Full, delta and file apply over a real v1 → v2 pair, with negatives and exact counters                     |
+| `chunkIndexCases`  | `parseChunkIndex`, every code in order, the u64 saturation and the exact-length rule (P4-10)               |
+| `applyCases`       | Full, delta, file and (P4-10) chunk apply over a real v1 → v2 pair, with negatives and exact counters      |
 | `packSetIdCases`   | `packSetId`, the identifier of a set of pack releases                                                      |
 | `stampCases`       | The content stamp, and (P4-13) its `holds` read by `holdsOf`, compared only when a case has `expect.holds` |
 | `frameWindowCases` | `frameWindow` over raw frame headers                                                                       |
