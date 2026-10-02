@@ -24,6 +24,25 @@ extends RefCounted
 ##                                 source}, or null when PKeyOptions.update_outlet names the
 ##                                 outlet or update_detect is off (PKeyCore.detected_outlet())
 ##
+## Acting on the decision (P3-10; see PKeyUpdater, PKeyOutletAdapter):
+##   apply(check)                  the outlet adapter acts on `check.decision`: opens a listing,
+##                                 source page or download link, hands off to a native updater
+##                                 (falling back to the link without its plugin), stages a
+##                                 sidecar pack, restarts into it, reloads a web page, or stays
+##                                 silent. A coroutine -> PKeyApplyResult
+##   restart_to_update()           code-ready: swap the staged pack in and restart. A coroutine
+##   confirm_boot()                confirm this launch while the boot outcome is `ready`
+##   drop_staged()                 forget the staged update (a channel switch)
+##   adapter()                     the PKeyOutletAdapter for this install's outlet
+##   plan(result)                  what the prompt offers for an answer (adapter.describe)
+##   updater                       the PKeyUpdater: slots, the boot guard, the native bridges
+##
+## While the updater is active (not in the editor, a headless run or a debug build, unless
+## enabled), decide() fills in the staged update, the skipped version and the binary version from
+## the slots when the caller passes none, narrows `methods` to what this install can do, drops
+## staged code the decision discards, and starts staging a `sidecar-pck` answer in the
+## background (`auto_stage`); once staged it decides again, so the answer becomes code-ready.
+##
 ## Usable before configure() (like `config`), so a signal connected early survives a later
 ## configure(); every call then answers `not-configured`.
 ##
@@ -62,6 +81,16 @@ signal update_available(result: PKeyResult)
 ## the boot replays it, so a mandatory or blocked answer is not lost between scenes.
 var last_available: PKeyResult = null
 
+## A sidecar code pack was downloaded, verified and staged (PKeyUpdater.update_staged).
+signal update_staged(version: String)
+## Download progress of a sidecar pack.
+signal download_progress(received: int, total: int)
+
+## Acting on decisions: the slots, the boot guard, the native bridges (P3-10).
+var updater := PKeyUpdater.new()
+## Stage a `binary {method: sidecar-pck}` answer in the background as soon as decide() returns it.
+var auto_stage := true
+
 ## The record bound of plans/P3-01.md §2.5 step 12: a body over it cannot be a record any feed
 ## pins.
 const MAX_RECORD_JWS_BYTES := 88844
@@ -73,6 +102,10 @@ signal _finished
 
 func attach(core: PKeyCore) -> void:
 	_core_ref = weakref(core)
+	updater.attach(core)
+	if not updater.update_staged.is_connected(_on_staged):
+		updater.update_staged.connect(_on_staged)
+		updater.download_progress.connect(func(got: int, total: int) -> void: download_progress.emit(got, total))
 
 
 func _core() -> PKeyCore:
@@ -146,6 +179,11 @@ func check(channel := "") -> PKeyVersionCheck:
 ## PKeyUpdateCheck.channel it was staged under), or null. `skip_version`: the version the boot
 ## guard rolled back, or null. See PKeyUpdateCheck for the answer and its failures.
 func decide(channel := "", staged: Variant = null, skip_version: Variant = null) -> PKeyUpdateCheck:
+	if updater.active():
+		if staged == null:
+			staged = updater.staged_input()
+		if skip_version == null:
+			skip_version = updater.skip_version()
 	var ready = await _begin()
 	if ready is PKeyResult:
 		_end()
@@ -160,10 +198,80 @@ func decide(channel := "", staged: Variant = null, skip_version: Variant = null)
 		push_warning("PolarisKey: the update slices could not be written (%s)." % str(core.last_store_error))
 	_end()
 	var result := PKeyUpdateCheck.of(flow)
+	if updater.active() and result.decision.get("discardStaged") == true:
+		updater.drop_staged("decision")
 	last_available = result if result.boot == PKeyDecision.BOOT_OPTIONAL else null
 	if result.boot == PKeyDecision.BOOT_OPTIONAL:
 		update_available.emit(result)
+	if auto_stage and updater.active() and result.decision.get("action") == "binary" and result.decision.get("method") == "sidecar-pck":
+		_stage_in_background(result)
 	return result
+
+
+# ── Acting on the decision (P3-10) ──────────────────────────────────────────────────────────
+
+## The adapter for this install's outlet acts on `check` (a PKeyUpdateCheck; null: the answer
+## update_available last carried). A coroutine -> PKeyApplyResult (see its behaviours).
+func apply(check: PKeyUpdateCheck = null) -> PKeyApplyResult:
+	if check == null and last_available is PKeyUpdateCheck:
+		check = last_available
+	if check == null or not check.ok:
+		return PKeyApplyResult.failed(PKeyErrors.INVALID_OPTIONS, "apply() needs a decision from decide().")
+	if _core() == null:
+		return PKeyApplyResult.failed(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	return await updater.adapter().apply(check.decision, updater, check)
+
+
+## code-ready: swap the staged pack in and restart. A coroutine -> PKeyApplyResult.
+func restart_to_update() -> PKeyApplyResult:
+	return await updater.restart_to_update()
+
+
+## Confirm this launch (the outcome is `ready`): the failed-boot count goes back to 0. A launch
+## also confirms by itself after BOOT_OK_SECONDS at `ready` (PKeyBoot).
+func confirm_boot() -> bool:
+	return updater.confirm_boot()
+
+
+## Forget the staged update (a channel switch drops staged code, A4 P11).
+func drop_staged() -> bool:
+	return updater.drop_staged("host")
+
+
+## The adapter for this install's outlet.
+func adapter() -> PKeyOutletAdapter:
+	return updater.adapter()
+
+
+## What an answer offers here (PKeyOutletAdapter.describe with this install's context), or {}
+## for anything but an ok PKeyUpdateCheck.
+func plan(result: PKeyResult) -> Dictionary:
+	if not (result is PKeyUpdateCheck) or not result.ok or _core() == null:
+		return {}
+	var d: Dictionary = (result as PKeyUpdateCheck).decision
+	return updater.adapter().describe(d, updater.context(d))
+
+
+## The boot guard for PKeyBoot's GUARD stage (PKeyBootGuard.run). A coroutine.
+func run_guard() -> Dictionary:
+	return await updater.run_guard()
+
+
+## PKeyBoot reports each outcome here (the boot-confirmation rule).
+func note_boot_outcome(outcome: String) -> void:
+	updater.note_outcome(outcome)
+
+
+func _stage_in_background(check: PKeyUpdateCheck) -> void:
+	var r: PKeyApplyResult = await updater.stage_sidecar(check)
+	if not r.ok:
+		push_warning("PolarisKey: the update could not be staged (%s: %s)." % [r.code, r.message])
+
+
+func _on_staged(version: String) -> void:
+	update_staged.emit(version)
+	# Decide again: with the pack staged the answer is code-ready ("Restart to update").
+	await decide()
 
 
 ## The channel feed this install holds for `channel` after fetching it (steps 1–9), a
@@ -286,6 +394,10 @@ func _flow_opts(ready: Dictionary, channel: String, staged: Variant, skip_versio
 	var info := core.build_info()
 	# PKeyOptions.update_outlet wins; else the stamp, moved by run-time detection (P3-11).
 	var resolved := core.update_outlet()
+	var installed := installed_build(core, info)
+	var binary := updater.binary_version()
+	if binary != "":
+		installed["binaryVersion"] = binary
 	return {
 		"channel": channel if channel != "" else core.channel,
 		"expected_aud": core.product,
@@ -293,12 +405,12 @@ func _flow_opts(ready: Dictionary, channel: String, staged: Variant, skip_versio
 		"release_keys": core.options.pinned_release_keys,
 		"now": core.clock.now(),
 		"install_id": core.device_id,
-		"installed": installed_build(core, info),
+		"installed": installed,
 		"outlet": {"id": resolved["id"], "kind": resolved["kind"]},
 		"subkind": resolved["subkind"],
 		"staged": staged if staged is Dictionary else null,
 		"skip_version": skip_version if skip_version is String else null,
-		"methods": Array(core.options.update_methods),
+		"methods": updater.methods(),
 		"cache": {"feeds": PKeyCache._jws_map(core.cache.feeds), "releaseRecords": PKeyCache._jws_map(core.cache.release_records)},
 		"fetch_feed": ready["fetch_feed"],
 		"fetch_record": ready["fetch_record"],

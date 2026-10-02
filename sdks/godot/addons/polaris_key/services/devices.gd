@@ -276,6 +276,12 @@ func snapshot() -> Dictionary:
 	if outlet != "":
 		out["outlet"] = outlet
 	out["caps"] = core.capability_engine().caps()
+	# P6-03: the updater's queued update events (update_downloaded, update_applied,
+	# update_confirmed, boot_rolled_back), at most 16; dropped from the queue once reported.
+	if core.update_events != null:
+		var ev: Array = core.update_events.pending_events()
+		if not ev.is_empty():
+			out["updates"] = ev
 	return out
 
 
@@ -295,5 +301,8 @@ func report() -> bool:
 	var core := _core()
 	if core == null or not core.started or core.local_only or not core.tokens.has_token():
 		return false
-	var r := await core.request("POST", "devices/report", snapshot(), true)
+	var body := snapshot()
+	var r := await core.request("POST", "devices/report", body, true)
+	if r.ok and body.get("updates") is Array and core.update_events != null:
+		core.update_events.mark_reported(body["updates"].map(func(e): return e["eventId"]))
 	return r.ok

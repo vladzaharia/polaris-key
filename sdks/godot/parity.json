@@ -87,7 +87,7 @@
     },
     "devices.report": {
       "status": "implemented",
-      "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them); outlet comes only from P1-11's build stamp."
+      "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them; outlet is PKeyCore.reported_outlet()), and the updater's queued update events in updates (P6-03, P3-10)."
     },
     "identity.oidc": {
       "status": "planned",
@@ -105,12 +105,13 @@
     "update.feed": { "status": "implemented" },
     "update.decide": { "status": "implemented" },
     "update.driver": {
-      "status": "planned",
-      "wp": "P3-10"
+      "status": "implemented",
+      "except": [{ "runtime": "ios", "reason": "outlet" }],
+      "note": "P3-10: one adapter per outlet kind (distribution/outlets/, PKeyOutletAdapter): store kinds open the https listing or PKeyOptions.update_page_url, platform kinds stay silent with their own message, web reloads, direct dispatches binary.method to the Sparkle, Velopack, WinSparkle or AppImageUpdate bridge (a missing plugin degrades to the build's download link from distribution.endpoints.builds), stages a verified sidecar .pck (updater/sidecar_swap.gd, Range resume through PKeyDownload) and restarts into it without --main-pack. The native plugins are P5-07's; inert in the editor, headless runs and debug builds."
     },
     "update.bootguard": {
-      "status": "planned",
-      "wp": "P3-10"
+      "status": "implemented",
+      "note": "P3-10: updater/slots.gd (staged, current, previous and state.json under user://pkey/<product>/updates/) and updater/boot_guard.gd, run in PKeyBoot's GUARD: bootGuardAction over the host's own count, a restart before guard.done after a swap or a rollback, two failed boots roll back and record skipVersion, BOOT_OK_SECONDS and confirm_boot() per the stage-matrix v2 confirmation rows; every copy is read back from disk before a swap or rollback. update_downloaded, update_applied, update_confirmed and boot_rolled_back go out on devices/report's updates key (P6-03's boundedUpdates shape), queued in state.json until reported."
     },
     "outlet.detect": {
       "status": "implemented",
