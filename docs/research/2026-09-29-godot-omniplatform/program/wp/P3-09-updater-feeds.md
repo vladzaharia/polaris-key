@@ -164,6 +164,33 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 Recommended once deployed to a preview: point a Sparkle test app, WinSparkle, a Velopack sample,
 App Installer and `appimageupdatetool` at the preview routes, and record the result in the PR.
 
+## Corrections from implementation
+
+Where the code disagreed with this brief, the code won:
+
+- **Update may not import Distribution** (AGENTS.md rule 6), so P2b-05's selection and cache are
+  reused through Core. Distribution's `delivery` hook gained the read-only `feedSelection`
+  (P2b-05's `selectFeed` with declarative filters: arches, build ids, payload suffixes, an
+  allowlist of release ids, `rollouts: "phase"` and the build's other artifacts) and `feedStamp`.
+  The generic feed cache moved to `core/feedCache.ts`.
+- **"From the same release records" is literal.** A feed lists only releases with a stored
+  `release_records` row. The appcast therefore keeps its legacy GitHub path, byte for byte, for a
+  product that has no record.
+- **Signatures are not in the descriptor or the record.** CI's `<file>.sig` sidecar (a
+  `signature` artifact, which the CLI already uploads) is read and checked against its recorded
+  SHA-256, then verified over the stored payload with `verifyEd25519OverBytes`, the generalised
+  P0-10 verifier, memoised. It is checked at first render, not at ingest.
+- **Sparkle deltas need `sparkle:deltaFrom`**, which nothing carried. The descriptor gained
+  `deltaFrom` on `delta` artifacts (validator code `invalid_delta_from`, schema, mutation entries),
+  stored in `release_artifacts.metadata_json`. The record mapping drops it.
+- **The App Installer identity needs `Publisher`**, which `packageFamilyName` does not carry. The
+  `app-installer` outlet gained `publisher` and `updateSettings` in `.pkey/distribution`. The
+  update settings are the manifest owner's, not a console setting.
+- **zsync** needs the control file uploaded. `pkey release publish` now picks up a `.zsync`
+  sidecar as a `checksum` artifact.
+- **Extended `/update/version`** also takes `?build=<buildId>`, because a platform can have
+  several builds.
+
 ## Hand-off
 
 - The route paths and discovery endpoints for each feed, which [P3-10](P3-10-godot-updater.md)'s
