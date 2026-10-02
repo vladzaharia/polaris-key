@@ -208,23 +208,47 @@ describe("parseManifest and .pkey/distribution", () => {
     ]);
   });
 
-  it("routes only the deliverables Release ingests, so pack spam cannot multiply rows", () => {
-    const packs: Record<string, unknown> = {};
-    for (let i = 0; i < 2000; i++) packs[`pack-${i}`] = { kind: "pack" };
+  it("bounds the pack count, so pack spam cannot multiply rows (R10)", () => {
     const outlets: Record<string, unknown> = {};
     for (let i = 0; i < 32; i++) outlets[`web-${i}`] = { kind: "web" };
-    const rel = {
-      release: {
-        ...release.release,
-        deliverables: { ...release.release.deliverables, ...packs },
-      },
+    const withPacks = (n: number) => {
+      const packs: Record<string, unknown> = {};
+      for (let i = 0; i < n; i++)
+        packs[`pack-${i}`] = { kind: "pack", type: "files.tree" };
+      return {
+        release: {
+          ...release.release,
+          deliverables: {
+            ...release.release.deliverables,
+            app: {
+              ...(release.release.deliverables as Record<string, any>).app,
+              content: { contentApi: 1 },
+            },
+            ...packs,
+          },
+        },
+      };
     };
+    // 200 packs: refused outright (P4-02's `too_many_pack_deliverables`), one error.
+    const spam = parse(
+      {
+        outlets,
+        transports: { deliverables: { "pack-7": { "web-0": "web" } } },
+      },
+      withPacks(200),
+    );
+    expect(spam.ok).toBe(false);
+    if (spam.ok) return;
+    expect(spam.errors).toEqual([
+      expect.stringContaining("at most 64 pack deliverables"),
+    ]);
+    // 64 packs: accepted, and only `app` is routed until P4-05 routes packs.
     const res = parse(
       {
         outlets,
         transports: { deliverables: { "pack-7": { "web-0": "web" } } },
       },
-      rel,
+      withPacks(64),
     );
     expect(res.ok).toBe(true);
     if (!res.ok) return;

@@ -18,7 +18,7 @@
       "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
     },
     "kind": {
-      "description": "Only app until pack deliverables land (P4-02).",
+      "description": "Always app: a pack release is submitted as a signed record (kind: pack), never a descriptor.",
       "const": "app"
     },
     "version": {
@@ -73,6 +73,9 @@
         }
       }
     },
+    "content": {
+      "$ref": "#/$defs/content"
+    },
     "builds": {
       "type": "array",
       "minItems": 1,
@@ -122,6 +125,20 @@
         },
         "metadata": {
           "description": "Facts pkey release publish read out of the payload (P2b-05), for the storefront feeds. Only ios and android builds carry it, each in its platform's shape."
+        },
+        "embeds": {
+          "description": "The packs this build ships embedded (P4-02): declared pack ids the release also pins.",
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+            "not": {
+              "const": "app"
+            }
+          }
         },
         "artifacts": {
           "description": "Empty for a store-only build.",
@@ -405,6 +422,90 @@
           "required": ["provider", "url"]
         }
       ]
+    },
+    "content": {
+      "description": "The packs this app release pins and expects (P4-02, plans/P4-01.md §2.4): the content stamp without its format, moved unchanged into the signed record. The validator also checks that contentApi equals deliverables.app.content.contentApi and that every pin and expect names a declared pack; pins against stored records are the Worker's ingest checks.",
+      "type": "object",
+      "properties": {
+        "contentApi": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "pins": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/contentPin"
+          }
+        },
+        "expects": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/contentExpect"
+          }
+        },
+        "holds": false,
+        "packChannels": false
+      },
+      "required": ["contentApi", "pins", "expects"]
+    },
+    "contentPin": {
+      "description": "The exact pack release this app release pins (pack ids are unique within pins; the validator checks).",
+      "type": "object",
+      "properties": {
+        "pack": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+          "not": {
+            "const": "app"
+          }
+        },
+        "release": {
+          "type": "object",
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "seq": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
+            }
+          },
+          "required": ["sha256", "seq", "version"]
+        }
+      },
+      "required": ["pack", "release"]
+    },
+    "contentExpect": {
+      "description": "A pack this app release knows (pack ids are unique within expects; the validator checks).",
+      "type": "object",
+      "properties": {
+        "pack": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+          "not": {
+            "const": "app"
+          }
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "delivery": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+        }
+      },
+      "required": ["pack", "required", "delivery"]
     }
   }
 }

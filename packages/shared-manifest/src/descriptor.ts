@@ -43,6 +43,11 @@ import {
   type ReleaseRecordBuild,
   type ReleaseRecordDoc,
 } from "@polaris-key/protocol/release";
+import { MAX_BUILD_EMBEDS, MAX_CONTENT_PINS } from "@polaris-key/protocol/core";
+import {
+  VOCAB_TOKEN_PATTERN,
+  type AppContent,
+} from "@polaris-key/protocol/packs";
 
 /** The one descriptor version this code reads. */
 export const DESCRIPTOR_VERSION = 1;
@@ -100,6 +105,11 @@ export interface DescriptorBuild {
    * carry it, each in its platform's shape.
    */
   metadata?: IosBuildMetadata | AndroidBuildMetadata;
+  /**
+   * The packs this build ships embedded (P4-02, plans/P4-01.md §2.4): pack ids the release also
+   * pins. Moved unchanged into the record's `builds[].embeds` by {@link descriptorToRecord}.
+   */
+  embeds?: string[];
   /** Empty for a store-only build, which still records its version and build number. */
   artifacts: DescriptorArtifact[];
 }
@@ -281,6 +291,12 @@ export interface ReleaseDescriptor {
   /** RFC 3339. */
   publishedAt?: string;
   provenance?: { commit?: string; workflowRun?: string };
+  /**
+   * The packs this app release pins and expects (P4-02, plans/P4-01.md §2.4): the content stamp
+   * without its `format`. Moved unchanged into the record's `content` by
+   * {@link descriptorToRecord} (decision 37).
+   */
+  content?: AppContent;
   builds: DescriptorBuild[];
 }
 
@@ -288,8 +304,11 @@ export interface ReleaseDescriptor {
 export interface DescriptorManifest {
   product?: { slug: string };
   release?: {
+    /** The app declaration; its `content.contentApi` is what a descriptor's `content` states. */
     app: ManifestAppDeliverable | null;
     manualChannels?: readonly { name: string }[];
+    /** The declared pack ids (P4-02); absent reads as none. */
+    packs?: readonly string[];
   };
 }
 
@@ -346,7 +365,8 @@ export interface RecordFields {
  * `aud`, `descriptorVersion` becomes `schemaVersion: 1`, `publishedAt` and every artifact's
  * `locations` are dropped (locations change after signing), a build's `metadata` is dropped (CI's
  * unsigned claim for the storefront feeds, P2b-05; the record's build shape has no such field),
- * and everything else moves unchanged.
+ * and everything else moves unchanged: `content` (P4-02) as a whole object, and each build's
+ * `embeds`, so the record's packs are the descriptor's (plans/P4-01.md decision 37).
  * An optional field the descriptor omits stays absent, and a store-only build keeps
  * `artifacts: []`. The CLI signs exactly this object (`pkey release publish`), and the Worker's
  * ingest refuses a record that is not this object for the descriptor it arrived with
@@ -379,6 +399,7 @@ export function descriptorToRecord(
       provenance.workflowRun = d.provenance.workflowRun;
     record.provenance = provenance;
   }
+  if (d.content !== undefined) record.content = d.content;
   record.builds = d.builds.map((b) => {
     const build: ReleaseRecordBuild = {
       id: b.id,
@@ -396,6 +417,7 @@ export function descriptorToRecord(
     if (b.buildNumber !== undefined) build.buildNumber = b.buildNumber;
     if (b.minOS !== undefined) build.minOS = b.minOS;
     if (b.requires !== undefined) build.requires = b.requires;
+    if (b.embeds !== undefined) build.embeds = b.embeds;
     return build;
   });
   return record;
@@ -449,6 +471,74 @@ function isHttpsUrl(v: unknown): v is string {
   }
 }
 
+/** A pack id (plans/P4-01.md §2.3): a deliverable id of at most 64 bytes other than `app`. */
+function isPackIdString(v: unknown): v is string {
+  return (
+    typeof v === "string" &&
+    v !== APP_DELIVERABLE_ID &&
+    v.length <= 64 &&
+    DELIVERABLE_RE.test(v)
+  );
+}
+
+/**
+ * What is wrong with a descriptor's `content`, or `null`: §2.4's `content` claims (so a
+ * descriptor that passes never moves into a record ingest refuses at `claims`), and `holds` and
+ * `packChannels` refused until P4-12, as in the manifest.
+ */
+function contentProblem(c: unknown): string | null {
+  if (!isRecord(c)) return "content must be an object";
+  if (c.holds !== undefined || c.packChannels !== undefined)
+    return "content.holds and content.packChannels come with P4-12";
+  if (!(Number.isSafeInteger(c.contentApi) && (c.contentApi as number) >= 1))
+    return "content.contentApi must be an integer from 1 to 9007199254740991";
+  const pins = c.pins;
+  if (!Array.isArray(pins) || pins.length > MAX_CONTENT_PINS)
+    return `content.pins must be an array of at most ${MAX_CONTENT_PINS} pins`;
+  const pinned = new Set<string>();
+  for (const pin of pins) {
+    if (!isRecord(pin) || !isPackIdString(pin.pack))
+      return "each pin is { pack: a pack id, release }";
+    if (pinned.has(pin.pack)) return `${pin.pack} is pinned twice`;
+    pinned.add(pin.pack);
+    const r = pin.release;
+    if (
+      !isRecord(r) ||
+      typeof r.sha256 !== "string" ||
+      !SHA256_RE.test(r.sha256) ||
+      !(Number.isSafeInteger(r.seq) && (r.seq as number) >= 1) ||
+      typeof r.version !== "string" ||
+      !VERSION_RE.test(r.version)
+    )
+      return `the pin of ${pin.pack} needs release { sha256, seq ≥ 1, version }`;
+  }
+  const expects = c.expects;
+  if (!Array.isArray(expects) || expects.length > MAX_CONTENT_PINS)
+    return `content.expects must be an array of at most ${MAX_CONTENT_PINS} entries`;
+  const expected = new Set<string>();
+  for (const e of expects) {
+    if (!isRecord(e) || !isPackIdString(e.pack))
+      return "each expects entry is { pack: a pack id, required, delivery }";
+    if (expected.has(e.pack)) return `${e.pack} is expected twice`;
+    expected.add(e.pack);
+    if (typeof e.required !== "boolean")
+      return `the expects entry of ${e.pack} needs a boolean required`;
+    if (typeof e.delivery !== "string" || !VOCAB_TOKEN_PATTERN.test(e.delivery))
+      return `the expects entry of ${e.pack} needs a delivery token`;
+  }
+  return null;
+}
+
+/** UTF-8 bytes of a JSON value's serialisation (0 when absent). */
+function jsonBytes(value: unknown): number {
+  if (value === undefined) return 0;
+  try {
+    return new TextEncoder().encode(JSON.stringify(value)).length;
+  } catch {
+    return 0;
+  }
+}
+
 /** Does `version` parse under the deliverable's version scheme? */
 function versionFitsScheme(
   version: string,
@@ -464,7 +554,8 @@ function versionFitsScheme(
  * deliverable. Returns the descriptor (typed) and its release id, or every problem found.
  *
  * The cross-checks (README §3.4 "declared, not sniffed"): the product is this product; the
- * deliverable is declared (only `app`, kind `app`, until P4-02); every build id is an `artifacts`
+ * deliverable is declared (only `app`, kind `app`: a pack release is a signed record, never a
+ * descriptor); `content` and `embeds` name declared packs and the app's `contentApi`; every build id is an `artifacts`
  * entry with the same platform, arch and format; the file playing the entry's role matches its
  * `match`; roles come from `ARTIFACT_ROLES`; names are unique within the release; an `r2` key is
  * the content address of that file's SHA-256; a `github` location names the artifact itself; a
@@ -506,10 +597,19 @@ export function validateReleaseDescriptor(
     !serialized ||
     new TextEncoder().encode(serialized).length > MAX_DESCRIPTOR_BYTES
   ) {
+    // `content` and every build's `metadata` share the cap with everything else (plans/P4-01.md
+    // §2.4), so the refusal names what each takes and the publisher knows which to shrink.
+    const contentBytes = jsonBytes(d.content);
+    const metadataBytes = Array.isArray(d.builds)
+      ? d.builds.reduce<number>(
+          (n, b) => n + (isRecord(b) ? jsonBytes(b.metadata) : 0),
+          0,
+        )
+      : 0;
     err(
       "/",
       "invalid_descriptor",
-      `A release descriptor must serialise to JSON of at most ${MAX_DESCRIPTOR_BYTES} bytes.`,
+      `A release descriptor must serialise to JSON of at most ${MAX_DESCRIPTOR_BYTES} bytes; content takes ${contentBytes} bytes and builds[].metadata ${metadataBytes} in all.`,
     );
     return { ok: false, errors };
   }
@@ -531,7 +631,7 @@ export function validateReleaseDescriptor(
     err(
       "/kind",
       "unsupported_deliverable_kind",
-      "pack releases are not supported yet (P4-02); kind must be app.",
+      "a pack release is submitted as a signed record, never a descriptor; kind must be app.",
     );
   else if (d.kind !== "app")
     err("/kind", "invalid_descriptor", "kind must be app.");
@@ -603,6 +703,10 @@ export function validateReleaseDescriptor(
       "invalid_descriptor_field",
       "publishedAt must be an RFC 3339 timestamp.",
     );
+  if (d.content !== undefined) {
+    const problem = contentProblem(d.content);
+    if (problem) err("/content", "invalid_descriptor_content", `${problem}.`);
+  }
   if (d.provenance !== undefined) {
     const p = d.provenance;
     if (
@@ -688,6 +792,18 @@ export function validateReleaseDescriptor(
         `/builds/${bi}/requires`,
         "invalid_descriptor_build",
         "requires must be an object.",
+      );
+    if (
+      b.embeds !== undefined &&
+      (!Array.isArray(b.embeds) ||
+        b.embeds.length > MAX_BUILD_EMBEDS ||
+        new Set(b.embeds).size !== b.embeds.length ||
+        !b.embeds.every(isPackIdString))
+    )
+      err(
+        `/builds/${bi}/embeds`,
+        "invalid_descriptor_embeds",
+        `embeds must be at most ${MAX_BUILD_EMBEDS} distinct pack ids (deliverable ids other than app).`,
       );
     if (b.metadata !== undefined) {
       const problem = buildMetadataProblem(b.platform, b.metadata);
@@ -887,6 +1003,45 @@ export function validateReleaseDescriptor(
         `channel ${desc.channel} is not declared for this product.`,
       );
   }
+  // ── Packs (P4-02): against the declared packs and the app's contentApi. Pins against stored
+  // records, embeds ⊆ pins and every expect pinned are the Worker's ingest reasons. ──
+  const packs = new Set(manifest.release?.packs ?? []);
+  if (desc.content !== undefined) {
+    if (!app.content)
+      err(
+        "/content",
+        "invalid_descriptor_content",
+        "the product declares no deliverables.app.content in .pkey/release, so its releases carry no content.",
+      );
+    else if (desc.content.contentApi !== app.content.contentApi)
+      err(
+        "/content/contentApi",
+        "invalid_descriptor_content",
+        `content.contentApi is ${desc.content.contentApi}; .pkey/release declares ${app.content.contentApi}.`,
+      );
+    for (const [i, pin] of desc.content.pins.entries())
+      if (!packs.has(pin.pack))
+        err(
+          `/content/pins/${i}/pack`,
+          "invalid_descriptor_content",
+          `${pin.pack} is not a pack deliverable this product declares.`,
+        );
+    for (const [i, e] of desc.content.expects.entries())
+      if (!packs.has(e.pack))
+        err(
+          `/content/expects/${i}/pack`,
+          "invalid_descriptor_content",
+          `${e.pack} is not a pack deliverable this product declares.`,
+        );
+  }
+  for (const [bi, b] of desc.builds.entries())
+    for (const [ei, e] of (b.embeds ?? []).entries())
+      if (!packs.has(e))
+        err(
+          `/builds/${bi}/embeds/${ei}`,
+          "invalid_descriptor_embeds",
+          `${e} is not a pack deliverable this product declares.`,
+        );
   const entries = new Map(app.artifacts.map((e) => [e.id, e]));
   for (const [bi, b] of desc.builds.entries()) {
     const entry = entries.get(b.id);

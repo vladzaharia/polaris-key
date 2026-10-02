@@ -455,6 +455,9 @@ export function descriptorManifestOf(docs: {
     release: {
       app: res.manifest.release?.app ?? null,
       manualChannels: res.manifest.release?.manualChannels ?? [],
+      // P4-02: the declared pack ids, the context a descriptor's `content` and `embeds` are
+      // checked against (plans/P4-01.md decision 37).
+      packs: (res.manifest.release?.packDeliverables ?? []).map((p) => p.id),
     },
     releaseKeys: res.manifest.release?.releaseKeys ?? [],
   };
