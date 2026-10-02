@@ -309,5 +309,10 @@ disagreed with this brief, the code is the fact):
   `chunks/v2.pkc` 9,328 B (186 chunks, 7 bundles), `chunks/v2.pkc.zst` 8,033 B, `chunks/dup.pkc`
   304 B; v2's three new bundles 616,654 B, the v1 bundle 248,981 B, the dup bundle 986 B.
   `chunk-v1-to-v2`: 58 fetched (616,654 B) in 3 runs, 128 seeded, no self-copies.
+- **Budget, after prettier:** source content corpus 4,532,463 B (`content/` 3,913,193 +
+  `plan-matrix.json` 619,270), under the 4.6 MB target and the 5 MB budget; the plan's estimate
+  was about 4,458,000 (`plan-matrix.json` grew 318,989 B, not about 255,000, in prettier's
+  one-number-per-line layout of the inline records). Mirrors grow by `cases.json` +42,439 and
+  `plan-matrix.json` +318,989, each twice (Swift, Godot): 722,856 B.
 - **The pack-kind record is `packRecordCases`' `pack-valid-chunks`** (`djdl.levels@1.2.0`), not a
   `releaseRecordCases` vector: pack records live in `packRecordCases` since P4-01.
