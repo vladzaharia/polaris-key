@@ -1,0 +1,8 @@
+; A data pack built independently of the SDK project (S-05 §4.6's f_uid case): run_tests.sh
+; copies it to build/, imports it and exports it with --export-pack; the packs suite strips,
+; checks and mounts the result next to dataA/dataB's twin.
+config_version=5
+
+[application]
+
+config/name="pkey_uid_dataA"

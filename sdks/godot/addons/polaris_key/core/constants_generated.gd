@@ -124,11 +124,13 @@ class ErrorCode:
 	const PACK_NOT_PINNED := "pack-not-pinned"
 	const PACK_NOT_ENTITLED := "pack-not-entitled"
 	const PACK_STATE_UNREADABLE := "pack-state-unreadable"
+	const PCK_DIRECTORY_REFUSED := "pck-directory-refused"
+	const PCK_ENGINE_MISMATCH := "pck-engine-mismatch"
 	const MARKER_REJECTED := "marker-rejected"
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "marker-rejected"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "marker-rejected"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -244,6 +246,8 @@ const ERROR_CODE_KINDS := {
 	"pack-not-pinned": "client",
 	"pack-not-entitled": "client",
 	"pack-state-unreadable": "client",
+	"pck-directory-refused": "client",
+	"pck-engine-mismatch": "client",
 	"marker-rejected": "client",
 }
 
@@ -833,16 +837,16 @@ static func capabilities() -> Dictionary:
 		"update.driver": {"status": "implemented", "service": "update", "na": [{"runtime": "ios", "reason": "outlet"}]},
 		"update.bootguard": {"status": "implemented", "service": "update", "na": []},
 		"outlet.detect": {"status": "implemented", "service": "update", "na": []},
-		"packs.record": {"status": "planned", "service": "release", "na": []},
-		"packs.plan": {"status": "planned", "service": "release", "na": []},
-		"packs.index.files": {"status": "planned", "service": "release", "na": []},
+		"packs.record": {"status": "implemented", "service": "release", "na": []},
+		"packs.plan": {"status": "implemented", "service": "release", "na": []},
+		"packs.index.files": {"status": "implemented", "service": "release", "na": []},
 		"packs.index.chunks": {"status": "planned", "service": "release", "na": []},
-		"packs.apply.full": {"status": "planned", "service": "release", "na": []},
-		"packs.apply.file": {"status": "planned", "service": "release", "na": []},
+		"packs.apply.full": {"status": "implemented", "service": "release", "na": []},
+		"packs.apply.file": {"status": "implemented", "service": "release", "na": []},
 		"packs.apply.chunk": {"status": "planned", "service": "release", "na": []},
-		"packs.apply.delta": {"status": "planned", "service": "release", "na": []},
-		"packs.state": {"status": "planned", "service": "release", "na": []},
-		"packs.handlers": {"status": "planned", "service": "release", "na": []},
+		"packs.apply.delta": {"status": "implemented", "service": "release", "na": []},
+		"packs.state": {"status": "implemented", "service": "release", "na": []},
+		"packs.handlers": {"status": "implemented", "service": "release", "na": []},
 		"packs.provides": {"status": "planned", "service": "release", "na": []},
 		"packs.transport.apple": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"packs.transport.play": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
@@ -855,4 +859,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "da1638bab077730e11197c923cd34502d085a84b337f16f824ed92a0b0f43eee"
+const CAPABILITY_DIGEST := "97fd46b788683e389a2f86e58ffb1375e3f3ae9c5a0fc2fd1ad5b7e0efd69ade"

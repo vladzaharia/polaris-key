@@ -27,7 +27,7 @@ extends RefCounted
 ## `local-only`.
 
 ## The report's top-level keys, all on the Worker's allowlist (core/devices.ts REPORT_KEYS).
-const REPORT_KEYS := ["os", "hardware", "runtime", "locale", "timezone", "probes", "sdk", "sdkVersion", "appVersion", "platform", "arch", "gate", "config", "entitlements", "engine", "outlet", "caps"]
+const REPORT_KEYS := ["os", "hardware", "runtime", "locale", "timezone", "probes", "sdk", "sdkVersion", "appVersion", "platform", "arch", "gate", "config", "entitlements", "engine", "outlet", "content", "caps"]
 ## The roster's wire fields and the names this API returns them under.
 const DEVICE_FIELDS := {
 	"id": "id",
@@ -276,6 +276,12 @@ func snapshot() -> Dictionary:
 	if outlet != "":
 		out["outlet"] = outlet
 	out["caps"] = core.capability_engine().caps()
+	# plans/P4-01.md §2.11: the running pack set's packSetId (embedded baselines included), once
+	# packs have started.
+	if core.packs != null and core.packs.has_method("pack_set_id"):
+		var set_id = core.packs.pack_set_id()
+		if set_id is String:
+			out["content"] = {"packSetId": set_id}
 	# P6-03: the updater's queued update events (update_downloaded, update_applied,
 	# update_confirmed, boot_rolled_back), at most 16; dropped from the queue once reported.
 	if core.update_events != null:

@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature ui.stages
+# @pkey-feature ui.stages packs.state
 # The boot stage machine (PKeyStages) against the shared stage-matrix.json, the same file the
 # Node (conformance/runners/node/stageMatrix.test.ts), Python (test_stage_matrix.py) and Swift
 # (StageMatrixTests.swift) runners replay. For every row: each step's emits (as values), the

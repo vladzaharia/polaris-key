@@ -17,6 +17,8 @@ extends RefCounted
 ## before any Ed25519 work. The key is chosen by `kid` from the PINNED release keys only
 ## (`pinned_release_keys`), never merged with the product trust set, and a release key whose raw
 ## bytes are also a product key is refused at step `jws`: a release key is never a product key.
+## A `kind: pack` record must pass the pack claims and a `kind: app` record's `content` and
+## `builds[].embeds` the app ones (PKeyPackClaims, plans/P4-01.md §2.3–§2.4).
 
 const MAX_RECORD_JWS_BYTES := 88844
 const MAX_BUILDS := 64
@@ -91,6 +93,13 @@ static func _claims_ok(doc: Dictionary, expected_aud: String, nw: PKeyJson.Point
 		if not (p is Dictionary) or not _opt_string(p, "commit") or not _opt_string(p, "workflowRun"):
 			return false
 
+	# plans/P4-01.md §2.2: §2.3 applies to `kind: pack` and §2.4 to `kind: app`; a record of any
+	# other kind keeps the common claims only.
+	if doc["kind"] == "pack":
+		return PKeyPackClaims.pack_record_claims(doc, nw)
+	if doc["kind"] == "app" and doc.has("content") and not PKeyPackClaims.content_claims(doc["content"], nw, "/content"):
+		return false
+
 	if not doc.has("builds"):
 		return doc["kind"] != "app"
 	var builds = doc["builds"]
@@ -131,6 +140,8 @@ static func _claims_ok(doc: Dictionary, expected_aud: String, nw: PKeyJson.Point
 			if not _opt_string(artifact, "contentType"):
 				return false
 		if payloads > 1:
+			return false
+		if doc["kind"] == "app" and build.has("embeds") and not PKeyPackClaims.embeds_ok(build["embeds"]):
 			return false
 	return true
 
@@ -188,8 +199,9 @@ static func _fail(step: String) -> Dictionary:
 ##   13. the key is chosen by `kid` from `release_keys` only, refused when its raw bytes are also
 ##       in `product_trust`; then PKeyJws with that ONE key and `typ` `pkey-release+jws`;
 ##   14. the claims (release_record_claims);
-##   15. with a `pin` ({deliverable, version, seq}): `kind` is `app`, and `deliverable`, `version`
-##       and `seq` equal the pin's.
+##   15. with a `pin` ({kind?, deliverable, version, seq}): `kind` equals the pin's (`app` when
+##       the pin names none; `pack` for a content stamp's pin, plans/P4-01.md §2.6), and
+##       `deliverable`, `version` and `seq` equal the pin's.
 ## `body`: a PackedByteArray (the HTTP body) or a String. `opts`: {release_keys, product_trust,
 ## expected_aud, expected_hash, pin?, offload?}.
 static func verify_release_record(body: Variant, opts: Dictionary) -> Dictionary:
@@ -235,7 +247,8 @@ static func verify_release_record(body: Variant, opts: Dictionary) -> Dictionary
 	# 15. The cross-check against the pin.
 	var pin = opts.get("pin")
 	if pin is Dictionary:
-		if record["kind"] != "app" or not (pin.get("deliverable") is String) or record["deliverable"] != pin["deliverable"]:
+		var want_kind: String = pin["kind"] if pin.get("kind") is String else "app"
+		if record["kind"] != want_kind or not (pin.get("deliverable") is String) or record["deliverable"] != pin["deliverable"]:
 			return _fail(STEP_CROSS_CHECK)
 		if not (pin.get("version") is String) or record["version"] != pin["version"]:
 			return _fail(STEP_CROSS_CHECK)

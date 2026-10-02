@@ -123,6 +123,8 @@ public enum ErrorCode {
     public static let packNotPinned = "pack-not-pinned"
     public static let packNotEntitled = "pack-not-entitled"
     public static let packStateUnreadable = "pack-state-unreadable"
+    public static let pckDirectoryRefused = "pck-directory-refused"
+    public static let pckEngineMismatch = "pck-engine-mismatch"
     public static let markerRejected = "marker-rejected"
 }
 
@@ -240,6 +242,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "pack-not-pinned",
     "pack-not-entitled",
     "pack-state-unreadable",
+    "pck-directory-refused",
+    "pck-engine-mismatch",
     "marker-rejected",
 ]
 
@@ -357,6 +361,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "pack-not-pinned": "client",
     "pack-not-entitled": "client",
     "pack-state-unreadable": "client",
+    "pck-directory-refused": "client",
+    "pck-engine-mismatch": "client",
     "marker-rejected": "client",
 ]
 

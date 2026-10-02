@@ -99,6 +99,10 @@ func all() -> Array:
 	out.append(["boot", "blocked update-required", boot.bind("update-required")])
 	out.append(["boot", "blocked not-available", boot.bind("not-available")])
 	out.append(["boot", "waiting needs-activation", boot.bind("waiting")])
+	# ── PKeyBoot's pack stages (P4-08): the consent card, a declined download, the pill.
+	out.append(["boot", "consent metered", boot.bind("consent")])
+	out.append(["boot", "blocked content-declined", boot.bind("declined")])
+	out.append(["boot", "background pill", boot.bind("background")])
 	return out
 
 
@@ -309,7 +313,7 @@ func boot(stop: String) -> Control:
 	var host := PKeyFakeBootHost.new()
 	add(b)
 	b.gate.activation.set_capabilities(PKeyActivationController.capabilities(true, false, false, false))
-	b.run({"host": host, "sync_timeout_seconds": 1000, "allow_offline": stop != "offline"})
+	b.run({"host": host, "sync_timeout_seconds": 1000, "allow_offline": stop != "offline", "required_packs": ["djdl.core"] if stop == "declined" else [], "essential_packs": []})
 	host.answer({"type": "shell.done"})
 	host.answer({"type": "guard.done", "result": "ok"})
 	match stop:
@@ -323,4 +327,23 @@ func boot(stop: String) -> Control:
 		"waiting":
 			host.answer({"type": "sync.done", "result": "ok"})
 			host.answer({"type": "gate.status", "status": "needs-activation"})
+		"consent", "declined", "background":
+			host.answer({"type": "sync.done", "result": "ok"})
+			host.answer({"type": "gate.status", "status": "ok"})
+			host.answer({"type": "decide.done", "decision": "none"})
+			match stop:
+				"consent":
+					# The host asks: fetch.consent, then the card waits for the player.
+					b.send({"type": "fetch.consent", "bytes": 12345678, "metered": true})
+					b._consent_answer(12345678, true)
+				"declined":
+					host.answer({"type": "fetch.done", "result": "declined", "installed": []})
+				"background":
+					host.answer({"type": "fetch.done", "result": "ok", "installed": []})
+					host.answer({"type": "mount.done"})
+					b.send({"type": "background.start"})
+					b._background_running = true
+					b._background_total = 200
+					b._background_done = 84
+					b.refresh_view()
 	return b

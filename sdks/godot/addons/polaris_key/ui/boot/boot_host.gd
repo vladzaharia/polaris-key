@@ -26,8 +26,15 @@ extends RefCounted
 ##                   required: no v4 decision stops play (plans/P3-01.md decision 1). The outlet
 ##                   adapter acts through decide() (a sidecar pack starts staging in the
 ##                   background, never holding the boot) and through the prompt's action
-##   fetch(packs)    fetch.done ok with no installed packs until P4-08
-##   mount()         mount.done after the first frame has been drawn (S-05 §4.1)
+##   fetch(packs)    fetch.done {result, installed} from PolarisKey.update.packs.boot_fetch: the
+##                   required and essential packs of the content stamp (P4-08); `fetch_with`
+##                   also sends fetch.consent and fetch.progress through PKeyBoot. A build
+##                   without a content stamp answers ok with nothing installed
+##   mount()         after the first frame has been drawn (RenderingServer.frame_post_draw; one
+##                   process frame headless), PolarisKey.update.packs.mount(): this boot's
+##                   `godot.pck` packs in mountOrder, one per frame (S-05 §4.1). mount.done, or
+##                   `fail` with the code when a REQUIRED pack could not be mounted
+##   background()    after READY: the stamp's prefetch packs (BACKGROUND, P4-08)
 ##
 ## `changed` fires when the licence state may have moved (an activation, a sign-in, a bundle
 ## import), so PKeyBoot sends gate.status again while the gate waits.
@@ -125,15 +132,66 @@ func decide() -> Dictionary:
 	return _decided("none")
 
 
-func fetch(_required: Array) -> Dictionary:
-	return {"type": "fetch.done", "result": "ok", "installed": []}
+## The facet, or null (no SDK, or an SDK without update.packs).
+func packs() -> PKeyPacks:
+	if sdk == null or sdk.get("update") == null:
+		return null
+	var p = sdk.update.get("packs")
+	return p if p is PKeyPacks else null
 
 
-func mount() -> Dictionary:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree != null:
-		await tree.process_frame
+## The stamp's boot options ({requiredPacks, essentialPacks}); empty lists without a stamp.
+func boot_options() -> Dictionary:
+	var p := packs()
+	return p.boot_options() if p != null and p.configured() else {"requiredPacks": [], "essentialPacks": []}
+
+
+func fetch(required: Array) -> Dictionary:
+	return await fetch_with(required, Callable(), {})
+
+
+## FETCH with the intermediate events: `send` gets fetch.consent and fetch.progress; `opts`
+## carries consent (always | metered | never), metered and answer (PKeyBoot's consent card).
+func fetch_with(_required: Array, send: Callable, opts: Dictionary) -> Dictionary:
+	var p := packs()
+	if p == null or not p.configured():
+		return {"type": "fetch.done", "result": "ok", "installed": []}
+	var forward := send if send.is_valid() else func(_e: Dictionary) -> void: pass
+	return await p.boot_fetch(forward, opts)
+
+
+func mount(required: Array = []) -> Dictionary:
+	var p := packs()
+	if p == null or not p.configured() or p.engine == null:
+		await PKeyPacks.after_first_frame()
+		return {"type": "mount.done"}
+	var r: Dictionary = await p.mount()
+	for x in r["refused"]:
+		if required.has(x["packId"]):
+			return _fail(StringName(x["code"]))
 	return {"type": "mount.done"}
+
+
+## The prefetch packs not yet current (BACKGROUND's work); empty without a stamp.
+func background_packs() -> Array:
+	var p := packs()
+	if p == null or not p.configured() or p.engine == null:
+		return []
+	var out: Array = []
+	var wanted := p.prefetch_packs()
+	var current := p._installed_now(wanted)
+	for id in wanted:
+		if not current.has(id):
+			out.append(id)
+	return out
+
+
+## BACKGROUND: install `ids`; {installed, failed}.
+func background(ids: Array) -> Dictionary:
+	var p := packs()
+	if p == null:
+		return {"installed": [], "failed": []}
+	return await p.background(ids)
 
 
 ## Whether a device with no token may get one without the player: a product without License

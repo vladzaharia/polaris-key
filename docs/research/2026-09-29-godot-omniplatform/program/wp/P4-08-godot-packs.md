@@ -242,3 +242,56 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+- **The container index after a `full` install.** client-core's engine keeps a files index only
+  for trees and for installs planned from seeds, so a container installed by `full` (or embedded)
+  has no files, and its next release can only come by a payload delta or `full`. Godot's storage
+  derives a `godot.pck`'s files from its own PCK directory (each entry hashed once, from the
+  payload whose SHA-256 was verified at load, kept beside it as `store/<sha256>.files.json`), so
+  `file` and a `files` delta work after any install. Node and React keep the reference behaviour;
+  whether client-core should keep the target index at commit is a follow-up.
+- **A restart pack fetched at boot mounts at this boot.** `fetch.done.installed` counts the running
+  set, and a `godot.pck` is `restart`, so a required pack fetched in FETCH would never count.
+  `PKeyGodotPckHandler.can_activate_now` lets a commit (or a guard rollback) join this boot while
+  its id has not been mounted in this process; a later commit activates at the next boot, from its
+  new path, as the brief requires.
+- **The delta bake.** Prefix decodes are batched: every frame of a `files` set goes through one
+  mount pair (a private namespace per batch). A prefix inside an installed store pack is exposed by
+  A6's trailer (journalled for crash repair, truncated back and length-checked); anything else,
+  including a tree's live files and an embedded `res://` pack, is copied into a helper host pack.
+  The trailer over the **mounted** base was tested (`bake` group, editor and release template): the
+  running session's reads are unchanged and the base comes back byte for byte, so A6's copy-host
+  fallback was not needed for it.
+- **Engine floor.** 4.4.1 has no `PACK_FILE_DELTA` and writes PCK v2, so `zstd-patch-from` is
+  advertised only on `PATCH_FROM_ENGINES` (4.6, 4.7) after a start-up probe. On 4.4 the corpus's
+  delta cases are held to their own verdict or a closed `delta-apply-failed`, and the kaykit update
+  cases meet `pck-engine-mismatch` (a 4.7.2 pack) before anything commits.
+- **The 4.4.1 exporter's `uid_cache.bin`** names the whole project's UIDs, excluded files included
+  (4.7.2 names only what it exports). Mounted with `replace_files=true`, such a pack re-points a UID
+  it shares with the main project. The f_uid case passes in full on 4.7.2 (editor and template);
+  on 4.4.1 the suite pins the measured behaviour. The device check does not inspect
+  `uid_cache.bin` (the publish lint does not either); a lint warning is a P4-03 follow-up.
+- **The header check** adds a device-only rule to the lint's `requires.engine`: a pack built by a
+  newer engine than the running one is `pck-engine-mismatch`.
+- **Shared fixtures.** `packages/cli/test/godotFixtures.test.ts` writes P4-03's fixture PCKs and
+  `lintPck`'s verdicts (`sdks/godot/tests/fixtures/packs/check/`) and the kaykit v1→v2 objects
+  (`update/`); the PCKs and verdicts are byte-compared, the zstd objects held to what they decode
+  to. The device check's lines equal the lint's exactly.
+- **The install state** gains one Godot member, `confirmed` (pack id → the record SHA-256 running
+  at the last confirmed launch): the shared boot guard counts while an active install differs from
+  it and rolls those packs back to `previous` with the binary. A packs-only rollback needs no
+  restart (GUARD runs before MOUNT) and reports `rolled-back`.
+- **PKeyBoot.** The host gained `fetch_with(required, send, opts)` (FETCH's intermediate events),
+  `mount(required)` (a required pack that cannot mount is `fail`), `boot_options()`,
+  `background_packs()` and `background(ids)`. The consent card is part of the boot view; the
+  `theme` option applies a pack's Theme after MOUNT; BACKGROUND keeps the boot view alive as a
+  transparent, input-free corner pill. `boot_fetch` sends `fetch.progress {0, 0}` when nothing is
+  missing, as client-core's `runBootFetch` does.
+- **Godot cannot stream a zstd decode** (`decompress` needs the whole frame), so `apply_full` is
+  buffered and `PKeyPacks.one_shot_budget` may drop a `full` too large for the device.
+- **Web.** The Cache Storage shell (S-05 §4.3) is not built: on web the mount cap applies and
+  `PKeyPacks.root` may be a MEMFS path (`/pkey`), so packs re-download after a reload. A follow-up.
+- **P4-10.** P4-10 has not landed (content corpus and plan matrix are still version 1), so
+  `plan_target`'s chunk rule and the chunk sections stay with it (its §8.5).
