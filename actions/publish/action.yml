@@ -67,7 +67,7 @@ inputs:
     description: Pack only. Read earlier releases kept by out; the patch.deltaBases newest whose record Polaris Key confirms get deltas.
     required: false
   dry-run:
-    description: Print the descriptor (a pack's lint, objects, bytes per strategy and record) and the server's verdict; upload, sign and write nothing.
+    description: Upload, sign and write no release. For the app, print the descriptor, the unsigned record and the server's verdict on a dry-run submit; for a pack, print the lint, the gate, the objects (new and already stored), the bytes per strategy and the unsigned record, with no server verdict (nothing is submitted). Either way it still mints upload tickets (for a pack, one per 256 objects), which expire within the hour.
     required: false
     default: "false"
 outputs:

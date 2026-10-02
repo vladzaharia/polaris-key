@@ -95,7 +95,7 @@ step.
 | `pins`              |                       | App only: `<packId>@<version>` pins for packs the build does not embed, separated by spaces, commas or newlines.          |
 | `out`               |                       | Pack only: keep the signed record and payloads at `<out>/<packId>/<version>/` for the next publish's `bases`.             |
 | `bases`             |                       | Pack only: the earlier releases `out` kept; the newest ones Polaris Key confirms get deltas.                              |
-| `dry-run`           | `false`               | `true` prints the descriptor (and the release record, unsigned) and the server's verdict, and writes nothing.             |
+| `dry-run`           | `false`               | `true` uploads, signs and writes no release ([Dry runs](#dry-runs)); it still requests upload tickets.                    |
 
 The step sets two outputs: `release-id` and `outcome` (`created`, `enriched`, or `unchanged`). A
 refusal fails the step with the server's reason as an error annotation.
@@ -177,11 +177,17 @@ URL, so it describes the same release; publishing one tag from a second workflow
 
 ### Dry runs
 
-`dry-run: true` (or `--dry-run`) does everything except upload and write: it prints the
+`dry-run: true` (or `--dry-run`) does everything except upload and write a release: it prints the
 descriptor, validates it locally, asks for a ticket and submits it with `dryRun: true`, then prints
 the server's verdict, such as "would be created as v0.3.0". Files that are not uploaded yet are
 judged as if they were. Without any CI credential (on a laptop), it stops after the local
 validation and says so.
+
+A dry run is not free of side effects on Polaris Key: it **mints upload tickets**, one for the
+app's files and, for a pack, one per 256 objects. Each ticket is a short-lived row (with
+temporary upload credentials) that is never redeemed by a dry run and expires within the hour,
+with the CI token at the latest. A pack dry run asks for no server verdict (see
+[Publishing a pack](#publishing-a-pack)).
 
 ### `source: github`
 
@@ -229,7 +235,13 @@ What the step does, in order:
    pack's `handler.prefixes` with their `.remap` and `.import` files, the `.godot/exported/` and
    `.godot/imported/` files those name, and `.godot/uid_cache.bin`. Scripts (`.gd`, `.gdc`, `.cs`,
    a `.remap` of one), native libraries, GDExtensions and anything outside the prefixes fail with
-   their path: a pack carries data only. The header's engine must be `requires.engine`; more than
+   their path: a pack carries data only. So does a resource with a script inside it: a text
+   scene or resource with a `GDScript` sub-resource or a `script/source` property, and a binary
+   `.scn`/`.res` (or any `.godot/exported/` file) whose strings name `GDScript`, `CSharpScript`
+   or `script/source`, or that cannot be inspected (compressed `RSCC`). A binary scene that only
+   references a script of the game is refused too, because the binary format cannot be told apart;
+   export such scenes as text (turn off the preset's "convert text resources to binary"), where
+   `[ext_resource type="Script" …]` passes. The header's engine must be `requires.engine`; more than
    1,000 entries warns and more than 20,000 fails, because mounting stalls longer with the entry
    count. A `files.tree` must keep the [path rules](/docs/build/wire/packs/#path-rules) and hold no symbolic links.
 2. **Build the objects.** A `full` object (the whole payload, one zstd frame), the `pkey-files/1`
@@ -257,7 +269,10 @@ What the step does, in order:
 
 `dry-run: true` prints the lint results, the strip, the gate, the objects (new and already
 stored), the bytes each update strategy costs, skipped deltas and the unsigned record, and
-uploads, signs and writes nothing. A published pack version is never rewritten: publish a new
+uploads, signs and writes nothing. It submits nothing either, so there is no server verdict on
+the record: the checks it shows are the CLI's own, the preflight's (seq, gate, cached bases) and
+the tickets' `present` answers, for which it mints one upload ticket per 256 objects (rows that
+expire within the hour). A published pack version is never rewritten: publish a new
 version.
 
 ## App releases with packs

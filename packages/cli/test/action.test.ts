@@ -249,6 +249,60 @@ describe("the Action's pack inputs (P4-03)", () => {
     ]);
   });
 
+  it("installs zstd with apt-get update then install when it is missing or old, and fails with the minimum otherwise", () => {
+    const out = { write: () => true };
+    // Missing, then present after the install: fixed argv, no shell.
+    const calls: string[][] = [];
+    let installed = false;
+    ensureZstd({
+      stdout: out,
+      platform: "linux",
+      exec: (cmd, args) => {
+        calls.push([cmd, ...args]);
+        if (cmd === "zstd") {
+          if (!installed) throw new Error("ENOENT");
+          return "*** Zstandard CLI (64-bit) v1.5.5, by Yann Collet ***";
+        }
+        if (args.includes("install")) installed = true;
+        return "";
+      },
+    });
+    expect(calls).toEqual([
+      ["zstd", "-V"],
+      ["sudo", "-n", "apt-get", "update", "-q"],
+      ["sudo", "-n", "apt-get", "install", "-y", "-q", "zstd"],
+      ["zstd", "-V"],
+    ]);
+    // apt still gives an old version.
+    expect(() =>
+      ensureZstd({
+        stdout: out,
+        platform: "linux",
+        exec: (cmd) => (cmd === "zstd" ? "v1.4.8" : ""),
+      }),
+    ).toThrow(/needs zstd ≥ 1\.5\.5; apt-get installed 1\.4\.8/);
+    // apt-get fails.
+    expect(() =>
+      ensureZstd({
+        stdout: out,
+        platform: "linux",
+        exec: (cmd) => {
+          throw new Error(`${cmd} failed`);
+        },
+      }),
+    ).toThrow(/needs zstd ≥ 1\.5\.5, and installing it with apt-get failed/);
+    // Not Linux: no install attempt.
+    const mac: string[] = [];
+    expect(() =>
+      ensureZstd({
+        stdout: out,
+        platform: "darwin",
+        exec: (cmd) => (mac.push(cmd), "v1.5.2"),
+      }),
+    ).toThrow(/needs zstd ≥ 1\.5\.5; this runner has 1\.5\.2/);
+    expect(mac).toEqual(["zstd"]);
+  });
+
   it("installs zstd only when it is missing", () => {
     const calls: string[] = [];
     const out = { write: () => true };

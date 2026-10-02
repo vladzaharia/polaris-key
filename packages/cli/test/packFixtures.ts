@@ -171,6 +171,40 @@ const importFile = (ctex: string) =>
   utf8(
     `[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\nuid="uid://b1"\npath.s3tc="res://${ctex}"\nmetadata={\n"imported_formats": ["s3tc_bptc"],\n"vram_texture": true\n}\n\n[deps]\n\nsource_file="res://assets/kaykit/dice.png"\ndest_files=["res://${ctex}"]\n`,
   );
+/** A Godot binary resource's length-prefixed string (`ResourceFormatSaverBinary`). */
+function binString(s: string): Uint8Array {
+  const b = utf8(`${s}\0`);
+  const out = new Uint8Array(4 + b.length);
+  new DataView(out.buffer).setUint32(0, b.length, true);
+  out.set(b, 4);
+  return out;
+}
+
+/**
+ * A minimal uncompressed binary resource: `RSRC`, the header words, the property-name string
+ * table and each internal resource's type, as length-prefixed strings, then opaque data. Enough
+ * for the lint's embedded-script scan; `magic` `RSCC` models a compressed one.
+ */
+export function binaryResource(
+  types: readonly string[],
+  props: readonly string[],
+  seed: number,
+  magic = "RSRC",
+): Uint8Array {
+  const head = new Uint8Array(20);
+  head.set(utf8(magic));
+  new DataView(head.buffer).setUint32(8, 4, true); // ver_major
+  return new Uint8Array(
+    Buffer.concat([
+      head,
+      binString(types[0] ?? "Resource"),
+      ...props.map(binString),
+      ...types.map(binString),
+      noiseBytes(512, seed),
+    ]),
+  );
+}
+
 const remapFile = (target: string) =>
   utf8(`[remap]\n\npath="res://${target}"\n`);
 
@@ -180,7 +214,14 @@ export function kaykitV1(): [string, Uint8Array][] {
     ["assets/kaykit/dice.png.import", importFile(CTEX)],
     [CTEX, noiseBytes(8192, 1)],
     ["assets/kaykit/board.tscn.remap", remapFile(SCN)],
-    [SCN, noiseBytes(3000, 2)],
+    [
+      SCN,
+      binaryResource(
+        ["PackedScene", "Texture2D"],
+        ["nodes", "names", "_bundled"],
+        2,
+      ),
+    ],
   ];
   for (let i = 0; i < 10; i++)
     files.push([`assets/kaykit/data/level_00${i}.json`, levelJson(i)]);
@@ -405,6 +446,8 @@ export interface PackServer {
   stored: Map<string, { seq: number; recordSha256: string; jws?: string }>;
   /** Stage-round failures to inject (consumed one per stage call). */
   failStage: number;
+  /** Leave the last requested object out of the next ticket answer. */
+  dropFromTicket: boolean;
   to(fragment: string): Recorded[];
   puts(): Recorded[];
 }
@@ -445,6 +488,7 @@ export function packServer(): PackServer {
     packs: true,
     stored,
     failStage: 0,
+    dropFromTicket: false,
     to: (f) => calls.filter((c) => c.url.includes(f)),
     puts: () => calls.filter((c) => c.method === "PUT"),
   };
@@ -517,6 +561,10 @@ export function packServer(): PackServer {
           target: `${o.gated ? "gated/" : ""}blobs/sha256/${o.sha256}`,
           present: referenced.has(o.sha256),
         }));
+        if (server.dropFromTicket) {
+          server.dropFromTicket = false;
+          objects.pop();
+        }
         tickets.set(`pkeyup_${id}`, objects);
         return json({
           ticket: `pkeyup_${id}`,

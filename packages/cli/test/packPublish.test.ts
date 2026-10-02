@@ -240,6 +240,56 @@ describe("publishing a godot.pck pack", () => {
     );
   });
 
+  it("a proven base whose cached payload was tampered with gets no delta and a warning", async () => {
+    const { cwd, server } = await setup();
+    await publishPack(opts(cwd, server).o);
+    await writeFile(
+      path.join(cwd, "cache/diceroll.core3d/1.0.0/default/diceroll.core3d.pck"),
+      pck(kaykitV2()),
+    );
+    await writeFiles(path.join(cwd, "dist"), {
+      "default/diceroll.core3d.pck": pck(kaykitV2()),
+    });
+    const { io, o } = opts(cwd, server, { version: "1.1.0" });
+    const res = await publishPack(o);
+    expect(res.record!.variants[0]!.deltas).toBeUndefined();
+    expect(io.err()).toMatch(
+      /base diceroll\.core3d 1\.0\.0 \(default\): the cached payload is not the record's .*no delta from it/,
+    );
+  });
+
+  it("an asserted gate that differs from the pack's (set) gate stops before any upload", async () => {
+    const extra = `    diceroll.hd:
+      kind: pack
+      type: files.tree
+      entitlement: hd
+`;
+    const { cwd, server } = await setup(
+      { extraPacks: extra },
+      {
+        "default/hi.txt": new TextEncoder().encode("hd\n"),
+      },
+    );
+    server.gate = "premium";
+    await expect(
+      publishPack(opts(cwd, server, { deliverable: "diceroll.hd" }).o),
+    ).rejects.toThrow(
+      /asserts diceroll\.hd is gated by hd, but its delivery gate is premium: set it under Distribution → Access first/,
+    );
+    expect(server.puts()).toEqual([]);
+    expect(server.to("/release/publish/uploads")).toHaveLength(1);
+  });
+
+  it("refuses a ticket that leaves out a requested object, before staging", async () => {
+    const { cwd, server } = await setup();
+    server.dropFromTicket = true;
+    await expect(publishPack(opts(cwd, server).o)).rejects.toThrow(
+      /answered a ticket without 1 of the \d+ requested objects/,
+    );
+    expect(server.to("/release/publish/stage")).toEqual([]);
+    expect(server.to("/release/publish/submit")).toEqual([]);
+  });
+
   it("signs the delivery gate as entitlement and stages every object gated; an assertion the gate lacks stops before any upload", async () => {
     const extra = `    diceroll.hd:
       kind: pack
@@ -475,6 +525,106 @@ describe("the CLI", () => {
     expect(io.out()).toContain(
       "Pack diceroll.core3d@1.0.0 (godot.pck), 1 variant",
     );
+  });
+
+  it("refuses flags that do not apply instead of ignoring them", async () => {
+    const { cwd, server } = await setup();
+    const run = async (args: string[]) => {
+      const io = capture();
+      const code = await runPkey(
+        [
+          "release",
+          "publish",
+          "--product",
+          SLUG,
+          "--dir",
+          "dist",
+          "--version",
+          "1.0.0",
+          ...args,
+        ],
+        {
+          cwd,
+          stdout: io.stdout,
+          stderr: io.stderr,
+          env: actionsEnv(),
+          fetchImpl: server.fetchImpl,
+          sleep: instant,
+        },
+      );
+      return { code, err: io.err() };
+    };
+    expect(
+      await run([
+        "--deliverable",
+        "diceroll.core3d",
+        "--content-stamp",
+        "x.json",
+      ]),
+    ).toEqual({
+      code: 1,
+      err: "--content-stamp does not apply here: --deliverable diceroll.core3d is a pack; these stamp an app release's packs.\n",
+    });
+    expect(
+      (
+        await run([
+          "--deliverable",
+          "diceroll.core3d",
+          "--pin",
+          "a.b@1",
+          "--embedded",
+          "d",
+        ])
+      ).err,
+    ).toContain("--embedded, --pin do not apply here");
+    expect((await run(["--out", "cache"])).err).toContain(
+      "--out does not apply here: they keep and read a pack's earlier releases; the app takes neither.",
+    );
+    expect((await run(["--pin"])).err).toBe(
+      "--pin needs a value: --pin <packId>@<version>.\n",
+    );
+    expect(server.calls).toEqual([]);
+  });
+
+  it("the Action refuses inputs that do not apply", async () => {
+    const { cwd, server } = await setup();
+    const input = (o: Record<string, string>) =>
+      Object.fromEntries(
+        Object.entries(o).map(([k, v]) => [`INPUT_${k.toUpperCase()}`, v]),
+      );
+    for (const [over, msg] of [
+      [
+        { deliverable: "diceroll.core3d", pins: "diceroll.l10n@1.0.0" },
+        "pins does not apply to a pack deliverable",
+      ],
+      [
+        { deliverable: "app", out: "cache", bases: "cache" },
+        "out, bases do not apply to the app",
+      ],
+    ] as const) {
+      const io = capture();
+      const code = await runAction({
+        env: {
+          ...actionsEnv(),
+          ...input({
+            product: SLUG,
+            dir: "dist",
+            version: "1.0.0",
+            "base-url": BASE,
+            ...over,
+          }),
+        },
+        cwd,
+        stdout: io.stdout,
+        stderr: io.stderr,
+        fetchImpl: server.fetchImpl,
+        sleep: instant,
+        exec: () => "v1.5.7",
+      });
+      expect(code).toBe(1);
+      expect(io.err()).toContain(msg);
+    }
+    expect(server.calls).toEqual([]);
   });
 
   it("the Action publishes a pack from its inputs and writes release-id and outcome", async () => {

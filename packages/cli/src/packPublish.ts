@@ -103,7 +103,13 @@ import {
 
 /** At most this many objects per upload ticket (`MAX_TICKET_OBJECTS`, P2-02). */
 export const STAGE_ROUND_OBJECTS = 256;
-/** The record payload cap (WIRE-CONTRACT-V4 §1: 65,536 bytes for a release record). */
+/**
+ * The record payload cap (WIRE-CONTRACT-V4 §1: 65,536 bytes for a release record). Neither
+ * `@polaris-key/protocol` nor `@polaris-key/manifest` exports it (only `shared-jws` holds it, as
+ * the private `MAX_DOC_BYTES` that `signJws`/`verifyJws` enforce), so it is restated here as a
+ * friendlier, earlier refusal; exporting it from `shared-protocol` would be a constants change of
+ * its own (`gen:constants`).
+ */
 export const MAX_RECORD_PAYLOAD_BYTES = 65536;
 /** At most this many releases one uploads request names (the Worker's `MAX_TICKET_RELEASES`). */
 const MAX_PREFLIGHT_RELEASES = 16;
@@ -1000,6 +1006,19 @@ async function stageRound(
 ): Promise<void> {
   const ticket = await requestTicket(client, round, gated, opts);
   const bySha = new Map(round.map((o) => [o.sha256, o]));
+  // Every requested object must come back: one the ticket leaves out would never be staged,
+  // and the record submit would then fail at ingest as pack-object.
+  const answered = new Set(ticket.objects.map((o) => o.sha256));
+  const missing = round.filter((o) => !answered.has(o.sha256));
+  if (missing.length)
+    throw new Error(
+      `${client.url("release/publish/uploads")} answered a ticket without ${missing.length} of the ${round.length} requested objects (${missing
+        .slice(0, 3)
+        .map((o) => `${o.sha256.slice(0, 12)}…`)
+        .join(
+          ", ",
+        )}${missing.length > 3 ? ", …" : ""}); nothing of this round was staged.`,
+    );
   const uploaded: string[] = [];
   const skipped: string[] = [];
   for (const o of ticket.objects) {

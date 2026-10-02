@@ -96,7 +96,8 @@ export interface Zstd {
   decodePatch(frame: Uint8Array, base: Uint8Array): Uint8Array;
 }
 
-function versionAtLeast(v: string, min: string): boolean {
+/** `v` ≥ `min`, both `major.minor.patch`. */
+export function versionAtLeast(v: string, min: string): boolean {
   const a = v.split(".").map(Number);
   const b = min.split(".").map(Number);
   for (let i = 0; i < 3; i++) {

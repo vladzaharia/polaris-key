@@ -268,3 +268,29 @@ content-stamp` is new (plan §6), and the CLI's `--pin` is repeatable (`parseArg
   documentation, and `action.yml` lists the new inputs (`content-stamp`, `embedded`, `pins`, `out`,
   `bases`), pinned to `ACTION_INPUTS` by a test.
 - **Test keys** are generated per run (`testReleaseKey()`), never committed.
+- **Embedded code (review fix, lead decision).** The admission list went by extension only, so a
+  `.tscn`/`.tres` with `[sub_resource type="GDScript"]` or `script/source`, or a binary
+  `.scn`/`.res`, passed. The lint now refuses, with the path, any text resource (`.tscn`, `.tres`,
+  `.escn`) whose section headers name `GDScript`/`CSharpScript` or that sets `script/source`, and
+  any binary resource (`.scn`, `.res`, or anything under `.godot/exported/`) that contains one of
+  those as a Godot length-prefixed string (u32 length incl. NUL, then the bytes; either byte
+  order), is compressed (`RSCC`) or is not a Godot resource at all (`embeddedCode` in
+  `packLint.ts`). The binary scan cannot tell an internal script from a reference to an app
+  script, so it fails closed; such scenes must be exported as text. Scope: every pack. The plan
+  defines no code pack in v1 (§3: `contentPolicy` is `{dataOnly: true}` and `false` is refused;
+  S-07 row 13), and `pack-type-unsupported`/`pack-no-variant` are vocabulary verdicts, not a
+  code-pack class, so the rule applies to all v1 packs; P4-12 or later revisits it only with a
+  `downloadedScripts` capability.
+- **P4-08 must reuse the same check device-side**: the extension list, the remap rule and
+  `embeddedCode`'s text and binary scans, over the same fixtures (`test/packFixtures.ts`,
+  `binaryResource`), before a pack is mounted. The CLI lint is a publisher guard, not a trust
+  boundary (threat model, "Pack publish lint (P4-03)").
+- **Review fixes:** a dry run documents that it mints upload tickets (one per 256 objects for a
+  pack; rows expire within the hour) and that a pack dry run has no server verdict; the Action's
+  `ensureZstd` checks the version (≥ 1.5.5), runs `apt-get update` before the install with fixed
+  arguments and no shell, and fails with the minimum version when apt still gives an older one; a
+  stage round refuses a ticket that leaves out a requested object; inputs that do not apply are
+  refused, not ignored (`content-stamp`/`embedded`/`pins` for a pack, `out`/`bases` for the app,
+  a bare `--pin`), in the CLI and the Action. The record payload cap (65,536) stays a CLI constant:
+  neither `@polaris-key/protocol` nor `@polaris-key/manifest` exports it (only `shared-jws`, as a
+  private constant), and exporting it would be a constants change of its own.

@@ -122,6 +122,7 @@ export {
   type PckHeader,
 } from "./pck.js";
 export {
+  embeddedCode,
   lintPck,
   lintTreePaths,
   PCK_MAX_ENTRIES,
@@ -238,6 +239,8 @@ interface ParsedArgs {
   flags: Record<string, string | boolean>;
   /** Every string value of a repeatable flag (`--pin a@1 --pin b@2`), in order. */
   multi: Record<string, string[]>;
+  /** Flags given without a value (`--dry-run`, or a `--pin` missing its value). */
+  bare: Set<string>;
   positional: string[];
 }
 
@@ -295,6 +298,7 @@ function parseArgs(argv: string[]): ParsedArgs {
   const [command = "help", ...rest] = argv;
   const flags: Record<string, string | boolean> = {};
   const multi: Record<string, string[]> = {};
+  const bare = new Set<string>();
   const positional: string[] = [];
   const add = (key: string, value: string) => {
     flags[key] = value;
@@ -320,9 +324,10 @@ function parseArgs(argv: string[]): ParsedArgs {
       i += 1;
     } else {
       flags[rawKey] = true;
+      bare.add(rawKey);
     }
   }
-  return { command, flags, multi, positional };
+  return { command, flags, multi, bare, positional };
 }
 
 async function cmdInit(
@@ -696,7 +701,14 @@ async function cmdRelease(
         flagString(parsed, "min-supported-seq") !== undefined
           ? Number(flagString(parsed, "min-supported-seq"))
           : undefined;
+      if (parsed.bare.has("pin"))
+        throw new Error("--pin needs a value: --pin <packId>@<version>.");
       if (deliverable && deliverable !== "app") {
+        refuseFlags(
+          parsed,
+          ["content-stamp", "embedded", "pin"],
+          `--deliverable ${deliverable} is a pack; these stamp an app release's packs`,
+        );
         // P4-03: a pack release.
         await publishPack({
           ...common,
@@ -715,6 +727,11 @@ async function cmdRelease(
         });
         return 0;
       }
+      refuseFlags(
+        parsed,
+        ["out", "bases"],
+        "they keep and read a pack's earlier releases; the app takes neither",
+      );
       await publishRelease({
         ...common,
         cwd,
@@ -737,6 +754,8 @@ async function cmdRelease(
       return 0;
     }
     case "content-stamp": {
+      if (parsed.bare.has("pin"))
+        throw new Error("--pin needs a value: --pin <packId>@<version>.");
       // `pkey release content-stamp` (P4-03): the pkey-content/1 stamp a build embeds.
       const outFile = flagString(parsed, "out");
       if (!product || !outFile) throw new Error(CONTENT_STAMP_USAGE);
@@ -846,6 +865,19 @@ async function cmdManifest(
 function flagString(parsed: ParsedArgs, name: string): string | undefined {
   const value = parsed.flags[name];
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+/** Refuse flags that do not apply to this command, instead of ignoring them. */
+function refuseFlags(
+  parsed: ParsedArgs,
+  names: readonly string[],
+  why: string,
+): void {
+  const given = names.filter((n) => parsed.flags[n] !== undefined);
+  if (given.length)
+    throw new Error(
+      `${given.map((n) => `--${n}`).join(", ")} ${given.length === 1 ? "does" : "do"} not apply here: ${why}.`,
+    );
 }
 
 function flagBool(parsed: ParsedArgs, name: string): boolean {

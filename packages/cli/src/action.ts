@@ -15,6 +15,7 @@ import type { Out } from "./ci.js";
 import type { CiEnv } from "./oidc.js";
 import { publishRelease, type PublishSource } from "./publish.js";
 import { publishPack } from "./packPublish.js";
+import { MIN_ZSTD_VERSION, versionAtLeast } from "./packArtifacts.js";
 
 /** The Action's inputs, in `action.yml` order. */
 export const ACTION_INPUTS = [
@@ -64,6 +65,8 @@ export interface ActionIo {
   sleep?: (ms: number) => Promise<void>;
   /** The zstd install seam (tests): runs a command, throws on failure. */
   exec?: (cmd: string, args: string[]) => string;
+  /** The platform seam (tests); `process.platform` otherwise. */
+  platform?: NodeJS.Platform;
 }
 
 /** The `pins` input: `<packId>@<version>` entries separated by whitespace or commas. */
@@ -72,11 +75,14 @@ export function pinsInput(value: string | undefined): string[] {
 }
 
 /**
- * A pack publish needs the zstd CLI (≥ 1.5.5). GitHub's hosted runners carry it; when it is
- * missing on a Linux runner with apt-get, install it (best effort: `publishPack` then checks the
- * version and fails clearly).
+ * A pack publish needs the zstd CLI at ≥ 1.5.5 (`MIN_ZSTD_VERSION`). GitHub's hosted runners carry
+ * it. When it is missing or older on a Linux runner, refresh apt's lists and install it (fixed
+ * arguments, no shell); if zstd is still missing or older afterwards (an old distribution's
+ * package), fail with the minimum version. Elsewhere, fail with the same message.
  */
-export function ensureZstd(io: Pick<ActionIo, "exec" | "stdout">): void {
+export function ensureZstd(
+  io: Pick<ActionIo, "exec" | "stdout" | "platform">,
+): void {
   const exec =
     io.exec ??
     ((cmd: string, args: string[]) =>
@@ -84,19 +90,38 @@ export function ensureZstd(io: Pick<ActionIo, "exec" | "stdout">): void {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       }));
+  const version = (): string | null => {
+    try {
+      return /v(\d+\.\d+\.\d+)/.exec(exec("zstd", ["-V"]))?.[1] ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const ok = (v: string | null) =>
+    v !== null && versionAtLeast(v, MIN_ZSTD_VERSION);
+  const found = version();
+  if (ok(found)) return;
+  const need = `A pack publish needs zstd ≥ ${MIN_ZSTD_VERSION}`;
+  if ((io.platform ?? process.platform) !== "linux")
+    throw new Error(
+      `${need}; ${found ? `this runner has ${found}` : "it is not on PATH"}. Install it before this step (brew install zstd).`,
+    );
+  io.stdout.write(
+    `zstd ${found ? `${found} is older than ${MIN_ZSTD_VERSION}` : "is not on PATH"}; installing it with apt-get\n`,
+  );
   try {
-    exec("zstd", ["-V"]);
-    return;
-  } catch {
-    // Not on PATH.
-  }
-  if (process.platform !== "linux") return;
-  io.stdout.write("zstd is not on PATH; installing it with apt-get\n");
-  try {
+    exec("sudo", ["-n", "apt-get", "update", "-q"]);
     exec("sudo", ["-n", "apt-get", "install", "-y", "-q", "zstd"]);
-  } catch {
-    // publishPack reports a missing or old zstd itself.
+  } catch (e) {
+    throw new Error(
+      `${need}, and installing it with apt-get failed (${(e as Error).message.split("\n")[0]}). Install it before this step.`,
+    );
   }
+  const after = version();
+  if (!ok(after))
+    throw new Error(
+      `${need}; apt-get installed ${after ?? "no zstd"}. Use a newer runner image (ubuntu-24.04 or later) or install zstd ≥ ${MIN_ZSTD_VERSION} before this step.`,
+    );
 }
 
 /** Workflow-command escaping for an annotation's message (`%`, CR and LF). */
@@ -123,8 +148,15 @@ export async function runAction(io: ActionIo): Promise<number> {
       input("min-supported-seq") !== undefined
         ? Number(input("min-supported-seq"))
         : undefined;
+    const given = (names: readonly (typeof ACTION_INPUTS)[number][]) =>
+      names.filter((n) => input(n) !== undefined);
     if (deliverable && deliverable !== "app") {
-      // P4-03: a pack release.
+      // P4-03: a pack release. Inputs that only stamp an app release are refused, not ignored.
+      const wrong = given(["content-stamp", "embedded", "pins"]);
+      if (wrong.length)
+        throw new Error(
+          `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`,
+        );
       ensureZstd(io);
       const result = await publishPack({
         cwd: io.cwd,
@@ -149,6 +181,11 @@ export async function runAction(io: ActionIo): Promise<number> {
       await writeOutputs(io, result.releaseId, result.server);
       return 0;
     }
+    const wrong = given(["out", "bases"]);
+    if (wrong.length)
+      throw new Error(
+        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases.`,
+      );
     const result = await publishRelease({
       cwd: io.cwd,
       product,

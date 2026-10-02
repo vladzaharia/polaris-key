@@ -12,6 +12,10 @@
  *   3. `.godot/uid_cache.bin`, which makes the pack's `uid://` references resolve once P4-08
  *      mounts it with `replace_files=true`.
  *
+ * Every admitted resource must also carry no code (`embeddedCode`): a text resource with an
+ * embedded GDScript sub-resource or `script/source`, or a binary resource holding one, fails with
+ * its path (a v1 pack is data-only: S-07 row 13, plans/P4-01.md §3 `contentPolicy`).
+ *
  * Everything else fails with its path, in particular `project.binary`,
  * `.godot/global_script_class_cache.cfg`, scripts (`.gd`, `.gdc`, `.cs`, and a `.remap` that
  * points to one, or remaps one), native libraries (`.so`, `.dll`, `.dylib`, `.wasm`, a
@@ -134,6 +138,11 @@ export function lintPck(
       continue;
     }
     if (p === ".godot/uid_cache.bin") continue;
+    const code = embeddedCode(p, bytes.subarray(e.offset, e.offset + e.size));
+    if (code !== null) {
+      errors.push(`${p}: ${code}; a pack carries data only.`);
+      continue;
+    }
     if (inPrefix(p)) {
       if (p.endsWith(".remap") || p.endsWith(".import")) {
         const targets = remapTargets(
@@ -165,6 +174,80 @@ export function lintPck(
         `${p}: no in-prefix .remap or .import names it, so nothing in the pack could load it.`,
       );
   return { errors, warnings };
+}
+
+// ── Code embedded in a resource ──────────────────────────────────────────────
+
+/** Godot's text resource formats: a script can sit inside one as a sub-resource. */
+const TEXT_RESOURCE_RE = /\.(tscn|tres|escn)$/i;
+/** Godot's binary resource formats. */
+const BINARY_RESOURCE_RE = /\.(scn|res)$/i;
+/** The Script types whose instances carry code (GDScript source, C# by reference). */
+const SCRIPT_TYPES = ["GDScript", "CSharpScript"] as const;
+
+/**
+ * Why a resource entry carries code, or null when it carries none (P4-03 review; S-07 row 13: a
+ * v1 pack is data-only, `contentPolicy.dataOnly` is `true` and `false` is refused, so this applies
+ * to every pack):
+ *
+ *  - a TEXT resource (`.tscn`, `.tres`, `.escn`) with a section header naming a Script type
+ *    (`[sub_resource type="GDScript" …]`, a `[gd_resource type="GDScript" …]`) or a
+ *    `script/source` property;
+ *  - a BINARY resource (`.scn`, `.res`, or anything under `.godot/exported/`): Godot's
+ *    `ResourceFormatSaverBinary` writes every string — each internal resource's type and each
+ *    property name of the string table — as a u32 length (the UTF-8 bytes plus a NUL) followed by
+ *    the bytes and the NUL, little-endian unless the header's big-endian flag is set. An embedded
+ *    script is an internal resource of type `GDScript` (or `CSharpScript`) whose source is the
+ *    `script/source` property, so its file must contain one of those length-prefixed strings; the
+ *    scan looks for each in both byte orders. This fails closed: a coincidental match refuses a
+ *    resource, never admits one. A compressed binary resource (`RSCC`, FileAccessCompressed)
+ *    cannot be inspected and is refused, as is a `.scn`/`.res`/exported file that is neither a
+ *    binary nor a text resource. The binary scan cannot tell an internal script from an EXTERNAL
+ *    reference to one (the external-resource table stores the referenced resource's type string
+ *    too), so a binary scene that references an app script is refused as well: it fails closed.
+ *    Export such scenes as text (the export preset's "convert text resources to binary" off),
+ *    where `[ext_resource type="Script" …]` — code already in the app, not in the pack — passes.
+ *    Script files themselves are refused by extension.
+ */
+export function embeddedCode(p: string, data: Uint8Array): string | null {
+  if (TEXT_RESOURCE_RE.test(p)) return textResourceCode(data);
+  if (!BINARY_RESOURCE_RE.test(p) && !p.startsWith(".godot/exported/"))
+    return null;
+  const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
+  if (magic === "RSCC")
+    return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed";
+  if (magic !== "RSRC") {
+    // An exported file may still be a text resource.
+    const text = Buffer.from(data.subarray(0, 64)).toString("latin1");
+    if (/^\s*\[gd_(scene|resource)\b/.test(text)) return textResourceCode(data);
+    return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
+  }
+  const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  for (const s of [...SCRIPT_TYPES, "script/source"]) {
+    const str = Buffer.from(`${s}\0`, "utf8");
+    for (const le of [true, false]) {
+      const len = Buffer.alloc(4);
+      if (le) len.writeUInt32LE(str.length);
+      else len.writeUInt32BE(str.length);
+      if (buf.indexOf(Buffer.concat([len, str])) !== -1)
+        return s === "script/source"
+          ? "a binary resource with an embedded script's source (script/source)"
+          : `a binary resource with an embedded ${s} sub-resource`;
+    }
+  }
+  return null;
+}
+
+function textResourceCode(data: Uint8Array): string | null {
+  const text = new TextDecoder("utf-8", { fatal: false }).decode(data);
+  for (const m of text.matchAll(/^\s*\[([a-z_]+)\b[^\]\n]*\]/gm)) {
+    const t = /\btype\s*=\s*"([^"]*)"/.exec(m[0]);
+    if (t && (SCRIPT_TYPES as readonly string[]).includes(t[1]!))
+      return `an embedded script ([${m[1]} type="${t[1]}"])`;
+  }
+  if (/^\s*script\/source\s*=/m.test(text))
+    return "an embedded script's source (script/source)";
+  return null;
 }
 
 /** A7 §3.3's path rules over a tree's paths, with the failing path. */

@@ -17,6 +17,7 @@ import {
   buildPayload,
   buildPayloadDelta,
   containerPayload,
+  embeddedCode,
   filesRefOf,
   lintPck,
   lintTreePaths,
@@ -30,6 +31,7 @@ import {
   type Payload,
 } from "../src/index.js";
 import {
+  binaryResource,
   kaykitForbidden,
   kaykitUnstripped,
   kaykitV1,
@@ -251,6 +253,94 @@ describe("the admission list (notes/S-05 §5 (f))", () => {
     expect(lintTreePaths([".pkey/pack.json"]).errors).toEqual([
       ".pkey/pack.json: files-unsafe-path",
     ]);
+  });
+});
+
+describe("code embedded in a resource (the data-only rule, P4-03 review)", () => {
+  const enc = (t: string) => new TextEncoder().encode(t);
+  const lintWith = (extra: [string, Uint8Array][]) => {
+    const bytes = writeTestPck([...kaykitV1(), ...extra]);
+    return lintPck(readPck(bytes), bytes, lintOpts).errors;
+  };
+
+  it("refuses the reviewer's probe: a text scene with a GDScript sub_resource, and a script/source line", () => {
+    const probe = enc(
+      '[gd_scene load_steps=2 format=3 uid="uid://probe"]\n\n[sub_resource type="GDScript" id="GDScript_x"]\nscript/source = "extends Node\nfunc _ready(): OS.execute(\\"sh\\", [])"\n\n[node name="Probe" type="Node"]\nscript = SubResource("GDScript_x")\n',
+    );
+    const sourceOnly = enc(
+      '[gd_resource type="Resource" format=3]\n\n[resource]\nscript/source = "extends Resource"\n',
+    );
+    expect(
+      lintWith([
+        ["assets/kaykit/probe.tscn", probe],
+        ["assets/kaykit/sneaky.tres", sourceOnly],
+      ]),
+    ).toEqual([
+      'assets/kaykit/probe.tscn: an embedded script ([sub_resource type="GDScript"]); a pack carries data only.',
+      "assets/kaykit/sneaky.tres: an embedded script's source (script/source); a pack carries data only.",
+    ]);
+  });
+
+  it('passes a text scene that only references an app script (ext_resource type="Script")', () => {
+    const scene = enc(
+      '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://scripts/die.gd" id="1_a"]\n\n[node name="Die" type="Node3D"]\nscript = ExtResource("1_a")\n',
+    );
+    expect(lintWith([["assets/kaykit/die.tscn", scene]])).toEqual([]);
+  });
+
+  it("refuses a binary resource holding a GDScript or script/source, in either byte order, and one it cannot inspect", () => {
+    const be = binaryResource(["PackedScene"], ["nodes"], 3);
+    const beScript = new Uint8Array(
+      Buffer.concat([
+        be,
+        Buffer.from([0, 0, 0, 14]),
+        Buffer.from("script/source\0"),
+      ]),
+    );
+    expect(
+      lintWith([
+        [
+          "assets/kaykit/a.scn",
+          binaryResource(["PackedScene", "GDScript"], ["nodes"], 4),
+        ],
+        ["assets/kaykit/b.res", beScript],
+        [
+          "assets/kaykit/c.res",
+          binaryResource(["Resource"], ["data"], 5, "RSCC"),
+        ],
+        ["assets/kaykit/d.scn", enc("not a resource")],
+        ["assets/kaykit/e.res", binaryResource(["Mesh"], ["surfaces"], 6)],
+      ]),
+    ).toEqual([
+      "assets/kaykit/a.scn: a binary resource with an embedded GDScript sub-resource; a pack carries data only.",
+      "assets/kaykit/b.res: a binary resource with an embedded script's source (script/source); a pack carries data only.",
+      "assets/kaykit/c.res: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+      "assets/kaykit/d.scn: not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts; a pack carries data only.",
+    ]);
+  });
+
+  it("scans .godot/exported/ files whatever their extension", () => {
+    const exported = ".godot/exported/9/export-ffff-x.scn";
+    const files: [string, Uint8Array][] = [
+      [
+        "assets/kaykit/x.tscn.remap",
+        enc(`[remap]\n\npath="res://${exported}"\n`),
+      ],
+      [
+        exported,
+        binaryResource(
+          ["PackedScene", "GDScript"],
+          ["nodes", "script/source"],
+          7,
+        ),
+      ],
+    ];
+    expect(lintWith(files)).toEqual([
+      `${exported}: a binary resource with an embedded GDScript sub-resource; a pack carries data only.`,
+    ]);
+    expect(
+      embeddedCode(".godot/imported/t.png-1.s3tc.ctex", enc("GST2 GDScript")),
+    ).toBeNull();
   });
 });
 
