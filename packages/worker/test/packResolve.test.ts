@@ -66,7 +66,10 @@ interface PackSpec {
 
 function appInput(
   apps: AppSpec[],
-  opts: { floors?: Record<string, string>; policies?: Record<string, PolicyView> } = {},
+  opts: {
+    floors?: Record<string, string>;
+    policies?: Record<string, PolicyView>;
+  } = {},
 ): ResolutionInput["app"] {
   const releases = new Map<string, AppReleaseFacts>();
   const candidates: Candidate[] = apps.map((a) => {
@@ -173,7 +176,9 @@ const unsat = (s: ResolvedSet) =>
   Object.fromEntries(s.unsatisfied.map((u) => [u.pack, u.reason]));
 const at = (
   sets: ResolvedSet[],
-  sel: Partial<Pick<ResolvedSet, "channel" | "contentApi" | "platform" | "variant">>,
+  sel: Partial<
+    Pick<ResolvedSet, "channel" | "contentApi" | "platform" | "variant">
+  >,
 ) =>
   sets.filter(
     (s) =>
@@ -236,9 +241,9 @@ describe("ranges and routing helpers", () => {
     expect(packChannelFor(map, "diceroll.events.special")).toBe("special");
     expect(packChannelFor(map, "diceroll.foes")).toBe("content");
     expect(packChannelFor(map, "dicerollx.foes")).toBe(null);
-    expect(packChannelFor({ "diceroll.events.*": "e" }, "diceroll.eventsx")).toBe(
-      null,
-    );
+    expect(
+      packChannelFor({ "diceroll.events.*": "e" }, "diceroll.eventsx"),
+    ).toBe(null);
     expect(packChannelFor(null, "diceroll.foes")).toBe(null);
   });
 });
@@ -246,10 +251,12 @@ describe("ranges and routing helpers", () => {
 describe("live levels and the Diceroll scenarios (CONTENT §6.8)", () => {
   it("row 1: live levels {3, 4} resolve foes 1.x for contentApi 3 and 2.x for contentApi 4", () => {
     const { sets, live } = resolve([APP_14, APP_15], [FOES]);
-    expect(live.get("stable")!.map((r) => [r.releaseId, r.contentApi])).toEqual([
-      ["app@1.5.0", 4],
-      ["app@1.4.0", 3],
-    ]);
+    expect(live.get("stable")!.map((r) => [r.releaseId, r.contentApi])).toEqual(
+      [
+        ["app@1.5.0", 4],
+        ["app@1.4.0", 3],
+      ],
+    );
     expect(sets).toHaveLength(2);
     expect(members(one(sets, { contentApi: 3 }))).toEqual({
       "diceroll.foes": "1.3.3",
@@ -344,7 +351,12 @@ describe("live levels and the Diceroll scenarios (CONTENT §6.8)", () => {
           ...core,
           releases: [
             ...core.releases,
-            { version: "3.0.0", seq: 2, contentApi: ">=5", engine: "godot-4.8" },
+            {
+              version: "3.0.0",
+              seq: 2,
+              contentApi: ">=5",
+              engine: "godot-4.8",
+            },
           ],
         },
       ],
@@ -365,8 +377,18 @@ describe("live levels and the Diceroll scenarios (CONTENT §6.8)", () => {
         {
           id: "diceroll.core3d",
           releases: [
-            { version: "2.0.0", seq: 1, contentApi: ">=4", engine: "godot-4.7" },
-            { version: "2.1.0", seq: 2, contentApi: ">=4", engine: "godot-4.8" },
+            {
+              version: "2.0.0",
+              seq: 1,
+              contentApi: ">=4",
+              engine: "godot-4.7",
+            },
+            {
+              version: "2.1.0",
+              seq: 2,
+              contentApi: ">=4",
+              engine: "godot-4.8",
+            },
           ],
         },
       ],
@@ -387,13 +409,20 @@ describe("live levels and the Diceroll scenarios (CONTENT §6.8)", () => {
       [
         { ...APP_14, packChannels: mapping },
         { ...APP_15, packChannels: mapping },
-        { version: "1.6.0-beta.1", seq: 16, contentApi: 4, channel: "beta", packChannels: mapping },
+        {
+          version: "1.6.0-beta.1",
+          seq: 16,
+          contentApi: 4,
+          channel: "beta",
+          packChannels: mapping,
+        },
       ],
       [halloween],
       { channels: ["stable", "beta"] },
     );
     // The events release, never the stable one, on every channel and level.
-    for (const s of sets) expect(members(s)).toEqual({ "diceroll.events.halloween": "1.0.0" });
+    for (const s of sets)
+      expect(members(s)).toEqual({ "diceroll.events.halloween": "1.0.0" });
     expect(at(sets, { channel: "beta" }).length).toBeGreaterThan(0);
   });
 });
@@ -415,7 +444,12 @@ describe("channel rules: includes, seq ties and yanks", () => {
           ...FOES,
           releases: [
             ...FOES.releases,
-            { version: "2.1.0-beta.1", seq: 9, channel: "beta", contentApi: ">=4" },
+            {
+              version: "2.1.0-beta.1",
+              seq: 9,
+              channel: "beta",
+              contentApi: ">=4",
+            },
           ],
         },
       ],
@@ -481,7 +515,14 @@ describe("channel rules: includes, seq ties and yanks", () => {
   it("pinned packs never enter a set", () => {
     const { sets } = resolve(
       [APP_15],
-      [FOES, { id: "diceroll.ui", binding: "pinned", releases: [{ version: "1.0.0", seq: 1 }] }],
+      [
+        FOES,
+        {
+          id: "diceroll.ui",
+          binding: "pinned",
+          releases: [{ version: "1.0.0", seq: 1 }],
+        },
+      ],
     );
     expect(Object.keys(members(sets[0]!))).toEqual(["diceroll.foes"]);
   });
@@ -493,12 +534,25 @@ describe("selectors: platforms and variants", () => {
       id: "diceroll.core3d",
       axes: { texture: ["astc", "s3tc"] },
       releases: [
-        { version: "1.0.0", seq: 1, contentApi: ">=4", variants: ["texture=astc", "texture=s3tc"] },
+        {
+          version: "1.0.0",
+          seq: 1,
+          contentApi: ">=4",
+          variants: ["texture=astc", "texture=s3tc"],
+        },
         // The newest release lacks astc: astc devices stay on 1.0.0.
-        { version: "1.1.0", seq: 2, contentApi: ">=4", variants: ["texture=s3tc"] },
+        {
+          version: "1.1.0",
+          seq: 2,
+          contentApi: ">=4",
+          variants: ["texture=s3tc"],
+        },
       ],
     };
-    const { sets } = resolve([{ ...APP_15, platforms: ["ios", "macos"] }], [core]);
+    const { sets } = resolve(
+      [{ ...APP_15, platforms: ["ios", "macos"] }],
+      [core],
+    );
     expect(
       sets.map((s) => [s.platform, s.variant, members(s)["diceroll.core3d"]]),
     ).toEqual([
@@ -517,7 +571,12 @@ describe("selectors: platforms and variants", () => {
           id: "diceroll.core3d",
           axes: { texture: ["astc", "s3tc"] },
           releases: [
-            { version: "1.0.0", seq: 1, contentApi: ">=4", variants: ["texture=s3tc"] },
+            {
+              version: "1.0.0",
+              seq: 1,
+              contentApi: ">=4",
+              variants: ["texture=s3tc"],
+            },
           ],
         },
       ],
@@ -542,7 +601,12 @@ describe("the solver: dependencies, conflicts, holds and bounds", () => {
         {
           id: "diceroll.foes",
           releases: [
-            { version: "2.0.0", seq: 1, contentApi: "4", packs: { "diceroll.lore": "<2.0.0" } },
+            {
+              version: "2.0.0",
+              seq: 1,
+              contentApi: "4",
+              packs: { "diceroll.lore": "<2.0.0" },
+            },
           ],
         },
         LORE(["1.0.0", "1.5.0", "2.0.0"]),
@@ -561,7 +625,12 @@ describe("the solver: dependencies, conflicts, holds and bounds", () => {
         {
           id: "diceroll.foes",
           releases: [
-            { version: "2.0.0", seq: 1, contentApi: "4", packs: { "diceroll.lore": ">=3.0.0" } },
+            {
+              version: "2.0.0",
+              seq: 1,
+              contentApi: "4",
+              packs: { "diceroll.lore": ">=3.0.0" },
+            },
           ],
         },
         LORE(["1.0.0", "2.0.0"]),
@@ -576,7 +645,12 @@ describe("the solver: dependencies, conflicts, holds and bounds", () => {
       id: "diceroll.audio",
       releases: [
         { version: "1.0.0", seq: 1, contentApi: "4" },
-        { version: "1.1.0", seq: 2, contentApi: "4", conflicts: ["diceroll.foes"] },
+        {
+          version: "1.1.0",
+          seq: 2,
+          contentApi: "4",
+          conflicts: ["diceroll.foes"],
+        },
       ],
     };
     let { sets } = resolve([APP_15], [audio, FOES]);
@@ -594,13 +668,21 @@ describe("the solver: dependencies, conflicts, holds and bounds", () => {
 
   it("a hold whose substitution breaks a dependency is a violation; a compatible one is not", () => {
     const apps: AppSpec[] = [
-      { ...APP_15, holds: [{ pack: "diceroll.lore", releaseId: "diceroll.lore@1.0.0" }] },
+      {
+        ...APP_15,
+        holds: [{ pack: "diceroll.lore", releaseId: "diceroll.lore@1.0.0" }],
+      },
     ];
     const packs: PackSpec[] = [
       {
         id: "diceroll.foes",
         releases: [
-          { version: "2.0.0", seq: 1, contentApi: "4", packs: { "diceroll.lore": ">=1.5.0" } },
+          {
+            version: "2.0.0",
+            seq: 1,
+            contentApi: "4",
+            packs: { "diceroll.lore": ">=1.5.0" },
+          },
         ],
       },
       LORE(["1.0.0", "1.5.0"]),
@@ -689,9 +771,16 @@ describe("cost", () => {
           version: `${Math.floor(r / 50) + 1}.${r % 50}.0`,
           seq: r + 1,
           ...(p % 5 === 0 ? {} : { contentApi: `>=${3 + Math.floor(r / 70)}` }),
-          variants: p % 4 === 0 ? ["texture=astc", "texture=etc2", "texture=s3tc"] : [""],
+          variants:
+            p % 4 === 0
+              ? ["texture=astc", "texture=etc2", "texture=s3tc"]
+              : [""],
           ...(p > 0 && p % 3 === 0
-            ? { packs: { [`game.pack${String(p - 1).padStart(2, "0")}`]: ">=1.0.0" } }
+            ? {
+                packs: {
+                  [`game.pack${String(p - 1).padStart(2, "0")}`]: ">=1.0.0",
+                },
+              }
             : {}),
         })),
       });

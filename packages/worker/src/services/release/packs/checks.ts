@@ -93,9 +93,7 @@ export function packReleaseOf(
       releaseId,
       version: record.version,
       seq: record.seq,
-      channel: record.channel
-        ? canonicalChannel(record.channel, manual)
-        : null,
+      channel: record.channel ? canonicalChannel(record.channel, manual) : null,
       prerelease: false,
       tag: null,
       builds: [],
@@ -146,53 +144,56 @@ export async function checkPackPublish(
   const state = await loadResolutionState(db, product, cfg);
   if (!state) return { ok: true, report: null };
   const decl = state.declared.get(record.deliverable);
-  if (
-    !decl ||
-    (decl.binding !== "compatible" && decl.binding !== "standalone")
-  )
+  if (!decl || (decl.binding !== "compatible" && decl.binding !== "standalone"))
     return { ok: true, report: null };
   const { candidate, facts } = packReleaseOf(
     record,
     recordSha256,
     state.input.app.manual,
   );
-  return compare(state, withPackRelease(state, record.deliverable, candidate, facts), (after, before) => {
-    const pack = after.resolver.pack(record.deliverable)!;
-    const was = new Map(before.resolution.sets.map((s) => [selectorKey(s), s]));
-    for (const set of after.resolution.sets) {
-      const ctx = after.resolver.selectorContext(
-        set.channel,
-        set.contentApi,
-        set.platform,
+  return compare(
+    state,
+    withPackRelease(state, record.deliverable, candidate, facts),
+    (after, before) => {
+      const pack = after.resolver.pack(record.deliverable)!;
+      const was = new Map(
+        before.resolution.sets.map((s) => [selectorKey(s), s]),
       );
-      if (!ctx) continue;
-      const v = after.resolver.publishViolation(
-        set,
-        pack,
-        candidate.releaseId,
-        ctx.packChannels,
-        ctx.engines,
-      );
-      if (v)
-        return refuse(
-          "pack-unsatisfiable",
-          `${record.deliverable} ${record.version} fails at ${selectorText(set)}: ${v.detail} (${v.reason}).`,
+      for (const set of after.resolution.sets) {
+        const ctx = after.resolver.selectorContext(
+          set.channel,
+          set.contentApi,
+          set.platform,
         );
-      const prior = was.get(selectorKey(set));
-      const held = heldViolations(after.resolver, set);
-      for (const [app, detail] of held) {
-        const earlier = prior
-          ? heldViolations(before.resolver, prior, app).get(app)
-          : undefined;
-        if (earlier === undefined)
+        if (!ctx) continue;
+        const v = after.resolver.publishViolation(
+          set,
+          pack,
+          candidate.releaseId,
+          ctx.packChannels,
+          ctx.engines,
+        );
+        if (v)
           return refuse(
             "pack-unsatisfiable",
-            `with ${record.deliverable} ${record.version}, app release ${app}'s holds break at ${selectorText(set)}: ${detail}.`,
+            `${record.deliverable} ${record.version} fails at ${selectorText(set)}: ${v.detail} (${v.reason}).`,
           );
+        const prior = was.get(selectorKey(set));
+        const held = heldViolations(after.resolver, set);
+        for (const [app, detail] of held) {
+          const earlier = prior
+            ? heldViolations(before.resolver, prior, app).get(app)
+            : undefined;
+          if (earlier === undefined)
+            return refuse(
+              "pack-unsatisfiable",
+              `with ${record.deliverable} ${record.version}, app release ${app}'s holds break at ${selectorText(set)}: ${detail}.`,
+            );
+        }
       }
-    }
-    return null;
-  });
+      return null;
+    },
+  );
 }
 
 /** The app release being published, as the check needs it. */
@@ -267,7 +268,10 @@ export async function checkAppPublish(
       for (const [ch, live] of after.resolution.live) {
         if (!live.some((r) => r.releaseId === a.releaseId)) continue;
         for (const other of live) {
-          if (other.releaseId === a.releaseId || other.contentApi !== a.contentApi)
+          if (
+            other.releaseId === a.releaseId ||
+            other.contentApi !== a.contentApi
+          )
             continue;
           const theirs =
             after.resolver.input.app.releases.get(other.releaseId)
@@ -316,7 +320,11 @@ async function compare(
   // the after-state alone (nothing before is a regression to compare with).
   const prior: Resolved = b.ok
     ? b
-    : { ok: true, resolver: a.resolver, resolution: { live: new Map(), sets: [] } };
+    : {
+        ok: true,
+        resolver: a.resolver,
+        resolution: { live: new Map(), sets: [] },
+      };
   const refusal = judge(a, prior);
   if (refusal) return refusal;
   return {

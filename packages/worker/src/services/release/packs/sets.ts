@@ -367,7 +367,10 @@ export async function withSetIds(
     if (id === undefined) {
       id =
         (await packSetId(
-          s.entries.map((e) => ({ packId: e.pack, releaseSha256: e.recordSha256 })),
+          s.entries.map((e) => ({
+            packId: e.pack,
+            releaseSha256: e.recordSha256,
+          })),
         )) ?? "";
       memo.set(key, id);
     }
@@ -512,17 +515,18 @@ export function setReport(
 }
 
 /** Resolve `state`; null (with the message) when resolution cannot finish inside its bounds. */
-export function tryResolve(
-  state: ResolutionState,
-): { ok: true; resolver: PackResolver; resolution: Resolution } | {
-  ok: false;
-  message: string;
-} {
+export function tryResolve(state: ResolutionState):
+  | { ok: true; resolver: PackResolver; resolution: Resolution }
+  | {
+      ok: false;
+      message: string;
+    } {
   const resolver = new PackResolver(state.input);
   try {
     return { ok: true, resolver, resolution: resolver.resolve() };
   } catch (e) {
-    if (e instanceof PackResolutionError) return { ok: false, message: e.message };
+    if (e instanceof PackResolutionError)
+      return { ok: false, message: e.message };
     throw e;
   }
 }

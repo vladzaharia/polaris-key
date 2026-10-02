@@ -3950,6 +3950,21 @@ paths:
         prefix, or a `full` whose size is not its payload's). The optional ticket is promoted as
         a stage round first; a dry run checks without promoting and lists in `unverified` the
         ticket objects not uploaded yet. The release id is `<packId>@<version>`.
+        P4-12 (compatible and standalone packs): a pack record is also refused with
+        `pack-requires` (a variant's signed `requires.contentApi`, `requires.packs` or
+        `conflicts` disagrees with the pack's binding or names an undeclared pack),
+        `pack-channel` (a channel the pack does not publish to) or `pack-unsatisfiable` (at a
+        live selector it is meant for it lacks the selector's variant, or it is passed over for
+        an older release because it breaks a dependency or a conflict, or it breaks a live app
+        release's holds; the message names the selector and the constraint). An app release is
+        also refused with `pin-requires`, `hold-unknown`, `hold-mismatch`, `hold-yanked`,
+        `hold-binding`, `hold-requires`, `hold-unsatisfiable`, `content-unsatisfied` (a required
+        compatible or standalone pack has no release at one of its selectors) or
+        `pack-channels-conflict` (its `packChannels` differs from another live app release's on
+        the same channel and contentApi). Either is refused `pack-sets-bound` when resolution
+        cannot finish inside its bounds. When the product resolves pack sets, the answer (dry
+        run or not) carries `packSets`: the resulting sets with the selectors and app releases
+        that receive them, and every selector whose set changed. A dry run writes nothing.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -4017,6 +4032,77 @@ paths:
                       sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
                       kid: { type: string }
                       stored: { type: boolean }
+                  packSets:
+                    type: object
+                    description: >
+                      P4-12, when the product resolves pack sets: what this release does to them.
+                      `sets` are the resulting distinct sets (by `packSetId` and `unsatisfied`),
+                      each with the selectors that resolve to it and the app releases that
+                      receive it; `changed` lists every selector whose `packSetId` moved
+                      (`null` for a selector that appears or disappears).
+                    required: [sets, changed]
+                    properties:
+                      sets:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            [
+                              packSetId,
+                              packs,
+                              unsatisfied,
+                              selectors,
+                              appReleases,
+                            ]
+                          properties:
+                            packSetId: { type: string }
+                            packs:
+                              type: array
+                              items:
+                                type: object
+                                required: [pack, version, sha256]
+                                properties:
+                                  pack: { type: string }
+                                  version: { type: string }
+                                  sha256:
+                                    { type: string, pattern: "^[0-9a-f]{64}$" }
+                            unsatisfied:
+                              type: array
+                              items:
+                                type: object
+                                required: [pack, reason, detail]
+                                properties:
+                                  pack: { type: string }
+                                  reason:
+                                    type: string
+                                    enum:
+                                      [
+                                        no-release,
+                                        content-api,
+                                        engine,
+                                        variant,
+                                        content-floor,
+                                        dependency,
+                                        conflict,
+                                      ]
+                                  detail: { type: string }
+                            selectors:
+                              type: array
+                              items:
+                                { $ref: "#/components/schemas/PackSetSelector" }
+                            appReleases:
+                              type: array
+                              items: { type: string }
+                      changed:
+                        type: array
+                        items:
+                          allOf:
+                            - { $ref: "#/components/schemas/PackSetSelector" }
+                            - type: object
+                              required: [before, after]
+                              properties:
+                                before: { type: [string, "null"] }
+                                after: { type: [string, "null"] }
               examples:
                 created:
                   summary: test/publishRoutes.test.ts
@@ -6492,6 +6578,56 @@ components:
       type: string
       description: A compact EdDSA JWS (header.payload.signature, base64url).
       pattern: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+    PackSetSelector:
+      type: object
+      description: >
+        P4-12: one resolved pack set's key: the app channel, the live contentApi level, the
+        platform of the live builds and the variant key over every resolvable pack's axes (`""`
+        when none declares one).
+      required: [channel, contentApi, platform, variant]
+      properties:
+        channel: { type: string }
+        contentApi: { type: integer, minimum: 1 }
+        platform: { type: string }
+        variant: { type: string }
+    ChannelPolicy:
+      type: object
+      description: >
+        P2-05: one deliverable's policy on one canonical channel. `minSupported` is the device
+        floor. P4-12: a pack deliverable's view adds `packFloors`, its floors per contentApi line
+        on this channel (set by the operator PUT with `contentApi`).
+      required:
+        [
+          deliverable,
+          channel,
+          pointer,
+          pinned,
+          includes,
+          minSupported,
+          critical,
+          source,
+        ]
+      properties:
+        deliverable: { type: string }
+        channel: { type: string }
+        pointer: { type: [string, "null"] }
+        pinned: { type: boolean }
+        includes: { type: [array, "null"], items: { type: string } }
+        minSupported: { type: [string, "null"] }
+        critical: { type: boolean }
+        source: { type: string, enum: [manifest, admin] }
+        modifiedAt: { type: [integer, "null"] }
+        modifiedBy: { type: [string, "null"] }
+        packFloors:
+          type: array
+          items:
+            type: object
+            required: [contentApi, minSupported, modifiedAt, modifiedBy]
+            properties:
+              contentApi: { type: integer, minimum: 1 }
+              minSupported: { type: string }
+              modifiedAt: { type: integer }
+              modifiedBy: { type: [string, "null"] }
     WireError:
       type: object
       description: >

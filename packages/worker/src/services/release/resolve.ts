@@ -433,7 +433,9 @@ export interface BuildResolution {
 }
 
 /** `metadata_json.prerelease`, as the GitHub sync records it. */
-export function prereleaseOf(row: Pick<ReleaseMetadataRow, "metadata_json">): boolean {
+export function prereleaseOf(
+  row: Pick<ReleaseMetadataRow, "metadata_json">,
+): boolean {
   if (!row.metadata_json) return false;
   try {
     return (

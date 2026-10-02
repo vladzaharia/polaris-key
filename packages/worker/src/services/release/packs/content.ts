@@ -114,9 +114,9 @@ function requirementsExclude(
     ? (payload.variants as { requires?: Record<string, unknown> }[])
     : [];
   for (const v of variants) {
-    const range = (v.requires?.contentApi as Record<string, unknown> | undefined)?.[
-      APP_DELIVERABLE_ID
-    ];
+    const range = (
+      v.requires?.contentApi as Record<string, unknown> | undefined
+    )?.[APP_DELIVERABLE_ID];
     if (range !== undefined && !levelInRange(range as string, contentApi))
       return `its requires.contentApi.${APP_DELIVERABLE_ID} is ${String(range)}, not holding contentApi ${contentApi}`;
   }
@@ -352,7 +352,8 @@ export async function planAppContent(
         buildId: b.id,
         platform: b.platform,
         arch: b.arch,
-        engine: typeof b.requires?.engine === "string" ? b.requires.engine : null,
+        engine:
+          typeof b.requires?.engine === "string" ? b.requires.engine : null,
       })),
       contentApi: content.contentApi,
       packChannels: content.packChannels ?? null,

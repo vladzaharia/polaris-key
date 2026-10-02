@@ -516,7 +516,13 @@ export async function handlePackSubmit(
   if (!store.ok) return recordRefusal(store.reason, store.message);
 
   // 4. The resolution check (P4-12): the sets every live selector would resolve with it.
-  const sets = await checkPackPublish(db, product.slug, record, recordSha256, cfg);
+  const sets = await checkPackPublish(
+    db,
+    product.slug,
+    record,
+    recordSha256,
+    cfg,
+  );
   if (!sets.ok) return recordRefusal(sets.reason, sets.message);
   if (dryRun)
     return json({

@@ -6,8 +6,10 @@
 //
 // The cases are every `content` the conformance corpus signs into a release or pack record
 // (decoded from its JWS payloads), plus a hand table for the edges the corpus has no record for.
-// One deliberate difference is asserted rather than hidden: the manifest refuses the reserved
-// `holds` and `packChannels` members until P4-12, and the verifier ignores unknown members.
+// One deliberate difference is asserted rather than hidden: the manifest checks P4-12's `holds`
+// and `packChannels` (structure, and a hold never of a pinned pack), which the verifier ignores as
+// reserved members. So a content the manifest accepts is always one the verifier accepts, and
+// with those two members stripped the verdicts agree.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -115,6 +117,17 @@ const handTable: Array<[id: string, content: unknown]> = [
     "pins at the maximum",
     base({ pins: Array.from({ length: 256 }, (_, i) => pin(`p${i}`)) }),
   ],
+  // P4-12: holds and packChannels, checked by the manifest, ignored by the verifier.
+  [
+    "a hold and a packChannels map",
+    base({
+      holds: [{ ...pin("djdl.foes"), reason: "quest" }],
+      packChannels: { "djdl.events.*": "events" },
+    }),
+  ],
+  ["holds not an array", base({ holds: 5 })],
+  ["a hold of a pinned pack", base({ holds: [pin("djdl.levels")] })],
+  ["packChannels a bad channel", base({ packChannels: { "djdl.*": "Ev" } })],
 ];
 
 describe("descriptorContentProblem and contentClaims agree (N3)", () => {
@@ -126,9 +139,9 @@ describe("descriptorContentProblem and contentClaims agree (N3)", () => {
     const manifestOk = descriptorContentProblem(content) === null;
     const recordOk = contentClaims(content);
     if (hasReserved(content)) {
-      // The one deliberate difference: reserved until P4-12 in the manifest, ignored by the
-      // verifier. Without them, the verdicts agree again.
-      expect(manifestOk).toBe(false);
+      // The one deliberate difference: checked by the manifest (P4-12), ignored by the verifier.
+      // The manifest never accepts what the verifier refuses; without them, the verdicts agree.
+      if (manifestOk) expect(recordOk).toBe(true);
       const stripped = { ...(content as Record<string, unknown>) };
       for (const k of RESERVED) delete stripped[k];
       expect(descriptorContentProblem(stripped) === null).toBe(

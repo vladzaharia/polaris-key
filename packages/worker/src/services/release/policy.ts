@@ -298,7 +298,9 @@ async function policyChannelFor(
     raw,
     parseManualChannels(cfg?.manual_channels_json),
   );
-  return channel && pack?.channels.includes(channel) ? { ok: true, channel } : ch;
+  return channel && pack?.channels.includes(channel)
+    ? { ok: true, channel }
+    : ch;
 }
 
 async function deliverableOf(
@@ -465,7 +467,16 @@ export async function updateChannelPolicy(
   const deliverable = d.deliverable.deliverable_id;
   const key = { product, deliverableId: deliverable, channel: ch.channel };
   if (body.contentApi !== undefined)
-    return updatePackFloor(env, db, product, d.deliverable, key, body, actor, now);
+    return updatePackFloor(
+      env,
+      db,
+      product,
+      d.deliverable,
+      key,
+      body,
+      actor,
+      now,
+    );
   const existing = await getChannelPolicy(db, key);
 
   const patch: ChannelPolicyPatch = {};

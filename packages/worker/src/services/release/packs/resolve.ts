@@ -242,7 +242,10 @@ export function versionInRange(
 }
 
 /** Does a `requires.contentApi.app` range hold `level`? A missing or malformed range does not. */
-export function levelInRange(range: string | undefined, level: number): boolean {
+export function levelInRange(
+  range: string | undefined,
+  level: number,
+): boolean {
   const cmp = parseRange(range, CONTENT_API_RANGE_PATTERN);
   return cmp !== null && contentApiInRange(cmp, level);
 }
@@ -303,8 +306,7 @@ function assignments(
 
 function parseAssignment(key: string): Record<string, string> {
   const out: Record<string, string> = {};
-  if (key === "")
-    return out;
+  if (key === "") return out;
   for (const part of key.split(";")) {
     const eq = part.indexOf("=");
     if (eq > 0) out[part.slice(0, eq)] = part.slice(eq + 1);
@@ -660,7 +662,8 @@ export class PackResolver {
       if (!allowOmit) return false;
       tick();
       // Leaving `p` out breaks every chosen pack that depends on it.
-      for (const j of chosen.values()) if (j.v.packs?.[p.id] !== undefined) return false;
+      for (const j of chosen.values())
+        if (j.v.packs?.[p.id] !== undefined) return false;
       omitted.add(p.id);
       if (dfs(i + 1, allowOmit)) return true;
       omitted.delete(p.id);
@@ -876,7 +879,9 @@ export class PackResolver {
       return null;
     const entry = set.entries.find((e) => e.pack === pack.id);
     if (entry) {
-      const chosenRank = ranked.findIndex((c) => c.releaseId === entry.releaseId);
+      const chosenRank = ranked.findIndex(
+        (c) => c.releaseId === entry.releaseId,
+      );
       if (chosenRank <= rank) return null;
     }
     const others = new Map<string, Cand>();
