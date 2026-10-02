@@ -1724,6 +1724,8 @@ Poison the release channel
 │   ├── CANNOT ship bytes no release key signed (records verify against pinned release keys only; the payload's size and SHA-256 are checked against the record)
 │   ├── CANNOT downgrade (no answer offers a version below the installed one), widen a capability (the feed only narrows the per-kind defaults), or send a prompt outside the listing-URL prefixes
 │   └── CANNOT stop an install from running (the licence documents it also signs are AT-1's subject)
+├── Control the unsigned v3 `/version` answer (a compromised Worker, or its `url` field)
+│   └── CAN offer any page, but the Godot UI kit's prompt opens only an `https://` URL (P1-10): a `file:`, `http:` or custom-scheme `url` gets no action, so `OS.shell_open` never reaches a local handler
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
 ```
 

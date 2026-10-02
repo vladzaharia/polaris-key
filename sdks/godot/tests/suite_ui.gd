@@ -262,6 +262,11 @@ func _update_prompt(t: PKeyTestContext) -> void:
 	t.check("update: a v3 answer on a Steam build offers no download page", m["action"] == "" and m["visible"])
 	m = PKeyUpdatePromptController.model(PKeyVersionCheck.of("2.0.0", "", "https://example.com/r", true), "direct")
 	t.check("update: a v3 answer on a direct build opens its release page", m["action_url"] == "https://example.com/r")
+	# The v3 `url` is unsigned: only an https link is ever offered to OS.shell_open.
+	for bad in ["file:///etc/passwd", "myapp://run", "http://example.com/r", "https://"]:
+		m = PKeyUpdatePromptController.model(PKeyVersionCheck.of("2.0.0", "", bad, true), "direct")
+		t.check("update: a v3 url %s offers no action" % bad, m["action"] == "" and m["action_url"] == "" and m["visible"])
+	t.check("update: update_url drops a non-https release_url", PKeyUpdatePromptController.update_url(null, "direct", "file:///x") == "")
 
 
 # A locked update answer and grace's banner are strips, measured: a Container parent ignores a

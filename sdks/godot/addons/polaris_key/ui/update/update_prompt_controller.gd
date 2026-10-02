@@ -30,6 +30,23 @@ const DOWNLOAD_OUTLETS := ["", "direct"]
 ## blocked), `version` for the v3 check, `current` for an up-to-date answer shown on request, or
 ## "" when nothing shows. `outlet` is the build's outlet ("" in the editor).
 static func model(result: Variant, outlet := "", release_url := "", show_when_current := false) -> Dictionary:
+	return _only_https(_model(result, outlet, release_url, show_when_current))
+
+
+## A prompt never offers a non-https link: the v3 answer's `url` comes from unsigned JSON, and
+## `OS.shell_open` would hand a `file:` or custom-scheme URL to a local handler.
+static func _only_https(out: Dictionary) -> Dictionary:
+	if out["action_url"] != "" and not _is_https(out["action_url"]):
+		out["action"] = ""
+		out["action_url"] = ""
+	return out
+
+
+static func _is_https(url: String) -> bool:
+	return url.begins_with("https://") and url.length() > 8
+
+
+static func _model(result: Variant, outlet: String, release_url: String, show_when_current: bool) -> Dictionary:
 	var out := {"visible": false, "state": "", "title": "", "body": "", "body_arg": null, "action": "", "action_url": "", "locked": false, "version": ""}
 	if result is PKeyVersionCheck:
 		var v: PKeyVersionCheck = result
@@ -106,4 +123,4 @@ static func update_url(result: Variant, outlet := "", release_url := "") -> Stri
 	var m := model(result, outlet, release_url)
 	if m["action_url"] != "":
 		return m["action_url"]
-	return release_url if release_url != "" and not _store_outlet(outlet) else ""
+	return release_url if _is_https(release_url) and not _store_outlet(outlet) else ""
