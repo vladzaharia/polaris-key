@@ -237,7 +237,7 @@ func ensure(pack_ids: Array) -> PKeyResult:
 ## (the next ensure resumes).
 func _report_failure(pack_id: String, code: String) -> void:
 	var core := _core()
-	if core == null or pack_id == "" or code == String(PKeyErrors.NETWORK):
+	if core == null or pack_id == "" or code == String(PKeyErrors.NETWORK) or code == PKeyConstants.ErrorCode.PACK_ROLLED_BACK:
 		return
 	var u = core.update_events
 	if not (u is PKeyUpdater) or not u.active() or u.slots == null:
@@ -400,7 +400,8 @@ func _installed_now(wanted: Array) -> Array:
 		pins[p["pack"]] = p["release"]["sha256"]
 	for id in wanted:
 		var i = engine.running.get(id)
-		if i is Dictionary and pins.get(id) == i["recordSha256"]:
+		# A release the boot guard rolled back counts as present through the install it restored.
+		if i is Dictionary and (pins.get(id) == i["recordSha256"] or (engine.held(id) != "" and pins.get(id) == engine.held(id))):
 			out.append(id)
 	return out
 

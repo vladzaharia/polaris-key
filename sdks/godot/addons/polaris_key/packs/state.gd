@@ -11,6 +11,10 @@ extends RefCounted
 ##   confirmed         (Godot) pack id → the record SHA-256 that was RUNNING when the last boot was
 ##                     confirmed: the shared boot guard rolls back an active install that differs
 ##                     from it after two failed boots (PKeyBootGuard)
+##   held              (Godot) pack id → {recordSha256, count}: a release the boot guard rolled
+##                     back (P3-10's `skipVersion` for packs). It is never installed again while
+##                     the stamp still pins it; the restored `previous` stands in for it, and
+##                     `count` says how often that release was rolled back
 ##
 ## The document is NEVER trusted from storage: each install and journal carries its pack record's
 ## compact JWS verbatim, re-verified at every load through the caller's verifier before anything
@@ -22,7 +26,7 @@ static var _plan_id_re: RegEx = null
 
 
 static func empty() -> Dictionary:
-	return {"v": VERSION, "active": {}, "previous": {}, "inflight": {}, "observed": {}, "confirmedBootSeq": 0, "bootSeq": 0, "confirmed": {}}
+	return {"v": VERSION, "active": {}, "previous": {}, "inflight": {}, "observed": {}, "confirmedBootSeq": 0, "bootSeq": 0, "confirmed": {}, "held": {}}
 
 
 static func _nat(v: Variant) -> bool:
@@ -116,6 +120,11 @@ static func parse(text: Variant) -> Dictionary:
 		for id in doc["confirmed"]:
 			if PKeyPackClaims.is_pack_id(id) and PKeyPackClaims.is_sha256(doc["confirmed"][id]):
 				out["confirmed"][String(id)] = doc["confirmed"][id]
+	if doc.get("held") is Dictionary:
+		for id in doc["held"]:
+			var h = doc["held"][id]
+			if PKeyPackClaims.is_pack_id(id) and h is Dictionary and PKeyPackClaims.is_sha256(h.get("recordSha256")) and _nat(h.get("count")) and float(h["count"]) >= 1.0:
+				out["held"][String(id)] = {"recordSha256": h["recordSha256"], "count": int(h["count"])}
 	return out
 
 
@@ -132,6 +141,7 @@ static func reload(state: Dictionary, verifier: Object) -> Dictionary:
 	out["confirmedBootSeq"] = state["confirmedBootSeq"]
 	out["bootSeq"] = int(state["bootSeq"]) + 1
 	out["confirmed"] = state.get("confirmed", {})
+	out["held"] = state.get("held", {})
 	for id in state["active"]:
 		if await verifier.install(state["active"][id]) == true:
 			out["active"][id] = state["active"][id]
@@ -196,6 +206,16 @@ static func rollback_install(state: Dictionary, pack_id: String) -> Dictionary:
 	out["previous"].erase(pack_id)
 	out["active"][pack_id] = prev.duplicate(true)
 	return {"state": out, "rolled_back": true}
+
+
+## Hold a release the boot guard rolled back: it is not installed again while the stamp pins it.
+## Rolling the same release back again counts up.
+static func hold(state: Dictionary, pack_id: String, record_sha256: String) -> Dictionary:
+	var out := state.duplicate(true)
+	var h = out["held"].get(pack_id)
+	var count := int(h["count"]) + 1 if h is Dictionary and h["recordSha256"] == record_sha256 else 1
+	out["held"][pack_id] = {"recordSha256": record_sha256, "count": count}
+	return out
 
 
 ## Mark this boot healthy (CONTENT §10 step 7). `running`: pack id → the record SHA-256 running

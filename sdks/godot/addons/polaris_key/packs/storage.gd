@@ -636,12 +636,41 @@ func bake_journal_path(plan_id: String) -> String:
 	return staging_dir().path_join(plan_id).path_join("bake.json")
 
 
-## Record (size >= 0) or clear (size < 0) a trailer bake on `file` for `plan_id`.
+## A store pack's path, exactly `<store>/<64 lowercase hex>.pck`: the only files a trailer is
+## ever appended to, and the only ones a bake journal may name.
+func is_store_pack(file: String) -> bool:
+	if not file.begins_with(store_dir() + "/"):
+		return false
+	var name := file.substr(store_dir().length() + 1)
+	return name.length() == 68 and name.ends_with(".pck") and PKeyPackClaims.is_sha256(name.substr(0, 64))
+
+
+func _bake_entries(plan_id: String) -> Array:
+	var r := read_bytes(bake_journal_path(plan_id))
+	if not r["ok"] or r.has("missing"):
+		return []
+	var j := JSON.new()
+	if j.parse((r["bytes"] as PackedByteArray).get_string_from_utf8()) != OK or not (j.data is Array):
+		return []
+	return j.data
+
+
+## Record (size >= 0) or clear (size < 0) a trailer bake on `file` for `plan_id`. The journal is a
+## list (a batch may append trailers to more than one store pack). Only a store pack may be named.
+## True when the journal on disk says so.
 func note_bake(plan_id: String, file: String, size: int) -> bool:
+	if not is_store_pack(file):
+		return false
 	var path := bake_journal_path(plan_id)
-	if size < 0:
+	var list: Array = []
+	for e in _bake_entries(plan_id):
+		if e is Dictionary and e.get("file") != file:
+			list.append(e)
+	if size >= 0:
+		list.append({"file": file, "size": size})
+	if list.is_empty():
 		return remove_tree(path)
-	return atomic_write(path, JSON.stringify({"file": file, "size": size}).to_utf8_buffer())
+	return atomic_write(path, JSON.stringify(list).to_utf8_buffer())
 
 
 ## Repair every bake a crash left behind: truncate its file back to the recorded size (only a
@@ -653,22 +682,21 @@ func repair_bakes() -> PackedStringArray:
 		return out
 	for plan in l["dirs"]:
 		var path := bake_journal_path(plan)
-		var r := read_bytes(path)
-		if not r["ok"] or r.has("missing"):
+		if file_state(path) != 1:
 			continue
-		var j := JSON.new()
-		if j.parse((r["bytes"] as PackedByteArray).get_string_from_utf8()) != OK or not (j.data is Dictionary):
-			continue
-		var file = j.data.get("file")
-		var size = j.data.get("size")
-		if not (file is String) or not PKeyClaims.is_number(size) or not (file as String).begins_with(store_dir() + "/"):
-			continue
-		var g := FileAccess.open(file, FileAccess.READ)
-		if g == null:
-			continue
-		var n := int(g.get_length())
-		g.close()
-		if n > int(size) and PKeyPck.truncate(file, int(size)):
-			out.append(file)
+		for e in _bake_entries(plan):
+			if not (e is Dictionary):
+				continue
+			var file = e.get("file")
+			var size = e.get("size")
+			if not (file is String) or not PKeyClaims.is_number(size) or not is_store_pack(file):
+				continue
+			var g := FileAccess.open(file, FileAccess.READ)
+			if g == null:
+				continue
+			var n := int(g.get_length())
+			g.close()
+			if n > int(size) and PKeyPck.truncate(file, int(size)):
+				out.append(file)
 		remove_tree(path)
 	return out

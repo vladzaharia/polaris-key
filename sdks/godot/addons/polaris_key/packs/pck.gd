@@ -76,7 +76,7 @@ const _BINARY_RES := "(?i)\\.(scn|res)$"
 const _SECTION := "(?m)^\\s*\\[([a-z_]+)\\b[^\\]\\n]*\\]"
 const _TYPE := "\\btype\\s*=\\s*\"([^\"]*)\""
 const _SOURCE := "(?m)^\\s*script/source\\s*="
-const _GD_HEAD := "^\\s*\\[gd_(scene|resource)\\b"
+const _GD_HEAD := "^[ \\t\\n\\v\\f\\r]*\\[gd_(scene|resource)\\b"
 const _REMAP_PATH := "(?m)^\\s*path(?:\\.[A-Za-z0-9_-]+)?\\s*=\\s*\"([^\"]*)\""
 const _REMAP_DEST := "(?m)^\\s*dest_files\\s*=\\s*\\[([^\\]]*)\\]"
 const _QUOTED := "\"([^\"]*)\""
@@ -180,11 +180,33 @@ static func read_directory(source: PKeyByteSource) -> Dictionary:
 			return _refuse(DIRECTORY_REFUSED, "a patch pack's delta entry", path)
 		if flags != 0:
 			return _refuse(DIRECTORY_REFUSED, "unknown entry flags %d" % flags, path)
+		if not path_ok(path):
+			return _refuse(DIRECTORY_REFUSED, "an unsafe path (a `..`, `.` or empty segment, or a character the path rules refuse)", path)
 		var offset := file_base + rel
 		if offset + size > source.size:
 			return _refuse(DIRECTORY_REFUSED, "its bytes run past the end of the file", path)
 		entries.append({"rawPath": raw, "path": path, "offset": offset, "size": size, "md5": md5, "flags": flags})
+	# Two entries that name one file (exactly, or by ASCII case, or a file and a directory of the
+	# same name) cannot both be what the admission list judged.
+	var paths: Array = []
+	for e in entries:
+		paths.append(e["path"])
+	var pc := PKeyPackFiles.check_paths(paths)
+	if not pc["ok"]:
+		return _refuse(DIRECTORY_REFUSED, "a path the directory names twice (%s)" % pc["error"], String(pc["path"]))
 	return {"ok": true, "header": header, "entries": entries}
+
+
+## Whether a pack path (without `res://`) is one Godot will not rewrite on mount: the files
+## index's path rules (no `..`, `.` or empty segment, no leading or trailing `/`, printable ASCII
+## without `\ : * ? " < > |`), and equal to its own `simplify_path()`. A path that fails could
+## land outside the prefix it appears to sit under once the engine normalises it.
+static func path_ok(path: String) -> bool:
+	if not PKeyPackFiles.path_safe(path):
+		return false
+	if path.contains("..") or path.contains("./") or path.contains("//") or path.ends_with("/") or path.ends_with("/."):
+		return false
+	return path == path.simplify_path()
 
 
 ## The engine version this process runs: [major, minor, patch].
@@ -248,21 +270,56 @@ static func _res_path(p: String) -> String:
 	return p.substr(6) if p.begins_with("res://") else ""
 
 
-## The files a `.remap` or `.import` points to, as index paths: every `path="res://…"` and
-## `path.<x>="res://…"` value, and every string in a `dest_files=[…]` array (`source_file` is
-## the import's input, not something the pack loads).
-static func remap_targets(text: String) -> PackedStringArray:
+## Every value a `.remap` or `.import` points the engine at, raw: each `path=` and `path.<x>=`
+## value and every string in a `dest_files=[…]` array (`source_file` is the import's input, not
+## something the pack loads), in order, without duplicates.
+static func remap_values(text: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	for m in _re(_REMAP_PATH).search_all(text):
-		var p := _res_path(m.get_string(1))
+		var v := m.get_string(1)
+		if not out.has(v):
+			out.append(v)
+	for m in _re(_REMAP_DEST).search_all(text):
+		for q in _re(_QUOTED).search_all(m.get_string(1)):
+			var v := q.get_string(1)
+			if not out.has(v):
+				out.append(v)
+	return out
+
+
+## The files a `.remap` or `.import` points to, as index paths (its `res://` values only).
+static func remap_targets(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for v in remap_values(text):
+		var p := _res_path(v)
 		if p != "" and not out.has(p):
 			out.append(p)
-	for m in _re(_REMAP_DEST).search_all(text):
-		for s in _re(_QUOTED).search_all(m.get_string(1)):
-			var p := _res_path(s.get_string(1))
-			if p != "" and not out.has(p):
-				out.append(p)
 	return out
+
+
+## Why a `.godot/uid_cache.bin` is refused, or "": every path it names must be a file of this
+## pack (itself, or its `.remap` or `.import`), so a pack can register only its own UIDs and never
+## re-point one the game or another pack owns. Layout: u32 count, then per entry an i64 id, a u32
+## length and the path.
+static func uid_cache_problem(data: PackedByteArray, in_pack: Dictionary) -> String:
+	if data.size() < 4:
+		return "a malformed uid cache"
+	var n := data.decode_u32(0)
+	var p := 4
+	for i in n:
+		if p + 12 > data.size():
+			return "a malformed uid cache"
+		var ln := data.decode_u32(p + 8)
+		if p + 12 + ln > data.size():
+			return "a malformed uid cache"
+		var raw := data.slice(p + 12, p + 12 + ln).get_string_from_utf8()
+		p += 12 + ln
+		var t := _res_path(raw)
+		if t == "" or not path_ok(t) or not (in_pack.has(t) or in_pack.has(t + ".remap") or in_pack.has(t + ".import")):
+			return "names a path outside the pack (%s)" % raw
+	if p != data.size():
+		return "a malformed uid cache"
+	return ""
 
 
 ## Why a resource entry carries code, or "" when it carries none (P4-03's `embeddedCode`, the
@@ -272,18 +329,34 @@ static func remap_targets(text: String) -> PackedStringArray:
 ## `script/source` as a length-prefixed string in either byte order, an `RSCC` (compressed)
 ## resource, or one that is neither binary (`RSRC`) nor a text resource. Fails closed.
 static func embedded_code(p: String, data: PackedByteArray) -> String:
-	if _re(_TEXT_RES).search(p) != null:
-		return _text_code(data)
-	if _re(_BINARY_RES).search(p) == null and not p.begins_with(".godot/exported/"):
-		return ""
+	# By CONTENT first: Godot's binary loader takes `.material`, `.mesh`, `.anim` and every other
+	# binary resource extension, so the extension never decides whether bytes are scanned.
 	var magic := data.slice(0, 4).get_string_from_ascii() if data.size() >= 4 else ""
 	if magic == "RSCC":
 		return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed"
-	if magic != "RSRC":
-		var head := _latin1(data.slice(0, 64))
-		if _re(_GD_HEAD).search(head) != null:
-			return _text_code(data)
+	if magic == "RSRC":
+		return _binary_code(data)
+	if sniffs_text_resource(data):
+		return _text_code(data)
+	if _re(_TEXT_RES).search(p) != null:
+		return _text_code(data)
+	if _re(_BINARY_RES).search(p) != null or p.begins_with(".godot/exported/"):
 		return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts"
+	return ""
+
+
+## Whether bytes look like a Godot resource the scan must read: a binary (`RSRC`), compressed
+## (`RSCC`) or text (`[gd_scene` / `[gd_resource` head) resource.
+static func sniffs_resource(head: PackedByteArray) -> bool:
+	var magic := head.slice(0, 4).get_string_from_ascii() if head.size() >= 4 else ""
+	return magic == "RSRC" or magic == "RSCC" or sniffs_text_resource(head)
+
+
+static func sniffs_text_resource(data: PackedByteArray) -> bool:
+	return _re(_GD_HEAD).search(_latin1(data.slice(0, 64))) != null
+
+
+static func _binary_code(data: PackedByteArray) -> String:
 	for s in PackedStringArray(["GDScript", "CSharpScript", "script/source"]):
 		# The UTF-8 bytes plus the NUL `ResourceFormatSaverBinary` writes (a String cannot hold one).
 		var str_bytes := s.to_utf8_buffer()
@@ -357,6 +430,9 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 	var named := {}
 	var deferred := PackedStringArray()
 	var entries: Array = dir["entries"]
+	var in_pack := {}
+	for e in entries:
+		in_pack[e["path"]] = true
 	for e in entries:
 		var p: String = e["path"]
 		if p == STRIP_PROJECT_BINARY or p == STRIP_CLASS_CACHE:
@@ -368,28 +444,35 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 		if _is_native(p):
 			errors.append({"path": p, "why": "a native library or GDExtension; a pack carries data only."})
 			continue
-		if p == UID_CACHE:
-			continue
 		var in_prefix := false
 		for x in pre:
 			if p.begins_with(x):
 				in_prefix = true
 				break
-		var needs_bytes := in_prefix and (p.ends_with(".remap") or p.ends_with(".import"))
+		var needs_bytes := p == UID_CACHE or (in_prefix and (p.ends_with(".remap") or p.ends_with(".import")))
 		var scanned := _re(_TEXT_RES).search(p) != null or _re(_BINARY_RES).search(p) != null or p.begins_with(".godot/exported/")
+		if not scanned and p != UID_CACHE:
+			# Sniff every other entry's head: a resource is scanned whatever its extension.
+			scanned = sniffs_resource(source.read(int(e["offset"]), mini(64, int(e["size"]))))
 		var data := PackedByteArray()
 		if needs_bytes or scanned:
 			data = source.read(int(e["offset"]), int(e["size"]))
 			if data.size() != int(e["size"]):
 				errors.append({"path": p, "why": "its bytes cannot be read."})
 				continue
+		if p == UID_CACHE:
+			var why := uid_cache_problem(data, in_pack)
+			if why != "":
+				errors.append({"path": p, "why": "%s; a pack registers only its own UIDs." % why})
+			continue
 		var code := embedded_code(p, data) if scanned else ""
 		if code != "":
 			errors.append({"path": p, "why": "%s; a pack carries data only." % code})
 			continue
 		if in_prefix:
 			if needs_bytes:
-				var targets := remap_targets(data.get_string_from_utf8())
+				var text := data.get_string_from_utf8()
+				var targets := remap_targets(text)
 				var src := p.substr(0, p.rfind("."))
 				var script := ""
 				for t in targets:
@@ -398,6 +481,19 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 						break
 				if _is_script(src) or script != "":
 					errors.append({"path": p, "why": "remaps a script%s; a pack carries data only." % (" (%s)" % script if script != "" else "")})
+					continue
+				# Every value must be a normalised path of THIS pack: nothing in the base game, no
+				# absolute path, nothing the engine would rewrite into another prefix.
+				var outside := ""
+				for v in remap_values(text):
+					if v == "":
+						continue
+					var t := _res_path(v)
+					if t == "" or not path_ok(t) or not in_pack.has(t):
+						outside = v
+						break
+				if outside != "":
+					errors.append({"path": p, "why": "remaps a path outside the pack (%s); a pack loads only its own files." % outside})
 					continue
 				for t in targets:
 					named[t] = true
@@ -414,6 +510,33 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 	if count > WARN_ENTRIES:
 		warning = "%d entries, above %d: mounting it stalls longer (S-05 §4.1)" % [count, WARN_ENTRIES]
 	return {"ok": errors.is_empty(), "errors": errors, "count": count, "warning": warning}
+
+
+## The data-only rule over a TREE payload (P4-08 review N5): every file whose content is a Godot
+## resource (binary `RSRC`, compressed `RSCC`, a `[gd_scene`/`[gd_resource` head) or whose
+## extension names one is scanned with `embedded_code` before the tree commits; a script, a
+## native library or a `.gdextension` file is refused by name. {ok} or {ok: false, code, detail,
+## path}. `dir` is the staged tree.
+static func tree_check(dir: String) -> Dictionary:
+	var paths = PKeyPackStorage.walk_tree(dir)
+	if paths == null:
+		return {"ok": false, "code": DIRECTORY_REFUSED, "detail": "the staged tree cannot be listed", "path": ""}
+	for p in paths:
+		var why := ""
+		if _is_script(p):
+			why = "a script; a pack carries data only (S-07 row 13)."
+		elif _is_native(p):
+			why = "a native library or GDExtension; a pack carries data only."
+		else:
+			var src := PKeyByteSource.file(dir.path_join(p))
+			var resource: bool = _re(_TEXT_RES).search(p) != null or _re(_BINARY_RES).search(p) != null or sniffs_resource(src.read(0, 64))
+			if resource:
+				var code := embedded_code(p, PKeyByteSource.read_all(src))
+				if code != "":
+					why = "%s; a pack carries data only." % code
+		if why != "":
+			return {"ok": false, "code": DIRECTORY_REFUSED, "detail": "%s: %s" % [p, why], "path": p}
+	return {"ok": true}
 
 
 ## The PCK format version this engine reads and writes (what PCKPacker produces), probed once.

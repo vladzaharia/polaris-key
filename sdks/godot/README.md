@@ -686,11 +686,18 @@ header (PCK v2–v4, no encryption, no sparse bundle; the engine at most the run
 `requires.engine`: `pck-engine-mismatch`) and **the directory check** (S-05 §5 (f), the admission
 list P4-03's publish lint applies, over the record's `handler.prefixes`: in-prefix entries and
 their `.remap`/`.import`, the `.godot/exported/` and `.godot/imported/` files those name,
-`.godot/uid_cache.bin`; refused with its path, `pck-directory-refused`: `project.binary`, the class
-cache, scripts and a `.remap` to one, native libraries and `.gdextension`, out-of-prefix paths,
-orphaned exported files, and resources that embed GDScript or CSharpScript or cannot be inspected:
-RSCC, non-RSRC). The device check is held to the CLI's verdicts line for line over P4-03's fixture
-PCKs. Packs are data-only on every build (S-07 row 13; `downloadedScripts` is not in v1).
+`.godot/uid_cache.bin` naming only the pack's own files; refused with its path,
+`pck-directory-refused`: `project.binary`, the class cache, scripts and a `.remap` to one, native
+libraries and `.gdextension`, out-of-prefix paths, orphaned exported files, a `.remap`/`.import`
+target outside the pack, a uid cache entry outside the pack (a 4.4/4.5 exporter writes the whole
+project's), and resources that embed GDScript or CSharpScript or cannot be inspected). Paths must
+already be normal: the reader refuses a `..`, `.` or empty segment, a trailing `/` and a duplicate,
+because Godot simplifies a path at mount. Resources are judged by **content**, not extension (an
+`RSRC` head gets the binary scan and a `[gd_scene`/`[gd_resource` head the text scan, whatever
+the name, so a `.material` is scanned too; `RSCC` is refused under any name), and a `files.tree`
+output's files get the same scan. The device check is held to the CLI's verdicts line for line
+over P4-03's fixture PCKs. Packs are data-only on every build (S-07 row 13; `downloadedScripts` is
+not in v1; docs/security/THREAT-MODEL.md, "Pack bytes on the device").
 
 **Mounting** (`mount()`, PKeyBoot's MOUNT): after the first frame is drawn
 (`RenderingServer.frame_post_draw`; one process frame headless), only the running set's
@@ -709,7 +716,9 @@ a private path (`__pkey/<session>/<n>/b<i>`, never a path a game loads), a helpe
 `GDDL\x01` + the frame as a `PACK_FILE_DELTA` entry for it, and reading the path decodes. A prefix
 inside an installed store pack is exposed by a trailer appended to that very file (mounted at its
 own offset, truncated back after the reads; its size is journalled first, so a crash in between is
-repaired by truncation at the next load); any other prefix is copied into a helper "host" pack. All
+repaired by truncation at the next load: the journal is a list and names only
+`user://pkey/store/<sha256>.pck` files, and a journal that cannot be written sends the frame to a
+copy host instead); any other prefix is copied into a helper "host" pack. All
 of a `files` set's frames go through one mount pair. The window check (§2.7 rule 3) and the
 dictionary-magic rule run before any frame reaches the decoder, which enforces no window limit of
 its own. `zstd-patch-from` is advertised only on the engines in `PKeyPackZstd.PATCH_FROM_ENGINES`
@@ -724,7 +733,7 @@ never advertised in v1.
 starts the object over); redirects followed by hand, the bearer sent only to the control plane's
 origin and dropped on any cross-origin hop; one wall-clock deadline per request (`object_timeout`,
 600 s; a timeout resumes at the next ensure). A 403 from the blob route (`delivery_gate_missing`,
-`not_entitled`) is a failed fetch. A transport is an interface (`PKeyPackTransport`): P5-08 adds
+`not_entitled`) fails with `pack-not-entitled`. A transport is an interface (`PKeyPackTransport`): P5-08 adds
 the platform ones behind it.
 
 **PKeyBoot.** `required_packs` and `essential_packs` default to the stamp's expects. FETCH runs
@@ -743,7 +752,10 @@ changed the active set: `hot` now, `restart` at this boot's mount or the next bo
 **Rollback.** The shared boot guard (P3-10) also counts while a pack set the last confirmed launch
 did not run is active, and its `roll-back` puts each such pack back to `previous` together with
 the binary; a packs-only rollback needs no restart (the guard runs before MOUNT). Each pack rolled
-back queues `boot_rolled_back` with the pack id and the restored `packSetId`, and a pack that cannot
+back queues `boot_rolled_back` with the pack id and the restored `packSetId`, and its record is
+**held** (`held` in the install state, with a count): the restored install stays active and the
+held record is not fetched again until the stamp pins a different one (an explicit `ensure` of it
+fails with `pack-rolled-back`), so a broken pack costs two failed boots once. A pack that cannot
 install (any code but a transient `network-error`) queues `pack_failed` with its code, both on the
 device report's `updates` while the updater is active. A confirmed launch confirms the running
 set. The device report carries `content: {packSetId}`.

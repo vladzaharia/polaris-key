@@ -229,6 +229,7 @@ class ErrorCode:
     PACK_STATE_UNREADABLE: Final = "pack-state-unreadable"
     PCK_DIRECTORY_REFUSED: Final = "pck-directory-refused"
     PCK_ENGINE_MISMATCH: Final = "pck-engine-mismatch"
+    PACK_ROLLED_BACK: Final = "pack-rolled-back"
     MARKER_REJECTED: Final = "marker-rejected"
 
 
@@ -348,6 +349,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "pack-state-unreadable",
     "pck-directory-refused",
     "pck-engine-mismatch",
+    "pack-rolled-back",
     "marker-rejected",
 )
 
@@ -469,6 +471,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "pack-state-unreadable": "client",
         "pck-directory-refused": "client",
         "pck-engine-mismatch": "client",
+        "pack-rolled-back": "client",
         "marker-rejected": "client",
     }
 )

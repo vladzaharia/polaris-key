@@ -9,6 +9,8 @@ extends RefCounted
 ##   supports(format_version) -> bool
 ##   check_output(source, record, variant) -> {ok} or {ok: false, code, detail, path?}: a check of
 ##       the verified output before it is committed (godot.pck: the header and the directory)
+##   check_tree(dir, record, variant)  the same for a staged tree (files.tree: the data-only rule
+##       over every file that is a Godot resource)
 ##   activate(install)       a committed install becomes live (hot: at commit; restart: at load)
 ##   deactivate(install)     a live hot install is replaced or rolled back
 
@@ -22,6 +24,11 @@ func supports(_format_version: int) -> bool:
 
 
 func check_output(_source: PKeyByteSource, _record: Dictionary, _variant: Dictionary) -> Dictionary:
+	return {"ok": true}
+
+
+## The same check over a staged TREE payload (`dir`) before it commits.
+func check_tree(_dir: String, _record: Dictionary, _variant: Dictionary) -> Dictionary:
 	return {"ok": true}
 
 

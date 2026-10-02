@@ -274,8 +274,10 @@ package, and every decision in §8.1 that names it as owner, override this brief
 - **The 4.4.1 exporter's `uid_cache.bin`** names the whole project's UIDs, excluded files included
   (4.7.2 names only what it exports). Mounted with `replace_files=true`, such a pack re-points a UID
   it shares with the main project. The f_uid case passes in full on 4.7.2 (editor and template);
-  on 4.4.1 the suite pins the measured behaviour. The device check does not inspect
-  `uid_cache.bin` (the publish lint does not either); a lint warning is a P4-03 follow-up.
+  on 4.4.1 the suite pins the measured behaviour. After review (N6) the device check and the lint
+  both refuse a `uid_cache.bin` entry naming a path outside the pack, so such a 4.4.1 pack is now
+  `pck-directory-refused` at `.godot/uid_cache.bin`; the suite still mounts it unchecked to keep
+  measuring why.
 - **The header check** adds a device-only rule to the lint's `requires.engine`: a pack built by a
   newer engine than the running one is `pck-engine-mismatch`.
 - **Shared fixtures.** `packages/cli/test/godotFixtures.test.ts` writes P4-03's fixture PCKs and
@@ -298,3 +300,20 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `PKeyPacks.root` may be a MEMFS path (`/pkey`), so packs re-download after a reload. A follow-up.
 - **P4-10.** P4-10 has not landed (content corpus and plan matrix are still version 1), so
   `plan_target`'s chunk rule and the chunk sections stay with it (its §8.5).
+- **Review round (B1–B4, N1–N6).** The review made downloaded GDScript run on 4.7.2 and 4.4.1
+  through two holes the CLI lint shared, now closed on both sides with permanent fixtures:
+  (B1) Godot simplifies pack paths at mount, so `packs/a/../../x` and `packs/a/evil.gd/.` escaped
+  the prefix or the extension rule. `PKeyPck.path_ok` and the CLI's `pckPathOk` refuse any path
+  that is not already normal, and duplicates, in the reader (`path-dotdot`, `path-trailing-dot`,
+  `path-dot-segment`). (B2) the binary loader takes `.material`, `.mesh`, `.anim`…, so resources
+  are judged by content: an `RSRC` head gets the binary scan, a `[gd_scene`/`[gd_resource` head the
+  text scan, `RSCC` is refused under any name (`content-binary-extensions`), and `files.tree`
+  outputs get the same scan (N5, `PKeyPck.tree_check`). (B3) a packs-only rollback re-fetched the
+  same record on the next FETCH and looped. The install state gains `held` (pack id → {record SHA,
+  count}); a held record is not planned or fetched until the stamp pins another, the restored
+  install counts as active, and `ensure` fails with the new code `pack-rolled-back`. (B4)
+  THREAT-MODEL.md gains "Pack bytes on the device (P4-08)". N1: `on_bake` returns bool and a
+  journal that cannot be written uses a copy host. N2/N3: the bake journal is a list naming only
+  `store/<64 hex>.pck`. N4: a 403 from the blob route is `pack-not-entitled`. N6: `.remap`/`.import`
+  targets and uid cache entries must be in the pack (`remap-outside-pack`,
+  `uid-cache-outside-pack`).

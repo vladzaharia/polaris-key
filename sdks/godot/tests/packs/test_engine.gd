@@ -109,6 +109,25 @@ func _resume(t: PKeyTestContext) -> void:
 
 
 func _refuse(t: PKeyTestContext) -> void:
+	# N5: a files.tree resource that embeds code is refused before the tree commits, whatever its
+	# extension; so is a script by name.
+	var rsrc := PackedByteArray()
+	rsrc.append_array("RSRC".to_ascii_buffer())
+	rsrc.resize(20)
+	var gds := "GDScript".to_utf8_buffer()
+	gds.append(0)
+	var len_bytes := PackedByteArray()
+	len_bytes.resize(4)
+	len_bytes.encode_u32(0, gds.size())
+	rsrc.append_array(len_bytes)
+	rsrc.append_array(gds)
+	for bad in [["level.material", rsrc], ["skin.res", rsrc], ["mod.gd", "extends Node".to_utf8_buffer()], ["menu.cfg", "[gd_scene format=3]\n[sub_resource type=\"GDScript\" id=\"s\"]\n".to_utf8_buffer()]]:
+		var tp := F.tree_pack("djdl.mod", "1.0.0", 1, {"ok.json": "{}", bad[0]: bad[1]})
+		var e0 := F.engine(S.scratch("engine-tree-code"), F.FakeTransport.new().add(tp), F.stamp_for([tp]))
+		await e0.load_state([])
+		var r0 := await e0.ensure(["djdl.mod"])
+		t.check("refuse: a files.tree carrying %s is refused before it commits" % bad[0], not r0.ok and String(r0.code) == "pck-directory-refused" and r0.detail.get("path") == bad[0] and e0.doc["active"].is_empty() and not DirAccess.dir_exists_absolute(e0.storage.tree_path(tp["treeDigest"])), str(r0))
+		S.remove_tree(e0.storage.root)
 	var p := F.tree_pack("djdl.hd", "1.0.0", 1, {"a.txt": "x"}, null, {"entitlement": "hd"})
 	var root := S.scratch("engine-refuse")
 	var tr := F.FakeTransport.new().add(p)

@@ -121,6 +121,7 @@ export const ErrorCode = {
   packStateUnreadable: "pack-state-unreadable",
   pckDirectoryRefused: "pck-directory-refused",
   pckEngineMismatch: "pck-engine-mismatch",
+  packRolledBack: "pack-rolled-back",
   markerRejected: "marker-rejected",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -241,6 +242,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "pack-state-unreadable",
   "pck-directory-refused",
   "pck-engine-mismatch",
+  "pack-rolled-back",
   "marker-rejected",
 ];
 
@@ -363,6 +365,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "pack-state-unreadable": "client",
   "pck-directory-refused": "client",
   "pck-engine-mismatch": "client",
+  "pack-rolled-back": "client",
   "marker-rejected": "client",
 };
 

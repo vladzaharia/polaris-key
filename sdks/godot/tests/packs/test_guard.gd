@@ -74,6 +74,28 @@ func _packs_only(t: PKeyTestContext, v1: Dictionary, v2: Dictionary, tr: PKeyPac
 	var ev: Array = report.get("updates", []).filter(func(e): return e["event"] == "boot_rolled_back" and e["deliverable"] == "djdl.l10n")
 	var set_id = PKeyPackClaims.pack_set_id([{"packId": "djdl.l10n", "releaseSha256": v1["recordSha256"]}])
 	t.check("guard: …and the device report says so (boot_rolled_back, the pack, the restored packSetId)", ev.size() == 1 and ev[0]["release"] == "1.0.0" and ev[0].get("fromRelease") == "1.1.0" and ev[0].get("packSetId") == set_id and ev[0].get("code") == "failed-boots", S.canon(report.get("updates")))
+	# B3: the same boot's FETCH (and any later ensure) must not reinstall the rolled-back release
+	# while the stamp still pins it: v1 stays active, nothing is downloaded, it counts as present.
+	(tr as F.FakeTransport).calls.clear()
+	var done: Dictionary = await l3.update.packs.boot_fetch(func(_e): pass)
+	t.check("guard: this boot's FETCH keeps the restored v1 (present, ok, nothing fetched)", done["result"] == "ok" and done["installed"] == ["djdl.l10n"] and (tr as F.FakeTransport).calls.is_empty() and packs.engine.doc["active"]["djdl.l10n"]["recordSha256"] == v1["recordSha256"], "%s %s" % [S.canon(done), S.canon((tr as F.FakeTransport).calls)])
+	var again: PKeyResult = await l3.update.packs.ensure(["djdl.l10n"])
+	t.check("guard: ensure of the rolled-back release is refused with pack-rolled-back, v1 still active", not again.ok and String(again.code) == "pack-rolled-back" and packs.engine.doc["active"]["djdl.l10n"]["recordSha256"] == v1["recordSha256"] and (tr as F.FakeTransport).calls.is_empty(), str(again))
+	t.check("guard: the hold names the rolled-back record and counts it once", packs.engine.doc["held"].get("djdl.l10n", {}).get("recordSha256") == v2["recordSha256"] and int(packs.engine.doc["held"]["djdl.l10n"]["count"]) == 1)
+	# The next launches (same build, same stamp): no reinstall, no rollback, no repeated report.
+	var events_now := (l3.update.updater.slots.load_state()["events"] as Array).filter(func(e): return e["event"] == "boot_rolled_back").size()
+	l3.queue_free()
+	for n in 3:
+		var ln: Node = await _launch(sup, inst, "1.4.0", F.stamp_for([v2]), tr)
+		var gn: Dictionary = await ln.update.run_guard()
+		var dn: Dictionary = await ln.update.packs.boot_fetch(func(_e): pass)
+		var st_n: Dictionary = ln.update.updater.slots.load_state()
+		var rb: int = (st_n["events"] as Array).filter(func(e): return e["event"] == "boot_rolled_back").size()
+		t.check("guard: launch %d after the rollback keeps v1 with no reinstall and no new boot_rolled_back" % (n + 1), gn["action"] == "none" and gn["result"] == "ok" and dn["result"] == "ok" and ln.update.packs.engine.doc["active"]["djdl.l10n"]["recordSha256"] == v1["recordSha256"] and rb == events_now and float(st_n["failedBoots"]) == 0.0 and (tr as F.FakeTransport).calls.is_empty(), "%s %s %s" % [gn, S.canon(dn), S.canon(st_n)])
+		if n < 2:
+			ln.queue_free()
+		else:
+			l3 = ln
 	# A pack the build cannot install (its record is not the pinned release) queues pack_failed.
 	var extra := F.tree_pack("djdl.extra", "1.0.0", 1, {"x.txt": "x"})
 	(tr as F.FakeTransport).add(extra)

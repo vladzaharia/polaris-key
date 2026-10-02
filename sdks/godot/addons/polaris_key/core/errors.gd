@@ -60,6 +60,7 @@ const PACK_NOT_PINNED := &"pack-not-pinned"
 const PACK_NOT_ENTITLED := &"pack-not-entitled"
 const PACK_TYPE_UNSUPPORTED := &"pack-type-unsupported"
 const PACK_NO_VARIANT := &"pack-no-variant"
+const PACK_ROLLED_BACK := &"pack-rolled-back"
 const PCK_DIRECTORY_REFUSED := &"pck-directory-refused"
 const PCK_ENGINE_MISMATCH := &"pck-engine-mismatch"
 ## Device management (rename, deauthorize) needs a device token this client does not hold.

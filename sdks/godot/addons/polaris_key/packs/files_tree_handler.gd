@@ -15,3 +15,10 @@ func _init() -> void:
 
 func supports(format_version: int) -> bool:
 	return format_version == 1
+
+
+## A Godot can load a tree's resources (`ResourceLoader.load("user://…")`), so every file sniffed
+## as a Godot resource passes the same embedded-code check as a `godot.pck` entry before the tree
+## commits (P4-08 review N5), and a script or native library is refused by name.
+func check_tree(dir: String, _record: Dictionary, _variant: Dictionary) -> Dictionary:
+	return PKeyPck.tree_check(dir)

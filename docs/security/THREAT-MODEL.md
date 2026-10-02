@@ -1950,6 +1950,77 @@ lint is a publisher-side guard, not a trust boundary: a repo writer with the rel
 any record, so P4-08's device-side directory check must apply the same rule (the same fixtures,
 `packages/cli/test/packFixtures.ts`) before a pack is mounted.
 
+**Pack bytes on the device (P4-08).** The Godot SDK is where a `godot.pck` payload becomes
+mounted resources, so it is the trust boundary the P4-03 lint is not. A mounted pack cannot be
+unmounted and, with `replace_files=true` (needed for `uid://` references), its entries replace
+the app's own files of the same path, so the device decides by itself, before anything is
+committed or mounted:
+
+- **The data-only invariant.** No pack a device mounts may carry code or change what code runs:
+  no script file (`.gd`, `.gdc`, `.cs`, a `.remap` naming one), no native library or
+  `.gdextension`, no resource with an embedded script, no `project.binary` and no
+  `.godot/global_script_class_cache.cfg`. A delivered pack is downloaded code on a store build
+  otherwise (S-07 row 13), and the review found that a pack the CLI admitted could run GDScript
+  on both 4.7.2 and 4.4.1; both bypasses below are now refused on the device and in the lint.
+- **The directory check runs before commit, and so before mount.** The handler reads the PCK
+  directory and checks every entry against the record's `handler.prefixes` and the admission list
+  (`PKeyPck.directory_check`, the same rules and the same fixtures as `packLint.ts`) over the
+  hash-verified output in staging. A refusal abandons the install (`pck-directory-refused`) and
+  nothing reaches the store, the install state or the mount list; a `files.tree` output's files
+  get the same content scan (`PKeyPck.tree_check`). Later boots mount only an install whose
+  payload digest still matches the one checked, so the check is not repeated per boot.
+- **Paths are refused unless already normal.** Godot simplifies a pack path when it mounts it,
+  so `res://packs/a/../../x` lands at `res://x` and `res://packs/a/evil.gd/.` at
+  `res://packs/a/evil.gd`, outside the prefix (or under an extension) the check matched. The
+  reader (`PKeyPck.read_directory`, the CLI's `readPck`) refuses any path with a `..`, `.` or
+  empty segment, a trailing `/`, or one that `simplify_path` would change, and a path the
+  directory names twice, before a rule is evaluated. Every `.remap` and `.import` target must
+  itself be such a path, under `res://`, and an entry of this pack: a target in the base game's
+  `.godot/imported/` or `.godot/exported/` is refused, so a pack loads only its own files.
+- **Resources are scanned by content, never by extension.** Godot's binary loader takes
+  `.material`, `.mesh`, `.anim` and every other resource extension, and its text loader takes
+  any file with a `[gd_scene` / `[gd_resource` head, so every entry's head is sniffed: `RSRC`
+  bytes get the binary scan for an embedded `GDScript`, `CSharpScript` or `script/source`, a text
+  head gets the text scan, whatever the file is called. A compressed resource (`RSCC`) cannot be
+  scanned and is refused under any name.
+- **A pack's uid cache may name only the pack's own files.** A 4.4/4.5 exporter writes the whole
+  project's `uid_cache.bin` into a pack, excluded files included; mounted with
+  `replace_files=true`, a foreign entry re-points one of the app's own UIDs at the pack's file
+  (measured on 4.4.1). An entry naming a path outside the pack is refused on the device and in
+  the lint, so such packs must be exported from 4.6+ or have the cache stripped.
+- **A delta trailer briefly mutates an installed store pack.** A Godot delta decodes through
+  the engine by appending a trailer directory to the store pack that holds the patch base, mounting
+  it under a private `res://__pkey/<session>/` namespace, and truncating the file back after the
+  decode. A journal written before the append (`bake.json` in the plan's staging directory, a
+  list of `{file, size}`) lets the next boot truncate a pack a crash left long, and names only a
+  file of the form `<store>/<64 hex>.pck`, so a forged journal cannot truncate anything else.
+  The decoded bytes are hash-checked against the signed variant before the directory check runs.
+  If the journal cannot be written the decode uses a copy host instead of touching the store.
+- **A pack that fails its boots is not offered again.** When the shared boot guard rolls a pack
+  set back, each rolled-back pack's record SHA is recorded in the install state (`held`, with a
+  count). The SDK does not reinstall it until the content stamp pins a different record, and
+  treats the restored install as active (`pack-rolled-back` on an explicit `ensure`). A broken
+  pack therefore costs two failed boots once, not on every launch.
+
+Residuals not closed by P4-08:
+
+- **A text resource may reference app scripts.** `[ext_resource type="Script" …]` naming a
+  script already in the build passes, since that code ships in the app and is not downloaded.
+  A pack can therefore instantiate any of the app's scripts with property values it chooses;
+  a game whose scripts act on untrusted properties must treat pack data as input. (The binary
+  scan refuses even such references, since it cannot tell them from embedded scripts.)
+- **Data replacement under a pack-chosen name.** An in-pack `.godot/imported/…` or
+  `.godot/exported/…` file whose name equals the base game's replaces it under
+  `replace_files=true`. That changes data, not code, and the record is release-key signed.
+- **Shaders are admitted.** `.gdshader` and shader resources are GPU programs, not scripts the
+  store rules cover, and they pass the check.
+- **Embedded packs are trusted as the build.** A pack embedded in `res://pkey_packs/` is bound
+  by its marker and signed record but not directory-checked: it is part of the build, which is
+  the running code.
+- **The store sits in the attacker's trust domain.** An attacker who can write `user://` can
+  replace a store pack and the digest the install state holds for it. That is the same boundary
+  as the SDK cache (below), and it is no worse than replacing the game itself.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The

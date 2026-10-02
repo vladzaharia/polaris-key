@@ -59,9 +59,9 @@ func run(t: PKeyTestContext) -> void:
 		else:
 			files_k = k
 	var notes: Array = []
-	z.on_bake = func(file: String, size: int) -> void:
+	z.on_bake = func(file: String, size: int) -> bool:
 		notes.append([file, size])
-		storage.note_bake("bake-test", file, size)
+		return storage.note_bake("bake-test", file, size)
 
 	# 1. The whole-payload delta, its base the mounted store file.
 	var sink := PKeyPackStorage.FileSink.new(storage.root.path_join("out-payload.bin"))
@@ -101,4 +101,15 @@ func run(t: PKeyTestContext) -> void:
 	t.check("bake: (a crashed bake leaves the base longer)", tr["ok"] and FileAccess.get_file_as_bytes(base_path).size() > v1.size())
 	var repaired := storage.repair_bakes()
 	t.check("bake: repair_bakes truncates it back and clears the journal", repaired.has(base_path) and PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(base_path)) == v1sha and not FileAccess.file_exists(storage.bake_journal_path("crash-plan")), str(repaired))
+	# A bake journal names only store packs (exactly store/<64 hex>.pck), and a journal that
+	# cannot be written keeps the base untouched: its prefixes go into a copy host instead.
+	t.check("bake: the journal refuses a file that is not a store pack", not storage.note_bake("x", storage.root.path_join("elsewhere.pck"), 1) and not storage.note_bake("x", storage.store_dir().path_join("abc.pck"), 1))
+	var z2 := PKeyPackZstd.new()
+	z2.on_bake = func(_f: String, _n: int) -> bool: return false
+	var trailers_before: int = z2.stats["trailers"]
+	var sink3 := PKeyPackStorage.FileSink.new(storage.root.path_join("out-nojournal.bin"))
+	S.write_file(sink3.path, PackedByteArray())
+	var r3 := PKeyPackApply.apply_delta(variant, payload_k, PKeyByteSource.file(base_path), {"objects": objects, "zstd": z2, "sink": sink3})
+	sink3.close()
+	t.check("bake: without a journal the delta still decodes, through a copy host and no trailer", r3["verdict"].get("ok") == true and z2.stats["trailers"] == trailers_before and z2.stats["hosts"] >= 1 and PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(base_path)) == v1sha, "%s %s" % [S.canon(r3["verdict"]), S.canon(z2.stats)])
 	S.remove_tree(storage.root)

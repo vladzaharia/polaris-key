@@ -58,6 +58,39 @@
       ],
       "warnings": []
     },
+    "path-dotdot": {
+      "reader": "the payload: assets/kaykit/../../escaped.txt: an unsafe path (a `..`, `.` or empty segment, or a character the path rules refuse)."
+    },
+    "path-trailing-dot": {
+      "reader": "the payload: assets/kaykit/evil.gd/.: an unsafe path (a `..`, `.` or empty segment, or a character the path rules refuse)."
+    },
+    "path-dot-segment": {
+      "reader": "the payload: assets/kaykit/./evil.gd/: an unsafe path (a `..`, `.` or empty segment, or a character the path rules refuse)."
+    },
+    "content-binary-extensions": {
+      "errors": [
+        "assets/kaykit/look.material: a binary resource with an embedded GDScript sub-resource; a pack carries data only.",
+        "assets/kaykit/walk.anim: a binary resource with an embedded script's source (script/source); a pack carries data only.",
+        "assets/kaykit/m.mesh: a binary resource with an embedded CSharpScript sub-resource; a pack carries data only.",
+        "assets/kaykit/z.material: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+        "assets/kaykit/level.cfg: an embedded script ([sub_resource type=\"GDScript\"]); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "remap-outside-pack": {
+      "errors": [
+        "assets/kaykit/coin.png.import: remaps a path outside the pack (res://.godot/imported/basegame.png-1234.ctex); a pack loads only its own files.",
+        "assets/kaykit/odd.tscn.remap: remaps a path outside the pack (res://assets/kaykit/../../game/main.scn); a pack loads only its own files.",
+        "assets/kaykit/abs.tscn.remap: remaps a path outside the pack (/tmp/elsewhere.scn); a pack loads only its own files."
+      ],
+      "warnings": []
+    },
+    "uid-cache-outside-pack": {
+      "errors": [
+        ".godot/uid_cache.bin: names a path outside the pack (res://main_res/base.tres); a pack registers only its own UIDs."
+      ],
+      "warnings": []
+    },
     "reader-v2-res": {
       "errors": [
         "the PCK header says engine 4.3.0, outside requires.engine godot-4.7."

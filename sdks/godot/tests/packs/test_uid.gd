@@ -61,6 +61,7 @@ func run(t: PKeyTestContext) -> void:
 	var main_before := _uid(MAIN_UID)
 	t.check("uid: this project's own uid:// resolves before any mount", main_before["has"] and main_before["path"] == "res://tests/packs/uid_main_base.tres", S.canon(main_before))
 	var scratch := S.scratch("uid")
+	var foreign := PackedStringArray()
 	for name in ["A", "B"]:
 		var x := String(name).to_lower()
 		var raw := FileAccess.get_file_as_bytes(dir.path_join("data%s.pck" % name))
@@ -69,15 +70,20 @@ func run(t: PKeyTestContext) -> void:
 		t.check("uid: data%s as exported is refused (it still carries project.binary or the class cache)" % name, not c["ok"] and c["code"] == PKeyPck.DIRECTORY_REFUSED and (c.get("path") == PKeyPck.STRIP_PROJECT_BINARY or c.get("path") == PKeyPck.STRIP_CLASS_CACHE), S.canon(c))
 		var stripped := scratch.path_join("data%s.pck" % name)
 		t.check("uid: data%s stripped" % name, _stripped(raw, stripped))
+		# A 4.4/4.5 exporter writes the WHOLE project's uid cache into a pack, excluded files
+		# included (here the data project's stub of this project's resource); 4.6+ writes only
+		# what it exports. The directory check refuses a cache entry outside the pack (P4-08 N6).
+		var own_foreign := PackedStringArray()
+		for path in _uid_cache_paths(stripped):
+			if not path.begins_with("res://packs/%s/" % x):
+				own_foreign.append(path)
+		foreign.append_array(own_foreign)
 		var c2 := PKeyGodotPckHandler.check(PKeyByteSource.file(stripped), {"handler": {"prefixes": prefixes}}, {})
-		t.check("uid: data%s stripped is admitted (in-prefix remaps, the exported files they name, uid_cache.bin)" % name, c2["ok"], S.canon(c2))
-	# A 4.4/4.5 exporter writes the WHOLE project's uid cache into a pack, excluded files included
-	# (here the data project's stub of this project's resource); 4.6+ writes only what it exports.
-	var foreign := PackedStringArray()
-	for name in ["A", "B"]:
-		for path in _uid_cache_paths(scratch.path_join("data%s.pck" % name)):
-			if not path.begins_with("res://packs/%s/" % String(name).to_lower()):
-				foreign.append(path)
+		if own_foreign.is_empty():
+			t.check("uid: data%s stripped is admitted (in-prefix remaps, the exported files they name, uid_cache.bin)" % name, c2["ok"], S.canon(c2))
+		else:
+			t.check("uid: data%s stripped is refused: its uid_cache.bin names a path outside the pack (this engine's exporter)" % name, not c2["ok"] and c2["code"] == PKeyPck.DIRECTORY_REFUSED and c2.get("path") == ".godot/uid_cache.bin", S.canon(c2))
+	# Mounted anyway (bypassing the check) to keep measuring why the rule exists.
 	for name in ["A", "B"]:
 		t.check("uid: data%s mounts with replace_files=true" % name, PKeyPck.mount(scratch.path_join("data%s.pck" % name), true))
 	t.check("uid: get_global_class_list() is unchanged", ProjectSettings.get_global_class_list().size() == classes_before, "%d → %d" % [classes_before, ProjectSettings.get_global_class_list().size()])
@@ -87,7 +93,7 @@ func run(t: PKeyTestContext) -> void:
 		# Measured on the 4.4.1 floor: its exporter writes the WHOLE project's uid cache into a pack
 		# (here the data project's excluded stub of this project's resource; 4.7.2 writes only what
 		# it exports), and mounting with replace_files=true then points this project's shared UID
-		# at the stub. Packs exported by such an editor must not share a UID with the main project.
+		# at the stub. That is why the directory check refuses such a cache (above).
 		t.info("uid: this %s export's uid_cache.bin also names %s" % [Engine.get_version_info().string, ", ".join(foreign)])
 		t.check("uid: …so on this engine the main project's shared UID follows the pack's stub (measured)", main_after["has"] and foreign.has(main_after["path"]), S.canon(main_after))
 	else:

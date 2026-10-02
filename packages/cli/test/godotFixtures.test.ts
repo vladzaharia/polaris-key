@@ -54,6 +54,7 @@ import {
   kaykitV2,
   PREFIX,
   sha,
+  uidCache,
   writeTestPck,
   type PckOptions,
 } from "./packFixtures.js";
@@ -193,6 +194,93 @@ function checkFixtures(): CheckFixture[] {
           ),
         ],
       ],
+    },
+    // P4-08 review B1: paths the engine would normalise into another place.
+    {
+      name: "path-dotdot",
+      files: [...kaykitV1(), ["assets/kaykit/../../escaped.txt", enc("hello")]],
+    },
+    {
+      name: "path-trailing-dot",
+      files: [
+        ...kaykitV1(),
+        ["assets/kaykit/evil.gd/.", enc("extends Node\n")],
+      ],
+    },
+    {
+      name: "path-dot-segment",
+      files: [
+        ...kaykitV1(),
+        ["assets/kaykit/./evil.gd/", enc("extends Node\n")],
+      ],
+    },
+    // B2: resources are found by content, whatever the extension.
+    {
+      name: "content-binary-extensions",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/look.material",
+          binaryResource(["StandardMaterial3D", "GDScript"], ["albedo"], 8),
+        ],
+        [
+          "assets/kaykit/walk.anim",
+          binaryResource(["Animation"], ["tracks", "script/source"], 9),
+        ],
+        [
+          "assets/kaykit/m.mesh",
+          binaryResource(["ArrayMesh", "CSharpScript"], ["surfaces"], 10),
+        ],
+        [
+          "assets/kaykit/z.material",
+          binaryResource(["StandardMaterial3D"], ["albedo"], 11, "RSCC"),
+        ],
+        [
+          "assets/kaykit/level.cfg",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[sub_resource type="GDScript" id="s"]\nscript/source = "extends Resource"\n',
+          ),
+        ],
+        [
+          "assets/kaykit/plain.material",
+          binaryResource(["StandardMaterial3D"], ["albedo"], 12),
+        ],
+      ],
+    },
+    // N6: an in-prefix .import or .remap names files of this pack only, and so does the uid cache.
+    {
+      name: "remap-outside-pack",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/coin.png.import",
+          enc(
+            '[remap]\n\nimporter="texture"\npath="res://.godot/imported/basegame.png-1234.ctex"\n',
+          ),
+        ],
+        [
+          "assets/kaykit/odd.tscn.remap",
+          enc('[remap]\n\npath="res://assets/kaykit/../../game/main.scn"\n'),
+        ],
+        [
+          "assets/kaykit/abs.tscn.remap",
+          enc('[remap]\n\npath="/tmp/elsewhere.scn"\n'),
+        ],
+      ],
+    },
+    {
+      name: "uid-cache-outside-pack",
+      files: kaykitV1().map(([p, b]): [string, Uint8Array] =>
+        p === ".godot/uid_cache.bin"
+          ? [
+              p,
+              uidCache([
+                [1111n, "res://assets/kaykit/dice.png"],
+                [4444n, "res://main_res/base.tres"],
+              ]),
+            ]
+          : [p, b],
+      ),
     },
     // The reader: layouts it reads, and the header and entry flags it refuses with a path.
     {

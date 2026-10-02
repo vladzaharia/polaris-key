@@ -125,6 +125,7 @@ public enum ErrorCode {
     public static let packStateUnreadable = "pack-state-unreadable"
     public static let pckDirectoryRefused = "pck-directory-refused"
     public static let pckEngineMismatch = "pck-engine-mismatch"
+    public static let packRolledBack = "pack-rolled-back"
     public static let markerRejected = "marker-rejected"
 }
 
@@ -244,6 +245,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "pack-state-unreadable",
     "pck-directory-refused",
     "pck-engine-mismatch",
+    "pack-rolled-back",
     "marker-rejected",
 ]
 
@@ -363,6 +365,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "pack-state-unreadable": "client",
     "pck-directory-refused": "client",
     "pck-engine-mismatch": "client",
+    "pack-rolled-back": "client",
     "marker-rejected": "client",
 ]
 

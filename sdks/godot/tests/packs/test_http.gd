@@ -4,7 +4,7 @@ extends RefCounted
 # the pinned record from discovery's `release.endpoints.record`, objects from
 # `distribution.endpoints.blobs` with gzip off, the device bearer to the control plane's origin
 # only (and dropped on a cross-origin redirect), an interrupted object resumed with Range and
-# If-Range at the next ensure, a 403 (P4-05's `delivery_gate_missing`) counted as a failed fetch,
+# If-Range at the next ensure, a 403 (P4-05's `delivery_gate_missing`) as `pack-not-entitled`,
 # the pack signals, packSetId on the device report, and the boot's FETCH events.
 
 const S := preload("res://tests/packs/support.gd")
@@ -132,7 +132,7 @@ func run(t: PKeyTestContext) -> void:
 		return {"status": 200, "headers": {"Content-Type": "application/jose"}, "body": p3["jws"]}
 	plan["/djdl/distribution/blobs/"] = {"status": 403, "headers": {"Content-Type": "application/json"}, "body": "{\"error\":{\"code\":\"delivery_gate_missing\"}}"}
 	r = await packs.ensure(["djdl.gated"])
-	t.check("http: a 403 delivery_gate_missing from the blob route fails the fetch (network-error)", not r.ok and r.code == PKeyErrors.NETWORK, str(r))
+	t.check("http: a 403 delivery_gate_missing from the blob route is pack-not-entitled, not a network error", not r.ok and String(r.code) == "pack-not-entitled", str(r))
 
 	# The boot's FETCH events through boot_fetch (the stamp's required packs, all current now).
 	var events: Array = []

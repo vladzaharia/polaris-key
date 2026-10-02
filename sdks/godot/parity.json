@@ -151,11 +151,11 @@
     },
     "packs.state": {
       "status": "implemented",
-      "note": "P4-08: packs/state.gd and PKeyPackEngine (client-core's PackEngine) over PKeyPackStorage in user://pkey (staging, store/<sha256>.pck, trees/<sha256>/, content/state.json): journal, Range/If-Range resume, read-back before every rename, torn-state quarantine with its saved snapshot, unreadable-state refusal, deferred installs, GC roots, embedded baselines from res://pkey_packs/; packSetId on devices/report; the shared boot guard rolls a failed pack set back with the binary."
+      "note": "P4-08: packs/state.gd and PKeyPackEngine (client-core's PackEngine) over PKeyPackStorage in user://pkey (staging, store/<sha256>.pck, trees/<sha256>/, content/state.json): journal, Range/If-Range resume, read-back before every rename, torn-state quarantine with its saved snapshot, unreadable-state refusal, deferred installs, GC roots, embedded baselines from res://pkey_packs/; packSetId on devices/report; the shared boot guard rolls a failed pack set back with the binary and holds each rolled-back record (held, with a count) until the stamp pins another (pack-rolled-back on ensure)."
     },
     "packs.handlers": {
       "status": "implemented",
-      "note": "P4-08: PolarisKey.update.packs.register_handler; files.tree (hot, versioned directory plus pointer swap) and godot.pck (restart; the header and directory checks before commit and mount; mounted in mountOrder, one per frame after the first frame, replace_files=true, from content-addressed paths) built in."
+      "note": "P4-08: PolarisKey.update.packs.register_handler; files.tree (hot, versioned directory plus pointer swap) and godot.pck (restart; the header and directory checks before commit and mount: normal paths only, resources judged by content (RSRC/text head, RSCC refused), remap/import targets and uid_cache.bin entries inside the pack; files.tree outputs content-scanned too; mounted in mountOrder, one per frame after the first frame, replace_files=true, from content-addressed paths) built in."
     },
     "packs.provides": {
       "status": "planned",

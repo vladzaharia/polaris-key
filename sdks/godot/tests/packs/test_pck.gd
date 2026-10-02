@@ -72,6 +72,8 @@ func run(t: PKeyTestContext) -> void:
 	else:
 		t.info("pck: the nested-mount probe needs a 4.7 engine (the fixture is PCK v4)")
 
+	_review_repros(t)
+
 	# remap_targets and embedded_code (the CLI's unit probes).
 	S.check_same(t, "pck: remap_targets reads path, path.<x> and dest_files", Array(PKeyPck.remap_targets('[remap]\npath.s3tc="res://a/b.ctex"\npath.etc2="res://a/c.ctex"\n[deps]\ndest_files=["res://a/b.ctex", "res://a/c.ctex"]\nsource_file="res://x.png"\n')), ["a/b.ctex", "a/c.ctex"])
 	t.check("pck: a .ctex is never scanned for code", PKeyPck.embedded_code(".godot/imported/t.png-1.s3tc.ctex", "GST2 GDScript".to_utf8_buffer()) == "")
@@ -87,4 +89,48 @@ func run(t: PKeyTestContext) -> void:
 		t.check("pck: truncate restores the file byte for byte", PKeyPck.truncate(copy, good.size()) and PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(copy)) == PKeyPackClaims.sha256_hex(good))
 	else:
 		t.info("pck: this engine writes PCK v%d; the trailer needs v3+ (the GDDL route is 4.6+)" % ver)
+	S.remove_tree(scratch)
+
+
+## The P4-08 review's bypasses (esc.gd, esc2.gd, ext2.gd), written by this engine's own PCK writer:
+## each must be refused before anything could mount it.
+func _review_repros(t: PKeyTestContext) -> void:
+	var scratch := S.scratch("pck-repro")
+	var ver := PKeyPck.helper_version()
+	var rec := {"handler": {"prefixes": ["res://packs/a/"]}}
+	var gd := "extends Node\nfunc _ready():\n\tprint(\"downloaded code ran\")\n".to_utf8_buffer()
+	var tres := "[gd_resource type=\"Resource\" format=3]\n\n[resource]\n".to_utf8_buffer()
+	var cases := [
+		["`..` escapes the prefix", [{"path": "res://packs/a/../../escaped.txt", "bytes": "hello".to_utf8_buffer()}, {"path": "res://packs/a/../../tests/packs/uid_main_base.tres", "bytes": tres}]],
+		["a trailing `/.` hides a script", [{"path": "res://packs/a/evil.gd/.", "bytes": gd}]],
+		["`./` and a trailing `/` hide a script", [{"path": "res://packs/a/./evil.gd/", "bytes": gd}]],
+		["`//` hides a script", [{"path": "res://packs/a//evil.gd/.", "bytes": gd}]],
+		["a backslash", [{"path": "res://packs/a/x\\..\\y.txt", "bytes": gd}]],
+		["the same file twice by case", [{"path": "res://packs/a/A.txt", "bytes": gd}, {"path": "res://packs/a/a.txt", "bytes": gd}]],
+	]
+	var n := 0
+	for c in cases:
+		var out := scratch.path_join("repro%d.pck" % n)
+		n += 1
+		if PKeyPck.write(out, c[1], ver) != OK:
+			t.check("pck repro: %s (written)" % c[0], false)
+			continue
+		var src := PKeyByteSource.file(out)
+		var dir := PKeyPck.read_directory(src)
+		var chk := PKeyGodotPckHandler.check(src, rec, {})
+		t.check("pck repro: %s is refused by the reader" % c[0], not dir["ok"] and dir["error"] == PKeyPck.DIRECTORY_REFUSED and not chk["ok"] and chk["code"] == PKeyPck.DIRECTORY_REFUSED, "%s %s" % [S.canon(dir), S.canon(chk)])
+	# ext2.gd: a binary resource with another extension (.material) carrying a GDScript.
+	var s := GDScript.new()
+	s.source_code = "extends StandardMaterial3D\nfunc _init():\n\tpass\n"
+	s.reload()
+	var m := StandardMaterial3D.new()
+	m.set_script(s)
+	var mat := scratch.path_join("evil.material")
+	var saved := ResourceSaver.save(m, mat)
+	var bytes := FileAccess.get_file_as_bytes(mat)
+	var out := scratch.path_join("material.pck")
+	PKeyPck.write(out, [{"path": "res://packs/a/look.material", "bytes": bytes}], ver)
+	var chk := PKeyGodotPckHandler.check(PKeyByteSource.file(out), rec, {})
+	t.check("pck repro: a .material (RSRC) with an embedded GDScript is refused by content", saved == OK and bytes.slice(0, 4).get_string_from_ascii() == "RSRC" and not chk["ok"] and chk["code"] == PKeyPck.DIRECTORY_REFUSED and chk.get("path") == "packs/a/look.material", S.canon(chk))
+	t.check("pck repro: embedded_code decides by content, whatever the extension", PKeyPck.embedded_code("packs/a/look.material", bytes) != "" and PKeyPck.embedded_code("packs/a/look.png", bytes) != "")
 	S.remove_tree(scratch)

@@ -42,7 +42,9 @@ const PROBE_TARGET_SHA256 := "1b1958d5c7e290a9341735a94c71f0588a7364e1abb9891d91
 ## Where helper packs are written (removed after each batch).
 var work_dir := "user://pkey/gddl"
 ## Called with (file_path, size) before a trailer is appended to a file, and with (file_path, -1)
-## once it has been truncated back: the engine journals it so a crash mid-bake is repairable.
+## once it has been truncated back: the engine journals it so a crash mid-bake is repairable. It
+## answers true when the journal was written; false keeps the file untouched (its prefixes are
+## copied into a host pack instead).
 var on_bake := Callable()
 ## The last batch's failure, "" when it decoded (or refused) cleanly.
 var last_error := ""
@@ -224,8 +226,11 @@ func _batch(jobs: Array) -> Array:
 		for i in by_file[fp]:
 			var base: PKeyByteSource = jobs[i]["base"]
 			recs.append({"path": "%s/b%d" % [ns, i], "offset": base.file_offset(), "size": base.size})
-		if on_bake.is_valid():
-			on_bake.call(fp, n)
+		if on_bake.is_valid() and on_bake.call(fp, n) != true:
+			last_error = "the bake journal for %s could not be written; its prefixes are copied" % fp
+			for i in by_file[fp]:
+				hosted.append(i)
+			continue
 		var t := PKeyPck.append_trailer(fp, recs, version)
 		if not t["ok"] or int(t["start"]) != n:
 			last_error = "the trailer could not be appended to %s" % fp

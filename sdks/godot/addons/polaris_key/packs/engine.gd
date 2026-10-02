@@ -89,6 +89,8 @@ var _hold_snapshot: Variant = null
 var _unverified_previous := {}
 var _preflight_plans := {}
 var _busy := false
+## The last object fetch was refused with 403 (P4-05: `delivery_gate_missing`, `not_entitled`).
+var _denied := false
 
 
 func _init(p_storage: PKeyPackStorage = null) -> void:
@@ -398,9 +400,22 @@ func rollback_many(ids: PackedStringArray) -> Dictionary:
 		var from = doc["active"].get(id) if doc != null else null
 		var r := await _rollback_one(id)
 		if r.ok and r.detail == true:
-			out[id] = {"from": from, "to": doc["active"][id]}
+			# P3-10's skipVersion for packs: the bad release is held, so this boot's FETCH and any
+			# later ensure keep the restored one until the stamp pins another release.
+			if from is Dictionary:
+				doc = PKeyPackState.hold(doc, id, from["recordSha256"])
+				_persist()
+			out[id] = {"from": from, "to": doc["active"][id], "count": int(doc["held"].get(id, {}).get("count", 1))}
 	_leave()
 	return out
+
+
+## The record SHA-256 the boot guard holds for a pack (rolled back, not to be reinstalled), or "".
+func held(pack_id: String) -> String:
+	if doc == null:
+		return ""
+	var h = doc["held"].get(pack_id)
+	return String(h["recordSha256"]) if h is Dictionary else ""
 
 
 ## Install the pinned release of each pack, in order. A coroutine: ok with detail = the installs
@@ -442,7 +457,7 @@ func estimate(pack_ids: Array) -> Dictionary:
 		if pre.has("error"):
 			out["refused"].append({"packId": String(id), "code": pre["error"]["code"]})
 			continue
-		if pre["kind"] == "current" or pre["plan"]["strategy"] == "noop":
+		if pre["kind"] == "current" or pre["kind"] == "held" or pre["plan"]["strategy"] == "noop":
 			continue
 		out["packs"].append(String(id))
 		if pre["plan"].has("bytes"):
@@ -581,6 +596,12 @@ func _preflight(pack_id: String) -> Dictionary:
 	var emb = _embedded.get(pack_id)
 	if emb is Dictionary and emb["recordSha256"] == pin_sha and not (current is Dictionary):
 		return {"kind": "current", "install": emb}
+	# A release the boot guard rolled back is not installed again while the stamp still pins it;
+	# the restored install (or the embedded baseline) stands in for it.
+	if held(pack_id) == pin_sha:
+		var stand_in = current if current is Dictionary else emb
+		if stand_in is Dictionary:
+			return {"kind": "held", "install": stand_in}
 
 	# 2. The pinned record, by hash, against the pinned release keys.
 	var got: Dictionary = await transport.fetch_record(pin_sha)
@@ -651,7 +672,7 @@ func _preflight(pack_id: String) -> Dictionary:
 			elif variant["files"]["layout"] == "tree":
 				return _err(r["error"], "%s's files index was refused." % pack_id, pack_id, {"path": r.get("path", "")})
 		elif variant["files"]["layout"] == "tree":
-			return _err(String(PKeyErrors.NETWORK), "Fetching %s's files index failed." % pack_id, pack_id)
+			return _err(_fetch_code(), "Fetching %s's files index failed." % pack_id, pack_id)
 	var target := PKeyPackSelect.plan_target(variant, pin_sha, index)
 	if one_shot_budget >= 0 and target["full"] != null and float(variant["full"]["bytes"]) + float(variant["full"]["size"]) > float(one_shot_budget):
 		target["full"] = null
@@ -681,6 +702,8 @@ func _ensure_one(pack_id: String) -> Dictionary:
 	var pre: Dictionary = await _preflight(pack_id)
 	if pre.has("error"):
 		return pre
+	if pre["kind"] == "held":
+		return _err(PKeyConstants.ErrorCode.PACK_ROLLED_BACK, "%s's pinned release was rolled back after failed boots; %s stays active until the build pins another release." % [pack_id, pre["install"]["version"]], pack_id, {"install": pre["install"]})
 	if pre["kind"] == "current":
 		var current: Dictionary = pre["install"]
 		if current.get("embedded") != true and not running.has(pack_id) and current["activation"] == "hot":
@@ -732,7 +755,7 @@ func _ensure_one(pack_id: String) -> Dictionary:
 		for o in objects:
 			if not await _download(plan_id, pack_id, o, prog):
 				# The journal and what is staged stay for the next ensure, which resumes them.
-				return _err(String(PKeyErrors.NETWORK), "Fetching %s's objects failed; the next ensure resumes." % pack_id, pack_id)
+				return _err(_fetch_code(), "Fetching %s's objects failed; the next ensure resumes." % pack_id, pack_id)
 		_emit({"packId": pack_id, "phase": "apply", "done": total, "total": total})
 		var result: Dictionary = await _apply(plan_id, pack_id, cand["strategy"], cand.get("delta"), variant, seeds)
 		if result["verdict"]["ok"]:
@@ -749,6 +772,13 @@ func _ensure_one(pack_id: String) -> Dictionary:
 					return _err(chk["code"], "%s was refused before mounting: %s" % [pack_id, chk.get("detail", "")], pack_id, {"path": chk.get("path", ""), "step": cand["strategy"]})
 				if chk.get("warning", "") != "":
 					push_warning("PolarisKey: %s: %s" % [pack_id, chk["warning"]])
+			elif handler != null and handler.has_method("check_tree"):
+				var tchk: Dictionary = await PKeyPackJob.run(handler.check_tree.bind(storage.out_dir(plan_id), record, variant), "PolarisKey pack check")
+				if not tchk["ok"]:
+					doc = PKeyPackState.abandon_install(doc, pack_id)
+					_persist()
+					storage.remove_staging(plan_id)
+					return _err(tchk["code"], "%s was refused before it committed: %s" % [pack_id, tchk.get("detail", "")], pack_id, {"path": tchk.get("path", ""), "step": cand["strategy"]})
 			var location: String = await PKeyPackJob.run(storage.commit.bind(plan_id, pack_id, variant["payload"]["sha256"], variant["files"]["layout"], result.get("index", index)), "PolarisKey pack commit")
 			if location == "":
 				if first_failure == null:
@@ -886,8 +916,8 @@ func _apply(plan_id: String, pack_id: String, strategy: String, delta: Variant, 
 	return r
 
 
-func _bake_note(file: String, size: int, plan_id: String) -> void:
-	storage.note_bake(plan_id, file, size)
+func _bake_note(file: String, size: int, plan_id: String) -> bool:
+	return storage.note_bake(plan_id, file, size)
 
 
 ## Commit: the pointer swap, activation, garbage collection. A coroutine.
@@ -965,6 +995,7 @@ func _collect() -> void:
 func _download(plan_id: String, pack_id: String, ref: Dictionary, prog: Variant) -> bool:
 	var sha: String = ref["sha256"]
 	var bytes := int(ref["bytes"])
+	_denied = false
 	for attempt in 2:
 		var have := storage.staged_size(plan_id, sha)
 		if have < 0:
@@ -1009,6 +1040,8 @@ func _download(plan_id: String, pack_id: String, ref: Dictionary, prog: Variant)
 					return true
 				if status == 200:
 					return true
+				if status == 403:
+					_denied = true
 				ctx["refused"] = true
 				return false
 			var on_chunk := func(chunk: PackedByteArray) -> bool:
@@ -1051,6 +1084,12 @@ func _download(plan_id: String, pack_id: String, ref: Dictionary, prog: Variant)
 			prog["done"] -= mini(maxi(storage.staged_size(plan_id, sha), 0), bytes)
 		storage.staged_reset(plan_id, sha)
 	return false
+
+
+## A failed object fetch's code: `pack-not-entitled` when the blob route refused with 403 (the
+## delivery gate or the entitlement, P4-05), else `network-error` (the next ensure resumes).
+func _fetch_code() -> String:
+	return PKeyConstants.ErrorCode.PACK_NOT_ENTITLED if _denied else String(PKeyErrors.NETWORK)
 
 
 func _save_checkpoint(pack_id: String, plan_id: String, sha: String, have: int) -> void:
