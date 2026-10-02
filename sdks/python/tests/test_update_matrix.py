@@ -6,7 +6,7 @@ the SAME file, with the same ids: the vocabularies, ``versionCases`` through
 ``compare_versions``, ``capabilityCases`` through ``effective_capabilities``, ``outletCases``
 through ``resolve_update_outlet``, ``bucketVectors`` through ``rollout_bucket`` and every row
 through ``decide_update`` and ``boot_decision``. ``outlet-matrix.json``'s compiled tables are
-asserted equal to ``polaris_key.core.outlets`` (its detection rows are P3-11's).
+asserted equal to ``polaris_key.core.outlets``; its detection rows run in ``test_outlet_matrix.py``.
 """
 
 from __future__ import annotations

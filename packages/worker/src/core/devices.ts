@@ -865,9 +865,9 @@ export async function handleDevices(
 // that isn't added here vanishes without an error anywhere — add the key here and a test in
 // licensingEdge.test.ts together. The first six keys are the software-facts additions; the
 // next nine are the original v1 set and must stay; `engine` and `outlet` (P1-05) carry a game
-// engine's build facts and the store the build was published through, each with its own bound
-// below; `updates` (P6-03) carries update outcome events, validated strictly and counted by
-// `core/updateHealth.ts`.
+// engine's build facts and where the install came from (the stamped outlet refined by on-device
+// detection, P3-11; an outlet id or kind only), each with its own bound below; `updates` (P6-03)
+// carries update outcome events, validated strictly and counted by `core/updateHealth.ts`.
 export const REPORT_KEYS = [
   "os",
   "hardware",

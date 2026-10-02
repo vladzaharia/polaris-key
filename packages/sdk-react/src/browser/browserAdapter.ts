@@ -52,6 +52,8 @@ import type {
 import {
   CACHE_VERSION,
   compareSemver,
+  detectOutlet,
+  detectionStamp,
   effectiveNow,
   highWaterMark,
   isValidHostOutlet,
@@ -68,6 +70,7 @@ import type {
 } from "@polaris-key/protocol/update";
 import type { ProductCatalog } from "@polaris-key/catalog";
 import { SDK_VERSION } from "../version.js";
+import { readOutletSignals, type WebOutletEnvironment } from "./outlet.js";
 import {
   configSource,
   currentDeviceFromState,
@@ -148,8 +151,15 @@ export interface BrowserUpdateConfig {
   outlet?: HostOutlet;
   /** The build stamp's outlet fields. Defaults to `WEB_OUTLET_STAMP`. */
   stamp?: OutletStamp | null;
-  /** A detection result, until P3-11 detects in-page. */
+  /** A detection result the host computed itself. When it is absent and `outlet` is too, the
+   *  adapter detects in-page (`detect`). */
   detected?: DetectedOutlet | null;
+  /** Detect the outlet in-page when neither `outlet` nor `detected` is given: the page's
+   *  display mode (`readOutletSignals`) and the stamp, through client-core's `detectOutlet`,
+   *  whose result goes to `resolveUpdateOutlet` as `detected`. Default true. */
+  detect?: boolean;
+  /** What the in-page reader looks at; the page's globals by default (tests pass a fake). */
+  outletEnvironment?: WebOutletEnvironment;
   /** The installed build. `version` defaults to the adapter's `version`; a browser is
    *  `platform: "web"`, `arch: "wasm32"`, with no format, engine or build number. */
   installed?: Partial<InstalledBuild>;
@@ -290,6 +300,7 @@ export class BrowserAdapter implements PolarisAdapter {
   private offlineState: OfflineState | null = null;
   private readonly updateConfig: BrowserUpdateConfig | null;
   private readonly updateOutlet: ResolvedOutlet | null;
+  private readonly updateDetected: DetectedOutlet | null;
   /** The verified discovery document, once it answered. */
   private discovery: DiscoveryDocument | null = null;
   private discovered: Promise<void> = Promise.resolve();
@@ -319,6 +330,7 @@ export class BrowserAdapter implements PolarisAdapter {
         : opts.offlineStore;
     this.updateConfig = opts.update ?? null;
     this.updateOutlet = null;
+    this.updateDetected = null;
     if (this.updateConfig) {
       const u = this.updateConfig;
       if (u.outlet !== undefined && !isValidHostOutlet(u.outlet))
@@ -331,16 +343,37 @@ export class BrowserAdapter implements PolarisAdapter {
           "invalid-options",
           "A pinned release key is also a pinned product key; a release key is never a product key.",
         );
+      const stamp = u.stamp === undefined ? WEB_OUTLET_STAMP : u.stamp;
+      let detected = u.detected ?? null;
+      // §2.9: detection runs at every launch and is never cached; a host value always wins.
+      if (u.outlet === undefined && detected === null && u.detect !== false)
+        detected = detectOutlet({
+          stamp: detectionStamp(stamp),
+          signals: readOutletSignals(u.outletEnvironment),
+        });
+      this.updateDetected = detected;
       this.updateOutlet = resolveUpdateOutlet({
         host: u.outlet,
-        stamp: u.stamp === undefined ? WEB_OUTLET_STAMP : u.stamp,
-        detected: u.detected ?? null,
+        stamp,
+        detected,
       });
     }
     this.store = createStore<PolarisState>(
       initialState("browser", this.capabilities, this.localOverrides),
     );
     void this.load();
+  }
+
+  /** The outlet update decisions use (`resolveUpdateOutlet`'s answer), or null without
+   *  `update` options. For support diagnostics and UI. */
+  get outlet(): ResolvedOutlet | null {
+    return this.updateOutlet;
+  }
+
+  /** The in-page detection result `outlet` was resolved from, or the host's `detected`; null
+   *  when the host named the outlet, turned detection off, or configured no updates. */
+  get detected(): DetectedOutlet | null {
+    return this.updateDetected;
   }
 
   snapshot(): PolarisState {

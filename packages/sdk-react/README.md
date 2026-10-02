@@ -208,8 +208,13 @@ browserAdapter({
   `role="alert"` banner with no dismiss control, whatever the `variant`, never as a full-window
   dialog; `boot` is never `required`. A non-mandatory `platform` answer
   boots as `none`.
-- **Outlet.** A host's `update.outlet` (a kind, or `{id, kind, subkind?}`) wins; otherwise the
-  stamp (`WEB_OUTLET_STAMP` by default) goes through `resolveUpdateOutlet`. Detection is P3-11's.
+- **Outlet.** A host's `update.outlet` (a kind, or `{id, kind, subkind?}`) wins. Otherwise the
+  browser adapter detects in-page (`update.detect`, default true): `readOutletSignals()` reads
+  the display mode (`matchMedia('(display-mode: standalone)')`, `navigator.standalone`, an
+  `android-app://` referrer) and client-core's `detectOutlet` (re-exported here) maps it, with
+  the stamp (`WEB_OUTLET_STAMP` by default), to the result `resolveUpdateOutlet` takes as
+  `detected`. `adapter.outlet` and `adapter.detected` expose it. The desktop adapter defers to the
+  host, whose `@polaris-key/node` client detects in the main process.
 
 ## Desktop bridge contract (protocol v3)
 

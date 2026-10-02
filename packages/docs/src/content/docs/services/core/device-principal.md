@@ -291,9 +291,10 @@ The bounds, in order:
   its known fields survive — `id` (such as `godot-4.7`), `version`, `renderer`, `videoAdapter`,
   `videoVendor`, `videoApi`, `display` as strings truncated to 128 characters, and `debug` as a
   boolean; any other field, or a field of the wrong type, is dropped, and a non-object `engine`
-  is dropped whole. `outlet` is the store the build was published through (`direct`, `steam`,
-  `itch`, `app-store`, …), truncated to 64 characters; the id is not validated, so a newer
-  client's outlet is kept. Both are stored on `devices.reported_json` only; the typed
+  is dropped whole. `outlet` is where the install came from: the build's stamped outlet,
+  refined on the device by outlet detection (`direct`, `steam`, `itch`, `app-store`, …). Only
+  the outlet id or kind is sent, never a raw signal, and nothing when it is unknown. It is
+  truncated to 64 characters; the id is not validated, so a newer client's outlet is kept. Both are stored on `devices.reported_json` only; the typed
   `device_facts` columns do not change.
 - **Probes.** At most **32** entries. Each must be an object with a boolean `present`; anything
   else is skipped. Probe ids are truncated to 64 characters and the optional `version` string to 64. `probes` is the one open-ended map a client controls, so it carries its own bound on top of

@@ -1173,7 +1173,7 @@
       "optional": false,
       "refs": ["notes/E9 §1", "PARITY §7", "README §5.5"],
       "brief": "wp/P3-11-outlet-detection.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P3-12",

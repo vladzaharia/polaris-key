@@ -12,6 +12,13 @@ from .client import (
     UpdateError,
     VersionCheck,
 )
+from ..core.detection import detect_outlet, detection_stamp
+from .outlet import (
+    OutletFs,
+    OutletReaderEnvironment,
+    process_outlet_environment,
+    read_outlet_signals,
+)
 
 __all__ = [
     "UpdateClient",
@@ -20,4 +27,10 @@ __all__ = [
     "VersionCheck",
     "FeedCheck",
     "ReleaseRecordCheck",
+    "OutletFs",
+    "OutletReaderEnvironment",
+    "detect_outlet",
+    "detection_stamp",
+    "process_outlet_environment",
+    "read_outlet_signals",
 ]

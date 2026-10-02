@@ -7,6 +7,7 @@ extends RefCounted
 const FIXTURE := "res://tests/fixtures/build_stamp.json"
 const BAD_CHANNEL := "res://tests/fixtures/build_stamp_bad_channel.json"
 const V2 := "res://tests/fixtures/build_stamp_v2.json"
+const V4 := "res://tests/fixtures/build_stamp_v4_fields.json"
 
 
 func run(t: PKeyTestContext) -> void:
@@ -22,8 +23,15 @@ func _options(t: PKeyTestContext) -> void:
 	t.check("options: 17 report §3.1 outlets", PKeyBuildStamp.OUTLETS.size() == 17 and PKeyBuildStamp.OUTLETS.has("app-store") and not PKeyBuildStamp.OUTLETS.has("app_store"))
 	for row in [["linux", "direct"], ["windows", "direct"], ["macos", "direct"], ["android", "play"], ["ios", "app-store"], ["web", "web"]]:
 		t.check("options: %s defaults to %s" % row, PKeyBuildStamp.default_outlet(row[0]) == row[1])
-	t.check("options: a known outlet has no warning", PKeyBuildStamp.outlet_warning("steam") == "" and PKeyBuildStamp.outlet_warning("app-store") == "")
-	t.check("options: an unknown outlet warns", PKeyBuildStamp.outlet_warning("app_store").contains("Unknown outlet") and PKeyBuildStamp.outlet_warning("gog") != "")
+	t.check("options: a kind or a product outlet id has no outlet warning", PKeyBuildStamp.outlet_warning("steam") == "" and PKeyBuildStamp.outlet_warning("app-store") == "" and PKeyBuildStamp.outlet_warning("itch-beta") == "")
+	t.check("options: an outlet that is not an outlet id warns", PKeyBuildStamp.outlet_warning("app_store").contains("not an outlet id") and PKeyBuildStamp.outlet_warning("Steam") != "" and PKeyBuildStamp.outlet_warning("") != "")
+	# The v4 fields (plans/P3-01.md §8, P3-11).
+	t.check("options: outletKind defaults to the outlet when it is a kind", PKeyBuildStamp.outlet_kind_for("steam", "") == "steam" and PKeyBuildStamp.outlet_kind_for("itch-beta", "") == "" and PKeyBuildStamp.outlet_kind_for("itch-beta", "itch") == "itch")
+	t.check("options: a kind among the 17 has no kind warning", PKeyBuildStamp.outlet_kind_warning("steam", "") == "" and PKeyBuildStamp.outlet_kind_warning("itch-beta", "itch") == "")
+	t.check("options: a custom outlet with no kind warns that it decides as unknown", PKeyBuildStamp.outlet_kind_warning("gog", "").contains("decides as unknown") and PKeyBuildStamp.outlet_kind_warning("gog", "").contains(PKeyBuildStamp.OPTION_OUTLET_KIND))
+	t.check("options: a kind outside the 17 warns", PKeyBuildStamp.outlet_kind_warning("epic-store", "epic").contains("Unknown outlet kind 'epic'"))
+	t.check("options: the 8 subkinds and none have no warning; another warns", ["", "homebrew", "flatpak", "appimage"].all(func(k): return PKeyBuildStamp.outlet_subkind_warning(k) == "") and PKeyBuildStamp.outlet_subkind_warning("brew").contains("Unknown outlet subkind"))
+	t.check("options: the subkinds and kinds equal the generated enums", PKeyBuildStamp.OUTLET_SUBKINDS == Array(PKeyConstants.OUTLET_SUBKIND_VALUES) and PKeyBuildStamp.OUTLETS == Array(PKeyConstants.OUTLET_KIND_VALUES))
 	t.check("options: stable, beta, dev, pr-12 and a manual channel are fine", ["stable", "beta", "dev", "pr-12", "nightly"].all(func(c): return PKeyBuildStamp.channel_warning(c, "1.0.0") == ""))
 	t.check("options: a channel outside the vocabulary warns", PKeyBuildStamp.channel_warning("Beta", "1.0.0").contains("not a channel name") and PKeyBuildStamp.channel_warning("beta\n", "1.0.0") != "" and PKeyBuildStamp.channel_warning("has space", "1.0.0") != "")
 	t.check("options: an alias is stamped canonically, with a warning", PKeyBuildStamp.canonical_channel("staging", "1.0.0") == "beta" and PKeyBuildStamp.channel_warning("staging", "1.0.0").contains("'beta'"))
@@ -41,9 +49,9 @@ func _options(t: PKeyTestContext) -> void:
 
 
 func _outlet_ids(t: PKeyTestContext) -> void:
-	var full := {"steamAppId": "480", "itchGameId": "1000", "flatpakId": "im.plrs.Dice", "snapName": "dice", "caskToken": "dice", "msixFamilyName": "Plrs.Dice_8wekyb3d8bbwe", "bundleId": "im.plrs.dice"}
+	var full := {"steamAppId": "480", "itchGameId": "1000", "flatpakId": "im.plrs.Dice", "snapName": "dice", "caskToken": "dice", "homebrewFormula": "dice", "msixFamilyName": "Plrs.Dice_8wekyb3d8bbwe", "bundleId": "im.plrs.dice"}
 	var r := PKeyBuildStamp.parse_outlet_ids(JSON.stringify(full))
-	t.check("outlet_ids: all seven keys pass unchanged", r["ids"] == full and r["problems"].is_empty(), str(r))
+	t.check("outlet_ids: all eight keys pass unchanged (homebrewFormula included)", r["ids"] == full and r["problems"].is_empty(), str(r))
 	t.check("outlet_ids: \"\" and {} are an empty object", PKeyBuildStamp.parse_outlet_ids("")["ids"] == {} and PKeyBuildStamp.parse_outlet_ids("{}") == {"ids": {}, "problems": []})
 	for bad in ["[1,2]", "\"steam\"", "42", "null"]:
 		r = PKeyBuildStamp.parse_outlet_ids(bad)
@@ -72,6 +80,9 @@ func _outlet_ids(t: PKeyTestContext) -> void:
 func _tags_platform_arch(t: PKeyTestContext) -> void:
 	t.check("tags: outlet and channel, - mapped to _", PKeyBuildStamp.feature_tags("app-store", "pr-12") == PackedStringArray(["pkey_outlet_app_store", "pkey_channel_pr_12"]))
 	t.check("tags: steam and beta", PKeyBuildStamp.feature_tags("steam", "beta") == PackedStringArray(["pkey_outlet_steam", "pkey_channel_beta"]))
+	t.check("tags: an outlet id that is not a kind adds its kind", PKeyBuildStamp.feature_tags("steam-demo", "beta", "steam") == PackedStringArray(["pkey_outlet_steam_demo", "pkey_outlet_steam", "pkey_channel_beta"]))
+	t.check("tags: a kind id adds no second outlet tag", PKeyBuildStamp.feature_tags("app-store", "stable", "app-store") == PackedStringArray(["pkey_outlet_app_store", "pkey_channel_stable"]))
+	t.check("tags: an outlet kind outside the 17 adds nothing", PKeyBuildStamp.feature_tags("steam-demo", "", "bogus") == PackedStringArray(["pkey_outlet_steam_demo"]))
 	for row in [["Linux", "linux"], ["Windows Desktop", "windows"], ["macOS", "macos"], ["Android", "android"], ["iOS", "ios"], ["Web", "web"]]:
 		var feats := PackedStringArray([row[1]]) if row[0] == "Windows Desktop" else PackedStringArray()
 		t.check("platform: %s -> %s" % row, PKeyBuildStamp.platform_for(row[0], feats) == row[1])
@@ -94,8 +105,21 @@ func _encode(t: PKeyTestContext) -> void:
 	var parsed := PKeyJson.parse(text)
 	t.check("encode: strict JSON", parsed["ok"] and parsed["value"] is Dictionary)
 	var doc: Dictionary = parsed["value"]
-	var want := ["arch", "build", "channel", "debug", "embeddedPacks", "engine", "engineVersion", "outlet", "outletIds", "packSources", "pkeyBuild", "platform", "product", "sdkVersion", "version"]
-	t.check("encode: exactly the pkeyBuild 1 keys, sorted", doc.keys() == want, str(doc.keys()))
+	var want := ["arch", "build", "channel", "debug", "embeddedPacks", "engine", "engineVersion", "outlet", "outletIds", "outletKind", "packSources", "pkeyBuild", "platform", "product", "sdkVersion", "version"]
+	t.check("encode: exactly the pkeyBuild 1 keys, sorted (outletKind always; no subkind or format unless set)", doc.keys() == want, str(doc.keys()))
+	t.check("encode: outletKind defaults to the outlet", doc["outletKind"] == "steam")
+	var v4 := inputs.duplicate(true)
+	v4["outlet"] = "itch-beta"
+	v4["outlet_kind"] = "itch"
+	v4["outlet_subkind"] = "appimage"
+	v4["format"] = "zip"
+	var v4doc: Dictionary = PKeyJson.parse(PKeyBuildStamp.encode(PKeyBuildStamp.build(v4)).get_string_from_utf8())["value"]
+	t.check("encode: a custom outlet id with its kind, subkind and format", v4doc["outlet"] == "itch-beta" and v4doc["outletKind"] == "itch" and v4doc["outletSubkind"] == "appimage" and v4doc["format"] == "zip")
+	t.check("encode: the v4 stamp resolves to {itch-beta, itch, appimage}", PKeyDecision.resolve_update_outlet({"stamp": v4doc}) == {"id": "itch-beta", "kind": "itch", "subkind": "appimage"})
+	var nokind := inputs.duplicate(true)
+	nokind["outlet"] = "gog"
+	var nk := PKeyBuildStamp.build(nokind)
+	t.check("encode: a custom outlet with no kind stamps outletKind \"\" and decides as unknown", nk["outletKind"] == "" and PKeyDecision.resolve_update_outlet({"stamp": nk}) == {"id": null, "kind": "unknown", "subkind": null})
 	t.check("encode: no timestamp", not text.to_lower().contains("time") and not text.contains("\"date") and not text.contains("At\""))
 	t.check("encode: integers stay integers", text.contains("\"build\": 42,") and text.contains("\"pkeyBuild\": 1,"), text)
 	t.check("encode: nested keys sorted", text.find("caskToken") < text.find("steamAppId"))
@@ -110,6 +134,9 @@ func _read(t: PKeyTestContext) -> void:
 	t.check("read: build and pkeyBuild come back as ints", s["build"] is int and s["build"] == 7 and s["pkeyBuild"] is int and s["pkeyBuild"] == 1)
 	t.check("read: outletIds keeps only string values of known keys", s["outletIds"] == {"itchGameId": "1000"}, JSON.stringify(s["outletIds"]))
 	t.check("read: an unknown format version is no stamp", PKeyBuildStamp.read(V2) == null)
+	t.check("read: a P1-11 stamp without the v4 fields gains none", not s.has("outletKind") and not s.has("outletSubkind") and not s.has("format"))
+	var v4 = PKeyBuildStamp.read(V4)
+	t.check("read: the v4 fields come back as strings; a non-string one is dropped", v4 is Dictionary and v4.get("outletKind") == "itch" and v4.get("format") == "zip" and not v4.has("outletSubkind") and v4["outletIds"] == {"homebrewFormula": "diceroll", "itchGameId": "1001"}, JSON.stringify(v4))
 	t.check("read: a missing file or empty path is no stamp", PKeyBuildStamp.read("res://tests/fixtures/missing.json") == null and PKeyBuildStamp.read("") == null)
 	var f := PKeyBuildStamp.fallback("dev", "djdl")
 	t.check("fallback: the project version, build 0, no outlet, the given channel", f["version"] == str(ProjectSettings.get_setting("application/config/version", "")) and f["build"] == 0 and f["outlet"] == "" and f["channel"] == "dev" and f["product"] == "djdl")

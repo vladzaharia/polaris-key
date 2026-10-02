@@ -74,6 +74,10 @@
       "types": "./dist/decide.d.ts",
       "default": "./dist/decide.js"
     },
+    "./outlet": {
+      "types": "./dist/outlet.d.ts",
+      "default": "./dist/outlet.js"
+    },
     "./check": {
       "types": "./dist/check.d.ts",
       "default": "./dist/check.js"

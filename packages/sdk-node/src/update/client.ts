@@ -60,6 +60,8 @@ import {
   canonicalArch,
   canonicalPlatform,
   compareSemver,
+  detectOutlet,
+  detectionStamp,
   feedTarget,
   isValidHostOutlet,
   reloadFeeds,
@@ -85,6 +87,7 @@ import type { CacheManager } from "../core/cache.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import type { TrustManager } from "../core/trust.js";
+import { readOutletSignals, type OutletReaderEnvironment } from "./outlet.js";
 import {
   appcastUrlFrom,
   updateEndpointsFrom,
@@ -113,14 +116,25 @@ export interface UpdateClientOptions {
   pinnedReleaseKeys?: TrustSet;
   /** Where this install came from: a kind (`"direct"`, `"steam"`, …), read as
    *  `{id: kind, kind}`, or the product's outlet id with its kind, `{id, kind, subkind?}`. It wins
-   *  over `stamp` and `detected`. Without any of the three the outlet is `unknown`, which is
-   *  never offered an update, so THIS is the option that turns offers on. A Node CLI is never
-   *  store-installed: `"direct"` is the usual value. */
+   *  over `stamp` and `detected`. Without it the client detects the outlet (`detect`); with no
+   *  stamp and no attested evidence the outlet is `unknown`, which is never offered an update.
+   *  A Node CLI is never store-installed: `"direct"` is the usual value. */
   outlet?: HostOutlet;
-  /** The build stamp's outlet fields (P1-11), when the host ships one. */
+  /** The build stamp's outlet fields (P1-11), when the host ships one: `outlet`, `outletKind`,
+   *  `outletSubkind`, and the product's `outletIds` that launcher signals must name. */
   stamp?: OutletStamp | null;
-  /** An outlet detection result, until P3-11 detects in-process. */
+  /** An outlet detection result the host computed itself. When it is absent and `outlet` is
+   *  too, the client detects in-process (`detect`). */
   detected?: DetectedOutlet | null;
+  /** Detect the outlet when neither `outlet` nor `detected` is given: this process's signals
+   *  (`readOutletSignals`) and the stamp, through client-core's `detectOutlet`, whose result goes
+   *  to `resolveUpdateOutlet` as `detected` (plans/P3-01.md §2.9). Default true. */
+  detect?: boolean;
+  /** The product's npm package name, for the `node.packageManager` signal: an npx, npm or pnpm
+   *  launch counts only when the script runs from `node_modules/<packageName>/`. */
+  packageName?: string | null;
+  /** What the readers look at; this process by default (tests pass a fake install). */
+  outletEnvironment?: OutletReaderEnvironment;
   /** The installed build's build number (informational in v4). Default null. */
   buildNumber?: string | null;
   /** The installed build's format (`"zip"`, `"dmg"`, `"exe"`, …): a binary build of another
@@ -203,6 +217,7 @@ export interface UpdateWiring {
 interface Configured {
   releaseKeys: TrustSet;
   outlet: ResolvedOutlet;
+  detected: DetectedOutlet | null;
   methods: BinaryMethod[];
   opts: UpdateClientOptions;
 }
@@ -317,15 +332,33 @@ function configure(
     throw invalid(
       "update.buildNumber, format, engine and binaryVersion must be strings.",
     );
+  if (opts.detect !== undefined && typeof opts.detect !== "boolean")
+    throw invalid("update.detect must be a boolean.");
+  if (!optionalString(opts.packageName))
+    throw invalid("update.packageName must be a string.");
+  let detected = (opts.detected ?? null) as DetectedOutlet | null;
+  // §2.9: detection runs at every launch and is never cached; a host value always wins.
+  if (opts.outlet === undefined && detected === null && opts.detect !== false) {
+    const stamp = detectionStamp(opts.stamp ?? null);
+    detected = detectOutlet({
+      stamp,
+      signals: readOutletSignals({
+        ...((opts.outletEnvironment ?? {}) as OutletReaderEnvironment),
+        packageName: (opts.packageName as string | null | undefined) ?? null,
+        outletIds: stamp?.outletIds ?? null,
+      }),
+    });
+  }
   const outlet = resolveUpdateOutlet({
     host: opts.outlet,
     stamp: opts.stamp ?? null,
-    detected: (opts.detected ?? null) as DetectedOutlet | null,
+    detected,
   });
   if (!outlet) throw invalid("update.outlet is not a valid outlet.");
   return {
     releaseKeys,
     outlet,
+    detected,
     methods: [...(methods as BinaryMethod[])],
     opts,
   };
@@ -412,6 +445,18 @@ export class UpdateClient {
       wiring.options === undefined
         ? null
         : configure(wiring.options, ctx.pinnedTrust);
+  }
+
+  /** The outlet `decide()` uses (`resolveUpdateOutlet`'s answer), or null when the client has
+   *  no `update` options. For support diagnostics and UI. */
+  get outlet(): ResolvedOutlet | null {
+    return this.configured?.outlet ?? null;
+  }
+
+  /** The detection result `outlet` was resolved from (in-process, or the host's `detected`);
+   *  null when the host named the outlet, turned detection off, or configured no updates. */
+  get detected(): DetectedOutlet | null {
+    return this.configured?.detected ?? null;
   }
 
   /**

@@ -136,6 +136,9 @@ export interface ManifestOutletIdentity {
   platforms?: string[];
   /** `direct`: the Homebrew cask token. */
   homebrewCask?: string;
+  /** `direct`: the Homebrew formula name (P3-11), for an install whose executable's realpath is
+   *  under `Cellar/<formula>/`. */
+  homebrewFormula?: string;
   /**
    * `direct` covering Windows: what the Scoop manifest P2b-05 renders installs — `bin`, the
    * executables (paths inside the archive) Scoop shims onto PATH, and `shortcuts`, Start-menu
@@ -171,7 +174,7 @@ export type OutletIdentityField = keyof ManifestOutletIdentity;
 export const OUTLET_IDENTITY_FIELDS: Readonly<
   Record<OutletKind, readonly OutletIdentityField[]>
 > = {
-  direct: ["platforms", "homebrewCask", "scoop"],
+  direct: ["platforms", "homebrewCask", "homebrewFormula", "scoop"],
   "app-store": ["appleId", "bundleId"],
   testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
@@ -214,6 +217,10 @@ const WINGET_ID_RE =
   /^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$/;
 /** A Homebrew cask token: lower-case letters, digits, `-`, `.` and `@`. */
 export const HOMEBREW_CASK_PATTERN = /^[a-z0-9][a-z0-9.@-]{0,99}$/;
+/** A Homebrew formula name (plans/P3-01.md §3): lower-case letters, digits, `.`, `@`
+ *  (`python@3.12`), `+` (`libsigc++`), `_` and `-`. [I] until checked against Homebrew's own
+ *  naming rules. */
+export const HOMEBREW_FORMULA_PATTERN = /^[a-z0-9][a-z0-9.@+_-]{0,99}$/;
 const MAX_CHANNEL_MAP_ENTRIES = 32;
 /** A relative path inside a Windows archive: no drive, no leading separator, no `..`. */
 export const SCOOP_PATH_PATTERN =
@@ -325,6 +332,11 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
       return pattern(
         HOMEBREW_CASK_PATTERN,
         "a Homebrew cask token (lower-case letters, digits, -, . and @)",
+      );
+    case "homebrewFormula":
+      return pattern(
+        HOMEBREW_FORMULA_PATTERN,
+        "a Homebrew formula name (lower-case letters, digits, ., @, +, _ and -)",
       );
     case "scoop":
       return scoopCheck;
@@ -1078,7 +1090,10 @@ export function outletListing(
  * `outletId` is the build's own outlet entry. For each mapping the build's entry is used when it
  * has that kind, otherwise the entry whose id IS the kind (`steam`, `itch`, …). `msixFamilyName`
  * comes only from the build's own entry, and only when it is an `ms-store` or `app-installer`
- * outlet. Returns `null` when the document declares no outlet `outletId`.
+ * outlet. `homebrewFormula` comes from the `direct` entry, and `bundleId` (P3-11) from the
+ * build's own entry when it is an `app-store`, `testflight`, `altstore` or `altstore-pal`
+ * outlet, else from the first of those kinds' entries that declares one. Returns `null` when the
+ * document declares no outlet `outletId`.
  */
 export function distributionOutletIds(
   dist: ManifestDistribution,
@@ -1099,8 +1114,20 @@ export function distributionOutletIds(
   put("flatpakId", entryOf("flathub")?.identity.appId);
   put("snapName", entryOf("snap")?.identity.name);
   put("caskToken", entryOf("direct")?.identity.homebrewCask);
+  put("homebrewFormula", entryOf("direct")?.identity.homebrewFormula);
   if (build.kind === "ms-store" || build.kind === "app-installer")
     put("msixFamilyName", build.identity.packageFamilyName);
+  const apple: readonly OutletKind[] = [
+    "app-store",
+    "testflight",
+    "altstore",
+    "altstore-pal",
+  ];
+  put(
+    "bundleId",
+    (apple.includes(build.kind) ? build.identity.bundleId : undefined) ??
+      apple.map((k) => entryOf(k)?.identity.bundleId).find((v) => !!v),
+  );
   return sortedRecord(out) as Record<string, string>;
 }
 

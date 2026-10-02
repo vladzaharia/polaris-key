@@ -40,11 +40,12 @@ export function normalizeArch(raw: string | undefined): Arch | null {
  * `x86_64` alias afterward — letting arch matching stay exact-set membership.
  */
 function tokens(name: string): string[] {
-  const raw = name
-    .toLowerCase()
-    .replace(/\.[a-z0-9]+$/, "") // drop extension; matched separately
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
+  return splitTokens(name.toLowerCase().replace(/\.[a-z0-9]+$/, "")); // extension matched separately
+}
+
+/** `tokens` without dropping the extension: every `[a-z0-9]+` run, `x86_64` re-joined. */
+function splitTokens(lowered: string): string[] {
+  const raw = lowered.split(/[^a-z0-9]+/).filter(Boolean);
   const out: string[] = [];
   for (let i = 0; i < raw.length; i++) {
     if (raw[i] === "x86" && raw[i + 1] === "64") {
@@ -72,6 +73,41 @@ function archMatches(name: string, arch: Arch): boolean {
   const hasWanted = [...wanted].some((t) => toks.has(t));
   const hasOther = [...other].some((t) => toks.has(t));
   return hasWanted && !hasOther;
+}
+
+/** True when `needle`'s tokens appear as a contiguous run in `hay`. */
+function hasTokenRun(hay: string[], needle: string[]): boolean {
+  if (needle.length === 0) return false;
+  for (let i = 0; i + needle.length <= hay.length; i++) {
+    if (needle.every((t, j) => hay[i + j] === t)) return true;
+  }
+  return false;
+}
+
+/**
+ * Does the file name carry `token` (an arch name, a binary name) as whole tokens — split on
+ * `[^a-z0-9]+` like the matcher, so `x86` is NOT found in `game-x86_64.zip` and `arm` not in
+ * `game-arm64`? Release health uses it for a policy arch it has no alias set for.
+ */
+export function nameHasToken(name: string, token: string): boolean {
+  return hasTokenRun(
+    splitTokens(name.toLowerCase()),
+    splitTokens(token.toLowerCase()),
+  );
+}
+
+/**
+ * Is this file a CLI binary of `binaryName`? A file that carries the binary name as whole tokens
+ * and is a bare executable: no extension, a version-looking numeric "extension"
+ * (`djdl-1.2.3`), or `.exe`. Packages, archives, disk images and sidecars are not, and neither
+ * is a stray extension-less file that does not name the binary (`LICENSE`).
+ *
+ * The one definition release health uses for "a CLI asset", with and without a declared arch.
+ */
+export function isCliBinary(name: string, binaryName: string): boolean {
+  if (!nameHasToken(name, binaryName)) return false;
+  const ext = extOf(name);
+  return ext === "" || /^[0-9]+$/.test(ext) || ext === "exe";
 }
 
 /**

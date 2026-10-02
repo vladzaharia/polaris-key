@@ -308,7 +308,9 @@ as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pinnedReleaseKeys` | `{ kid -> raw Ed25519 key, base64url }`: the **only** keys a release record verifies against. Never merged with the trust pins, never persisted, never learned from the network. |
 | `outlet`            | A kind (`"direct"`, `"steam"`, …) or `{ id, kind, subkind? }`. Wins over `stamp` and `detected`. A Node CLI is never store-installed: `"direct"` is the usual value.             |
-| `stamp`, `detected` | The build stamp's outlet fields and a detection result, through `resolveUpdateOutlet`, until P3-11 detects the outlet in-process.                                                |
+| `stamp`, `detected` | The build stamp's outlet fields (`outlet`, `outletKind`, `outletSubkind`, `outletIds`), and a detection result the host computed itself, through `resolveUpdateOutlet`.          |
+| `detect`            | Default `true`: with no `outlet` and no `detected`, the client reads this process's signals (`readOutletSignals`) and runs `detectOutlet` over them and the stamp (below).       |
+| `packageName`       | The product's npm package name, so an `npx`, `npm` or `pnpm` launch from `node_modules/<packageName>/` counts as the `node.packageManager` signal.                               |
 | `format`            | The installed build's format; a binary build of another format is never offered. Default `null`.                                                                                 |
 | `buildNumber`       | Informational in v4. Default `null`.                                                                                                                                             |
 | `methods`           | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["download"]`.                                                            |
@@ -316,6 +318,19 @@ as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed
 | `engine`            | `godot-<major>.<minor>` for a host that runs Godot code packs; `null` otherwise.                                                                                                 |
 | `platform`, `arch`  | Default to `os.platform()` / `os.arch()`'s canonical values; set them on an OS with none.                                                                                        |
 
+- **Outlet detection** (plans/P3-01.md §2.9). When the host names no `outlet`, the client detects
+  one at construction: `readOutletSignals()` reads the environment (Steam's `SteamAppId`, snap,
+  AppImage, `ITCHIO_APP`), the executable and script path conventions (a Homebrew `Cellar`
+  realpath, WinGet, Scoop and Chocolatey folders, `_npx` and pnpm-store paths), `node:sea`'s
+  `isSea()`, Electron's `process.mas` and `process.windowsStore`, and files the product's own
+  identities name (the Mac App Store receipt in an `.app`, `Caskroom/<caskToken>/`, the
+  `appmanifest_<steamAppId>.acf` of this install, the nearest itch receipt, `/.flatpak-info`). It
+  never enumerates installed applications, and raw values never leave the process. Client-core's
+  `detectOutlet` maps them, with the stamp, to `{kind, confidence, source, subkind}` (the same
+  function every SDK runs over `outlet-matrix.json`), and the result goes to `resolveUpdateOutlet`
+  as `detected`. Without a stamp, only attested evidence (a store receipt) selects an outlet:
+  declared and heuristic signals only restrict one. `client.update.outlet` and
+  `client.update.detected` expose the answer for support diagnostics.
 - **Refusals.** A bad option, or a release key whose bytes are also a trust pin, throws
   `invalid-options` from the constructor; an empty `pinnedReleaseKeys` makes `decide()` throw
   `not-configured`. A product that runs no Update service is refused before dialling

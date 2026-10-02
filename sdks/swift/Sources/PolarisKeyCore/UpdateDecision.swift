@@ -193,16 +193,23 @@ public enum HostOutlet: Sendable, Equatable {
     case outlet(id: String, kind: String, subkind: String? = nil)
 }
 
-/// The build stamp's outlet fields (P1-11).
+/// The build stamp's outlet fields (P1-11; the v4 fields of plans/P3-01.md §8). `outletIds` are
+/// the product's outlet identities, which outlet detection (`detectOutlet`) compares launcher
+/// signals against; `resolveUpdateOutlet` does not read them.
 public struct OutletStamp: Sendable, Equatable {
     public var outlet: String?
     public var outletKind: String?
     public var outletSubkind: String?
+    public var outletIds: [String: String]
 
-    public init(outlet: String? = nil, outletKind: String? = nil, outletSubkind: String? = nil) {
+    public init(
+        outlet: String? = nil, outletKind: String? = nil, outletSubkind: String? = nil,
+        outletIds: [String: String] = [:]
+    ) {
         self.outlet = outlet
         self.outletKind = outletKind
         self.outletSubkind = outletSubkind
+        self.outletIds = outletIds
     }
 }
 

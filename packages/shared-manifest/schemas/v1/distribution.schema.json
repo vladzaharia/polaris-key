@@ -336,7 +336,7 @@
       ]
     },
     "outlet_direct": {
-      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, scoop. Other keys are ignored.",
+      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, homebrewFormula, scoop. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -347,6 +347,9 @@
         },
         "homebrewCask": {
           "$ref": "#/$defs/homebrewCask"
+        },
+        "homebrewFormula": {
+          "$ref": "#/$defs/homebrewFormula"
         },
         "scoop": {
           "$ref": "#/$defs/scoop"
@@ -769,6 +772,11 @@
       "description": "The Homebrew cask token.",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@-]{0,99}$"
+    },
+    "homebrewFormula": {
+      "description": "The Homebrew formula name, for runtime outlet detection (an executable under Cellar/<formula>/).",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.@+_-]{0,99}$"
     },
     "msixPublisher": {
       "description": "The MSIX package Publisher (P3-09): the signing certificate's subject DN exactly as the package manifest states it.",

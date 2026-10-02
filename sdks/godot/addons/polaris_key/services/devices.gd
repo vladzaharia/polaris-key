@@ -249,7 +249,8 @@ func _require_token(core: PKeyCore) -> Variant:
 
 ## The report body: this device's facts, the SDK and build, the gate verdict, and the VALUES of
 ## the documents Core re-verified this session (never anything read back from disk unverified),
-## plus `engine` and, when the build was stamped with one, `outlet`.
+## plus `engine` and `outlet`: PKeyCore.reported_outlet(), the detected outlet id (the stamped
+## outlet refined by on-device detection, P3-11), when there is one.
 func snapshot() -> Dictionary:
 	var core := _core()
 	var out := {}
@@ -269,7 +270,7 @@ func snapshot() -> Dictionary:
 	out["config"] = _values(core.cache.config["doc"].get("config") if core.cache.config != null else null)
 	out["entitlements"] = _values(core.cache.license["doc"].get("entitlements") if core.cache.license != null else null)
 	out["engine"] = PKeyFacts.engine()
-	var outlet := core.outlet()
+	var outlet := core.reported_outlet()
 	if outlet != "":
 		out["outlet"] = outlet
 	return out

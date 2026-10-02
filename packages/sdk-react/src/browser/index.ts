@@ -9,6 +9,11 @@ export {
   type BrowserUpdateConfig,
 } from "./browserAdapter.js";
 export {
+  pageOutletEnvironment,
+  readOutletSignals,
+  type WebOutletEnvironment,
+} from "./outlet.js";
+export {
   buildDownloadUrlFor,
   decideBrowserUpdate,
   type BrowserDecideOptions,

@@ -23,6 +23,8 @@ import {
 } from "../../services/identity/portal/repo.js";
 import { shipsDmgs } from "../../services/release/config.js";
 import { latestReleaseHasDmg } from "../../services/release/store.js";
+import { readAppDeliverable } from "../../services/release/descriptor.js";
+import { hasArtifactMap } from "../../services/release/artifactMap.js";
 import { countKeysByLicense } from "../repo.js";
 import {
   approvalMismatch,
@@ -366,13 +368,23 @@ async function productSetupView(
       ]
     : [];
   // The Sparkle warning is only meaningful when Update renders appcasts for DMGs: the product
-  // has Update enabled AND ships DMGs (same predicate as release health).
+  // has Update enabled AND ships DMGs — the same evidence-based predicate release health uses.
+  // The setup state has no GitHub listing, so "the latest release carries a .dmg" is read from
+  // the truth store, and only for a product that declares no map (a map is its own evidence).
+  const app =
+    release && updateEnabled ? await readAppDeliverable(db, product) : null;
   const latestHasDmg =
-    release && updateEnabled ? await latestReleaseHasDmg(db, product) : false;
+    release && updateEnabled && !hasArtifactMap(app)
+      ? await latestReleaseHasDmg(db, product)
+      : false;
   const warnings =
     release &&
     updateEnabled &&
-    shipsDmgs(release.artifact_policy_json, latestHasDmg) &&
+    shipsDmgs({
+      policyJson: release.artifact_policy_json,
+      app,
+      latestReleaseHasDmg: latestHasDmg,
+    }) &&
     !release.sparkle_ed25519_pub
       ? ["release: Sparkle public key not configured; appcasts may be unsigned"]
       : [];

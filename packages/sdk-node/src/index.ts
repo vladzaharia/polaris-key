@@ -108,6 +108,23 @@ export {
   type UpdateDecideOptions,
   type VersionCheck,
 } from "./update/client.js";
+// Outlet detection (plans/P3-01.md §2.9): this runtime's readers, and client-core's mapping.
+export {
+  processOutletEnvironment,
+  readOutletSignals,
+  type OutletFs,
+  type OutletReaderEnvironment,
+} from "./update/outlet.js";
+export {
+  detectOutlet,
+  detectionStamp,
+  type DetectedOutlet,
+  type DetectionStamp,
+  type OutletIds,
+  type OutletSignals,
+  type OutletStamp,
+  type ResolvedOutlet,
+} from "@polaris-key/client-core";
 
 export {
   appcastUrlFrom,

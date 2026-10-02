@@ -335,3 +335,103 @@ describe("Releases view — floor health (P0-02 wave-1 sync)", () => {
     expect(within(item).getByText(/Lower or clear the floor/)).toBeTruthy();
   });
 });
+
+describe("Releases view — release artifacts in health", () => {
+  it("lists the files the latest release carries, with platform and arch where known", async () => {
+    releaseHealth.mockResolvedValue({
+      health: {
+        ...HEALTH,
+        checks: [
+          ...HEALTH.checks,
+          {
+            id: "release-artifacts",
+            label: "Release artifacts",
+            status: "ok",
+            message: "v1.2.3 carries 2 files.",
+            files: [
+              {
+                name: "game-linux-x86_64.tar.gz",
+                platform: "linux",
+                arch: "x86_64",
+              },
+              { name: "notes.txt" },
+            ],
+          },
+        ],
+      },
+    });
+    render(<Releases slug="djdl" />);
+    const label = await screen.findByText("Release artifacts");
+    const item = label.closest("li")!;
+    expect(within(item).getByText("v1.2.3 carries 2 files.")).toBeTruthy();
+    const files = within(item).getByRole("list", {
+      name: "Release artifacts files",
+    });
+    expect(within(files).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(files).getByText("game-linux-x86_64.tar.gz")).toBeTruthy();
+    expect(within(files).getByText("linux · x86_64")).toBeTruthy();
+    expect(within(files).getByText("notes.txt")).toBeTruthy();
+    // No assumed DMG/CLI rows are rendered: the view shows only the checks it is given.
+    expect(screen.queryByText(/DMG/)).toBeNull();
+  });
+
+  it("renders a declared entry's missing state and an ambiguous entry's candidates generically", async () => {
+    releaseHealth.mockResolvedValue({
+      health: {
+        ...HEALTH,
+        status: "needs-setup",
+        healthy: false,
+        missing: ["win: file matching Game-*-windows.zip"],
+        checks: [
+          ...HEALTH.checks,
+          {
+            id: "artifact-win",
+            label: "win (windows x86_64 zip)",
+            status: "missing",
+            message:
+              'No file in the latest release matches "Game-*-windows.zip".',
+            missing: ["win: file matching Game-*-windows.zip"],
+          },
+          {
+            id: "artifact-linux",
+            label: "linux (linux x86_64 tar.gz)",
+            status: "missing",
+            message: "2 files match, so none is served.",
+            files: [
+              {
+                name: "Game-1-linux.tar.gz",
+                platform: "linux",
+                arch: "x86_64",
+                format: "tar.gz",
+              },
+              {
+                name: "Game-1-rc-linux.tar.gz",
+                platform: "linux",
+                arch: "x86_64",
+                format: "tar.gz",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    render(<Releases slug="djdl" />);
+    const win = (await screen.findByText("win (windows x86_64 zip)")).closest(
+      "li",
+    )!;
+    expect(within(win).getByText("missing")).toBeTruthy();
+    expect(
+      within(win).getByText("Missing: win: file matching Game-*-windows.zip"),
+    ).toBeTruthy();
+    const linux = screen
+      .getByText("linux (linux x86_64 tar.gz)")
+      .closest("li")!;
+    const candidates = within(linux).getByRole("list", {
+      name: "linux (linux x86_64 tar.gz) files",
+    });
+    expect(within(candidates).getAllByRole("listitem")).toHaveLength(2);
+    expect(
+      within(candidates).getAllByText("linux · x86_64 · tar.gz"),
+    ).toHaveLength(2);
+  });
+});

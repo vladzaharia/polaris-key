@@ -485,7 +485,8 @@ function ReleaseHealthCard({
           {health ? <StatusBadge status={health.status} /> : null}
         </div>
         <CardDescription>
-          GitHub App access, published releases, assets, and Sparkle material.
+          GitHub App access, the latest release’s artifacts (declared or as
+          published), and Sparkle material.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -539,6 +540,31 @@ function HealthCheckRow({
         <p className="mt-1 text-xs text-warning">
           Missing: {check.missing.join(", ")}
         </p>
+      ) : null}
+      {check.files?.length ? (
+        <ul
+          className="mt-2 space-y-1 text-xs"
+          aria-label={`${check.label} files`}
+        >
+          {check.files.map((file) => {
+            const facts = [file.platform, file.arch, file.format].filter(
+              Boolean,
+            );
+            return (
+              <li
+                key={file.name}
+                className="flex flex-wrap items-baseline justify-between gap-x-3"
+              >
+                <span className="break-all font-mono">{file.name}</span>
+                {facts.length ? (
+                  <span className="text-muted-foreground">
+                    {facts.join(" · ")}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       ) : null}
       {isFloorCheck(check.id) ? (
         <p className="mt-1 text-xs text-muted-foreground">
