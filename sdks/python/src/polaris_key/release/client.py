@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 
-from ..constants_generated import ErrorCode
+from ..constants_generated import ErrorCode, Feature
 from ..core.context import CoreContext
 from ..core.errors import PolarisError
 from ..core.token import TokenManager
@@ -61,7 +61,7 @@ class ReleaseClient:
         Release: a client that has not been told the service exists must not probe for it
         (D-21).
         """
-        self._ctx.require_service("release")
+        self._ctx.require_service("release", Feature.RELEASE_CHANGELOG)
         res = self._get("release/changelog")
         body = _json_or_empty(res)
         entries = body.get("entries")
@@ -72,7 +72,7 @@ class ReleaseClient:
     def install_url(self) -> str:
         """The canonical install-script URL, for a host that wants to print it rather
         than run it."""
-        self._ctx.require_service("release")
+        self._ctx.require_service("release", Feature.RELEASE_DOWNLOAD)
         return self._ctx.url("release/install.sh")
 
     def download_url(
@@ -88,7 +88,7 @@ class ReleaseClient:
 
         Built, not fetched: the caller streams it themselves.
         """
-        self._ctx.require_service("release")
+        self._ctx.require_service("release", Feature.RELEASE_DOWNLOAD)
         name = f"{binary}-{arch}{'.dmg' if dmg else ''}"
         url = self._ctx.url(f"release/dl/{quote(version, safe='')}/{quote(name, safe='')}")
         if checksum:

@@ -1005,3 +1005,98 @@ public let PLATFORM_SPELLINGS: [String: String] = [
     "web": "web",
     "browser": "web",
 ]
+
+/// One declared N/A: on `runtime`, the feature is unsupported for `reason`.
+public struct CapabilityNa: Sendable, Equatable {
+    public let runtime: String
+    public let reason: String
+
+    public init(runtime: String, reason: String) {
+        self.runtime = runtime
+        self.reason = reason
+    }
+}
+
+/// One feature's row in `CAPABILITIES`.
+public struct CapabilityRow: Sendable, Equatable {
+    public let status: String
+    public let service: String
+    public let na: [CapabilityNa]
+
+    public init(status: String, service: String, na: [CapabilityNa]) {
+        self.status = status
+        self.service = service
+        self.na = na
+    }
+}
+
+/// The parity-registry id of the SDK this module belongs to.
+public let CAPABILITY_SDK = "swift"
+
+/// The runtimes this SDK's manifest lists.
+public let CAPABILITY_RUNTIMES: [String] = ["macos", "ios"]
+
+/// This SDK's capability table, generated from its parity manifest (tools/capabilities.ts): per feature, the manifest's status, the owning service and every declared (runtime, reason) N/A. `supports()` reads it (P1b-10, PARITY §2.2).
+public let CAPABILITIES: [String: CapabilityRow] = [
+    "core.verify": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.cache": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.bundle": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.discover": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.sync": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.local": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.headers": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.errors": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.caps": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.store": CapabilityRow(status: "implemented", service: "core", na: []),
+    "license.gate": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.enroll": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.deactivate": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.entitlements": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.channels": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.reregister": CapabilityRow(status: "implemented", service: "license", na: []),
+    "config.resolve": CapabilityRow(status: "implemented", service: "config", na: []),
+    "config.list": CapabilityRow(status: "implemented", service: "config", na: []),
+    "config.secret": CapabilityRow(status: "implemented", service: "config", na: []),
+    "config.schema": CapabilityRow(status: "implemented", service: "config", na: []),
+    "config.mint": CapabilityRow(status: "implemented", service: "config", na: []),
+    "config.mirror": CapabilityRow(status: "implemented", service: "config", na: []),
+    "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
+    "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
+    "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
+    "devices.manage": CapabilityRow(status: "implemented", service: "core", na: []),
+    "devices.report": CapabilityRow(status: "implemented", service: "core", na: []),
+    "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
+    "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
+    "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
+    "update.check": CapabilityRow(status: "implemented", service: "update", na: []),
+    "update.feed": CapabilityRow(status: "implemented", service: "update", na: []),
+    "update.decide": CapabilityRow(status: "implemented", service: "update", na: []),
+    "update.driver": CapabilityRow(status: "implemented", service: "update", na: [CapabilityNa(runtime: "ios", reason: "outlet")]),
+    "update.bootguard": CapabilityRow(status: "planned", service: "update", na: []),
+    "outlet.detect": CapabilityRow(status: "implemented", service: "update", na: []),
+    "packs.record": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.plan": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.index.files": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.index.chunks": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.apply.full": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.apply.file": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.apply.chunk": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.apply.delta": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.state": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.handlers": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.provides": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.transport.apple": CapabilityRow(status: "planned", service: "distribution", na: []),
+    "packs.transport.play": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "packs.transport.steam": CapabilityRow(status: "planned", service: "distribution", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "packs.transport.msix": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "packs.transport.flatpak": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "ui.stages": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.kit": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "commerce.receipt": CapabilityRow(status: "planned", service: "license", na: []),
+]
+
+/// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
+public let CAPABILITY_DIGEST = "cd46ce3bc05f921e383eae59e9a659a5ede12e5ee2256359b141c60697bee6cc"

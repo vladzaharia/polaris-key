@@ -162,7 +162,7 @@ public final class IdentityClient: Sendable {
     /// No bearer is sent even when the device holds a token: a sign-in asks for the IDENTITY's
     /// credential, and the server binds the flow to this device by its id.
     public func beginSignIn(deviceName: String? = nil) async throws -> SignInPrompt {
-        try await core.requireService(.identity)
+        try await core.requireService(.identity, feature: Feature.identityDevicecode)
         var body: [String: String] = ["deviceId": await core.deviceId]
         if let name = deviceName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
             body["deviceName"] = name
@@ -201,7 +201,7 @@ public final class IdentityClient: Sendable {
     /// One poll, where an interval-less `slow_down` lengthens `current` — the interval the caller
     /// is pacing at — rather than the prompt's original one.
     private func poll(_ prompt: SignInPrompt, current: Int) async throws -> SignInPoll {
-        try await core.requireService(.identity)
+        try await core.requireService(.identity, feature: Feature.identityDevicecode)
         let response = try await post(
             "identity/auth/device/poll",
             ["deviceCode": prompt.deviceCode, "deviceId": await core.deviceId])
@@ -244,7 +244,7 @@ public final class IdentityClient: Sendable {
     /// `expiresAt` has passed, without asking the server. Cancelling the task stops polling and
     /// throws `CancellationError`.
     public func waitForSignIn(_ prompt: SignInPrompt) async throws -> SignInResult {
-        try await core.requireService(.identity)
+        try await core.requireService(.identity, feature: Feature.identityDevicecode)
         var interval = prompt.interval
         while true {
             try Task.checkCancellation()

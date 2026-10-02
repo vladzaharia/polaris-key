@@ -27,7 +27,7 @@ extends RefCounted
 ## `local-only`.
 
 ## The report's top-level keys, all on the Worker's allowlist (core/devices.ts REPORT_KEYS).
-const REPORT_KEYS := ["os", "hardware", "runtime", "locale", "timezone", "probes", "sdk", "sdkVersion", "appVersion", "platform", "arch", "gate", "config", "entitlements", "engine", "outlet"]
+const REPORT_KEYS := ["os", "hardware", "runtime", "locale", "timezone", "probes", "sdk", "sdkVersion", "appVersion", "platform", "arch", "gate", "config", "entitlements", "engine", "outlet", "caps"]
 ## The roster's wire fields and the names this API returns them under.
 const DEVICE_FIELDS := {
 	"id": "id",
@@ -250,7 +250,9 @@ func _require_token(core: PKeyCore) -> Variant:
 ## The report body: this device's facts, the SDK and build, the gate verdict, and the VALUES of
 ## the documents Core re-verified this session (never anything read back from disk unverified),
 ## plus `engine` and `outlet`: PKeyCore.reported_outlet(), the detected outlet id (the stamped
-## outlet refined by on-device detection, P3-11), when there is one.
+## outlet refined by on-device detection, P3-11), when there is one, and `caps`: the feature ids
+## `PolarisKey.supports()` answers ok for right now (P1b-10). Every report carries `caps`, because
+## the Worker keeps only the latest report.
 func snapshot() -> Dictionary:
 	var core := _core()
 	var out := {}
@@ -273,6 +275,7 @@ func snapshot() -> Dictionary:
 	var outlet := core.reported_outlet()
 	if outlet != "":
 		out["outlet"] = outlet
+	out["caps"] = core.capability_engine().caps()
 	return out
 
 

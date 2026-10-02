@@ -39,7 +39,9 @@ function Probe(): JSX.Element {
       <span data-testid="theme-mode">{cfg.get("theme.mode", "light")}</span>
       <span data-testid="vpn">{String(vpn)}</span>
       <span data-testid="beta">{String(beta)}</span>
-      <span data-testid="secret">{pk.getSecret("api.token") ?? "null"}</span>
+      <span data-testid="secret">
+        {pk.supports("config.secret").supported ? "available" : "unsupported"}
+      </span>
       <span data-testid="supports-oidc">{String(auth.supportsOidcLogin)}</span>
       <span data-testid="supports-key">{String(auth.supportsKeyEntry)}</span>
     </div>
@@ -120,6 +122,7 @@ describe("mode parity", () => {
     browser.dispose();
   });
 
+  // @pkey-feature core.caps
   it("browser never exposes secrets", async () => {
     const browser = browserAdapter({
       productSlug: "acme",
@@ -127,7 +130,9 @@ describe("mode parity", () => {
       now: () => NOW_SEC,
     });
     await new Promise((r) => setTimeout(r, 0));
-    expect(browser.getSecret("api.token")).toBeNull();
+    expect(() => browser.getSecret("api.token")).toThrow(
+      expect.objectContaining({ code: "unsupported", reason: "runtime" }),
+    );
     browser.dispose();
   });
 });

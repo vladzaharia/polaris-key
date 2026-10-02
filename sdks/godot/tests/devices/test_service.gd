@@ -19,7 +19,7 @@ func run(t: PKeyTestContext) -> void:
 	if not t.check("devices: fixtures present", not F.is_empty()):
 		return
 	allowed = _allowlist()
-	t.check("devices: the Worker's report allowlist is readable from the transcript mirror", allowed.has("engine") and allowed.has("outlet") and allowed.has("config"), str(allowed))
+	t.check("devices: the Worker's report allowlist is readable from the transcript mirror", allowed.has("engine") and allowed.has("outlet") and allowed.has("config") and allowed.has("caps"), str(allowed))
 	server = PKeyTestFixtures.new_server(_answer)
 	await _register(t)
 	await _register_outcomes(t)
@@ -298,6 +298,8 @@ func _report(t: PKeyTestContext) -> void:
 	t.check("report: engine facts", body.get("engine") is Dictionary and String(body["engine"].get("id", "")).begins_with("godot-"), JSON.stringify(body.get("engine")))
 	t.check("report: runtime is godot", body.get("runtime", {}).get("name") == "godot")
 	t.check("report: no outlet without a build stamp", not body.has("outlet"), str(body.get("outlet")))
+	# @pkey-feature core.caps
+	t.check("report: caps is the supported feature list (P1b-10)", body.get("caps") == sdk.caps() and (body["caps"] as Array).has(PKeyConstants.Feature.CONFIG_RESOLVE) and not (body["caps"] as Array).has(PKeyConstants.Feature.UPDATE_DECIDE), JSON.stringify(body.get("caps")))
 	_no_raw(t, "report", _body(req), PKeyFakeHost.load_host("linux"))
 
 	var ok: bool = await sdk.devices.report()

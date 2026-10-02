@@ -79,6 +79,7 @@ import {
 import {
   ARCH_VALUES,
   ErrorCode,
+  Feature,
   PLATFORM_VALUES,
   type Arch,
   type Platform,
@@ -192,7 +193,8 @@ export interface ReleaseRecordCheck {
  * code. The options refusals (`not-configured`, `invalid-options`) and step 1's
  * `service-unavailable` are this class too, with a null `detail`. Core's own refusals before the
  * update client runs — the D-21 gate (`service-unavailable` when the product runs no Update or
- * Release service) and `local-only` — are the plain `PolarisError` every sub-client raises.
+ * Release service, an `UnsupportedError` with `reason: "product"`) and `local-only` — are the
+ * `PolarisError`s every sub-client raises.
  */
 export class UpdateError extends PolarisError {
   readonly detail: string | null;
@@ -466,7 +468,7 @@ export class UpdateClient {
    * not the SDK's: the SDK ships inside the thing being updated.
    */
   async check(opts: { channel?: string } = {}): Promise<VersionCheck> {
-    this.ctx.requireService("update");
+    this.ctx.requireService("update", Feature.updateCheck);
     const url = new URL(this.ctx.url("update/version"));
     if (opts.channel) url.searchParams.set("channel", opts.channel);
 
@@ -770,7 +772,7 @@ export class UpdateClient {
   private async decideNow(opts: UpdateDecideOptions): Promise<UpdateCheck> {
     const c = this.requireConfigured();
     const { cache, trust } = this.requireCustody();
-    this.ctx.requireService("update");
+    this.ctx.requireService("update", Feature.updateDecide);
     const f = this.ctx.fetcher();
     const installed = this.installed();
     const ep = await this.endpoints({ feed: true, record: true });
@@ -801,7 +803,7 @@ export class UpdateClient {
 
   private async feedNow(opts: { channel?: string }): Promise<FeedCheck> {
     const { cache, trust } = this.requireCustody();
-    this.ctx.requireService("update");
+    this.ctx.requireService("update", Feature.updateFeed);
     const f = this.ctx.fetcher();
     const installed = this.installed();
     const ep = await this.endpoints({ feed: true, record: false });
@@ -836,7 +838,7 @@ export class UpdateClient {
   private async releaseRecordNow(sha256: string): Promise<ReleaseRecordCheck> {
     const c = this.requireConfigured();
     const { cache, trust } = this.requireCustody();
-    this.ctx.requireService("release");
+    this.ctx.requireService("release", Feature.releaseRecord);
     const f = this.ctx.fetcher();
     const installed = this.installed();
     const ep = await this.endpoints({ feed: false, record: true });

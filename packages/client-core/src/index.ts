@@ -174,6 +174,24 @@ export { effectiveNow, highWaterMark, type DatedArtifact } from "./clock.js";
 export { PolarisError } from "./errors.js";
 
 export {
+  UNSUPPORTED_CODE,
+  UnsupportedError,
+  detectorKey,
+  detectorProblems,
+  evaluateSupport,
+  supportedFeatures,
+  type CapabilityContext,
+  type CapabilityDetector,
+  type CapabilityDetectors,
+  type CapabilityNaLike,
+  type CapabilityRowLike,
+  type Support,
+  type Supported,
+  type Unsupported,
+  type UnsupportedReason,
+} from "./caps.js";
+
+export {
   CACHE_VERSION,
   STORE_BACKENDS,
   STORE_DEGRADED_REASONS,

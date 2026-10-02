@@ -48,7 +48,7 @@ extends RefCounted
 ## does not work around it. Unlocking paid digital content with an externally bought key
 ## conflicts with App Store 3.1.1 and Play's payments policy; the client does not enforce that.
 
-const FEATURE_ENROLL := "license.enroll"
+const FEATURE_ENROLL := PKeyConstants.Feature.LICENSE_ENROLL
 
 ## Awaited after a token is minted (activate, enroll): the autoload runs a forced sync, so the
 ## result returns with the licence document in hand.
@@ -158,8 +158,9 @@ func enroll() -> PKeyActivationResult:
 	var pre = _precheck()
 	if pre != null:
 		return pre
-	if _platform() == "web":
-		return PKeyActivationResult.unsupported_here(FEATURE_ENROLL, PKeyConstants.UnsupportedReason.RUNTIME)
+	var supported := _core().capability_engine().supports_on(FEATURE_ENROLL, _platform())
+	if not supported.ok:
+		return PKeyActivationResult.from_unsupported(supported)
 	var core := _core()
 	var pair: Array = await PKeyLicenseEndpoints.enroll(core, await _devices.fingerprint())
 	return await _acquire(pair, PKeyTokenManager.SOURCE_ENROLL)

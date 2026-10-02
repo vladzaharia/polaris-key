@@ -68,6 +68,41 @@ config-only product boots usable instead of sitting on "needs activation" foreve
 `expectedServices` for what the build actually ships against: an unreachable control plane
 should never be able to silently take a service away by omission.
 
+## `supports()`: typed "unsupported here"
+
+Every SDK answers `supports(feature)` for any parity feature id, using the generated `Feature`
+constants. The answer is Supported, or Unsupported with a `feature`, a `reason` and a human
+`detail`. It makes no network call and has no side effects. The reasons are the generated
+`UnsupportedReason` values:
+
+| Reason       | Meaning                                                                        |
+| ------------ | ------------------------------------------------------------------------------ |
+| `runtime`    | the runtime cannot do it at all (a browser holds no secrets and no keyring)    |
+| `outlet`     | the outlet forbids it (iOS: no self-update, only a store link)                 |
+| `product`    | the owning service is off, by the capability precedence above                  |
+| `dependency` | an optional dependency is missing (Node or Python without a usable OS keyring) |
+| `version`    | this SDK version does not implement the feature yet, or does not know the id   |
+
+Each SDK reads a capability table generated from its own `parity.json`, so its answers always
+match the [SDK parity matrix](/docs/reference/parity/). Calling into an unsupported feature
+fails with the same fields, in each language's idiom. The code depends on the reason:
+
+- **A `runtime` refusal uses code `unsupported`.** Node, React and Python throw
+  `UnsupportedError`; Swift throws `UnsupportedError`; Godot returns a `PKeyResult` with the
+  fields in `detail`. React's `getSecret()` is an example: it throws instead of returning
+  `null`.
+- **A `product` refusal uses code `service-unavailable`.** This is a sub-client whose service
+  is off. The code is the one callers already match on, and the refusal carries the same
+  fields. Node and Python throw `UnsupportedError`. Swift throws its usual `PolarisError`, with
+  the fields in `PolarisError.unsupported` so existing `catch let e as PolarisError` sites keep
+  working. Godot returns its usual result, with the fields in `detail`.
+- **React keeps two older codes.** Its browser device-management verbs throw
+  `UnsupportedError` with code `device-management-unsupported`, and `report()` throws it with
+  `report-unsupported`. React's own refusals for a service that is off keep the plain
+  `PolarisError` code `service-disabled`.
+
+`caps()` lists the supported ids, and each device report sends that list as `caps`.
+
 ## The `PKEY_CONFIG_*` env convention
 
 Every SDK layers an environment override into config resolution at the same precedence:
