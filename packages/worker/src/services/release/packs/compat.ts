@@ -7,7 +7,8 @@
  * ── CELL STATES (the first that applies) ────────────────────────────────────────────────────
  *
  *   revoked       a `kind: revocation` record names the pack release (P4-13). From P4-19 a
- *                 revoked DELEGATION also revokes the releases it signed; see `revokedBy`.
+ *                 revoked DELEGATION revokes every release signed under it (P4-19,
+ *                 client-core's `recordRevoked`; see `revokedBy`).
  *   pinned        the app release pins it (`release_pins`).
  *   held          the app release holds it (`release_holds`).
  *   compatible    a variant of it admits the app release: for a `compatible` pack its
@@ -41,7 +42,8 @@ import type { CatalogRevocation } from "../../../core/hooks.js";
 import type { Db } from "../../../core/platform.js";
 import type { ReleaseConfigRow } from "../config.js";
 import { listYanks } from "../model.js";
-import { readRevocations } from "./revocations.js";
+import { recordRevoked } from "@polaris-key/client-core/record";
+import { readAllRevocations } from "./revocations.js";
 import {
   loadResolutionState,
   packVariantFacts,
@@ -176,32 +178,56 @@ const bySeqDesc = (
   (a.releaseId < b.releaseId ? -1 : a.releaseId > b.releaseId ? 1 : 0);
 
 /**
- * The revocation that applies to a pack release, or null: the record revocation naming it. THE
- * SEAM for P4-19: a `kind: "delegation"` revocation targets a delegation hash, so it applies to
- * every release that delegation signed, decided by client-core's `recordRevoked(recordSha256,
- * delegationSha256, revoked)`. Release does not store a release's delegation hash until P4-19
- * lands, so until then only record revocations apply here, and a delegation one is ignored, as
- * the hook's contract requires of a consumer that reads `targetReleaseId` as a release.
- *
- * TODO(P4-19): whichever of P4-15 and P4-19 merges second wires `kind: "delegation"` here: look up
- * the release's stored delegation hash and apply client-core's `recordRevoked`, returning
- * `{kind: "delegation", …}` when it answers `"delegation"`.
+ * The revocation that applies to a pack release, or null, decided by client-core's
+ * `recordRevoked(recordSha256, delegationSha256, revoked)` — the one rule every SDK applies
+ * (plans/P4-19.md §2.3). `revoked` holds every target in force: a `kind: record` revocation's pack
+ * record hash, and a `kind: delegation` revocation's delegation hash. So a release signed under a
+ * revoked delegation (its `release_delegated_records` row) reads revoked, with the delegation named
+ * in the reason; a record revocation of the release itself wins. A release with no stored record
+ * (no hash to test) can only be revoked by a record revocation naming its release id.
  */
 export function revokedBy(
-  release: { releaseId: string },
+  release: {
+    releaseId: string;
+    sha256: string | null;
+    delegation: string | null;
+  },
   revocations: readonly CatalogRevocation[],
 ): CompatRevocation | null {
-  for (const r of revocations) {
-    if ((r.kind ?? "record") !== "record") continue;
-    if (r.targetReleaseId !== release.releaseId) continue;
-    return {
-      kind: "record",
-      recordSha256: r.recordSha256,
-      reason: r.reason,
-      issuedAt: r.issuedAt,
-      replacement: r.replacement,
-    };
+  const byTarget = new Map<string, CatalogRevocation>();
+  for (const r of revocations) byTarget.set(r.targetSha256, r);
+  const asView = (
+    r: CatalogRevocation,
+    kind: "record" | "delegation",
+  ): CompatRevocation => ({
+    kind,
+    recordSha256: r.recordSha256,
+    reason:
+      kind === "delegation"
+        ? `signed under delegation ${r.targetSha256.slice(0, 12)}…, revoked: ${r.reason}`
+        : r.reason,
+    issuedAt: r.issuedAt,
+    replacement: kind === "record" ? r.replacement : null,
+  });
+  if (release.sha256 !== null) {
+    const hit = recordRevoked(
+      release.sha256,
+      release.delegation,
+      new Set(byTarget.keys()),
+    );
+    if (hit === null) return null;
+    const target = hit === "record" ? release.sha256 : release.delegation!;
+    const r = byTarget.get(target)!;
+    // A record hash that collides with a delegation target is not a record revocation.
+    if ((r.kind ?? "record") !== hit) return null;
+    return asView(r, hit);
   }
+  for (const r of revocations)
+    if (
+      (r.kind ?? "record") === "record" &&
+      r.targetReleaseId === release.releaseId
+    )
+      return asView(r, "record");
   return null;
 }
 
@@ -402,11 +428,15 @@ export async function compatView(
           seq: number | null;
           channel: string | null;
           record_sha256: string | null;
+          delegation: string | null;
         }>(
-          `SELECT m.release_id, m.deliverable_id, m.version, m.seq, m.channel, r.record_sha256
+          `SELECT m.release_id, m.deliverable_id, m.version, m.seq, m.channel, r.record_sha256,
+                  d.delegation_sha256 AS delegation
              FROM release_metadata m
              LEFT JOIN release_records r
                ON r.product = m.product AND r.release_id = m.release_id AND r.kind = 'pack'
+             LEFT JOIN release_delegated_records d
+               ON d.product = r.product AND d.record_sha256 = r.record_sha256
             WHERE m.product = ? AND m.deliverable_id IN (SELECT value FROM json_each(?))`,
           product,
           ids,
@@ -434,7 +464,7 @@ export async function compatView(
       ...(variantsBy.get(b.release_id) ?? []),
       packVariantFacts(b),
     ]);
-  const revocations = await readRevocations(db, product);
+  const revocations = await readAllRevocations(db, product);
 
   const packReleases: CompatPackRelease[] = [];
   let hiddenPacks = 0;
@@ -476,7 +506,14 @@ export async function compatView(
           ],
         },
         yanked: yankOf(r.release_id),
-        revoked: revokedBy({ releaseId: r.release_id }, revocations),
+        revoked: revokedBy(
+          {
+            releaseId: r.release_id,
+            sha256: r.record_sha256,
+            delegation: r.delegation,
+          },
+          revocations,
+        ),
         current: members.has(r.release_id),
       });
     }

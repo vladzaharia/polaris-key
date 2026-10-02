@@ -1095,6 +1095,7 @@ export interface SimulatedPackDto {
   floor: { minVersion: string; versionScheme: string } | null;
   unsatisfied: { reason: string; detail: string; variant: string }[];
   revocations: {
+    kind: "record" | "delegation";
     record: string;
     target: string;
     version: string;

@@ -30,7 +30,8 @@ import {
   type Published,
 } from "./packWorld.js";
 import { RELEASE_KID, RELEASE_PUB, signRecord } from "./releaseKeysFixture.js";
-import { sha } from "./packFixture.js";
+import { packRecord, sha, treeVariant } from "./packFixture.js";
+import { base64UrlEncodeBytes, signJws } from "@polaris-key/jws";
 import { call } from "./releaseRoutesFixture.js";
 import { loadProduct } from "../src/core/products.js";
 import {
@@ -53,9 +54,21 @@ interface World {
   app15: string;
 }
 
-function content(level: number, holds: Published[] = []) {
+function content(
+  level: number,
+  holds: Published[] = [],
+  o: { l10nEssential?: boolean } = {},
+) {
+  const base = appContent() as { expects: Record<string, unknown>[] };
   return {
-    ...appContent(),
+    ...base,
+    ...(o.l10nEssential
+      ? {
+          expects: base.expects.map((e) =>
+            e.pack === L10N ? { ...e, delivery: "essential" } : e,
+          ),
+        }
+      : {}),
     contentApi: level,
     ...(holds.length > 0
       ? { holds: holds.map((h) => ({ ...pinOf(h), reason: "keeps saves" })) }
@@ -85,7 +98,7 @@ async function live(w: PackWorld, releaseId: string, outlet: string) {
   );
 }
 
-async function world(): Promise<World> {
+async function world(o: { l10nEssential?: boolean } = {}): Promise<World> {
   const w = await packWorld({ android: true });
   await w.addOutlet("direct", "direct");
   await w.addOutlet("app-store", "app-store", {
@@ -99,11 +112,11 @@ async function world(): Promise<World> {
   const foes101 = await w.publishPack(FOES, "1.0.1", { contentApi: ">=3 <4" });
   const l10n = await w.publishPack(L10N, "1.0.0", { contentApi: null });
   await w.declareContentApi(3);
-  const a14 = await w.submitApp("1.4.0", 14, content(3, [foes1]));
+  const a14 = await w.submitApp("1.4.0", 14, content(3, [foes1], o));
   expect(a14.status, JSON.stringify(a14.body)).toBe(200);
   const foes2 = await w.publishPack(FOES, "2.0.0", { contentApi: ">=4" });
   await w.declareContentApi(4);
-  const a15 = await w.submitApp("1.5.0", 15, content(4));
+  const a15 = await w.submitApp("1.5.0", 15, content(4, [], o));
   expect(a15.status, JSON.stringify(a15.body)).toBe(200);
 
   // foes 1.0.1 is revoked with no replacement: level 3 falls back to 1.0.0.
@@ -513,3 +526,270 @@ describe("GET …/update/simulate (P4-15)", () => {
     expect(sha("x")).toMatch(/^[0-9a-f]{64}$/);
   });
 });
+
+// ── P4-19: content-key delegation ────────────────────────────────────────────────────────────
+
+/** A throwaway content key (generated per run; no private key is committed). */
+async function contentKey(): Promise<{ pem: string; pub: string }> {
+  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
+  const pkcs8 = new Uint8Array(
+    (await crypto.subtle.exportKey("pkcs8", pair.privateKey)) as ArrayBuffer,
+  );
+  const raw = new Uint8Array(
+    (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
+  );
+  return {
+    pem: `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...pkcs8))}\n-----END PRIVATE KEY-----`,
+    pub: base64UrlEncodeBytes(raw),
+  };
+}
+
+/**
+ * The world plus a delegation of `djdl.l10n` to a content key, and l10n 1.1.0 signed by that key
+ * under it (newer than the release-key-signed 1.0.0, so it is the standalone set member).
+ */
+async function delegatedWorld() {
+  const base = await world({ l10nEssential: true });
+  const { w } = base;
+  const now = Math.floor(Date.now() / 1000);
+  const key = await contentKey();
+  const delegation = await signRecord({
+    schemaVersion: 1,
+    aud: SLUG,
+    deliverable: L10N,
+    kind: "delegation",
+    version: "1",
+    seq: 1,
+    issuedAt: now - 100,
+    expiresAt: now + 180 * 86400,
+    delegate: { publicKey: key.pub },
+    types: ["files.tree"],
+    notes: "Localisation team",
+  });
+  const d = await w.post("release/publish/submit", { record: delegation });
+  expect(d.status, await d.clone().text()).toBe(200);
+  const built = await treeVariant({}, "l10n-1.1.0-delegated");
+  await w.stage(L10N, built.objects);
+  const jws = await signJws(
+    packRecord({
+      aud: SLUG,
+      deliverable: L10N,
+      version: "1.1.0",
+      seq: 2,
+      issuedAt: now,
+      type: "files.tree",
+      handler: { activation: "hot" },
+      variants: [built.variant],
+    }),
+    key.pem,
+    `pkd1-${sha(delegation)}`,
+    "pkey-release+jws",
+  );
+  const p = await w.post("release/publish/submit", { record: jws });
+  expect(p.status, await p.clone().text()).toBe(200);
+  const l10n11 = {
+    sha256: sha(jws),
+    seq: 2,
+    version: "1.1.0",
+    pack: L10N,
+    releaseId: `${L10N}@1.1.0`,
+  };
+  const revoke = async () => {
+    const r = await w.post("release/publish/submit", {
+      record: await signRecord({
+        schemaVersion: 1,
+        aud: SLUG,
+        deliverable: L10N,
+        kind: "revocation",
+        version: "1",
+        seq: 1,
+        issuedAt: Math.floor(Date.now() / 1000),
+        revokes: sha(delegation),
+        reason: "Content key leaked",
+      }),
+    });
+    expect(r.status, await r.clone().text()).toBe(200);
+  };
+  return { ...base, l10n11, delegationSha: sha(delegation), revoke };
+}
+
+describe("P4-19 delegation in the matrix and the simulator", () => {
+  it("the matrix marks a release signed under a revoked delegation revoked, naming the delegation", async () => {
+    const { w, l10n, l10n11, app14, app15, delegationSha, revoke } =
+      await delegatedWorld();
+    const before = await compat(w);
+    expect(cell(before, app15, l10n11.releaseId)).toMatchObject({
+      state: "compatible",
+      current: true,
+    });
+    expect(cell(before, app15, l10n.releaseId).current).toBe(false);
+
+    await revoke();
+    const after = await compat(w);
+    const p = after.packReleases.find(
+      (x: any) => x.releaseId === l10n11.releaseId,
+    );
+    expect(p.revoked).toMatchObject({ kind: "delegation", replacement: null });
+    expect(p.revoked.reason).toContain(delegationSha.slice(0, 12));
+    expect(p.revoked.reason).toContain("Content key leaked");
+    for (const app of [app14, app15]) {
+      expect(cell(after, app, l10n11.releaseId)).toMatchObject({
+        state: "revoked",
+        yanked: true,
+        current: false,
+      });
+      // Resolution falls back to the release-key-signed 1.0.0.
+      expect(cell(after, app, l10n.releaseId)).toMatchObject({
+        state: "compatible",
+        current: true,
+      });
+    }
+    // The release-key-signed releases are untouched by the delegation's revocation.
+    expect(
+      after.packReleases.find((x: any) => x.releaseId === l10n.releaseId)
+        .revoked,
+    ).toBeNull();
+  });
+
+  it("the simulator takes the delegated release through runUpdateCheck, and refuses it once its delegation is revoked", async () => {
+    const { w, l10n, l10n11, app14, revoke } = await delegatedWorld();
+    const q = { appRelease: app14, platform: "ios", outlet: "app-store" };
+    const before = await simulate(w, q);
+    // The delegated record verified on the device path (record, then its delegation by hash).
+    expect(before.errors).toEqual([]);
+    expect(before.decision.action).toBe("packs");
+    expect(
+      before.decision.install.find((i: any) => i.pack === L10N).release.sha256,
+    ).toBe(l10n11.sha256);
+
+    await revoke();
+    const after = await simulate(w, q);
+    expect(after.errors).toEqual([]);
+    const install = after.decision.install.find((i: any) => i.pack === L10N);
+    expect(install.release.sha256).toBe(l10n.sha256);
+    expect(after.set.find((s: any) => s.pack === L10N).sha256).not.toBe(
+      l10n11.sha256,
+    );
+    const row = after.packs.find((p: any) => p.pack === L10N);
+    expect(row.revocations).toEqual([
+      expect.objectContaining({
+        kind: "delegation",
+        reason: "Content key leaked",
+      }),
+    ]);
+    // The same answer an SDK reaches over the real feed and record routes.
+    const product = (await loadProduct(w.env, w.db, SLUG))!;
+    const sdk = await sdkCheck(w, product, {
+      app: app14,
+      version: "1.4.0",
+      platform: "ios",
+      outlet: "app-store",
+    });
+    expect(after.decision).toEqual(sdk.decision);
+    expect(after.packSetId).toBe(sdk.packSetId);
+  });
+
+  it("an SDK that already runs the delegated release is told to drop it: the same check refuses it", async () => {
+    const { w, l10n, l10n11, app14, delegationSha, revoke } =
+      await delegatedWorld();
+    await revoke();
+    const product = (await loadProduct(w.env, w.db, SLUG))!;
+    // client-core's check (the simulator's engine) with the delegated release active: the
+    // delegation's revocation, listed in the feed, revokes it (recordRevoked) and the replacement
+    // target is installed in its place.
+    const sdk = await sdkCheck(
+      w,
+      product,
+      { app: app14, version: "1.4.0", platform: "ios", outlet: "app-store" },
+      {
+        [L10N]: {
+          sha256: l10n11.sha256,
+          seq: l10n11.seq,
+          version: l10n11.version,
+        },
+      },
+      { [l10n11.sha256]: { pack: L10N, delegation: delegationSha } },
+    );
+    expect(sdk.decision.action).toBe("packs");
+    const install = (sdk.decision as any).install.find(
+      (i: any) => i.pack === L10N,
+    );
+    expect(install?.release.sha256).toBe(l10n.sha256);
+  });
+});
+
+/** An SDK's check over the real feed and record routes (the equivalence test's path). */
+async function sdkCheck(
+  w: PackWorld,
+  product: NonNullable<Awaited<ReturnType<typeof loadProduct>>>,
+  c: { app: string; version: string; platform: string; outlet: string },
+  active: Record<string, ReleasePin> = {},
+  delegated: Record<string, { pack: string; delegation: string }> = {},
+) {
+  const record = await w.db.first<{ jws: string }>(
+    "SELECT jws FROM release_records WHERE product = ? AND release_id = ?",
+    SLUG,
+    c.app,
+  );
+  const doc = JSON.parse(
+    Buffer.from(record!.jws.split(".")[1]!, "base64url").toString(),
+  ) as Record<string, any>;
+  const build = doc.builds.find((b: any) => b.platform === c.platform);
+  const get = async (url: string) => {
+    const res = await call(w.env, w.db, noFetch, url);
+    return res.ok
+      ? ({ ok: true, body: await res.text() } as const)
+      : ({ ok: false, code: String(res.status) } as const);
+  };
+  const check = await runUpdateCheck({
+    channel: "stable",
+    expectedAud: SLUG,
+    trust: { [product.signingKid]: product.signingPub! },
+    releaseKeys: { [RELEASE_KID]: RELEASE_PUB },
+    now: Math.floor(Date.now() / 1000),
+    installId: null,
+    installed: {
+      version: c.version,
+      buildNumber: null,
+      platform: c.platform,
+      arch: build.arch,
+      format: build.format,
+      engine: null,
+    },
+    outlet: { id: c.outlet, kind: c.outlet as "direct" },
+    subkind: null,
+    methods: ["download"],
+    cache: {},
+    fetchFeed: (channel) =>
+      get(
+        `${CONSOLE}/${SLUG}/update/${channel}/feed.jws?platform=${c.platform}`,
+      ),
+    fetchRecord: (h) => get(`${CONSOLE}/${SLUG}/release/records/${h}`),
+    content: {
+      stamp: doc.content,
+      holds: doc.content.holds ?? [],
+      active,
+      engine: null,
+      axes: {},
+      revoked: {},
+      delegated,
+    },
+  });
+  expect(check.ok).toBe(true);
+  if (!check.ok) throw new Error("check failed");
+  const d = check.check.decision;
+  const after = new Map<string, ReleasePin>(Object.entries(active));
+  if (d.action === "packs") {
+    for (const p of d.revoke) after.delete(p);
+    for (const i of d.install) after.set(i.pack, i.release);
+  }
+  return {
+    decision: d,
+    packSetId: await packSetId(
+      [...after].map(([packId, r]) => ({ packId, releaseSha256: r.sha256 })),
+    ),
+  };
+}

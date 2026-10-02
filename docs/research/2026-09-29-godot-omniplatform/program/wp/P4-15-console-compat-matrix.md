@@ -190,12 +190,15 @@ package, and every decision in §8.1 that names it as owner, override this brief
   P2b-06), not the per-release availability route, because it is one request and already carries
   P4-14's `cell.readiness`, which the overlay renders (held, or not ready on a store outlet).
   The SPA's `MatrixCellDto` gained the optional `readiness` it was missing.
-- **P4-19 is not merged**, so `recordRevoked` is not on main. Hand-off: the matrix's
-  `revokedBy` (`release/packs/compat.ts`) is the one seam — it applies `kind: record` revocations
-  and ignores `kind: delegation` ones, as the hook's contract requires, until Release stores a
-  release's delegation hash and client-core exports `recordRevoked`. It carries a `TODO(P4-19)`:
-  whichever of P4-15 and P4-19 merges second wires `kind: delegation` there. The simulator inherits
-  P4-19 unchanged through `runUpdateCheck`.
+- **P4-19 merged first (1f0b6482); P4-15 wired delegation second.** The matrix's `revokedBy`
+  (`release/packs/compat.ts`) reads every revocation in force (`readAllRevocations`: record and
+  `kind: delegation`) and each pack release's delegation hash (`release_delegated_records`, Release's
+  own table, read inside Release), and decides with client-core's `recordRevoked`: a release signed
+  under a revoked delegation is `revoked`, its reason naming the delegation. The simulator needed no
+  change to apply it — `runUpdateCheck` verifies the delegated record and applies the delegation's
+  revocation from the feed; tests show a delegated release taken before the revocation, replaced
+  after, the simulator's answer equal to an SDK's, and client-core's check revoking an active
+  delegated release. The simulator's per-pack `revocations` gained `kind`.
 - **A revocation no app release pins or holds and no row lists is not in the feed** (P4-13
   decision 14), so the simulator shows none for it; the matrix still marks the release revoked.
 - **Routes are narrative-only** (`adminApi` is in `routeCoverage`'s `NARRATIVE_ONLY`): no OpenAPI

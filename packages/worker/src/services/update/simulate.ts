@@ -68,7 +68,7 @@ import {
 } from "../release/records.js";
 import { readPackDeliverables } from "../release/packs/deliverables.js";
 import { readStoredSets } from "../release/packs/sets.js";
-import { readRevocations } from "../release/packs/revocations.js";
+import { readAllRevocations } from "../release/packs/revocations.js";
 import {
   canonicalFeedChannel,
   composeChannelFeed,
@@ -227,6 +227,8 @@ export interface SimulatedPack {
   floor: { minVersion: string; versionScheme: string } | null;
   unsatisfied: { reason: string; detail: string; variant: string }[];
   revocations: {
+    /** `record` (P4-13) or `delegation` (P4-19: `target` is the delegation's hash). */
+    kind: "record" | "delegation";
     record: string;
     target: string;
     version: string;
@@ -604,7 +606,7 @@ export async function simulate(
               ([axis, value]) => q.axes[axis]?.[0] === value,
             ),
         );
-  const revocations = await readRevocations(db, slug);
+  const revocations = await readAllRevocations(db, slug);
   const listedRevocations = new Set(
     (doc.revocations ?? []).map((r) => r.record),
   );
@@ -709,14 +711,16 @@ export async function simulate(
           })),
       ),
       revocations: revocations
-        .filter(
-          (r) => (r.kind ?? "record") === "record" && r.deliverableId === p,
-        )
+        .filter((r) => r.deliverableId === p)
+        // A record revocation of a release this device holds or is offered, or any the feed lists
+        // for the pack (a delegation's revocation names no release: it is always listed, P4-19).
         .filter(
           (r) =>
-            mine.has(r.targetSha256) || listedRevocations.has(r.recordSha256),
+            ((r.kind ?? "record") === "record" && mine.has(r.targetSha256)) ||
+            listedRevocations.has(r.recordSha256),
         )
         .map((r) => ({
+          kind: r.kind ?? "record",
           record: r.recordSha256,
           target: r.targetSha256,
           version: r.version,

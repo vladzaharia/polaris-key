@@ -796,8 +796,9 @@ function SimPackRow({ p }: { p: SimulatedPackDto }) {
         ) : null}
         {p.revocations.map((v) => (
           <div key={v.record} className="text-destructive">
-            {v.version} revoked: {v.reason}
-            {v.replacement ? "" : " (no replacement)"}
+            {v.kind === "delegation"
+              ? `content-key delegation revoked: ${v.reason}`
+              : `${v.version} revoked: ${v.reason}${v.replacement ? "" : " (no replacement)"}`}
           </div>
         ))}
       </td>
