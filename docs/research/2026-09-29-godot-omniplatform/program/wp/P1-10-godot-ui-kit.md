@@ -207,6 +207,55 @@ already have partial kits to mirror (notes/A2 §10).
 - [ ] `sdks/godot/parity.json` marks `ui.stages` and `ui.kit` implemented, with test tags (once
       P1b-01 has landed).
 
+## Implementation notes (P1-10)
+
+Where the code and this brief differ, the code is right; these are the corrections.
+
+- **The gate's class is `PKeyGateView`.** `PKeyGate` is already the licence-gate logic
+  (`core/gate.gd`, `license_state` and `is_usable`), so the scene's script cannot take the name.
+  The scene file is `ui/gate/pkey_gate.tscn` and its root node is still named `PKeyGate`.
+- **Stage matrix version 2.** P3-02 had landed, so `PKeyStages` also has `boot_confirmation`,
+  `BOOT_OK_SECONDS`, `BOOT_CONFIRMATIONS` and `BOOT_DECISIONS`, and the runner reads
+  `confirmCases` and `vocabulary.confirmations`. The suite file is `suite_stage_matrix.gd`;
+  `--pkey-test stage-matrix` is an alias in the runner's `SETS`.
+- **DECIDE uses the signed decision.** P3-08 had landed, so the decide stage calls
+  `PolarisKey.update.decide()` and sends `optional` when its boot decision is `optional`; it falls
+  back to the v3 `update.check()` only when `decide()` answers `service-unavailable` or
+  `not-configured`. No decision sends `required` (plans/P3-01.md decision 1), so an update floor
+  never stops play; a mandatory or blocked answer is a persistent banner with no dismiss that
+  never covers the game (`PKeyUpdatePrompt`, React's `UpdatePrompt` states).
+- **The no-answer status was not kept.** `PKeySyncResult.documents` held only each document's
+  kind, so this package adds `PKeySyncResult.errors` (`{status, code}` per failed document, status
+  0 for no answer) and `classify()`. A document that fails verification now reports status 200
+  (an unusable answer), not 0. Transport refusals of an answer that did arrive
+  (`response-too-large`, `too-many-redirects`, `insecure-redirect`) count as unusable.
+- **"Continue free" is the game's choice** (`offer_enrollment`, off by default). The Worker
+  advertises the enrolment endpoint for every product with License, so discovery cannot say
+  whether a free tier exists.
+- **The binary action needs a page.** A v4 decision carries no URL, so a binary answer on a direct
+  build opens the `release_url` the game gives (the v3 answer's own `url` otherwise); without one
+  the prompt shows no action. A store, Steam or itch build never opens a download page.
+- **The offline request code is the device id**, which is what the console's offline-bundle
+  dialog asks for (32 characters); the product slug is shown beside it, and the QR code holds the
+  id.
+- **`PolarisKey.boot()` resolves at the first stop.** A stop reached after a Retry on the card
+  arrives as `PKeyBoot.boot_finished` and `PolarisKey.boot_finished`.
+- **Channel lock.** The dev-menu channel picker is locked when the build's outlet does not allow a
+  channel switch (`PKeyDecision.effective_capabilities(kind).channelSwitch`, so only a direct
+  build or the editor may switch); picking a channel emits `channel_selected` for the game to
+  apply at the next configure.
+- **Progress.** The sliced verify's progress is `PolarisKey.verify_progress(fraction)`
+  (`PKeyEd25519Job.progress()`, reported by `PKeyJws.run_job` in sliced mode).
+- **Fixtures.** One snapshot file per scene with a section per state, under
+  `tests/ui/snapshots/`, included in the exported pack so the template runs them too.
+- **Timings** (M-series Mac, 4.7.2, editor / macOS release template): `stage_matrix` 15 / 13 ms
+  (56 rows, 6,594 probe transitions); `boot` 6.4 / 6.3 s (five deliberate 1 s request deadlines);
+  `ui` 11.6 / 11.9 s (67 states, each snapshotted, focus-walked and copy-checked). The new suites
+  also pass on the 4.4.1 floor editor.
+- **Screenshots.** `sdks/godot/tools/ui_screenshots.gd` renders all 67 pinned states with the
+  default theme (needs a display). The branch is not pushed here, so attaching them to the PR is
+  left to whoever opens it.
+
 ## Verify
 
 ```sh

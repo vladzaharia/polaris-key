@@ -68,6 +68,7 @@ var rolled_back := false
 var verify_progress := -1.0
 
 var _opts: Dictionary = {}
+var _own_host: PKeyBootHost = null
 var _gen := 0
 var _running := false
 var _stage_started := 0
@@ -156,9 +157,15 @@ func run(opts: Dictionary = {}) -> PKeyBootResult:
 	_retried = false
 	if sdk == null and auto_sdk:
 		sdk = default_sdk()
-	host = opts.get("host", null)
-	if host == null:
-		host = PKeyBootHost.new(sdk)
+	var next_host = opts.get("host", null)
+	if next_host == null:
+		# Reuse this view's own host across runs, so its SDK connections are made once.
+		if not (_own_host is PKeyBootHost) or _own_host.sdk != sdk:
+			_own_host = PKeyBootHost.new(sdk)
+		next_host = _own_host
+	if host != null and host != next_host and host.has_signal("changed") and host.changed.is_connected(_on_host_changed):
+		host.changed.disconnect(_on_host_changed)
+	host = next_host
 	if host.has_signal("changed") and not host.changed.is_connected(_on_host_changed):
 		host.changed.connect(_on_host_changed)
 	if sdk != null and sdk.has_signal("verify_progress") and not sdk.verify_progress.is_connected(set_verify_progress):
