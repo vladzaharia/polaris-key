@@ -5,7 +5,7 @@
 | Phase       | P4: Packs                                                                                                                                                                             |
 | Size        | 1.25–1.75 engineer-weeks                                                                                                                                                              |
 | Depends on  | [P4-10](P4-10-chunk-indexes.md), [P4-02](P4-02-pack-deliverables.md), [P4-03](P4-03-ci-patch-artifacts.md)                                                                            |
-| Unblocks    | [P4-17](P4-17-lazy-deltas.md)                                                                                                                                                         |
+| Unblocks    | [P4-17](P4-17-lazy-deltas.md), [P4-27](P4-27-rscc-scan.md)                                                                                                                            |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                 |
 | Plan mode   | yes: execute the approved `plans/P4-10.md` (its P4-22 parts); the plan's approval is this package's plan-mode gate, as for P4-21                                                      |
 | Gates       | plan mode; rule 9 (`PACK_PATCH_STRATEGIES` gains `chunk`, schema enum, mutation, validation-codes); drift gates (transcripts); Action rebundle; workerd; threat model; generated docs |
@@ -101,7 +101,9 @@ Where the brief or the plan and the code disagreed, the code was the fact:
    extension. On the lead's instruction it now chooses it by the content's head first: any
    `RSRC` entry gets the binary scan, any `RSCC` entry is refused, and any `[gd_scene` or
    `[gd_resource` head gets the text scan, whatever the file is called. Chunks and bundles are cut
-   only after the whole payload passes the lint, and a bundle carries no path.
+   only after the whole payload passes the lint, and a bundle carries no path. Superseded at the merge of P4-08:
+   its `packLint.ts` (content sniff with a BOM strip) and its `ci.md` text were taken, and the
+   P4-22 test now asserts P4-08's messages.
 8. **The chain base and the presence check.** The plan's "latest proven cached release" is read
    as the newest proven cached release whose record gives this variant a chunk index of the same
    gating class (a gate change skips releases of the other class). `--bases` is now read when

@@ -7,7 +7,8 @@ extends Node
 ##
 ## `handler` is `func(req: Dictionary) -> Dictionary`. The request is {method, path, headers
 ## (lower-case names), body: PackedByteArray}; the answer is {status, headers?: Dictionary,
-## body?: String | PackedByteArray, hang?: bool}. `hang` never answers (for timeouts). Every
+## body?: String | PackedByteArray, hang?: bool, truncate?: bool}. `hang` never answers (for
+## timeouts); `truncate` announces the headers' Content-Length and sends less (a drop). Every
 ## request is appended to `requests`. The transcript replayer (transcript_replay.gd) installs a
 ## handler that serves P1b-03's conformance/transcripts format.
 
@@ -132,7 +133,11 @@ static func _render(res: Dictionary) -> PackedByteArray:
 	for k in headers:
 		if String(k).to_lower() != "content-length":
 			head += "%s: %s\r\n" % [k, headers[k]]
-	head += "Content-Length: %d\r\nConnection: close\r\n\r\n" % body.size()
+	# `truncate`: announce the headers' Content-Length but send only `body` (a dropped connection).
+	var length := body.size()
+	if res.get("truncate", false) and headers.has("Content-Length"):
+		length = int(headers["Content-Length"])
+	head += "Content-Length: %d\r\nConnection: close\r\n\r\n" % length
 	var out := head.to_utf8_buffer()
 	out.append_array(body)
 	return out

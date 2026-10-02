@@ -3325,7 +3325,7 @@ var require_directives = __commonJS({
         return tag[0] === "!" ? tag : `!<${tag}>`;
       }
       toString(doc) {
-        const lines = this.yaml.explicit ? [`%YAML ${this.yaml.version || "1.2"}`] : [];
+        const lines2 = this.yaml.explicit ? [`%YAML ${this.yaml.version || "1.2"}`] : [];
         const tagEntries = Object.entries(this.tags);
         let tagNames;
         if (doc && tagEntries.length > 0 && identity.isNode(doc.contents)) {
@@ -3341,9 +3341,9 @@ var require_directives = __commonJS({
           if (handle === "!!" && prefix === "tag:yaml.org,2002:")
             continue;
           if (!doc || tagNames.some((tn) => tn.startsWith(prefix)))
-            lines.push(`%TAG ${handle} ${prefix}`);
+            lines2.push(`%TAG ${handle} ${prefix}`);
         }
-        return lines.join("\n");
+        return lines2.join("\n");
       }
     };
     Directives.defaultYaml = { explicit: false, version: "1.2" };
@@ -4820,22 +4820,22 @@ var require_stringifyCollection = __commonJS({
       const { indent, options: { commentString } } = ctx;
       const itemCtx = Object.assign({}, ctx, { indent: itemIndent, type: null });
       let chompKeep = false;
-      const lines = [];
+      const lines2 = [];
       for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment2 = null;
         if (identity.isNode(item)) {
           if (!chompKeep && item.spaceBefore)
-            lines.push("");
-          addCommentBefore(ctx, lines, item.commentBefore, chompKeep);
+            lines2.push("");
+          addCommentBefore(ctx, lines2, item.commentBefore, chompKeep);
           if (item.comment)
             comment2 = item.comment;
         } else if (identity.isPair(item)) {
           const ik = identity.isNode(item.key) ? item.key : null;
           if (ik) {
             if (!chompKeep && ik.spaceBefore)
-              lines.push("");
-            addCommentBefore(ctx, lines, ik.commentBefore, chompKeep);
+              lines2.push("");
+            addCommentBefore(ctx, lines2, ik.commentBefore, chompKeep);
           }
         }
         chompKeep = false;
@@ -4844,15 +4844,15 @@ var require_stringifyCollection = __commonJS({
           str2 += stringifyComment.lineComment(str2, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
           chompKeep = false;
-        lines.push(blockItemPrefix + str2);
+        lines2.push(blockItemPrefix + str2);
       }
       let str;
-      if (lines.length === 0) {
+      if (lines2.length === 0) {
         str = flowChars.start + flowChars.end;
       } else {
-        str = lines[0];
-        for (let i = 1; i < lines.length; ++i) {
-          const line = lines[i];
+        str = lines2[0];
+        for (let i = 1; i < lines2.length; ++i) {
+          const line = lines2[i];
           str += line ? `
 ${indent}${line}` : "\n";
         }
@@ -4875,22 +4875,22 @@ ${indent}${line}` : "\n";
       });
       let reqNewline = false;
       let linesAtValue = 0;
-      const lines = [];
+      const lines2 = [];
       for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment = null;
         if (identity.isNode(item)) {
           if (item.spaceBefore)
-            lines.push("");
-          addCommentBefore(ctx, lines, item.commentBefore, false);
+            lines2.push("");
+          addCommentBefore(ctx, lines2, item.commentBefore, false);
           if (item.comment)
             comment = item.comment;
         } else if (identity.isPair(item)) {
           const ik = identity.isNode(item.key) ? item.key : null;
           if (ik) {
             if (ik.spaceBefore)
-              lines.push("");
-            addCommentBefore(ctx, lines, ik.commentBefore, false);
+              lines2.push("");
+            addCommentBefore(ctx, lines2, ik.commentBefore, false);
             if (ik.comment)
               reqNewline = true;
           }
@@ -4907,12 +4907,12 @@ ${indent}${line}` : "\n";
         if (comment)
           reqNewline = true;
         let str = stringify.stringify(item, itemCtx, () => comment = null);
-        reqNewline || (reqNewline = lines.length > linesAtValue || str.includes("\n"));
+        reqNewline || (reqNewline = lines2.length > linesAtValue || str.includes("\n"));
         if (i < items.length - 1) {
           str += ",";
         } else if (ctx.options.trailingComma) {
           if (ctx.options.lineWidth > 0) {
-            reqNewline || (reqNewline = lines.reduce((sum, line) => sum + line.length + 2, 2) + (str.length + 2) > ctx.options.lineWidth);
+            reqNewline || (reqNewline = lines2.reduce((sum, line) => sum + line.length + 2, 2) + (str.length + 2) > ctx.options.lineWidth);
           }
           if (reqNewline) {
             str += ",";
@@ -4920,35 +4920,35 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           str += stringifyComment.lineComment(str, itemIndent, commentString(comment));
-        lines.push(str);
-        linesAtValue = lines.length;
+        lines2.push(str);
+        linesAtValue = lines2.length;
       }
       const { start, end } = flowChars;
-      if (lines.length === 0) {
+      if (lines2.length === 0) {
         return start + end;
       } else {
         if (!reqNewline) {
-          const len = lines.reduce((sum, line) => sum + line.length + 2, 2);
+          const len = lines2.reduce((sum, line) => sum + line.length + 2, 2);
           reqNewline = ctx.options.lineWidth > 0 && len > ctx.options.lineWidth;
         }
         if (reqNewline) {
           let str = start;
-          for (const line of lines)
+          for (const line of lines2)
             str += line ? `
 ${indentStep}${indent}${line}` : "\n";
           return `${str}
 ${indent}${end}`;
         } else {
-          return `${start}${fcPadding}${lines.join(" ")}${fcPadding}${end}`;
+          return `${start}${fcPadding}${lines2.join(" ")}${fcPadding}${end}`;
         }
       }
     }
-    function addCommentBefore({ indent, options: { commentString } }, lines, comment, chompKeep) {
+    function addCommentBefore({ indent, options: { commentString } }, lines2, comment, chompKeep) {
       if (comment && chompKeep)
         comment = comment.replace(/^\n+/, "");
       if (comment) {
         const ic = stringifyComment.indentComment(commentString(comment), indent);
-        lines.push(ic.trimStart());
+        lines2.push(ic.trimStart());
       }
     }
     exports.stringifyCollection = stringifyCollection;
@@ -5599,11 +5599,11 @@ var require_binary = __commonJS({
         if (type !== Scalar.Scalar.QUOTE_DOUBLE) {
           const lineWidth = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
           const n = Math.ceil(str.length / lineWidth);
-          const lines = new Array(n);
+          const lines2 = new Array(n);
           for (let i = 0, o = 0; i < n; ++i, o += lineWidth) {
-            lines[i] = str.substr(o, lineWidth);
+            lines2[i] = str.substr(o, lineWidth);
           }
-          str = lines.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
+          str = lines2.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
         }
         return stringifyString.stringifyString({ comment, type, value: str }, ctx, onComment, onChompKeep);
       }
@@ -6294,35 +6294,35 @@ var require_stringifyDocument = __commonJS({
     var stringify = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyDocument(doc, options) {
-      const lines = [];
+      const lines2 = [];
       let hasDirectives = options.directives === true;
       if (options.directives !== false && doc.directives) {
         const dir = doc.directives.toString(doc);
         if (dir) {
-          lines.push(dir);
+          lines2.push(dir);
           hasDirectives = true;
         } else if (doc.directives.docStart)
           hasDirectives = true;
       }
       if (hasDirectives)
-        lines.push("---");
+        lines2.push("---");
       const ctx = stringify.createStringifyContext(doc, options);
       const { commentString } = ctx.options;
       if (doc.commentBefore) {
-        if (lines.length !== 1)
-          lines.unshift("");
+        if (lines2.length !== 1)
+          lines2.unshift("");
         const cs = commentString(doc.commentBefore);
-        lines.unshift(stringifyComment.indentComment(cs, ""));
+        lines2.unshift(stringifyComment.indentComment(cs, ""));
       }
       let chompKeep = false;
       let contentComment = null;
       if (doc.contents) {
         if (identity.isNode(doc.contents)) {
           if (doc.contents.spaceBefore && hasDirectives)
-            lines.push("");
+            lines2.push("");
           if (doc.contents.commentBefore) {
             const cs = commentString(doc.contents.commentBefore);
-            lines.push(stringifyComment.indentComment(cs, ""));
+            lines2.push(stringifyComment.indentComment(cs, ""));
           }
           ctx.forceBlockIndent = !!doc.comment;
           contentComment = doc.contents.comment;
@@ -6331,36 +6331,36 @@ var require_stringifyDocument = __commonJS({
         let body = stringify.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
         if (contentComment)
           body += stringifyComment.lineComment(body, "", commentString(contentComment));
-        if ((body[0] === "|" || body[0] === ">") && lines[lines.length - 1] === "---") {
-          lines[lines.length - 1] = `--- ${body}`;
+        if ((body[0] === "|" || body[0] === ">") && lines2[lines2.length - 1] === "---") {
+          lines2[lines2.length - 1] = `--- ${body}`;
         } else
-          lines.push(body);
+          lines2.push(body);
       } else {
-        lines.push(stringify.stringify(doc.contents, ctx));
+        lines2.push(stringify.stringify(doc.contents, ctx));
       }
       if (doc.directives?.docEnd) {
         if (doc.comment) {
           const cs = commentString(doc.comment);
           if (cs.includes("\n")) {
-            lines.push("...");
-            lines.push(stringifyComment.indentComment(cs, ""));
+            lines2.push("...");
+            lines2.push(stringifyComment.indentComment(cs, ""));
           } else {
-            lines.push(`... ${cs}`);
+            lines2.push(`... ${cs}`);
           }
         } else {
-          lines.push("...");
+          lines2.push("...");
         }
       } else {
         let dc = doc.comment;
         if (dc && chompKeep)
           dc = dc.replace(/^\n+/, "");
         if (dc) {
-          if ((!chompKeep || contentComment) && lines[lines.length - 1] !== "")
-            lines.push("");
-          lines.push(stringifyComment.indentComment(commentString(dc), ""));
+          if ((!chompKeep || contentComment) && lines2[lines2.length - 1] !== "")
+            lines2.push("");
+          lines2.push(stringifyComment.indentComment(commentString(dc), ""));
         }
       }
-      return lines.join("\n") + "\n";
+      return lines2.join("\n") + "\n";
     }
     exports.stringifyDocument = stringifyDocument;
   }
@@ -7434,17 +7434,17 @@ var require_resolve_block_scalar = __commonJS({
       if (!header)
         return { value: "", type: null, comment: "", range: [start, start, start] };
       const type = header.mode === ">" ? Scalar.Scalar.BLOCK_FOLDED : Scalar.Scalar.BLOCK_LITERAL;
-      const lines = scalar.source ? splitLines(scalar.source) : [];
-      let chompStart = lines.length;
-      for (let i = lines.length - 1; i >= 0; --i) {
-        const content = lines[i][1];
+      const lines2 = scalar.source ? splitLines(scalar.source) : [];
+      let chompStart = lines2.length;
+      for (let i = lines2.length - 1; i >= 0; --i) {
+        const content = lines2[i][1];
         if (content === "" || content === "\r")
           chompStart = i;
         else
           break;
       }
       if (chompStart === 0) {
-        const value2 = header.chomp === "+" && lines.length > 0 ? "\n".repeat(Math.max(1, lines.length - 1)) : "";
+        const value2 = header.chomp === "+" && lines2.length > 0 ? "\n".repeat(Math.max(1, lines2.length - 1)) : "";
         let end2 = start + header.length;
         if (scalar.source)
           end2 += scalar.source.length;
@@ -7454,7 +7454,7 @@ var require_resolve_block_scalar = __commonJS({
       let offset = scalar.offset + header.length;
       let contentStart = 0;
       for (let i = 0; i < chompStart; ++i) {
-        const [indent, content] = lines[i];
+        const [indent, content] = lines2[i];
         if (content === "" || content === "\r") {
           if (header.indent === 0 && indent.length > trimIndent)
             trimIndent = indent.length;
@@ -7474,17 +7474,17 @@ var require_resolve_block_scalar = __commonJS({
         }
         offset += indent.length + content.length + 1;
       }
-      for (let i = lines.length - 1; i >= chompStart; --i) {
-        if (lines[i][0].length > trimIndent)
+      for (let i = lines2.length - 1; i >= chompStart; --i) {
+        if (lines2[i][0].length > trimIndent)
           chompStart = i + 1;
       }
       let value = "";
       let sep = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
-        value += lines[i][0].slice(trimIndent) + "\n";
+        value += lines2[i][0].slice(trimIndent) + "\n";
       for (let i = contentStart; i < chompStart; ++i) {
-        let [indent, content] = lines[i];
+        let [indent, content] = lines2[i];
         offset += indent.length + content.length + 1;
         const crlf = content[content.length - 1] === "\r";
         if (crlf)
@@ -7521,8 +7521,8 @@ var require_resolve_block_scalar = __commonJS({
         case "-":
           break;
         case "+":
-          for (let i = chompStart; i < lines.length; ++i)
-            value += "\n" + lines[i][0].slice(trimIndent);
+          for (let i = chompStart; i < lines2.length; ++i)
+            value += "\n" + lines2[i][0].slice(trimIndent);
           if (value[value.length - 1] !== "\n")
             value += "\n";
           break;
@@ -7597,10 +7597,10 @@ var require_resolve_block_scalar = __commonJS({
       const first = split[0];
       const m = first.match(/^( *)/);
       const line0 = m?.[1] ? [m[1], first.slice(m[1].length)] : ["", first];
-      const lines = [line0];
+      const lines2 = [line0];
       for (let i = 1; i < split.length; i += 2)
-        lines.push([split[i], split[i + 1]]);
-      return lines;
+        lines2.push([split[i], split[i + 1]]);
+      return lines2;
     }
     exports.resolveBlockScalar = resolveBlockScalar;
   }
@@ -8619,7 +8619,7 @@ var require_cst = __commonJS({
     var cstScalar = require_cst_scalar();
     var cstStringify = require_cst_stringify();
     var cstVisit = require_cst_visit();
-    var BOM = "\uFEFF";
+    var BOM2 = "\uFEFF";
     var DOCUMENT = "";
     var FLOW_END = "";
     var SCALAR = "";
@@ -8627,7 +8627,7 @@ var require_cst = __commonJS({
     var isScalar = (token) => !!token && (token.type === "scalar" || token.type === "single-quoted-scalar" || token.type === "double-quoted-scalar" || token.type === "block-scalar");
     function prettyToken(token) {
       switch (token) {
-        case BOM:
+        case BOM2:
           return "<BOM>";
         case DOCUMENT:
           return "<DOC>";
@@ -8641,7 +8641,7 @@ var require_cst = __commonJS({
     }
     function tokenType(source) {
       switch (source) {
-        case BOM:
+        case BOM2:
           return "byte-order-mark";
         case DOCUMENT:
           return "doc-mode";
@@ -8703,7 +8703,7 @@ var require_cst = __commonJS({
     exports.setScalarValue = cstScalar.setScalarValue;
     exports.stringify = cstStringify.stringify;
     exports.visit = cstVisit.visit;
-    exports.BOM = BOM;
+    exports.BOM = BOM2;
     exports.DOCUMENT = DOCUMENT;
     exports.FLOW_END = FLOW_END;
     exports.SCALAR = SCALAR;
@@ -16466,24 +16466,24 @@ function renderRefusal(what, target, status, body) {
   const reason = typeof body.reason === "string" ? body.reason : void 0;
   const code = typeof body.error === "string" ? body.error : void 0;
   const label = [String(status), reason ?? code].filter(Boolean).join(" ");
-  const lines = [`${what} failed (${label}) at ${target}`];
-  if (typeof body.message === "string") lines.push(`  ${body.message}`);
+  const lines2 = [`${what} failed (${label}) at ${target}`];
+  if (typeof body.message === "string") lines2.push(`  ${body.message}`);
   if (typeof body.claim === "string")
-    lines.push(`  failing claim: ${body.claim}`);
-  if (typeof body.key === "string") lines.push(`  object: ${body.key}`);
+    lines2.push(`  failing claim: ${body.claim}`);
+  if (typeof body.key === "string") lines2.push(`  object: ${body.key}`);
   if (Array.isArray(body.fields) && body.fields.length)
-    lines.push(`  fields: ${body.fields.join(", ")}`);
+    lines2.push(`  fields: ${body.fields.join(", ")}`);
   if (Array.isArray(body.errors)) {
     for (const e of body.errors.slice(0, 50)) {
       const rec = e;
-      lines.push(
+      lines2.push(
         `  ${String(rec.path ?? "")} ${String(rec.code ?? "")}: ${String(rec.message ?? "")}`
       );
     }
   }
   const hint = refusalHint(status, reason);
-  if (hint) lines.push(hint);
-  return lines.join("\n");
+  if (hint) lines2.push(hint);
+  return lines2.join("\n");
 }
 function refusalHint(status, reason) {
   switch (reason) {
@@ -16809,16 +16809,16 @@ function parseBinary(buf) {
   };
   const lengthAt = (at, info) => {
     if (info !== 15) return { len: info, start: at + 1 };
-    const marker = buf[at + 1];
-    if (marker >> 4 !== 1) throw new PlistError("binary plist: bad length");
-    const size = 1 << (marker & 15);
+    const marker2 = buf[at + 1];
+    if (marker2 >> 4 !== 1) throw new PlistError("binary plist: bad length");
+    const size = 1 << (marker2 & 15);
     return { len: readUInt(buf, at + 2, size), start: at + 2 + size };
   };
   const decode2 = (at, depth) => {
     if (at >= t) throw new PlistError("binary plist: object out of range");
-    const marker = buf[at];
-    const type = marker >> 4;
-    const info = marker & 15;
+    const marker2 = buf[at];
+    const type = marker2 >> 4;
+    const info = marker2 & 15;
     switch (type) {
       case 0:
         if (info === 8) return false;
@@ -18772,9 +18772,9 @@ async function sha256Hex(bytes) {
   return hex2(new Uint8Array(digest));
 }
 async function treeDigest(files) {
-  const lines = [...files].sort((a, b) => compareBytes(a.path, b.path)).map((f) => `${f.sha256} ${String(f.size)} ${f.path}
+  const lines2 = [...files].sort((a, b) => compareBytes(a.path, b.path)).map((f) => `${f.sha256} ${String(f.size)} ${f.path}
 `).join("");
-  return sha256Hex(new TextEncoder().encode(lines));
+  return sha256Hex(new TextEncoder().encode(lines2));
 }
 var invalid = {
   ok: false,
@@ -20928,10 +20928,19 @@ function readPck(b, name = "the payload") {
         );
       if (flags !== 0)
         throw new PckError(`${path10}: unknown entry flags ${flags}.`);
+      if (!pckPathOk(path10))
+        throw new PckError(
+          `${path10}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
+        );
       if (offset + size > b.byteLength)
         throw new PckError(`${path10}: its bytes run past the end of the file.`);
       entries.push({ rawPath, path: path10, offset, size, md5, flags });
     }
+    const all = checkPaths(entries.map((e) => e.path));
+    if (!all.ok)
+      throw new PckError(
+        `${all.path}: a path the directory names twice (${all.error}).`
+      );
     return { header, entries };
   } catch (e) {
     if (e instanceof PckError)
@@ -20940,6 +20949,10 @@ function readPck(b, name = "the payload") {
       `${name}: the PCK directory does not parse (${e.message}).`
     );
   }
+}
+function pckPathOk(path10) {
+  if (!checkPaths([path10]).ok) return false;
+  return !(path10.includes("..") || path10.includes("./") || path10.includes("//") || path10.endsWith("/") || path10.endsWith("/."));
 }
 function pad(n, align) {
   const r = n % align;
@@ -21026,6 +21039,28 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 var PCK_WARN_ENTRIES = 1e3;
 var PCK_MAX_ENTRIES = 2e4;
 var SCRIPT_RE = /\.(gd|gdc|cs)$/i;
+var SCRIPT_MARKERS = [
+  "GDScript",
+  "CSharpScript",
+  "ScriptExtension",
+  "script/source",
+  "source_code"
+];
+function scriptKinds(opts) {
+  const markers = [...SCRIPT_MARKERS];
+  for (const t of [...opts.scriptTypes ?? []].sort())
+    if (!markers.includes(t)) markers.push(t);
+  return {
+    exts: new Set((opts.scriptExtensions ?? []).map((x) => x.toLowerCase())),
+    markers
+  };
+}
+function isScript(p, kinds) {
+  if (SCRIPT_RE.test(p)) return true;
+  const slash = p.lastIndexOf("/");
+  const dot = p.lastIndexOf(".");
+  return dot > slash && kinds.exts.has(p.slice(dot + 1).toLowerCase());
+}
 var NATIVE_RE = /\.(so|dll|dylib|wasm|gdextension)$|\.so\.\d+(\.\d+)*$/i;
 var NATIVE_DIR_RE = /\.(framework|xcframework)$/i;
 function isNative(path10) {
@@ -21037,23 +21072,111 @@ function resPath(p) {
 }
 function remapTargets(text) {
   const out = /* @__PURE__ */ new Set();
-  for (const m of text.matchAll(
-    /^\s*path(?:\.[A-Za-z0-9_-]+)?\s*=\s*"([^"]*)"/gm
-  )) {
-    const p = resPath(m[1]);
+  for (const v of remapValues(text)) {
+    const p = resPath(v);
     if (p !== null) out.add(p);
   }
-  for (const m of text.matchAll(/^\s*dest_files\s*=\s*\[([^\]]*)\]/gm))
-    for (const s of m[1].matchAll(/"([^"]*)"/g)) {
-      const p = resPath(s[1]);
-      if (p !== null) out.add(p);
-    }
   return [...out];
+}
+var PATH_ANY_RE = /(^|[^A-Za-z0-9_/.-])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
+var PATH_LINE_RE = /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
+var DEST_LINE_RE = /^[ \t\f\x0B]*dest_files[ \t\f\x0B]*=[ \t\f\x0B]*\[([^\]]*)\]/;
+function lines(text) {
+  return text.replace(/\r/g, "\n").split("\n");
+}
+function remapValues(text) {
+  const out = /* @__PURE__ */ new Set();
+  const ls = lines(text);
+  for (const l of ls) {
+    const m = PATH_LINE_RE.exec(l);
+    if (m) out.add(m[1]);
+  }
+  for (const l of ls) {
+    const m = DEST_LINE_RE.exec(l);
+    if (m) for (const q of m[1].matchAll(/"([^"]*)"/g)) out.add(q[1]);
+  }
+  return [...out];
+}
+function remapProblem(data) {
+  if (data.includes(0)) return "a .remap or .import with a NUL byte";
+  for (const b of data)
+    if (b < 32 && b !== 9 && b !== 10 && b !== 13)
+      return "a .remap or .import with a control byte";
+  if (data.includes(92)) return "a .remap or .import with a backslash";
+  if (!utf8Valid(data)) return "a .remap or .import that is not valid UTF-8";
+  if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM) !== -1)
+    return "a .remap or .import with a byte-order mark";
+  const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
+  for (const l of lines(text))
+    if (PATH_ANY_RE.test(l) && !PATH_LINE_RE.test(l))
+      return `a path line the engine could read differently (${l})`;
+  return null;
+}
+var BOM = Buffer.from([239, 187, 191]);
+function utf8Valid(b) {
+  let i = 0;
+  const n = b.length;
+  while (i < n) {
+    const c = b[i];
+    if (c < 128) {
+      i += 1;
+      continue;
+    }
+    let need = 0;
+    let lo = 128;
+    let hi = 191;
+    if (c >= 194 && c <= 223) need = 1;
+    else if (c === 224) {
+      need = 2;
+      lo = 160;
+    } else if (c >= 225 && c <= 236 || c === 238 || c === 239) need = 2;
+    else if (c === 237) {
+      need = 2;
+      hi = 159;
+    } else if (c === 240) {
+      need = 3;
+      lo = 144;
+    } else if (c >= 241 && c <= 243) need = 3;
+    else if (c === 244) {
+      need = 3;
+      hi = 143;
+    } else return false;
+    if (i + need >= n) return false;
+    const x = b[i + 1];
+    if (x < lo || x > hi) return false;
+    for (let k = 2; k <= need; k++) {
+      const y = b[i + k];
+      if (y < 128 || y > 191) return false;
+    }
+    i += need + 1;
+  }
+  return true;
+}
+function uidCacheProblem(data, inPack) {
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  if (data.byteLength < 4) return "a malformed uid cache";
+  const n = dv.getUint32(0, true);
+  let p = 4;
+  const dec2 = new TextDecoder("utf-8", { fatal: false });
+  for (let i = 0; i < n; i++) {
+    if (p + 12 > data.byteLength) return "a malformed uid cache";
+    const ln = dv.getUint32(p + 8, true);
+    if (p + 12 + ln > data.byteLength) return "a malformed uid cache";
+    const rawBytes = data.subarray(p + 12, p + 12 + ln);
+    if (rawBytes.includes(0)) return "names a path with a NUL byte";
+    const raw = dec2.decode(rawBytes);
+    p += 12 + ln;
+    const t = resPath(raw);
+    if (t === null || !pckPathOk(t) || !(inPack.has(t) || inPack.has(`${t}.remap`) || inPack.has(`${t}.import`)))
+      return `names a path outside the pack (${raw})`;
+  }
+  if (p !== data.byteLength) return "a malformed uid cache";
+  return null;
 }
 function lintPck(dir, bytes, opts) {
   const errors = [];
   const warnings = [];
-  const prefixes = opts.prefixes.map((p) => resPath(p)).filter((p) => p !== null);
+  const prefixes = opts.prefixes.map((p) => resPath(p)).filter((p) => p !== null && p !== "");
   const inPrefix = (p) => prefixes.some((x) => p.startsWith(x));
   const { major, minor } = dir.header.engine;
   if (opts.engine !== void 0 && opts.engine !== `godot-${major}.${minor}`)
@@ -21073,13 +21196,15 @@ function lintPck(dir, bytes, opts) {
   const named = /* @__PURE__ */ new Set();
   const deferred = [];
   const text = new TextDecoder("utf-8", { fatal: false });
+  const inPack = new Set(dir.entries.map((e) => e.path));
+  const kinds = scriptKinds(opts);
   for (const e of dir.entries) {
     const p = e.path;
     if (stripped.has(p)) {
       errors.push(`${p}: --export-pack's ${p} replaces the main pack's copy.`);
       continue;
     }
-    if (SCRIPT_RE.test(p)) {
+    if (isScript(p, kinds)) {
       errors.push(`${p}: a script; a pack carries data only (S-07 row 13).`);
       continue;
     }
@@ -21089,22 +21214,54 @@ function lintPck(dir, bytes, opts) {
       );
       continue;
     }
-    if (p === ".godot/uid_cache.bin") continue;
-    const code = embeddedCode(p, bytes.subarray(e.offset, e.offset + e.size));
+    if (p === ".godot/uid_cache.bin") {
+      const why = uidCacheProblem(
+        bytes.subarray(e.offset, e.offset + e.size),
+        inPack
+      );
+      if (why !== null)
+        errors.push(`${p}: ${why}; a pack registers only its own UIDs.`);
+      continue;
+    }
+    const code = embeddedCode(
+      p,
+      bytes.subarray(e.offset, e.offset + e.size),
+      kinds.markers
+    );
     if (code !== null) {
       errors.push(`${p}: ${code}; a pack carries data only.`);
       continue;
     }
     if (inPrefix(p)) {
       if (p.endsWith(".remap") || p.endsWith(".import")) {
+        const problem = remapProblem(
+          bytes.subarray(e.offset, e.offset + e.size)
+        );
+        if (problem !== null) {
+          errors.push(`${p}: ${problem}; a pack loads only its own files.`);
+          continue;
+        }
         const targets = remapTargets(
           text.decode(bytes.subarray(e.offset, e.offset + e.size))
         );
         const source = p.slice(0, p.lastIndexOf("."));
-        const script = targets.find((t) => SCRIPT_RE.test(t));
-        if (SCRIPT_RE.test(source) || script !== void 0) {
+        const script = targets.find((t) => isScript(t, kinds));
+        if (isScript(source, kinds) || script !== void 0) {
           errors.push(
             `${p}: remaps a script${script ? ` (${script})` : ""}; a pack carries data only.`
+          );
+          continue;
+        }
+        const outside = remapValues(
+          text.decode(bytes.subarray(e.offset, e.offset + e.size))
+        ).find((v) => {
+          if (v === "") return false;
+          const t = resPath(v);
+          return t === null || !pckPathOk(t) || !inPack.has(t);
+        });
+        if (outside !== void 0) {
+          errors.push(
+            `${p}: remaps a path outside the pack (${outside}); a pack loads only its own files.`
           );
           continue;
         }
@@ -21129,41 +21286,48 @@ function lintPck(dir, bytes, opts) {
 }
 var TEXT_RESOURCE_RE = /\.(tscn|tres|escn)$/i;
 var BINARY_RESOURCE_RE = /\.(scn|res)$/i;
-var SCRIPT_TYPES = ["GDScript", "CSharpScript"];
-function embeddedCode(p, data) {
+function embeddedCode(p, data, markers = SCRIPT_MARKERS) {
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
   if (magic === "RSCC")
     return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed";
-  if (magic !== "RSRC") {
-    const head = new TextDecoder("utf-8", { fatal: false }).decode(data.subarray(0, 64)).replace(/^\uFEFF/, "");
-    if (/^\s*\[gd_(scene|resource)\b/.test(head) || TEXT_RESOURCE_RE.test(p))
-      return textResourceCode(data);
-    if (BINARY_RESOURCE_RE.test(p) || p.startsWith(".godot/exported/"))
-      return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
-    return null;
+  if (magic === "RSRC") {
+    const m = marker(data, markers);
+    return m === null ? null : `a binary resource that names ${m} (an embedded script or its source)`;
   }
-  const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
-  for (const s of [...SCRIPT_TYPES, "script/source"]) {
-    const str = Buffer.from(`${s}\0`, "utf8");
-    for (const le of [true, false]) {
-      const len = Buffer.alloc(4);
-      if (le) len.writeUInt32LE(str.length);
-      else len.writeUInt32BE(str.length);
-      if (buf.indexOf(Buffer.concat([len, str])) !== -1)
-        return s === "script/source" ? "a binary resource with an embedded script's source (script/source)" : `a binary resource with an embedded ${s} sub-resource`;
-    }
-  }
+  if (sniffsTextResource(data) || TEXT_RESOURCE_RE.test(p))
+    return textResourceCode(data, markers);
+  if (BINARY_RESOURCE_RE.test(p) || p.startsWith(".godot/exported/"))
+    return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
   return null;
 }
-function textResourceCode(data) {
-  const text = new TextDecoder("utf-8", { fatal: false }).decode(data);
-  for (const m of text.matchAll(/^\s*\[([a-z_]+)\b[^\]\n]*\]/gm)) {
-    const t = /\btype\s*=\s*"([^"]*)"/.exec(m[0]);
-    if (t && SCRIPT_TYPES.includes(t[1]))
-      return `an embedded script ([${m[1]} type="${t[1]}"])`;
+function sniffsTextResource(data) {
+  const from = data.length >= 3 && data[0] === 239 && data[1] === 187 && data[2] === 191 ? 3 : 0;
+  const head = Buffer.from(data.subarray(from, from + 64)).toString("latin1").replace(/\0/g, " ");
+  return /^[ \t\n\r\f\x0B]*\[gd_(scene|resource)\b/.test(head);
+}
+function marker(data, markers) {
+  const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  for (const m of markers)
+    if (buf.indexOf(Buffer.from(m, "utf8")) !== -1) return m;
+  return null;
+}
+function textResourceCode(data, markers) {
+  if (data.includes(0))
+    return "a text resource with a NUL byte, which cannot be inspected for embedded scripts";
+  if (!utf8Valid(data))
+    return "a text resource that is not valid UTF-8, which cannot be inspected for embedded scripts";
+  const m = marker(data, markers);
+  if (m !== null)
+    return `a text resource that names ${m} (an embedded script or its source)`;
+  if (data.includes(92)) {
+    const bare = data.filter((b) => b !== 92);
+    const m2 = marker(bare, markers);
+    if (m2 !== null)
+      return `a text resource that names ${m2} behind escapes (an embedded script or its source)`;
   }
-  if (/^\s*script\/source\s*=/m.test(text))
-    return "an embedded script's source (script/source)";
+  const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  if (buf.indexOf("\\u") !== -1 || buf.indexOf("\\U") !== -1)
+    return "a text resource with a \\u escape, which can spell a script type";
   return null;
 }
 function lintTreePaths(paths) {
@@ -22303,11 +22467,11 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
       `Published ${String(server.releaseId ?? releaseId)} (${String(server.outcome)})
 `
     );
-    const marker = markerJson(packId, version, jws);
+    const marker2 = markerJson(packId, version, jws);
     for (const v of variants) {
       const file = markerPathFor(pack.type, v.location);
       await mkdir2(path6.dirname(file), { recursive: true });
-      await writeFile5(file, marker);
+      await writeFile5(file, marker2);
       result.markers.push(file);
     }
     out.write(

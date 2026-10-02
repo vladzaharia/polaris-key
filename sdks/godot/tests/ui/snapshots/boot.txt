@@ -21,3 +21,15 @@ PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyLabel: Label "Licens
 PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
 PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
+== consent metered ==
+Center/Shell/Status: Label "Downloading content…"
+Center/Shell/Card/Body/Title: Label "Download content?"
+Center/Shell/Card/Body/Message: Label "The game needs 12.3 MB of new content, and you're on a mobile connection."
+Center/Shell/Card/Body/Actions/Download: Button "Download" [focus 1]
+Center/Shell/Card/Body/Actions/NotNow: Button "Not now" [focus 2]
+== blocked content-declined ==
+Center/Shell/Card/Body/Title: Label "Content not downloaded"
+Center/Shell/Card/Body/Message: Label "The game needs this content to start. Try again when you're ready."
+Center/Shell/Card/Body/Actions/Retry: Button "Try again" [focus 1]
+== background pill ==
+Overlay/Pill: Label "Downloading content… 42%"

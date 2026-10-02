@@ -23,6 +23,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { checkPaths } from "@polaris-key/client-core/packs";
 
 export const PCK_MAGIC = 0x43504447; // "GDPC"
 export const PACK_DIR_ENCRYPTED = 1;
@@ -146,10 +147,21 @@ export function readPck(b: Uint8Array, name = "the payload"): PckDirectory {
         );
       if (flags !== 0)
         throw new PckError(`${path}: unknown entry flags ${flags}.`);
+      if (!pckPathOk(path))
+        throw new PckError(
+          `${path}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`,
+        );
       if (offset + size > b.byteLength)
         throw new PckError(`${path}: its bytes run past the end of the file.`);
       entries.push({ rawPath, path, offset, size, md5, flags });
     }
+    // Two entries that name one file (exactly, by ASCII case, or a file and a directory of the
+    // same name) cannot both be what the admission list judged.
+    const all = checkPaths(entries.map((e) => e.path));
+    if (!all.ok)
+      throw new PckError(
+        `${all.path}: a path the directory names twice (${all.error}).`,
+      );
     return { header, entries };
   } catch (e) {
     if (e instanceof PckError)
@@ -158,6 +170,24 @@ export function readPck(b: Uint8Array, name = "the payload"): PckDirectory {
       `${name}: the PCK directory does not parse (${(e as Error).message}).`,
     );
   }
+}
+
+/**
+ * Whether a pack path (without `res://`) is one Godot will not rewrite on mount (P4-08 review
+ * B1): the files index's path rules (no `..`, `.` or empty segment, no leading or trailing `/`,
+ * printable ASCII without `\ : * ? " < > |`, client-core `checkPaths`), and no `..`, `./`, `//`,
+ * trailing `/` or `/.` anywhere. A path that fails could land outside the prefix it appears to
+ * sit under once the engine normalises it. The Godot SDK's `PKeyPck.path_ok` is the same rule.
+ */
+export function pckPathOk(path: string): boolean {
+  if (!checkPaths([path]).ok) return false;
+  return !(
+    path.includes("..") ||
+    path.includes("./") ||
+    path.includes("//") ||
+    path.endsWith("/") ||
+    path.endsWith("/.")
+  );
 }
 
 function pad(n: number, align: number): number {

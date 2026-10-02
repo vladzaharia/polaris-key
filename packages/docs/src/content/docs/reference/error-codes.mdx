@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(129 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(132 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -146,5 +146,8 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `pack-not-pinned` | `update` | `update.packs.ensure` named a pack the running build's content stamp does not pin, so there is no release to install (plans/P4-01.md §2.8: the stamp is the only source of pins in v1). |
 | `pack-not-entitled` | `update` | A pinned pack record carries an `entitlement` the device's licence does not grant, so the pack is left out of the plan (plans/P4-01.md §2.3; CONTENT §6.7 item 9). |
 | `pack-state-unreadable` | `update` | The pack install state could not be read (an I/O error, not a missing file), so the pack pipeline refuses to write it or install anything this process: an install recorded over an unread state could lose the installs it holds. |
+| `pck-directory-refused` | `update` | A pack payload failed the Godot SDK's device-side checks before it was committed or mounted. For a `godot.pck`: its PCK header or directory cannot be read (an encrypted directory, a sparse bundle, an encrypted, removal or delta entry), or an entry is outside the admission list over the record's `handler.prefixes` (`project.binary`, the class cache, a script, a native library, an out-of-prefix path, an exported file nothing names, or a resource that embeds code), an entry path the engine would normalise elsewhere, a `.remap`/`.import` or `uid_cache.bin` naming a file outside the pack; for a `files.tree`, a script or a Godot resource that embeds code. The first refused path is named (notes/S-05 §5 (f); P4-03's publish lint applies the same list). |
+| `pck-engine-mismatch` | `update` | A `godot.pck` payload's PCK header names an engine newer than the running one, or a `major.minor` outside the variant's `requires.engine`, so the Godot SDK does not commit or mount it (plans/P4-01.md §2.9; P4-08). |
+| `pack-rolled-back` | `update` | The release the content stamp pins was rolled back by the boot guard after failed boots, so it is not installed again while the stamp still pins it; the restored previous release stays active and counts as present (P3-10's skipVersion for packs; P4-08). |
 | `pack-revoked` | `update` | The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5). |
 | `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). |

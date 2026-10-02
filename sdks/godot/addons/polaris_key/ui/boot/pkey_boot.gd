@@ -17,10 +17,14 @@ extends PKeyUiView
 ## machine says. A game that wants its own visuals connects to the signals and hides the default
 ## view (`show_default_view = false`).
 ##
-## Options for `run()`: allow_offline (default true), allow_grace (true), required_packs ([],
-## accepted; nothing installs packs until P4-08), essential_packs ([]: stage matrix v3's packs the
-## boot wants before READY but can play without; an OFFLINE stop with every required pack present
-## offers "Play offline"), sync_timeout_seconds (20, or 45 on a build
+## Options for `run()`: allow_offline (default true), allow_grace (true), required_packs and
+## essential_packs (default: the content stamp's `required` expects and its `essential` ones,
+## PolarisKey.update.packs.boot_options(); stage matrix v3: an OFFLINE stop with every required
+## pack present offers "Play offline"), consent (`metered` (default): ask before downloading only
+## on a metered network; `always`; `never`), metered (bool: the host knows it is on cellular),
+## theme (a res:// Theme a mounted pack provides, applied to this view after MOUNT), background
+## (true: after READY install the stamp's prefetch packs with a corner pill), sync_timeout_seconds
+## (20, or 45 on a build
 ## without threads, where a bundle verify runs in frame slices: never under 10 s natively or 30 s
 ## sliced, S-04), offer_enrollment (false), release_url (""), keep_update_prompt (true: see the
 ## property), options (a PKeyOptions used when PolarisKey is not configured yet), host (replaces
@@ -41,13 +45,16 @@ signal error(code: String)
 signal boot_rolled_back()
 signal boot_ready()
 ## Stage matrix v3: the download needs the player's consent (the size disclosure and the cellular
-## choice). The host answers with fetch.done, `declined` included; the consent UI is P4-08's.
+## choice). PKeyBoot shows the consent card (Download / Not now); `answer_consent(bool)` answers it
+## from a game's own UI. Declining stops at BLOCKED {content-declined}, never ERROR.
 signal consent_needed(bytes: int, metered: bool)
 ## Stage matrix v3: download progress, 0 <= done <= total.
 signal fetch_progress(done: int, total: int)
 ## The boot stopped (READY, BLOCKED, OFFLINE or ERROR): the first stop resolves run(); a stop
 ## reached after a Retry arrives only here.
 signal boot_finished(result: PKeyBootResult)
+## The player answered the consent card (internal).
+signal _consent_answered(yes: bool)
 
 const READY := "ready"
 const BLOCKED := "blocked"
@@ -97,6 +104,12 @@ var _block_reason := ""
 var _error_code := ""
 var _retried := false
 var _wait_status := ""
+var _consent_bytes := 0
+var _consent_metered := false
+var _consent_open := false
+var _background_done := 0
+var _background_total := 0
+var _background_running := false
 
 var _center: CenterContainer
 var _logo: TextureRect
@@ -109,6 +122,9 @@ var _notice: Label
 var _update_action: Button
 var _retry: Button
 var _play_offline: Button
+var _consent_yes: Button
+var _consent_no: Button
+var _pill: Label
 var gate: PKeyGateView
 var prompt: PKeyUpdatePrompt
 var _overlay: Control
@@ -147,6 +163,8 @@ func _build() -> void:
 	_update_action = button(actions, "UpdateAction", _on_update_action, "PKeyPrimary")
 	_retry = button(actions, "Retry", retry, "PKeyPrimary")
 	_play_offline = button(actions, "PlayOffline", play_offline)
+	_consent_yes = button(actions, "Download", func() -> void: answer_consent(true), "PKeyPrimary")
+	_consent_no = button(actions, "NotNow", func() -> void: answer_consent(false))
 	gate = PKeyGateView.new()
 	gate.auto_sdk = false
 	gate.embedded = true
@@ -165,6 +183,15 @@ func _build() -> void:
 	prompt.auto_sdk = false
 	prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_overlay.add_child(prompt)
+	# BACKGROUND's corner pill: optional packs installing after READY, never covering the game.
+	_pill = Label.new()
+	_pill.name = "Pill"
+	_pill.theme_type_variation = "PKeyMuted"
+	_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pill.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_pill.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_pill.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_overlay.add_child(_pill)
 	set_process(false)
 
 
@@ -198,8 +225,14 @@ func run(opts: Dictionary = {}) -> PKeyBootResult:
 		host.changed.connect(_on_host_changed)
 	if sdk != null and sdk.has_signal("verify_progress") and not sdk.verify_progress.is_connected(set_verify_progress):
 		sdk.verify_progress.connect(set_verify_progress)
-	var packs = opts.get("required_packs", [])
-	var essential = opts.get("essential_packs", [])
+	var packs = opts.get("required_packs")
+	var essential = opts.get("essential_packs")
+	if (packs == null or essential == null) and host.has_method("boot_options"):
+		var bo: Dictionary = host.boot_options()
+		if packs == null:
+			packs = bo.get("requiredPacks", [])
+		if essential == null:
+			essential = bo.get("essentialPacks", [])
 	state = PKeyStages.initial_boot_state(opts.get("allow_offline", true) == true, opts.get("allow_grace", true) == true, packs if packs is Array else [], essential if essential is Array else [])
 	gate.allow_grace = opts.get("allow_grace", true) == true
 	gate.offer_enrollment = opts.get("offer_enrollment", false) == true
@@ -267,6 +300,46 @@ func play_offline() -> void:
 	send({"type": "play-offline"})
 
 
+## Answer the consent card (true: download; false: not now). A game with its own consent UI calls
+## this after `consent_needed`.
+func answer_consent(yes: bool) -> void:
+	if not _consent_open:
+		return
+	_consent_open = false
+	refresh_view()
+	_consent_answered.emit(yes)
+
+
+## The host's consent question: show the card and wait for the player. A coroutine.
+func _consent_answer(bytes: int, metered: bool) -> bool:
+	_consent_bytes = bytes
+	_consent_metered = metered
+	_consent_open = true
+	refresh_view()
+	var yes: bool = await _consent_answered
+	return yes
+
+
+## The `theme` option: a Theme a mounted pack provides, applied to this view after MOUNT.
+func _swap_theme() -> void:
+	var path = _opts.get("theme")
+	if path is String and path != "" and ResourceLoader.exists(path):
+		var t = load(path)
+		if t is Theme:
+			theme = t
+
+
+## A byte count for the consent card ("12.3 MB").
+static func human_size(bytes: int) -> String:
+	if bytes >= 1000 * 1000 * 1000:
+		return "%.1f GB" % (bytes / 1.0e9)
+	if bytes >= 1000 * 1000:
+		return "%.1f MB" % (bytes / 1.0e6)
+	if bytes >= 1000:
+		return "%d KB" % int(round(bytes / 1.0e3))
+	return "%d B" % bytes
+
+
 func _emit(e: Dictionary) -> void:
 	match e["type"]:
 		"stage_changed":
@@ -324,9 +397,20 @@ func _enter(stage: String, _previous: String) -> void:
 					prompt.show_result(update_result)
 					gate.update_result = update_result
 		"fetch":
-			e = await host.fetch(state["options"]["requiredPacks"])
+			if host.has_method("fetch_with"):
+				var fopts := {
+					"consent": String(_opts.get("consent", "metered")),
+					"metered": _opts.get("metered", false) == true,
+					"answer": _consent_answer,
+				}
+				e = await host.fetch_with(state["options"]["requiredPacks"], send, fopts)
+			else:
+				e = await host.fetch(state["options"]["requiredPacks"])
+			_consent_open = false
 		"mount":
-			e = await host.mount()
+			e = await host.mount(state["options"]["requiredPacks"])
+			if gen == _gen and e is Dictionary and e.get("type") == "mount.done":
+				_swap_theme()
 		_:
 			return
 	if gen != _gen or not (e is Dictionary):
@@ -379,6 +463,8 @@ func _stopped() -> void:
 	r.can_play_offline = state.get("canPlayOffline") == true
 	result = r
 	boot_finished.emit(r)
+	if outcome == READY:
+		await _background()
 	if outcome == READY and free_on_ready:
 		_running = false
 		var owner_layer := get_parent()
@@ -408,6 +494,33 @@ func _keep_prompt(to: Node) -> bool:
 	_overlay.add_child(prompt)
 	kept_prompt = kept
 	return true
+
+
+## BACKGROUND (stage matrix): after READY, install the stamp's prefetch packs that are not
+## current, with the corner pill; the game runs meanwhile. A coroutine.
+func _background() -> void:
+	if _background_running or _opts.get("background", true) != true or not host.has_method("background_packs"):
+		return
+	var ids: Array = host.background_packs()
+	if ids.is_empty() or not send({"type": "background.start"}):
+		return
+	_background_running = true
+	_background_done = 0
+	_background_total = 0
+	var p = host.packs() if host.has_method("packs") else null
+	var on_progress := func(_id: String, done: int, total: int) -> void:
+		_background_done = done
+		_background_total = total
+		refresh_view()
+	if p != null:
+		p.pack_progress.connect(on_progress)
+	refresh_view()
+	await host.background(ids)
+	if p != null and p.pack_progress.is_connected(on_progress):
+		p.pack_progress.disconnect(on_progress)
+	_background_running = false
+	send({"type": "background.done"})
+	refresh_view()
 
 
 ## The verified-bundle progress (PolarisKey.verify_progress) for the bar while a sliced verify
@@ -442,8 +555,10 @@ func _render() -> void:
 	var outcome: String = state["outcome"]
 	var waiting_gate := stage == "gate" and outcome == WAITING
 	var stopped := outcome in [BLOCKED, OFFLINE, ERROR]
-	self_modulate.a = 1.0 if show_default_view else 0.0
-	_center.visible = show_default_view and not waiting_gate
+	# While BACKGROUND runs the view is only its corner pill: transparent, taking no input.
+	self_modulate.a = 1.0 if show_default_view and not _background_running else 0.0
+	mouse_filter = Control.MOUSE_FILTER_IGNORE if _background_running else Control.MOUSE_FILTER_STOP
+	_center.visible = show_default_view and not waiting_gate and not _background_running
 	_logo.texture = logo
 	_logo.visible = logo != null
 	show_text(_status, t.text(_status_key(stage)) if not stopped and _status_key(stage) != "" else "")
@@ -466,7 +581,10 @@ func _render() -> void:
 			title = t.text("boot_error_title")
 			body = t.text("boot_error_body", _error_code)
 		BLOCKED:
-			if _block_reason == "update-required":
+			if _block_reason == "content-declined":
+				title = t.text("boot_declined_title")
+				body = t.text("boot_declined_body")
+			elif _block_reason == "update-required":
 				title = t.text("boot_blocked_update_title")
 				body = t.text("boot_blocked_update_body")
 				url = PKeyUpdatePromptController.update_url(update_result, gate._outlet(), String(_opts.get("release_url", "")))
@@ -478,6 +596,17 @@ func _render() -> void:
 	show_text(_update_action, t.text("update_action") if stopped and url != "" else "")
 	show_text(_retry, t.text("retry") if stopped else "")
 	show_text(_play_offline, t.text("play_offline") if outcome == OFFLINE and state.get("canPlayOffline") == true else "")
+	# The consent card (stage matrix v3 `fetch:waiting`): the size disclosure and the cellular
+	# choice, on the same card, before a byte is downloaded.
+	var consent := _consent_open and stage == "fetch"
+	if consent:
+		_card.visible = true
+		show_text(_title, t.text("boot_consent_title"))
+		show_text(_body, t.text("boot_consent_body_metered" if _consent_metered else "boot_consent_body", human_size(_consent_bytes)))
+	show_text(_consent_yes, t.text("boot_consent_download") if consent else "")
+	show_text(_consent_no, t.text("boot_consent_later") if consent else "")
+	var pct := int(round(100.0 * _background_done / _background_total)) if _background_total > 0 else 0
+	show_text(_pill, t.text("boot_background", clampi(pct, 0, 100)) if _background_running and show_default_view else "")
 	gate.visible = show_default_view and waiting_gate
 	if waiting_gate:
 		var st: Dictionary = sdk.status() if sdk != null and sdk.has_method("status") and sdk.get("core") != null else {}
@@ -488,7 +617,7 @@ func _render() -> void:
 
 
 func _focus_chain() -> Array:
-	var out: Array = [_update_action, _retry, _play_offline]
+	var out: Array = [_consent_yes, _consent_no, _update_action, _retry, _play_offline]
 	if gate.visible:
 		out.append_array(gate._focus_chain())
 	if prompt.visible:

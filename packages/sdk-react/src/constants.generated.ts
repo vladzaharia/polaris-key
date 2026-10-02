@@ -134,6 +134,9 @@ export const ErrorCode = {
   packNotPinned: "pack-not-pinned",
   packNotEntitled: "pack-not-entitled",
   packStateUnreadable: "pack-state-unreadable",
+  pckDirectoryRefused: "pck-directory-refused",
+  pckEngineMismatch: "pck-engine-mismatch",
+  packRolledBack: "pack-rolled-back",
   packRevoked: "pack-revoked",
   markerRejected: "marker-rejected",
 } as const;
@@ -268,6 +271,9 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "pack-not-pinned",
   "pack-not-entitled",
   "pack-state-unreadable",
+  "pck-directory-refused",
+  "pck-engine-mismatch",
+  "pack-rolled-back",
   "pack-revoked",
   "marker-rejected",
 ];
@@ -404,6 +410,9 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "pack-not-pinned": "client",
   "pack-not-entitled": "client",
   "pack-state-unreadable": "client",
+  "pck-directory-refused": "client",
+  "pck-engine-mismatch": "client",
+  "pack-rolled-back": "client",
   "pack-revoked": "client",
   "marker-rejected": "client",
 };
