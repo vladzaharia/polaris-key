@@ -1835,6 +1835,19 @@ blob store, and stores it. What the Worker newly does is parse CI-supplied bytes
   denial of publish, not a takeover: a repo writer who pushes the tag first makes that pack
   version's publish refuse with `release_exists` (409).
 
+**Pack publish lint (P4-03).** A v1 pack is data-only (S-07 row 13: App Review 2.5.2, Play's
+interpreted-code rule and Microsoft Store 10.2.2 forbid downloaded code on store builds), and
+`pkey release publish` is the first place that is enforced: besides script files, native
+libraries and GDExtensions by extension, it refuses every resource that carries code inside it —
+a text resource (`.tscn`, `.tres`, `.escn`) whose section headers name `GDScript` or
+`CSharpScript` or that sets `script/source`, and a binary resource (`.scn`, `.res`, anything under
+`.godot/exported/`) containing `GDScript`, `CSharpScript` or `script/source` as a Godot
+length-prefixed string, or that is compressed (`RSCC`) or otherwise not inspectable. The binary
+scan fails closed (it also refuses a binary scene that merely references an app script). The CLI
+lint is a publisher-side guard, not a trust boundary: a repo writer with the release key can sign
+any record, so P4-08's device-side directory check must apply the same rule (the same fixtures,
+`packages/cli/test/packFixtures.ts`) before a pack is mounted.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
