@@ -163,6 +163,15 @@ export {
   remapTargets,
 } from "./packLint.js";
 export {
+  RSCC_MAX_BLOCK,
+  RSCC_MAX_TOTAL,
+  RSCC_MIN_BLOCK,
+  RSCC_MODE_ZSTD,
+  rsccBody,
+  rsccBodyIsResource,
+  zstdFrameOk,
+} from "./rscc.js";
+export {
   buildFilesDelta,
   buildPayload,
   buildPayloadDelta,

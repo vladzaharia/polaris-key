@@ -240,12 +240,17 @@ What the step does, in order:
    and any text scene or resource (`.tscn`, `.tres`, `.escn`, or a `[gd_scene`/`[gd_resource`
    head) that names `GDScript`, `CSharpScript`, `ScriptExtension`, `script/source` or
    `source_code` anywhere; a text resource with a NUL byte, invalid UTF-8 or a `\u` escape; and a
-   compressed `RSCC` resource, which cannot be inspected. A `.remap` or `.import` whose `path` lines
+   compressed `RSCC` resource that cannot be decompressed within the bounds below, or whose body
+   fails the binary rule. A `.remap` or `.import` whose `path` lines
    are not plain `path[.<x>] = "res://…"` literals fails too, and so does one with a backslash or a
    control byte anywhere: an escaped quote in a node name under `_subresources` is enough, so
    rename that node in the source asset and re-import. Godot writes an imported 3D scene
-   (`.glb`, `.gltf`, `.blend`, `.fbx`) as a compressed `.scn` (`RSCC`), which the lint cannot
-   inspect, so packs that carry imported models are refused for now. A reference to a script the game
+   (`.glb`, `.gltf`, `.blend`, `.fbx`) as a compressed `.scn` (`RSCC`). The lint and the device
+   decompress it and scan the body like any binary resource, so packs that carry imported models
+   are admitted. The decompression is bounded: zstd only (Godot's default; another compression
+   mode fails), at most 256 MiB uncompressed per resource, blocks of 4 KiB to 1 MiB, each block
+   one zstd frame that decodes to exactly its declared size, and nothing after the closing
+   magic. A model that needs more than 256 MiB uncompressed fails; split it. A reference to a script the game
    already ships (`[ext_resource type="Script" …]`) names none of these and passes. The lint knows
    the built-in script set only; for another script language (a GDExtension) the device check,
    which asks its engine what a script is, is the one that refuses it. The header's engine must be `requires.engine`; more than

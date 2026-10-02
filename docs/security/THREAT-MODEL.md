@@ -2108,7 +2108,8 @@ a text resource (`.tscn`, `.tres`, `.escn`) whose section headers name `GDScript
 `CSharpScript` or that sets `script/source`, and a binary resource (`.scn`, `.res`, anything under
 `.godot/exported/`) containing `GDScript`, `CSharpScript` or `script/source` as a Godot
 length-prefixed string, or that is compressed (`RSCC`) or otherwise not inspectable. (P4-08's
-audit replaced both scans with the fail-closed content rules below.) The CLI lint is a
+audit replaced both scans with the fail-closed content rules below, and P4-27 replaced the `RSCC`
+refusal with bounded decompression.) The CLI lint is a
 publisher-side guard, not a trust boundary: a repo writer with the release key can sign
 any record, so P4-08's device-side directory check must apply the same rule (the same fixtures,
 `packages/cli/test/packFixtures.ts`) before a pack is mounted.
@@ -2147,8 +2148,31 @@ committed or mounted:
   whatever it is called. The text scan runs on the text-resource extensions (`.tres`, `.tscn`,
   and `.escn`, which is an import format rather than a runtime text-loader extension in 4.x and is
   scanned because stricter is free) and, as a defensive extra, on any entry with a sniffed
-  `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) cannot be scanned and is
-  refused under any name.
+  `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) is decompressed, bounded, and
+  its body scanned, under any name (next point).
+- **Compressed resources are decompressed under fixed bounds (P4-27).** Godot's scene importer
+  writes every imported model's `.scn` as `RSCC` (FileAccessCompressed: zstd blocks of 4096), so
+  refusing it refused every pack with a model. Both validators now decompress it, which means
+  running a decoder over attacker-chosen bytes, so the header is untrusted and bounded before any
+  allocation or decode: compression mode 2 (zstd) only; block size 4 KiB–1 MiB; the declared
+  total at most 256 MiB (`RSCC_MAX_TOTAL`, one constant on both sides: about ten times the
+  largest real model import, and what a phone's worker can hold while it scans); the block table
+  and every block inside the entry; the closing magic exactly at its end. Every block must be
+  exactly one zstd frame (no skippable frame, no dictionary id, no second frame: libzstd's one-shot
+  decode, the engine's, would take those, the CLI's single-frame wasm decoder would not) whose
+  header declares the block's size, checked by a frame walk on both sides before anything is
+  allocated; each decode then gets that size as its output capacity
+  (`PackedByteArray.decompress(size, COMPRESSION_ZSTD)` on the device, `@polaris-key/zstd-wasm`
+  in the CLI) and must return exactly it, so a block that lies about its size (a bomb) stops at
+  its declared size and is refused, and the work is bounded by the cap whatever the ratio. The
+  last block is the remainder (an empty frame when the total is a multiple of the block size,
+  which is only walked, never decoded). The body must open like a binary resource (the saver
+  omits the `RSRC` magic when compressing: the big-endian and real64 flags must be 0 or 1) and
+  then gets the same marker rule as an `RSRC` entry. Any other shape is refused, with identical
+  lines from both validators (`rscc-*` fixtures in `verdicts.json`, real 4.7.2 and 4.4.1 imports
+  admitted, run on both engines). Residual: a hostile pack can make a device decompress up to
+  256 MiB per resource during the check (off the main thread), which costs time and memory but
+  cannot write past a declared size or reach the mount.
 - **The scans are fail-closed content rules, not parsers (P4-08 validator audit).** As
   recalled from the engine source rather than measured here, Godot's VariantParser reads newlines
   as whitespace and fields as Variants (StringName `&"…"`, `\u` escapes, an inline

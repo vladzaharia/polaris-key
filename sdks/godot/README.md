@@ -698,7 +698,10 @@ on parser details: an `RSRC` entry is refused if a script marker (`GDScript`, `C
 `Script`) occurs anywhere in its bytes; a text resource (a `.tres`/`.tscn`/`.escn` name or a
 `[gd_scene`/`[gd_resource` head) also for a NUL, invalid UTF-8 or a `\u` escape, and for a
 marker found again once every backslash is removed (an unknown escape keeps its character);
-`RSCC` under any name. An in-prefix `.remap`/`.import` is refused for a NUL or other control byte,
+an `RSCC` (compressed, the scene importer's `.scn`) under any name is decompressed with
+`PKeyPck.rscc_body` (zstd only, at most `RSCC_MAX_TOTAL` = 256 MiB, every block one zstd frame of
+exactly its declared size, the closing magic last) and its body gets the binary rule; anything
+else about it is refused. An in-prefix `.remap`/`.import` is refused for a NUL or other control byte,
 a backslash, invalid UTF-8, a byte-order mark, or a line with a `path` key anywhere in it that is
 not exactly `path[.<x>] = "<plain literal>"`. Besides `.gd`/`.gdc`/`.cs`, the
 device refuses every extension a loader claims for `Script` (`PKeyPck.refresh_script_kinds`, run by

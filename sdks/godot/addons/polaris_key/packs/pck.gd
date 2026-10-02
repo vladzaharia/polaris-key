@@ -15,6 +15,7 @@ extends RefCounted
 ##   engine_check(header, requires)      "" or why the header's engine is not allowed here
 ##   directory_check(source, dir, prefixes)  {ok, errors: [{path, why}], count}: the admission list
 ##   embedded_code(path, data)           why a resource carries code, or ""
+##   rscc_body(data)                     an RSCC resource's body, bounded ({body} or {why}; P4-27)
 ##   remap_targets(text)                 the files a .remap or .import points to
 ##   write(path, entries, version)       a helper PCK (GDDL delta packs, copy hosts); Error
 ##   append_trailer(path, entries, version)  a directory appended to an existing file (A6 §5)
@@ -447,8 +448,9 @@ static func uid_cache_problem(data: PackedByteArray, in_pack: Dictionary) -> Str
 
 
 ## Why a resource entry carries code, or "" when it carries none (P4-03's `embeddedCode`, the
-## same rules and wording, hardened by the P4-08 audit): an `RSCC` (compressed) resource under any
-## name; an `RSRC` resource whose bytes name a script marker anywhere (`_binary_code`); a text
+## same rules and wording, hardened by the P4-08 audit): an `RSCC` (compressed) resource, under any
+## name, that `rscc_body` refuses, whose body is not a binary resource, or whose body names a
+## marker (P4-27); an `RSRC` resource whose bytes name a script marker anywhere (`_binary_code`); a text
 ## resource (a `[gd_scene`/`[gd_resource` head, or a `.tscn`/`.tres`/`.escn` name) that fails the
 ## content rule (`_text_code`); a `.scn`/`.res`/exported file that is neither. Fails closed.
 static func embedded_code(p: String, data: PackedByteArray) -> String:
@@ -456,7 +458,18 @@ static func embedded_code(p: String, data: PackedByteArray) -> String:
 	# binary resource extension, so the extension never decides whether bytes are scanned.
 	var magic := data.slice(0, 4).get_string_from_ascii() if data.size() >= 4 else ""
 	if magic == "RSCC":
-		return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed"
+		# P4-27: bounded decompression (`rscc_body`), then the RSRC rules on the body.
+		var r := rscc_body(data)
+		if r.has("why"):
+			return "a compressed binary resource (RSCC) %s" % r["why"]
+		var body: PackedByteArray = r["body"]
+		# The saver writes `RSRC` only uncompressed: the body starts at the header words after it,
+		# the big-endian and real64 flags (0 or 1 each), then three versions (rscc.ts
+		# `rsccBodyIsResource`).
+		if body.size() < 20 or body.decode_u32(0) > 1 or body.decode_u32(4) > 1:
+			return "a compressed binary resource (RSCC) whose body is not a binary resource"
+		var m := _marker(body)
+		return "" if m == "" else "a compressed binary resource (RSCC) that names %s (an embedded script or its source)" % m
 	if magic == "RSRC":
 		return _binary_code(data)
 	if sniffs_text_resource(data):
@@ -466,6 +479,145 @@ static func embedded_code(p: String, data: PackedByteArray) -> String:
 	if _re(_BINARY_RES).search(p) != null or p.begins_with(".godot/exported/"):
 		return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts"
 	return ""
+
+
+## The largest total an `RSCC` resource may declare: 256 MiB (packLint's `RSCC_MAX_TOTAL`, the
+## same number; rscc.ts justifies it: about ten times the largest real model import, and what a
+## mid-range phone holds comfortably while the worker scans the whole body).
+const RSCC_MAX_TOTAL := 268435456
+## The block-size bounds (Godot writes 4096): the block count stays at most the cap / 4096.
+const RSCC_MIN_BLOCK := 4096
+const RSCC_MAX_BLOCK := 1048576
+## FileAccessCompressed's mode for zstd (`Compression::MODE_ZSTD`).
+const RSCC_MODE_ZSTD := 2
+const ZSTD_MAGIC := 0xFD2FB528
+
+
+## The decompressed body of an `RSCC` resource (FileAccessCompressed), or why it is refused:
+## {body} or {why} (the text after "a compressed binary resource (RSCC) "). The CLI's `rsccBody`
+## (packages/cli/src/rscc.ts) applies the same rules with the same words. Layout (LE u32): "RSCC",
+## mode, block size, total, bc = total / block size + 1 compressed sizes, the blocks, "RSCC". Every
+## header field is bounded before anything is allocated or decoded: zstd only, the block size in
+## RSCC_MIN_BLOCK..RSCC_MAX_BLOCK, the total at most RSCC_MAX_TOTAL, the table and every block
+## inside the entry, the closing magic exactly at its end. Each block must be one zstd frame
+## declaring its size (`zstd_frame_ok`; `decompress` alone would take concatenated and skippable
+## frames, the CLI's decoder would not) and decode to exactly that size: `decompress` is given it
+## as the output capacity, so a block that lies about its size stops there and is refused.
+## Thread-safe: ints and PackedByteArrays only.
+static func rscc_body(data: PackedByteArray) -> Dictionary:
+	var n := data.size()
+	if n < 16:
+		return {"why": "whose header is truncated"}
+	var mode := data.decode_u32(4)
+	if mode != RSCC_MODE_ZSTD:
+		return {"why": "in compression mode %d; only zstd (mode %d) is inspected" % [mode, RSCC_MODE_ZSTD]}
+	var bs := data.decode_u32(8)
+	if bs < RSCC_MIN_BLOCK or bs > RSCC_MAX_BLOCK:
+		return {"why": "with block size %d, outside %d..%d" % [bs, RSCC_MIN_BLOCK, RSCC_MAX_BLOCK]}
+	var total := data.decode_u32(12)
+	if total > RSCC_MAX_TOTAL:
+		return {"why": "that declares %d bytes, above the %d-byte cap" % [total, RSCC_MAX_TOTAL]}
+	@warning_ignore("integer_division")
+	var bc := total / bs + 1
+	var table_end := 16 + 4 * bc
+	if table_end > n:
+		return {"why": "whose block table runs past the end"}
+	var starts := PackedInt64Array()
+	var sizes := PackedInt64Array()
+	var pos := table_end
+	for i in bc:
+		var cs := data.decode_u32(16 + 4 * i)
+		if cs > n - pos:
+			return {"why": "whose block %d runs past the end" % i}
+		starts.append(pos)
+		sizes.append(cs)
+		pos += cs
+	if pos + 4 > n or data[pos] != 0x52 or data[pos + 1] != 0x53 or data[pos + 2] != 0x43 or data[pos + 3] != 0x43:
+		return {"why": "without its closing RSCC magic"}
+	if pos + 4 != n:
+		return {"why": "with bytes after its closing RSCC magic"}
+	var last_size := total - (bc - 1) * bs
+	# Every frame's structure first, so nothing is allocated for a resource that cannot decode.
+	for i in bc:
+		var want := last_size if i == bc - 1 else bs
+		if not zstd_frame_ok(data.slice(starts[i], starts[i] + sizes[i]), want):
+			return {"why": "whose block %d is not one zstd frame of %d bytes" % [i, want]}
+	var body := PackedByteArray()
+	for i in bc:
+		var want := last_size if i == bc - 1 else bs
+		if want == 0:
+			continue
+		var out := data.slice(starts[i], starts[i] + sizes[i]).decompress(want, FileAccess.COMPRESSION_ZSTD)
+		if out.size() != want:
+			return {"why": "whose block %d does not decode to %d bytes" % [i, want]}
+		body.append_array(out)
+	return {"body": body}
+
+
+## Whether `f` is exactly one zstd frame whose header declares `size` content bytes (rscc.ts
+## `zstdFrameOk`): the frame magic first, no reserved bit, no dictionary id, a content size present
+## and equal to `size`, a block walk (raw, RLE or compressed; no reserved type) that ends with the
+## last-block flag and the optional checksum exactly at the end. A frame of 0 bytes may carry only
+## empty raw blocks and no checksum, so it is never decoded (`decompress` takes no zero size).
+static func zstd_frame_ok(f: PackedByteArray, size: int) -> bool:
+	var n := f.size()
+	if n < 6 or f.decode_u32(0) != ZSTD_MAGIC:
+		return false
+	var fhd := f[4]
+	var fcs_flag := fhd >> 6
+	var single := (fhd >> 5) & 1
+	var checksum := (fhd >> 2) & 1
+	if (fhd & 0x08) != 0 or (fhd & 0x03) != 0:
+		return false
+	if fcs_flag == 0 and single == 0:
+		return false
+	var p := 5 + (1 if single == 0 else 0)
+	var fcs_len := single
+	if fcs_flag == 1:
+		fcs_len = 2
+	elif fcs_flag == 2:
+		fcs_len = 4
+	elif fcs_flag == 3:
+		fcs_len = 8
+	if p + fcs_len > n:
+		return false
+	var fcs := 0
+	if fcs_len == 1:
+		fcs = f[p]
+	elif fcs_len == 2:
+		fcs = f.decode_u16(p) + 256
+	elif fcs_len == 4:
+		fcs = f.decode_u32(p)
+	else:
+		if f.decode_u32(p + 4) != 0:
+			return false
+		fcs = f.decode_u32(p)
+	if fcs != size:
+		return false
+	p += fcs_len
+	while true:
+		if p + 3 > n:
+			return false
+		var h := f[p] | (f[p + 1] << 8) | (f[p + 2] << 16)
+		p += 3
+		var last := h & 1
+		var type := (h >> 1) & 3
+		var bsize := h >> 3
+		if type == 3:
+			return false
+		if size == 0 and (type != 0 or bsize != 0):
+			return false
+		var payload := 1 if type == 1 else bsize
+		if payload > n - p:
+			return false
+		p += payload
+		if last == 1:
+			break
+	if checksum == 1:
+		if size == 0:
+			return false
+		p += 4
+	return p == n
 
 
 ## Whether bytes look like a Godot resource the scan must read: a binary (`RSRC`), compressed

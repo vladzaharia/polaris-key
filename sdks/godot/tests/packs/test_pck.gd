@@ -73,6 +73,7 @@ func run(t: PKeyTestContext) -> void:
 		t.info("pck: the nested-mount probe needs a 4.7 engine (the fixture is PCK v4)")
 
 	_review_repros(t)
+	_rscc_probes(t)
 	_script_kinds_api(t)
 
 	# remap_targets and embedded_code (the CLI's unit probes).
@@ -134,6 +135,61 @@ func _review_repros(t: PKeyTestContext) -> void:
 	var chk := PKeyGodotPckHandler.check(PKeyByteSource.file(out), rec, {})
 	t.check("pck repro: a .material (RSRC) with an embedded GDScript is refused by content", saved == OK and bytes.slice(0, 4).get_string_from_ascii() == "RSRC" and not chk["ok"] and chk["code"] == PKeyPck.DIRECTORY_REFUSED and chk.get("path") == "packs/a/look.material", S.canon(chk))
 	t.check("pck repro: embedded_code decides by content, whatever the extension", PKeyPck.embedded_code("packs/a/look.material", bytes) != "" and PKeyPck.embedded_code("packs/a/look.png", bytes) != "")
+	S.remove_tree(scratch)
+
+
+## P4-27: compressed resources this engine writes itself. ResourceSaver's FLAG_COMPRESS is the
+## scene importer's path (RSCC), so a compressed resource with no script is admitted and one with
+## an embedded GDScript is refused by its decompressed body; FileAccess.open_compressed writes the
+## same framing (magic GCPF), here with a total that is a multiple of the block size, so the last
+## block is the engine's empty frame.
+func _rscc_probes(t: PKeyTestContext) -> void:
+	var scratch := S.scratch("pck-rscc")
+	var mesh := BoxMesh.new()
+	var plain := scratch.path_join("box.res")
+	var ok := ResourceSaver.save(mesh, plain, ResourceSaver.FLAG_COMPRESS) == OK
+	var bytes := FileAccess.get_file_as_bytes(plain)
+	t.check("pck rscc: an engine-compressed mesh is RSCC and admitted", ok and bytes.slice(0, 4).get_string_from_ascii() == "RSCC" and PKeyPck.embedded_code("packs/a/box.res", bytes) == "", PKeyPck.embedded_code("packs/a/box.res", bytes))
+	var s := GDScript.new()
+	s.source_code = "extends StandardMaterial3D\nfunc _init():\n\tpass\n"
+	s.reload()
+	var m := StandardMaterial3D.new()
+	m.set_script(s)
+	var evil := scratch.path_join("evil.material")
+	ok = ResourceSaver.save(m, evil, ResourceSaver.FLAG_COMPRESS) == OK
+	bytes = FileAccess.get_file_as_bytes(evil)
+	var why := PKeyPck.embedded_code("packs/a/look.material", bytes)
+	t.check("pck rscc: an engine-compressed material with an embedded GDScript is refused by its body", ok and bytes.slice(0, 4).get_string_from_ascii() == "RSCC" and why.begins_with("a compressed binary resource (RSCC) that names "), why)
+	var gcpf := scratch.path_join("x.gcpf")
+	var f := FileAccess.open_compressed(gcpf, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
+	var payload := PackedByteArray()
+	payload.resize(8192)
+	for i in 8192:
+		payload[i] = (i * 31) & 0xFF
+	f.store_buffer(payload)
+	f.close()
+	bytes = FileAccess.get_file_as_bytes(gcpf)
+	var magic := "RSCC".to_ascii_buffer()
+	for i in 4:
+		bytes[i] = magic[i]
+		bytes[bytes.size() - 4 + i] = magic[i]
+	var r := PKeyPck.rscc_body(bytes)
+	t.check("pck rscc: the engine's framing of an exact multiple of the block size (an empty last frame) decodes", r.has("body") and r["body"] == payload, S.canon(r) if r.has("why") else "")
+	# Half zeros, half random bytes (raw zstd blocks): both of the decoder's fast and slow paths.
+	var big := PackedByteArray()
+	big.resize(2 * 1048576)
+	big.append_array(Crypto.new().generate_random_bytes(2 * 1048576))
+	f = FileAccess.open_compressed(gcpf, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
+	f.store_buffer(big)
+	f.close()
+	bytes = FileAccess.get_file_as_bytes(gcpf)
+	for i in 4:
+		bytes[i] = magic[i]
+		bytes[bytes.size() - 4 + i] = magic[i]
+	var t0 := Time.get_ticks_usec()
+	r = PKeyPck.rscc_body(bytes)
+	t.check("pck rscc: 4 MiB in 1025 blocks decodes", r.has("body") and (r["body"] as PackedByteArray).size() == big.size())
+	t.info("pck rscc: 4 MiB (1025 blocks) decompressed in %d ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
 	S.remove_tree(scratch)
 
 

@@ -183,7 +183,8 @@ function binString(s: string): Uint8Array {
 /**
  * A minimal uncompressed binary resource: `RSRC`, the header words, the property-name string
  * table and each internal resource's type, as length-prefixed strings, then opaque data. Enough
- * for the lint's embedded-script scan; `magic` `RSCC` models a compressed one.
+ * for the lint's embedded-script scan; with `magic` `RSCC` its mode word reads 0, a compression
+ * mode the lint refuses (P4-27 inspects zstd only).
  */
 export function binaryResource(
   types: readonly string[],
