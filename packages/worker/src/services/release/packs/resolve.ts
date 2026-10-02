@@ -1,6 +1,6 @@
 /**
  * Pack-set resolution (P4-12, CONTENT §6.3, README §3.4): for every (channel, app deliverable,
- * live contentApi level, platform, variant), the newest release of each `compatible` and
+ * live contentApi level, platform, engine, variant), the newest release of each `compatible` and
  * `standalone` pack that satisfies every requirement, dependency, conflict and floor. PURE: rows
  * in, sets out; `sets.ts` is the D1 shell and the tests drive this module with fixtures.
  *
@@ -14,12 +14,25 @@
  *
  * ── SELECTORS ───────────────────────────────────────────────────────────────────────────────
  *
- * Levels are the live releases' contentApi values; platforms their builds' platforms; the engines
- * of a (level, platform) are every `requires.engine` those builds declare (a build that declares
- * none adds no constraint: the server cannot know it, and the device's `selectVariant` still
- * matches its own engine). Variant keys are every combination of the resolvable packs' declared axes (client-core's
- * `variantKey`, `""` when no pack declares one). The `packChannels` mapping of a (channel, level)
- * is its newest live release's: an app publish refuses one that differs (`content.ts`).
+ * Levels are the live releases' contentApi values; platforms their builds' platforms; engines the
+ * `requires.engine` those builds declare (`""` for a build that declares none, which constrains
+ * nothing: the server cannot know it, and the device's `selectVariant` still matches its own
+ * engine). Each (level, platform, engine) is resolved on its own, so during an engine bump the
+ * players of the older engine keep their set and the newer engine gets its own (CONTENT §6.8 row
+ * 7). The `packChannels` mapping of a (channel, level) is its newest live release's: an app
+ * publish refuses one that differs (`content.ts`).
+ *
+ * ── VARIANTS, PROJECTED PER GROUP ───────────────────────────────────────────────────────────
+ *
+ * A pack's choice depends only on ITS OWN variant axes, and on the packs its dependencies and
+ * conflicts tie it to. So the resolvable packs are partitioned into GROUPS: packs with the same
+ * axis names, merged with every pack a `requires.packs` or `conflicts` entry links them to, until
+ * the groups' axis-name sets are distinct. A group is resolved per combination of ITS axes' values
+ * (its variant key, `""` for a group without axes) and stored as its own row: a device's set is
+ * the union of one row per group, the row whose variant key is its own variant projected onto that
+ * group's axes. Every device gets exactly the releases a whole-assignment resolution would give
+ * it (no constraint crosses a group), while the rows grow as the SUM over groups, not the product
+ * over every pack's axes.
  *
  * ── ONE PACK AT ONE SELECTOR (step 3) ──────────────────────────────────────────────────────
  *
@@ -31,24 +44,33 @@
  *
  *   no-release     the channel serves no release of the pack;
  *   content-api    (compatible only) no release's `requires.contentApi.app` range holds the level;
- *   engine         no release's variant for this selector runs on the engines the live builds
- *                  declare (`requires.engine` absent, or equal to every one of them). Two engines
- *                  at one level and platform share no `godot.pck` release, so an engine bump
- *                  either bumps contentApi or waits for the older release to fall below the floor;
+ *   engine         no release's variant for this selector runs on the selector's engine
+ *                  (`requires.engine` absent, or equal to it);
  *   variant        no release carries this selector's variant of the pack;
  *   content-floor  no release is at or above the pack's floor on its channel, the level-free
  *                  `min_supported` and the floor for this level (`release_pack_floors`) both.
  *
- * ── THE SOLVER ──────────────────────────────────────────────────────────────────────────────
+ * Stage outputs are memoised (they depend on the pack, its routed channel, the level, the engine
+ * and its variant key, never on the platform), and the solver's memo is keyed on the ids of the
+ * stage outputs it was given.
  *
- * Greedy highest-first per pack, packs in id order, with backtracking when a choice breaks a
- * `requires.packs` range (the target must be in the set, at a version its range holds under the
- * target's scheme) or a `conflicts` entry (either direction). At most `MAX_SOLVER_STEPS`
- * candidate tries per distinct problem; past that resolution FAILS (`PackResolutionError`) rather
- * than guess. When no assignment includes every pack, a deterministic greedy pass keeps what it
- * can and marks the rest `dependency` or `conflict`: a set is still stored, with its
- * `unsatisfied` marker, so a floor with no backport blocks a content line (P4-13 turns it into
- * `blocked(content-floor)`) instead of being refused.
+ * ── THE SOLVER AND ITS BUDGET ───────────────────────────────────────────────────────────────
+ *
+ * Dependency pruning to a fixpoint, then greedy highest-first per pack, packs in id order, with
+ * backtracking when a choice breaks a `requires.packs` range (the target must be in the set, at a
+ * version its range holds under the target's scheme) or a `conflicts` entry (either direction).
+ * When no assignment keeps every pack, a second search may leave packs out (tried after each of
+ * their releases); those are marked `dependency` or `conflict`, and the set is still stored with
+ * its `unsatisfied` marker, so a floor with no backport blocks a content line (P4-13 turns it
+ * into `blocked(content-floor)`) instead of being refused.
+ *
+ * ONE work budget, `MAX_RESOLUTION_WORK`, is shared by the whole resolution (never per problem):
+ * every candidate a stage examines or pruning re-checks spends one unit, and every candidate the
+ * solver tries spends one plus one per chosen pack and per dependency it checks against. Past it,
+ * or past `MAX_SELECTORS` rows, resolution FAILS (`PackResolutionError`) rather than guess. The
+ * budget is sized so that the adversarial cases measured on Node 22 (64 packs × 200 releases,
+ * exhaustive searches over dependency chains, 64-entry conflict lists, three 16-value axes) spend
+ * it in 40–150 ms and a few MB of heap (`test/packResolve.test.ts` "bounds").
  */
 
 import {
@@ -71,9 +93,9 @@ import {
   type VersionScheme,
 } from "../resolve.js";
 
-/** Candidate tries one distinct solver problem may spend before resolution fails. */
-export const MAX_SOLVER_STEPS = 20000;
-/** The most selectors (sets) one product resolves in all its channels. */
+/** The work units one whole resolution may spend (see the header): about 150 ms worst case. */
+export const MAX_RESOLUTION_WORK = 1_000_000;
+/** The most rows (sets) one product resolves in all its channels. */
 export const MAX_SELECTORS = 4096;
 
 export const UNSATISFIED_REASONS = [
@@ -87,7 +109,7 @@ export const UNSATISFIED_REASONS = [
 ] as const;
 export type UnsatisfiedReason = (typeof UNSATISFIED_REASONS)[number];
 
-/** Resolution could not finish inside its bounds: a publish refuses, the caller reports it. */
+/** Resolution could not finish inside its bounds: a publish refuses, a trigger fails closed. */
 export class PackResolutionError extends Error {
   constructor(message: string) {
     super(message);
@@ -179,7 +201,9 @@ export interface Selector {
   appDeliverable: string;
   contentApi: number;
   platform: string;
-  /** The variant key over every resolvable pack's axes (`""` for none). */
+  /** The engine of the live builds this row serves; `""` for builds that declare none. */
+  engine: string;
+  /** The variant key over this row's group's axes (`""` for a group without axes). */
   variant: string;
 }
 
@@ -198,12 +222,14 @@ export interface Unsatisfied {
 }
 
 export interface ResolvedSet extends Selector {
+  /** The group this row resolves (its first pack id); a device's set is one row per group. */
+  group: string;
   /** The chosen releases, by pack id. */
   entries: SetEntry[];
   /** Packs no release satisfies at this selector, by pack id. */
   unsatisfied: Unsatisfied[];
   /** The app releases this set serves (live on the channel, at this level, with a build on this
-   *  platform), newest first. */
+   *  platform and engine), newest first. */
   appReleases: string[];
 }
 
@@ -214,6 +240,25 @@ export interface Resolution {
 }
 
 // ── Ranges ───────────────────────────────────────────────────────────────────────────────────
+
+/** `versionInRange` answers, memoised: the solver asks the same few questions very often. */
+const rangeMemo = new Map<string, boolean>();
+const RANGE_MEMO_MAX = 50_000;
+
+/** `versionInRange`, memoised (bounded; a full memo starts over). */
+function inRange(
+  scheme: VersionScheme,
+  version: string,
+  range: string,
+): boolean {
+  const key = `${scheme}\u0000${version}\u0000${range}`;
+  const hit = rangeMemo.get(key);
+  if (hit !== undefined) return hit;
+  const v = versionInRange(scheme, version, range);
+  if (rangeMemo.size >= RANGE_MEMO_MAX) rangeMemo.clear();
+  rangeMemo.set(key, v);
+  return v;
+}
 
 /** Does `version` (of a pack under `scheme`) satisfy the `requires.packs` range `range`? */
 export function versionInRange(
@@ -269,13 +314,38 @@ interface Cand {
   pack: string;
   rel: PackReleaseFacts;
   v: PackVariantFacts;
+  /** `v.conflicts` as a set: a try checks it against every chosen pack. */
+  conflicts: ReadonlySet<string>;
+  /** `v.packs` as entries (each try walks them). */
+  deps: readonly (readonly [string, string])[];
+}
+
+/** A candidate of `pack`: `rel` at its variant `v`. */
+function cand(pack: string, rel: PackReleaseFacts, v: PackVariantFacts): Cand {
+  return {
+    pack,
+    rel,
+    v,
+    conflicts: new Set(v.conflicts),
+    deps: Object.entries(v.packs ?? {}),
+  };
 }
 
 type Stage =
-  | { ok: true; cands: Cand[] }
-  | { ok: false; reason: UnsatisfiedReason; detail: string };
+  | { ok: true; id: number; cands: Cand[] }
+  | { ok: false; id: number; reason: UnsatisfiedReason; detail: string };
 
-/** The projection of a selector's variant assignment onto one pack's declared axes. */
+/** One group of resolvable packs (see the header). */
+interface Group {
+  id: string;
+  packs: PackInput[];
+  /** axis → every value any member declares. */
+  axes: Map<string, string[]>;
+  /** Every combination of `axes`, as variant keys. */
+  variants: string[];
+}
+
+/** The projection of a variant assignment onto one pack's declared axes. */
 function packVariantKey(
   pack: PackInput,
   assignment: Readonly<Record<string, string>>,
@@ -286,22 +356,22 @@ function packVariantKey(
   return variantKey(sub);
 }
 
-/** Every combination of `axes` (axis → values), as assignments, in variant-key order. */
-function assignments(
+/** Every combination of `axes` (axis → values) as variant keys, in key order; stops at `cap`. */
+function variantKeysOf(
   axes: ReadonlyMap<string, readonly string[]>,
-): Record<string, string>[] {
+  cap: number,
+): string[] | null {
   let out: Record<string, string>[] = [{}];
   for (const axis of [...axes.keys()].sort()) {
     const next: Record<string, string>[] = [];
     for (const a of out)
-      for (const value of axes.get(axis)!) next.push({ ...a, [axis]: value });
+      for (const value of axes.get(axis)!) {
+        next.push({ ...a, [axis]: value });
+        if (next.length > cap) return null;
+      }
     out = next;
   }
-  return out.sort((a, b) => {
-    const x = variantKey(a);
-    const y = variantKey(b);
-    return x < y ? -1 : x > y ? 1 : 0;
-  });
+  return out.map((a) => variantKey(a)).sort();
 }
 
 function parseAssignment(key: string): Record<string, string> {
@@ -314,32 +384,112 @@ function parseAssignment(key: string): Record<string, string> {
   return out;
 }
 
+const byId = (a: { id: string }, b: { id: string }) =>
+  a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+
 export class PackResolver {
   readonly input: ResolutionInput;
   /** Resolvable packs (`compatible`, `standalone`), by id. */
   readonly universe: PackInput[];
+  /** The groups of `universe`, by first pack id. */
+  readonly groups: Group[];
+  private readonly groupOfPack = new Map<string, Group>();
   private readonly packsById: Map<string, PackInput>;
   private readonly liveCache = new Map<string, LiveRelease[]>();
   private readonly channelCache = new Map<string, Candidate[]>();
+  private readonly stageCache = new Map<string, Stage>();
   private readonly solveCache = new Map<
     string,
     { chosen: Cand[]; unsat: Unsatisfied[] }
   >();
-  private readonly variantAxes: Map<string, string[]>;
+  /** Work units left for this resolver's lifetime (see the header). */
+  private budget = MAX_RESOLUTION_WORK;
 
   constructor(input: ResolutionInput) {
     this.input = input;
     this.packsById = new Map(input.packs.map((p) => [p.id, p]));
     this.universe = input.packs
       .filter((p) => p.binding === "compatible" || p.binding === "standalone")
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    this.variantAxes = new Map();
+      .sort(byId);
+    this.groups = this.partition();
+    for (const g of this.groups)
+      for (const p of g.packs) this.groupOfPack.set(p.id, g);
+  }
+
+  /** Spend `n` work units, or fail the resolution. */
+  private spend(n: number): void {
+    this.budget -= n;
+    if (this.budget < 0)
+      throw new PackResolutionError(
+        `pack-set resolution spent its budget of ${MAX_RESOLUTION_WORK} candidate checks; narrow the packs' variant axes, requires.packs and conflicts, or raise a channel floor`,
+      );
+  }
+
+  /** The groups (see the header): same axis names, merged across dependencies and conflicts. */
+  private partition(): Group[] {
+    const parent = new Map(this.universe.map((p) => [p.id, p.id]));
+    const find = (x: string): string => {
+      let r = x;
+      while (parent.get(r) !== r) r = parent.get(r)!;
+      parent.set(x, r);
+      return r;
+    };
+    const union = (a: string, b: string) => {
+      const x = find(a);
+      const y = find(b);
+      if (x !== y) parent.set(x < y ? y : x, x < y ? x : y);
+    };
     for (const p of this.universe)
-      for (const [axis, values] of Object.entries(p.axes)) {
-        const set = new Set(this.variantAxes.get(axis) ?? []);
-        for (const v of values) set.add(v);
-        this.variantAxes.set(axis, [...set].sort());
+      for (const rel of p.releases.values())
+        for (const v of rel.variants) {
+          for (const t of Object.keys(v.packs ?? {}))
+            if (parent.has(t)) union(p.id, t);
+          for (const t of v.conflicts) if (parent.has(t)) union(p.id, t);
+        }
+    // Merge groups whose axis-name sets are equal, until they are all distinct.
+    for (;;) {
+      const axesOf = new Map<string, Set<string>>();
+      for (const p of this.universe) {
+        const root = find(p.id);
+        const set = axesOf.get(root) ?? new Set<string>();
+        for (const a of Object.keys(p.axes)) set.add(a);
+        axesOf.set(root, set);
       }
+      const byAxes = new Map<string, string>();
+      let merged = false;
+      for (const [root, set] of axesOf) {
+        const key = [...set].sort().join(",");
+        const other = byAxes.get(key);
+        if (other === undefined) byAxes.set(key, root);
+        else {
+          union(other, root);
+          merged = true;
+        }
+      }
+      if (!merged) break;
+    }
+    const members = new Map<string, PackInput[]>();
+    for (const p of this.universe) {
+      const root = find(p.id);
+      members.set(root, [...(members.get(root) ?? []), p]);
+    }
+    const groups: Group[] = [];
+    for (const packs of members.values()) {
+      const axes = new Map<string, string[]>();
+      for (const p of packs)
+        for (const [axis, values] of Object.entries(p.axes))
+          axes.set(
+            axis,
+            [...new Set([...(axes.get(axis) ?? []), ...values])].sort(),
+          );
+      const variants = variantKeysOf(axes, MAX_SELECTORS);
+      if (variants === null)
+        throw new PackResolutionError(
+          `the packs ${packs.map((p) => p.id).join(", ")} are tied together and need more than ${MAX_SELECTORS} variant combinations; narrow their variant axes`,
+        );
+      groups.push({ id: packs[0]!.id, packs, axes, variants });
+    }
+    return groups.sort(byId);
   }
 
   /** A declared pack, by id. */
@@ -347,9 +497,9 @@ export class PackResolver {
     return this.packsById.get(id);
   }
 
-  /** The variant keys every selector of a (level, platform) carries. */
-  variantKeys(): string[] {
-    return assignments(this.variantAxes).map((a) => variantKey(a));
+  /** The id of the group `pack` is resolved in, or null for a pack that enters no set. */
+  groupOf(pack: string): string | null {
+    return this.groupOfPack.get(pack)?.id ?? null;
   }
 
   /** The live app releases of `channel`, newest first. */
@@ -402,25 +552,24 @@ export class PackResolver {
       },
       channel,
     );
+    this.spend(out.length);
     this.channelCache.set(key, out);
     return out;
   }
 
-  /** The (level, platform) → engines map of `live` releases. */
+  /** level → platform → engine (`""` for none) → the live releases there, newest first. */
   private levels(live: readonly LiveRelease[]): Map<
     number,
     {
-      platforms: Map<string, Set<string | null>>;
+      platforms: Map<string, Map<string, string[]>>;
       packChannels: Record<string, string> | null;
-      releases: LiveRelease[];
     }
   > {
     const out = new Map<
       number,
       {
-        platforms: Map<string, Set<string | null>>;
+        platforms: Map<string, Map<string, string[]>>;
         packChannels: Record<string, string> | null;
-        releases: LiveRelease[];
       }
     >();
     for (const r of live) {
@@ -428,18 +577,16 @@ export class PackResolver {
       let level = out.get(r.contentApi);
       if (!level) {
         // `live` is newest first: the first release of a level names its mapping.
-        level = {
-          platforms: new Map(),
-          packChannels: facts.packChannels,
-          releases: [],
-        };
+        level = { platforms: new Map(), packChannels: facts.packChannels };
         out.set(r.contentApi, level);
       }
-      level.releases.push(r);
       for (const b of facts.builds) {
         if (b.platform === null) continue;
-        const engines = level.platforms.get(b.platform) ?? new Set();
-        engines.add(b.engine);
+        const engines = level.platforms.get(b.platform) ?? new Map();
+        const engine = b.engine ?? "";
+        const list: string[] = engines.get(engine) ?? [];
+        if (!list.includes(r.releaseId)) list.push(r.releaseId);
+        engines.set(engine, list);
         level.platforms.set(b.platform, engines);
       }
     }
@@ -455,66 +602,89 @@ export class PackResolver {
     return packChannelFor(packChannels, pack.id) ?? channel;
   }
 
-  /** The stages for one pack at one selector (see the header). */
+  /** The stages for one pack at one selector (see the header), memoised. */
   stage(
     pack: PackInput,
     ctx: {
       channel: string;
       level: number;
-      engines: ReadonlySet<string | null>;
+      engine: string;
       assignment: Readonly<Record<string, string>>;
       packChannels: Record<string, string> | null;
     },
   ): Stage {
     const pc = this.routedChannel(pack, ctx.channel, ctx.packChannels);
     const vk = packVariantKey(pack, ctx.assignment);
+    const key = `${pack.id}\u0000${pc}\u0000${ctx.level}\u0000${ctx.engine}\u0000${vk}`;
+    const hit = this.stageCache.get(key);
+    if (hit) return hit;
+    const out = this.computeStage(pack, pc, ctx.level, ctx.engine, vk);
+    this.stageCache.set(key, out);
+    return out;
+  }
+
+  private computeStage(
+    pack: PackInput,
+    pc: string,
+    level: number,
+    engine: string,
+    vk: string,
+  ): Stage {
+    const id = this.stageCache.size;
+    const ranked = this.packChannelReleases(pack, pc);
+    this.spend(ranked.length);
     const all: Cand[] = [];
-    for (const c of this.packChannelReleases(pack, pc)) {
+    for (const c of ranked) {
       const rel = pack.releases.get(c.releaseId);
       if (!rel) continue;
       const v =
         rel.variants.find((x) => x.variantKey === vk) ?? rel.variants[0];
-      if (v) all.push({ pack: pack.id, rel, v });
+      if (v) all.push(cand(pack.id, rel, v));
     }
     if (all.length === 0)
       return {
         ok: false,
+        id,
         reason: "no-release",
         detail: `channel ${pc} serves no release of ${pack.id}`,
       };
     let cands = all;
     if (pack.binding === "compatible") {
       cands = cands.filter((c) =>
-        levelInRange(c.v.contentApi?.[APP_DELIVERABLE_ID], ctx.level),
+        levelInRange(c.v.contentApi?.[APP_DELIVERABLE_ID], level),
       );
       if (cands.length === 0)
         return {
           ok: false,
+          id,
           reason: "content-api",
-          detail: `no release of ${pack.id} on ${pc} supports contentApi ${ctx.level}`,
+          detail: `no release of ${pack.id} on ${pc} supports contentApi ${level}`,
         };
     }
-    const engines = [...ctx.engines].filter((e): e is string => e !== null);
-    const engineOk = (c: Cand) =>
-      c.v.variantKey !== vk ||
-      c.v.engine === null ||
-      engines.every((e) => e === c.v.engine);
-    const withEngine = cands.filter(engineOk);
+    const withEngine = cands.filter(
+      (c) =>
+        c.v.variantKey !== vk ||
+        engine === "" ||
+        c.v.engine === null ||
+        c.v.engine === engine,
+    );
     if (withEngine.length === 0)
       return {
         ok: false,
+        id,
         reason: "engine",
-        detail: `no release of ${pack.id} on ${pc} runs on ${engines.join(" and ")}`,
+        detail: `no release of ${pack.id} on ${pc} runs on ${engine}`,
       };
     cands = withEngine.filter((c) => c.v.variantKey === vk);
     if (cands.length === 0)
       return {
         ok: false,
+        id,
         reason: "variant",
         detail: `no release of ${pack.id} on ${pc} has variant ${vk || "default"}`,
       };
     const levelFree = pack.minSupported.get(pc) ?? null;
-    const levelFloor = pack.floors.get(pc)?.get(ctx.level) ?? null;
+    const levelFloor = pack.floors.get(pc)?.get(level) ?? null;
     const floored = cands.filter(
       (c) =>
         (levelFree === null ||
@@ -525,10 +695,11 @@ export class PackResolver {
     if (floored.length === 0)
       return {
         ok: false,
+        id,
         reason: "content-floor",
-        detail: `no release of ${pack.id} on ${pc} is at or above the floor${levelFloor !== null ? ` ${levelFloor} for contentApi ${ctx.level}` : ""}${levelFree !== null ? `${levelFloor !== null ? " and" : ""} ${levelFree}` : ""}`,
+        detail: `no release of ${pack.id} on ${pc} is at or above the floor${levelFloor !== null ? ` ${levelFloor} for contentApi ${level}` : ""}${levelFree !== null ? `${levelFloor !== null ? " and" : ""} ${levelFree}` : ""}`,
       };
-    return { ok: true, cands: floored };
+    return { ok: true, id, cands: floored };
   }
 
   /** Is `c` consistent with `chosen`? Null when it is, else the broken constraint. */
@@ -537,7 +708,7 @@ export class PackResolver {
     chosen: ReadonlyMap<string, Cand>,
     present: ReadonlySet<string>,
   ): { reason: "dependency" | "conflict"; detail: string } | null {
-    for (const [target, range] of Object.entries(c.v.packs ?? {})) {
+    for (const [target, range] of c.deps) {
       if (!present.has(target))
         return {
           reason: "dependency",
@@ -545,7 +716,7 @@ export class PackResolver {
         };
       const t = chosen.get(target);
       const scheme = this.packsById.get(target)?.scheme;
-      if (t && (!scheme || !versionInRange(scheme, t.rel.version, range)))
+      if (t && (!scheme || !inRange(scheme, t.rel.version, range)))
         return {
           reason: "dependency",
           detail: `${c.pack} ${c.rel.version} requires ${target} ${range}; the set holds ${t.rel.version}`,
@@ -554,12 +725,12 @@ export class PackResolver {
     const scheme = this.packsById.get(c.pack)!.scheme;
     for (const j of chosen.values()) {
       const range = j.v.packs?.[c.pack];
-      if (range !== undefined && !versionInRange(scheme, c.rel.version, range))
+      if (range !== undefined && !inRange(scheme, c.rel.version, range))
         return {
           reason: "dependency",
           detail: `${j.pack} ${j.rel.version} requires ${c.pack} ${range}, not ${c.rel.version}`,
         };
-      if (c.v.conflicts.includes(j.pack) || j.v.conflicts.includes(c.pack))
+      if (c.conflicts.has(j.pack) || j.conflicts.has(c.pack))
         return {
           reason: "conflict",
           detail: `${c.pack} ${c.rel.version} conflicts with ${j.pack} ${j.rel.version}`,
@@ -568,25 +739,42 @@ export class PackResolver {
     return null;
   }
 
-  /**
-   * The solver over packs that passed their stages (see the header): dependency pruning to a
-   * fixpoint, a strict search that keeps every pack, then, only when none exists, a search in which
-   * a pack may be left out (tried after each of its releases), so earlier packs by id keep their
-   * newest consistent release and the packs left out are marked.
-   */
-  private solve(order0: { id: string; cands: Cand[] }[]): {
-    chosen: Cand[];
-    unsat: Unsatisfied[];
-  } {
-    const key = JSON.stringify(
-      order0.map((p) => [
-        p.id,
-        p.cands.map((c) => `${c.rel.releaseId}#${c.v.variantKey}`),
-      ]),
+  /** Does some candidate of `target` hold `range`? */
+  private supported(
+    domains: ReadonlyMap<string, Cand[]>,
+    target: string,
+    range: string,
+  ): boolean {
+    const scheme = this.packsById.get(target)?.scheme;
+    return (
+      scheme !== undefined &&
+      (domains.get(target) ?? []).some((t) =>
+        inRange(scheme, t.rel.version, range),
+      )
     );
+  }
+
+  /**
+   * The solver over packs that passed their stages (see the header). `key` is the stage outputs'
+   * ids, which determine the problem exactly.
+   */
+  private solve(
+    key: string,
+    order0: { id: string; cands: Cand[] }[],
+  ): { chosen: Cand[]; unsat: Unsatisfied[] } {
     const hit = this.solveCache.get(key);
     if (hit) return hit;
     const unsat = new Map<string, Unsatisfied>();
+    // A problem without a single dependency or conflict needs no search: newest of each.
+    if (
+      order0.every((p) =>
+        p.cands.every((c) => !c.v.packs && c.v.conflicts.length === 0),
+      )
+    ) {
+      const result = { chosen: order0.map((p) => p.cands[0]!), unsat: [] };
+      this.solveCache.set(key, result);
+      return result;
+    }
 
     // 1. Prune: a candidate whose dependency no candidate of its target satisfies goes; a pack
     //    left with none is unsatisfied, which may prune its dependants in turn.
@@ -595,16 +783,11 @@ export class PackResolver {
     while (pruned) {
       pruned = false;
       for (const [id, cands] of domains) {
+        this.spend(cands.length);
         const kept = cands.filter((c) =>
-          Object.entries(c.v.packs ?? {}).every(([target, range]) => {
-            const scheme = this.packsById.get(target)?.scheme;
-            return (
-              scheme !== undefined &&
-              (domains.get(target) ?? []).some((t) =>
-                versionInRange(scheme, t.rel.version, range),
-              )
-            );
-          }),
+          Object.entries(c.v.packs ?? {}).every(([t, r]) =>
+            this.supported(domains, t, r),
+          ),
         );
         if (kept.length === cands.length) continue;
         pruned = true;
@@ -614,15 +797,7 @@ export class PackResolver {
         }
         const c = cands[0]!;
         const [target, range] = Object.entries(c.v.packs ?? {}).find(
-          ([t, r]) => {
-            const scheme = this.packsById.get(t)?.scheme;
-            return !(
-              scheme !== undefined &&
-              (domains.get(t) ?? []).some((x) =>
-                versionInRange(scheme, x.rel.version, r),
-              )
-            );
-          },
+          ([t, r]) => !this.supported(domains, t, r),
         )!;
         unsat.set(id, {
           pack: id,
@@ -639,34 +814,29 @@ export class PackResolver {
     // 2. Search, every pack kept; 3. if none exists, a pack may be left out.
     const chosen = new Map<string, Cand>();
     const omitted = new Set<string>();
-    let steps = 0;
-    const tick = () => {
-      if (++steps > MAX_SOLVER_STEPS)
-        throw new PackResolutionError(
-          `pack-set resolution gave up after ${MAX_SOLVER_STEPS} candidate tries (${order.length} packs); narrow the packs' requires.packs and conflicts`,
-        );
-    };
-    const presentNow = () =>
-      new Set(order.map((p) => p.id).filter((id) => !omitted.has(id)));
+    // The packs not left out (undecided ones count: their constraints are checked when chosen).
+    const present = new Set(order.map((p) => p.id));
     const dfs = (i: number, allowOmit: boolean): boolean => {
       if (i === order.length) return true;
       const p = order[i]!;
-      const present = presentNow();
       for (const c of p.cands) {
-        tick();
+        // A try costs a check against every chosen pack and every dependency.
+        this.spend(1 + chosen.size + c.deps.length);
         if (this.conflictWith(c, chosen, present)) continue;
         chosen.set(p.id, c);
         if (dfs(i + 1, allowOmit)) return true;
         chosen.delete(p.id);
       }
       if (!allowOmit) return false;
-      tick();
+      this.spend(1);
       // Leaving `p` out breaks every chosen pack that depends on it.
       for (const j of chosen.values())
         if (j.v.packs?.[p.id] !== undefined) return false;
       omitted.add(p.id);
+      present.delete(p.id);
       if (dfs(i + 1, allowOmit)) return true;
       omitted.delete(p.id);
+      present.add(p.id);
       return false;
     };
     if (!dfs(0, false)) {
@@ -696,12 +866,13 @@ export class PackResolver {
     return result;
   }
 
-  /** One selector's set. */
+  /** One row: one group at one selector. */
   resolveSelector(ctx: {
     channel: string;
     level: number;
     platform: string;
-    engines: ReadonlySet<string | null>;
+    engine: string;
+    group: Group;
     variant: string;
     packChannels: Record<string, string> | null;
     appReleases: string[];
@@ -709,19 +880,23 @@ export class PackResolver {
     const assignment = parseAssignment(ctx.variant);
     const order: { id: string; cands: Cand[] }[] = [];
     const unsatisfied: Unsatisfied[] = [];
-    for (const pack of this.universe) {
+    const ids: number[] = [];
+    for (const pack of ctx.group.packs) {
       const s = this.stage(pack, { ...ctx, assignment });
+      ids.push(s.id);
       if (s.ok) order.push({ id: pack.id, cands: s.cands });
       else
         unsatisfied.push({ pack: pack.id, reason: s.reason, detail: s.detail });
     }
-    const solved = this.solve(order);
+    const solved = this.solve(ids.join(","), order);
     return {
       channel: ctx.channel,
       appDeliverable: APP_DELIVERABLE_ID,
       contentApi: ctx.level,
       platform: ctx.platform,
+      engine: ctx.engine,
       variant: ctx.variant,
+      group: ctx.group.id,
       entries: solved.chosen.map((c) => ({
         pack: c.pack,
         releaseId: c.rel.releaseId,
@@ -736,42 +911,40 @@ export class PackResolver {
     };
   }
 
-  /** Every selector of every channel, resolved. Throws `PackResolutionError` past the bounds. */
+  /** Every row of every channel, resolved. Throws `PackResolutionError` past the bounds. */
   resolve(): Resolution {
     const live = new Map<string, LiveRelease[]>();
     const sets: ResolvedSet[] = [];
-    const variants = this.universe.length > 0 ? this.variantKeys() : [];
     for (const channel of [...this.input.channels].sort()) {
       const releases = this.live(channel);
       live.set(channel, releases);
-      if (this.universe.length === 0) continue;
+      if (this.groups.length === 0) continue;
       const levels = this.levels(releases);
       for (const level of [...levels.keys()].sort((a, b) => a - b)) {
         const l = levels.get(level)!;
         for (const platform of [...l.platforms.keys()].sort()) {
-          const appReleases = l.releases
-            .filter((r) =>
-              this.input.app.releases
-                .get(r.releaseId)!
-                .builds.some((b) => b.platform === platform),
-            )
-            .map((r) => r.releaseId);
-          for (const variant of variants) {
-            if (sets.length >= MAX_SELECTORS)
-              throw new PackResolutionError(
-                `pack-set resolution needs more than ${MAX_SELECTORS} selectors (channels × contentApi levels × platforms × variants); narrow the packs' variant axes or raise a channel floor`,
-              );
-            sets.push(
-              this.resolveSelector({
-                channel,
-                level,
-                platform,
-                engines: l.platforms.get(platform)!,
-                variant,
-                packChannels: l.packChannels,
-                appReleases,
-              }),
-            );
+          const engines = l.platforms.get(platform)!;
+          for (const engine of [...engines.keys()].sort()) {
+            const appReleases = engines.get(engine)!;
+            for (const group of this.groups)
+              for (const variant of group.variants) {
+                if (sets.length >= MAX_SELECTORS)
+                  throw new PackResolutionError(
+                    `pack-set resolution needs more than ${MAX_SELECTORS} sets (channels × contentApi levels × platforms × engines × each group's variants); narrow the packs' variant axes or raise a channel floor`,
+                  );
+                sets.push(
+                  this.resolveSelector({
+                    channel,
+                    level,
+                    platform,
+                    engine,
+                    group,
+                    variant,
+                    packChannels: l.packChannels,
+                    appReleases,
+                  }),
+                );
+              }
           }
         }
       }
@@ -779,7 +952,7 @@ export class PackResolver {
     return { live, sets };
   }
 
-  /** The facts of a set member's variant at `variant` (the selector's key). */
+  /** The facts of a set member's variant at `variant` (the row's key). */
   private memberCand(
     pack: string,
     releaseId: string,
@@ -790,25 +963,27 @@ export class PackResolver {
     if (!p || !rel) return null;
     const vk = packVariantKey(p, parseAssignment(variant));
     const v = rel.variants.find((x) => x.variantKey === vk);
-    return v ? { pack, rel, v } : null;
+    return v ? cand(pack, rel, v) : null;
   }
 
   /**
    * The constraint `set` breaks once `holds` replace (or join) its members, or null. Devices apply
    * holds over the feed's set as they apply pins; every member must still find its dependencies
-   * in range and share the set with nothing it conflicts with.
+   * in range and share the set with nothing it conflicts with. Only holds of the row's own group
+   * apply (no constraint crosses a group).
    */
   heldSetViolation(
-    set: ResolvedSet,
+    set: Pick<ResolvedSet, "entries" | "variant" | "group">,
     holds: readonly { pack: string; releaseId: string }[],
   ): string | null {
-    if (holds.length === 0) return null;
+    const mine = holds.filter((h) => this.groupOf(h.pack) === set.group);
+    if (mine.length === 0) return null;
     const members = new Map<string, Cand>();
     for (const e of set.entries) {
       const c = this.memberCand(e.pack, e.releaseId, set.variant);
       if (c) members.set(e.pack, c);
     }
-    for (const h of holds) {
+    for (const h of mine) {
       const c = this.memberCand(h.pack, h.releaseId, set.variant);
       if (!c)
         return `${h.pack} is held at ${h.releaseId}, which has no variant ${set.variant || "default"}`;
@@ -823,32 +998,31 @@ export class PackResolver {
       if (why) return why.detail;
       seen.set(c.pack, c);
     }
-    // Dependencies on members ordered after the dependant.
     for (const c of members.values())
       for (const [target, range] of Object.entries(c.v.packs ?? {})) {
         const t = members.get(target);
         const scheme = this.packsById.get(target)?.scheme;
-        if (!t || !scheme || !versionInRange(scheme, t.rel.version, range))
+        if (!t || !scheme || !inRange(scheme, t.rel.version, range))
           return `${c.pack} ${c.rel.version} requires ${target} ${range}${t ? `; the held set holds ${t.rel.version}` : ", which the held set lacks"}`;
       }
     return null;
   }
 
   /**
-   * Why `releaseId` of `pack` fails a selector it is meant for, or null: the pack-publish check
-   * (CONTENT §6.4). A release the selector's channel does not serve, outside its contentApi range,
+   * Why `releaseId` of `pack` fails a row it is meant for, or null: the pack-publish check
+   * (CONTENT §6.4). A release the row's channel does not serve, outside its contentApi range,
    * for another engine or below a floor is simply not chosen (a release for a coming engine is
-   * published before the app that runs it). One that lacks the selector's variant fails
-   * (`variant`); one that passes its stages but is passed over for an OLDER release, or leaves the
-   * pack unsatisfied, broke a dependency or a conflict, and fails with it.
+   * published before the app that runs it). One that lacks the row's variant fails (`variant`);
+   * one that passes its stages but is passed over for an OLDER release, or leaves the pack
+   * unsatisfied, broke a dependency or a conflict, and fails with it.
    */
   publishViolation(
     set: ResolvedSet,
     pack: PackInput,
     releaseId: string,
     packChannels: Record<string, string> | null,
-    engines: ReadonlySet<string | null>,
   ): { reason: "variant" | "dependency" | "conflict"; detail: string } | null {
+    if (this.groupOf(pack.id) !== set.group) return null;
     const pc = this.routedChannel(pack, set.channel, packChannels);
     const ranked = this.packChannelReleases(pack, pc);
     const rank = ranked.findIndex((c) => c.releaseId === releaseId);
@@ -871,7 +1045,7 @@ export class PackResolver {
     const s = this.stage(pack, {
       channel: set.channel,
       level: set.contentApi,
-      engines,
+      engine: set.engine,
       assignment,
       packChannels,
     });
@@ -891,7 +1065,7 @@ export class PackResolver {
       if (c) others.set(e.pack, c);
     }
     const present = new Set([...others.keys(), pack.id]);
-    const why = this.conflictWith({ pack: pack.id, rel, v }, others, present);
+    const why = this.conflictWith(cand(pack.id, rel, v), others, present);
     return (
       why ?? {
         reason: "dependency",
@@ -900,17 +1074,8 @@ export class PackResolver {
     );
   }
 
-  /** The (level, platform) engines and mapping of `channel`'s live releases at `level`. */
-  selectorContext(
-    channel: string,
-    level: number,
-    platform: string,
-  ): {
-    engines: ReadonlySet<string | null>;
-    packChannels: Record<string, string> | null;
-  } | null {
-    const l = this.levels(this.live(channel)).get(level);
-    const engines = l?.platforms.get(platform);
-    return l && engines ? { engines, packChannels: l.packChannels } : null;
+  /** The `packChannels` mapping of `channel`'s live releases at `level`, or null. */
+  levelMapping(channel: string, level: number): Record<string, string> | null {
+    return this.levels(this.live(channel)).get(level)?.packChannels ?? null;
   }
 }

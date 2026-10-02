@@ -41,6 +41,17 @@ import { manifestDeliverableStatements } from "../src/services/release/deliverab
 import { loadProduct } from "../src/core/products.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
+import {
+  PackResolutionError,
+  PackResolver,
+} from "../src/services/release/packs/resolve.js";
+import {
+  loadResolutionState,
+  resolveAndStore,
+  storeResolution,
+  tryResolve,
+  withSetIds,
+} from "../src/services/release/packs/sets.js";
 
 installDigestStream();
 
@@ -354,6 +365,7 @@ interface SetRow {
   channel: string;
   content_api: number;
   platform: string;
+  engine: string;
   variant: string;
   pack_set_id: string;
   set_json: string;
@@ -362,8 +374,10 @@ interface SetRow {
 
 async function sets(): Promise<SetRow[]> {
   return db.all<SetRow>(
-    `SELECT channel, content_api, platform, variant, pack_set_id, set_json, unsatisfied_json
-       FROM release_sets WHERE product = ? ORDER BY channel, content_api, platform, variant`,
+    `SELECT channel, content_api, platform, engine, variant, pack_set_id, set_json,
+            unsatisfied_json
+       FROM release_sets WHERE product = ?
+      ORDER BY channel, content_api, platform, engine, variant`,
     SLUG,
   );
 }
@@ -377,20 +391,30 @@ async function setAt(
   packs: Record<string, string>;
   unsatisfied: Record<string, string>;
 }> {
-  const row = (await sets()).find(
+  // A device's set is one row per group: the axis-free row and its locale's row.
+  const rows = (await sets()).filter(
     (s) =>
       s.channel === channel &&
       s.content_api === contentApi &&
-      s.variant === variant,
+      s.engine === "" &&
+      (s.variant === "" || s.variant === variant),
   );
-  expect(row, `${channel}/${contentApi}/${variant}`).toBeDefined();
-  const packs = (
-    JSON.parse(row!.set_json) as { packs: { pack: string; version: string }[] }
-  ).packs;
-  const unsat = JSON.parse(row!.unsatisfied_json ?? "[]") as {
-    pack: string;
-    reason: string;
-  }[];
+  expect(rows.length, `${channel}/${contentApi}/${variant}`).toBeGreaterThan(0);
+  const packs = rows.flatMap(
+    (row) =>
+      (
+        JSON.parse(row.set_json) as {
+          packs: { pack: string; version: string }[];
+        }
+      ).packs,
+  );
+  const unsat = rows.flatMap(
+    (row) =>
+      JSON.parse(row.unsatisfied_json ?? "[]") as {
+        pack: string;
+        reason: string;
+      }[],
+  );
   return {
     packs: Object.fromEntries(packs.map((p) => [p.pack, p.version])),
     unsatisfied: Object.fromEntries(unsat.map((u) => [u.pack, u.reason])),
@@ -453,11 +477,16 @@ describe("resolution on publish (P4-12)", () => {
       { contentApi: 4, appReleases: ["app@1.5.0"] },
     ]);
     const stored = await cat.packSets("stable");
-    expect(stored.map((s) => [s.contentApi, s.platform, s.variant])).toEqual([
-      [3, "web", "locale=en"],
-      [3, "web", "locale=fr"],
-      [4, "web", "locale=en"],
-      [4, "web", "locale=fr"],
+    // One row per group: the axis-free packs, then l10n per locale.
+    expect(
+      stored.map((s) => [s.contentApi, s.platform, s.engine, s.variant]),
+    ).toEqual([
+      [3, "web", "", ""],
+      [3, "web", "", "locale=en"],
+      [3, "web", "", "locale=fr"],
+      [4, "web", "", ""],
+      [4, "web", "", "locale=en"],
+      [4, "web", "", "locale=fr"],
     ]);
     expect(stored[0]!.packSetId).toMatch(/^[0-9a-f]{64}$/);
   });
@@ -480,8 +509,8 @@ describe("resolution on publish (P4-12)", () => {
     });
     expect(dry.status, JSON.stringify(dry.body)).toBe(200);
     expect(dry.body.dryRun).toBe(true);
-    // Both locales on stable and on beta (which includes stable).
-    expect(dry.body.packSets.changed.length).toBe(4);
+    // The axis-free row (foes' group) on stable and on beta (which includes stable).
+    expect(dry.body.packSets.changed.length).toBe(2);
     expect(
       dry.body.packSets.sets.some((s: any) =>
         s.packs.some((p: any) => p.pack === FOES && p.version === "1.1.0"),
@@ -631,6 +660,151 @@ describe("re-resolution on floor changes, pointer moves and yanks (P4-12)", () =
       releaseId: "app@1.4.0",
     });
     expect(app.status).toBe(404);
+    // A pack channel never becomes an app channel: its signed feed still does not exist.
+    const feed = await call(
+      env,
+      db,
+      noFetch,
+      `${CONSOLE}/${SLUG}/update/events/feed.jws?platform=web`,
+    );
+    expect(feed.status).toBe(404);
+  });
+});
+
+describe("a failed re-resolution fails closed (review fix 2)", () => {
+  it("a yank over the bound still yanks, clears the sets, audits it and says so", async () => {
+    await baseline();
+    await publishPack(FOES, "1.1.0", { contentApi: ">=3 <4" });
+    expect((await sets()).length).toBeGreaterThan(0);
+    const spy = vi
+      .spyOn(PackResolver.prototype, "resolve")
+      .mockImplementation(() => {
+        throw new PackResolutionError("over the bound (test)");
+      });
+    try {
+      const res = await post(
+        `releases/${encodeURIComponent(`${FOES}@1.1.0`)}/yank`,
+        { reason: "breaks a quest" },
+      );
+      expect(res.status, await res.clone().text()).toBe(200);
+      const body = (await res.json()) as Record<string, any>;
+      expect(body.yank.yanked).toBe(true);
+      expect(body.packSets).toEqual({
+        ok: false,
+        reason: "pack-sets-bound",
+        message: "over the bound (test)",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    // The yank stands; no stale set (which held the yanked 1.1.0) survives.
+    expect(
+      await db.first(
+        "SELECT 1 AS one FROM release_yanks WHERE product = ? AND release_id = ?",
+        SLUG,
+        `${FOES}@1.1.0`,
+      ),
+    ).toEqual({ one: 1 });
+    expect(await sets()).toEqual([]);
+    expect(
+      await db.first<{ summary: string }>(
+        "SELECT summary FROM audit WHERE product = ? AND action = 'release.pack_sets.failed'",
+        SLUG,
+      ),
+    ).toEqual({ summary: expect.stringContaining("over the bound (test)") });
+    // The next trigger that resolves restores them.
+    await post(`releases/${encodeURIComponent(`${FOES}@1.0.0`)}/yank`, {
+      reason: "again",
+    });
+    expect((await setAt(3)).unsatisfied[FOES]).toBe("no-release");
+  });
+
+  it("an error in resolution never throws out of the trigger either", async () => {
+    await baseline();
+    const spy = vi
+      .spyOn(PackResolver.prototype, "resolve")
+      .mockImplementation(() => {
+        throw new Error("boom");
+      });
+    try {
+      expect(await resolveAndStore(db, SLUG, NOW)).toEqual({
+        ok: false,
+        reason: "pack-sets-error",
+        message: "boom",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await sets()).toEqual([]);
+  });
+});
+
+describe("concurrent triggers (generation stamp)", () => {
+  it("a resolution from an older generation never overwrites a newer one; it re-resolves", async () => {
+    await baseline();
+    // A slow trigger resolves from today's state...
+    const stale = await loadResolutionState(db, SLUG);
+    const r = tryResolve(stale!);
+    if (!r.ok) throw new Error(r.message);
+    const staleSets = await withSetIds(r.resolution.sets);
+    // ...while a faster one publishes and stores its own.
+    await publishPack(FOES, "1.1.0", { contentApi: ">=3 <4" });
+    expect((await setAt(3)).packs[FOES]).toBe("1.1.0");
+    // The slow write is refused by the generation, and the stored sets stay the newer ones.
+    expect(
+      await storeResolution(
+        db,
+        SLUG,
+        { sets: staleSets, generation: stale!.generation },
+        NOW,
+      ),
+    ).toBe(false);
+    expect((await setAt(3)).packs[FOES]).toBe("1.1.0");
+    // Through resolveAndStore the stale resolution is dropped and the state re-resolved.
+    expect(
+      await resolveAndStore(db, SLUG, NOW, {
+        sets: staleSets,
+        generation: stale!.generation,
+      }),
+    ).toEqual({ ok: true, sets: expect.any(Number) });
+    expect((await setAt(3)).packs[FOES]).toBe("1.1.0");
+  });
+});
+
+describe("pack removal and floors (review fix 3)", () => {
+  it("a resync that drops a pack with a floor keeps its row, with foreign keys enforced", async () => {
+    await db.run("PRAGMA foreign_keys = ON");
+    await baseline();
+    const res = await admin(env, db, "PUT", "/channels/stable", {
+      deliverable: FOES,
+      contentApi: 3,
+      minSupported: "1.0.0",
+    });
+    expect(res.status).toBe(200);
+    // The manifest drops foes (and its required expect would no longer apply).
+    const doc = releaseDoc(3) as any;
+    delete doc.release.deliverables[FOES];
+    const parsedDoc = parseManifest({
+      product: JSON.stringify({
+        slug: SLUG,
+        name: "djdl",
+        modules: { release: { enabled: true } },
+      }),
+      schema: JSON.stringify({ schemaVersion: 1, entries: [] }),
+      release: JSON.stringify(doc),
+    });
+    if (!parsedDoc.ok) throw new Error(parsedDoc.errors.join("\n"));
+    const rel = parsedDoc.manifest.release!;
+    await db.batch(
+      manifestDeliverableStatements(SLUG, rel.app, NOW, rel.packDeliverables),
+    );
+    expect(
+      await db.first(
+        "SELECT kind FROM release_deliverables WHERE product = ? AND deliverable_id = ?",
+        SLUG,
+        FOES,
+      ),
+    ).toEqual({ kind: "pack" });
   });
 });
 

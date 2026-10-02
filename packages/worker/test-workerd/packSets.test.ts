@@ -16,7 +16,7 @@ import {
 } from "../src/services/release/packs/resolve.js";
 import {
   readStoredSets,
-  setStatements,
+  storeResolution,
   withSetIds,
 } from "../src/services/release/packs/sets.js";
 import { NOW, seedProduct } from "./seed.js";
@@ -105,36 +105,54 @@ function input(): ResolutionInput {
 }
 
 describe("pack-set resolution on workerd (P4-12)", () => {
-  it("resolves, computes packSetIds and replaces release_sets in one D1 batch", async () => {
+  it("resolves, computes packSetIds and replaces release_sets in one guarded D1 batch", async () => {
     const db = new D1Db(env.DB);
     await seedProduct(env, db, SLUG, { schemaVersion: 1, entries: [] });
     const { sets } = new PackResolver(input()).resolve();
-    // 2 channels × 2 levels × 6 platforms × 2 locales.
-    expect(sets).toHaveLength(48);
+    // 2 channels × 2 levels × 6 platforms × (foes' row + 2 l10n locale rows).
+    expect(sets).toHaveLength(72);
     const withIds = await withSetIds(sets);
-    await db.batch(setStatements(SLUG, withIds, NOW));
+    expect(
+      await storeResolution(db, SLUG, { sets: withIds, generation: 0 }, NOW),
+    ).toBe(true);
     const stable = await readStoredSets(db, SLUG, "stable");
-    expect(stable).toHaveLength(24);
-    const at = (level: number) =>
+    expect(stable).toHaveLength(36);
+    const at = (level: number, variant: string) =>
       stable.find(
         (s) =>
           s.contentApi === level &&
           s.platform === "ios" &&
-          s.variant === "locale=fr",
+          s.variant === variant,
       )!;
     // foes n.0.0 supports contentApi ≥ n + 1: level 3 resolves 2.0.0, level 4 resolves 3.0.0.
-    expect(at(3).packs.map((p) => [p.pack, p.version])).toEqual([
+    expect(at(3, "").packs.map((p) => [p.pack, p.version])).toEqual([
       ["w.foes", "2.0.0"],
-      ["w.l10n", "3.0.0"],
     ]);
-    expect(at(4).packs.map((p) => [p.pack, p.version])).toEqual([
+    expect(at(4, "").packs.map((p) => [p.pack, p.version])).toEqual([
       ["w.foes", "3.0.0"],
+    ]);
+    expect(at(3, "locale=fr").packs.map((p) => [p.pack, p.version])).toEqual([
       ["w.l10n", "3.0.0"],
     ]);
-    expect(at(3).packSetId).toMatch(/^[0-9a-f]{64}$/);
-    expect(at(3).packSetId).not.toBe(at(4).packSetId);
-    // A second replacement leaves exactly one row per selector.
-    await db.batch(setStatements(SLUG, withIds, NOW + 1));
-    expect(await readStoredSets(db, SLUG, "stable")).toHaveLength(24);
+    expect(at(3, "").packSetId).toMatch(/^[0-9a-f]{64}$/);
+    expect(at(3, "").packSetId).not.toBe(at(4, "").packSetId);
+    // A write from the generation already moved past writes nothing.
+    expect(
+      await storeResolution(
+        db,
+        SLUG,
+        { sets: withIds, generation: 0 },
+        NOW + 1,
+      ),
+    ).toBe(false);
+    expect(
+      await storeResolution(
+        db,
+        SLUG,
+        { sets: withIds, generation: 1 },
+        NOW + 1,
+      ),
+    ).toBe(true);
+    expect(await readStoredSets(db, SLUG, "stable")).toHaveLength(36);
   });
 });

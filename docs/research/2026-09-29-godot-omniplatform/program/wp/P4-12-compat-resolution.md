@@ -236,8 +236,9 @@ implementation made, recorded here in the same branch.
   are `release_pack_floors(product, deliverable_id, channel, content_api, min_version, source, …)`
   (primary key with `content_api`), operator-owned (`source = 'admin'`). A pack's level-free
   `min_supported` still applies; resolution honours both.
-- **Migrations 0046_a and 0046_b.** 0046_a creates `release_sets` (with an `unsatisfied_json`
-  column), `release_holds` (with `record_sha256`) and `release_pack_floors`, then adds
+- **Migrations 0046_a and 0046_b.** 0046_a creates `release_sets` (keyed with an `engine`
+  column, and with `unsatisfied_json`), `release_set_state` (the per-product generation),
+  `release_holds` (with `record_sha256`) and `release_pack_floors`, then adds
   `release_metadata.pack_channels_json` last; 0046_b adds `release_builds.conflicts_json`.
 - **Requirements come from the signed record.** A pack release's `requires.contentApi`,
   `requires.packs` and `conflicts` are its record's per-variant reserved members (CONTENT §6.9;
@@ -245,11 +246,25 @@ implementation made, recorded here in the same branch.
   `.pkey/release` values are the defaults CI signs. Ingest gains `pack-requires` (the signed
   values against the binding and the declared packs) and `pack-channel` (a channel the pack does
   not publish to). Client-core claims are unchanged: clients still ignore those members.
-- **Engines.** A build that declares no `requires.engine` adds no engine constraint (the server
-  cannot know it; the device's `selectVariant` still matches). Sets have no engine dimension, so
-  two engines live at one (channel, level, platform) share no `godot.pck` release: an engine bump
-  bumps contentApi or waits for the older app release to fall below the floor. The row-7 test is
-  written that way. P4-13, which freezes the selector, may add an engine key.
+- **Engine is a selector dimension** (lead decision on review): `release_sets` is keyed by
+  (channel, app deliverable, contentApi, platform, engine, variant), `engine` the live builds'
+  `requires.engine` (`''` when a build declares none, which constrains nothing). During an engine
+  bump each engine keeps its own set (CONTENT §6.8 row 7 as written).
+- **Variants are projected per group, not crossed** (lead decision on review). The brief's
+  "variant over every pack's axes" multiplies rows across packs (64 packs × 3 axes × 16 values
+  measured 28.7 s and 1.9 GB). The resolvable packs are grouped (same axis names, merged across
+  `requires.packs` and `conflicts`), each group resolved per combination of its own axes and
+  stored as its own row; a device's set is one row per group, the one its variant projects onto.
+  Every device still gets exactly the releases a whole-assignment resolution gives it, because no
+  constraint crosses a group. P4-13 composes a device's set from one row per group.
+- **One work budget per resolution.** `MAX_RESOLUTION_WORK` (1,000,000 candidate checks) is
+  shared by the whole resolution, not per problem; stage outputs and solver results are memoised
+  by stage-output ids. Adversarial cases spend it in 40–150 ms on Node 22.
+- **Fail closed** (lead decision on review). A trigger whose resolution fails clears the
+  product's sets, writes an audit row and answers `packSets: {ok: false, reason}`; it never
+  refuses the yank, floor change, pointer move or resync. Concurrent triggers are ordered by the
+  `release_set_state` generation. A publish resolves once: the check's after-state is stored
+  (the stored rows are the "before" of the report), and the submit's two plans share a memo.
 - **`requires.features` stays refused.** No app-side value exists to check it against; this is a
   plan gap, reported rather than invented.
 - **Validator codes.** New: `missing_content_api_range`, `standalone_with_content_api`,
@@ -282,6 +297,4 @@ implementation made, recorded here in the same branch.
 - **Not checked, for want of an input:** the data-only lint result (P4-03 does not exist yet, and
   a pack record has no descriptor), and a `standalone` pack's format version against the app
   (no app-side handler version exists).
-- **A trigger that hits a bound leaves the stored sets as they were**; a publish that would is
-  refused (`pack-sets-bound`).
 - **Console read** is the hook functions; the console view is P4-15's.

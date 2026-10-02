@@ -580,7 +580,9 @@ export async function handlePackSubmit(
     summary: `Published pack release ${releaseId} through trusted publishing with release record ${recordSha256.slice(0, 12)}`,
   });
   await bumpReleaseGeneration(env, product.slug, now);
-  if (sets.report) await resolveAndStore(db, product.slug, now);
+  // Store the rows the check resolved (re-resolving only if a concurrent trigger moved them).
+  if (sets.resolved)
+    await resolveAndStore(db, product.slug, now, sets.resolved);
   return json({
     ok: true,
     dryRun: false,

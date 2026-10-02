@@ -51,11 +51,11 @@ import {
 import type { Db, DbStatement } from "../../../core/platform.js";
 import type { ReleaseConfigRow } from "../config.js";
 import type { RecordRefusalReason } from "../records.js";
-import { checkAppPublish } from "./checks.js";
+import { checkAppPublish, type CheckCache } from "./checks.js";
 import { readPackDeliverables } from "./deliverables.js";
 import { storedRecordPayload } from "./ingest.js";
 import { levelInRange } from "./resolve.js";
-import type { PackSetReport } from "./sets.js";
+import type { PackSetReport, ResolvedForStore } from "./sets.js";
 
 export type ContentRefusal = {
   ok: false;
@@ -89,6 +89,8 @@ export type ContentPlan =
       packChannels: Record<string, string> | null;
       /** The resolution report (P4-12), or null when the product resolves no pack sets. */
       report: PackSetReport | null;
+      /** The after-state's rows, stored once the release is written (one resolution). */
+      resolved: ResolvedForStore | null;
     }
   | ContentRefusal;
 
@@ -98,6 +100,8 @@ export interface ContentContext {
   /** The release's seq as it will be stored. */
   seq: number;
   cfg: ReleaseConfigRow | null;
+  /** The request's check memo (the submit plans twice over one stored state). */
+  cache?: CheckCache;
 }
 
 /**
@@ -175,6 +179,7 @@ export async function planAppContent(
       holds: [],
       packChannels: null,
       report: null,
+      resolved: null,
     };
 
   // Every expected PINNED pack pinned and every pin expected; every required pinned pack and every
@@ -360,6 +365,7 @@ export async function planAppContent(
       holds: holds.map((h) => ({ pack: h.pack, releaseId: h.packReleaseId })),
     },
     ctx.cfg,
+    ctx.cache,
   );
   if (!checked.ok) return checked;
   return {
@@ -369,6 +375,7 @@ export async function planAppContent(
     holds,
     packChannels: content.packChannels ?? null,
     report: checked.report,
+    resolved: checked.resolved,
   };
 }
 

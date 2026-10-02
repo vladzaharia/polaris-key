@@ -336,7 +336,10 @@ export interface CatalogPackSet {
   appDeliverable: string;
   contentApi: number;
   platform: string;
-  /** The variant key over every resolvable pack's axes; `""` for none. */
+  /** The engine of the live builds it serves; `""` for builds that declare none. */
+  engine: string;
+  /** The variant key over this row's group's axes; `""` for a group without axes. A device's
+   *  set is one row per group: the row its own variant projects onto. */
   variant: string;
   /** client-core's `packSetId` over the members: identical sets share it. */
   packSetId: string;
@@ -479,9 +482,10 @@ export interface ReleaseCatalog {
     appDeliverable: string,
     channel: string,
   ): Promise<CatalogLiveLevel[]>;
-  /** The stored resolved sets of `channel`, by selector. */
+  /** The stored resolved sets of `channel` (canonicalised: `staging` is `beta`), by selector.
+   *  Empty after a failed resolution, which clears them (fail closed). */
   packSets(channel: string): Promise<CatalogPackSet[]>;
-  /** The pack floors per contentApi line on `channel`, by pack then level. A level-free floor is
+  /** The pack floors per contentApi line on `channel` (canonicalised), by pack then level. A level-free floor is
    *  the pack's `channelPolicies` `minSupported`. */
   packFloors(channel: string): Promise<CatalogPackFloor[]>;
   /** What app release `appReleaseId` holds, by pack id. */

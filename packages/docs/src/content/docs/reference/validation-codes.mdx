@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 186 distinct emit sites.
+codes with their JSON-pointer paths. 187 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -193,6 +193,7 @@ the offending value, or the allowed set.
 | `unknown_entitlement_ref` | error | release | `${at}/entitlement` | entitlement $\{entitlement\} is not a flag entry of the product's .pkey/schema. It only asserts the pack's delivery gate, which an operator sets under Distribution → Access. |
 | `unknown_outlet_kind` | error | distribution | `/outlets/${id}/kind` | outlet $\{id\} needs a kind from $\{OUTLET_KINDS.join(", ")\} (an outlet id that is itself a kind may omit it). |
 | `unknown_outlet_ref` | error | distribution | `${path}/${outletId}` | transport maps may only name outlets declared under outlets. |
+| `unknown_pack_channels_target` | error | release | `/release/deliverables/app/content/packChannels/${key}` | content.packChannels $\{key\} must match a declared pack, and every pack it matches must publish to $\{String(channel)\} (stable, beta or one of the pack's channels). |
 | `unknown_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier references unknown profile $\{profile\}. |
 | `unsupported_release_provider` | error | release | `/release/provider/type` | Only github is implemented. |
 | `update_requires_distribution` | error | product | `/modules/update` | The update service serves a feed over distribution's delivery state, so distribution must be enabled too. |

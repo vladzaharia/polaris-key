@@ -46,6 +46,8 @@ import type {
 import {
   loadResolutionState,
   packVariantFacts,
+  readStoredSets,
+  rowKey,
   setReport,
   tryResolve,
   withAppRelease,
@@ -53,6 +55,8 @@ import {
   withSetIds,
   type PackSetReport,
   type ResolutionState,
+  type ResolvedForStore,
+  type StoredSet,
 } from "./sets.js";
 
 export type CheckRefusal = {
@@ -61,8 +65,22 @@ export type CheckRefusal = {
   message: string;
 };
 export type CheckResult =
-  | { ok: true; report: PackSetReport | null }
+  | {
+      ok: true;
+      report: PackSetReport | null;
+      /** The after-state's rows, which the publish stores once it has written the release
+       *  (`resolveAndStore`), so a publish resolves once. Null when there are none to store. */
+      resolved: ResolvedForStore | null;
+    }
   | CheckRefusal;
+
+/**
+ * A request's memo of its checks: P2-02's submit plans an app release twice (a dry-run pre-check,
+ * then the ingest), over the same stored state, and the second plan reuses the first's result.
+ */
+export type CheckCache = Map<string, CheckResult>;
+
+const NOTHING: CheckResult = { ok: true, report: null, resolved: null };
 
 function refuse(reason: RecordRefusalReason, message: string): CheckRefusal {
   return { ok: false, reason, message };
@@ -73,13 +91,11 @@ export function selectorText(s: {
   channel: string;
   contentApi: number;
   platform: string;
+  engine: string;
   variant: string;
 }): string {
-  return `channel ${s.channel}, contentApi ${s.contentApi}, platform ${s.platform}${s.variant ? `, variant ${s.variant}` : ""}`;
+  return `channel ${s.channel}, contentApi ${s.contentApi}, platform ${s.platform}${s.engine ? `, engine ${s.engine}` : ""}${s.variant ? `, variant ${s.variant}` : ""}`;
 }
-
-const selectorKey = (s: ResolvedSet) =>
-  `${s.channel}\u0000${s.contentApi}\u0000${s.platform}\u0000${s.variant}`;
 
 /** A pack record as resolution would see it once stored. */
 export function packReleaseOf(
@@ -120,7 +136,7 @@ export function packReleaseOf(
 /** The violation the held sets of `set`'s app releases show, keyed by app release. */
 function heldViolations(
   resolver: PackResolver,
-  set: ResolvedSet,
+  set: Pick<ResolvedSet, "entries" | "variant" | "group" | "appReleases">,
   only?: string,
 ): Map<string, string> {
   const out = new Map<string, string>();
@@ -142,47 +158,55 @@ export async function checkPackPublish(
   cfg: ReleaseConfigRow | null,
 ): Promise<CheckResult> {
   const state = await loadResolutionState(db, product, cfg);
-  if (!state) return { ok: true, report: null };
+  if (!state) return NOTHING;
   const decl = state.declared.get(record.deliverable);
   if (!decl || (decl.binding !== "compatible" && decl.binding !== "standalone"))
-    return { ok: true, report: null };
+    return NOTHING;
   const { candidate, facts } = packReleaseOf(
     record,
     recordSha256,
     state.input.app.manual,
   );
   return compare(
-    state,
+    db,
+    product,
     withPackRelease(state, record.deliverable, candidate, facts),
-    (after, before) => {
+    (after, stored) => {
       const pack = after.resolver.pack(record.deliverable)!;
-      const was = new Map(
-        before.resolution.sets.map((s) => [selectorKey(s), s]),
-      );
+      const was = new Map(stored.map((s) => [rowKey(s), s]));
       for (const set of after.resolution.sets) {
-        const ctx = after.resolver.selectorContext(
-          set.channel,
-          set.contentApi,
-          set.platform,
-        );
-        if (!ctx) continue;
         const v = after.resolver.publishViolation(
           set,
           pack,
           candidate.releaseId,
-          ctx.packChannels,
-          ctx.engines,
+          after.resolver.levelMapping(set.channel, set.contentApi),
         );
         if (v)
           return refuse(
             "pack-unsatisfiable",
             `${record.deliverable} ${record.version} fails at ${selectorText(set)}: ${v.detail} (${v.reason}).`,
           );
-        const prior = was.get(selectorKey(set));
+        const prior = was.get(rowKey(set));
         const held = heldViolations(after.resolver, set);
         for (const [app, detail] of held) {
+          // A violation the stored row already showed is not this release's regression.
           const earlier = prior
-            ? heldViolations(before.resolver, prior, app).get(app)
+            ? heldViolations(
+                after.resolver,
+                {
+                  entries: prior.packs.map((p) => ({
+                    pack: p.pack,
+                    releaseId: p.releaseId,
+                    version: p.version,
+                    seq: p.seq,
+                    recordSha256: p.sha256,
+                  })),
+                  variant: set.variant,
+                  group: set.group,
+                  appReleases: set.appReleases,
+                },
+                app,
+              ).get(app)
             : undefined;
           if (earlier === undefined)
             return refuse(
@@ -227,16 +251,31 @@ export async function checkAppPublish(
   product: string,
   a: AppPublish,
   cfg: ReleaseConfigRow | null,
+  cache?: CheckCache,
 ): Promise<CheckResult> {
-  if (a.contentApi === null) return { ok: true, report: null };
+  if (a.contentApi === null) return NOTHING;
+  const key = JSON.stringify(a);
+  const hit = cache?.get(key);
+  if (hit) return hit;
+  const result = await checkAppPublishUncached(db, product, a, cfg);
+  cache?.set(key, result);
+  return result;
+}
+
+async function checkAppPublishUncached(
+  db: Db,
+  product: string,
+  a: AppPublish & { contentApi: number | null },
+  cfg: ReleaseConfigRow | null,
+): Promise<CheckResult> {
   const state = await loadResolutionState(db, product, cfg);
-  if (!state) return { ok: true, report: null };
+  if (!state) return NOTHING;
   if (
     ![...state.declared.values()].some(
       (p) => p.binding === "compatible" || p.binding === "standalone",
     )
   )
-    return { ok: true, report: null };
+    return NOTHING;
   const manual = state.input.app.manual;
   const existing = state.input.app.candidates.find(
     (c) => c.releaseId === a.releaseId,
@@ -262,7 +301,8 @@ export async function checkAppPublish(
     holds: a.holds,
   };
   return compare(
-    state,
+    db,
+    product,
     withAppRelease(state, candidate, facts, channel),
     (after) => {
       for (const [ch, live] of after.resolution.live) {
@@ -307,31 +347,26 @@ export async function checkAppPublish(
 
 type Resolved = Extract<ReturnType<typeof tryResolve>, { ok: true }>;
 
-/** Resolve before and after, run `judge` over them, and report the difference. */
+/**
+ * Resolve the after-state ONCE, run `judge` over it and the stored rows (the before-state: what
+ * the last trigger stored), and report the difference. The after-state's rows come back for the
+ * publish to store, so a publish never resolves a second time.
+ */
 async function compare(
-  before: ResolutionState,
+  db: Db,
+  product: string,
   after: ResolutionState,
-  judge: (after: Resolved, before: Resolved) => CheckRefusal | null,
+  judge: (after: Resolved, stored: StoredSet[]) => CheckRefusal | null,
 ): Promise<CheckResult> {
-  const b = tryResolve(before);
   const a = tryResolve(after);
   if (!a.ok) return refuse("pack-sets-bound", a.message);
-  // A product whose stored state already passes the bound cannot be judged against it; judge
-  // the after-state alone (nothing before is a regression to compare with).
-  const prior: Resolved = b.ok
-    ? b
-    : {
-        ok: true,
-        resolver: a.resolver,
-        resolution: { live: new Map(), sets: [] },
-      };
-  const refusal = judge(a, prior);
+  const stored = await readStoredSets(db, product, null);
+  const refusal = judge(a, stored);
   if (refusal) return refusal;
+  const sets = await withSetIds(a.resolution.sets);
   return {
     ok: true,
-    report: setReport(
-      await withSetIds(prior.resolution.sets),
-      await withSetIds(a.resolution.sets),
-    ),
+    report: setReport(stored, sets),
+    resolved: { sets, generation: after.generation },
   };
 }

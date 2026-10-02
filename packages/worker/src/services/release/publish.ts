@@ -91,6 +91,7 @@ import {
 } from "./descriptor.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { readPackDeliverableIds } from "./packs/deliverables.js";
+import type { CheckCache } from "./packs/checks.js";
 import {
   distributionDisabled,
   handlePackSubmit,
@@ -674,6 +675,8 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
   const pending = new Map(
     [...needed].map(([k, n]) => [k, { sha256: n.sha256, size: n.size }]),
   );
+  // One memo for both plans of this request: the pack-set check resolves once (P4-12).
+  const packCache: CheckCache = new Map();
   const plan = await ingestReleaseDescriptor(
     db,
     env,
@@ -684,6 +687,7 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       now,
       dryRun: true,
       pendingPromotion: pending,
+      packCache,
     },
   );
   if (!plan.ok) return ingestRefusal(plan);
@@ -763,6 +767,7 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       source: "ci",
       now,
       promoted: needed.keys(),
+      packCache,
       ...(checkedRecord
         ? {
             extraStatements: (p) => [

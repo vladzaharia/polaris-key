@@ -11,7 +11,8 @@ import { describe, expect, it } from "vitest";
 import { packChannelFor, parseRange } from "@polaris-key/manifest";
 import { packSetId } from "@polaris-key/client-core/packs";
 import {
-  MAX_SOLVER_STEPS,
+  MAX_RESOLUTION_WORK,
+  MAX_SELECTORS,
   PackResolutionError,
   PackResolver,
   levelInRange,
@@ -177,12 +178,16 @@ const unsat = (s: ResolvedSet) =>
 const at = (
   sets: ResolvedSet[],
   sel: Partial<
-    Pick<ResolvedSet, "channel" | "contentApi" | "platform" | "variant">
+    Pick<
+      ResolvedSet,
+      "channel" | "contentApi" | "platform" | "engine" | "variant"
+    >
   >,
 ) =>
   sets.filter(
     (s) =>
       (sel.channel === undefined || s.channel === sel.channel) &&
+      (sel.engine === undefined || s.engine === sel.engine) &&
       (sel.contentApi === undefined || s.contentApi === sel.contentApi) &&
       (sel.platform === undefined || s.platform === sel.platform) &&
       (sel.variant === undefined || s.variant === sel.variant),
@@ -322,14 +327,15 @@ describe("live levels and the Diceroll scenarios (CONTENT §6.8)", () => {
       );
   });
 
-  it("row 7: an engine bump resolves nothing until pack releases for the new engine exist", () => {
+  it("row 7: during an engine bump each engine keeps its own set; the new one resolves once its releases exist", () => {
+    // 1.5 (engine 4.7) is still live beside 1.6 (engine 4.8), at the same contentApi.
+    const app15: AppSpec = { ...APP_15, engine: "godot-4.7" };
     const app16: AppSpec = {
       version: "1.6.0",
       seq: 16,
-      contentApi: 5,
+      contentApi: 4,
       engine: "godot-4.8",
     };
-    const app15: AppSpec = { ...APP_15, engine: "godot-4.7" };
     const core: PackSpec = {
       id: "diceroll.core3d",
       required: true,
@@ -338,10 +344,13 @@ describe("live levels and the Diceroll scenarios (CONTENT §6.8)", () => {
       ],
     };
     let { sets } = resolve([app15, app16], [core]);
-    expect(unsat(one(sets, { contentApi: 5 }))).toEqual({
+    expect(unsat(one(sets, { engine: "godot-4.8" }))).toEqual({
       "diceroll.core3d": "engine",
     });
-    expect(members(one(sets, { contentApi: 4 }))).toEqual({
+    expect(one(sets, { engine: "godot-4.8" }).appReleases).toEqual([
+      "app@1.6.0",
+    ]);
+    expect(members(one(sets, { engine: "godot-4.7" }))).toEqual({
       "diceroll.core3d": "2.0.0",
     });
     ({ sets } = resolve(
@@ -352,22 +361,47 @@ describe("live levels and the Diceroll scenarios (CONTENT §6.8)", () => {
           releases: [
             ...core.releases,
             {
-              version: "3.0.0",
+              version: "2.1.0",
               seq: 2,
-              contentApi: ">=5",
+              contentApi: ">=4",
               engine: "godot-4.8",
             },
           ],
         },
       ],
     ));
-    expect(members(one(sets, { contentApi: 5 }))).toEqual({
-      "diceroll.core3d": "3.0.0",
+    expect(members(one(sets, { engine: "godot-4.8" }))).toEqual({
+      "diceroll.core3d": "2.1.0",
     });
-    // The 4.7 app keeps its 4.7 release.
-    expect(members(one(sets, { contentApi: 4 }))).toEqual({
+    // The 1.5 players on 4.7 keep their 4.7 release.
+    expect(members(one(sets, { engine: "godot-4.7" }))).toEqual({
       "diceroll.core3d": "2.0.0",
     });
+    expect(one(sets, { engine: "godot-4.7" }).appReleases).toEqual([
+      "app@1.5.0",
+    ]);
+  });
+
+  it('a build that declares no engine constrains nothing (engine "")', () => {
+    const { sets } = resolve(
+      [APP_15],
+      [
+        {
+          id: "diceroll.core3d",
+          releases: [
+            {
+              version: "2.1.0",
+              seq: 2,
+              contentApi: ">=4",
+              engine: "godot-4.8",
+            },
+          ],
+        },
+      ],
+    );
+    expect(one(sets, { engine: "" }).entries.map((e) => e.version)).toEqual([
+      "2.1.0",
+    ]);
   });
 
   it("a release for another engine is passed over for an older one that runs", () => {
@@ -720,7 +754,130 @@ describe("the solver: dependencies, conflicts, holds and bounds", () => {
         })),
       });
     expect(() => resolve([APP_15], packs)).toThrow(PackResolutionError);
-    expect(() => resolve([APP_15], packs)).toThrow(String(MAX_SOLVER_STEPS));
+    expect(() => resolve([APP_15], packs)).toThrow(String(MAX_RESOLUTION_WORK));
+  });
+});
+
+describe("groups: variants projected per pack (review fix 1b)", () => {
+  const axisPack = (id: string, axis: string, values: string[]): PackSpec => ({
+    id,
+    binding: "standalone",
+    axes: { [axis]: values },
+    releases: [
+      { version: "1.0.0", seq: 1, variants: values.map((v) => `${axis}=${v}`) },
+    ],
+  });
+
+  it("packs on different axes add rows instead of multiplying them", () => {
+    const { sets, resolver } = resolve(
+      [APP_15],
+      [
+        FOES,
+        axisPack("diceroll.core3d", "texture", ["astc", "etc2", "s3tc"]),
+        axisPack("diceroll.l10n", "locale", ["de", "en", "fr"]),
+      ],
+    );
+    // One row for the axis-free group, 3 texture rows, 3 locale rows: 7, not 1 × 3 × 3.
+    // Groups in id order: core3d (texture), foes (no axes), l10n (locale).
+    expect(sets.map((s) => s.variant)).toEqual([
+      "texture=astc",
+      "texture=etc2",
+      "texture=s3tc",
+      "",
+      "locale=de",
+      "locale=en",
+      "locale=fr",
+    ]);
+    expect(resolver.groups.map((g) => g.id)).toEqual(
+      ["diceroll.core3d", "diceroll.foes", "diceroll.l10n"].sort(),
+    );
+    // A device on astc + fr takes one row per group.
+    expect(
+      one(sets, { variant: "texture=astc" }).entries.map((e) => e.pack),
+    ).toEqual(["diceroll.core3d"]);
+  });
+
+  it("a dependency across axes merges the two packs into one group over both axes", () => {
+    const tex = axisPack("diceroll.core3d", "texture", ["astc", "s3tc"]);
+    const loc: PackSpec = {
+      ...axisPack("diceroll.l10n", "locale", ["en", "fr"]),
+      releases: [
+        {
+          version: "1.0.0",
+          seq: 1,
+          variants: ["locale=en", "locale=fr"],
+          packs: { "diceroll.core3d": ">=1.0.0" },
+        },
+      ],
+    };
+    const { sets } = resolve([APP_15], [tex, loc]);
+    expect(sets.map((s) => s.variant)).toEqual([
+      "locale=en;texture=astc",
+      "locale=en;texture=s3tc",
+      "locale=fr;texture=astc",
+      "locale=fr;texture=s3tc",
+    ]);
+    for (const s of sets) expect(s.entries).toHaveLength(2);
+  });
+});
+
+describe("bounds (review fix 1)", () => {
+  /** A coupled group over three 16-value axes: 4,096 rows per (channel, level, platform). */
+  const coupled = (): PackSpec[] => {
+    const values = Array.from(
+      { length: 16 },
+      (_, i) => `v${String(i).padStart(2, "0")}`,
+    );
+    return (["locale", "quality", "texture"] as const).map((axis, i) => ({
+      id: `game.${axis}`,
+      binding: "standalone" as const,
+      axes: { [axis]: values },
+      releases: [1, 2, 3].map((n) => ({
+        version: `${n}.0.0`,
+        seq: n,
+        variants: values.map((v) => `${axis}=${v}`),
+        ...(i > 0 ? { packs: { "game.locale": ">=1.0.0" } } : {}),
+      })),
+    }));
+  };
+
+  it("MAX_SELECTORS distinct problems at the bound finish within the budget", () => {
+    const t0 = performance.now();
+    const { sets } = resolve([APP_15], coupled());
+    expect(sets).toHaveLength(MAX_SELECTORS);
+    expect(sets.every((s) => s.entries.length === 3)).toBe(true);
+    expect(performance.now() - t0).toBeLessThan(1500);
+  });
+
+  it("one more selector than the bound refuses cleanly, inside the budget's time", () => {
+    const t0 = performance.now();
+    expect(() =>
+      resolve([APP_15], coupled(), { channels: ["stable", "beta"] }),
+    ).toThrow(PackResolutionError);
+    expect(performance.now() - t0).toBeLessThan(1500);
+  });
+
+  it("an adversarial search spends the whole-resolution budget, then refuses, in bounded time and memory", () => {
+    // 64 packs of 200 releases: the last requires the oldest release of the first, so a
+    // newest-first search walks a huge space; the shared budget stops it.
+    const packs: PackSpec[] = Array.from({ length: 64 }, (_, i) => ({
+      id: `p.p${String(i).padStart(2, "0")}`,
+      binding: "standalone" as const,
+      releases: Array.from({ length: 200 }, (_, n) => ({
+        version: `1.${Math.floor(n / 50)}.${n % 50}`,
+        seq: n + 1,
+        ...(i === 63 ? { packs: { "p.p00": "=1.0.0" } } : {}),
+      })),
+    }));
+    const heap0 = process.memoryUsage().heapUsed;
+    const t0 = performance.now();
+    expect(() =>
+      resolve([{ ...APP_15, platforms: ["ios", "macos", "web"] }], packs),
+    ).toThrow(String(MAX_RESOLUTION_WORK));
+    // The budget is sized for about 150 ms on Node 22; CI machines get headroom.
+    expect(performance.now() - t0).toBeLessThan(1500);
+    // An isolate has 128 MB; resolution must stay far below it.
+    expect((process.memoryUsage().heapUsed - heap0) / 1048576).toBeLessThan(64);
   });
 });
 
@@ -787,8 +944,8 @@ describe("cost", () => {
     const t0 = performance.now();
     const { sets } = resolve(apps, packs, { channels: ["stable", "beta"] });
     const ms = performance.now() - t0;
-    // 2 channels × 3 levels × 6 platforms × 3 variants.
-    expect(sets).toHaveLength(108);
+    // 2 channels × 3 levels × 6 platforms × (the axis-free group + 3 texture rows).
+    expect(sets).toHaveLength(144);
     expect(sets.every((s) => s.unsatisfied.length === 0)).toBe(true);
     // Workers allow 30 s of CPU on the paid plan; resolution must stay far inside one request.
     expect(ms).toBeLessThan(2000);

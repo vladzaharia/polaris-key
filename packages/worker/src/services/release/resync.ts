@@ -48,7 +48,7 @@ import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSync } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
-import { resolveAndStore } from "./packs/sets.js";
+import { resolveAndStore, type StoreOutcome } from "./packs/sets.js";
 import { releaseKeysForSync } from "./records.js";
 import { parseServices, serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
@@ -70,6 +70,11 @@ export type ResyncResult =
        * `release_key_is_product_key`, which keeps the previous `releaseKeys`). Absent when none.
        */
       refused?: { code: string; path: string; message: string }[];
+      /**
+       * P4-12: the pack-set re-resolution's outcome, when it failed (the sets were cleared;
+       * the resync itself applied) or stored sets. Absent otherwise.
+       */
+      packSets?: StoreOutcome;
     }
   | { ok: false; error: string; errors?: string[] };
 
@@ -651,17 +656,24 @@ async function applyRepoManifest(
       });
   }
 
+  let packSets: StoreOutcome | null = null;
   if (stmts.length > 0) {
     await db.batch(stmts);
     // A resync can change the tag filter, the manual channels and the store: drop every cached
     // resolution of this product (P2-05, `ghCache.ts`).
     await bumpReleaseGeneration(env, slug, now);
-    // ...and may change a pack's binding or channels, or the store's app releases (P4-12).
-    if (rel) await resolveAndStore(db, slug, now);
+    // ...and may change a pack's binding or channels, or the store's app releases (P4-12). A
+    // failed resolution clears the sets and is answered; it never fails the resync.
+    if (rel) packSets = await resolveAndStore(db, slug, now);
   }
 
   if (droppedBefore.length > 0) updated.push("edgeMintApprovals");
-  return { ok: true, updated, ...(refused.length > 0 ? { refused } : {}) };
+  return {
+    ok: true,
+    updated,
+    ...(refused.length > 0 ? { refused } : {}),
+    ...(packSets && (!packSets.ok || packSets.sets > 0) ? { packSets } : {}),
+  };
 }
 
 /** The audit row for a manifest-driven publisher change, in the resync's batch. */

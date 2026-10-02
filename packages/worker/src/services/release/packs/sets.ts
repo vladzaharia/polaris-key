@@ -16,7 +16,9 @@ import {
 } from "@polaris-key/manifest";
 import { packSetId, variantKey } from "@polaris-key/client-core/packs";
 import type { Db, DbStatement } from "../../../core/platform.js";
-import { parseIgnoreTags } from "../channels.js";
+import { parseIgnoreTags, parseManualChannels } from "../channels.js";
+import { appendAudit } from "../../../core/data.js";
+import { randomId } from "../../../core/platform.js";
 import { getReleaseConfig, type ReleaseConfigRow } from "../config.js";
 import type { ReleaseChannelPolicyRow } from "../model.js";
 import {
@@ -51,6 +53,8 @@ export interface StoredSet {
   appDeliverable: string;
   contentApi: number;
   platform: string;
+  /** The engine of the builds it serves; `""` for builds that declare none. */
+  engine: string;
   variant: string;
   packSetId: string;
   packs: {
@@ -71,6 +75,8 @@ export interface ResolutionState {
   unreadable: string[];
   /** Every declared pack, by id. */
   declared: Map<string, ManifestPackDeliverable>;
+  /** The product's `release_set_state.generation` when this state was read (0 for none). */
+  generation: number;
 }
 
 function jsonOr<T>(text: string | null | undefined, fallback: T): T {
@@ -128,6 +134,14 @@ export async function loadResolutionState(
   product: string,
   cfg?: ReleaseConfigRow | null,
 ): Promise<ResolutionState | null> {
+  // The generation first: a write that finds it moved re-resolves (`storeResolution`).
+  const generation =
+    (
+      await db.first<{ generation: number }>(
+        "SELECT generation FROM release_set_state WHERE product = ?",
+        product,
+      )
+    )?.generation ?? 0;
   const config = cfg === undefined ? await getReleaseConfig(db, product) : cfg;
   const declared = await readPackDeliverables(db, product);
   const app = await loadDeliverableState(
@@ -288,6 +302,7 @@ export async function loadResolutionState(
     },
     unreadable: declared.unreadable,
     declared: new Map(declared.packs.map((p) => [p.id, p])),
+    generation,
   };
 }
 
@@ -355,12 +370,15 @@ export function withAppRelease(
 
 // ── packSetId, rows and reports ──────────────────────────────────────────────
 
-/** Every resolved set with its `packSetId` (client-core's, decision 11; memoised per member list). */
+/** A resolved row with its `packSetId`. */
+export type IdentifiedSet = ResolvedSet & { packSetId: string };
+
+/** Every resolved row with its `packSetId` (client-core's, decision 11; memoised per member list). */
 export async function withSetIds(
   sets: readonly ResolvedSet[],
-): Promise<(ResolvedSet & { packSetId: string })[]> {
+): Promise<IdentifiedSet[]> {
   const memo = new Map<string, string>();
-  const out: (ResolvedSet & { packSetId: string })[] = [];
+  const out: IdentifiedSet[] = [];
   for (const s of sets) {
     const key = s.entries.map((e) => `${e.pack} ${e.recordSha256}`).join("\n");
     let id = memo.get(key);
@@ -379,43 +397,80 @@ export async function withSetIds(
   return out;
 }
 
-/** The statements that replace the product's `release_sets` with `sets`, for one batch. */
+/** The SQL that holds while `release_set_state` carries this writer's token. Params: product, token. */
+const OWN_TOKEN_SQL =
+  "EXISTS (SELECT 1 FROM release_set_state WHERE product = ? AND token = ?)";
+
+/**
+ * The statements that replace the product's `release_sets` with `sets`, for one batch, written
+ * only by the writer that moves the generation from `generation` (read before resolving) to the
+ * next: the first statement claims it with `token`, and every other statement is guarded on the
+ * claim. A writer that resolved from an older generation writes nothing.
+ */
 export function setStatements(
   product: string,
-  sets: readonly (ResolvedSet & { packSetId: string })[],
+  sets: readonly IdentifiedSet[],
   now: number,
+  claim: { generation: number; token: string },
 ): DbStatement[] {
+  const guard = [product, claim.token];
   const out: DbStatement[] = [
-    { sql: "DELETE FROM release_sets WHERE product = ?", params: [product] },
+    {
+      sql: `INSERT INTO release_set_state (product, generation, token, modified_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(product) DO UPDATE SET
+              generation = excluded.generation, token = excluded.token,
+              modified_at = excluded.modified_at
+            WHERE release_set_state.generation = ?`,
+      params: [
+        product,
+        claim.generation + 1,
+        claim.token,
+        now,
+        claim.generation,
+      ],
+    },
+    {
+      sql: `DELETE FROM release_sets WHERE product = ? AND ${OWN_TOKEN_SQL}`,
+      params: [product, ...guard],
+    },
   ];
-  const PER = 10; // 10 columns × 10 rows = 100 parameters, D1's limit
+  const COLUMNS = 11;
+  const PER = Math.floor((100 - guard.length) / COLUMNS); // D1's 100-parameter limit
   for (let i = 0; i < sets.length; i += PER) {
     const chunk = sets.slice(i, i + PER);
     out.push({
       sql: `INSERT INTO release_sets
-              (product, channel, app_deliverable, content_api, platform, variant, pack_set_id,
-               set_json, unsatisfied_json, resolved_at)
-            VALUES ${chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}`,
-      params: chunk.flatMap((s) => [
-        product,
-        s.channel,
-        s.appDeliverable,
-        s.contentApi,
-        s.platform,
-        s.variant,
-        s.packSetId,
-        JSON.stringify({
-          packs: s.entries.map((e) => ({
-            pack: e.pack,
-            releaseId: e.releaseId,
-            version: e.version,
-            seq: e.seq,
-            sha256: e.recordSha256,
-          })),
-        }),
-        s.unsatisfied.length > 0 ? JSON.stringify(s.unsatisfied) : null,
-        now,
-      ]),
+              (product, channel, app_deliverable, content_api, platform, engine, variant,
+               pack_set_id, set_json, unsatisfied_json, resolved_at)
+            SELECT column1, column2, column3, column4, column5, column6, column7, column8,
+                   column9, column10, column11
+              FROM (VALUES ${chunk.map(() => `(${Array(COLUMNS).fill("?").join(", ")})`).join(", ")})
+             WHERE ${OWN_TOKEN_SQL}`,
+      params: [
+        ...chunk.flatMap((s) => [
+          product,
+          s.channel,
+          s.appDeliverable,
+          s.contentApi,
+          s.platform,
+          s.engine,
+          s.variant,
+          s.packSetId,
+          JSON.stringify({
+            packs: s.entries.map((e) => ({
+              pack: e.pack,
+              releaseId: e.releaseId,
+              version: e.version,
+              seq: e.seq,
+              sha256: e.recordSha256,
+            })),
+          }),
+          s.unsatisfied.length > 0 ? JSON.stringify(s.unsatisfied) : null,
+          now,
+        ]),
+        ...guard,
+      ],
     });
   }
   return out;
@@ -430,36 +485,63 @@ export interface ReportSet {
     channel: string;
     contentApi: number;
     platform: string;
+    engine: string;
     variant: string;
   }[];
-  /** The app releases that receive it, newest publication first within each selector. */
+  /** The app releases that receive it. */
   appReleases: string[];
 }
 
-/** What a publish (or its dry run) changes: the resulting sets, and the selectors that moved. */
+/** What a publish (or its dry run) changes: the resulting sets, and the rows that moved. */
 export interface PackSetReport {
   sets: ReportSet[];
   changed: {
     channel: string;
     contentApi: number;
     platform: string;
+    engine: string;
     variant: string;
     before: string | null;
     after: string | null;
   }[];
 }
 
-const selectorKey = (s: {
+/** A row's key: (channel, contentApi, platform, engine, variant). */
+export const rowKey = (s: {
   channel: string;
   contentApi: number;
   platform: string;
+  engine: string;
   variant: string;
-}) => `${s.channel}\u0000${s.contentApi}\u0000${s.platform}\u0000${s.variant}`;
+}) =>
+  `${s.channel}\u0000${s.contentApi}\u0000${s.platform}\u0000${s.engine}\u0000${s.variant}`;
 
-/** The report of a publish: `after`'s distinct sets, and every selector whose set changed. */
+const selectorOf = (s: {
+  channel: string;
+  contentApi: number;
+  platform: string;
+  engine: string;
+  variant: string;
+}) => ({
+  channel: s.channel,
+  contentApi: s.contentApi,
+  platform: s.platform,
+  engine: s.engine,
+  variant: s.variant,
+});
+
+/** The report of a publish: `after`'s distinct sets, and every row whose set changed from the
+ *  stored `before`. */
 export function setReport(
-  before: readonly (ResolvedSet & { packSetId: string })[],
-  after: readonly (ResolvedSet & { packSetId: string })[],
+  before: readonly {
+    channel: string;
+    contentApi: number;
+    platform: string;
+    engine: string;
+    variant: string;
+    packSetId: string;
+  }[],
+  after: readonly IdentifiedSet[],
 ): PackSetReport {
   const groups = new Map<string, ReportSet>();
   for (const s of after) {
@@ -479,50 +561,34 @@ export function setReport(
       };
       groups.set(key, g);
     }
-    g.selectors.push({
-      channel: s.channel,
-      contentApi: s.contentApi,
-      platform: s.platform,
-      variant: s.variant,
-    });
+    g.selectors.push(selectorOf(s));
     for (const r of s.appReleases)
       if (!g.appReleases.includes(r)) g.appReleases.push(r);
   }
-  const was = new Map(before.map((s) => [selectorKey(s), s.packSetId]));
-  const now = new Map(after.map((s) => [selectorKey(s), s.packSetId]));
+  const was = new Map(before.map((s) => [rowKey(s), s.packSetId]));
+  const now = new Map(after.map((s) => [rowKey(s), s.packSetId]));
   const changed: PackSetReport["changed"] = [];
   for (const s of after)
-    if (was.get(selectorKey(s)) !== s.packSetId)
+    if (was.get(rowKey(s)) !== s.packSetId)
       changed.push({
-        channel: s.channel,
-        contentApi: s.contentApi,
-        platform: s.platform,
-        variant: s.variant,
-        before: was.get(selectorKey(s)) ?? null,
+        ...selectorOf(s),
+        before: was.get(rowKey(s)) ?? null,
         after: s.packSetId,
       });
   for (const s of before)
-    if (!now.has(selectorKey(s)))
-      changed.push({
-        channel: s.channel,
-        contentApi: s.contentApi,
-        platform: s.platform,
-        variant: s.variant,
-        before: s.packSetId,
-        after: null,
-      });
+    if (!now.has(rowKey(s)))
+      changed.push({ ...selectorOf(s), before: s.packSetId, after: null });
   return { sets: [...groups.values()], changed };
 }
 
-/** Resolve `state`; null (with the message) when resolution cannot finish inside its bounds. */
-export function tryResolve(state: ResolutionState):
+/** Resolve `state`, or the bound's message when resolution cannot finish inside it. */
+export function tryResolve(
+  state: ResolutionState,
+):
   | { ok: true; resolver: PackResolver; resolution: Resolution }
-  | {
-      ok: false;
-      message: string;
-    } {
-  const resolver = new PackResolver(state.input);
+  | { ok: false; message: string } {
   try {
+    const resolver = new PackResolver(state.input);
     return { ok: true, resolver, resolution: resolver.resolve() };
   } catch (e) {
     if (e instanceof PackResolutionError)
@@ -531,76 +597,213 @@ export function tryResolve(state: ResolutionState):
   }
 }
 
-/** The outcome of a trigger's re-resolution. */
-export type StoreOutcome =
-  | { ok: true; sets: number }
-  | { ok: false; message: string };
+/** A resolution ready to store: its rows and the generation it was resolved from. */
+export interface ResolvedForStore {
+  sets: IdentifiedSet[];
+  generation: number;
+}
 
 /**
- * Re-resolve every channel of `product` and replace its `release_sets` in one batch: the trigger
- * after a publish, a pointer move, a floor change, a yank or a resync. Never refuses for an
- * unsatisfiable set (that is stored with its `unsatisfied` marker); a bound that resolution cannot
- * finish inside leaves the stored sets as they were and is answered to the caller.
+ * The outcome of a trigger's re-resolution, which the policy, resync and sync routes answer as
+ * `packSets`. `ok: false` means resolution failed and the product's sets were CLEARED (fail
+ * closed: no stale set, which may still hold a yanked release, survives).
+ */
+export type StoreOutcome =
+  | { ok: true; sets: number }
+  | {
+      ok: false;
+      reason: "pack-sets-bound" | "pack-sets-error";
+      message: string;
+    };
+
+function newToken(): string {
+  const b = crypto.getRandomValues(new Uint8Array(12));
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Write `resolved` if the generation it was resolved from is still current; true when written.
+ * A concurrent trigger that moved the generation first wins, and this write is a no-op.
+ */
+export async function storeResolution(
+  db: Db,
+  product: string,
+  resolved: ResolvedForStore,
+  now: number,
+): Promise<boolean> {
+  const token = newToken();
+  await db.batch(
+    setStatements(product, resolved.sets, now, {
+      generation: resolved.generation,
+      token,
+    }),
+  );
+  const row = await db.first<{ token: string | null }>(
+    "SELECT token FROM release_set_state WHERE product = ?",
+    product,
+  );
+  return row?.token === token;
+}
+
+/**
+ * Fail closed: clear the product's sets (and move the generation, so a slower writer resolved
+ * from before cannot restore them), and audit why. Never throws.
+ */
+async function clearSets(
+  db: Db,
+  product: string,
+  now: number,
+  outcome: Extract<StoreOutcome, { ok: false }>,
+): Promise<void> {
+  try {
+    await db.batch([
+      {
+        sql: `INSERT INTO release_set_state (product, generation, token, modified_at)
+              VALUES (?, 1, ?, ?)
+              ON CONFLICT(product) DO UPDATE SET generation = release_set_state.generation + 1,
+                token = excluded.token, modified_at = excluded.modified_at`,
+        params: [product, newToken(), now],
+      },
+      { sql: "DELETE FROM release_sets WHERE product = ?", params: [product] },
+    ]);
+    await appendAudit(db, {
+      product,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: "system:pack-sets",
+      actor_name: "Release",
+      actor_email: null,
+      action: "release.pack_sets.failed",
+      target_kind: "product",
+      target_id: product,
+      parent_id: null,
+      summary:
+        `Pack-set resolution failed (${outcome.reason}); the product's resolved sets were cleared: ${outcome.message}`.slice(
+          0,
+          1000,
+        ),
+    });
+  } catch {
+    // The caller still answers the failure; there is nothing safer to do here.
+  }
+}
+
+/**
+ * Store `resolved` (a publish check's own resolution, reused so a publish resolves once) or, when
+ * absent or overtaken by a concurrent trigger, re-resolve: the trigger after a publish, a pointer
+ * move, a floor change, a yank or a resync. Never refuses for an unsatisfiable set (that is
+ * stored with its `unsatisfied` marker). A resolution that FAILS (its bound, or an error) clears
+ * the product's sets, writes an audit row and is answered `ok: false`; the operation that
+ * triggered it has already happened and stands. Never throws.
  */
 export async function resolveAndStore(
   db: Db,
   product: string,
   now: number,
+  resolved?: ResolvedForStore | null,
 ): Promise<StoreOutcome> {
-  // One query decides whether there is anything to do: a product with no compatible or standalone
-  // pack and no stored set (every product before it declares one) pays nothing more.
-  const any = await db.first<{ packs: number; sets: number }>(
-    `SELECT EXISTS (SELECT 1 FROM release_deliverables
-                     WHERE product = ? AND kind = 'pack'
-                       AND (CASE WHEN json_valid(def_json)
-                                 THEN json_extract(def_json, '$.binding') END)
-                           IN ('compatible', 'standalone')) AS packs,
-            EXISTS (SELECT 1 FROM release_sets WHERE product = ?) AS sets`,
-    product,
-    product,
-  );
-  if (!any?.packs && !any?.sets) return { ok: true, sets: 0 };
-  const state = await loadResolutionState(db, product);
-  if (!state) {
-    await db.run("DELETE FROM release_sets WHERE product = ?", product);
-    return { ok: true, sets: 0 };
+  try {
+    if (resolved && (await storeResolution(db, product, resolved, now)))
+      return { ok: true, sets: resolved.sets.length };
+    // One query decides whether there is anything to do: a product with no compatible or
+    // standalone pack and no stored set pays nothing more.
+    const any = await db.first<{ packs: number; sets: number }>(
+      `SELECT EXISTS (SELECT 1 FROM release_deliverables
+                       WHERE product = ? AND kind = 'pack'
+                         AND (CASE WHEN json_valid(def_json)
+                                   THEN json_extract(def_json, '$.binding') END)
+                             IN ('compatible', 'standalone')) AS packs,
+              EXISTS (SELECT 1 FROM release_sets WHERE product = ?) AS sets`,
+      product,
+      product,
+    );
+    if (!any?.packs && !any?.sets) return { ok: true, sets: 0 };
+    // At most twice: a concurrent trigger that wins the generation makes us re-read once.
+    let resolvedCount = 0;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const state = await loadResolutionState(db, product);
+      if (!state) {
+        await db.run("DELETE FROM release_sets WHERE product = ?", product);
+        return { ok: true, sets: 0 };
+      }
+      const r = tryResolve(state);
+      if (!r.ok) {
+        const outcome = {
+          ok: false as const,
+          reason: "pack-sets-bound" as const,
+          message: r.message,
+        };
+        await clearSets(db, product, now, outcome);
+        return outcome;
+      }
+      const sets = await withSetIds(r.resolution.sets);
+      resolvedCount = sets.length;
+      if (
+        await storeResolution(
+          db,
+          product,
+          { sets, generation: state.generation },
+          now,
+        )
+      )
+        return { ok: true, sets: sets.length };
+    }
+    // Overtaken twice: the writer that won resolved from a state at least as new as ours.
+    return { ok: true, sets: resolvedCount };
+  } catch (e) {
+    const outcome = {
+      ok: false as const,
+      reason: "pack-sets-error" as const,
+      message: e instanceof Error ? e.message : String(e),
+    };
+    await clearSets(db, product, now, outcome);
+    return outcome;
   }
-  const r = tryResolve(state);
-  if (!r.ok) return r;
-  const sets = await withSetIds(r.resolution.sets);
-  await db.batch(setStatements(product, sets, now));
-  return { ok: true, sets: sets.length };
 }
 
-/** The stored sets of one channel (the hook's `packSets`), by selector. */
+function canonical(db: Db, product: string, channel: string): Promise<string> {
+  return getReleaseConfig(db, product).then(
+    (cfg) =>
+      canonicalChannel(
+        channel,
+        parseManualChannels(cfg?.manual_channels_json),
+      ) ?? channel,
+  );
+}
+
+/** The stored rows of one channel (the hook's `packSets`), by selector; `channel` is
+ *  canonicalised as the policy routes do (`staging` → `beta`). */
 export async function readStoredSets(
   db: Db,
   product: string,
-  channel: string,
+  channel: string | null,
 ): Promise<StoredSet[]> {
   const rows = await db.all<{
     channel: string;
     app_deliverable: string;
     content_api: number;
     platform: string;
+    engine: string;
     variant: string;
     pack_set_id: string;
     set_json: string;
     unsatisfied_json: string | null;
     resolved_at: number;
   }>(
-    `SELECT channel, app_deliverable, content_api, platform, variant, pack_set_id, set_json,
-            unsatisfied_json, resolved_at
-       FROM release_sets WHERE product = ? AND channel = ?
-      ORDER BY app_deliverable, content_api, platform, variant`,
+    `SELECT channel, app_deliverable, content_api, platform, engine, variant, pack_set_id,
+            set_json, unsatisfied_json, resolved_at
+       FROM release_sets WHERE product = ? AND (? IS NULL OR channel = ?)
+      ORDER BY channel, app_deliverable, content_api, platform, engine, variant`,
     product,
-    channel,
+    channel === null ? null : await canonical(db, product, channel),
+    channel === null ? null : await canonical(db, product, channel),
   );
   return rows.map((r) => ({
     channel: r.channel,
     appDeliverable: r.app_deliverable,
     contentApi: r.content_api,
     platform: r.platform,
+    engine: r.engine,
     variant: r.variant,
     packSetId: r.pack_set_id,
     packs: jsonOr<{ packs?: StoredSet["packs"] }>(r.set_json, {}).packs ?? [],
@@ -608,3 +811,5 @@ export async function readStoredSets(
     resolvedAt: r.resolved_at,
   }));
 }
+
+export { canonical as canonicalPackChannel };

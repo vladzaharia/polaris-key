@@ -7,13 +7,18 @@
 -- Every table is keyed by deliverable, never by "is a pack" (README §11 decision 1 guardrail).
 
 -- `release_sets` — Release's. One resolved pack set per selector (channel, app deliverable, live
--- contentApi level, platform, variant key), over the `compatible` and `standalone` packs only:
--- `pinned` packs never enter a set (they are in the app's own signed record). Rewritten whole, in
--- one batch, on every publish, pointer move, floor change and yank (`services/release/packs/
--- sets.ts`), so a reader never sees half a resolution. `pack_set_id` is client-core's `packSetId`
--- over the set's (pack id, record hash) pairs: identical sets share it. `set_json` holds the
--- chosen releases; `unsatisfied_json` the packs no release satisfies at this selector, each with
--- a reason (`content-floor`, `dependency`, …), NULL when every pack resolved. P4-13 freezes the
+-- contentApi level, platform, engine, variant key), over the `compatible` and `standalone` packs
+-- only: `pinned` packs never enter a set (they are in the app's own signed record). `engine` is the
+-- live builds' `requires.engine` ('' for builds that declare none), so the players of two engines
+-- at one level keep separate sets. Packs are resolved in GROUPS (packs with the same variant axes,
+-- merged across dependencies and conflicts), each row one group at one combination of ITS axes
+-- (`variant`, '' for a group without axes): a device's set is one row per group, the one its
+-- variant projects onto. Rewritten whole, in one batch, on every publish, pointer move, floor
+-- change, yank and resync (`services/release/packs/sets.ts`), so a reader never sees half a
+-- resolution; a resolution that fails clears them (fail closed). `pack_set_id` is client-core's
+-- `packSetId` over the row's (pack id, record hash) pairs: identical rows share it. `set_json`
+-- holds the chosen releases; `unsatisfied_json` the packs no release satisfies there, each with a
+-- reason (`content-floor`, `dependency`, …), NULL when every pack resolved. P4-13 freezes the
 -- wire form of both.
 CREATE TABLE IF NOT EXISTS release_sets (
   product           TEXT NOT NULL REFERENCES products(slug),
@@ -21,12 +26,24 @@ CREATE TABLE IF NOT EXISTS release_sets (
   app_deliverable   TEXT NOT NULL,
   content_api       INTEGER NOT NULL,
   platform          TEXT NOT NULL,
+  engine            TEXT NOT NULL,
   variant           TEXT NOT NULL,
   pack_set_id       TEXT NOT NULL,
   set_json          TEXT NOT NULL,
   unsatisfied_json  TEXT,
   resolved_at       INTEGER NOT NULL,
-  PRIMARY KEY (product, channel, app_deliverable, content_api, platform, variant)
+  PRIMARY KEY (product, channel, app_deliverable, content_api, platform, engine, variant)
+);
+
+-- `release_set_state` — Release's. The generation of a product's `release_sets`: a writer reads
+-- it before resolving and writes only while it is unchanged (claiming it with its own `token` in
+-- the same batch), so two concurrent triggers can never leave the older resolution stored; the
+-- loser re-resolves once.
+CREATE TABLE IF NOT EXISTS release_set_state (
+  product      TEXT PRIMARY KEY REFERENCES products(slug),
+  generation   INTEGER NOT NULL,
+  token        TEXT NOT NULL,
+  modified_at  INTEGER NOT NULL
 );
 
 -- `release_holds` — Release's. An app release keeping a `compatible` pack at one release: a

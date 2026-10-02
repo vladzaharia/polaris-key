@@ -28,7 +28,11 @@ import type {
 } from "../../../core/hooks.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { canonicalChannel } from "../resolve.js";
-import { loadResolutionState, readStoredSets } from "./sets.js";
+import {
+  canonicalPackChannel,
+  loadResolutionState,
+  readStoredSets,
+} from "./sets.js";
 import { PackResolver } from "./resolve.js";
 import type { Db, Env } from "../../../core/platform.js";
 import { blobKey } from "../../../core/blobs.js";
@@ -282,6 +286,7 @@ export function packCatalog(ctx: {
     },
 
     async packFloors(channel): Promise<CatalogPackFloor[]> {
+      const canonical = await canonicalPackChannel(db, slug, channel);
       return (
         await db.all<{
           deliverable_id: string;
@@ -294,7 +299,7 @@ export function packCatalog(ctx: {
              FROM release_pack_floors WHERE product = ? AND channel = ?
             ORDER BY deliverable_id, content_api`,
           slug,
-          channel,
+          canonical,
         )
       ).map((r) => ({
         deliverableId: r.deliverable_id,

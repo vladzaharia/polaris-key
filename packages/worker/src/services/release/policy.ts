@@ -54,7 +54,7 @@ import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import { parseManualChannels } from "./channels.js";
 import type { ReleaseConfigRow } from "./config.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
-import { resolveAndStore } from "./packs/sets.js";
+import { resolveAndStore, type StoreOutcome } from "./packs/sets.js";
 import {
   getChannelPolicy,
   getDeliverable,
@@ -367,7 +367,9 @@ export async function applyPointerOp(
   input: PointerRequest,
   actor: PolicyActor,
   now: number,
-): Promise<PolicyResult<{ policy: ChannelPolicyView }>> {
+): Promise<
+  PolicyResult<{ policy: ChannelPolicyView; packSets: StoreOutcome }>
+> {
   const plain = await resolvePolicyChannel(db, product, cfg, input.channel);
   const d = await deliverableOf(db, product, input.deliverable);
   if (!d.ok) return plain.ok ? d : plain;
@@ -419,8 +421,8 @@ export async function applyPointerOp(
     summary,
   );
   await bumpReleaseGeneration(env, product, now);
-  await resolveAndStore(db, product, now);
-  return { ok: true, policy: await viewOf(db, key, d.deliverable) };
+  const packSets = await resolveAndStore(db, product, now);
+  return { ok: true, policy: await viewOf(db, key, d.deliverable), packSets };
 }
 
 // ── The operator PUT ─────────────────────────────────────────────────────────────────────────
@@ -439,7 +441,9 @@ export async function updateChannelPolicy(
   body: Record<string, unknown>,
   actor: PolicyActor,
   now: number,
-): Promise<PolicyResult<{ policy: ChannelPolicyView }>> {
+): Promise<
+  PolicyResult<{ policy: ChannelPolicyView; packSets: StoreOutcome }>
+> {
   const allowed = new Set([
     "deliverable",
     "pointer",
@@ -556,8 +560,8 @@ export async function updateChannelPolicy(
     `Set ${deliverable} ${ch.channel}: ${changed.join(", ")}`,
   );
   await bumpReleaseGeneration(env, product, now);
-  await resolveAndStore(db, product, now);
-  return { ok: true, policy: await viewOf(db, key, d.deliverable) };
+  const packSets = await resolveAndStore(db, product, now);
+  return { ok: true, policy: await viewOf(db, key, d.deliverable), packSets };
 }
 
 /**
@@ -576,7 +580,9 @@ async function updatePackFloor(
   body: Record<string, unknown>,
   actor: PolicyActor,
   now: number,
-): Promise<PolicyResult<{ policy: ChannelPolicyView }>> {
+): Promise<
+  PolicyResult<{ policy: ChannelPolicyView; packSets: StoreOutcome }>
+> {
   if (deliverable.kind !== "pack")
     return refuse(
       422,
@@ -657,8 +663,8 @@ async function updatePackFloor(
       : `Set ${key.deliverableId} ${key.channel}'s floor for contentApi ${contentApi} to ${min}`,
   );
   await bumpReleaseGeneration(env, product, now);
-  await resolveAndStore(db, product, now);
-  return { ok: true, policy: await viewOf(db, key, deliverable) };
+  const packSets = await resolveAndStore(db, product, now);
+  return { ok: true, policy: await viewOf(db, key, deliverable), packSets };
 }
 
 /** `POST …/release/channels/{channel}/revert`: hand the row back to the manifest. */
@@ -671,7 +677,9 @@ export async function revertChannelPolicy(
   body: Record<string, unknown>,
   actor: PolicyActor,
   now: number,
-): Promise<PolicyResult<{ policy: ChannelPolicyView }>> {
+): Promise<
+  PolicyResult<{ policy: ChannelPolicyView; packSets: StoreOutcome }>
+> {
   const plain = await resolvePolicyChannel(db, product, cfg, rawChannel);
   const d = await deliverableOf(db, product, body.deliverable);
   if (!d.ok) return plain.ok ? d : plain;
@@ -693,8 +701,8 @@ export async function revertChannelPolicy(
     `Handed ${deliverable} ${ch.channel} back to the manifest`,
   );
   await bumpReleaseGeneration(env, product, now);
-  await resolveAndStore(db, product, now);
-  return { ok: true, policy: await viewOf(db, key, d.deliverable) };
+  const packSets = await resolveAndStore(db, product, now);
+  return { ok: true, policy: await viewOf(db, key, d.deliverable), packSets };
 }
 
 // ── Yanks ────────────────────────────────────────────────────────────────────────────────────
@@ -719,7 +727,7 @@ export async function yank(
   reason: unknown,
   actor: PolicyActor,
   now: number,
-): Promise<PolicyResult<{ yank: YankView }>> {
+): Promise<PolicyResult<{ yank: YankView; packSets: StoreOutcome }>> {
   if (typeof reason !== "string" || !reason.trim())
     return refuse(422, "bad_reason", "a yank needs a reason", ["reason"]);
   if (reason.length > MAX_YANK_REASON)
@@ -747,9 +755,10 @@ export async function yank(
     `Yanked ${releaseId}: ${reason.trim()}`,
   );
   await bumpReleaseGeneration(env, product, now);
-  await resolveAndStore(db, product, now);
+  const packSets = await resolveAndStore(db, product, now);
   return {
     ok: true,
+    packSets,
     yank: { releaseId, yanked: true, reason: reason.trim(), at: now, by },
   };
 }
@@ -762,7 +771,7 @@ export async function unyank(
   releaseId: string,
   actor: PolicyActor,
   now: number,
-): Promise<PolicyResult<{ yank: YankView }>> {
+): Promise<PolicyResult<{ yank: YankView; packSets: StoreOutcome }>> {
   if (!(await unyankRelease(db, product, releaseId)))
     return refuse(404, "not_yanked", "this release is not yanked");
   await auditChange(
@@ -775,9 +784,10 @@ export async function unyank(
     `Lifted the yank on ${releaseId}`,
   );
   await bumpReleaseGeneration(env, product, now);
-  await resolveAndStore(db, product, now);
+  const packSets = await resolveAndStore(db, product, now);
   return {
     ok: true,
+    packSets,
     yank: { releaseId, yanked: false, reason: null, at: null, by: null },
   };
 }

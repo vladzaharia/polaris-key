@@ -3203,9 +3203,7 @@ function validateAppDeliverable(
               "release",
               `/release/deliverables/app/content/packChannels/${key}`,
               "unknown_pack_channels_target",
-              matched.length === 0
-                ? `content.packChannels ${key} matches no declared pack.`
-                : `content.packChannels routes ${key} to ${String(channel)}, which ${matched.filter((p) => !reachable.includes(p)).join(", ")} does not publish to (declare it in the pack's channels).`,
+              `content.packChannels ${key} must match a declared pack, and every pack it matches must publish to ${String(channel)} (stable, beta or one of the pack's channels).`,
             );
         }
     }

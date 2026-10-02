@@ -225,6 +225,7 @@ export async function handleReleaseAdmin(
     slug,
     updated: result.updated,
     ...(result.refused ? { refused: result.refused } : {}),
+    ...(result.packSets ? { packSets: result.packSets } : {}),
   });
 }
 
@@ -461,7 +462,11 @@ async function handlePolicyRoutes(
       now,
     );
     return result.ok
-      ? adminJson({ ok: true, policy: result.policy })
+      ? adminJson({
+          ok: true,
+          policy: result.policy,
+          packSets: result.packSets,
+        })
       : policyRefusal(result);
   }
 
@@ -482,7 +487,11 @@ async function handlePolicyRoutes(
       now,
     );
     return result.ok
-      ? adminJson({ ok: true, policy: result.policy })
+      ? adminJson({
+          ok: true,
+          policy: result.policy,
+          packSets: result.packSets,
+        })
       : policyRefusal(result);
   }
 
@@ -501,13 +510,13 @@ async function handlePolicyRoutes(
         now,
       );
       return result.ok
-        ? adminJson({ ok: true, yank: result.yank })
+        ? adminJson({ ok: true, yank: result.yank, packSets: result.packSets })
         : policyRefusal(result);
     }
     if (req.method === "DELETE") {
       const result = await unyank(env, db, slug, releaseId, actor, now);
       return result.ok
-        ? adminJson({ ok: true, yank: result.yank })
+        ? adminJson({ ok: true, yank: result.yank, packSets: result.packSets })
         : policyRefusal(result);
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");

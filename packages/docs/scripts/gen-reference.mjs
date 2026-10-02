@@ -349,6 +349,7 @@ const TABLE_OWNERS = {
     "release_records",
     "release_pins",
     "release_sets",
+    "release_set_state",
     "release_holds",
     "release_pack_floors",
   ],

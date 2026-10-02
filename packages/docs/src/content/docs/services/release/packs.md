@@ -184,20 +184,34 @@ On every publish, pointer move, floor change, yank and resync, Release re-resolv
    so beta ⊇ stable) that carries a contentApi and is at or above the channel's floor. The floor
    decides, never store availability: Release never reads Distribution.
 2. **Selectors**: one set per (channel, app deliverable, live contentApi level, platform of the
-   live builds, variant key over the packs' axes such as `locale=fr;texture=astc`).
+   live builds, engine those builds declare — empty when they declare none). During an engine
+   bump the players of the older engine keep their set and the newer engine gets its own.
+   Variants are projected per **group**: packs with the same variant axes, merged with every pack
+   a dependency or conflict ties them to. Each group is a row per combination of its own axes
+   (`locale=fr`, `texture=astc`, empty for a group without axes), and a device's set is one row
+   per group, the one its variant projects onto. Rows grow as the sum over groups, not the product
+   of every pack's axes.
 3. **Per pack**, the newest release (by its version scheme, ties by `seq`) on the pack's channel
    (the app channel, or the one `packChannels` routes it to) that passes, in order: its
-   `requires.contentApi.app` range holds the level (compatible only); it runs on the engines the
-   live builds declare; it carries the selector's variant; it is at or above the pack's floor.
+   `requires.contentApi.app` range holds the level (compatible only); it runs on the selector's
+   engine; it carries the row's variant; it is at or above the pack's floor.
    Yanked releases resolve only as a pinned pointer.
 4. **The solver** keeps `requires.packs` ranges and `conflicts`, backtracking highest-first in
-   pack-id order. A search past its bound fails the publish (`pack-sets-bound`) rather than guess.
+   pack-id order. One work budget covers the whole resolution; past it (or past 4,096 rows) a
+   publish fails (`pack-sets-bound`) rather than guess.
 
 A pack nothing satisfies at a selector is stored in the set's `unsatisfied` list with a reason —
 `no-release`, `content-api`, `engine`, `variant`, `content-floor`, `dependency` or `conflict` —
 so a floor with no backport deliberately blocks an old content line. Each set has a
 content-addressed `packSetId` (the same function devices use for their active set), shared by
 identical sets. `pinned` packs never enter a set: they are in the app's own signed record.
+
+A trigger whose resolution fails — the bound, or an error — never refuses the yank, floor change,
+pointer move or resync that caused it. It **fails closed**: the product's sets are cleared, so no
+stale set (which might still hold a release just yanked) survives, an audit row
+`release.pack_sets.failed` is written, and the response carries `packSets: {ok: false, reason}`.
+Two triggers racing cannot leave the older resolution stored: each write claims the generation it
+resolved from, and the loser re-resolves.
 
 ## Floors per contentApi line
 

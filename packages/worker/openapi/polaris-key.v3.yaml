@@ -3753,6 +3753,7 @@ paths:
                       reason: { type: [string, "null"] }
                       at: { type: [integer, "null"] }
                       by: { type: [string, "null"] }
+                  packSets: { $ref: "#/components/schemas/PackSetsOutcome" }
               examples:
                 yanked:
                   summary: test/releasePolicy.test.ts
@@ -6492,6 +6493,7 @@ components:
             properties:
               ok: { type: boolean, const: true }
               policy: { $ref: "#/components/schemas/ChannelPolicy" }
+              packSets: { $ref: "#/components/schemas/PackSetsOutcome" }
           examples:
             promoted:
               summary: test/releasePolicy.test.ts
@@ -6734,12 +6736,32 @@ components:
         P4-12: one resolved pack set's key: the app channel, the live contentApi level, the
         platform of the live builds and the variant key over every resolvable pack's axes (`""`
         when none declares one).
-      required: [channel, contentApi, platform, variant]
+      required: [channel, contentApi, platform, engine, variant]
       properties:
         channel: { type: string }
         contentApi: { type: integer, minimum: 1 }
         platform: { type: string }
-        variant: { type: string }
+        engine:
+          type: string
+          description: The live builds' `requires.engine`; `""` for builds that declare none.
+        variant:
+          type: string
+          description: >
+            The variant key over one GROUP's axes (packs with the same axes, merged across
+            dependencies and conflicts); a device's set is one row per group.
+    PackSetsOutcome:
+      type: object
+      description: >
+        P4-12: the pack-set re-resolution a policy change (or a resync or sync) triggered. `ok:
+        false` means resolution failed (`pack-sets-bound`, `pack-sets-error`): the operation
+        itself applied, the product's resolved sets were cleared (fail closed) and an audit row
+        written. `sets` counts the rows stored.
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        sets: { type: integer }
+        reason: { type: string, enum: [pack-sets-bound, pack-sets-error] }
+        message: { type: string }
     ChannelPolicy:
       type: object
       description: >
