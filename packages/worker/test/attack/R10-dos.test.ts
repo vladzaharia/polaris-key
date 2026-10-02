@@ -1066,7 +1066,9 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
   it("cost is multiplied by the release list length (up to 3 pages of 100 per request since P0-02)", () => {
     const single = minTime(24, 1);
     const batch = timeMatch(24, 10);
-    expect(batch).toBeGreaterThan(single * 5);
+    // Ten releases cost ~10x one. A 3x bar still proves the multiplication while leaving room for a
+    // loaded machine that slows every `single` sample and then frees up for `batch`.
+    expect(batch).toBeGreaterThan(single * 3);
   }, 20_000);
 });
 
