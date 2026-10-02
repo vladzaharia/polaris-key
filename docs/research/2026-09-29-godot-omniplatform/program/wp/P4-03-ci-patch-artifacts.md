@@ -250,7 +250,7 @@ and the code or the approved plan disagreed, the code and `plans/P4-01.md` won:
 - **App content** (decision 37): `--content-stamp` (and the in-process `--embedded`/`--pin`) and the
   artifact map's `embeds` fill the release descriptor, never the record; `descriptorToRecord`
   builds the record. A product that declares packs must pass one of them. `pkey release
-  content-stamp` is new (plan §6), and the CLI's `--pin` is repeatable (`parseArgs` gained
+content-stamp` is new (plan §6), and the CLI's `--pin` is repeatable (`parseArgs` gained
   multi-value flags).
 - **The discovery check**: the CLI refuses a pack publish, a stamp with `--pin`, and an app publish
   of a product that declares packs unless discovery's `services.release.packs` is `true`.
