@@ -138,7 +138,8 @@
                   "entitlements",
                   "timestamp",
                   "engine",
-                  "outlet"
+                  "outlet",
+                  "updates"
                 ]
               }
             },
@@ -209,7 +210,8 @@
                   "entitlements",
                   "timestamp",
                   "engine",
-                  "outlet"
+                  "outlet",
+                  "updates"
                 ]
               }
             },
