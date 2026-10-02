@@ -5,7 +5,7 @@
  * `--out`/`--bases` cache and its deltas; the gate; the discovery check; `--dry-run`.
  */
 
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { verifyJws } from "@polaris-key/jws";
@@ -13,6 +13,7 @@ import { releaseRecordClaims } from "@polaris-key/client-core/record";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { publishPack, runPkey, type PackPublishOptions } from "../src/index.js";
+import { runAction } from "../src/action.js";
 import { capture, cleanup, instant } from "./publishFixture.js";
 import {
   actionsEnv,
@@ -474,5 +475,44 @@ describe("the CLI", () => {
     expect(io.out()).toContain(
       "Pack diceroll.core3d@1.0.0 (godot.pck), 1 variant",
     );
+  });
+
+  it("the Action publishes a pack from its inputs and writes release-id and outcome", async () => {
+    const { cwd, server } = await setup();
+    const output = path.join(cwd, "gh_output");
+    await writeFile(output, "");
+    const io = capture();
+    const input = (o: Record<string, string>) =>
+      Object.fromEntries(
+        Object.entries(o).map(([k, v]) => [`INPUT_${k.toUpperCase()}`, v]),
+      );
+    const code = await runAction({
+      env: {
+        ...actionsEnv({ GITHUB_OUTPUT: output }),
+        ...input({
+          product: SLUG,
+          deliverable: "diceroll.core3d",
+          version: "1.0.0",
+          dir: "dist",
+          out: "cache",
+          bases: "cache",
+          "base-url": BASE,
+          "release-key": key.pem,
+          "dry-run": "false",
+        }),
+      },
+      cwd,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: server.fetchImpl,
+      sleep: instant,
+      exec: () => "v1.5.7",
+    });
+    expect(io.err()).toBe("");
+    expect(code).toBe(0);
+    expect(await readFile(output, "utf8")).toBe(
+      "release-id=diceroll.core3d@1.0.0\noutcome=created\n",
+    );
+    expect(io.out()).not.toContain(key.pem.split("\n")[1]!);
   });
 });

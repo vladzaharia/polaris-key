@@ -9,7 +9,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
-import { actionInput, isActionInvocation, runAction } from "../src/action.js";
+import {
+  ACTION_INPUTS,
+  actionInput,
+  ensureZstd,
+  isActionInvocation,
+  pinsInput,
+  runAction,
+} from "../src/action.js";
 import { runPkey, signV4 } from "../src/index.js";
 import {
   actionsEnv,
@@ -216,6 +223,37 @@ describe("the standalone bundle", () => {
       "utf8",
     );
     expect(actionYml).toMatch(/^\s+main:\s*dist\/index\.js\s*$/m);
+  });
+});
+
+describe("the Action's pack inputs (P4-03)", () => {
+  it("declares exactly the inputs the entry reads, in order", async () => {
+    const yml = await readFile(
+      path.join(repoRoot, "actions/publish/action.yml"),
+      "utf8",
+    );
+    const block = yml.slice(
+      yml.indexOf("\ninputs:\n"),
+      yml.indexOf("\noutputs:\n"),
+    );
+    const names = [...block.matchAll(/^ {2}([a-z-]+):$/gm)].map((m) => m[1]);
+    expect(names).toEqual([...ACTION_INPUTS]);
+  });
+
+  it("splits pins on whitespace and commas", () => {
+    expect(pinsInput(undefined)).toEqual([]);
+    expect(pinsInput("a.b@1.0.0, c.d@2.0.0\ne.f@3")).toEqual([
+      "a.b@1.0.0",
+      "c.d@2.0.0",
+      "e.f@3",
+    ]);
+  });
+
+  it("installs zstd only when it is missing", () => {
+    const calls: string[] = [];
+    const out = { write: () => true };
+    ensureZstd({ stdout: out, exec: (cmd) => (calls.push(cmd), "v1.5.7") });
+    expect(calls).toEqual(["zstd"]);
   });
 });
 
