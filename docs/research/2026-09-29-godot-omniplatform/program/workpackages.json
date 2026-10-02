@@ -1809,7 +1809,7 @@
       "optional": false,
       "refs": ["README §3.9", "README §6.2 item 6"],
       "brief": "wp/P6-03-update-funnel-autohalt.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P6-04",
