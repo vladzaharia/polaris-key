@@ -75,6 +75,8 @@ const VALUES: Record<OutletCredentialKind, Record<string, unknown>> = {
     clientSecret: "test-client-secret~000",
     sellerId: "12345678",
   },
+  // P6-03: a placeholder, never a real Sentry client secret.
+  "sentry-integration": { clientSecret: "sentry-test-only-0000" },
 };
 
 /** The secret part of each value: none of it may ever appear in metadata or a response. */
@@ -83,6 +85,7 @@ const SECRET_PARTS: Record<OutletCredentialKind, string[]> = {
   "asc-webhook-secret": ["whsec-test-only-0000"],
   "google-service-account": [RSA.split("\n")[1]!],
   "ms-partner-center": ["test-client-secret~000"],
+  "sentry-integration": ["sentry-test-only-0000"],
 };
 
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -237,6 +240,7 @@ describe("outlet credentials: the admin API", () => {
       "asc-webhook-secret-1",
       "google-service-account-1",
       "ms-partner-center-1",
+      "sentry-integration-1",
     ]);
     expect(creds[0]).toMatchObject({
       kind: "asc-api-key",

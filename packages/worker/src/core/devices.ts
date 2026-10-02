@@ -93,6 +93,13 @@ import {
 } from "../kv.js";
 import { bearer } from "../http.js";
 import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
+import {
+  boundedUpdates,
+  recordUpdateEvents,
+  staticScope,
+  updateScope,
+} from "./updateHealth.js";
+import type { ServiceHooks } from "./hooks.js";
 
 /**
  * What a valid device token proves, at CORE's level of authority: this token belongs to this
@@ -865,7 +872,9 @@ export async function handleDevices(
 // licensingEdge.test.ts together. The first six keys are the software-facts additions; the
 // next nine are the original v1 set and must stay; `engine` and `outlet` (P1-05) carry a game
 // engine's build facts and where the install came from (the stamped outlet refined by on-device
-// detection, P3-11; an outlet id or kind only), each with its own bound below; `content` (P4-02, plans/P4-01.md §2.11) carries the active pack set's id.
+// detection, P3-11; an outlet id or kind only), each with its own bound below; `content` (P4-02,
+// plans/P4-01.md §2.11) carries the active pack set's id; `updates` (P6-03) carries update
+// outcome events, validated strictly and counted by `core/updateHealth.ts`.
 // `caps` (P1b-10) is the SDK's capability list: the parity feature ids its `supports()` answers
 // Supported for right now (PARITY §2.2), bounded below.
 export const REPORT_KEYS = [
@@ -887,6 +896,7 @@ export const REPORT_KEYS = [
   "engine",
   "outlet",
   "content",
+  "updates",
   "caps",
 ] as const;
 
@@ -993,6 +1003,13 @@ function boundedReport(input: unknown): Record<string, unknown> {
     if (content === undefined) delete out.content;
     else out.content = content;
   }
+  // `updates` (P6-03): at most 16 strictly validated events; malformed entries and unknown
+  // events are dropped, unknown fields stripped (`core/updateHealth.ts` `boundedUpdates`).
+  if (out.updates !== undefined) {
+    const updates = boundedUpdates(out.updates);
+    if (updates === undefined) delete out.updates;
+    else out.updates = updates;
+  }
   if (out.caps !== undefined) {
     const caps = boundedCaps(out.caps);
     if (caps === undefined) delete out.caps;
@@ -1076,6 +1093,9 @@ export async function handleReport(
   db: Db,
   product: Product,
   now: number,
+  /** The product's hooks (dispatch builds them): the outlets and channels update events are
+   *  checked against. Absent, every event counts as `unknown`. */
+  hooks?: ServiceHooks,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   const token = bearer(req);
@@ -1106,5 +1126,22 @@ export async function handleReport(
     db,
     factsFromReport(product.slug, valid.device.device_id, report, now),
   );
+  // Count the update outcome events (P6-03) after the snapshot is stored, in the update-health
+  // Durable Object — never D1. Deduplicated on (device, eventId), so a retried report counts
+  // nothing twice; fails open, so telemetry can never cost a device its report.
+  const updates = report.updates as
+    | Parameters<typeof recordUpdateEvents>[3]
+    | undefined;
+  if (updates && updates.length > 0)
+    await recordUpdateEvents(
+      env,
+      product.slug,
+      valid.device.device_id,
+      updates,
+      now,
+      hooks
+        ? await updateScope(hooks)
+        : staticScope({ outlets: [], channels: [], releases: [] }),
+    );
   return json({ ok: true });
 }

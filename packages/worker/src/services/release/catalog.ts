@@ -40,6 +40,7 @@ import { getReleaseConfig, readAccessMode } from "./config.js";
 import { entitledSelectorFor } from "./access.js";
 import {
   isVersionSelector,
+  knownChannels,
   resolveBuild,
   resolveChannelReleases,
 } from "./resolve.js";
@@ -250,6 +251,10 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
         "build",
         selector === undefined ? {} : { version: selector },
       );
+    },
+
+    async knownChannels() {
+      return knownChannels(db, slug, await config());
     },
 
     resolve: (q: CatalogResolveQuery) => resolveTarget(ctx, q, config),

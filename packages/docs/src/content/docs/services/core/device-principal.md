@@ -285,7 +285,7 @@ The bounds, in order:
 - **Unparseable JSON** is `400 bad_request`; an empty body is treated as an empty report.
 - **The key allowlist.** Exactly these survive: `os`, `hardware`, `runtime`, `locale`,
   `timezone`, `probes`, `sdk`, `sdkVersion`, `appVersion`, `platform`, `arch`, `gate`, `config`,
-  `entitlements`, `timestamp`, `engine`, `outlet`, `content`, `caps`. Anything else is dropped **silently** — a new
+  `entitlements`, `timestamp`, `engine`, `outlet`, `content`, `updates`, `caps`. Anything else is dropped **silently** — a new
   client field that is not added to the list vanishes without an error anywhere.
 - **Engine and outlet.** `engine` is a game engine's build facts (the Godot SDK sends it). Only
   its known fields survive — `id` (such as `godot-4.7`), `version`, `renderer`, `videoAdapter`,

@@ -51,6 +51,7 @@ export type Tab =
   // distribution
   | "distribution"
   | "distribution-matrix"
+  | "distribution-health"
   // update
   | "updates"
   // identity
@@ -197,6 +198,11 @@ export const SECTIONS: NavSection[] = [
         tab: "distribution-matrix",
         label: "Matrix",
         docs: "/docs/admin/distribution-matrix/",
+      },
+      {
+        tab: "distribution-health",
+        label: "Update health",
+        docs: "/docs/services/distribution/update-health/",
       },
     ],
   },

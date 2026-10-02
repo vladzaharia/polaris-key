@@ -182,7 +182,15 @@ async function dispatchProductRoute(
     case "devices":
       return handleDevices(req, env, db, product, now, route.deviceId);
     case "report":
-      return handleReport(req, env, db, product, now);
+      // P6-03: the hooks bound update telemetry to the product's declared outlets and channels.
+      return handleReport(
+        req,
+        env,
+        db,
+        product,
+        now,
+        buildHooks(SERVICES, product.services, { env, db, product, now }),
+      );
     case "register":
       // The registry is threaded through because `requires-identity` registration is
       // authorized by the Identity descriptor (`ServiceDescriptor.authorizeRegistration`);

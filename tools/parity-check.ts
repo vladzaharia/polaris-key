@@ -314,28 +314,19 @@ function corpusProofState(
   const abs = join(root, CORPUS_DIR, file);
   if (!existsSync(abs)) return { active: false, token };
   if (proof.family) {
-    const family = proof.family;
-    const hasFamily = (path: string): boolean => {
-      try {
-        const data = JSON.parse(readFileSync(path, "utf8")) as Record<
-          string,
-          unknown
-        >;
-        return family in data;
-      } catch {
-        return false;
-      }
-    };
-    // A directory proof (`content/`) names a family in one of the directory's own JSON files
-    // (`content/cases.json`), not in the directory itself.
-    if (statSync(abs).isDirectory())
-      return {
-        active: readdirSync(abs)
-          .filter((name) => name.endsWith(".json"))
-          .some((name) => hasFamily(join(abs, name))),
-        token,
-      };
-    return { active: hasFamily(abs), token };
+    // A directory proof (`content/`) names the family in that directory's `cases.json`.
+    const casesFile = statSync(abs).isDirectory()
+      ? join(abs, "cases.json")
+      : abs;
+    try {
+      const data = JSON.parse(readFileSync(casesFile, "utf8")) as Record<
+        string,
+        unknown
+      >;
+      return { active: proof.family in data, token };
+    } catch {
+      return { active: false, token };
+    }
   }
   return { active: true, token };
 }
