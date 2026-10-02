@@ -351,3 +351,6 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `RSCC` (FileAccessCompressed, zstd blocks of 4096) and is refused by the RSCC rule. Every
   imported model is therefore refused today: a decision is needed on inspecting RSCC
   (decompress the zstd blocks, bounded, and scan) in both validators.
+- **BOM before a text head (P4-22 review).** Both sniffers skip a leading UTF-8 BOM before the
+  `[gd_scene`/`[gd_resource` head test (the device reads 67 bytes so its window equals the CLI's),
+  pinned by `audit-bom-head` (`level.bin`, refused on both sides).

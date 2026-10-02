@@ -142,6 +142,12 @@
       ],
       "warnings": []
     },
+    "audit-bom-head": {
+      "errors": [
+        "assets/kaykit/level.bin: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
     "audit-x-bin": {
       "errors": [],
       "warnings": []

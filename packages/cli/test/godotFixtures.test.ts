@@ -474,6 +474,24 @@ function checkFixtures(): CheckFixture[] {
         ],
       ],
     },
+    // P4-22 review: a BOM before a text head under an unrecognised extension is still sniffed.
+    {
+      name: "audit-bom-head",
+      files: [
+        ...kaykitV1(),
+        [
+          "assets/kaykit/level.bin",
+          new Uint8Array([
+            0xef,
+            0xbb,
+            0xbf,
+            ...enc(
+              '[gd_resource type="Resource" format=3]\n\n[sub_resource type="GDScript" id="s"]\n',
+            ),
+          ]),
+        ],
+      ],
+    },
     {
       name: "audit-x-bin",
       files: [

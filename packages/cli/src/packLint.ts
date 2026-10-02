@@ -461,7 +461,12 @@ export function embeddedCode(
 
 /** A `[gd_scene` or `[gd_resource` head in the first 64 bytes (Latin-1, NUL read as a space). */
 function sniffsTextResource(data: Uint8Array): boolean {
-  const head = Buffer.from(data.subarray(0, 64))
+  // A leading UTF-8 byte-order mark is skipped first (P4-22 review): more scanning, fail-closed.
+  const from =
+    data.length >= 3 && data[0] === 0xef && data[1] === 0xbb && data[2] === 0xbf
+      ? 3
+      : 0;
+  const head = Buffer.from(data.subarray(from, from + 64))
     .toString("latin1")
     .replace(/\0/g, " ");
   return /^[ \t\n\r\f\x0B]*\[gd_(scene|resource)\b/.test(head);

@@ -21109,7 +21109,8 @@ function embeddedCode(p, data, markers = SCRIPT_MARKERS) {
   return null;
 }
 function sniffsTextResource(data) {
-  const head = Buffer.from(data.subarray(0, 64)).toString("latin1").replace(/\0/g, " ");
+  const from = data.length >= 3 && data[0] === 239 && data[1] === 187 && data[2] === 191 ? 3 : 0;
+  const head = Buffer.from(data.subarray(from, from + 64)).toString("latin1").replace(/\0/g, " ");
   return /^[ \t\n\r\f\x0B]*\[gd_(scene|resource)\b/.test(head);
 }
 function marker(data, markers) {

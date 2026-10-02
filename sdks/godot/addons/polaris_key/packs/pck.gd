@@ -475,8 +475,10 @@ static func sniffs_resource(head: PackedByteArray) -> bool:
 	return magic == "RSRC" or magic == "RSCC" or sniffs_text_resource(head)
 
 
+## A leading UTF-8 byte-order mark is skipped first (P4-22 review): more scanning, fail-closed.
 static func sniffs_text_resource(data: PackedByteArray) -> bool:
-	return _re(_GD_HEAD).search(_latin1(data.slice(0, 64))) != null
+	var from := 3 if data.size() >= 3 and data[0] == 0xEF and data[1] == 0xBB and data[2] == 0xBF else 0
+	return _re(_GD_HEAD).search(_latin1(data.slice(from, from + 64))) != null
 
 
 static func _binary_code(data: PackedByteArray) -> String:
@@ -598,7 +600,7 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 		var scanned := _re(_TEXT_RES).search(p) != null or _re(_BINARY_RES).search(p) != null or p.begins_with(".godot/exported/")
 		if not scanned and p != UID_CACHE:
 			# Sniff every other entry's head: a resource is scanned whatever its extension.
-			scanned = sniffs_resource(source.read(int(e["offset"]), mini(64, int(e["size"]))))
+			scanned = sniffs_resource(source.read(int(e["offset"]), mini(67, int(e["size"]))))
 		var data := PackedByteArray()
 		if needs_bytes or scanned:
 			data = source.read(int(e["offset"]), int(e["size"]))
@@ -678,7 +680,7 @@ static func tree_check(dir: String) -> Dictionary:
 			why = "a native library or GDExtension; a pack carries data only."
 		else:
 			var src := PKeyByteSource.file(dir.path_join(p))
-			var resource: bool = _re(_TEXT_RES).search(p) != null or _re(_BINARY_RES).search(p) != null or sniffs_resource(src.read(0, 64))
+			var resource: bool = _re(_TEXT_RES).search(p) != null or _re(_BINARY_RES).search(p) != null or sniffs_resource(src.read(0, 67))
 			if resource:
 				var code := embedded_code(p, PKeyByteSource.read_all(src))
 				if code != "":
