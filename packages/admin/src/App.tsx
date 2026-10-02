@@ -31,6 +31,7 @@ import { ProfileDetail } from "./views/profiles/ProfileDetail.js";
 import { Releases } from "./views/Releases.js";
 import { UpdateSettings } from "./views/UpdateSettings.js";
 import { Distribution } from "./views/Distribution.js";
+import { DistributionMatrixView } from "./views/distribution/Matrix.js";
 import { Identity } from "./views/Identity.js";
 import { Activity } from "./views/Activity.js";
 import { Devices } from "./views/Devices.js";
@@ -291,6 +292,8 @@ function renderRoute(
       return <Releases slug={activeSlug} />;
     case "distribution":
       return <Distribution slug={activeSlug} />;
+    case "distribution-matrix":
+      return <DistributionMatrixView slug={activeSlug} />;
     case "updates":
       return <UpdateSettings slug={activeSlug} />;
     case "identity":

@@ -847,7 +847,7 @@ export async function buildDownloadModel(
             kind: "fdroid",
             outletId: outlet.id,
             platforms: ["android"],
-            label: "Add the F-Droid repository",
+            label: "Add to F-Droid",
             url: withFp,
             deepLink: `fdroidrepos://${withFp.slice("https://".length)}`,
             qr: withFp,
