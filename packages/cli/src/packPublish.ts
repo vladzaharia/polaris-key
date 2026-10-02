@@ -40,16 +40,11 @@
  * submits nothing.
  */
 
-import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import {
-  parseManifest,
-  type ManifestPackDeliverable,
-  type ManifestReleaseKey,
-} from "@polaris-key/manifest";
+import type { ManifestPackDeliverable } from "@polaris-key/manifest";
 import {
   MARKER_FORMAT,
   MAX_RECORD_JWS_BYTES,
@@ -591,7 +586,7 @@ export async function publishPack(
         );
       if (mine.entitlement === undefined)
         throw new Error(
-          `${client.url("release/publish/uploads")} answered no delivery gate for ${packId} (an older Polaris Key without pack releases?).`,
+          `${client.url("release/publish/uploads")} answered no delivery gate for ${packId}: it does not know ${packId} as a pack yet (resync .pkey/release in the console) or predates pack releases.`,
         );
       if (mine.recordSha256)
         throw new Error(
@@ -1061,9 +1056,4 @@ function printReport(
     for (const n of r.noise) out.write(`  re-import noise: ${n}\n`);
   }
   out.write(`\n${objectCount} distinct objects\n`);
-}
-
-/** Hash helper re-exported for tests. */
-export function recordHashOf(jws: string): string {
-  return createHash("sha256").update(jws).digest("hex");
 }
