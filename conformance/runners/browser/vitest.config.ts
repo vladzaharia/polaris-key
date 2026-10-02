@@ -3,9 +3,10 @@ import { defineConfig } from "vitest/config";
 // The browser conformance runner: `corpusV2.browser.test.ts` drives the shared corpus suites
 // (`../node/suites.ts`) inside a real browser engine through Vitest browser mode and Playwright.
 // One engine per run. Chromium is the default (CI job `browser`); `--browser=firefox` (CI job
-// `browser-firefox`, Linux) and `--browser=webkit` (CI job `browser-webkit`, macOS only — see
-// the package README) pick the others. Vitest's own `--browser=<name>` flag filters
-// `instances` by name, so the one instance declared here must be the one the flag names.
+// `browser-firefox`, Linux) and `--browser=webkit` (CI job `browser-webkit`, macOS only: Linux
+// WebKit crashes on Ed25519 inputs of about 64 KiB or more, see .github/workflows/ci.yml) pick
+// the others. Vitest's own `--browser=<name>` flag filters `instances` by name, so the one
+// instance declared here must be the one the flag names.
 const ENGINES = ["chromium", "firefox", "webkit"] as const;
 type Engine = (typeof ENGINES)[number];
 
