@@ -9,10 +9,13 @@
  * annotation and a non-zero exit, so a refused publish fails the job.
  */
 
+import { execFileSync } from "node:child_process";
 import { appendFile } from "node:fs/promises";
 import type { Out } from "./ci.js";
 import type { CiEnv } from "./oidc.js";
 import { publishRelease, type PublishSource } from "./publish.js";
+import { publishPack } from "./packPublish.js";
+import { MIN_ZSTD_VERSION, versionAtLeast } from "./packArtifacts.js";
 
 /** The Action's inputs, in `action.yml` order. */
 export const ACTION_INPUTS = [
@@ -27,6 +30,11 @@ export const ACTION_INPUTS = [
   "base-url",
   "release-key",
   "min-supported-seq",
+  "content-stamp",
+  "embedded",
+  "pins",
+  "out",
+  "bases",
   "dry-run",
 ] as const;
 
@@ -55,6 +63,65 @@ export interface ActionIo {
   stderr: Out;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+  /** The zstd install seam (tests): runs a command, throws on failure. */
+  exec?: (cmd: string, args: string[]) => string;
+  /** The platform seam (tests); `process.platform` otherwise. */
+  platform?: NodeJS.Platform;
+}
+
+/** The `pins` input: `<packId>@<version>` entries separated by whitespace or commas. */
+export function pinsInput(value: string | undefined): string[] {
+  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
+}
+
+/**
+ * A pack publish needs the zstd CLI at ≥ 1.5.5 (`MIN_ZSTD_VERSION`). GitHub's hosted runners carry
+ * it. When it is missing or older on a Linux runner, refresh apt's lists and install it (fixed
+ * arguments, no shell); if zstd is still missing or older afterwards (an old distribution's
+ * package), fail with the minimum version. Elsewhere, fail with the same message.
+ */
+export function ensureZstd(
+  io: Pick<ActionIo, "exec" | "stdout" | "platform">,
+): void {
+  const exec =
+    io.exec ??
+    ((cmd: string, args: string[]) =>
+      execFileSync(cmd, args, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }));
+  const version = (): string | null => {
+    try {
+      return /v(\d+\.\d+\.\d+)/.exec(exec("zstd", ["-V"]))?.[1] ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const ok = (v: string | null) =>
+    v !== null && versionAtLeast(v, MIN_ZSTD_VERSION);
+  const found = version();
+  if (ok(found)) return;
+  const need = `A pack publish needs zstd ≥ ${MIN_ZSTD_VERSION}`;
+  if ((io.platform ?? process.platform) !== "linux")
+    throw new Error(
+      `${need}; ${found ? `this runner has ${found}` : "it is not on PATH"}. Install it before this step (brew install zstd).`,
+    );
+  io.stdout.write(
+    `zstd ${found ? `${found} is older than ${MIN_ZSTD_VERSION}` : "is not on PATH"}; installing it with apt-get\n`,
+  );
+  try {
+    exec("sudo", ["-n", "apt-get", "update", "-q"]);
+    exec("sudo", ["-n", "apt-get", "install", "-y", "-q", "zstd"]);
+  } catch (e) {
+    throw new Error(
+      `${need}, and installing it with apt-get failed (${(e as Error).message.split("\n")[0]}). Install it before this step.`,
+    );
+  }
+  const after = version();
+  if (!ok(after))
+    throw new Error(
+      `${need}; apt-get installed ${after ?? "no zstd"}. Use a newer runner image (ubuntu-24.04 or later) or install zstd ≥ ${MIN_ZSTD_VERSION} before this step.`,
+    );
 }
 
 /** Workflow-command escaping for an annotation's message (`%`, CR and LF). */
@@ -75,11 +142,55 @@ export async function runAction(io: ActionIo): Promise<number> {
       throw new Error(
         `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`,
       );
+    const deliverable = input("deliverable");
+    const releaseKeyPem = input("release-key");
+    const minSupportedSeq =
+      input("min-supported-seq") !== undefined
+        ? Number(input("min-supported-seq"))
+        : undefined;
+    const given = (names: readonly (typeof ACTION_INPUTS)[number][]) =>
+      names.filter((n) => input(n) !== undefined);
+    if (deliverable && deliverable !== "app") {
+      // P4-03: a pack release. Inputs that only stamp an app release are refused, not ignored.
+      const wrong = given(["content-stamp", "embedded", "pins"]);
+      if (wrong.length)
+        throw new Error(
+          `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`,
+        );
+      ensureZstd(io);
+      const result = await publishPack({
+        cwd: io.cwd,
+        product,
+        dir,
+        deliverable,
+        version: input("version"),
+        tag: input("tag"),
+        channel: input("channel"),
+        out: input("out"),
+        bases: input("bases"),
+        baseUrl: input("base-url"),
+        ...(releaseKeyPem ? { releaseKeyPem } : {}),
+        ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
+        dryRun: dryRun === "true",
+        env: io.env,
+        stdout: io.stdout,
+        stderr: io.stderr,
+        fetchImpl: io.fetchImpl,
+        sleep: io.sleep,
+      });
+      await writeOutputs(io, result.releaseId, result.server);
+      return 0;
+    }
+    const wrong = given(["out", "bases"]);
+    if (wrong.length)
+      throw new Error(
+        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases.`,
+      );
     const result = await publishRelease({
       cwd: io.cwd,
       product,
       dir,
-      deliverable: input("deliverable"),
+      deliverable,
       version: input("version"),
       tag: input("tag"),
       channel: input("channel"),
@@ -88,10 +199,12 @@ export async function runAction(io: ActionIo): Promise<number> {
       baseUrl: input("base-url"),
       // P3-03: the release key's PKCS#8 PEM, from a GitHub Environment secret. Read here, never
       // echoed; absent, PKEY_RELEASE_KEY from the job's environment is used.
-      ...(input("release-key") ? { releaseKeyPem: input("release-key") } : {}),
-      ...(input("min-supported-seq") !== undefined
-        ? { minSupportedSeq: Number(input("min-supported-seq")) }
-        : {}),
+      ...(releaseKeyPem ? { releaseKeyPem } : {}),
+      ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
+      // P4-03: the packs an app release pins and its builds embed.
+      contentStamp: input("content-stamp"),
+      embedded: input("embedded"),
+      pins: pinsInput(input("pins")),
       dryRun: dryRun === "true",
       env: io.env,
       stdout: io.stdout,
@@ -99,16 +212,7 @@ export async function runAction(io: ActionIo): Promise<number> {
       fetchImpl: io.fetchImpl,
       sleep: io.sleep,
     });
-    const outputFile = io.env.GITHUB_OUTPUT;
-    if (outputFile) {
-      const outcome =
-        typeof result.server?.outcome === "string" ? result.server.outcome : "";
-      await appendFile(
-        outputFile,
-        `release-id=${result.releaseId}\noutcome=${outcome}\n`,
-        "utf8",
-      );
-    }
+    await writeOutputs(io, result.releaseId, result.server);
     return 0;
   } catch (e) {
     io.stdout.write(
@@ -117,4 +221,19 @@ export async function runAction(io: ActionIo): Promise<number> {
     io.stderr.write(`${(e as Error).message}\n`);
     return 1;
   }
+}
+
+async function writeOutputs(
+  io: ActionIo,
+  releaseId: string,
+  server: Record<string, unknown> | undefined,
+): Promise<void> {
+  const outputFile = io.env.GITHUB_OUTPUT;
+  if (!outputFile) return;
+  const outcome = typeof server?.outcome === "string" ? server.outcome : "";
+  await appendFile(
+    outputFile,
+    `release-id=${releaseId}\noutcome=${outcome}\n`,
+    "utf8",
+  );
 }
