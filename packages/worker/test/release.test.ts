@@ -1093,6 +1093,65 @@ describe("release health", () => {
     );
   });
 
+  it('accepts a file of any arch for architectures: ["universal"]', async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      artifact_policy_json: JSON.stringify({
+        requireDmg: true,
+        requireCli: true,
+        architectures: ["universal"],
+      }),
+    });
+    const health = await healthFor(db, [
+      asset("djdl-universal.dmg"),
+      asset("djdl-universal.dmg.sig"),
+      asset("djdl-arm64"),
+    ]);
+    expect(byId(health, "dmg-universal")?.status).toBe("ok");
+    expect(byId(health, "cli-universal")?.status).toBe("ok");
+    expect(health.status).toBe("healthy");
+
+    const none = await healthFor(db, [asset("djdl-linux.tar.gz")]);
+    expect(byId(none, "dmg-universal")?.status).toBe("missing");
+    expect(byId(none, "cli-universal")?.status).toBe("missing");
+  });
+
+  it("matches an unrecognised arch on whole tokens only (x86 is not x86_64)", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      artifact_policy_json: JSON.stringify({
+        requireCli: true,
+        architectures: ["x86", "armv7"],
+      }),
+    });
+    const health = await healthFor(db, [
+      asset("djdl-x86_64"),
+      asset("djdl-arm64"),
+    ]);
+    expect(byId(health, "cli-x86")?.status).toBe("missing");
+    expect(byId(health, "cli-armv7")?.status).toBe("missing");
+
+    const real = await healthFor(db, [
+      asset("djdl-x86"),
+      asset("djdl-linux-armv7"),
+    ]);
+    expect(byId(real, "cli-x86")?.status).toBe("ok");
+    expect(byId(real, "cli-armv7")?.status).toBe("ok");
+  });
+
+  it("does not count a stray extension-less file as the CLI, but does count a versioned binary", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      artifact_policy_json: JSON.stringify({ requireCli: true }),
+    });
+    const stray = await healthFor(db, [asset("LICENSE"), asset("README")]);
+    expect(byId(stray, "cli")?.status).toBe("missing");
+
+    const versioned = await healthFor(db, [asset("djdl-1.2.3")]);
+    expect(byId(versioned, "cli")?.status).toBe("ok");
+    expect(byId(versioned, "cli")?.message).toBe("Found djdl-1.2.3.");
+  });
+
   it("requires a Sparkle key by default so appcasts fail closed", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db, { sparkle_ed25519_pub: null });
@@ -1172,6 +1231,34 @@ describe("release health", () => {
         "win: file matching Diceroll-*-windows.zip",
       ]);
       expect(byId(health, "artifact-linux")?.status).toBe("ok");
+    });
+
+    it("says when an earlier entry claimed the only file a later entry matches", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db);
+      await declareMap(db, [
+        {
+          id: "any-zip",
+          platform: "windows",
+          arch: "x86_64",
+          format: "zip",
+          match: "Diceroll-*.zip",
+        },
+        {
+          id: "win",
+          platform: "windows",
+          arch: "x86_64",
+          format: "zip",
+          match: "Diceroll-*-windows.zip",
+        },
+      ]);
+      const health = await healthFor(db, [asset("Diceroll-1.2.3-windows.zip")]);
+      expect(byId(health, "artifact-any-zip")?.status).toBe("ok");
+      const win = byId(health, "artifact-win");
+      expect(win?.status).toBe("missing");
+      expect(win?.message).toContain(
+        'Diceroll-1.2.3-windows.zip matches "Diceroll-*-windows.zip" but was claimed by entry any-zip',
+      );
     });
 
     it("names the candidates of an ambiguous entry and treats it as missing", async () => {

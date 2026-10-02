@@ -7,8 +7,9 @@ import type {
 } from "@polaris-key/manifest";
 import {
   archOf,
-  findBinaryAsset,
+  isCliBinary,
   matchAsset,
+  nameHasToken,
   normalizeArch,
   sigAssetName,
   type Arch,
@@ -265,11 +266,15 @@ function mapChecks(
         files: [fileOf(matched)],
       };
     }
+    const shadowed = classified.shadowed.get(entry.id) ?? [];
     return check(
       id,
       label,
       "missing",
-      `No file in the latest release matches ${JSON.stringify(entry.match)}.`,
+      shadowed.length
+        ? `${shadowed.map((f) => `${f.name} matches ${JSON.stringify(entry.match)} but was claimed by entry ${f.by}`).join("; ")} ` +
+            "(the first entry in declaration order wins a file)."
+        : `No file in the latest release matches ${JSON.stringify(entry.match)}.`,
       [`${entry.id}: file matching ${entry.match}`],
     );
   });
@@ -294,11 +299,15 @@ function policyChecks(
   const policy = artifactPolicy(cfg);
   const binaryName = cfg.binary_name ?? product;
   const out: ReleaseHealthCheck[] = [];
+  const cliCandidates = assets.filter((a) => isCliBinary(a.name, binaryName));
   const kinds: {
     required: boolean;
     id: "dmg" | "cli";
     label: string;
     noun: string;
+    /** Every file that counts as this kind, on any arch. */
+    candidates: ReleaseAsset[];
+    /** The file for a canonical arch. */
     find: (arch: Arch) => ReleaseAsset | null;
   }[] = [
     {
@@ -306,6 +315,8 @@ function policyChecks(
       id: "dmg",
       label: "macOS DMG",
       noun: "DMG asset",
+      candidates: assets.filter((a) => artifactKind(a.name) === "dmg"),
+      // What the appcast and DMG routes would select for this arch.
       find: (arch) => matchAsset(assets, { arch, ext: "dmg", binaryName }),
     },
     {
@@ -313,37 +324,40 @@ function policyChecks(
       id: "cli",
       label: "CLI binary",
       noun: "CLI asset",
-      find: (arch) => findBinaryAsset(assets, binaryName, arch),
+      candidates: cliCandidates,
+      // Any CLI binary of that arch (`djdl-arm64`, `djdl_aarch64`, `djdl-1.2.3-arm64`) — the same
+      // `isCliBinary` definition the arch-less check uses, so the two agree.
+      find: (arch) =>
+        cliCandidates.find((a) => archOf(a.name) === arch) ?? null,
     },
   ];
   for (const kind of kinds) {
     if (!kind.required) continue;
-    const ofKind = assets.filter((a) => artifactKind(a.name) === kind.id);
     const why = "required by the manifest's artifactPolicy";
     if (policy.architectures.length === 0) {
-      const found = ofKind[0];
+      const found = kind.candidates;
       out.push(
         check(
           kind.id,
           kind.label,
-          found ? "ok" : "missing",
-          found
-            ? `Found ${ofKind.map((a) => a.name).join(", ")}.`
+          found.length ? "ok" : "missing",
+          found.length
+            ? `Found ${found.map((a) => a.name).join(", ")}.`
             : `No ${kind.noun} was found (${why}).`,
-          found ? [] : [kind.noun],
+          found.length ? [] : [kind.noun],
         ),
       );
       continue;
     }
     for (const raw of policy.architectures) {
       const canonical = normalizeArch(raw);
+      // Canonical arm64/x86_64 use the alias-aware matcher; `universal`/`any` accept a file of
+      // any arch; any other token must appear as whole filename tokens (`x86` is not `x86_64`).
       const found = canonical
         ? kind.find(canonical)
         : isAnyArch(raw)
-          ? (ofKind[0] ?? null)
-          : (ofKind.find((a) =>
-              a.name.toLowerCase().includes(raw.toLowerCase()),
-            ) ?? null);
+          ? (kind.candidates[0] ?? null)
+          : (kind.candidates.find((a) => nameHasToken(a.name, raw)) ?? null);
       const arch = canonical ?? raw;
       out.push(
         check(

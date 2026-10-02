@@ -278,18 +278,23 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
      `artifact-<buildId>` check per entry, labelled with its platform, arch and format. It is
      _ok_ when exactly one file matches the entry, _missing_ when none does, and also _missing_
      when more than one does — the map classifies none of an ambiguous entry's files, so
-     nothing serves that build — with the candidates listed. The classification is the truth
+     nothing serves that build — with the candidates listed. A missing entry whose glob matches
+     a file an earlier entry claimed (the first entry in declaration order wins a file) says so. The classification is the truth
      store's own (see [Artifacts](/docs/services/release/artifacts/)), so health and the
      download routes never disagree about which file is which.
    - Without a map, one informational `release-artifacts` check lists the files the release
      carries (the first 20, then a count of the rest), with the platform and arch the file name
      yields where it yields one. It is always _ok_: an absent DMG or CLI is not a warning.
 7. **Required artifacts** — only what the manifest's `artifactPolicy` states explicitly.
-   `requireDmg: true` adds a macOS DMG check and `requireCli: true` a bare CLI binary check,
-   each _missing_ when absent. With `architectures` declared there is one check per
-   architecture (`dmg-arm64`, `cli-x86_64`, …; `universal` and `any` accept a file of any
-   arch); without it, one `dmg` or `cli` check that any matching file satisfies. A product with
-   no `artifactPolicy` block requires nothing here.
+   `requireDmg: true` adds a macOS DMG check and `requireCli: true` a CLI binary check, each
+   _missing_ when absent. A CLI binary is a file that names the release's binary name as whole
+   tokens and is a bare executable — no extension, a version suffix (`djdl-1.2.3`) or `.exe` —
+   so a stray `LICENSE` does not count. With `architectures` declared there is one check per
+   architecture (`dmg-arm64`, `cli-x86_64`, …): `arm64` and `x86_64` match their aliases,
+   `universal` and `any` accept a file of any arch, and any other token must appear as a whole
+   filename token (`x86` is not satisfied by an `x86_64` file). Without `architectures`, one
+   `dmg` or `cli` check that any such file satisfies. A product with no `artifactPolicy` block
+   requires nothing here.
 8. **Sparkle signature** — either the policy requires signed appcasts and no public key is
    configured at all (_missing_), or a key is configured and the question is whether the
    sibling `.sig` asset is actually present: for the declared macOS `dmg` payload when the

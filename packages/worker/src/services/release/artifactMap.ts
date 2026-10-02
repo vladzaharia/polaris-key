@@ -40,6 +40,9 @@ export interface MapClassification {
   /** Entry id → the files it matched, for every entry that matched MORE than one (and so
    *  classified none). Release health names these candidates; nothing serves them. */
   ambiguous: Map<string, string[]>;
+  /** Entry id → the files its glob matches that an EARLIER entry claimed (first entry in
+   *  declaration order wins a file). Release health explains a "missing" entry with these. */
+  shadowed: Map<string, { name: string; by: string }[]>;
 }
 
 /** True when the product declares a non-empty artifact map; otherwise sniffing applies. */
@@ -73,12 +76,23 @@ export function classifyByMap(
 
   // Each entry's matches, among the files that are not sidecars.
   const matchesOf = new Map<string, string[]>();
+  const shadowed = new Map<string, { name: string; by: string }[]>();
   for (const name of [...all].sort()) {
     if (sidecarOf.has(name)) continue;
     // First entry in declaration order wins a file both would match.
-    const entry = app.artifacts.find((e) => matchesArtifactGlob(e.match, name));
+    const matching = app.artifacts.filter((e) =>
+      matchesArtifactGlob(e.match, name),
+    );
+    const entry = matching[0];
     if (!entry) continue;
     matchesOf.set(entry.id, [...(matchesOf.get(entry.id) ?? []), name]);
+    for (const later of matching.slice(1)) {
+      if (later.id === entry.id) continue;
+      shadowed.set(later.id, [
+        ...(shadowed.get(later.id) ?? []),
+        { name, by: entry.id },
+      ]);
+    }
   }
 
   const files = new Map<string, ClassifiedFile>();
@@ -99,7 +113,7 @@ export function classifyByMap(
     if (!owner || owner.role !== "payload") continue;
     files.set(name, { ...owner, role });
   }
-  return { files, builds, ambiguous };
+  return { files, builds, ambiguous, shadowed };
 }
 
 function fileOf(
