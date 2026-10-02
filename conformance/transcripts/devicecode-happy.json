@@ -386,7 +386,8 @@
                   "timestamp",
                   "engine",
                   "outlet",
-                  "content"
+                  "content",
+                  "updates"
                 ]
               }
             },

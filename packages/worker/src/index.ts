@@ -6,6 +6,7 @@ import { secureResponse } from "./securityHeaders.js";
 import { handleScheduled } from "./scheduled.js";
 
 export { RateLimitDO } from "./rateLimitDo.js";
+export { UpdateHealthDO } from "./updateHealthDo.js";
 
 export default {
   async fetch(

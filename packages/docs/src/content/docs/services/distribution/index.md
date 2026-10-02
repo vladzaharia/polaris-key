@@ -90,10 +90,16 @@ switched on by a migration, so its stored state keeps serving while its manifest
 - **Outlets and transports** from the product's optional `.pkey/distribution` file (below),
   applied on every link and resync.
 - **Two descriptor hooks** (below): `delivery` and `outletCapabilities`.
+- **Update health**: the outcome events devices report after an update (offered, downloaded,
+  applied, confirmed, reverted, pack failures, boot rollbacks) counted per release, outlet and
+  channel; an opt-in, halt-only **auto-halt** on those numbers; and a Sentry alert hook that
+  opens halt candidates you confirm. See
+  [Update health](/docs/services/distribution/update-health/).
 - **A console section**, shown only while Distribution is on, with an overview of the chain, the
   outlet rollouts and which hook answers for the product, and the
   [distribution matrix](/docs/admin/distribution-matrix/): releases × outlets with pause, resume,
-  halt and complete controls.
+  halt and complete controls, and the **Update health** tab (the funnel, the auto-halt and the
+  Sentry candidates).
 
 With Distribution off, a product serves no downloads at all: every byte route and alias answers
 not-found.

@@ -109,6 +109,14 @@ never implies more than it does. The Distribution console section lists the roll
 Every change, from either door, is audited as `distribution.rollout.<verb>` (`set`, `pause`,
 `resume`, `halt`, `complete`), with the session's subject or `ci:<subject>`.
 
+**Automatically** — the [telemetry auto-halt](/docs/services/distribution/update-health/#the-auto-halt),
+when an operator turns it on, halts an active self-hosted rollout whose devices report too many
+reverts or boot rollbacks. It goes through the same implementation with a third, automatic actor
+that may **only halt**: every other verb is refused with `reason: system_halt_only`. Its halt
+writes `source: auto-halt` and `updated_by: system:auto-halt`, and its one
+`distribution.rollout.halt` audit row names the numbers that tripped it. Nothing automatic ever
+resumes, ramps, completes or starts a rollout; lifting the halt is your `resume`.
+
 ## Store rollouts
 
 A store's own staged rollout — Apple's seven-day phased release, Play's `userFraction` — is
@@ -119,10 +127,13 @@ refused with `rollout_mirrored`. Apple's phased release is mirrored by the
 each Play track's staged rollout by the
 [Google Play connector](/docs/services/distribution/google-play/#how-play-maps), both audited as
 `distribution.rollout.mirror`. The Play connector's halt is also the one an opt-in vitals
-auto-halt uses (`connector:play-vitals`).
+auto-halt uses (`connector:play-vitals`). The telemetry auto-halt never halts a mirrored rollout:
+it raises an alert for you to act on with the connector's own control.
 
 ## See also
 
 - [Byte delivery and delivery access](/docs/services/distribution/delivery/)
+- [Update health](/docs/services/distribution/update-health/) — the funnel, the auto-halt and
+  Sentry halt candidates.
 - [Channels and policy](/docs/services/release/channels/) — yanks and pins, today's
   emergency stop.
