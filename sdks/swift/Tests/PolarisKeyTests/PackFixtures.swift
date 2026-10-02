@@ -42,6 +42,21 @@ enum PackFixtures {
     static func sha(_ b: [UInt8]) -> String { sha256Of(b) }
     static func sha(_ s: String) -> String { sha256Of(Array(s.utf8)) }
 
+    /// Any corpus key's private half (the last 32 bytes of its PKCS#8 DER are the seed).
+    static func signer(_ kid: String) -> Curve25519.Signing.PrivateKey {
+        let pem = key(kid).privateKeyPkcs8Pem
+        let b64 = pem.split(separator: "\n").filter { !$0.hasPrefix("-----") }.joined()
+        return try! Curve25519.Signing.PrivateKey(rawRepresentation: Data(base64Encoded: b64)!.suffix(32))
+    }
+
+    /// Sign `payload` with any corpus key and `typ`.
+    static func sign(_ payload: JSONValue, kid: String, typ: String) -> String {
+        let header = #"{"alg":"EdDSA","typ":"\#(typ)","kid":"\#(kid)"}"#
+        let input = Base64URL.encode(string: header) + "." + Base64URL.encode(string: canonicalJSON(payload))
+        let sig = try! signer(kid).signature(for: Data(input.utf8))
+        return input + "." + Base64URL.encode(sig)
+    }
+
     static func sign(_ payload: JSONValue) -> String {
         let header = #"{"alg":"EdDSA","typ":"pkey-release+jws","kid":"\#(releaseKid)"}"#
         let input = Base64URL.encode(string: header) + "." + Base64URL.encode(string: canonicalJSON(payload))
@@ -317,3 +332,40 @@ final class WrappedStorage: PackStorage, @unchecked Sendable {
 
 /// A test I/O failure.
 struct TestIOError: Error {}
+
+/// A `kind: revocation` record (plans/P4-13.md §2.3) revoking `target`, signed with the release
+/// key (or `kid`'s key), and its feed entry.
+func revocationFor(
+    _ target: TreePack, replacement: TreePack? = nil, issuedAt: Int = 1_759_350_000,
+    reason: String = "Withdrawn in a test.", kid: String = PackFixtures.releaseKid
+) -> (jws: String, record: String, entry: FeedRevocation) {
+    var o: [String: JSONValue] = [
+        "schemaVersion": .int(1), "aud": .string(PackFixtures.product), "deliverable": .string(target.packId),
+        "kind": .string("revocation"), "version": .string(target.version), "seq": .int(target.seq),
+        "issuedAt": .int(issuedAt), "revokes": .string(target.recordSha256), "reason": .string(reason),
+    ]
+    if let r = replacement {
+        o["replacement"] = .object([
+            "sha256": .string(r.recordSha256), "seq": .int(r.seq), "version": .string(r.version),
+        ])
+    }
+    let jws = PackFixtures.sign(.object(o), kid: kid, typ: "pkey-release+jws")
+    let record = PackFixtures.sha(jws)
+    return (
+        jws, record,
+        FeedRevocation(
+            record: record, pack: target.packId, target: target.recordSha256, version: target.version,
+            seq: target.seq)
+    )
+}
+
+/// The verified form of a fixture revocation.
+func verifiedRevocation(_ r: (jws: String, record: String, entry: FeedRevocation)) throws -> VerifiedRevocation {
+    try XCTUnwrap(
+        verifyRevocation(
+            r.jws,
+            options: VerifyRevocationOptions(
+                releaseKeys: PackFixtures.releaseKeys, productTrust: PackFixtures.productTrust,
+                expectedAud: PackFixtures.product, entry: r.entry)
+        ).revocation, "the fixture revocation verifies")
+}

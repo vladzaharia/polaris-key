@@ -67,7 +67,10 @@
       "status": "implemented",
       "note": "core/decide.py decide_update over core/check.py run_update_check; client.update.decide() returns the UpdateCheck at the effective clock. The outlet is the host's UpdateClientOptions.outlet, else the in-process detection result (P3-11) over the stamp."
     },
-    "update.content": { "status": "planned", "wp": "P4-23" },
+    "update.content": {
+      "status": "implemented",
+      "note": "core/decide.py decide_update with content (feed_content, select_pack_rows, prestage, the content blocks and boot required for revoked required content); client.update.decide() builds content from the content stamp, the pack state, the variant preferences and the stored revocations (run_update_check steps 10-14)."
+    },
     "update.driver": {
       "status": "planned",
       "unowned": true,
@@ -86,7 +89,10 @@
       "status": "implemented",
       "note": "core.release_record verify_release_record with pin.kind (pack records fetched by the content stamp's pin, app content and builds[].embeds claims) and update.packs.verify_marker for embedded baselines; test_conformance drives every packRecordCases and markerCases vector, test_content_conformance the stampCases."
     },
-    "packs.revoke": { "status": "planned", "wp": "P4-23" },
+    "packs.revoke": {
+      "status": "implemented",
+      "note": "core/release_record.py verify_revocation and newer_revocation; the PackEngine keeps verified revocations in the sibling revocations.json (revocationsStored, relearn, 256 targets) and refuses revoked mounts with pack-revoked."
+    },
     "packs.plan": {
       "status": "implemented",
       "note": "update.packs plan, select_variant and plan_target; every plan-matrix.json row, variant case and target case in test_plan_matrix."

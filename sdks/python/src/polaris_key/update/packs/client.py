@@ -33,8 +33,17 @@ from ...constants_generated import MAX_RECORD_JWS_BYTES, ErrorCode, Feature
 from ...core.dirs import exclude_from_backup
 from ...discovery import service_endpoint
 from .boot import boot_pack_options, run_boot_fetch
-from .engine import EmbeddedBaseline, ObjectResponse, PackEngine, PackError, PackHandler, PackProgress, PacksSnapshot
-from .sets import parse_content_stamp
+from .engine import (
+    EmbeddedBaseline,
+    ObjectResponse,
+    PackEngine,
+    PackError,
+    PackHandler,
+    PackProgress,
+    PacksSnapshot,
+    RevocationsSnapshot,
+)
+from .sets import parse_content_stamp, stamp_holds
 from .storage import DirPackStorage, directory_tree_digest, measure_file
 from .zstd import ZstdInfo, select_python_zstd
 
@@ -122,9 +131,10 @@ class _Body:
 
 
 class PacksClient:
-    """The pack facet: ``ensure``, ``state``, ``path``, ``register_handler``, ``on``,
-    ``pack_set_id``, ``confirm``, ``recover_state``, ``rollback``, ``boot_options``,
-    ``boot_fetch``, ``zstd`` and ``refused_embedded``."""
+    """The pack facet: ``ensure``, ``ensure_releases``, ``state``, ``path``,
+    ``register_handler``, ``on``, ``pack_set_id``, ``confirm``, ``recover_state``, ``rollback``,
+    ``boot_options``, ``boot_fetch``, ``revocations``, ``content_input``,
+    ``record_revocations``, ``zstd`` and ``refused_embedded``."""
 
     def __init__(
         self,
@@ -168,6 +178,52 @@ class PacksClient:
         next ``ensure`` resumes the download)."""
         self._ctx.require_service("release", Feature.PACKS_STATE)
         return self._start().ensure(pack_ids)
+
+    def ensure_releases(self, targets: Sequence[Any]) -> List[Dict[str, Any]]:
+        """Install exact releases: a ``packs`` decision's ``install`` list (plans/P4-13.md §2.6).
+        Raises ``pack-revoked`` for a release a verified revocation names."""
+        self._ctx.require_service("release", Feature.PACKS_STATE)
+        return self._start().ensure_releases(targets)
+
+    def revocations(self) -> RevocationsSnapshot:
+        """The stored and this process's verified revocations, and ``relearn`` (plans/P4-13.md
+        §2.5)."""
+        return self._start().revocations()
+
+    def content_input(self) -> Optional[Any]:
+        """The update check's content input (plans/P4-13.md §2.5, §2.6): the stamp and its
+        holds, the running releases (embedded baselines included), the variant preferences and
+        the stored revocations. ``None`` when the host configured no content stamp."""
+        from ...core.check import UpdateCheckContent
+        from ...core.models import ReleasePin
+
+        if not self.configured:
+            return None
+        engine = self._start()
+        stamp = self._read_stamp()
+        if stamp is None:
+            return None
+        active = {
+            pid: ReleasePin(sha256=i["recordSha256"], seq=i["seq"], version=i["version"])
+            for pid, i in engine.state().running.items()
+        }
+        revs = engine.revocations()
+        return UpdateCheckContent(
+            stamp=stamp,
+            holds=stamp_holds(self._stamp_bytes()),
+            active=active,
+            engine=self._opts.engine,
+            axes={k: list(v) for k, v in self._opts.axes.items()},
+            revoked=revs.verified,
+            relearn=revs.relearn,
+        )
+
+    def record_revocations(self, revocations: Any) -> None:
+        """Keep the revocations an update check verified (the engine's
+        ``record_revocations``): ``revocations`` is ``UpdateCheckResult.revocations``."""
+        self._start().record_revocations(
+            revocations.learned, relearn_cleared=revocations.relearn_cleared
+        )
 
     def state(self) -> PacksSnapshot:
         """The install state and this process's running set."""
@@ -231,10 +287,13 @@ class PacksClient:
         consent: str = "metered",
         metered: bool = False,
         answer: Optional[Callable[[int, bool], bool]] = None,
+        install: Optional[Sequence[Any]] = None,
     ) -> Dict[str, Any]:
         """The boot's FETCH stage (the stage machine's host side): estimate the required and
         essential packs, send ``fetch.consent`` when the policy asks, download with
-        ``fetch.progress``, and send ``fetch.done {result, installed}`` through ``send``."""
+        ``fetch.progress``, and send ``fetch.done {result, installed}`` through ``send``.
+        ``install`` is a ``packs`` decision's list (plans/P4-13.md §2.5): its required and
+        essential entries install here; the rest come back in ``background``."""
         engine = self._start()
         return run_boot_fetch(
             engine,
@@ -243,6 +302,7 @@ class PacksClient:
             consent=consent,
             metered=metered,
             answer=answer,
+            install=install,
         )
 
     def zstd(self) -> ZstdInfo:
@@ -289,6 +349,7 @@ class PacksClient:
             mem_budget=self._opts.mem_budget,
             storage=storage,
             state=storage.state_store(),
+            revocations=storage.revocation_store(),
             fetch_record=self._fetch_record,
             fetch_object=self._fetch_object,
             entitlements=self._entitlements,
@@ -310,20 +371,22 @@ class PacksClient:
             except Exception:
                 pass  # A listener never fails an install.
 
-    def _read_stamp(self) -> Optional[Dict[str, Any]]:
+    def _stamp_bytes(self) -> bytes:
         src = self._opts.content_stamp
-        if src is None:
-            return None
         if isinstance(src, (bytes, bytearray)):
-            data = bytes(src)
-        else:
-            try:
-                with open(src, "rb") as f:
-                    data = f.read()
-            except Exception:
-                raise PackError(
-                    ErrorCode.CONTENT_STAMP_INVALID, "The content stamp cannot be read."
-                ) from None
+            return bytes(src)
+        try:
+            with open(src, "rb") as f:  # type: ignore[arg-type]
+                return f.read()
+        except Exception:
+            raise PackError(
+                ErrorCode.CONTENT_STAMP_INVALID, "The content stamp cannot be read."
+            ) from None
+
+    def _read_stamp(self) -> Optional[Dict[str, Any]]:
+        if self._opts.content_stamp is None:
+            return None
+        data = self._stamp_bytes()
         r = parse_content_stamp(data)
         if not r.ok:
             raise PackError(

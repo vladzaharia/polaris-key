@@ -396,8 +396,10 @@ macOS** alike: an iOS app (App Store, TestFlight, a marketplace) is a "decide on
 macOS direct build hands a `binary` answer to Sparkle or its own installer. Nothing it needs
 imports Sparkle: the verifiers and the decision are pure functions in `PolarisKeyCore`
 (`verifyFeed`, `verifyReleaseRecord`, `decideUpdate`, `rolloutBucket`, `effectiveCapabilities`,
-`resolveUpdateOutlet`, `bootDecision`, `runUpdateCheck`), held to every `feedCases`,
-`releaseRecordCases` and `update-matrix.json` row. `check(channel:)` and the Sparkle helpers
+`resolveUpdateOutlet`, `bootDecision`, `runUpdateCheck`, and P4-13's `feedContent`, `holdsOf`,
+`revocationOf`, `verifyRevocation`, `newerRevocation` and `selectPackRows`), held to every
+`feedCases`, `feedContentCases`, `releaseRecordCases`, `revocationCases` and `update-matrix.json`
+row (`rows` and `contentRows`). `check(channel:)` and the Sparkle helpers
 below are unchanged beside it.
 
 ```swift
@@ -478,10 +480,28 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
   survives a restart and cannot be edited on disk. A deactivation or a bundle import keeps them.
 - **The clock** is the effective clock, `max(system clock, highWaterMark)`: winding the system
   clock back cannot revive an expired feed.
-- **No v4 answer stops the app.** `bootDecision` never answers `.required`. `binary`, `store` and
-  `platform` with `mandatory: true`, and every `blocked {app-floor}`, are prompts the user cannot
-  dismiss (`isUndismissable`): show them as a persistent notice with no dismiss control over an
-  app that keeps running, never as a sheet that covers it.
+- **Floors never stop the app; revoked required content does** (plans/P4-13.md §2.6, decision
+  4). `binary`, `store` and `platform` with `mandatory: true`, and every `blocked` answer, are
+  prompts the user cannot dismiss (`isUndismissable`): show them as a persistent notice with no
+  dismiss control over an app that keeps running, never as a sheet that covers it. The one
+  exception is a CI-signed revocation of a **required** pack with no usable fix:
+  `blocked {revoked-content}`, or an offer whose `contentBlock` is `revoked-content`, gives
+  `bootDecision` `.required`, which stops the boot at a confirmed `blocked {update-required}`.
+  Show your own copy there, not the generic update-required text, for example "Some of this
+  game's content was withdrawn by its developer and can't be used. Update the app to keep
+  playing." (with the offer's button when the answer is an offer). `blocked {content-floor}` and
+  `contentBlock: content-floor` stay `.optional`; a revoked optional pack is unmounted and play
+  continues (`packs {revoke}`).
+- **Content** (plans/P4-13.md §2.5, §2.6). With `UpdateClientOptions.packs.contentStamp` set,
+  `decide()` also runs the content decision: it reads the feed's `packSets`, `packFloors` and
+  `revocations` beside the claims (a malformed member is ignored, never a refusal), fetches each
+  relevant revocation by hash (at most 64 per check), verifies it against `pinnedReleaseKeys`
+  only, stores it through `update.packs` (`revocations.json`), and fetches and verifies a
+  revocation's replacement. The answer can then be `packs {install, revoke, set}` (apply it with
+  `update.packs.ensureReleases(install)`, or `bootFetch(…, install:)` at boot; boot value
+  `.none`), a `binary` offer with `prestage` (the new content level's required and essential
+  packs), an offer made mandatory by `contentBlock`, or `blocked {content-floor | revoked-content}`.
+  Without a stamp every answer is exactly P3-01's.
 - `channelFeed(channel:)` returns the verified feed `decide()` would use, without the record and
   without release keys (it is named apart from `feed(channel:)`, the Sparkle helper);
   `releaseRecord(hash:)` verifies one record by hash (cross-checked and cached when a committed
@@ -537,12 +557,41 @@ try await update.packs.confirm()                             // this boot is hea
   `PacksOptions(memBudget: 32 * 1024 * 1024)`. A delta over the budget is never chosen: the
   planner falls back to the `file` or `full` strategy, which costs more bytes but less memory.
 - **Boot.** `bootOptions()` gives `BootOptions`' `requiredPacks` and `essentialPacks`;
-  `bootFetch(send:consent:metered:answer:)` drives the stage machine's FETCH stage
-  (`fetch.consent`, `fetch.progress`, `fetch.done`).
+  `bootFetch(send:consent:metered:answer:install:)` drives the stage machine's FETCH stage
+  (`fetch.consent`, `fetch.progress`, `fetch.done`). Given a `packs` answer's `install`, it
+  installs the required and essential entries at exactly their release before mount and returns
+  the rest in `background` for `ensureReleases` after the boot.
+- **Revocations** (plans/P4-13.md §2.5). A release that a verified revocation names is never
+  installed, activated or mounted: `ensure`/`ensureReleases` throw `PackError` `pack-revoked`, a
+  running `hot` install is deactivated when the revocation is learned, and an embedded baseline
+  is refused. Revocations persist in a sibling `revocations.json` beside `state.json`, created
+  only when the first one is stored (after `state.json` gains `revocationsStored: true`), and
+  re-verified entry by entry at every load against the pinned release keys: an entry signed by a
+  key you no longer pin is forgotten (the recovery from a stolen release key); any other failure
+  puts its pack in `relearn`. A torn `revocations.json` is held aside and its stamp's pinned and
+  embedded packs go into `relearn`; an unreadable one writes nothing and, when
+  `revocationsStored` is set, refuses those embedded baselines. A pack in `relearn` has its
+  embedded baseline refused at every boot until a fresh feed re-teaches its revocations (online
+  the pack is fetched instead; when it cannot be, `pack-revoked` with `detail: "relearn"`);
+  `recoverState()` clears it. At most 256 targets are kept, the oldest dropped first.
+  `revocations()` reports them. **A product that has never had a revocation has no
+  `revocations.json`, no flag and no `relearn`, and behaves exactly as before.**
 - **Telemetry.** `devices/report` carries `content: {packSetId}` of the running set once a stamp
   is configured.
 - **Handlers.** `registerHandler(_:)` adds a type (`layout` `tree` or `container`, `activation`
   `hot` or `restart`, `supports(formatVersion)`, optional `activate`/`deactivate`).
+
+### Source changes (P4-23)
+
+The content decision changes some public Swift signatures. Callers that switch exhaustively or
+destructure positionally need updating:
+
+- `UpdateDecision` gains a `.packs` case.
+- `.binary`, `.store`, `.platform` and `.blocked` gain a trailing `contentBlock: String?`
+  (default `nil`); positional patterns need one more `_`.
+- `binary`'s `prestage` is now `[PackTarget]`.
+- `RESERVED_RECORD_KINDS` is removed (`revocation` is now a real record kind).
+- `runBootFetch` and `PacksClient.bootFetch` return a 3-tuple that adds `background`.
 
 ## Channels
 
