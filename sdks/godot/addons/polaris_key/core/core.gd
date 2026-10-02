@@ -24,6 +24,14 @@ var channel := ""
 var sdk_version := ""
 ## The build stamp (PKeyBuildStamp.read), or null for a build without one.
 var build_stamp = null
+## What outlet detection reads (P3-11); the real runtime when null. Tests set a fake install.
+var outlet_env: PKeyOutletEnv = null:
+	set(v):
+		outlet_env = v
+		_detection = null
+## This session's detection result, once it ran: detection runs at every launch and is never
+## persisted (plans/P3-01.md §2.9).
+var _detection = null
 var local_only := false
 var trust_refresh := true
 var store: PKeyStore
@@ -302,9 +310,59 @@ func update_platform() -> String:
 	return p if p is String and p != "" else PKeyHeaders.platform()
 
 
-## The stamped outlet, or "" (never detected at run time here; that is P3-11's).
+## The stamped outlet id, or "" for a build without a stamp. What the build says, not what it
+## is: update_outlet() is the outlet the decision uses.
 func outlet() -> String:
 	return build_stamp["outlet"] if build_stamp != null else ""
+
+
+## The stamp outlet detection reads: the build stamp, else a `pkey_outlet_<kind>` feature tag,
+## else the synthesised `web` stamp on a web export, else null.
+func detection_stamp() -> Variant:
+	var stamp = build_stamp
+	if stamp == null:
+		stamp = PKeyOutletSignals.feature_tag_stamp(outlet_env)
+	if stamp == null and (outlet_env.platform() if outlet_env != null else PKeyHeaders.platform()) == "web":
+		return PKeyOutlet.WEB_STAMP.duplicate(true)
+	return PKeyOutlet.detection_stamp(stamp)
+
+
+## The detection result (PKeyOutlet.detect_outlet over PKeyOutletSignals and detection_stamp()),
+## or null when PKeyOptions.update_outlet names the outlet or update_detect is off. Computed once
+## per session.
+func detected_outlet() -> Variant:
+	if options == null or options.host_outlet() != null or not options.update_detect:
+		return null
+	if _detection == null:
+		var stamp = detection_stamp()
+		var ids: Dictionary = stamp["outletIds"] if stamp is Dictionary else {}
+		_detection = PKeyOutlet.detect_outlet(stamp, PKeyOutletSignals.read_outlet_signals(outlet_env, ids))
+	return _detection.duplicate()
+
+
+## The outlet the update decision uses: PKeyDecision.resolve_update_outlet over the host option,
+## the stamp (or the feature-tag stamp) and detected_outlet(). {id, kind, subkind}.
+func update_outlet() -> Dictionary:
+	var stamp = build_stamp
+	if stamp == null:
+		stamp = PKeyOutletSignals.feature_tag_stamp(outlet_env)
+	var resolved = PKeyDecision.resolve_update_outlet({
+		"host": options.host_outlet() if options != null else null,
+		"stamp": stamp,
+		"detected": detected_outlet(),
+	})
+	if resolved == null:
+		return {"id": null, "kind": PKeyDecision.OUTLET_UNKNOWN, "subkind": null}
+	return resolved
+
+
+## The outlet id a device report carries (P1-05's `outlet`): the decision's outlet id, else its
+## kind, else "" when it is unknown. Raw signal values are never reported.
+func reported_outlet() -> String:
+	var o := update_outlet()
+	if o.get("id") is String and o["id"] != "":
+		return o["id"]
+	return o["kind"] if o.get("kind") is String and o["kind"] != PKeyDecision.OUTLET_UNKNOWN else ""
 
 
 # ── Sync, bundles, state ───────────────────────────────────────────────────────────────────

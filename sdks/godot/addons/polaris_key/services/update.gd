@@ -25,8 +25,9 @@ extends RefCounted
 ## The decision's inputs are gathered here and handed to the pure functions: the installed build
 ## from PolarisKey.build_info() (the export stamp: version, build, platform, arch, engine, and
 ## format when stamped; the project's settings without a stamp), the outlet through
-## PKeyDecision.resolve_update_outlet (PKeyOptions.update_outlet wins, else the stamp's outlet,
-## else `unknown`, which is never offered an update), the methods from
+## PKeyDecision.resolve_update_outlet (PKeyOptions.update_outlet wins, else the stamp's outlet
+## moved by run-time detection, PKeyCore.detected_outlet(), else `unknown`, which is never
+## offered an update), the methods from
 ## PKeyOptions.update_methods, the install id (the device id), and the effective clock
 ## max(system, highWaterMark). The channel argument is the REQUESTED name; the answer's
 ## `channel` is the canonical one the verified feed claims, which keys the cache and the floors.
@@ -253,10 +254,8 @@ func _end() -> void:
 func _flow_opts(ready: Dictionary, channel: String, staged: Variant, skip_version: Variant) -> Dictionary:
 	var core: PKeyCore = ready["core"]
 	var info := core.build_info()
-	var stamp = core.build_stamp
-	var resolved = PKeyDecision.resolve_update_outlet({"host": core.options.host_outlet(), "stamp": stamp if stamp is Dictionary else null})
-	if resolved == null:
-		resolved = {"id": null, "kind": PKeyDecision.OUTLET_UNKNOWN, "subkind": null}
+	# PKeyOptions.update_outlet wins; else the stamp, moved by run-time detection (P3-11).
+	var resolved := core.update_outlet()
 	return {
 		"channel": channel if channel != "" else core.channel,
 		"expected_aud": core.product,

@@ -269,7 +269,7 @@ func snapshot() -> Dictionary:
 	out["config"] = _values(core.cache.config["doc"].get("config") if core.cache.config != null else null)
 	out["entitlements"] = _values(core.cache.license["doc"].get("entitlements") if core.cache.license != null else null)
 	out["engine"] = PKeyFacts.engine()
-	var outlet := core.outlet()
+	var outlet := core.reported_outlet()
 	if outlet != "":
 		out["outlet"] = outlet
 	return out

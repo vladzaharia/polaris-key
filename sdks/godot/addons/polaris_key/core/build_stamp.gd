@@ -10,7 +10,15 @@ extends RefCounted
 ##   product        the slug in res://polaris_key.tres ("" when there is none)
 ##   version        application/config/version
 ##   build          the build number (polaris_key/build_number, PKEY_BUILD_NUMBER), an integer
-##   outlet         a report §3.1 outlet id (polaris_key/outlet, PKEY_BUILD_OUTLET)
+##   outlet         the product's outlet id, ^[a-z][a-z0-9-]{0,63}$, a kind or a custom id such
+##                  as `itch-beta` (polaris_key/outlet, PKEY_BUILD_OUTLET)
+##   outletKind     one of report §3.1's 17 outlet kinds (polaris_key/outlet_kind,
+##                  PKEY_BUILD_OUTLET_KIND); defaults to `outlet` when that is a kind. Any other
+##                  value decides as `unknown` at run time (plans/P3-01.md §2.8)
+##   outletSubkind  optional: how a `direct` install was put on the device (homebrew, scoop,
+##                  flatpak, appimage, …; polaris_key/outlet_subkind, PKEY_BUILD_OUTLET_SUBKIND)
+##   format         optional: the installed build's format (zip, dmg, exe, …;
+##                  polaris_key/format, PKEY_BUILD_FORMAT)
 ##   channel        a §5.1 channel name, canonical (polaris_key/channel, PKEY_BUILD_CHANNEL)
 ##   engine         godot-<major>.<minor>;  engineVersion  the full engine version string
 ##   platform, arch the report §3.1 values (`universal` for a multi-ABI Android or a universal
@@ -18,7 +26,8 @@ extends RefCounted
 ##   packSources    `embedded` (until P4-08);  embeddedPacks  [] (until P4-08)
 ##   debug          a debug export;  sdkVersion  the addon's version
 ##   outletIds      the product's non-secret outlet identities runtime outlet detection checks
-##                  offline (notes/S-06 rule 4): any of OUTLET_ID_KEYS, every value a string
+##                  offline (notes/S-06 rule 4; PKeyOutlet.detect_outlet): any of OUTLET_ID_KEYS,
+##                  every value a string
 ##
 ## Deterministic: no timestamps, keys sorted, so two exports of one preset are byte-identical.
 ##
@@ -38,7 +47,13 @@ const OPTION_OUTLET := "polaris_key/outlet"
 const OPTION_CHANNEL := "polaris_key/channel"
 const OPTION_BUILD_NUMBER := "polaris_key/build_number"
 const OPTION_OUTLET_IDS := "polaris_key/outlet_ids"
+const OPTION_OUTLET_KIND := "polaris_key/outlet_kind"
+const OPTION_OUTLET_SUBKIND := "polaris_key/outlet_subkind"
+const OPTION_FORMAT := "polaris_key/format"
 const ENV_OUTLET := "PKEY_BUILD_OUTLET"
+const ENV_OUTLET_KIND := "PKEY_BUILD_OUTLET_KIND"
+const ENV_OUTLET_SUBKIND := "PKEY_BUILD_OUTLET_SUBKIND"
+const ENV_FORMAT := "PKEY_BUILD_FORMAT"
 const ENV_CHANNEL := "PKEY_BUILD_CHANNEL"
 const ENV_BUILD_NUMBER := "PKEY_BUILD_NUMBER"
 const ENV_OUTLET_IDS := "PKEY_OUTLET_IDS"
@@ -46,7 +61,7 @@ const ENV_OUTLET_IDS := "PKEY_OUTLET_IDS"
 const DEFAULT_CHANNEL := "stable"
 const PACK_SOURCES := "embedded"
 
-## Report §3.1's outlet ids, in one table until P1b-02 generates the enum.
+## Report §3.1's 17 outlet kinds (PKeyConstants.OUTLET_KIND_VALUES, in that order).
 const OUTLETS := [
 	"direct", "app-store", "testflight", "altstore", "altstore-pal", "play", "play-testing",
 	"obtainium", "fdroid-repo", "ms-store", "app-installer", "steam", "itch", "flathub", "snap",
@@ -55,8 +70,14 @@ const OUTLETS := [
 ## The outlet a preset gets until it says otherwise, by report §3.1 platform.
 const DEFAULT_OUTLETS := {"android": "play", "ios": "app-store", "web": "web"}
 
-## The `outletIds` keys (notes/S-06; `pkey distribution outlet-ids` prints all but bundleId).
-const OUTLET_ID_KEYS := ["steamAppId", "itchGameId", "flatpakId", "snapName", "caskToken", "msixFamilyName", "bundleId"]
+## How a `direct` install was put on the device (PKeyConstants.OUTLET_SUBKIND_VALUES).
+const OUTLET_SUBKINDS := ["homebrew", "npm", "pnpm", "npx", "scoop", "chocolatey", "flatpak", "appimage"]
+## Outlet ids: lower-case, starting with a letter, at most 64 characters.
+const OUTLET_ID_PATTERN := "^[a-z][a-z0-9-]{0,63}$"
+
+## The `outletIds` keys (notes/S-06; `pkey distribution outlet-ids` prints them all, bundleId
+## from the build's Apple outlet entry; the preset's bundle id wins).
+const OUTLET_ID_KEYS := ["steamAppId", "itchGameId", "flatpakId", "snapName", "caskToken", "homebrewFormula", "msixFamilyName", "bundleId"]
 ## The preset option that carries the bundle id, by report §3.1 platform.
 const BUNDLE_ID_OPTIONS := {
 	"ios": "application/bundle_identifier",
@@ -94,6 +115,10 @@ static func read(path := PATH) -> Variant:
 	for key in ["product", "version", "outlet", "channel", "engine", "engineVersion", "platform", "arch", "packSources", "sdkVersion"]:
 		if not (doc.get(key) is String):
 			doc[key] = ""
+	# The optional v4 fields (plans/P3-01.md §8): kept only as strings, never invented.
+	for key in ["outletKind", "outletSubkind", "format"]:
+		if doc.has(key) and not (doc[key] is String):
+			doc.erase(key)
 	if not (doc.get("embeddedPacks") is Array):
 		doc["embeddedPacks"] = []
 	if not (doc.get("debug") is bool):
@@ -168,11 +193,37 @@ static func default_outlet(platform: String) -> String:
 	return DEFAULT_OUTLETS.get(platform, "direct")
 
 
-## "" or the warning for an outlet id outside report §3.1.
+## "" or the warning for an outlet id that does not match OUTLET_ID_PATTERN.
 static func outlet_warning(outlet: String) -> String:
-	if OUTLETS.has(outlet):
+	if RegEx.create_from_string(OUTLET_ID_PATTERN).search(outlet) != null:
 		return ""
-	return "Unknown outlet '%s'. Use one of: %s." % [outlet, ", ".join(OUTLETS)]
+	return "Outlet '%s' is not an outlet id (%s): use a kind (%s) or the product's own id, such as itch-beta." % [outlet, OUTLET_ID_PATTERN, ", ".join(OUTLETS)]
+
+
+## The outlet kind to stamp: the option's value, else the outlet when it is one of the 17, else
+## "" (which decides as `unknown` at run time).
+static func outlet_kind_for(outlet: String, kind: String) -> String:
+	if kind != "":
+		return kind
+	return outlet if OUTLETS.has(outlet) else ""
+
+
+## "" or the warning for an outlet kind outside the 17 (at run time it decides as `unknown`, so
+## the build is never offered an update).
+static func outlet_kind_warning(outlet: String, kind: String) -> String:
+	var k := outlet_kind_for(outlet, kind)
+	if OUTLETS.has(k):
+		return ""
+	if k == "":
+		return "Outlet '%s' is not a kind: set %s to one of %s, or this build decides as unknown and is never offered an update." % [outlet, OPTION_OUTLET_KIND, ", ".join(OUTLETS)]
+	return "Unknown outlet kind '%s': use one of %s, or this build decides as unknown and is never offered an update." % [k, ", ".join(OUTLETS)]
+
+
+## "" or the warning for an outlet subkind outside the 8 ("" is no subkind).
+static func outlet_subkind_warning(subkind: String) -> String:
+	if subkind == "" or OUTLET_SUBKINDS.has(subkind):
+		return ""
+	return "Unknown outlet subkind '%s': use one of %s, or leave it empty (it is ignored at run time)." % [subkind, ", ".join(OUTLET_SUBKINDS)]
 
 
 ## The channel to stamp: the canonical §5.1 name (aliases rewritten, `pr<n>` as `pr-<n>`), the
@@ -338,15 +389,19 @@ static func arch_for(platform: String, features: PackedStringArray) -> String:
 	return ""
 
 
-## Assemble a stamp. `inputs`: product, version, build, outlet, channel, platform, arch, debug,
-## outlet_ids. The engine fields and the SDK version are this editor's.
+## Assemble a stamp. `inputs`: product, version, build, outlet, outlet_kind, outlet_subkind,
+## format, channel, platform, arch, debug, outlet_ids. The engine fields and the SDK version are
+## this editor's. `outletKind` is always written (outlet_kind_for); `outletSubkind` and `format`
+## only when set.
 static func build(inputs: Dictionary) -> Dictionary:
-	return {
+	var outlet := str(inputs.get("outlet", ""))
+	var stamp := {
 		"pkeyBuild": FORMAT,
 		"product": str(inputs.get("product", "")),
 		"version": str(inputs.get("version", "")),
 		"build": int(inputs.get("build", 0)),
-		"outlet": str(inputs.get("outlet", "")),
+		"outlet": outlet,
+		"outletKind": outlet_kind_for(outlet, str(inputs.get("outlet_kind", ""))),
 		"channel": str(inputs.get("channel", "")),
 		"engine": engine_id(),
 		"engineVersion": str(Engine.get_version_info().get("string", "")),
@@ -358,6 +413,13 @@ static func build(inputs: Dictionary) -> Dictionary:
 		"sdkVersion": sdk_version(),
 		"outletIds": inputs.get("outlet_ids", {}).duplicate(),
 	}
+	var subkind := str(inputs.get("outlet_subkind", ""))
+	if subkind != "":
+		stamp["outletSubkind"] = subkind
+	var format := str(inputs.get("format", ""))
+	if format != "":
+		stamp["format"] = format
+	return stamp
 
 
 ## The stamp's bytes: sorted keys, two-space indent, a trailing newline.
