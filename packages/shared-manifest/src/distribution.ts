@@ -111,6 +111,15 @@ export interface ManifestOutletIdentity {
   productId?: string;
   /** `ms-store` / `app-installer`: the MSIX package family name (`<Name>_<PublisherId>`). */
   packageFamilyName?: string;
+  /**
+   * `app-installer`: the package's `Publisher`, the signing certificate's subject DN exactly as
+   * the MSIX manifest states it (`CN=…`). The `.appinstaller` P3-09 renders names the main
+   * package by this and the `<Name>` half of `packageFamilyName`, and App Installer refuses a
+   * file whose identity does not match the package byte for byte.
+   */
+  publisher?: string;
+  /** `app-installer`: the `<UpdateSettings>` the rendered `.appinstaller` carries (P3-09). */
+  updateSettings?: ManifestAppInstallerUpdateSettings;
   /** `steam`: the numeric app id, as decimal digits. `flathub`: the Flatpak application id. */
   appId?: string;
   /** `steam`: declared channel → Steam branch. */
@@ -135,6 +144,22 @@ export interface ManifestOutletIdentity {
   scoop?: ManifestScoop;
 }
 
+/**
+ * `app-installer.updateSettings` (P3-09): App Installer's 2021-schema update behaviour. Absent
+ * members take App Installer's defaults (a check on launch every 24 hours, no prompt).
+ * `ForceUpdateFromAnyVersion` is deliberately not offered: it permits downgrades.
+ */
+export interface ManifestAppInstallerUpdateSettings {
+  /** `OnLaunch HoursBetweenUpdateChecks`, 0-255. */
+  hoursBetweenUpdateChecks?: number;
+  /** `OnLaunch ShowPrompt`. */
+  showPrompt?: boolean;
+  /** `OnLaunch UpdateBlocksActivation`; requires `showPrompt`. */
+  updateBlocksActivation?: boolean;
+  /** `AutomaticBackgroundTask`: check every 8 hours in the background, without UI. */
+  automaticBackgroundTask?: boolean;
+}
+
 /** `direct.scoop` (P2b-05). */
 export interface ManifestScoop {
   bin?: string | string[];
@@ -156,7 +181,7 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
   obtainium: ["artifact", "packageName"],
   "fdroid-repo": ["artifact", "packageName"],
   "ms-store": ["productId", "packageFamilyName"],
-  "app-installer": ["packageFamilyName"],
+  "app-installer": ["packageFamilyName", "publisher", "updateSettings"],
   steam: ["appId", "branches"],
   itch: ["target", "gameId"],
   flathub: ["appId"],
@@ -176,6 +201,8 @@ const ANDROID_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 const MAX_PACKAGE_NAME_LENGTH = 255;
 const PLAY_TRACK_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:-]{0,99}$/;
 const MS_PRODUCT_ID_RE = /^[A-Za-z0-9]{12}$/;
+/** An MSIX `Publisher`: a certificate subject DN starting `CN=`, printable ASCII, at most 1024. */
+export const MSIX_PUBLISHER_PATTERN = /^CN=[\x20-\x7e]{1,1021}$/;
 /** `<Name>_<PublisherId>`: a 3–50 character package name and the 13-character publisher id. */
 export const PACKAGE_FAMILY_NAME_PATTERN = /^[A-Za-z0-9.-]{3,50}_[a-z0-9]{13}$/;
 const STEAM_BRANCH_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -301,8 +328,47 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
       );
     case "scoop":
       return scoopCheck;
+    case "publisher":
+      return pattern(
+        MSIX_PUBLISHER_PATTERN,
+        "the MSIX package Publisher, a certificate subject DN starting CN= (printable ASCII, at most 1024 characters)",
+      );
+    case "updateSettings":
+      return updateSettingsCheck;
   }
 }
+
+const UPDATE_SETTINGS_KEYS = [
+  "hoursBetweenUpdateChecks",
+  "showPrompt",
+  "updateBlocksActivation",
+  "automaticBackgroundTask",
+];
+
+const updateSettingsCheck: FieldCheck = (v) => {
+  const shape =
+    "must be { hoursBetweenUpdateChecks?: an integer 0-255, showPrompt?, updateBlocksActivation?, automaticBackgroundTask?: booleans }";
+  if (
+    !isRecord(v) ||
+    Object.keys(v).some((k) => !UPDATE_SETTINGS_KEYS.includes(k))
+  )
+    return shape;
+  const hours = v.hoursBetweenUpdateChecks;
+  if (
+    hours !== undefined &&
+    !(
+      Number.isSafeInteger(hours) &&
+      (hours as number) >= 0 &&
+      (hours as number) <= 255
+    )
+  )
+    return shape;
+  for (const k of UPDATE_SETTINGS_KEYS.slice(1))
+    if (v[k] !== undefined && typeof v[k] !== "boolean") return shape;
+  if (v.updateBlocksActivation === true && v.showPrompt !== true)
+    return "may set updateBlocksActivation only with showPrompt: true (App Installer ignores it otherwise)";
+  return null;
+};
 
 const scoopPath = (v: unknown): boolean =>
   typeof v === "string" && SCOOP_PATH_PATTERN.test(v);
