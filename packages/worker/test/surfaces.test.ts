@@ -250,6 +250,8 @@ describe("worker surfaces", () => {
         record: "https://key.plrs.im/djdl/release/records/{sha256}",
       },
       releaseKeyFingerprints: [],
+      // P4-02: this Worker ingests pack records and mirrors pins.
+      packs: true,
     });
     expect(body.services.update).toEqual({
       enabled: true,

@@ -132,12 +132,16 @@ The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corp
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
 gate-matrix.json,fingerprint.json,stage-matrix.json,headers.json,config-matrix.json,
-update-matrix.json,outlet-matrix.json}` and the
-generator-owned mirrors at
-`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output.
+update-matrix.json,outlet-matrix.json,plan-matrix.json}`, `conformance/corpus/v2/content/cases.json`
+and the generator-owned mirrors at
+`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output
+(`content/` is not mirrored: every runner reads it from the checkout).
 Regenerate with `pnpm gen:corpus` and commit the result in the same change.
 `pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,
-and on a stray JSON file in any of them. Never weaken a runner to make a change "pass". The same
+and on a stray JSON file in any of them. `conformance/corpus/v2/content/blobs/` is the opposite:
+generator **inputs** (the zstd blobs and `refs.json`), hash-checked against `content/cases.json`'s
+`blobs` table and never rewritten by a normal or `--check` run; only the explicit
+`--rebuild-content-blobs` mode, pinned to zstd 1.5.7, writes them, in a PR of its own. Never weaken a runner to make a change "pass". The same
 holds for the HTTP transcripts: `conformance/transcripts/*.json` and their mirrors at
 `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` and `sdks/godot/tests/transcripts/` are
 recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) through

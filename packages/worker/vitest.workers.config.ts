@@ -1,3 +1,6 @@
+import { dirname, resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { Plugin } from "vite";
 import {
   defineWorkersConfig,
   readD1Migrations,
@@ -28,10 +31,33 @@ import {
  * Broad coverage stays in the Node lane, which is far faster. Both are additive; neither
  * replaces the other.
  */
+/**
+ * `@polaris-key/zstd-wasm`'s workerd entry imports `./zdec.wasm` as a `WebAssembly.Module` (P4-02
+ * decodes files indexes with it at ingest). Vite follows the workspace symlink to the package's
+ * real directory, outside this package's root, and names the file `/@fs/<path>`, a spelling the
+ * pool's module fallback cannot load ("No such module"). This resolves that one import through
+ * the symlink under this package's `node_modules` instead, which the pool serves as
+ * `CompiledWasm` — the same `WebAssembly.Module` wrangler bundles for a deploy.
+ */
+const ZSTD_WASM_DIST = resolvePath(
+  dirname(fileURLToPath(import.meta.url)),
+  "node_modules/@polaris-key/zstd-wasm/dist",
+);
+const zstdWasmByPath: Plugin = {
+  name: "polaris-key:zstd-wasm-by-path",
+  enforce: "pre",
+  resolveId(source, importer) {
+    if (source !== "./zdec.wasm" || !importer?.includes("/zstd-wasm/"))
+      return null;
+    return resolvePath(ZSTD_WASM_DIST, "zdec.wasm");
+  },
+};
+
 export default defineWorkersConfig(async () => {
   // Read in Node (workerd has no filesystem) and hand the SQL to the isolate as a binding.
   const migrations = await readD1Migrations("./migrations");
   return {
+    plugins: [zstdWasmByPath],
     test: {
       // `test/**` belongs to the Node lane. Keeping the workerd lane in its own directory
       // means neither config needs an `exclude` that could silently swallow a whole file.

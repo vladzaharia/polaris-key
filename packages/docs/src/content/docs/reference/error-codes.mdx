@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(95 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(109 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -116,3 +116,16 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `files-path-conflict` | `update` | A pack file path is a directory prefix of another, or has one as its prefix (ASCII case-insensitively); `path` names the later one (plans/P4-01.md §2.7). |
 | `files-layout-mismatch` | `update` | A container pack's files index breaks the layout rule: entries overlap or run past the payload, or the uncovered bytes differ from the gaps object's size (plans/P4-01.md §2.7). |
 | `content-stamp-invalid` | `release` | The build's embedded content stamp (`pkey-content.json`, `pkey-content/1`) is not strict JSON, has another `format`, or breaks the app record's `content` claims (plans/P4-01.md §2.6, §2.8). |
+| `full-corrupt` | `update` | A pack's `full` object was refused: its ref is unusable, its declared size differs from the payload's, its stored bytes or decoded length differ from the ref, or the decoded bytes do not hash to the payload (a tree: a file's SHA-256 differs) (plans/P4-01.md §2.9). |
+| `delta-artifact-mismatch` | `update` | A pack delta's stored object (a `payload` delta's artifact, or a `files` set's descriptor or data) differs from its ref, or the `pkey-patch/1` descriptor breaks its member rules (plans/P4-01.md §2.7, §2.9). |
+| `delta-base-mismatch` | `update` | The installed base of a pack delta does not hash to the delta's `from` (a `files` set: no installed file with the entry's `from`; `path` names it) (plans/P4-01.md §2.9). |
+| `delta-apply-failed` | `update` | A `zstd-patch-from` frame was refused or failed: its header window is unreadable or above 2^windowLogMax (checked before decoding), or the raw-prefix decode, its length or its SHA-256 failed; `path` names the file of a `files` set (plans/P4-01.md §2.7 rule 3, §2.9). |
+| `file-corrupt` | `update` | A pack file's blob (or a set's blob entry) failed its ref, its decode or its SHA-256, or a tree's reused file no longer hashes to its index entry; `path` names it (plans/P4-01.md §2.9). |
+| `file-source-missing` | `update` | A target file of the `file` strategy has no installed file with its hash and no source to fetch it from; `path` names it (plans/P4-01.md §2.9). |
+| `payload-hash-mismatch` | `update` | A container pack rebuilt by the `file` strategy does not hash to the variant's `payload.sha256` (plans/P4-01.md §2.9). |
+| `plan-transport-unsupported` | `update` | The install planner's result: the target is platform-bound and the host lists no transport for it (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
+| `plan-insufficient-disk` | `update` | The install planner's result: no feasible strategy fits the host's free disk (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
+| `plan-no-strategy` | `update` | The install planner's result: no strategy the host allows can reach the target (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
+| `pack-no-variant` | `update` | No variant of a pack record is eligible on this host: none is usable, matches the host's engine, or has a value in the host's preference list for every axis it declares (plans/P4-01.md §2.9). |
+| `pack-type-unsupported` | `update` | A pack record's `type` is one this SDK cannot hold (v1: `files.tree` everywhere, `godot.pck` in Godot), so the pack is unusable (plans/P4-01.md §2.2). |
+| `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). |

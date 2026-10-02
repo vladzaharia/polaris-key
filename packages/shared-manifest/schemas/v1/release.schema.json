@@ -309,7 +309,7 @@
       }
     },
     "deliverables": {
-      "description": "The product's deliverables (P2-04, README §3.4). `app` is the product's application; any other id is a pack (kind: pack), accepted with the warning pack_deliverables_not_supported and ignored until P4-02. Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",
+      "description": "The product's deliverables (P2-04, README §3.4). `app` is the product's application; any other id is a pack (kind: pack, P4-02), in the v1 subset: binding pinned, types godot.pck and files.tree, data-only. At most 64 packs (the validator's too_many_pack_deliverables; maxProperties counts app, which every document declaring a pack has). Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",
       "type": "object",
       "propertyNames": {
         "type": "string",
@@ -323,17 +323,137 @@
       },
       "additionalProperties": {
         "$ref": "#/$defs/packDeliverable"
-      }
+      },
+      "maxProperties": 65
     },
     "packDeliverable": {
-      "description": "A pack deliverable. Not supported yet: the validator warns (pack_deliverables_not_supported) and ignores it.",
+      "description": "A pack deliverable (P4-02, plans/P4-01.md §3). The validator additionally requires, which JSON Schema does not express here: a required pack has delivery essential and no entitlement; a godot.pck pack declares handler.prefixes, activates on restart and declares requires.engine; a files.tree pack takes no handler.prefixes or mountOrder; at most 32 variants (the product of the axes' value counts); entitlement names a flag entry of .pkey/schema.",
       "type": "object",
       "properties": {
         "kind": {
           "const": "pack"
-        }
+        },
+        "type": {
+          "description": "The pack type: godot.pck (a Godot resource pack) or files.tree (a directory of files). P4-16 adds more.",
+          "enum": ["godot.pck", "files.tree"]
+        },
+        "binding": {
+          "description": "How app releases bind this pack. Only pinned in v1: each app release pins the exact pack release. Default pinned.",
+          "enum": ["pinned"]
+        },
+        "baseline": {
+          "description": "embedded: app builds ship it (see artifacts[].embeds); none: network only. Default none.",
+          "enum": ["embedded", "none"]
+        },
+        "required": {
+          "description": "The app cannot run without it. Default false.",
+          "type": "boolean"
+        },
+        "delivery": {
+          "description": "When the device fetches it. Default on-demand.",
+          "enum": ["essential", "prefetch", "on-demand"]
+        },
+        "contentPolicy": {
+          "description": "A v1 pack carries data only, never scripts.",
+          "type": "object",
+          "properties": {
+            "dataOnly": {
+              "const": true
+            }
+          }
+        },
+        "handler": {
+          "type": "object",
+          "properties": {
+            "mountOrder": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "prefixes": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^res://([A-Za-z0-9_][A-Za-z0-9 ._@+-]*/)+$"
+              }
+            },
+            "activation": {
+              "description": "restart (default for godot.pck) or hot (default for files.tree).",
+              "enum": ["restart", "hot"]
+            }
+          }
+        },
+        "variants": {
+          "description": "axis → the values CI publishes a variant for.",
+          "type": "object",
+          "propertyNames": {
+            "enum": ["texture", "locale", "quality"]
+          },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,34}$"
+            }
+          }
+        },
+        "requires": {
+          "description": "{ engine } in v1; contentApi, packs and features come with P4-12.",
+          "type": "object",
+          "properties": {
+            "engine": {
+              "type": "string",
+              "pattern": "^godot-[0-9]+\\.[0-9]+$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "entitlement": {
+          "description": "An ASSERTION of the pack's delivery gate, never the gate: an operator gates a pack under Distribution → Access, and a publish whose gate differs is refused.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$"
+        },
+        "patch": {
+          "type": "object",
+          "properties": {
+            "strategies": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": ["delta", "file"]
+              }
+            },
+            "deltaBases": {
+              "description": "How many earlier releases CI computes deltas from. Default 1.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            }
+          }
+        },
+        "versioning": {
+          "type": "object",
+          "properties": {
+            "scheme": {
+              "description": "How the pack's versions are ordered. Default semver.",
+              "enum": ["semver", "semver+build", "4part"]
+            }
+          }
+        },
+        "channels": false,
+        "conflicts": false,
+        "provides": false,
+        "removes": false
       },
-      "required": ["kind"]
+      "required": ["kind", "type"]
     },
     "appDeliverable": {
       "type": "object",
@@ -394,6 +514,20 @@
           "items": {
             "$ref": "#/$defs/artifactEntry"
           }
+        },
+        "content": {
+          "description": "The content shape this app's code expects (P4-02). Required when the product declares any pack (the validator checks that).",
+          "type": "object",
+          "properties": {
+            "contentApi": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "packChannels": false,
+            "holds": false
+          },
+          "required": ["contentApi"]
         }
       },
       "required": ["kind"]
@@ -436,6 +570,20 @@
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "embeds": {
+          "description": "The packs this build ships embedded (P4-02). Absent means every baseline: embedded pack; [] means none. The validator checks each names a declared pack.",
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+            "not": {
+              "const": "app"
+            }
+          }
         }
       },
       "required": ["id", "platform", "arch", "format", "match"]

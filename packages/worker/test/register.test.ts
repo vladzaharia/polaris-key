@@ -701,6 +701,53 @@ describe("Core surfaces accept a registered device when License is disabled", ()
     expect(facts).toMatchObject({ os_name: "macOS", locale: "en-GB" });
   });
 
+  it("POST /devices/report keeps content {packSetId, appRelease}, bounded, and still drops an unknown key (P4-02)", async () => {
+    const w = await world(SET.configOnly);
+    const { token } = await register(w);
+    const send = (body: unknown) =>
+      handleReport(
+        mkReq("POST", { authorization: `Bearer ${token}` }, body),
+        w.env,
+        w.db,
+        w.product,
+        NOW,
+      );
+    const reported = async () =>
+      JSON.parse(
+        (await w.db.first<{ reported_json: string }>(
+          "SELECT reported_json FROM devices WHERE product = ? AND device_id = ?",
+          "djdl",
+          DEVICE,
+        ))!.reported_json,
+      ) as Record<string, unknown>;
+    const SET_ID = "a".repeat(64);
+    const APP = "b".repeat(64);
+    expect(
+      (
+        await send({
+          appVersion: "1.5.0",
+          content: { packSetId: SET_ID, appRelease: APP, extra: "x" },
+          unknownKey: "dropped",
+        })
+      ).status,
+    ).toBe(200);
+    expect(await reported()).toEqual({
+      appVersion: "1.5.0",
+      content: { packSetId: SET_ID, appRelease: APP },
+    });
+    // A malformed member is dropped; with none left, the key goes.
+    expect(
+      (
+        await send({
+          content: { packSetId: SET_ID, appRelease: "B".repeat(64) },
+        })
+      ).status,
+    ).toBe(200);
+    expect((await reported()).content).toEqual({ packSetId: SET_ID });
+    expect((await send({ content: { packSetId: "short" } })).status).toBe(200);
+    expect(Object.hasOwn(await reported(), "content")).toBe(false);
+  });
+
   it("edge-mint signs for a registered device", async () => {
     const w = await world(SET.configOnly);
     await seedProductSecret(

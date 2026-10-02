@@ -20,7 +20,8 @@
 //                                       PACK_LIMIT_EXPORTS (plans/P4-01.md §2.13)
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
 //                                       stageMatrixVersion, updateMatrixVersion,
-//                                       outletMatrixVersion
+//                                       outletMatrixVersion, planMatrixVersion, and
+//                                       content/cases.json's contentCorpusVersion
 //
 // Outputs, each with a GENERATED banner (TypeScript is prettier-formatted, as sign-corpus.ts
 // does): see TARGETS. The GDScript module is written only while `sdks/godot/addons/polaris_key`
@@ -106,6 +107,8 @@ export interface Sources {
     stageMatrixVersion: number;
     updateMatrixVersion: number;
     outletMatrixVersion: number;
+    planMatrixVersion: number;
+    contentCorpusVersion: number;
   };
 }
 
@@ -421,6 +424,11 @@ export function loadSources(root = ROOT): Sources {
       stageMatrixVersion: corpus("stage-matrix.json", "stageMatrixVersion"),
       updateMatrixVersion: corpus("update-matrix.json", "updateMatrixVersion"),
       outletMatrixVersion: corpus("outlet-matrix.json", "outletMatrixVersion"),
+      planMatrixVersion: corpus("plan-matrix.json", "planMatrixVersion"),
+      contentCorpusVersion: corpus(
+        "content/cases.json",
+        "contentCorpusVersion",
+      ),
     },
   };
 }
@@ -560,6 +568,7 @@ export const PACK_LIMIT_EXPORTS = [
   "PATCH_FORMAT",
   "MARKER_FORMAT",
   "CONTENT_STAMP_FORMAT",
+  "PLAN_REQUEST_WEIGHT",
 ] as const;
 
 function scalarValue(name: string, value: unknown): ScalarValue {
@@ -676,6 +685,16 @@ export function buildModel(sources: Sources): Model {
       name: "OUTLET_MATRIX_VERSION",
       doc: "`outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json.",
       value: sources.corpus.outletMatrixVersion,
+    },
+    {
+      name: "PLAN_MATRIX_VERSION",
+      doc: "`planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.",
+      value: sources.corpus.planMatrixVersion,
+    },
+    {
+      name: "CONTENT_CORPUS_VERSION",
+      doc: "`contentCorpusVersion` of conformance/corpus/v2/content/cases.json.",
+      value: sources.corpus.contentCorpusVersion,
     },
     ...WIRE_LIMIT_EXPORTS.map((name) => {
       const value = protocol[name];

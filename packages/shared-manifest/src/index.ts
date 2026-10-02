@@ -10,8 +10,23 @@ import {
   CHANNEL_NAME_PATTERN,
   CHANNEL_PR,
   CHANNEL_STABLE,
+  MAX_BUILD_EMBEDS,
   PR_CHANNEL_PATTERN,
 } from "@polaris-key/protocol/core";
+import {
+  ENGINE_PATTERN,
+  ENTITLEMENT_PATTERN,
+  HANDLER_PREFIX_PATTERN,
+  PACK_ACTIVATIONS,
+  PACK_DELIVERIES,
+  PACK_TYPES,
+  VARIANT_AXES,
+  VARIANT_VALUE_PATTERN,
+  type PackActivation,
+  type PackDelivery,
+  type PackType,
+  type VariantAxis,
+} from "@polaris-key/protocol/packs";
 import { parse as parseYaml } from "yaml";
 import {
   MAX_RELEASE_KEYS,
@@ -251,6 +266,12 @@ export interface ManifestRelease {
    * to `release_config.release_keys_json`; never a product signing key (checked at sync).
    */
   releaseKeys: ManifestReleaseKey[];
+  /**
+   * `deliverables.<packId>` with `kind: pack` (P4-02), by id. `[]` when none is declared. Resync
+   * writes one `release_deliverables` row per pack (kind `pack`), at most
+   * {@link MAX_PACK_DELIVERABLES}.
+   */
+  packDeliverables: ManifestPackDeliverable[];
 }
 
 /** `publishing.trustedPublisher` as persisted to `ci_publishers` (workflow, environment). */
@@ -272,6 +293,11 @@ export interface ManifestArtifactEntry {
   role: ArtifactRole;
   /** An anchored, case-sensitive glob over the file name (`*`, `?`). */
   match: string;
+  /**
+   * The packs this build ships embedded (P4-02): declared pack ids. Absent means "every
+   * `baseline: embedded` pack"; `[]` means none (a lean web build).
+   */
+  embeds?: string[];
 }
 
 /** A channel the deliverable declares: the channels whose releases it also offers. */
@@ -288,6 +314,44 @@ export interface ManifestAppDeliverable {
   };
   channels: Record<string, ManifestDeliverableChannel>;
   artifacts: ManifestArtifactEntry[];
+  /**
+   * `deliverables.app.content` (P4-02): the content shape this code expects. Required by the
+   * validator when the product declares any pack; absent otherwise. P4-12 resolves compatible
+   * packs by it.
+   */
+  content?: { contentApi: number };
+}
+
+/**
+ * `deliverables.<packId>` (P4-02, plans/P4-01.md §3): one pack deliverable, its v1 subset,
+ * defaults filled in. Persisted as the pack's `release_deliverables.def_json`.
+ */
+export interface ManifestPackDeliverable {
+  kind: "pack";
+  /** The pack id (the deliverable id; never `app`). */
+  id: string;
+  type: PackType;
+  binding: PackBinding;
+  baseline: PackBaseline;
+  required: boolean;
+  delivery: PackDelivery;
+  contentPolicy: { dataOnly: true };
+  handler: {
+    mountOrder?: number;
+    prefixes?: string[];
+    activation: PackActivation;
+  };
+  /** axis → the values CI publishes a variant for (`{}` = one variant, key `default`). */
+  variants: Partial<Record<VariantAxis, string[]>>;
+  requires: { engine?: string };
+  /**
+   * The licence flag the repo ASSERTS gates this pack, or null. Never the gate: the gate is the
+   * pack's own `dist_access` row, operator-owned (decision 35); a publish whose gate differs from
+   * this assertion is refused, and the assertion gates nothing.
+   */
+  entitlement: string | null;
+  patch: { strategies: PackPatchStrategy[]; deltaBases: number };
+  versioning: { scheme: VersionScheme };
 }
 
 /** The protocol's `SecretDelivery`, re-exported under the manifest's historical name — one
@@ -564,6 +628,66 @@ export type ArtifactRole = (typeof ARTIFACT_ROLES)[number];
 /** Something a product releases: its `app`, or a pack. */
 export const DELIVERABLE_KINDS = ["app", "pack"] as const;
 export type DeliverableKind = (typeof DELIVERABLE_KINDS)[number];
+
+// ── Pack deliverables (P4-02, plans/P4-01.md §3 and §6) ──────────────────────
+
+/**
+ * What a pack release's objects are FOR (`release_artifacts.role` of a pack release's rows):
+ * `payload` is the variant's `full` object, then the files index, the gaps object, a `payload`
+ * delta's frame, and a `files` delta's descriptor and packed data. App artifact maps keep using
+ * {@link ARTIFACT_ROLES}.
+ */
+export const PACK_OBJECT_ROLES = [
+  "payload",
+  "files-index",
+  "files-gaps",
+  "delta",
+  "patch",
+  "patch-data",
+] as const;
+export type PackObjectRole = (typeof PACK_OBJECT_ROLES)[number];
+
+/**
+ * At most this many pack deliverables per `.pkey/release` (`too_many_pack_deliverables`). Routed
+ * packs cost `dist_transports` rows in the shared D1 batch of every link and resync, so the
+ * count bounds that batch at (1 + 64) × `MAX_OUTLETS` rows (THREAT-MODEL R10); it equals
+ * `MAX_BUILD_EMBEDS` and sits below `MAX_CONTENT_PINS`, so no record bound binds first.
+ */
+export const MAX_PACK_DELIVERABLES = 64;
+/**
+ * The largest files index (`files.size`, decoded bytes) the Worker decodes, at ingest and in the
+ * descriptor hook's `packFiles`, and the largest the CLI publishes: 8 MiB, under a third of a
+ * 128 MB Workers isolate once parsed (plans/P4-01.md decision 36). Clients accept up to the
+ * protocol's `MAX_FILES_INDEX_BYTES` (32 MiB), so a later Worker can raise this alone.
+ */
+export const MAX_PUBLISHED_INDEX_BYTES = 8388608;
+/** The most decoded index bytes one pack record's ingest decodes in all (64 MiB): bounds the
+ *  submit's CPU, not its memory (one index is held at a time). */
+export const MAX_INGEST_INDEX_BYTES = 67108864;
+/** v1 pack bindings: only `pinned` delivers until P4-12 brings resolution. */
+export const PACK_BINDINGS = ["pinned"] as const;
+export type PackBinding = (typeof PACK_BINDINGS)[number];
+/** Whether a pack ships inside app builds (`embedded`) or only over the network (`none`). */
+export const PACK_BASELINES = ["embedded", "none"] as const;
+export type PackBaseline = (typeof PACK_BASELINES)[number];
+/** The patch strategies a pack may ask CI to publish (`patch.strategies`). */
+export const PACK_PATCH_STRATEGIES = ["delta", "file"] as const;
+export type PackPatchStrategy = (typeof PACK_PATCH_STRATEGIES)[number];
+/** Pack fields a later package brings (P4-12, P4-20); v1 refuses them. */
+export const PACK_FIELDS_NOT_SUPPORTED = [
+  "channels",
+  "conflicts",
+  "provides",
+  "removes",
+] as const;
+const MAX_PACK_VARIANT_VALUES = 16;
+const MAX_PACK_VARIANT_COMBINATIONS = 32;
+const MAX_PACK_MOUNT_ORDER = 1000;
+const MAX_PACK_PREFIXES = 32;
+const MAX_PACK_PREFIX_BYTES = 256;
+const MAX_PACK_DELTA_BASES = 8;
+/** The largest integer a `contentApi` may be (2^53 − 1, the wire integer rule's bound). */
+const MAX_CONTENT_API = 9007199254740991;
 
 /** The id of the product's own application deliverable (README §3.12 `deliverables.app`). */
 export const APP_DELIVERABLE_ID = "app";
@@ -1561,7 +1685,7 @@ function validateDocuments(
           }
         }
       }
-      validateDeliverables(errors, warnings, relRoot);
+      validateDeliverables(errors, relRoot, catalogFlagKeys(manifest.schema));
       validatePublishing(errors, relRoot);
       validateReleaseKeys(errors, warnings, relRoot);
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
@@ -2157,14 +2281,13 @@ function distributionDeliverables(
 }
 
 /**
- * The deliverables that get a transport route (`dist_transports` rows): only those Release
- * actually ingests. A pack is ignored today (`pack_deliverables_not_supported`), so only `app` is
- * routed and an ingest writes at most MAX_OUTLETS transport rows. Routing every declared pack
- * would let one push from a product's repo turn a 64 KiB release.yaml of `{kind: pack}` entries
- * into tens of thousands of statements in the shared D1 batch (thousands of packs × 32 outlets).
- * The validator still sees every declared deliverable (`distributionContext`), so a
- * `transports.deliverables.<pack>` entry validates now and is routed once packs are ingested
- * (P4-02, which must then bound the pack count itself).
+ * The deliverables that get a transport route (`dist_transports` rows). Only `app` is routed
+ * today, so an ingest writes at most MAX_OUTLETS transport rows. P4-02 bounds the pack count
+ * (`too_many_pack_deliverables`, MAX_PACK_DELIVERABLES), which is what makes routing packs safe:
+ * at most (1 + 64) × 32 rows instead of the tens of thousands an unbounded 64 KiB release.yaml
+ * of `{kind: pack}` entries could produce. P4-05 retires this filter when it serves packs. The
+ * validator still sees every declared deliverable (`distributionContext`), so a
+ * `transports.deliverables.<pack>` entry validates now.
  */
 function routedDeliverables(
   relRoot: Record<string, unknown> | null,
@@ -2355,14 +2478,16 @@ function knownChannelNames(
 }
 
 /**
- * `deliverables` (P2-04, README §3.4/§3.12). Only the `app` deliverable is implemented; a `pack`
- * entry is reported as a warning and ignored until P4-02. Absent ⇒ the implicit `app`
- * deliverable with legacy filename sniffing, so every existing release document stays valid.
+ * `deliverables` (P2-04, README §3.4/§3.12): the `app` deliverable and, since P4-02, pack
+ * deliverables in the v1 subset of plans/P4-01.md §3 (binding `pinned`, types `godot.pck` and
+ * `files.tree`, data-only). Absent ⇒ the implicit `app` deliverable with legacy filename
+ * sniffing, so every existing release document stays valid. `flagKeys` are the product schema's
+ * `flag` entries, which a pack's `entitlement` assertion must name.
  */
 function validateDeliverables(
   errors: ValidationMessage[],
-  warnings: ValidationMessage[],
   relRoot: Record<string, unknown>,
+  flagKeys: ReadonlySet<string>,
 ): void {
   const raw = relRoot.deliverables;
   if (raw === undefined) return;
@@ -2376,6 +2501,22 @@ function validateDeliverables(
     );
     return;
   }
+  // Counted before any pack is validated, so an oversized map is one error, not thousands.
+  const packCount = Object.entries(raw).filter(
+    ([id, def]) =>
+      id !== APP_DELIVERABLE_ID && isRecord(def) && def.kind === "pack",
+  ).length;
+  const tooManyPacks = packCount > MAX_PACK_DELIVERABLES;
+  if (tooManyPacks) {
+    add(
+      errors,
+      "release",
+      "/release/deliverables",
+      "too_many_pack_deliverables",
+      `a product declares at most ${MAX_PACK_DELIVERABLES} pack deliverables (each one costs transport rows and a deliverable row in every resync).`,
+    );
+  }
+  const packIds = new Set<string>();
   for (const [id, def] of Object.entries(raw)) {
     if (!isDeliverableId(id)) {
       add(
@@ -2409,24 +2550,379 @@ function validateDeliverables(
       continue;
     }
     if (kind === "pack") {
-      add(
-        warnings,
-        "release",
-        `/release/deliverables/${id}`,
-        "pack_deliverables_not_supported",
-        `pack deliverables are not supported yet; ${id} is ignored.`,
-      );
+      packIds.add(id);
+      if (!tooManyPacks) validatePackDeliverable(errors, id, def, flagKeys);
       continue;
     }
-    validateAppDeliverable(errors, relRoot, def);
   }
+  const app = raw[APP_DELIVERABLE_ID];
+  if (isRecord(app) && app.kind === "app")
+    validateAppDeliverable(errors, relRoot, app, packIds);
+  else if (packIds.size > 0) {
+    add(
+      errors,
+      "release",
+      "/release/deliverables/app/content",
+      "invalid_app_content",
+      "a product that declares pack deliverables declares deliverables.app with content.contentApi, the content shape its code expects.",
+    );
+  }
+}
+
+/** A `deliverables.<packId>` entry against plans/P4-01.md §3's v1 subset. */
+function validatePackDeliverable(
+  errors: ValidationMessage[],
+  id: string,
+  def: Record<string, unknown>,
+  flagKeys: ReadonlySet<string>,
+): void {
+  const at = `/release/deliverables/${id}`;
+  for (const field of PACK_FIELDS_NOT_SUPPORTED) {
+    if (def[field] !== undefined)
+      add(
+        errors,
+        "release",
+        `${at}/${field}`,
+        "pack_field_not_supported",
+        `${field} is not supported for packs yet (pinned packs only in v1; P4-12 adds channels and conflicts, P4-20 provides and removes).`,
+      );
+  }
+  // ── type ──
+  const type = isOneOf(def.type, PACK_TYPES) ? def.type : null;
+  if (!type)
+    add(
+      errors,
+      "release",
+      `${at}/type`,
+      "invalid_pack_type",
+      `a pack's type is required and must be one of ${PACK_TYPES.join(", ")}.`,
+    );
+  // ── binding ──
+  if (def.binding !== undefined && !isOneOf(def.binding, PACK_BINDINGS))
+    add(
+      errors,
+      "release",
+      `${at}/binding`,
+      "invalid_pack_binding",
+      "binding must be pinned in v1 (the app release pins the exact pack release; compatible and standalone come with P4-12).",
+    );
+  // ── policy: baseline, required, delivery, contentPolicy ──
+  if (def.baseline !== undefined && !isOneOf(def.baseline, PACK_BASELINES))
+    add(
+      errors,
+      "release",
+      `${at}/baseline`,
+      "invalid_pack_policy",
+      `baseline must be one of ${PACK_BASELINES.join(", ")}.`,
+    );
+  if (def.required !== undefined && typeof def.required !== "boolean")
+    add(
+      errors,
+      "release",
+      `${at}/required`,
+      "invalid_pack_policy",
+      "required must be a boolean.",
+    );
+  if (def.delivery !== undefined && !isOneOf(def.delivery, PACK_DELIVERIES))
+    add(
+      errors,
+      "release",
+      `${at}/delivery`,
+      "invalid_pack_policy",
+      `delivery must be one of ${PACK_DELIVERIES.join(", ")}.`,
+    );
+  if (def.contentPolicy !== undefined) {
+    const cp = def.contentPolicy;
+    if (!isRecord(cp) || (cp.dataOnly !== undefined && cp.dataOnly !== true))
+      add(
+        errors,
+        "release",
+        `${at}/contentPolicy`,
+        "invalid_pack_policy",
+        "contentPolicy must be { dataOnly: true }: a v1 pack carries data only, never scripts.",
+      );
+  }
+  if (
+    def.required === true &&
+    (def.delivery !== "essential" || def.entitlement !== undefined)
+  )
+    add(
+      errors,
+      "release",
+      `${at}/required`,
+      "invalid_pack_policy",
+      "a required pack is delivered as essential and carries no entitlement: the app cannot run without it, so nothing may withhold it.",
+    );
+  // ── handler ──
+  const handler = def.handler;
+  if (handler !== undefined && !isRecord(handler)) {
+    add(
+      errors,
+      "release",
+      `${at}/handler`,
+      "invalid_pack_handler",
+      "handler must be an object { mountOrder?, prefixes?, activation? }.",
+    );
+  } else if (isRecord(handler)) {
+    if (
+      handler.mountOrder !== undefined &&
+      !(
+        Number.isSafeInteger(handler.mountOrder) &&
+        (handler.mountOrder as number) >= 0 &&
+        (handler.mountOrder as number) <= MAX_PACK_MOUNT_ORDER
+      )
+    )
+      add(
+        errors,
+        "release",
+        `${at}/handler/mountOrder`,
+        "invalid_pack_handler",
+        `handler.mountOrder must be an integer from 0 to ${MAX_PACK_MOUNT_ORDER}.`,
+      );
+    if (handler.prefixes !== undefined && !isPackPrefixList(handler.prefixes))
+      add(
+        errors,
+        "release",
+        `${at}/handler/prefixes`,
+        "invalid_pack_handler",
+        `handler.prefixes must be 1 to ${MAX_PACK_PREFIXES} distinct res:// directory prefixes ending in / (${HANDLER_PREFIX_PATTERN.source}), each at most ${MAX_PACK_PREFIX_BYTES} bytes.`,
+      );
+    if (
+      handler.activation !== undefined &&
+      !isOneOf(handler.activation, PACK_ACTIVATIONS)
+    )
+      add(
+        errors,
+        "release",
+        `${at}/handler/activation`,
+        "invalid_pack_handler",
+        `handler.activation must be one of ${PACK_ACTIVATIONS.join(", ")}.`,
+      );
+  }
+  const h = asRecord(handler);
+  if (type === "godot.pck") {
+    if (
+      h.prefixes === undefined ||
+      (h.activation !== undefined && h.activation !== "restart")
+    )
+      add(
+        errors,
+        "release",
+        `${at}/handler`,
+        "invalid_pack_handler",
+        "a godot.pck pack declares handler.prefixes (the res:// directories it mounts) and activates on restart.",
+      );
+  } else if (type === "files.tree") {
+    if (h.prefixes !== undefined || h.mountOrder !== undefined)
+      add(
+        errors,
+        "release",
+        `${at}/handler`,
+        "invalid_pack_handler",
+        "a files.tree pack is not mounted into res://, so it takes no handler.prefixes or handler.mountOrder.",
+      );
+  }
+  // ── variants ──
+  const variants = def.variants;
+  if (variants !== undefined) {
+    if (!isRecord(variants)) {
+      add(
+        errors,
+        "release",
+        `${at}/variants`,
+        "invalid_pack_variants",
+        `variants must be an object of axis → values (axes ${VARIANT_AXES.join(", ")}).`,
+      );
+    } else {
+      let combinations = 1;
+      let shaped = true;
+      for (const [axis, values] of Object.entries(variants)) {
+        if (!isOneOf(axis, VARIANT_AXES)) {
+          shaped = false;
+          add(
+            errors,
+            "release",
+            `${at}/variants/${axis}`,
+            "invalid_pack_variants",
+            `variant axes must be among ${VARIANT_AXES.join(", ")}.`,
+          );
+          continue;
+        }
+        if (
+          !Array.isArray(values) ||
+          values.length === 0 ||
+          values.length > MAX_PACK_VARIANT_VALUES ||
+          new Set(values).size !== values.length ||
+          !values.every(
+            (v) => typeof v === "string" && VARIANT_VALUE_PATTERN.test(v),
+          )
+        ) {
+          shaped = false;
+          add(
+            errors,
+            "release",
+            `${at}/variants/${axis}`,
+            "invalid_pack_variants",
+            `each variant axis lists 1 to ${MAX_PACK_VARIANT_VALUES} distinct values matching ${VARIANT_VALUE_PATTERN.source}.`,
+          );
+          continue;
+        }
+        combinations *= values.length;
+      }
+      if (shaped && combinations > MAX_PACK_VARIANT_COMBINATIONS)
+        add(
+          errors,
+          "release",
+          `${at}/variants`,
+          "invalid_pack_variants",
+          `a pack has at most ${MAX_PACK_VARIANT_COMBINATIONS} variants (the product of its axes' value counts).`,
+        );
+    }
+  }
+  // ── requires ──
+  const requires = def.requires;
+  if (requires !== undefined) {
+    if (
+      !isRecord(requires) ||
+      Object.keys(requires).some((k) => k !== "engine") ||
+      (requires.engine !== undefined &&
+        (typeof requires.engine !== "string" ||
+          !ENGINE_PATTERN.test(requires.engine)))
+    )
+      add(
+        errors,
+        "release",
+        `${at}/requires`,
+        "invalid_pack_requires",
+        `requires is { engine } in v1, engine matching ${ENGINE_PATTERN.source}; contentApi, packs and features come with P4-12.`,
+      );
+  }
+  if (type === "godot.pck" && asRecord(requires).engine === undefined)
+    add(
+      errors,
+      "release",
+      `${at}/requires/engine`,
+      "invalid_pack_requires",
+      "a godot.pck pack declares requires.engine (godot-<major>.<minor>): a PCK mounts only into the engine version that exported it.",
+    );
+  // ── entitlement: an assertion of the operator's gate, never the gate (decision 35) ──
+  const entitlement = def.entitlement;
+  if (entitlement !== undefined) {
+    if (
+      typeof entitlement !== "string" ||
+      !ENTITLEMENT_PATTERN.test(entitlement)
+    )
+      add(
+        errors,
+        "release",
+        `${at}/entitlement`,
+        "unknown_entitlement_ref",
+        `entitlement must be a licence flag key matching ${ENTITLEMENT_PATTERN.source}.`,
+      );
+    else if (!flagKeys.has(entitlement))
+      add(
+        errors,
+        "release",
+        `${at}/entitlement`,
+        "unknown_entitlement_ref",
+        `entitlement ${entitlement} is not a flag entry of the product's .pkey/schema. It only asserts the pack's delivery gate, which an operator sets under Distribution → Access.`,
+      );
+  }
+  // ── patch ──
+  const patch = def.patch;
+  if (patch !== undefined) {
+    const p = asRecord(patch);
+    const strategies = p.strategies;
+    if (
+      !isRecord(patch) ||
+      (strategies !== undefined &&
+        (!Array.isArray(strategies) ||
+          strategies.length === 0 ||
+          new Set(strategies).size !== strategies.length ||
+          !strategies.every((v) => isOneOf(v, PACK_PATCH_STRATEGIES)))) ||
+      (p.deltaBases !== undefined &&
+        !(
+          Number.isSafeInteger(p.deltaBases) &&
+          (p.deltaBases as number) >= 0 &&
+          (p.deltaBases as number) <= MAX_PACK_DELTA_BASES
+        ))
+    )
+      add(
+        errors,
+        "release",
+        `${at}/patch`,
+        "invalid_pack_patch",
+        `patch is { strategies?: a non-empty distinct subset of ${PACK_PATCH_STRATEGIES.join(", ")}, deltaBases?: an integer from 0 to ${MAX_PACK_DELTA_BASES} }.`,
+      );
+  }
+  // ── versioning ──
+  const versioning = def.versioning;
+  if (
+    versioning !== undefined &&
+    (!isRecord(versioning) ||
+      (versioning.scheme !== undefined &&
+        !isOneOf(versioning.scheme, VERSION_SCHEMES)))
+  )
+    add(
+      errors,
+      "release",
+      `${at}/versioning/scheme`,
+      "invalid_version_scheme",
+      `a pack's versioning.scheme must be one of ${VERSION_SCHEMES.join(", ")}.`,
+    );
+}
+
+/** `handler.prefixes`: 1–32 distinct `HANDLER_PREFIX_PATTERN` strings of at most 256 bytes. */
+function isPackPrefixList(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= MAX_PACK_PREFIXES &&
+    new Set(value).size === value.length &&
+    value.every(
+      (v) =>
+        typeof v === "string" &&
+        new TextEncoder().encode(v).length <= MAX_PACK_PREFIX_BYTES &&
+        HANDLER_PREFIX_PATTERN.test(v),
+    )
+  );
 }
 
 function validateAppDeliverable(
   errors: ValidationMessage[],
   relRoot: Record<string, unknown>,
   def: Record<string, unknown>,
+  packIds: ReadonlySet<string>,
 ): void {
+  // ── content (P4-02) ──
+  const content = def.content;
+  if (content !== undefined) {
+    if (
+      !isRecord(content) ||
+      !(
+        Number.isSafeInteger(content.contentApi) &&
+        (content.contentApi as number) >= 1 &&
+        (content.contentApi as number) <= MAX_CONTENT_API
+      ) ||
+      content.packChannels !== undefined ||
+      content.holds !== undefined
+    )
+      add(
+        errors,
+        "release",
+        "/release/deliverables/app/content",
+        "invalid_app_content",
+        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API} }; packChannels and holds come with P4-12.`,
+      );
+  } else if (packIds.size > 0) {
+    add(
+      errors,
+      "release",
+      "/release/deliverables/app/content",
+      "invalid_app_content",
+      "a product that declares pack deliverables declares deliverables.app.content.contentApi, the content shape its code expects.",
+    );
+  }
   // ── versioning ──
   const versioning = def.versioning;
   if (versioning !== undefined && !isRecord(versioning)) {
@@ -2695,6 +3191,35 @@ function validateAppDeliverable(
         `artifacts[].match must be a file-name glob (* and ?) of 1 to ${MAX_ARTIFACT_MATCH_LENGTH} characters with no control characters.`,
       );
     }
+    // ── embeds (P4-02): the packs this build ships embedded ──
+    if (entry.embeds !== undefined) {
+      const embeds = entry.embeds;
+      if (
+        !Array.isArray(embeds) ||
+        embeds.length > MAX_BUILD_EMBEDS ||
+        new Set(embeds).size !== embeds.length ||
+        !embeds.every((e) => isDeliverableId(e) && e !== APP_DELIVERABLE_ID)
+      ) {
+        add(
+          errors,
+          "release",
+          `/release/deliverables/app/artifacts/${i}/embeds`,
+          "invalid_build_embeds",
+          `artifacts[].embeds must be at most ${MAX_BUILD_EMBEDS} distinct pack ids (deliverable ids other than app).`,
+        );
+      } else {
+        for (const [j, e] of embeds.entries()) {
+          if (!packIds.has(e))
+            add(
+              errors,
+              "release",
+              `/release/deliverables/app/artifacts/${i}/embeds/${j}`,
+              "invalid_build_embeds",
+              `${e} is not a pack deliverable this release document declares.`,
+            );
+        }
+      }
+    }
   }
 }
 
@@ -2894,7 +3419,149 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     app,
     trustedPublisher: normalizeTrustedPublisher(rel.publishing),
     releaseKeys: normalizeReleaseKeys(rel.releaseKeys),
+    packDeliverables: normalizePackDeliverables(rel.deliverables),
   };
+}
+
+/**
+ * `deliverables.<packId>` entries with `kind: pack`, by id, defaults filled in (P4-02). Entries
+ * the validator refuses are dropped (validation has already reported them), and so is the whole
+ * set past {@link MAX_PACK_DELIVERABLES}.
+ */
+function normalizePackDeliverables(raw: unknown): ManifestPackDeliverable[] {
+  const declared = asRecord(raw);
+  const ids = Object.keys(declared)
+    .filter(
+      (id) =>
+        id !== APP_DELIVERABLE_ID &&
+        isDeliverableId(id) &&
+        asRecord(declared[id]).kind === "pack",
+    )
+    .sort();
+  if (ids.length > MAX_PACK_DELIVERABLES) return [];
+  const out: ManifestPackDeliverable[] = [];
+  for (const id of ids) {
+    const pack = normalizePackDeliverable(id, declared[id]);
+    if (pack) out.push(pack);
+  }
+  return out;
+}
+
+/** One pack declaration, or null when it is not a valid v1 pack. */
+function normalizePackDeliverable(
+  id: string,
+  raw: unknown,
+): ManifestPackDeliverable | null {
+  if (!isRecord(raw) || raw.kind !== "pack" || !isOneOf(raw.type, PACK_TYPES))
+    return null;
+  const type = raw.type;
+  const h = asRecord(raw.handler);
+  const handler: ManifestPackDeliverable["handler"] = {
+    activation: isOneOf(h.activation, PACK_ACTIVATIONS)
+      ? h.activation
+      : type === "files.tree"
+        ? "hot"
+        : "restart",
+  };
+  if (Number.isSafeInteger(h.mountOrder))
+    handler.mountOrder = h.mountOrder as number;
+  if (isPackPrefixList(h.prefixes)) handler.prefixes = [...h.prefixes];
+  const variants: ManifestPackDeliverable["variants"] = {};
+  for (const axis of VARIANT_AXES) {
+    const values = asRecord(raw.variants)[axis];
+    if (
+      Array.isArray(values) &&
+      values.every(
+        (v) => typeof v === "string" && VARIANT_VALUE_PATTERN.test(v),
+      )
+    )
+      variants[axis] = [...new Set(values as string[])];
+  }
+  const requires: ManifestPackDeliverable["requires"] = {};
+  const engine = asRecord(raw.requires).engine;
+  if (typeof engine === "string" && ENGINE_PATTERN.test(engine))
+    requires.engine = engine;
+  const patch = asRecord(raw.patch);
+  const strategies = Array.isArray(patch.strategies)
+    ? PACK_PATCH_STRATEGIES.filter((s) =>
+        (patch.strategies as unknown[]).includes(s),
+      )
+    : [];
+  return {
+    kind: "pack",
+    id,
+    type,
+    binding: "pinned",
+    baseline: isOneOf(raw.baseline, PACK_BASELINES) ? raw.baseline : "none",
+    required: raw.required === true,
+    delivery: isOneOf(raw.delivery, PACK_DELIVERIES)
+      ? raw.delivery
+      : "on-demand",
+    contentPolicy: { dataOnly: true },
+    handler,
+    variants,
+    requires,
+    entitlement:
+      typeof raw.entitlement === "string" &&
+      ENTITLEMENT_PATTERN.test(raw.entitlement)
+        ? raw.entitlement
+        : null,
+    patch: {
+      strategies: strategies.length > 0 ? strategies : ["delta", "file"],
+      deltaBases:
+        Number.isSafeInteger(patch.deltaBases) &&
+        (patch.deltaBases as number) >= 0 &&
+        (patch.deltaBases as number) <= MAX_PACK_DELTA_BASES
+          ? (patch.deltaBases as number)
+          : 1,
+    },
+    versioning: {
+      scheme: isOneOf(asRecord(raw.versioning).scheme, VERSION_SCHEMES)
+        ? (asRecord(raw.versioning).scheme as VersionScheme)
+        : "semver",
+    },
+  };
+}
+
+/**
+ * Read back a persisted pack declaration (`release_deliverables.def_json` of a `kind = 'pack'`
+ * row, which resync writes from `ManifestRelease.packs`). `null` for NULL, unparseable or
+ * non-pack JSON.
+ */
+export function parseManifestPackDeliverable(
+  defJson: string | null | undefined,
+): ManifestPackDeliverable | null {
+  if (!defJson) return null;
+  try {
+    const raw: unknown = JSON.parse(defJson);
+    const id = asRecord(raw).id;
+    if (
+      typeof id !== "string" ||
+      !isDeliverableId(id) ||
+      id === APP_DELIVERABLE_ID
+    )
+      return null;
+    return normalizePackDeliverable(id, raw);
+  } catch {
+    return null;
+  }
+}
+
+/** The variant keys a pack declares (plans/P4-01.md §2.3's variant key: `axis=value` pairs
+ *  sorted by axis and joined with `;`), every combination of its axes; `[""]` for none. */
+export function packVariantKeys(
+  pack: Pick<ManifestPackDeliverable, "variants">,
+): string[] {
+  const axes = (Object.keys(pack.variants) as VariantAxis[]).sort();
+  let keys: string[][] = [[]];
+  for (const axis of axes) {
+    const next: string[][] = [];
+    for (const k of keys)
+      for (const v of pack.variants[axis] ?? [])
+        next.push([...k, `${axis}=${v}`]);
+    keys = next;
+  }
+  return keys.map((k) => k.join(";")).sort();
 }
 
 function normalizeTrustedPublisher(
@@ -2935,7 +3602,8 @@ export function parseManifestAppDeliverable(
 
 /**
  * `deliverables.app`, as validated. `null` when the document has no `deliverables` block, or one
- * without an `app` entry (packs alone are ignored until P4-02): the implicit app deliverable.
+ * without an `app` entry: the implicit app deliverable (a document declaring packs always has
+ * one, `invalid_app_content`).
  */
 function normalizeAppDeliverable(raw: unknown): ManifestAppDeliverable | null {
   const def = asRecord(raw)[APP_DELIVERABLE_ID];
@@ -2961,16 +3629,25 @@ function normalizeAppDeliverable(raw: unknown): ManifestAppDeliverable | null {
       !isArtifactMatch(entry.match)
     )
       continue;
-    artifacts.push({
+    const artifact: ManifestArtifactEntry = {
       id: entry.id,
       platform: entry.platform,
       arch: entry.arch,
       format: entry.format,
       role: isOneOf(entry.role, ARTIFACT_ROLES) ? entry.role : "payload",
       match: entry.match,
-    });
+    };
+    if (Array.isArray(entry.embeds))
+      artifact.embeds = [
+        ...new Set(
+          entry.embeds.filter(
+            (e): e is string => isDeliverableId(e) && e !== APP_DELIVERABLE_ID,
+          ),
+        ),
+      ];
+    artifacts.push(artifact);
   }
-  return {
+  const app: ManifestAppDeliverable = {
     kind: "app",
     versioning: {
       scheme: isOneOf(versioning.scheme, VERSION_SCHEMES)
@@ -2983,6 +3660,10 @@ function normalizeAppDeliverable(raw: unknown): ManifestAppDeliverable | null {
     channels,
     artifacts,
   };
+  const contentApi = asRecord(def.content).contentApi;
+  if (Number.isSafeInteger(contentApi) && (contentApi as number) >= 1)
+    app.content = { contentApi: contentApi as number };
+  return app;
 }
 
 /** Keep exactly the entries the runtime reader would: valid name, safe compilable regex.
@@ -3289,6 +3970,21 @@ function exceedsDepth(value: unknown, max: number): boolean {
     for (const child of children) stack.push({ node: child, depth: depth + 1 });
   }
   return false;
+}
+
+/** The keys of the schema document's `flag` entries (a pack `entitlement` must name one). */
+function catalogFlagKeys(schema: unknown): Set<string> {
+  const out = new Set<string>();
+  for (const e of normalizeCatalog(schema)?.entries ?? []) {
+    const entry = e as unknown;
+    if (
+      isRecord(entry) &&
+      entry.kind === "flag" &&
+      typeof entry.key === "string"
+    )
+      out.add(entry.key);
+  }
+  return out;
 }
 
 function normalizeCatalog(parsed: unknown): ProductCatalog | null {

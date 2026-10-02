@@ -90,6 +90,9 @@ BOOT_EVENT_TYPES: Tuple[str, ...] = (
     "retry",
     "play-offline",
     "fail",
+    # Stage matrix v3 (plans/P4-01.md §2.10): download consent and progress.
+    "fetch.consent",
+    "fetch.progress",
 )
 #: The emits the machine produces, snake_case: the signal names renderers expose.
 BOOT_EMIT_TYPES: Tuple[str, ...] = (
@@ -101,6 +104,8 @@ BOOT_EMIT_TYPES: Tuple[str, ...] = (
     "error",
     "boot_rolled_back",
     "boot_ready",
+    "consent_needed",
+    "fetch_progress",
 )
 #: What :func:`boot_guard_action` decides at launch.
 BOOT_GUARD_ACTIONS: Tuple[str, ...] = ("none", "apply-staged", "roll-back")
@@ -135,8 +140,8 @@ BootGuardAction = Literal["none", "apply-staged", "roll-back"]
 BootGuardResult = Literal["ok", "applied", "rolled-back"]
 BootSyncResult = Literal["ok", "offline", "error"]
 BootDecision = Literal["none", "optional", "required"]
-BootFetchResult = Literal["ok", "offline", "failed"]
-BootBlockedReason = Literal["update-required", "not-available"]
+BootFetchResult = Literal["ok", "offline", "failed", "declined"]
+BootBlockedReason = Literal["update-required", "not-available", "content-declined"]
 
 _LICENSE_STATUSES: Tuple[str, ...] = (
     "ok",
@@ -186,6 +191,23 @@ class BootFetchDoneEvent(TypedDict):
     installed: List[str]
 
 
+class BootFetchConsentEvent(TypedDict):
+    """v3: the download needs the player's consent (the size disclosure and the cellular
+    choice). ``bytes`` an integer >= 0."""
+
+    type: Literal["fetch.consent"]
+    bytes: int
+    metered: bool
+
+
+class BootFetchProgressEvent(TypedDict):
+    """v3: download progress, integers with ``0 <= done <= total``."""
+
+    type: Literal["fetch.progress"]
+    done: int
+    total: int
+
+
 class BootFailEvent(TypedDict):
     """The host's own work for the current stage failed in a way its event cannot express."""
 
@@ -200,6 +222,8 @@ BootEvent = Union[
     BootGateStatusEvent,
     BootDecideDoneEvent,
     BootFetchDoneEvent,
+    BootFetchConsentEvent,
+    BootFetchProgressEvent,
     BootFailEvent,
 ]
 
@@ -228,10 +252,23 @@ class BootBlockedEmit(TypedDict):
 
 
 class BootOfflineEmit(TypedDict):
-    """``canPlayOffline`` is ``False`` on every v1 path."""
+    """``canPlayOffline`` is true only when the required packs are present and an essential
+    one could not download (v3)."""
 
     type: Literal["offline"]
     canPlayOffline: bool
+
+
+class BootConsentNeededEmit(TypedDict):
+    type: Literal["consent_needed"]
+    bytes: int
+    metered: bool
+
+
+class BootFetchProgressEmit(TypedDict):
+    type: Literal["fetch_progress"]
+    done: int
+    total: int
 
 
 class BootErrorEmit(TypedDict):
@@ -247,6 +284,8 @@ BootEmit = Union[
     BootPlainEmit,
     BootBlockedEmit,
     BootOfflineEmit,
+    BootConsentNeededEmit,
+    BootFetchProgressEmit,
     BootErrorEmit,
 ]
 
@@ -262,6 +301,9 @@ class BootOptions:
     allowGrace: bool = True
     #: Pack ids that must be installed before ``mount``.
     requiredPacks: Tuple[str, ...] = ()
+    #: v3: pack ids the boot wants before ``ready`` but can play without (``delivery:
+    #: essential``, ``required: false``).
+    essentialPacks: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -275,6 +317,9 @@ class BootState:
     #: Where ``retry`` goes: ``shell`` before ``shell.done``, ``guard`` before
     #: ``guard.done``, then ``sync``.
     resume: str
+    #: v3: true only at ``offline`` reached with every required pack present and an
+    #: essential one missing, where ``play-offline`` is accepted.
+    canPlayOffline: bool = False
 
 
 class BootTransition(NamedTuple):
@@ -287,8 +332,10 @@ def initial_boot_state(
     allow_offline: bool = True,
     allow_grace: bool = True,
     required_packs: Iterable[str] = (),
+    essential_packs: Iterable[str] = (),
 ) -> BootState:
-    """Stage ``idle``, outcome ``running``, sync ``pending``, resume ``shell``."""
+    """Stage ``idle``, outcome ``running``, sync ``pending``, resume ``shell``,
+    ``canPlayOffline`` false."""
     return BootState(
         stage="idle",
         outcome="running",
@@ -296,9 +343,11 @@ def initial_boot_state(
             allowOffline=allow_offline,
             allowGrace=allow_grace,
             requiredPacks=tuple(required_packs),
+            essentialPacks=tuple(essential_packs),
         ),
         sync="pending",
         resume="shell",
+        canPlayOffline=False,
     )
 
 
@@ -318,12 +367,14 @@ def _go(
     extra: Optional[BootEmit] = None,
     **patch: Any,
 ) -> BootTransition:
-    """Move to ``stage`` (``stage_changed`` first when it changes), then at most one emit."""
+    """Move to ``stage`` (``stage_changed`` first when it changes), then at most one emit.
+    ``canPlayOffline`` resets unless the patch sets it."""
     emits: List[BootEmit] = []
     if stage != state.stage:
         emits.append({"type": "stage_changed", "stage": stage, "previous": state.stage})  # type: ignore[typeddict-item]
     if extra is not None:
         emits.append(extra)
+    patch.setdefault("canPlayOffline", False)
     return BootTransition(replace(state, stage=stage, outcome=outcome, **patch), tuple(emits))
 
 
@@ -369,6 +420,22 @@ def _on_gate_status(state: BootState, status: str) -> BootTransition:
     return _go(state, "blocked", "blocked", {"type": "blocked", "reason": "not-available"})
 
 
+def _missing(ids: Tuple[str, ...], installed: Any) -> bool:
+    return any(pack not in installed for pack in ids)
+
+
+_MAX_SAFE_INTEGER = 2**53 - 1
+
+
+def _count(value: Any) -> bool:
+    """A non-negative safe integer (v3's consent and progress payloads); never a bool."""
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 <= value <= _MAX_SAFE_INTEGER
+    )
+
+
 _FAILING_STAGES = ("shell", "guard", "sync", "gate", "decide", "fetch", "mount")
 _RETRY_STAGES = ("offline", "blocked", "error")
 
@@ -386,6 +453,8 @@ def boot_transition(state: BootState, event: BootEvent) -> BootTransition:
     kind = e.get("type")
     stage = state.stage
     waiting = stage == "gate" and state.outcome == "waiting"
+    fetching = stage == "fetch"
+    consent_waiting = fetching and state.outcome == "waiting"
 
     if kind == "start":
         return _go(state, "shell", "running") if stage == "idle" else _ignore(state)
@@ -431,17 +500,46 @@ def boot_transition(state: BootState, event: BootEvent) -> BootTransition:
         result = e.get("result")
         installed = e.get("installed")
         if (
-            stage != "fetch"
-            or not _one_of(result, ("ok", "offline", "failed"))
+            not fetching
+            or not _one_of(result, ("ok", "offline", "failed", "declined"))
             or not isinstance(installed, (list, tuple))
             or not all(isinstance(i, str) for i in installed)
         ):
             return _ignore(state)
-        if all(pack in installed for pack in state.options.requiredPacks):
+        if _missing(state.options.requiredPacks, installed):
+            if result == "offline":
+                return _go(state, "offline", "offline", {"type": "offline", "canPlayOffline": False})
+            if result == "declined":
+                return _go(state, "blocked", "blocked", {"type": "blocked", "reason": "content-declined"})
+            return _go(state, "error", "error", {"type": "error", "code": "fetch-failed"})
+        if result == "offline" and _missing(state.options.essentialPacks, installed):
+            return _go(
+                state,
+                "offline",
+                "offline",
+                {"type": "offline", "canPlayOffline": True},
+                canPlayOffline=True,
+            )
+        return _go(state, "mount", "running")
+
+    if kind == "fetch.consent":
+        size = e.get("bytes")
+        metered = e.get("metered")
+        if not fetching or consent_waiting or not _count(size) or not isinstance(metered, bool):
+            return _ignore(state)
+        return _go(state, "fetch", "waiting", {"type": "consent_needed", "bytes": size, "metered": metered})
+
+    if kind == "fetch.progress":
+        done = e.get("done")
+        total = e.get("total")
+        if not fetching or not _count(done) or not _count(total) or done > total:
+            return _ignore(state)
+        return _go(state, "fetch", "running", {"type": "fetch_progress", "done": done, "total": total})
+
+    if kind == "play-offline":
+        if stage == "offline" and state.canPlayOffline:
             return _go(state, "mount", "running")
-        if result == "offline":
-            return _go(state, "offline", "offline", {"type": "offline", "canPlayOffline": False})
-        return _go(state, "error", "error", {"type": "error", "code": "fetch-failed"})
+        return _ignore(state)
 
     if kind == "mount.done":
         if stage != "mount":
@@ -461,12 +559,11 @@ def boot_transition(state: BootState, event: BootEvent) -> BootTransition:
 
     if kind == "fail":
         code = e.get("code")
-        if stage not in _FAILING_STAGES or waiting or not isinstance(code, str):
+        if stage not in _FAILING_STAGES or waiting or consent_waiting or not isinstance(code, str):
             return _ignore(state)
         return _go(state, "error", "error", {"type": "error", "code": code})
 
-    # ``play-offline`` is accepted nowhere in v1 (``canPlayOffline`` is never true), and an
-    # unknown type is malformed.
+    # An unknown type is malformed.
     return _ignore(state)
 
 

@@ -282,7 +282,9 @@ for product.
 - **SDK id** — which SDK made a request, sent in `X-PKey-SDK`: `node`, `react`, `python`,
   `swift` or `godot`. The SDK's version travels separately, in `X-PKey-SDK-Version`.
 - **artifact role** — what an artifact (a file of a build, or a sidecar) is for: `payload`,
-  `files-index`, `chunk-index`, `chunk-bundle`, `delta`, `signature` or `checksum`.
+  `files-index`, `chunk-index`, `chunk-bundle`, `delta`, `signature` or `checksum`. A pack
+  release's objects take `payload` (the whole payload), `files-index`, `files-gaps`, `delta`,
+  `patch` or `patch-data`.
 - **promote / pin / yank** — move a channel's pointer to a release (which makes it a member of
   the channel) / freeze the channel at its pointer / make a release unservable except through an
   explicit pin. A yank never deletes anything, and a release deleted on GitHub is not a yank.
@@ -292,6 +294,40 @@ for product.
   critical flag. Owned by the manifest until an operator or CI changes it, then by `admin` until
   it is reverted — the `services_source` precedent. Not the same as a release **channel floor**,
   the sync's anti-rollback high-water mark.
+
+### Packs
+
+Content packs are deliverables like the app (see [Packs](/docs/services/release/packs/)).
+
+- **pack** — a deliverable of kind `pack`: data the app loads at run time (a Godot resource pack,
+  `godot.pck`, or a directory of files, `files.tree`), declared in `.pkey/release` under its
+  **pack id** (`diceroll.core3d`, never `app`). A pack carries data only, never code.
+- **pack release** — one release of a pack, which IS its CI-signed record (`kind: pack`): the
+  pack type, the **variants** and every object they name, each pinned by SHA-256 and length.
+- **variant** — one form of a pack release for a combination of axis values (`texture`,
+  `locale`, `quality`); its **variant key** is `axis=value` pairs sorted and joined with `;`
+  (`locale=fr;texture=astc`), empty for an unvaried pack. A device picks the variant it can use.
+- **payload** — the bytes a variant installs: one file (a container such as a PCK) or a tree of
+  files. Its `sha256` is the file's, or a tree's **tree digest**.
+- **files index** — `pkey-files/1`, the hash-pinned list of a variant's files, each with its own
+  stored blob, so a device can update file by file. The Worker reads one at a time, at most
+  8 MiB.
+- **binding** — how app releases bind a pack. v1 has one: **pinned** (each app release pins the
+  exact pack release it ships with).
+- **contentApi** — an integer the app declares for the content shape its code expects
+  (`deliverables.app.content.contentApi`), stamped into every app release.
+- **pin** — the exact pack release an app release names in its signed `content.pins`; Release
+  mirrors pins into `release_pins` and never edits them. A yank stops new pins only.
+- **embedded baseline** — a pack (`baseline: embedded`) that app builds ship inside them, so a
+  store build is playable offline; a build's `embeds` lists the packs it ships.
+- **marker** — `pkey-marker/1`, the compact pack record beside an embedded payload, so the build
+  can verify what it ships offline.
+- **content stamp** — `pkey-content/1`, the app record's `content` embedded in every build: how
+  the running build learns its own pins without the network.
+- **pack set** — the pack releases active in a running build; its **pack set id** (`packSetId`)
+  is what a device reports.
+- **delivery gate** — the licence flag (`entitlement`) of a pack's own `dist_access` row, set by
+  an operator: the only thing that gates a pack. `.pkey/release` may assert it, never set it.
 
 ## Distribution model
 

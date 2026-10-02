@@ -48,6 +48,9 @@ export const PATCH_FORMAT = "pkey-patch/1";
 export const MARKER_FORMAT = "pkey-marker/1";
 /** The content stamp's `format`. */
 export const CONTENT_STAMP_FORMAT = "pkey-content/1";
+/** The install planner's cost of one request, in bytes (plans/P4-01.md §2.9, A7 §4.2):
+ *  `cost = bytes + requests × PLAN_REQUEST_WEIGHT`. `plan-matrix.json` pins it. */
+export const PLAN_REQUEST_WEIGHT = 16384;
 
 /** The `iss` every Polaris Key document carries. A FIXED string, never derived from the base URL
  *  or the serving host — an attacker-controlled host must not be able to name its own issuer.

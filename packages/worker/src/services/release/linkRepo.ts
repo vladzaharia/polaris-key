@@ -481,7 +481,14 @@ async function registerFromManifest(
 
   // The app deliverable's declaration (P2-04), read back by the truth-store sync below.
   if (rel)
-    statements.push(...manifestDeliverableStatements(slug, rel.app, now));
+    statements.push(
+      ...manifestDeliverableStatements(
+        slug,
+        rel.app,
+        now,
+        rel.packDeliverables,
+      ),
+    );
 
   // The trusted-publisher policy (P2-02), manifest-owned from the start. A row a previous product
   // of the same slug left behind is replaced only if it is manifest-owned too.

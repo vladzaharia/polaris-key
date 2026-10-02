@@ -8,7 +8,8 @@ path up to the monorepo root.
 
 Six sections, six layers of the v3 documents (which wire contract v4 keeps), plus v4's
 pointer-set section (§4.1) over the seven JWS families, ``feedCases`` and
-``releaseRecordCases`` included:
+``releaseRecordCases`` included, and the two pack families of plans/P4-01.md §4.6
+(``packRecordCases`` and ``markerCases``, whose JWS is the marker's ``release``):
 
 ====================  ==========================================================
 ``jwsCases``          §1–§2 raw compact-JWS verification      -> ``verify_jws``
@@ -327,7 +328,8 @@ def test_python_signer_reproduces_the_non_ascii_corpus_vector_byte_for_byte() ->
     assert resigned == case["jws"]
 
 
-# ── WIRE-CONTRACT-V4 §4.1: the non-wire-integer pointer sets, over the seven JWS families ──
+# ── WIRE-CONTRACT-V4 §4.1: the non-wire-integer pointer sets, over the seven JWS families and
+# the two pack families (plans/P4-01.md §4.6) ──
 # Python's verifier needs no pointer set: ``json.loads`` returns an ``int`` exactly for a plain
 # integer token and a ``float`` for any other, so ``_wire_int`` is already the token rule. For
 # this comparison only, the set is the pointers of the payload's floats and of its ints above
@@ -374,7 +376,25 @@ def _family_views() -> List[Any]:
         views.append(("feedCases", c, c["jws"], c["trust"], "pkey-feed+jws", None))
     for c in _CORPUS["releaseRecordCases"]:
         views.append(("releaseRecordCases", c, c["jws"], c["releaseKeys"], "pkey-release+jws", None))
+    # plans/P4-01.md §4.6 (P4-21): the two pack families; a marker's JWS is its ``release``.
+    for c in _CORPUS["packRecordCases"]:
+        views.append(("packRecordCases", c, c["jws"], c["releaseKeys"], "pkey-release+jws", None))
+    for c in _CORPUS["markerCases"]:
+        views.append(
+            ("markerCases", c, _marker_release(c["marker"]) or "", c["releaseKeys"], "pkey-release+jws", None)
+        )
     return views
+
+
+def _marker_release(text: str) -> Optional[str]:
+    """A marker's ``release``, when its text is a JSON object holding a string there."""
+    try:
+        marker = json.loads(text)
+    except ValueError:
+        return None
+    if isinstance(marker, dict) and isinstance(marker.get("release"), str):
+        return marker["release"]
+    return None
 
 
 _POINTER_VIEWS = _family_views()

@@ -44,7 +44,9 @@ import type { ReleaseConfigRow } from "./config.js";
 /** The one ingest refusal code (registered in `conformance/parity/errors.json`). */
 export const RELEASE_RECORD_REJECTED = "release_record_rejected";
 
-/** Why a record was refused, in the order the checks run. */
+/** Why a record was refused, in the order the checks run. The `pack-*` reasons are a pack
+ *  record's (P4-02, `packs/ingest.ts`); `content-api`, `pin-*`, `embeds` and `pack-unreadable` an
+ *  app release's `content` (`packs/content.ts`). */
 export type RecordRefusalReason =
   | "typ"
   | "kid"
@@ -53,7 +55,21 @@ export type RecordRefusalReason =
   | "claims"
   | "scheme"
   | "descriptor-mismatch"
-  | "seq";
+  | "seq"
+  | "pack-unknown"
+  | "pack-type"
+  | "pack-variant"
+  | "pack-entitlement"
+  | "pack-object"
+  | "pack-index"
+  | "content-api"
+  | "pin-unknown"
+  | "pin-mismatch"
+  | "pin-yanked"
+  | "pin-missing"
+  | "pin-gated"
+  | "embeds"
+  | "pack-unreadable";
 
 export type RecordCheck =
   | {
@@ -269,23 +285,40 @@ export interface RecordCheckInput {
   seq: number;
 }
 
-function refuse(reason: RecordRefusalReason, message: string): RecordCheck {
+export function refuse(
+  reason: RecordRefusalReason,
+  message: string,
+): { ok: false; reason: RecordRefusalReason; message: string } {
   return { ok: false, reason, message };
 }
 
+/** A record that passed the checks every kind shares (`verifyRecordJws`). */
+export type VerifiedRecordJws =
+  | {
+      ok: true;
+      /** The verified payload; its claims hold (WIRE-CONTRACT-V4 §2.4, §2.5.1, §2.5.2). */
+      payload: Record<string, unknown>;
+      kid: string;
+      jws: string;
+    }
+  | { ok: false; reason: RecordRefusalReason; message: string };
+
 /**
- * Every check of the record ingest, in the plan's order (§6), reading only: `typ`, then the
- * `kid` among the declared release keys, then that key is not a product signing key, then the
+ * The checks every record kind shares, in the plan's order, reading only: `typ`, then the `kid`
+ * among the declared release keys, then that key is not a product signing key, then the
  * signature through `shared-jws` (V4 §1.1–§1.2's strictness), then `releaseRecordClaims` given
- * the verifier's non-wire-integer pointers (the claims every v4 SDK runs), then the version
- * under the deliverable's scheme (SemVer 2.0's grammar for `semver`), then the record equals the
- * descriptor under §2.4's mapping, then the record's `seq` is the release's.
+ * the verifier's non-wire-integer pointers (the claims every v4 SDK runs; a `kind: pack` record's
+ * and an app record's `content` claims included, P4-21).
  */
-export async function checkReleaseRecord(
+export async function verifyRecordJws(
   db: Db,
-  input: RecordCheckInput,
-): Promise<RecordCheck> {
-  const { product, descriptor } = input;
+  input: {
+    product: string;
+    jws: unknown;
+    cfg: Pick<ReleaseConfigRow, "release_keys_json"> | null;
+  },
+): Promise<VerifiedRecordJws> {
+  const { product } = input;
   const jws = input.jws;
   if (typeof jws !== "string" || jws.split(".").length !== 3)
     return refuse("typ", "record must be a compact JWS (pkey-release+jws).");
@@ -339,7 +372,30 @@ export async function checkReleaseRecord(
       "claims",
       "the record's claims do not hold (WIRE-CONTRACT-V4 §2.4).",
     );
-  const record = verified.payload as ReleaseRecordDoc;
+  return {
+    ok: true,
+    payload: verified.payload as Record<string, unknown>,
+    kid,
+    jws,
+  };
+}
+
+/**
+ * Every check of the record ingest, in the plan's order (§6), reading only: the shared checks
+ * (`verifyRecordJws`: `typ`, `kid`, `product-key`, `signature`, `claims`), then the version
+ * under the deliverable's scheme (SemVer 2.0's grammar for `semver`), then the record equals the
+ * descriptor under §2.4's mapping (its `content` and `builds[].embeds` included, decision 37),
+ * then the record's `seq` is the release's.
+ */
+export async function checkReleaseRecord(
+  db: Db,
+  input: RecordCheckInput,
+): Promise<RecordCheck> {
+  const { descriptor } = input;
+  const shared = await verifyRecordJws(db, input);
+  if (!shared.ok) return shared;
+  const { kid, jws } = shared;
+  const record = shared.payload as unknown as ReleaseRecordDoc;
 
   const scheme = input.app?.versioning.scheme ?? "semver";
   if (parseVersion(scheme, record.version) === null)

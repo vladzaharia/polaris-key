@@ -1,18 +1,22 @@
 // The Node conformance runner for corpus v2 / wire contract v4. The cases themselves live in
 // `suites.ts`, which the browser runner (`conformance/runners/browser`, Chromium, Firefox and
-// WebKit) drives too; this file only loads the four corpus files from disk and hands them over.
-// See `suites.ts` for what each section asserts.
+// WebKit) drives too; this file only loads the four corpus files from disk and hands them over,
+// with the content corpus (`content/cases.json`, its blobs read raw, and
+// `@polaris-key/zstd-wasm`'s decoder). See `suites.ts` for what each section asserts.
 //
 // The banner below names the runtime, so a failure on the version-floor job (CI `node-floor`,
 // the lowest Node that `engines.node` allows) is attributable to the Node build that produced it
 // (PARITY §4.3).
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { decode } from "@polaris-key/zstd-wasm";
 import {
   CORPUS_FILES,
+  defineContentSuites,
   defineCorpusSuites,
+  type ContentCorpus,
   type CorpusFiles,
 } from "./suites.js";
 
@@ -35,4 +39,31 @@ defineCorpusSuites({
   matrix: read("matrix"),
   updateMatrix: read("updateMatrix"),
   outletMatrix: read("outletMatrix"),
+});
+
+// The content corpus: `content/cases.json` and every file under `content/blobs/`, by its path
+// there with `/` separators.
+const contentDir = join(here, "..", "..", "corpus", "v2", "content");
+const blobsDir = join(contentDir, "blobs");
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? walk(path) : [path];
+  });
+}
+
+defineContentSuites({
+  content: JSON.parse(
+    readFileSync(join(contentDir, "cases.json"), "utf8"),
+  ) as ContentCorpus,
+  loadBlobs: () =>
+    Promise.resolve(
+      new Map(
+        walk(blobsDir).map((path) => [
+          relative(blobsDir, path).split(sep).join("/"),
+          new Uint8Array(readFileSync(path)),
+        ]),
+      ),
+    ),
+  decode,
 });

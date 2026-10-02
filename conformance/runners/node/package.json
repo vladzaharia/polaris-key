@@ -11,6 +11,7 @@
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/node": "workspace:*",
-    "@polaris-key/protocol": "workspace:*"
+    "@polaris-key/protocol": "workspace:*",
+    "@polaris-key/zstd-wasm": "workspace:*"
   }
 }

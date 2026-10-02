@@ -79,7 +79,7 @@ signature work.
 The full route table, including every non-document surface, is at
 [Routes](/docs/reference/routes/).
 
-## The five pages in this section
+## The six pages in this section
 
 | Page                                                 | What it covers                                                                                                                              | Spec sections |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -87,6 +87,7 @@ The full route table, including every non-document surface, is at
 | [Trust](/docs/build/wire/trust/)                     | Pinned keys, the signed trust manifest, revocation by absence, and why the cache is never a key source                                      | §1, §2.3      |
 | [Cache and clock](/docs/build/wire/cache-and-clock/) | The v3 cache record, the re-verify-everything load, and the monotonic clock floor                                                           | §4            |
 | [Offline bundles](/docs/build/wire/bundles/)         | `pkey-bundle+jws`, its three time bounds, and the four ordered refusal steps                                                                | §7            |
+| [Pack byte formats](/docs/build/wire/packs/)         | The files index, the patch descriptor, `treeDigest`, the path rules, the codec rules and the zstd window check                              | §2.6, §2.7    |
 | [The conformance corpus](/docs/build/wire/corpus/)   | One generator, the language runners, and the CI drift gate that keeps them honest                                                           | §6, §10       |
 
 ## One client, end to end
@@ -123,19 +124,21 @@ is unchanged — which is the point of minting bundle documents in the ordinary 
 
 ## Version counters, and who owns them
 
-Eight numbers travel in this system and they are deliberately independent. Confusing two of
+Ten numbers travel in this system and they are deliberately independent. Confusing two of
 them is the most common way to misread a document (spec §9).
 
-| Counter               | Value | Owner / meaning                                                                                              |
-| --------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
-| `PROTOCOL_VERSION`    | `4`   | The wire contract itself. `@polaris-key/protocol/core`.                                                      |
-| `CACHE_VERSION` (`v`) | `3`   | The on-disk cache record format. Any other value is discarded, never migrated.                               |
-| `corpusVersion`       | `2`   | The conformance corpus at `conformance/corpus/v2/`.                                                          |
-| `gateMatrixVersion`   | `2`   | The gate-transition matrix inside that corpus.                                                               |
-| `fingerprintVersion`  | `1`   | The hardware-fingerprint formulas. Unchanged since v1.                                                       |
-| `stageMatrixVersion`  | `2`   | The boot stage machine (client boot behaviour, outside this contract), owned by `client-core/src/stages.ts`. |
-| `updateMatrixVersion` | `1`   | The update decision (client behaviour, outside this contract), `update-matrix.json`.                         |
-| `outletMatrixVersion` | `1`   | Outlet capabilities and detection (client behaviour), `outlet-matrix.json`.                                  |
+| Counter                | Value | Owner / meaning                                                                                              |
+| ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
+| `PROTOCOL_VERSION`     | `4`   | The wire contract itself. `@polaris-key/protocol/core`.                                                      |
+| `CACHE_VERSION` (`v`)  | `3`   | The on-disk cache record format. Any other value is discarded, never migrated.                               |
+| `corpusVersion`        | `2`   | The conformance corpus at `conformance/corpus/v2/`.                                                          |
+| `gateMatrixVersion`    | `2`   | The gate-transition matrix inside that corpus.                                                               |
+| `fingerprintVersion`   | `1`   | The hardware-fingerprint formulas. Unchanged since v1.                                                       |
+| `stageMatrixVersion`   | `3`   | The boot stage machine (client boot behaviour, outside this contract), owned by `client-core/src/stages.ts`. |
+| `updateMatrixVersion`  | `1`   | The update decision (client behaviour, outside this contract), `update-matrix.json`.                         |
+| `outletMatrixVersion`  | `1`   | Outlet capabilities and detection (client behaviour), `outlet-matrix.json`.                                  |
+| `planMatrixVersion`    | `1`   | The install planner, variant selection and target mapping (client behaviour), `plan-matrix.json`.            |
+| `contentCorpusVersion` | `1`   | The content corpus, `content/cases.json`: pack byte formats and appliers (spec §2.6).                        |
 
 Two more `schemaVersion` fields exist and neither is a wire version:
 

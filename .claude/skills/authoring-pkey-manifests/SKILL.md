@@ -73,10 +73,29 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `platform` ∈ macos/ios/android/windows/linux/web, `arch` ∈
       arm64/x86_64/universal/armv7/wasm32/any, `role` defaults to `payload` (installer versus
       portable is a `format`, never a role), `match` is an anchored case-sensitive glob (`*`,
-      `?`, ≤ 128 chars). `<payload>.sig`/`.sha256` join their build automatically. A
-      `kind: pack` entry only warns (`pack_deliverables_not_supported`) until packs land. CI may
-      then attach a release descriptor (`pkey-release.json`, `release-descriptor.schema.json`)
-      whose builds must match this map.
+      `?`, ≤ 128 chars). `<payload>.sig`/`.sha256` join their build automatically. An entry
+      may list `embeds: [<packId>…]`, the packs that build ships (omitted = every
+      `baseline: embedded` pack; `invalid_build_embeds`). CI may then attach a release
+      descriptor (`pkey-release.json`, `release-descriptor.schema.json`) whose builds must
+      match this map.
+- [ ] If the product ships content packs, declare each as `deliverables.<packId>` with
+      `kind: pack` (at most 64, `too_many_pack_deliverables`) in the v1 subset: `type`
+      (`godot.pck` | `files.tree`, required), `binding: pinned` (the only value), `baseline`
+      (`embedded` | `none`), `required` (then `delivery: essential` and no `entitlement`),
+      `delivery` (`essential` | `prefetch` | `on-demand`), `contentPolicy: { dataOnly: true }`,
+      `handler` (`mountOrder` 0–1000, `prefixes` of `res://…/` directories, `activation`
+      `restart` | `hot`; a `godot.pck` needs `prefixes` and `requires.engine: godot-4.7`, a
+      `files.tree` takes neither `prefixes` nor `mountOrder`), `variants` (`texture` /
+      `locale` / `quality` → values, ≤ 32 combinations), `requires: { engine }`, `patch`
+      (`strategies` ⊆ `delta`, `file`; `deltaBases` 0–8), `versioning.scheme`, and
+      `entitlement`, which must name a `flag` of `.pkey/schema` and only ASSERTS the gate an
+      operator sets under Distribution → Access (a publish whose gate differs is refused).
+      `channels`, `conflicts`, `provides` and `removes` are refused (`pack_field_not_supported`).
+      `deliverables.app.content: { contentApi: <int> }` is then required (`invalid_app_content`).
+      Codes: `invalid_pack_type`, `invalid_pack_binding`, `invalid_pack_policy`,
+      `invalid_pack_handler`, `invalid_pack_variants`, `invalid_pack_requires`,
+      `invalid_pack_patch`, `unknown_entitlement_ref`. Details:
+      `packages/docs/src/content/docs/services/release/packs.md`.
 - [ ] If CI should publish releases (P2-02 trusted publishing), declare the publisher in
       `release` under `publishing.trustedPublisher` with a `workflow`
       (`.github/workflows/<file>.yml`) and an optional `environment` (default `release`). Those
