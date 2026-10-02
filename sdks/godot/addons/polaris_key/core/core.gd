@@ -183,10 +183,13 @@ func enabled(slug: String) -> bool:
 
 
 ## null when `slug` is enabled, else a `service-unavailable` failure for the caller to return.
-func require_service(slug: String) -> Variant:
+## The failure is the typed `product` N/A for `feature` (PARITY §2.2, P1b-10): `detail` is
+## {feature, reason: "product", detail}, as supports(feature) reports it; the code stays
+## `service-unavailable` so callers matching on it keep working.
+func require_service(slug: String, feature: String) -> Variant:
 	if enabled(slug):
 		return null
-	return PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "The %s service is not enabled for %s." % [slug, product])
+	return PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "The %s service is not enabled for %s." % [slug, product], PKeyResult.product_detail(feature, slug))
 
 
 ## Fetch the discovery document and, when it parses, install its capability map. A coroutine.

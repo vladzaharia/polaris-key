@@ -100,9 +100,11 @@ func check(channel := "") -> PKeyVersionCheck:
 	var core := _core()
 	if core == null:
 		return PKeyVersionCheck.failed(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
-	var off = core.require_service("update")
+	var off = core.require_service("update", PKeyConstants.Feature.UPDATE_CHECK)
 	if off != null:
-		return PKeyVersionCheck.failed(off.code, off.message)
+		var refused := PKeyVersionCheck.failed(off.code, off.message)
+		refused.detail = off.detail
+		return refused
 	var path := "update/version"
 	if channel != "":
 		var canonical = canonical_channel(channel, core.version)

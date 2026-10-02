@@ -288,7 +288,9 @@ func mint_token(recipe_id: String) -> PKeyMintResult:
 	if core == null:
 		return PKeyMintResult.refused(PKeyMintResult.KIND_REFUSED, PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	if not core.enabled("config"):
-		return PKeyMintResult.refused(PKeyMintResult.KIND_REFUSED, PKeyErrors.SERVICE_UNAVAILABLE, "The config service is not enabled for %s." % core.product)
+		var off := PKeyMintResult.refused(PKeyMintResult.KIND_REFUSED, PKeyErrors.SERVICE_UNAVAILABLE, "The config service is not enabled for %s." % core.product)
+		off.detail = PKeyResult.product_detail(PKeyConstants.Feature.CONFIG_MINT, "config")
+		return off
 	if not mint_available():
 		return PKeyMintResult.refused(PKeyMintResult.KIND_REFUSED, PKeyErrors.MINT_UNAVAILABLE, "Discovery says %s has no approved edge-mint recipe." % core.product)
 	if _mint_id_re.search(recipe_id) == null:

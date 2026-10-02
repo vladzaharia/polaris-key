@@ -207,6 +207,10 @@ func request_sign_in(device_name := "") -> PKeySignInPrompt:
 	var core := _core()
 	if core == null or not core.started:
 		return _prompt_failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() before begin_sign_in().")
+	if not core.enabled("identity"):
+		var off := _prompt_failure(PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled (or not set up) for %s." % core.product)
+		off.detail = PKeyResult.product_detail(PKeyConstants.Feature.IDENTITY_DEVICECODE, "identity")
+		return off
 	if not is_available():
 		return _prompt_failure(PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled (or not set up) for %s." % core.product)
 	var body := {"deviceId": core.device_id}
@@ -324,7 +328,9 @@ func _wait(prompt: PKeySignInPrompt, gen: int) -> PKeySignInResult:
 	if prompt == null or not prompt.ok:
 		return PKeySignInResult.ended(PKeySignInResult.KIND_ERROR, PKeyErrors.INVALID_OPTIONS, "No usable sign-in prompt.")
 	if not core.enabled("identity"):
-		return PKeySignInResult.ended(PKeySignInResult.KIND_SERVICE_UNAVAILABLE, PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled for %s." % core.product)
+		var off := PKeySignInResult.ended(PKeySignInResult.KIND_SERVICE_UNAVAILABLE, PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled for %s." % core.product)
+		off.detail = PKeyResult.product_detail(PKeyConstants.Feature.IDENTITY_DEVICECODE, "identity")
+		return off
 	var interval := prompt.interval
 	var decision: Variant = null
 	var resends := 0

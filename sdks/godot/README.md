@@ -154,7 +154,8 @@ id is `version`; a `runtime` N/A on this platform; a `planned` feature is `versi
 an opt-in service the product does not run (discovery, else `expected_services`, else licence
 and config) is `product`; then any conditional N/A's detector (Godot declares none yet). A call
 into an unsupported feature returns the same result (enrol on web is `PKeyActivationResult`
-kind `unsupported` with that detail). `PolarisKey.caps()` lists the supported feature ids in
+kind `unsupported` with that detail). A sub-client whose service is off keeps its code
+`service-unavailable` and carries the `product` fields in `detail`. `PolarisKey.caps()` lists the supported feature ids in
 registry order, and every device report carries it as `caps`.
 
 ## Build stamp and setup dock (P1-11)

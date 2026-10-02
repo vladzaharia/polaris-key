@@ -34,6 +34,12 @@ static func failure(p_code: StringName, p_message := "", p_detail: Variant = nul
 	return PKeyResult.new(false, p_code, p_message, p_detail)
 
 
+## The `detail` of a `product` refusal (a sub-client whose service is off): the same
+## {feature, reason, detail} supports(feature) answers.
+static func product_detail(feature: String, slug: String) -> Dictionary:
+	return {"feature": feature, "reason": PKeyConstants.UnsupportedReason.PRODUCT, "detail": "The product does not run the %s service." % slug}
+
+
 static func unsupported(feature: String, reason: String, p_detail := "") -> PKeyResult:
 	var text := p_detail if p_detail != "" else "%s is not supported here (%s)." % [feature, reason]
 	return PKeyResult.new(false, &"unsupported", text, {"feature": feature, "reason": reason, "detail": text})

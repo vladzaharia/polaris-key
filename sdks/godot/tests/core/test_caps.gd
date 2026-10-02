@@ -82,6 +82,10 @@ func _discovery(t: PKeyTestContext) -> void:
 	var r: PKeyResult = sdk.supports(F.UPDATE_DECIDE)
 	t.check("caps: Update disabled in discovery -> product", d.ok and _is(r, R.PRODUCT) and r.detail["detail"].contains("update"), str(r))
 	t.check("caps: caps() leaves out the disabled service's features", not sdk.caps().has(F.UPDATE_DECIDE) and sdk.caps().has(F.CORE_VERIFY))
+	# A sub-client of the disabled service refuses with supports()'s fields, keeping its code.
+	var refused: PKeyResult = await sdk.update.check()
+	var asked: PKeyResult = sdk.supports(F.UPDATE_CHECK)
+	t.check("caps: update.check with Update off -> service-unavailable carrying the product fields", not refused.ok and refused.code == PKeyErrors.SERVICE_UNAVAILABLE and refused.detail is Dictionary and refused.detail == asked.detail and refused.detail["reason"] == R.PRODUCT and refused.detail["feature"] == F.UPDATE_CHECK, "%s / %s" % [refused.detail, asked.detail])
 	answers[0] = {"status": 200, "body": JSON.stringify(on)}
 	d = await sdk.discover()
 	t.check("caps: Update enabled in discovery -> supported", d.ok and sdk.supports(F.UPDATE_DECIDE).ok, str(sdk.supports(F.UPDATE_DECIDE)))
