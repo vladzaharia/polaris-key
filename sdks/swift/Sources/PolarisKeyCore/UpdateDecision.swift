@@ -360,11 +360,14 @@ public struct UpdateDecisionInput: Sendable, Equatable {
     public var bucket: Int?
     /// A subset of `BINARY_METHOD_VALUES`: what this host can do.
     public var methods: [String]
+    /// The content decision's inputs (plans/P4-13.md §2.6). Nil: every answer is P3-01's.
+    public var content: UpdateContentInput?
 
     public init(
         now: Int, feed: ChannelFeedDoc, record: ReleaseRecordDoc?, installed: InstalledBuild,
         outlet: UpdateOutlet, subkind: String? = nil, staged: StagedUpdate? = nil,
-        skipVersion: String? = nil, bucket: Int? = nil, methods: [String] = [BinaryMethod.download]
+        skipVersion: String? = nil, bucket: Int? = nil, methods: [String] = [BinaryMethod.download],
+        content: UpdateContentInput? = nil
     ) {
         self.now = now
         self.feed = feed
@@ -376,6 +379,7 @@ public struct UpdateDecisionInput: Sendable, Equatable {
         self.skipVersion = skipVersion
         self.bucket = bucket
         self.methods = methods
+        self.content = content
     }
 }
 
@@ -398,20 +402,27 @@ public struct DecisionRelease: Sendable, Equatable {
     }
 }
 
-/// `UpdateDecision` (§2.8 "Outputs"): each action carries exactly its members. Reasons and
-/// methods are the generated vocabularies (`UpdateNoneReason`, `UpdateBlockedReason`,
-/// `BinaryMethod`).
+/// `UpdateDecision` (§2.8 "Outputs", extended by plans/P4-13.md §2.6): each action carries
+/// exactly its members. Reasons and methods are the generated vocabularies (`UpdateNoneReason`,
+/// `UpdateBlockedReason`, `BinaryMethod`). `contentBlock` (`content-floor` or `revoked-content`)
+/// is present only when a content block made the answer: on `binary`, `store` and `platform` it
+/// makes the offer mandatory; on `blocked` it rides only on `app-floor`.
 public enum UpdateDecision: Sendable, Equatable {
     case none(reason: String, behind: Bool, discardStaged: Bool)
     case codeReady(release: DecisionRelease, critical: Bool, discardStaged: Bool)
     case binary(
         method: String, release: DecisionRelease, build: String, mandatory: Bool, critical: Bool,
-        prestage: [String], discardStaged: Bool)
+        prestage: [PackTarget], discardStaged: Bool, contentBlock: String? = nil)
     case store(
         release: DecisionRelease, listingUrl: String?, mandatory: Bool, critical: Bool,
-        discardStaged: Bool)
-    case platform(release: DecisionRelease, mandatory: Bool, critical: Bool, discardStaged: Bool)
-    case blocked(reason: String, discardStaged: Bool)
+        discardStaged: Bool, contentBlock: String? = nil)
+    case platform(
+        release: DecisionRelease, mandatory: Bool, critical: Bool, discardStaged: Bool,
+        contentBlock: String? = nil)
+    case blocked(reason: String, discardStaged: Bool, contentBlock: String? = nil)
+    /// plans/P4-13.md §2.6: install exact releases and unmount revoked packs. `set` is the
+    /// effective release of every known pack; the lists are sorted by pack-id bytes.
+    case packs(install: [PackTarget], revoke: [String], set: [PackSetMember], discardStaged: Bool)
 
     /// The `UpdateAction` value.
     public var action: String {
@@ -422,6 +433,17 @@ public enum UpdateDecision: Sendable, Equatable {
         case .store: UpdateAction.store
         case .platform: UpdateAction.platform
         case .blocked: UpdateAction.blocked
+        case .packs: UpdateAction.packs
+        }
+    }
+
+    /// The answer's `contentBlock`, when it has one.
+    public var contentBlock: String? {
+        switch self {
+        case .binary(_, _, _, _, _, _, _, let b), .store(_, _, _, _, _, let b),
+            .platform(_, _, _, _, let b), .blocked(_, _, let b):
+            b
+        default: nil
         }
     }
 
@@ -429,8 +451,9 @@ public enum UpdateDecision: Sendable, Equatable {
     /// is staged.
     public var discardStaged: Bool {
         switch self {
-        case .none(_, _, let d), .codeReady(_, _, let d), .binary(_, _, _, _, _, _, let d),
-            .store(_, _, _, _, let d), .platform(_, _, _, let d), .blocked(_, let d):
+        case .none(_, _, let d), .codeReady(_, _, let d), .binary(_, _, _, _, _, _, let d, _),
+            .store(_, _, _, _, let d, _), .platform(_, _, _, let d, _), .blocked(_, let d, _),
+            .packs(_, _, _, let d):
             d
         }
     }
@@ -445,25 +468,30 @@ public enum UpdateDecision: Sendable, Equatable {
         case .codeReady(let release, let critical, _):
             o["release"] = release.json
             o["critical"] = .bool(critical)
-        case .binary(let method, let release, let build, let mandatory, let critical, let prestage, _):
+        case .binary(let method, let release, let build, let mandatory, let critical, let prestage, _, _):
             o["method"] = .string(method)
             o["release"] = release.json
             o["build"] = .string(build)
             o["mandatory"] = .bool(mandatory)
             o["critical"] = .bool(critical)
-            o["prestage"] = .array(prestage.map(JSONValue.string))
-        case .store(let release, let listingUrl, let mandatory, let critical, _):
+            o["prestage"] = .array(prestage.map(\.json))
+        case .store(let release, let listingUrl, let mandatory, let critical, _, _):
             o["release"] = release.json
             o["listingUrl"] = listingUrl.map(JSONValue.string) ?? .null
             o["mandatory"] = .bool(mandatory)
             o["critical"] = .bool(critical)
-        case .platform(let release, let mandatory, let critical, _):
+        case .platform(let release, let mandatory, let critical, _, _):
             o["release"] = release.json
             o["mandatory"] = .bool(mandatory)
             o["critical"] = .bool(critical)
-        case .blocked(let reason, _):
+        case .blocked(let reason, _, _):
             o["reason"] = .string(reason)
+        case .packs(let install, let revoke, let set, _):
+            o["install"] = .array(install.map(\.json))
+            o["revoke"] = .array(revoke.map(JSONValue.string))
+            o["set"] = .array(set.map(\.json))
         }
+        if let contentBlock { o["contentBlock"] = .string(contentBlock) }
         return .object(o)
     }
 }
@@ -522,10 +550,19 @@ private func eligible(_ b: ReleaseRecordBuild, platform: String, arch: String, s
     return true
 }
 
-/// The update decision (plans/P3-01.md §2.8): the first of eleven rules that applies decides.
-/// Synchronous and total; each answer has exactly the members §2.8's output table lists, so
-/// decisions compare by value. `update-matrix.json#/rows` pins every rule.
+/// The update decision (plans/P3-01.md §2.8, extended by plans/P4-13.md §2.6 when `content` is
+/// given): P3-01's eleven rules give the app answer; with `content`, the pack composition, the
+/// content blocks and `prestage` refine it in §2.6's order. Synchronous and total; each answer
+/// has exactly the members the output tables list, so decisions compare by value.
+/// `update-matrix.json#/rows` and `#/contentRows` pin every rule.
 public func decideUpdate(_ input: UpdateDecisionInput) -> UpdateDecision {
+    let app = decideApp(input)
+    guard let content = input.content else { return app }
+    return decideContent(input, content, app)
+}
+
+/// P3-01's decision, unchanged (plans/P3-01.md §2.8).
+private func decideApp(_ input: UpdateDecisionInput) -> UpdateDecision {
     let feed = input.feed
     let scheme = feed.app.versionScheme
     func cmp(_ a: String, _ b: String) -> Int? { compareVersions(scheme, a, b) }
@@ -665,13 +702,27 @@ public func decideUpdate(_ input: UpdateDecisionInput) -> UpdateDecision {
     return none(UpdateNoneReason.noMethod)
 }
 
-/// The stage machine's `decide.done` for a decision (§2.8 "bootDecision"). No v4 answer stops
-/// play: `none`, and a `platform` answer that is not mandatory, give `none`; every other answer
-/// gives `optional`. `required` comes from no v4 answer.
+/// The stage machine's `decide.done` for a decision (plans/P3-01.md §2.8 "bootDecision", amended
+/// by plans/P4-13.md §2.6 and decision 4). Floors never stop play; a CI-signed revocation of a
+/// REQUIRED pack can:
+///
+/// - `blocked {revoked-content}`, or any answer with `contentBlock: "revoked-content"`, gives
+///   `required`: the boot stops at a confirmed `blocked {update-required}` (a revoked required
+///   pack cannot be mounted, so continuing would end in an error and a rollback loop);
+/// - `packs` gives `none` (the boot's fetch applies it);
+/// - `blocked {content-floor}`, and any answer with `contentBlock: "content-floor"`, give
+///   `optional`;
+/// - otherwise P3-01's rule: `none`, and a `platform` answer that is not mandatory, give `none`;
+///   every other answer gives `optional`, a prompt over a game that keeps running.
 public func bootDecision(_ decision: UpdateDecision) -> BootEvent.Decision {
+    if case .blocked(let reason, _, _) = decision, reason == UpdateBlockedReason.revokedContent {
+        return .required
+    }
+    if decision.contentBlock == UpdateBlockedReason.revokedContent { return .required }
     switch decision {
+    case .packs: return .none
     case .none: return .none
-    case .platform(_, let mandatory, _, _) where !mandatory: return .none
+    case .platform(_, let mandatory, _, _, _) where !mandatory: return .none
     default: return .optional
     }
 }
@@ -682,8 +733,8 @@ public func bootDecision(_ decision: UpdateDecision) -> BootEvent.Decision {
 public func isUndismissable(_ decision: UpdateDecision) -> Bool {
     switch decision {
     case .blocked: return true
-    case .binary(_, _, _, let mandatory, _, _, _), .store(_, _, let mandatory, _, _),
-        .platform(_, let mandatory, _, _):
+    case .binary(_, _, _, let mandatory, _, _, _, _), .store(_, _, let mandatory, _, _, _),
+        .platform(_, let mandatory, _, _, _):
         return mandatory
     default: return false
     }

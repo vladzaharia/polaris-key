@@ -376,6 +376,20 @@ public struct AppContent: Sendable, Equatable {
     }
 }
 
+extension UpdateContentStamp {
+    /// The decision's view of a parsed content stamp, with its holds (`stampHolds`; nil when
+    /// unusable).
+    public init(_ content: AppContent, holds: [ContentHold]?) {
+        self.init(
+            contentApi: content.contentApi,
+            pins: content.pins.map {
+                PackTarget(pack: $0.pack, release: ReleasePin(sha256: $0.sha256, seq: $0.seq, version: $0.version))
+            },
+            expects: content.expects.map { ContentExpectation(pack: $0.pack, required: $0.required, delivery: $0.delivery) },
+            holds: holds)
+    }
+}
+
 // ── JSON helpers ─────────────────────────────────────────────────────────────────────────────
 
 /// V4 §1.2's strict JSON over UTF-8 bytes (no BOM, duplicate members refused, an object at the

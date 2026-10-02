@@ -5,7 +5,7 @@
 | Phase       | P4: Packs                                                                                                                        |
 | Size        | 1–1.25 engineer-weeks                                                                                                            |
 | Depends on  | [P4-13](P4-13-revocation-floors-decision.md), [P4-08](P4-08-godot-packs.md)                                                      |
-| Unblocks    | [D-04](D-04-diceroll-after-p4.md)                                                                                                |
+| Unblocks    | [P4-26](P4-26-delegation-godot.md), [D-04](D-04-diceroll-after-p4.md)                                                            |
 | Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                         |
 | Plan mode   | yes: execute the approved `plans/P4-13.md` (its P4-24 parts); the plan's approval is this package's plan-mode gate, as for P4-21 |
 | Gates       | plan mode; corpus (runners only; P4-13 owns the corpus); all SDKs                                                                |

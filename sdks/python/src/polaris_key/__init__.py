@@ -106,8 +106,19 @@ from .core.decide import (
     is_valid_host_outlet,
     resolve_update_outlet,
     rollout_bucket,
+    select_pack_rows,
 )
-from .core.feed import FeedFloor, VerifyFeedResult, feed_claims, feed_floor, verify_feed
+from .core.feed import (
+    FeedContent,
+    FeedFloor,
+    VerifyFeedResult,
+    feed_claims,
+    feed_content,
+    feed_floor,
+    verify_feed,
+    with_feed_content,
+)
+from .core.pack_claims import holds_of
 from .core.models import (
     ChannelFeedDoc,
     DecisionRelease,
@@ -121,13 +132,22 @@ from .core.models import (
     UpdateDecision,
     UpdateDecisionInput,
     UpdateOutlet,
+    UpdateContentInput,
+    ContentRevocationInput,
+    PackTarget,
 )
 from .core.release_record import (
     ReleaseRecordPin,
+    RevocationBody,
+    VerifiedRevocation,
     VerifyReleaseRecordResult,
+    VerifyRevocationResult,
+    newer_revocation,
     record_hash,
     release_record_claims,
+    revocation_of,
     verify_release_record,
+    verify_revocation,
 )
 from .core.version import VERSION_SCHEMES, compare_versions, parse_version
 from .core.semver import (
@@ -340,6 +360,20 @@ __all__ = [
     "decide_update",
     "boot_decision",
     "is_undismissable",
+    "select_pack_rows",
+    "feed_content",
+    "with_feed_content",
+    "FeedContent",
+    "holds_of",
+    "revocation_of",
+    "verify_revocation",
+    "newer_revocation",
+    "RevocationBody",
+    "VerifiedRevocation",
+    "VerifyRevocationResult",
+    "UpdateContentInput",
+    "ContentRevocationInput",
+    "PackTarget",
     "ChannelFeedDoc",
     "ReleaseRecordDoc",
     "InstalledBuild",

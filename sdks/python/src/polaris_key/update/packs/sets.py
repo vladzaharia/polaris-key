@@ -6,13 +6,13 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from ...constants_generated import CONTENT_STAMP_FORMAT, ErrorCode
 from ...core.jws import _parse_strict_json
-from ...core.pack_claims import content_claims, is_pack_id, is_sha256
+from ...core.pack_claims import content_claims, holds_of, is_pack_id, is_sha256
 
-__all__ = ["pack_set_id", "parse_content_stamp", "ParseContentStampResult"]
+__all__ = ["pack_set_id", "parse_content_stamp", "ParseContentStampResult", "stamp_holds"]
 
 
 def pack_set_id(entries: Any) -> Optional[str]:
@@ -85,3 +85,20 @@ def parse_content_stamp(data: Union[bytes, str]) -> ParseContentStampResult:
     except Exception:
         return _INVALID
 
+
+
+def stamp_holds(data: Union[bytes, str]) -> Optional[List[Dict[str, Any]]]:
+    """The holds of a content stamp file (plans/P4-13.md §2.4): strict JSON, then ``holds_of``
+    at the stamp's top level. ``parse_content_stamp``'s result is unchanged and carries no
+    holds; a host that runs the content decision reads them with this. ``None`` when the stamp
+    does not parse or its holds are unusable. Never raises."""
+    try:
+        if isinstance(data, str):
+            raw = data.encode("utf-8", "surrogatepass")
+        elif isinstance(data, (bytes, bytearray, memoryview)):
+            raw = bytes(data)
+        else:
+            return None
+        return holds_of(_parse_strict_json(raw))
+    except Exception:
+        return None

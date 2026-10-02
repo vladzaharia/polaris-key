@@ -3,9 +3,9 @@
 | Field       | Value                                                                                                                                                                                  |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v3)                                                                                                                                                                         |
-| Size        | 0.75–1 engineer-weeks                                                                                                                                                                  |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                   |
 | Depends on  | [P4-13](P4-13-revocation-floors-decision.md)                                                                                                                                           |
-| Unblocks    | none                                                                                                                                                                                   |
+| Unblocks    | [P4-25](P4-25-delegation-python-swift.md), [P4-26](P4-26-delegation-godot.md)                                                                                                          |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                  |
 | Plan mode   | yes: `program/plans/P4-19.md` is written and approved before any code                                                                                                                  |
 | Gates       | plan mode; corpus (`releaseRecordCases`, mirrors, generated `corpus.mdx`); threat model; in practice every SDK verifies the new chain; rule 9 if `.pkey/release` declares content keys |
@@ -165,4 +165,9 @@ package, and every decision in §8.1 that names it as owner, override this brief
 ## Plan amendments (P4-13)
 
 The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Plan amendments (P4-19)
+
+The approved [`plans/P4-19.md`](../plans/P4-19.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.

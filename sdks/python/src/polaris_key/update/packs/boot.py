@@ -9,10 +9,10 @@ turns the content stamp's ``expects`` into ``requiredPacks`` and ``essentialPack
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
 from ...constants_generated import ErrorCode
-from .engine import PackEngine, PackError, PackProgress
+from .engine import PackEngine, PackError, PackProgress, _target
 
 __all__ = ["boot_pack_options", "run_boot_fetch"]
 
@@ -38,19 +38,36 @@ def run_boot_fetch(
     consent: str = "metered",
     metered: bool = False,
     answer: Optional[Callable[[int, bool], bool]] = None,
+    install: Optional[Sequence[Any]] = None,
 ) -> Dict[str, Any]:
     """Run the FETCH stage: estimate the required and essential packs that are not current, ask
     when the policy says so (``always``, ``metered`` — the default — or ``never``), download them
     with progress, and report what is installed. The result is ``ok`` when every wanted pack
     installed, ``declined`` when the player said no, ``offline`` when a download failed for want
-    of a network (``network-error``), else ``failed``. Returns ``{"result", "installed"}``."""
+    of a network (``network-error``), else ``failed``. Returns ``{"result", "installed"}``.
+
+    ``install`` is a ``packs`` decision's install list (plans/P4-13.md §2.5 "Applying a packs
+    answer"): its ``required`` and ``essential`` entries are installed here, before mount, at
+    exactly the named release; the others come back in ``background`` for the host to install
+    after the boot (``engine.ensure_releases``). Omitted: the stamp's pins, as before."""
     opts = boot_pack_options(stamp)
     wanted: List[str] = []
     for pid in opts["requiredPacks"] + opts["essentialPacks"]:
         if pid not in wanted:
             wanted.append(pid)
+    blocking = set(wanted)
+    targets: Dict[str, Any] = {}
+    background: List[Any] = []
+    for t in install or ():
+        pack, release = _target(t)
+        if pack in blocking:
+            targets[pack] = (pack, release)
+        else:
+            background.append(t)
     is_metered = metered is True
     pins = {p["pack"]: p["release"]["sha256"] for p in ((stamp or {}).get("pins") or [])}
+    for pid, (_pack, release) in targets.items():
+        pins[pid] = release["sha256"]
 
     def installed_now() -> List[str]:
         running = engine.state().running
@@ -61,9 +78,20 @@ def run_boot_fetch(
     def done(result: str) -> Dict[str, Any]:
         installed = installed_now()
         send({"type": "fetch.done", "result": result, "installed": installed})
-        return {"result": result, "installed": installed}
+        out: Dict[str, Any] = {"result": result, "installed": installed}
+        if install is not None:
+            out["background"] = background
+        return out
 
-    est = engine.estimate(wanted)
+    # The decision's targets install at exactly their release; the other wanted packs at the pin.
+    est = engine.estimate([pid for pid in wanted if pid not in targets])
+    if targets:
+        t_est = engine.estimate_releases(
+            [{"pack": pack, "release": release} for pack, release in targets.values()]
+        )
+        est.bytes += t_est.bytes
+        est.packs.extend(t_est.packs)
+        est.refused.extend(t_est.refused)
     ask = est.bytes > 0 and (consent == "always" or (consent == "metered" and is_metered))
     if ask:
         send({"type": "fetch.consent", "bytes": est.bytes, "metered": is_metered})
@@ -87,7 +115,11 @@ def run_boot_fetch(
     try:
         for pid in est.packs:
             try:
-                engine.ensure([pid])
+                if pid in targets:
+                    pack, release = targets[pid]
+                    engine.ensure_releases([{"pack": pack, "release": release}])
+                else:
+                    engine.ensure([pid])
             except PackError as e:
                 result = "offline" if e.code == ErrorCode.NETWORK_ERROR else "failed"
             except Exception:

@@ -201,6 +201,11 @@ package, and every decision in §8.1 that names it as owner, override this brief
 The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
 
+## Plan amendments (P4-19)
+
+The approved [`plans/P4-19.md`](../plans/P4-19.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
 ## Corrections from implementation
 
 - **Migration numbers.** `0048_a_dist_readiness_blob_gc.sql` (`dist_readiness`, `blob_gc_log`,
@@ -259,3 +264,4 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `BLOB_GC_MODE=off`, `BLOB_GC_GRACE_DAYS`.
 - **Console rendering** of readiness in the matrix is not in this package: the matrix API carries
   a `readiness` object per app-release cell; P4-15 renders it with its overlay.
+||||||| b891d49c

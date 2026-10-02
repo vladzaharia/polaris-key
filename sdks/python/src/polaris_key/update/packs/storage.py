@@ -236,11 +236,12 @@ def measure_file(path: str) -> Dict[str, Any]:
 
 class DirPackStateStore:
     """The atomic-replace state file, with a torn document's quarantine at ``state.json.torn``
-    and the hold's snapshot at ``state.json.torn.list``."""
+    and the hold's snapshot at ``state.json.torn.list``. ``name`` gives the same store under a
+    second name: the sibling ``revocations.json`` (plans/P4-13.md §2.5)."""
 
-    def __init__(self, root: str) -> None:
+    def __init__(self, root: str, name: str = "state.json") -> None:
         self._root = root
-        self.path = os.path.join(root, "state.json")
+        self.path = os.path.join(root, name)
         self.torn_path = self.path + ".torn"
         self.hold_list_path = self.path + ".torn.list"
 
@@ -349,6 +350,12 @@ class DirPackStorage:
 
     def state_store(self) -> DirPackStateStore:
         return DirPackStateStore(self.root)
+
+    def revocation_store(self) -> DirPackStateStore:
+        """The sibling ``revocations.json`` (plans/P4-13.md §2.5): the same atomic replace and
+        quarantine (``revocations.json.torn``) under a second name. The engine never creates it
+        empty."""
+        return DirPackStateStore(self.root, "revocations.json")
 
     @staticmethod
     def _inside(root: str, *parts: str) -> str:

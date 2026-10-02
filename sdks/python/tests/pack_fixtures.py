@@ -61,6 +61,9 @@ __all__ = [
     "marker_for",
     "ByteServer",
     "sha",
+    "revocation_for",
+    "sign_feed_doc",
+    "sign_release_doc",
 ]
 
 
@@ -296,3 +299,55 @@ class ByteServer:
             content_range=f"bytes {offset}-{len(b) - 1}/{len(b)}" if ranged else None,
             chunks=chunks(),
         )
+
+
+def revocation_for(
+    target: TreePack,
+    *,
+    replacement: Optional[TreePack] = None,
+    issued_at: int = 1759350000,
+    reason: str = "Withdrawn in a test.",
+    kid: str = RELEASE_KID,
+) -> Dict[str, Any]:
+    """A ``kind: revocation`` record (plans/P4-13.md §2.3) revoking ``target``, signed with the
+    release key (or ``kid``'s key), and its feed entry: ``{"jws", "record", "entry"}``."""
+    doc: Dict[str, Any] = {
+        "schemaVersion": 1,
+        "aud": PRODUCT,
+        "deliverable": target.pack_id,
+        "kind": "revocation",
+        "version": target.version,
+        "seq": target.seq,
+        "issuedAt": issued_at,
+        "revokes": target.record_sha256,
+    }
+    if replacement is not None:
+        doc["replacement"] = {
+            "sha256": replacement.record_sha256,
+            "seq": replacement.seq,
+            "version": replacement.version,
+        }
+    doc["reason"] = reason
+    jws = sign_jws(doc, _key(kid)["privateKeyPkcs8Pem"], kid, "pkey-release+jws")
+    record = sha(jws)
+    return {
+        "jws": jws,
+        "record": record,
+        "entry": {
+            "record": record,
+            "pack": target.pack_id,
+            "target": target.record_sha256,
+            "version": target.version,
+            "seq": target.seq,
+        },
+    }
+
+
+def sign_feed_doc(doc: Any) -> str:
+    """Sign a channel feed with the corpus's product key (``pkey-test-prod-2026``)."""
+    return sign_jws(doc, _key(PRODUCT_KID)["privateKeyPkcs8Pem"], PRODUCT_KID, "pkey-feed+jws")
+
+
+def sign_release_doc(doc: Any) -> str:
+    """Sign a release record with the corpus's release key."""
+    return sign_jws(doc, _key(RELEASE_KID)["privateKeyPkcs8Pem"], RELEASE_KID, "pkey-release+jws")

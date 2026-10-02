@@ -292,7 +292,20 @@ function setStatus(id, status) {
   const end = next === -1 ? raw.length : next;
   const seg = raw.slice(start, end);
   const updated = seg.replace(/"status": "[a-z-]+"/, `"status": "${status}"`);
-  writeFileSync(GRAPH, raw.slice(0, start) + updated + raw.slice(end));
+  const out = raw.slice(0, start) + updated + raw.slice(end);
+  // The edit is textual, so prove it changed this package's status and nothing else (a package
+  // whose keys put "status" before "id" would otherwise have its neighbour edited instead).
+  const after = new Map(
+    JSON.parse(out).workPackages.map((w) => [w.id, w.status]),
+  );
+  for (const w of doc.workPackages) {
+    const want = w.id === id ? status : w.status;
+    if (after.get(w.id) !== want)
+      throw new Error(
+        `--set ${id} would leave ${w.id} at ${after.get(w.id)}, not ${want}; put "id" first in each package's keys`,
+      );
+  }
+  writeFileSync(GRAPH, out);
   byId.get(id).status = status;
   writeFileSync(INDEX, renderIndex().replace(/\n*$/, "\n"));
   console.log(
