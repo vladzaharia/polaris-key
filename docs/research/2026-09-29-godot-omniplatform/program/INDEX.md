@@ -111,7 +111,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 ## P4: Packs
 
-26 work packages, 32.25–42.5 weeks.
+28 work packages, 33.25–44.25 weeks.
 
 | Id                                                   | Title                                                                                                                                                   | Depends on                               | Role           | Weeks     | Status |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | --------- | ------ |
@@ -122,7 +122,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-05](wp/P4-05-pack-transports-cdn.md)             | Distribution: CDN and embedded transports for packs, availability and gated delivery                                                                    | P4-02, P2b-04, P2b-03                    | implementer    | 0.75–1    | done   |
 | [P4-06](wp/P4-06-client-core-packs.md)               | `client-core` packs: planner, appliers, path rules, install state; Node and React wiring                                                                | P4-04, P3-04, P3-05, P1b-09              | sdk-porter     | 1.75–2.75 | done   |
 | [P4-07](wp/P4-07-python-swift-packs.md)              | Python and Swift pack facets: appliers, handlers, install state                                                                                         | P4-04, P3-06, P3-07, P1b-09, P4-06       | sdk-porter     | 1.25–1.75 | done   |
-| [P4-08](wp/P4-08-godot-packs.md)                     | Godot packs: `godot.pck` handler, delta bake, directory check, `PKeyBoot` pack stages                                                                   | P4-04, P1-10, P3-08, P3-10, S-05, P4-06  | godot-engineer | 2.75–3.25 | todo   |
+| [P4-08](wp/P4-08-godot-packs.md)                     | Godot packs: `godot.pck` handler, delta bake, directory check, `PKeyBoot` pack stages                                                                   | P4-04, P1-10, P3-08, P3-10, S-05, P4-06  | godot-engineer | 2.75–3.25 | done   |
 | [P4-09](wp/P4-09-console-pack-views.md)              | Console: pack deliverables and releases, and which app releases pin which packs                                                                         | P4-02, P2-07                             | implementer    | 0.5       | done   |
 | [P4-10](wp/P4-10-chunk-indexes.md) ⚑                 | Chunk index format, claims and parser; content corpus v2                                                                                                | P4-04, P4-06, S-03, S-02                 | implementer    | 1.5–2     | done   |
 | [P4-11](wp/P4-11-chunk-sync-sdks.md)                 | Chunk sync from seeds in every SDK                                                                                                                      | P4-10, P4-06, P4-07, P4-08, S-02, P4-05  | sdk-porter     | 1.5–2     | todo   |
@@ -141,6 +141,8 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-24](wp/P4-24-content-decision-godot.md) ⚑        | Content decision, feed pack members and revocations in Godot                                                                                            | P4-13, P4-08                             | godot-engineer | 1–1.25    | todo   |
 | [P4-25](wp/P4-25-delegation-python-swift.md) ⚑       | Content-key delegation in Python and Swift                                                                                                              | P4-19, P4-23                             | sdk-porter     | 0.75–1    | todo   |
 | [P4-26](wp/P4-26-delegation-godot.md) ⚑              | Content-key delegation in Godot                                                                                                                         | P4-19, P4-24                             | godot-engineer | 0.5–0.75  | todo   |
+| [P4-27](wp/P4-27-rscc-scan.md)                       | Scan compressed (RSCC) resources in packs so imported models are admitted                                                                               | P4-08, P4-22                             | godot-engineer | 0.5–0.75  | todo   |
+| [P4-28](wp/P4-28-script-attach-allowlist.md)         | Script attachment allow-list and publish script-kind settings                                                                                           | P4-08                                    | godot-engineer | 0.5–1     | todo   |
 
 ## P5: Distribution connectors and native plugins
 

@@ -5,7 +5,7 @@
 | Phase       | P4: Packs                                                                                                                                                                             |
 | Size        | 1.25–1.75 engineer-weeks                                                                                                                                                              |
 | Depends on  | [P4-10](P4-10-chunk-indexes.md), [P4-02](P4-02-pack-deliverables.md), [P4-03](P4-03-ci-patch-artifacts.md)                                                                            |
-| Unblocks    | [P4-17](P4-17-lazy-deltas.md)                                                                                                                                                         |
+| Unblocks    | [P4-17](P4-17-lazy-deltas.md), [P4-27](P4-27-rscc-scan.md)                                                                                                                            |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                 |
 | Plan mode   | yes: execute the approved `plans/P4-10.md` (its P4-22 parts); the plan's approval is this package's plan-mode gate, as for P4-21                                                      |
 | Gates       | plan mode; rule 9 (`PACK_PATCH_STRATEGIES` gains `chunk`, schema enum, mutation, validation-codes); drift gates (transcripts); Action rebundle; workerd; threat model; generated docs |

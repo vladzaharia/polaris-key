@@ -14,6 +14,20 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
+## Before Godot packs reach real devices (P4-08, P4-19)
+
+- **Security review of the pack validators.** P4-08's directory check (`sdks/godot/.../packs/pck.gd`
+  and its CLI twin `packages/cli/src/packLint.ts`) and P4-19's data-only check
+  (`packages/client-core/src/packs/dataonly.ts`) went through a review plus three read-only audit
+  rounds, but the auditor had no Godot source and reasoned from memory of the engine's loaders. The
+  `audit-*` fixtures pin the validators' verdicts and run on the real 4.7.2 and 4.4.1 binaries,
+  not every parser edge. Before shipping packs to players, get a human security review or an audit
+  against a Godot source checkout.
+- **Firefox browser runner.** P4-19's browser conformance passed on Chromium and WebKit; Firefox
+  would not launch locally. Run `--browser=firefox` on CI once billing is fixed.
+- **Known refusals:** packs carrying imported models (RSCC `.scn`) are refused until P4-27; packs
+  may still attach and configure scripts the app ships until P4-28.
+
 ## BLOCKED: GitHub Actions billing (2026-10-02)
 
 - [ ] **GitHub refuses to start any Actions job** ("recent account payments have failed or your
