@@ -425,7 +425,10 @@ export function loadSources(root = ROOT): Sources {
       updateMatrixVersion: corpus("update-matrix.json", "updateMatrixVersion"),
       outletMatrixVersion: corpus("outlet-matrix.json", "outletMatrixVersion"),
       planMatrixVersion: corpus("plan-matrix.json", "planMatrixVersion"),
-      contentCorpusVersion: corpus("content/cases.json", "contentCorpusVersion"),
+      contentCorpusVersion: corpus(
+        "content/cases.json",
+        "contentCorpusVersion",
+      ),
     },
   };
 }
