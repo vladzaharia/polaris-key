@@ -20,6 +20,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { access, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { TrustSet } from "@polaris-key/jws";
+import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { AppContent } from "@polaris-key/protocol/packs";
 import {
   PackEngine,
@@ -85,6 +86,34 @@ export interface NodePacksOptions {
 
 const DEFAULT_MEM_BUDGET = 256 * 1024 * 1024;
 
+/** At most `limit` bytes of a body, decoded as UTF-8 (a non-ASCII byte stays non-ASCII, which
+ *  step 12 refuses); the rest is never read. */
+async function readCapped(res: Response, limit: number): Promise<string> {
+  if (res.body === null) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < limit) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      total += value.byteLength;
+    }
+  } finally {
+    if (total >= limit) await reader.cancel().catch(() => undefined);
+  }
+  const bytes = new Uint8Array(Math.min(total, limit));
+  let at = 0;
+  for (const c of chunks) {
+    const take = Math.min(c.byteLength, bytes.length - at);
+    bytes.set(c.subarray(0, take), at);
+    at += take;
+    if (at >= bytes.length) break;
+  }
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
 /** Mark the store excluded from backups the first time it exists (its `CACHEDIR.TAG` is the
  *  record). `tmutil` can take seconds, so it runs detached and never blocks a boot. */
 async function excludeOnce(root: string): Promise<void> {
@@ -129,6 +158,7 @@ export class PacksClient {
   private readonly pendingHandlers: PackHandler[] = [];
   private readonly listeners = new Set<(e: PackProgress) => void>();
   private zstdInfo: NodeZstdInfo | null = null;
+  private building: PackEngine | null = null;
   private refused: { location: string; step: string }[] = [];
 
   constructor(wiring: PacksWiring, opts: NodePacksOptions = {}) {
@@ -167,7 +197,8 @@ export class PacksClient {
 
   /** Add a handler for a pack type (CONTENT §4.1). */
   registerHandler(handler: PackHandler): void {
-    if (this.engine) this.engine.registerHandler(handler);
+    const engine = this.engine ?? this.building;
+    if (engine) engine.registerHandler(handler);
     else this.pendingHandlers.push(handler);
   }
 
@@ -237,6 +268,7 @@ export class PacksClient {
     if (this.engine) return Promise.resolve(this.engine);
     this.starting ??= this.boot().catch((e: unknown) => {
       this.starting = null;
+      this.building = null;
       throw e;
     });
     return this.starting;
@@ -279,8 +311,10 @@ export class PacksClient {
         }
       }
     });
+    // A handler registered while the engine loads goes straight to it.
+    this.building = engine;
     const embedded = await this.embeddedBaselines();
-    this.refused = (await engine.load(embedded)).refused;
+    this.refused.push(...(await engine.load(embedded)).refused);
     this.engine = engine;
     return engine;
   }
@@ -385,7 +419,11 @@ export class PacksClient {
         signal: this.w.ctx.deadline(),
       });
       if (!res.ok) return { ok: false, code: ErrorCode.networkError };
-      return { ok: true, body: await res.text() };
+      // A record over the bound is refused at step `hash` without hashing; never buffer more.
+      return {
+        ok: true,
+        body: await readCapped(res, MAX_RECORD_JWS_BYTES + 1),
+      };
     } catch {
       return { ok: false, code: ErrorCode.networkError };
     }

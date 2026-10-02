@@ -12,7 +12,11 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { packSetId } from "@polaris-key/client-core";
 import { PolarisKeyClient } from "../src/index.js";
-import { selectNodeZstd } from "../src/packs/index.js";
+import {
+  DirPackStorage,
+  measureFile,
+  selectNodeZstd,
+} from "../src/packs/index.js";
 import {
   PRODUCT,
   PRODUCT_TRUST,
@@ -417,5 +421,62 @@ describe("the Node zstd backend (plans/P4-01.md §5; PARITY §6.3)", () => {
       dictionaryIgnored: false,
       patchMethods: ["zstd-patch-from"],
     });
+  });
+});
+
+describe("DirPackStorage", () => {
+  it("reads an embedded single-file baseline from the file itself", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pkey-store-"));
+    try {
+      const file = join(dir, "levels.pck");
+      await writeFile(file, "payload bytes");
+      const storage = new DirPackStorage({ root: join(dir, "packs") });
+      const { sha256, size } = await measureFile(file);
+      const install = {
+        packId: "djdl.levels",
+        record: "x",
+        recordSha256: sha256,
+        version: "1.0.0",
+        seq: 1,
+        type: "custom.blob",
+        variant: "",
+        layout: "container",
+        payloadSha256: sha256,
+        payloadSize: size,
+        activation: "restart" as const,
+        location: file,
+        embedded: true,
+        installedAt: 1,
+      };
+      const got = await storage.installed(install);
+      expect(got?.payload?.size).toBe(size);
+      expect(await storage.verify(install)).toBe(true);
+      expect(await storage.verify({ ...install, payloadSize: size + 1 })).toBe(
+        false,
+      );
+      // Removing an embedded payload (outside the store) is refused.
+      await storage.remove(file);
+      expect((await measureFile(file)).size).toBe(size);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("caps a record body at the record bound: an oversized one is refused at hash", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    const huge = { ...v1, jws: v1.jws + "A".repeat(200_000) };
+    srv.packs = [huge];
+    const c = await client({ stamp: [v1] });
+    await expect(c.update.packs.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "record-rejected",
+      detail: "hash",
+    });
+    c.close();
   });
 });

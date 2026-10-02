@@ -125,6 +125,14 @@ export async function measureFile(
   return { sha256: await hashFile(path), size: (await stat(path)).size };
 }
 
+/** A container install's payload file: `payload.bin` in the store, or the embedded file itself
+ *  (an embedded single-file baseline's location is the file). */
+function payloadFile(install: PackInstall): string {
+  return install.embedded === true
+    ? install.location
+    : join(install.location, CONTAINER_FILE);
+}
+
 /** `path` joined under `root`, refusing anything that would land outside it. */
 function inside(root: string, ...parts: string[]): string {
   const p = resolve(root, ...parts);
@@ -166,7 +174,14 @@ export class DirPackStorage implements PackStorage {
       replace: async (text) => {
         await mkdir(this.root, { recursive: true });
         const tmp = `${path}.${process.pid}.tmp`;
-        await writeFile(tmp, text, { mode: 0o600 });
+        const fh = await open(tmp, "w", 0o600);
+        try {
+          await fh.writeFile(text);
+          // Durable before the rename, so a power loss never leaves a torn state file.
+          await fh.sync();
+        } finally {
+          await fh.close();
+        }
         await rename(tmp, path);
       },
     };
@@ -261,7 +276,7 @@ export class DirPackStorage implements PackStorage {
       const files = await this.treeFiles(loc, install.embedded === true);
       return files === null ? null : { payload: null, files };
     }
-    const file = join(loc, CONTAINER_FILE);
+    const file = payloadFile(install);
     if (!(await exists(file))) return null;
     const whole = fileSource(file, (await stat(file)).size);
     const index = await this.readIndex(loc);
@@ -317,20 +332,19 @@ export class DirPackStorage implements PackStorage {
     return files;
   }
 
+  /** False when the payload is missing or its digest differs; throws when it cannot be read
+   *  (the engine then neither uses nor collects it this load). */
   async verify(install: PackInstall): Promise<boolean> {
-    try {
-      if (install.layout === "tree")
-        return (
-          (await directoryTreeDigest(install.location)) ===
-          install.payloadSha256
-        );
-      const m = await measureFile(join(install.location, CONTAINER_FILE));
+    if (install.layout === "tree") {
+      if (!(await exists(install.location))) return false;
       return (
-        m.sha256 === install.payloadSha256 && m.size === install.payloadSize
+        (await directoryTreeDigest(install.location)) === install.payloadSha256
       );
-    } catch {
-      return false;
     }
+    const file = payloadFile(install);
+    if (!(await exists(file))) return false;
+    const m = await measureFile(file);
+    return m.sha256 === install.payloadSha256 && m.size === install.payloadSize;
   }
 
   async remove(location: string): Promise<void> {
