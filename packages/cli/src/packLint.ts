@@ -208,19 +208,29 @@ const SCRIPT_TYPES = ["GDScript", "CSharpScript"] as const;
  *    Export such scenes as text (the export preset's "convert text resources to binary" off),
  *    where `[ext_resource type="Script" …]` — code already in the app, not in the pack — passes.
  *    Script files themselves are refused by extension.
+ *
+ * The scan is chosen by the content's head before the extension (P4-22): any entry starting
+ * `RSRC` gets the binary scan, any starting `RSCC` is refused, and any whose head is a text
+ * resource header (`[gd_scene`, `[gd_resource`) gets the text scan, whatever its name. The
+ * extensions above only ADD scans (a `.tscn` without a header is still scanned as text, and a
+ * `.scn`, `.res` or exported file that is neither is refused).
  */
 export function embeddedCode(p: string, data: Uint8Array): string | null {
-  if (TEXT_RESOURCE_RE.test(p)) return textResourceCode(data);
-  if (!BINARY_RESOURCE_RE.test(p) && !p.startsWith(".godot/exported/"))
-    return null;
+  // What to scan is chosen by the content's head first, never by the extension alone (P4-22):
+  // a resource under any name — a `.png` holding `RSRC` bytes, say — gets the scan its
+  // content calls for, so renaming a file cannot carry an embedded script past the lint.
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
   if (magic === "RSCC")
     return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed";
   if (magic !== "RSRC") {
-    // An exported file may still be a text resource.
-    const text = Buffer.from(data.subarray(0, 64)).toString("latin1");
-    if (/^\s*\[gd_(scene|resource)\b/.test(text)) return textResourceCode(data);
-    return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
+    const head = new TextDecoder("utf-8", { fatal: false })
+      .decode(data.subarray(0, 64))
+      .replace(/^\uFEFF/, "");
+    if (/^\s*\[gd_(scene|resource)\b/.test(head) || TEXT_RESOURCE_RE.test(p))
+      return textResourceCode(data);
+    if (BINARY_RESOURCE_RE.test(p) || p.startsWith(".godot/exported/"))
+      return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
+    return null;
   }
   const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
   for (const s of [...SCRIPT_TYPES, "script/source"]) {

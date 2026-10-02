@@ -332,6 +332,8 @@ export interface PackRepoOptions {
   extraPacks?: string;
   core3dVariants?: string;
   deltaBases?: number;
+  /** core3d's `patch.strategies` flow list (default: absent, so every strategy). */
+  strategies?: string;
   /** The app artifact map's web entry `embeds:` line value (default unset). */
   webEmbeds?: string;
 }
@@ -376,7 +378,7 @@ release:
         engine: godot-4.7
 ${o.core3dVariants ?? ""}      patch:
         deltaBases: ${o.deltaBases ?? 1}
-    diceroll.l10n:
+${o.strategies !== undefined ? `        strategies: ${o.strategies}\n` : ""}    diceroll.l10n:
       kind: pack
       type: files.tree
       variants:
@@ -444,6 +446,8 @@ export interface PackServer {
   packs: boolean;
   /** Discovery's `release.revocations` (P4-13). */
   revocations: boolean;
+  /** Discovery's `release.chunks` (P4-22). */
+  chunks: boolean;
   /** Submitted revocation records (P4-13), in order. */
   revoked: string[];
   /** Stored releases: `<deliverable>@<version>` → seq and record hash. */
@@ -491,6 +495,7 @@ export function packServer(): PackServer {
     gate: null,
     packs: true,
     revocations: true,
+    chunks: true,
     revoked: [],
     stored,
     failStage: 0,
@@ -535,6 +540,7 @@ export function packServer(): PackServer {
             enabled: true,
             ...(server.packs ? { packs: true } : {}),
             ...(server.revocations ? { revocations: true } : {}),
+            ...(server.chunks ? { chunks: true } : {}),
           },
         },
       });

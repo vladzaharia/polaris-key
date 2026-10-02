@@ -94,7 +94,28 @@ export {
   packContext,
   requirePacksDiscovery,
   variantDirName,
+  type PacksDiscovery,
 } from "./packManifest.js";
+export {
+  buildChunks,
+  chunkContainer,
+  chunkIndexBytes,
+  chunkPayload,
+  CHUNK_MIN_PAYLOAD_BYTES,
+  CHUNK_PARAMS,
+  containerSegments,
+  fastcdc,
+  frameContentSize,
+  layoutChunks,
+  priorLocations,
+  writeChunkIndex,
+  type BuiltChunks,
+  type Chunk,
+  type ChunkChainBase,
+  type ChunkLayout,
+  type ChunkOutcome,
+  type PriorLocation,
+} from "./packChunks.js";
 export {
   CONTENT_STAMP_USAGE,
   contentFor,
