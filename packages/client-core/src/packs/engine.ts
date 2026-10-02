@@ -176,9 +176,12 @@ export interface EmbeddedBaseline {
 
 export interface PackProgress {
   packId: string;
-  phase: "download" | "apply" | "done";
+  /** `state-issue` is emitted once at `load` when the state document cannot be trusted (then
+   *  `packId` is empty, the counts are 0 and `issue` says why). */
+  phase: "download" | "apply" | "done" | "state-issue";
   done: number;
   total: number;
+  issue?: "torn" | "unreadable";
 }
 
 export interface PackEngineOptions {
@@ -311,6 +314,12 @@ export class PackEngine {
   private stateIssue: "torn" | "unreadable" | null = null;
   /** No garbage collection while a torn document is held or the state is unreadable. */
   private gcHold = false;
+  /** While a torn document is held: what existed when the hold started, never collected. */
+  private holdSnapshot: { locations: Set<string>; plans: Set<string> } | null =
+    null;
+  /** Packs whose `previous` was carried over from an entry whose check could not run:
+   *  re-verified before a rollback uses it. */
+  private readonly unverifiedPrevious = new Set<string>();
   private doc: PackStateDoc | null = null;
   /** Plan ids `estimate` staged an index under, reused by the next `ensure`. */
   private readonly preflightPlans = new Map<
@@ -380,13 +389,46 @@ export class PackEngine {
         text !== null &&
         text.trim() !== "" &&
         !looksLikeState(text);
-      if (torn) await this.opts.state.quarantine?.(text!);
+      const st = this.opts.state;
+      const canQuarantine =
+        typeof st.quarantine === "function" &&
+        typeof st.quarantined === "function" &&
+        typeof st.clearQuarantine === "function";
+      if (torn) {
+        // A store that cannot keep the torn text aside (a host's store from before the
+        // interface required it) is treated as unreadable: nothing is written over the text.
+        if (!canQuarantine) unreadable = true;
+        else
+          try {
+            await st.quarantine(text!);
+          } catch {
+            unreadable = true;
+          }
+      }
       const held =
         !unreadable &&
-        (torn ||
-          (await this.opts.state.quarantined?.().catch(() => true)) === true);
+        (torn || (canQuarantine && (await st.quarantined().catch(() => true))));
       this.stateIssue = unreadable ? "unreadable" : held ? "torn" : null;
-      this.gcHold = unreadable || held;
+      this.gcHold = unreadable;
+      if (held) {
+        // Bound the hold: what exists now may belong to the lost document and is kept; what
+        // this process creates and drops later is collected as usual.
+        const listed = await this.opts.storage.list().catch(() => null);
+        if (listed === null) this.gcHold = true;
+        else
+          this.holdSnapshot = {
+            locations: new Set(listed.locations),
+            plans: new Set(listed.plans),
+          };
+      }
+      if (this.stateIssue !== null)
+        this.emit({
+          packId: "",
+          phase: "state-issue",
+          done: 0,
+          total: 0,
+          issue: this.stateIssue,
+        });
       const parsed = parsePackState(torn ? null : text);
       const deferred = new Set<PackInstall>();
       const doc = await reloadPackState(parsed, {
@@ -416,7 +458,7 @@ export class PackEngine {
       for (const [id, i] of Object.entries(parsed.active))
         if (deferred.has(i)) this.deferred.active[id] = i;
       for (const [id, i] of Object.entries(parsed.previous))
-        if (deferred.has(i) && !doc.active[id]) this.deferred.previous[id] = i;
+        if (deferred.has(i)) this.deferred.previous[id] = i;
       this.doc = doc;
       // This boot's set: every active install (restart packs mount now), else the embedded
       // baseline.
@@ -470,6 +512,7 @@ export class PackEngine {
   /** Mark this boot healthy (CONTENT §10 step 7). */
   confirm(): Promise<void> {
     return this.serialised(async () => {
+      this.refuseUnreadable();
       this.doc = confirmBoot(this.requireLoaded());
       await this.persist();
     });
@@ -478,8 +521,27 @@ export class PackEngine {
   /** Re-point a pack at `previous`. A hot pack switches now; a restart pack at the next boot. */
   rollback(packId: string): Promise<boolean> {
     return this.serialised(async () => {
+      this.refuseUnreadable();
       const doc = this.requireLoaded();
       const before = doc.active[packId];
+      const prev = doc.previous[packId];
+      if (prev && this.unverifiedPrevious.has(packId)) {
+        // Carried over from an entry whose check could not run: verify it now.
+        let ok = false;
+        try {
+          ok =
+            (await this.verifyStoredRecord(
+              prev.record,
+              prev.recordSha256,
+              packId,
+              prev,
+            )) && (await this.opts.storage.verify(prev));
+        } catch {
+          ok = false;
+        }
+        if (!ok) return false;
+        this.unverifiedPrevious.delete(packId);
+      }
       const r = rollbackInstall(doc, packId);
       if (!r.rolledBack) return false;
       this.doc = r.state;
@@ -500,6 +562,7 @@ export class PackEngine {
    */
   ensure(packIds: readonly string[]): Promise<PackInstall[]> {
     return this.serialised(async () => {
+      this.refuseUnreadable();
       const out: PackInstall[] = [];
       for (const id of packIds) out.push(await this.ensureOne(id));
       return out;
@@ -513,6 +576,7 @@ export class PackEngine {
    */
   estimate(packIds: readonly string[]): Promise<PackEstimate> {
     return this.serialised(async () => {
+      this.refuseUnreadable();
       const out: PackEstimate = { bytes: 0, packs: [], refused: [] };
       for (const id of packIds) {
         try {
@@ -556,6 +620,15 @@ export class PackEngine {
     }
   }
 
+  private refuseUnreadable(): void {
+    this.requireLoaded();
+    if (this.stateIssue === "unreadable")
+      throw new PackError(
+        "pack-state-unreadable",
+        "The pack state could not be read, so nothing is fetched, written or installed this process.",
+      );
+  }
+
   private async persist(): Promise<void> {
     if (this.stateIssue === "unreadable")
       throw new PackError(
@@ -591,6 +664,7 @@ export class PackEngine {
       await this.opts.state.clearQuarantine?.();
       this.stateIssue = null;
       this.gcHold = false;
+      this.holdSnapshot = null;
       await this.collect();
     });
   }
@@ -1163,11 +1237,20 @@ export class PackEngine {
         : {}),
       installedAt: this.opts.now(),
     };
-    // A fresh commit supersedes this pack's entries whose check could not run.
+    // A fresh commit supersedes this pack's entries whose check could not run; an active one
+    // becomes `previous`, re-verified before a rollback uses it.
+    const carried = this.deferred.active[packId];
     delete this.deferred.active[packId];
     delete this.deferred.previous[packId];
     const before = this.running.get(packId);
     this.doc = commitInstall(this.requireLoaded(), install);
+    if (carried && carried.recordSha256 !== install.recordSha256) {
+      this.doc = {
+        ...this.doc,
+        previous: { ...this.doc.previous, [packId]: carried },
+      };
+      this.unverifiedPrevious.add(packId);
+    } else this.unverifiedPrevious.delete(packId);
     await this.persist();
     if (!reused)
       await this.opts.storage.removeStaging(stagingPlan).catch(() => undefined);
@@ -1192,11 +1275,12 @@ export class PackEngine {
     const listed = await this.opts.storage
       .list()
       .catch(() => ({ locations: [], plans: [] }));
+    const held = this.holdSnapshot;
     for (const loc of listed.locations)
-      if (!roots.locations.has(loc))
+      if (!roots.locations.has(loc) && !held?.locations.has(loc))
         await this.opts.storage.remove(loc).catch(() => undefined);
     for (const plan of listed.plans)
-      if (!roots.plans.has(plan))
+      if (!roots.plans.has(plan) && !held?.plans.has(plan))
         await this.opts.storage.removeStaging(plan).catch(() => undefined);
   }
 

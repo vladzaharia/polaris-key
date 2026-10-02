@@ -35,6 +35,7 @@ import {
   type PackEngineOptions,
   type PackHandler,
   type PackInstall,
+  type PackStateStore,
   type Sha256Port,
   type ZstdPort,
 } from "../src/index.js";
@@ -335,6 +336,7 @@ describe("PackEngine: a files.tree pack through the pipeline", () => {
     // The process dies as it writes the committed state: the payload is in the store, the
     // document on disk still has the journal and the old pointer.
     const dying = {
+      ...state,
       read: state.read,
       replace: async (text: string) => {
         const doc = JSON.parse(text) as {
@@ -942,5 +944,160 @@ describe("PackEngine: a load never loses what it could not judge", () => {
       code: "pack-no-variant",
     });
     expect(server.calls).toEqual([]);
+  });
+});
+
+describe("PackEngine: round-2 state safety", () => {
+  it("keeps a previous whose check threw, across two loads", async () => {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    let e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    e = engine({ server, storage, state, stamp: stampFor(v2) });
+    await e.load();
+    await e.ensure(["djdl.l10n"]);
+    const flakyPrev = {
+      ...storage,
+      verify: async (i: PackInstall) => {
+        if (i.location === i1!.location) throw new Error("EIO");
+        return storage.verify(i);
+      },
+    };
+    for (let n = 0; n < 2; n++) {
+      const f = engine({
+        server,
+        storage: flakyPrev,
+        state,
+        stamp: stampFor(v2),
+      });
+      await f.load();
+      expect(f.state().previous["djdl.l10n"]).toBeUndefined();
+      expect(JSON.parse(state.text!).previous["djdl.l10n"].location).toBe(
+        i1!.location,
+      );
+      expect(storage.store.has(i1!.location)).toBe(true);
+    }
+    const ok = engine({ server, storage, state, stamp: stampFor(v2) });
+    await ok.load();
+    expect(ok.state().previous["djdl.l10n"]!.version).toBe("1.0.0");
+    expect(await ok.rollback("djdl.l10n")).toBe(true);
+  });
+
+  it("a fresh commit carries a deferred active over as previous, re-verified at rollback", async () => {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    let broken = true;
+    const flaky = {
+      ...storage,
+      verify: async (i: PackInstall) => {
+        if (broken && i.location === i1!.location) throw new Error("EIO");
+        return storage.verify(i);
+      },
+    };
+    const f = engine({ server, storage: flaky, state, stamp: stampFor(v2) });
+    await f.load();
+    await f.ensure(["djdl.l10n"]);
+    expect(f.state().previous["djdl.l10n"]!.location).toBe(i1!.location);
+    // Still unreadable: the rollback refuses rather than switch to unverified bytes.
+    expect(await f.rollback("djdl.l10n")).toBe(false);
+    broken = false;
+    expect(await f.rollback("djdl.l10n")).toBe(true);
+    expect(f.state().active["djdl.l10n"]!.version).toBe("1.0.0");
+  });
+
+  it("a custom store without the quarantine members treats a torn document as unreadable", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const good = memoryPackStateStore();
+    const e = engine({ server, storage, state: good, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    let text: string | null = good.text!.slice(0, 15);
+    const minimal = {
+      read: async () => text,
+      replace: async (t: string) => {
+        text = t;
+      },
+    } as unknown as PackStateStore;
+    const events: string[] = [];
+    const f = engine({ server, storage, state: minimal, stamp: stampFor(v1) });
+    f.on((p) => events.push(`${p.phase}:${p.issue ?? ""}`));
+    await f.load();
+    expect(f.state().stateIssue).toBe("unreadable");
+    expect(events).toEqual(["state-issue:unreadable"]);
+    expect(text).toBe(good.text!.slice(0, 15));
+    expect(storage.store.has(i!.location)).toBe(true);
+    await expect(f.estimate(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-state-unreadable",
+    });
+    await expect(f.confirm()).rejects.toMatchObject({
+      code: "pack-state-unreadable",
+    });
+  });
+
+  it("a custom store with the quarantine members holds a torn document", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const good = memoryPackStateStore();
+    const e = engine({ server, storage, state: good, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    let text: string | null = good.text!.slice(0, 15);
+    let aside: string | null = null;
+    const custom: PackStateStore = {
+      read: async () => text,
+      replace: async (t) => {
+        text = t;
+      },
+      quarantine: async (t) => {
+        aside ??= t;
+      },
+      quarantined: async () => aside !== null,
+      clearQuarantine: async () => {
+        aside = null;
+      },
+    };
+    const f = engine({ server, storage, state: custom, stamp: stampFor(v1) });
+    await f.load();
+    expect(f.state().stateIssue).toBe("torn");
+    expect(aside).toBe(good.text!.slice(0, 15));
+    expect(storage.store.has(i!.location)).toBe(true);
+  });
+
+  it("bounds the torn hold: what existed is kept, what the held process leaves is collected", async () => {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    let e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    state.text = state.text!.slice(0, 15);
+    storage.staging.set("old-orphan", new Map());
+    e = engine({ server, storage, state, stamp: stampFor(v2) });
+    await e.load();
+    expect(e.state().stateIssue).toBe("torn");
+    // Garbage this process creates during the hold is not protected by it.
+    storage.staging.set("new-orphan", new Map());
+    storage.store.set("djdl.l10n/new-orphan", {
+      layout: "tree",
+      tree: new Map(),
+      index: null,
+    });
+    await e.ensure(["djdl.l10n"]);
+    expect(storage.store.has(i1!.location)).toBe(true);
+    expect(storage.staging.has("old-orphan")).toBe(true);
+    expect(storage.staging.has("new-orphan")).toBe(false);
+    expect(storage.store.has("djdl.l10n/new-orphan")).toBe(false);
   });
 });

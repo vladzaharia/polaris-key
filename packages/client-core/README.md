@@ -161,8 +161,11 @@ same code runs in Node, in a browser and under the corpus runner. Nothing here d
   `gcRoots`) over a store with atomic replace. Each entry carries its pack record verbatim and
   `reloadPackState` re-verifies it on every load; nothing read back is trusted. A store's `read`
   answers null only for a missing document; an unreadable one makes the engine write and install
-  nothing (`pack-state-unreadable`), a torn one is quarantined and suspends garbage collection
-  until `recoverState()`, and an entry whose payload check throws is kept but not used.
+  nothing (`pack-state-unreadable`), a torn one is quarantined and suspends garbage collection of
+  what existed when the hold started until `recoverState()`, and an entry whose payload check
+  throws is kept but not used (an active one carried over as `previous` by the next commit,
+  re-verified before a rollback). The quarantine members of `PackStateStore` are required; a
+  store that lacks them at run time has a torn document treated as unreadable.
 - **`PackEngine`**: CONTENT §10's pipeline — preflight, journal, `Range`/`If-Range` fetch whose
   resume re-hashes what is staged, apply with fallbacks, commit (the pointer swap), activation,
   confirm, rollback, garbage collection and embedded baselines. `estimate` sizes a download for
