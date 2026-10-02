@@ -277,12 +277,12 @@
       ]
     },
     "ui.stages": {
-      "status": "planned",
-      "wp": "P1-10"
+      "status": "implemented",
+      "note": "PKeyStages (core/stages.gd) replays every stage-matrix.json row, probe, guard and confirm case; PKeyBoot drives every row through PolarisKey.boot() with a scripted host (suite_boot)."
     },
     "ui.kit": {
-      "status": "planned",
-      "wp": "P1-10"
+      "status": "implemented",
+      "note": "P1-10's v1 kit: PKeyBoot, gate, activation panel, sign-in dialog with QR, offline activation, settings panel, status banner, update prompt, entitlement badge and dev-menu section, pinned as structural snapshots (suite_ui). PKeyDeviceList is not in v1 (unowned; needs P1-05) and the pack progress UI is P4-08's."
     },
     "commerce.receipt": {
       "status": "planned",
