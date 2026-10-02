@@ -401,6 +401,57 @@ and never roll back the migration. Devices that already learned a revocation kee
 target. Every SDK release note must state that SDKs older than P4-13 keep using revoked content
 until upgraded.
 
+### Content keys (delegation, P4-19)
+
+A content key may sign data-only pack releases (`files.tree`, `data.json`, `l10n.table`) of
+compatible or standalone packs under one pack-id scope, inside a window of at most 366 days. The
+grant is a CI-signed delegation; the Worker never holds either key. See
+`/docs/services/release/packs/` for the full flow.
+
+**Adoption rule.** Delegate only once every live app build you care about embeds a P4-19 SDK.
+Older builds refuse delegated releases (safely: they keep what they run), so a required pack
+whose only release is delegated stays missing on them.
+
+**Delegate a content key.**
+
+```sh
+pkey release keys generate --content --out content.pem   # mode 0600; prints the public key
+pkey release delegate --prefix <packId> --types files.tree,data.json \
+  --public-key <b64url> [--expires-in <days>] [--notes "<team, year>"] [--dry-run]
+```
+
+Run `delegate` with `PKEY_RELEASE_KEY`, from the release workflow. Store the PEM as the content
+team's GitHub Environment secret `PKEY_CONTENT_KEY`, and nowhere else; the content workflow then
+publishes with `--delegation <sha256>`. If the submit fails after signing, the signed delegation
+is in `./pkey-delegation-<sha256>.jws`: keep it, because it is what lets you revoke a delegation
+the Worker never stored.
+
+**Rotate or renew a content key.** One key maps to one delegation, so both are the same flow:
+generate a new key, delegate it, re-publish what must survive under the new delegation, then
+revoke the old delegation. Releases already installed under a delegation stay valid after its
+window closes, so a renewal needs no re-publish of installed content; only new publishes need
+the new window. The CLI warns within 14 days of a window's end.
+
+**Revoke a delegation (re-publish first).**
+
+```sh
+pkey release revoke --delegation <sha256 | ./pkey-delegation-<sha256>.jws> --reason "<text>"
+```
+
+Revoking a delegation refuses every release signed under it on every device that learns it
+(`pack-revoked`, detail `delegation`), and ingest yanks them. A **required** pack served by such
+a release then blocks the boot (`revoked-content`) until a release under a new delegation
+arrives, so re-publish first, then revoke — unless the key is actively abused, in which case
+revoke at once. A revocation is permanent and takes no replacement. A delegation minted outside
+CI (for example with a stolen release key) can be revoked only if you hold its JWS (pass the
+file); otherwise rotate the pinned release keys.
+
+**The tail sniff's chance match.** The data-only rule refuses a file whose last 65,557 bytes
+contain `PK\x05\x06` (a zip end record). Compressed media (PNG, OGG, MP3) can hold those four
+bytes by chance, about 1.5e-5 per file (65,557 positions × 2^-32). It fails closed: the CLI lint
+reports the file by path before anything is signed. The remedy is to re-encode the file (any
+change of the compressed bytes moves the match).
+
 ## The blob collector (P4-14)
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:

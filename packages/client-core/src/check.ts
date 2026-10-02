@@ -17,6 +17,7 @@ import type {
   ChannelFeedDoc,
   ContentRevocationInput,
   FeedContent,
+  FeedRevocation,
   InstalledBuild,
   ReleasePin,
   StagedUpdate,
@@ -45,7 +46,9 @@ import {
 import { holdsOf } from "./packs/claims.js";
 import { selectVariant } from "./packs/select.js";
 import {
+  coversPack,
   newerRevocation,
+  recordRevoked,
   reloadReleaseRecords,
   verifyReleaseRecord,
   verifyRevocation,
@@ -117,6 +120,13 @@ export interface UpdateCheckContent {
   revoked: Record<string, VerifiedRevocation>;
   /** Packs whose revocations must be re-learned (the engine's `relearn`). */
   relearn?: readonly string[];
+  /**
+   * The delegated releases the pack engine knows (`delegatedReleases()`, plans/P4-19.md §2.7):
+   * record hash → its pack and the hash of the delegation it was signed under. A delegation entry
+   * naming one of these delegations is relevant at step 11, and each release whose delegation is
+   * revoked joins the decision's revocations.
+   */
+  delegated?: Readonly<Record<string, { pack: string; delegation: string }>>;
 }
 
 export type RunUpdateCheckResult =
@@ -446,6 +456,18 @@ async function contentSteps(
   for (const p of c.stamp.pins) H.add(p.release.sha256);
   for (const h of c.holds ?? []) H.add(h.release.sha256);
   const ps = fc.packSets;
+  // plans/P4-19.md §2.7: H's pack set (the stamp's expects, pins and holds, the active installs
+  // and the feed targets), for the relevance of delegation entries.
+  const packsH = new Set<string>([
+    ...Object.keys(c.active),
+    ...c.stamp.pins.map((p) => p.pack),
+    ...c.stamp.expects.map((e) => e.pack),
+    ...(c.holds ?? []).map((h) => h.pack),
+  ]);
+  const delegated = c.delegated ?? {};
+  const delegations = new Set(
+    Object.values(delegated).map((d) => d.delegation),
+  );
   if (ps) {
     const targets = selectPackRows(ps, {
       contentApi: c.stamp.contentApi,
@@ -453,6 +475,7 @@ async function contentSteps(
       engine,
       axes: c.axes,
     });
+    for (const pack of targets.keys()) packsH.add(pack);
     for (const h of targets.values()) {
       H.add(h);
       for (const o of Object.values(ps.outlets ?? {}))
@@ -461,7 +484,14 @@ async function contentSteps(
     }
   }
 
-  // Step 11.
+  // Step 11. A pack-record entry is relevant when its target is in H; a delegation entry
+  // (plans/P4-19.md §2.7) when its target is the delegation of a delegated release this host
+  // knows, or its scope root covers, by whole segments, a pack in H's pack set.
+  const relevant = (entry: FeedRevocation): boolean =>
+    entry.kind === "delegation"
+      ? delegations.has(entry.target) ||
+        [...packsH].some((p) => coversPack(entry.pack, p))
+      : H.has(entry.target);
   const stored = new Map<string, VerifiedRevocation>(Object.entries(c.revoked));
   const learned: { revocation: VerifiedRevocation; jws: string }[] = [];
   // The feed entries step 11 considers (target in H) that are now known: already stored with
@@ -469,7 +499,7 @@ async function contentSteps(
   const known = new Set<string>();
   let fetches = 0;
   for (const entry of fc.revocations ?? []) {
-    if (!H.has(entry.target)) continue;
+    if (!relevant(entry)) continue;
     const have = stored.get(entry.target);
     if (have && have.record === entry.record) {
       known.add(entry.record);
@@ -507,7 +537,8 @@ async function contentSteps(
   const revInput: ContentRevocationInput[] = [];
   for (const [target, rev] of stored) {
     let usable = false;
-    const rep = rev.replacement;
+    // A delegation target has no replacement (plans/P4-19.md §2.6): one is ignored.
+    const rep = delegations.has(target) ? null : rev.replacement;
     if (rep !== null && H.has(target) && !isRevoked(rep.sha256)) {
       const got = await safeFetch(
         () => opts.fetchRecord(rep.sha256),
@@ -543,6 +574,19 @@ async function contentSteps(
       replacementUsable: usable,
     });
   }
+  // plans/P4-19.md §2.7: each known delegated release whose delegation is revoked is revoked for
+  // the decision, with no replacement.
+  for (const [record, d] of Object.entries(delegated))
+    if (
+      recordRevoked(record, d.delegation, new Set(stored.keys())) ===
+      "delegation"
+    )
+      revInput.push({
+        target: record,
+        pack: d.pack,
+        replacement: null,
+        replacementUsable: false,
+      });
 
   // Step 13: the bucket of every gate salt.
   const buckets: Record<string, number | null> = {};
@@ -565,7 +609,7 @@ async function contentSteps(
   if (feedSource === "network" && fc.revocations !== null)
     for (const p of c.relearn ?? []) {
       const all = fc.revocations
-        .filter((e) => e.pack === p && H.has(e.target))
+        .filter((e) => e.pack === p && relevant(e))
         .every((e) => known.has(e.record));
       if (all) relearnCleared.push(p);
     }

@@ -473,6 +473,15 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
   `pack-type-unsupported`, `pack-not-entitled`, `pack-no-variant`, `pack-state-unreadable`, the
   `plan-*` and applier codes, `network-error`. `PackError` is exported from `@polaris-key/node`
   and `@polaris-key/node/packs`.
+- **Delegated content** (P4-19). A compatible or standalone pack release signed by a delegated
+  content key installs through the same engine: the delegation its `pkd1-` kid names is fetched
+  from the record route (at most 16 per check, cached per process), verified against
+  `pinnedReleaseKeys` only, and kept with the install for the reload. Every file must pass the
+  data-only rule (an extension allow-list over the files index before any payload is fetched,
+  then head and tail sniffs as each file is written); a refusal is `pack-not-data-only` with the
+  `path`. A release under a revoked delegation is `pack-revoked`, detail `delegation`. Pins,
+  holds, replacements and embedded baselines never take the delegated path. A `pinnedReleaseKeys`
+  kid matching `pkd1-<64 hex>` is refused as `invalid-options`.
 
 ## Offline depths
 

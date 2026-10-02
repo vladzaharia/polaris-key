@@ -235,6 +235,40 @@ P4-13 (`plans/P4-13.md` §4) appends content sections without moving any version
 A runner that does not yet implement a new section ignores it; the count assertions move
 (`feedCases` 77 → 80, `stampCases` 6 → 10) in every runner in the same change.
 
+P4-19 (`plans/P4-19.md` §4) appends two sections, each the **last** member of its file, so each
+file's diff is a pure append and every earlier section (P4-13's and P4-10's included) stays byte
+for byte; no version moves and no runner count assertion changes:
+
+- `cases.json` gains `delegationCases` (46), after `markerCases`. Each case has `id`,
+  `description`, `mode` and `jws`, then per mode:
+  - `record`: `delegation` (the delegation's compact JWS the caller supplies), `releaseKeys`,
+    `productTrust`, `expectedAud`, `expectedHash`, `pin` (or `null`) and, on the two
+    `recordRevoked` cases, `revoked` (target hashes); `expect` is `{verify: "ok", kind,
+delegation: {sha256, deliverable, types, issuedAt, expiresAt} | null, revoked?}` or
+    `{verify: "fail", step}` with `step` one of `hash`, `jws`, `claims`, `cross-check`,
+    `delegation`, `scope`. A runner calls `verifyReleaseRecord` with `delegation`, then
+    `recordRevoked` when `revoked` is present;
+  - `release-only`: the same keys with `delegation: null`; verified with no delegation passed;
+  - `revocation`: `delegation: null`, `releaseKeys`, `productTrust`, `expectedAud` and `entry`
+    (the feed entry, with `kind: "delegation"` on a delegation target); `expect` as in
+    `revocationCases`, checked with `verifyRevocation`;
+  - `feed`: `trust`, `expectedAud`, `channel`, `platform`, `now`, `checkFreshness`; a signed, valid
+    feed whose `expect.content` is `feedContent`'s answer (the entry `kind` kept, dropped or
+    making `revocations` unusable).
+
+  The content key is a deterministic test key derived from a fixed seed in the generator; its
+  public half appears only inside the cases' delegations, so the top-level `keys` are unchanged.
+  The generator's own reference `delegationOf`, delegated steps 12–16 and `recordRevoked` refuse
+  each failing case at exactly its step.
+
+- `content/cases.json` gains `dataOnlyCases` (64), after `frameWindowCases`: `{id, description,
+path, head, tail, expect}`, where `head` and `tail` are standard base64 and the file is
+  `head ‖ tail`. A runner passes `dataOnlyRefusal` the path, the file's first 64 bytes and its last
+  65,557 bytes, and expects `{ok: true}` or `{ok: false, rule}` with `rule` `extension` or
+  `content`. The cases cover each allowed extension, the refused loader extensions, every refused
+  head, the tail sniff, both bounds, an empty file and nine paths that are not already
+  normalised.
+
 ## HTTP transcripts
 
 Registration, activation and sync are conversations, not pure functions, so the corpus cannot

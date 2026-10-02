@@ -28,10 +28,17 @@ import type {
 } from "@polaris-key/protocol/packs";
 import { PolarisError } from "../errors.js";
 import {
+  delegationHashOf,
   newerRevocation,
+  recordHash,
   verifyReleaseRecord,
   type VerifiedRevocation,
 } from "../record.js";
+import {
+  dataOnlyPathRefusal,
+  dataOnlyTreeSink,
+  type DataOnlyRefusalSeen,
+} from "./dataonly.js";
 import {
   clearRelearn,
   emptyRevocations,
@@ -68,7 +75,10 @@ import {
   selectVariant,
   type VariantPrefs,
 } from "./select.js";
-import { MAX_FILES_INDEX_BYTES } from "@polaris-key/protocol/core";
+import {
+  MAX_DELEGATIONS_PER_CHECK,
+  MAX_FILES_INDEX_BYTES,
+} from "@polaris-key/protocol/core";
 import { packSetId } from "./set.js";
 import {
   abandonInstall,
@@ -318,6 +328,9 @@ type Preflight =
       planId: string;
       index: FilesIndexDoc | null;
       plan: Exclude<PlanResult, { error: unknown }>;
+      /** The delegation's compact JWS when a content key signed the record (plans/P4-19.md
+       *  §2.3), else null. */
+      delegation: string | null;
     };
 
 /** What `estimate` reports for a set of packs (the consent dialog's size disclosure). */
@@ -368,6 +381,17 @@ export class PackEngine {
   private readonly preflightPlans = new Map<
     string,
     { planId: string; recordSha256: string }
+  >();
+  /** Delegation records fetched in this process, by hash (plans/P4-19.md §2.3). Each is bound
+   *  to its hash and re-verified at every use against the current trust inputs, so a rotation of
+   *  the pinned release keys or the product trust set takes effect at once. */
+  private readonly delegationBodies = new Map<string, string>();
+  /** Distinct delegations this call may still fetch (`MAX_DELEGATIONS_PER_CHECK`). */
+  private delegationBudget = MAX_DELEGATIONS_PER_CHECK;
+  /** Delegated releases verified in this process: record hash → pack and delegation hash. */
+  private readonly delegatedKnown = new Map<
+    string,
+    { pack: string; delegation: string }
   >();
   private queue: Promise<unknown> = Promise.resolve();
 
@@ -484,6 +508,7 @@ export class PackEngine {
               i.recordSha256,
               i.packId,
               i,
+              i.delegation,
             ))
           )
             return false;
@@ -498,7 +523,13 @@ export class PackEngine {
           }
         },
         journal: (j) =>
-          this.verifyStoredRecord(j.record, j.recordSha256, j.packId),
+          this.verifyStoredRecord(
+            j.record,
+            j.recordSha256,
+            j.packId,
+            undefined,
+            j.delegation,
+          ),
       });
       for (const [id, i] of Object.entries(parsed.active))
         if (deferred.has(i)) this.deferred.active[id] = i;
@@ -510,7 +541,7 @@ export class PackEngine {
       // This boot's set: every active install (restart packs mount now), else the embedded
       // baseline. A revoked release never activates or mounts (`pack-revoked`).
       for (const i of Object.values(doc.active))
-        if (!this.isRevoked(i.recordSha256)) await this.activate(i);
+        if (!this.installRevoked(i)) await this.activate(i);
       for (const [id, e] of this.embedded)
         if (!this.running.has(id) && !this.embeddedRefused(e))
           this.running.set(id, e);
@@ -575,7 +606,7 @@ export class PackEngine {
       const before = doc.active[packId];
       const prev = doc.previous[packId];
       // plans/P4-13.md §2.5: never back to a revoked release.
-      if (prev && this.isRevoked(prev.recordSha256)) return false;
+      if (prev && this.installRevoked(prev)) return false;
       if (prev && this.unverifiedPrevious.has(packId)) {
         // Carried over from an entry whose check could not run: verify it now.
         let ok = false;
@@ -586,6 +617,7 @@ export class PackEngine {
               prev.recordSha256,
               packId,
               prev,
+              prev.delegation,
             )) && (await this.opts.storage.verify(prev));
         } catch {
           ok = false;
@@ -614,6 +646,7 @@ export class PackEngine {
   ensure(packIds: readonly string[]): Promise<PackInstall[]> {
     return this.serialised(async () => {
       this.refuseUnreadable();
+      this.delegationBudget = MAX_DELEGATIONS_PER_CHECK;
       const out: PackInstall[] = [];
       for (const id of packIds) out.push(await this.ensureOne(id));
       return out;
@@ -633,6 +666,7 @@ export class PackEngine {
   ): Promise<PackInstall[]> {
     return this.serialised(async () => {
       this.refuseUnreadable();
+      this.delegationBudget = MAX_DELEGATIONS_PER_CHECK;
       const out: PackInstall[] = [];
       for (const t of targets)
         out.push(await this.ensureOne(t.pack, t.release));
@@ -667,6 +701,7 @@ export class PackEngine {
   ): Promise<PackEstimate> {
     return this.serialised(async () => {
       this.refuseUnreadable();
+      this.delegationBudget = MAX_DELEGATIONS_PER_CHECK;
       const out: PackEstimate = { bytes: 0, packs: [], refused: [] };
       for (const { pack: id, release } of items) {
         try {
@@ -897,6 +932,47 @@ export class PackEngine {
     );
   }
 
+  /** Why a release is revoked (plans/P4-19.md §2.3 `recordRevoked`): `record` when its own hash
+   *  is a target, `delegation` when the delegation it was signed under is, else null. */
+  revokedBy(
+    recordSha256: string,
+    delegationSha256: string | null,
+  ): "record" | "delegation" | null {
+    // `recordRevoked` over this engine's targets (stored, or verified in this process).
+    if (this.isRevoked(recordSha256)) return "record";
+    if (delegationSha256 !== null && this.isRevoked(delegationSha256))
+      return "delegation";
+    return null;
+  }
+
+  /** Whether an install is revoked: its record, or the delegation it was signed under. */
+  private installRevoked(i: PackInstall): boolean {
+    return this.revokedBy(i.recordSha256, installDelegation(i)) !== null;
+  }
+
+  /**
+   * The delegated releases this engine knows (plans/P4-19.md §2.7): every stored or running
+   * install signed by a content key, and every delegated feed target verified in this process,
+   * as record hash → its pack and delegation hash. The update check adds a decision revocation
+   * for each one whose delegation is revoked, and treats a delegation entry naming one of these
+   * delegations as relevant (step 11).
+   */
+  delegatedReleases(): Record<string, { pack: string; delegation: string }> {
+    const out: Record<string, { pack: string; delegation: string }> =
+      Object.fromEntries(this.delegatedKnown);
+    const doc = this.doc;
+    const installs = [
+      ...Object.values(doc?.active ?? {}),
+      ...Object.values(doc?.previous ?? {}),
+      ...this.running.values(),
+    ];
+    for (const i of installs) {
+      const h = installDelegation(i);
+      if (h !== null) out[i.recordSha256] = { pack: i.packId, delegation: h };
+    }
+    return out;
+  }
+
   /** The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in
    *  `relearn`; with an unreadable `revocations.json` and `revocationsStored` set, every pack
    *  the stamp pins or the host embeds. These apply at every boot and every mount, online or
@@ -996,7 +1072,7 @@ export class PackEngine {
   /** Stop running every revoked release (a hot handler is deactivated). */
   private async unmountRevoked(): Promise<void> {
     for (const [id, i] of [...this.running]) {
-      if (!this.isRevoked(i.recordSha256)) continue;
+      if (!this.installRevoked(i)) continue;
       const h = this.handlers.get(i.type);
       if (this.activation(i) === "hot" && h?.deactivate)
         try {
@@ -1018,18 +1094,22 @@ export class PackEngine {
     this.running.set(i.packId, i);
   }
 
-  /** Steps 12–15 again over a stored record, with its own pack id as the pin. */
+  /** Steps 12–16 again over a stored record, with its own pack id as the pin; a delegated
+   *  record through its stored delegation (plans/P4-19.md §2.4: an installed release stays valid
+   *  after its window). */
   private async verifyStoredRecord(
     jws: string,
     sha256: string,
     packId: string,
     install?: PackInstall,
+    delegation?: string,
   ): Promise<boolean> {
     const r = await verifyReleaseRecord(jws, {
       releaseKeys: this.opts.releaseKeys,
       productTrust: this.opts.productTrust(),
       expectedAud: this.opts.product,
       expectedHash: sha256,
+      ...(typeof delegation === "string" ? { delegation } : {}),
     });
     if (!r.ok) return false;
     const rec = r.record as unknown as PackRecordDoc;
@@ -1134,6 +1214,13 @@ export class PackEngine {
     // Already current: the active install, or the embedded copy, is the pinned release.
     const current = doc.active[packId];
     if (current && current.recordSha256 === pin.release.sha256) {
+      // plans/P4-19.md §2.6: a release under a revoked delegation is refused like a revoked one.
+      if (this.installRevoked(current))
+        throw new PackError(
+          "pack-revoked",
+          `${packId}@${pin.release.version} was signed under a delegation its developer revoked.`,
+          { packId, detail: "delegation" },
+        );
       return { kind: "current", install: current };
     }
     const emb = this.embedded.get(packId);
@@ -1153,6 +1240,15 @@ export class PackEngine {
         `Fetching ${packId}'s record failed (${got.code}).`,
         { packId },
       );
+    // plans/P4-19.md §2.3, §2.4: a `pkd1-` kid names its delegation, fetched by hash, only on
+    // the delegated surface (a feed target that is neither the stamp's pin or hold for this pack
+    // nor a stored revocation's replacement). Elsewhere step 13 refuses it at `jws`.
+    const delegationHash = delegationHashOf(got.body);
+    const delegation =
+      delegationHash !== null &&
+      this.delegatedAllowed(packId, pin.release.sha256)
+        ? await this.fetchDelegation(packId, delegationHash)
+        : null;
     const v = await verifyReleaseRecord(got.body, {
       releaseKeys: this.opts.releaseKeys,
       productTrust: this.opts.productTrust(),
@@ -1164,6 +1260,7 @@ export class PackEngine {
         version: pin.release.version,
         seq: pin.release.seq,
       },
+      ...(delegation !== null ? { delegation } : {}),
     });
     if (!v.ok)
       throw v.step === "cross-check"
@@ -1178,6 +1275,19 @@ export class PackEngine {
             { packId, detail: v.step },
           );
     const record = v.record as unknown as PackRecordDoc;
+    if (v.delegation !== null) {
+      this.delegatedKnown.set(pin.release.sha256, {
+        pack: packId,
+        delegation: v.delegation.sha256,
+      });
+      if (this.revokedBy(pin.release.sha256, v.delegation.sha256) !== null)
+        throw new PackError(
+          "pack-revoked",
+          `${packId}@${pin.release.version} was signed under a delegation its developer revoked.`,
+          { packId, detail: "delegation" },
+        );
+    }
+    const delegated = v.delegation !== null ? delegation : null;
 
     // 3. Type, entitlement, variant.
     const handler = this.handlers.get(record.type);
@@ -1291,6 +1401,23 @@ export class PackEngine {
           { packId },
         );
     }
+    // plans/P4-19.md §2.5: a delegated release's extension rule over the files index, before
+    // any payload object is fetched.
+    if (delegated !== null) {
+      if (index === null)
+        throw new PackError(
+          "files-index-invalid",
+          `${packId}'s files index is required for a delegated release.`,
+          { packId },
+        );
+      for (const f of index.files)
+        if (dataOnlyPathRefusal(f.path) !== null)
+          throw new PackError(
+            "pack-not-data-only",
+            `${packId} holds ${f.path}, which a delegated content key may not ship.`,
+            { packId, path: f.path, detail: "extension" },
+          );
+    }
     const target = planTarget(variant, pin.release.sha256, index);
     const budget = this.opts.oneShotBudget;
     if (
@@ -1328,7 +1455,58 @@ export class PackEngine {
       planId,
       index,
       plan: p,
+      delegation: delegated,
     };
+  }
+
+  /** §2.4's delegated surface: never the stamp's pin or hold for the pack, never a stored
+   *  revocation's replacement (release-key surfaces vouch for exact bytes). */
+  private delegatedAllowed(packId: string, sha256: string): boolean {
+    const stamp = this.opts.stamp;
+    if (
+      stamp?.pins.some((p) => p.pack === packId && p.release.sha256 === sha256)
+    )
+      return false;
+    const holds = (stamp as { holds?: unknown } | null)?.holds;
+    if (
+      Array.isArray(holds) &&
+      holds.some(
+        (h) =>
+          typeof h === "object" &&
+          h !== null &&
+          (h as { pack?: unknown }).pack === packId &&
+          (h as { release?: { sha256?: unknown } }).release?.sha256 === sha256,
+      )
+    )
+      return false;
+    for (const r of this.revVerified.values())
+      if (r.replacement?.sha256 === sha256) return false;
+    return true;
+  }
+
+  /** A delegation record by hash: this process's copy, else fetched (at most
+   *  `MAX_DELEGATIONS_PER_CHECK` distinct ones per call; a target beyond that waits). */
+  private async fetchDelegation(packId: string, hash: string): Promise<string> {
+    const have = this.delegationBodies.get(hash);
+    if (have !== undefined) return have;
+    if (this.delegationBudget <= 0)
+      throw new PackError(
+        "network-error",
+        `${packId}'s delegation was not fetched: this call reached its delegation bound; the next one retries.`,
+        { packId, detail: "delegation" },
+      );
+    this.delegationBudget--;
+    const got = await this.opts.fetchRecord(hash);
+    if (!got.ok)
+      throw new PackError(
+        got.code,
+        `Fetching ${packId}'s delegation failed (${got.code}).`,
+        { packId, detail: "delegation" },
+      );
+    // Kept only when it is the record the hash names; `verifyReleaseRecord` checks it again.
+    if ((await recordHash(got.body)) === hash)
+      this.delegationBodies.set(hash, got.body);
+    return got.body;
   }
 
   private async ensureOne(
@@ -1377,7 +1555,8 @@ export class PackEngine {
         await this.activate(current);
       return current;
     }
-    const { record, variant, installs, seeds, planId, index } = pre;
+    const { record, variant, installs, seeds, planId, index, delegation } =
+      pre;
     const p = pre.plan;
     const got = { body: pre.body };
     const pin = { release: { sha256: pre.recordSha256 } };
@@ -1396,6 +1575,7 @@ export class PackEngine {
         null,
         planId,
         true,
+        delegation,
       );
     }
     if (p.strategy === "platform")
@@ -1430,6 +1610,7 @@ export class PackEngine {
           done: 0,
         })),
         startedAt: this.opts.now(),
+        ...(delegation !== null ? { delegation } : {}),
       };
       this.doc = beginInstall(this.requireLoaded(), journal);
       await this.persist();
@@ -1445,6 +1626,8 @@ export class PackEngine {
             { packId },
           );
       this.emit({ packId, phase: "apply", done: total, total });
+      // plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
+      const seen: { refusal: DataOnlyRefusalSeen | null } = { refusal: null };
       const result = await this.apply(
         planId,
         packId,
@@ -1452,7 +1635,20 @@ export class PackEngine {
         cand.delta ?? null,
         variant,
         seeds,
+        delegation !== null ? seen : null,
       );
+      if (seen.refusal !== null) {
+        // A refusal aborts the plan: no fallback, staging discarded.
+        const r: DataOnlyRefusalSeen = seen.refusal;
+        this.doc = abandonInstall(this.requireLoaded(), packId);
+        await this.persist();
+        await this.opts.storage.removeStaging(planId).catch(() => undefined);
+        throw new PackError(
+          "pack-not-data-only",
+          `${packId} holds ${r.path}, which a delegated content key may not ship (${r.rule}).`,
+          { packId, path: r.path, detail: r.rule },
+        );
+      }
       if (result.verdict.ok) {
         const location = await this.opts.storage.commit(
           planId,
@@ -1471,6 +1667,7 @@ export class PackEngine {
           planId,
           planId,
           false,
+          delegation,
         );
         this.emit({ packId, phase: "done", done: total, total });
         return install;
@@ -1558,6 +1755,7 @@ export class PackEngine {
     delta: string | null,
     variant: PackVariant,
     seeds: Map<string, InstalledPayload>,
+    dataOnly: { refusal: DataOnlyRefusalSeen | null } | null = null,
   ): Promise<ApplyResult> {
     const storage = this.opts.storage;
     const objects = async (sha256: string): Promise<ByteSource | null> => {
@@ -1567,6 +1765,8 @@ export class PackEngine {
         : null;
     };
     const out = await storage.output(planId, variant.files.layout);
+    if (dataOnly !== null && out.tree)
+      out.tree = dataOnlyTreeSink(out.tree, dataOnly);
     const ports = {
       objects,
       zstd: this.opts.zstd,
@@ -1607,6 +1807,7 @@ export class PackEngine {
     _planId: string | null,
     stagingPlan: string,
     reused: boolean,
+    delegation: string | null = null,
   ): Promise<PackInstall> {
     const install: PackInstall = {
       packId,
@@ -1625,6 +1826,7 @@ export class PackEngine {
         ? { embedded: true }
         : {}),
       installedAt: this.opts.now(),
+      ...(delegation !== null ? { delegation } : {}),
     };
     // A fresh commit supersedes this pack's entries whose check could not run; an active one
     // becomes `previous`, re-verified before a rollback uses it.
@@ -1845,4 +2047,10 @@ function activationOf(
   const a = record.handler?.activation;
   if (a === "hot" || a === "restart") return a;
   return handler?.activation ?? "restart";
+}
+
+/** The delegation hash of a delegated install (its stored delegation and the record's kid), or
+ *  null for a release-signed one. */
+function installDelegation(i: PackInstall): string | null {
+  return typeof i.delegation === "string" ? delegationHashOf(i.record) : null;
 }
