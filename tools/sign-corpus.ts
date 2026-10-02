@@ -57,6 +57,7 @@ import { format } from "prettier";
 import {
   CONTENT_CASES_NAME,
   CONTENT_DIR,
+  CORPUS_CHUNK_PARAMS,
   buildContentCorpus,
   contentHashBytes,
   contentRef,
@@ -6851,8 +6852,8 @@ const ctxOf = (text: string, off: Iterable<string> = []): ClaimCtx => ({
   off: new Set(off),
 });
 
-/** §2.2 "Minimums": the 21 integer-claim paths (`*` is any index or member), and plans/P4-01.md
- *  §2.5's 16 pack and `content` paths (37 in all). */
+/** §2.2 "Minimums": the 21 integer-claim paths (`*` is any index or member), plans/P4-01.md
+ *  §2.5's 16 pack and `content` paths and plans/P4-10.md §2.2's two `chunks` paths (39 in all). */
 const INTEGER_CLAIM_MINIMUMS: Readonly<Record<string, Record<string, number>>> =
   {
     envelope: { "/issuedAt": 0, "/expiresAt": 0, "/graceUntil": 0 },
@@ -6891,6 +6892,9 @@ const INTEGER_CLAIM_MINIMUMS: Readonly<Record<string, Record<string, number>>> =
       "/variants/*/deltas/*/patch/bytes": 1,
       "/variants/*/deltas/*/patch/size": 1,
       "/variants/*/deltas/*/data/bytes": 1,
+      // plans/P4-10.md §2.2: the chunk index's object ref (`bytes` and `size` from 1).
+      "/variants/*/chunks/bytes": 1,
+      "/variants/*/chunks/size": 1,
     },
     content: { "/content/contentApi": 1, "/content/pins/*/release/seq": 1 },
   };
@@ -12477,8 +12481,9 @@ const STAGE_CONFIRM_CASES = [
 // valid records, their twins, the markers and the two rewritten P3-02 cases over the content
 // set's real refs: their bytes change, never their ids or `expect`.
 
-/** The generator's registry of the 80 claim checks (§4.6's table). A check id outside it
- *  throws; the per-check self-check proves each has a case its check alone refuses. */
+/** The generator's registry of the 83 claim checks (§4.6's table, and plans/P4-10.md §2.2's
+ *  81–83). A check id outside it throws; the per-check self-check proves each has a case its
+ *  check alone refuses. */
 const PACK_CLAIM_CHECKS = [
   // kind: pack (1–55)
   "deliverable.not-app",
@@ -12562,6 +12567,11 @@ const PACK_CLAIM_CHECKS = [
   "embeds.item",
   "embeds.not-app",
   "embeds.unique",
+  // kind: pack, plans/P4-10.md §2.2 (81–83): `chunks` absent or an object, its `format`, its
+  // `params` absent or an object (the object ref stands on checks 27–31).
+  "chunks",
+  "chunks.format",
+  "chunks.params",
 ] as const;
 type PackCheck = (typeof PACK_CLAIM_CHECKS)[number];
 const PACK_CHECK_SET: ReadonlySet<string> = new Set(PACK_CLAIM_CHECKS);
@@ -12846,6 +12856,19 @@ function refVariantClaims(
     )
       return false;
   }
+  // plans/P4-10.md §2.2: checks 81–83 and the object ref at `chunks`; other members ignored.
+  if (hasOwn(v, "chunks") && on(ctx, "chunks")) {
+    const c = v.chunks;
+    if (!isObj(c)) return false;
+    if (
+      on(ctx, "chunks.format") &&
+      !(typeof c.format === "string" && REF_OBJECT_FORMAT_RE.test(c.format))
+    )
+      return false;
+    if (!refObjectRef(ctx, c, `${at}/chunks`)) return false;
+    if (hasOwn(c, "params") && on(ctx, "chunks.params") && !isObj(c.params))
+      return false;
+  }
   return sel;
 }
 
@@ -13058,7 +13081,17 @@ function levelsV2Variant(): Record<string, unknown> {
   };
 }
 
-/** §4.3's six records. */
+/** plans/P4-10.md §2.2, §4.5: a variant's `chunks`, pinning `chunks/v2.pkc.zst` with the corpus
+ *  parameters (§2.4's, with a 256 KiB bundle target). */
+function levelsChunks(): Record<string, unknown> {
+  return {
+    format: "pkey-chunks/1",
+    ...objRef("chunks/v2.pkc.zst"),
+    params: { ...CORPUS_CHUNK_PARAMS },
+  };
+}
+
+/** §4.3's six records, and plans/P4-10.md §4.5's `djdl.levels@1.2.0`. */
 function packRecordDocs(): Record<string, Record<string, unknown>> {
   const godot = {
     type: "godot.pck",
@@ -13131,6 +13164,15 @@ function packRecordDocs(): Record<string, Record<string, unknown>> {
             },
           ],
         },
+      ],
+    }),
+    // plans/P4-10.md §4.5: v2's payload republished by a chunk-aware CI; both variants pin
+    // `chunks/v2.pkc.zst`, which joins the two corpora by SHA-256.
+    "djdl.levels@1.2.0": packDoc("djdl.levels", "1.2.0", 3, {
+      ...godot,
+      variants: [
+        { ...levelsV2Variant(), chunks: levelsChunks() },
+        { ...etc2, chunks: levelsChunks() },
       ],
     }),
     // The minimal record: no handler, no entitlement, no deltas, no requires.
@@ -13456,7 +13498,7 @@ async function buildPackRecordCases(): Promise<PackRecordCase[]> {
     d.content = 5;
     await mk(
       "pack-valid-reserved-members",
-      "Every reserved member (`chunks`, `conflicts`, `requires.{contentApi, packs, features}`, `provides`, `removes`) and `content: 5`, which a pack record ignores.",
+      "Every reserved member (`conflicts`, `requires.{contentApi, packs, features}`, `provides`, `removes`) and `content: 5`, which a pack record ignores; its `chunks` is well formed (plans/P4-10.md §2.2).",
       { doc: d, expect: ok("pack") },
     );
   }
@@ -14675,8 +14717,76 @@ async function buildPackRecordCases(): Promise<PackRecordCase[]> {
     );
   }
 
-  if (cases.length !== 159)
-    throw new Error(`packRecordCases: ${cases.length} != 159`);
+  // ── plans/P4-10.md §4.5: `chunks` (+11), appended after P4-01's 159 ──
+  const CH: Record<string, unknown> = clone(ONE);
+  (CH.variants as Record<string, any>[])[0]!.chunks = levelsChunks();
+  {
+    const L3 = rec("djdl.levels@1.2.0");
+    await mk(
+      "pack-valid-chunks",
+      "`djdl.levels@1.2.0`: v2's payload republished by a chunk-aware CI; both variants carry `chunks` pinning `chunks/v2.pkc.zst`, which joins the content corpus by SHA-256 (plans/P4-10.md §4.5).",
+      { jws: L3.jws, expect: ok("pack", L3.doc) },
+    );
+  }
+  {
+    const d = clone(CH);
+    const c = (d.variants as Record<string, any>[])[0]!.chunks;
+    c.format = "pkey-chunks/2";
+    c.codec = "lz4";
+    c.deltas = [];
+    c.params = { ...c.params, later: { anything: true }, avgSize: "big" };
+    await mk(
+      "pack-valid-chunks-forward",
+      "`chunks` with format `pkey-chunks/2`, codec `lz4`, an extra `deltas: []` member and unknown `params` members: it verifies, and its chunks are only unusable.",
+      { doc: d, expect: ok("pack") },
+    );
+  }
+  await brk(
+    "pack-chunks-null",
+    "chunks",
+    CH,
+    `${V0}/chunks`,
+    "`chunks: null` (absent or an object).",
+    (d) => {
+      v0(d).chunks = null;
+    },
+  );
+  await brk(
+    "pack-chunks-format-empty",
+    "chunks.format",
+    CH,
+    `${V0}/chunks/format`,
+    '`chunks.format: ""`, outside `OBJECT_FORMAT_PATTERN`.',
+    (d) => {
+      v0(d).chunks.format = "";
+    },
+  );
+  await brk(
+    "pack-chunks-params-not-object",
+    "chunks.params",
+    CH,
+    `${V0}/chunks/params`,
+    "`chunks.params: 7` (absent or an object).",
+    (d) => {
+      v0(d).chunks.params = 7;
+    },
+  );
+  for (const [pointer, stem, token, min, member] of [
+    [`${V0}/chunks/bytes`, "pack-chunks-bytes", IF, "0", "`chunks.bytes`"],
+    [`${V0}/chunks/size`, "pack-chunks-size", NI, "0", "`chunks.size`"],
+  ] as const) {
+    const kind = token === IF ? "integral-fraction" : "near-integer";
+    await intRow(
+      pointer,
+      CH,
+      [`${stem}-${kind}`, `${stem}-over-max`, `${stem}-zero`],
+      [token(pointer, CH), min],
+      member,
+    );
+  }
+
+  if (cases.length !== 170)
+    throw new Error(`packRecordCases: ${cases.length} != 170`);
   for (const c of cases) {
     const want = refVerifyPackCase(c);
     if (
@@ -14974,8 +15084,8 @@ function checkPackClaimCases(corpus: Record<string, AnyCase[]>): void {
   const fail = (m: string): never => {
     throw new Error(`packRecordCases self-check: ${m}`);
   };
-  if (PACK_CLAIM_CHECKS.length !== 80 || PACK_CHECK_SET.size !== 80)
-    fail("the registry must hold 80 distinct checks");
+  if (PACK_CLAIM_CHECKS.length !== 83 || PACK_CHECK_SET.size !== 83)
+    fail("the registry must hold 83 distinct checks");
   const byId = new Map(corpus.packRecordCases!.map((c) => [c.id as string, c]));
   const covered = new Set<string>();
   for (const [id, s] of PACK_STRUCTURE) {
@@ -14997,10 +15107,21 @@ function checkPackClaimCases(corpus: Record<string, AnyCase[]>): void {
   }
   for (const id of PACK_CLAIM_CHECKS)
     if (!covered.has(id)) fail(`check ${id} has no case`);
-  if (PACK_STRUCTURE.size !== 92)
-    fail(`${PACK_STRUCTURE.size} structure cases, not 92`);
-  if (PACK_PER_CLAIM.length !== 16)
-    fail(`${PACK_PER_CLAIM.length} integer paths, not 16`);
+  if (PACK_STRUCTURE.size !== 95)
+    fail(`${PACK_STRUCTURE.size} structure cases, not 95`);
+  if (PACK_PER_CLAIM.length !== 18)
+    fail(`${PACK_PER_CLAIM.length} integer paths, not 18`);
+  // plans/P4-10.md §4.2: pack-valid-chunks' `chunks` ref is `chunks/v2.pkc.zst`'s (the join).
+  {
+    const want = objRef("chunks/v2.pkc.zst");
+    const l3 = PACK_RECORDS!.get("djdl.levels@1.2.0")!.doc;
+    for (const v of l3.variants as Record<string, any>[]) {
+      const c = v.chunks as Record<string, unknown>;
+      for (const k of ["sha256", "bytes", "size", "codec"])
+        if (c[k] !== want[k])
+          fail(`djdl.levels@1.2.0's chunks.${k} is not chunks/v2.pkc.zst's`);
+    }
+  }
   // The valid pack records pin only §4.2's table.
   for (const r of PACK_RECORDS!.values()) {
     const refs: string[] = [];
@@ -17880,7 +18001,7 @@ function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
     feedContentCases: P13_COUNTS.feedContentCases,
     releaseRecordCases: 49,
     revocationCases: P13_COUNTS.revocationCases,
-    packRecordCases: 159,
+    packRecordCases: 170,
     markerCases: 17,
   };
   for (const [family, n] of Object.entries(counts))
