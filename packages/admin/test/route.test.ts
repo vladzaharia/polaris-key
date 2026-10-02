@@ -179,6 +179,8 @@ describe("parseRoute ∘ hashFor round-trip", () => {
     { kind: "product", slug: "djdl", view: "settings" },
     { kind: "product", slug: "djdl", view: "license", id: "lic_99" },
     { kind: "product", slug: "djdl", view: "profile", id: "default" },
+    // P4-09: a pack deliverable's page; pack ids carry dots.
+    { kind: "product", slug: "djdl", view: "deliverable", id: "djdl.core3d" },
   ];
   for (const route of routes) {
     it(`round-trips ${JSON.stringify(route)}`, () => {
@@ -205,6 +207,12 @@ describe("tabOf", () => {
     expect(
       tabOf({ kind: "product", slug: "djdl", view: "profile", id: "x" }),
     ).toBe("profiles");
+  });
+
+  it("a deliverable detail maps back to the deliverables tab", () => {
+    expect(
+      tabOf({ kind: "product", slug: "djdl", view: "deliverable", id: "x" }),
+    ).toBe("deliverables");
   });
 
   it("a tab view maps to itself", () => {
@@ -242,7 +250,7 @@ describe("SECTIONS", () => {
       ],
       license: ["licenses", "tiers", "fingerprints"],
       config: ["config", "profiles"],
-      release: ["releases"],
+      release: ["releases", "deliverables"],
       distribution: [
         "distribution",
         "distribution-matrix",

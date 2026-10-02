@@ -113,6 +113,35 @@ Release mirrors the pins into `release_pins` (never edited afterwards), the `con
 the release and each build's `embeds`. **Yanking** a pinned pack release stops new pins; app
 releases that already pin it keep it until an app release replaces it.
 
+## In the console
+
+Packs appear in the Release section beside the app; there is no separate content section.
+
+- **Deliverables** lists the app and every declared pack: kind, pack type, binding, whether it is
+  required, its embedded baseline, its delivery, its gate and its latest release. A pack that no
+  app release pins is flagged **Not pinned by any app release**: with only the pinned binding, it
+  reaches no device yet. When the gate differs from the entitlement the latest release signed
+  (an operator gated or un-gated the pack after publishing), both are shown; devices follow the
+  signed one until the next publish.
+- **A pack's page** lists its releases newest first, with version, `seq`, channel and yank, and
+  for each release **which app releases pin it** (an app release that is itself yanked is
+  marked). A yanked pack release keeps its pins, so check this column before yanking. Expanding a
+  release shows each variant's engine, payload size, full-download bytes and its delta menu (each
+  delta's base version and download bytes), as the signed record gives them.
+- **Releases**: an app release's expanded row shows its `contentApi`, the pack release it pins
+  for each pack (with `required`, `delivery` and whether the pinned release is yanked) and an
+  **Embeds** column, the packs each build ships embedded.
+
+Everything here is read-only. The console never shows where a pack's objects are stored, only
+their sizes and hashes. Its admin routes, all under `/manage/api/products/<slug>/release/` and
+behind the same platform-admin session as the rest of the console:
+
+| Method and path                  | Answers                                                                                                                                            |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET deliverables`               | `deliverables[]` (the app first, then packs by id) with their declaration, `gate` and `latest`, and `gateKnown` (false while Distribution is off). |
+| `GET deliverables/<id>/releases` | A pack's `releases[]`, newest first, each with its `variants[]` (sizes and `deltas[]`), `yank` and `pinnedBy[]`. 404 for the app or an unknown id. |
+| `GET releases`                   | As before, plus each app release's `contentApi` and `pins[]` and each build's `embeds`.                                                            |
+
 ## Reading packs
 
 Other services read packs through Release's catalog hook: the declared packs, a pack release with
