@@ -2,8 +2,9 @@
 
 /**
  * Whether the truth store's newest release carries a `.dmg` artifact. The "ships DMGs"
- * predicate (`shipsDmgs`) needs this for the console's setup state, which reads the store
- * rather than calling GitHub the way release health does.
+ * predicate (`shipsDmgs`) needs this for the console's setup state of a product with no
+ * declared artifact map, which reads the store rather than calling GitHub the way release
+ * health does.
  */
 export async function latestReleaseHasDmg(
   db: Db,

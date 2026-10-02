@@ -919,7 +919,14 @@ describe("release health", () => {
       { name: "djdl-linux-x86_64.tar.gz", platform: "linux", arch: "x86_64" },
     ]);
     const ids = health.checks.map((c) => c.id);
-    for (const gone of ["dmg-arm64", "dmg-x86_64", "cli-arm64", "cli-x86_64"])
+    for (const gone of [
+      "dmg-arm64",
+      "dmg-x86_64",
+      "cli-arm64",
+      "cli-x86_64",
+      "sparkle-key",
+      "sparkle-signature",
+    ])
       expect(ids).not.toContain(gone);
     expect(health.checks.some((c) => c.status === "warning")).toBe(false);
   });
@@ -974,7 +981,7 @@ describe("release health", () => {
     expect(health.missing).toContain("djdl-arm64.dmg.sig");
   });
 
-  it("does not require a DMG from a djdl-shaped product without a policy", async () => {
+  it("does not require a DMG, or Sparkle material, from a product without DMG evidence", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db);
     const health = await healthFor(db, [
@@ -982,9 +989,39 @@ describe("release health", () => {
       asset("djdl-x86_64"),
     ]);
     expect(health.status).toBe("healthy");
-    expect(health.checks.map((c) => c.id)).not.toContain("dmg");
-    // The Sparkle gating is unchanged: the key check still runs for a no-policy product.
-    expect(byId(health, "sparkle-key")?.status).toBe("ok");
+    const ids = health.checks.map((c) => c.id);
+    expect(ids).not.toContain("dmg");
+    expect(ids).not.toContain("sparkle-key");
+    expect(ids).not.toContain("sparkle-signature");
+  });
+
+  it("gives a Linux-only product with no policy and no Sparkle key no Sparkle warning", async () => {
+    const db = makeTestDb();
+    // No key, and the operator default `requireSparkleSignature: true` — which still binds only
+    // a product that ships DMGs.
+    await seedReleaseConfig(db, { sparkle_ed25519_pub: null });
+    const health = await healthFor(db, [asset("game-linux-x86_64.tar.gz")]);
+    expect(health.status).toBe("healthy");
+    const ids = health.checks.map((c) => c.id);
+    expect(ids).not.toContain("sparkle-key");
+    expect(ids).not.toContain("sparkle-signature");
+    expect(health.checks.some((c) => c.status === "warning")).toBe(false);
+  });
+
+  it("requireDmg: true with no DMG is missing, and keeps the Sparkle checks", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      sparkle_ed25519_pub: null,
+      artifact_policy_json: JSON.stringify({ requireDmg: true }),
+    });
+    const health = await healthFor(db, [asset("game-linux-x86_64.tar.gz")]);
+    expect(health.status).toBe("needs-setup");
+    expect(byId(health, "dmg")?.status).toBe("missing");
+    expect(byId(health, "sparkle-key")?.status).toBe("warning");
+    expect(byId(health, "sparkle-signature")?.status).toBe("missing");
+    expect(health.missing).toEqual(
+      expect.arrayContaining(["DMG asset", "Sparkle public key"]),
+    );
   });
 
   it("is healthy with no DMG and no Sparkle key when the policy requires no DMG", async () => {
@@ -1099,6 +1136,23 @@ describe("release health", () => {
       const sig = byId(health, "sparkle-signature");
       expect(sig?.status).toBe("ok");
       expect(sig?.message).toContain("Diceroll-1.2.3-macos.dmg.sig");
+    });
+
+    it("applies the Sparkle checks to a declared macOS dmg build, whatever the release carries", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db, {
+        sparkle_ed25519_pub: null,
+        artifact_policy_json: JSON.stringify({ requireDmg: false }),
+      });
+      await declareMap(db, GODOT_MAP);
+      const health = await healthFor(db, [
+        asset("Diceroll-1.2.3-windows.zip"),
+        asset("Diceroll-1.2.3-linux.tar.gz"),
+      ]);
+      expect(health.status).toBe("needs-setup");
+      expect(byId(health, "artifact-macos")?.status).toBe("missing");
+      expect(byId(health, "sparkle-key")?.status).toBe("warning");
+      expect(byId(health, "sparkle-signature")?.status).toBe("missing");
     });
 
     it("is missing, not healthy, when one declared entry is absent", async () => {

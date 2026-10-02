@@ -38,6 +38,7 @@ import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { buildDoc } from "../src/services/identity/doc.js";
+import { upsertDeliverable } from "../src/services/release/model.js";
 import { signDoc } from "../src/core/signing.js";
 import { open } from "../src/keyvault.js";
 import { verifyJws } from "@polaris-key/jws";
@@ -1628,6 +1629,8 @@ describe("admin product setup: Sparkle warning", () => {
     update: boolean;
     policy: string | null;
     withDmg?: boolean;
+    /** Declare an artifact map; `true` includes a macOS dmg build. */
+    mapWithDmg?: boolean;
   }): Promise<string[]> {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
@@ -1654,6 +1657,41 @@ describe("admin product setup: Sparkle warning", () => {
        VALUES ('djdl', 'acme', 'djdl', 42, 'djdl', NULL, ?)`,
       opts.policy,
     );
+    if (opts.mapWithDmg !== undefined) {
+      await upsertDeliverable(
+        db,
+        {
+          product: "djdl",
+          deliverableId: "app",
+          kind: "app",
+          defJson: JSON.stringify({
+            kind: "app",
+            versioning: { scheme: "semver", buildNumber: null },
+            channels: {},
+            artifacts: [
+              opts.mapWithDmg
+                ? {
+                    id: "macos",
+                    platform: "macos",
+                    arch: "universal",
+                    format: "dmg",
+                    role: "payload",
+                    match: "djdl-*.dmg",
+                  }
+                : {
+                    id: "linux",
+                    platform: "linux",
+                    arch: "x86_64",
+                    format: "tar.gz",
+                    role: "payload",
+                    match: "djdl-*.tar.gz",
+                  },
+            ],
+          }),
+        },
+        NOW,
+      );
+    }
     if (opts.withDmg) {
       await db.run(
         `INSERT INTO release_metadata
@@ -1690,10 +1728,40 @@ describe("admin product setup: Sparkle warning", () => {
     return body.product.setup.warnings;
   }
 
-  it("warns when Update is on and the product ships DMGs (default policy)", async () => {
-    expect(await warningsFor({ update: true, policy: null })).toEqual([
-      SPARKLE,
-    ]);
+  it("does not warn for a product with no policy and no DMG evidence (Linux-only)", async () => {
+    expect(await warningsFor({ update: true, policy: null })).toEqual([]);
+  });
+
+  it("warns for a djdl-shaped product: no policy, the latest release carries a DMG", async () => {
+    expect(
+      await warningsFor({ update: true, policy: null, withDmg: true }),
+    ).toEqual([SPARKLE]);
+  });
+
+  it("warns when the policy explicitly requires a DMG, before any release exists", async () => {
+    expect(
+      await warningsFor({
+        update: true,
+        policy: JSON.stringify({ requireDmg: true }),
+      }),
+    ).toEqual([SPARKLE]);
+  });
+
+  it("warns when the declared artifact map names a macOS dmg build", async () => {
+    expect(
+      await warningsFor({ update: true, policy: null, mapWithDmg: true }),
+    ).toEqual([SPARKLE]);
+  });
+
+  it("trusts a declared map without a dmg build over an undeclared .dmg upload", async () => {
+    expect(
+      await warningsFor({
+        update: true,
+        policy: null,
+        mapWithDmg: false,
+        withDmg: true,
+      }),
+    ).toEqual([]);
   });
 
   it("does not warn when Update is off", async () => {

@@ -27,7 +27,6 @@ import {
 import {
   getReleaseConfig,
   operatorPolicy,
-  requiresDmg,
   shipsDmgs,
   type ReleaseConfigRow,
   type ResolvedConfig,
@@ -120,8 +119,7 @@ function summarize(checks: ReleaseHealthCheck[]): ReleaseHealthStatus {
  * An artifact is required only when the policy says so EXPLICITLY (`requireDmg: true`,
  * `requireCli: true`) — the same reading the manifest normaliser gives the fields. No policy,
  * or an unreadable one, requires nothing: health lists what a release carries instead of
- * assuming a macOS/CLI shape. (The Sparkle checks keep their own, fail-closed gating through
- * `requiresDmg`/`shipsDmgs`.)
+ * assuming a macOS/CLI shape. (The Sparkle checks are gated by the evidence-based `shipsDmgs`.)
  */
 function artifactPolicy(cfg: ReleaseConfigRow): {
   requireDmg: boolean;
@@ -458,12 +456,18 @@ export async function checkReleaseHealth(
         ? "Sparkle appcasts will fail closed when a signature is missing."
         : "No Sparkle public key is configured; appcasts may render unsigned.",
     );
-  // A product that requires no DMG only gets the Sparkle key check once its latest release
-  // turns out to ship one (see `shipsDmgs` below). This is the fail-closed Sparkle gating — no
-  // policy at all reads as "requires a DMG" here — and is deliberately NOT the artifact policy,
-  // which requires only what it states.
-  const policyRequiresDmg = requiresDmg(cfg.artifact_policy_json);
-  if (policyRequiresDmg) checks.push(sparkleKeyCheck());
+  // The Sparkle key check runs only for a product that ships DMGs (`shipsDmgs`). The evidence
+  // known before GitHub is read — an explicit `requireDmg: true`, or a declared macOS dmg
+  // build — reports it up front, so it shows even when the release list cannot be read; a
+  // product whose only evidence is its latest release gets it once that release is read.
+  const app = await readAppDeliverable(db, product);
+  const map = hasArtifactMap(app) ? app : null;
+  const keyCheckedEarly = shipsDmgs({
+    policyJson: cfg.artifact_policy_json,
+    app,
+    latestReleaseHasDmg: false,
+  });
+  if (keyCheckedEarly) checks.push(sparkleKeyCheck());
 
   // The SAME resolution the live routes run (P0-02): candidate filter, semver order, live page
   // cap, channel floor. Health used to take the first non-draft entry of a 25-release page,
@@ -571,8 +575,6 @@ export async function checkReleaseHealth(
     ),
   );
 
-  const app = await readAppDeliverable(db, product);
-  const map = hasArtifactMap(app) ? app : null;
   const names = latest.assets.map((a) => a.name);
   const classified = map ? classifyByMap(map, names) : null;
 
@@ -591,8 +593,14 @@ export async function checkReleaseHealth(
   const latestHasDmg = latest.assets.some((asset) =>
     asset.name.toLowerCase().endsWith(".dmg"),
   );
-  if (shipsDmgs(cfg.artifact_policy_json, latestHasDmg)) {
-    if (!policyRequiresDmg) checks.push(sparkleKeyCheck());
+  if (
+    shipsDmgs({
+      policyJson: cfg.artifact_policy_json,
+      app,
+      latestReleaseHasDmg: latestHasDmg,
+    })
+  ) {
+    if (!keyCheckedEarly) checks.push(sparkleKeyCheck());
     if (
       !cfg.sparkle_ed25519_pub &&
       artifactPolicy(cfg).requireSparkleSignature

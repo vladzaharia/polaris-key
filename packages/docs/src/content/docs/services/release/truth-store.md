@@ -297,11 +297,20 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
    selects. This check confirms presence; the appcast additionally _verifies_ it — see
    [Appcast](/docs/services/update/appcast/).
 
-A product **ships DMGs** — the gate on checks 2 and 8 — when its artifact policy does not turn
-`requireDmg` off (so a product with no policy keeps the fail-closed Sparkle checks) or its
-latest release already contains a `.dmg`. For a product that does neither — a Linux or Godot
-build, say — those checks are skipped entirely rather than reported as missing, so it is not
-told it "needs setup" for artifacts it never builds.
+A product **ships DMGs** — the gate on checks 2 and 8, and on the console's "Sparkle public key
+not configured" setup warning — only on evidence: its artifact policy explicitly sets
+`requireDmg: true`; or it declares an artifact map that names a macOS `dmg` build (the map is
+the declaration, so an undeclared `.dmg` upload does not count); or it declares no map and its
+latest release carries a `.dmg`. A missing policy is not evidence. For a product with none of
+these — a Linux or Godot build, say — the Sparkle checks are skipped entirely rather than
+reported as missing, so it is not told it "needs setup" for artifacts it never builds. A stored
+`requireDmg: false` does not cancel the evidence: the manifest records `false` for any policy
+block that simply omits the field. When a product does ship DMGs, an operator's
+`requireSparkleSignature` still fails closed exactly as before.
+
+The console's setup state applies the same predicate without calling GitHub: it reads the
+declared map, and for a product with no map it asks the truth store whether the newest synced
+release carries a `.dmg`.
 
 The rolled-up status a product carries is `healthy` when every check passes, `needs-setup`
 when something expected is simply missing, and `error` when GitHub access itself failed or
