@@ -213,3 +213,20 @@ brief differs.
   is rebundled (`@polaris-key/manifest` changed).
 - **No migration.** Nothing needed a column; `blob_refs.ref_kind` is free text.
 - **Access-Control-Max-Age** stays 600; CORS is P0-05's, unchanged.
+- **Review round (B1, N1–N8).**
+  - B1: pack availability reads in bulk. `packDerivedAvailability` takes a page of releases and
+    a shared `packDeriveShared` (transports read once by the caller, app releases and pack
+    declarations once); Release's catalog gains three readers, `release(id)`, `pinnedByMany` and
+    `embedsOf` (chunked `IN` lists), and `findRelease` is two reads instead of one per
+    deliverable. Measured on 50 pack releases each pinned by an app release with two builds,
+    four outlets: the matrix went from 607 D1 queries to 75, `delivery.availability()` of one
+    pack release from 19 to 12 (tests pin ceilings of n + 30 and 15).
+  - N1: the blob route reads `dist_access` once per request (`readAccessTable`) and the releases
+    carrying the digest at most once; the rate limit now runs before the access decision on every
+    byte route.
+  - N4 (P4-14 follow-up): availability shows a pack release `live` on `pkey-cdn`/`web` even when
+    the pack is `entitled` with no gate, so no device can fetch it (fail-closed). Availability
+    says the bytes are there, not who may fetch them; P4-14's readiness should hold or flag such a
+    pack.
+  - N3: an anonymous request for a closed pack's object is `403 delivery_gate_missing`, not 401:
+    no credential could pass, so asking for one would mislead (tested).

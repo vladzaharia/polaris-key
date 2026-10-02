@@ -609,6 +609,7 @@ async function publishApp(
   seq: number,
   coreSha256: string,
   embeds: { web?: string[]; ios?: string[] },
+  core: { seq: number; version: string } = { seq: 12, version: "1.4.0" },
 ) {
   const descriptor = {
     descriptorVersion: 1,
@@ -623,7 +624,7 @@ async function publishApp(
       pins: [
         {
           pack: CORE,
-          release: { sha256: coreSha256, seq: 12, version: "1.4.0" },
+          release: { sha256: coreSha256, seq: core.seq, version: core.version },
         },
       ],
       expects: [{ pack: CORE, required: true, delivery: "essential" }],
@@ -907,6 +908,81 @@ describe("pack bytes on the blob route (P4-05)", () => {
     );
   });
 
+  it("an anonymous request for a closed pack's object is 403 delivery_gate_missing, not 401", async () => {
+    // `entitled` with no gate: no credential could pass, so asking for one (401) would send a
+    // client to sign in for nothing. The refusal names the operator's missing setting instead;
+    // it reveals only that the product holds that hash, which its signed record already says.
+    await access(CORE, "entitled");
+    const { variants } = await publishCore("1.4.0", 12);
+    const res = await blob(variants[0]!.objects[0]!.sha256);
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: { code: "delivery_gate_missing" },
+    });
+    expect(res.headers.get("cache-control")).toContain("no-store");
+  });
+
+  it("a disabled (revoked), an expired or another product's licence never passes the flag check", async () => {
+    await access(SKINS, "entitled", "skins");
+    const variant = await publishSkins("1.0.0", 1, "skins");
+    const hex = variant.objects[0]!.sha256;
+
+    const revoked = await deviceToken(["skins"]);
+    await db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+      SLUG,
+      `lic_${devices}`,
+    );
+    const expired = await deviceToken(["skins"]);
+    await db.run(
+      "UPDATE licenses SET expires_at = ? WHERE product = ? AND id = ?",
+      NOW - 1,
+      SLUG,
+      `lic_${devices}`,
+    );
+    // A device token minted by another product, whose licence holds a flag of the same name.
+    await seedProduct(db, "other");
+    const { key } = await seedLicenseWithKey(db, "other", {
+      id: "lic_other",
+      entitlements: {
+        skins: { state: "enforced", value: true, updatedAt: NOW },
+      },
+    });
+    await db.run(
+      "UPDATE keys_index SET key_hash = ? WHERE key_hash = ?",
+      await hashKey(key, env.KEY_HASH_PEPPER),
+      await hashKey(key),
+    );
+    const act = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-other",
+      }),
+      env,
+      db,
+      (await loadProduct(env, db, "other"))!,
+      NOW,
+    );
+    expect(act.status, await act.clone().text()).toBe(200);
+    const foreign = ((await act.json()) as { token: string }).token;
+
+    for (const [label, token] of [
+      ["disabled", revoked],
+      ["expired", expired],
+      ["another product's", foreign],
+    ] as const) {
+      const res = await blob(hex, auth(token));
+      expect(res.status, label).toBe(401);
+      expect(await res.json(), label).toMatchObject({
+        error: { code: "unauthorized" },
+      });
+    }
+    // Control: a live licence of this product holding the flag passes.
+    expect((await blob(hex, auth(await deviceToken(["skins"])))).status).toBe(
+      200,
+    );
+  });
+
   it("another product's ref never counts", async () => {
     await access(SKINS, "entitled", "skins");
     const variant = await publishSkins("1.0.0", 1, "skins");
@@ -931,4 +1007,95 @@ describe("pack bytes on the blob route (P4-05)", () => {
     const holder = await deviceToken(["skins"]);
     expect((await blob(hex, auth(holder))).status).toBe(404);
   });
+});
+
+// ── Query cost (B1): bounded D1 reads at the page bound ────────────────────────
+
+/** `db` with every statement counted (a batch counts each of its statements, as D1 does). */
+function counting(inner: Db): {
+  db: Db;
+  count: () => number;
+  reset: () => void;
+} {
+  let n = 0;
+  const db: Db = {
+    all: (sql, ...p) => (n++, inner.all(sql, ...p)),
+    first: (sql, ...p) => (n++, inner.first(sql, ...p)),
+    run: (sql, ...p) => (n++, inner.run(sql, ...p)),
+    runChanges: (sql, ...p) => (n++, inner.runChanges(sql, ...p)),
+    batch: (stmts) => ((n += stmts.length), inner.batch(stmts)),
+  } as Db;
+  return { db, count: () => n, reset: () => (n = 0) };
+}
+
+async function countedHooks(c: { db: Db }) {
+  const product = (await loadProduct(env, db, SLUG))!;
+  return buildHooks(SERVICES, product.services, {
+    env,
+    db: c.db,
+    product,
+    now: NOW,
+  });
+}
+
+describe("pack availability reads are bounded (P4-05, B1)", () => {
+  /** 50 core releases (the matrix's page bound), each pinned by an app release with 2 builds. */
+  async function fifty() {
+    const RELEASES = 50;
+    for (let i = 0; i < RELEASES; i++) {
+      const version = `1.${i}.0`;
+      const { recordSha256 } = await publishCore(version, i + 1);
+      // The web build embeds nothing; the iOS build says nothing, so it embeds the baseline.
+      await publishApp(
+        `2.${i}.0`,
+        i + 1,
+        recordSha256,
+        { web: [] },
+        {
+          seq: i + 1,
+          version,
+        },
+      );
+    }
+    return RELEASES;
+  }
+
+  it("the matrix of 50 pack releases with pinning app releases stays under a fixed ceiling", async () => {
+    const n = await fifty();
+    const c = counting(db);
+    const h = await countedHooks(c);
+    c.reset();
+    const matrix = await buildMatrix(
+      { db: c.db, product: SLUG, hooks: h },
+      CORE,
+      50,
+    );
+    const reads = c.count();
+    expect(matrix!.releases).toHaveLength(n);
+    // Every release is live by CDN (two variants) and embedded once on `bundled`.
+    const embedded = matrix!.cells
+      .filter((cell) => cell.outletId === "bundled")
+      .flatMap((cell) => cell.records);
+    expect(embedded).toHaveLength(n);
+    expect(embedded[0]!.detail).toMatchObject({ buildIds: ["ios"] });
+    // One record read per pack release, plus a constant of bulk reads (catalog, outlets,
+    // transports, stored rows, submissions, rollouts, objects, refs, pins, app releases,
+    // declarations, builds with embeds). Before B1 this page cost 607 reads; now 75.
+    expect(reads, `matrix reads: ${reads}`).toBeLessThanOrEqual(n + 30);
+    console.info(`[B1] matrix of ${n} pack releases: ${reads} D1 queries`);
+  }, 120_000);
+
+  it("delivery.availability() of one pack release is a fixed handful of reads", async () => {
+    await fifty();
+    const c = counting(db);
+    const h = await countedHooks(c);
+    c.reset();
+    const records = await h.delivery()!.availability(`${CORE}@1.49.0`);
+    const reads = c.count();
+    expect(records.filter((r) => r.transport === "embedded")).toHaveLength(1);
+    expect(records.filter((r) => r.transport === "pkey-cdn")).toHaveLength(4);
+    // Before B1: 19 here, and one more per declared pack ahead of it in `findRelease`; now 12.
+    expect(reads, `availability reads: ${reads}`).toBeLessThanOrEqual(15);
+    console.info(`[B1] delivery.availability(): ${reads} D1 queries`);
+  }, 120_000);
 });

@@ -59,23 +59,6 @@ export function stricter(a: ReleaseAccess, b: ReleaseAccess): ReleaseAccess {
   return STRICTNESS[b] > STRICTNESS[a] ? b : a;
 }
 
-/**
- * The strictest delivery mode of `deliverables`, the `app` mode when there are none. This is the
- * blob route's app-side rule (`blobAccess.ts`): an object an app artifact holds is as protected
- * as the strictest deliverable whose releases carry it. The F-Droid relay applies the same rule
- * before serving a registered file.
- */
-export async function strictestAccess(
-  delivery: { accessMode(deliverable: string): Promise<ReleaseAccess> },
-  deliverables: Iterable<string>,
-): Promise<ReleaseAccess> {
-  const ids = new Set(deliverables);
-  if (ids.size === 0) ids.add(APP_DELIVERABLE_ID);
-  let mode: ReleaseAccess = "public";
-  for (const d of ids) mode = stricter(mode, await delivery.accessMode(d));
-  return mode;
-}
-
 export interface DistAccessRow {
   product: string;
   deliverable_id: string;
@@ -138,6 +121,42 @@ export async function entitlementOf(
     deliverable,
   );
   return row?.entitlement ?? null;
+}
+
+/** Every deliverable's mode and gate, from ONE read of the product's `dist_access` rows. */
+export interface AccessTable {
+  /** As `accessModeOf`: the deliverable's row, else the `app` row, else `entitled`. */
+  mode(deliverable: string): ReleaseAccess;
+  /** As `entitlementOf`: the deliverable's OWN row's `entitlement`, else null. */
+  gate(deliverable: string): string | null;
+}
+
+/**
+ * The product's delivery access in one query (P4-05: the blob route decides from every holder's
+ * mode and gate, and a refused request should cost a fixed number of reads). Same answers as
+ * `accessModeOf` and `entitlementOf`, read together.
+ */
+export async function readAccessTable(
+  db: Db,
+  product: string,
+): Promise<AccessTable> {
+  const rows = await db.all<
+    Pick<DistAccessRow, "deliverable_id" | "mode" | "entitlement">
+  >(
+    "SELECT deliverable_id, mode, entitlement FROM dist_access WHERE product = ?",
+    product,
+  );
+  const byId = new Map(rows.map((r) => [r.deliverable_id, r]));
+  return {
+    mode(deliverable) {
+      const own = byId.get(deliverable) ?? byId.get(APP_DELIVERABLE_ID);
+      // No row at all: fail closed, never `public` (see the file comment).
+      return own ? readMode(own.mode) : "entitled";
+    },
+    gate(deliverable) {
+      return byId.get(deliverable)?.entitlement ?? null;
+    },
+  };
 }
 
 /** Set (and claim for the operator) one deliverable's mode. `entitlement` undefined = keep. */

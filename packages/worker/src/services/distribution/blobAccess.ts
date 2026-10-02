@@ -25,10 +25,10 @@
  *     do): `public`, a usable licence, or under `entitled` an APP release of THIS product carrying
  *     the digest whose stored version passes the window (`entitledBlobRefusal`);
  *   - a pack, on the gated path while it is gated: its CURRENT gate, the flag in its own
- *     `dist_access.entitlement` (`delivery.entitlement`), held by the device's licence — never the
+ *     `dist_access.entitlement` (read with every mode in one query, `readAccessTable`), held by the device's licence — never the
  *     manifest's assertion and never a record's `entitlement`, a publish-time snapshot;
  *   - a pack otherwise (its public-path objects, or gated objects of a pack un-gated later): its
- *     delivery mode (`delivery.accessMode`: its own row, else the app's, else `entitled`).
+ *     delivery mode (its own row, else the app's, else `entitled`; `readAccessTable`).
  *     `public` serves; `authenticated`/`licensed` want a usable licence; `entitled` wants the
  *     pack's gate when it has one. `entitled` WITHOUT a gate is FAIL-CLOSED: `entitled` means
  *     "enforce the caller's own grant", a pack's grant is its gate, and the app's version window
@@ -49,7 +49,7 @@
 
 import { APP_DELIVERABLE_ID, isDeliverableId } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import type { Delivery, ReleaseCatalog } from "../../core/hooks.js";
+import type { ReleaseCatalog } from "../../core/hooks.js";
 import { bearer } from "../../core/platform.js";
 import { notFound, wireError } from "../../core/errors.js";
 import { blobKey, refHolders, type RefHolder } from "../../core/blobs.js";
@@ -59,7 +59,7 @@ import {
   fixedReleaseSelector,
 } from "../../core/entitledAccess.js";
 import type { Db } from "../../core/platform.js";
-import { strictestAccess } from "./access.js";
+import { readAccessTable, stricter, type AccessTable } from "./access.js";
 import type { ByteContext } from "./bytes.js";
 
 /** What the blob route does with one request. */
@@ -132,14 +132,12 @@ function modeRequirement(
 async function entitledBlobRefusal(
   ctx: ByteContext,
   catalog: ReleaseCatalog,
-  sha256: string,
+  reads: BlobReads,
 ): Promise<Response | null> {
   const { req, env, db, product, now } = ctx;
-  const resolved = await catalog.resolve({ kind: "blob", sha256 });
-  const releases =
-    resolved?.kind === "blob"
-      ? resolved.releases.filter((r) => r.deliverableId === APP_DELIVERABLE_ID)
-      : [];
+  const releases = (await reads.carrying()).filter(
+    (r) => r.deliverableId === APP_DELIVERABLE_ID,
+  );
   if (!releases.length) {
     const denied = await accessRefusal(
       env,
@@ -171,23 +169,49 @@ async function entitledBlobRefusal(
   return first;
 }
 
+/**
+ * The reads one blob request shares: the product's delivery access (one query, every holder's
+ * mode and gate) and, only when an app-side holder asks, the releases carrying the digest (one
+ * query, used for both the strictest mode and the `entitled` window).
+ */
+interface BlobReads {
+  access: AccessTable;
+  carrying(): Promise<CarryingRelease[]>;
+}
+
+type CarryingRelease = { deliverableId: string; version: string };
+
+async function blobReads(
+  db: Db,
+  product: string,
+  catalog: ReleaseCatalog,
+  sha256: string,
+): Promise<BlobReads> {
+  const access = await readAccessTable(db, product);
+  let carrying: Promise<CarryingRelease[]> | undefined;
+  return {
+    access,
+    carrying: () =>
+      (carrying ??= catalog
+        .resolve({ kind: "blob", sha256 })
+        .then((r) => (r?.kind === "blob" ? r.releases : []))),
+  };
+}
+
 /** The requirement list of one key's holders. */
 async function requirementsOf(
-  catalog: ReleaseCatalog,
-  delivery: Delivery,
-  sha256: string,
+  reads: BlobReads,
   h: KeyHolders,
 ): Promise<Requirement[]> {
   const out: Requirement[] = [];
+  const { access } = reads;
   // Only a pack holder authorises a `gated/` key: nothing else is ever gated by a rule here.
   if (h.appSide && !h.gated) {
-    const resolved = await catalog.resolve({ kind: "blob", sha256 });
-    const mode = await strictestAccess(
-      delivery,
-      resolved?.kind === "blob"
-        ? resolved.releases.map((r) => r.deliverableId)
-        : [],
-    );
+    // The strictest mode of the deliverables whose releases carry it, the app's when none do.
+    const ids = new Set((await reads.carrying()).map((r) => r.deliverableId));
+    if (!ids.size) ids.add(APP_DELIVERABLE_ID);
+    let mode: ReleaseAccess = "public";
+    for (const d of ids) mode = stricter(mode, access.mode(d));
     out.push(
       mode === "public"
         ? { level: 0 }
@@ -197,9 +221,9 @@ async function requirementsOf(
     );
   }
   for (const pack of h.packs) {
-    const gate = await delivery.entitlement(pack);
+    const gate = access.gate(pack);
     if (h.gated && gate) out.push({ level: 2, check: "flag", flag: gate });
-    else out.push(modeRequirement(await delivery.accessMode(pack), gate, pack));
+    else out.push(modeRequirement(access.mode(pack), gate, pack));
   }
   return out;
 }
@@ -208,7 +232,7 @@ async function requirementsOf(
 async function authorise(
   ctx: ByteContext,
   catalog: ReleaseCatalog,
-  sha256: string,
+  reads: BlobReads,
   reqs: readonly Requirement[],
 ): Promise<Response | null> {
   const { req, env, db, product, now } = ctx;
@@ -230,7 +254,7 @@ async function authorise(
   );
   let first: Response | null = null;
   if (grants.some((r) => r.check === "window")) {
-    const denied = await entitledBlobRefusal(ctx, catalog, sha256);
+    const denied = await entitledBlobRefusal(ctx, catalog, reads);
     if (!denied) return null;
     first ??= denied;
   }
@@ -261,7 +285,6 @@ async function authorise(
 export async function decideBlob(
   ctx: ByteContext,
   catalog: ReleaseCatalog,
-  delivery: Delivery,
   sha256: string,
 ): Promise<BlobDecision> {
   const { req, env, db, product, now } = ctx;
@@ -270,6 +293,7 @@ export async function decideBlob(
   const rows = await refHolders(db, product.slug, [publicKey, gatedKey]);
   // More holders than one query reads: one unread holder could be the strictest. Fail closed.
   if (rows === null) return { kind: "refused", response: notFound() };
+  const reads = await blobReads(db, product.slug, catalog, sha256);
 
   const candidates = [
     classify(publicKey, false, rows),
@@ -284,7 +308,7 @@ export async function decideBlob(
       db,
       product,
       bearer(req),
-      await delivery.accessMode(APP_DELIVERABLE_ID),
+      reads.access.mode(APP_DELIVERABLE_ID),
       await catalog.accessSelector(undefined),
       false,
       now,
@@ -294,8 +318,8 @@ export async function decideBlob(
 
   let first: Response | null = null;
   for (const h of candidates) {
-    const reqs = await requirementsOf(catalog, delivery, sha256, h);
-    const denied = await authorise(ctx, catalog, sha256, reqs);
+    const reqs = await requirementsOf(reads, h);
+    const denied = await authorise(ctx, catalog, reads, reqs);
     if (!denied)
       return {
         kind: "serve",
@@ -317,7 +341,6 @@ export async function publicKeyIsPublic(
   db: Db,
   product: string,
   catalog: ReleaseCatalog,
-  delivery: Delivery,
   sha256: string,
 ): Promise<boolean> {
   const key = blobKey(sha256);
@@ -325,6 +348,9 @@ export async function publicKeyIsPublic(
   if (rows === null) return false;
   const h = classify(key, false, rows);
   if (!h.packs.length) h.appSide = true;
-  const reqs = await requirementsOf(catalog, delivery, sha256, h);
+  const reqs = await requirementsOf(
+    await blobReads(db, product, catalog, sha256),
+    h,
+  );
   return reqs.every((r) => r.level === 0);
 }

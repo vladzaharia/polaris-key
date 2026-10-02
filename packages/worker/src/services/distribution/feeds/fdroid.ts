@@ -75,7 +75,7 @@ import {
   type CiTokenRecord,
 } from "../../../core/publisher.js";
 import { ciActor, type CiPrincipal } from "../../../core/ciScope.js";
-import type { Delivery, ReleaseCatalog } from "../../../core/hooks.js";
+import type { ReleaseCatalog } from "../../../core/hooks.js";
 import { publicKeyIsPublic } from "../blobAccess.js";
 import { appendAudit } from "../../../core/data.js";
 import { cachedFeedText, feedCacheKey, feedStateStamp } from "./cache.js";
@@ -167,10 +167,9 @@ export function objectIsPublic(
   db: Db,
   product: string,
   catalog: ReleaseCatalog,
-  delivery: Delivery,
   sha256: string,
 ): Promise<boolean> {
-  return publicKeyIsPublic(db, product, catalog, delivery, sha256);
+  return publicKeyIsPublic(db, product, catalog, sha256);
 }
 
 /** Whether this product already holds a `feed` ref to `key` — an object an earlier register
@@ -244,13 +243,7 @@ export async function serveFdroidRelay(
     if (
       !env.BLOBS ||
       !(await hasRef(db, product.slug, key)) ||
-      !(await objectIsPublic(
-        db,
-        product.slug,
-        readers.catalog,
-        readers.delivery,
-        file.sha256,
-      ))
+      !(await objectIsPublic(db, product.slug, readers.catalog, file.sha256))
     )
       return harden(notFound());
     const res = await blobResponse(req, env.BLOBS, key, {
@@ -514,7 +507,7 @@ export async function registerFdroid(
   // The relay serves every file to anyone, so no file may be an object a non-public deliverable's
   // release carries (the blob route's strictest-mode rule; the relay re-checks it per request).
   for (const f of files)
-    if (!(await objectIsPublic(db, product.slug, catalog, delivery, f.sha256)))
+    if (!(await objectIsPublic(db, product.slug, catalog, f.sha256)))
       return errorResponse(
         403,
         ErrorCode.Forbidden,

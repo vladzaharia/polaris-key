@@ -641,14 +641,24 @@ delivery_gate_missing`) until the operator sets a gate or a looser mode. A pack 
   never move between prefixes; the earlier public responses were cacheable and cannot be
   recalled, so a gate protects only the bytes published after it is set. A pack un-gated later
   serves its `gated/` objects under its mode, still `private, no-store`.
-- **Residual: holder existence.** A hash the product holds only under `gated/` answers `401` to
-  an anonymous request where an unknown hash may answer `404`, so the route confirms that the
-  product holds that hash gated. The hash is already public in the pack's signed record and
-  index (served by the record route under the metadata mode), so this reveals nothing new about
-  content; it reveals nothing about other tenants.
-- **Availability reads the same possession.** A pack variant is derived `live` on `pkey-cdn`/`web`
-  only while every object its record names is stored with its recorded hash and length and held
-  by this product; `embedded` is derived from the signed pins and the builds' `embeds`. A
+- **Residual: holder existence.** The route's status tells a caller whether the product holds a
+  hash, and how it is gated. What is actually public: the hashes a pack RECORD names (each
+  variant's `full`, files index, gaps and deltas) are readable by anyone the record route serves
+  under the metadata mode. A FILE BLOB's hash is named only inside a files index, which is itself
+  a gated object for a gated pack, so it is disclosed only to a caller who already holds the
+  index's bytes. Against a hash so learned: an anonymous request answers `401` where an unknown
+  hash may answer `404`; a closed pack (`entitled`, no gate) answers `403
+delivery_gate_missing` to anyone; and a licensed caller WITHOUT the flag gets `403
+not_entitled` rather than `404`, which confirms the product holds that gated content. None of
+  this reveals the bytes or anything about other tenants (another product's refs never count).
+- **Refusals are rate-limited and cheap.** The byte routes count a request against the client's
+  artifact lane BEFORE the access decision (P4-05 moved it), and a blob decision costs a fixed
+  number of reads: one `refHolders` query, one `dist_access` read for every holder's mode and
+  gate, at most one read of the releases carrying the digest, and the licence check.
+- **Availability reads the same possession, at a bounded cost.** A pack variant is derived `live`
+  on `pkey-cdn`/`web` only while every object its record names is stored with its recorded hash
+  and length and held by this product (bulk reads for a whole matrix page: one record read per
+  pack release plus a fixed set of bulk queries, inside D1's per-invocation cap); `embedded` is derived from the signed pins and the builds' `embeds`. A
   transport v1 does not act on is stored and reported unsupported, never silently served by CDN.
 
 **Edge caching stays off.** The byte routes are not cached (no Workers Caching entrypoint, no

@@ -73,7 +73,7 @@ without Distribution loses its downloads by choice.
 
 The byte routes count against the same per-client lanes as before (the artifact lane for
 bytes, the metadata lane for the installer), because the budget defended is one product's
-GitHub installation quota. None of them is put in the edge cache. CORS follows the product's
+GitHub installation quota. A request counts before its access is decided, so a refused one spends the budget too. None of them is put in the edge cache. CORS follows the product's
 `web.origins` for the canonical paths and, through the rewrite, for every alias; the bytes host
 applies it in its own dispatcher.
 
@@ -178,12 +178,12 @@ cross-origin `If-Range` is preflighted, and the bytes host allows `Range` and `I
 **Who may fetch** is decided per request from the object's holders in this product (another
 product's copy never counts):
 
-| The object                                     | Requires                                                                 |
-| ---------------------------------------------- | ------------------------------------------------------------------------ |
-| under `gated/`, while its pack is gated        | a device whose licence holds the pack's **current** gate flag            |
-| under `blobs/`, or a pack un-gated since       | the pack's mode: `public` anyone, `licensed` a usable licence            |
-| the same, pack mode `entitled` with a gate     | the gate's flag                                                          |
-| the same, pack mode `entitled` and **no gate** | nobody: `403 delivery_gate_missing` until a gate or a looser mode is set |
+| The object                                     | Requires                                                                         |
+| ---------------------------------------------- | -------------------------------------------------------------------------------- |
+| under `gated/`, while its pack is gated        | a device whose licence holds the pack's **current** gate flag                    |
+| under `blobs/`, or a pack un-gated since       | the pack's mode: `public` anyone; `authenticated` or `licensed` a usable licence |
+| the same, pack mode `entitled` with a gate     | the gate's flag                                                                  |
+| the same, pack mode `entitled` and **no gate** | nobody: `403 delivery_gate_missing` until a gate or a looser mode is set         |
 
 The gate is the `entitlement` of the pack's own access row, read at each request: renaming the
 flag moves who may download at once. Neither the manifest's assertion nor a record's

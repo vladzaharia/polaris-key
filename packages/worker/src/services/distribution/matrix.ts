@@ -45,6 +45,8 @@ import {
   embeddedIn,
   hasServingLocation,
   packDerivedAvailability,
+  packDeriveShared,
+  transportLookup,
   outletMatches,
   submissionRecord,
   type DistAvailabilityRow,
@@ -227,23 +229,27 @@ export async function buildMatrix(
     .filter((r) => r.deliverable_id === deliverableId)
     .map(rolloutRecord);
 
+  // A pack deliverable's releases derive by the pack rule, for the whole page at once: one record
+  // read per release, then bulk reads shared by every release (P4-05, B1).
+  const isPack = deliverableId !== APP_DELIVERABLE_ID;
+  const packRecordsOf =
+    isPack && outlets.some((o) => o.derives)
+      ? await packDerivedAvailability(
+          { db, product, hooks: ctx.hooks },
+          catalog,
+          releases,
+          outletRows.filter((o) =>
+            outlets.some((m) => m.outletId === o.outlet_id && m.derives),
+          ),
+          packDeriveShared(catalog, transportLookup(transports)),
+        )
+      : new Map<string, AvailabilityRecord[]>();
+
   const cells: MatrixCell[] = [];
   for (const release of releases) {
     // Derived records need the builds and artifacts; a yanked release derives nothing.
     const anyDerives = !release.yanked && outlets.some((o) => o.derives);
-    const isPack = deliverableId !== APP_DELIVERABLE_ID;
-    // A pack release derives by the pack rule, computed once for every outlet (P4-05).
-    const packRecords =
-      anyDerives && isPack
-        ? await packDerivedAvailability(
-            { db, product, hooks: ctx.hooks },
-            catalog,
-            release,
-            outletRows.filter((o) =>
-              outlets.some((m) => m.outletId === o.outlet_id && m.derives),
-            ),
-          )
-        : [];
+    const packRecords = packRecordsOf.get(release.releaseId) ?? [];
     const builds =
       anyDerives && !isPack ? await catalog.builds(release.releaseId) : [];
     const artifacts =

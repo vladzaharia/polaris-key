@@ -24,11 +24,12 @@
  *
  * ── THE PIPELINE ────────────────────────────────────────────────────────────────────────────
  *
- * The release gateway's, in the same order: the product's release configuration must exist
- * (`releaseCatalog.metadataAccess()` is `null` without one) → the access mode is enforced →
- * the request counts against the same rate-limit lane as before (`releaseArtifact` for bytes,
- * `release` for the installer: one product's GitHub quota is still the budget defended) →
- * compute → harden. Nothing here is put in the edge cache.
+ * The product's release configuration must exist (`releaseCatalog.metadataAccess()` is `null`
+ * without one) → the request counts against the same rate-limit lane as before
+ * (`releaseArtifact` for bytes, `release` for the installer: one product's GitHub quota is still
+ * the budget defended) → the access mode is enforced → compute → harden. P4-05 moved the rate
+ * limit ahead of the access decision, so a refused request spends budget too and the reads an
+ * access decision costs stay bounded per client. Nothing here is put in the edge cache.
  *
  * ── ONE ACCESS ANSWER ───────────────────────────────────────────────────────────────────────
  *
@@ -259,6 +260,27 @@ export async function serveDistributionBytes(
   const metadataMode = await catalog.metadataAccess();
   if (metadataMode === null) return harden(notFound());
 
+  // The rate limit counts every request BEFORE the access decision (P4-05): a refused request
+  // (an anonymous probe of a gated hash, say) still spends the client's budget, so the reads an
+  // access decision costs are bounded per client like any download's.
+  const isArtifact = target.kind !== "install";
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      {
+        bucket: isArtifact ? "releaseArtifact" : "release",
+        id: clientIp(req),
+        ...(isArtifact ? ARTIFACT_RATE_LIMIT : METADATA_RATE_LIMIT),
+      },
+      now,
+    ))
+  ) {
+    return harden(
+      errorResponse(429, "rate_limited", "too many release requests"),
+    );
+  }
+
   // The access decision, per surface (see the file header).
   let mode: ReleaseAccess = "public";
   let selector: EntitledSelector = {};
@@ -301,7 +323,7 @@ export async function serveDistributionBytes(
     }
     case "blob": {
       // Decided from the holders of the object's keys, not from one mode (`blobAccess.ts`).
-      const blob = await decideBlob(ctx, catalog, delivery, target.sha256);
+      const blob = await decideBlob(ctx, catalog, target.sha256);
       if (blob.kind === "refused") decided = blob.response;
       else {
         cleared.blob = blob;
@@ -326,24 +348,6 @@ export async function serveDistributionBytes(
           now,
         );
   if (denied) return harden(denied);
-
-  const isArtifact = target.kind !== "install";
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      {
-        bucket: isArtifact ? "releaseArtifact" : "release",
-        id: clientIp(req),
-        ...(isArtifact ? ARTIFACT_RATE_LIMIT : METADATA_RATE_LIMIT),
-      },
-      now,
-    ))
-  ) {
-    return harden(
-      errorResponse(429, "rate_limited", "too many release requests"),
-    );
-  }
 
   return harden(await compute(ctx, target, cleared as Cleared));
 }

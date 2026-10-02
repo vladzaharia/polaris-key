@@ -17,6 +17,7 @@ import { parseFilesIndex, variantKey } from "@polaris-key/client-core/packs";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
 import type {
+  CatalogBuildEmbeds,
   CatalogPackDeliverable,
   CatalogPackFile,
   CatalogPackRelease,
@@ -37,7 +38,32 @@ type PackCatalog = Pick<
   | "pins"
   | "pinnedBy"
   | "embeds"
+  | "pinnedByMany"
+  | "embedsOf"
 >;
+
+/** Ids per `IN` list: one parameter is the product, D1 binds at most 100. */
+const IN_IDS = 90;
+
+function chunked<T>(rows: readonly T[]): T[][] {
+  const out: T[][] = [];
+  const unique = [...new Set(rows)];
+  for (let i = 0; i < unique.length; i += IN_IDS)
+    out.push(unique.slice(i, i + IN_IDS));
+  return out;
+}
+
+function embedsColumn(raw: string | null): string[] | null {
+  if (!raw) return null;
+  try {
+    const v: unknown = JSON.parse(raw);
+    return Array.isArray(v) && v.every((x) => typeof x === "string")
+      ? (v as string[])
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 interface PinRow {
   app_release_id: string;
@@ -46,6 +72,10 @@ interface PinRow {
   record_sha256: string;
   required: number;
   delivery: string;
+}
+
+function cmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function pinRecord(r: PinRow): CatalogPin {
@@ -239,15 +269,54 @@ export function packCatalog(ctx: {
         appReleaseId,
         buildId,
       );
-      if (!row?.embeds_json) return null;
-      try {
-        const v: unknown = JSON.parse(row.embeds_json);
-        return Array.isArray(v) && v.every((x) => typeof x === "string")
-          ? (v as string[])
-          : null;
-      } catch {
-        return null;
+      return embedsColumn(row?.embeds_json ?? null);
+    },
+
+    async pinnedByMany(packReleaseIds) {
+      const out: CatalogPin[] = [];
+      for (const ids of chunked(packReleaseIds)) {
+        const rows = await db.all<PinRow>(
+          `SELECT app_release_id, pack_deliverable, pack_release_id, record_sha256, required,
+                  delivery
+             FROM release_pins
+            WHERE product = ? AND pack_release_id IN (${ids.map(() => "?").join(", ")})`,
+          slug,
+          ...ids,
+        );
+        out.push(...rows.map(pinRecord));
       }
+      return out.sort(
+        (a, b) =>
+          cmp(a.packReleaseId, b.packReleaseId) ||
+          cmp(a.appReleaseId, b.appReleaseId),
+      );
+    },
+
+    async embedsOf(appReleaseIds) {
+      const out: CatalogBuildEmbeds[] = [];
+      for (const ids of chunked(appReleaseIds)) {
+        const rows = await db.all<{
+          release_id: string;
+          build_id: string;
+          platform: string | null;
+          embeds_json: string | null;
+        }>(
+          `SELECT release_id, build_id, platform, embeds_json FROM release_builds
+            WHERE product = ? AND release_id IN (${ids.map(() => "?").join(", ")})`,
+          slug,
+          ...ids,
+        );
+        for (const r of rows)
+          out.push({
+            releaseId: r.release_id,
+            buildId: r.build_id,
+            platform: r.platform,
+            embeds: embedsColumn(r.embeds_json),
+          });
+      }
+      return out.sort(
+        (a, b) => cmp(a.releaseId, b.releaseId) || cmp(a.buildId, b.buildId),
+      );
     },
   };
 }

@@ -311,6 +311,15 @@ export interface CatalogPackFile {
   blob: { sha256: string; bytes: number; codec: string; key: string };
 }
 
+/** One build of an app release with its `embeds` (`ReleaseCatalog.embedsOf`, P4-05). */
+export interface CatalogBuildEmbeds {
+  releaseId: string;
+  buildId: string;
+  platform: string | null;
+  /** The packs the build embeds, or null when its descriptor said nothing. */
+  embeds: string[] | null;
+}
+
 /** One pin: app release → the exact pack release it pins (a mirror of the signed `content`). */
 export interface CatalogPin {
   appReleaseId: string;
@@ -337,6 +346,8 @@ export interface ReleaseCatalog {
   deliverables(): Promise<CatalogDeliverable[]>;
   /** A deliverable's releases, newest publication first. */
   releases(deliverableId: string): Promise<CatalogRelease[]>;
+  /** One release by id, whatever its deliverable, or null (one read; P4-05). */
+  release(releaseId: string): Promise<CatalogRelease | null>;
   /** A release's builds, by build id. */
   builds(releaseId: string): Promise<CatalogBuild[]>;
   /** A release's artifact records, with where their bytes live; narrowed to one build when
@@ -420,6 +431,16 @@ export interface ReleaseCatalog {
   /** The packs build `buildId` of app release `appReleaseId` embeds, or null when its
    *  descriptor said nothing (or there is no such build). */
   embeds(appReleaseId: string, buildId: string): Promise<string[] | null>;
+  /**
+   * The pins of every pack release in `packReleaseIds`, in bulk (P4-05: availability reads them
+   * for a page of pack releases in a bounded number of queries). By pack release, then app release.
+   */
+  pinnedByMany(packReleaseIds: readonly string[]): Promise<CatalogPin[]>;
+  /**
+   * Every build of every app release in `appReleaseIds`, with its `embeds`, in bulk (P4-05). By
+   * release, then build.
+   */
+  embedsOf(appReleaseIds: readonly string[]): Promise<CatalogBuildEmbeds[]>;
 }
 
 // ── delivery (Distribution) ─────────────────────────────────────────────────────────────────
