@@ -11298,7 +11298,7 @@ var OUTLET_CAPABILITY_DEFAULTS = {
 // ../shared-protocol/dist/release.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-DJWRXDHE.js
+// ../shared-protocol/dist/chunk-ECLUJ44M.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 var DELEGATED_KID_PATTERN = /^pkd1-[0-9a-f]{64}$/;
