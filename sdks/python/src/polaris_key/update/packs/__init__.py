@@ -54,7 +54,7 @@ from .select import (
     usable_codec,
     variant_usable,
 )
-from .sets import ParseContentStampResult, pack_set_id, parse_content_stamp
+from .sets import ParseContentStampResult, pack_set_id, parse_content_stamp, stamp_holds
 from .state import (
     PACK_STATE_VERSION,
     abandon_install,
@@ -124,6 +124,7 @@ __all__ = [
     "ParseContentStampResult",
     "pack_set_id",
     "parse_content_stamp",
+    "stamp_holds",
     "PACK_STATE_VERSION",
     "abandon_install",
     "begin_install",

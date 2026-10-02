@@ -11,9 +11,6 @@ import Foundation
 
 /// P2-04's `BUILD_ID_RE`: ASCII, so build-id uniqueness and §2.8's tie-break compare bytes.
 public let BUILD_ID_PATTERN = "[a-z0-9][a-z0-9._-]{0,63}"
-/// The record kinds a v4 client verifies and never acts on as an app record (P4-01, P4-13,
-/// P4-19). A `pack` record is acted on only through a content pin (`pin.kind: "pack"`).
-public let RESERVED_RECORD_KINDS: [String] = ["pack", "revocation", "delegation"]
 
 /// `@polaris-key/manifest`'s `DELIVERABLE_ID_PATTERN`; at most 64 bytes.
 private let DELIVERABLE_PATTERN = #"[a-z][a-z0-9-]*(\.[a-z0-9-]+)*"#
@@ -99,13 +96,24 @@ public struct ReleaseRecordDoc: Sendable, Equatable {
     public let builds: [ReleaseRecordBuild]?
     /// The payload as decoded, reserved members (`content`, …) included.
     public let json: JSONValue
+    /// The verified payload's non-wire integer pointers (V4 §3.1), for `revocationOf` and
+    /// `holdsOf`. Empty for a record built from a decoded object; equality ignores them.
+    public let nonWireIntegers: NonWireIntegers
+
+    public static func == (a: ReleaseRecordDoc, b: ReleaseRecordDoc) -> Bool {
+        a.schemaVersion == b.schemaVersion && a.aud == b.aud && a.deliverable == b.deliverable
+            && a.kind == b.kind && a.version == b.version && a.seq == b.seq
+            && a.issuedAt == b.issuedAt && a.minSupportedSeq == b.minSupportedSeq && a.tag == b.tag
+            && a.channel == b.channel && a.title == b.title && a.notes == b.notes
+            && a.provenance == b.provenance && a.builds == b.builds && a.json == b.json
+    }
 
     public init(
         schemaVersion: Int = 1, aud: String, deliverable: String = "app", kind: String = "app",
         version: String, seq: Int, issuedAt: Int, minSupportedSeq: Int? = nil,
         tag: String? = nil, channel: String? = nil, title: String? = nil, notes: String? = nil,
         provenance: ReleaseRecordProvenance? = nil, builds: [ReleaseRecordBuild]?,
-        json: JSONValue = .null
+        json: JSONValue = .null, nonWireIntegers: NonWireIntegers = []
     ) {
         self.schemaVersion = schemaVersion
         self.aud = aud
@@ -122,11 +130,12 @@ public struct ReleaseRecordDoc: Sendable, Equatable {
         self.provenance = provenance
         self.builds = builds
         self.json = json
+        self.nonWireIntegers = nonWireIntegers
     }
 
     /// The typed view of a record object, or nil when a member is missing or mistyped. SHAPE
     /// only — `releaseRecordClaims` is the contract; a payload that passed it always converts.
-    public init?(json: JSONValue) {
+    public init?(json: JSONValue, nonWireIntegers: NonWireIntegers = []) {
         guard let o = json.objectValue,
             let schemaVersion = o["schemaVersion"]?.exactInt, let aud = o["aud"]?.stringValue,
             let deliverable = o["deliverable"]?.stringValue, let kind = o["kind"]?.stringValue,
@@ -171,7 +180,8 @@ public struct ReleaseRecordDoc: Sendable, Equatable {
             version: version, seq: seq, issuedAt: issuedAt,
             minSupportedSeq: o["minSupportedSeq"]?.exactInt, tag: o["tag"]?.stringValue,
             channel: o["channel"]?.stringValue, title: o["title"]?.stringValue,
-            notes: o["notes"]?.stringValue, provenance: provenance, builds: builds, json: json)
+            notes: o["notes"]?.stringValue, provenance: provenance, builds: builds, json: json,
+            nonWireIntegers: nonWireIntegers)
     }
 }
 
@@ -396,7 +406,7 @@ public func verifyReleaseRecord(
     // 14. The claims. A payload that does not decode fails here.
     guard let payload = try? JSONDecoder().decode(JSONValue.self, from: v.payload),
         releaseRecordClaims(payload, expectedAud: opts.expectedAud, nonWire: v.nonWireIntegers),
-        let record = ReleaseRecordDoc(json: payload)
+        let record = ReleaseRecordDoc(json: payload, nonWireIntegers: v.nonWireIntegers)
     else { return .refused(.claims) }
 
     // 15. The cross-check against the pin.

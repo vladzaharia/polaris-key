@@ -6,6 +6,8 @@
 //   <root>/state.json                         the install state, written by temp + rename
 //   <root>/state.json.torn                    a torn document held aside (never overwritten)
 //   <root>/state.json.torn.list               the torn hold's snapshot of the store
+//   <root>/revocations.json                   the stored revocations (P4-13), only once one is
+//                                             stored; `.torn` beside it when quarantined
 //   <root>/staging/<planId>/objects/<sha256>  objects being fetched (appended, resumable)
 //   <root>/staging/<planId>/out/              the payload being built (a tree's files, or
 //                                             `payload.bin` for a container)
@@ -304,11 +306,17 @@ private struct DirTree: TreeSink {
 /// hold's snapshot at `state.json.torn.list`.
 public struct DirPackStateStore: PackStateStore {
     public let root: String
-    var path: String { root + "/state.json" }
+    /// The file name: `state.json`, or `revocations.json` for the sibling revocations document
+    /// (plans/P4-13.md §2.5), which has its own atomic replace and quarantine.
+    public let name: String
+    var path: String { root + "/" + name }
     var torn: String { path + ".torn" }
     var holdList: String { path + ".torn.list" }
 
-    public init(root: String) { self.root = root }
+    public init(root: String, name: String = "state.json") {
+        self.root = root
+        self.name = name
+    }
 
     public func read() throws -> String? {
         // Only a missing file is "no state"; anything else is unknown, never empty.
@@ -371,6 +379,8 @@ public final class DirPackStorage: PackStorage, @unchecked Sendable {
 
     /// The state store beside the payloads.
     public func stateStore() -> DirPackStateStore { DirPackStateStore(root: root) }
+    /// The sibling `revocations.json` (plans/P4-13.md §2.5): never created empty.
+    public func revocationStore() -> DirPackStateStore { DirPackStateStore(root: root, name: "revocations.json") }
 
     /// `parts` joined under `base`, refusing anything that would land outside it.
     static func inside(_ base: String, _ parts: String...) throws -> String {

@@ -427,7 +427,7 @@ client = PolarisKeyClient.create(
 
 check = client.update.decide(channel="latest")   # the REQUESTED name; aliases are fine
 check.channel             # "stable": the canonical channel, the feed's own claim
-check.decision.action     # none | code-ready | binary | store | platform | blocked
+check.decision.action     # none | code-ready | binary | store | platform | blocked | packs
 check.decision.to_dict()  # exactly the members that action carries
 check.feed, check.record  # "network" | "committed";  "network" | "cache" | "none"
 check.errors              # (UpdateCheckError(code, detail), ...): what was refused on the way
@@ -452,6 +452,8 @@ What it does, in the contract's order (`docs/security/WIRE-CONTRACT-V4.md` §3.4
   (`is_undismissable(decision)`): keep it on screen, never cover the running app with it. A
   stale feed (past `expiresAt` + 300 s) answers `none` with reason `stale`: keep running, never
   update automatically.
+- With a content stamp (`UpdateClientOptions(packs=...)`), the decision also runs the **content
+  decision** (below): pack updates, pack floors and revocations.
 
 It raises `UpdateError` (a `PolarisError` with a `detail`) only when it has nothing to decide
 from (`feed-rejected` with the step as `detail`, `network-error`, the Worker's wire code), and
@@ -540,6 +542,49 @@ its header before it is decoded. The pure functions (`parse_files_index`, `check
 `verify_marker`, `pack_set_id`, `parse_content_stamp`, `frame_window`) live in
 `polaris_key.update.packs`; `tests/test_content_conformance.py` and `tests/test_plan_matrix.py`
 run the content corpus and `plan-matrix.json` through them.
+
+### Content decisions and revocations
+
+With a content stamp, `client.update.decide()` also reads the feed's content members
+(`packSets`, `packFloors`, `revocations`; `feed_content`) and the device's stored revocations, and
+refines the app answer (plans/P4-13.md §2.5, §2.6):
+
+```python
+check = client.update.decide()
+d = check.decision
+if d.action == "packs":                          # install the named releases, unmount revoked ones
+    client.update.packs.ensure_releases(d.install)   # exact releases, not the stamp's pins
+    # d.revoke: optional packs revoked without a fix (already unmounted); d.set: the effective set
+elif d.action == "blocked" and d.reason == "revoked-content":
+    ...  # a REQUIRED pack was revoked by its developer and has no usable replacement
+boot = boot_decision(d)                          # "required" only for revoked required content
+```
+
+- **Floors never stop play.** A pack below its floor gives `blocked {content-floor}`, or an offer
+  made mandatory with `contentBlock: "content-floor"`; its boot value is `optional`.
+- **A CI-signed revocation of a required pack does.** `blocked {revoked-content}`, or an offer
+  with `contentBlock: "revoked-content"`, gives the boot value `required`: show your own text
+  ("Some of this game's content was withdrawn by its developer and can't be used. Update the
+  app to keep playing."), with the offer's button when the answer is an offer. A revoked
+  **optional** pack is unmounted (`packs.revoke`) and play continues.
+- A revocation is a `kind: revocation` release record signed by a pinned release key
+  (`verify_revocation`; `newer_revocation` picks the winner among revocations of one target).
+  The check fetches at most `MAX_FEED_REVOCATIONS` per call, and the ones it verifies are kept
+  by `client.update.packs` in a sibling `revocations.json` beside `state.json` (never inside
+  it), re-verified against the pinned release keys on every load. The engine refuses to
+  activate, mount or install a revoked release (`PackError` `pack-revoked`). A torn
+  `revocations.json` puts the stamp's packs in `relearn` (their embedded copies are refused,
+  with `pack-revoked` detail `relearn` when no copy can be fetched) until a fresh feed re-teaches
+  them or `recover_state()`; at most 256 targets are kept, the oldest dropped first.
+- **A product with no revocations behaves exactly as before**: no `revocations.json`, no
+  `revocationsStored` flag in `state.json`, and no refusal of any mount.
+
+`client.update.packs.revocations()` reports what is stored, `content_input()` is what the check
+reads, and `boot_fetch(..., install=d.install)` installs a `packs` answer's required and
+essential entries before mount. The pure functions (`feed_content`, `revocation_of`,
+`verify_revocation`, `newer_revocation`, `holds_of`, `stamp_holds`, `select_pack_rows`) are
+exported for hosts that drive their own transport; `tests/test_content_decision.py` runs every
+`feedContentCases`, `revocationCases` and `contentRows` vector through them.
 
 ## Trust, caching, and the offline gate
 

@@ -167,6 +167,11 @@ def parse_pack_state(text: Optional[str]) -> Dict[str, Any]:
         out["bootSeq"] = doc["bootSeq"]
     if out["confirmedBootSeq"] > out["bootSeq"]:
         out["confirmedBootSeq"] = out["bootSeq"]
+    # Set by the engine when it first stores a revocation in the sibling `revocations.json`
+    # (plans/P4-13.md §2.5): written before the sibling file, never cleared, absent for a product
+    # that has never had a revocation.
+    if doc.get("revocationsStored") is True:
+        out["revocationsStored"] = True
     return out
 
 
@@ -193,6 +198,8 @@ def reload_pack_state(
     out["observed"] = state["observed"]
     out["confirmedBootSeq"] = state["confirmedBootSeq"]
     out["bootSeq"] = state["bootSeq"] + 1
+    if state.get("revocationsStored") is True:
+        out["revocationsStored"] = True
     for pid, i in state["active"].items():
         if _ok(verify_install, i):
             out["active"][pid] = i

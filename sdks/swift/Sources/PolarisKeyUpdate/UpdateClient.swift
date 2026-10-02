@@ -394,7 +394,16 @@ extension UpdateClient {
     /// Discovery is fetched first when this session has not loaded it. When the network is down
     /// the decision still comes from the committed feed (a stale one answers `none {stale}`).
     /// A `mandatory` or `blocked` answer is a prompt the player cannot dismiss over an app that
-    /// keeps running (`isUndismissable`); no v4 answer stops the app (`bootDecision`).
+    /// keeps running (`isUndismissable`). Floors never stop the app; a CI-signed revocation of a
+    /// REQUIRED pack does: `blocked {revoked-content}`, or any answer whose `contentBlock` is
+    /// `revoked-content`, gives `bootDecision` `.required` (plans/P4-13.md §2.6, decision 4).
+    ///
+    /// With a content stamp configured (`UpdateClientOptions.packs`), it also runs the content
+    /// decision (plans/P4-13.md §2.5 steps 10–14): the feed's pack members, the relevant
+    /// revocations (fetched by hash, verified against the pinned release keys, then stored by the
+    /// pack facet) and their replacements, which can answer `packs`, `prestage` a `binary` offer
+    /// or block on `content-floor` / `revoked-content`. A pack facet that cannot start (an
+    /// unreadable stamp) decides without it, as before P4-13.
     public func decide(
         channel: String? = nil, staged: StagedUpdate? = nil, skipVersion: String? = nil
     ) async throws -> UpdateCheck {
@@ -559,6 +568,8 @@ extension UpdateClient {
         let ep = try await endpoints(feed: true, record: true)
         let slices = await core.updateSlices()
         let deviceId = await core.deviceId
+        // plans/P4-13.md §2.5: a host with a content stamp runs the content decision.
+        let content = (try? await packs.contentInput()) ?? nil
         let input = UpdateCheckInput(
             channel: channel ?? core.channel, expectedAud: core.product, trust: await core.trust,
             releaseKeys: c.releaseKeys,
@@ -567,7 +578,7 @@ extension UpdateClient {
             installId: deviceId.isEmpty ? nil : deviceId, installed: installed,
             outlet: outlet.outlet, subkind: outlet.subkind, staged: staged,
             skipVersion: skipVersion, methods: c.options.methods, feeds: slices.feeds,
-            releaseRecords: slices.releaseRecords)
+            releaseRecords: slices.releaseRecords, content: content)
         let feedTemplate = ep?.feed
         let recordTemplate = ep?.record
         let platform = installed.platform
@@ -585,6 +596,7 @@ extension UpdateClient {
             throw raise(error)
         case .ok(let run):
             await core.commitUpdateSlices(feeds: run.feeds, releaseRecords: run.releaseRecords)
+            if let revocations = run.revocations { try await packs.recordRevocations(revocations) }
             return run.check
         }
     }

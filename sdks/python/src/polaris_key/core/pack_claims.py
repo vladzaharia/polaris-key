@@ -15,7 +15,7 @@ so a trailing newline never matches.
 from __future__ import annotations
 
 import re
-from typing import Any, Mapping
+from typing import Any, Dict, List, Mapping, Optional
 
 from ..constants_generated import MAX_CONTENT_PINS
 from .models import _wire_int
@@ -39,6 +39,7 @@ __all__ = [
     "compare_bytes",
     "variant_key",
     "is_sha256",
+    "holds_of",
 ]
 
 # ── packages/shared-protocol/src/packs.ts, restated ─────────────────────────────────────────
@@ -174,3 +175,58 @@ def content_claims(value: Any) -> bool:
     except Exception:
         return False
 
+
+
+def holds_of(content: Any) -> Optional[List[Dict[str, Any]]]:
+    """The holds of an app record's ``content`` or a content stamp (plans/P4-13.md §2.4), read
+    beside the claims: ``holds`` absent reads ``[]``; otherwise it must be a list of 0–256
+    entries, each ``{pack: a pack id, unique and not pinned, release {sha256, seq ≥ 1, version},
+    reason?: string}``. Anything else reads ``None`` (unusable: the device then takes no feed
+    target for any unpinned pack, decision 9). The parsed holds carry the known members only.
+
+    client-core's ``holdsOf`` also takes the verifier's non-wire pointers; Python needs none,
+    because ``json.loads`` gives a ``float`` for every token that is not a plain integer, so
+    :func:`_wire_int` is the token rule. Never raises."""
+    try:
+        if not isinstance(content, dict):
+            return None
+        if "holds" not in content:
+            return []
+        holds = content["holds"]
+        if not isinstance(holds, list) or len(holds) > MAX_CONTENT_PINS:
+            return None
+        pinned = set()
+        pins = content.get("pins")
+        if isinstance(pins, list):
+            for p in pins:
+                if isinstance(p, dict) and isinstance(p.get("pack"), str):
+                    pinned.add(p["pack"])
+        seen = set()
+        out: List[Dict[str, Any]] = []
+        for h in holds:
+            if not isinstance(h, dict) or not is_pack_id(h.get("pack")):
+                return None
+            if h["pack"] in seen or h["pack"] in pinned:
+                return None
+            seen.add(h["pack"])
+            r = h.get("release")
+            if not isinstance(r, dict):
+                return None
+            if not is_sha256(r.get("sha256")):
+                return None
+            if _wire_int(r.get("seq"), 1) is None:
+                return None
+            if _full_match(VERSION_PATTERN, r.get("version")) is None:
+                return None
+            if "reason" in h and not isinstance(h["reason"], str):
+                return None
+            hold: Dict[str, Any] = {
+                "pack": h["pack"],
+                "release": {"sha256": r["sha256"], "seq": r["seq"], "version": r["version"]},
+            }
+            if "reason" in h:
+                hold["reason"] = h["reason"]
+            out.append(hold)
+        return out
+    except Exception:
+        return None

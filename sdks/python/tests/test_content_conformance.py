@@ -1,4 +1,4 @@
-# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record
+# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record update.content
 """The content corpus (plans/P4-01.md §4.4, §5; P4-07): ``conformance/corpus/v2/content/``
 through the production pack core, as the Node runner (``conformance/runners/node/suites.ts``,
 ``defineContentSuites``) drives it. ``content/`` is not mirrored: this runner reads it from the
@@ -9,7 +9,8 @@ checkout.
 ``pathCases``          §2.7's path rules                                    ``check_paths``
 ``filesIndexCases``    §2.7's ``parseFilesIndex``, steps 1–5                ``parse_files_index``
 ``packSetIdCases``     §2.9's ``packSetId``                                 ``pack_set_id``
-``stampCases``         §2.8's content stamp                                 ``parse_content_stamp``
+``stampCases``         §2.8's content stamp; P4-13's ``expect.holds``        ``parse_content_stamp``,
+                                                                            ``holds_of``
 ``frameWindowCases``   §2.7 rule 3's header window                          ``frame_window``
 ``applyCases``         §2.9's appliers, verdicts and counters               ``apply_*``
 =====================  ===================================================  =====================
@@ -27,6 +28,8 @@ from typing import Any, Dict, List
 
 import pytest
 
+from polaris_key.core.pack_claims import holds_of
+
 from polaris_key.update.packs import (
     ApplyPorts,
     InstalledFile,
@@ -38,6 +41,7 @@ from polaris_key.update.packs import (
     memory_source,
     pack_set_id,
     parse_content_stamp,
+    stamp_holds,
     parse_files_index,
     slice_source,
 )
@@ -177,10 +181,15 @@ def test_pack_set_id_case(case: Dict[str, Any]) -> None:
 @pytest.mark.parametrize("case", _CONTENT["stampCases"], ids=[c["id"] for c in _CONTENT["stampCases"]])
 def test_stamp_case(case: Dict[str, Any]) -> None:
     got = parse_content_stamp(case["stamp"]).to_dict()
-    # `parse_content_stamp`'s result is unchanged by P4-13: `expect.holds`, where present, is
-    # `holdsOf` over the parsed stamp (plans/P4-13.md §2.4), which P4-23 ports and checks.
+    # `parse_content_stamp`'s result is unchanged by P4-13: holds are read beside it
+    # (`holds_of`, plans/P4-13.md §2.4), and only checked where `expect.holds` is present.
     want = {k: v for k, v in case["expect"].items() if k != "holds"}
     assert _canonical(got) == _canonical(want), case["description"]
+    if "holds" not in case["expect"]:
+        return
+    doc = json.loads(case["stamp"])
+    assert holds_of(doc) == case["expect"]["holds"], case["description"]
+    assert stamp_holds(case["stamp"]) == case["expect"]["holds"], case["description"]
 
 
 @pytest.mark.parametrize(

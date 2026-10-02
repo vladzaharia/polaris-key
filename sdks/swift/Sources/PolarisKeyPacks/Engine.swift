@@ -208,6 +208,10 @@ public struct PackEngineOptions: Sendable {
     public var transports: [String]
     public var storage: any PackStorage
     public var state: any PackStateStore
+    /// The sibling `revocations.json` (plans/P4-13.md §2.5): the same store seam with a second
+    /// key, its own atomic replace and quarantine. Nil: revocations live in memory for the life
+    /// of the process only. Never created empty: a product with no revocations has no such file.
+    public var revocations: (any PackStateStore)?
     public var fetchRecord: RecordFetch
     public var fetchObject: ObjectFetch
     /// The licence's granted flags, or nil when the product runs no License service.
@@ -228,7 +232,7 @@ public struct PackEngineOptions: Sendable {
         stamp: AppContent?, prefs: VariantPrefs = VariantPrefs(), zstd: any ZstdPort,
         patchMethods: [String], memBudget: Int, strategies: [String] = ["delta", "file", "full"],
         transports: [String] = ["pkey-cdn"], storage: any PackStorage, state: any PackStateStore,
-        fetchRecord: @escaping RecordFetch, fetchObject: @escaping ObjectFetch,
+        revocations: (any PackStateStore)? = nil, fetchRecord: @escaping RecordFetch, fetchObject: @escaping ObjectFetch,
         entitlements: @escaping @Sendable () async -> Set<String>? = { nil },
         now: @escaping @Sendable () async -> Int = { Int(Date().timeIntervalSince1970) },
         newPlanId: @escaping @Sendable () -> String = {
@@ -248,6 +252,7 @@ public struct PackEngineOptions: Sendable {
         self.transports = transports
         self.storage = storage
         self.state = state
+        self.revocations = revocations
         self.fetchRecord = fetchRecord
         self.fetchObject = fetchObject
         self.entitlements = entitlements
@@ -302,6 +307,18 @@ public struct PacksSnapshot: Sendable, Equatable {
     /// waits for `recoverState()`), `unreadable` (nothing is written or installed this process),
     /// or nil.
     public var stateIssue: String?
+}
+
+/// What `revocations()` reports (plans/P4-13.md §2.5).
+public struct RevocationsSnapshot: Sendable, Equatable {
+    /// Revoked target hash → the stored winner (persisted, or this process's only).
+    public var revoked: [String: StoredRevocation]
+    /// The verified revocation of every revoked target, replacement included.
+    public var verified: [String: VerifiedRevocation]
+    /// Packs whose embedded baselines are refused until a fresh feed re-teaches them.
+    public var relearn: [String]
+    /// `torn` (quarantined and replaced), `unreadable` (nothing is written this process), or nil.
+    public var issue: String?
 }
 
 /// What `estimate` reports for a set of packs (the consent dialog's size disclosure).
@@ -374,6 +391,15 @@ public actor PackEngine {
     /// re-verified before a rollback uses it.
     private var unverifiedPrevious = Set<String>()
     private var doc: PackStateDoc?
+    /// The revocations (plans/P4-13.md §2.5): the sibling document as loaded and updated.
+    private var revDoc = emptyRevocations()
+    /// Every revocation verified in this process (loaded or learned), by target.
+    private var revVerified: [String: VerifiedRevocation] = [:]
+    /// The JWS of each revocation learned in this process, by target.
+    private var revJws: [String: String] = [:]
+    private var revIssue: String?
+    /// Whether `revocations.json` exists (it is never created empty).
+    private var revFile = false
     /// Plan ids `estimate` staged an index under, reused by the next `ensure`.
     private var preflightPlans: [String: (planId: String, recordSha256: String)] = [:]
     private var tail: Task<Void, Never>?
@@ -491,10 +517,14 @@ public actor PackEngine {
         for (id, i) in parsed.active where deferredSet.contains(i) { deferredActive[id] = i }
         for (id, i) in parsed.previous where deferredSet.contains(i) { deferredPrevious[id] = i }
         doc = reloaded
+        // plans/P4-13.md §2.5: the sibling revocations, before anything mounts.
+        try await loadRevocations(stateUnreadable: unreadable)
         // This boot's set: every active install (restart packs mount now), else the embedded
-        // baseline.
-        for id in reloaded.active.keys.sorted() { try await activate(reloaded.active[id]!) }
-        for (id, e) in embedded where running[id] == nil { running[id] = e }
+        // baseline. A revoked release never activates or mounts (`pack-revoked`).
+        for id in reloaded.active.keys.sorted() where !isRevoked(reloaded.active[id]!.recordSha256) {
+            try await activate(reloaded.active[id]!)
+        }
+        for (id, e) in embedded where running[id] == nil && !embeddedRefused(e) { running[id] = e }
         if !unreadable { try persist() }
         collect()
         return refused
@@ -548,6 +578,8 @@ public actor PackEngine {
         try refuseUnreadable()
         let doc = try requireLoaded()
         let before = doc.active[packId]
+        // plans/P4-13.md §2.5: never back to a revoked release.
+        if let prev = doc.previous[packId], isRevoked(prev.recordSha256) { return false }
         if let prev = doc.previous[packId], unverifiedPrevious.contains(packId) {
             // Carried over from an entry whose check could not run: verify it now.
             var ok = await verifyStoredRecord(prev.record, prev.recordSha256, packId, prev)
@@ -578,16 +610,37 @@ public actor PackEngine {
         }
     }
 
+    /// Install exact releases (a `packs` decision's `install`, plans/P4-13.md §2.6): each pack's
+    /// named release, verified against the pinned release keys with that pin, instead of the
+    /// stamp's pin. Throws `pack-revoked` for a release a verified revocation names.
+    public func ensureReleases(_ targets: [PackTarget]) async throws -> [PackInstall] {
+        try await serialised {
+            try await self.refuseUnreadable()
+            var out: [PackInstall] = []
+            for t in targets { out.append(try await self.ensureOne(t.pack, target: t.release)) }
+            return out
+        }
+    }
+
     /// Preflight each pack (CONTENT §10 step 1) without downloading the payload, and sum the
     /// chosen strategies' bytes: the size a consent dialog discloses. The index each tree stages
     /// is reused by `ensure`.
     public func estimate(_ packIds: [String]) async throws -> PackEstimate {
+        try await estimateAll(packIds.map { ($0, nil) })
+    }
+
+    /// `estimate` for exact releases (a `packs` decision's `install`, plans/P4-13.md §2.6).
+    public func estimateReleases(_ targets: [PackTarget]) async throws -> PackEstimate {
+        try await estimateAll(targets.map { ($0.pack, $0.release) })
+    }
+
+    private func estimateAll(_ items: [(String, ReleasePin?)]) async throws -> PackEstimate {
         try await serialised {
             try await self.refuseUnreadable()
             var out = PackEstimate()
-            for id in packIds {
+            for (id, release) in items {
                 do {
-                    switch try await self.preflight(id) {
+                    switch try await self.preflight(id, want: release) {
                     case .current: continue
                     case .plan(let p):
                         if case .chosen(let c, _, _) = p.plan {
@@ -628,7 +681,173 @@ public actor PackEngine {
         stateIssue = nil
         gcHold = false
         holdSnapshot = nil
+        // plans/P4-13.md §2.5: `relearn` is cleared wholesale and a quarantined `revocations.json`
+        // released; revocations are re-learned from the next feed.
+        if let rs = opts.revocations, revIssue != "unreadable" {
+            try rs.clearQuarantine()
+            if !revDoc.relearn.isEmpty {
+                revDoc.relearn = []
+                if revFile { try rs.replace(serializeRevocations(revDoc)) }
+            }
+            if revIssue == "torn" { revIssue = nil }
+        }
         collect()
+    }
+
+    // ── Revocations (plans/P4-13.md §2.5) ───────────────────────────────────────────────────
+
+    /// The stored and this process's verified revocations.
+    public func revocations() -> RevocationsSnapshot {
+        var revoked = revDoc.revoked
+        for (t, r) in revVerified where revoked[t] == nil {
+            revoked[t] = StoredRevocation(
+                jws: revJws[t] ?? "", pack: r.pack, version: r.version, seq: r.seq, record: r.record,
+                issuedAt: r.issuedAt)
+        }
+        return RevocationsSnapshot(revoked: revoked, verified: revVerified, relearn: revDoc.relearn, issue: revIssue)
+    }
+
+    /// Keep revocations a fresh check verified (plans/P4-13.md §2.5 step 11): each is stored when
+    /// its target is new, or when `newerRevocation` ranks it above the stored one.
+    /// `relearnCleared` names the packs a fresh, network-verified feed with a usable `revocations`
+    /// member re-taught. A revoked install stops running at once (a `hot` handler is deactivated;
+    /// a `restart` pack is not mounted at the next boot). Writes `state.json`'s
+    /// `revocationsStored` before the sibling file the first time; writes nothing while either
+    /// document is unreadable (the revocations still apply for the life of the process).
+    public func recordRevocations(_ learned: [LearnedRevocation], relearnCleared: [String] = []) async throws {
+        try await serialised { try await self.recordNow(learned, relearnCleared) }
+    }
+
+    private func recordNow(_ learned: [LearnedRevocation], _ relearnCleared: [String]) async throws {
+        _ = try requireLoaded()
+        var next = revDoc
+        var changed = false
+        for l in learned {
+            let t = l.revocation.target
+            if let prev = revVerified[t] {
+                if newerRevocation(l.revocation, prev) == l.revocation {
+                    revVerified[t] = l.revocation
+                    revJws[t] = l.jws
+                }
+            } else {
+                revVerified[t] = l.revocation
+                revJws[t] = l.jws
+            }
+            let r = storeRevocation(next, l.revocation, jws: l.jws)
+            next = r.doc
+            changed = changed || r.changed
+        }
+        let c = clearRelearn(next, relearnCleared)
+        next = c.doc
+        changed = changed || c.changed
+        // The cap may have dropped a target: it is forgotten here too.
+        for t in Array(revVerified.keys) where next.revoked[t] == nil && revDoc.revoked[t] != nil {
+            revVerified[t] = nil
+        }
+        revDoc = next
+        if changed { try persistRevocations() }
+        await unmountRevoked()
+    }
+
+    /// Whether a release is revoked (stored, or verified in this process).
+    public func isRevoked(_ recordSha256: String) -> Bool {
+        revDoc.revoked[recordSha256] != nil || revVerified[recordSha256] != nil
+    }
+
+    /// The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in
+    /// `relearn`; with an unreadable `revocations.json` and `revocationsStored` set, every pack the
+    /// stamp pins or the host embeds. These apply at every boot and every mount, online or
+    /// offline, until a fresh feed clears `relearn` (or `recoverState()`); online, the pack is
+    /// fetched instead. A product with no revocations refuses nothing.
+    private func embeddedRefused(_ e: PackInstall) -> Bool {
+        if isRevoked(e.recordSha256) { return true }
+        if revDoc.relearn.contains(e.packId) { return true }
+        if revIssue == "unreadable", doc?.revocationsStored == true,
+            stampPacks().contains(e.packId) || embedded[e.packId] != nil
+        {
+            return true
+        }
+        return false
+    }
+
+    private func stampPacks() -> Set<String> { Set((opts.stamp?.pins ?? []).map(\.pack)) }
+
+    /// Load `revocations.json` (§2.5): absent is empty; unreadable writes nothing this process;
+    /// torn is quarantined and replaced by a fresh document whose `relearn` holds the stamp's
+    /// pinned and embedded packs; each entry is re-verified against the pinned release keys.
+    private func loadRevocations(stateUnreadable: Bool) async throws {
+        guard let rs = opts.revocations else { return }
+        let text: String?
+        do {
+            text = try rs.read()
+        } catch {
+            revIssue = "unreadable"
+            return
+        }
+        guard let text else { return }
+        revFile = true
+        let parsed =
+            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : parseRevocations(text)
+        guard let parsed else {
+            // Torn: held aside, then a fresh document that re-learns the stamp's packs.
+            do { try rs.quarantine(text) } catch {
+                revIssue = "unreadable"
+                return
+            }
+            revIssue = "torn"
+            var relearn = stampPacks()
+            relearn.formUnion(embedded.keys)
+            revDoc = RevocationsDoc(revoked: [:], relearn: relearn.sorted { compareUTF8Bytes($0, $1) < 0 })
+            if !stateUnreadable { try writeRevocations() }
+            return
+        }
+        let r = reloadRevocations(
+            parsed, releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
+            expectedAud: opts.product)
+        revDoc = r.doc
+        for (t, v) in r.verified { revVerified[t] = v }
+        if r.changed && !stateUnreadable {
+            try writeRevocations()
+        } else if !stateUnreadable, !isEmptyRevocations(revDoc), doc?.revocationsStored != true {
+            // A torn (or replaced) `state.json` lost the flag while the sibling file kept its
+            // entries: set it again, so an unreadable `revocations.json` later still refuses.
+            var d = try requireLoaded()
+            d.revocationsStored = true
+            doc = d
+            try persist()
+        }
+    }
+
+    /// Persist the revocations: `revocationsStored` in `state.json` first, then the sibling file.
+    /// Never creates an empty file; never writes while a document is unreadable.
+    private func persistRevocations() throws {
+        guard opts.revocations != nil else { return }
+        if revIssue == "unreadable" || stateIssue == "unreadable" { return }
+        if !revFile && isEmptyRevocations(revDoc) { return }
+        try writeRevocations()
+    }
+
+    private func writeRevocations() throws {
+        guard let rs = opts.revocations else { return }
+        var d = try requireLoaded()
+        if !d.revocationsStored {
+            d.revocationsStored = true
+            doc = d
+            try persist()
+        }
+        try rs.replace(serializeRevocations(revDoc))
+        revFile = true
+    }
+
+    /// Stop running every revoked release (a hot handler is deactivated).
+    private func unmountRevoked() async {
+        for (id, i) in running where isRevoked(i.recordSha256) {
+            if i.activation == "hot", let h = handler(i.type) {
+                // A handler failure never keeps a revoked release running.
+                try? await h.deactivate(i)
+            }
+            running[id] = nil
+        }
     }
 
     // ── Internals ──────────────────────────────────────────────────────────────────────────
@@ -776,23 +995,32 @@ public actor PackEngine {
 
     /// Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
     /// seeds, the index and the plan.
-    private func preflight(_ packId: String) async throws -> Preflight {
+    private func preflight(_ packId: String, want: ReleasePin? = nil) async throws -> Preflight {
         let doc = try requireLoaded()
         guard let stamp = opts.stamp else {
             throw PackError(
                 ErrorCode.notConfigured, "This build ships no content stamp, so it has no packs.",
                 packId: packId)
         }
-        guard let pin = stamp.pins.first(where: { $0.pack == packId }) else {
+        let stampPin = stamp.pins.first(where: { $0.pack == packId })
+        let pin: ContentPin? =
+            want.map { ContentPin(pack: packId, sha256: $0.sha256, seq: $0.seq, version: $0.version) } ?? stampPin
+        guard let pin else {
             throw PackError(
                 ErrorCode.packNotPinned, "The content stamp pins no release of \(packId).",
+                packId: packId)
+        }
+        // plans/P4-13.md §2.5: a revoked release is never installed, activated or mounted.
+        if isRevoked(pin.sha256) {
+            throw PackError(
+                ErrorCode.packRevoked, "\(packId)@\(pin.version) was revoked by its developer.",
                 packId: packId)
         }
 
         // Already current: the active install, or the embedded copy, is the pinned release.
         let current = doc.active[packId]
         if let current, current.recordSha256 == pin.sha256 { return .current(current) }
-        if let emb = embedded[packId], emb.recordSha256 == pin.sha256, current == nil {
+        if let emb = embedded[packId], emb.recordSha256 == pin.sha256, current == nil, !embeddedRefused(emb) {
             return .current(emb)
         }
 
@@ -928,9 +1156,29 @@ public actor PackEngine {
                 installs: installs, seeds: seeds, planId: planId, index: index, plan: p))
     }
 
-    private func ensureOne(_ packId: String) async throws -> PackInstall {
+    private func ensureOne(_ packId: String, target: ReleasePin? = nil) async throws -> PackInstall {
+        do {
+            return try await ensureOneInner(packId, target: target)
+        } catch let e as PackError {
+            // plans/P4-13.md §2.5: when the only copy is an embedded baseline refused for `relearn`
+            // (or for `revocationsStored` with an unreadable `revocations.json`) and the fetch
+            // cannot proceed, the typed refusal is `pack-revoked` with detail `relearn`.
+            let want = target?.sha256 ?? opts.stamp?.pins.first(where: { $0.pack == packId })?.sha256
+            if e.code != ErrorCode.packRevoked, let emb = embedded[packId], emb.recordSha256 == want,
+                !isRevoked(emb.recordSha256), embeddedRefused(emb)
+            {
+                throw PackError(
+                    ErrorCode.packRevoked,
+                    "\(packId)'s embedded copy is refused until a fresh feed re-teaches its revocations, and it cannot be fetched (\(e.code)).",
+                    detail: "relearn", packId: packId)
+            }
+            throw e
+        }
+    }
+
+    private func ensureOneInner(_ packId: String, target: ReleasePin?) async throws -> PackInstall {
         let pre: Planned
-        switch try await preflight(packId) {
+        switch try await preflight(packId, want: target) {
         case .current(let current):
             if current.embedded != true, running[packId] == nil, current.activation == "hot" {
                 try await activate(current)

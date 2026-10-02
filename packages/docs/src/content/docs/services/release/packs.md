@@ -357,6 +357,17 @@ the SDK reports it as `state().stateIssue` and emits a `state-issue` pack event:
 A payload whose check fails with an I/O error stays in the state and on disk, out of use for that
 load, and comes back on the next load that can read it.
 
+Revocations reach a device through the signed feed. The update check fetches each revocation that
+names a release the device runs, pins, holds or would take from the feed, verifies it against
+the pinned release keys, and the pack engine keeps the winner per target in a sibling
+`revocations.json` beside `state.json` (at most 256 targets). A revoked release is never
+installed, activated or mounted (`pack-revoked`), embedded baselines included; a revoked
+optional pack is unmounted and play continues, and a revoked **required** pack with no usable
+replacement stops the boot (see [Signed feed](/docs/services/update/signed-feed/)). A torn
+`revocations.json` puts the stamp's packs in `relearn`: their embedded copies are refused until
+a fresh feed re-teaches their revocations, or `recoverState()`. A product that has never had a
+revocation has no `revocations.json` and nothing is refused.
+
 - Node: `client.update.packs` — see the [Node SDK](/docs/build/sdks/node/).
 - Web: `createBrowserPacks` (OPFS storage) — see the [React SDK](/docs/build/sdks/react/).
 - Python: `client.update.packs` — see the [Python SDK](/docs/build/sdks/python/). zstd comes from
@@ -370,3 +381,5 @@ load, and comes back on the next load that can read it.
   from `user://pkey/store/<sha256>.pck`. `--patch-from` frames are decoded by Godot's own delta
   decoder, so `zstd-patch-from` is advertised on Godot 4.6 and later only. The content stamp is
   `res://pkey_packs/pkey-content.json`, beside the embedded baselines.
+- Node, Web, Python and Swift run the content decision and keep revocations (P4-13, P4-23);
+  Godot's follows in P4-24.

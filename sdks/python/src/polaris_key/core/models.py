@@ -82,6 +82,9 @@ __all__ = [
     "UpdateOutlet",
     "StagedUpdate",
     "UpdateDecisionInput",
+    "UpdateContentInput",
+    "ContentRevocationInput",
+    "PackTarget",
     "DecisionRelease",
     "UpdateDecision",
     "UpdateCheckError",
@@ -782,6 +785,77 @@ class StagedUpdate:
     channel: str
 
 
+def _pin(d: Any) -> Optional[ReleasePin]:
+    if not isinstance(d, dict):
+        return None
+    return ReleasePin(sha256=d["sha256"], seq=d["seq"], version=d["version"])
+
+
+@dataclass(frozen=True)
+class PackTarget:
+    """One pack release a decision names: ``packs.install`` and ``binary.prestage`` entries
+    (plans/P4-13.md §2.6)."""
+
+    pack: str
+    release: ReleasePin
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"pack": self.pack, "release": self.release.to_dict()}
+
+
+@dataclass(frozen=True)
+class ContentRevocationInput:
+    """One stored, verified revocation as the decision reads it (plans/P4-13.md §2.6): one
+    entry per target (the winner of ``newer_revocation``). ``replacementUsable`` is false while
+    the replacement is still unfetched (§2.5 step 12 retries it)."""
+
+    target: str
+    pack: str
+    replacement: Optional[ReleasePin]
+    replacementUsable: bool
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ContentRevocationInput":
+        return ContentRevocationInput(
+            target=d["target"],
+            pack=d["pack"],
+            replacement=_pin(d.get("replacement")),
+            replacementUsable=d.get("replacementUsable") is True,
+        )
+
+
+@dataclass(frozen=True)
+class UpdateContentInput:
+    """The content decision's input (plans/P4-13.md §2.6): ``stamp`` is the running build's
+    content stamp (``contentApi``, ``pins``, ``expects``) with ``holds`` (``holds_of``; ``None``
+    when unusable); ``active`` the pack state's active installs by pack id, embedded baselines
+    included; ``axes`` the host's variant preferences; ``revocations`` the stored, verified
+    revocations; ``buckets`` the rollout bucket of every gate salt (``None`` is out)."""
+
+    stamp: Dict[str, Any]
+    active: Dict[str, ReleasePin] = field(default_factory=dict)
+    axes: Dict[str, List[str]] = field(default_factory=dict)
+    revocations: Tuple[ContentRevocationInput, ...] = ()
+    buckets: Dict[str, Optional[int]] = field(default_factory=dict)
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "UpdateContentInput":
+        active: Dict[str, ReleasePin] = {}
+        for k, v in (d.get("active") or {}).items():
+            pin = _pin(v)
+            if pin is not None:
+                active[k] = pin
+        return UpdateContentInput(
+            stamp=dict(d["stamp"]),
+            active=active,
+            axes={k: list(v) for k, v in (d.get("axes") or {}).items()},
+            revocations=tuple(
+                ContentRevocationInput.from_dict(r) for r in (d.get("revocations") or ())
+            ),
+            buckets=dict(d.get("buckets") or {}),
+        )
+
+
 @dataclass(frozen=True)
 class UpdateDecisionInput:
     now: int
@@ -794,6 +868,8 @@ class UpdateDecisionInput:
     skipVersion: Optional[str] = None
     bucket: Optional[int] = None
     methods: Tuple[str, ...] = ()
+    #: The content decision's input (plans/P4-13.md §2.6). ``None``: every answer is P3-01's.
+    content: Optional[UpdateContentInput] = None
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "UpdateDecisionInput":
@@ -816,6 +892,11 @@ class UpdateDecisionInput:
             skipVersion=d.get("skipVersion"),
             bucket=d.get("bucket"),
             methods=tuple(d.get("methods") or ()),
+            content=(
+                UpdateContentInput.from_dict(d["content"])
+                if isinstance(d.get("content"), dict)
+                else None
+            ),
         )
 
 
@@ -841,7 +922,11 @@ _DECISION_MEMBERS: Dict[str, Tuple[str, ...]] = {
     "store": ("release", "listingUrl", "mandatory", "critical", "discardStaged"),
     "platform": ("release", "mandatory", "critical", "discardStaged"),
     "blocked": ("reason", "discardStaged"),
+    "packs": ("install", "revoke", "set", "discardStaged"),
 }
+
+#: The actions that may carry ``contentBlock`` (plans/P4-13.md §2.6), emitted only when set.
+_CONTENT_BLOCK_ACTIONS = ("binary", "store", "platform", "blocked")
 
 
 @dataclass(frozen=True)
@@ -870,8 +955,18 @@ class UpdateDecision:
     #: host shows a prompt the player cannot dismiss.
     mandatory: Optional[bool] = None
     critical: Optional[bool] = None
-    #: ``binary`` only; always empty in v4.
-    prestage: Optional[Tuple[Any, ...]] = None
+    #: ``binary`` only: the new level's required and essential pack releases the binary
+    #: download should carry (plans/P4-13.md §2.6); empty without a content decision.
+    prestage: Optional[Tuple[PackTarget, ...]] = None
+    #: ``packs`` only: the pack releases to install, sorted by pack-id bytes.
+    install: Optional[Tuple[PackTarget, ...]] = None
+    #: ``packs`` only: the packs revoked without a fix to unmount (never a required pack).
+    revoke: Optional[Tuple[str, ...]] = None
+    #: ``packs`` only: the effective set, ``{"pack", "sha256"}`` over every known pack.
+    set: Optional[Tuple[Dict[str, str], ...]] = None
+    #: ``binary``, ``store``, ``platform`` and ``blocked {app-floor}``: the content block that
+    #: made the answer mandatory (``content-floor`` or ``revoked-content``), when there is one.
+    contentBlock: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {"action": self.action}
@@ -879,9 +974,15 @@ class UpdateDecision:
             value = getattr(self, name)
             if name == "release":
                 value = value.to_dict() if value is not None else None
-            elif name == "prestage":
+            elif name in ("prestage", "install"):
+                value = [t.to_dict() if isinstance(t, PackTarget) else t for t in (value or ())]
+            elif name == "revoke":
                 value = list(value or ())
+            elif name == "set":
+                value = [dict(e) for e in (value or ())]
             out[name] = value
+        if self.action in _CONTENT_BLOCK_ACTIONS and self.contentBlock is not None:
+            out["contentBlock"] = self.contentBlock
         return out
 
 

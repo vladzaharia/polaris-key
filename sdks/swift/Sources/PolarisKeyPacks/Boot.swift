@@ -36,17 +36,23 @@ public struct RunBootFetchOptions: Sendable {
     public var metered: Bool
     /// The player's answer to `consent_needed`: true to download, false to decline.
     public var answer: (@Sendable (_ bytes: Int, _ metered: Bool) async -> Bool)?
+    /// A `packs` decision's `install` list (plans/P4-13.md §2.5 "Applying a packs answer"): its
+    /// `required` and `essential` entries are installed here, before mount, at exactly the named
+    /// release; the others come back in `background` for the host to install after the boot
+    /// (`ensureReleases`). Nil: the stamp's pins, as before.
+    public var install: [PackTarget]?
 
     public init(
         stamp: AppContent?, send: @escaping @Sendable (BootEvent) -> Void,
         consent: BootConsentPolicy = .metered, metered: Bool = false,
-        answer: (@Sendable (Int, Bool) async -> Bool)? = nil
+        answer: (@Sendable (Int, Bool) async -> Bool)? = nil, install: [PackTarget]? = nil
     ) {
         self.stamp = stamp
         self.send = send
         self.consent = consent
         self.metered = metered
         self.answer = answer
+        self.install = install
     }
 }
 
@@ -54,26 +60,43 @@ public struct RunBootFetchOptions: Sendable {
 /// the policy says so, download them with progress, and report what is installed. The result is
 /// `ok` when every wanted pack installed, `declined` when the player said no, `offline` when a
 /// download failed for want of a network (`network-error`), else `failed`. `installed` is every
-/// wanted pack whose pinned release is now running.
+/// wanted pack whose pinned (or, with `install`, named) release is now running. `background` is
+/// `install`'s entries that are neither required nor essential (empty without `install`).
 public func runBootFetch(_ engine: PackEngine, _ opts: RunBootFetchOptions) async throws -> (
-    result: BootEvent.FetchResult, installed: [String]
+    result: BootEvent.FetchResult, installed: [String], background: [PackTarget]
 ) {
     let (requiredPacks, essentialPacks) = bootPackOptions(opts.stamp)
     var wanted: [String] = []
     for id in requiredPacks + essentialPacks where !wanted.contains(id) { wanted.append(id) }
+    let blocking = Set(wanted)
+    var targets: [String: PackTarget] = [:]
+    var background: [PackTarget] = []
+    for t in opts.install ?? [] {
+        if blocking.contains(t.pack) { targets[t.pack] = t } else { background.append(t) }
+    }
     let metered = opts.metered
-    let pins = Dictionary((opts.stamp?.pins ?? []).map { ($0.pack, $0.sha256) }, uniquingKeysWith: { a, _ in a })
+    var pins = Dictionary((opts.stamp?.pins ?? []).map { ($0.pack, $0.sha256) }, uniquingKeysWith: { a, _ in a })
+    for (id, t) in targets { pins[id] = t.release.sha256 }
     func installedNow() async -> [String] {
         let running = (try? await engine.state().running) ?? [:]
         return wanted.filter { id in running[id] != nil && running[id]!.recordSha256 == pins[id] }
     }
-    func done(_ result: BootEvent.FetchResult) async -> (result: BootEvent.FetchResult, installed: [String]) {
+    func done(_ result: BootEvent.FetchResult) async -> (
+        result: BootEvent.FetchResult, installed: [String], background: [PackTarget]
+    ) {
         let installed = await installedNow()
         opts.send(.fetchDone(result, installed: installed))
-        return (result, installed)
+        return (result, installed, background)
     }
 
-    let est = try await engine.estimate(wanted)
+    // The decision's targets install at exactly their release; the other wanted packs at the pin.
+    var est = try await engine.estimate(wanted.filter { targets[$0] == nil })
+    if !targets.isEmpty {
+        let t = try await engine.estimateReleases(wanted.compactMap { targets[$0] })
+        est.bytes += t.bytes
+        est.packs += t.packs
+        est.refused += t.refused
+    }
     let ask = est.bytes > 0 && (opts.consent == .always || (opts.consent == .metered && metered))
     if ask {
         opts.send(.fetchConsent(bytes: est.bytes, metered: metered))
@@ -98,7 +121,7 @@ public func runBootFetch(_ engine: PackEngine, _ opts: RunBootFetchOptions) asyn
     var result: BootEvent.FetchResult = .ok
     for id in est.packs {
         do {
-            _ = try await engine.ensure([id])
+            if let t = targets[id] { _ = try await engine.ensureReleases([t]) } else { _ = try await engine.ensure([id]) }
         } catch let e as PackError {
             result = e.code == ErrorCode.networkError ? .offline : .failed
         } catch {

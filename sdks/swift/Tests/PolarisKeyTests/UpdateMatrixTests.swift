@@ -136,13 +136,17 @@ func decisionInput(_ json: JSONValue) throws -> UpdateDecisionInput {
     if let s = o["staged"]?.objectValue {
         staged = StagedUpdate(version: try XCTUnwrap(str(s["version"])), channel: try XCTUnwrap(str(s["channel"])))
     }
+    var content: UpdateContentInput?
+    if let c = o["content"] {
+        content = try XCTUnwrap(UpdateContentInput(json: c), "the row's content")
+    }
     return UpdateDecisionInput(
         now: try XCTUnwrap(o["now"]?.exactIntForTests), feed: feed, record: record,
         installed: installed,
         outlet: UpdateOutlet(id: str(outlet["id"]), kind: try XCTUnwrap(str(outlet["kind"]))),
         subkind: str(o["subkind"]), staged: staged, skipVersion: str(o["skipVersion"]),
         bucket: o["bucket"]?.exactIntForTests,
-        methods: try XCTUnwrap(o["methods"]?.arrayValue).compactMap(\.stringValue))
+        methods: try XCTUnwrap(o["methods"]?.arrayValue).compactMap(\.stringValue), content: content)
 }
 
 extension JSONValue {
@@ -250,8 +254,9 @@ final class UpdateMatrixTests: XCTestCase {
         }
     }
 
-    /// No v4 answer stops play: every boot value is `none` or `optional`, and every mandatory or
-    /// blocked answer is a prompt the player cannot dismiss.
+    /// No P3-01 row stops play: every boot value is `none` or `optional`, and every mandatory or
+    /// blocked answer is a prompt the player cannot dismiss. (Only a CI-signed revocation of a
+    /// required pack can give `required`: `contentRows`, `ContentConformanceV2Tests`.)
     func testNoRowStopsPlay() throws {
         for row in try matrix().rows {
             XCTAssertTrue(["none", "optional"].contains(row.expect.boot), row.name)
