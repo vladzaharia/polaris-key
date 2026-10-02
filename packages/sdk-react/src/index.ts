@@ -47,8 +47,10 @@ export {
 } from "./update/useUpdateDecision.js";
 // `update.packs` for the web transport (P4-06).
 export {
+  PackError,
   WASM_MEM_BUDGET,
   createBrowserPacks,
+  defaultWebMemBudget,
   opfsPackStore,
   type BrowserPacks,
   type BrowserPacksOptions,

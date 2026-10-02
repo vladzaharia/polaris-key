@@ -4,6 +4,7 @@
 export {
   WASM_MEM_BUDGET,
   browserZstd,
+  defaultWebMemBudget,
   createBrowserPacks,
   hashWasmSha256,
   type BrowserPacks,

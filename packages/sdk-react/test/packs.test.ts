@@ -27,6 +27,7 @@ import { loadZstdWasm } from "@polaris-key/zstd-wasm/browser";
 import {
   WASM_MEM_BUDGET,
   createBrowserPacks,
+  defaultWebMemBudget,
   hashWasmSha256,
   type BrowserPacksOptions,
   type DirHandle,
@@ -159,7 +160,7 @@ function memoryDir(name = ""): DirHandle {
     async getDirectoryHandle(n, opts) {
       if (!dirs.has(n)) {
         if (!opts?.create || files.has(n))
-          throw new DOMException("NotFoundError");
+          throw new DOMException("not found", "NotFoundError");
         dirs.set(n, memoryDir(n));
       }
       return dirs.get(n)!;
@@ -167,14 +168,14 @@ function memoryDir(name = ""): DirHandle {
     async getFileHandle(n, opts) {
       if (!files.has(n)) {
         if (!opts?.create || dirs.has(n))
-          throw new DOMException("NotFoundError");
+          throw new DOMException("not found", "NotFoundError");
         files.set(n, { bytes: new Uint8Array() });
       }
       return fileHandle(n);
     },
     async removeEntry(n) {
       if (!dirs.delete(n) && !files.delete(n))
-        throw new DOMException("NotFoundError");
+        throw new DOMException("not found", "NotFoundError");
     },
     async *entries() {
       for (const [n, d] of dirs) yield [n, d] as [string, DirHandle];
@@ -465,5 +466,60 @@ describe("the OPFS store's commit marker", () => {
         (await b.p.readFile("djdl.l10n", "fr/strings.json"))!,
       ),
     ).toBe('{"hello":"bonjour"}');
+  });
+});
+
+describe("the web memory budget and the state document", () => {
+  it("derives the default budget from navigator.deviceMemory, clamped, with 2^30 the ceiling", () => {
+    expect(defaultWebMemBudget(8)).toBe(2 ** 30);
+    expect(defaultWebMemBudget(2)).toBe(2 ** 29);
+    expect(defaultWebMemBudget(0.25)).toBe(64 * 1024 * 1024);
+    expect(defaultWebMemBudget(NaN)).toBe(256 * 1024 * 1024);
+  });
+
+  it("refuses a full payload whose frame plus output exceeds the budget, cleanly", async () => {
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    const { p, calls } = packs(byteServer(v1), [v1], { memBudget: 1000 });
+    await expect(p.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "plan-no-strategy",
+    });
+    expect(calls.some((c) => c.url.endsWith(v1.fullSha256))).toBe(false);
+  });
+
+  it("holds a torn OPFS state document aside and keeps the store", async () => {
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    const root = memoryDir();
+    const server = byteServer(v1);
+    const [i] = await packs(server, [v1], {
+      storage: "opfs",
+      opfsRoot: root,
+    }).p.ensure(["djdl.l10n"]);
+    const dir = await (
+      await (
+        await root.getDirectoryHandle("polaris-key")
+      ).getDirectoryHandle(PRODUCT)
+    ).getDirectoryHandle("packs");
+    const w = await (await dir.getFileHandle("state.json")).createWritable();
+    await w.write(new TextEncoder().encode('{"v":1,"act'));
+    await w.close();
+    for (let n = 0; n < 2; n++) {
+      const b = packs(server, [v1], { storage: "opfs", opfsRoot: root });
+      expect((await b.p.state()).stateIssue).toBe("torn");
+    }
+    await dir.getFileHandle("state.json.torn");
+    let store = dir;
+    for (const part of i!.location.split("/"))
+      store = await store.getDirectoryHandle(part);
+    expect(store).toBeDefined();
   });
 });

@@ -470,19 +470,39 @@ export async function opfsPackStore(opts: {
     },
   };
 
+  /** A file's text, null ONLY when it does not exist; any other failure throws. */
+  const readText = async (name: string): Promise<string | null> => {
+    let fh: FileHandle;
+    try {
+      fh = await root.getFileHandle(name);
+    } catch (e) {
+      if ((e as { name?: string }).name === "NotFoundError") return null;
+      throw e;
+    }
+    const f = await fh.getFile();
+    return new TextDecoder().decode(await f.slice(0, f.size).arrayBuffer());
+  };
+
   const state: PackStateStore = {
-    async read() {
-      const fh = await fileAt(root, ["state.json"], false);
-      if (!fh) return null;
-      const f = await fh.getFile();
-      return new TextDecoder().decode(await f.slice(0, f.size).arrayBuffer());
-    },
+    read: () => readText("state.json"),
     async replace(text) {
       // `createWritable` writes to a swap file and replaces the target on `close()`.
       await writeWhole(
         (await fileAt(root, ["state.json"], true))!,
         new TextEncoder().encode(text),
       );
+    },
+    async quarantine(text) {
+      if ((await readText("state.json.torn")) !== null) return;
+      await writeWhole(
+        await root.getFileHandle("state.json.torn", { create: true }),
+        new TextEncoder().encode(text),
+      );
+    },
+    quarantined: async () =>
+      (await readText("state.json.torn").catch(() => "")) !== null,
+    async clearQuarantine() {
+      await remove(root, ["state.json.torn"]);
     },
   };
 

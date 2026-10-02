@@ -280,13 +280,24 @@ const strings = await packs.readFile("diceroll.l10n", "fr/strings.json");
   fails the reload's check and is planned again from scratch.
 - **zstd and SHA-256.** `@polaris-key/zstd-wasm`'s browser entry (wasm32, so the delta memory
   budget is at most 2^30) and `hash-wasm` (streaming; WebCrypto's digest does not stream).
-  `dcz` in Chromium is P4-18.
+  `dcz` in Chromium is P4-18. **Both are WebAssembly modules: a page with a Content Security
+  Policy needs `'wasm-unsafe-eval'` in `script-src`** to compile them.
+- **Memory.** The default budget is a quarter of `navigator.deviceMemory`, clamped to
+  64 MiB–2^30 (256 MiB when the browser does not report it; `defaultWebMemBudget()`). A delta
+  peaks at about 2 × `memBytes` (base and output, plus the frame), and S-04 measured about 3× a
+  37 MB payload resident on a 2 GB device, so keep web packs lean. The WASM decoder cannot stream,
+  so a `full` frame plus its payload must fit the budget too; a pack that fits no strategy is
+  refused with `plan-no-strategy` before anything is fetched.
+- **State.** Every load re-hashes the active and previous payloads. A torn `state.json` is kept
+  aside as `state.json.torn`, garbage collection waits for `recoverState()`, and an unreadable
+  one is never written over (`pack-state-unreadable`); `state().stateIssue` says which.
 - **Boot.** `bootOptions()` and `bootFetch({send, consent, metered, answer})` drive the stage
   machine's FETCH stage with `fetch.consent`, `fetch.progress` and `fetch.done`.
 - **Telemetry.** A browser session holds no device bearer, so it cannot post `devices/report`
   (the registered web N/A); `packSetId()` gives the active set's id for whatever the host
   reports. On desktop the host's `@polaris-key/node` client reports it.
-- Errors are client-core's `PackError` (`code`, `detail`, `path`), re-exported here.
+- Errors are client-core's `PackError` (`code`, `detail`, `path`), exported from
+  `@polaris-key/react` and `@polaris-key/react/update`.
 
 ## Desktop bridge contract (protocol v3)
 

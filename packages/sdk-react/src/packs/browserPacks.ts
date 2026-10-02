@@ -78,6 +78,32 @@ async function readCapped(res: Response, limit: number): Promise<string> {
 /** wasm32's ceiling for one delta frame (plans/P4-01.md §2.7 rule 3). */
 export const WASM_MEM_BUDGET = 2 ** 30;
 
+/** The budget when the browser reports no `navigator.deviceMemory` (Safari, Firefox). */
+const UNKNOWN_DEVICE_BUDGET = 256 * 1024 * 1024;
+/** The least budget this facet runs with, on the smallest device. */
+const MIN_WEB_BUDGET = 64 * 1024 * 1024;
+
+/**
+ * The default memory budget on the web: a quarter of `navigator.deviceMemory` (GiB, which the
+ * browser rounds and caps at 8), clamped to 64 MiB–2^30; 256 MiB when the browser does not
+ * report it. A delta applied through the WASM decoder holds its base and its output at once,
+ * about 2 × `memBytes` at the peak with the frame, and a one-shot `full` holds the stored frame
+ * and the payload; S-04 measured about 3× a 37 MB payload resident on a 2 GB device, so the
+ * quarter leaves room for the page itself.
+ */
+export function defaultWebMemBudget(deviceMemoryGiB?: number): number {
+  const gib =
+    deviceMemoryGiB ??
+    (globalThis as { navigator?: { deviceMemory?: number } }).navigator
+      ?.deviceMemory;
+  if (typeof gib !== "number" || !Number.isFinite(gib) || gib <= 0)
+    return UNKNOWN_DEVICE_BUDGET;
+  return Math.min(
+    WASM_MEM_BUDGET,
+    Math.max(MIN_WEB_BUDGET, Math.floor((gib * 2 ** 30) / 4)),
+  );
+}
+
 /** `hash-wasm`'s SHA-256 as a `Sha256Port`: streaming, its instance created in the background
  *  and fed what arrived before it was ready, in order. */
 export const hashWasmSha256: Sha256Port = () => {
@@ -128,7 +154,9 @@ export interface BrowserPacksOptions {
   contentStamp: Uint8Array | string | AppContent | null;
   /** Variant preferences, per axis, in preference order. */
   axes?: Record<string, string[]>;
-  /** At most `WASM_MEM_BUDGET` (2^30); larger values are clamped. Default 256 MiB. */
+  /** At most `WASM_MEM_BUDGET` (2^30); larger values are clamped. Default
+   *  `defaultWebMemBudget()` (from `navigator.deviceMemory`). It bounds a delta's `memBytes` and
+   *  a one-shot `full` decode (stored frame plus payload). */
   memBudget?: number;
   /** `opfs` (the default) or `memory`, or a store of the host's own. */
   storage?: "opfs" | "memory" | { storage: PackStorage; state: PackStateStore };
@@ -159,6 +187,8 @@ export interface BrowserPacks {
   packSetId(): Promise<string | null>;
   confirm(): Promise<void>;
   rollback(packId: string): Promise<boolean>;
+  /** Operator recovery after a torn state document (see `state().stateIssue`). */
+  recoverState(): Promise<void>;
   bootOptions(): Required<
     Pick<BootOptions, "requiredPacks" | "essentialPacks">
   >;
@@ -194,6 +224,10 @@ function randomId(): string {
 /** Build the browser pack facet. Nothing is fetched or opened until the first call. */
 export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
   const stamp = stampOf(opts.contentStamp);
+  const budget = Math.min(
+    opts.memBudget ?? defaultWebMemBudget(),
+    WASM_MEM_BUDGET,
+  );
   const fetchImpl = opts.fetchImpl ?? fetch;
   const sha256 = opts.sha256 ?? hashWasmSha256;
   const listeners = new Set<(e: PackProgress) => void>();
@@ -248,10 +282,10 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
         zstd: opts.zstd ?? (await browserZstd()),
         sha256,
         patchMethods: ["zstd-patch-from"],
-        memBudget: Math.min(
-          opts.memBudget ?? 256 * 1024 * 1024,
-          WASM_MEM_BUDGET,
-        ),
+        memBudget: budget,
+        // The WASM decoder cannot stream: a `full` frame plus its payload must fit the same
+        // budget, or the candidate is dropped and the plan refuses cleanly.
+        oneShotBudget: budget,
         storage: store.storage,
         state: store.state,
         fetchRecord: async (sha) => {
@@ -356,6 +390,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
     },
     confirm: async () => (await start()).confirm(),
     rollback: async (id) => (await start()).rollback(id),
+    recoverState: async () => (await start()).recoverState(),
     bootOptions: () => bootPackOptions(stamp),
     bootFetch: async (o) => runBootFetch(await start(), { ...o, stamp }),
     async requestPersistence() {

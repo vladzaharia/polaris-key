@@ -225,7 +225,24 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `state.json` before its rename and reads an embedded single-file baseline from the file
   itself. The OPFS store uses a directory only once its copy wrote `.pkey/committed`, and copies
   and hashes in 1 MiB slices. Both SDKs read a record body only up to the record bound.
+- **State that cannot be trusted (review B1).** `PackStateStore.read` is null only for a
+  missing document (ENOENT, NotFoundError) and throws otherwise. An unreadable document makes the
+  engine write nothing, collect nothing and install nothing that process
+  (`pack-state-unreadable`, a new client code). A torn one is quarantined as `state.json.torn`
+  before the first write; garbage collection stays suspended while the quarantine exists, and the
+  rule chosen is that **only `recoverState()`, an operator action, clears it** (not a later
+  install). An entry whose payload check throws stays in the written document, out of the running
+  set and the planner, and comes back at the next load that can read it.
+- **Review notes fixed.** The index is bounded (`indexReadable` and `files.bytes` ≤
+  `MAX_FILES_INDEX_BYTES`) before a byte of it is staged; React's default budget comes from
+  `navigator.deviceMemory` (a quarter, 64 MiB–2^30) and gates `full` through `oneShotBudget`
+  (stored frame plus payload); Node fsyncs payload files before commit's rename and the
+  directories after it; a no-op commit over an embedded copy keeps `embedded: true`; `PackError`
+  is exported from both SDKs' roots; the READMEs state the WASM CSP (`'wasm-unsafe-eval'`) and
+  that every load re-hashes active and previous payloads.
 - **Follow-ups.** `content.appRelease` (the running app record's hash, plan §2.11) is optional
-  and not sent yet; a lock so that two processes never share one Node pack store; OPFS through a
-  worker's sync access handles for large payloads; a consent screen in a renderer; the Python,
-  Swift and Godot ports (P4-07, P4-08).
+  and not sent yet. **OPFS writes cost grows quadratically** with a file's size (each
+  `createWritable({keepExistingData})` copies the file), so moving staging to a worker's sync
+  access handles is a priority and must cover the `full` strategy (review note 3). **A lock** so
+  that two processes never share one Node pack store (review note 9). A consent screen in a
+  renderer; the Python, Swift and Godot ports (P4-07, P4-08).
