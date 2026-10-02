@@ -481,6 +481,35 @@ describe("rule 4 — a registry corpus proof's wp (proof level)", () => {
     const { violations } = run({ registry: proofNaming("mini.json", "P9-02") });
     expect(violations).toEqual([]);
   });
+
+  // A directory proof (P4-04's `content/`) names a family in that directory's cases.json.
+  const directoryProof = (family: string): ReturnType<typeof checkParity> => {
+    const r = registry();
+    (r.features as Json[])[0]!.proof = [
+      { kind: "corpus", file: "content/", family, wp: "P9-02" },
+    ];
+    const root = fixture({
+      registry: r,
+      tests: {
+        ...TESTS,
+        "verify.test.ts": `// @pkey-feature demo.verify\nconst c = load("content/", "${family}");\n`,
+      },
+    });
+    write(root, "conformance/corpus/v2/content/cases.json", {
+      packSetIdCases: [],
+    });
+    return checkParity({ root });
+  };
+
+  it("reads a directory proof's family from its cases.json", () => {
+    expect(directoryProof("packSetIdCases").violations).toEqual([]);
+  });
+
+  it("fails a directory proof whose cases.json lacks the family", () => {
+    expect(directoryProof("stampCases").violations).toEqual([
+      "[rule 4] demo.verify: corpus proof names P9-02, which is done, but conformance/corpus/v2/content/ does not exist (or lacks stampCases)",
+    ]);
+  });
 });
 
 // ── Rule 5 ─────────────────────────────────────────────────────────────────────────────────
