@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(129 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(130 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -104,7 +104,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `mint-unavailable` | `config` | Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent. |
 | `feed-rejected` | `update` | A fetched channel feed (pkey-feed+jws) was refused at its signature, claims, channel binding, selector or freshness step; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 3–7). |
 | `feed-rollback` | `update` | A fetched channel feed carried a lower `seq` than the committed feed of its canonical channel: a rollback, refused (WIRE-CONTRACT-V4 §2.5 step 8). |
-| `record-rejected` | `update` | A release record (pkey-release+jws) was refused before use: its hash did not match the feed's pin, or its signature or claims failed; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 12–14). |
+| `record-rejected` | `update` | A release record (pkey-release+jws) was refused before use: its hash did not match the feed's pin, or its signature or claims failed; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 12–14), or, for a pack record signed by a delegated content key (plans/P4-19.md §2.3), `delegation` (the delegation it names was refused) or `scope` (the record is outside the delegation's scope, types, layout or window). |
 | `record-mismatch` | `update` | A verified release record does not match the feed's pin: its kind, deliverable, version or `seq` differs (WIRE-CONTRACT-V4 §2.5 step 15). |
 | `payload-mismatch` | `update` | Godot: downloaded or staged update bytes do not match the verified release record's payload `size` and `sha256`; nothing was staged or swapped (plans/P3-01.md §2.5 step 19). |
 | `swap-refused` | `update` | Godot: this install cannot take a sidecar-PCK swap; `detail.reason` says why (`platform`, `app-bundle`, `msix`, `program-files`, `flatpak`, `snap`, `appimage`, `velopack`, `no-sidecar`, `not-writable`, `inert`). |
@@ -146,5 +146,6 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `pack-not-pinned` | `update` | `update.packs.ensure` named a pack the running build's content stamp does not pin, so there is no release to install (plans/P4-01.md §2.8: the stamp is the only source of pins in v1). |
 | `pack-not-entitled` | `update` | A pinned pack record carries an `entitlement` the device's licence does not grant, so the pack is left out of the plan (plans/P4-01.md §2.3; CONTENT §6.7 item 9). |
 | `pack-state-unreadable` | `update` | The pack install state could not be read (an I/O error, not a missing file), so the pack pipeline refuses to write it or install anything this process: an install recorded over an unread state could lose the installs it holds. |
-| `pack-revoked` | `update` | The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5). |
+| `pack-revoked` | `update` | The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5), or a delegated release whose delegation a verified revocation names (detail `delegation`, plans/P4-19.md §2.6). |
+| `pack-not-data-only` | `update` | A pack release signed by a delegated content key holds a file the data-only rule refuses (plans/P4-19.md §2.5): its extension is not in `DATA_ONLY_EXTENSIONS` (detail `extension`, checked over the files index before any payload object is fetched), or its first 64 or last 65,557 decoded bytes carry a Godot resource, pack, script, archive or native-binary magic (detail `content`). The plan is aborted and staging discarded; `path` names the file. |
 | `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). |

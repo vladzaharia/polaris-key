@@ -17,7 +17,7 @@ the offending value, or the allowed set.
 | --- | --- | --- | --- | --- |
 | `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
 | `conflicting_versioning` | error | release | `/release/deliverables/app/versioning` | stableTagPattern and ignoreTags are declared both at the release root and under deliverables.app.versioning; keep one spelling. |
-| `content_keys_not_supported` | warning | release | `/release/contentKeys` | release.contentKeys is reserved for content-key delegation (P4-19) and is ignored. |
+| `content_keys_not_supported` | warning | release | `/release/contentKeys` | release.contentKeys is not used: delegate a content key with `pkey release delegate`; the signed delegation is the only grant (P4-19). |
 | `distribution_requires_release` | error | product | `/modules/distribution` | The distribution service delivers release artifacts, so release must be enabled too. |
 | `duplicate_artifact_id` | error | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} is declared twice; each entry declares one build. |
 | `duplicate_profile_id` | error | product | `/licensing/profiles/${i}/id` | Profile ids must be unique. |
