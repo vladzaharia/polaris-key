@@ -101,8 +101,8 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P3-03](wp/P3-03-feed-composition.md)             | Worker: ingest CI-signed release records and compose the signed channel feed                        | P3-02, P2b-04, P2-06, P2b-03                          | implementer    | 2.75–3.25 | done   |
 | [P3-04](wp/P3-04-v4-node.md)                      | Wire v4 in the Node SDK: feed and release-record verification, update decision                      | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | done   |
 | [P3-05](wp/P3-05-v4-react.md)                     | Wire v4 in `client-core` and the React SDK                                                          | P3-02                                                 | sdk-porter     | 1.25–1.75 | done   |
-| [P3-06](wp/P3-06-v4-python.md)                    | Wire v4 in the Python SDK                                                                           | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
-| [P3-07](wp/P3-07-v4-swift.md)                     | Wire v4 in the Swift SDK                                                                            | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | todo   |
+| [P3-06](wp/P3-06-v4-python.md)                    | Wire v4 in the Python SDK                                                                           | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | done   |
+| [P3-07](wp/P3-07-v4-swift.md)                     | Wire v4 in the Swift SDK                                                                            | P3-02, P3-05                                          | sdk-porter     | 0.5–0.75  | done   |
 | [P3-08](wp/P3-08-v4-godot.md)                     | Wire v4 in the Godot SDK                                                                            | P3-02, P1-02, P3-05                                   | godot-engineer | 0.5–0.75  | done   |
 | [P3-09](wp/P3-09-updater-feeds.md)                | Update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync, extended `/version` | P3-03, P0-10, P0-05                                   | implementer    | 1.5–2     | todo   |
 | [P3-10](wp/P3-10-godot-updater.md)                | Godot updater: outlet adapters, sidecar-PCK swap, boot guard, Velopack and Sparkle hooks            | P3-08, P3-09, P3-11, P1-10, P1-11, S-05               | godot-engineer | 1.5–2     | todo   |
@@ -111,30 +111,31 @@ keys, devices). _Optional_ work packages are off the required path.
 
 ## P4: Packs
 
-20 work packages, 24–32.25 weeks.
+21 work packages, 27–35.75 weeks.
 
-| Id                                                | Title                                                                                              | Depends on                               | Role           | Weeks    | Status |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | -------- | ------ |
-| [P4-01](wp/P4-01-packs-plan.md) ⚑                 | Plan packs on the wire: `kind: pack` records, bindings, content corpus, `plan-matrix.json`         | P3-01                                    | wire-planner   | 0.5–0.75 | todo   |
-| [P4-02](wp/P4-02-pack-deliverables.md)            | Release: pack deliverables, `pinned` binding, embedded baselines, `contentApi` on app releases     | P4-01, P3-03                             | implementer    | 1–1.5    | todo   |
-| [P4-03](wp/P4-03-ci-patch-artifacts.md)           | CI: files index with gaps blob, per-entry deltas, pack lint and marker in `pkey release publish`   | P4-01, P2-06, P3-03                      | implementer    | 1–1.5    | todo   |
-| [P4-04](wp/P4-04-content-corpus-v1.md) ⚑          | Content corpus v1: index parsing, full/file/delta apply, path rules, `plan-matrix.json`            | P4-01                                    | implementer    | 1.5–2    | todo   |
-| [P4-05](wp/P4-05-pack-transports-cdn.md)          | Distribution: CDN and embedded transports for packs, availability and gated delivery               | P4-02, P2b-04, P2b-03                    | implementer    | 0.75–1   | todo   |
-| [P4-06](wp/P4-06-client-core-packs.md)            | `client-core` packs: planner, appliers, path rules, install state; Node and React wiring           | P4-04, P3-04, P3-05, P1b-09              | sdk-porter     | 1.5–2.5  | todo   |
-| [P4-07](wp/P4-07-python-swift-packs.md)           | Python and Swift pack facets: appliers, handlers, install state                                    | P4-04, P3-06, P3-07, P1b-09              | sdk-porter     | 1–1.5    | todo   |
-| [P4-08](wp/P4-08-godot-packs.md)                  | Godot packs: `godot.pck` handler, delta bake, directory check, `PKeyBoot` pack stages              | P4-04, P1-10, P3-08, P3-10, S-05         | godot-engineer | 2.5–3    | todo   |
-| [P4-09](wp/P4-09-console-pack-views.md)           | Console: pack deliverables and releases, and which app releases pin which packs                    | P4-02, P2-07                             | implementer    | 0.5      | todo   |
-| [P4-10](wp/P4-10-chunk-indexes.md) ⚑              | Chunk indexes and chunk bundles in CI; content corpus v2                                           | P4-03, P4-04, S-03, S-02                 | implementer    | 1–1.5    | todo   |
-| [P4-11](wp/P4-11-chunk-sync-sdks.md)              | Chunk sync from seeds in every SDK                                                                 | P4-10, P4-06, P4-07, P4-08, S-02, P4-05  | sdk-porter     | 1.5–2    | todo   |
-| [P4-12](wp/P4-12-compat-resolution.md)            | Release: `compatible`/`standalone` resolution per live `contentApi`, holds, floors, publish checks | P4-02                                    | implementer    | 1.5–2    | todo   |
-| [P4-13](wp/P4-13-revocation-floors-decision.md) ⚑ | Revocation records, pack floors in the feed, and `update-matrix.json` rows for content             | P4-12, P3-04, P3-05, P3-06, P3-07, P3-08 | implementer    | 3–4      | todo   |
-| [P4-14](wp/P4-14-readiness-gc-rollouts.md)        | Distribution: outlet readiness holds, per-outlet pack rollouts and halts, server GC                | P4-12, P2b-04, P4-13                     | implementer    | 1–1.5    | todo   |
-| [P4-15](wp/P4-15-console-compat-matrix.md)        | Console: compatibility matrix and the "what does this device get?" simulator                       | P4-12, P4-13, P4-14                      | implementer    | 1        | todo   |
-| [P4-16](wp/P4-16-more-pack-types.md)              | More pack types in every SDK: `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`      | P4-06, P4-07, P4-08                      | sdk-porter     | 1–1.5    | todo   |
-| [P4-17](wp/P4-17-lazy-deltas.md) ✋               | Lazy hot-pair delta generation from install telemetry                                              | P4-10, P3-03                             | implementer    | 1–1.5    | todo   |
-| [P4-18](wp/P4-18-web-dcz.md)                      | Web deltas via Compression Dictionary Transport, with the WASM decoder fallback                    | P4-11, P4-05, P1b-05                     | implementer    | 1        | todo   |
-| [P4-19](wp/P4-19-content-key-delegation.md) ⚑     | Content-key delegation for data-only packs                                                         | P4-13                                    | implementer    | 0.75–1   | todo   |
-| [P4-20](wp/P4-20-save-compat.md)                  | Save compatibility: `provides`/`removes` checks, `isAvailable`, content-interface fingerprint      | P4-12, P4-08, P4-06, P4-07               | implementer    | 1        | todo   |
+| Id                                                | Title                                                                                                                         | Depends on                               | Role           | Weeks     | Status |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | --------- | ------ |
+| [P4-01](wp/P4-01-packs-plan.md) ⚑                 | Plan packs on the wire: `kind: pack` records, bindings, content corpus, `plan-matrix.json`                                    | P3-01                                    | wire-planner   | 0.5–0.75  | done   |
+| [P4-02](wp/P4-02-pack-deliverables.md)            | Release: pack deliverables, `pinned` binding, embedded baselines, `contentApi` on app releases                                | P4-01, P3-03, P4-21                      | implementer    | 1.5–2     | todo   |
+| [P4-03](wp/P4-03-ci-patch-artifacts.md)           | CI: files index with gaps blob, per-entry deltas, pack lint and marker in `pkey release publish`                              | P4-01, P2-06, P3-03, P4-21, P4-02        | implementer    | 1.5–2     | todo   |
+| [P4-04](wp/P4-04-content-corpus-v1.md) ⚑          | Content corpus v1: index parsing, full/file/delta apply, path rules, `plan-matrix.json`                                       | P4-01, P3-02, P4-21                      | implementer    | 1.5–2     | todo   |
+| [P4-05](wp/P4-05-pack-transports-cdn.md)          | Distribution: CDN and embedded transports for packs, availability and gated delivery                                          | P4-02, P2b-04, P2b-03                    | implementer    | 0.75–1    | todo   |
+| [P4-06](wp/P4-06-client-core-packs.md)            | `client-core` packs: planner, appliers, path rules, install state; Node and React wiring                                      | P4-04, P3-04, P3-05, P1b-09              | sdk-porter     | 1.75–2.75 | todo   |
+| [P4-07](wp/P4-07-python-swift-packs.md)           | Python and Swift pack facets: appliers, handlers, install state                                                               | P4-04, P3-06, P3-07, P1b-09, P4-06       | sdk-porter     | 1.25–1.75 | todo   |
+| [P4-08](wp/P4-08-godot-packs.md)                  | Godot packs: `godot.pck` handler, delta bake, directory check, `PKeyBoot` pack stages                                         | P4-04, P1-10, P3-08, P3-10, S-05, P4-06  | godot-engineer | 2.75–3.25 | todo   |
+| [P4-09](wp/P4-09-console-pack-views.md)           | Console: pack deliverables and releases, and which app releases pin which packs                                               | P4-02, P2-07                             | implementer    | 0.5       | todo   |
+| [P4-10](wp/P4-10-chunk-indexes.md) ⚑              | Chunk indexes and chunk bundles in CI; content corpus v2                                                                      | P4-03, P4-04, S-03, S-02                 | implementer    | 1–1.5     | todo   |
+| [P4-11](wp/P4-11-chunk-sync-sdks.md)              | Chunk sync from seeds in every SDK                                                                                            | P4-10, P4-06, P4-07, P4-08, S-02, P4-05  | sdk-porter     | 1.5–2     | todo   |
+| [P4-12](wp/P4-12-compat-resolution.md)            | Release: `compatible`/`standalone` resolution per live `contentApi`, holds, floors, publish checks                            | P4-02                                    | implementer    | 1.5–2     | todo   |
+| [P4-13](wp/P4-13-revocation-floors-decision.md) ⚑ | Revocation records, pack floors in the feed, and `update-matrix.json` rows for content                                        | P4-12, P3-04, P3-05, P3-06, P3-07, P3-08 | implementer    | 3–4       | todo   |
+| [P4-14](wp/P4-14-readiness-gc-rollouts.md)        | Distribution: outlet readiness holds, per-outlet pack rollouts and halts, server GC                                           | P4-12, P2b-04, P4-13                     | implementer    | 1–1.5     | todo   |
+| [P4-15](wp/P4-15-console-compat-matrix.md)        | Console: compatibility matrix and the "what does this device get?" simulator                                                  | P4-12, P4-13, P4-14                      | implementer    | 1         | todo   |
+| [P4-16](wp/P4-16-more-pack-types.md)              | More pack types in every SDK: `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`                                 | P4-06, P4-07, P4-08                      | sdk-porter     | 1–1.5     | todo   |
+| [P4-17](wp/P4-17-lazy-deltas.md) ✋               | Lazy hot-pair delta generation from install telemetry                                                                         | P4-10, P3-03                             | implementer    | 1–1.5     | todo   |
+| [P4-18](wp/P4-18-web-dcz.md)                      | Web deltas via Compression Dictionary Transport, with the WASM decoder fallback                                               | P4-11, P4-05, P1b-05                     | implementer    | 1         | todo   |
+| [P4-19](wp/P4-19-content-key-delegation.md) ⚑     | Content-key delegation for data-only packs                                                                                    | P4-13                                    | implementer    | 0.75–1    | todo   |
+| [P4-20](wp/P4-20-save-compat.md)                  | Save compatibility: `provides`/`removes` checks, `isAvailable`, content-interface fingerprint                                 | P4-12, P4-08, P4-06, P4-07               | implementer    | 1         | todo   |
+| [P4-21](wp/P4-21-packs-wire-core.md) ⚑            | Packs wire core: contract amendment, pack record and marker claims and cases, files-index functions, `@polaris-key/zstd-wasm` | P4-01, P3-02                             | implementer    | 1.25–1.75 | todo   |
 
 ## P5: Distribution connectors and native plugins
 
@@ -217,6 +218,7 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [P4-10](wp/P4-10-chunk-indexes.md)               | `plans/P4-10.md`                     | implementer    |
 | [P4-13](wp/P4-13-revocation-floors-decision.md)  | `plans/P4-13.md`                     | implementer    |
 | [P4-19](wp/P4-19-content-key-delegation.md)      | `plans/P4-19.md`                     | implementer    |
+| [P4-21](wp/P4-21-packs-wire-core.md)             | `plans/P4-01.md` (shared with P4-01) | implementer    |
 
 ## Human inputs
 

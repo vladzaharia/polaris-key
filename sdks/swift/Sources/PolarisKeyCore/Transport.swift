@@ -30,10 +30,14 @@ public struct PolarisError: Error, Sendable, Equatable {
     /// this build predates, and the caller should still get the raw value rather than "unknown".
     public let code: String
     public let message: String
+    /// The refused step, where the code has one (wire v4's `feed-rejected` and `record-rejected`:
+    /// `jws`, `claims`, `channel`, `selector`, `freshness`, `hash`); nil otherwise.
+    public let detail: String?
 
-    public init(code: String, message: String) {
+    public init(code: String, message: String, detail: String? = nil) {
         self.code = code
         self.message = message
+        self.detail = detail
     }
 
     // ── Client-side codes ────────────────────────────────────────────────────────────────
@@ -79,16 +83,20 @@ public struct PolarisRequest: Sendable {
     public var body: Data?
     /// Deadline in seconds. `0` disables it.
     public var timeoutSeconds: Double
+    /// Stop reading the response body after this many bytes, where the transport can (the
+    /// release-record fetch, plans/P3-01.md §2.5 step 11). Nil reads it whole.
+    public var maxBodyBytes: Int?
 
     public init(
         url: URL, method: String = "GET", headers: [String: String] = [:], body: Data? = nil,
-        timeoutSeconds: Double = 15
+        timeoutSeconds: Double = 15, maxBodyBytes: Int? = nil
     ) {
         self.url = url
         self.method = method
         self.headers = headers
         self.body = body
         self.timeoutSeconds = timeoutSeconds
+        self.maxBodyBytes = maxBodyBytes
     }
 }
 
@@ -115,7 +123,13 @@ public struct URLSessionTransport: PolarisTransport {
         for (key, value) in request.headers { req.setValue(value, forHTTPHeaderField: key) }
         req.httpBody = request.body
 
-        let (data, response) = try await session.data(for: req)
+        let data: Data
+        let response: URLResponse
+        if let limit = request.maxBodyBytes {
+            (data, response) = try await capped(req, limit: limit)
+        } else {
+            (data, response) = try await session.data(for: req)
+        }
         guard let http = response as? HTTPURLResponse else {
             throw PolarisError(code: "transport", message: "non-http response")
         }
@@ -124,6 +138,29 @@ public struct URLSessionTransport: PolarisTransport {
             if let key = key as? String, let value = value as? String { headers[key] = value }
         }
         return PolarisResponse(status: http.statusCode, body: data, headers: headers)
+    }
+
+    /// Stream the body and stop at `limit` bytes, so a body larger than the caller can use is
+    /// never buffered whole.
+    private func capped(_ req: URLRequest, limit: Int) async throws -> (Data, URLResponse) {
+        #if canImport(FoundationNetworking)
+        let (data, response) = try await session.data(for: req)
+        return (data.prefix(limit), response)
+        #else
+        let (bytes, response) = try await session.bytes(for: req)
+        var data = Data()
+        if response.expectedContentLength > 0 {
+            data.reserveCapacity(Int(min(response.expectedContentLength, Int64(limit))))
+        }
+        for try await byte in bytes {
+            data.append(byte)
+            if data.count >= limit {
+                bytes.task.cancel()
+                break
+            }
+        }
+        return (data, response)
+        #endif
     }
 }
 

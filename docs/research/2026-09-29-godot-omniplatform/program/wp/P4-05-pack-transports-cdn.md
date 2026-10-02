@@ -153,3 +153,8 @@ The SDK packages rely on the byte route's headers (`ETag` = SHA-256, `Repr-Diges
 `If-Range`) and on the gated authorisation contract. P4-14 adds pack rollouts, halts, readiness and
 GC on top of these availability rows; P5-08 adds platform transports beside them. Then
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-05 done`.
+
+## Plan amendments (P4-01)
+
+The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

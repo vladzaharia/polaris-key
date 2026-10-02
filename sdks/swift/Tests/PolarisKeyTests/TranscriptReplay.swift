@@ -20,6 +20,29 @@ struct Transcript: Decodable, Sendable {
         var token: String?
         var version: String
         var services: [String]?
+        /// The update client's state before the first `updateDecide` step (P3-03).
+        var update: InitialUpdate?
+    }
+    /// `initial.update` (plans/P3-01.md §6): the host's update configuration and starting cache.
+    struct InitialUpdate: Decodable, Sendable {
+        struct Installed: Decodable, Sendable {
+            var version: String?
+            var binaryVersion: String?
+            var buildNumber: String?
+            var format: String?
+            var engine: String?
+        }
+        struct Cache: Decodable, Sendable {
+            var feeds: [String: String]?
+            var releaseRecords: [String: String]?
+        }
+        var pinnedReleaseKeys: [String: String]
+        var outlet: JSONValue?
+        var platform: String
+        var arch: String
+        var installed: Installed
+        var methods: [String]?
+        var cache: Cache?
     }
     struct RequestBody: Decodable, Sendable {
         var json: JSONValue
@@ -315,6 +338,41 @@ actor ReplayServer {
     }
 
     func recordFailure(_ message: String) { failures.append(message) }
+
+    private var discoveryLoaded = false
+
+    /// The Worker's standard discovery document, for a transcript that loads discovery nowhere
+    /// itself (P3-03's update transcripts): served once, to a request for the discovery path
+    /// that the current step does not record. Nil for every other request.
+    func standardDiscovery(path: String) -> Data? {
+        let discoveryPath = "/\(transcript.product)/.well-known/polaris.json"
+        guard path == discoveryPath, !discoveryLoaded,
+            !transcript.steps.contains(where: { $0.action == "discover" }),
+            let step, !step.exchanges.items.contains(where: { $0.request.path == discoveryPath })
+        else { return nil }
+        discoveryLoaded = true
+        let base = "\(transcript.baseUrl)/\(transcript.product)"
+        let doc: JSONValue = .object([
+            "product": .string(transcript.product),
+            "services": .object([
+                "release": .object([
+                    "enabled": .bool(true),
+                    "endpoints": .object(["record": .string("\(base)/release/records/{sha256}")]),
+                ]),
+                "distribution": .object([
+                    "enabled": .bool(true),
+                    "endpoints": .object([
+                        "builds": .string("\(base)/distribution/builds/{selector}/{buildId}")
+                    ]),
+                ]),
+                "update": .object([
+                    "enabled": .bool(true),
+                    "endpoints": .object(["feed": .string("\(base)/update/{channel}/feed.jws")]),
+                ]),
+            ]),
+        ])
+        return try? JSONEncoder().encode(doc)
+    }
 }
 
 /// The `PolarisTransport` a replaying client is built with.
@@ -334,6 +392,10 @@ struct ReplayTransport: PolarisTransport {
         if let query = components?.percentEncodedQuery { path += "?\(query)" }
         var headers: [String: String] = [:]
         for (k, v) in request.headers { headers[k.lowercased()] = v }
+        if let discovery = await server.standardDiscovery(path: path) {
+            return PolarisResponse(
+                status: 200, body: discovery, headers: ["content-type": "application/json"])
+        }
         guard
             let item = await server.handle(
                 method: request.method.uppercased(), path: path, headers: headers,

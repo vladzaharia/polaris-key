@@ -52,10 +52,10 @@
     "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
-    "release.record": { "status": "planned", "wp": "P3-07" },
+    "release.record": { "status": "implemented" },
     "update.check": { "status": "implemented" },
-    "update.feed": { "status": "planned", "wp": "P3-07" },
-    "update.decide": { "status": "planned", "wp": "P3-07" },
+    "update.feed": { "status": "implemented" },
+    "update.decide": { "status": "implemented" },
     "update.driver": {
       "status": "implemented",
       "except": [{ "runtime": "ios", "reason": "outlet" }],

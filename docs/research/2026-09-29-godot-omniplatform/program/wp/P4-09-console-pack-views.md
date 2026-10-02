@@ -121,3 +121,8 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 P4-15 builds the compatibility matrix and simulator on the same admin API and deliverable pages;
 P4-14 adds per-outlet pack state. Then
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-09 done`.
+
+## Plan amendments (P4-01)
+
+The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

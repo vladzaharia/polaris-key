@@ -185,3 +185,8 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 
 Set the status in the PR that completes the work:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-14 done`.
+
+## Plan amendments (P4-01)
+
+The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

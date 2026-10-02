@@ -1,16 +1,16 @@
 # P4-07 Python and Swift pack facets: appliers, handlers, install state
 
-| Field       | Value                                                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v1)                                                                                                                              |
-| Size        | 1–1.5 engineer-weeks                                                                                                                        |
-| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md) |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md)                                         |
-| Role        | `pkey-sdk-porter`                                                                                                                           |
-| Plan mode   | no                                                                                                                                          |
-| Gates       | corpus: the content corpus and `plan-matrix.json` pass in pytest (lowest and highest supported CPython) and `swift test`                    |
-| Human input | none (Swift runs on the existing macOS CI runner)                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                   |
+| Field       | Value                                                                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v1)                                                                                                                                                                   |
+| Size        | 1.25–1.75 engineer-weeks                                                                                                                                                         |
+| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md), [P4-06](P4-06-client-core-packs.md) |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md)                                                                              |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                |
+| Plan mode   | no                                                                                                                                                                               |
+| Gates       | corpus: the content corpus and `plan-matrix.json` pass in pytest (lowest and highest supported CPython) and `swift test`                                                         |
+| Human input | none (Swift runs on the existing macOS CI runner)                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                        |
 
 ## Goal
 
@@ -138,3 +138,8 @@ P4-11 adds the chunk applier and chunk-index parser to both ports; P4-16 adds `m
 `data.json` and `l10n.table` handlers through the facet's handler registry; P5-05/P5-08 put the
 Background Assets transport behind the `platform` strategy on top of the Swift target. Then
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-07 done`.
+
+## Plan amendments (P4-01)
+
+The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.
