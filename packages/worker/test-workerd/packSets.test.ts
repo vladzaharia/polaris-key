@@ -15,6 +15,7 @@ import {
   type ResolutionInput,
 } from "../src/services/release/packs/resolve.js";
 import {
+  invalidateSetsStatements,
   readStoredSets,
   storeResolution,
   withSetIds,
@@ -154,5 +155,45 @@ describe("pack-set resolution on workerd (P4-12)", () => {
       ),
     ).toBe(true);
     expect(await readStoredSets(db, SLUG, "stable")).toHaveLength(36);
+  });
+
+  it("the invalidation that rides a policy write runs only after a write that changed a row (changes() on D1)", async () => {
+    const db = new D1Db(env.DB);
+    const slug = "sets-guard-w";
+    await seedProduct(env, db, slug, { schemaVersion: 1, entries: [] });
+    const withIds = await withSetIds(new PackResolver(input()).resolve().sets);
+    expect(
+      await storeResolution(db, slug, { sets: withIds, generation: 0 }, NOW),
+    ).toBe(true);
+    const state = () =>
+      db.first<{ generation: number }>(
+        "SELECT generation FROM release_set_state WHERE product = ?",
+        slug,
+      );
+    const count = async () =>
+      (await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM release_sets WHERE product = ?",
+        slug,
+      ))!.n;
+    expect(await count()).toBe(72);
+    // A refused no-op write (0 rows): the guarded invalidation does nothing.
+    const noop = await db.batchChanges([
+      {
+        sql: "UPDATE products SET slug = slug WHERE slug = ?",
+        params: ["no-such-product"],
+      },
+      ...invalidateSetsStatements(slug, NOW, { onlyAfterAChange: true }),
+    ]);
+    expect(noop).toEqual([0, 0, 0]);
+    expect(await count()).toBe(72);
+    expect(await state()).toEqual({ generation: 1 });
+    // A write that changed a row: the generation moves and every set goes.
+    const real = await db.batchChanges([
+      { sql: "UPDATE products SET slug = slug WHERE slug = ?", params: [slug] },
+      ...invalidateSetsStatements(slug, NOW, { onlyAfterAChange: true }),
+    ]);
+    expect(real).toEqual([1, 1, 72]);
+    expect(await count()).toBe(0);
+    expect(await state()).toEqual({ generation: 2 });
   });
 });

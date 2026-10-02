@@ -656,18 +656,28 @@ export async function storeResolution(
 export function invalidateSetsStatements(
   product: string,
   now: number,
+  opts: { onlyAfterAChange?: boolean } = {},
 ): DbStatement[] {
+  // `onlyAfterAChange`: the batch's previous statement (a policy write) must have changed a row.
+  // `changes()` is the connection's count for the most recent completed INSERT, UPDATE or DELETE,
+  // and a batch runs its statements in order on one connection (SQLite and D1 alike, proven in
+  // test-workerd). The DELETE is then guarded on the bump having changed its row, which it does
+  // exactly when the write did and the product resolves sets.
+  const after = opts.onlyAfterAChange ? "changes() > 0 AND " : "";
   return [
     {
       // Only for a product that resolves sets (an app-only product gets no state row).
       sql: `INSERT INTO release_set_state (product, generation, token, modified_at)
             SELECT ?, 1, ?, ?
-             WHERE ${RESOLVES_SETS_SQL}
+             WHERE ${after}${RESOLVES_SETS_SQL}
             ON CONFLICT(product) DO UPDATE SET generation = release_set_state.generation + 1,
               token = excluded.token, modified_at = excluded.modified_at`,
       params: [product, newToken(), now, product, product],
     },
-    { sql: "DELETE FROM release_sets WHERE product = ?", params: [product] },
+    {
+      sql: `DELETE FROM release_sets WHERE ${opts.onlyAfterAChange ? "changes() > 0 AND " : ""}product = ?`,
+      params: [product],
+    },
   ];
 }
 

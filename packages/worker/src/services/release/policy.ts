@@ -127,7 +127,7 @@ function refuse(
 /**
  * Apply one policy write and, in the SAME batch, invalidate the product's stored sets
  * (`invalidateSetsStatements`): a crash between the write and `resolveAndStore` then leaves no
- * stale set (fail closed). Answers the write's changed-row count (1 when the engine cannot say).
+ * stale set (fail closed). Answers the write's changed-row count.
  */
 async function writeAndInvalidate(
   db: Db,
@@ -135,10 +135,21 @@ async function writeAndInvalidate(
   now: number,
   write: DbStatement,
 ): Promise<number> {
-  const statements = [write, ...invalidateSetsStatements(product, now)];
-  if (db.batchChanges) return (await db.batchChanges(statements))[0] ?? 0;
-  await db.batch(statements);
-  return 1;
+  if (db.batchChanges) {
+    // The invalidation is guarded on the write having changed a row (`changes()`, the
+    // connection's count for the statement just before): a refused no-op (an unyank of a release
+    // that is not yanked, a revert with no policy) leaves the stored sets alone.
+    const statements = [
+      write,
+      ...invalidateSetsStatements(product, now, { onlyAfterAChange: true }),
+    ];
+    return (await db.batchChanges(statements))[0] ?? 0;
+  }
+  // A database without per-statement counts (a test double): the write alone, then the
+  // invalidation only when it changed something.
+  const changed = await db.runChanges(write.sql, ...write.params);
+  if (changed > 0) await db.batch(invalidateSetsStatements(product, now));
+  return changed;
 }
 
 /** Append one audit row for a policy change, attributed to its actor. */

@@ -761,7 +761,12 @@ export class PackResolver {
     c: Cand,
     chosen: ReadonlyMap<string, Cand>,
     present: ReadonlySet<string>,
-  ): { reason: "dependency" | "conflict"; detail: string } | null {
+  ): {
+    reason: "dependency" | "conflict";
+    detail: string;
+    /** A CHOSEN pack conflicts with `c`'s whole pack: no release of it can join. */
+    packWide?: true;
+  } | null {
     for (const [target, range] of c.deps) {
       if (!present.has(target))
         return {
@@ -784,7 +789,13 @@ export class PackResolver {
           reason: "dependency",
           detail: `${j.pack} ${j.rel.version} requires ${c.pack} ${range}, not ${c.rel.version}`,
         };
-      if (c.conflicts.has(j.pack) || j.conflicts.has(c.pack))
+      if (j.conflicts.has(c.pack))
+        return {
+          reason: "conflict",
+          detail: `${j.pack} ${j.rel.version} conflicts with ${c.pack}`,
+          packWide: true,
+        };
+      if (c.conflicts.has(j.pack))
         return {
           reason: "conflict",
           detail: `${c.pack} ${c.rel.version} conflicts with ${j.pack} ${j.rel.version}`,
@@ -930,7 +941,11 @@ export class PackResolver {
       for (const c of p.cands) {
         // A try costs a check against every chosen pack and every dependency.
         this.spend(1 + chosen.size + c.deps.length);
-        if (this.conflictWith(c, chosen, present)) continue;
+        const why = this.conflictWith(c, chosen, present);
+        // A conflict names a whole pack: once a chosen pack refuses `p`, no release of `p` can
+        // join, so its remaining releases are not tried (|A| + |B| tries, not |A| × |B|).
+        if (why?.packWide) break;
+        if (why) continue;
         chosen.set(p.id, c);
         if (dfs(i + 1, omits)) return true;
         chosen.delete(p.id);

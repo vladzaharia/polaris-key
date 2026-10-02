@@ -947,6 +947,43 @@ describe("bounds, round 2", () => {
   });
 });
 
+describe("bounds, round 3", () => {
+  it("25 fully conflicting pairs of 200-release packs resolve within the budget", () => {
+    // Every release of a.N conflicts with b.N, and every release of b.N with a.N: once one is
+    // chosen, no release of the other is tried (|A| + |B| tries, not |A| × |B|).
+    const packs: PackSpec[] = [];
+    for (let i = 0; i < 25; i++) {
+      const n = String(i).padStart(2, "0");
+      for (const [me, other] of [
+        [`a.p${n}`, `b.p${n}`],
+        [`b.p${n}`, `a.p${n}`],
+      ] as const)
+        packs.push({
+          id: me,
+          binding: "standalone",
+          releases: Array.from({ length: 200 }, (_, r) => ({
+            version: `1.${Math.floor(r / 50)}.${r % 50}`,
+            seq: r + 1,
+            conflicts: [other],
+          })),
+        });
+    }
+    const t0 = performance.now();
+    const { sets } = resolve([APP_15], packs);
+    expect(performance.now() - t0).toBeLessThan(300);
+    // Each pair keeps the earlier pack (newest release) and leaves the other out.
+    expect(sets[0]!.entries).toHaveLength(25);
+    expect(
+      sets[0]!.entries.every(
+        (e) => e.pack.startsWith("a.") && e.version === "1.3.49",
+      ),
+    ).toBe(true);
+    expect(sets[0]!.unsatisfied.every((u) => u.reason === "conflict")).toBe(
+      true,
+    );
+  });
+});
+
 describe("per-component semantics (round 2, lead decision)", () => {
   type Rel = {
     v: string;

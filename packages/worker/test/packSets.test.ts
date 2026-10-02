@@ -41,7 +41,7 @@ import { manifestDeliverableStatements } from "../src/services/release/deliverab
 import { loadProduct } from "../src/core/products.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
-import { yank } from "../src/services/release/policy.js";
+import { unyank, yank } from "../src/services/release/policy.js";
 import {
   PackResolutionError,
   PackResolver,
@@ -728,6 +728,66 @@ describe("one resolution per publish (round 2)", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe("a refused policy write leaves the stored sets alone (round 3)", () => {
+  it("an unyank of a release that is not yanked, and a revert with no policy, change nothing", async () => {
+    await baseline();
+    const before = await sets();
+    const state = await db.first(
+      "SELECT generation, token FROM release_set_state WHERE product = ?",
+      SLUG,
+    );
+    expect(before.length).toBeGreaterThan(0);
+    const unyank = await admin(
+      env,
+      db,
+      "DELETE",
+      `/releases/${encodeURIComponent(`${FOES}@1.0.0`)}/yank`,
+    );
+    expect(unyank.status).toBe(404);
+    const revert = await admin(env, db, "POST", "/channels/beta/revert", {
+      deliverable: FOES,
+    });
+    expect(revert.status).toBe(404);
+    expect(await sets()).toEqual(before);
+    expect(
+      await db.first(
+        "SELECT generation, token FROM release_set_state WHERE product = ?",
+        SLUG,
+      ),
+    ).toEqual(state);
+  });
+
+  it("without per-statement counts the write still reports its real change count", async () => {
+    await baseline();
+    const before = await sets();
+    const counting = {
+      first: db.first.bind(db),
+      all: db.all.bind(db),
+      run: db.run.bind(db),
+      runChanges: db.runChanges.bind(db),
+      batch: db.batch.bind(db),
+    } as Db;
+    const res = await unyank(
+      env,
+      counting,
+      SLUG,
+      `${FOES}@1.0.0`,
+      {
+        kind: "admin",
+        session: {
+          sub: "u1",
+          name: "Ada",
+          email: "ada@x.io",
+          groups: [],
+        } as never,
+      },
+      NOW,
+    );
+    expect(res.ok).toBe(false);
+    expect(await sets()).toEqual(before);
   });
 });
 
