@@ -38,6 +38,7 @@ from __future__ import annotations
 import gzip
 import json
 import os
+import pathlib
 import re
 import sys
 from dataclasses import dataclass, field
@@ -56,7 +57,7 @@ class OutletFs:
     """The file-system calls the readers make, so a test can fake a whole install."""
 
     exists: Callable[[str], bool] = os.path.exists
-    read_bytes: Callable[[str], bytes] = lambda p: open(p, "rb").read()  # noqa: E731
+    read_bytes: Callable[[str], bytes] = lambda p: pathlib.Path(p).read_bytes()  # noqa: E731
     realpath: Callable[[str], str] = os.path.realpath
     listdir: Callable[[str], List[str]] = os.listdir
     is_symlink: Callable[[str], bool] = os.path.islink
