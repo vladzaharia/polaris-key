@@ -128,8 +128,16 @@ describe("@polaris-key/protocol layout", () => {
       "store",
       "platform",
       "blocked",
+      "packs",
     ]);
-    expect(update.BLOCKED_REASONS).toEqual(["app-floor"]);
+    // P4-13 filled P3-01's reserved values (plans/P4-13.md §2.6).
+    expect(update.BLOCKED_REASONS).toEqual([
+      "app-floor",
+      "content-floor",
+      "revoked-content",
+    ]);
+    expect(update.MAX_FEED_REVOCATIONS).toBe(64);
+    expect(core.REVOCATION_REASON_MAX_BYTES).toBe(512);
     expect(update.BINARY_METHODS).toEqual([
       "native",
       "download",
@@ -137,8 +145,8 @@ describe("@polaris-key/protocol layout", () => {
     ]);
     expect(update.NONE_REASONS).toHaveLength(10);
     expect(release.BUILD_ID_PATTERN.source).toBe("^[a-z0-9][a-z0-9._-]{0,63}$");
-    expect(release.RECORD_KINDS).toEqual(["app", "pack"]);
-    expect(release.RESERVED_RECORD_KINDS).toEqual(["revocation", "delegation"]);
+    expect(release.RECORD_KINDS).toEqual(["app", "pack", "revocation"]);
+    expect(release.RESERVED_RECORD_KINDS).toEqual(["delegation"]);
     expect(barrel.FEED_VERSION_SCHEMES).toBe(update.FEED_VERSION_SCHEMES);
     expect(barrel.BUILD_ID_PATTERN).toBe(release.BUILD_ID_PATTERN);
     expect(barrel.MAX_WIRE_INTEGER).toBe(core.MAX_WIRE_INTEGER);
