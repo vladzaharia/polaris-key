@@ -94,23 +94,23 @@ what they had.
 Each kind reads only its own fields; any other key on the entry is ignored. Every field is
 optional. A bad value is `invalid_outlet_identity`.
 
-| Kind                       | Fields                                                                                                |
-| -------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token), `scoop` (`{bin, shortcuts}`) |
-| `app-store`                | `appleId` (numeric), `bundleId` (reverse-DNS)                                                         |
-| `testflight`               | `appleId`, `bundleId`, `publicLink` (the public link's join code)                                     |
-| `altstore`                 | `artifact`, `bundleId`                                                                                |
-| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                               |
-| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                      |
-| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                             |
-| `ms-store`                 | `productId` (12 characters), `packageFamilyName`                                                      |
-| `app-installer`            | `packageFamilyName`                                                                                   |
-| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                |
-| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                            |
-| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                     |
-| `snap`                     | `name`                                                                                                |
-| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                         |
-| `web`                      | none                                                                                                  |
+| Kind                       | Fields                                                                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token), `homebrewFormula` (a formula name), `scoop` (`{bin, shortcuts}`) |
+| `app-store`                | `appleId` (numeric), `bundleId` (reverse-DNS)                                                                                             |
+| `testflight`               | `appleId`, `bundleId`, `publicLink` (the public link's join code)                                                                         |
+| `altstore`                 | `artifact`, `bundleId`                                                                                                                    |
+| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                                                                   |
+| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                                                          |
+| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                                                                 |
+| `ms-store`                 | `productId` (12 characters), `packageFamilyName`                                                                                          |
+| `app-installer`            | `packageFamilyName`                                                                                                                       |
+| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                                                    |
+| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                |
+| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                                         |
+| `snap`                     | `name`                                                                                                                                    |
+| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                                                             |
+| `web`                      | none                                                                                                                                      |
 
 - **`publicLink`** is the code after `/join/` in a public TestFlight link: 1–32 letters and
   digits. The signed update feed turns it into the outlet's `listingUrl`
@@ -131,9 +131,11 @@ optional. A bad value is `invalid_outlet_identity`.
   characters. The Microsoft Store and App Installer entries may differ: a Store-signed and a
   self-signed package can have different publisher ids.
 
-Three fields exist only so an installed copy can recognise its own launcher (runtime outlet
+Four fields exist only so an installed copy can recognise its own launcher (runtime outlet
 detection, notes/S-06 rule 4): `itch.gameId` (the receipt's numeric `game.id` — `target` is
-not it), `packageFamilyName`, and `direct.homebrewCask`.
+not it), `packageFamilyName`, `direct.homebrewCask`, and `direct.homebrewFormula` (a formula
+name such as `diceroll` or `diceroll@2`: lower-case letters, digits, `.`, `@`, `+`, `_` and `-`,
+for a command-line build whose executable resolves under `Cellar/<formula>/`).
 
 `direct.scoop` (optional) is what the [Scoop manifest](/docs/services/distribution/feeds/#scoop)
 installs: `bin`, a relative path inside the Windows archive or a list of up to 16, which Scoop
@@ -216,17 +218,20 @@ PKEY_OUTLET_IDS="$(pkey distribution outlet-ids --outlet steam)"
 
 It prints one compact JSON object, keys sorted, **every value a string**:
 
-| Key              | From                                                                      |
-| ---------------- | ------------------------------------------------------------------------- |
-| `steamAppId`     | `steam.appId`                                                             |
-| `itchGameId`     | `itch.gameId`                                                             |
-| `flatpakId`      | `flathub.appId`                                                           |
-| `snapName`       | `snap.name`                                                               |
-| `caskToken`      | `direct.homebrewCask`                                                     |
-| `msixFamilyName` | the build's own `ms-store` or `app-installer` entry's `packageFamilyName` |
+| Key               | From                                                                                                                                          |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `steamAppId`      | `steam.appId`                                                                                                                                 |
+| `itchGameId`      | `itch.gameId`                                                                                                                                 |
+| `flatpakId`       | `flathub.appId`                                                                                                                               |
+| `snapName`        | `snap.name`                                                                                                                                   |
+| `caskToken`       | `direct.homebrewCask`                                                                                                                         |
+| `homebrewFormula` | `direct.homebrewFormula`                                                                                                                      |
+| `msixFamilyName`  | the build's own `ms-store` or `app-installer` entry's `packageFamilyName`                                                                     |
+| `bundleId`        | the build's own `app-store`, `testflight`, `altstore` or `altstore-pal` entry's `bundleId`, else the first of those entries that declares one |
 
 For each key the build's own entry is used when it has that kind, otherwise the entry whose id
-is the kind (`steam`, `itch`, …). With no `.pkey/distribution` at all it prints `{}` and exits 0
+is the kind (`steam`, `itch`, …). A Godot export's own bundle identifier (the preset's
+`application/bundle_identifier` or `package/unique_name`) wins over `bundleId`. With no `.pkey/distribution` at all it prints `{}` and exits 0
 for any `--outlet`; with a file, the manifest must validate and declare the outlet, or the
 command exits non-zero.
 

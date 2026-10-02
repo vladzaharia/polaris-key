@@ -146,8 +146,10 @@ describe("normalizeDistribution", () => {
 describe("distributionOutletIds", () => {
   const d = normalizeDistribution({
     outlets: {
-      direct: { homebrewCask: "dice" },
+      direct: { homebrewCask: "dice", homebrewFormula: "dice-cli" },
       steam: { appId: 480 },
+      "app-store": { appleId: "1234567890", bundleId: "gg.vlad.dice" },
+      altstore: { artifact: "ipa", bundleId: "gg.vlad.dice.alt" },
       "steam-playtest": { kind: "steam", appId: "481" },
       itch: { target: "vlad/dice", gameId: 1001 },
       flathub: { appId: "gg.vlad.Dice" },
@@ -161,8 +163,10 @@ describe("distributionOutletIds", () => {
     const ids = distributionOutletIds(d, "ms-store")!;
     expect(JSON.stringify(ids)).toBe(
       JSON.stringify({
+        bundleId: "gg.vlad.dice",
         caskToken: "dice",
         flatpakId: "gg.vlad.Dice",
+        homebrewFormula: "dice-cli",
         itchGameId: "1001",
         msixFamilyName: "Vlad.Dice_abcdefghjkmnp",
         snapName: "dice",
@@ -173,6 +177,16 @@ describe("distributionOutletIds", () => {
       "Vlad.Dice_1a2b3c4d5e6f7",
     );
     expect(distributionOutletIds(d, "direct")!.msixFamilyName).toBeUndefined();
+  });
+
+  it("takes bundleId from the build's own Apple entry, else the first Apple entry (P3-11)", () => {
+    expect(distributionOutletIds(d, "altstore")!.bundleId).toBe(
+      "gg.vlad.dice.alt",
+    );
+    expect(distributionOutletIds(d, "app-store")!.bundleId).toBe(
+      "gg.vlad.dice",
+    );
+    expect(distributionOutletIds(d, "steam")!.bundleId).toBe("gg.vlad.dice");
   });
 
   it("prefers the build's own entry for its kind", () => {

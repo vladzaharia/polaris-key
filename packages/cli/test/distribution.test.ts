@@ -129,6 +129,24 @@ describe("pkey distribution outlet-ids", () => {
     });
   });
 
+  it("adds homebrewFormula from direct and bundleId from the Apple entries (P3-11)", async () => {
+    const cwd = await product();
+    await writeFile(
+      path.join(cwd, ".pkey/distribution.json"),
+      JSON.stringify({
+        outlets: {
+          direct: { homebrewCask: "dice", homebrewFormula: "dice-cli" },
+          "app-store": { appleId: "1234567890", bundleId: "gg.vlad.dice" },
+        },
+      }),
+    );
+    expect(await outletIds(cwd, "--outlet", "direct")).toEqual({
+      code: 0,
+      out: '{"bundleId":"gg.vlad.dice","caskToken":"dice","homebrewFormula":"dice-cli"}\n',
+      err: "",
+    });
+  });
+
   it("takes msixFamilyName from the build's own entry only", async () => {
     const cwd = await product();
     await writeFile(
