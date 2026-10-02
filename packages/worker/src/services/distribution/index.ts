@@ -32,6 +32,10 @@
  *     (`/distribution/hooks/asc`), a poller on the connector cron (`scheduled`) and operator
  *     controls under the admin surface. They write availability, submissions and mirrored
  *     rollouts through the same writers CI and the console use.
+ *   - P6-03 gave it update health: the telemetry auto-halt on the same cron (`autoHalt.ts`,
+ *     halt-only, off by default), the Sentry alert hook (`/distribution/hooks/sentry`,
+ *     `sentry.ts`) that opens halt candidates an operator confirms, and the funnel in the console
+ *     (`updateHealthAdmin.ts`), all reading `core/updateHealth.ts`.
  *
  * It reads Release only through `ctx.hooks.releaseCatalog()` — never by import. The boundary
  * test allows exactly one cross-service edge (`update → release`) and this service is not it.
@@ -53,6 +57,7 @@ import { accessIngestStatements } from "./access.js";
 import { releaseKeyObservationStatements } from "./availability.js";
 import { handleDistributionRoutes } from "./routes.js";
 import { pollConnectors } from "./connectors/index.js";
+import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
 import {
   getOutlet,
   manifestIngestStatements as outletIngestStatements,
@@ -102,10 +107,32 @@ async function scheduled(
   ctx: ScheduledServiceContext,
 ): Promise<Record<string, unknown>> {
   const outcomes = await pollConnectors(ctx);
-  const errors = outcomes.filter((o) => o.error);
-  if (errors.length)
-    throw new Error(errors.map((o) => `${o.connector}: ${o.error}`).join("; "));
-  return { connectors: outcomes };
+  // P6-03: the telemetry auto-halt, after the connectors (a connector may have just mirrored a
+  // store rollout, which the auto-halt must then only alert on). Off by default; fault-isolated
+  // from the connectors like they are from one another.
+  let autoHalt: AutoHaltOutcome;
+  try {
+    autoHalt = await runAutoHalt({
+      env: ctx.env,
+      db: ctx.db,
+      product: ctx.product.slug,
+      hooks: ctx.hooks,
+      now: ctx.now,
+    });
+  } catch (e) {
+    autoHalt = {
+      ran: true,
+      halted: 0,
+      alerted: 0,
+      error: e instanceof Error ? e.message : "auto-halt failed",
+    };
+  }
+  const errors = [
+    ...outcomes.filter((o) => o.error).map((o) => `${o.connector}: ${o.error}`),
+    ...(autoHalt.error ? [autoHalt.error] : []),
+  ];
+  if (errors.length) throw new Error(errors.join("; "));
+  return { connectors: outcomes, autoHalt };
 }
 
 export const distributionService: ServiceDescriptor = {

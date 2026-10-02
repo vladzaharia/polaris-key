@@ -79,11 +79,19 @@ export interface MsPartnerCenter {
   sellerId: string;
 }
 
+/** A Sentry internal integration's client secret (P6-03): Sentry signs every webhook it sends
+ *  with it (`Sentry-Hook-Signature`: hex HMAC-SHA256 of the body). It reaches nothing at Sentry
+ *  on its own — the Worker never calls Sentry — so it authenticates Sentry to us, not us to it. */
+export interface SentryIntegration {
+  clientSecret: string;
+}
+
 export interface OutletCredentialValues {
   "asc-api-key": AscApiKey;
   "asc-webhook-secret": AscWebhookSecret;
   "google-service-account": GoogleServiceAccount;
   "ms-partner-center": MsPartnerCenter;
+  "sentry-integration": SentryIntegration;
 }
 
 export type OutletCredentialKind = keyof OutletCredentialValues;
@@ -93,6 +101,7 @@ export const OUTLET_CREDENTIAL_KINDS: readonly OutletCredentialKind[] = [
   "asc-webhook-secret",
   "google-service-account",
   "ms-partner-center",
+  "sentry-integration",
 ];
 
 export function isOutletCredentialKind(v: unknown): v is OutletCredentialKind {
@@ -211,6 +220,18 @@ async function validateMsPartnerCenter(
   };
 }
 
+async function validateSentryIntegration(
+  o: Record<string, unknown>,
+): Promise<Validation<"sentry-integration">> {
+  const clientSecret = str(o, "clientSecret", 1024);
+  if (!clientSecret)
+    return fail(
+      "clientSecret",
+      "clientSecret must be the internal integration's client secret",
+    );
+  return { ok: true, value: { clientSecret }, meta: {} };
+}
+
 const VALIDATORS: {
   [K in OutletCredentialKind]: (
     o: Record<string, unknown>,
@@ -220,6 +241,7 @@ const VALIDATORS: {
   "asc-webhook-secret": validateAscWebhookSecret,
   "google-service-account": validateGoogleServiceAccount,
   "ms-partner-center": validateMsPartnerCenter,
+  "sentry-integration": validateSentryIntegration,
 };
 
 /** Validate a raw value for `kind`: the normalised value to seal and its display metadata, or

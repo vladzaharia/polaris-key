@@ -111,7 +111,8 @@
                   "timestamp",
                   "engine",
                   "outlet",
-                  "content"
+                  "content",
+                  "updates"
                 ]
               }
             },
@@ -296,7 +297,8 @@
                   "timestamp",
                   "engine",
                   "outlet",
-                  "content"
+                  "content",
+                  "updates"
                 ]
               }
             },

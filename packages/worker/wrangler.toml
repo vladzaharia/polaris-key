@@ -32,6 +32,13 @@ html_handling = "none"
 name = "RL"
 class_name = "RateLimitDO"
 
+# P6-03: the update-health counters (`src/updateHealthDo.ts`), one object per (product,
+# deliverable, release), reached only through `src/core/updateHealth.ts`. `durable_objects` is
+# NOT inheritable, so every environment below repeats both bindings.
+[[durable_objects.bindings]]
+name = "UPDATE_HEALTH"
+class_name = "UpdateHealthDO"
+
 [[migrations]]
 tag = "v1"
 # SQLite-backed, not KV-backed. Cloudflare no longer permits accounts to create the legacy
@@ -43,6 +50,12 @@ tag = "v1"
 # Changing it is free ONLY because this object has never been deployed and therefore holds
 # no state. Once RateLimitDO holds data, moving between storage backends is a real migration.
 new_sqlite_classes = ["RateLimitDO"]
+
+# P6-03: the update-health counters. A new class, SQLite-backed like RateLimitDO; a migration
+# tag is append-only once deployed, so this is its own `v2` rather than an edit of `v1`.
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["UpdateHealthDO"]
 
 # ---------------------------------------------------------------------------
 # Scheduled maintenance (R11-09 / R12-10). Without this block the worker has no `scheduled()`
@@ -60,7 +73,9 @@ new_sqlite_classes = ["RateLimitDO"]
 # covers — Apple's phased release, review submissions, internal TestFlight state; every Google
 # Play track through a throwaway edit (P5-03: Play has no release webhooks at all), and, when an
 # operator opted in, Play's crash and ANR rates for the vitals auto-halt — for products with
-# Distribution on and a connector set up, and nothing for anyone else. `scheduled()`
+# Distribution on and a connector set up, and nothing for anyone else. The same tick runs the
+# update-telemetry auto-halt (P6-03) for products whose operator turned it on, reading only the
+# UPDATE_HEALTH Durable Objects. `scheduled()`
 # dispatches on `event.cron`; any trigger other than this one runs the maintenance sweep.
 # `test/scheduled.test.ts` pins this list to the two constants.
 #
@@ -107,6 +122,9 @@ custom_domain = true
 [[env.prod.durable_objects.bindings]]
 name = "RL"
 class_name = "RateLimitDO"
+[[env.prod.durable_objects.bindings]]
+name = "UPDATE_HEALTH"
+class_name = "UpdateHealthDO"
 [[env.prod.kv_namespaces]]
 binding = "HOT"
 id = "51b31c97ac2140e5af2402bed1a31e71"
@@ -138,6 +156,9 @@ custom_domain = true
 [[env.staging.durable_objects.bindings]]
 name = "RL"
 class_name = "RateLimitDO"
+[[env.staging.durable_objects.bindings]]
+name = "UPDATE_HEALTH"
+class_name = "UpdateHealthDO"
 [[env.staging.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_STAGING_KV_ID"
@@ -166,6 +187,9 @@ custom_domain = true
 [[env.dev.durable_objects.bindings]]
 name = "RL"
 class_name = "RateLimitDO"
+[[env.dev.durable_objects.bindings]]
+name = "UPDATE_HEALTH"
+class_name = "UpdateHealthDO"
 [[env.dev.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_DEV_KV_ID"

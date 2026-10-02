@@ -128,6 +128,18 @@ const KINDS: {
       { key: "sellerId", label: "Seller ID" },
     ],
   },
+  {
+    value: "sentry-integration",
+    label: "Sentry internal integration",
+    fields: [
+      {
+        key: "clientSecret",
+        label: "Client secret",
+        secret: true,
+        help: "The internal integration's client secret. Sentry signs its alert webhooks with it; Polaris Key never calls Sentry. An alert only opens a halt candidate for you to confirm.",
+      },
+    ],
+  },
 ];
 
 const KIND_LABEL = new Map<string, string>(
