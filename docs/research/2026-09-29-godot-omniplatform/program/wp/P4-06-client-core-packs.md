@@ -134,19 +134,19 @@ reference to read.
 
 ## Acceptance criteria
 
-- [ ] Every `applyCases`, `pathCases` and `packSetIdCases` entry and every `plan-matrix.json` row
+- [x] Every `applyCases`, `pathCases` and `packSetIdCases` entry and every `plan-matrix.json` row
       passes in `conformance/runners/node` with `node:zlib` and with the WASM decoder, and in
       Chromium with the WASM decoder.
-- [ ] On a Node without a working `dictionary` option (simulated by failing the probe), deltas go
+- [x] On a Node without a working `dictionary` option (simulated by failing the probe), deltas go
       through the WASM decoder and the delta cases still pass.
-- [ ] Unit tests: a crash after staging leaves `active` untouched; a resumed plan re-hashes
+- [x] Unit tests: a crash after staging leaves `active` untouched; a resumed plan re-hashes
       completed ranges; rollback restores `previous`; GC keeps active, previous, in-flight and
       embedded roots.
-- [ ] Node and React `update.packs.ensure([id])` install a `files.tree` pack from a local fake
+- [x] Node and React `update.packs.ensure([id])` install a `files.tree` pack from a local fake
       byte server and report `packSetId` through `devices/report`.
-- [ ] `@polaris-key/client-core` has no new Node or DOM import (typecheck against its lib set).
-- [ ] The green gate passes.
-- [ ] `parity.json` manifests for Node and React mark `packs.plan`, the files index, `packs.apply.full`,
+- [x] `@polaris-key/client-core` has no new Node or DOM import (typecheck against its lib set).
+- [x] The green gate passes.
+- [x] `parity.json` manifests for Node and React mark `packs.plan`, the files index, `packs.apply.full`,
       `packs.apply.file`, `packs.apply.delta`, `packs.state` and `packs.handlers` implemented
       (once P1b-01 has landed).
 
@@ -219,3 +219,13 @@ package, and every decision in §8.1 that names it as owner, override this brief
 - **Verified locally** on Node 22.13.1 (no `node:zlib` zstd: the `node:zlib` leg runs the WASM
   decoder), 22.0.0 (the floor), 24.14.1 and 26.7.0 (`node:zlib` for both kinds of frame), and in
   Chromium.
+- **Hardening from review.** A load whose state document is torn (it exists but does not
+  parse) collects nothing; a payload whose check threw (an I/O error) is neither used nor
+  collected; only installs whose bytes open count as installed for the planner. Node fsyncs
+  `state.json` before its rename and reads an embedded single-file baseline from the file
+  itself. The OPFS store uses a directory only once its copy wrote `.pkey/committed`, and copies
+  and hashes in 1 MiB slices. Both SDKs read a record body only up to the record bound.
+- **Follow-ups.** `content.appRelease` (the running app record's hash, plan §2.11) is optional
+  and not sent yet; a lock so that two processes never share one Node pack store; OPFS through a
+  worker's sync access handles for large payloads; a consent screen in a renderer; the Python,
+  Swift and Godot ports (P4-07, P4-08).
