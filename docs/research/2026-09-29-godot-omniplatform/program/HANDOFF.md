@@ -190,6 +190,12 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 - [ ] **Required checks:** add the two new Godot CI legs ("Godot SDK (4.7.2 editor + release
       template)", "Godot SDK (4.4.1 editor, floor)") to `main`'s required status checks. Both
       passed on GitHub on 2026-09-30.
+- [ ] **Required checks (P1b-05):** once they have passed on GitHub, add the new runner jobs to
+      `main`'s required status checks: "Node floor (engines.node)", "Browser conformance
+      (Chromium)", "Browser conformance (Firefox, Linux)", "Browser conformance (WebKit, macOS)",
+      and the renamed Python legs "Python SDK (3.9, ubuntu-latest)", "Python SDK (3.14,
+      ubuntu-latest)" and "Python SDK (3.12, macos-14)". The old "Python SDK (ubuntu-latest)" and
+      "Python SDK (macos-14)" names no longer report; drop them if they are listed.
 
 ## v0.5.1 (2026-10-01): deployed and checked
 

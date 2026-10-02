@@ -20,12 +20,21 @@ gate-matrix-only runner); the ones a contributor touches most:
   and bundle cases plus the gate matrix, and for wire contract v4 the pointer sets, the
   `update-matrix.json` version cases and the feed and record claim steps; `fingerprint.test.ts` covers the fingerprint vectors;
   `stageMatrix.test.ts` covers the boot stage machine; `headers.test.ts` and
-  `configMatrix.test.ts` cover the header values and config resolution.
+  `configMatrix.test.ts` cover the header values and config resolution. `corpusV2.test.ts` only
+  loads the files: its cases live in `suites.ts` (`defineCorpusSuites`), which the browser runner
+  shares. CI runs it on Node 22 and again on the `engines.node` floor (the `node-floor` job).
+- **Browser** — `conformance/runners/browser` (`@polaris-key/conformance-browser`): Vitest browser
+  mode drives the same `suites.ts` in a real engine. CI runs it in Chromium (`browser`), Firefox
+  on Linux (`browser-firefox`) and WebKit on macOS (`browser-webkit`). Locally, run
+  `pnpm --filter @polaris-key/conformance-browser exec playwright install chromium` once, then
+  `pnpm test:browser`. Append `-- --browser=firefox` or `-- --browser=webkit` to pick another
+  engine. The root `pnpm test` leaves this package out, because it needs a Playwright browser.
 - **React** — `packages/sdk-react/test/`: `headers.test.ts` (the `web` rows and the captured
   request) and `configMatrix.test.ts` (every config case, against its no-environment answer).
 - **Python** — `sdks/python/tests/`: `test_conformance.py`, `test_gate_matrix.py`,
   `test_fingerprint_conformance.py`, `test_stage_matrix.py`, `test_headers.py`,
-  `test_config_matrix.py`, and more, one file per corpus concern.
+  `test_config_matrix.py`, and more, one file per corpus concern. CI runs them on CPython 3.9
+  and 3.14 (Linux) and on the current CPython (macOS).
 - **Swift** — `sdks/swift/Tests/PolarisKeyTests/`: `ConformanceTests.swift`,
   `GateMatrixTests.swift`, `FingerprintConformanceTests.swift`, `StageMatrixTests.swift`,
   `HeadersTests.swift`, `ConfigMatrixTests.swift`, and more.
