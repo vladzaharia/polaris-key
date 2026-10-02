@@ -92,7 +92,7 @@ token mint for your App Store Connect account. Outlet credentials live in their 
 their own encryption binding: a value copied into the product-secret table does not even decrypt
 there, and no edge-mint recipe can name one.
 
-Four kinds exist today:
+Five kinds exist today:
 
 | Kind                         | Value                                                     | Least privilege                                                                                                                                                                              |
 | ---------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -100,6 +100,7 @@ Four kinds exist today:
 | App Store webhook secret     | the shared secret App Store Connect signs webhooks with   | Used only to verify Apple's webhook calls; let the Worker generate it.                                                                                                                       |
 | Google service account       | the service account's JSON key file                       | Invite the account to **one app** in Play Console with release permissions only ([Google Play connector](/docs/services/distribution/google-play/#least-privilege-for-the-service-account)). |
 | Microsoft Partner Center app | tenant ID, client ID, client secret and seller ID         | An Entra app added to Partner Center with the **Manager** role, not Account admin.                                                                                                           |
+| Sentry internal integration  | the integration's client secret                           | Used only to verify Sentry's alert webhooks; the Worker never calls Sentry ([Update health](/docs/services/distribution/update-health/#sentry-alerts)).                                      |
 
 Each is validated when you save it — a `.p8` that is not a P-256 PKCS#8 key, or a Google key that
 is not RSA or names a token endpoint other than `https://oauth2.googleapis.com/token`, is refused

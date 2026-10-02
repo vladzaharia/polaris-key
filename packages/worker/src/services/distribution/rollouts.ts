@@ -35,7 +35,8 @@
  * but the legacy feeds (the Sparkle appcast, `/update/version`, `/release/dl`) keep serving.
  * Today's emergency stop is a yank or a channel pin (P2-05). The docs and the console say so.
  *
- * Every change is audited with its actor (`admin:<sub>` via the session, or `ci:<subject>`), as
+ * Every change is audited with its actor (`admin:<sub>` via the session, `ci:<subject>`, or
+ * `system:auto-halt` — P6-03's telemetry auto-halt, which may only halt), as
  * `distribution.rollout.<verb>`.
  */
 

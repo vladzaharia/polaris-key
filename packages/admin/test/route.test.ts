@@ -243,7 +243,11 @@ describe("SECTIONS", () => {
       license: ["licenses", "tiers", "fingerprints"],
       config: ["config", "profiles"],
       release: ["releases"],
-      distribution: ["distribution", "distribution-matrix"],
+      distribution: [
+        "distribution",
+        "distribution-matrix",
+        "distribution-health",
+      ],
       update: ["updates"],
       identity: ["identity"],
     });

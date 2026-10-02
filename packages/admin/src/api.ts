@@ -101,7 +101,8 @@ export type OutletCredentialKind =
   | "asc-api-key"
   | "asc-webhook-secret"
   | "google-service-account"
-  | "ms-partner-center";
+  | "ms-partner-center"
+  | "sentry-integration";
 
 /** One outlet credential as the admin API lists it: metadata and health, never the value. */
 export interface OutletCredentialInfo {
@@ -631,6 +632,79 @@ export interface DistributionMatrix {
   cells: MatrixCellDto[];
   states: { availability: string[]; submission: string[]; rollout: string[] };
   effect: { reachesDevices: string; note: string };
+}
+
+// ── distribution: update health (P6-03) ───────────────────────────────────────
+/** The seven update outcome events (`updateEvent` in conformance/parity/enums.json). */
+export type UpdateEventName =
+  | "update_offered"
+  | "update_downloaded"
+  | "update_applied"
+  | "update_confirmed"
+  | "update_reverted"
+  | "pack_failed"
+  | "boot_rolled_back";
+
+export type UpdateEventCounts = Record<UpdateEventName, number>;
+
+/** The operator-owned telemetry auto-halt (worker `services/distribution/autoHalt.ts`). */
+export interface AutoHaltSettings {
+  enabled: boolean;
+  windowHours: number;
+  minSample: number;
+  maxRevertRate: number;
+  maxBootRollbackRate: number;
+}
+
+/** A tracked object of the auto-halt or the Sentry hook (worker `connectors/state.ts`). */
+export interface UpdateHealthObject {
+  type: string;
+  id: string;
+  outletId: string | null;
+  releaseId: string | null;
+  state: string | null;
+  ref: Record<string, unknown>;
+  detail: Record<string, unknown>;
+  terminal: boolean;
+  updatedAt: number;
+}
+
+/** `GET …/distribution/update-health` (worker `services/distribution/updateHealthAdmin.ts`). */
+export interface UpdateHealthResponse {
+  windowHours: number;
+  /** Whether this deployment has the counters bound at all. */
+  counting: boolean;
+  events: UpdateEventName[];
+  rollouts: Array<{
+    rollout: Rollout;
+    /** Distinct devices per event; `null` when the counters could not be read. */
+    devices: UpdateEventCounts | null;
+    events: UpdateEventCounts | null;
+    truncated: boolean;
+    verdict: {
+      revertRate: number | null;
+      bootRollbackRate: number | null;
+      trips: string[];
+    } | null;
+  }>;
+  unknown: Array<{
+    deliverable: string;
+    releaseId: string;
+    outlet: "unknown";
+    devices: UpdateEventCounts;
+  }>;
+  autoHalt: {
+    settings: AutoHaltSettings & {
+      updatedAt: number | null;
+      updatedBy: string | null;
+    };
+    defaults: AutoHaltSettings;
+    maxWindowHours: number;
+    lastReading: UpdateHealthObject | null;
+    trips: UpdateHealthObject[];
+    alerts: UpdateHealthObject[];
+  };
+  sentry: { configured: boolean; candidates: UpdateHealthObject[] };
 }
 
 // ── release truth store ───────────────────────────────────────────────────────
@@ -1415,6 +1489,30 @@ export const api = {
     call<{ rollout: Rollout }>(
       `${p(slug)}/distribution/rollouts/${encodeURIComponent(outlet)}/${encodeURIComponent(channel)}/${verb}`,
       { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  // ── distribution: update health (P6-03) ─────────────────────────────────────
+  updateHealth: (slug: string, windowHours?: number) =>
+    call<UpdateHealthResponse>(
+      `${p(slug)}/distribution/update-health${
+        windowHours !== undefined ? `?windowHours=${windowHours}` : ""
+      }`,
+    ),
+  /** The auto-halt settings — the ONE writer, audited by the worker. */
+  saveAutoHalt: (slug: string, body: Partial<AutoHaltSettings>) =>
+    call<{ settings: UpdateHealthResponse["autoHalt"]["settings"] }>(
+      `${p(slug)}/distribution/update-health/settings`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** Confirm (halts the rollout, as you) or dismiss a Sentry halt candidate. */
+  decideCandidate: (
+    slug: string,
+    id: string,
+    decision: "confirm" | "dismiss",
+  ) =>
+    call<{ candidate: UpdateHealthObject }>(
+      `${p(slug)}/distribution/update-health/candidates/${encodeURIComponent(id)}/${decision}`,
+      { method: "POST", body: JSON.stringify({}) },
     ),
 
   // ── config: catalog ───────────────────────────────────────────────────────────

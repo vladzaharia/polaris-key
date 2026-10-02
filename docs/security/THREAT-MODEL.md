@@ -1264,6 +1264,58 @@ edits (`rollout_mirrored`); the connector overwrites any operator rollout on the
 (deliverable, outlet, channel) and audits that it did. A tick over unchanged Play state writes no
 audit row.
 
+### Update health: telemetry, the auto-halt and the Sentry hook (P6-03)
+
+**New inputs.** Devices report update outcome events in the `updates` key of
+`POST /<p>/devices/report` (unsigned, device-token authenticated, the existing 16 KiB cap). A
+Sentry internal integration posts alerts to `POST /<p>/distribution/hooks/sentry`. Neither input
+can do more than the paths below allow.
+
+- **Report path.** `core/updateHealth.ts` `boundedUpdates` keeps at most 16 entries, each matched
+  field by field against a fixed alphabet (no `|`, the counters' key separator), drops a
+  malformed entry or an unknown event, and strips unknown fields. Counting happens AFTER the
+  snapshot is stored, in `UpdateHealthDO` (one Durable Object per product, deliverable and
+  release) — never D1 — and fails open, so a broken counter cannot cost a device its report.
+- **Inflation.** Counters are deduplicated on (device, `eventId`), and the number the auto-halt
+  judges is DISTINCT DEVICES per event, so one device moves a rate by at most one however many
+  events it invents; the `eventId` space is per device, so a device cannot pre-claim another's
+  ids. An attacker needs many registered devices (bounded by registration policy and seat limits)
+  to move a rate, and `minSample` must be met. An event's outlet is taken from the event, but a
+  rollout row's outlet is a declared one, so counts on an undeclared outlet never match a rollout
+  and never trip (shown as `unknown`). Each object caps the (outlet, channel) pairs it tracks at
+  32 (more fold into an overflow bucket), so a device cannot mint unbounded keys. Residual: a
+  device can name any well-formed release id and so create an idle counter object; it holds
+  nothing an operator sees and deletes itself after 30 days (cost only).
+- **Clock.** A future `at` counts as now; one older than 30 days is not counted.
+
+**The auto-halt is halt-only, operator-owned and off by default.** Its settings live in
+`dist_connector_settings` (connector `auto-halt`, P5-03's table), written by one function,
+`writeAutoHaltSettings`, whose only caller is the console's control (platform-admin session,
+CSRF, rate limit, a `distribution.auto_halt.settings` audit row with the session's subject);
+`test/autoHalt.test.ts` pins that no other file names the writer or writes that row, and no
+ingest, resync or manifest field reaches it — a repo push cannot turn on an automatic halt. The
+tick (the connector cron) halts through P2b-04's `applyRollout` with a third actor kind,
+`system`, which `applyRollout` itself refuses for every verb but `halt` (`system_halt_only`), so
+the automatic path cannot pause, resume, ramp, complete or start a rollout even through a bug in
+its caller. It never touches a `mirrored` (store) rollout — it records an alert for the operator
+— and trips once per (deliverable, outlet, channel, release), so an operator's resume is not
+fought. Residual: a coordinated set of registered devices that crosses `minSample` with false
+reverts can halt a self-hosted rollout — the safe direction — but never expose a build.
+
+**The Sentry hook proposes; an operator decides.** The client secret is an outlet credential of
+the new kind `sentry-integration` (P5-01 custody: sealed under its own AAD, written only by the
+Core admin handler, every open audited as `system:distribution` with use `sentry:webhook`). It
+authenticates Sentry to the Worker; the Worker never calls Sentry. The hook answers the service
+not-found shape without a credential, refuses a missing or malformed signature before anything
+is opened, rate-limits per product BEFORE the credential is opened (`sentryWebhook`, fail
+closed, since every open is an audit row), compares the HMAC in constant time, and dedupes on the
+body's SHA-256. A triggered event alert opens at most one `halt-candidate` per matching active or
+paused, non-mirrored rollout; it halts nothing. Confirming halts through `applyRollout` as the
+confirming admin, with the candidate's release pinned (`stale_release` if the rollout moved
+on). A candidate keeps only the rule name and Sentry's numeric issue id, never the event's
+message, user or tags. Residual: anyone holding the client secret (Sentry, or a leak of it) can
+open candidates and fill the console; they cannot halt.
+
 ### The device-code user-code page (P1-06)
 
 **What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
@@ -1924,7 +1976,7 @@ descriptor hook gains a method that writes or a new provider, or a method that r
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
 offered (P3-03), or a reader of `dist_availability` does, a store connector is added, gains a
-control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, takes the app it proves against from anywhere but the manifest's outlet identity, runs without that identity matching the operator's pin on its credential (a connector whose key reaches several apps added without an `OUTLET_CREDENTIAL_PINS` entry, or a pin check dropped or made optional), lets anything but the Core admin handler write a pin, or starts uploading or submitting (P5-02, P5-02f), an automatic action (the Play vitals auto-halt, P5-03) gains a verb other than halt or a setting any path but the console's audited control can write, or anything but the console's key
+control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, takes the app it proves against from anywhere but the manifest's outlet identity, runs without that identity matching the operator's pin on its credential (a connector whose key reaches several apps added without an `OUTLET_CREDENTIAL_PINS` entry, or a pin check dropped or made optional), lets anything but the Core admin handler write a pin, or starts uploading or submitting (P5-02, P5-02f), an automatic action (the Play vitals auto-halt, P5-03; the telemetry auto-halt, P6-03) gains a verb other than halt or a setting any path but the console's audited control can write, the `system` rollout actor gains a verb or a caller outside the auto-halt, a Sentry candidate halts without an operator's confirmation, or the update-health counters start being written to D1 or keyed by anything a device can choose without bound, or anything but the console's key
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to

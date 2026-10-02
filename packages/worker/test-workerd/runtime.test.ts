@@ -23,6 +23,10 @@ import {
   signatureMatches,
 } from "../src/services/distribution/connectors/asc/webhook.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
+import {
+  readUpdateHealth,
+  recordUpdateEvents,
+} from "../src/core/updateHealth.js";
 import type { Env as WorkerEnv } from "../src/env.js";
 import type { ServiceHooks } from "../src/core/hooks.js";
 import { playSetup } from "../src/services/distribution/connectors/play/setup.js";
@@ -481,5 +485,70 @@ describe("Google Play connector on workerd (P5-03)", () => {
       { object_id: "production", outlet_id: "play" },
       { object_id: "qa", outlet_id: null },
     ]);
+  });
+});
+
+describe("update-health counters on a real Durable Object (P6-03)", () => {
+  it("binds UPDATE_HEALTH from wrangler.toml and counts, dedupes and reads on SQLite-backed storage", async () => {
+    const ns = env.UPDATE_HEALTH;
+    expect(ns).toBeDefined();
+    const workerEnv = env as unknown as WorkerEnv;
+    const now = Math.floor(Date.now() / 1000);
+    const entry = {
+      eventId: "workerd-1",
+      event: "update_reverted" as const,
+      deliverable: "app",
+      release: "v9.9.9-workerd",
+      outlet: "direct",
+      channel: "stable",
+      at: now - 60,
+    };
+    expect(
+      await recordUpdateEvents(
+        workerEnv,
+        "workerd",
+        "DEVICEWORKERD000000000000000001",
+        [entry],
+        now,
+      ),
+    ).toBe(1);
+    // The same event again counts nothing; another device's counts once more.
+    expect(
+      await recordUpdateEvents(
+        workerEnv,
+        "workerd",
+        "DEVICEWORKERD000000000000000001",
+        [entry],
+        now,
+      ),
+    ).toBe(0);
+    expect(
+      await recordUpdateEvents(
+        workerEnv,
+        "workerd",
+        "DEVICEWORKERD000000000000000002",
+        [entry],
+        now,
+      ),
+    ).toBe(1);
+    const read = await readUpdateHealth(workerEnv, {
+      product: "workerd",
+      deliverable: "app",
+      release: "v9.9.9-workerd",
+      windowHours: 2,
+      now,
+    });
+    expect(read).toEqual({
+      counts: [
+        {
+          outlet: "direct",
+          channel: "stable",
+          event: "update_reverted",
+          events: 2,
+          devices: 2,
+        },
+      ],
+      truncated: false,
+    });
   });
 });

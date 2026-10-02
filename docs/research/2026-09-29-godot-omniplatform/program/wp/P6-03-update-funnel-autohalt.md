@@ -112,15 +112,54 @@ halt candidate that an operator confirms.
 
 ## Acceptance criteria
 
-- [ ] Report tests: valid `updates` are counted once even when the same report is retried; malformed
+- [x] Report tests: valid `updates` are counted once even when the same report is retried; malformed
       entries and unknown events are dropped; the 16 KiB cap still holds.
-- [ ] Auto-halt tests: below `minSample` nothing happens; above the threshold one halt and one audit
+- [x] Auto-halt tests: below `minSample` nothing happens; above the threshold one halt and one audit
       row; a mirrored store rollout is never halted by this path.
-- [ ] Sentry hook tests: bad signature refused; a valid alert for a known release opens one
+- [x] Sentry hook tests: bad signature refused; a valid alert for a known release opens one
       candidate; confirming it halts.
-- [ ] The Sentry route is in OpenAPI and `routeCoverage`, or listed narrative-only with a reason.
-- [ ] `PRIVACY.md` describes the events.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd`.
+- [x] The Sentry route is in OpenAPI and `routeCoverage`, or listed narrative-only with a reason.
+- [x] `PRIVACY.md` describes the events.
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
+
+## Corrections from implementation
+
+Where the code disagreed with this brief, the code won:
+
+- **Event shape: P1-05's precedent.** P3-01's plan (§2.10) fixes only the seven names; no plan
+  defines the shape. The `updates` key is in the Worker allowlist (`core/devices.ts`
+  `REPORT_KEYS`, bounded by `core/updateHealth.ts` `boundedUpdates`) and the OpenAPI report
+  schema (`UpdateOutcomeEvent`) only; `shared-protocol`'s `DeviceFacts` is untouched, so no plan
+  mode. The Worker has no generated `updateEvent` constant, so `UPDATE_EVENTS` is spelled once in
+  `core/updateHealth.ts` and pinned to `enums.json` by `test/updateHealth.test.ts`.
+- **No migration (0046 is unused).** The auto-halt settings use P5-03's `dist_connector_settings`
+  (connector `auto-halt`), and halt candidates, trips, store alerts and the last reading use
+  P5-02's `dist_connector_objects` (connectors `sentry` and `auto-halt`); Sentry deliveries are
+  stored in `dist_connector_events`. `dist_rollouts.source` already admitted `auto-halt` (0038).
+- **The auto-halt judges distinct devices, not raw events.** Counters are deduplicated on
+  (device, `eventId`) as asked, and the object also keeps distinct-device counts per event; the
+  rates are `update_reverted` and `boot_rolled_back` devices over `update_applied` devices, and
+  `minSample` is applied devices. One device can move a rate by at most one.
+- **Unknown outlets** are not validated at ingest (that needs Distribution's tables on Core's
+  report path). They are counted as reported; a rollout row's outlet is always a declared one, so
+  they can never match a rollout or trip, and the console sums them as `unknown`. Each object
+  caps the (outlet, channel) pairs it tracks at 32, folding the rest into an overflow bucket.
+- **Halt-only is enforced in `applyRollout`.** A third `RolloutActor` kind, `system`, is refused
+  every verb but `halt` (`system_halt_only`); its halt records `source: auto-halt`,
+  `updated_by: system:auto-halt` and the numbers in the one audit row.
+- **Trips once.** A `trip` marker per (deliverable, outlet, channel, release) stops a second halt
+  after an operator resumes (P5-03's vitals behaviour). A mirrored store rollout over the
+  threshold gets an `alert` marker and one `distribution.auto_halt.alert` audit row.
+- **The Sentry hook is not a store connector.** It is routed explicitly in `routes.ts`
+  (`/distribution/hooks/sentry`) rather than added to `CONNECTORS`, so it has no poll, no
+  controls and no entry in the connectors list. Only `Sentry-Hook-Resource: event_alert` with
+  `action: triggered` is acted on (it is the resource that carries the event's `release`, `environment` and
+  tags); everything else is stored as `ignored`. Dedupe is on the body's SHA-256.
+- **Console**: a new **Update health** tab in the Distribution section (`distribution-health`,
+  docs `/docs/services/distribution/update-health/`), not a panel on the overview; the admin
+  API is `…/distribution/update-health` (narrative-only).
+- **`UPDATE_HEALTH` is optional in `Env`.** Unbound, reports still store `updates` and nothing is
+  counted; the funnel reports `counting: false` and the auto-halt judges nothing.
 
 ## Verify
 
