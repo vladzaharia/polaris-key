@@ -29,7 +29,7 @@ sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
   godot/             Godot addon               pure-GDScript verify and a headless runner
-conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
+conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and browser runners
                      + parity/ (features.json registry, errors.json + enums.json; each SDK
                        keeps its own parity.json)
                      + transcripts/ (HTTP conversations recorded through the Worker router)
@@ -56,8 +56,8 @@ site and are no longer at their old paths — follow the move rather than recrea
 the repo; the monorepo map, the wave model, the corpus and the release flow now live under
 `packages/docs/src/content/docs/contribute/`.
 
-The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node
-conformance runner. Python, Swift and Godot are standalone toolchains under `sdks/`.
+The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node and
+browser conformance runners. Python, Swift and Godot are standalone toolchains under `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
 opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`). The services
@@ -97,6 +97,7 @@ pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift g
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
+                                 # except the browser runner below
 pnpm lint                        # per-package prettier check
 pnpm --filter @polaris-key/admin build
 pnpm --filter @polaris-key/worker assemble  # admin + docs built into the worker's [assets] root
@@ -107,7 +108,12 @@ pnpm --filter @polaris-key/docs check:links # internal link + anchor integrity o
 pnpm --filter @polaris-key/worker typecheck:workerd
 pnpm --filter @polaris-key/worker test:workerd
 
-( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
+# The browser conformance runner (CI jobs browser, browser-firefox, browser-webkit). Root
+# `pnpm test` leaves it out because it needs a Playwright browser; install Chromium once with
+# `pnpm --filter @polaris-key/conformance-browser exec playwright install chromium`.
+pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=webkit`
+
+( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
 

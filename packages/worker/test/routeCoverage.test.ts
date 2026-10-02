@@ -114,6 +114,9 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/scoop/{channel}.json", ["get"]],
   ["/{product}/distribution/flathub/{channel}.json", ["get"]],
   ["/{product}/distribution/feeds/fdroid/{channel}", ["get", "post"]],
+  // P2b-06: the public download page's model (console host) and the page (bytes host only).
+  ["/{product}/distribution/download.json", ["get"]],
+  ["/{product}/distribution/download", ["get"]],
   ["/{product}/update/appcast.xml", ["get"]],
   ["/{product}/update/{channel}/appcast.xml", ["get"]],
   // P3-03: the signed channel feed.
@@ -153,6 +156,8 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
   ["/{product}/release/builds/{selector}/{buildId}", ["get"]],
   ["/{product}/release/files/{releaseId}/{name}", ["get"]],
   ["/{product}/release/blobs/sha256/{sha256}", ["get"]],
+  // P2b-06: the short link to the download page (served on the bytes host only).
+  ["/{product}", ["get"]],
 ];
 
 function specMethods(path: string): string[] {
@@ -275,6 +280,9 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/hooks/asc",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/feeds/fdroid/{channel}",
+  // P2b-06: the download page and its alias — HTML on the bytes host, a top-level navigation.
+  "/{product}/distribution/download",
+  "/{product}",
   // P3-09: the app-updater feeds are read by native updaters (WinSparkle, Velopack, App
   // Installer, AppImageUpdate), never by a browser page; no CORS is added for them (the brief:
   // the only CORS is P0-05's allowlist, on the routes it already covers).

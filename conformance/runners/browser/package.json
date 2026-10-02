@@ -1,0 +1,20 @@
+{
+  "name": "@polaris-key/conformance-browser",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/browser": "3.2.6",
+    "playwright": "1.63.0",
+    "vitest": "3.2.6"
+  }
+}

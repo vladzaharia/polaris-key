@@ -264,59 +264,8 @@ async function renderArea(
       });
     }
 
-    case "obtainium": {
-      const sel = await selectFeed(fctx, channel, {
-        kinds: ["obtainium"],
-        outletId: outletParam,
-        platform: "android",
-        liveness: "availability",
-        limit: 1,
-      });
-      if (!sel) return null;
-      const head = sel.entries[0];
-      const packageName =
-        (typeof sel.outlet.identity.packageName === "string"
-          ? sel.outlet.identity.packageName
-          : null) ??
-        (typeof head?.metadata?.packageName === "string"
-          ? head.metadata.packageName
-          : null);
-      if (!packageName) return null;
-      const listing = sel.outlet.listing ?? {};
-      const name = listing.name ?? product.name;
-      const author = listing.developerName ?? name;
-      // A live F-Droid repository on this channel is the better source: real version codes,
-      // arch selection and stable/beta filtering. The channel is the one just resolved, so only
-      // the outlet's existence is asked here, never a second selection.
-      const repo = await pickOutlet(fctx.db, product.slug, {
-        kinds: ["fdroid-repo"],
-      });
-      if (repo)
-        return renderObtainiumConfig({
-          source: "fdroid-repo",
-          packageName,
-          name,
-          author,
-          repoUrl: `${fctx.origin}/${product.slug}/distribution/fdroid/${encodeURIComponent(sel.channel)}/repo`,
-          stable: sel.channel === "stable",
-        });
-      const buildId =
-        (typeof sel.outlet.identity.artifact === "string"
-          ? sel.outlet.identity.artifact
-          : null) ?? head?.buildId;
-      if (!buildId) return null;
-      const bytesBase =
-        bytesHostname(env) && env.BLOB_ORIGIN
-          ? new URL(env.BLOB_ORIGIN).origin
-          : fctx.origin;
-      return renderObtainiumConfig({
-        source: "direct",
-        packageName,
-        name,
-        author,
-        apkUrl: `${bytesBase}/${product.slug}/distribution/builds/${encodeURIComponent(sel.channel)}/${encodeURIComponent(buildId)}`,
-      });
-    }
+    case "obtainium":
+      return obtainiumConfig(fctx, channel, outletParam);
 
     case "scoop": {
       const sel = await selectFeed(fctx, channel, {
@@ -361,6 +310,69 @@ async function renderArea(
       return renderFlathubChecker(sel.entries);
     }
   }
+}
+
+/**
+ * The Obtainium app config of one channel (`GET …/obtainium/<channel>.json`), or `null` (the
+ * route's not-found). Exported for the download page (P2b-06), whose "Add to Obtainium" link
+ * carries this same document as `obtainium://app/<url-encoded JSON>`.
+ */
+export async function obtainiumConfig(
+  fctx: FeedReadContext,
+  channel: string,
+  outletParam: string | null,
+): Promise<unknown | null> {
+  const sel = await selectFeed(fctx, channel, {
+    kinds: ["obtainium"],
+    outletId: outletParam,
+    platform: "android",
+    liveness: "availability",
+    limit: 1,
+  });
+  if (!sel) return null;
+  const head = sel.entries[0];
+  const packageName =
+    (typeof sel.outlet.identity.packageName === "string"
+      ? sel.outlet.identity.packageName
+      : null) ??
+    (typeof head?.metadata?.packageName === "string"
+      ? head.metadata.packageName
+      : null);
+  if (!packageName) return null;
+  const listing = sel.outlet.listing ?? {};
+  const name = listing.name ?? fctx.product.name;
+  const author = listing.developerName ?? name;
+  // A live F-Droid repository on this channel is the better source: real version codes,
+  // arch selection and stable/beta filtering. The channel is the one just resolved, so only
+  // the outlet's existence is asked here, never a second selection.
+  const repo = await pickOutlet(fctx.db, fctx.product.slug, {
+    kinds: ["fdroid-repo"],
+  });
+  if (repo)
+    return renderObtainiumConfig({
+      source: "fdroid-repo",
+      packageName,
+      name,
+      author,
+      repoUrl: `${fctx.origin}/${fctx.product.slug}/distribution/fdroid/${encodeURIComponent(sel.channel)}/repo`,
+      stable: sel.channel === "stable",
+    });
+  const buildId =
+    (typeof sel.outlet.identity.artifact === "string"
+      ? sel.outlet.identity.artifact
+      : null) ?? head?.buildId;
+  if (!buildId) return null;
+  const bytesBase =
+    bytesHostname(fctx.env) && fctx.env.BLOB_ORIGIN
+      ? new URL(fctx.env.BLOB_ORIGIN).origin
+      : fctx.origin;
+  return renderObtainiumConfig({
+    source: "direct",
+    packageName,
+    name,
+    author,
+    apkUrl: `${bytesBase}/${fctx.product.slug}/distribution/builds/${encodeURIComponent(sel.channel)}/${encodeURIComponent(buildId)}`,
+  });
 }
 
 /** `GET|POST /<p>/distribution/feeds/fdroid/<channel>` — `distribution:feeds`. */

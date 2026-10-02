@@ -23,6 +23,7 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | GET | `/{product}/release/files/{releaseId}/{name}` | aliases | Alias → /\{product\}/distribution/files/\{releaseId\}/\{name\} |
 | GET | `/{product}/release/install.sh` | aliases | Alias → /\{product\}/distribution/install.sh |
 | GET | `/{product}/version` | aliases | Alias → /\{product\}/update/version |
+| GET | `/{product}` | aliases | Alias → /\{product\}/distribution/download |
 | GET | `/{product}/config/document` | config | The signed config document (pkey-config+jws) |
 | GET | `/{product}/config/mint/{mintId}/auth` | config | The edge-mint auth page (HTML) |
 | GET | `/{product}/config/mint/{mintId}/token` | config | Mint a third-party token (edge-mint) |
@@ -42,6 +43,8 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
 | GET | `/{product}/distribution/builds/{selector}/{buildId}` | distribution | Download the payload of a declared build |
 | GET | `/{product}/distribution/dl/{version}/{asset}` | distribution | Download a release artifact |
+| GET | `/{product}/distribution/download.json` | distribution | The public download page's model |
+| GET | `/{product}/distribution/download` | distribution | The public download page (bytes host only) |
 | GET | `/{product}/distribution/fdroid/{channel}/repo/{path}` | distribution | F-Droid repository relay (one channel's repository) |
 | GET | `/{product}/distribution/feeds/fdroid/{channel}` | distribution | The F-Droid generator's inputs (CI) |
 | POST | `/{product}/distribution/feeds/fdroid/{channel}` | distribution | Register the F-Droid repository files CI signed and uploaded (CI) |

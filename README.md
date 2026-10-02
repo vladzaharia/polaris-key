@@ -30,7 +30,7 @@ packages/
 sdks/
   python/            polaris-key (PyPI)        — full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      — native CryptoKit + SwiftUI login
-conformance/         corpus/v2 (one signer's golden vectors) + the Node runner
+conformance/         corpus/v2 (one signer's golden vectors) + the Node and browser runners
 tools/               sign-corpus.ts · gen-mirrors.ts · gen-services.ts + services.json (the service table)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                CONCEPTS · ADOPTER-GUIDE · CONFIG-AUTHORING · RUNBOOK · DEPLOYMENT
@@ -89,6 +89,7 @@ pnpm install
 pnpm build              # build all packages
 pnpm typecheck
 pnpm test               # all JS/TS suites (incl. conformance + worker + SDKs + admin)
+pnpm test:browser       # the corpus in Chromium (needs `playwright install chromium` once)
 pnpm gen:corpus -- --check   # conformance drift gate (CI)
 ( cd sdks/python && .venv/bin/python -m pytest )   # Python SDK
 ( cd sdks/swift && swift test )                    # Swift SDK

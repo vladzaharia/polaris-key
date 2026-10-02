@@ -21,6 +21,9 @@
  *                                                              fingerprint (adopts an observation)
  *     DELETE …/distribution/keys/<purpose>/<sha256>            remove an entry or dismiss an
  *                                                              observation
+ *     GET  …/distribution/matrix?deliverable=app&limit=20      releases × outlets: availability,
+ *                                                              submission and rollout per cell,
+ *                                                              with the verbs each allows (P2b-06)
  *     GET  …/distribution/connectors                           every store connector: setup,
  *                                                              tracked objects, recent events (P5-02)
  *     GET  …/distribution/connectors/<kind>                    one connector
@@ -95,6 +98,7 @@ import {
 } from "./availability.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { CONNECTORS, connectorOf } from "./connectors/index.js";
+import { buildMatrix, MATRIX_DEFAULT_LIMIT } from "./matrix.js";
 
 /** The console's view of one outlet. */
 export function outletView(
@@ -138,6 +142,7 @@ export async function handleDistributionAdmin(
     return handleAvailabilityAdmin(ctx);
   if (rest[0] === "keys") return handleKeysAdmin(ctx);
   if (rest[0] === "connectors") return handleConnectorsAdmin(ctx);
+  if (rest[0] === "matrix") return handleMatrixAdmin(ctx);
   if (rest[0] !== "outlets") return null;
 
   if (rest.length === 1) {
@@ -512,6 +517,33 @@ async function handleKeysAdmin(
       : `Removed the ${purpose} key ${shortFingerprint(sha256)} from the inventory`,
   );
   return adminJson(await keysView(ctx));
+}
+
+// ── The distribution matrix (P2b-06) ────────────────────────────────────────────────────────
+
+/** Read-only: the controls it lists are the rollout routes above. */
+async function handleMatrixAdmin(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response | null> {
+  const { req, db, product, rest, hooks } = ctx;
+  if (rest.length !== 1) return null;
+  if (req.method !== "GET")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const q = new URL(req.url).searchParams;
+  const deliverable = q.get("deliverable") ?? APP_DELIVERABLE_ID;
+  const rawLimit = q.get("limit");
+  const limit = rawLimit === null ? MATRIX_DEFAULT_LIMIT : Number(rawLimit);
+  if (!Number.isInteger(limit) || limit < 1)
+    return err(422, ErrorCode.BadRequest, "limit must be a positive integer", {
+      fields: ["limit"],
+    });
+  const matrix = await buildMatrix(
+    { db, product: product.slug, hooks },
+    deliverable,
+    limit,
+  );
+  if (!matrix) return adminNotFound();
+  return adminJson(matrix);
 }
 
 // ── Store connectors (P5-02) ─────────────────────────────────────────────────────────────────

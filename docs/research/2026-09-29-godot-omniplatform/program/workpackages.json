@@ -617,7 +617,7 @@
       "optional": false,
       "refs": ["PARITY §4.3", "README §9.1 #15", "notes/A7 §11.5"],
       "brief": "wp/P1b-05-runners.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-06",
@@ -955,7 +955,7 @@
       "optional": false,
       "refs": ["README §3.5 separate domain", "README §6.2 item 1"],
       "brief": "wp/P2b-06-download-page-matrix.md",
-      "status": "todo",
+      "status": "done",
       "milestone": "Diceroll's AltStore source, F-Droid repo and download page come from Polaris Key"
     },
     {

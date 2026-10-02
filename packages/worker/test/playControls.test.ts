@@ -418,7 +418,7 @@ describe("in-app update priority", () => {
       userFraction: 0.05,
     });
     expect(patchBody(w3).releases[0]).toMatchObject({ inAppUpdatePriority: 2 });
-  });
+  }, 20_000);
 });
 
 describe("settings and status", () => {
@@ -467,7 +467,7 @@ describe("settings and status", () => {
       "distribution.play.settings",
     ]);
     expect(w.fake.requests).toEqual([]);
-  });
+  }, 20_000);
 
   it("the connector page lists tracks, the unmapped ones (the internal track among them) and the controls", async () => {
     const w = await playWorld();

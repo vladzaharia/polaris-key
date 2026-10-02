@@ -95,6 +95,17 @@ export interface ByteRoute {
    * off the route's code never runs and the host answers not-found.
    */
   readonly service: ServiceSlug;
+  /**
+   * P2b-06. The route answers ONE server-rendered HTML document (the public download page)
+   * rather than bytes. The host's type rule then admits exactly one more success type,
+   * `text/html; charset=utf-8`, and only with the route's own `Content-Security-Policy`, which
+   * the dispatcher CHECKS (`inertDocumentPolicy`) and refuses unless it keeps the host's
+   * guarantees: a `sandbox` without `allow-scripts` or `allow-same-origin` (an opaque origin,
+   * no script), `default-src 'none'`, nothing but hashed styles, no framing, no base, no forms.
+   * A document route answers no CORS (it is a navigation, never a fetch target) and no
+   * `OPTIONS`; its error answers follow the ordinary rule.
+   */
+  readonly document?: true;
   /** The owning product and path parameters when the route handles `pathname`, else `null`. */
   match(pathname: string): ByteRouteMatch | null;
   handle(req: Request, ctx: ByteRouteContext): Promise<Response>;
@@ -149,6 +160,87 @@ function forcedDisposition(res: Response): string | null {
   return params !== undefined ? `attachment;${params}` : "attachment";
 }
 
+/** The sandbox tokens a document's policy may keep: each lets a CLICK do something (download a
+ *  file, open an app link); none runs script, lifts the opaque origin or submits a form. */
+const DOCUMENT_SANDBOX_TOKENS: ReadonlySet<string> = new Set([
+  "allow-downloads",
+  "allow-top-navigation-to-custom-protocols",
+]);
+const HASH_SOURCE = /^'sha256-[A-Za-z0-9+/]{43}='$/;
+
+/**
+ * Is `csp` a policy under which an HTML document on this host stays inert? Every directive must
+ * be one of these, spelled this way, and the first four must be present:
+ *
+ *   sandbox [allow-downloads] [allow-top-navigation-to-custom-protocols]
+ *   default-src 'none'          frame-ancestors 'none'          base-uri 'none'
+ *   form-action 'none'          style-src 'sha256-…'…           img-src data:
+ *
+ * Anything else — a script source of any kind, `connect-src`, `allow-scripts`, a second policy
+ * joined by a comma, a repeated directive — and the answer is refused.
+ */
+export function inertDocumentPolicy(csp: string | null): boolean {
+  if (csp === null || csp.includes(",")) return false;
+  const seen = new Map<string, string[]>();
+  for (const part of csp.split(";")) {
+    const tokens = part.trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length) continue;
+    const name = tokens[0]!.toLowerCase();
+    if (seen.has(name)) return false;
+    seen.set(name, tokens.slice(1));
+  }
+  const exactlyNone = (name: string) => {
+    const v = seen.get(name);
+    return v !== undefined && v.length === 1 && v[0] === "'none'";
+  };
+  for (const [name, values] of seen) {
+    switch (name) {
+      case "sandbox":
+        if (!values.every((t) => DOCUMENT_SANDBOX_TOKENS.has(t))) return false;
+        break;
+      case "default-src":
+      case "frame-ancestors":
+      case "base-uri":
+      case "form-action":
+        if (!exactlyNone(name)) return false;
+        break;
+      case "style-src":
+        if (!values.length || !values.every((t) => HASH_SOURCE.test(t)))
+          return false;
+        break;
+      case "img-src":
+        if (values.length !== 1 || values[0] !== "data:") return false;
+        break;
+      default:
+        return false;
+    }
+  }
+  return (
+    seen.has("sandbox") &&
+    seen.has("default-src") &&
+    seen.has("frame-ancestors") &&
+    seen.has("base-uri") &&
+    seen.has("form-action")
+  );
+}
+
+/**
+ * The policy a document route's answer leaves with, or `null` = refused (`document` on
+ * `ByteRoute`). Only a 200 (or a body-less 304) of exactly `text/html; charset=utf-8`, with no
+ * `Content-Disposition`, under an inert policy.
+ */
+function documentPolicy(res: Response): string | null {
+  if (res.status !== 200 && res.status !== 304) return null;
+  if (res.status === 304 && res.body !== null) return null;
+  const type = (res.headers.get("content-type") ?? "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  if (res.status === 200 && type !== "text/html;charset=utf-8") return null;
+  if (res.headers.has("content-disposition")) return null;
+  const csp = res.headers.get("content-security-policy");
+  return inertDocumentPolicy(csp) ? csp : null;
+}
+
 /**
  * The route's answer with the host's own headers enforced: no `Access-Control-*` of its own
  * (CORS is `core/cors.ts`'s alone, and `withCors` leaves a product with no `web.origins`
@@ -175,13 +267,18 @@ function policed(res: Response): Response {
  * The headers every bytes-host response leaves with. Applied to not-found answers as well as
  * byte responses, so no response on the host is ever missing them.
  */
-export function hardenBytesHostResponse(res: Response): Response {
+export function hardenBytesHostResponse(
+  res: Response,
+  documentCsp: string | null = null,
+): Response {
   const headers = new Headers();
   res.headers.forEach((value, key) => {
     if (key.toLowerCase() !== "set-cookie") headers.append(key, value);
   });
   headers.set("x-content-type-options", "nosniff");
-  headers.set("content-security-policy", BLOB_CSP);
+  // A checked document policy (`documentPolicy`) is itself a sandbox; everything else gets the
+  // host's own.
+  headers.set("content-security-policy", documentCsp ?? BLOB_CSP);
   headers.set("referrer-policy", "no-referrer");
   return new Response(res.body, {
     status: res.status,
@@ -217,17 +314,23 @@ export async function dispatchBytesHost(
   routes: readonly ByteRoute[],
   registry: ByteHookRegistry = new Map(),
 ): Promise<Response> {
-  let res: Response;
+  let answered: Answer;
   try {
-    res = await answer(req, env, db, routes, registry);
+    answered = await answer(req, env, db, routes, registry);
   } catch {
     // P2-05. A throw from a route, from the product load or from D1 would otherwise escape the
     // Worker and become Cloudflare's own HTML error page — on this host, without `nosniff` or
     // the sandbox CSP. Answer the platform's flat JSON 500 instead, hardened like everything
     // else here. Nothing about the failure is disclosed (R12: the worker logs no request data).
-    res = errorResponse(500, "internal_error");
+    answered = { res: errorResponse(500, "internal_error"), documentCsp: null };
   }
-  return hardenBytesHostResponse(res);
+  return hardenBytesHostResponse(answered.res, answered.documentCsp);
+}
+
+/** A route's policed answer, and the checked policy when it is an admitted document. */
+interface Answer {
+  res: Response;
+  documentCsp: string | null;
 }
 
 async function answer(
@@ -236,20 +339,23 @@ async function answer(
   db: Db,
   routes: readonly ByteRoute[],
   registry: ByteHookRegistry,
-): Promise<Response> {
+): Promise<Answer> {
+  const plain = (res: Response): Answer => ({ res, documentCsp: null });
   const pathname = new URL(req.url).pathname;
   for (const route of routes) {
     const matched = route.match(pathname);
     if (!matched) continue;
     // The key-free loader: a download never needs the product's signing key (P2-05).
     const product = await loadProductPublic(db, matched.product);
-    if (!product) return notFound();
+    if (!product) return plain(notFound());
+    if (route.document)
+      return answerDocument(req, env, db, route, matched, product, registry);
     // Preflight first, as `dispatch.ts` does for the console: its answer depends only on the
     // path shape and the product's `web.origins`, so it cannot probe enablement.
-    if (req.method === "OPTIONS") return corsPreflight(product, req);
+    if (req.method === "OPTIONS") return plain(corsPreflight(product, req));
     // Enablement next, before any route code runs (`dispatchService`'s rule). Same not-found
     // as an unknown product, so a disabled service cannot be told apart from a missing one.
-    if (!product.services[route.service]?.enabled) return notFound();
+    if (!product.services[route.service]?.enabled) return plain(notFound());
     const now = Math.floor(Date.now() / 1000);
     let res = await route.handle(withoutCookies(req), {
       env,
@@ -265,7 +371,57 @@ async function answer(
       await res.body?.cancel().catch(() => undefined);
       res = notFound();
     }
-    return withCors(product, req, policed(res));
+    return plain(withCors(product, req, policed(res)));
   }
-  return notFound();
+  return plain(notFound());
+}
+
+/**
+ * A `document` route (P2b-06): enablement as for every route, no CORS and no preflight, and the
+ * answer admitted only as an inert document (`documentPolicy`) or as an ordinary error answer
+ * (`refusedType`); anything else is the plain not-found.
+ */
+async function answerDocument(
+  req: Request,
+  env: Env,
+  db: Db,
+  route: ByteRoute,
+  matched: ByteRouteMatch,
+  product: ProductPublic,
+  registry: ByteHookRegistry,
+): Promise<Answer> {
+  if (!product.services[route.service]?.enabled)
+    return { res: notFound(), documentCsp: null };
+  const now = Math.floor(Date.now() / 1000);
+  const res = await route.handle(withoutCookies(req), {
+    env,
+    db,
+    product,
+    params: matched.params,
+    now,
+    hooks: buildHooks(registry, product.services, { env, db, product, now }),
+  });
+  const csp = res.status < 400 ? documentPolicy(res) : null;
+  if (csp !== null) return { res: stripCors(res), documentCsp: csp };
+  if (res.status >= 400 && !refusedType(res))
+    return { res: stripCors(res), documentCsp: null };
+  await res.body?.cancel().catch(() => undefined);
+  return { res: notFound(), documentCsp: null };
+}
+
+/** A route's own `Access-Control-*` headers dropped (CORS is `core/cors.ts`'s alone). */
+function stripCors(res: Response): Response {
+  let touched = false;
+  const headers = new Headers();
+  res.headers.forEach((value, key) => {
+    if (key.toLowerCase().startsWith("access-control-")) touched = true;
+    else headers.append(key, value);
+  });
+  return touched
+    ? new Response(res.body, {
+        status: res.status,
+        statusText: res.statusText,
+        headers,
+      })
+    : res;
 }

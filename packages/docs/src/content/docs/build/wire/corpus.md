@@ -80,14 +80,40 @@ are at [Fingerprint constants](/docs/reference/fingerprint-constants/).
 Every runner reads the **same** files and drives the **shipped** verifier — never an inline
 reference implementation written for the test.
 
-| Runner | Path                                                      | Drives                                                                                             |
-| ------ | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Node   | `conformance/runners/node/corpusV2.test.ts`               | `@polaris-key/client-core` — the reference client                                                  |
-| Python | `sdks/python/tests/test_conformance.py`                   | `verify_jws`, `verify_license_doc`, `verify_config_doc`, `verify_trust_manifest`, `inspect_bundle` |
-| Swift  | `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift` | The Swift SDK, against the mirrored `Resources/v2/`                                                |
-| React  | `packages/sdk-react/test/gateMatrixParity.test.ts`        | `gate-matrix.json` through `licenseState` **and** the React projection                             |
-| Godot  | `sdks/godot/tests/suite_conformance.gd`                   | The addon's core, from the `res://` mirror, on an editor **and** an exported template              |
-| Worker | `packages/worker/test/gateMatrixCorpus.test.ts`           | `gate-matrix.json` through the server's own `checkBuildGate`: the oracle for every runner's port   |
+| Runner  | Path                                                      | Drives                                                                                             |
+| ------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Node    | `conformance/runners/node/corpusV2.test.ts`               | `@polaris-key/client-core` — the reference client                                                  |
+| Browser | `conformance/runners/browser/corpusV2.browser.test.ts`    | The same suites as Node (`conformance/runners/node/suites.ts`), in Chromium, Firefox and WebKit    |
+| Python  | `sdks/python/tests/test_conformance.py`                   | `verify_jws`, `verify_license_doc`, `verify_config_doc`, `verify_trust_manifest`, `inspect_bundle` |
+| Swift   | `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift` | The Swift SDK, against the mirrored `Resources/v2/`                                                |
+| React   | `packages/sdk-react/test/gateMatrixParity.test.ts`        | `gate-matrix.json` through `licenseState` **and** the React projection                             |
+| Godot   | `sdks/godot/tests/suite_conformance.gd`                   | The addon's core, from the `res://` mirror, on an editor **and** an exported template              |
+| Worker  | `packages/worker/test/gateMatrixCorpus.test.ts`           | `gate-matrix.json` through the server's own `checkBuildGate`: the oracle for every runner's port   |
+
+### Runtimes and version floors
+
+One runtime is not proof: notes/A7 found decoder behaviour that only shows on the lowest
+supported version. CI therefore runs the corpus on more than one build of each runtime, and
+every runner prints its runtime and library versions at the top of its log, so a failure is
+attributable to the build that produced it.
+
+| CI job            | Runs                                                                                                    | Banner                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `js`              | every JS suite, the Node runner included, on Node 22                                                    | `process.versions`: node, openssl, v8                    |
+| `node-floor`      | the Node runner, `@polaris-key/client-core` and `@polaris-key/node` on exactly the `engines.node` floor | the same, plus a check that the runtime is the floor     |
+| `browser`         | the browser runner in Chromium (Playwright 1.63.0)                                                      | `navigator.userAgent`                                    |
+| `browser-firefox` | the browser runner in Firefox 155.0, Linux (`mcr.microsoft.com/playwright:v1.63.0-noble`)               | `navigator.userAgent`                                    |
+| `browser-webkit`  | the browser runner in WebKit 26.6, macOS 15                                                             | `navigator.userAgent`                                    |
+| `python`          | the Python suite on CPython 3.9 and 3.14 (Linux) and 3.12 (macOS)                                       | `sys.version`, cryptography (with its OpenSSL) and httpx |
+
+The browser runner drives the Node runner's own suites, so `cases.json`, `gate-matrix.json`,
+`update-matrix.json` and `outlet-matrix.json` verify through WebCrypto's Ed25519 and SHA-256
+instead of Node's. It loads the files through Vite rather than `node:fs`. `fingerprint.json`
+stays Node-only, because the web has no fingerprint. There is no Linux WebKit job: Linux
+Playwright WebKit, like WebKitGTK with libgcrypt, kills the web process when WebCrypto verifies
+an Ed25519 message of about 64 KiB or more, so the two at-cap vectors would fail on every run.
+That failure is correct, and no row is skipped or capped to hide it. The job can exist only
+once `shared-jws` gains a size-aware Ed25519 fallback, which no work package owns yet.
 
 `stage-matrix.json` has its own runners too: `conformance/runners/node/stageMatrix.test.ts`
 (through `@polaris-key/client-core/stages`, which React shares),
