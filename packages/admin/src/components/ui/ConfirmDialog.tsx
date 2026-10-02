@@ -20,6 +20,10 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   confirmVariant?: ButtonProps["variant"];
   loading?: boolean;
+  /** Keeps the confirm button disabled (an input in `children` is not valid yet). */
+  confirmDisabled?: boolean;
+  /** Inputs the confirmation needs (a reason, a version), rendered below the description. */
+  children?: React.ReactNode;
   onConfirm: () => void | Promise<void>;
 }
 
@@ -37,6 +41,8 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   confirmVariant = "destructive",
   loading = false,
+  confirmDisabled = false,
+  children,
   onConfirm,
 }: ConfirmDialogProps): React.ReactElement {
   return (
@@ -49,9 +55,12 @@ export function ConfirmDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        {description ? (
-          <DialogBody>
-            <DialogDescription>{description}</DialogDescription>
+        {description || children ? (
+          <DialogBody className="space-y-4">
+            {description ? (
+              <DialogDescription>{description}</DialogDescription>
+            ) : null}
+            {children}
           </DialogBody>
         ) : null}
         <DialogActionBar>
@@ -63,6 +72,7 @@ export function ConfirmDialog({
           <Button
             variant={confirmVariant}
             loading={loading}
+            disabled={confirmDisabled || loading}
             onClick={() => void onConfirm()}
           >
             {confirmLabel}

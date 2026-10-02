@@ -60,12 +60,27 @@ Accent `config`. Shown only when **Config** is on.
 ## Release
 
 Accent `release`. Shown only when **Release** is on. One tab: **Releases** — the release _truth store_
-(`release_metadata` / `_artifacts` / `_channels`), what Polaris Key believes the linked repo
-publishes, read without spending a GitHub round-trip. It shows the synced releases and which
-channel points at which, release health (GitHub App access, published assets, Sparkle key
-material), and the last manifest-sync attempt. Release config itself — GitHub coordinates,
-binary name, channel workflow, edge-mint recipes — is authored in the repo's `.pkey/release`
-file and applied by **Resync from repo**, not edited here.
+(`release_metadata`, `release_builds`, `release_artifacts`, the yanks and the channel policy),
+what Polaris Key believes the product publishes, read without spending a GitHub round-trip.
+Expand a release to see its builds (platform, arch, format, build number, minimum OS, payload
+SHA-256) and the files under each, with where the bytes live (R2, GitHub, a store or an external
+URL). Signature and checksum sidecars stay collapsed until you show them. A yanked release
+carries a badge with its reason.
+
+The **Channels** panel shows, per channel of the app, what it serves on every platform, its
+pointer and pin, what it includes, its minimum supported version, the critical flag, the
+rollback floor, its source (`manifest` or `admin`) and the last change. The per-platform column
+is the Worker's resolution, shown as it is: a release missing one platform's build leaves that
+platform on the newest release that has one. From a channel's actions you can promote, pin,
+unpin, set the minimum supported version, mark or clear critical, lower or clear the rollback
+floor, and hand an `admin` row back to the manifest. Yank and unyank sit on each release row.
+Every action opens a confirmation stating its effect, and every change but the revert belongs to
+the operator and survives a resync. See [Channels](/docs/services/release/channels/).
+
+Release health (GitHub App access, published assets, Sparkle key material, channel floors) and
+the last manifest-sync attempt sit below. Release config itself — GitHub coordinates, binary
+name, channel workflow, edge-mint recipes — is authored in the repo's `.pkey/release` file and
+applied by **Resync from repo**, not edited here.
 
 ## Distribution
 

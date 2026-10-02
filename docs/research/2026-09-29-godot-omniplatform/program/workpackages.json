@@ -844,7 +844,7 @@
       "optional": false,
       "refs": ["README §6.2 item 2"],
       "brief": "wp/P2-07-console-builds.md",
-      "status": "todo",
+      "status": "done",
       "milestone": "Every Diceroll artifact indexed and published without long-lived secrets"
     },
     {

@@ -59,7 +59,11 @@ import {
   type PolicyActor,
   type PolicyRefusal,
 } from "./policy.js";
-import { resolveBuild } from "./resolve.js";
+import {
+  loadDeliverableState,
+  resolveInState,
+  type DeliverableState,
+} from "./resolve.js";
 import { resyncRepo } from "./resync.js";
 import {
   channelNames,
@@ -355,6 +359,15 @@ function parseLocationsView(json: string | null): unknown[] | null {
   }
 }
 
+/** The platforms any build of the deliverable declares, sorted; a platform-independent build
+ *  (`platform` null, a pack variant) names none. */
+function platformsOf(state: DeliverableState): string[] {
+  const out = new Set<string>();
+  for (const builds of state.buildsByRelease.values())
+    for (const b of builds) if (b.platform) out.add(b.platform);
+  return [...out].sort();
+}
+
 function policyRefusal(r: PolicyRefusal): Response {
   return err(
     r.status,
@@ -375,7 +388,8 @@ function segment(raw: string): string | null {
 /**
  * The policy routes, or `null` when the path is not one of them. GET `channels` returns, per
  * deliverable, every channel the product can serve with its policy (defaults where no row
- * exists), its `source`, and what it resolves to right now with no platform filter.
+ * exists), its `source`, what it resolves to right now with no platform filter (`resolved`), and
+ * what it resolves to on each platform the deliverable has a build for (`byPlatform`).
  */
 async function handlePolicyRoutes(
   ctx: ServiceContext & { session: AdminSession },
@@ -394,23 +408,36 @@ async function handlePolicyRoutes(
     for (const d of deliverables) {
       const rows = await listChannelPolicies(db, slug, d.deliverable_id);
       const names = [...new Set([...channels, ...rows.map((r) => r.channel)])];
+      // One read of the deliverable, resolved many times: per channel with no platform filter
+      // (`resolved`), and per platform any build of the deliverable declares (`byPlatform`),
+      // because "stable" is not one release — a release missing the iOS build leaves iOS on
+      // the newest release that has one (README §3.4, `resolve.ts` rule 5). The console renders
+      // these as they are; it never recomputes resolution (P2-07).
+      const state = await loadDeliverableState(db, slug, d.deliverable_id, cfg);
+      const platforms = state ? platformsOf(state) : [];
       const views = [];
       for (const channel of names) {
         const row = rows.find((r) => r.channel === channel) ?? null;
-        const resolved = await resolveBuild(
-          db,
-          slug,
-          { deliverable: d.deliverable_id, selector: channel },
-          cfg,
-        );
+        const resolved = state
+          ? resolveInState(state, { selector: channel })
+          : null;
+        const byPlatform: Record<string, string | null> = {};
+        for (const platform of platforms) {
+          byPlatform[platform] = state
+            ? (resolveInState(state, { selector: channel, platform })?.release
+                .release_id ?? null)
+            : null;
+        }
         views.push({
           ...policyView(row, d.deliverable_id, channel),
           resolved: resolved ? resolved.release.release_id : null,
+          byPlatform,
         });
       }
       out.push({
         deliverable: d.deliverable_id,
         kind: d.kind,
+        platforms,
         channels: views,
       });
     }
