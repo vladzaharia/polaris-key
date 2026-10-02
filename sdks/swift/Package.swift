@@ -18,7 +18,12 @@ import PackageDescription
 //   PolarisKeyConfig   the config document, layered resolution, facts, edge-mint. (deps Core)
 //   PolarisKeyIdentity device-code sign-in (RFC 8628).                   (deps Core)
 //   PolarisKeyRelease  the changelog and the install/download URLs.       (deps Core)
-//   PolarisKeyUpdate   Sparkle wiring. macOS ONLY.                        (deps Core)
+//   PolarisKeyPacks    packs (plans/P4-01.md, P4-07): the planner, the appliers, the install
+//                   state, the pipeline and the `update.packs` facet. macOS AND iOS: it links
+//                   libzstd (the official facebook/zstd SwiftPM package, pinned 1.5.7, since
+//                   Apple's Compression has no zstd) and never Sparkle.       (deps Core, libzstd)
+//   PolarisKeyUpdate   the update client (`UpdateClient`, its `packs` facet) and the Sparkle
+//                   wiring, which alone is macOS ONLY.              (deps Core, Packs, Sparkle)
 //   PolarisKeyUI       the drop-in SwiftUI gate.              (deps Core + License + Config)
 //   PolarisKey      the umbrella: `PolarisKeyClient` + `@_exported import` of the
 //                   cross-platform modules (Core, License, Config, Identity, Release), so a
@@ -58,7 +63,9 @@ let package = Package(
         .library(name: "PolarisKeyRelease", targets: ["PolarisKeyRelease"]),
         // Device-code sign-in, for a product that runs Identity.
         .library(name: "PolarisKeyIdentity", targets: ["PolarisKeyIdentity"]),
-        // macOS only — see the conditioning note above.
+        // Packs (P4-07): cross-platform, no Sparkle.
+        .library(name: "PolarisKeyPacks", targets: ["PolarisKeyPacks"]),
+        // Sparkle is macOS only — see the conditioning note above.
         .library(name: "PolarisKeyUpdate", targets: ["PolarisKeyUpdate"]),
         // Brandable SwiftUI login/gate components layered over the services.
         .library(name: "PolarisKeyUI", targets: ["PolarisKeyUI"]),
@@ -67,7 +74,11 @@ let package = Package(
         // D-24: Sparkle continues as the update mechanism. 2.9.6 is the security floor: the
         // delta-patch symlink and privilege-escalation fixes (2.9.5/2.9.6) on top of
         // CVE-2025-0509 (2.6.4).
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.6")
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.6"),
+        // P4-07: libzstd for packs (plain frames and `zstd --patch-from` raw-prefix deltas).
+        // Pinned exactly: the content corpus's blobs are zstd 1.5.7 output, and PARITY §6.2
+        // names this package. BSD-3-Clause.
+        .package(url: "https://github.com/facebook/zstd", exact: "1.5.7"),
     ],
     targets: [
         .target(
@@ -95,9 +106,18 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
+            name: "PolarisKeyPacks",
+            dependencies: [
+                "PolarisKeyCore",
+                .product(name: "libzstd", package: "zstd"),
+            ],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .target(
             name: "PolarisKeyUpdate",
             dependencies: [
                 "PolarisKeyCore",
+                "PolarisKeyPacks",
                 .product(
                     name: "Sparkle", package: "Sparkle",
                     condition: .when(platforms: [.macOS])),
@@ -122,6 +142,7 @@ let package = Package(
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUpdate", "PolarisKeyRelease",
+                "PolarisKeyPacks", .product(name: "libzstd", package: "zstd"),
             ],
             // Bundle the SAME cross-language corpus (cases, gate-matrix, fingerprint, stage-matrix,
             // headers, config-matrix, and wire contract v4's update-matrix and outlet-matrix) the
