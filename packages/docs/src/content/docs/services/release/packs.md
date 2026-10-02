@@ -126,7 +126,10 @@ every file blob its indexes name is a blob of the product's store. Publishing is
 2. **Stage rounds**: for each batch of at most 256 objects, an `uploads` ticket, the uploads,
    then `POST /<product>/release/publish/stage` `{ticket, deliverable}`. A round verifies each
    staged object, refuses one whose `gated` flag differs from the gate, promotes it and records
-   a `pack-upload` reference: the product now holds those bytes.
+   a `pack-upload` reference of the pack: the product now holds those bytes. A pack's ticket
+   names its pack (`deliverable`), and an object is `present`, so skipped, only when **that pack**
+   uploaded it; one another pack of the product holds is uploaded again (its stored bytes are
+   not rewritten), so a renamed pack, or two packs sharing bytes, earns its own references.
 3. **The record**: `POST /<product>/release/publish/submit` `{record, ticket?, dryRun?}`. A small
    pack can carry its objects in this ticket and publish in one request.
 
@@ -180,8 +183,9 @@ held by **this pack's** own upload (`pack-upload`) under the pack's prefix: a re
 another pack, or by a release, does not count. A dry run lists an index neither stored nor staged,
 and a bundle not yet held, in `unverified`. The blob collector keeps every bundle a live
 release's index names, an older release's bundle included (see
-[Garbage collection](/docs/services/distribution/delivery/#garbage-collection)); repacking
-bundles whose live share has dropped has no owner yet.
+[Garbage collection](/docs/services/distribution/delivery/#garbage-collection)); each live
+chunked variant costs the collector two index reads from its per-tick budget (its files index and
+its chunk index). Repacking bundles whose live share has dropped has no owner yet.
 
 ## App releases: content, pins and embeds
 

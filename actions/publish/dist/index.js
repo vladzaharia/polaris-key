@@ -21729,9 +21729,9 @@ async function chunkChainBase(proven, key, gateClass, warn) {
       stored = new Uint8Array(await readFile5(file));
     } catch {
       warn(
-        `chunk chain ${label}: the cached index ${path6.basename(file)} is missing; its chunks are packed fresh.`
+        `chunk chain ${label}: the cached index ${path6.basename(file)} is missing; an older cached release is tried, else the chunks are packed fresh.`
       );
-      return null;
+      continue;
     }
     const parsed = await parseChunkIndex(stored, v.chunks, v.payload, {
       decode: (frame, size) => decode(frame, size),
@@ -21739,9 +21739,9 @@ async function chunkChainBase(proven, key, gateClass, warn) {
     });
     if (!parsed.ok) {
       warn(
-        `chunk chain ${label}: the cached index is not the record's (${parsed.error}); its chunks are packed fresh.`
+        `chunk chain ${label}: the cached index is not the record's (${parsed.error}); an older cached release is tried, else the chunks are packed fresh.`
       );
-      return null;
+      continue;
     }
     return { version: c.version, index: parsed.index };
   }
@@ -22359,7 +22359,10 @@ async function requestTicket(client, objects, gated, opts) {
           sha256: o.sha256,
           size: o.size,
           gated
-        }))
+        })),
+        // P4-22: `present` then means THIS pack uploaded the object (what ingest requires of a
+        // chunk index and its bundles), not merely the product. A Worker before P4-22 ignores it.
+        deliverable: opts.deliverable
       }
     }
   );

@@ -467,6 +467,36 @@ export async function missingHeldObjects(
   return out;
 }
 
+/**
+ * The subset of `storageKeys` that `product` holds a `pack-upload` ref of `packId` to: a pack's
+ * `present` (P4-22). A pack's upload ticket and stage round skip only what THIS pack already
+ * uploaded, because ingest requires its own ref on a chunk index and its bundles
+ * (`missingHeldObjects`); a key another pack (or a release, or an app artifact) of the same
+ * product holds is uploaded again and promoted through `promote`'s already-stored path, which
+ * earns this pack's ref without rewriting the bytes. Never another product's refs.
+ */
+export async function packUploadedKeys(
+  db: Db,
+  product: string,
+  packId: string,
+  storageKeys: readonly string[],
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  const unique = [...new Set(storageKeys)];
+  for (let i = 0; i < unique.length; i += OBJECT_CHECK_BATCH) {
+    const rows = await db.all<{ k: string }>(
+      `SELECT DISTINCT r.storage_key AS k FROM blob_refs r
+        WHERE r.product = ? AND r.ref_kind = 'pack-upload' AND r.ref_id = ?
+          AND r.storage_key IN (SELECT value FROM json_each(?))`,
+      product,
+      packId,
+      JSON.stringify(unique.slice(i, i + OBJECT_CHECK_BATCH)),
+    );
+    for (const r of rows) out.add(r.k);
+  }
+  return out;
+}
+
 /** An object not yet promoted but judged as if it were: a dry run's verified staged copy. */
 export interface PendingObject {
   sha256: string;

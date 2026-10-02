@@ -118,3 +118,18 @@ Where the brief or the plan and the code disagreed, the code was the fact:
     discovery golden fixture, `surfaces.test.ts` and the OpenAPI example gain `chunks: true`.
     `validation-codes.mdx` renders `invalid_pack_patch`'s message template literally, so
     `docs gen` leaves it unchanged.
+11. **A pack's `present` is the pack's own uploads (review S1).** Upload-ticket and stage-round
+    `present` was product-wide (`referencedKeys`), while ingest requires a chunk index and its
+    bundles to hold a `pack-upload` ref of THIS pack, so a renamed pack, or two packs sharing a
+    variant's bytes, would never upload its bundles and would be refused `pack-object` on every
+    retry. `POST …/release/publish/uploads` gains an optional `deliverable` (a declared pack id,
+    else `unknown_pack_deliverable`); with it, `present` means a `pack-upload` ref of that pack
+    (`packUploadedKeys`, this product's refs only). The stage round (and a submit's own ticket)
+    uses the same rule, so an object another pack holds is uploaded to staging again and promoted
+    through `promote`'s already-stored path, which mints this pack's ref without rewriting the
+    stored bytes. A staged copy is still required: `promote` verifies from staging, and a ref is
+    earned only by promoting a verified upload (P2-01's rule a). The CLI sends `deliverable` on
+    every pack ticket; a Worker before P4-22 ignores it. OpenAPI documents the field (no new
+    route; no transcript records this route).
+12. **The chain falls back.** `chunkChainBase` now tries the next older proven cached release
+    when the newest one's cached index is missing or mismatched.

@@ -429,7 +429,8 @@ async function loadBase(
  * whose record gives this variant a chunk index under the same gating class, with that index read
  * from the cache (`<variant>/chunks.<sha256>`, written by `--out`) and proven by the record's
  * `chunks` ref and payload. A record of another gating class is skipped (a gate change starts a
- * fresh chain); a missing or mismatched cached index costs reuse, never the publish.
+ * fresh chain); a missing or mismatched cached index falls back to the next older proven release,
+ * and with none left costs reuse, never the publish.
  */
 async function chunkChainBase(
   proven: readonly CachedRelease[],
@@ -451,9 +452,9 @@ async function chunkChainBase(
       stored = new Uint8Array(await readFile(file));
     } catch {
       warn(
-        `chunk chain ${label}: the cached index ${path.basename(file)} is missing; its chunks are packed fresh.`,
+        `chunk chain ${label}: the cached index ${path.basename(file)} is missing; an older cached release is tried, else the chunks are packed fresh.`,
       );
-      return null;
+      continue;
     }
     const parsed = await parseChunkIndex(stored, v.chunks, v.payload, {
       decode: (frame, size) => wasmDecode(frame, size),
@@ -461,9 +462,9 @@ async function chunkChainBase(
     });
     if (!parsed.ok) {
       warn(
-        `chunk chain ${label}: the cached index is not the record's (${parsed.error}); its chunks are packed fresh.`,
+        `chunk chain ${label}: the cached index is not the record's (${parsed.error}); an older cached release is tried, else the chunks are packed fresh.`,
       );
-      return null;
+      continue;
     }
     return { version: c.version, index: parsed.index };
   }
@@ -1188,6 +1189,9 @@ async function requestTicket(
           size: o.size,
           gated,
         })),
+        // P4-22: `present` then means THIS pack uploaded the object (what ingest requires of a
+        // chunk index and its bundles), not merely the product. A Worker before P4-22 ignores it.
+        deliverable: opts.deliverable,
       },
     },
   );

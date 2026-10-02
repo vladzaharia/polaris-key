@@ -421,6 +421,54 @@ describe("chunk indexes in pkey release publish (P4-22)", () => {
     expect(io.out()).toContain('"chunks"');
   }, 60_000);
 
+  it("a missing cached index falls back to the next older proven release", async () => {
+    const { cwd, server } = await setup({ deltaBases: 0 });
+    await publishPack(opts(cwd, server).o);
+    await publishPack(opts(cwd, server, { version: "1.0.1" }).o);
+    const dir = path.join(cwd, "cache/diceroll.core3d/1.0.1/default");
+    const name = (await readdir(dir)).find((n) => n.startsWith("chunks."))!;
+    rmSync(path.join(dir, name));
+    const before = server.puts().length;
+    const { io, o } = opts(cwd, server, { version: "1.0.2" });
+    const res = await publishPack(o);
+    expect(io.err()).toContain("chunk chain diceroll.core3d 1.0.1 (default)");
+    expect(res.variants[0]!.chunks).toMatchObject({
+      base: "1.0.0",
+      newBundles: 0,
+    });
+    expect(server.puts().length).toBe(before);
+  }, 60_000);
+
+  it("a second pack with the same payload uploads its own bundles: present means THIS pack's upload (a rename, or two packs sharing a variant)", async () => {
+    const twin = `    diceroll.core3d2:
+      kind: pack
+      type: godot.pck
+      handler:
+        prefixes: ["res://assets/kaykit/"]
+      requires:
+        engine: godot-4.7
+`;
+    const { cwd, server } = await setup({ extraPacks: twin, deltaBases: 0 });
+    const first = await publishPack(opts(cwd, server).o);
+    const i1 = await stagedIndex(server, payloadOf(first.recordJws!));
+    const { io, o } = opts(cwd, server, { deliverable: "diceroll.core3d2" });
+    const res = await publishPack(o);
+    expect(io.err()).toBe("");
+    // Every ticket of the second publish named its pack.
+    const bodies = server
+      .to("/release/publish/uploads")
+      .map((c) => c.body as { objects?: unknown; deliverable?: string })
+      .filter((b) => b.objects);
+    expect(bodies.at(-1)!.deliverable).toBe("diceroll.core3d2");
+    // The same bytes, uploaded and staged again for the second pack.
+    const i2 = await stagedIndex(server, payloadOf(res.recordJws!));
+    expect(i2.bundles).toEqual(i1.bundles);
+    expect(res.uploaded).toContain(`blobs/sha256/${i1.bundles[0]![0]}`);
+    expect(
+      server.packUploads.has(`diceroll.core3d2:${i1.bundles[0]![0]}`),
+    ).toBe(true);
+  }, 60_000);
+
   it("a cached index that is missing costs reuse, not the publish", async () => {
     const { cwd, server } = await setup();
     await publishPack(opts(cwd, server).o);
@@ -430,7 +478,7 @@ describe("chunk indexes in pkey release publish (P4-22)", () => {
     const { io, o } = opts(cwd, server, { version: "1.0.1" });
     const res = await publishPack(o);
     expect(io.err()).toContain(
-      `chunk chain diceroll.core3d 1.0.0 (default): the cached index ${name} is missing`,
+      `chunk chain diceroll.core3d 1.0.0 (default): the cached index ${name} is missing; an older cached release is tried`,
     );
     expect(res.variants[0]!.chunks!.base).toBeNull();
     expect(

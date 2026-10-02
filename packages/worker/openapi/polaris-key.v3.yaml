@@ -3941,6 +3941,13 @@ paths:
         record. A request with a non-empty `releases` may omit `objects`: the PREFLIGHT, which
         issues no ticket and answers only `seqs`. An `objects` array that is present stays
         non-empty. A pack named while Distribution is off is `distribution_disabled` (409).
+        P4-22: a pack's ticket names its pack in `deliverable`, and `present` then means that
+        PACK already uploaded the object (a `pack-upload` ref of that pack id), not merely the
+        product: a pack's stage round skips only those, and ingest requires the pack's own ref on
+        a chunk index and its bundles. An object another pack of the product holds is uploaded
+        and promoted again (the bytes are not rewritten) and earns this pack's ref. `deliverable`
+        must be a pack the product declares (`unknown_pack_deliverable`, 400); it never reveals
+        another product's objects.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3967,6 +3974,11 @@ paths:
                       sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
                       size: { type: integer, minimum: 0, maximum: 5363466240 }
                       gated: { type: boolean }
+                deliverable:
+                  description: "P4-22: the pack this ticket uploads for; `present` is then that pack's own uploads."
+                  type: string
+                  pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
+                  maxLength: 64
                 releases:
                   type: array
                   maxItems: 16

@@ -440,6 +440,8 @@ export interface PackServer {
   r2: Map<string, Uint8Array>;
   /** Stored object SHA-256s the product references (after stage rounds). */
   referenced: Set<string>;
+  /** `<pack>:<sha256>`: which pack uploaded each object (a pack ticket's `present`, P4-22). */
+  packUploads: Set<string>;
   /** The pack's delivery gate the preflight reports. */
   gate: string | null;
   /** Discovery's `release.packs`. */
@@ -472,6 +474,7 @@ export function packServer(): PackServer {
   const calls: Recorded[] = [];
   const r2 = new Map<string, Uint8Array>();
   const referenced = new Set<string>();
+  const packUploads = new Set<string>();
   const tickets = new Map<
     string,
     { sha256: string; size: number; key: string }[]
@@ -492,6 +495,7 @@ export function packServer(): PackServer {
     calls,
     r2,
     referenced,
+    packUploads,
     gate: null,
     packs: true,
     revocations: true,
@@ -575,7 +579,10 @@ export function packServer(): PackServer {
           gated: o.gated === true,
           key: `staging/${SLUG}/${id}/${o.sha256}`,
           target: `${o.gated ? "gated/" : ""}blobs/sha256/${o.sha256}`,
-          present: referenced.has(o.sha256),
+          present:
+            referenced.has(o.sha256) &&
+            (body.deliverable === undefined ||
+              packUploads.has(`${String(body.deliverable)}:${o.sha256}`)),
         }));
         if (server.dropFromTicket) {
           server.dropFromTicket = false;
@@ -615,7 +622,8 @@ export function packServer(): PackServer {
         tickets.delete(body.ticket as string);
         const staged: string[] = [];
         for (const o of objects) {
-          if (referenced.has(o.sha256)) continue;
+          const mine = `${String(body.deliverable)}:${o.sha256}`;
+          if (referenced.has(o.sha256) && packUploads.has(mine)) continue;
           const bytes = r2.get(o.key);
           if (!bytes || sha(bytes) !== o.sha256)
             return json(
@@ -627,6 +635,7 @@ export function packServer(): PackServer {
               400,
             );
           referenced.add(o.sha256);
+          packUploads.add(mine);
           staged.push(o.sha256);
         }
         return json({

@@ -2016,14 +2016,19 @@ blob store, and stores it. What the Worker newly does is parse CI-supplied bytes
   read, the stored object is read bounded by its recorded length, decoded by a fresh WASM
   instance and parsed by client-core's `parseChunkIndex` bound to the variant's payload, which
   compares the index length in exact arithmetic and reads every u64 as two saturated u32s, so no
-  length or offset in the index is trusted before it is bounded. The parsed records (48 bytes
-  each on the wire, at most 174,761) are held for that index only and dropped before the next;
+  length or offset in the index is trusted before it is bounded. The parsed records and bundle
+  entries (48 bytes each on the wire, at most 174,761 together: 174,760 records with one
+  bundle) are held for that index only and dropped before the next;
   chunk indexes count toward `MAX_INGEST_INDEX_BYTES`. The bundles the index's table names get the
   stricter possession check: the index and every bundle must be stored with the recorded length
   AND held by a `pack-upload` ref of THIS pack (`ref_id` = the pack id) under the pack's prefix.
   A ref held by another pack or by a release does not count, so a record may name an earlier
   release's bundle only when the same pack uploaded it, and a pack cannot borrow (and so serve,
-  and pay for) bytes another of the product's packs, or another gating class, uploaded. A gated
+  and pay for) bytes another of the product's packs, or another gating class, uploaded. A pack's
+  upload ticket and stage round use the same rule for `present` (the ticket names its pack in
+  `deliverable`): an object only another pack holds reads absent, is uploaded again and promoted
+  through the already-stored path, so a renamed pack or two packs sharing bytes still publish;
+  the answer reads only this product's refs, so it reveals nothing of another product. A gated
   and a free chain never share an object: the key is derived from the record's own gate. Bundles
   get no artifact rows; the collector keeps a bundle while any live release's chunk index names
   it (`packChunks`), and a live variant whose index cannot be read keeps every `pack-upload` ref

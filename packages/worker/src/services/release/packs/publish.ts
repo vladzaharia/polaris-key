@@ -15,7 +15,10 @@
  * Diceroll-sized pack is about 1,900 objects, so CI uploads them in rounds of at most
  * `MAX_TICKET_OBJECTS` (256): each round verifies its ticket's objects, claims the ticket,
  * promotes each and earns one `blob_refs` row per object, `(product, key, "pack-upload",
- * <packId>)`. A round of 256 objects costs about 1,550 subrequests. The record submit then checks
+ * <packId>)`. A round skips (`present`) only the objects THIS pack already uploaded (P4-22): one
+ * another pack of the product holds is promoted again from its staged copy, through `promote`'s
+ * already-stored path, so the chunk ingest's own-ref rule never strands a renamed or twin pack.
+ * A round of 256 objects costs about 1,550 subrequests. The record submit then checks
  * every object the record and its indexes name against those refs (`ingest.ts`).
  *
  * THE GATE (decision 35). Every object of a pack is staged under the pack's delivery gate:
@@ -32,7 +35,6 @@ import { ciActor } from "../../../core/ciScope.js";
 import {
   blobKey,
   promote,
-  referencedKeys,
   stagingKey,
   verifyStaged,
 } from "../../../core/blobs.js";
@@ -71,6 +73,7 @@ import {
   checkPackStore,
   packReleaseId,
   packReleaseStatements,
+  packUploadedKeys,
   PACK_RELEASE_RECORD_SQL,
   type PendingObject,
 } from "./ingest.js";
@@ -128,13 +131,16 @@ interface RoundObject {
 }
 
 /**
- * The objects of `ticket` this round must promote (the ones the product does not already
- * reference), after checking each one's `gated` flag against the gate. Reads only.
+ * The objects of `ticket` this round must promote (the ones `deliverable` has not uploaded
+ * itself: a `pack-upload` ref of this pack, P4-22), after checking each one's `gated` flag
+ * against the gate. A key another pack of the product holds is promoted again from its staged
+ * copy, through `promote`'s already-stored path, so this pack earns its own ref. Reads only.
  */
 async function roundObjects(
   ctx: ServiceContext,
   ticket: TicketRecord,
   gate: string | null,
+  deliverable: string,
 ): Promise<{ todo: RoundObject[]; present: string[] } | Response> {
   const gated = gate !== null;
   for (const o of ticket.objects)
@@ -149,7 +155,12 @@ async function roundObjects(
         { sha256: o.sha256 },
       );
   const targets = ticket.objects.map((o) => blobKey(o.sha256, { gated }));
-  const owned = await referencedKeys(ctx.db, ctx.product.slug, targets);
+  const owned = await packUploadedKeys(
+    ctx.db,
+    ctx.product.slug,
+    deliverable,
+    targets,
+  );
   const todo: RoundObject[] = [];
   const present: string[] = [];
   for (const [i, o] of ticket.objects.entries()) {
@@ -332,7 +343,7 @@ export async function handleStageRound(
       found.reason,
       found.message,
     );
-  const round = await roundObjects(ctx, found.ticket, g.gate);
+  const round = await roundObjects(ctx, found.ticket, g.gate, deliverable);
   if (round instanceof Response) return round;
   const verified = await verifyRound(bucket, round.todo);
   if (verified instanceof Response) return verified;
@@ -487,7 +498,7 @@ export async function handlePackSubmit(
         found.message,
       );
     ticket = found.ticket;
-    const round = await roundObjects(ctx, ticket, g.gate);
+    const round = await roundObjects(ctx, ticket, g.gate, record.deliverable);
     if (round instanceof Response) return round;
     const verified = await verifyRound(bucket, round.todo, {
       allowMissing: dryRun,

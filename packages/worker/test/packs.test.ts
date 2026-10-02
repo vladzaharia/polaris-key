@@ -1098,6 +1098,140 @@ describe("chunk indexes at ingest (P4-22, plans/P4-10.md §6)", () => {
     ]);
   });
 
+  /** Upload through a ticket that names `deliverable` (P4-22); returns the ticket's present keys. */
+  async function stageFor(deliverable: string, objects: Obj[]) {
+    const unique = [...new Map(objects.map((o) => [o.sha256, o])).values()];
+    const up = await post("uploads", {
+      deliverable,
+      objects: unique.map((o) => ({
+        sha256: o.sha256,
+        size: o.bytes.length,
+        gated: false,
+      })),
+    });
+    expect(up.status, await up.clone().text()).toBe(200);
+    const body = (await up.json()) as {
+      ticket: string;
+      prefix: string;
+      objects: { target: string; present: boolean }[];
+    };
+    for (const o of unique)
+      r2.seed(`${body.prefix}${o.sha256}`, o.bytes, { withSha256: true });
+    const res = await post("stage", { ticket: body.ticket, deliverable });
+    expect(res.status, await res.clone().text()).toBe(200);
+    return body.objects.filter((o) => o.present).map((o) => o.target);
+  }
+
+  /** The release document with core3d renamed (`drop`) or twinned by another pack id. */
+  function withPack(id: string, drop: boolean) {
+    const doc = structuredClone(RELEASE_DOC) as any;
+    doc.release.deliverables[id] = structuredClone(
+      doc.release.deliverables[CORE],
+    );
+    if (drop) delete doc.release.deliverables[CORE];
+    return doc;
+  }
+
+  /** core3d's chunked variants published under `pack`, from the same bytes. */
+  async function publishAs(pack: string, version: string, seq: number) {
+    const { variants, index, bundle } = chunked("shared-bytes");
+    const present = await stageFor(pack, [
+      ...variants.flatMap((v) => v.objects),
+      index,
+      bundle,
+    ]);
+    const res = await post("submit", {
+      record: await signRecord({
+        ...coreRecord(version, seq, variants),
+        deliverable: pack,
+      }),
+    });
+    return { res, present, index, bundle };
+  }
+
+  it("a renamed pack publishes the same bytes: its ticket reports them absent and its round earns its own refs", async () => {
+    const first = await publishAs(CORE, "1.0.0", 1);
+    expect(first.res.status, await first.res.clone().text()).toBe(200);
+    // The product renames core3d to core3e.
+    await syncDeliverables(withPack("djdl.core3e", true));
+    const second = await publishAs("djdl.core3e", "1.0.0", 1);
+    expect(second.present).toEqual([]);
+    expect(second.res.status, await second.res.clone().text()).toBe(200);
+    for (const o of [second.index, second.bundle])
+      expect(
+        await count(
+          "SELECT COUNT(*) AS n FROM blob_refs WHERE product = ? AND storage_key = ? AND ref_kind = 'pack-upload' AND ref_id = 'djdl.core3e'",
+          SLUG,
+          `blobs/sha256/${o.sha256}`,
+        ),
+      ).toBe(1);
+    // A third publish of that pack finds its own uploads present.
+    const again = await stageFor("djdl.core3e", [second.bundle]);
+    expect(again).toEqual([`blobs/sha256/${second.bundle.sha256}`]);
+  });
+
+  it("two packs sharing a variant's bytes both publish", async () => {
+    await syncDeliverables(withPack("djdl.core3twin", false));
+    const a = await publishAs(CORE, "1.0.0", 1);
+    expect(a.res.status, await a.res.clone().text()).toBe(200);
+    const b = await publishAs("djdl.core3twin", "1.0.0", 1);
+    expect(b.res.status, await b.res.clone().text()).toBe(200);
+    expect(b.present).toEqual([]);
+  });
+
+  it("a pack ticket never reveals another product's objects, and names only a declared pack", async () => {
+    const first = await publishAs(CORE, "1.0.0", 1);
+    expect(first.res.status).toBe(200);
+    const OTHER = "other";
+    await seedReleaseProduct(
+      db,
+      { release_keys_json: releaseKeysJson() },
+      OTHER,
+    );
+    const rel = parsed().release!;
+    await db.batch(
+      manifestDeliverableStatements(OTHER, rel.app, NOW, rel.packDeliverables),
+    );
+    const otherToken = (
+      await issueStaticCiToken(env, db, {
+        product: OTHER,
+        scopes: ["release:publish"],
+        expiresAt: NOW + 3600,
+        label: null,
+        createdBy: "u1",
+        now: NOW,
+      })
+    ).token;
+    const ask = (body: unknown) =>
+      call(env, db, noFetch, `${CONSOLE}/${OTHER}/release/publish/uploads`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${otherToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+    const objects = [first.index, first.bundle].map((o) => ({
+      sha256: o.sha256,
+      size: o.bytes.length,
+      gated: false,
+    }));
+    // The same pack id, declared by the other product: nothing it holds.
+    const res = await ask({ deliverable: CORE, objects });
+    expect(res.status, await res.clone().text()).toBe(200);
+    expect(
+      ((await res.json()) as { objects: { present: boolean }[] }).objects.map(
+        (o) => o.present,
+      ),
+    ).toEqual([false, false]);
+    // An undeclared pack id is refused, not answered.
+    const unknown = await ask({ deliverable: "djdl.nope", objects });
+    expect(unknown.status).toBe(400);
+    expect(((await unknown.json()) as { reason: string }).reason).toBe(
+      "unknown_pack_deliverable",
+    );
+  });
+
   it("a dry run lists an index neither stored nor staged, and a bundle not yet held, in unverified", async () => {
     const { variants, index, bundle } = chunked("chunks-dry");
     await stageOk(
