@@ -59,7 +59,8 @@ export const PHASE_INTERVAL_SECONDS = 365 * 86_400;
  * until the operator changes `bp` (a new feed). 1-14 % opens one group, 15-28 % two, and so on;
  * 100 % (or `complete`) drops the interval and the real date returns. A paused or halted rollout
  * never reaches this: the release is held and the previous one served. Critical updates are not
- * phased (Sparkle ignores the interval for them, and so does this feed).
+ * phased (Sparkle ignores the interval for them, and so does this feed); a release critical only
+ * below the floor (`criticalUpdate sparkle:version`) still is, for the installs above it.
  */
 export function phasedSchedule(
   bp: number,
@@ -140,7 +141,9 @@ export function sparkleItem(
   const e = s.entry;
   const critical = criticalFor(e, input);
   const phased =
-    e.rollout && !critical
+    // A release critical to EVERYONE is never phased (Sparkle bypasses phasing for it). One
+    // critical only below the floor still phases for every install at or above it.
+    e.rollout && !(critical && critical.version === undefined)
       ? phasedSchedule(e.rollout.bp, e.rollout.startedAt)
       : null;
   const minSys =
@@ -229,7 +232,13 @@ export function renderWinSparkleAppcast(input: {
     byRelease.set(s.entry.releaseId, list);
   }
   const items: AppcastItemInput[] = [];
-  for (const builds of byRelease.values()) {
+  // x64 first: a WinSparkle older than 0.8.3 reads only the first enclosure.
+  const rank = (a: string): number =>
+    a === "x86_64" ? 0 : a === "arm64" ? 1 : 2;
+  for (const unordered of byRelease.values()) {
+    const builds = [...unordered].sort(
+      (a, b) => rank(a.entry.arch) - rank(b.entry.arch),
+    );
     const [head, ...rest] = builds as [WinSparkleSource, ...WinSparkleSource[]];
     const e = head.entry;
     const minSys = e.minOs ?? undefined;

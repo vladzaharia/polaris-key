@@ -5,6 +5,8 @@ packages/docs/src/content/docs/reference/
 # P2b-05's storefront feed goldens: byte-compared against the rendered feed bodies.
 packages/worker/test/fixtures/feeds/
 packages/cli/test/fixtures/feeds/
+# P3-09's app-updater feed goldens: byte-compared against the rendered feed bodies.
+packages/worker/test/fixtures/updater-feeds/
 
 # Build caches.
 packages/docs/.astro/

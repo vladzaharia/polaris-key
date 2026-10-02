@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2021" Version="1.1.0.0" Uri="https://key.example.test/djdl/update/stable/app.appinstaller">
+  <MainBundle Name="Acme.Djdl" Publisher="CN=Acme Corporation, O=Acme Corporation, C=US" Version="1.1.0.0" Uri="https://dl.example.test/djdl/distribution/files/app%401.1.0/djdl-1.1.0.msixbundle" />
+  <UpdateSettings>
+    <OnLaunch HoursBetweenUpdateChecks="12" ShowPrompt="true" />
+    <AutomaticBackgroundTask />
+  </UpdateSettings>
+</AppInstaller>

@@ -727,7 +727,9 @@ function serveZsync(
 /** Is this a version check that asks for the extended answer? */
 export function isExtendedVersionRequest(req: Request): boolean {
   const q = new URL(req.url).searchParams;
-  return q.has("platform") || q.has("arch") || q.has("outlet");
+  return (
+    q.has("platform") || q.has("arch") || q.has("outlet") || q.has("build")
+  );
 }
 
 export function serveExtendedVersion(
@@ -738,6 +740,9 @@ export function serveExtendedVersion(
   const q = new URL(ctx.req.url).searchParams;
   const platform = q.get("platform");
   const archParam = q.get("arch");
+  const buildParam = q.get("build");
+  if (buildParam !== null && !BUILD_ID_RE.test(buildParam))
+    return Promise.resolve(null);
   if (!platform || !(RELEASE_PLATFORMS as readonly string[]).includes(platform))
     return Promise.resolve(null);
   const arch =
@@ -753,6 +758,7 @@ export function serveExtendedVersion(
         ["channel", channel],
         ["platform", platform],
         ["arch", arch],
+        ["build", buildParam],
       ],
       contentType: CONTENT_TYPES.json,
       publicCache: PUBLIC_VERSION_CACHE,
@@ -764,10 +770,16 @@ export function serveExtendedVersion(
           outletId: r.outletParam,
           platform,
           ...(arch ? { arches: [arch, "universal", "any"] } : {}),
+          ...(buildParam ? { buildIds: [buildParam] } : {}),
           liveness: "availability",
           limit: 1,
+          allBuilds: true,
         });
-        const head = sel?.entries[0];
+        // One build of the newest release: the exact arch over a universal one, then by id.
+        const head = sel
+          ? (sel.entries.find((e) => arch !== null && e.arch === arch) ??
+            sel.entries[0])
+          : undefined;
         if (!sel || !head) return null;
         const repo =
           r.cfg.gh_owner && r.cfg.gh_repo
