@@ -1,4 +1,4 @@
-# @pkey-feature packs.state packs.handlers packs.record
+# @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content
 """``client.update.packs`` end to end against a fake byte server (P4-07 acceptance; a port of
 ``@polaris-key/node``'s ``test/packs.test.ts``): a ``files.tree`` pack installed from its pinned
 record into the platform data directory, updated by the file strategy, resumed after a dropped
@@ -9,9 +9,12 @@ unreadable ``state.json``, an unreadable payload, and a listing that never answe
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import sys
+import time
 from typing import Any, Dict, Iterator, List, Optional
 
 import httpx
@@ -24,6 +27,9 @@ from pack_fixtures import (
     RELEASE_KEYS,
     TreePack,
     marker_for,
+    revocation_for,
+    sign_feed_doc,
+    sign_release_doc,
     stamp_for,
     tree_pack,
 )
@@ -64,6 +70,9 @@ class FakeServer:
         self.drop_on: Optional[int] = None
         self.drop_at = 0
         self.blob_status: Optional[int] = None
+        #: The signed channel feed ``update/{channel}/feed.jws`` answers, and extra records.
+        self.feed: Optional[str] = None
+        self.records: Dict[str, str] = {}
 
     def discovery(self) -> Dict[str, Any]:
         b = BASE_URL
@@ -80,7 +89,7 @@ class FakeServer:
                     "enabled": True,
                     "endpoints": {"blobs": f"{b}/{PRODUCT}/distribution/blobs/sha256/{{sha256}}"},
                 },
-                "update": {"enabled": True, "endpoints": {}},
+                "update": {"enabled": True, "endpoints": {"feed": f"{b}/{PRODUCT}/update/{{channel}}/feed.jws"}},
                 "identity": {"enabled": False},
             },
         }
@@ -97,7 +106,15 @@ class FakeServer:
         )
         if path == f"/{PRODUCT}/.well-known/polaris.json":
             return httpx.Response(200, json=self.discovery())
+        if re.fullmatch(r"/djdl/update/[a-z0-9-]+/feed\.jws", path):
+            if self.feed is None:
+                return httpx.Response(404)
+            return httpx.Response(200, content=self.feed.encode(), headers={"content-type": "application/jose"})
         m = re.fullmatch(r"/djdl/release/records/([0-9a-f]{64})", path)
+        if m and m.group(1) in self.records:
+            return httpx.Response(
+                200, content=self.records[m.group(1)].encode(), headers={"content-type": "application/jose"}
+            )
         if m:
             p = next((x for x in self.packs if x.record_sha256 == m.group(1)), None)
             if p is None:
@@ -422,3 +439,99 @@ def test_list_never_answers_a_partial_listing(srv: FakeServer, tmp_path: Any) ->
     finally:
         os.chmod(pack_dir, 0o755)
     assert tree_on_disk(dir_a, a.files)
+
+
+# ── client.update.decide() with packs (plans/P4-13.md §2.5, §2.6) ──────────────────────────
+
+
+def test_decide_learns_a_revocation_blocks_required_content_and_refuses_the_release(
+    srv: FakeServer, tmp_path: Any
+) -> None:
+    v1 = tree_pack("djdl.l10n", "1.0.0", 1, V1_FILES)
+    srv.packs = [v1]
+    app_jws = sign_release_doc(
+        {
+            "schemaVersion": 1,
+            "aud": PRODUCT,
+            "deliverable": "app",
+            "kind": "app",
+            "version": "1.0.0",
+            "seq": 10,
+            "issuedAt": 1_759_000_000,
+            "builds": [
+                {
+                    "id": "macos-dmg",
+                    "platform": "macos",
+                    "arch": "universal",
+                    "format": "dmg",
+                    "artifacts": [{"name": "a.dmg", "role": "payload", "sha256": "a" * 64, "size": 1}],
+                }
+            ],
+        }
+    )
+    app_sha = hashlib.sha256(app_jws.encode()).hexdigest()
+    rev = revocation_for(v1)
+    srv.records = {app_sha: app_jws, rev["record"]: rev["jws"]}
+    now = int(time.time())
+    platform = {"darwin": "macos", "win32": "windows"}.get(sys.platform, "linux")
+    srv.feed = sign_feed_doc(
+        {
+            "schemaVersion": 1,
+            "iss": "key.plrs.im",
+            "aud": PRODUCT,
+            "channel": "stable",
+            "selector": {},
+            "seq": 1,
+            "issuedAt": now - 10,
+            "expiresAt": now + 800,
+            "app": {
+                "deliverable": "app",
+                "versionScheme": "semver",
+                "targets": [
+                    {
+                        "platform": platform,
+                        "release": {"sha256": app_sha, "seq": 10, "version": "1.0.0"},
+                        "floor": None,
+                        "critical": False,
+                        "outlets": {
+                            "direct": {"kind": "direct", "live": {"version": "1.0.0", "seq": 10}, "halted": False}
+                        },
+                    }
+                ],
+            },
+            "revocations": [rev["entry"]],
+        }
+    )
+    c = client(srv, tmp_path, [v1])
+    c.update.packs.ensure(["djdl.l10n"])
+    check = c.update.decide()
+    assert check.decision.action == "blocked"
+    assert check.decision.reason == "revoked-content"
+    # Persisted beside the pack state, the flag first; the release no longer runs.
+    root = os.path.join(str(tmp_path / "data"), PRODUCT, "packs")
+    with open(os.path.join(root, "revocations.json"), encoding="utf-8") as f:
+        assert list(json.load(f)["revoked"]) == [v1.record_sha256]
+    with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
+        assert json.load(f)["revocationsStored"] is True
+    assert "djdl.l10n" not in c.update.packs.state().running
+    with pytest.raises(PackError) as ex:
+        c.update.packs.ensure(["djdl.l10n"])
+    assert ex.value.code == "pack-revoked"
+    c.close()
+
+
+def test_decide_without_revocations_writes_nothing(srv: FakeServer, tmp_path: Any) -> None:
+    v1 = tree_pack("djdl.l10n", "1.0.0", 1, V1_FILES)
+    srv.packs = [v1]
+    c = client(srv, tmp_path, [v1])
+    c.update.packs.ensure(["djdl.l10n"])
+    content = c.update.packs.content_input()
+    assert content is not None
+    assert content.holds == []
+    assert content.active["djdl.l10n"].sha256 == v1.record_sha256
+    assert content.revoked == {} and list(content.relearn) == []
+    root = os.path.join(str(tmp_path / "data"), PRODUCT, "packs")
+    assert not os.path.exists(os.path.join(root, "revocations.json"))
+    with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
+        assert "revocationsStored" not in json.load(f)
+    c.close()

@@ -13,10 +13,11 @@ field is an integer claim (``_wire_int``: a plain integer token from the field's
 
 from __future__ import annotations
 
+import dataclasses
 import re
 import time
-from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from ..constants_generated import CHANNEL_ALIASES, CHANNEL_NAME_PATTERN
 from .jws import TrustSet, verify_jws
@@ -37,6 +38,14 @@ from .outlets import (
     OUTLET_KINDS,
     OUTLET_UNKNOWN,
 )
+from .pack_claims import (
+    ENGINE_PATTERN,
+    VARIANT_AXIS_PATTERN,
+    VARIANT_VALUE_PATTERN,
+    VERSION_PATTERN,
+    is_pack_id,
+    variant_key,
+)
 from .patterns import _full_match
 from .version import VERSION_SCHEMES, compare_versions, parse_version
 
@@ -55,6 +64,9 @@ __all__ = [
     "reload_feeds",
     "commit_feed",
     "bound_channels",
+    "FeedContent",
+    "feed_content",
+    "with_feed_content",
 ]
 
 #: ``expiresAt = issuedAt + FEED_TTL_SECONDS`` on the Worker.
@@ -280,6 +292,8 @@ class VerifyFeedResult:
     feed: Optional[ChannelFeedDoc] = None
     reason: Optional[str] = None
     channel: Optional[str] = None
+    #: On ``ok``: ``feed_content`` over the payload (plans/P4-13.md §2.5 step 10).
+    content: Optional["FeedContent"] = None
 
 
 def _refuse(reason: str, channel: Optional[str] = None) -> VerifyFeedResult:
@@ -335,7 +349,7 @@ def verify_feed(
             return _refuse("rollback", claim)
         if feed.seq == floor.seq and feed.issuedAt <= floor.issuedAt:
             return _refuse("not-newer", claim)
-    return VerifyFeedResult(ok=True, feed=feed)
+    return VerifyFeedResult(ok=True, feed=feed, content=feed_content(v.payload))
 
 
 def feed_floor(feed: Any) -> FeedFloor:
@@ -350,6 +364,8 @@ class CommittedFeed:
     #: The compact JWS, verbatim, as the cache holds it.
     jws: str
     feed: ChannelFeedDoc
+    #: ``feed_content`` over it (plans/P4-13.md §2.5).
+    content: Optional["FeedContent"] = None
 
 
 @dataclass(frozen=True)
@@ -389,7 +405,7 @@ def reload_feeds(
         )
         if not r.ok or r.feed is None or r.feed.channel != k:
             continue
-        out.feeds[k] = CommittedFeed(jws=jws, feed=r.feed)
+        out.feeds[k] = CommittedFeed(jws=jws, feed=r.feed, content=r.content)
         out.floors[k] = feed_floor(r.feed)
     return out
 
@@ -413,3 +429,279 @@ def bound_channels(requested: str) -> List[str]:
     decision channel is ever chosen through it."""
     alias = _alias_of(requested)
     return [requested] if alias is None or alias == requested else [requested, alias]
+
+
+# ── P4-13: the feed's content members (plans/P4-13.md §2.2, WIRE-CONTRACT-V4 §2.4.1) ─────────
+#
+# Parsed BESIDE the claims, never as a claim: an unusable member is ``None`` and never refuses
+# the feed, so a malformed content member cannot stop app updates. Each member is independent.
+# Unknown members are ignored at every level, and the parsed value carries the known ones only.
+# Python needs no non-wire pointer set: ``_wire_int`` is the token rule at every pointer.
+
+
+@dataclass(frozen=True)
+class FeedContent:
+    """The feed's three content members, each the parsed value (plain JSON) or ``None`` when
+    absent or unusable."""
+
+    packSets: Optional[Dict[str, Any]] = None
+    packFloors: Optional[List[Dict[str, Any]]] = None
+    revocations: Optional[List[Dict[str, Any]]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "packSets": self.packSets,
+            "packFloors": self.packFloors,
+            "revocations": self.revocations,
+        }
+
+
+class _Unusable(Exception):
+    """This member is unusable; caught per member."""
+
+
+def _no() -> Any:
+    raise _Unusable()
+
+
+def _int(x: Any, minimum: int) -> int:
+    v = _wire_int(x, minimum)
+    return _no() if v is None else v
+
+
+def _parse_variant(v: Any) -> Dict[str, str]:
+    if not isinstance(v, dict) or len(v) > 4:
+        _no()
+    out: Dict[str, str] = {}
+    for name, value in v.items():
+        if _full_match(VARIANT_AXIS_PATTERN, name) is None:
+            _no()
+        if _full_match(VARIANT_VALUE_PATTERN, value) is None:
+            _no()
+        out[name] = value
+    return out
+
+
+def _parse_pack_sets(v: Any, selector: Any) -> Dict[str, Any]:
+    if not isinstance(v, dict):
+        _no()
+    if "releases" not in v or "sets" not in v or "rows" not in v:
+        _no()
+
+    if not isinstance(v["releases"], dict):
+        _no()
+    releases: Dict[str, Dict[str, Any]] = {}
+    for h, rel in v["releases"].items():
+        if _full_match(_SHA256_RE, h) is None or not isinstance(rel, dict):
+            _no()
+        if not is_pack_id(rel.get("pack")):
+            _no()
+        if _full_match(VERSION_PATTERN, rel.get("version")) is None:
+            _no()
+        seq = _int(rel.get("seq"), 1)
+        releases[h] = {"pack": rel["pack"], "version": rel["version"], "seq": seq}
+
+    if not isinstance(v["sets"], dict):
+        _no()
+    sets: Dict[str, List[str]] = {}
+    for set_id, members in v["sets"].items():
+        if _full_match(_SHA256_RE, set_id) is None or not isinstance(members, list):
+            _no()
+        packs = set()
+        listed: List[str] = []
+        for m in members:
+            if not isinstance(m, str) or m not in releases:
+                _no()
+            pack = releases[m]["pack"]
+            if pack in packs:
+                _no()
+            packs.add(pack)
+            listed.append(m)
+        sets[set_id] = listed
+
+    if not isinstance(v["rows"], list):
+        _no()
+    platform = selector.get("platform") if isinstance(selector, dict) and "platform" in selector else None
+    has_platform = isinstance(selector, dict) and "platform" in selector
+    rows: List[Dict[str, Any]] = []
+    keys = set()
+    for row in v["rows"]:
+        if not isinstance(row, dict):
+            _no()
+        content_api = _int(row.get("contentApi"), 1)
+        if _full_match(FEED_PLATFORM_PATTERN, row.get("platform")) is None:
+            _no()
+        if has_platform and row["platform"] != platform:
+            _no()
+        engine = row.get("engine")
+        if not isinstance(engine, str) or (engine != "" and _full_match(ENGINE_PATTERN, engine) is None):
+            _no()
+        variant = _parse_variant(row.get("variant"))
+        if not isinstance(row.get("set"), str) or row["set"] not in sets:
+            _no()
+        key = (content_api, row["platform"], engine, variant_key(variant))
+        if key in keys:
+            _no()
+        keys.add(key)
+        rows.append(
+            {
+                "contentApi": content_api,
+                "platform": row["platform"],
+                "engine": engine,
+                "variant": variant,
+                "set": row["set"],
+            }
+        )
+
+    out: Dict[str, Any] = {"releases": releases, "sets": sets, "rows": rows}
+    if "outlets" in v:
+        if not isinstance(v["outlets"], dict):
+            _no()
+        outlets: Dict[str, Dict[str, Any]] = {}
+        for outlet_id, entry in v["outlets"].items():
+            if _full_match(OUTLET_ID_PATTERN, outlet_id) is None or not isinstance(entry, dict):
+                _no()
+            parsed: Dict[str, Any] = {}
+            if "pinned" in entry:
+                pinned = entry["pinned"]
+                if not isinstance(pinned, list):
+                    _no()
+                seen = set()
+                for p in pinned:
+                    if not is_pack_id(p) or p in seen:
+                        _no()
+                    seen.add(p)
+                parsed["pinned"] = list(pinned)
+            if "gates" in entry:
+                if not isinstance(entry["gates"], dict):
+                    _no()
+                gates: Dict[str, Dict[str, Any]] = {}
+                for h, gate in entry["gates"].items():
+                    if h not in releases or not isinstance(gate, dict):
+                        _no()
+                    if not isinstance(gate.get("halted"), bool):
+                        _no()
+                    pg: Dict[str, Any] = {"halted": gate["halted"]}
+                    if "rollout" in gate:
+                        ro = gate["rollout"]
+                        if not isinstance(ro, dict):
+                            _no()
+                        bp = _int(ro.get("bp"), 0)
+                        if bp > ROLLOUT_BUCKETS:
+                            _no()
+                        if _full_match(_SALT_RE, ro.get("salt")) is None:
+                            _no()
+                        pg["rollout"] = {"bp": bp, "salt": ro["salt"]}
+                    if "fallback" not in gate:
+                        _no()
+                    fallback = gate["fallback"]
+                    if fallback is not None and (not isinstance(fallback, str) or fallback not in releases):
+                        _no()
+                    pg["fallback"] = fallback
+                    gates[h] = pg
+                parsed["gates"] = gates
+            outlets[outlet_id] = parsed
+        out["outlets"] = outlets
+    return out
+
+
+def _parse_pack_floors(v: Any) -> List[Dict[str, Any]]:
+    if not isinstance(v, list):
+        _no()
+    out: List[Dict[str, Any]] = []
+    keys = set()
+    for f in v:
+        if not isinstance(f, dict) or not is_pack_id(f.get("pack")):
+            _no()
+        content_api = _int(f.get("contentApi"), 1)
+        if _full_match(VERSION_PATTERN, f.get("minVersion")) is None:
+            _no()
+        if not isinstance(f.get("versionScheme"), str):
+            _no()
+        key = (f["pack"], content_api)
+        if key in keys:
+            _no()
+        keys.add(key)
+        # A forward scheme makes that entry alone ignored.
+        if f["versionScheme"] not in VERSION_SCHEMES:
+            continue
+        out.append(
+            {
+                "pack": f["pack"],
+                "contentApi": content_api,
+                "minVersion": f["minVersion"],
+                "versionScheme": f["versionScheme"],
+            }
+        )
+    return out
+
+
+def _parse_revocations(v: Any) -> List[Dict[str, Any]]:
+    if not isinstance(v, list):
+        _no()
+    out: List[Dict[str, Any]] = []
+    records = set()
+    for e in v:
+        if not isinstance(e, dict):
+            _no()
+        if _full_match(_SHA256_RE, e.get("record")) is None:
+            _no()
+        if not is_pack_id(e.get("pack")):
+            _no()
+        if _full_match(_SHA256_RE, e.get("target")) is None:
+            _no()
+        if _full_match(VERSION_PATTERN, e.get("version")) is None:
+            _no()
+        seq = _int(e.get("seq"), 1)
+        if e["record"] in records:
+            _no()
+        records.add(e["record"])
+        out.append(
+            {
+                "record": e["record"],
+                "pack": e["pack"],
+                "target": e["target"],
+                "version": e["version"],
+                "seq": seq,
+            }
+        )
+    return out
+
+
+def _member(doc: Mapping[str, Any], key: str, parse: Callable[[Any], Any]) -> Any:
+    if key not in doc:
+        return None
+    try:
+        return parse(doc[key])
+    except Exception:
+        return None
+
+
+def feed_content(doc: Any) -> FeedContent:
+    """The feed's content members (plans/P4-13.md §2.2): ``packSets``, ``packFloors`` and
+    ``revocations``, each parsed, or ``None`` when absent or unusable. ``doc`` is the verified
+    payload (``ChannelFeedDoc.raw``). An unusable member never refuses the feed and never affects
+    the other two. A ``packFloors`` entry whose ``versionScheme`` is not in
+    ``FEED_VERSION_SCHEMES`` is dropped alone. Never raises."""
+    if isinstance(doc, ChannelFeedDoc):
+        doc = doc.raw
+    if not isinstance(doc, dict):
+        return FeedContent()
+    return FeedContent(
+        packSets=_member(doc, "packSets", lambda v: _parse_pack_sets(v, doc.get("selector"))),
+        packFloors=_member(doc, "packFloors", _parse_pack_floors),
+        revocations=_member(doc, "revocations", _parse_revocations),
+    )
+
+
+def with_feed_content(feed: ChannelFeedDoc, content: FeedContent) -> ChannelFeedDoc:
+    """The feed as the decision reads it: ``feed`` with each content member of its payload
+    replaced by ``content``'s parsed value, or removed when that is ``None``."""
+    raw = {k: v for k, v in feed.raw.items() if k not in ("packSets", "packFloors", "revocations")}
+    if content.packSets is not None:
+        raw["packSets"] = content.packSets
+    if content.packFloors is not None:
+        raw["packFloors"] = content.packFloors
+    if content.revocations is not None:
+        raw["revocations"] = content.revocations
+    return dataclasses.replace(feed, raw=raw)

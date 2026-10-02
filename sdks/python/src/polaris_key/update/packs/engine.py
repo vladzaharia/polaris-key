@@ -34,11 +34,25 @@ from ...constants_generated import MAX_FILES_INDEX_BYTES, ErrorCode
 from ...core.errors import PolarisError
 from ...core.jws import TrustSet
 from ...core.pack_claims import variant_key
-from ...core.release_record import ReleaseRecordPin, verify_release_record
+from ...core.release_record import (
+    ReleaseRecordPin,
+    VerifiedRevocation,
+    newer_revocation,
+    verify_release_record,
+)
 from .apply import ApplyPorts, ApplyResult, apply_delta, apply_file, apply_full
 from .files import parse_files_index
 from .marker import match_embedded, verify_marker
 from .plan import plan
+from .revocations import (
+    clear_relearn,
+    empty_revocations,
+    is_empty_revocations,
+    parse_revocations,
+    reload_revocations,
+    serialize_revocations,
+    store_revocation,
+)
 from .ports import (
     READ_CHUNK,
     ByteSink,
@@ -78,6 +92,7 @@ __all__ = [
     "PackError",
     "PacksSnapshot",
     "PackEstimate",
+    "RevocationsSnapshot",
     "PackEngine",
 ]
 
@@ -244,6 +259,21 @@ class PackEstimate:
     refused: List[Dict[str, str]] = field(default_factory=list)
 
 
+@dataclass
+class RevocationsSnapshot:
+    """What ``revocations()`` reports (plans/P4-13.md §2.5)."""
+
+    #: Revoked target hash → the stored winner (persisted, or this process's only).
+    revoked: Dict[str, Dict[str, Any]]
+    #: The verified revocation of every revoked target, replacement included.
+    verified: Dict[str, VerifiedRevocation]
+    #: Packs whose embedded baselines are refused until a fresh feed re-teaches them.
+    relearn: List[str]
+    #: ``torn`` (quarantined and replaced), ``unreadable`` (nothing is written this process), or
+    #: ``None``.
+    issue: Optional[str]
+
+
 #: SHA-256 of the empty string: an empty object is legitimately zero bytes long.
 _EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 _RANGE_RE = re.compile(r"bytes (\d+)-\d+/\d+")
@@ -318,6 +348,7 @@ class PackEngine:
         handlers: Sequence[PackHandler] = (),
         checkpoint_bytes: int = 8 << 20,
         one_shot_budget: Optional[int] = None,
+        revocations: Any = None,
     ) -> None:
         self._product = product
         self._release_keys = dict(release_keys)
@@ -332,6 +363,10 @@ class PackEngine:
         self._transports = list(transports) if transports is not None else ["pkey-cdn"]
         self._storage = storage
         self._state = state
+        #: The sibling ``revocations.json`` (plans/P4-13.md §2.5): the same store seam with a
+        #: second key, its own atomic replace and quarantine. ``None``: revocations live in
+        #: memory for the life of the process only. Never created empty.
+        self._revocations = revocations
         self._fetch_record = fetch_record
         self._fetch_object = fetch_object
         self._entitlements = entitlements
@@ -360,6 +395,14 @@ class PackEngine:
         self._doc: Optional[Dict[str, Any]] = None
         #: Plan ids ``estimate`` staged an index under, reused by the next ``ensure``.
         self._preflight_plans: Dict[str, Tuple[str, str]] = {}
+        # plans/P4-13.md §2.5: the sibling document as loaded and updated; every revocation
+        # verified in this process (loaded or learned), by target; the JWS of each learned in
+        # this process; the document's issue; whether the file exists (never created empty).
+        self._rev_doc: Dict[str, Any] = empty_revocations()
+        self._rev_verified: Dict[str, VerifiedRevocation] = {}
+        self._rev_jws: Dict[str, str] = {}
+        self._rev_issue: Optional[str] = None
+        self._rev_file = False
         self._lock = threading.RLock()
 
     # ── Public surface ─────────────────────────────────────────────────────────────────────
@@ -472,10 +515,15 @@ class PackEngine:
                     if any(i is d for d in deferred):
                         self._deferred[slot][pid] = i
             self._doc = doc
+            # plans/P4-13.md §2.5: the sibling revocations, before anything mounts.
+            self._load_revocations(unreadable)
+            # This boot's set: every active install, else the embedded baseline. A revoked
+            # release never activates or mounts (`pack-revoked`).
             for i in list(doc["active"].values()):
-                self._activate(i)
+                if not self.is_revoked(i["recordSha256"]):
+                    self._activate(i)
             for pid, emb in self._embedded.items():
-                if pid not in self._running:
+                if pid not in self._running and not self._embedded_refused(emb):
                     self._running[pid] = emb
             if not unreadable:
                 self._persist()
@@ -531,6 +579,9 @@ class PackEngine:
             doc = self._require_loaded()
             before = doc["active"].get(pack_id)
             prev = doc["previous"].get(pack_id)
+            # plans/P4-13.md §2.5: never back to a revoked release.
+            if prev is not None and self.is_revoked(prev["recordSha256"]):
+                return False
             if prev is not None and pack_id in self._unverified_previous:
                 # Carried over from an entry whose check could not run: verify it now.
                 try:
@@ -563,16 +614,33 @@ class PackEngine:
             self._refuse_unreadable()
             return [self._ensure_one(pid) for pid in pack_ids]
 
+    def ensure_releases(self, targets: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+        """Install exact releases (a ``packs`` decision's ``install``, plans/P4-13.md §2.6):
+        each target is ``{"pack", "release": {"sha256", "seq", "version"}}`` (or a
+        ``PackTarget``), verified against the pinned release keys with that pin instead of the
+        stamp's. Raises ``pack-revoked`` for a release a verified revocation names."""
+        with self._lock:
+            self._refuse_unreadable()
+            return [self._ensure_one(*_target(t)) for t in targets]
+
     def estimate(self, pack_ids: Sequence[str]) -> PackEstimate:
         """Preflight each pack (record, type, entitlement, variant, index, plan) without
         downloading the payload, and sum the chosen strategies' bytes: the size a consent dialog
         discloses. The index each tree stages is reused by ``ensure``."""
+        return self._estimate_all([(pid, None) for pid in pack_ids])
+
+    def estimate_releases(self, targets: Sequence[Mapping[str, Any]]) -> PackEstimate:
+        """``estimate`` for exact releases (a ``packs`` decision's ``install``, plans/P4-13.md
+        §2.6)."""
+        return self._estimate_all([_target(t) for t in targets])
+
+    def _estimate_all(self, items: Sequence[Tuple[str, Optional[Dict[str, Any]]]]) -> PackEstimate:
         with self._lock:
             self._refuse_unreadable()
             out = PackEstimate()
-            for pid in pack_ids:
+            for pid, release in items:
                 try:
-                    pre = self._preflight(pid)
+                    pre = self._preflight(pid, release)
                     if not isinstance(pre, _Plan):
                         continue
                     if pre.plan["strategy"] == "noop":
@@ -602,7 +670,199 @@ class PackEngine:
             self._state_issue = None
             self._gc_hold = False
             self._hold_snapshot = None
+            # plans/P4-13.md §2.5: `relearn` is cleared wholesale and a quarantined
+            # `revocations.json` released; revocations are re-learned from the next feed.
+            rs = self._revocations
+            if rs is not None and self._rev_issue != "unreadable":
+                clear_rev = getattr(rs, "clear_quarantine", None)
+                if callable(clear_rev):
+                    clear_rev()
+                if self._rev_doc["relearn"]:
+                    self._rev_doc = {**self._rev_doc, "relearn": []}
+                    if self._rev_file:
+                        rs.replace(serialize_revocations(self._rev_doc))
+                if self._rev_issue == "torn":
+                    self._rev_issue = None
             self._collect()
+
+    # ── Revocations (plans/P4-13.md §2.5) ──────────────────────────────────────────────────
+
+    def revocations(self) -> RevocationsSnapshot:
+        """The stored and this process's verified revocations."""
+        with self._lock:
+            revoked: Dict[str, Dict[str, Any]] = dict(self._rev_doc["revoked"])
+            for t, r in self._rev_verified.items():
+                if t not in revoked:
+                    revoked[t] = {
+                        "jws": self._rev_jws.get(t, ""),
+                        "pack": r.pack,
+                        "version": r.version,
+                        "seq": r.seq,
+                        "record": r.record,
+                        "issuedAt": r.issuedAt,
+                    }
+            return RevocationsSnapshot(
+                revoked=revoked,
+                verified=dict(self._rev_verified),
+                relearn=list(self._rev_doc["relearn"]),
+                issue=self._rev_issue,
+            )
+
+    def record_revocations(
+        self, learned: Sequence[Any], relearn_cleared: Sequence[str] = ()
+    ) -> None:
+        """Keep revocations a fresh check verified (plans/P4-13.md §2.5 step 11): each
+        ``learned`` entry has ``revocation`` and ``jws`` (``LearnedRevocation``) and is stored
+        when its target is new, or when ``newer_revocation`` ranks it above the stored one.
+        ``relearn_cleared`` names the packs a fresh, network-verified feed with a usable
+        ``revocations`` member re-taught. A revoked install stops running at once (a ``hot``
+        handler is deactivated; a ``restart`` pack is not mounted at the next boot). Writes
+        ``state.json``'s ``revocationsStored`` before the sibling file the first time; writes
+        nothing while either document is unreadable (the revocations still apply for the life
+        of the process)."""
+        with self._lock:
+            self._require_loaded()
+            nxt = self._rev_doc
+            changed = False
+            for item in learned:
+                revocation = item.revocation if hasattr(item, "revocation") else item["revocation"]
+                jws = item.jws if hasattr(item, "jws") else item["jws"]
+                t = revocation.target
+                prev = self._rev_verified.get(t)
+                if prev is None or newer_revocation(revocation, prev) is revocation:
+                    self._rev_verified[t] = revocation
+                    self._rev_jws[t] = jws
+                nxt, c = store_revocation(
+                    nxt, revocation, jws, lambda target, t=t, prev=prev: prev if target == t else None
+                )
+                changed = changed or c
+            nxt, c = clear_relearn(nxt, list(relearn_cleared))
+            changed = changed or c
+            # The cap may have dropped a target: it is forgotten here too.
+            for t in list(self._rev_verified):
+                if t not in nxt["revoked"] and t in self._rev_doc["revoked"]:
+                    del self._rev_verified[t]
+            self._rev_doc = nxt
+            if changed:
+                self._persist_revocations()
+            self._unmount_revoked()
+
+    def is_revoked(self, record_sha256: str) -> bool:
+        """Whether a release is revoked (stored, or verified in this process)."""
+        return record_sha256 in self._rev_doc["revoked"] or record_sha256 in self._rev_verified
+
+    def _embedded_refused(self, e: Mapping[str, Any]) -> bool:
+        """The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in
+        ``relearn``; with an unreadable ``revocations.json`` and ``revocationsStored`` set,
+        every pack the stamp pins or the host embeds. These apply at every boot and every
+        mount, online or offline, until a fresh feed clears ``relearn`` (or
+        ``recover_state()``); online, the pack is fetched instead. A product with no
+        revocations refuses nothing."""
+        if self.is_revoked(e["recordSha256"]):
+            return True
+        if e["packId"] in self._rev_doc["relearn"]:
+            return True
+        if (
+            self._rev_issue == "unreadable"
+            and self._doc is not None
+            and self._doc.get("revocationsStored") is True
+            and (e["packId"] in self._stamp_packs() or e["packId"] in self._embedded)
+        ):
+            return True
+        return False
+
+    def _stamp_packs(self) -> Set[str]:
+        return {p["pack"] for p in ((self._stamp or {}).get("pins") or ())}
+
+    def _load_revocations(self, state_unreadable: bool) -> None:
+        """Load ``revocations.json`` (§2.5): absent is empty; unreadable writes nothing this
+        process; torn is quarantined and replaced by a fresh document whose ``relearn`` holds
+        the stamp's pinned and embedded packs; each entry is re-verified against the pinned
+        release keys."""
+        rs = self._revocations
+        if rs is None:
+            return
+        try:
+            text = rs.read()
+        except Exception:
+            self._rev_issue = "unreadable"
+            return
+        if text is None:
+            return
+        self._rev_file = True
+        parsed = None if text.strip() == "" else parse_revocations(text)
+        if parsed is None:
+            # Torn: held aside, then a fresh document that re-learns the stamp's packs.
+            quarantine = getattr(rs, "quarantine", None)
+            try:
+                if not callable(quarantine):
+                    raise RuntimeError("no quarantine")
+                quarantine(text)
+            except Exception:
+                self._rev_issue = "unreadable"
+                return
+            self._rev_issue = "torn"
+            relearn = sorted(
+                self._stamp_packs() | set(self._embedded),
+                key=lambda s: s.encode("utf-8", "surrogatepass"),
+            )
+            self._rev_doc = {**empty_revocations(), "relearn": relearn}
+            if not state_unreadable:
+                self._write_revocations()
+            return
+        r = reload_revocations(
+            parsed,
+            release_keys=self._release_keys,
+            product_trust=self._product_trust(),
+            expected_aud=self._product,
+        )
+        self._rev_doc = r.doc
+        self._rev_verified.update(r.verified)
+        if r.changed and not state_unreadable:
+            self._write_revocations()
+        elif (
+            not state_unreadable
+            and not is_empty_revocations(self._rev_doc)
+            and self._require_loaded().get("revocationsStored") is not True
+        ):
+            # A torn (or replaced) `state.json` lost the flag while the sibling file kept its
+            # entries: set it again, so an unreadable `revocations.json` later still refuses.
+            self._doc = {**self._require_loaded(), "revocationsStored": True}
+            self._persist()
+
+    def _persist_revocations(self) -> None:
+        """Persist the revocations: ``revocationsStored`` in ``state.json`` first, then the
+        sibling file. Never creates an empty file; never writes while a document is
+        unreadable."""
+        if self._revocations is None:
+            return
+        if self._rev_issue == "unreadable" or self._state_issue == "unreadable":
+            return
+        if not self._rev_file and is_empty_revocations(self._rev_doc):
+            return
+        self._write_revocations()
+
+    def _write_revocations(self) -> None:
+        rs = self._revocations
+        doc = self._require_loaded()
+        if doc.get("revocationsStored") is not True:
+            self._doc = {**doc, "revocationsStored": True}
+            self._persist()
+        rs.replace(serialize_revocations(self._rev_doc))
+        self._rev_file = True
+
+    def _unmount_revoked(self) -> None:
+        """Stop running every revoked release (a hot handler is deactivated)."""
+        for pid, i in list(self._running.items()):
+            if not self.is_revoked(i["recordSha256"]):
+                continue
+            h = self._handlers.get(i["type"])
+            if i.get("activation") == "hot" and h is not None and h.deactivate is not None:
+                try:
+                    h.deactivate(i)
+                except Exception:
+                    pass  # A handler failure never keeps a revoked release running.
+            del self._running[pid]
 
     # ── Internals ──────────────────────────────────────────────────────────────────────────
 
@@ -756,8 +1016,10 @@ class PackEngine:
                 out.append(i)
         return out
 
-    def _preflight(self, pack_id: str) -> Any:
-        """Steps 1–4 for one pack: the install that is already current, or a :class:`_Plan`."""
+    def _preflight(self, pack_id: str, release: Optional[Mapping[str, Any]] = None) -> Any:
+        """Steps 1–4 for one pack: the install that is already current, or a :class:`_Plan`.
+        ``release`` (``{"sha256", "seq", "version"}``) replaces the stamp's pin: a ``packs``
+        decision's exact release (plans/P4-13.md §2.6)."""
         doc = self._require_loaded()
         stamp = self._stamp
         if stamp is None:
@@ -766,7 +1028,8 @@ class PackEngine:
                 "This build ships no content stamp, so it has no packs.",
                 pack_id=pack_id,
             )
-        pin = next((p for p in stamp["pins"] if p["pack"] == pack_id), None)
+        stamp_pin = next((p for p in stamp["pins"] if p["pack"] == pack_id), None)
+        pin = {"pack": pack_id, "release": dict(release)} if release is not None else stamp_pin
         if pin is None:
             raise PackError(
                 ErrorCode.PACK_NOT_PINNED,
@@ -774,11 +1037,23 @@ class PackEngine:
                 pack_id=pack_id,
             )
         want = pin["release"]["sha256"]
+        # plans/P4-13.md §2.5: a revoked release is never installed, activated or mounted.
+        if self.is_revoked(want):
+            raise PackError(
+                ErrorCode.PACK_REVOKED,
+                f"{pack_id}@{pin['release']['version']} was revoked by its developer.",
+                pack_id=pack_id,
+            )
         current = doc["active"].get(pack_id)
         if current is not None and current["recordSha256"] == want:
             return current
         emb = self._embedded.get(pack_id)
-        if emb is not None and emb["recordSha256"] == want and current is None:
+        if (
+            emb is not None
+            and emb["recordSha256"] == want
+            and current is None
+            and not self._embedded_refused(emb)
+        ):
             return emb
 
         # 2. The pinned record, by hash, against the pinned release keys.
@@ -950,8 +1225,44 @@ class PackEngine:
             plan=p,
         )
 
-    def _ensure_one(self, pack_id: str) -> Dict[str, Any]:
-        pre = self._preflight(pack_id)
+    def _ensure_one(
+        self, pack_id: str, target: Optional[Mapping[str, Any]] = None
+    ) -> Dict[str, Any]:
+        try:
+            return self._ensure_one_inner(pack_id, target)
+        except PackError as e:
+            # plans/P4-13.md §2.5: when the only copy is an embedded baseline refused for
+            # `relearn` (or for `revocationsStored` with an unreadable `revocations.json`) and the
+            # fetch cannot proceed, the typed refusal is `pack-revoked` with detail `relearn`.
+            want = target["sha256"] if target is not None else next(
+                (
+                    p["release"]["sha256"]
+                    for p in ((self._stamp or {}).get("pins") or ())
+                    if p["pack"] == pack_id
+                ),
+                None,
+            )
+            emb = self._embedded.get(pack_id)
+            if (
+                e.code != ErrorCode.PACK_REVOKED
+                and emb is not None
+                and emb["recordSha256"] == want
+                and not self.is_revoked(emb["recordSha256"])
+                and self._embedded_refused(emb)
+            ):
+                raise PackError(
+                    ErrorCode.PACK_REVOKED,
+                    f"{pack_id}'s embedded copy is refused until a fresh feed re-teaches its "
+                    f"revocations, and it cannot be fetched ({e.code}).",
+                    pack_id=pack_id,
+                    detail="relearn",
+                ) from e
+            raise
+
+    def _ensure_one_inner(
+        self, pack_id: str, target: Optional[Mapping[str, Any]] = None
+    ) -> Dict[str, Any]:
+        pre = self._preflight(pack_id, target)
         if not isinstance(pre, _Plan):
             current = pre
             if (
@@ -1346,3 +1657,15 @@ def _close(res: ObjectResponse) -> None:
             close()
         except Exception:
             pass
+
+
+def _target(t: Any) -> Tuple[str, Dict[str, Any]]:
+    """A ``packs`` install entry as ``(pack, {"sha256", "seq", "version"})``: a mapping or a
+    ``PackTarget``."""
+    if isinstance(t, Mapping):
+        pack, release = t["pack"], t["release"]
+    else:
+        pack, release = t.pack, t.release
+    if not isinstance(release, Mapping):
+        release = {"sha256": release.sha256, "seq": release.seq, "version": release.version}
+    return pack, {"sha256": release["sha256"], "seq": release["seq"], "version": release["version"]}

@@ -24,10 +24,11 @@ from ..constants_generated import (
     MAX_PACK_VARIANTS,
     MAX_RECORD_JWS_BYTES,
     MAX_VARIANT_DELTAS,
+    REVOCATION_REASON_MAX_BYTES,
 )
 from .b64url import b64url_decode
 from .jws import TrustSet, verify_jws
-from .models import TYP_RELEASE, ReleaseRecordDoc, _wire_int
+from .models import TYP_RELEASE, ReleasePin, ReleaseRecordDoc, _wire_int
 from .pack_claims import (
     ENGINE_PATTERN,
     ENTITLEMENT_PATTERN,
@@ -55,6 +56,12 @@ __all__ = [
     "record_hash",
     "verify_release_record",
     "reload_release_records",
+    "RevocationBody",
+    "VerifiedRevocation",
+    "VerifyRevocationResult",
+    "revocation_of",
+    "verify_revocation",
+    "newer_revocation",
 ]
 
 #: P2-04's ``BUILD_ID_RE``: ASCII, so the uniqueness check and the decision's tie-break by
@@ -504,3 +511,170 @@ def reload_release_records(
         if r.ok and r.record is not None:
             out[h] = CommittedRecord(jws=jws, record=r.record)
     return out
+
+
+# ── P4-13: the revocation record (plans/P4-13.md §2.3, WIRE-CONTRACT-V4 §2.5.3) ──────────────
+
+
+@dataclass(frozen=True)
+class RevocationBody:
+    """A usable revocation body, as :func:`revocation_of` reads it. ``pack`` is the record's
+    ``deliverable``, ``target`` its ``revokes``."""
+
+    pack: str
+    target: str
+    replacement: Optional[ReleasePin]
+    reason: str
+    issuedAt: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "pack": self.pack,
+            "target": self.target,
+            "replacement": None if self.replacement is None else self.replacement.to_dict(),
+            "reason": self.reason,
+            "issuedAt": self.issuedAt,
+        }
+
+
+@dataclass(frozen=True)
+class VerifiedRevocation:
+    """A verified revocation: its body, its record hash and the pin it was verified with
+    (``version`` and ``seq`` are the target's, the record's own)."""
+
+    pack: str
+    target: str
+    replacement: Optional[ReleasePin]
+    reason: str
+    issuedAt: int
+    record: str
+    version: str
+    seq: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        out = RevocationBody(
+            pack=self.pack,
+            target=self.target,
+            replacement=self.replacement,
+            reason=self.reason,
+            issuedAt=self.issuedAt,
+        ).to_dict()
+        out.update({"record": self.record, "version": self.version, "seq": self.seq})
+        return out
+
+
+@dataclass(frozen=True)
+class VerifyRevocationResult:
+    """``verify_revocation``'s answer: ``ok`` with the ``revocation``, or the refusal ``step``
+    (``revocationCases`` ``expect.step``): ``hash``, ``jws``, ``claims``, ``cross-check`` or
+    ``revocation``."""
+
+    ok: bool
+    revocation: Optional[VerifiedRevocation] = None
+    step: Optional[str] = None
+
+
+def revocation_of(doc: Any) -> Optional[RevocationBody]:
+    """The revocation body (plans/P4-13.md §2.3), read beside the claims: usable when ``kind``
+    is ``revocation``, ``deliverable`` is a pack id, ``revokes`` is 64 lowercase hex,
+    ``replacement`` is absent or ``{sha256: 64 hex and not revokes, seq: an integer ≥ 1,
+    version}``, and ``reason`` is a string of 1–``REVOCATION_REASON_MAX_BYTES`` bytes.
+    ``builds`` and ``content`` are ignored. ``None`` when unusable. Never raises."""
+    try:
+        if not isinstance(doc, dict) or doc.get("kind") != "revocation":
+            return None
+        if not is_pack_id(doc.get("deliverable")):
+            return None
+        revokes = doc.get("revokes")
+        if _full_match(_SHA256_RE, revokes) is None:
+            return None
+        replacement: Optional[ReleasePin] = None
+        if "replacement" in doc:
+            r = doc["replacement"]
+            if not isinstance(r, dict):
+                return None
+            if _full_match(_SHA256_RE, r.get("sha256")) is None or r["sha256"] == revokes:
+                return None
+            if _wire_int(r.get("seq"), 1) is None:
+                return None
+            if _full_match(_VERSION_RE, r.get("version")) is None:
+                return None
+            replacement = ReleasePin(sha256=r["sha256"], seq=r["seq"], version=r["version"])
+        reason = doc.get("reason")
+        if not isinstance(reason, str):
+            return None
+        n = utf8_length(reason)
+        if n < 1 or n > REVOCATION_REASON_MAX_BYTES:
+            return None
+        issued = doc.get("issuedAt")
+        if isinstance(issued, bool) or not isinstance(issued, (int, float)):
+            return None
+        return RevocationBody(
+            pack=doc["deliverable"],
+            target=revokes,
+            replacement=replacement,
+            reason=reason,
+            issuedAt=issued,  # type: ignore[arg-type]
+        )
+    except Exception:
+        return None
+
+
+def verify_revocation(
+    jws: str,
+    *,
+    release_keys: TrustSet,
+    product_trust: TrustSet,
+    expected_aud: str,
+    entry: Mapping[str, Any],
+) -> VerifyRevocationResult:
+    """Verify a revocation record against a feed entry (plans/P4-13.md §2.3): V4 §3.5 steps
+    12–14 with ``entry["record"]`` as the pin hash, step 15 with the pin ``{kind:
+    "revocation", deliverable: entry["pack"], version: entry["version"], seq: entry["seq"]}``,
+    and step 16 (``revocation``): the body is usable (:func:`revocation_of`) and ``revokes``
+    equals ``entry["target"]``. ``entry`` is the feed's ``revocations`` entry (or a stored
+    entry's equivalent). Never raises."""
+    try:
+        r = verify_release_record(
+            jws,
+            release_keys=release_keys,
+            product_trust=product_trust,
+            expected_aud=expected_aud,
+            expected_hash=entry["record"],
+            pin=ReleaseRecordPin(
+                kind="revocation",
+                deliverable=entry["pack"],
+                version=entry["version"],
+                seq=entry["seq"],
+            ),
+        )
+    except Exception:
+        return VerifyRevocationResult(ok=False, step="jws")
+    if not r.ok or r.record is None:
+        return VerifyRevocationResult(ok=False, step=r.step)
+    body = revocation_of(r.record.to_dict())
+    if body is None or body.target != entry.get("target"):
+        return VerifyRevocationResult(ok=False, step="revocation")
+    return VerifyRevocationResult(
+        ok=True,
+        revocation=VerifiedRevocation(
+            pack=body.pack,
+            target=body.target,
+            replacement=body.replacement,
+            reason=body.reason,
+            issuedAt=body.issuedAt,
+            record=entry["record"],
+            version=r.record.version,
+            seq=r.record.seq,
+        ),
+    )
+
+
+def newer_revocation(a: Any, b: Any) -> Any:
+    """The winner of two verified revocations of one target (plans/P4-13.md §2.3, decision
+    18): the higher ``issuedAt``, else the higher record hash by bytes. The Worker ranks
+    superseding revocations with this same rule. Revocations are permanent: superseding
+    changes the replacement or reason, never the revoked status."""
+    if a.issuedAt != b.issuedAt:
+        return a if a.issuedAt > b.issuedAt else b
+    return a if a.record >= b.record else b

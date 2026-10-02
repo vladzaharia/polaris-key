@@ -497,6 +497,13 @@ class UpdateClient:
         A ``mandatory`` decision and every ``blocked`` one is a prompt the player cannot
         dismiss (:func:`polaris_key.core.decide.is_undismissable`): persistent, never covering
         the running app.
+
+        With a content stamp (``UpdateClientOptions.packs``), the check also runs the content
+        decision (plans/P4-13.md §2.5, §2.6): the feed's pack sets, floors and revocations, the
+        revocations the device stores (learned ones are kept through ``packs``), and the
+        ``packs`` answer. Floors never stop play; a CI-signed revocation of a REQUIRED pack does:
+        ``blocked {revoked-content}`` (or an offer with ``contentBlock: "revoked-content"``)
+        maps to the boot value ``required``.
         """
         with self._lock:
             c = self._require_configured()
@@ -507,7 +514,14 @@ class UpdateClient:
             ep = self._endpoints(feed=True, record=True)
             fetch_feed, fetch_record = self._fetchers(ep, installed.platform)
             slices = cache.update_slices()
+            # plans/P4-13.md §2.5: a host with a content stamp runs the content decision. A pack
+            # facet that cannot start (an unreadable stamp) decides without it, as before P4-13.
+            try:
+                content = self.packs.content_input()
+            except Exception:
+                content = None
             r = run_update_check(
+                content=content,
                 channel=channel or self._ctx.channel,
                 expected_aud=self._ctx.product,
                 trust=trust.effective,
@@ -529,6 +543,8 @@ class UpdateClient:
             if not r.ok or r.check is None:
                 raise self._raise(r.error)
             cache.patch(feeds=r.feeds, release_records=r.release_records)
+            if r.revocations is not None:
+                self.packs.record_revocations(r.revocations)
             return r.check
 
     def feed(self, *, channel: Optional[str] = None) -> FeedCheck:
