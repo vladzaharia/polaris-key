@@ -1129,7 +1129,7 @@
       "optional": false,
       "refs": ["README §3.6 app-updater feeds", "notes/E3", "notes/E1"],
       "brief": "wp/P3-09-updater-feeds.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P3-10",

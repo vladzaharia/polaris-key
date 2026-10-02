@@ -6,12 +6,13 @@
     "packages/sdk-react/test",
     "packages/client-core/test",
     "conformance/runners/node",
+    "conformance/runners/browser",
     "tools/gen-mirrors.test.ts"
   ],
   "features": {
     "core.verify": {
       "status": "implemented",
-      "note": "client-core's verifier, which the Node runner drives vector for vector."
+      "note": "client-core's verifier, which the Node runner drives vector for vector and the browser runner (conformance/runners/browser, the same suites) drives in Chromium, Firefox and WebKit, through WebCrypto's Ed25519."
     },
     "core.cache": {
       "status": "planned",
@@ -20,7 +21,7 @@
     },
     "core.bundle": {
       "status": "implemented",
-      "note": "Desktop through the host bridge (protocol v3 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB."
+      "note": "Desktop through the host bridge (protocol v3 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB. The browser runner drives inspectBundle over every bundleCases vector in Chromium, Firefox and WebKit."
     },
     "core.discover": { "status": "implemented" },
     "core.sync": { "status": "implemented" },

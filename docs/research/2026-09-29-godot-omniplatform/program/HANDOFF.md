@@ -14,15 +14,18 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
-## DEPLOY GATE NOW: run check:representable against production D1 (P3-12)
+## Production check:representable (P3-12): done 2026-10-01
 
-- [ ] **Before the next production deploy** (main now carries wire v4: P3-02, P3-03, P3-05, P3-12):
-      `cd packages/worker && npx wrangler login && pnpm check:representable` (defaults to
-      `--env prod --remote polaris_key_prod`). Exit 0 = deploy may proceed (warnings may list
-      offline-day counts outside 1–365); exit 1 = fix every flagged value in the console or
-      manifest first, then re-run. Plan P3-01 §7: no SDK release built after P3-02 is published
-      before this Worker is deployed with a clean check. Tell the lead the result; the lead then
-      tags the deploy.
+- [x] **Before the first wire v4 deploy:** the operator ran `pnpm check:representable` against
+      `polaris_key_prod` (remote): clean, 21 columns checked, 0 warnings. The lead tags v0.7.0.
+
+## Required checks for P1b-05's CI jobs (after it merges)
+
+- [ ] On `main`'s branch protection or ruleset, add the new jobs as required checks: "Node floor
+      (engines.node)", "Browser conformance (Chromium)", "Browser conformance (Firefox, Linux)",
+      "Browser conformance (WebKit, macOS)" and the renamed Python matrix legs (3.9 and 3.14 on
+      ubuntu, 3.12 on macos-14). The old "Python SDK (ubuntu-latest)" and "Python SDK (macos-14)"
+      names stop reporting. No required checks are configured on `main` today.
 
 ## Storing a real App Store Connect key (P5-02, P5-02f)
 
@@ -190,6 +193,12 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 - [ ] **Required checks:** add the two new Godot CI legs ("Godot SDK (4.7.2 editor + release
       template)", "Godot SDK (4.4.1 editor, floor)") to `main`'s required status checks. Both
       passed on GitHub on 2026-09-30.
+- [ ] **Required checks (P1b-05):** once they have passed on GitHub, add the new runner jobs to
+      `main`'s required status checks: "Node floor (engines.node)", "Browser conformance
+      (Chromium)", "Browser conformance (Firefox, Linux)", "Browser conformance (WebKit, macOS)",
+      and the renamed Python legs "Python SDK (3.9, ubuntu-latest)", "Python SDK (3.14,
+      ubuntu-latest)" and "Python SDK (3.12, macos-14)". The old "Python SDK (ubuntu-latest)" and
+      "Python SDK (macos-14)" names no longer report; drop them if they are listed.
 
 ## v0.5.1 (2026-10-01): deployed and checked
 
@@ -217,6 +226,20 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 - [x] Discovery advertises `endpoints.builds` and `endpoints.blobs` on `dl.plrs.im`.
 - [ ] For an `entitled` product: a pinned non-semver version (`/release/builds/1.2.3.4/<build>`) with
       a valid device token → 403 `version_blocked` (needs a real device token).
+
+## v0.7.0 (2026-10-01): deployed and checked (wire v4)
+
+- [x] Deploy run 36957908932 succeeded, smoke check included (P3-02..P3-12, P2b-05, P2-07, P1-10,
+      P4-21; migrations `0043`, `0044`). Production `check:representable` was clean beforehand.
+- [x] Discovery reports `protocolVersion: 4`; `update.endpoints` gains `feed`
+      (`/djdl/update/{channel}/feed.jws`), `winsparkle`, `velopack`, `appInstaller`, `zsync`;
+      `release.endpoints.record` is `/djdl/release/records/{sha256}`.
+- [x] Legacy paths unchanged: `/djdl/update/version` answers the v3 three-field document,
+      `install.sh` 200, `/djdl/distribution/dl/latest/djdl-arm64` 200.
+- [ ] `djdl`'s signed feed (`/djdl/update/stable/feed.jws`) and storefront feeds answer 404 until
+      djdl publishes a release through CI with a release key (`.pkey/release` `releaseKeys` plus the
+      Action's record signing, P3-03). No v4 SDK can decide an update for djdl until then; v3 clients
+      are unaffected.
 
 ## v0.6.0 (2026-10-01): deployed and checked
 

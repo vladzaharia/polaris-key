@@ -132,14 +132,19 @@ describe("bytes host: configuration", () => {
     }
   });
 
-  it("registers exactly the three byte routes, each owned by the distribution service (P2b-04)", () => {
+  it("registers exactly the three byte routes and the download page, each owned by the distribution service (P2b-04, P2b-06)", () => {
     // P2-05 registered them for Release; P2b-04 moved all byte delivery to Distribution. Each
     // route matches its canonical `/distribution/…` path AND its `/release/…` alias, so the URLs
-    // discovery advertised on the bytes host keep answering.
-    expect(BYTE_ROUTES.map((r) => [r.name, r.service])).toEqual([
-      ["distribution.build", "distribution"],
-      ["distribution.file", "distribution"],
-      ["distribution.blob", "distribution"],
+    // discovery advertised on the bytes host keep answering. P2b-06 added the one DOCUMENT
+    // route, the public download page (`test/downloadPage.test.ts` pins its matching and the
+    // policy the dispatcher holds it to).
+    expect(
+      BYTE_ROUTES.map((r) => [r.name, r.service, r.document ?? false]),
+    ).toEqual([
+      ["distribution.build", "distribution", false],
+      ["distribution.file", "distribution", false],
+      ["distribution.blob", "distribution", false],
+      ["distribution.page", "distribution", true],
     ]);
     const hex = "a".repeat(64);
     expect(

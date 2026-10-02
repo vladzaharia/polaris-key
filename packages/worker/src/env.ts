@@ -26,6 +26,13 @@ export interface Env {
    * a secret: it is public and differs per environment.
    */
   BLOB_ORIGIN?: string;
+  /**
+   * The console host's origin, e.g. `https://key.plrs.im` (P2b-06). The public download page on
+   * the bytes host links the storefront feeds, which are served here, through it. Unset (or
+   * equal to the bytes host) ⇒ the page leaves the feed rows (AltStore, SideStore, Obtainium,
+   * F-Droid, Scoop) out. A `[vars]` value, public, per environment.
+   */
+  CONSOLE_ORIGIN?: string;
 
   // platform-wide secrets / vars (optional so tests can omit them)
   //
