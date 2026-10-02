@@ -77,7 +77,8 @@ floor, and hand an `admin` row back to the manifest. Yank and unyank sit on each
 Every action opens a confirmation stating its effect, and every change but the revert belongs to
 the operator and survives a resync. See [Channels](/docs/services/release/channels/).
 
-Release health (GitHub App access, published assets, Sparkle key material, channel floors) and
+Release health (GitHub App access, the latest release's artifacts — each declared one, or a
+list of what was published — Sparkle key material, channel floors) and
 the last manifest-sync attempt sit below. Release config itself — GitHub coordinates, binary
 name, channel workflow, edge-mint recipes — is authored in the repo's `.pkey/release` file and
 applied by **Resync from repo**, not edited here.

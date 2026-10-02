@@ -272,24 +272,36 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
 5. **Latest release** — what `stable` resolves to, through the same resolution function the
    download route, the appcast and the version check use: candidate filter, semver order,
    page cap and floor included.
-6. **macOS arm64 DMG** — present or not. Absence counts as _missing_ by default: a product
-   that ships DMGs is expected to have both architectures. It softens to a warning for a
-   product whose artifact policy turns `requireDmg` off but whose latest release carries a
-   DMG anyway.
-7. **macOS x86_64 DMG** — present or not. Same rule as the arm64 check.
+6. **The release's artifacts** — what the latest release carries, judged against what the
+   product _declares_ rather than against an assumed macOS/CLI shape:
+   - With a declared artifact map (`deliverables.app.artifacts` in `.pkey/release`), one
+     `artifact-<buildId>` check per entry, labelled with its platform, arch and format. It is
+     _ok_ when exactly one file matches the entry, _missing_ when none does, and also _missing_
+     when more than one does — the map classifies none of an ambiguous entry's files, so
+     nothing serves that build — with the candidates listed. The classification is the truth
+     store's own (see [Artifacts](/docs/services/release/artifacts/)), so health and the
+     download routes never disagree about which file is which.
+   - Without a map, one informational `release-artifacts` check lists the files the release
+     carries (the first 20, then a count of the rest), with the platform and arch the file name
+     yields where it yields one. It is always _ok_: an absent DMG or CLI is not a warning.
+7. **Required artifacts** — only what the manifest's `artifactPolicy` states explicitly.
+   `requireDmg: true` adds a macOS DMG check and `requireCli: true` a bare CLI binary check,
+   each _missing_ when absent. With `architectures` declared there is one check per
+   architecture (`dmg-arm64`, `cli-x86_64`, …; `universal` and `any` accept a file of any
+   arch); without it, one `dmg` or `cli` check that any matching file satisfies. A product with
+   no `artifactPolicy` block requires nothing here.
 8. **Sparkle signature** — either the policy requires signed appcasts and no public key is
    configured at all (_missing_), or a key is configured and the question is whether the
-   sibling `.sig` asset for the arm64 DMG is actually present. This check confirms presence;
-   the appcast itself additionally _verifies_ it — see
+   sibling `.sig` asset is actually present: for the declared macOS `dmg` payload when the
+   map has one (arm64 first, then universal), otherwise for the arm64 DMG the appcast itself
+   selects. This check confirms presence; the appcast additionally _verifies_ it — see
    [Appcast](/docs/services/update/appcast/).
-9. **CLI assets** — arm64 and x86_64 bare-binary assets, present or not (each a warning
-   unless the artifact policy requires it).
 
-A product **ships DMGs** when its artifact policy requires one (the default, so a product with
-no policy is checked exactly as before) or its latest release already contains a `.dmg`. For a
-product that does neither — a Linux or Godot build, say — checks 2 and 6 to 8 are skipped
-entirely rather than reported as missing, so it is not told it "needs setup" for artifacts it
-never builds.
+A product **ships DMGs** — the gate on checks 2 and 8 — when its artifact policy does not turn
+`requireDmg` off (so a product with no policy keeps the fail-closed Sparkle checks) or its
+latest release already contains a `.dmg`. For a product that does neither — a Linux or Godot
+build, say — those checks are skipped entirely rather than reported as missing, so it is not
+told it "needs setup" for artifacts it never builds.
 
 The rolled-up status a product carries is `healthy` when every check passes, `needs-setup`
 when something expected is simply missing, and `error` when GitHub access itself failed or
