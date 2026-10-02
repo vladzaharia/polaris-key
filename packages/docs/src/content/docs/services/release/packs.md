@@ -163,5 +163,10 @@ load, and comes back on the next load that can read it.
 
 - Node: `client.update.packs` — see the [Node SDK](/docs/build/sdks/node/).
 - Web: `createBrowserPacks` (OPFS storage) — see the [React SDK](/docs/build/sdks/react/).
-- Python, Swift and Godot follow the same reference implementation
-  (`@polaris-key/client-core/packs`) and the same conformance vectors.
+- Python: `client.update.packs` — see the [Python SDK](/docs/build/sdks/python/). zstd comes from
+  the standard library's `compression.zstd` on Python 3.14 and from `zstandard` (a dependency
+  below 3.14) on 3.9–3.13.
+- Swift: `update.packs` from the cross-platform `PolarisKeyPacks` target (macOS and iOS, libzstd
+  1.5.7) — see the [Swift SDK](/docs/build/sdks/swift/).
+- Godot follows the same reference implementation (`@polaris-key/client-core/packs`) and the same
+  conformance vectors.
