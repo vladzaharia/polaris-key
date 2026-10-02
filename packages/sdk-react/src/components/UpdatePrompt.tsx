@@ -24,9 +24,13 @@
 //                                mandatory offer and every `blocked` answer are prompts the
 //                                player CANNOT dismiss (plans/P3-01.md §2.8): a persistent
 //                                `role="alert"` banner with no dismiss control, whatever the
-//                                variant. It never covers the app — no v4 answer stops play,
-//                                so the full-window dialog is only for a dismissable
-//                                decision with `variant="dialog"`. `none` renders nothing.
+//                                variant. Floors never stop play, so a content floor is such
+//                                a banner too. A CI revocation of REQUIRED content can stop
+//                                play (plans/P4-13.md §2.6, decision 4): boot `required`
+//                                renders a full-window hard stop with the revoked-content
+//                                copy, with the offer's button when the answer is an offer
+//                                and none for `blocked`. `packs` is applied by the boot's
+//                                fetch and renders nothing, like `none`.
 
 import { useState, type ReactNode } from "react";
 import { useCtx, usePolarisTheme } from "../react/hooks.js";
@@ -246,6 +250,9 @@ function DecisionPrompt(
   };
   if (slots?.decision) return <>{slots.decision({ ...ctx, dismiss })}</>;
 
+  // `packs` is applied silently by the boot's fetch.
+  if (decision.action === "packs") return null;
+
   if (decision.action === "none") {
     if (!showWhenCurrent || decision.reason !== "up-to-date") return null;
     return (
@@ -312,11 +319,36 @@ function DecisionPrompt(
       break;
     case "blocked":
       title = c.updateBlockedTitle;
-      body = c.updateBlockedBody;
+      body =
+        decision.reason === "content-floor"
+          ? c.updateContentFloorBody
+          : c.updateBlockedBody;
       break;
   }
-  if (mandatory) body = withVersion(c.updateMandatoryBody);
+  if (mandatory)
+    body = withVersion(
+      ctx.reason === "content-floor"
+        ? c.updateContentFloorBody
+        : c.updateMandatoryBody,
+    );
   const act = onAction ? () => onAction(ctx) : fallback;
+
+  // Revoked required content stops the boot (boot `required`): a full-window hard stop with no
+  // dismiss control, the offer's button when there is an offer and none for `blocked`.
+  if (ctx.boot === "required") {
+    const offer = decision.action !== "blocked" && act !== null;
+    return (
+      <MessageScreen
+        className={className}
+        title={c.updateRevokedContentTitle}
+        body={c.updateRevokedContentBody}
+        logo={theme.logo}
+        {...(offer ? { onRetry: act, retryLabel: label } : {})}
+        data-polaris-update={decision.action}
+        data-polaris-update-required=""
+      />
+    );
+  }
 
   if (!locked && variant === "dialog") {
     return (

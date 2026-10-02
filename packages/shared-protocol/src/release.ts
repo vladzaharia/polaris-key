@@ -33,13 +33,14 @@ export const DEFAULT_RELEASE_ACCESS: ReleaseAccessPolicy = {
  *  The release-descriptor validator imports it as its build-id rule. */
 export const BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
-/** The record kinds a P4 SDK acts on (plans/P4-01.md §2.13): `app`, and `pack` (§2.5.1). */
-export const RECORD_KINDS = ["app", "pack"] as const;
+/** The record kinds a P4 SDK acts on: `app`, `pack` (plans/P4-01.md §2.13, V4 §2.5.1) and
+ *  `revocation` (plans/P4-13.md §2.3, V4 §2.5.3). */
+export const RECORD_KINDS = ["app", "pack", "revocation"] as const;
 
-/** Record kinds a client verifies and never acts on (P4-13, P4-19). `pack` left this list when
- *  packs v1 filled its slot (plans/P4-01.md); a v4 SDK that predates packs still verifies a
- *  pack record and never acts on it. */
-export const RESERVED_RECORD_KINDS = ["revocation", "delegation"] as const;
+/** Record kinds a client verifies and never acts on (P4-19). `pack` and `revocation` left this
+ *  list when their packages filled the slot (plans/P4-01.md, plans/P4-13.md); a v4 SDK that
+ *  predates them still verifies such a record and never acts on it. */
+export const RESERVED_RECORD_KINDS = ["delegation"] as const;
 
 export interface ReleaseRecordArtifact {
   name: string;
@@ -86,4 +87,40 @@ export interface ReleaseRecordDoc {
   builds?: ReleaseRecordBuild[];
   /** An app record's packs: the content stamp moved into the record (plans/P4-01.md §2.4). */
   content?: AppContent;
+}
+
+/** A revocation's replacement: a pack record of the same deliverable (plans/P4-13.md §2.3). */
+export interface RevocationReplacement {
+  /** 64 lowercase hex, never equal to `revokes`. */
+  sha256: string;
+  seq: number;
+  version: string;
+}
+
+/**
+ * A `pkey-release+jws` payload with `kind: "revocation"` (plans/P4-13.md §2.3, V4 §2.5.3), signed
+ * in CI by a release key and never by a product or delegated key. `deliverable`, `version` and
+ * `seq` are the revoked pack record's, so the record names exactly what it revokes. Revocations
+ * are permanent; a later one of the same target may change `replacement` (newest `issuedAt`
+ * wins, `newerRevocation`).
+ */
+export interface RevocationRecordDoc {
+  schemaVersion: 1;
+  aud: string;
+  /** A pack id: an app build is revoked by License's compatibility window, not by this. */
+  deliverable: string;
+  kind: "revocation";
+  version: string;
+  seq: number;
+  issuedAt: number;
+  /** The revoked pack record's hash, 64 lowercase hex. */
+  revokes: string;
+  replacement?: RevocationReplacement;
+  /** 1–`REVOCATION_REASON_MAX_BYTES` bytes, display only. */
+  reason: string;
+  tag?: string;
+  channel?: string;
+  title?: string;
+  notes?: string;
+  provenance?: { commit?: string; workflowRun?: string };
 }

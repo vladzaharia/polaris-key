@@ -8,6 +8,7 @@
 
 export {
   contentClaims,
+  holdsOf,
   isPackId,
   objectRef,
   type ContentClaimsOptions,

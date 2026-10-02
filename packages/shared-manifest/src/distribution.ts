@@ -66,6 +66,25 @@ export const TRANSPORTS = [
 ] as const;
 export type Transport = (typeof TRANSPORTS)[number];
 
+/**
+ * Whether a transport lets a `compatible` or `standalone` pack float to a newer release after the
+ * build ships (CONTENT §6.6; plans/P4-13.md decision 16). A transport that cannot float narrows the
+ * pack to pinned on that outlet: the feed lists it in `packSets.outlets.<id>.pinned`. Only
+ * `play-pad` narrows today (Play asset packs ship with the app bundle). `apple-ba` keeps floating
+ * (the level is in the asset-pack id), `embedded` is a baseline under a CDN overlay. A constant,
+ * not a validator rule.
+ */
+export const TRANSPORT_FLOATS: Readonly<Record<Transport, boolean>> = {
+  embedded: true,
+  "pkey-cdn": true,
+  "apple-ba": true,
+  "play-pad": false,
+  "steam-depot": true,
+  "msix-optional": true,
+  "flatpak-ext": true,
+  web: true,
+};
+
 /** The transport a deliverable uses when nothing says otherwise: our own CDN. */
 export const DEFAULT_DISTRIBUTION_TRANSPORT: Transport = "pkey-cdn";
 

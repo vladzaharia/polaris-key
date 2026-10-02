@@ -52,6 +52,14 @@ export const CONTENT_STAMP_FORMAT = "pkey-content/1";
  *  `cost = bytes + requests × PLAN_REQUEST_WEIGHT`. `plan-matrix.json` pins it. */
 export const PLAN_REQUEST_WEIGHT = 16384;
 
+// ── Revocations and content in the feed (plans/P4-13.md §2.2, §2.3, §2.5) ────────────────────
+
+/** A client fetches at most this many revocation records per update check (§2.5 step 11); the
+ *  Worker lists at most this many in a feed's `revocations` (§6.3). */
+export const MAX_FEED_REVOCATIONS = 64;
+/** A revocation record's `reason`: 1–this many UTF-8 bytes, display only (§2.3). */
+export const REVOCATION_REASON_MAX_BYTES = 512;
+
 /** The `iss` every Polaris Key document carries. A FIXED string, never derived from the base URL
  *  or the serving host — an attacker-controlled host must not be able to name its own issuer.
  *  (Amendment A1: the host-neutral `plrs.im` spelling was withdrawn; a future host move is a

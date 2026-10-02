@@ -2,7 +2,10 @@
 // decision, WIRE-CONTRACT-V4 §2.3 and plans/P3-01.md §2.8).
 
 import type { OutletCapabilities, OutletKind } from "./distribution.js";
+import type { AppContent, ContentHold } from "./packs.js";
 import type { ReleaseRecordDoc } from "./release.js";
+
+export { MAX_FEED_REVOCATIONS } from "./core.js";
 
 /** Architectures the appcast can target (`?arch=` on `/update/appcast.xml`). The
  *  unparameterized feed serves `arm64` for continuity with shipped SUFeedURLs. */
@@ -85,12 +88,89 @@ export interface ChannelFeedDoc {
   issuedAt: number;
   expiresAt: number;
   app: FeedApp;
+  /** The content members (plans/P4-13.md §2.2, V4 §2.4.1): read with `feedContent` beside the
+   *  claims, never a claim. A malformed member is unusable, never a refusal of the feed. */
+  packSets?: FeedPackSets;
+  packFloors?: FeedPackFloor[];
+  revocations?: FeedRevocation[];
+}
+
+// ── The feed's content members (plans/P4-13.md §2.2, WIRE-CONTRACT-V4 §2.4.1) ────────────────
+
+/** One pack release the feed's sets name, keyed by its record hash in `packSets.releases`. */
+export interface FeedPackRelease {
+  pack: string;
+  version: string;
+  seq: number;
+}
+
+/** One stored resolution row (P4-12's `release_sets`, one per group) of the app deliverable. */
+export interface FeedPackRow {
+  contentApi: number;
+  platform: string;
+  /** `godot-<major>.<minor>`, or `""` for builds that declared no engine (exact match only). */
+  engine: string;
+  /** 0–4 axis → value members; `{}` for an axis-less group. */
+  variant: Record<string, string>;
+  /** A key of `packSets.sets`. */
+  set: string;
+}
+
+/** A per-outlet pack rollout or halt, keyed by the gated release's record hash (P4-14 fills it). */
+export interface FeedPackGate {
+  halted: boolean;
+  rollout?: FeedRollout;
+  /** The release a device out of the gate takes instead, a key of `releases`; null for none. */
+  fallback: string | null;
+}
+
+/** Per-outlet narrowing and gates. */
+export interface FeedPackOutlet {
+  /** Packs whose transport on this outlet cannot float: they never take a feed target. */
+  pinned?: string[];
+  gates?: Record<string, FeedPackGate>;
+}
+
+export interface FeedPackSets {
+  /** Record hash → release. */
+  releases: Record<string, FeedPackRelease>;
+  /** `packSetId` → member record hashes, sorted by pack-id bytes. */
+  sets: Record<string, string[]>;
+  rows: FeedPackRow[];
+  outlets?: Record<string, FeedPackOutlet>;
+}
+
+/** The effective floor of one pack at one live level. */
+export interface FeedPackFloor {
+  pack: string;
+  contentApi: number;
+  minVersion: string;
+  /** A `FEED_VERSION_SCHEMES` value; an entry with any other is ignored. */
+  versionScheme: string;
+}
+
+/** One revocation in force: the revocation record's hash and its target's pin. */
+export interface FeedRevocation {
+  /** The revocation record's hash (fetch it from the record route). */
+  record: string;
+  pack: string;
+  /** The revoked pack record's hash. */
+  target: string;
+  version: string;
+  seq: number;
+}
+
+/** `feedContent`'s answer: each member parsed, or null when absent or unusable. */
+export interface FeedContent {
+  packSets: FeedPackSets | null;
+  packFloors: FeedPackFloor[] | null;
+  revocations: FeedRevocation[] | null;
 }
 
 // ── The update decision (plans/P3-01.md §2.8) ───────────────────────────────────────────────
 
-/** Closed vocabularies, in order. A reserved value (`packs`, `content-floor`,
- *  `revoked-content`) is added by its own plan-mode package, never here. */
+/** Closed vocabularies, in order. P4-13 filled P3-01's reserved values: `packs`,
+ *  `content-floor` and `revoked-content` (plans/P4-13.md §2.6). */
 export const UPDATE_ACTIONS = [
   "none",
   "code-ready",
@@ -98,6 +178,7 @@ export const UPDATE_ACTIONS = [
   "store",
   "platform",
   "blocked",
+  "packs",
 ] as const;
 export type UpdateAction = (typeof UPDATE_ACTIONS)[number];
 
@@ -115,8 +196,15 @@ export const NONE_REASONS = [
 ] as const;
 export type UpdateNoneReason = (typeof NONE_REASONS)[number];
 
-export const BLOCKED_REASONS = ["app-floor"] as const;
+export const BLOCKED_REASONS = [
+  "app-floor",
+  "content-floor",
+  "revoked-content",
+] as const;
 export type UpdateBlockedReason = (typeof BLOCKED_REASONS)[number];
+
+/** A content block on an offer or an app-floor answer (plans/P4-13.md §2.6). */
+export type ContentBlock = "content-floor" | "revoked-content";
 
 export const BINARY_METHODS = ["native", "download", "sidecar-pck"] as const;
 export type BinaryMethod = (typeof BINARY_METHODS)[number];
@@ -145,6 +233,30 @@ export interface StagedUpdate {
   channel: string;
 }
 
+/** One stored, verified revocation the decision applies (one per target: the winner of
+ *  `newerRevocation`), with its replacement's state (plans/P4-13.md §2.5 step 12). */
+export interface ContentRevocationInput {
+  target: string;
+  pack: string;
+  replacement: ReleasePin | null;
+  /** True only when the replacement was fetched, verified, is not itself revoked and
+   *  `selectVariant` picks a variant for the host. False while it is still unfetched. */
+  replacementUsable: boolean;
+}
+
+/** The decision's content input (plans/P4-13.md §2.6). Absent: every rule is P3-01's. */
+export interface UpdateContentInput {
+  /** The running build's content stamp; `holds` is `holdsOf`'s answer (null when unusable). */
+  stamp: Omit<AppContent, "holds"> & { holds: ContentHold[] | null };
+  /** The pack state's active installs, embedded baselines included, by pack id. */
+  active: Record<string, ReleasePin>;
+  /** The host's variant preferences (`VariantPrefs.axes`). */
+  axes: Record<string, string[]>;
+  revocations: ContentRevocationInput[];
+  /** The rollout bucket per gate salt (null: out of every gate's rollout). */
+  buckets: Record<string, number | null>;
+}
+
 export interface UpdateDecisionInput {
   now: number;
   feed: ChannelFeedDoc;
@@ -156,6 +268,13 @@ export interface UpdateDecisionInput {
   skipVersion: string | null;
   bucket: number | null;
   methods: BinaryMethod[];
+  content?: UpdateContentInput;
+}
+
+/** A pack and the release to take: an install, or a prestage entry. */
+export interface PackTarget {
+  pack: string;
+  release: ReleasePin;
 }
 
 export interface DecisionRelease {
@@ -185,8 +304,11 @@ export type UpdateDecision =
       build: string;
       mandatory: boolean;
       critical: boolean;
-      prestage: [];
+      /** The new level's required and essential packs, minus the build's `embeds`, sorted by
+       *  pack-id bytes; `[]` when the level does not change (plans/P4-13.md §2.6). */
+      prestage: PackTarget[];
       discardStaged: boolean;
+      contentBlock?: ContentBlock;
     }
   | {
       action: "store";
@@ -195,6 +317,7 @@ export type UpdateDecision =
       mandatory: boolean;
       critical: boolean;
       discardStaged: boolean;
+      contentBlock?: ContentBlock;
     }
   | {
       action: "platform";
@@ -202,12 +325,26 @@ export type UpdateDecision =
       mandatory: boolean;
       critical: boolean;
       discardStaged: boolean;
+      contentBlock?: ContentBlock;
     }
   | {
       action: "blocked";
       reason: UpdateBlockedReason;
       discardStaged: boolean;
-    };
+      /** On `app-floor` only. */
+      contentBlock?: ContentBlock;
+    }
+  | PacksDecision;
+
+/** `packs` (plans/P4-13.md §2.6): install and revoke lists, and the effective set. */
+export interface PacksDecision {
+  action: "packs";
+  install: PackTarget[];
+  revoke: string[];
+  /** The effective release of every known pack. */
+  set: { pack: string; sha256: string }[];
+  discardStaged: boolean;
+}
 
 /** What `client.update.decide()` returns in every SDK (plans/P3-01.md §2.5). */
 export interface UpdateCheck {

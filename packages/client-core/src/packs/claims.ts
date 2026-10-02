@@ -7,7 +7,10 @@
 
 import type { NonWireIntegers } from "@polaris-key/jws";
 import { MAX_CONTENT_PINS } from "@polaris-key/protocol/core";
-import { VOCAB_TOKEN_PATTERN } from "@polaris-key/protocol/packs";
+import {
+  VOCAB_TOKEN_PATTERN,
+  type ContentHold,
+} from "@polaris-key/protocol/packs";
 import { NO_NON_WIRE_INTEGERS, isWireInteger } from "../claims.js";
 
 /** `@polaris-key/manifest`'s `DELIVERABLE_ID_PATTERN`, restated (client-core does not depend
@@ -141,5 +144,57 @@ export function contentClaims(
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * The holds of an app record's `content` or a content stamp (plans/P4-13.md §2.4), read beside
+ * the claims: `holds` absent reads `[]`; otherwise it must be an array of 0–256 entries, each
+ * `{pack: a pack id, unique and not pinned, release {sha256, seq ≥ 1 by token, version}, reason?:
+ * string}`. Anything else reads null (unusable: the device then takes no feed target for any
+ * unpinned pack, decision 9). `pointer` is where the content object sits: `/content` in a record,
+ * `""` in a stamp, for the token rule over `nonWire`. The parsed holds carry the known members
+ * only. Never throws.
+ */
+export function holdsOf(
+  content: unknown,
+  nonWire: NonWireIntegers = NO_NON_WIRE_INTEGERS,
+  pointer = "/content",
+): ContentHold[] | null {
+  try {
+    if (!isObject(content)) return null;
+    if (!has(content, "holds")) return [];
+    const holds = content.holds;
+    if (!Array.isArray(holds) || holds.length > MAX_CONTENT_PINS) return null;
+    const pinned = new Set<string>();
+    if (Array.isArray(content.pins))
+      for (const p of content.pins)
+        if (isObject(p) && typeof p.pack === "string") pinned.add(p.pack);
+    const seen = new Set<string>();
+    const out: ContentHold[] = [];
+    for (const [i, h] of holds.entries()) {
+      if (!isObject(h) || !isPackId(h.pack)) return null;
+      if (seen.has(h.pack) || pinned.has(h.pack)) return null;
+      seen.add(h.pack);
+      const r = h.release;
+      if (!isObject(r)) return null;
+      if (typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256))
+        return null;
+      if (
+        !isWireInteger(r.seq, `${pointer}/holds/${i}/release/seq`, 1, nonWire)
+      )
+        return null;
+      if (typeof r.version !== "string" || !VERSION_RE.test(r.version))
+        return null;
+      if (has(h, "reason") && typeof h.reason !== "string") return null;
+      out.push({
+        pack: h.pack,
+        release: { sha256: r.sha256, seq: r.seq, version: r.version },
+        ...(has(h, "reason") ? { reason: h.reason as string } : {}),
+      });
+    }
+    return out;
+  } catch {
+    return null;
   }
 }
