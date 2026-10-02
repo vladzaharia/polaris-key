@@ -288,6 +288,10 @@ const strings = await packs.readFile("diceroll.l10n", "fr/strings.json");
   37 MB payload resident on a 2 GB device, so keep web packs lean. The WASM decoder cannot stream,
   so a `full` frame plus its payload must fit the budget too; a pack that fits no strategy is
   refused with `plan-no-strategy` before anything is fetched.
+- **Custom stores.** `storage: {storage, state}` takes a host's own store. Its `state` must
+  implement `quarantine`, `quarantined` and `clearQuarantine` (required by `PackStateStore`);
+  a store that lacks them at run time has a torn document treated as `unreadable`, so nothing is
+  written over it. `read` must answer null only for a missing document and throw otherwise.
 - **State.** Every load re-hashes the active and previous payloads. A torn `state.json` is kept
   aside as `state.json.torn`, garbage collection waits for `recoverState()`, and an unreadable
   one is never written over (`pack-state-unreadable`); `state().stateIssue` says which.

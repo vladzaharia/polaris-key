@@ -65,6 +65,15 @@ const CHUNK = 1 << 20;
 const CONTAINER_FILE = "payload.bin";
 const FLUSH_BYTES = 1 << 20;
 
+/** "Missing" in OPFS: no such entry, or an entry of the other kind. Anything else (a
+ *  NotReadableError, a SecurityError, quota) is "cannot read" and is thrown, never mistaken for
+ *  missing, so `verify`, `installed`, `committed` and `quarantined` cannot drop an install that
+ *  is merely unreadable. */
+function missing(e: unknown): boolean {
+  const name = (e as { name?: string }).name;
+  return name === "NotFoundError" || name === "TypeMismatchError";
+}
+
 async function dir(
   root: DirHandle,
   parts: readonly string[],
@@ -74,8 +83,9 @@ async function dir(
   for (const p of parts) {
     try {
       d = await d.getDirectoryHandle(p, { create });
-    } catch {
-      return null;
+    } catch (e) {
+      if (missing(e)) return null;
+      throw e;
     }
   }
   return d;
@@ -90,8 +100,9 @@ async function fileAt(
   if (!parent) return null;
   try {
     return await parent.getFileHandle(parts[parts.length - 1]!, { create });
-  } catch {
-    return null;
+  } catch (e) {
+    if (missing(e)) return null;
+    throw e;
   }
 }
 
@@ -99,7 +110,7 @@ async function remove(
   root: DirHandle,
   parts: readonly string[],
 ): Promise<void> {
-  const parent = await dir(root, parts.slice(0, -1), false);
+  const parent = await dir(root, parts.slice(0, -1), false).catch(() => null);
   if (!parent) return;
   try {
     await parent.removeEntry(parts[parts.length - 1]!, { recursive: true });
@@ -476,7 +487,7 @@ export async function opfsPackStore(opts: {
     try {
       fh = await root.getFileHandle(name);
     } catch (e) {
-      if ((e as { name?: string }).name === "NotFoundError") return null;
+      if (missing(e)) return null;
       throw e;
     }
     const f = await fh.getFile();

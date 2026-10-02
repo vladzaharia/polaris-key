@@ -136,6 +136,22 @@ every byte against the record and swaps the installed release atomically. Embedd
 verified once from their markers and then count as installed. Devices report the id of the pack
 set they run (`content.packSetId`) on `devices/report`.
 
+The install state is never trusted from storage. Every load re-verifies each pack record and
+re-hashes the active and previous payloads. When the state document itself cannot be trusted,
+the SDK reports it as `state().stateIssue` and emits a `state-issue` pack event:
+
+- **`torn`**: the document exists but does not parse (a write cut short). It is kept aside as
+  `state.json.torn`. The payloads that existed when the hold started are never collected until
+  an operator calls `recoverState()`; anything installed and later dropped during the hold is
+  collected as usual. The installs the torn document named are not recovered: `ensure`
+  reinstalls them, reusing their content-addressed payloads.
+- **`unreadable`**: the document could not be read (an I/O or permission error, not a missing
+  file). Nothing is fetched, written, installed or collected in that process: `ensure`,
+  `estimate`, `confirm` and `rollback` raise `pack-state-unreadable` until a restart can read it.
+
+A payload whose check fails with an I/O error stays in the state and on disk, out of use for that
+load, and comes back on the next load that can read it.
+
 - Node: `client.update.packs` — see the [Node SDK](/docs/build/sdks/node/).
 - Web: `createBrowserPacks` (OPFS storage) — see the [React SDK](/docs/build/sdks/react/).
 - Python, Swift and Godot follow the same reference implementation

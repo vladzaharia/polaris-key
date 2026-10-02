@@ -240,6 +240,17 @@ package, and every decision in §8.1 that names it as owner, override this brief
   directories after it; a no-op commit over an embedded copy keeps `embedded: true`; `PackError`
   is exported from both SDKs' roots; the READMEs state the WASM CSP (`'wasm-unsafe-eval'`) and
   that every load re-hashes active and previous payloads.
+- **Review round 2.** A `previous` whose check threw is kept (it was dropped when an active
+  existed). The quarantine members of `PackStateStore` are now **required**, and a store that
+  lacks them at run time has a torn document treated as `unreadable` (the choice: required, with
+  the run-time guard for JS hosts). Node's `exists()` answers false only for ENOENT/ENOTDIR and
+  OPFS's `dir()`/`fileAt()` null only for NotFoundError/TypeMismatchError; everything else
+  throws, so "cannot read" never drops an install. The torn hold is bounded by a snapshot of
+  `storage.list()` taken when it starts, and a `state-issue` pack event is emitted. A fresh commit
+  carries a deferred active over as `previous`, re-verified before a rollback uses it. `ensure`,
+  `estimate`, `confirm` and `rollback` refuse at the top when the state is unreadable. Node's
+  `syncDir` raises EIO and the like, swallowing only EISDIR/EPERM/EBADF/EINVAL; macOS has no
+  `F_FULLFSYNC` from Node, documented.
 - **Follow-ups.** `content.appRelease` (the running app record's hash, plan §2.11) is optional
   and not sent yet. **OPFS writes cost grows quadratically** with a file's size (each
   `createWritable({keepExistingData})` copies the file), so moving staging to a worker's sync

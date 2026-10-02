@@ -113,6 +113,8 @@ function fakeFetch(server: ReturnType<typeof byteServer>) {
 }
 
 /** An in-memory `FileSystemDirectoryHandle` double: just the calls `opfsPackStore` makes. */
+/** Names whose handles fail with a non-NotFound error (an unreadable entry). */
+const unreadable = new Set<string>();
 function memoryDir(name = ""): DirHandle {
   const dirs = new Map<string, DirHandle>();
   const files = new Map<string, { bytes: Uint8Array }>();
@@ -158,6 +160,8 @@ function memoryDir(name = ""): DirHandle {
     kind: "directory",
     name,
     async getDirectoryHandle(n, opts) {
+      if (unreadable.has(n))
+        throw new DOMException("cannot read", "NotReadableError");
       if (!dirs.has(n)) {
         if (!opts?.create || files.has(n))
           throw new DOMException("not found", "NotFoundError");
@@ -166,6 +170,8 @@ function memoryDir(name = ""): DirHandle {
       return dirs.get(n)!;
     },
     async getFileHandle(n, opts) {
+      if (unreadable.has(n))
+        throw new DOMException("cannot read", "NotReadableError");
       if (!files.has(n)) {
         if (!opts?.create || dirs.has(n))
           throw new DOMException("not found", "NotFoundError");
@@ -521,5 +527,38 @@ describe("the web memory budget and the state document", () => {
     for (const part of i!.location.split("/"))
       store = await store.getDirectoryHandle(part);
     expect(store).toBeDefined();
+  });
+});
+
+describe("an OPFS entry the page cannot read", () => {
+  it("is never mistaken for missing: two loads keep the install", async () => {
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    const root = memoryDir();
+    const server = byteServer(v1);
+    const [i] = await packs(server, [v1], {
+      storage: "opfs",
+      opfsRoot: root,
+    }).p.ensure(["djdl.l10n"]);
+    const version = i!.location.split("/").at(-1)!;
+    unreadable.add(version);
+    try {
+      for (let n = 0; n < 2; n++) {
+        const b = packs(server, [v1], { storage: "opfs", opfsRoot: root });
+        const s = await b.p.state();
+        expect(s.active["djdl.l10n"]).toBeUndefined();
+        expect(s.running["djdl.l10n"]).toBeUndefined();
+      }
+    } finally {
+      unreadable.delete(version);
+    }
+    const c = packs(server, [v1], { storage: "opfs", opfsRoot: root });
+    expect((await c.p.state()).active["djdl.l10n"]!.location).toBe(i!.location);
+    await c.p.ensure(["djdl.l10n"]);
+    expect(c.calls.filter((x) => x.url.includes("/blobs/"))).toEqual([]);
   });
 });
