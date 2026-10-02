@@ -598,7 +598,7 @@ paths:
         per report; deleted with the device.
 
 
-        Nineteen top-level keys survive the allowlist; anything else is dropped SILENTLY
+        Twenty top-level keys survive the allowlist; anything else is dropped SILENTLY
         rather than refused, so a newer SDK reporting a field this worker does not know still
         succeeds. `os`/`hardware`/`runtime`/`locale`/`timezone`/`probes` are projected into
         typed columns (strings truncated to 128 chars, probe ids and probe versions to 64);
@@ -611,9 +611,13 @@ paths:
         an unknown `event` is dropped, unknown fields are stripped); after the snapshot is stored
         they are counted per release, outlet, channel and event in the update-health Durable
         Object, deduplicated on (device, `eventId`), so a retried report counts nothing twice.
-        Counting fails open: the answer is the same 200 whether or not it worked. An empty body
-        is valid and means `{}`. Auth requires a usable license only when the product enables
-        the License service (D-08).
+        Counting fails open: the answer is the same 200 whether or not it worked. `caps`
+        (P1b-10) is the SDK's capability list: the parity feature ids its `supports()` answers
+        Supported for right now (`core.verify`, `update.decide`, …). It keeps only strings
+        shaped like a feature id (at most 64 chars), deduplicated, at most 128; ids are not
+        checked against the registry, so a newer SDK's features survive. A non-array `caps`
+        is dropped. An empty body is valid and means `{}`. Auth requires a usable license only
+        when the product enables the License service (D-08).
       security: [{ deviceToken: [] }]
       parameters: [{ $ref: "#/components/parameters/Product" }]
       requestBody:
@@ -666,6 +670,7 @@ paths:
                     display: macOS
                     debug: false
                   outlet: steam
+                  caps: [core.verify, core.sync, license.gate, update.decide]
                   config: {}
                   entitlements: {}
               updates:
@@ -7360,10 +7365,10 @@ components:
       type: object
       description: >
         The device's software snapshot. Deliberately narrow: no installed-app enumeration,
-        only product-declared probes. Nineteen top-level keys survive the allowlist and
+        only product-declared probes. Twenty top-level keys survive the allowlist and
         anything else is dropped silently. The first six are projected into typed columns
         (strings truncated to 128 characters); the rest are stored as an opaque blob, with
-        `engine`, `outlet` and `updates` bounded first.
+        `engine`, `outlet`, `content`, `updates` and `caps` bounded first.
       additionalProperties: false
       properties:
         os:
@@ -7465,6 +7470,19 @@ components:
             counted. An `outlet` the product does not declare is shown as `unknown` and never
             trips the auto-halt. No hardware value and no user identifier is carried.
           items: { $ref: "#/components/schemas/UpdateOutcomeEvent" }
+        caps:
+          type: array
+          maxItems: 128
+          description: >
+            The SDK's capability list (P1b-10, PARITY §2.2): the parity feature ids its
+            `supports()` answers Supported for right now, in registry order. Each kept entry
+            is a feature id of at most 64 characters; other entries and duplicates are
+            dropped, ids are not checked against the registry, and a non-array value is
+            dropped. Sent with every report, since a report overwrites the last one.
+          items:
+            type: string
+            maxLength: 64
+            pattern: "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
     UpdateOutcomeEvent:
       type: object
       description: One update outcome event a device reports (P6-03).

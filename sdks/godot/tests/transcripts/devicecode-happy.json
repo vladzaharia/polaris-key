@@ -387,7 +387,8 @@
                   "engine",
                   "outlet",
                   "content",
-                  "updates"
+                  "updates",
+                  "caps"
                 ]
               }
             },

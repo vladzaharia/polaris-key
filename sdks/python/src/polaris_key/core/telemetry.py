@@ -18,7 +18,7 @@ either end is invisible to the caller. Telemetry must never be able to fail a sy
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .cache import CacheManager
@@ -32,9 +32,15 @@ REPORT_PATH = "devices/report"
 
 
 def build_snapshot(
-    cache: "CacheManager", probes: Optional[List["ProbeDeclaration"]] = None
+    cache: "CacheManager",
+    probes: Optional[List["ProbeDeclaration"]] = None,
+    caps: Optional[Callable[[], List[str]]] = None,
 ) -> Dict[str, Any]:
-    """Assemble the report body from re-verified content plus this host's software facts."""
+    """Assemble the report body from re-verified content plus this host's software facts.
+
+    ``caps`` gives the feature ids ``supports()`` answers Supported for (P1b-10, PARITY
+    §2.2). It rides EVERY report: the Worker overwrites the stored report each time, so a
+    list sent only when it changed would vanish from the next one."""
     config: Dict[str, Any] = {}
     entitlements: Dict[str, Any] = {}
     config_doc = cache.config_doc()
@@ -57,7 +63,14 @@ def build_snapshot(
     except Exception:
         # Facts are diagnostic; failing to gather them must never break a sync.
         facts = {}
-    return {**facts, "config": config, "entitlements": entitlements}
+    out: Dict[str, Any] = {**facts, "config": config, "entitlements": entitlements}
+    if caps is not None:
+        try:
+            out["caps"] = list(caps())
+        except Exception:
+            # Diagnostic like the facts: never able to fail a sync.
+            pass
+    return out
 
 
 def report_snapshot(ctx: "CoreContext", token: str, snapshot: Any) -> bool:

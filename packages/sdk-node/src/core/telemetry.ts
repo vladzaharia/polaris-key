@@ -23,12 +23,17 @@ import type { CoreContext } from "./context.js";
 export type ReportSnapshot = {
   config: Record<string, JSONValue>;
   entitlements: Record<string, JSONValue>;
+  /** The feature ids `supports()` answers Supported for (P1b-10). Sent with every report: the
+   *  Worker overwrites the stored report each time, so a list sent only on change would vanish
+   *  from it at the next report. */
+  caps?: string[];
 } & Partial<DeviceFacts>;
 
 /** Assemble the report body from re-verified content plus this host's software facts. */
 export function buildSnapshot(
   cache: CacheManager,
   probes: ProbeDeclaration[],
+  caps?: string[],
 ): ReportSnapshot {
   const config: Record<string, JSONValue> = {};
   const entitlements: Record<string, JSONValue> = {};
@@ -47,7 +52,7 @@ export function buildSnapshot(
   } catch {
     // Facts are diagnostic; failing to gather them must never break a sync.
   }
-  return { ...facts, config, entitlements };
+  return { ...facts, config, entitlements, ...(caps ? { caps } : {}) };
 }
 
 /** POST the snapshot. Returns whether the server accepted it; callers ignore that. */

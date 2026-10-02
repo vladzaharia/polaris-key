@@ -203,7 +203,8 @@
                   "engine",
                   "outlet",
                   "content",
-                  "updates"
+                  "updates",
+                  "caps"
                 ]
               }
             },
@@ -358,7 +359,8 @@
                   "engine",
                   "outlet",
                   "content",
-                  "updates"
+                  "updates",
+                  "caps"
                 ]
               }
             },
@@ -510,7 +512,8 @@
                   "engine",
                   "outlet",
                   "content",
-                  "updates"
+                  "updates",
+                  "caps"
                 ]
               }
             },

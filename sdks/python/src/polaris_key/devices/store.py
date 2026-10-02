@@ -239,6 +239,13 @@ class KeyringStore:
             return None, f"the keyring backend is {module}.{type(backend).__name__}, which stores nothing"
         return keyring, None
 
+    def keyring_unavailable(self) -> Optional[str]:
+        """Why the OS keyring cannot be used, or ``None`` when it can. Imports the optional
+        package and selects its backend, and reads nothing from it, so ``supports()`` can ask
+        without touching the keyring (P1b-10). Never raises."""
+        _, why = self._access()
+        return why
+
     def _remove_token_file(self) -> bool:
         """``FileStore.clear_token`` swallows every ``OSError``; this counts only a missing
         file as success."""

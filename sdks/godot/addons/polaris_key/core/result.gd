@@ -9,7 +9,9 @@ extends RefCounted
 ##   message  human text; never a credential
 ##   detail   anything else: an HTTP exchange's {status, headers, body}, a bundle's import, …
 ##
-## An unsupported feature is `code == &"unsupported"` with `detail = {feature, reason}`.
+## An unsupported feature is `code == &"unsupported"` with `detail = {feature, reason, detail}`
+## (`reason`: runtime, outlet, product, dependency or version; `detail`: why, in words), the same
+## answer `PolarisKey.supports(feature)` gives (PKeyCaps, P1b-10).
 
 var ok := false
 var code: StringName = &""
@@ -32,8 +34,15 @@ static func failure(p_code: StringName, p_message := "", p_detail: Variant = nul
 	return PKeyResult.new(false, p_code, p_message, p_detail)
 
 
-static func unsupported(feature: String, reason: String) -> PKeyResult:
-	return PKeyResult.new(false, &"unsupported", "%s is not supported here (%s)." % [feature, reason], {"feature": feature, "reason": reason})
+## The `detail` of a `product` refusal (a sub-client whose service is off): the same
+## {feature, reason, detail} supports(feature) answers.
+static func product_detail(feature: String, slug: String) -> Dictionary:
+	return {"feature": feature, "reason": PKeyConstants.UnsupportedReason.PRODUCT, "detail": "The product does not run the %s service." % slug}
+
+
+static func unsupported(feature: String, reason: String, p_detail := "") -> PKeyResult:
+	var text := p_detail if p_detail != "" else "%s is not supported here (%s)." % [feature, reason]
+	return PKeyResult.new(false, &"unsupported", text, {"feature": feature, "reason": reason, "detail": text})
 
 
 func _to_string() -> String:

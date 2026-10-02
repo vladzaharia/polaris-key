@@ -14,7 +14,11 @@ import type {
   LicenseDoc,
   LicenseStatus,
 } from "@polaris-key/protocol/license";
-import type { ConfigSource, LicenseState } from "@polaris-key/client-core";
+import type {
+  ConfigSource,
+  LicenseState,
+  Support,
+} from "@polaris-key/client-core";
 import type { StagedUpdate, UpdateCheck } from "@polaris-key/protocol/update";
 import type { ProductCatalog } from "@polaris-key/catalog";
 // `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
@@ -50,6 +54,9 @@ export type PolarisErrorCode =
   | "bundle-rejected"
   | "bundle-import-unsupported"
   | "report-unsupported"
+  /** The feature is not supported here (PARITY §2.2): an `UnsupportedError` carrying
+   *  `feature`, `reason` and `detail`, as `supports()` reports it. */
+  | "unsupported"
   // ── wire v4 update decisions (WIRE-CONTRACT-V4 §2.5's error map) ──
   /** Discovery lacks `update.endpoints.feed` or `release.endpoints.record` (an older Worker,
    *  or Update off): fall back to `checkUpdate()`. */
@@ -235,6 +242,16 @@ export interface OidcSignInHandle {
  *  which mode is active. Both `browserAdapter` and `desktopAdapter` implement it. */
 export interface PolarisAdapter {
   readonly mode: PolarisMode;
+  /**
+   * Whether a parity feature works through this adapter, and if not why (PARITY §2.2): offline,
+   * synchronous and side-effect free, from the generated capability table, this adapter's
+   * runtime (`web` or `desktop-bridge`) and its current capability map. `reason` is `runtime`
+   * (this transport cannot do it), `product` (the owning service is off) or `version` (this SDK
+   * does not implement it yet, or does not know the id).
+   */
+  supports(feature: string): Support;
+  /** The feature ids `supports()` answers Supported for, in registry order. */
+  caps(): string[];
   /** The current state, synchronously (the store seed + every read). */
   snapshot(): PolarisState;
   /** Subscribe to state changes; returns an unsubscribe. */
@@ -281,7 +298,10 @@ export interface PolarisAdapter {
   listUserConfig(): UserConfigEntry[];
   /** Where the effective value for `key` comes from (provenance), for diagnostics/UI. */
   getConfigSource(key: string): ConfigSource;
-  /** Read a single secret value (browser: never exposed → always null). */
+  /** Read a single secret value. Neither transport can: secrets are never delivered to a
+   *  browser session or a renderer (`config.secret` is a `runtime` N/A on `web` and
+   *  `desktop-bridge`), so both throw `UnsupportedError` (code `unsupported`). The return type is
+   *  kept for source compatibility. */
   getSecret(key: string): string | null;
   /** True when a boolean entitlement is granted. */
   isEntitled(name: string): boolean;

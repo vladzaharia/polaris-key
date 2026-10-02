@@ -204,12 +204,14 @@ final class DiscoveryTests: XCTestCase {
     func testRequireServiceRefusesADisabledService() async throws {
         let c = try core(expected: [.config], transport: ExplodingTransport())
         do {
-            try await c.requireService(.update)
+            try await c.requireService(.update, feature: Feature.updateCheck)
             XCTFail("a disabled service must refuse")
         } catch let error as PolarisError {
             XCTAssertEqual(error.code, PolarisError.serviceUnavailable)
             XCTAssertTrue(error.message.contains("update"))
+            XCTAssertEqual(error.unsupported?.feature, Feature.updateCheck)
+            XCTAssertEqual(error.unsupported?.reason, UnsupportedReason.product)
         }
-        try await c.requireService(.config)
+        try await c.requireService(.config, feature: Feature.configMint)
     }
 }

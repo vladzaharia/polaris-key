@@ -19,7 +19,7 @@ extends PKeyResult
 ##                         retired (`drift`, `changed`); activating again re-binds and takes a seat
 ##   rate-limited          429: too many attempts; try later (there is no Retry-After)
 ##   unsupported           nothing was sent: enrol on web (no machine anchor), `code`
-##                         `unsupported`, `detail` {feature, reason: "runtime"}
+##                         `unsupported`, `detail` {feature, reason: "runtime", detail}
 ##   error                 anything else: no answer (`code` is the transport's: `network-error`,
 ##                         `timeout`, `local-only`, …), another status, or a 200 without a token
 ##
@@ -60,10 +60,16 @@ static func of(p_kind: StringName, p_code: StringName, p_message: String, p_stat
 	return r
 
 
-static func unsupported_here(feature: String, reason: String) -> PKeyActivationResult:
-	var r := PKeyActivationResult.new(false, PKeyErrors.UNSUPPORTED, "%s is not supported here (%s)." % [feature, reason], {"feature": feature, "reason": reason})
+static func unsupported_here(feature: String, reason: String, p_detail := "") -> PKeyActivationResult:
+	var text := p_detail if p_detail != "" else "%s is not supported here (%s)." % [feature, reason]
+	var r := PKeyActivationResult.new(false, PKeyErrors.UNSUPPORTED, text, {"feature": feature, "reason": reason, "detail": text})
 	r.kind = KIND_UNSUPPORTED
 	return r
+
+
+## The same refusal from a PKeyCaps answer (`r.code == &"unsupported"`).
+static func from_unsupported(r: PKeyResult) -> PKeyActivationResult:
+	return unsupported_here(r.detail["feature"], r.detail["reason"], r.detail["detail"])
 
 
 func _to_string() -> String:
