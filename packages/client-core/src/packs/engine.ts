@@ -1555,8 +1555,7 @@ export class PackEngine {
         await this.activate(current);
       return current;
     }
-    const { record, variant, installs, seeds, planId, index, delegation } =
-      pre;
+    const { record, variant, installs, seeds, planId, index, delegation } = pre;
     const p = pre.plan;
     const got = { body: pre.body };
     const pin = { release: { sha256: pre.recordSha256 } };

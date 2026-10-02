@@ -54,8 +54,7 @@ const WORD_HEADS: readonly (readonly number[])[] = [
 const ZIP_EOCD = [0x50, 0x4b, 0x05, 0x06];
 const GDPC = ascii("GDPC");
 
-const isWs = (b: number): boolean =>
-  b === 0x20 || (b >= 0x09 && b <= 0x0d);
+const isWs = (b: number): boolean => b === 0x20 || (b >= 0x09 && b <= 0x0d);
 
 function startsWith(
   bytes: Uint8Array,
@@ -81,7 +80,10 @@ export function dataOnlyExtension(path: string): string | null {
 export function dataOnlyPathRefusal(path: string): "extension" | null {
   if (typeof path !== "string" || !pathSafe(path)) return "extension";
   const ext = dataOnlyExtension(path);
-  if (ext === null || !(DATA_ONLY_EXTENSIONS as readonly string[]).includes(ext))
+  if (
+    ext === null ||
+    !(DATA_ONLY_EXTENSIONS as readonly string[]).includes(ext)
+  )
     return "extension";
   return null;
 }

@@ -213,12 +213,12 @@ Recorded by the implementer; the code is the fact where this brief, the plan and
 - **The CLI fetches a delegation from the record route without a credential** (access rule (1)
   governs it). On a product whose release metadata is not `public` that fetch is refused, and the
   content-key publish and `revoke --delegation <sha256>` cannot proceed; `revoke --delegation
-  <file>` still can. Proposed follow-up below.
+<file>` still can. Proposed follow-up below.
 - **`gen:constants` gains a GDScript naming rule.** `dataOnlyExtension`'s `json` maps to
   `JSON`, which shadows Godot's native `JSON` class (a parse error that broke the Godot runner).
-  The GDScript renderer now writes a member whose UPPER_SNAKE name is one of Godot's all-caps
+  The GDScript renderer now writes a member whose UPPER*SNAKE name is one of Godot's all-caps
   native class or built-in type names (`AABB`, `IP`, `JSON`, `OS`, `RID`, `UPNP`) with a trailing
-  `_` (`PKeyConstants.DataOnlyExtension.JSON_`); every other language keeps `JSON`. A generator
+  `*` (`PKeyConstants.DataOnlyExtension.JSON\_`); every other language keeps `JSON`. A generator
   test pins it.
 - **Python, Swift and Godot** list `packs.delegation` as `planned` (P4-25, P4-25, P4-26) in their
   `parity.json`; their generated constants carry the new limits and enums.

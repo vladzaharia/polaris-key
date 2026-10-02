@@ -36,7 +36,12 @@ export const BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 /** The record kinds a P4 SDK acts on: `app`, `pack` (plans/P4-01.md §2.13, V4 §2.5.1),
  *  `revocation` (plans/P4-13.md §2.3, V4 §2.5.3) and `delegation` (plans/P4-19.md §2.2,
  *  V4 §2.5.4). */
-export const RECORD_KINDS = ["app", "pack", "revocation", "delegation"] as const;
+export const RECORD_KINDS = [
+  "app",
+  "pack",
+  "revocation",
+  "delegation",
+] as const;
 
 /** Record kinds a client verifies and never acts on. Empty since P4-19 filled `delegation`'s
  *  slot; a v4 SDK that predates a kind still verifies such a record and never acts on it. */

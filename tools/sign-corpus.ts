@@ -18350,7 +18350,11 @@ function refVerifyDelegatedRecord(c: {
   expectedHash: string;
   pin: DelegationPin | null;
 }):
-  | { ok: true; doc: Record<string, any>; delegation: Record<string, any> | null }
+  | {
+      ok: true;
+      doc: Record<string, any>;
+      delegation: Record<string, any> | null;
+    }
   | { ok: false; step: P19Step } {
   const body = c.jws;
   if (utf8Bytes(body).length > 88844 || /[^\x00-\x7f]/.test(body))
@@ -18389,7 +18393,10 @@ function refVerifyDelegatedRecord(c: {
     return { ok: false, step: "claims" };
   const doc = v.payload as Record<string, any>;
   if (c.pin) {
-    if (doc.kind !== (c.pin.kind ?? "app") || doc.deliverable !== c.pin.deliverable)
+    if (
+      doc.kind !== (c.pin.kind ?? "app") ||
+      doc.deliverable !== c.pin.deliverable
+    )
       return { ok: false, step: "cross-check" };
     if (doc.version !== c.pin.version || doc.seq !== c.pin.seq)
       return { ok: false, step: "cross-check" };
@@ -18465,8 +18472,10 @@ async function buildDelegationCases(): Promise<DelegationCase[]> {
     );
     return `${input}.${base64UrlEncodeBytes(new Uint8Array(sig))}`;
   };
-  const signDel = (doc: Record<string, unknown>, kid = REL_KID): Promise<string> =>
-    signAs(doc, kid, TYP);
+  const signDel = (
+    doc: Record<string, unknown>,
+    kid = REL_KID,
+  ): Promise<string> => signAs(doc, kid, TYP);
   const treeVariant = (
     sel: Record<string, string> = {},
   ): Record<string, unknown> => ({
@@ -18531,9 +18540,7 @@ async function buildDelegationCases(): Promise<DelegationCase[]> {
   ): Promise<void> => {
     const delegation = o.releaseOnly ? null : (o.delegation ?? D);
     const pin =
-      o.pin === undefined
-        ? pinOfDoc(JSON.parse(payloadTextOf(o.jws)!))
-        : o.pin;
+      o.pin === undefined ? pinOfDoc(JSON.parse(payloadTextOf(o.jws)!)) : o.pin;
     const c: DelegationCase = {
       id,
       description,
@@ -18614,10 +18621,7 @@ async function buildDelegationCases(): Promise<DelegationCase[]> {
     "delegated-valid-data-json",
     "A `data.json` pack (djdl.events.lore) under the same delegation.",
     {
-      jws: await signUnder(
-        packRec({ type: "data.json" }, `${ROOT}.lore`),
-        D,
-      ),
+      jws: await signUnder(packRec({ type: "data.json" }, `${ROOT}.lore`), D),
       expect: "ok",
     },
   );
@@ -18676,7 +18680,11 @@ async function buildDelegationCases(): Promise<DelegationCase[]> {
     id: string,
     description: string,
     del: string,
-    o: { releaseKeys?: Record<string, string>; key?: ContentKey; doc?: Record<string, unknown> } = {},
+    o: {
+      releaseKeys?: Record<string, string>;
+      key?: ContentKey;
+      doc?: Record<string, unknown>;
+    } = {},
   ): Promise<void> =>
     rec(id, description, {
       jws: await signUnder(o.doc ?? base, del, o.key),
@@ -18794,17 +18802,25 @@ async function buildDelegationCases(): Promise<DelegationCase[]> {
   );
   {
     const relPem = pem(REL_KID);
-    const dRel = await signDel(delDoc({ delegate: { publicKey: pub(REL_KID) } }));
+    const dRel = await signDel(
+      delDoc({ delegate: { publicKey: pub(REL_KID) } }),
+    );
     await rec(
       "delegation-key-is-release-key",
       "The delegated key is the pinned release key itself (the record is signed by it under a pkd1- kid): refused, a delegated key is never a release key.",
       {
-        jws: await signWith(JSON.stringify(base), relPem, `pkd1-${sha256Hex(dRel)}`),
+        jws: await signWith(
+          JSON.stringify(base),
+          relPem,
+          `pkd1-${sha256Hex(dRel)}`,
+        ),
         delegation: dRel,
         expect: "delegation",
       },
     );
-    const dPk = await signDel(delDoc({ delegate: { publicKey: pub(PIN_KID) } }));
+    const dPk = await signDel(
+      delDoc({ delegate: { publicKey: pub(PIN_KID) } }),
+    );
     await rec(
       "delegation-key-is-product-key",
       "The delegated key is a product signing key (the record is signed by it under a pkd1- kid): refused, a delegated key is never a product key.",
@@ -19167,7 +19183,9 @@ async function buildDelegationCases(): Promise<DelegationCase[]> {
       `delegationCases: ${cases.length} != ${P19_COUNTS.delegationCases}`,
     );
   const steps = new Set(
-    cases.map((c) => (c.expect.verify === "ok" ? "ok" : (c.expect.step as string))),
+    cases.map((c) =>
+      c.expect.verify === "ok" ? "ok" : (c.expect.step as string),
+    ),
   );
   for (const s of ["ok", "delegation", "jws", "scope"])
     if (!steps.has(s)) throw new Error(`delegationCases: no ${s} case`);

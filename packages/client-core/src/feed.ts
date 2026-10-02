@@ -692,8 +692,7 @@ function parseRevocations(
     // member unusable.
     let kind: "delegation" | undefined;
     if (has(r, "kind")) {
-      if (typeof r.kind !== "string" || !VOCAB_TOKEN_PATTERN.test(r.kind))
-        no();
+      if (typeof r.kind !== "string" || !VOCAB_TOKEN_PATTERN.test(r.kind)) no();
       if (r.kind !== "delegation") continue;
       kind = "delegation";
     }

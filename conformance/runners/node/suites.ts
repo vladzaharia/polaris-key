@@ -390,7 +390,12 @@ interface DelegationCase {
   productTrust?: TrustSet;
   expectedAud: string;
   expectedHash?: string;
-  pin?: { kind?: string; deliverable: string; version: string; seq: number } | null;
+  pin?: {
+    kind?: string;
+    deliverable: string;
+    version: string;
+    seq: number;
+  } | null;
   revoked?: string[];
   entry?: {
     record: string;
