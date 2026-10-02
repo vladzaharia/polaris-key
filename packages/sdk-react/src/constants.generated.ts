@@ -111,6 +111,21 @@ export const ErrorCode = {
   fileCorrupt: "file-corrupt",
   fileSourceMissing: "file-source-missing",
   payloadHashMismatch: "payload-hash-mismatch",
+  chunksRefMismatch: "chunks-ref-mismatch",
+  chunksBadLength: "chunks-bad-length",
+  chunksBadMagic: "chunks-bad-magic",
+  chunksUnsupportedVersion: "chunks-unsupported-version",
+  chunksBadRecordSize: "chunks-bad-record-size",
+  chunksBadFlags: "chunks-bad-flags",
+  chunksReservedNonzero: "chunks-reserved-nonzero",
+  chunksZeroLength: "chunks-zero-length",
+  chunksBadClen: "chunks-bad-clen",
+  chunksBadBundleRef: "chunks-bad-bundle-ref",
+  chunksBadBundleRange: "chunks-bad-bundle-range",
+  chunksSizeMismatch: "chunks-size-mismatch",
+  chunksPayloadMismatch: "chunks-payload-mismatch",
+  chunkBundleTruncated: "chunk-bundle-truncated",
+  chunkCorrupt: "chunk-corrupt",
   planTransportUnsupported: "plan-transport-unsupported",
   planInsufficientDisk: "plan-insufficient-disk",
   planNoStrategy: "plan-no-strategy",
@@ -230,6 +245,21 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "file-corrupt",
   "file-source-missing",
   "payload-hash-mismatch",
+  "chunks-ref-mismatch",
+  "chunks-bad-length",
+  "chunks-bad-magic",
+  "chunks-unsupported-version",
+  "chunks-bad-record-size",
+  "chunks-bad-flags",
+  "chunks-reserved-nonzero",
+  "chunks-zero-length",
+  "chunks-bad-clen",
+  "chunks-bad-bundle-ref",
+  "chunks-bad-bundle-range",
+  "chunks-size-mismatch",
+  "chunks-payload-mismatch",
+  "chunk-bundle-truncated",
+  "chunk-corrupt",
   "plan-transport-unsupported",
   "plan-insufficient-disk",
   "plan-no-strategy",
@@ -351,6 +381,21 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "file-corrupt": "client",
   "file-source-missing": "client",
   "payload-hash-mismatch": "client",
+  "chunks-ref-mismatch": "client",
+  "chunks-bad-length": "client",
+  "chunks-bad-magic": "client",
+  "chunks-unsupported-version": "client",
+  "chunks-bad-record-size": "client",
+  "chunks-bad-flags": "client",
+  "chunks-reserved-nonzero": "client",
+  "chunks-zero-length": "client",
+  "chunks-bad-clen": "client",
+  "chunks-bad-bundle-ref": "client",
+  "chunks-bad-bundle-range": "client",
+  "chunks-size-mismatch": "client",
+  "chunks-payload-mismatch": "client",
+  "chunk-bundle-truncated": "client",
+  "chunk-corrupt": "client",
   "plan-transport-unsupported": "client",
   "plan-insufficient-disk": "client",
   "plan-no-strategy": "client",
@@ -1069,6 +1114,15 @@ export const CONTENT_STAMP_FORMAT = "pkey-content/1";
 
 /** Packs on the wire: `PLAN_REQUEST_WEIGHT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
 export const PLAN_REQUEST_WEIGHT = 16384;
+
+/** Packs on the wire: `CHUNKS_FORMAT` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`). */
+export const CHUNKS_FORMAT = "pkey-chunks/1";
+
+/** Packs on the wire: `MAX_CHUNK_INDEX_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`). */
+export const MAX_CHUNK_INDEX_BYTES = 16777216;
+
+/** Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`). */
+export const MAX_CHUNK_BYTES = 4194304;
 
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 export const CHANNEL_ALIASES = {

@@ -127,6 +127,30 @@ export interface FilesDelta {
   data: { sha256: string; bytes: number };
 }
 
+/** The chunking parameters CI records in `chunks.params` (plans/P4-10.md §2.4). Informative:
+ *  clients never read them, and they are never claims. */
+export interface ChunkParams {
+  chunker?: string;
+  fileAware?: boolean;
+  avgSize?: number;
+  minSize?: number;
+  maxSize?: number;
+  padMerge?: number;
+  bundleTarget?: number;
+  bundleLayout?: string;
+  zstdLevel?: number;
+  [key: string]: unknown;
+}
+
+/** A variant's chunk-index reference (plans/P4-10.md §2.2): an object ref naming a binary
+ *  `pkey-chunks/1` index. An unknown `format` or `codec` makes the chunk strategy unusable;
+ *  other members are ignored (reserved, e.g. an index delta). */
+export interface ChunksRef extends ObjectRef {
+  /** `pkey-chunks/1` (`CHUNKS_FORMAT`). */
+  format: string;
+  params?: ChunkParams;
+}
+
 export interface PackVariant {
   /** 0–4 axis → value members; `{}` for an unvaried pack. */
   variant: Record<string, string>;
@@ -138,6 +162,8 @@ export interface PackVariant {
   deltas?: (PayloadDelta | FilesDelta)[];
   /** `engine` is the one v1 claim; other members are not claims. */
   requires?: { engine?: string; [key: string]: unknown };
+  /** The chunk index (plans/P4-10.md §2.2); valid but ignored on a `tree`. */
+  chunks?: ChunksRef;
 }
 
 /** A `pkey-release+jws` payload with `kind: "pack"`. A pack record never carries `builds`;
@@ -220,6 +246,29 @@ export interface FilesIndexDoc {
   layout: string;
   payload: { size: number; sha256: string };
   files: FilesIndexEntry[];
+}
+
+/** One `pkey-chunks/1` chunk record, as `parseChunkIndex` returns it:
+ *  `[id (hex), len, clen, bundle, offset]` (plans/P4-10.md §2.3). */
+export type ChunkRecord = [
+  id: string,
+  len: number,
+  clen: number,
+  bundle: number,
+  offset: number,
+];
+
+/** A parsed `pkey-chunks/1` index (plans/P4-10.md §2.3). Every u64 is read as two u32 words and
+ *  saturated at 2^53, so a bundle `size` or `payloadSize` never exceeds 9,007,199,254,740,992. */
+export interface ChunkIndexDoc {
+  /** Header flag bit 0 (informative). */
+  fileAware: boolean;
+  payloadSize: number;
+  payloadSha256: string;
+  /** In payload order. */
+  records: ChunkRecord[];
+  /** `[sha256 (hex), size]`, in table order. */
+  bundles: [sha256: string, size: number][];
 }
 
 export interface PatchEntry {

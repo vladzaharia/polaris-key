@@ -595,7 +595,17 @@ export const PACK_LIMIT_EXPORTS = [
   "MARKER_FORMAT",
   "CONTENT_STAMP_FORMAT",
   "PLAN_REQUEST_WEIGHT",
+  "CHUNKS_FORMAT",
+  "MAX_CHUNK_INDEX_BYTES",
+  "MAX_CHUNK_BYTES",
 ] as const;
+
+/** The three P4-10 entries of `PACK_LIMIT_EXPORTS`, documented against plans/P4-10.md. */
+const CHUNK_LIMIT_EXPORTS: ReadonlySet<string> = new Set([
+  "CHUNKS_FORMAT",
+  "MAX_CHUNK_INDEX_BYTES",
+  "MAX_CHUNK_BYTES",
+]);
 
 function scalarValue(name: string, value: unknown): ScalarValue {
   if (typeof value === "string") return value;
@@ -745,7 +755,7 @@ export function buildModel(sources: Sources): Model {
         );
       return {
         name,
-        doc: `Packs on the wire: \`${name}\` (plans/P4-01.md §2.13, \`@polaris-key/protocol/core\`).`,
+        doc: `Packs on the wire: \`${name}\` (${CHUNK_LIMIT_EXPORTS.has(name) ? "plans/P4-10.md §2.3" : "plans/P4-01.md §2.13"}, \`@polaris-key/protocol/core\`).`,
         value,
       };
     }),

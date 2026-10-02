@@ -195,7 +195,8 @@ function hashBytesOk(
 
 /**
  * The pack record's claims (plans/P4-01.md §2.3), after the common ones: the 55 `kind: pack`
- * checks of §4.6 and the integer rule at §2.5's paths. A value outside a v1 vocabulary is never
+ * checks of §4.6, P4-10's checks 81–83 on `chunks` (plans/P4-10.md §2.2) and the integer rule at
+ * §2.5's paths (18 with `chunks.bytes` and `chunks.size`). A value outside a v1 vocabulary is never
  * refused here; it only makes the governed thing unusable (§2.2).
  */
 function packClaimsOk(
@@ -302,6 +303,16 @@ function packClaimsOk(
       const r = v.requires;
       if (!isObject(r) || !optPattern(r, "engine", ENGINE_PATTERN))
         return false;
+    }
+    // plans/P4-10.md §2.2: checks 81–83 and the object ref at `chunks` (its `bytes` and `size`
+    // from 1). Members other than these are ignored (reserved: an index delta).
+    if (has(v, "chunks")) {
+      const c = v.chunks;
+      if (!isObject(c)) return false;
+      if (typeof c.format !== "string" || !OBJECT_FORMAT_PATTERN.test(c.format))
+        return false;
+      if (!objectRef(c, `${at}/chunks`, 1, 1, nonWire)) return false;
+      if (has(c, "params") && !isObject(c.params)) return false;
     }
     const key = variantKey(sel as Record<string, string>);
     if (keys.has(key)) return false;
