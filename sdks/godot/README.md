@@ -445,8 +445,8 @@ fetches the record the target for this platform pins and verifies it hash first,
   no fallback). The answer may then be `packs` (`install`, `revoke`, `set`; applied by the boot's
   FETCH and BACKGROUND, boot `none`), a `binary` with `prestage` (the next content level's
   required and essential packs), an offer made mandatory by a `contentBlock`, `blocked
-  {content-floor}` (boot `optional`: a locked banner, the game keeps running) or `blocked
-  {revoked-content}` (boot `required`). A build without a stamp decides exactly as before. `feed_doc` and
+{content-floor}` (boot `optional`: a locked banner, the game keeps running) or `blocked
+{revoked-content}` (boot `required`). A build without a stamp decides exactly as before. `feed_doc` and
   `record_doc` are the verified documents P3-10's adapters act on.
 - **After a refusal** it decides from the committed feed (the canonical channel the Worker named,
   else the requested name, else its alias target); a stale committed feed answers
