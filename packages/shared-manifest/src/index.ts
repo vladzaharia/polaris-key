@@ -376,6 +376,13 @@ export interface ManifestPackDeliverable {
   entitlement: string | null;
   patch: { strategies: PackPatchStrategy[]; deltaBases: number };
   versioning: { scheme: VersionScheme };
+  /**
+   * The save-compatibility policy (P4-20, CONTENT §6.9): where CI reads the content ids a release
+   * provides (`from`, repo-relative, default {@link DEFAULT_PROVIDES_FILE}) and whether a publish
+   * without that list fails (`required`). Null when undeclared: CI then signs `provides` only
+   * from `pkey release publish --provides`.
+   */
+  provides: { required: boolean; from: string } | null;
 }
 
 /** The protocol's `SecretDelivery`, re-exported under the manifest's historical name — one
@@ -710,8 +717,48 @@ export type PackBaseline = (typeof PACK_BASELINES)[number];
  */
 export const PACK_PATCH_STRATEGIES = ["delta", "file", "chunk"] as const;
 export type PackPatchStrategy = (typeof PACK_PATCH_STRATEGIES)[number];
-/** Pack fields a later package brings (P4-20); refused until then. */
-export const PACK_FIELDS_NOT_SUPPORTED = ["provides", "removes"] as const;
+/**
+ * Pack fields a declaration never carries. `removes` is per release, not per pack: CI passes it to
+ * `pkey release publish --removes` for the one release that stops providing those content ids
+ * (P4-20, CONTENT §6.7 item 8).
+ */
+export const PACK_FIELDS_NOT_SUPPORTED = ["removes"] as const;
+/**
+ * One content id in a pack release's `provides` or `removes` (P4-20): opaque, printable ASCII
+ * without the space, 1–128 characters. The SDKs' `providesOf` (client-core
+ * `packs/provides.ts`) reads the same shape; a test pins the two together.
+ */
+export const CONTENT_ID_PATTERN = /^[!-~]{1,128}$/;
+/** The most ids one `provides` or `removes` list holds (P4-20). A realistic registry (Diceroll's
+ *  ~1,200 content ids) is about 22 KB of record payload, inside the 64 KiB cap. */
+export const MAX_PROVIDES = 4096;
+/** Where a pack's `provides` list is read when its `provides` policy names no file. */
+export const DEFAULT_PROVIDES_FILE = ".pkey/provides.json";
+/**
+ * A `provides.from` path: relative to the repository root, `/`-separated, no `.` or `..`
+ * segment, at most 256 characters of `[A-Za-z0-9._@+-]` and `/`.
+ */
+export const PROVIDES_FILE_PATTERN =
+  /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+-]+(?:\/[A-Za-z0-9._@+-]+){0,31}$/;
+
+/**
+ * Why `list` is not a usable `provides` or `removes` list, or null when it is: an array of at most
+ * {@link MAX_PROVIDES} distinct {@link CONTENT_ID_PATTERN} strings. The CLI checks a declared
+ * provides file with it, and the Worker a record's lists (`pack-provides`).
+ */
+export function providesListProblem(list: unknown): string | null {
+  if (!Array.isArray(list)) return "is not an array of content ids";
+  if (list.length > MAX_PROVIDES)
+    return `holds ${list.length} ids; at most ${MAX_PROVIDES}`;
+  const seen = new Set<string>();
+  for (const [i, id] of list.entries()) {
+    if (typeof id !== "string" || !CONTENT_ID_PATTERN.test(id))
+      return `entry ${i} (${JSON.stringify(id)?.slice(0, 80)}) is not a content id: printable ASCII without spaces, 1 to 128 characters`;
+    if (seen.has(id)) return `lists ${id} twice`;
+    seen.add(id);
+  }
+  return null;
+}
 /**
  * A `requires.contentApi.<app>` range (P4-12, CONTENT §6.2): one to four space-separated
  * comparators, each an optional `>=`, `<=`, `>`, `<` or `=` and a contentApi level (`">=3 <5"`,
@@ -2720,7 +2767,27 @@ function validatePackDeliverable(
         "release",
         `${at}/${field}`,
         "pack_field_not_supported",
-        `${field} is not supported for packs yet (P4-20 adds provides and removes).`,
+        `${field} is never declared: it belongs to one release, so pass it to pkey release publish --${field}.`,
+      );
+  }
+  // ── provides: the save-compatibility policy (P4-20, CONTENT §6.9) ──
+  const provides = def.provides;
+  if (provides !== undefined) {
+    const p = isRecord(provides) ? provides : null;
+    if (
+      !p ||
+      (p.required !== undefined && typeof p.required !== "boolean") ||
+      (p.from !== undefined &&
+        (typeof p.from !== "string" ||
+          p.from.length > 256 ||
+          !PROVIDES_FILE_PATTERN.test(p.from)))
+    )
+      add(
+        errors,
+        "release",
+        `${at}/provides`,
+        "invalid_pack_provides",
+        `provides is {required?: boolean, from?: a repo-relative path to the JSON list of content ids, at most 256 characters, no . or .. segments; default ${DEFAULT_PROVIDES_FILE}}.`,
       );
   }
   // ── type ──
@@ -3840,6 +3907,17 @@ function normalizePackDeliverable(
         ? (asRecord(raw.versioning).scheme as VersionScheme)
         : "semver",
     },
+    provides: isRecord(raw.provides)
+      ? {
+          required: raw.provides.required === true,
+          from:
+            typeof raw.provides.from === "string" &&
+            raw.provides.from.length <= 256 &&
+            PROVIDES_FILE_PATTERN.test(raw.provides.from)
+              ? raw.provides.from
+              : DEFAULT_PROVIDES_FILE,
+        }
+      : null,
   };
 }
 

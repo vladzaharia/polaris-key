@@ -505,7 +505,18 @@
             }
           }
         },
-        "provides": false,
+        "provides": {
+          "description": "The save-compatibility policy (P4-20, CONTENT §6.9): from, a repo-relative path to the JSON array of content ids each release provides (default .pkey/provides.json; each id printable ASCII without spaces, 1 to 128 characters, at most 4096 distinct); required, whether a publish without that list fails (default false). A release that stops providing an id its predecessor provided needs a contentApi bump or pkey release publish --removes.",
+          "type": "object",
+          "properties": {
+            "required": { "type": "boolean" },
+            "from": {
+              "type": "string",
+              "maxLength": 256,
+              "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9._@+-]+(?:/[A-Za-z0-9._@+-]+){0,31}$"
+            }
+          }
+        },
         "removes": false
       },
       "required": ["kind", "type"],
