@@ -145,3 +145,24 @@ mise exec node@22 -- pnpm typecheck
 - The matrix endpoint and tab are what P4-14 (readiness, pack rows) and P5-02 to P5-04 (store
   states) extend; §6.2 item 3 (outlets and credentials) builds beside it.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P2b-06 done`.
+
+## Corrections recorded during implementation
+
+The code on `main` (P2-01's bytes-host hardening, P2b-05's feeds) contradicts three details of
+this brief; the implementation follows the code:
+
+- **No detection script.** The bytes host refuses HTML and runs everything under a script-free
+  `sandbox` CSP (THREAT-MODEL §3, the same-site compensation for `dl.plrs.im`). The page keeps
+  that property instead of relaxing it: it is a `document` byte route whose own policy the
+  dispatcher checks (`inertDocumentPolicy`: `sandbox` with at most `allow-downloads` and
+  `allow-top-navigation-to-custom-protocols`, `default-src 'none'`, hashed style only, no
+  `img-src` beyond `data:`). Platform detection is server-side (UA Client Hints, then the UA) and
+  the iPad case is a `(hover: none) and (pointer: coarse)` media query, not `maxTouchPoints`.
+- **`download.json` is on the console host**, not the bytes host. The bytes host refuses JSON
+  success answers by rule and the storefront feeds it links to live on the console host; the
+  model is a read-only public JSON document like them (CORS-covered, feed cache, feed budget).
+  Only the HTML page and its `/{product}` alias are bytes-host-only; on the console host those
+  two are the not-found.
+- **`CONSOLE_ORIGIN`** is a new public `[vars]` value per environment: the page renders on the
+  bytes host but links feeds served on the console host, and nothing else names that origin.
+  Without it the page omits the feed rows, as the brief asks when feeds are absent.

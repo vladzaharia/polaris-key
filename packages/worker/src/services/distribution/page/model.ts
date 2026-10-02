@@ -687,7 +687,9 @@ export async function buildDownloadModel(
               (p): p is PagePlatform =>
                 (PAGE_PLATFORMS as readonly string[]).includes(p as string),
             )
-          : [...PAGE_PLATFORMS];
+          : // A direct outlet that names no platforms offers what can be installed from a file:
+            // an iOS build cannot (it goes through AltStore or a store), unless named.
+            PAGE_PLATFORMS.filter((p) => p !== "ios");
         for (const platform of offered) {
           const sel = await one(outlet, platform, { allBuilds: true });
           if (!sel?.entries.length) continue;
