@@ -150,9 +150,8 @@ export interface BlobGcSettings {
  * (default 30, at least 1). An unparseable value falls back to the default, never to "no grace".
  */
 export function blobGcSettings(env: Env): BlobGcSettings {
-  const vars = env as unknown as Record<string, unknown>;
-  const mode = vars.BLOB_GC_MODE;
-  const days = Number(vars.BLOB_GC_GRACE_DAYS);
+  const mode = env.BLOB_GC_MODE;
+  const days = Number(env.BLOB_GC_GRACE_DAYS);
   const grace =
     Number.isFinite(days) && days > 0
       ? Math.max(MIN_GC_GRACE_SECONDS, Math.floor(days * 24 * 60 * 60))

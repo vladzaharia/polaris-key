@@ -200,3 +200,62 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+- **Migration numbers.** `0048_a_dist_readiness_blob_gc.sql` (`dist_readiness`, `blob_gc_log`,
+  then `ALTER blob_objects ADD unreferenced_since`) and `0048_b_blob_gc_claim.sql` (an index, then
+  `ALTER blob_objects ADD gc_claimed_at`): one bare ALTER per file, last. `blob_gc_log` is new
+  (Core's): an object is shared across products, so its deletion belongs to no product's `audit`
+  rows; drops and restores are also summarised in each product's audit. `TABLE_OWNERS` gains
+  `core.blob_gc_log` and `distribution.dist_readiness`.
+- **Readiness is computed on read; `dist_readiness` is the snapshot.** Release cannot write
+  Distribution's table (hooks are read-only), so the brief's Release-side triggers (an app release
+  published or promoted, a set re-resolved) cannot refresh rows directly. The hold is therefore
+  computed on every read (`services/distribution/readiness.ts`, memoised per request) and applied
+  in `availabilityFor`, the matrix and the storefront selection; the snapshot is refreshed by an
+  availability report (CI or connector) for the affected app releases, by Distribution's
+  connector cron for every live app release, and by the console's refresh. Overrides are
+  `source = 'admin'` rows. "Holdable" outlets are the self-hosted kinds plus `altstore-pal` and
+  `flathub` (Polaris Key serves their feeds).
+- **N4 (P4-05).** Readiness blocks `pkey-cdn`/`web` for an `entitled` pack with no delivery gate
+  (`entitlement-missing`), since no device can fetch it.
+- **The required set** uses the pins' `required` flag, holds of `required` packs, and the
+  `required` compatible/standalone members of the stored sets at the release's live level, on the
+  outlet's platforms; an `unsatisfied` required pack blocks; a live level with no stored set while
+  required packs are declared is `pending`. `apple-ba` checks `platformRef.assetPackIdentifier`
+  when present (`…-c<contentApi>`, the asset pack shown as `<pack leaf>-c<level>`).
+- **Pack rollouts needed no new admin operation or CLI flag.** P2b-04's rollout rows, routes and
+  `pkey distribution rollout|halt --deliverable <packId>` already took a pack. P4-14 composes the
+  gates (`update/packParts.ts` `composeGates`): `fallback` is the release the channel's sets name
+  with the gated releases removed (one extra resolution), `null` when rows disagree; complete,
+  100% and mirrored non-halted rows compose no gate; the per-platform document keeps only gates
+  its rows key, with their fallbacks. `Delivery.rollouts()` was added to read them in one query.
+- **GC liveness, as built.** Besides the brief's rules: a pack channel's pointer, a rollout's
+  release, a revocation's replacement, every release newer than the newest live one (a release
+  published ahead of its app release), and the three newest releases of each pack are live.
+  Revoked releases never are (P4-13 §8.5). `artifact` and `feed` refs are never dropped. A dead
+  release's refs are dropped only once older than the grace period; re-earning a ref moves its
+  `created_at` forward (`core/blobs.ts`, `packUploadRefs`). `Delivery.reportedAvailability()` gives
+  the stored (never derived) availability rows.
+- **Self-healing.** To stay safe across concurrent publishes without Core reading Release's tables,
+  the plan also restores a ref a live release's verified record or index names and this product
+  lacks (`blob_gc_log` `ref-restored`), so a drop that raced an ingest is undone on the next tick,
+  long inside the grace period.
+- **The claim.** The sweep claims (`gc_claimed_at`) before the R2 delete; `recordObject` refuses a
+  claimed object (so `promote` answers `changed`) and clears `unreferenced_since` otherwise. A
+  claim older than an hour (a dead tick) is finished by the next sweep. A delta whose endpoint is
+  gone or unreferenced needs only the one-day minimum grace, not the full grace period.
+- **Bundles (P4-10 decision 16).** P4-14 landed first, so `ReleaseCatalog.packChunks` is declared
+  OPTIONAL in `core/hooks.ts` and not implemented; until P4-22 implements it, every ref to a
+  `bundles/` key is kept and the bundle live-data ratio (`GET …/blob-gc/bundles`) reads `null`.
+  P4-22 implements `packChunks` in `services/release/packs/catalog.ts` and adds the test that
+  every bundle a live chunk index names is kept; the collector already walks it when present.
+- **Lazy deltas (P4-17).** There is no cold mark yet: P4-17 marks a lazy delta cold by dropping its
+  ref, and the sweep then collects it like any unreferenced delta.
+- **Routes.** No public route changed (rule 10 untouched). The console gained
+  `…/distribution/readiness[/refresh|/<app>/<outlet>/{override,clear}]` and Core's
+  `…/blob-gc[/bundles]` (narrative-only, like the rest of the console API). Settings:
+  `BLOB_GC_MODE=off`, `BLOB_GC_GRACE_DAYS`.
+- **Console rendering** of readiness in the matrix is not in this package: the matrix API carries
+  a `readiness` object per app-release cell; P4-15 renders it with its overlay.

@@ -62,5 +62,9 @@ The note above the grid says exactly what a control does today:
 
 ## Not here yet
 
-Content packs and readiness holds join the matrix with P4-14. Store-mirrored states for more
-stores arrive with the store connectors (P5-02 to P5-04); they appear in the same cells.
+Readiness holds (P4-14) are in the matrix API already: each app release's cell carries a
+`readiness` object with the blockers, whether Polaris Key holds the release on that outlet (its
+availability then reads `pending`) and, on a store outlet it cannot hold, a warning; see
+[Outlet readiness](/docs/services/distribution/availability/#outlet-readiness). The console renders
+it with the compatibility overlay (P4-15). Store-mirrored states for more stores arrive with the
+store connectors (P5-02 to P5-04); they appear in the same cells.
