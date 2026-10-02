@@ -1,16 +1,16 @@
 # P4-06 `client-core` packs: planner, appliers, path rules, install state; Node and React wiring
 
-| Field       | Value                                                                                                                                                                    |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P4: Packs (v1)                                                                                                                                                           |
-| Size        | 1.75–2.75 engineer-weeks                                                                                                                                                 |
-| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md)                                |
-| Unblocks    | [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md) |
-| Role        | `pkey-sdk-porter`                                                                                                                                                        |
-| Plan mode   | no                                                                                                                                                                       |
-| Gates       | corpus: the content corpus and `plan-matrix.json` pass in Node (lowest and current Node 22) and Chromium; `pnpm gen:corpus -- --check` unchanged                         |
-| Human input | none                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                     |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v1)                                                                                                                                                                                            |
+| Size        | 1.75–2.75 engineer-weeks                                                                                                                                                                                  |
+| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md)                                                                 |
+| Unblocks    | [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [P4-10](P4-10-chunk-indexes.md), [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                        |
+| Gates       | corpus: the content corpus and `plan-matrix.json` pass in Node (lowest and current Node 22) and Chromium; `pnpm gen:corpus -- --check` unchanged                                                          |
+| Human input | none                                                                                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                 |
 
 ## Goal
 
@@ -266,3 +266,8 @@ package, and every decision in §8.1 that names it as owner, override this brief
   access handles is a priority and must cover the `full` strategy (review note 3). **A lock** so
   that two processes never share one Node pack store (review note 9). A consent screen in a
   renderer; the Python, Swift and Godot ports (P4-07, P4-08).
+
+## Plan amendments (P4-10)
+
+The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

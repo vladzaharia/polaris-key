@@ -3,9 +3,9 @@
 | Field       | Value                                                                                                                                                                                                                   |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v2)                                                                                                                                                                                                          |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                    |
-| Depends on  | [P4-03](P4-03-ci-patch-artifacts.md), [P4-04](P4-04-content-corpus-v1.md), [S-03](S-03-chunk-size-real-history.md), [S-02](S-02-r2-range.md)                                                                            |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-17](P4-17-lazy-deltas.md)                                                                                                                                                        |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                    |
+| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P4-06](P4-06-client-core-packs.md), [S-03](S-03-chunk-size-real-history.md), [S-02](S-02-r2-range.md)                                                                             |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-22](P4-22-ci-chunk-indexes.md)                                                                                                                                                   |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                   |
 | Plan mode   | yes: `program/plans/P4-10.md` is written and approved before any code                                                                                                                                                   |
 | Gates       | plan mode; corpus (content-corpus drift gate, `pnpm gen:corpus -- --check`, Swift and Godot mirrors, generated `corpus.mdx`); all SDKs (every runner loads the new sections); rule 9 if chunking is manifest-configured |
@@ -266,3 +266,8 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 
 Set the status in the PR that completes the work:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-10 done`.
+
+## Plan amendments (P4-10)
+
+The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

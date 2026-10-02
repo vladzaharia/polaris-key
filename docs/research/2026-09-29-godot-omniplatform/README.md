@@ -1018,7 +1018,6 @@ deliverables:
     entitlement: extras.diceSkins # enforced by distribution at delivery
 patch: # computed in CI at publish, recorded by release, served by distribution
   strategies: [delta, chunk, file]
-  chunking: { alg: fastcdc, avg: 65536, fileAware: true }
   deltaBases: hot-pairs
 ---
 # .pkey/distribution.yaml (proposed, illustrative): HOW IT REACHES DEVICES AND OUTLETS
