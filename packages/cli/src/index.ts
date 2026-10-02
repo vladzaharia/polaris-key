@@ -37,6 +37,7 @@ import {
   type RolloutCommand,
 } from "./distribution.js";
 import { writeManifestSchemas } from "./schemas.js";
+import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import {
   generatedKeyText,
   generateReleaseKey,
@@ -98,6 +99,26 @@ export {
 } from "./distribution.js";
 export { MAX_SINGLE_PUT_BYTES, objectUrl, putFile, signV4 } from "./s3.js";
 export { manifestSchemas, writeManifestSchemas } from "./schemas.js";
+export {
+  buildFdroidFeed,
+  buildFdroidIndex,
+  buildRepoFiles,
+  dictDiff,
+  indexV2Problems,
+  signEntryJar,
+  sortedJson,
+  FEEDS_USAGE,
+  type FdroidFeedOptions,
+  type FdroidFeedResult,
+  type FdroidInputs,
+} from "./feeds.js";
+export {
+  androidBuildMetadata,
+  apkSignerSha256,
+  buildMetadataFor,
+  iosBuildMetadata,
+  MetadataError,
+} from "./buildMetadata.js";
 
 export {
   ADMIN_COOKIE_ENV,
@@ -185,6 +206,8 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdRelease(parsed, cwd, stdout, stderr, ci);
       case "manifest":
         return await cmdManifest(parsed, cwd, stdout);
+      case "feeds":
+        return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
       default:
         stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
         return 2;
@@ -651,6 +674,40 @@ async function cmdRelease(
   }
 }
 
+/** `pkey feeds fdroid` (P2b-05, `feeds.ts`). */
+async function cmdFeeds(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const product = flagString(parsed, "product");
+  const channel = flagString(parsed, "channel");
+  const out = flagString(parsed, "out");
+  if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
+    throw new Error(FEEDS_USAGE);
+  await buildFdroidFeed({
+    cwd,
+    product,
+    channel,
+    out,
+    keystore: flagString(parsed, "keystore"),
+    alias: flagString(parsed, "alias"),
+    ksPassEnv: flagString(parsed, "ks-pass-env"),
+    apksigner: flagString(parsed, "apksigner"),
+    icon: flagString(parsed, "icon"),
+    dryRun: flagBool(parsed, "dry-run"),
+    baseUrl: flagString(parsed, "base-url"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep,
+  });
+  return 0;
+}
+
 const MANIFEST_USAGE = "Usage: pkey manifest schemas --out <dir>";
 
 /** `pkey manifest schemas --out <dir>` — vendor the `.pkey/` JSON Schemas (`schemas.ts`). */
@@ -715,6 +772,8 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--deliverable id]
   pkey distribution pause|resume|halt|complete --product slug --outlet id --channel c
               [--release id] [--deliverable id]
+  pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a]
+              [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -724,7 +783,9 @@ With a release key (PKEY_RELEASE_KEY, or --release-key-file) it also signs the r
 (pkey-release+jws) under the .pkey/release releaseKeys entry whose public key matches, checks it,
 and submits it with the descriptor; a dry run prints the record unsigned. pkey release keys
 generate writes a new private release key to --out and prints its releaseKeys entry.
---meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. The CI commands
+--meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
+payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
+read into the descriptor for the storefront feeds. The CI commands
 exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret
 is stored in the repository. See /docs/build/ci/.
 
@@ -736,6 +797,11 @@ sends the SHA-256 fingerprint the job signed with (colons allowed); one that is 
 product's key inventory is flagged for an operator and the command exits 1. rollout, pause,
 resume, halt and complete drive the outlet rollout; --bp is basis points (2500 = 25%), and
 they need a token an operator granted distribution:rollout.
+
+pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff)
+from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
+password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
+distribution:feeds. Without --keystore it writes the unsigned files and stops.
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.

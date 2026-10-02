@@ -151,17 +151,17 @@ buildVersion, minOSVersion, appPermissions: {entitlements, privacy}}` from the I
 
 ## Acceptance criteria
 
-- [ ] Golden-file tests for each feed from a Diceroll-shaped fixture (stable and beta, beta
+- [x] Golden-file tests for each feed from a Diceroll-shaped fixture (stable and beta, beta
       including stable, one yanked release, one release halted on the outlet).
-- [ ] The Classic source has no `marketplaceID` and has the legacy top-level fields; the PAL
+- [x] The Classic source has no `marketplaceID` and has the legacy top-level fields; the PAL
       source has `marketplaceID`; versions are newest first and unique by (`version`, `buildVersion`).
-- [ ] A release not `live` on the outlet, yanked, or with a paused, halted or partial rollout is
+- [x] A release not `live` on the outlet, yanked, or with a paused, halted or partial rollout is
       absent; the previous release is listed instead.
-- [ ] The F-Droid relay serves only registered files with correct content types and refuses
+- [x] The F-Droid relay serves only registered files with correct content types and refuses
       traversal; `pkey feeds fdroid` produces an index that validates against index-v2's shape and
       an `entry.json` whose index hash matches.
-- [ ] A non-public deliverable yields not-found on every feed route.
-- [ ] `routeCoverage` passes; `docs gen:check` is clean; the green gate passes (`AGENTS.md`).
+- [x] A non-public deliverable yields not-found on every feed route.
+- [x] `routeCoverage` passes; `docs gen:check` is clean; the green gate passes (`AGENTS.md`).
 
 ## Verify
 
@@ -172,6 +172,72 @@ mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 mise exec node@22 -- pnpm typecheck
 ```
+
+## Corrections from implementation
+
+Recorded where the code disagreed with the text above.
+
+- **The F-Droid CI route also answers `GET`.** `pkey feeds fdroid` builds the index "from
+  Polaris Key's releases", but no route gave CI the channel's selected APKs with their metadata.
+  So `GET /{product}/distribution/feeds/fdroid/{channel}` (same path, same `distribution:feeds`
+  scope) returns the generator's inputs: the repository address and `fdroid-repo` fingerprints,
+  the APKs newest first with a `stable` flag and their metadata, and the files registered now.
+  The register `POST` also takes the upload `ticket` it promotes from.
+- **Build metadata needs a column.** The descriptor's `builds[].metadata` had nowhere to live.
+  Migration 0043 adds `release_builds.metadata_json` beside `dist_feed_files`, and the
+  `releaseCatalog` hook gained `CatalogBuild.metadata`. It also gained `channelReleases()`, the
+  channel's eligible history newest first: the hook only resolved a channel's head.
+- **Android metadata carries `targetSdk`.** F-Droid's index states `usesSdk` only with both
+  `minSdkVersion` and `targetSdkVersion` (`org.fdroid.index.v2.UsesSdkV2`).
+- **Flathub's liveness is the bytes.** Flathub is a store kind, so it is never live by
+  derivation. But its checker JSON is what leads to a Flathub build, so that feed lists releases
+  whose payload Polaris Key serves. Holds on the `flathub` outlet still apply.
+- **Several outlets of a kind.** The routes are per channel, not per outlet. `?outlet=<id>`
+  picks one outlet (for example `altstore-beta`). The default is the outlet whose id is the kind,
+  else the first by id.
+- **`users/downloads.md` did not exist**, so it was created, with the "adding a source" section.
+- **Obtainium key names**, which E2 marked unverified, were checked against Obtainium's source on
+  2026-10-01: `App.fromJson` reads `id`, `url`, `author`, `name`, `overrideSource` and
+  `additionalSettings` (a JSON string). `overrideSource` is the source's class name
+  (`FDroidRepo`, `DirectAPKLink`). `FDroidRepo` reads `appIdOrName`, `pickHighestVersionCode` and
+  `trySelectingSuggestedVersionCode`. `DirectAPKLink` reads `defaultPseudoVersioningMethod`
+  (`partialAPKHash` or `ETag`).
+- **Registering earns refs from feed refs only, and never a non-public object** (review fix).
+  The first cut let a register skip the ticket for ANY key the product referenced, so a token
+  holding only `distribution:feeds` could name a paid pack's payload digest and have the relay
+  serve it publicly. Now only an existing `feed` ref skips the ticket; registration refuses
+  (`not_public`, 403) any object a non-public deliverable's release carries; and the relay
+  re-applies the blob route's strictest-mode rule on every read (`strictestAccess`, shared with
+  `bytes.ts`). `pkey feeds fdroid` therefore uploads every file that is not already one of the
+  channel's registered files, `present` or not.
+- **APK file names must be distinct across the listed releases** (review fix). The relay finds
+  an APK by name, so `pkey feeds fdroid` refuses a set where two releases share one.
+- **Goldens** (review fix). Every feed has a stable and a beta golden: AltStore, AltStore PAL,
+  Obtainium, Scoop, Flathub and the F-Droid generator inputs (`packages/worker/test/fixtures/feeds/`).
+  The F-Droid documents themselves (`index-v2.json`, `entry.json` and the diff) are compared byte
+  for byte in `packages/cli/test/fixtures/feeds/`. A held rollout on the `flathub` outlet has its
+  own test.
+- **The public feed routes have a bounded D1 cost and a cache** (second review). The first cut
+  called `delivery.availability()` and `delivery.deliveryUrl()` per release, and each re-read
+  every release row, so a feed cost hundreds of queries (the PAL source about 2,000 at 80
+  releases, past the per-invocation D1 cap). The selection now reads the outlet's availability
+  rows and transport once and two queries per scanned release, `MAX_FEED_SCAN` is 100 (was 200),
+  and the routes keep rendered answers in the Workers Cache API for five minutes, keyed by path,
+  `?outlet=` and a stamp of rollouts, yanks, availability, outlets, feed files and notes access,
+  so a hold applies on the next request. The catalog hook's `artifacts()` now returns the
+  locations too (`CatalogSourceArtifact`). The relay resolves only APK names the registered
+  `index-v2.json` lists, and Obtainium checks only that an `fdroid-repo` outlet exists instead of
+  running a second selection. A test checks the bulk selection agrees with the hooks.
+- **Feeds honour rollout holds and availability reports**, so the threat model's P2b-04
+  paragraph ("a holder of `distribution:rollout` cannot yet withhold a build") and the P2b-03
+  report bullet were corrected: both scopes can now withhold a release from the storefront feeds
+  that list releases (a rollback for new installs), never expose one. Obtainium is the exception
+  (third review): its config names no release, so in FDroidRepo mode it follows the
+  `fdroid-repo` outlet's holds and in Direct mode the moving `builds/` route (yanks and pins, no
+  holds). The threat model and `rollouts.md` say so.
+- **`pkey feeds fdroid --out` is never deleted wholesale** (second review). It removes only the
+  files a repository is made of, and refuses the working directory, a parent of it, or a
+  directory that holds anything else.
 
 ## Hand-off
 

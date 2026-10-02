@@ -118,6 +118,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // metadata reads and multi-hundred-MB artifact streams have different legitimate rates.
   release: "open",
   releaseArtifact: "open",
+  // P2b-05: the public storefront feeds (AltStore, Obtainium, F-Droid relay, Scoop, Flathub).
+  // A D1-read budget per IP, nothing secret behind it.
+  distributionFeed: "open",
 };
 
 function failModeFor(bucket: string): FailMode {

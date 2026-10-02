@@ -16,9 +16,11 @@
  */
 
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   afterEach,
   beforeAll,
@@ -123,6 +125,24 @@ const RELEASE_DOC = {
   },
 };
 
+/** The CLI's build-metadata fixtures (`packages/cli/test/fixtures/build-metadata/make.sh`). */
+function CLI_FIXTURE(name: string): Uint8Array {
+  return new Uint8Array(
+    readFileSync(
+      path.join(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "..",
+        "cli",
+        "test",
+        "fixtures",
+        "build-metadata",
+        name,
+      ),
+    ),
+  );
+}
+
 function bytesOf(n: number, seed: number): Uint8Array {
   const out = new Uint8Array(n);
   for (let i = 0; i < n; i++) out[i] = (i * 13 + seed * 101 + (i >> 9)) & 0xff;
@@ -135,8 +155,9 @@ const FILES: Record<string, Uint8Array> = {
   "macos/djdl-1.3.0-macos.zip.sig": bytesOf(256, 2),
   "windows/djdl-1.3.0-windows.zip": bytesOf(4_000, 3),
   "linux/djdl-1.3.0-linux.tar.gz": bytesOf(5_000, 4),
-  "android/djdl-1.3.0.apk": bytesOf(6_000, 5),
-  "ios/djdl-1.3.0.ipa": bytesOf(7_000, 6),
+  // P2b-05: real (tiny) archives, so the CLI reads their build metadata into the descriptor.
+  "android/djdl-1.3.0.apk": CLI_FIXTURE("tiny.apk"),
+  "ios/djdl-1.3.0.ipa": CLI_FIXTURE("tiny.ipa"),
   "web/djdl-1.3.0-web.zip": bytesOf(8_000, 7),
 };
 
@@ -423,6 +444,30 @@ describe("pkey release publish → the Worker", () => {
         }))
         .sort((a, b) => a.build_id.localeCompare(b.build_id)),
     );
+
+    // P2b-05: the metadata the CLI read from inside the IPA and APK reached the Worker.
+    const meta = await db.all<{
+      build_id: string;
+      metadata_json: string | null;
+    }>(
+      "SELECT build_id, metadata_json FROM release_builds WHERE product = ? AND release_id = ? ORDER BY build_id",
+      SLUG,
+      "v1.3.0",
+    );
+    const metaOf = (id: string) =>
+      JSON.parse(meta.find((m) => m.build_id === id)?.metadata_json ?? "null");
+    expect(metaOf("android")).toMatchObject({
+      packageName: "gg.vlad.diceroll",
+      versionCode: 10203,
+      nativecode: ["arm64-v8a", "armeabi-v7a"],
+    });
+    expect(metaOf("ios")).toMatchObject({
+      bundleIdentifier: "gg.vlad.diceroll",
+      appPermissions: {
+        privacy: { NSCameraUsageDescription: expect.any(String) },
+      },
+    });
+    expect(metaOf("macos")).toBeNull();
 
     const artifacts = await db.all<{
       build_id: string;

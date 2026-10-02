@@ -6,8 +6,10 @@
 
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const BASE = "https://key.example.test";
 export const SLUG = "diceroll";
@@ -91,6 +93,18 @@ release:
         - { id: web, platform: web, arch: wasm32, format: zip, match: "Diceroll-*-web.zip" }
 `;
 
+const FIXTURES = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "fixtures",
+  "build-metadata",
+);
+/** P2b-05's tiny signed APK and IPA (`fixtures/build-metadata/make.sh`). */
+export const FIXTURE_APK = new Uint8Array(
+  readFileSync(path.join(FIXTURES, "tiny.apk")),
+);
+export const FIXTURE_IPA = new Uint8Array(
+  readFileSync(path.join(FIXTURES, "tiny.ipa")),
+);
 /** The corpus's CI-held release test key (tools/sign-corpus.ts `KEYS`): never a product key. */
 export const RELEASE_KID = "djdl-release-test-2026";
 export const RELEASE_PUB = "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE";
@@ -119,8 +133,9 @@ export function exportFiles(version = "0.3.0"): Record<string, Uint8Array> {
     [`macos/Diceroll-${version}-macos.zip`]: bytesOf(200_000, 1),
     [`windows/Diceroll-${version}-windows.zip`]: bytesOf(5_000, 2),
     [`linux/Diceroll-${version}-linux.x86_64.tar.gz`]: bytesOf(6_000, 3),
-    [`android/Diceroll-${version}.apk`]: bytesOf(7_000, 4),
-    [`ios/Diceroll-${version}.ipa`]: bytesOf(8_000, 5),
+    // Real (tiny) archives, so the build-metadata read (P2b-05) has something to read.
+    [`android/Diceroll-${version}.apk`]: FIXTURE_APK,
+    [`ios/Diceroll-${version}.ipa`]: FIXTURE_IPA,
     [`web/Diceroll-${version}-web.zip`]: bytesOf(9_000, 6),
   };
   // Diceroll's GDScript updater verifies an RSA sidecar and a checksum next to each payload.
