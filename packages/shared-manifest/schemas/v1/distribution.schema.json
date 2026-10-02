@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/distribution.schema.json",
   "title": "Polaris Key distribution manifest (.pkey/distribution)",
-  "description": "The distribution document of a .pkey/ manifest: the product's outlets with their store identities, the transport each deliverable uses per outlet, and the store listing. Optional: with the distribution service on and no document, the product has one implicit outlet, direct, served by pkey-cdn. Outlet capabilities are operator-owned and may not appear anywhere in this file. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative, and the cross-document checks (artifact, channel and deliverable references into .pkey/release) are validator-only. The $id URL is an identifier, not a fetchable locator \u2014 this file ships inside the @polaris-key/manifest npm package.",
+  "description": "The distribution document of a .pkey/ manifest: the product's outlets with their store identities, the transport each deliverable uses per outlet, and the store listing. Optional: with the distribution service on and no document, the product has one implicit outlet, direct, served by pkey-cdn. Outlet capabilities are operator-owned and may not appear anywhere in this file. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative, and the cross-document checks (artifact, channel and deliverable references into .pkey/release) are validator-only. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
   "type": "object",
   "properties": {
     "apiVersion": {
@@ -336,7 +336,7 @@
       ]
     },
     "outlet_direct": {
-      "description": "The identity fields a direct outlet reads: platforms, homebrewCask. Other keys are ignored.",
+      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, scoop. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -348,10 +348,25 @@
         "homebrewCask": {
           "$ref": "#/$defs/homebrewCask"
         },
+        "scoop": {
+          "$ref": "#/$defs/scoop"
+        },
         "listing": {
           "$ref": "#/$defs/listing"
         },
         "capabilities": false
+      },
+      "if": {
+        "required": ["scoop", "platforms"]
+      },
+      "then": {
+        "properties": {
+          "platforms": {
+            "contains": {
+              "const": "windows"
+            }
+          }
+        }
       }
     },
     "outlet_app-store": {
@@ -686,7 +701,7 @@
       "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
     },
     "tracks": {
-      "description": "Declared channel \u2192 Play track. Keys must be declared channels (validator-checked).",
+      "description": "Declared channel → Play track. Keys must be declared channels (validator-checked).",
       "type": "object",
       "maxProperties": 32,
       "additionalProperties": {
@@ -704,7 +719,7 @@
       "pattern": "^[A-Za-z0-9.-]{3,50}_[a-z0-9]{13}$"
     },
     "branches": {
-      "description": "Declared channel \u2192 Steam branch. Keys must be declared channels (validator-checked).",
+      "description": "Declared channel → Steam branch. Keys must be declared channels (validator-checked).",
       "type": "object",
       "maxProperties": 32,
       "additionalProperties": {
@@ -748,6 +763,51 @@
       "description": "The Homebrew cask token.",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@-]{0,99}$"
+    },
+    "scoopPath": {
+      "description": "A relative path inside the Windows archive: no drive, no leading separator, no '..'.",
+      "type": "string",
+      "pattern": "^(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$))[A-Za-z0-9 ._()+-]{1,128}(?:[\\\\/][A-Za-z0-9 ._()+-]{1,128}){0,7}$"
+    },
+    "scoop": {
+      "description": "What the Scoop manifest installs (P2b-05): bin, the executables Scoop shims onto PATH; shortcuts, Start-menu entries as [target, name] pairs. A direct outlet that declares platforms must include windows.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bin": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/scoopPath"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "$ref": "#/$defs/scoopPath"
+              }
+            }
+          ]
+        },
+        "shortcuts": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/scoopPath"
+              },
+              {
+                "type": "string",
+                "pattern": "^[^\\u0000-\\u001f\\u007f\\\\/:*?\"<>|]{1,100}$"
+              }
+            ]
+          }
+        }
+      }
     },
     "transport": {
       "enum": [

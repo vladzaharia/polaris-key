@@ -24,7 +24,7 @@ shape rule the contract states.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 __all__ = [
     "PROTOCOL_VERSION",
@@ -66,6 +66,26 @@ __all__ = [
     "DocClaims",
     "LicenseDoc",
     "ConfigDoc",
+    "FeedFloor",
+    "ReleasePin",
+    "FeedRollout",
+    "FeedLive",
+    "FeedOutletEntry",
+    "FeedTargetFloor",
+    "FeedTarget",
+    "FeedApp",
+    "ChannelFeedDoc",
+    "ReleaseRecordArtifact",
+    "ReleaseRecordBuild",
+    "ReleaseRecordDoc",
+    "InstalledBuild",
+    "UpdateOutlet",
+    "StagedUpdate",
+    "UpdateDecisionInput",
+    "DecisionRelease",
+    "UpdateDecision",
+    "UpdateCheckError",
+    "UpdateCheck",
 ]
 
 # ── Version + identity (§8) ─────────────────────────────────────────────────────────
@@ -453,3 +473,449 @@ class ConfigDoc:
             expiresAt=self.expiresAt,
             graceUntil=self.graceUntil,
         )
+
+
+# ── Wire v4: the channel feed (WIRE-CONTRACT-V4 §2.3, plans/P3-01.md §2.3) ─────────────────
+# These decode a payload that has ALREADY passed ``feed_claims`` (or a decoded document a
+# caller built, such as an ``update-matrix.json`` row), so they validate nothing: the claims
+# functions in ``feed.py`` and ``release_record.py`` are the validation. ``raw`` keeps the
+# verified payload verbatim, reserved members (``packSets``, ``deltas``, …) included, so a
+# later package that reads them needs no second decode.
+
+
+@dataclass(frozen=True)
+class FeedFloor:
+    """The ``seq`` floor of one canonical channel: the committed feed's ``seq`` and
+    ``issuedAt``. Derived on the reload path and by each commit, never stored."""
+
+    seq: int
+    issuedAt: int
+
+
+@dataclass(frozen=True)
+class ReleasePin:
+    """What a target pins: the record's hash, ``seq`` and version."""
+
+    sha256: str
+    seq: int
+    version: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"sha256": self.sha256, "seq": self.seq, "version": self.version}
+
+
+@dataclass(frozen=True)
+class FeedRollout:
+    bp: int
+    #: 32 lowercase hex, hashed as text.
+    salt: str
+
+
+@dataclass(frozen=True)
+class FeedLive:
+    """The newest release of the app live on one outlet for one platform."""
+
+    version: str
+    seq: int
+
+
+@dataclass(frozen=True)
+class FeedOutletEntry:
+    kind: str
+    live: Optional[FeedLive]
+    halted: bool
+    rollout: Optional[FeedRollout] = None
+    listingUrl: Optional[str] = None
+    #: Any subset of the six capability fields: it narrows, never widens.
+    capabilities: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "FeedOutletEntry":
+        live = d.get("live")
+        rollout = d.get("rollout")
+        caps = d.get("capabilities")
+        return FeedOutletEntry(
+            kind=d["kind"],
+            live=None if live is None else FeedLive(version=live["version"], seq=live["seq"]),
+            halted=d["halted"],
+            rollout=(
+                FeedRollout(bp=rollout["bp"], salt=rollout["salt"])
+                if isinstance(rollout, dict)
+                else None
+            ),
+            listingUrl=d.get("listingUrl") if isinstance(d.get("listingUrl"), str) else None,
+            capabilities=dict(caps) if isinstance(caps, dict) else None,
+        )
+
+
+@dataclass(frozen=True)
+class FeedTargetFloor:
+    minVersion: str
+
+
+@dataclass(frozen=True)
+class FeedTarget:
+    platform: str
+    #: The pin.
+    release: ReleasePin
+    #: This platform's floor, never above its own pin. Required on the wire; may be null.
+    floor: Optional[FeedTargetFloor]
+    critical: bool
+    #: Keyed by the product's outlet id.
+    outlets: Dict[str, FeedOutletEntry]
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "FeedTarget":
+        r = d["release"]
+        floor = d.get("floor")
+        return FeedTarget(
+            platform=d["platform"],
+            release=ReleasePin(sha256=r["sha256"], seq=r["seq"], version=r["version"]),
+            floor=None if floor is None else FeedTargetFloor(minVersion=floor["minVersion"]),
+            critical=d["critical"],
+            outlets={k: FeedOutletEntry.from_dict(v) for k, v in d["outlets"].items()},
+        )
+
+
+@dataclass(frozen=True)
+class FeedApp:
+    deliverable: str
+    versionScheme: str
+    targets: Tuple[FeedTarget, ...]
+
+
+@dataclass(frozen=True)
+class ChannelFeedDoc:
+    """A ``pkey-feed+jws`` payload. ``channel`` is the CANONICAL channel, which keys the
+    client's ``seq`` floor and the ``feeds`` cache slice. Never ``latest``."""
+
+    schemaVersion: int
+    iss: str
+    aud: str
+    channel: str
+    selector: Dict[str, Any]
+    seq: int
+    issuedAt: int
+    expiresAt: int
+    app: FeedApp
+    raw: Dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ChannelFeedDoc":
+        app = d["app"]
+        return ChannelFeedDoc(
+            schemaVersion=d["schemaVersion"],
+            iss=d["iss"],
+            aud=d["aud"],
+            channel=d["channel"],
+            selector=dict(d["selector"]),
+            seq=d["seq"],
+            issuedAt=d["issuedAt"],
+            expiresAt=d["expiresAt"],
+            app=FeedApp(
+                deliverable=app["deliverable"],
+                versionScheme=app["versionScheme"],
+                targets=tuple(FeedTarget.from_dict(t) for t in app["targets"]),
+            ),
+            raw=d,
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The verified payload, as signed."""
+        return self.raw
+
+
+# ── Wire v4: the release record (WIRE-CONTRACT-V4 §2.4, plans/P3-01.md §2.4) ───────────────
+
+
+@dataclass(frozen=True)
+class ReleaseRecordArtifact:
+    name: str
+    #: v4 reads only ``payload``.
+    role: str
+    sha256: str
+    size: int
+    contentType: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class ReleaseRecordBuild:
+    id: str
+    platform: str
+    arch: str
+    format: str
+    #: Empty for a store-only build.
+    artifacts: Tuple[ReleaseRecordArtifact, ...]
+    buildNumber: Optional[str] = None
+    minOS: Optional[str] = None
+    #: ``engine`` (a string) and ``minBinary`` (a version) are read by the decision; the rest
+    #: is reserved for P4. Kept verbatim: a build whose values lack those shapes is never
+    #: eligible, which the decision decides, not the decoder.
+    requires: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ReleaseRecordBuild":
+        raw_artifacts = d.get("artifacts")
+        artifacts: List[ReleaseRecordArtifact] = []
+        if isinstance(raw_artifacts, list):
+            for a in raw_artifacts:
+                if isinstance(a, dict):
+                    artifacts.append(
+                        ReleaseRecordArtifact(
+                            name=a.get("name", ""),
+                            role=a.get("role", ""),
+                            sha256=a.get("sha256", ""),
+                            size=a.get("size", 0),
+                            contentType=a.get("contentType"),
+                        )
+                    )
+        requires = d.get("requires")
+        return ReleaseRecordBuild(
+            id=d["id"],
+            platform=d["platform"],
+            arch=d["arch"],
+            format=d["format"],
+            artifacts=tuple(artifacts),
+            buildNumber=d.get("buildNumber"),
+            minOS=d.get("minOS"),
+            requires=dict(requires) if isinstance(requires, dict) else None,
+        )
+
+
+@dataclass(frozen=True)
+class ReleaseRecordDoc:
+    """A ``pkey-release+jws`` payload. There is no ``iss``: the pinned ``kid`` names the
+    signer, and ``aud`` binds the record to one product."""
+
+    schemaVersion: int
+    aud: str
+    deliverable: str
+    kind: str
+    version: str
+    seq: int
+    issuedAt: int
+    #: Required for ``kind: "app"``; ``None`` when absent (a reserved kind).
+    builds: Optional[Tuple[ReleaseRecordBuild, ...]] = None
+    minSupportedSeq: Optional[int] = None
+    tag: Optional[str] = None
+    channel: Optional[str] = None
+    title: Optional[str] = None
+    notes: Optional[str] = None
+    provenance: Optional[Dict[str, Any]] = None
+    raw: Dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "ReleaseRecordDoc":
+        builds = d.get("builds")
+        provenance = d.get("provenance")
+        return ReleaseRecordDoc(
+            schemaVersion=d["schemaVersion"],
+            aud=d["aud"],
+            deliverable=d["deliverable"],
+            kind=d["kind"],
+            version=d["version"],
+            seq=d["seq"],
+            issuedAt=d["issuedAt"],
+            builds=(
+                tuple(ReleaseRecordBuild.from_dict(b) for b in builds)
+                if isinstance(builds, list)
+                else None
+            ),
+            minSupportedSeq=d.get("minSupportedSeq"),
+            tag=d.get("tag"),
+            channel=d.get("channel"),
+            title=d.get("title"),
+            notes=d.get("notes"),
+            provenance=dict(provenance) if isinstance(provenance, dict) else None,
+            raw=d,
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The verified payload, as signed."""
+        return self.raw
+
+
+# ── Wire v4: the update decision (plans/P3-01.md §2.8) ──────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class InstalledBuild:
+    """The install the decision is about."""
+
+    version: str
+    platform: str
+    arch: str
+    buildNumber: Optional[str] = None
+    format: Optional[str] = None
+    #: ``godot-<major>.<minor>``; ``None`` outside Godot.
+    engine: Optional[str] = None
+    #: The executable's version when it differs from ``version``; defaults to ``version``.
+    binaryVersion: Optional[str] = None
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "InstalledBuild":
+        return InstalledBuild(
+            version=d["version"],
+            platform=d["platform"],
+            arch=d["arch"],
+            buildNumber=d.get("buildNumber"),
+            format=d.get("format"),
+            engine=d.get("engine"),
+            binaryVersion=d.get("binaryVersion"),
+        )
+
+
+@dataclass(frozen=True)
+class UpdateOutlet:
+    """The install's outlet: the product's outlet id and its kind (``unknown`` for none)."""
+
+    id: Optional[str]
+    kind: str
+
+
+@dataclass(frozen=True)
+class StagedUpdate:
+    """An update the host staged and verified, under the ``UpdateCheck.channel`` it was
+    staged on."""
+
+    version: str
+    channel: str
+
+
+@dataclass(frozen=True)
+class UpdateDecisionInput:
+    now: int
+    feed: ChannelFeedDoc
+    record: Optional[ReleaseRecordDoc]
+    installed: InstalledBuild
+    outlet: UpdateOutlet
+    subkind: Optional[str] = None
+    staged: Optional[StagedUpdate] = None
+    skipVersion: Optional[str] = None
+    bucket: Optional[int] = None
+    methods: Tuple[str, ...] = ()
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "UpdateDecisionInput":
+        """Decode an ``update-matrix.json`` row's ``input`` (a decoded feed and record)."""
+        record = d.get("record")
+        staged = d.get("staged")
+        outlet = d["outlet"]
+        return UpdateDecisionInput(
+            now=d["now"],
+            feed=ChannelFeedDoc.from_dict(d["feed"]),
+            record=None if record is None else ReleaseRecordDoc.from_dict(record),
+            installed=InstalledBuild.from_dict(d["installed"]),
+            outlet=UpdateOutlet(id=outlet.get("id"), kind=outlet["kind"]),
+            subkind=d.get("subkind"),
+            staged=(
+                None
+                if staged is None
+                else StagedUpdate(version=staged["version"], channel=staged["channel"])
+            ),
+            skipVersion=d.get("skipVersion"),
+            bucket=d.get("bucket"),
+            methods=tuple(d.get("methods") or ()),
+        )
+
+
+@dataclass(frozen=True)
+class DecisionRelease:
+    version: str
+    seq: int
+    #: On ``code-ready`` and ``binary`` only.
+    sha256: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"version": self.version, "seq": self.seq}
+        if self.sha256 is not None:
+            out["sha256"] = self.sha256
+        return out
+
+
+#: The members each action carries, in the order ``to_dict`` emits them (§2.8's output table).
+_DECISION_MEMBERS: Dict[str, Tuple[str, ...]] = {
+    "none": ("reason", "behind", "discardStaged"),
+    "code-ready": ("release", "critical", "discardStaged"),
+    "binary": ("method", "release", "build", "mandatory", "critical", "prestage", "discardStaged"),
+    "store": ("release", "listingUrl", "mandatory", "critical", "discardStaged"),
+    "platform": ("release", "mandatory", "critical", "discardStaged"),
+    "blocked": ("reason", "discardStaged"),
+}
+
+
+@dataclass(frozen=True)
+class UpdateDecision:
+    """What an installed app should do next (plans/P3-01.md §2.8).
+
+    One class for the six actions; each action uses exactly the members §2.8 lists for it and
+    the rest stay ``None``. :meth:`to_dict` emits exactly that action's members, so a decision
+    compares by value with ``update-matrix.json`` and with every other SDK's.
+    """
+
+    action: str
+    discardStaged: bool = False
+    #: ``none`` (a ``NONE_REASONS`` value) and ``blocked`` (``app-floor``).
+    reason: Optional[str] = None
+    #: ``none`` only: true for ``behind``.
+    behind: Optional[bool] = None
+    release: Optional[DecisionRelease] = None
+    #: ``binary`` only: ``native``, ``download`` or ``sidecar-pck``.
+    method: Optional[str] = None
+    #: ``binary`` only: the record's build id.
+    build: Optional[str] = None
+    #: ``store`` only (may be ``None``).
+    listingUrl: Optional[str] = None
+    #: ``binary``, ``store`` and ``platform``: the install is below its platform's floor, so the
+    #: host shows a prompt the player cannot dismiss.
+    mandatory: Optional[bool] = None
+    critical: Optional[bool] = None
+    #: ``binary`` only; always empty in v4.
+    prestage: Optional[Tuple[Any, ...]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"action": self.action}
+        for name in _DECISION_MEMBERS.get(self.action, ()):
+            value = getattr(self, name)
+            if name == "release":
+                value = value.to_dict() if value is not None else None
+            elif name == "prestage":
+                value = list(value or ())
+            out[name] = value
+        return out
+
+
+@dataclass(frozen=True)
+class UpdateCheckError:
+    """One entry of ``UpdateCheck.errors`` (plans/P3-01.md §2.5's error map)."""
+
+    code: str
+    detail: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"code": self.code, "detail": self.detail}
+
+
+@dataclass(frozen=True)
+class UpdateCheck:
+    """What ``client.update.decide()`` returns in every SDK (plans/P3-01.md §2.5)."""
+
+    #: The canonical channel: the ``channel`` claim of the feed the decision used. A host that
+    #: stages an update records it as ``StagedUpdate.channel``.
+    channel: str
+    decision: UpdateDecision
+    #: ``"network"`` (the fetched copy was committed, or equals the committed one) or
+    #: ``"committed"`` (the decision used the earlier copy).
+    feed: str
+    #: ``"network"``, ``"cache"`` or ``"none"``.
+    record: str
+    errors: Tuple[UpdateCheckError, ...] = ()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "channel": self.channel,
+            "decision": self.decision.to_dict(),
+            "feed": self.feed,
+            "record": self.record,
+            "errors": [e.to_dict() for e in self.errors],
+        }

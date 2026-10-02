@@ -1,4 +1,4 @@
-# @pkey-feature core.verify core.bundle
+# @pkey-feature core.verify core.bundle update.feed release.record
 """Cross-language conformance: drive EVERY vector in ``conformance/corpus/v2/`` through
 the production verifiers and assert the expected outcome.
 
@@ -17,7 +17,12 @@ pointer-set section (§4.1) over the seven JWS families, ``feedCases`` and
 ``trustCases``        §1 trust merge / prune / revocation     -> ``verify_trust_manifest``
 ``clockFloorCases``   §4.2 monotonic floor over 3 artifacts   -> reload path + gate
 ``bundleCases``       §7 offline bundle import                -> ``inspect_bundle``
+``feedCases``         V4 §2.5 steps 3–8, the channel feed     -> ``verify_feed``
+``releaseRecordCases`` V4 §2.5 steps 12–15, the release record -> ``verify_release_record``
 ====================  ==========================================================
+
+The two v4 sections also run the claims functions alone (``feed_claims``, steps 4–6, and
+``release_record_claims``, step 14) over every case that reaches them, as the Node runner does.
 
 The bundle section pins WHICH numbered step refuses for each vector, not merely that
 something did — that attribution is the whole point of the section, so this drives the
@@ -32,13 +37,20 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
+from polaris_key.core.b64url import b64url_decode
 from polaris_key.core.bundle import (
     MAX_BUNDLE_BYTES,
     inspect_bundle,
     verify_bundle,
 )
 from polaris_key.core.clock import effective_now, high_water_mark
+from polaris_key.core.feed import FeedFloor, feed_claims, verify_feed
 from polaris_key.core.jws import sign_jws, verify_jws
+from polaris_key.core.release_record import (
+    ReleaseRecordPin,
+    release_record_claims,
+    verify_release_record,
+)
 from polaris_key.core.trust import merge_trust, verify_trust_manifest
 from polaris_key.core.verify import verify_config_doc, verify_license_doc
 from polaris_key.license.gate import license_state
@@ -54,6 +66,8 @@ _CONFIG_DOC_CASES: List[Dict[str, Any]] = _CORPUS["configDocCases"]
 _TRUST_CASES: List[Dict[str, Any]] = _CORPUS["trustCases"]
 _CLOCK_FLOOR_CASES: List[Dict[str, Any]] = _CORPUS["clockFloorCases"]
 _BUNDLE_CASES: List[Dict[str, Any]] = _CORPUS["bundleCases"]
+_FEED_CASES: List[Dict[str, Any]] = _CORPUS["feedCases"]
+_RECORD_CASES: List[Dict[str, Any]] = _CORPUS["releaseRecordCases"]
 
 
 def test_corpus_path_exists() -> None:
@@ -377,3 +391,127 @@ def test_non_wire_integer_pointer_set(view: Any) -> None:
     if result is None:
         return
     assert sorted(non_wire_integers(result.payload)) == sorted(case.get("nonWireIntegers", []))
+
+
+# ── WIRE-CONTRACT-V4 §2.3: the channel feed (client steps 3–8) ──────────────────────────────
+_CLAIM_REASONS = {"claims", "channel", "selector"}
+_AFTER_CLAIMS = {"freshness", "not-newer", "rollback"}
+
+
+def test_has_every_feed_case_of_the_plan() -> None:
+    assert len(_FEED_CASES) == 77
+
+
+@pytest.mark.parametrize(
+    "case",
+    _FEED_CASES,
+    ids=[f"{c['id']} -> {'ok' if c['expect']['verify'] == 'ok' else c['expect']['reason']}" for c in _FEED_CASES],
+)
+def test_feed_case(case: Dict[str, Any]) -> None:
+    floors = {
+        k: FeedFloor(seq=v["seq"], issuedAt=v["issuedAt"])
+        for k, v in (case.get("floors") or {}).items()
+    }
+    r = verify_feed(
+        case["jws"],
+        trust=case["trust"],
+        expected_aud=case["expectedAud"],
+        channel=case["channel"],
+        platform=case["platform"],
+        now=case["now"],
+        check_freshness=case["checkFreshness"],
+        floors=floors if "floors" in case else None,
+    )
+    want = case["expect"]
+    if want["verify"] == "ok":
+        assert r.ok, f"{case['id']}: {case['description']} (refused: {r.reason})"
+        assert r.feed is not None
+        assert r.feed.seq == want["seq"]
+        assert r.feed.issuedAt == want["issuedAt"]
+        if "doc" in want:
+            assert r.feed.to_dict() == want["doc"]
+    else:
+        assert not r.ok, f"{case['id']}: {case['description']}"
+        assert r.reason == want["reason"], case["description"]
+
+
+def _feed_claims_cases() -> List[Dict[str, Any]]:
+    return [
+        c
+        for c in _FEED_CASES
+        if c["expect"]["verify"] == "ok"
+        or c["expect"]["reason"] in _CLAIM_REASONS | _AFTER_CLAIMS
+    ]
+
+
+@pytest.mark.parametrize("case", _feed_claims_cases(), ids=[c["id"] for c in _feed_claims_cases()])
+def test_feed_claims_case(case: Dict[str, Any]) -> None:
+    """Steps 4–6 alone, after ``verify_jws``: the case's reason where it fails there, no
+    refusal otherwise."""
+    v = verify_jws(case["jws"], case["trust"], typ="pkey-feed+jws", require_typ=True)
+    assert v is not None, f"{case['id']} reaches the claims step"
+    reason = None if case["expect"]["verify"] == "ok" else case["expect"]["reason"]
+    got = feed_claims(
+        v.payload,
+        expected_aud=case["expectedAud"],
+        channel=case["channel"],
+        platform=case["platform"],
+    )
+    assert got == (reason if reason in _CLAIM_REASONS else None), case["description"]
+
+
+# ── WIRE-CONTRACT-V4 §2.4: the release record (client steps 12–15) ──────────────────────────
+
+
+def test_has_every_record_case_of_the_plan() -> None:
+    assert len(_RECORD_CASES) == 49
+
+
+@pytest.mark.parametrize(
+    "case",
+    _RECORD_CASES,
+    ids=[f"{c['id']} -> {'ok' if c['expect']['verify'] == 'ok' else c['expect']['step']}" for c in _RECORD_CASES],
+)
+def test_release_record_case(case: Dict[str, Any]) -> None:
+    pin = case.get("pin")
+    r = verify_release_record(
+        case["jws"],
+        release_keys=case["releaseKeys"],
+        product_trust=case["productTrust"],
+        expected_aud=case["expectedAud"],
+        expected_hash=case["expectedHash"],
+        pin=ReleaseRecordPin(**pin) if pin else None,
+    )
+    want = case["expect"]
+    if want["verify"] == "ok":
+        assert r.ok, f"{case['id']}: {case['description']} (refused at {r.step})"
+        assert r.record is not None
+        assert r.record.kind == want["kind"]
+        if "doc" in want:
+            assert r.record.to_dict() == want["doc"]
+    else:
+        assert not r.ok, f"{case['id']}: {case['description']}"
+        assert r.step == want["step"], case["description"]
+
+
+def _record_claims_cases() -> List[Dict[str, Any]]:
+    return [
+        c
+        for c in _RECORD_CASES
+        if c["expect"]["verify"] == "ok" or c["expect"]["step"] in ("claims", "cross-check")
+    ]
+
+
+@pytest.mark.parametrize(
+    "case", _record_claims_cases(), ids=[c["id"] for c in _record_claims_cases()]
+)
+def test_release_record_claims_case(case: Dict[str, Any]) -> None:
+    """Step 14 alone, after step 13's key selection from the pinned release keys only."""
+    header = json.loads(b64url_decode(case["jws"].split(".")[0]))
+    kid = header["kid"]
+    v = verify_jws(
+        case["jws"], {kid: case["releaseKeys"][kid]}, typ="pkey-release+jws", require_typ=True
+    )
+    assert v is not None, f"{case['id']} reaches the claims step"
+    ok = release_record_claims(v.payload, expected_aud=case["expectedAud"])
+    assert ok == (case["expect"]["verify"] == "ok" or case["expect"]["step"] != "claims")

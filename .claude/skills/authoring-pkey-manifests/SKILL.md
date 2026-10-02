@@ -98,7 +98,7 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `altstore-beta` needs `kind: altstore`, and once linked it can change kind only to one
       that narrows its capability defaults), each with its kind's store identity
       fields (`bundleId`, `packageName`, `steam.appId`, `itch.gameId`, `packageFamilyName`,
-      `homebrewCask`, `testflight.publicLink`, …); `transports` (`default` — `pkey-cdn` or `embedded` —, `packs.<outlet>`,
+      `homebrewCask`, `testflight.publicLink`, `direct.scoop {bin, shortcuts}`, …); `transports` (`default` — `pkey-cdn` or `embedded` —, `packs.<outlet>`,
       `deliverables.<id>.<outlet>`); and `listing`. Maps to `dist_outlets` and `dist_transports`.
       Absent = one implicit `direct` outlet by `pkey-cdn`. An `artifact` must name an id in the
       release artifact map; `tracks`/`branches` keys must be declared channels.

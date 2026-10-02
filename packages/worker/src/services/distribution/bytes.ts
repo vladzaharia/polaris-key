@@ -86,7 +86,7 @@ import {
   type EntitledSelector,
 } from "../../core/entitledAccess.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
-import { stricter } from "./access.js";
+import { strictestAccess } from "./access.js";
 
 // ── Targets ──────────────────────────────────────────────────────────────────────────────────
 
@@ -296,11 +296,10 @@ export async function serveDistributionBytes(
     case "blob": {
       const blob = await resolveBlob(catalog, target.sha256);
       cleared.blob = blob;
-      const deliverables = new Set(blob.releases.map((r) => r.deliverableId));
-      if (deliverables.size === 0) deliverables.add(APP_DELIVERABLE_ID);
-      mode = "public";
-      for (const d of deliverables)
-        mode = stricter(mode, await delivery.accessMode(d));
+      mode = await strictestAccess(
+        delivery,
+        blob.releases.map((r) => r.deliverableId),
+      );
       selector = await catalog.accessSelector(undefined);
       pinned = false;
       break;

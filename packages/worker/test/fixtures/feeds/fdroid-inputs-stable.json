@@ -1,0 +1,74 @@
+{
+  "product": "diceroll",
+  "channel": "stable",
+  "outlet": "fdroid-repo",
+  "packageName": "gg.vlad.diceroll",
+  "repo": {
+    "address": "https://key.example.test/diceroll/distribution/fdroid/stable/repo",
+    "fingerprints": []
+  },
+  "productName": "diceroll",
+  "listing": {
+    "name": "Diceroll",
+    "subtitle": "A cozy dice-rolling roguelite",
+    "description": "Roll, reroll, repeat.",
+    "iconUrl": "https://cdn.example.test/diceroll/icon.png",
+    "tintColor": "#3b1f1f",
+    "category": "games",
+    "website": "https://diceroll.example.test",
+    "developerName": "Vlad"
+  },
+  "versions": [
+    {
+      "releaseId": "app@1.1.0",
+      "version": "1.1.0",
+      "stable": true,
+      "publishedAt": 1697408000,
+      "notes": "What's new in 1.1.0.",
+      "apk": {
+        "name": "Diceroll-1.1.0-android.apk",
+        "sha256": "5199517daf636295796a5cdc34c55e04d8c572e1163b84ef1c23b596693852b3",
+        "size": 36,
+        "url": "https://dl.example.test/diceroll/distribution/files/app%401.1.0/Diceroll-1.1.0-android.apk"
+      },
+      "metadata": {
+        "packageName": "gg.vlad.diceroll",
+        "versionCode": 10100,
+        "versionName": "1.1.0",
+        "minSdk": 24,
+        "targetSdk": 35,
+        "nativecode": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "signerSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    },
+    {
+      "releaseId": "app@1.0.0",
+      "version": "1.0.0",
+      "stable": true,
+      "publishedAt": 1696544000,
+      "notes": "What's new in 1.0.0.",
+      "apk": {
+        "name": "Diceroll-1.0.0-android.apk",
+        "sha256": "881ee02ba8e08c83e31dd3910483d89eed521c76b272358424e39f2d1c858eb5",
+        "size": 36,
+        "url": "https://dl.example.test/diceroll/distribution/files/app%401.0.0/Diceroll-1.0.0-android.apk"
+      },
+      "metadata": {
+        "packageName": "gg.vlad.diceroll",
+        "versionCode": 10000,
+        "versionName": "1.0.0",
+        "minSdk": 24,
+        "targetSdk": 35,
+        "nativecode": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "signerSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    }
+  ],
+  "files": []
+}
