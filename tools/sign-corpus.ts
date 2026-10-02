@@ -18136,7 +18136,10 @@ async function main(): Promise<void> {
   // `content/blobs/` (refs.json included); run `pnpm gen:corpus` afterwards.
   if (process.argv.includes("--rebuild-content-blobs")) {
     const at = process.argv.indexOf("--payloads");
-    rebuildContentBlobs(REF_JSON, at >= 0 ? process.argv[at + 1] : undefined);
+    rebuildContentBlobs(
+      REF_JSON,
+      at >= 0 ? { payloadsDir: process.argv[at + 1] } : {},
+    );
     return;
   }
 

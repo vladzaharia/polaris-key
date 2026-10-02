@@ -42,6 +42,23 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decode, decodeWithPrefix } from "@polaris-key/zstd-wasm";
+import {
+  CHUNKS_FORMAT,
+  MAX_CHUNK_BYTES,
+  MAX_CHUNK_INDEX_BYTES,
+  chunkPayload,
+  containerSegments,
+  layoutChunks,
+  mutateBytes,
+  refApplyChunk,
+  refParseChunkIndex,
+  refParseChunkIndexBytes,
+  writeChunkIndex,
+  type Chunk,
+  type ChunkIndexDoc,
+  type ChunkVerdict,
+  type Mutation,
+} from "./gen-content-chunks.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const CONTENT_DIR = join(
@@ -1115,6 +1132,9 @@ const json = (o: unknown): Uint8Array => utf8(JSON.stringify(o));
 
 interface Tool {
   zc(b: Uint8Array): Uint8Array;
+  /** One frame per input, compressed by one zstd process per 400 inputs (plans/P4-10.md §2.4:
+   *  the CLI writes each frame's content size). */
+  zcMany(bs: readonly Uint8Array[]): Uint8Array[];
   pf(base: Uint8Array, target: Uint8Array): Uint8Array;
 }
 function zstdTool(dir: string): Tool {
@@ -1131,6 +1151,20 @@ function zstdTool(dir: string): Tool {
       writeFileSync(i, b);
       run([`-${ZSTD_LEVEL}`, i, "-o", o]);
       return new Uint8Array(readFileSync(o));
+    },
+    zcMany(bs) {
+      const out: Uint8Array[] = [];
+      for (let k = 0; k < bs.length; k += 400) {
+        const names = bs.slice(k, k + 400).map((b) => {
+          const i = join(dir, `m${n++}`);
+          writeFileSync(i, b);
+          return i;
+        });
+        run([`-${ZSTD_LEVEL}`, ...names]);
+        for (const i of names)
+          out.push(new Uint8Array(readFileSync(`${i}.zst`)));
+      }
+      return out;
     },
     pf(base, target) {
       const bi = join(dir, `b${n}`);
@@ -1158,7 +1192,131 @@ function payloadsFromBlobs(ref: RefJson): { v1: Uint8Array; v2: Uint8Array } {
   return { v1: set.v1, v2: set.v2 };
 }
 
-export function rebuildContentBlobs(ref: RefJson, payloadsDir?: string): void {
+/** Where `--rebuild-content-blobs` reads payloads from and what it may add to. */
+export interface RebuildOptions {
+  /** `v1.pck` and `v2.pck` to seed from; otherwise the committed set's decoded payloads. */
+  payloadsDir?: string;
+  /** The blob directory compared and added to, `content/blobs/` by default (a test passes a
+   *  temporary copy). */
+  blobsDir?: string;
+}
+
+/**
+ * plans/P4-10.md decision 15, the additions-only guard: `next` (every blob the rebuild computed,
+ * by name) against the files already under `blobsDir`. Throws, naming every offence, when an
+ * existing blob's bytes would change or an existing blob would disappear, or when an existing
+ * `refs.json` entry would change or disappear; returns the names to write (new files, and
+ * `refs.json` when it only gains entries). Writes nothing.
+ */
+export function additionsOnly(
+  next: ReadonlyMap<string, Uint8Array>,
+  blobsDir: string,
+): string[] {
+  const offences: string[] = [];
+  const write: string[] = [];
+  const existing = new Set(listFiles(blobsDir));
+  const eq = (a: Uint8Array, b: Uint8Array): boolean =>
+    a.byteLength === b.byteLength && a.every((x, i) => x === b[i]);
+  for (const name of existing)
+    if (!next.has(name)) offences.push(`${name} would be removed`);
+  for (const [name, bytes] of next) {
+    if (!existing.has(name)) {
+      write.push(name);
+      continue;
+    }
+    const cur = new Uint8Array(
+      readFileSync(join(blobsDir, ...name.split("/"))),
+    );
+    if (eq(cur, bytes)) continue;
+    if (name !== "refs.json") {
+      offences.push(`${name} would change`);
+      continue;
+    }
+    const refsOf = (b: Uint8Array): Record<string, unknown> => {
+      try {
+        const d = JSON.parse(new TextDecoder().decode(b)) as {
+          refs?: Record<string, unknown>;
+        };
+        return d.refs ?? {};
+      } catch {
+        return {};
+      }
+    };
+    const was = refsOf(cur);
+    const now = refsOf(bytes);
+    const changed = Object.keys(was).filter(
+      (k) => !has(now, k) || canonical(was[k]) !== canonical(now[k]),
+    );
+    if (changed.length > 0)
+      offences.push(`refs.json entries would change: ${changed.join(", ")}`);
+    else write.push(name);
+  }
+  if (offences.length > 0)
+    fail(
+      `--rebuild-content-blobs may only add blobs and refs.json entries (plans/P4-10.md decision 15); nothing was written:\n  ${offences.join("\n  ")}`,
+    );
+  return write;
+}
+
+/** The chunking parameters of the corpus (plans/P4-10.md §4.2): §2.4's, with a 256 KiB bundle
+ *  target so runs cross bundles and only one v1 bundle ships. */
+export const CORPUS_CHUNK_PARAMS = {
+  chunker: "fastcdc-2016-nc1",
+  fileAware: true,
+  avgSize: 65536,
+  minSize: 16384,
+  maxSize: 262144,
+  padMerge: 64,
+  bundleTarget: 262144,
+  bundleLayout: "shared",
+  zstdLevel: 19,
+} as const;
+
+/** The synthetic `dup` payload (plans/P4-10.md §4.2): t1's first three files in index order with
+ *  the first repeated, `f0 f1 f0 f2`, each its own segment, so duplicate records exist. */
+function dupLayout(t1Files: readonly { data: Uint8Array }[]): {
+  payload: Uint8Array;
+  segments: [number, number][];
+} {
+  const parts = [t1Files[0]!, t1Files[1]!, t1Files[0]!, t1Files[2]!].map(
+    (f) => f.data,
+  );
+  const segments: [number, number][] = [];
+  let o = 0;
+  for (const p of parts) {
+    segments.push([o, p.byteLength]);
+    o += p.byteLength;
+  }
+  return { payload: concat(parts), segments };
+}
+
+/** v1's largest chunk that v2 reuses (gen.py's choice for the tampered seed): its record, its
+ *  record index and its payload offset. Ties keep the earlier record. */
+function largestReused(
+  v1: ChunkIndexDoc,
+  v2Ids: ReadonlySet<string>,
+): { record: ChunkIndexDoc["records"][number]; index: number; offset: number } {
+  let best: {
+    record: ChunkIndexDoc["records"][number];
+    index: number;
+    offset: number;
+  } | null = null;
+  let off = 0;
+  v1.records.forEach((r, i) => {
+    if (v2Ids.has(r[0]) && (best === null || r[1] > best.record[1]))
+      best = { record: r, index: i, offset: off };
+    off += r[1];
+  });
+  if (best === null) fail("v2 reuses no v1 chunk");
+  return best;
+}
+
+export function rebuildContentBlobs(
+  ref: RefJson,
+  opts: RebuildOptions = {},
+): void {
+  const payloadsDir = opts.payloadsDir;
+  const blobsDir = opts.blobsDir ?? CONTENT_BLOBS_DIR;
   requireZstdCli();
   const { v1, v2 } = payloadsDir
     ? {
@@ -1413,14 +1571,91 @@ export function rebuildContentBlobs(ref: RefJson, payloadsDir?: string): void {
       ),
     );
 
-    rmSync(CONTENT_BLOBS_DIR, { recursive: true, force: true });
-    for (const [name, b] of out) {
-      const p = join(CONTENT_BLOBS_DIR, ...name.split("/"));
+    // plans/P4-10.md §4.2: the chunk blobs. v1 and v2 chunked at the corpus parameters, v2's
+    // bundles laid out shared after v1's; the synthetic `dup` index and its bundle.
+    const P = CORPUS_CHUNK_PARAMS;
+    const chunksOf = (payload: Uint8Array, idx: FilesIndex): Chunk[] =>
+      chunkPayload(
+        payload,
+        containerSegments(
+          idx.files.map((f) => ({ offset: f.offset!, size: f.size })),
+          payload.byteLength,
+          P.padMerge,
+        ),
+        P.avgSize,
+      );
+    const k1 = chunksOf(v1, c1);
+    const k2 = chunksOf(v2, c2);
+    const dup = dupLayout(t1Files);
+    const kd = chunkPayload(dup.payload, dup.segments, P.avgSize);
+    const storedChunk = new Map<string, Uint8Array>();
+    {
+      const uniq = new Map<string, Uint8Array>();
+      for (const [list, payload] of [
+        [k1, v1],
+        [k2, v2],
+        [kd, dup.payload],
+      ] as const)
+        for (const c of list)
+          if (!uniq.has(c.id))
+            uniq.set(c.id, payload.subarray(c.offset, c.offset + c.len));
+      const ids = [...uniq.keys()];
+      const frames = z.zcMany(ids.map((id) => uniq.get(id)!));
+      ids.forEach((id, i) => {
+        const rawChunk = uniq.get(id)!;
+        storedChunk.set(
+          id,
+          frames[i]!.byteLength < rawChunk.byteLength ? frames[i]! : rawChunk,
+        );
+      });
+    }
+    const stored = (id: string): Uint8Array => storedChunk.get(id)!;
+    const index = (
+      list: Chunk[],
+      payload: Uint8Array,
+      prior: ChunkIndexDoc | null,
+    ): { doc: ChunkIndexDoc; fresh: Uint8Array[] } => {
+      const l = layoutChunks(list, stored, P.bundleTarget, prior);
+      return {
+        doc: {
+          fileAware: true,
+          payloadSize: payload.byteLength,
+          payloadSha256: sha256Hex(payload),
+          records: l.records,
+          bundles: l.table,
+        },
+        fresh: l.fresh,
+      };
+    };
+    const i1 = index(k1, v1, null);
+    const i2 = index(k2, v2, i1.doc);
+    const id = index(kd, dup.payload, null);
+    const v2pkc = writeChunkIndex(i2.doc);
+    const v2zst = z.zc(v2pkc);
+    if (v2zst.byteLength >= v2pkc.byteLength)
+      fail("chunks/v2.pkc must compress (its ref is codec zstd)");
+    put("chunks/v1.pkc", writeChunkIndex(i1.doc));
+    put("chunks/v2.pkc", v2pkc);
+    put("chunks/v2.pkc.zst", v2zst);
+    put("chunks/dup.pkc", writeChunkIndex(id.doc));
+    for (const b of [...i2.fresh, ...id.fresh])
+      put(`bundles/${sha256Hex(b)}`, b);
+    // The v1 bundle that holds the largest reused chunk (the repair case refetches from it).
+    const v2Ids = new Set(k2.map((c) => c.id));
+    const reusedChunk = largestReused(i1.doc, v2Ids);
+    const v1Bundle = i1.fresh.find(
+      (b) => sha256Hex(b) === i1.doc.bundles[reusedChunk.record[3]]![0],
+    )!;
+    put(`bundles/${sha256Hex(v1Bundle)}`, v1Bundle);
+
+    const write = additionsOnly(out, blobsDir);
+    for (const name of write) {
+      const p = join(blobsDir, ...name.split("/"));
       mkdirSync(dirname(p), { recursive: true });
-      writeFileSync(p, b);
+      writeFileSync(p, out.get(name)!);
     }
     console.log(
-      `rebuilt ${out.size} content blobs (${[...out.values()].reduce((a, b) => a + b.byteLength, 0)} B) with zstd ${ZSTD_CLI_VERSION}`,
+      `rebuilt ${out.size} content blobs (${[...out.values()].reduce((a, b) => a + b.byteLength, 0)} B) with zstd ${ZSTD_CLI_VERSION}; added ${write.length}${write.length > 0 ? `: ${write.join(", ")}` : ""}`,
     );
   } finally {
     rmSync(tmp, { recursive: true, force: true });
@@ -1498,6 +1733,13 @@ const FIXED_BLOBS = [
   "tree/v1.files.zst",
   "tree/v2.files.zst",
 ] as const;
+/** plans/P4-10.md §4.1: the fixed chunk blobs; `bundles/<sha256>` blobs follow from them. */
+const CHUNK_BLOBS = [
+  "chunks/dup.pkc",
+  "chunks/v1.pkc",
+  "chunks/v2.pkc",
+  "chunks/v2.pkc.zst",
+] as const;
 const REFS_NAMES = [
   "files/v1.gaps.zst",
   "payload/v2.full.zst",
@@ -1537,6 +1779,16 @@ export interface ContentSet {
   /** v1's files as installed state (from `payload/v1.full.zst` and v1's index). */
   installedV1: InstalledFile[];
   memBytes: { setC: number; setT: number; setS: number };
+  /** plans/P4-10.md §4.2: the parsed chunk indexes (`chunks/{v1,v2,dup}.pkc`). */
+  chunks: { v1: ChunkIndexDoc; v2: ChunkIndexDoc; dup: ChunkIndexDoc };
+  /** The synthetic `dup` payload, `f0 f1 f0 f2` over t1's first three files. */
+  dup: Uint8Array;
+  /** v1's largest chunk v2 reuses: record, record index and v1 payload offset. */
+  reusedChunk: {
+    record: ChunkIndexDoc["records"][number];
+    index: number;
+    offset: number;
+  };
 }
 
 function memOf(doc: PatchDoc, base: Map<string, number>): number {
@@ -1582,11 +1834,43 @@ export function loadContentSet(ref: RefJson): ContentSet {
   )
     fail("refs.json must hold exactly the four unshipped refs");
 
-  // The expected names: the fixed ones, and one blob per v2 file v1 lacks.
+  // plans/P4-10.md §4.2: the chunk indexes, parsed (a failure is a corrupt input).
+  const pkc = (n: string): ChunkIndexDoc => {
+    const r = refParseChunkIndexBytes(need(n), null);
+    if (!r.ok) fail(`${n} does not parse: ${JSON.stringify(r)}`);
+    return r.index;
+  };
+  const chunks = {
+    v1: pkc("chunks/v1.pkc"),
+    v2: pkc("chunks/v2.pkc"),
+    dup: pkc("chunks/dup.pkc"),
+  };
+  {
+    const z = need("chunks/v2.pkc.zst");
+    const h = frameHeader(z);
+    const raw = need("chunks/v2.pkc");
+    if (!h || h.contentSize !== raw.byteLength)
+      fail("chunks/v2.pkc.zst is not v2.pkc's frame");
+    const d = decode(z, raw.byteLength);
+    if (sha256Hex(d) !== sha256Hex(raw))
+      fail("chunks/v2.pkc.zst does not decode to v2.pkc");
+  }
+  const reusedChunk = largestReused(
+    chunks.v1,
+    new Set(chunks.v2.records.map((r) => r[0])),
+  );
+
+  // The expected names: the fixed ones, one blob per v2 file v1 lacks, v2's bundles v1 lacks,
+  // the v1 bundle holding the largest reused chunk, and the dup bundles.
   const v1Hashes = new Set(c1.files.map((f) => f.sha256));
-  const expected = new Set<string>(FIXED_BLOBS);
+  const expected = new Set<string>([...FIXED_BLOBS, ...CHUNK_BLOBS]);
   for (const f of c2.files)
     if (!v1Hashes.has(f.sha256)) expected.add(`files/${f.blob.sha256}`);
+  const v1Bundles = new Set(chunks.v1.bundles.map((b) => b[0]));
+  for (const [h] of chunks.v2.bundles)
+    if (!v1Bundles.has(h)) expected.add(`bundles/${h}`);
+  expected.add(`bundles/${chunks.v1.bundles[reusedChunk.record[3]]![0]}`);
+  for (const [h] of chunks.dup.bundles) expected.add(`bundles/${h}`);
   for (const n of expected) need(n);
   for (const n of names)
     if (!expected.has(n))
@@ -1594,8 +1878,13 @@ export function loadContentSet(ref: RefJson): ContentSet {
 
   const objects = new Map<string, ObjectRef>();
   for (const [n, b] of blobs) {
-    // A packed data object is not one frame, and the JSON inputs are raw.
-    const raw = n.endsWith(".data") || n.endsWith(".json");
+    // A packed data object is not one frame, and the JSON inputs are raw; so are the binary
+    // chunk indexes and the bundles (a bundle may start with a chunk's frame).
+    const raw =
+      n.endsWith(".data") ||
+      n.endsWith(".json") ||
+      n.endsWith(".pkc") ||
+      n.startsWith("bundles/");
     const h = raw ? null : frameHeader(b);
     objects.set(
       n,
@@ -1659,6 +1948,31 @@ export function loadContentSet(ref: RefJson): ContentSet {
 
   const sizeBy = (idx: FilesIndex): Map<string, number> =>
     new Map(idx.files.map((f) => [f.sha256, f.size]));
+  // The dup payload: t1's first three files (index order) from `tree/t1.full.zst`.
+  const t1Full = zstdDecode(need("tree/t1.full.zst"));
+  const t1Data: { data: Uint8Array }[] = [];
+  {
+    let o = 0;
+    for (const f of t1.files) {
+      t1Data.push({ data: t1Full.subarray(o, o + f.size) });
+      o += f.size;
+    }
+  }
+  const dup = dupLayout(t1Data).payload;
+  if (
+    sha256Hex(dup) !== chunks.dup.payloadSha256 ||
+    dup.byteLength !== chunks.dup.payloadSize
+  )
+    fail("chunks/dup.pkc is not bound to the dup payload");
+  for (const [doc, payload] of [
+    [chunks.v1, v1],
+    [chunks.v2, v2],
+  ] as const)
+    if (
+      doc.payloadSha256 !== sha256Hex(payload) ||
+      doc.payloadSize !== payload.byteLength
+    )
+      fail("a chunk index is not bound to its payload");
   LOADED = {
     blobs,
     objects,
@@ -1680,6 +1994,9 @@ export function loadContentSet(ref: RefJson): ContentSet {
       setT: memOf(patchT, sizeBy(tree1)),
       setS: memOf(patchS, sizeBy(t1)),
     },
+    chunks,
+    dup,
+    reusedChunk,
   };
   return LOADED;
 }
@@ -1707,23 +2024,10 @@ interface BlobCaseRef {
   size?: number;
   mutate?: Mutation[];
 }
-type Mutation =
-  | { op: "truncate"; length: number }
-  | { op: "xor"; offset: number; value: number };
 type ObjectSource = BlobCaseRef | { text: string };
 
-function mutate(
-  b: Uint8Array,
-  muts: readonly Mutation[] | undefined,
-): Uint8Array {
-  if (!muts || muts.length === 0) return b;
-  let out = b.slice();
-  for (const m of muts) {
-    if (m.op === "truncate") out = out.slice(0, m.length);
-    else out[m.offset] = out[m.offset]! ^ m.value;
-  }
-  return out;
-}
+/** `<ref>` mutations: `truncate`, `xor` and P4-10's `putU16`, `putU32`, `putU64`. */
+const mutate = mutateBytes;
 
 /** The pack records the cases reuse (their variants), from sign-corpus.ts. */
 export interface ContentRecords {
