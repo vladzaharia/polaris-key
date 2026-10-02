@@ -3826,7 +3826,8 @@ function normalizePackDeliverable(
         ? raw.entitlement
         : null,
     patch: {
-      strategies: strategies.length > 0 ? strategies : [...PACK_PATCH_STRATEGIES],
+      strategies:
+        strategies.length > 0 ? strategies : [...PACK_PATCH_STRATEGIES],
       deltaBases:
         Number.isSafeInteger(patch.deltaBases) &&
         (patch.deltaBases as number) >= 0 &&
