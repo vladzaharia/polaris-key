@@ -1949,7 +1949,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       ]
     },
     "content": {
-      "description": "The packs this app release pins and expects (P4-02, plans/P4-01.md §2.4): the content stamp without its format, moved unchanged into the signed record. The validator also checks that contentApi equals deliverables.app.content.contentApi and that every pin and expect names a declared pack; pins against stored records are the Worker's ingest checks.",
+      "description": "The packs this app release pins and expects (P4-02, plans/P4-01.md §2.4): the content stamp without its format, moved unchanged into the signed record. The validator also checks that contentApi equals deliverables.app.content.contentApi and that every pin and expect names a declared pack; holds name declared packs, packChannels equals deliverables.app.content.packChannels; pins and holds against stored records are the Worker's ingest checks (P4-12).",
       "type": "object",
       "properties": {
         "contentApi": {
@@ -1971,8 +1971,35 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "$ref": "#/$defs/contentExpect"
           }
         },
-        "holds": false,
-        "packChannels": false
+        "holds": {
+          "description": "Compatible packs this app release keeps at one release (P4-12), pack ids unique and never pinned (the validator checks).",
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/contentHold"
+          }
+        },
+        "packChannels": {
+          "description": "Pack id or prefix ending in .* → a pack channel (P4-12): the manifest's deliverables.app.content.packChannels, stamped as declared.",
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 64,
+          "propertyNames": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*(\\\\.\\\\*)?$",
+            "not": {
+              "const": "app"
+            }
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+            "not": {
+              "enum": ["staging", "latest"]
+            }
+          }
+        }
       },
       "required": ["contentApi", "pins", "expects"]
     },
@@ -2031,6 +2058,44 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         }
       },
       "required": ["pack", "required", "delivery"]
+    },
+    "contentHold": {
+      "description": "A compatible pack release this app release keeps (P4-12): the pin's shape, plus an optional reason.",
+      "type": "object",
+      "properties": {
+        "pack": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*$",
+          "not": {
+            "const": "app"
+          }
+        },
+        "release": {
+          "type": "object",
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "seq": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
+            }
+          },
+          "required": ["sha256", "seq", "version"]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": ["pack", "release"]
     }
   }
 }
@@ -2363,7 +2428,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "maxProperties": 65
     },
     "packDeliverable": {
-      "description": "A pack deliverable (P4-02, plans/P4-01.md §3). The validator additionally requires, which JSON Schema does not express here: a required pack has delivery essential and no entitlement; a godot.pck pack declares handler.prefixes, activates on restart and declares requires.engine; a files.tree pack takes no handler.prefixes or mountOrder; at most 32 variants (the product of the axes' value counts); entitlement names a flag entry of .pkey/schema.",
+      "description": "A pack deliverable (P4-02, P4-12, plans/P4-01.md §3). The validator additionally requires, which JSON Schema does not express here: a required pack has delivery essential and no entitlement; a godot.pck pack declares handler.prefixes, activates on restart and declares requires.engine; a files.tree pack takes no handler.prefixes or mountOrder; at most 32 variants (the product of the axes' value counts); entitlement names a flag entry of .pkey/schema; requires.contentApi is keyed by the app deliverable (app); requires.packs names other declared compatible or standalone packs; conflicts names other declared packs.",
       "type": "object",
       "properties": {
         "kind": {
@@ -2374,8 +2439,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "enum": ["godot.pck", "files.tree"]
         },
         "binding": {
-          "description": "How app releases bind this pack. Only pinned in v1: each app release pins the exact pack release. Default pinned.",
-          "enum": ["pinned"]
+          "description": "How app releases bind this pack (CONTENT §6.1): pinned (each app release pins the exact pack release), compatible (the server resolves the newest release whose requires.contentApi range holds each live app contentApi level) or standalone (resolved for every level; depends only on its type's format). Default pinned.",
+          "enum": ["pinned", "compatible", "standalone"]
         },
         "baseline": {
           "description": "embedded: app builds ship it (see artifacts[].embeds); none: network only. Default none.",
@@ -2441,12 +2506,40 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           }
         },
         "requires": {
-          "description": "{ engine } in v1; contentApi, packs and features come with P4-12.",
+          "description": "The defaults CI signs into each variant's requires (P4-12): engine; contentApi, app deliverable id → a contentApi range such as \\">=3 <5\\" (required for compatible, refused for standalone); packs, pack id → a version range under that pack's scheme, such as \\">=1.2.0 <2.0.0\\".",
           "type": "object",
           "properties": {
             "engine": {
               "type": "string",
               "pattern": "^godot-[0-9]+\\\\.[0-9]+$"
+            },
+            "contentApi": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 64,
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^(?:>=|<=|>|<|=)?[1-9][0-9]{0,15}(?: (?:>=|<=|>|<|=)?[1-9][0-9]{0,15}){0,3}$"
+              }
+            },
+            "packs": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 64,
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^(?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}(?: (?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}){0,3}$"
+              }
             }
           },
           "additionalProperties": false
@@ -2484,12 +2577,78 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             }
           }
         },
-        "channels": false,
-        "conflicts": false,
+        "channels": {
+          "description": "The channels this pack's releases may be published to beyond stable and beta (P4-12), by canonical name.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+            "not": {
+              "enum": ["staging", "latest"]
+            }
+          }
+        },
+        "conflicts": {
+          "description": "Pack ids this pack never shares a resolved set with (P4-12).",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*$",
+            "not": {
+              "const": "app"
+            }
+          }
+        },
         "provides": false,
         "removes": false
       },
-      "required": ["kind", "type"]
+      "required": ["kind", "type"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "binding": {
+                "const": "compatible"
+              }
+            },
+            "required": ["binding"]
+          },
+          "then": {
+            "required": ["requires"],
+            "properties": {
+              "requires": {
+                "required": ["contentApi"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "binding": {
+                "const": "standalone"
+              }
+            },
+            "required": ["binding"]
+          },
+          "then": {
+            "properties": {
+              "requires": {
+                "not": {
+                  "required": ["contentApi"]
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "appDeliverable": {
       "type": "object",
@@ -2552,7 +2711,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           }
         },
         "content": {
-          "description": "The content shape this app's code expects (P4-02). Required when the product declares any pack (the validator checks that).",
+          "description": "The content shape this app's code expects (P4-02), and how its channels map pack families (P4-12). Required when the product declares any pack (the validator checks that, and that each packChannels key matches a declared pack that publishes to its channel).",
           "type": "object",
           "properties": {
             "contentApi": {
@@ -2560,7 +2719,27 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
               "minimum": 1,
               "maximum": 9007199254740991
             },
-            "packChannels": false,
+            "packChannels": {
+              "description": "Pack id or prefix ending in .* (diceroll.events.*) → the pack channel every app channel consumes for those packs.",
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 64,
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*(\\\\.\\\\*)?$",
+                "not": {
+                  "const": "app"
+                }
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+                "not": {
+                  "enum": ["staging", "latest"]
+                }
+              }
+            },
             "holds": false
           },
           "required": ["contentApi"]
@@ -11951,6 +12130,7 @@ function buildMetadataProblem(platform, m) {
     return "signerSha256 must be 64 lower-case hex characters";
   return null;
 }
+var MAX_HOLD_REASON = 200;
 function descriptorReleaseId(d) {
   return d.tag ?? `${d.deliverable}@${d.version}`;
 }
@@ -12056,8 +12236,6 @@ function isPackIdString(v) {
 }
 function descriptorContentProblem(c) {
   if (!isRecord2(c)) return "content must be an object";
-  if (c.holds !== void 0 || c.packChannels !== void 0)
-    return "content.holds and content.packChannels come with P4-12";
   if (!(Number.isSafeInteger(c.contentApi) && c.contentApi >= 1))
     return "content.contentApi must be an integer from 1 to 9007199254740991";
   const pins = c.pins;
@@ -12087,7 +12265,39 @@ function descriptorContentProblem(c) {
     if (typeof e.delivery !== "string" || !VOCAB_TOKEN_PATTERN.test(e.delivery))
       return `the expects entry of ${e.pack} needs a delivery token`;
   }
+  if (c.holds !== void 0) {
+    const holds = c.holds;
+    if (!Array.isArray(holds) || holds.length > MAX_CONTENT_PINS)
+      return `content.holds must be an array of at most ${MAX_CONTENT_PINS} holds`;
+    const held = /* @__PURE__ */ new Set();
+    for (const h of holds) {
+      if (!isRecord2(h) || !isPackIdString(h.pack))
+        return "each hold is { pack: a pack id, release, reason? }";
+      if (held.has(h.pack)) return `${h.pack} is held twice`;
+      if (pinned.has(h.pack))
+        return `${h.pack} is both pinned and held; a hold keeps a compatible pack, a pin fixes a pinned one`;
+      held.add(h.pack);
+      const r = h.release;
+      if (!isRecord2(r) || typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
+        return `the hold of ${h.pack} needs release { sha256, seq ≥ 1, version }`;
+      if (h.reason !== void 0 && (typeof h.reason !== "string" || h.reason.length > MAX_HOLD_REASON))
+        return `the hold of ${h.pack} has a reason of at most ${MAX_HOLD_REASON} characters`;
+    }
+  }
+  if (c.packChannels !== void 0) {
+    const map = c.packChannels;
+    if (!isRecord2(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
+      ([k, v]) => k.length <= 64 && k !== APP_DELIVERABLE_ID && PACK_CHANNELS_KEY_PATTERN.test(k) && isCanonicalChannelName(v)
+    ))
+      return `content.packChannels maps 1 to ${MAX_PACK_CHANNEL_MAP} pack ids or prefixes ending in .* to a canonical channel name`;
+  }
   return null;
+}
+function canonicalMap(map) {
+  if (!map) return null;
+  return JSON.stringify(
+    Object.entries(map).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+  );
 }
 function jsonBytes(value) {
   if (value === void 0) return 0;
@@ -12497,6 +12707,19 @@ function validateReleaseDescriptor(descriptor, manifest) {
           "invalid_descriptor_content",
           `${e.pack} is not a pack deliverable this product declares.`
         );
+    for (const [i, h] of (desc.content.holds ?? []).entries())
+      if (!packs.has(h.pack))
+        err(
+          `/content/holds/${i}/pack`,
+          "invalid_descriptor_content",
+          `${h.pack} is not a pack deliverable this product declares.`
+        );
+    if (app.content && canonicalMap(desc.content.packChannels) !== canonicalMap(app.content.packChannels))
+      err(
+        "/content/packChannels",
+        "invalid_descriptor_content",
+        `content.packChannels must equal .pkey/release's deliverables.app.content.packChannels (${canonicalMap(app.content.packChannels) ?? "none"}).`
+      );
   }
   for (const [bi, b] of desc.builds.entries())
     for (const [ei, e] of (b.embeds ?? []).entries())
@@ -12647,15 +12870,31 @@ var ARTIFACT_ROLES = [
 ];
 var DELIVERABLE_KINDS = ["app", "pack"];
 var MAX_PACK_DELIVERABLES = 64;
-var PACK_BINDINGS = ["pinned"];
+var PACK_BINDINGS = ["pinned", "compatible", "standalone"];
 var PACK_BASELINES = ["embedded", "none"];
 var PACK_PATCH_STRATEGIES = ["delta", "file"];
-var PACK_FIELDS_NOT_SUPPORTED = [
-  "channels",
-  "conflicts",
-  "provides",
-  "removes"
-];
+var PACK_FIELDS_NOT_SUPPORTED = ["provides", "removes"];
+var CONTENT_API_RANGE_PATTERN = /^(?:>=|<=|>|<|=)?[1-9][0-9]{0,15}(?: (?:>=|<=|>|<|=)?[1-9][0-9]{0,15}){0,3}$/;
+var PACK_VERSION_RANGE_PATTERN = /^(?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}(?: (?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}){0,3}$/;
+var PACK_CHANNELS_KEY_PATTERN = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*(\.\*)?$/;
+var MAX_PACK_CONFLICTS = 64;
+var MAX_PACK_CHANNEL_MAP = 64;
+var MAX_PACK_CHANNELS = 32;
+function packChannelFor(map, packId) {
+  if (!map) return null;
+  if (Object.hasOwn(map, packId)) return map[packId] ?? null;
+  let best = null;
+  let bestLen = -1;
+  for (const [key, channel] of Object.entries(map)) {
+    if (!key.endsWith(".*")) continue;
+    const prefix = key.slice(0, -1);
+    if (packId.startsWith(prefix) && prefix.length > bestLen) {
+      best = channel;
+      bestLen = prefix.length;
+    }
+  }
+  return best;
+}
 var MAX_PACK_VARIANT_VALUES = 16;
 var MAX_PACK_VARIANT_COMBINATIONS = 32;
 var MAX_PACK_MOUNT_ORDER = 1e3;
@@ -14066,6 +14305,10 @@ function validateDeliverables(errors, relRoot, flagKeys) {
     );
   }
   const packIds = /* @__PURE__ */ new Set();
+  const declaredPacks = /* @__PURE__ */ new Map();
+  for (const [id, def] of Object.entries(raw))
+    if (id !== APP_DELIVERABLE_ID && isDeliverableId(id) && isRecord3(def) && def.kind === "pack")
+      declaredPacks.set(id, def.binding ?? "pinned");
   for (const [id, def] of Object.entries(raw)) {
     if (!isDeliverableId(id)) {
       add2(
@@ -14100,13 +14343,14 @@ function validateDeliverables(errors, relRoot, flagKeys) {
     }
     if (kind === "pack") {
       packIds.add(id);
-      if (!tooManyPacks) validatePackDeliverable(errors, id, def, flagKeys);
+      if (!tooManyPacks)
+        validatePackDeliverable(errors, id, def, flagKeys, declaredPacks);
       continue;
     }
   }
   const app = raw[APP_DELIVERABLE_ID];
   if (isRecord3(app) && app.kind === "app")
-    validateAppDeliverable(errors, relRoot, app, packIds);
+    validateAppDeliverable(errors, relRoot, app, packIds, raw);
   else if (packIds.size > 0) {
     add2(
       errors,
@@ -14117,7 +14361,7 @@ function validateDeliverables(errors, relRoot, flagKeys) {
     );
   }
 }
-function validatePackDeliverable(errors, id, def, flagKeys) {
+function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const at = `/release/deliverables/${id}`;
   for (const field of PACK_FIELDS_NOT_SUPPORTED) {
     if (def[field] !== void 0)
@@ -14126,7 +14370,7 @@ function validatePackDeliverable(errors, id, def, flagKeys) {
         "release",
         `${at}/${field}`,
         "pack_field_not_supported",
-        `${field} is not supported for packs yet (pinned packs only in v1; P4-12 adds channels and conflicts, P4-20 provides and removes).`
+        `${field} is not supported for packs yet (P4-20 adds provides and removes).`
       );
   }
   const type = isOneOf(def.type, PACK_TYPES) ? def.type : null;
@@ -14144,7 +14388,7 @@ function validatePackDeliverable(errors, id, def, flagKeys) {
       "release",
       `${at}/binding`,
       "invalid_pack_binding",
-      "binding must be pinned in v1 (the app release pins the exact pack release; compatible and standalone come with P4-12)."
+      `binding must be one of ${PACK_BINDINGS.join(", ")}: pinned (each app release pins the exact pack release), compatible (the newest release whose requires.contentApi range holds the app's contentApi) or standalone (the newest release, whatever the contentApi).`
     );
   if (def.baseline !== void 0 && !isOneOf(def.baseline, PACK_BASELINES))
     add2(
@@ -14296,13 +14540,88 @@ function validatePackDeliverable(errors, id, def, flagKeys) {
   }
   const requires = def.requires;
   if (requires !== void 0) {
-    if (!isRecord3(requires) || Object.keys(requires).some((k) => k !== "engine") || requires.engine !== void 0 && (typeof requires.engine !== "string" || !ENGINE_PATTERN.test(requires.engine)))
+    if (!isRecord3(requires) || Object.keys(requires).some(
+      (k) => k !== "engine" && k !== "contentApi" && k !== "packs"
+    ) || requires.engine !== void 0 && (typeof requires.engine !== "string" || !ENGINE_PATTERN.test(requires.engine)) || requires.contentApi !== void 0 && !isRangeMap(requires.contentApi, CONTENT_API_RANGE_PATTERN) || requires.packs !== void 0 && !isRangeMap(requires.packs, PACK_VERSION_RANGE_PATTERN))
       add2(
         errors,
         "release",
         `${at}/requires`,
         "invalid_pack_requires",
-        `requires is { engine } in v1, engine matching ${ENGINE_PATTERN.source}; contentApi, packs and features come with P4-12.`
+        `requires is { engine?, contentApi?, packs? }: engine matching ${ENGINE_PATTERN.source}; contentApi an object of app deliverable id → a range such as ">=3 <5"; packs an object of pack id → a version range such as ">=1.2.0 <2.0.0" (features has no meaning yet).`
+      );
+  }
+  const req = asRecord(requires);
+  const binding = isOneOf(def.binding, PACK_BINDINGS) ? def.binding : "pinned";
+  if (binding === "compatible" && req.contentApi === void 0)
+    add2(
+      errors,
+      "release",
+      `${at}/requires/contentApi`,
+      "missing_content_api_range",
+      `a compatible pack declares requires.contentApi (for example { ${APP_DELIVERABLE_ID}: ">=3 <5" }): the contentApi levels its releases support.`
+    );
+  if (binding === "standalone" && req.contentApi !== void 0)
+    add2(
+      errors,
+      "release",
+      `${at}/requires/contentApi`,
+      "standalone_with_content_api",
+      "a standalone pack depends only on its type's format, never on the app's contentApi; drop requires.contentApi or make it compatible."
+    );
+  if (isRecord3(req.contentApi)) {
+    for (const key of Object.keys(req.contentApi))
+      if (key !== APP_DELIVERABLE_ID)
+        add2(
+          errors,
+          "release",
+          `${at}/requires/contentApi/${key}`,
+          "unknown_content_api_app",
+          `requires.contentApi is keyed by app deliverable; ${key} is not one (the product's app deliverable is ${APP_DELIVERABLE_ID}).`
+        );
+  }
+  if (isRecord3(req.packs))
+    for (const target of Object.keys(req.packs)) {
+      const targetBinding = declaredPacks.get(target);
+      if (target === id || targetBinding === void 0 || targetBinding !== "compatible" && targetBinding !== "standalone")
+        add2(
+          errors,
+          "release",
+          `${at}/requires/packs/${target}`,
+          "invalid_pack_requires",
+          `requires.packs names another declared compatible or standalone pack; ${target} is ${target === id ? "this pack" : targetBinding === void 0 ? "not a declared pack" : "pinned, and a pinned pack never enters a resolved set"}.`
+        );
+    }
+  const conflicts = def.conflicts;
+  if (conflicts !== void 0) {
+    if (!Array.isArray(conflicts) || conflicts.length === 0 || conflicts.length > MAX_PACK_CONFLICTS || new Set(conflicts).size !== conflicts.length || !conflicts.every((c) => isDeliverableId(c) && c !== APP_DELIVERABLE_ID))
+      add2(
+        errors,
+        "release",
+        `${at}/conflicts`,
+        "invalid_pack_conflicts",
+        `conflicts lists 1 to ${MAX_PACK_CONFLICTS} distinct pack ids this pack never shares a resolved set with.`
+      );
+    else
+      for (const [i, c] of conflicts.entries())
+        if (c === id || !declaredPacks.has(c))
+          add2(
+            errors,
+            "release",
+            `${at}/conflicts/${i}`,
+            "invalid_pack_conflicts",
+            `conflicts names other declared packs; ${String(c)} is ${c === id ? "this pack" : "not a declared pack"}.`
+          );
+  }
+  const channels = def.channels;
+  if (channels !== void 0) {
+    if (!Array.isArray(channels) || channels.length === 0 || channels.length > MAX_PACK_CHANNELS || new Set(channels).size !== channels.length || !channels.every(isCanonicalChannelName))
+      add2(
+        errors,
+        "release",
+        `${at}/channels`,
+        "invalid_channel",
+        `a pack's channels lists 1 to ${MAX_PACK_CHANNELS} distinct canonical channel names (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`
       );
   }
   if (type === "godot.pck" && asRecord(requires).engine === void 0)
@@ -14355,22 +14674,66 @@ function validatePackDeliverable(errors, id, def, flagKeys) {
       `a pack's versioning.scheme must be one of ${VERSION_SCHEMES.join(", ")}.`
     );
 }
+function sortedRecord2(record) {
+  return Object.fromEntries(
+    Object.entries(record).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+  );
+}
+function isRangeMap(value, pattern2) {
+  return isRecord3(value) && Object.keys(value).length > 0 && Object.keys(value).length <= MAX_PACK_DELIVERABLES && Object.entries(value).every(
+    ([k, v]) => isDeliverableId(k) && typeof v === "string" && pattern2.test(v)
+  );
+}
 function isPackPrefixList(value) {
   return Array.isArray(value) && value.length >= 1 && value.length <= MAX_PACK_PREFIXES && new Set(value).size === value.length && value.every(
     (v) => typeof v === "string" && new TextEncoder().encode(v).length <= MAX_PACK_PREFIX_BYTES && HANDLER_PREFIX_PATTERN.test(v)
   );
 }
-function validateAppDeliverable(errors, relRoot, def, packIds) {
+function validateAppDeliverable(errors, relRoot, def, packIds, deliverables) {
   const content = def.content;
   if (content !== void 0) {
-    if (!isRecord3(content) || !(Number.isSafeInteger(content.contentApi) && content.contentApi >= 1 && content.contentApi <= MAX_CONTENT_API) || content.packChannels !== void 0 || content.holds !== void 0)
+    if (!isRecord3(content) || !(Number.isSafeInteger(content.contentApi) && content.contentApi >= 1 && content.contentApi <= MAX_CONTENT_API) || content.holds !== void 0)
       add2(
         errors,
         "release",
         "/release/deliverables/app/content",
         "invalid_app_content",
-        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API} }; packChannels and holds come with P4-12.`
+        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API}, packChannels? }; holds are chosen per app release at publish (the content stamp), never declared here.`
       );
+    const map = isRecord3(content) ? content.packChannels : void 0;
+    if (map !== void 0) {
+      if (!isRecord3(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
+        ([k, v]) => k.length <= MAX_DELIVERABLE_ID_LENGTH && PACK_CHANNELS_KEY_PATTERN.test(k) && k !== APP_DELIVERABLE_ID && isCanonicalChannelName(v)
+      ))
+        add2(
+          errors,
+          "release",
+          "/release/deliverables/app/content/packChannels",
+          "invalid_pack_channels",
+          `content.packChannels maps 1 to ${MAX_PACK_CHANNEL_MAP} pack ids or prefixes ending in .* (diceroll.events.*) to a canonical channel name.`
+        );
+      else
+        for (const [key, channel] of Object.entries(map)) {
+          const matched = [...packIds].filter(
+            (p) => packChannelFor({ [key]: channel }, p) !== null
+          );
+          const reachable = matched.filter((p) => {
+            const decl = asRecord(deliverables[p]);
+            const own = Array.isArray(decl.channels) ? decl.channels : [];
+            return BUILT_IN_CHANNELS.includes(
+              channel
+            ) || own.includes(channel);
+          });
+          if (matched.length === 0 || reachable.length !== matched.length)
+            add2(
+              errors,
+              "release",
+              `/release/deliverables/app/content/packChannels/${key}`,
+              "unknown_pack_channels_target",
+              matched.length === 0 ? `content.packChannels ${key} matches no declared pack.` : `content.packChannels routes ${key} to ${String(channel)}, which ${matched.filter((p) => !reachable.includes(p)).join(", ")} does not publish to (declare it in the pack's channels).`
+            );
+        }
+    }
   } else if (packIds.size > 0) {
     add2(
       errors,
@@ -14828,6 +15191,12 @@ function normalizePackDeliverable(id, raw) {
   const engine = asRecord(raw.requires).engine;
   if (typeof engine === "string" && ENGINE_PATTERN.test(engine))
     requires.engine = engine;
+  const rawContentApi = asRecord(raw.requires).contentApi;
+  if (isRangeMap(rawContentApi, CONTENT_API_RANGE_PATTERN))
+    requires.contentApi = sortedRecord2(rawContentApi);
+  const rawPacks = asRecord(raw.requires).packs;
+  if (isRangeMap(rawPacks, PACK_VERSION_RANGE_PATTERN))
+    requires.packs = sortedRecord2(rawPacks);
   const patch = asRecord(raw.patch);
   const strategies = Array.isArray(patch.strategies) ? PACK_PATCH_STRATEGIES.filter(
     (s) => patch.strategies.includes(s)
@@ -14836,7 +15205,7 @@ function normalizePackDeliverable(id, raw) {
     kind: "pack",
     id,
     type,
-    binding: "pinned",
+    binding: isOneOf(raw.binding, PACK_BINDINGS) ? raw.binding : "pinned",
     baseline: isOneOf(raw.baseline, PACK_BASELINES) ? raw.baseline : "none",
     required: raw.required === true,
     delivery: isOneOf(raw.delivery, PACK_DELIVERIES) ? raw.delivery : "on-demand",
@@ -14844,6 +15213,14 @@ function normalizePackDeliverable(id, raw) {
     handler,
     variants,
     requires,
+    conflicts: Array.isArray(raw.conflicts) ? [
+      ...new Set(
+        raw.conflicts.filter(
+          (c) => isDeliverableId(c) && c !== APP_DELIVERABLE_ID && c !== id
+        )
+      )
+    ].sort() : [],
+    channels: Array.isArray(raw.channels) ? [...new Set(raw.channels.filter(isCanonicalChannelName))] : [],
     entitlement: typeof raw.entitlement === "string" && ENTITLEMENT_PATTERN.test(raw.entitlement) ? raw.entitlement : null,
     patch: {
       strategies: strategies.length > 0 ? strategies : ["delta", "file"],
@@ -14908,8 +15285,18 @@ function normalizeAppDeliverable(raw) {
     artifacts
   };
   const contentApi = asRecord(def.content).contentApi;
-  if (Number.isSafeInteger(contentApi) && contentApi >= 1)
+  if (Number.isSafeInteger(contentApi) && contentApi >= 1) {
     app.content = { contentApi };
+    const map = asRecord(def.content).packChannels;
+    if (isRecord3(map) && Object.keys(map).length > 0 && Object.entries(map).every(
+      ([k, v]) => PACK_CHANNELS_KEY_PATTERN.test(k) && isCanonicalChannelName(v)
+    ))
+      app.content.packChannels = Object.fromEntries(
+        Object.entries(map).sort(
+          ([a], [b]) => a < b ? -1 : a > b ? 1 : 0
+        )
+      );
+  }
   return app;
 }
 function normalizeManualChannels(raw) {
