@@ -65,6 +65,23 @@ export function fileSource(path: string, size: number): ByteSource {
   };
 }
 
+/** A directory's entries, or none ONLY when it does not exist (ENOENT, ENOTDIR). */
+async function readdirOrEmpty(
+  dir: string,
+): Promise<import("node:fs").Dirent[]> {
+  try {
+    return await readdir(dir, { withFileTypes: true });
+  } catch (e) {
+    if (isMissing(e)) return [];
+    throw e;
+  }
+}
+
+function isMissing(e: unknown): boolean {
+  const code = (e as NodeJS.ErrnoException).code;
+  return code === "ENOENT" || code === "ENOTDIR";
+}
+
 /** Whether `path` exists: false ONLY for ENOENT and ENOTDIR. Anything else (EACCES, EIO)
  *  throws, so "cannot read" is never mistaken for "missing" (`verify`, `installed`,
  *  `quarantined` and `commit` all rely on that). */
@@ -218,6 +235,7 @@ export class DirPackStorage implements PackStorage {
   stateStore(): PackStateStore {
     const path = join(this.root, "state.json");
     const torn = `${path}.torn`;
+    const holdList = `${path}.torn.list`;
     return {
       read: async () => {
         try {
@@ -255,7 +273,29 @@ export class DirPackStorage implements PackStorage {
       },
       quarantined: async () => exists(torn),
       clearQuarantine: async () => {
+        await rm(holdList, { force: true });
         await rm(torn, { force: true });
+      },
+      readHoldList: async () => {
+        try {
+          return await readFile(holdList, "utf8");
+        } catch (e) {
+          if (isMissing(e)) return null;
+          throw e;
+        }
+      },
+      writeHoldList: async (text) => {
+        if (await exists(holdList)) return;
+        const tmp = `${holdList}.${process.pid}.tmp`;
+        const fh = await open(tmp, "w", 0o600);
+        try {
+          await fh.writeFile(text);
+          await fh.sync();
+        } finally {
+          await fh.close();
+        }
+        await rename(tmp, holdList);
+        await syncDir(this.root);
       },
     };
   }
@@ -269,7 +309,8 @@ export class DirPackStorage implements PackStorage {
     const size = async () => {
       try {
         return (await stat(path)).size;
-      } catch {
+      } catch (e) {
+        if (!isMissing(e)) throw e;
         return 0;
       }
     };
@@ -380,7 +421,10 @@ export class DirPackStorage implements PackStorage {
       return JSON.parse(
         await readFile(join(location, INDEX_FILE), "utf8"),
       ) as FilesIndexDoc;
-    } catch {
+    } catch (e) {
+      // Missing or not JSON: no kept index. Unreadable: thrown (the caller does not use it).
+      if ((e as NodeJS.ErrnoException).code !== undefined && !isMissing(e))
+        throw e;
       return null;
     }
   }
@@ -437,23 +481,15 @@ export class DirPackStorage implements PackStorage {
   async list(): Promise<{ locations: string[]; plans: string[] }> {
     const locations: string[] = [];
     const plans: string[] = [];
-    try {
-      for (const pack of await readdir(this.storeDir, { withFileTypes: true }))
-        if (pack.isDirectory())
-          for (const v of await readdir(join(this.storeDir, pack.name), {
-            withFileTypes: true,
-          }))
-            if (v.isDirectory())
-              locations.push(join(this.storeDir, pack.name, v.name));
-    } catch {
-      // No store yet.
-    }
-    try {
-      for (const p of await readdir(this.stagingDir, { withFileTypes: true }))
-        if (p.isDirectory()) plans.push(p.name);
-    } catch {
-      // No staging yet.
-    }
+    // Only a missing directory is "nothing there"; an unreadable one throws, so the engine never
+    // plans garbage collection from a partial listing.
+    for (const pack of await readdirOrEmpty(this.storeDir))
+      if (pack.isDirectory())
+        for (const v of await readdirOrEmpty(join(this.storeDir, pack.name)))
+          if (v.isDirectory())
+            locations.push(join(this.storeDir, pack.name, v.name));
+    for (const p of await readdirOrEmpty(this.stagingDir))
+      if (p.isDirectory()) plans.push(p.name);
     return { locations, plans };
   }
 

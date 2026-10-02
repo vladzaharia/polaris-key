@@ -586,3 +586,45 @@ describe("a payload the process cannot read (Node, EACCES)", () => {
     },
   );
 });
+
+describe("DirPackStorage.list never answers a partial listing (round 3)", () => {
+  it.skipIf(process.getuid?.() === 0)(
+    "a torn load with an unreadable pack directory keeps every pre-hold location",
+    async () => {
+      work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+      const a = await treePack({
+        packId: "djdl.l10n",
+        version: "1.0.0",
+        seq: 1,
+        files: v1Files,
+      });
+      const b = await treePack({
+        packId: "djdl.extra",
+        version: "1.0.0",
+        seq: 1,
+        files: { "x.txt": "x" },
+      });
+      srv.packs = [a, b];
+      let c = await client({ stamp: [a, b] });
+      await c.update.packs.ensure(["djdl.l10n", "djdl.extra"]);
+      const dirA = (await c.update.packs.path("djdl.l10n"))!;
+      c.close();
+      const root = join(work, "data", PRODUCT, "packs");
+      await writeFile(join(root, "state.json"), '{"v":1,"act');
+      const packDir = join(root, "store", "djdl.l10n");
+      await chmod(packDir, 0o000);
+      try {
+        await expect(new DirPackStorage({ root }).list()).rejects.toMatchObject(
+          { code: "EACCES" },
+        );
+        c = await client({ stamp: [b] });
+        expect((await c.update.packs.state()).stateIssue).toBe("torn");
+        await c.update.packs.ensure(["djdl.extra"]);
+        c.close();
+      } finally {
+        await chmod(packDir, 0o755);
+      }
+      expect(await treeOnDisk(dirA, a.files)).toBe(true);
+    },
+  );
+});

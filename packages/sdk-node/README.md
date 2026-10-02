@@ -441,7 +441,12 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
   their renames (on macOS that is `fsync(2)`, not `F_FULLFSYNC`, which Node does not expose:
   the drive's own write cache can still lose the last writes on a power cut). "Cannot read" is
   never read as "missing": an EACCES or EIO on a payload keeps the install, out of use, for the
-  next load that can read it.
+  next load that can read it. If a commit happens meanwhile, that unreadable install becomes
+  `previous` (it is the most recent one), replacing an older verified `previous`; `rollback`
+  re-verifies it and refuses while it is unreadable. While a torn state is held, the store
+  listing taken when the hold began is saved as `state.json.torn.list` and reused at every
+  restart, so storage stays bounded; an unreadable list, or a store directory that cannot be
+  listed, suspends garbage collection entirely.
 - **A state file that cannot be trusted loses nothing.** One that does not parse (a torn write)
   is moved aside as `state.json.torn`, and garbage collection is suspended while it exists:
   `state().stateIssue` is `torn`, and only `recoverState()` (an operator action) clears it and
