@@ -86,6 +86,13 @@ import {
   type DistTransportRow,
 } from "./outlets.js";
 import { referencedKeys, storedObjects } from "../../core/blobs.js";
+import {
+  appReleasesAffectedBy,
+  applyReadinessHold,
+  readinessReader,
+  refreshReadiness,
+  type ReadinessReader,
+} from "./readiness.js";
 
 // ── Vocabulary ───────────────────────────────────────────────────────────────────────────────
 
@@ -305,6 +312,11 @@ export interface AvailabilityReadContext {
   db: Db;
   product: string;
   hooks: ServiceHooks;
+  /**
+   * P4-14's readiness, shared across the calls of one request (`delivery.ts` memoises one per hook
+   * instance). Absent: a reader is made for the call.
+   */
+  readiness?: ReadinessReader;
 }
 
 /** A release of one of the product's declared deliverables, found by id (two reads). */
@@ -731,13 +743,18 @@ export async function availabilityFor(
           (s.buildId === "" || s.buildId === d.buildId),
       ),
   );
-  return [...stored, ...derived].sort(
+  const records = [...stored, ...derived].sort(
     (a, b) =>
       cmp(a.outletId, b.outletId) ||
       cmp(a.buildId, b.buildId) ||
       Number(a.derived) - Number(b.derived) ||
       cmp(embeddedIn(a), embeddedIn(b)),
   );
+  // P4-14: an app release whose required pack set is not available through an outlet Polaris Key
+  // controls is HELD there — its `live` records answer `pending` (`readiness.ts`).
+  if (release.deliverableId !== APP_DELIVERABLE_ID) return records;
+  const reader = ctx.readiness ?? readinessReader(ctx);
+  return applyReadinessHold(records, await reader.forRelease(releaseId));
 }
 
 /** The app release an `embedded` pack record is about (`''` for any other record). */
@@ -1178,6 +1195,24 @@ export async function reportAvailability(
     existing.detail_json !== detail ||
     existing.source !== writer.source;
   const what = `${release.releaseId}${buildId ? `/${buildId}` : ""}`;
+  // P4-14 trigger: an availability change for a release refreshes the readiness snapshot of the
+  // app releases it can affect. The hold itself is computed on read, so this only keeps
+  // `dist_readiness` (the console's and P5-08's view) current; a failure here leaves the snapshot
+  // for the connector cron to refresh and never fails the report.
+  if (changed) {
+    const catalog = ctx.hooks.releaseCatalog();
+    if (catalog)
+      try {
+        await refreshReadiness(
+          { ...ctx, actor: `system:${writer.source}` },
+          release.deliverableId === APP_DELIVERABLE_ID
+            ? [release.releaseId]
+            : await appReleasesAffectedBy(catalog, release.releaseId),
+        );
+      } catch {
+        // The snapshot only; see above.
+      }
+  }
   if (changed)
     await writer.audit(
       "distribution.availability.report",

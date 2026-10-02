@@ -56,6 +56,7 @@ import { delivery } from "./delivery.js";
 import { accessIngestStatements } from "./access.js";
 import { releaseKeyObservationStatements } from "./availability.js";
 import { handleDistributionRoutes } from "./routes.js";
+import { refreshReadiness } from "./readiness.js";
 import { pollConnectors } from "./connectors/index.js";
 import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
 import {
@@ -127,12 +128,33 @@ async function scheduled(
       error: e instanceof Error ? e.message : "auto-halt failed",
     };
   }
+  // P4-14: refresh the readiness snapshot (`dist_readiness`) after the connectors, which may have
+  // just written store availability (an approved asset pack). The hold is computed on read; this
+  // keeps the console's view, the audit trail of state changes and P5-08's input current, and
+  // catches Release-side triggers (an app publish or promote, a re-resolved set) within a tick.
+  let readiness: { refreshed: number } | { error: string };
+  try {
+    readiness = {
+      refreshed: await refreshReadiness({
+        db: ctx.db,
+        product: ctx.product.slug,
+        hooks: ctx.hooks,
+        now: ctx.now,
+        actor: "system:readiness",
+      }),
+    };
+  } catch (e) {
+    readiness = {
+      error: `readiness: ${e instanceof Error ? e.message : "refresh failed"}`,
+    };
+  }
   const errors = [
     ...outcomes.filter((o) => o.error).map((o) => `${o.connector}: ${o.error}`),
     ...(autoHalt.error ? [autoHalt.error] : []),
+    ...("error" in readiness ? [readiness.error] : []),
   ];
   if (errors.length) throw new Error(errors.join("; "));
-  return { connectors: outcomes, autoHalt };
+  return { connectors: outcomes, autoHalt, readiness };
 }
 
 export const distributionService: ServiceDescriptor = {
