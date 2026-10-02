@@ -4,8 +4,10 @@
  * The Update service descriptor — the FEED over Release's truth (design spec §5.1, D-05).
  *
  * Update owns the Sparkle appcast, the version check, the eligibility rules that decide which
- * build a given caller is offered, and (P3-03) the signed channel feed (`pkey-feed+jws`,
- * `compose.ts` + `feedDoc.ts`). Its only tables are the feed's own — `update_feed_state`,
+ * build a given caller is offered, (P3-03) the signed channel feed (`pkey-feed+jws`,
+ * `compose.ts` + `feedDoc.ts`), and (P3-09) the app-updater feeds rendered from the same records
+ * (`updaterFeeds.ts` + `updaterRender.ts`: the extended appcast, WinSparkle, Velopack, App
+ * Installer, zsync and the extended version check). Its only tables are the feed's own — `update_feed_state`,
  * `update_feed_ceiling` and `update_feed_docs`; every release row it reads is Release's, which is
  * why `update → release` is the one sanctioned cross-service import in the worker.
  *
@@ -63,6 +65,13 @@ export const updateService: ServiceDescriptor = {
         // P3-03: the signed channel feed; `{channel}` is the requested name, and the SDK always
         // adds `?platform=`.
         feed: `${base}/update/{channel}/feed.jws`,
+        // P3-09: the app-updater feeds, per channel. `{velopackChannel}` is the channel the app
+        // was packed with (`win`, `osx`, `linux`, optionally `-x64` / `-arm64`); `{buildId}` an
+        // artifact-map id of an AppImage build (its stable `zsync|…` update information).
+        winsparkle: `${base}/update/{channel}/winsparkle.xml`,
+        velopack: `${base}/update/{channel}/velopack/releases.{velopackChannel}.json`,
+        appInstaller: `${base}/update/{channel}/app.appinstaller`,
+        zsync: `${base}/update/{channel}/{buildId}.AppImage.zsync`,
       },
       /** `?arch=` on either appcast URL; omitted means `arm64` (see `feed.ts`). */
       archParameter: ["arm64", "x86_64"],

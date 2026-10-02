@@ -252,7 +252,14 @@ export type ReleaseKind =
    *  (`/release/records/{sha256}`). Both are metadata: a client that may read a feed must be
    *  able to fetch every record it pins. */
   | "feed"
-  | "record";
+  | "record"
+  /** P3-09: the app-updater feeds (`/update/{channel}/winsparkle.xml`, `…/velopack/…`,
+   *  `…/app.appinstaller`, `…/{buildId}.AppImage.zsync`). Artifacts-governed, like the appcast:
+   *  each one tells an updater where to download the app. */
+  | "winsparkle"
+  | "velopack"
+  | "appinstaller"
+  | "zsync";
 
 /** Which access mode governs a surface: metadata for the informational reads, else artifacts. */
 export function accessModeFor(

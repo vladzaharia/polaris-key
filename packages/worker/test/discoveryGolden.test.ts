@@ -14,7 +14,9 @@
  * new key under `services` is additive: clients ignore slugs they do not know (P0-08). P2b-04
  * filled Distribution's own fragment in (its brief: it advertises download, install, builds and
  * blobs, now that it serves every byte), inside the key P2b-01 added: `configured` and four
- * `endpoints`. Release's fragment is untouched — its keys name the permanent aliases.
+ * `endpoints`. Release's fragment is untouched — its keys name the permanent aliases. P3-03
+ * added Update's `endpoints.feed`, and P3-09 the four app-updater feed templates after it
+ * (`winsparkle`, `velopack`, `appInstaller`, `zsync`): additive keys a client ignores.
  */
 
 import { readFileSync } from "node:fs";

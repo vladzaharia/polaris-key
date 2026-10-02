@@ -7,6 +7,15 @@
  *     /update/<channel>/appcast.xml[?arch=] (+ the permanent alias `/<p>/<channel>/appcast.xml`)
  *     /update/version                        (+ the permanent alias `/<p>/version`)
  *     /update/<channel>/feed.jws?platform=   (P3-03, the signed channel feed; no alias)
+ *     /update/<channel>/winsparkle.xml, /update/<channel>/velopack/releases.<vch>.json,
+ *     /update/<channel>/app.appinstaller, /update/<channel>/<buildId>.AppImage.zsync
+ *                                            (P3-09, the app-updater feeds: `updaterFeeds.ts`)
+ *
+ * The appcasts and the version check have two paths since P3-09: a product that publishes
+ * release records gets the EXTENDED appcast (`updaterFeeds.ts`, rendered from the records and
+ * Distribution's per-outlet state), and the version check's extended answer when it asks with
+ * `?platform=`, `?arch=` or `?outlet=`; every other request runs the legacy, GitHub-resolved path
+ * (`feed.ts`) unchanged.
  *
  * The aliases arrive here already rewritten into the canonical segments by the core router
  * (`router.ts`), so both spellings run this file's single code path and are byte-identical by
@@ -19,6 +28,14 @@ import type { ServiceContext } from "../../core/registry.js";
 import { handleUpdate } from "./feed.js";
 import { handleFeedRoute } from "./feedDoc.js";
 import { updateParams } from "./eligibility.js";
+import {
+  handleUpdaterFeedRoutes,
+  isExtendedVersionRequest,
+  recordedAppReleases,
+  serveExtendedVersion,
+  serveSparkle,
+} from "./updaterFeeds.js";
+import { appcastArch } from "./feed.js";
 
 /** Channel names the router will hand through, matching the product-slug class. */
 const CHANNEL = /^[a-z0-9-]+$/;
@@ -43,6 +60,9 @@ export async function handleUpdateRoutes(
 
   if (rest.length === 1) {
     if (rest[0] === "appcast.xml") {
+      const recorded = await recordedAppReleases(ctx);
+      if (recorded.length > 0)
+        return serveSparkle(ctx, "stable", appcastArch(req), recorded);
       return handleUpdate(
         req,
         env,
@@ -60,6 +80,12 @@ export async function handleUpdateRoutes(
       // could not express is refused here (→ the registry's 404) before any resolution.
       const channel = new URL(req.url).searchParams.get("channel");
       if (channel !== null && !CHANNEL.test(channel)) return null;
+      if (isExtendedVersionRequest(req)) {
+        const recorded = await recordedAppReleases(ctx);
+        return recorded.length > 0
+          ? serveExtendedVersion(ctx, channel ?? "stable", recorded)
+          : null;
+      }
       return handleUpdate(
         req,
         env,
@@ -81,12 +107,24 @@ export async function handleUpdateRoutes(
   )
     return handleFeedRoute(ctx, rest[0] as string);
 
+  if (rest.length >= 2 && CHANNEL.test(rest[0] ?? "")) {
+    const feed = await handleUpdaterFeedRoutes(
+      ctx,
+      rest[0] as string,
+      rest.slice(1),
+    );
+    if (feed) return feed;
+  }
+
   if (
     rest.length === 2 &&
     rest[1] === "appcast.xml" &&
     CHANNEL.test(rest[0] ?? "")
   ) {
     const channel = rest[0] as string;
+    const recorded = await recordedAppReleases(ctx);
+    if (recorded.length > 0)
+      return serveSparkle(ctx, channel, appcastArch(req), recorded);
     return handleUpdate(
       req,
       env,
