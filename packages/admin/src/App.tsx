@@ -32,6 +32,7 @@ import { Profiles } from "./views/Profiles.js";
 import { ProfileDetail } from "./views/profiles/ProfileDetail.js";
 import { Releases } from "./views/Releases.js";
 import { Deliverables } from "./views/releases/Deliverables.js";
+import { Compatibility } from "./views/releases/Compatibility.js";
 import { DeliverableDetail } from "./views/releases/DeliverableDetail.js";
 import { UpdateSettings } from "./views/UpdateSettings.js";
 import { Distribution } from "./views/Distribution.js";
@@ -308,6 +309,8 @@ function renderRoute(
       return <Releases slug={activeSlug} />;
     case "deliverables":
       return <Deliverables slug={activeSlug} />;
+    case "compatibility":
+      return <Compatibility slug={activeSlug} />;
     case "distribution":
       return <Distribution slug={activeSlug} />;
     case "distribution-matrix":

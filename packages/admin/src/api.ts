@@ -620,6 +620,27 @@ export interface MatrixCellDto {
   records: AvailabilityRecordDto[];
   submission: SubmissionRecordDto | null;
   rollouts: MatrixRolloutDto[];
+  /**
+   * P4-14: the app release's readiness on this outlet (worker `distribution/readiness.ts`
+   * `OutletReadiness`, abridged); null for a pack's cells and a product without packs. Absent from
+   * a worker that predates P4-14.
+   */
+  readiness?: MatrixReadinessDto | null;
+}
+
+/** The fields of `OutletReadiness` the console renders. */
+export interface MatrixReadinessDto {
+  state: string;
+  holds: boolean;
+  holdable: boolean;
+  warning: string | null;
+  blockers: {
+    pack: string;
+    version: string | null;
+    reason: string;
+    detail: string;
+  }[];
+  pendingReason: string | null;
 }
 
 /** `GET …/distribution/matrix` (worker `services/distribution/matrix.ts`). */
@@ -919,6 +940,177 @@ export interface PackFilesResponse {
   /** At most 2,000; `total` is how many the index lists. */
   files: PackFileDto[];
   total: number;
+}
+
+// ── release: the compatibility matrix (P4-15; worker `release/packs/compat.ts`) ─────
+export type CompatCellState =
+  | "pinned"
+  | "held"
+  | "compatible"
+  | "incompatible"
+  | "revoked";
+
+export interface CompatYankDto {
+  reason: string;
+  at: number;
+  by: string;
+}
+
+export interface CompatAppReleaseDto {
+  releaseId: string;
+  version: string;
+  seq: number | null;
+  channel: string | null;
+  contentApi: number | null;
+  live: boolean;
+  liveOn: string[];
+  yanked: CompatYankDto | null;
+  platforms: string[];
+  engines: string[];
+  pins: { pack: string; releaseId: string }[];
+  holds: { pack: string; releaseId: string }[];
+  unsatisfied: {
+    pack: string;
+    reason: string;
+    detail: string;
+    channel: string;
+    platform: string;
+    engine: string;
+    variant: string;
+  }[];
+}
+
+export interface CompatPackReleaseDto {
+  pack: string;
+  releaseId: string;
+  version: string;
+  seq: number | null;
+  sha256: string | null;
+  channel: string | null;
+  requires: { contentApi: string[]; engines: string[] };
+  yanked: CompatYankDto | null;
+  revoked: {
+    kind: "record" | "delegation";
+    recordSha256: string;
+    reason: string;
+    issuedAt: number;
+    replacement: { releaseId: string; sha256: string } | null;
+  } | null;
+  current: boolean;
+}
+
+export interface CompatCellDto {
+  appReleaseId: string;
+  packReleaseId: string;
+  state: CompatCellState;
+  current: boolean;
+  yanked: boolean;
+  reason: string;
+}
+
+/** `GET …/release/compat`. */
+export interface CompatResponse {
+  channels: string[];
+  liveLevels: Record<string, number[]>;
+  levels: number[];
+  limit: number;
+  packs: { id: string; binding: string; required: boolean; delivery: string }[];
+  appReleases: CompatAppReleaseDto[];
+  packReleases: CompatPackReleaseDto[];
+  cells: CompatCellDto[];
+  hidden: { appReleases: number; packReleases: number };
+  resolvedAt: number | null;
+}
+
+// ── update: the simulator (P4-15; worker `update/simulate.ts`) ──────────────────
+export interface SimulateParams {
+  appRelease: string;
+  platform: string;
+  outlet?: string;
+  /** `axis=value;axis=value` (a value may be a `,` preference list). */
+  variant?: string;
+  channel?: string;
+  /** A device id, for the rollout buckets. */
+  device?: string;
+  /** A device's reported packSetId, to compare. */
+  packSetId?: string;
+}
+
+export interface SimulatedReleaseDto {
+  sha256: string;
+  version: string;
+  seq: number;
+}
+
+export interface SimulatedPackDto {
+  pack: string;
+  declared: { binding: string; required: boolean; delivery: string } | null;
+  expected: { required: boolean; delivery: string } | null;
+  effectiveBinding: string | null;
+  reason: {
+    kind: "app-pin" | "app-hold" | "transport" | "declared" | "undeclared";
+    detail: string;
+    transport?: string;
+  };
+  feedTarget: SimulatedReleaseDto | null;
+  gate: {
+    halted: boolean;
+    rollout: { bp: number; salt: string } | null;
+    bucket: number | null;
+    takesTarget: boolean;
+    fallback: SimulatedReleaseDto | null;
+  } | null;
+  floor: { minVersion: string; versionScheme: string } | null;
+  unsatisfied: { reason: string; detail: string; variant: string }[];
+  revocations: {
+    record: string;
+    target: string;
+    version: string;
+    replacement: { releaseId: string; sha256: string } | null;
+    reason: string;
+  }[];
+  active: SimulatedReleaseDto | null;
+  install: SimulatedReleaseDto | null;
+  revoke: boolean;
+  runs: SimulatedReleaseDto | null;
+}
+
+/** `GET …/update/simulate`: the decision is client-core's `UpdateDecision`, as the worker ran it. */
+export interface SimulateResponse {
+  selector: {
+    appRelease: string;
+    version: string;
+    channel: string;
+    platform: string;
+    outlet: { id: string; kind: string; servesPlatform: boolean } | null;
+    axes: Record<string, string[]>;
+    engine: string | null;
+    contentApi: number | null;
+    build: { id: string; arch: string; format: string } | null;
+    device: string | null;
+    methods: string[];
+  };
+  feed: {
+    composable: boolean;
+    selector: Record<string, string>;
+    omitted: string[];
+    target: SimulatedReleaseDto | null;
+    appRollout: {
+      halted: boolean;
+      rollout: { bp: number; salt: string } | null;
+      bucket: number | null;
+    } | null;
+  };
+  decision: ({ action: string } & Record<string, unknown>) | null;
+  boot: string | null;
+  errors: { code: string; detail: string | null }[];
+  set: { pack: string; sha256: string; version: string; seq: number }[];
+  packSetId: string | null;
+  activePackSetId: string | null;
+  reported: { packSetId: string; matches: boolean } | null;
+  block: string | null;
+  packs: SimulatedPackDto[];
+  notes: string[];
 }
 
 export interface ReleaseChannelDto {
@@ -1499,6 +1691,18 @@ export const api = {
     call<PackFilesResponse>(
       `${p(slug)}/release/deliverables/${enc(deliverable)}/releases/${enc(releaseId)}/files?variant=${enc(variant)}`,
     ),
+  /** P4-15: app releases × pack releases, a state per pair, the live contentApi levels. */
+  releaseCompat: (slug: string, opts: { limit?: number } = {}) =>
+    call<CompatResponse>(
+      `${p(slug)}/release/compat${opts.limit !== undefined ? `?limit=${opts.limit}` : ""}`,
+    ),
+  /** P4-15: what a fresh device running one app release gets on one outlet (read-only). */
+  simulateUpdate: (slug: string, params: SimulateParams) => {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(params))
+      if (typeof v === "string" && v !== "") q.set(k, v);
+    return call<SimulateResponse>(`${p(slug)}/update/simulate?${q.toString()}`);
+  },
   // ── release channel policy (P2-05 admin routes; worker `release/admin.ts`) ────
   /** Every deliverable's channels: policy, source, and what each resolves to, per platform. */
   releaseChannels: (slug: string) =>

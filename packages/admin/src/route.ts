@@ -50,6 +50,7 @@ export type Tab =
   // release
   | "releases"
   | "deliverables"
+  | "compatibility"
   // distribution
   | "distribution"
   | "distribution-matrix"
@@ -189,6 +190,11 @@ export const SECTIONS: NavSection[] = [
         tab: "deliverables",
         label: "Deliverables",
         docs: "/docs/services/release/packs/",
+      },
+      {
+        tab: "compatibility",
+        label: "Compatibility",
+        docs: "/docs/services/release/compatibility/",
       },
     ],
   },

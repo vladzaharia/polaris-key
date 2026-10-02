@@ -1914,6 +1914,25 @@ Residuals, stated rather than defended:
 - **`blob_gc_log` names keys, not tenants, for deletions.** An object's deletion is attributed to
   no product; the `ref-dropped` rows say which product dropped the last ref.
 
+### The compatibility matrix and the device simulator (P4-15)
+
+P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
+`GET …/update/simulate`. Both sit behind the platform-admin session, CSRF and rate-limit gates of
+`admin/api.ts`, write nothing and audit nothing, and add no wire member.
+
+- **The simulator signs, but never publishes.** To run client-core's own update check (no second
+  implementation), `simulate` signs the document `documentFor` composes, the one the feed route
+  would sign for that channel and platform at that moment, with the product's feed key, in memory.
+  The JWS is handed to `runUpdateCheck` and dropped: it is never stored in `update_feed_docs`,
+  never returned in the response (which carries the decoded decision, not the document) and never
+  served. It holds nothing the public feed route would not sign for the same request, so it gives a
+  console session no document it could not already fetch. It does not move the channel's `seq`.
+- **Records come from Release's own store.** The simulator's record fetches read
+  `getRecordByHash`, the store the record route serves, so a release key's signature is verified
+  exactly as a device verifies it; a record that fails is reported in `errors`, never trusted.
+- **No cross-tenant read.** Both routes read only the session's product; a device id passed for the
+  rollout buckets is hashed in memory and echoed back, never stored.
+
 ### Packs on the wire (packs v1, P4-21)
 
 Packs v1 (`plans/P4-01.md`; WIRE-CONTRACT-V4 §2.5.1–§2.7, §3.7) adds no `typ`, no feed field and
