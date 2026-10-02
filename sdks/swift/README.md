@@ -530,6 +530,12 @@ try await update.packs.confirm()                             // this boot is hea
 - **zstd.** libzstd 1.5.7 from the official facebook/zstd package (Apple's Compression has no
   zstd); `--patch-from` deltas decode as raw-content prefixes, and every one passes the frame
   window check before it is decoded.
+- **Memory.** `memBudget` (default 256 MiB) caps one delta frame's `memBytes`: a `--patch-from`
+  decode holds the base, the frame and the output at once. iOS background tasks and app
+  extensions (widgets, share and notification extensions, Background Assets) run under much
+  tighter memory limits than a foreground app, so pass a lower budget there, for example
+  `PacksOptions(memBudget: 32 * 1024 * 1024)`. A delta over the budget is never chosen: the
+  planner falls back to the `file` or `full` strategy, which costs more bytes but less memory.
 - **Boot.** `bootOptions()` gives `BootOptions`' `requiredPacks` and `essentialPacks`;
   `bootFetch(send:consent:metered:answer:)` drives the stage machine's FETCH stage
   (`fetch.consent`, `fetch.progress`, `fetch.done`).

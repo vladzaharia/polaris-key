@@ -144,3 +144,64 @@ def test_streaming_full_decode_matches_one_shot() -> None:
     assert bytes(out) == data == port.decode(frame, len(data))
     with pytest.raises(Exception):
         port.decode_stream(memory_source(frame), len(data) - 1, lambda b: None)
+
+
+def _claims_a_gigabyte() -> bytes:
+    """A frame with a 1 KiB window (Window_Descriptor 0) whose 8-byte Frame_Content_Size claims
+    1 GiB, followed by 2,048 raw 1 KiB blocks (2 MiB). ``zstandard.decompress()`` would allocate
+    the declared 1 GiB before decoding a byte (review B1)."""
+    header = bytes([0x28, 0xB5, 0x2F, 0xFD, 0xC0, 0x00]) + (1 << 30).to_bytes(8, "little")
+    blocks = bytearray()
+    for i in range(2048):
+        last = 1 if i == 2047 else 0
+        blocks += ((1024 << 3) | last).to_bytes(3, "little") + bytes([i % 251]) * 1024
+    return header + bytes(blocks)
+
+
+@pytest.mark.parametrize("name", ["compression.zstd", "zstandard"])
+def test_a_frame_claiming_more_content_than_its_ref_is_refused_before_decoding(name: str) -> None:
+    if not _have(name):
+        pytest.skip(f"{name} is not available on this interpreter")
+    import resource
+
+    backend = next(b for b in _backends("auto") if b.name == name)
+    port = PythonZstd(backend)
+    frame = _claims_a_gigabyte()
+    size = 2048 * 1024
+    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    with pytest.raises(ValueError, match="content size"):
+        port.decode(frame, size)
+    with pytest.raises(ValueError, match="content size"):
+        port.decode_with_prefix(frame, b"base", size, 31)
+    with pytest.raises(ValueError, match="content size"):
+        port.decode_stream(memory_source(frame), size, lambda _chunk: None)
+    after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    # ru_maxrss is bytes on macOS and KiB on Linux; either way far below the claimed 1 GiB.
+    scale = 1 if sys.platform == "darwin" else 1024
+    assert (after - before) * scale < 256 * 1024 * 1024
+
+
+@pytest.mark.parametrize("name", ["compression.zstd", "zstandard"])
+def test_a_frame_without_a_content_size_is_still_bounded_by_the_ref(name: str) -> None:
+    if not _have(name):
+        pytest.skip(f"{name} is not available on this interpreter")
+    backend = next(b for b in _backends("auto") if b.name == name)
+    port = PythonZstd(backend)
+    # A streamed frame of unknown size: no Frame_Content_Size in its header.
+    if _have("compression.zstd"):
+        from compression import zstd as z  # type: ignore[import-not-found]
+
+        c = z.ZstdCompressor(options={z.CompressionParameter.window_log: 10})
+        frame = c.compress(b"payload " * 64, z.ZstdCompressor.CONTINUE) + c.flush(
+            z.ZstdCompressor.FLUSH_FRAME
+        )
+    else:
+        import zstandard as zs  # type: ignore[import-not-found,import-untyped,unused-ignore]
+
+        params = zs.ZstdCompressionParameters.from_level(3, window_log=10, write_content_size=0)
+        o = zs.ZstdCompressor(compression_params=params).compressobj()
+        frame = o.compress(b"payload " * 64) + o.flush()
+    assert frame_window(frame) is not None
+    assert port.decode(frame, 512) == b"payload " * 64
+    with pytest.raises(Exception):
+        port.decode(frame, 100)

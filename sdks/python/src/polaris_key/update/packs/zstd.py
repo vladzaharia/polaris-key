@@ -56,6 +56,19 @@ PROBE_SHA256 = "cb0e436ee45ab5d453e18dd20612ce36c56e371dbf940bc5cabd20fd0ef27c27
 PROBE_MEM_BYTES = 901
 
 
+def _require_content_size(fcs: int, size: int) -> None:
+    """Refuse a frame whose header declares a Frame_Content_Size other than ``size`` (``-1``:
+    the header declares none). ``zstandard.decompress()`` allocates a declared content size up
+    front and ignores ``max_output_size`` when one is present, so a small frame that claims
+    1 GiB would cost 1 GiB before any byte is checked: the header is read first, every call."""
+    if fcs != -1 and fcs != size:
+        raise ValueError("zstd: content size")
+
+
+#: The longest frame header (RFC 8878 §3.1.1): magic, descriptor, window, dictionary id, size.
+_MAX_FRAME_HEADER = 18
+
+
 def _plain_wlm(size: int) -> int:
     wlm = window_log_max(max(size, 0), _POINTER_BITS)
     return 10 if wlm is None else wlm
@@ -93,7 +106,13 @@ class _Stdlib:
     def _opts(self, wlm: int) -> Any:
         return {self._z.DecompressionParameter.window_log_max: wlm}
 
+    def _check(self, frame: bytes, size: int) -> None:
+        info = self._z.get_frame_info(bytes(frame[:_MAX_FRAME_HEADER]))
+        fcs = info.decompressed_size
+        _require_content_size(-1 if fcs is None else fcs, size)
+
     def decode(self, frame: bytes, size: int) -> bytes:
+        self._check(frame, size)
         d = self._z.ZstdDecompressor(options=self._opts(_plain_wlm(size)))
         out = d.decompress(bytes(frame), max_length=size + 1)
         if len(out) != size or not d.eof:
@@ -101,6 +120,7 @@ class _Stdlib:
         return out
 
     def decode_with_prefix(self, frame: bytes, prefix: bytes, size: int, wlm: int) -> bytes:
+        self._check(frame, size)
         zd = self._z.ZstdDict(bytes(prefix), is_raw=True)
         d = self._z.ZstdDecompressor(zstd_dict=zd.as_prefix, options=self._opts(wlm))
         out = d.decompress(bytes(frame), max_length=size + 1)
@@ -111,6 +131,7 @@ class _Stdlib:
     def decode_stream(
         self, frame: ByteSource, size: int, on_chunk: Callable[[bytes], None]
     ) -> None:
+        self._check(frame.read(0, min(_MAX_FRAME_HEADER, frame.size)), size)
         d = self._z.ZstdDecompressor(options=self._opts(_plain_wlm(size)))
         total = 0
         at = 0
@@ -147,7 +168,11 @@ class _Zstandard:
         self._z = z
         self.version = f"{z.__version__} (libzstd {'.'.join(str(x) for x in z.ZSTD_VERSION)})"
 
+    def _check(self, frame: bytes, size: int) -> None:
+        _require_content_size(self._z.frame_content_size(bytes(frame[:_MAX_FRAME_HEADER])), size)
+
     def decode(self, frame: bytes, size: int) -> bytes:
+        self._check(frame, size)
         d = self._z.ZstdDecompressor(max_window_size=2 ** _plain_wlm(size))
         out = d.decompress(bytes(frame), max_output_size=max(size, 1))
         if len(out) != size:
@@ -155,6 +180,7 @@ class _Zstandard:
         return out
 
     def decode_with_prefix(self, frame: bytes, prefix: bytes, size: int, wlm: int) -> bytes:
+        self._check(frame, size)
         zd = self._z.ZstdCompressionDict(bytes(prefix), dict_type=self._z.DICT_TYPE_RAWCONTENT)
         d = self._z.ZstdDecompressor(dict_data=zd, max_window_size=2**wlm)
         out = d.decompress(bytes(frame), max_output_size=max(size, 1))
@@ -165,6 +191,7 @@ class _Zstandard:
     def decode_stream(
         self, frame: ByteSource, size: int, on_chunk: Callable[[bytes], None]
     ) -> None:
+        self._check(frame.read(0, min(_MAX_FRAME_HEADER, frame.size)), size)
         d = self._z.ZstdDecompressor(max_window_size=2 ** _plain_wlm(size))
         total = 0
         reader: Any = _SourceReader(frame)
