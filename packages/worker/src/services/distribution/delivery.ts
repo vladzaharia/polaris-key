@@ -14,6 +14,9 @@
  *     and P6-03 halts through.
  *   - `accessMode` (P2b-04): `dist_access` — the ONE delivery-access answer the byte routes, the
  *     appcast and the portal read.
+ *   - `entitlement` (P4-02): a deliverable's delivery gate, the `entitlement` of its OWN
+ *     `dist_access` row (never inherited from `app`) — what Release's publish routes hold a pack
+ *     publish to (plans/P4-01.md decision 35).
  *   - `outlets` (P3-03): the live outlets with kind, identity and whether an operator narrowed
  *     them — what the signed feed keys its per-outlet entries by.
  *   - `deliveryUrl` (P2b-04): the canonical, immutable byte URL of a release file or of a build's
@@ -30,7 +33,7 @@ import {
 } from "../../core/hooks.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import type { Env } from "../../core/platform.js";
-import { accessModeOf } from "./access.js";
+import { accessModeOf, entitlementOf } from "./access.js";
 import { getRollout, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
 import { listOutlets, parseJsonColumn } from "./outlets.js";
@@ -95,6 +98,8 @@ export function delivery(ctx: HookContext): Delivery {
     },
 
     accessMode: (deliverable: string) => accessModeOf(db, slug, deliverable),
+
+    entitlement: (deliverable: string) => entitlementOf(db, slug, deliverable),
 
     async deliveryUrl({ releaseId, buildId, name, outlet }) {
       if ((buildId === undefined) === (name === undefined)) return null;

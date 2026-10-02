@@ -1,7 +1,8 @@
 /**
  * Release's `releaseCatalog` descriptor hook (P2b-01, `core/hooks.ts`): the read-only view of
  * what exists — deliverables, releases, builds, artifact records, channel policy and yanks —
- * over P2-03's data model (`model.ts`) and the truth store (`store.ts`).
+ * over P2-03's data model (`model.ts`) and the truth store (`store.ts`); and (P4-02) packs:
+ * declarations, pack releases, a variant's files, pins and embeds (`packs/catalog.ts`).
  *
  * This is how Distribution (and, later, anything else) reads Release without importing it: Core
  * hands a consumer `hooks.releaseCatalog()`, which is `null` while Release is off for the
@@ -43,6 +44,7 @@ import {
   resolveChannelReleases,
 } from "./resolve.js";
 import { installScript, openSource, parseLocations } from "./source.js";
+import { packCatalog } from "./packs/catalog.js";
 
 type ReleaseRow = Pick<
   ReleaseMetadataRow,
@@ -127,6 +129,7 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
   let cfgRead: ReturnType<typeof getReleaseConfig> | undefined;
   const config = () => (cfgRead ??= getReleaseConfig(db, slug));
   return {
+    ...packCatalog({ db, env: ctx.env, slug }),
     async deliverables(): Promise<CatalogDeliverable[]> {
       return (await listDeliverables(db, slug)).map((d) => ({
         id: d.deliverable_id,

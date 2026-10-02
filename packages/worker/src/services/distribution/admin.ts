@@ -38,6 +38,7 @@
  * two read-only here (CI and, later, connectors write them), the inventory operator-owned.
  */
 
+import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
@@ -358,7 +359,7 @@ async function handleAccessAdmin(
     if (
       body.entitlement === null ||
       (typeof body.entitlement === "string" &&
-        /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(body.entitlement))
+        ENTITLEMENT_PATTERN.test(body.entitlement))
     )
       entitlement = body.entitlement as string | null;
     else

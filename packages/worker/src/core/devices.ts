@@ -865,7 +865,7 @@ export async function handleDevices(
 // licensingEdge.test.ts together. The first six keys are the software-facts additions; the
 // next nine are the original v1 set and must stay; `engine` and `outlet` (P1-05) carry a game
 // engine's build facts and the store the build was published through, each with its own bound
-// below.
+// below; `content` (P4-02, plans/P4-01.md §2.11) carries the active pack set's id.
 export const REPORT_KEYS = [
   "os",
   "hardware",
@@ -884,6 +884,7 @@ export const REPORT_KEYS = [
   "timestamp",
   "engine",
   "outlet",
+  "content",
 ] as const;
 
 /** The fields `engine` may carry; anything else in it is dropped. All are strings except
@@ -920,6 +921,23 @@ function boundedOutlet(input: unknown): string | undefined {
   return typeof input === "string" ? input.slice(0, 64) : undefined;
 }
 
+const HEX64_RE = /^[0-9a-f]{64}$/;
+
+/** Bound `content` (P4-02): keep only `packSetId` and `appRelease`, each kept only when it is 64
+ *  lowercase hex (the active set's `packSetId`, the running app release's record hash). Not an
+ *  object, or neither member well formed: `undefined` (the key is dropped). */
+function boundedContent(input: unknown): Record<string, string> | undefined {
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    return undefined;
+  const src = input as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const key of ["packSetId", "appRelease"] as const) {
+    const v = src[key];
+    if (typeof v === "string" && HEX64_RE.test(v)) out[key] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function boundedReport(input: unknown): Record<string, unknown> {
   const src =
     input && typeof input === "object" && !Array.isArray(input)
@@ -946,6 +964,11 @@ function boundedReport(input: unknown): Record<string, unknown> {
     const outlet = boundedOutlet(out.outlet);
     if (outlet === undefined) delete out.outlet;
     else out.outlet = outlet;
+  }
+  if (out.content !== undefined) {
+    const content = boundedContent(out.content);
+    if (content === undefined) delete out.content;
+    else out.content = content;
   }
   return out;
 }

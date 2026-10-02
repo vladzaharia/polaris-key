@@ -121,6 +121,24 @@ export async function accessModeOf(
   return app ? readMode(app.mode) : "entitled";
 }
 
+/**
+ * The delivery gate of one deliverable (P4-02, plans/P4-01.md decision 35): the `entitlement` of
+ * its OWN row, never the `app` row's, or `null` when it has no row or no flag. A pack's gate is
+ * operator-owned: `.pkey/release` may only assert it, and Release refuses a publish that differs.
+ */
+export async function entitlementOf(
+  db: Db,
+  product: string,
+  deliverable: string,
+): Promise<string | null> {
+  const row = await db.first<Pick<DistAccessRow, "entitlement">>(
+    "SELECT entitlement FROM dist_access WHERE product = ? AND deliverable_id = ?",
+    product,
+    deliverable,
+  );
+  return row?.entitlement ?? null;
+}
+
 /** Set (and claim for the operator) one deliverable's mode. `entitlement` undefined = keep. */
 export async function setAccess(
   db: Db,

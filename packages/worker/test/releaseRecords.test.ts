@@ -245,8 +245,9 @@ describe("POST /release/publish/uploads — seqs", () => {
         { deliverable: "app", version: "1.4.0" },
       ],
     });
+    // P4-02: an existing release's entry carries its record's hash.
     expect(((await again.json()) as any).seqs).toEqual([
-      { deliverable: "app", version: "1.3.0", seq: 1 },
+      { deliverable: "app", version: "1.3.0", seq: 1, recordSha256: sha(jws) },
       { deliverable: "app", version: "1.4.0", seq: 2 },
     ]);
   });
