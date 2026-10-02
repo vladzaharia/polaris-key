@@ -41,6 +41,7 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | GET | `/{product}/distribution/altstore-pal/{channel}/source.json` | distribution | AltStore PAL source for one channel |
 | GET | `/{product}/distribution/altstore/{channel}/source.json` | distribution | AltStore Classic / SideStore source for one channel |
 | GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
+| HEAD | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Size, ETag and Repr-Digest of a content-addressed object |
 | GET | `/{product}/distribution/builds/{selector}/{buildId}` | distribution | Download the payload of a declared build |
 | GET | `/{product}/distribution/dl/{version}/{asset}` | distribution | Download a release artifact |
 | GET | `/{product}/distribution/download.json` | distribution | The public download page's model |

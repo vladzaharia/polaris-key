@@ -282,7 +282,7 @@ function routeTable() {
   );
   const rows = [];
   for (const [path, entry] of Object.entries(spec.paths)) {
-    for (const method of ["get", "post", "put", "patch", "delete"]) {
+    for (const method of ["get", "head", "post", "put", "patch", "delete"]) {
       const op = entry[method];
       if (!op) continue;
       rows.push([
