@@ -146,7 +146,11 @@ async function readIndex(
 > {
   const files = variant.files;
   let stored: Uint8Array = new Uint8Array();
-  if (typeof files.size === "number" && files.size <= MAX_FILES_INDEX_BYTES) {
+  if (
+    typeof files.size === "number" &&
+    files.size <= MAX_FILES_INDEX_BYTES &&
+    files.bytes <= MAX_FILES_INDEX_BYTES
+  ) {
     const src = await ports.objects(files.sha256).catch(() => null);
     if (src !== null && src.size === files.bytes) stored = await readAll(src);
   }

@@ -47,7 +47,13 @@ import {
   type TreeSink,
   type ZstdPort,
 } from "./ports.js";
-import { planTarget, selectVariant, type VariantPrefs } from "./select.js";
+import {
+  indexReadable,
+  planTarget,
+  selectVariant,
+  type VariantPrefs,
+} from "./select.js";
+import { MAX_FILES_INDEX_BYTES } from "@polaris-key/protocol/core";
 import { packSetId } from "./set.js";
 import {
   abandonInstall,
@@ -210,6 +216,13 @@ export interface PackEngineOptions {
   handlers?: readonly PackHandler[];
   /** Write the journal every this many staged bytes (default 8 MiB). */
   checkpointBytes?: number;
+  /**
+   * The most one buffered decode may hold: the stored `full` frame plus its decoded payload.
+   * When set and the zstd port cannot stream, a `full` candidate above it is dropped before
+   * planning, so a payload too large for this device refuses cleanly (`plan-no-strategy`)
+   * instead of failing an allocation. React sets it to its memory budget; Node streams.
+   */
+  oneShotBudget?: number;
 }
 
 /** The error the pipeline raises when it cannot proceed. `code` is a registered client code
@@ -248,6 +261,10 @@ export interface PacksSnapshot {
   running: Record<string, PackInstall>;
   confirmedBootSeq: number;
   bootSeq: number;
+  /** Why this load could not trust the state document: `torn` (it did not parse and is held
+   *  aside; garbage collection waits for `recoverState()`), `unreadable` (it could not be read;
+   *  nothing is written or installed this process), or null. */
+  stateIssue: "torn" | "unreadable" | null;
 }
 
 /** `preflight`'s answer. */
@@ -286,6 +303,14 @@ export class PackEngine {
   private readonly running = new Map<string, PackInstall>();
   /** Locations whose payload could not be read at load: kept out of use and out of GC. */
   private readonly unverifiable = new Set<string>();
+  /** Stored installs whose payload check threw: kept in the written document, out of use. */
+  private deferred: {
+    active: Record<string, PackInstall>;
+    previous: Record<string, PackInstall>;
+  } = { active: {}, previous: {} };
+  private stateIssue: "torn" | "unreadable" | null = null;
+  /** No garbage collection while a torn document is held or the state is unreadable. */
+  private gcHold = false;
   private doc: PackStateDoc | null = null;
   /** Plan ids `estimate` staged an index under, reused by the next `ensure`. */
   private readonly preflightPlans = new Map<
@@ -339,11 +364,31 @@ export class PackEngine {
         if (!r.ok) refused.push({ location: e.location, step: r.step });
         else this.embedded.set(r.install.packId, r.install);
       }
-      const text = await this.opts.state.read().catch(() => null);
-      const parsed = parsePackState(text);
-      // A document that exists but does not parse (a torn write) is not the empty state: nothing
-      // it named is collected this load, so a crash cannot wipe the store.
-      const torn = text !== null && text.trim() !== "" && !looksLikeState(text);
+      // The state. `read` is null only for "no document"; anything else it throws means the
+      // document is unknown, so nothing may be written over it or collected this process.
+      let text: string | null = null;
+      let unreadable = false;
+      try {
+        text = await this.opts.state.read();
+      } catch {
+        unreadable = true;
+      }
+      // A document that exists but does not parse (a torn write) is not the empty state: it is
+      // held aside before anything replaces it, and nothing is collected while it is held.
+      const torn =
+        !unreadable &&
+        text !== null &&
+        text.trim() !== "" &&
+        !looksLikeState(text);
+      if (torn) await this.opts.state.quarantine?.(text!);
+      const held =
+        !unreadable &&
+        (torn ||
+          (await this.opts.state.quarantined?.().catch(() => true)) === true);
+      this.stateIssue = unreadable ? "unreadable" : held ? "torn" : null;
+      this.gcHold = unreadable || held;
+      const parsed = parsePackState(torn ? null : text);
+      const deferred = new Set<PackInstall>();
       const doc = await reloadPackState(parsed, {
         install: async (i) => {
           if (
@@ -358,23 +403,28 @@ export class PackEngine {
           try {
             return await this.opts.storage.verify(i);
           } catch {
-            // The payload could not be read (an I/O error, not a mismatch): not used this
-            // load, but not collected either.
+            // The payload could not be read (an I/O error, not a mismatch): kept in the
+            // document and out of GC, but out of the running set and the planner this load.
             this.unverifiable.add(i.location);
+            deferred.add(i);
             return false;
           }
         },
         journal: (j) =>
           this.verifyStoredRecord(j.record, j.recordSha256, j.packId),
       });
+      for (const [id, i] of Object.entries(parsed.active))
+        if (deferred.has(i)) this.deferred.active[id] = i;
+      for (const [id, i] of Object.entries(parsed.previous))
+        if (deferred.has(i) && !doc.active[id]) this.deferred.previous[id] = i;
       this.doc = doc;
       // This boot's set: every active install (restart packs mount now), else the embedded
       // baseline.
       for (const i of Object.values(doc.active)) await this.activate(i);
       for (const [id, e] of this.embedded)
         if (!this.running.has(id)) this.running.set(id, e);
-      await this.persist();
-      if (!torn) await this.collect();
+      if (!unreadable) await this.persist();
+      await this.collect();
       return { refused };
     });
   }
@@ -397,6 +447,7 @@ export class PackEngine {
       running: Object.fromEntries(this.running),
       confirmedBootSeq: doc.confirmedBootSeq,
       bootSeq: doc.bootSeq,
+      stateIssue: this.stateIssue,
     };
   }
 
@@ -506,7 +557,42 @@ export class PackEngine {
   }
 
   private async persist(): Promise<void> {
-    await this.opts.state.replace(serializePackState(this.requireLoaded()));
+    if (this.stateIssue === "unreadable")
+      throw new PackError(
+        "pack-state-unreadable",
+        "The pack state could not be read, so nothing is written or installed this process.",
+      );
+    const doc = this.requireLoaded();
+    // Entries whose payload check threw stay in the document for the next load.
+    const out: PackStateDoc = {
+      ...doc,
+      active: { ...this.deferred.active, ...doc.active },
+      previous: { ...this.deferred.previous, ...doc.previous },
+    };
+    for (const id of Object.keys(doc.active))
+      if (out.previous[id]?.recordSha256 === out.active[id]?.recordSha256)
+        delete out.previous[id];
+    await this.opts.state.replace(serializePackState(out));
+  }
+
+  /**
+   * Operator recovery after a torn state document: drop the copy held aside and resume garbage
+   * collection, which then removes the payloads no install names. The installs the torn
+   * document held are not recovered (their records went with it); `ensure` reinstalls them.
+   */
+  recoverState(): Promise<void> {
+    return this.serialised(async () => {
+      this.requireLoaded();
+      if (this.stateIssue === "unreadable")
+        throw new PackError(
+          "pack-state-unreadable",
+          "The pack state could not be read; restart once the store is readable.",
+        );
+      await this.opts.state.clearQuarantine?.();
+      this.stateIssue = null;
+      this.gcHold = false;
+      await this.collect();
+    });
   }
 
   private activation(i: PackInstall): "hot" | "restart" {
@@ -733,7 +819,17 @@ export class PackEngine {
     const needIndex =
       variant.files.layout === "tree" ||
       [...seeds.values()].some((s) => s.files !== null);
-    if (needIndex) {
+    // Bound the index before a byte of it is staged (plans/P4-01.md §2.7 step 1).
+    const indexOk =
+      indexReadable(variant.files) &&
+      variant.files.bytes <= MAX_FILES_INDEX_BYTES;
+    if (needIndex && !indexOk && variant.files.layout === "tree")
+      throw new PackError(
+        "files-index-invalid",
+        `${packId}'s files index is unreadable here or over the size limit.`,
+        { packId },
+      );
+    if (needIndex && indexOk) {
       const ok = await this.download(
         planId,
         packId,
@@ -767,6 +863,14 @@ export class PackEngine {
         );
     }
     const target = planTarget(variant, pin.release.sha256, index);
+    const budget = this.opts.oneShotBudget;
+    if (
+      budget !== undefined &&
+      target.full !== null &&
+      !(variant.full.codec === "zstd" && this.opts.zstd.decodeStream) &&
+      variant.full.bytes + variant.full.size > budget
+    )
+      target.full = null;
     const plannerInstalled: PlanInstalled[] = installs.map((i) => ({
       release: i.recordSha256,
       payloadSha256: i.payloadSha256,
@@ -1054,8 +1158,14 @@ export class PackEngine {
       payloadSize: variant.payload.size,
       activation: activationOf(record, this.handlers.get(record.type)),
       location,
+      ...(this.embedded.get(packId)?.location === location
+        ? { embedded: true }
+        : {}),
       installedAt: this.opts.now(),
     };
+    // A fresh commit supersedes this pack's entries whose check could not run.
+    delete this.deferred.active[packId];
+    delete this.deferred.previous[packId];
     const before = this.running.get(packId);
     this.doc = commitInstall(this.requireLoaded(), install);
     await this.persist();
@@ -1073,6 +1183,7 @@ export class PackEngine {
 
   /** Remove every stored location and staging area no root holds. */
   private async collect(): Promise<void> {
+    if (this.gcHold) return;
     const roots = gcRoots(this.requireLoaded(), [
       ...this.embedded.values(),
       ...this.running.values(),

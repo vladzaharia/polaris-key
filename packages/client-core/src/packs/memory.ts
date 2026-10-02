@@ -168,17 +168,26 @@ export function memoryPackStorage(
   return storage;
 }
 
-/** A `PackStateStore` over one string. */
+/** A `PackStateStore` over one string, with its quarantine in `torn`. */
 export function memoryPackStateStore(
   initial: string | null = null,
 ): PackStateStore & {
   text: string | null;
+  torn: string | null;
 } {
   const s = {
     text: initial,
+    torn: null as string | null,
     read: async () => s.text,
     replace: async (text: string) => {
       s.text = text;
+    },
+    quarantine: async (text: string) => {
+      s.torn ??= text;
+    },
+    quarantined: async () => s.torn !== null,
+    clearQuarantine: async () => {
+      s.torn = null;
     },
   };
   return s;

@@ -83,6 +83,8 @@ export async function treePack(o: {
   activation?: string;
   entitlement?: string;
   type?: string;
+  /** Declare this stored and decoded index size instead of the real one (an oversized index). */
+  indexBytes?: number;
 }): Promise<TreePack> {
   const files: Record<string, Uint8Array> = {};
   for (const [p, b] of Object.entries(o.files))
@@ -216,8 +218,8 @@ export async function treePack(o: {
           format: "pkey-files/1",
           layout: "tree",
           sha256: sha(index),
-          bytes: index.byteLength,
-          size: index.byteLength,
+          bytes: o.indexBytes ?? index.byteLength,
+          size: o.indexBytes ?? index.byteLength,
           codec: "none",
         },
         ...(deltas.length ? { deltas } : {}),

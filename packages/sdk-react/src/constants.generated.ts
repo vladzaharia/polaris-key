@@ -117,6 +117,7 @@ export const ErrorCode = {
   packTypeUnsupported: "pack-type-unsupported",
   packNotPinned: "pack-not-pinned",
   packNotEntitled: "pack-not-entitled",
+  packStateUnreadable: "pack-state-unreadable",
   markerRejected: "marker-rejected",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -233,6 +234,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "pack-type-unsupported",
   "pack-not-pinned",
   "pack-not-entitled",
+  "pack-state-unreadable",
   "marker-rejected",
 ];
 
@@ -351,6 +353,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "pack-type-unsupported": "client",
   "pack-not-pinned": "client",
   "pack-not-entitled": "client",
+  "pack-state-unreadable": "client",
   "marker-rejected": "client",
 };
 

@@ -76,10 +76,24 @@ export interface PackStateDoc {
   bootSeq: number;
 }
 
-/** Where the document lives: read it whole, replace it atomically. */
+/**
+ * Where the document lives: read it whole, replace it atomically.
+ *
+ * `read` answers null ONLY when there is no document (ENOENT, NotFoundError) and throws for
+ * anything else: an unreadable document is never the empty state. The quarantine members keep a
+ * torn document (one that exists but does not parse) aside, as `state.json.torn`, before the
+ * first write replaces it; while one is held the engine collects no garbage, so payloads the lost
+ * document named survive until an operator calls `recoverState()`.
+ */
 export interface PackStateStore {
   read(): Promise<string | null>;
   replace(text: string): Promise<void>;
+  /** Keep the torn text aside (never overwriting an earlier one). */
+  quarantine?(text: string): Promise<void>;
+  /** Whether a quarantined document is held. */
+  quarantined?(): Promise<boolean>;
+  /** Drop the quarantined document (operator recovery). */
+  clearQuarantine?(): Promise<void>;
 }
 
 export function emptyPackState(): PackStateDoc {

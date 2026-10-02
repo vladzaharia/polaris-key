@@ -225,6 +225,7 @@ class ErrorCode:
     PACK_TYPE_UNSUPPORTED: Final = "pack-type-unsupported"
     PACK_NOT_PINNED: Final = "pack-not-pinned"
     PACK_NOT_ENTITLED: Final = "pack-not-entitled"
+    PACK_STATE_UNREADABLE: Final = "pack-state-unreadable"
     MARKER_REJECTED: Final = "marker-rejected"
 
 
@@ -340,6 +341,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "pack-type-unsupported",
     "pack-not-pinned",
     "pack-not-entitled",
+    "pack-state-unreadable",
     "marker-rejected",
 )
 
@@ -457,6 +459,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "pack-type-unsupported": "client",
         "pack-not-pinned": "client",
         "pack-not-entitled": "client",
+        "pack-state-unreadable": "client",
         "marker-rejected": "client",
     }
 )

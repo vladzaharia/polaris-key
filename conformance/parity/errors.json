@@ -664,6 +664,12 @@
       "description": "A pinned pack record carries an `entitlement` the device's licence does not grant, so the pack is left out of the plan (plans/P4-01.md §2.3; CONTENT §6.7 item 9)."
     },
     {
+      "code": "pack-state-unreadable",
+      "kind": "client",
+      "service": "update",
+      "description": "The pack install state could not be read (an I/O error, not a missing file), so the pack pipeline refuses to write it or install anything this process: an install recorded over an unread state could lose the installs it holds."
+    },
+    {
       "code": "marker-rejected",
       "kind": "client",
       "service": "release",

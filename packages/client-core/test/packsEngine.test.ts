@@ -791,8 +791,8 @@ describe("the stage machine's host side (plans/P4-01.md §2.10)", () => {
   });
 });
 
-describe("PackEngine: a load never collects what it could not judge", () => {
-  it("keeps the store when the state document is torn", async () => {
+describe("PackEngine: a load never loses what it could not judge", () => {
+  it("holds a torn state document aside and collects nothing until recoverState()", async () => {
     const { v1 } = await releases();
     const server = byteServer(v1);
     const storage = memoryPackStorage();
@@ -800,14 +800,31 @@ describe("PackEngine: a load never collects what it could not judge", () => {
     const e = engine({ server, storage, state, stamp: stampFor(v1) });
     await e.load();
     const [i] = await e.ensure(["djdl.l10n"]);
-    state.text = state.text!.slice(0, 20); // a torn write
+    const torn = state.text!.slice(0, 20);
+    state.text = torn;
+
     const e2 = engine({ server, storage, state, stamp: stampFor(v1) });
     await e2.load();
-    expect(e2.state().active["djdl.l10n"]).toBeUndefined();
+    expect(e2.state().stateIssue).toBe("torn");
+    expect(state.torn).toBe(torn);
+    expect(storage.store.has(i!.location)).toBe(true);
+
+    // The second load: the replaced document parses, the torn one is still held, still no GC.
+    const e3 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e3.load();
+    expect(e3.state().stateIssue).toBe("torn");
+    expect(storage.store.has(i!.location)).toBe(true);
+    // Installing again is allowed (the content-addressed payload is reused), and recovery
+    // resumes collection.
+    await e3.ensure(["djdl.l10n"]);
+    await e3.recoverState();
+    expect(state.torn).toBeNull();
+    expect(e3.state().stateIssue).toBeNull();
+    expect(e3.state().active["djdl.l10n"]!.location).toBe(i!.location);
     expect(storage.store.has(i!.location)).toBe(true);
   });
 
-  it("keeps, but does not use, a payload whose check could not run", async () => {
+  it("keeps an install whose check threw, out of use, and restores it on the next load", async () => {
     const { v1 } = await releases();
     const server = byteServer(v1);
     const storage = memoryPackStorage();
@@ -824,6 +841,106 @@ describe("PackEngine: a load never collects what it could not judge", () => {
     const e2 = engine({ server, storage: flaky, state, stamp: stampFor(v1) });
     await e2.load();
     expect(e2.state().active["djdl.l10n"]).toBeUndefined();
+    expect(e2.state().running["djdl.l10n"]).toBeUndefined();
     expect(storage.store.has(i!.location)).toBe(true);
+    expect(JSON.parse(state.text!).active["djdl.l10n"].location).toBe(
+      i!.location,
+    );
+
+    // The second load, with the disk readable again: the install is back.
+    const e3 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e3.load();
+    expect(e3.state().active["djdl.l10n"]!.recordSha256).toBe(v1.recordSha256);
+    expect(e3.state().running["djdl.l10n"]).toBeDefined();
+  });
+
+  it("writes nothing and installs nothing when the state cannot be read", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    const before = state.text;
+    const broken = {
+      ...state,
+      read: async (): Promise<string | null> => {
+        throw new Error("EACCES");
+      },
+    };
+    const e2 = engine({ server, storage, state: broken, stamp: stampFor(v1) });
+    await e2.load();
+    expect(e2.state().stateIssue).toBe("unreadable");
+    await expect(e2.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-state-unreadable",
+    });
+    expect(state.text).toBe(before);
+    expect(storage.store.has(i!.location)).toBe(true);
+
+    // The second load, readable again: nothing was lost.
+    const e3 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e3.load();
+    expect(e3.state().active["djdl.l10n"]!.location).toBe(i!.location);
+  });
+
+  it("a no-op commit over the embedded copy stays embedded", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    // An active install of another release makes the embedded copy a planner seed, so the
+    // plan for the pinned release is a no-op commit over the embedded location.
+    const other = await treePack({
+      packId: "djdl.l10n",
+      version: "0.9.0",
+      seq: 1,
+      files: { "a.txt": "a" },
+    });
+    const state = memoryPackStateStore();
+    const first = engine({
+      server: byteServer(other),
+      storage,
+      state,
+      stamp: stampFor(other),
+    });
+    await first.load();
+    await first.ensure(["djdl.l10n"]);
+    // The app updates to a build that embeds v1 (in its own resources, never the store).
+    storage.store.set("embedded/djdl.l10n", {
+      layout: "tree",
+      tree: new Map(Object.entries(v1.files)),
+      index: null,
+    });
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load([
+      {
+        marker: markerFor(v1),
+        payload: { kind: "tree", treeDigest: v1.treeDigest },
+        location: "embedded/djdl.l10n",
+      },
+    ]);
+    const [i] = await e.ensure(["djdl.l10n"]);
+    expect(i!.location).toBe("embedded/djdl.l10n");
+    expect(i!.embedded).toBe(true);
+    expect(JSON.parse(state.text!).active["djdl.l10n"].embedded).toBe(true);
+  });
+
+  it("refuses an index over the size limit before staging a byte of it", async () => {
+    const big = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+      indexBytes: 33554433,
+    });
+    const server = byteServer(big);
+    const e = engine({ server, stamp: stampFor(big) });
+    await e.load();
+    // A tree whose index is not readable here is not a usable variant (plans/P4-01.md §2.9), so
+    // it is refused before anything is fetched; a container's optional index is simply skipped.
+    await expect(e.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-no-variant",
+    });
+    expect(server.calls).toEqual([]);
   });
 });

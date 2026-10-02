@@ -159,7 +159,10 @@ same code runs in Node, in a browser and under the corpus runner. Nothing here d
 - **Install state**: `active`, `previous`, `inflight` (the journal), `observed` and
   `confirmedBootSeq`, as pure transitions (`commitInstall`, `rollbackInstall`, `confirmBoot`,
   `gcRoots`) over a store with atomic replace. Each entry carries its pack record verbatim and
-  `reloadPackState` re-verifies it on every load; nothing read back is trusted.
+  `reloadPackState` re-verifies it on every load; nothing read back is trusted. A store's `read`
+  answers null only for a missing document; an unreadable one makes the engine write and install
+  nothing (`pack-state-unreadable`), a torn one is quarantined and suspends garbage collection
+  until `recoverState()`, and an entry whose payload check throws is kept but not used.
 - **`PackEngine`**: CONTENT §10's pipeline — preflight, journal, `Range`/`If-Range` fetch whose
   resume re-hashes what is staged, apply with fallbacks, commit (the pointer swap), activation,
   confirm, rollback, garbage collection and embedded baselines. `estimate` sizes a download for
