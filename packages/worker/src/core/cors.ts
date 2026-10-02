@@ -131,6 +131,9 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "distribution/fdroid/{channel}/repo/{path}",
   "distribution/scoop/{channel}.json",
   "distribution/flathub/{channel}.json",
+  // P2b-06: the download page's model, for SDK "get it here" prompts and web pages. The page
+  // itself (`distribution/download`, `/<p>`) is HTML on the bytes host and never answers CORS.
+  "distribution/download.json",
   "update/appcast.xml",
   "update/{channel}/appcast.xml",
   "update/{channel}/feed.jws",

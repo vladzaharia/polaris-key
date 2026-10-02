@@ -269,10 +269,16 @@ Rules for the bucket, each one load-bearing:
   Add or remove the `[[env.<env>.routes]]` `dl*` entry and the `BLOB_ORIGIN` var in the same
   change; `test/bytesHost.test.ts` refuses a committed `wrangler.toml` that breaks either rule
   (P2-05).
+- **`CONSOLE_ORIGIN` names the console host** (`https://key.plrs.im`, `key-staging`, `key-dev`)
+  beside each `BLOB_ORIGIN` (P2b-06). The public download page renders on the bytes host and
+  links the storefront feeds, which are served on the console host; without the var (or with it
+  pointing at the bytes host) the page leaves the AltStore, SideStore, Obtainium, F-Droid and
+  Scoop rows out. `test/downloadPage.test.ts` checks each committed environment.
 - **Same-site with the console.** `dl.plrs.im` is a `plrs.im` sibling, so it is same-site with
   `key.plrs.im`. That is an owner decision; the Worker compensates (`sandbox` CSP, `nosniff`,
   no HTML/SVG/XML/script types, no cookies read or set on the host, host-only console
-  cookies). Do not put anything else on `dl.plrs.im`, and never add a `Domain=plrs.im` cookie
+  cookies). The one HTML answer, the public download page (P2b-06), is script-free and leaves
+  under its own sandboxed policy, which the dispatcher checks. Do not put anything else on `dl.plrs.im`, and never add a `Domain=plrs.im` cookie
   anywhere on the platform.
 
 After the next deploy, check the isolation from outside:

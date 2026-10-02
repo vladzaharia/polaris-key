@@ -14,6 +14,18 @@ resource, and record the date and the person.
    apply migrations before the Worker that reads them).
 3. Then the post-deploy checks, then the per-package sign-offs.
 
+## BLOCKED: GitHub Actions billing (2026-10-02)
+
+- [ ] **GitHub refuses to start any Actions job** ("recent account payments have failed or your
+      spending limit needs to be increased"). Fix it in GitHub → Settings → Billing & plans. Until
+      then nothing deploys and CI cannot run. v0.7.1's deploy stopped at a CI-runner test timeout
+      (fixed in `1ebd47f6`). v0.7.2 (same contents plus that fix) was refused before starting.
+      Production is still v0.7.0. After billing is fixed, re-run the v0.7.2 Deploy workflow
+      (`gh run rerun 36962716112`) and CI on main, or ask the lead to.
+- Consider the cost: P1b-05 added macOS jobs (WebKit on macos-15, Python 3.12 on macos-14), on top
+  of the Swift and Godot macOS legs. macOS minutes bill at 10× Linux. If the spending limit is
+  tight, the lead can move the WebKit leg to run only on a schedule or on tags.
+
 ## Production check:representable (P3-12): done 2026-10-01
 
 - [x] **Before the first wire v4 deploy:** the operator ran `pnpm check:representable` against
@@ -193,6 +205,12 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 - [ ] **Required checks:** add the two new Godot CI legs ("Godot SDK (4.7.2 editor + release
       template)", "Godot SDK (4.4.1 editor, floor)") to `main`'s required status checks. Both
       passed on GitHub on 2026-09-30.
+- [ ] **Required checks (P1b-05):** once they have passed on GitHub, add the new runner jobs to
+      `main`'s required status checks: "Node floor (engines.node)", "Browser conformance
+      (Chromium)", "Browser conformance (Firefox, Linux)", "Browser conformance (WebKit, macOS)",
+      and the renamed Python legs "Python SDK (3.9, ubuntu-latest)", "Python SDK (3.14,
+      ubuntu-latest)" and "Python SDK (3.12, macos-14)". The old "Python SDK (ubuntu-latest)" and
+      "Python SDK (macos-14)" names no longer report; drop them if they are listed.
 
 ## v0.5.1 (2026-10-01): deployed and checked
 
@@ -220,6 +238,20 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 - [x] Discovery advertises `endpoints.builds` and `endpoints.blobs` on `dl.plrs.im`.
 - [ ] For an `entitled` product: a pinned non-semver version (`/release/builds/1.2.3.4/<build>`) with
       a valid device token → 403 `version_blocked` (needs a real device token).
+
+## v0.7.0 (2026-10-01): deployed and checked (wire v4)
+
+- [x] Deploy run 36957908932 succeeded, smoke check included (P3-02..P3-12, P2b-05, P2-07, P1-10,
+      P4-21; migrations `0043`, `0044`). Production `check:representable` was clean beforehand.
+- [x] Discovery reports `protocolVersion: 4`; `update.endpoints` gains `feed`
+      (`/djdl/update/{channel}/feed.jws`), `winsparkle`, `velopack`, `appInstaller`, `zsync`;
+      `release.endpoints.record` is `/djdl/release/records/{sha256}`.
+- [x] Legacy paths unchanged: `/djdl/update/version` answers the v3 three-field document,
+      `install.sh` 200, `/djdl/distribution/dl/latest/djdl-arm64` 200.
+- [ ] `djdl`'s signed feed (`/djdl/update/stable/feed.jws`) and storefront feeds answer 404 until
+      djdl publishes a release through CI with a release key (`.pkey/release` `releaseKeys` plus the
+      Action's record signing, P3-03). No v4 SDK can decide an update for djdl until then; v3 clients
+      are unaffected.
 
 ## v0.6.0 (2026-10-01): deployed and checked
 

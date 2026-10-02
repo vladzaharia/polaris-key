@@ -3242,6 +3242,85 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
+  /{product}/distribution/download.json:
+    get:
+      operationId: downloadPageModel
+      tags: [distribution]
+      summary: The public download page's model
+      description: >
+        P2b-06. Everything the public download page shows, as JSON, and the ONLY input its HTML is
+        rendered from (`DownloadModel`): per platform the actions in priority order (the first is
+        the primary) and the downloadable builds with version, size, SHA-256 and minimum OS; the
+        store links (App Store, Google Play, Microsoft Store, Steam, itch.io, Flathub, Snap,
+        winget), each only once the channel has a release reported live there; the add-source
+        links for AltStore, SideStore and AltStore PAL, the Obtainium app config as an
+        `obtainium://app/…` link with its `apps.obtainium.imranr.dev/redirect` fallback, the
+        F-Droid repository with its fingerprint, the Scoop and Homebrew commands, all pointing at
+        the storefront feeds on this host; the key inventory's public fingerprints; the newest
+        offered release with a plain-text summary of its notes (only while metadata is public).
+        Releases are chosen by the storefront feeds' rules: the `stable` channel's, live on the
+        outlet, not yanked, not held by a paused, halted or partial rollout. Exists only while
+        the app deliverable's delivery access is `public`; otherwise, with Release or
+        Distribution off, or with no release configuration, the plain not-found. Every identity
+        and listing field is re-validated and every URL built by the Worker. Served like a feed:
+        `Cache-Control: public, max-age=300`, a strong ETag of the body's SHA-256, the feeds'
+        per-IP budget. Console host only (the page itself is on the bytes host).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/IfNoneMatch" }
+      responses:
+        "200":
+          description: The model. `application/json; charset=utf-8`, strong `ETag`, `nosniff`.
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DownloadModel" }
+        "304":
+          description: Not modified (`If-None-Match`).
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429": { $ref: "#/components/responses/FeedRateLimited" }
+    options:
+      operationId: preflightDownloadPageModel
+      tags: [distribution]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/distribution/download:
+    get:
+      operationId: downloadPage
+      tags: [distribution]
+      summary: The public download page (bytes host only)
+      description: >
+        P2b-06. A cookie-free HTML page rendered from `downloadPageModel` for the visitor's
+        platform, detected server-side from User-Agent Client Hints (`Sec-CH-UA-Platform`,
+        `Sec-CH-UA-Mobile`) with a User-Agent fallback; an iPad, whose Safari reports a Mac, gets
+        the iOS primary through a pointer media query. One primary action, then every other way
+        to get the product (deep links, QR codes as inline SVG, commands, the F-Droid
+        fingerprint), every build with its SHA-256, the signing-key fingerprints. Served ONLY on
+        the bytes host (`BLOB_ORIGIN`): on the console host this path is the plain not-found, so
+        no repo-authored HTML is ever served on the console's origin. Its own
+        `Content-Security-Policy` is checked by the bytes host before it leaves: `default-src
+        'none'`, the one stylesheet by hash, `base-uri`, `form-action` and `frame-ancestors`
+        `'none'`, and `sandbox allow-downloads allow-top-navigation-to-custom-protocols` (an
+        opaque origin, no script). `nosniff`, `Referrer-Policy: no-referrer`, no cookie read or
+        set, no CORS, `Vary` on the hints. The same not-found and rate-limit rules as the model.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "200":
+          description: "HTML. `text/html; charset=utf-8`, `cache-control: public, max-age=300`."
+          content:
+            text/html:
+              schema: { type: string }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429": { $ref: "#/components/responses/FeedRateLimited" }
+
   /{product}/distribution/feeds/fdroid/{channel}:
     get:
       operationId: ciFdroidInputs
@@ -5609,6 +5688,25 @@ paths:
         - { $ref: "#/components/parameters/Channel" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}:
+    get:
+      operationId: aliasDownloadPage
+      tags: [aliases]
+      summary: "Alias → /{product}/distribution/download"
+      description: >
+        Exact rewrite (P2b-06): the short link to a product's download page. Like the page, it
+        answers only on the bytes host; on the console host it is the plain not-found, as it
+        always was. A reserved platform slug (`manage`, `docs`, `login`, …) is never a product.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The download page. Byte-identical to the canonical route's.
+          content:
+            text/html:
+              schema: { type: string }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429": { $ref: "#/components/responses/FeedRateLimited" }
+
   /{product}/install.sh:
     get:
       operationId: aliasInstall
@@ -6319,6 +6417,141 @@ components:
             error: { code: version_blocked, reason: version-too-old },
             allowedRange: { min: "2.0.0", max: "99.0.0" },
           }
+    DownloadModel:
+      type: object
+      description: >
+        The public download page's model (P2b-06, `services/distribution/page/model.ts`).
+        `schemaVersion` changes when a field changes meaning. Every string is Worker-built or
+        validated; every URL is `https:` except `deepLink`, a custom-scheme link the Worker built.
+      required:
+        [
+          schemaVersion,
+          product,
+          channel,
+          pageUrl,
+          listing,
+          release,
+          platforms,
+          actions,
+          keys,
+        ]
+      properties:
+        schemaVersion: { type: integer, enum: [1] }
+        product:
+          type: object
+          properties:
+            slug: { type: string }
+            name: { type: string }
+        channel:
+          {
+            type: string,
+            description: "Always `stable` (beta channels are not on the page).",
+          }
+        pageUrl:
+          type: [string, "null"]
+          description: The HTML page on the bytes host, or null without one.
+        listing:
+          type: object
+          properties:
+            name: { type: string }
+            subtitle: { type: [string, "null"] }
+            description: { type: [string, "null"] }
+            developerName: { type: [string, "null"] }
+            website: { type: [string, "null"] }
+        release:
+          type: [object, "null"]
+          properties:
+            releaseId: { type: string }
+            version: { type: string }
+            title: { type: [string, "null"] }
+            publishedAt: { type: [integer, "null"] }
+            summary: { type: [string, "null"] }
+        platforms:
+          type: array
+          items:
+            type: object
+            properties:
+              platform:
+                { type: string, enum: [ios, android, macos, windows, linux] }
+              label: { type: string }
+              primary: { type: [string, "null"], description: "An action id." }
+              actions: { type: array, items: { type: string } }
+              builds:
+                {
+                  type: array,
+                  items: { $ref: "#/components/schemas/DownloadBuild" },
+                }
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              kind:
+                type: string
+                enum:
+                  [
+                    app-store,
+                    play,
+                    ms-store,
+                    steam,
+                    itch,
+                    flathub,
+                    snap,
+                    winget,
+                    homebrew,
+                    scoop,
+                    download,
+                    altstore,
+                    sidestore,
+                    altstore-pal,
+                    obtainium,
+                    fdroid,
+                  ]
+              outletId: { type: string }
+              platforms: { type: array, items: { type: string } }
+              label: { type: string }
+              url: { type: [string, "null"] }
+              deepLink: { type: [string, "null"] }
+              qr:
+                {
+                  type: [string, "null"],
+                  description: "The text the page's QR code encodes.",
+                }
+              command: { type: [string, "null"] }
+              fingerprint: { type: [string, "null"] }
+              version: { type: [string, "null"] }
+              build:
+                oneOf:
+                  - { $ref: "#/components/schemas/DownloadBuild" }
+                  - { type: "null" }
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              purpose: { type: string }
+              sha256: { type: string }
+              outletId: { type: [string, "null"] }
+    DownloadBuild:
+      type: object
+      properties:
+        releaseId: { type: string }
+        version: { type: string }
+        buildId: { type: string }
+        platform: { type: string }
+        arch: { type: string }
+        format: { type: [string, "null"] }
+        name: { type: string }
+        size: { type: [integer, "null"] }
+        sha256: { type: [string, "null"] }
+        minOs: { type: [string, "null"] }
+        url:
+          {
+            type: string,
+            description: "The immutable `files/<releaseId>/<name>` URL on the bytes host.",
+          }
+        outletId: { type: string }
     FlatError:
       type: object
       description: >

@@ -11,7 +11,7 @@
   "features": {
     "core.verify": {
       "status": "implemented",
-      "note": "Verification is client-core's, which the Node SDK consumes directly; the Node runner drives it."
+      "note": "Verification is client-core's, which the Node SDK consumes directly; the Node runner drives it on Node 22 and again on the engines.node floor (CI node-floor)."
     },
     "core.cache": { "status": "implemented" },
     "core.bundle": { "status": "implemented" },

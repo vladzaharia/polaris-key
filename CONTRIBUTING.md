@@ -37,6 +37,7 @@ pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift g
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
+                                 # except the browser runner below
 pnpm lint                        # per-package prettier check
 pnpm --filter @polaris-key/admin build
 
@@ -45,7 +46,12 @@ pnpm --filter @polaris-key/admin build
 pnpm --filter @polaris-key/worker typecheck:workerd
 pnpm --filter @polaris-key/worker test:workerd
 
-( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
+# The browser conformance runner (CI jobs browser, browser-firefox, browser-webkit). Root
+# `pnpm test` leaves it out because it needs a Playwright browser; install Chromium once with
+# `pnpm --filter @polaris-key/conformance-browser exec playwright install chromium`.
+pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=webkit`
+
+( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
 

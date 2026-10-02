@@ -65,6 +65,12 @@ switched on by a migration, so its stored state keeps serving while its manifest
 - **Storefront feeds** per channel — AltStore and SideStore sources, an AltStore PAL source,
   Obtainium configs, an F-Droid repository signed by CI and relayed here, a Scoop manifest and
   Flathub checker JSON; see [Storefront feeds](/docs/services/distribution/feeds/).
+- **A public download page** per product on the bytes host (`https://dl.plrs.im/<product>`):
+  one primary action for the visitor's platform, every other way to get the product with deep
+  links and QR codes, every build with its SHA-256, and the signing-key fingerprints. It is
+  rendered server-side with no script, sandboxed, and never served on the console host; its model
+  is `GET /<product>/distribution/download.json`. See
+  [Downloads and app stores](/docs/users/downloads/).
 - **A discovery fragment** advertising the canonical byte URLs; `configured` is `true` once the
   product has a release configuration:
 
@@ -85,7 +91,9 @@ switched on by a migration, so its stored state keeps serving while its manifest
   applied on every link and resync.
 - **Two descriptor hooks** (below): `delivery` and `outletCapabilities`.
 - **A console section**, shown only while Distribution is on, with an overview of the chain, the
-  outlet rollouts and which hook answers for the product.
+  outlet rollouts and which hook answers for the product, and the
+  [distribution matrix](/docs/admin/distribution-matrix/): releases × outlets with pause, resume,
+  halt and complete controls.
 
 With Distribution off, a product serves no downloads at all: every byte route and alias answers
 not-found.

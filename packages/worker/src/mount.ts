@@ -25,6 +25,7 @@ import { configService } from "./services/config/index.js";
 import { releaseService } from "./services/release/index.js";
 import {
   DISTRIBUTION_BYTE_ROUTES,
+  DOWNLOAD_PAGE_ROUTE,
   distributionService,
 } from "./services/distribution/index.js";
 import { updateService } from "./services/update/index.js";
@@ -51,5 +52,12 @@ export const SERVICES: ServiceRegistry = new Map([
  * `/<p>/release/…` spelling, so the URLs discovery advertised on `dl.plrs.im` keep answering.
  * They name `service: "distribution"`: with Distribution off they answer the host's flat
  * not-found, whatever Release says.
+ *
+ * P2b-06 added the one DOCUMENT route, the public download page (`/<p>/distribution/download`
+ * and `/<p>`): HTML, admitted by the dispatcher only under the sandboxed, script-free policy it
+ * checks (`core/bytesHost.ts` `inertDocumentPolicy`).
  */
-export const BYTE_ROUTES: readonly ByteRoute[] = [...DISTRIBUTION_BYTE_ROUTES];
+export const BYTE_ROUTES: readonly ByteRoute[] = [
+  ...DISTRIBUTION_BYTE_ROUTES,
+  DOWNLOAD_PAGE_ROUTE,
+];

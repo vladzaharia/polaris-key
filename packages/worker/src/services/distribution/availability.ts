@@ -216,7 +216,7 @@ function objectColumn(raw: string | null): Record<string, unknown> | null {
     : null;
 }
 
-function availabilityRecord(
+export function availabilityRecord(
   row: DistAvailabilityRow,
   deliverableId: string,
 ): AvailabilityRecord {
@@ -236,7 +236,7 @@ function availabilityRecord(
   };
 }
 
-function submissionRecord(
+export function submissionRecord(
   row: DistSubmissionRow,
   deliverableId: string,
 ): SubmissionRecord {

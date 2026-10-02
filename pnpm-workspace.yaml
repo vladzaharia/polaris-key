@@ -2,6 +2,7 @@ packages:
   - "packages/*"
   - "tools"
   - "conformance/runners/node"
+  - "conformance/runners/browser"
   - "products"
 overrides:
   "@types/node": ^22.14.0

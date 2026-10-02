@@ -20,6 +20,12 @@
  *     /distribution/fdroid/:channel/repo/:path…              GET, the F-Droid repository relay
  *     /distribution/feeds/fdroid/:channel                    GET|POST, `pkeyci_` +
  *                                                            distribution:feeds
+ *     /distribution/download.json                            GET, the public download page's
+ *                                                            model (P2b-06, `page/`)
+ *
+ * The download page itself (`/distribution/download`, and `/<p>`) is served ONLY on the bytes
+ * host (`page/index.ts` `DOWNLOAD_PAGE_ROUTE`): here both are the not-found, so no repo-authored
+ * HTML is ever served on the console's origin.
  *
  * The permanent aliases (`/<p>/release/{install.sh,dl,builds,files,blobs}/…`, `/<p>/install.sh`)
  * reach this file already rewritten into the canonical segments by the core router, so there is
@@ -40,6 +46,7 @@ import {
 import { applyReport } from "./availability.js";
 import { connectorOf } from "./connectors/index.js";
 import { handleFeedRoutes } from "./feeds/index.js";
+import { handleDownloadModel } from "./page/index.js";
 
 /** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`); a report carries at most two small
  *  JSON objects (`platformRef`, `detail`). */
@@ -71,6 +78,12 @@ export async function handleDistributionRoutes(
   if (rest[0] === "report" && rest.length === 1) {
     if (req.method !== "POST") return null;
     return handleCiReport(ctx);
+  }
+
+  // The download page's model (P2b-06). The page itself never answers here (see above).
+  if (rest.length === 1 && rest[0] === "download.json") {
+    if (req.method !== "GET" && req.method !== "HEAD") return null;
+    return handleDownloadModel(ctx);
   }
 
   // The storefront feeds and the F-Droid relay (P2b-05, `feeds/`).
