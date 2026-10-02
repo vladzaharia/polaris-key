@@ -10,7 +10,9 @@ extends RefCounted
 # case, every confirmation case (version 2), and the port's own unit checks: malformed events
 # are ignored, an ignored event returns the input Dictionary itself, the input is never mutated,
 # the defaults, and the gate's pass set equals PKeyGate.is_usable. Godot reads every JSON number
-# as a float, so `failedBoots` is compared numerically.
+# as a float, so `failedBoots` is compared numerically. Version 3 (plans/P4-01.md §2.10) adds the
+# `fetch:waiting` and `offline:playable` accepts keys, and after every step `canPlayOffline` must
+# equal the step's `offline` emit when it has one, and be false after any other accepted event.
 
 const MATRIX := "res://tests/corpus/v2/stage-matrix.json"
 
@@ -20,7 +22,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	if not t.check("stage-matrix.json loads", m is Dictionary, MATRIX):
 		return true
 	t.info("stage-matrix runner on Godot %s" % Engine.get_version_info().string)
-	t.check("stageMatrixVersion is 2", m.get("stageMatrixVersion") == 2.0, str(m.get("stageMatrixVersion")))
+	t.check("stageMatrixVersion is 3", m.get("stageMatrixVersion") == 3.0, str(m.get("stageMatrixVersion")))
 	t.check("maxFailedBoots equals MAX_FAILED_BOOTS", float(m.get("maxFailedBoots", -1)) == PKeyStages.MAX_FAILED_BOOTS)
 	t.check("bootOkSeconds equals BOOT_OK_SECONDS", float(m.get("bootOkSeconds", -1)) == PKeyStages.BOOT_OK_SECONDS)
 	var voc: Dictionary = m.get("vocabulary", {})
@@ -68,8 +70,8 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 
 	_unit(t)
 
-	t.check("coverage: rows", rows_ok == rows.size() and rows.size() >= 56, "%d/%d" % [rows_ok, rows.size()])
-	t.check("coverage: probes", probe_total >= 6594, str(probe_total))
+	t.check("coverage: rows", rows_ok == rows.size() and rows.size() >= 69, "%d/%d" % [rows_ok, rows.size()])
+	t.check("coverage: probes", probe_total >= 9728, str(probe_total))
 	t.check("coverage: guard cases", guards_ok == guards.size() and guards.size() >= 7, "%d/%d" % [guards_ok, guards.size()])
 	t.check("coverage: confirm cases", confirms_ok == confirms.size() and confirms.size() == 6, "%d/%d" % [confirms_ok, confirms.size()])
 	return true
@@ -94,6 +96,10 @@ func _row(t: PKeyTestContext, row: Dictionary, accepts: Dictionary, probes: Arra
 			if e["type"] == "stage_changed":
 				stages.append(e["stage"])
 		state = tr["state"]
+		var off: Array = tr["emits"].filter(func(x): return x["type"] == "offline")
+		var want_playable: bool = off[0]["canPlayOffline"] == true if not off.is_empty() else false
+		if not tr["emits"].is_empty() and (state.get("canPlayOffline") == true) != want_playable:
+			ok = t.check("%s: step %d canPlayOffline" % [name, i + 1], false, str(state.get("canPlayOffline")))
 		var p := _probe(state, accepts, probes)
 		if p < 0:
 			ok = t.check("%s: probes after step %d" % [name, i + 1], false, PKeyStages.accepts_key(state))
@@ -124,12 +130,16 @@ func _probe(state: Dictionary, accepts: Dictionary, probes: Array) -> int:
 
 func _unit(t: PKeyTestContext) -> void:
 	var d := PKeyStages.initial_boot_state()
-	t.check("unit: defaults", d == {"stage": "idle", "outcome": "running", "options": {"allowOffline": true, "allowGrace": true, "requiredPacks": []}, "sync": "pending", "resume": "shell"}, str(d))
+	t.check("unit: defaults", d == {"stage": "idle", "outcome": "running", "options": {"allowOffline": true, "allowGrace": true, "requiredPacks": [], "essentialPacks": []}, "sync": "pending", "resume": "shell", "canPlayOffline": false}, str(d))
 	t.check("unit: initial_from({}) takes the defaults", PKeyStages.initial_from({}) == d)
 	var packs := ["core"]
 	var s := PKeyStages.initial_boot_state(true, true, packs)
 	packs.append("later")
 	t.check("unit: required packs are copied", s["options"]["requiredPacks"] == ["core"])
+	var essential := ["hd"]
+	var se := PKeyStages.initial_boot_state(true, true, [], essential)
+	essential.append("later")
+	t.check("unit: essential packs are copied", se["options"]["essentialPacks"] == ["hd"])
 
 	# An ignored event returns the input Dictionary itself.
 	var idle := PKeyStages.initial_boot_state()
@@ -162,10 +172,26 @@ func _unit(t: PKeyTestContext) -> void:
 		["fail with a non-string code", sync, {"type": "fail", "code": 3}],
 		["fail without a code", sync, {"type": "fail"}],
 		["play-offline anywhere", sync, {"type": "play-offline"}],
+		["fetch.consent with negative bytes", fetch, {"type": "fetch.consent", "bytes": -1, "metered": false}],
+		["fetch.consent with fractional bytes", fetch, {"type": "fetch.consent", "bytes": 1.5, "metered": false}],
+		["fetch.consent with bytes at 2^53", fetch, {"type": "fetch.consent", "bytes": 9007199254740992.0, "metered": false}],
+		["fetch.consent with a non-bool metered", fetch, {"type": "fetch.consent", "bytes": 10, "metered": "no"}],
+		["fetch.consent with string bytes", fetch, {"type": "fetch.consent", "bytes": "10", "metered": true}],
+		["fetch.progress with done above total", fetch, {"type": "fetch.progress", "done": 2, "total": 1}],
+		["fetch.progress with negative done", fetch, {"type": "fetch.progress", "done": -1, "total": 1}],
+		["fetch.progress with fractional done", fetch, {"type": "fetch.progress", "done": 0.5, "total": 1}],
+		["fetch.progress with a string total", fetch, {"type": "fetch.progress", "done": 0, "total": "1"}],
 	]
 	for c in malformed:
 		var tr := PKeyStages.boot_transition(c[1], c[2])
 		t.check("unit: malformed is ignored: %s" % c[0], is_same(tr["state"], c[1]) and tr["emits"].is_empty())
+	# canPlayOffline resets when the playable offline stop is left.
+	var playable := PKeyStages.initial_boot_state(true, true, ["core"], ["hd"])
+	for e in ["start", "shell.done", {"type": "guard.done", "result": "ok"}, {"type": "sync.done", "result": "ok"}, {"type": "gate.status", "status": "ok"}, {"type": "decide.done", "decision": "none"}, {"type": "fetch.done", "result": "offline", "installed": ["core"]}]:
+		playable = PKeyStages.boot_transition(playable, e if e is Dictionary else {"type": e})["state"]
+	t.check("unit: a playable offline stop sets canPlayOffline", playable["stage"] == "offline" and playable["canPlayOffline"] == true)
+	var mounted: Dictionary = PKeyStages.boot_transition(playable, {"type": "play-offline"})["state"]
+	t.check("unit: play-offline mounts and resets canPlayOffline", mounted["stage"] == "mount" and mounted["canPlayOffline"] == false)
 	var extra := PKeyStages.boot_transition(sync, {"type": "sync.done", "result": "ok", "note": "extra"})
 	t.check("unit: an extra key is accepted", extra["state"]["stage"] == "gate" and not extra["emits"].is_empty())
 

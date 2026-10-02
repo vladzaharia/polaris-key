@@ -17,6 +17,8 @@ extends RefCounted
 #   pointer sets     PKeyJws.verify              WIRE-CONTRACT-V4 §4.1: non_wire_integers equals
 #                                                each case's `nonWireIntegers` over the seven JWS
 #                                                families (feedCases, releaseRecordCases included)
+#                                                and the two pack families (packRecordCases, and
+#                                                markerCases, whose JWS is the marker's `release`)
 #   feedCases        PKeyFeed.verify_feed        V4 §2.5 steps 3–8: ok with seq, issuedAt and the
 #                                                document, or the refusing reason
 #   releaseRecordCases PKeyReleaseRecord.verify_release_record  steps 12–15: ok with kind and the
@@ -58,7 +60,7 @@ const FLOORS := {
 	"trustCases": 11,
 	"clockFloorCases": 7,
 	"bundleCases": 9,
-	"pointerSets": 288,
+	"pointerSets": 464,
 	"feedCases": 77,
 	"releaseRecordCases": 49,
 	"versionCases": 25,
@@ -184,8 +186,10 @@ func _jws_cases(t: PKeyTestContext, cases: Array) -> void:
 
 
 # ── WIRE-CONTRACT-V4 §4.1: the non-wire-integer pointer sets ────────────────────────────────
-# Every case of the seven JWS families goes through PKeyJws.verify with its family's keys, typ
-# and cap. Whenever it verifies, `non_wire_integers` must equal the case's `nonWireIntegers` as a
+# Every case of the seven JWS families, and of the two pack families of plans/P4-01.md §4.6
+# (packRecordCases; markerCases, whose JWS is the marker text's `release` member, "" when the text
+# is not an object holding a string there), goes through PKeyJws.verify with its family's keys,
+# typ and cap. Whenever it verifies, `non_wire_integers` must equal the case's `nonWireIntegers` as a
 # set (absent = empty), and a case that carries the member must verify.
 
 func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
@@ -197,6 +201,8 @@ func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
 		["bundleCases", "bundleJws", "pinned", PKeyClaims.TYP_BUNDLE, PKeyClaims.MAX_BUNDLE_BYTES],
 		["feedCases", "jws", "trust", PKeyClaims.TYP_FEED, 0],
 		["releaseRecordCases", "jws", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
+		["packRecordCases", "jws", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
+		["markerCases", "marker", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
 	]
 	var evaluated := 0
 	var total := 0
@@ -210,7 +216,8 @@ func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
 				continue
 			var typ: String = f[3] if f[3] != "" else str(c.get("typ", ""))
 			var cap: int = f[4] if f[0] != "jwsCases" else int(c.get("maxPayloadBytes", 0))
-			var r = PKeyJws.verify(c[f[1]], c[f[2]], typ, cap)
+			var jws: String = _marker_release(c[f[1]]) if f[0] == "markerCases" else c[f[1]]
+			var r = PKeyJws.verify(jws, c[f[2]], typ, cap)
 			evaluated += 1
 			var where := "%s/%s pointer set" % [f[0], c["id"]]
 			if c.has("nonWireIntegers") and r == null:
@@ -225,6 +232,14 @@ func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
 			var listed := got.keys()
 			t.check(where, got.size() == want.size() and listed.size() == want.size() and want.keys().all(func(k): return got.has(k) and listed.has(k)), "got %s" % str(listed))
 	_coverage(t, "pointerSets", evaluated, total, _ms_since(t0))
+
+
+## A marker's `release`, when its text is a JSON object holding a string there; otherwise "".
+static func _marker_release(text: String) -> String:
+	var m = JSON.parse_string(text)
+	if m is Dictionary and m.get("release") is String:
+		return m["release"]
+	return ""
 
 
 static func _jws_well_formed(c) -> bool:
