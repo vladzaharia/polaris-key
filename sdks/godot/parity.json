@@ -120,6 +120,7 @@
     },
     "packs.record": { "status": "planned", "wp": "P4-08" },
     "packs.revoke": { "status": "planned", "wp": "P4-24" },
+    "packs.delegation": { "status": "planned", "wp": "P4-26" },
     "packs.plan": {
       "status": "planned",
       "wp": "P4-08"

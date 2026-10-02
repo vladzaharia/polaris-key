@@ -135,6 +135,7 @@ export const ErrorCode = {
   packNotEntitled: "pack-not-entitled",
   packStateUnreadable: "pack-state-unreadable",
   packRevoked: "pack-revoked",
+  packNotDataOnly: "pack-not-data-only",
   markerRejected: "marker-rejected",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -269,6 +270,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "pack-not-entitled",
   "pack-state-unreadable",
   "pack-revoked",
+  "pack-not-data-only",
   "marker-rejected",
 ];
 
@@ -405,6 +407,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "pack-not-entitled": "client",
   "pack-state-unreadable": "client",
   "pack-revoked": "client",
+  "pack-not-data-only": "client",
   "marker-rejected": "client",
 };
 
@@ -452,6 +455,7 @@ export const Feature = {
   outletDetect: "outlet.detect",
   packsRecord: "packs.record",
   packsRevoke: "packs.revoke",
+  packsDelegation: "packs.delegation",
   packsPlan: "packs.plan",
   packsIndexFiles: "packs.index.files",
   packsIndexChunks: "packs.index.chunks",
@@ -517,6 +521,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "outlet.detect",
   "packs.record",
   "packs.revoke",
+  "packs.delegation",
   "packs.plan",
   "packs.index.files",
   "packs.index.chunks",
@@ -993,6 +998,60 @@ export const TRANSPORT_VALUES: readonly Transport[] = [
   "web",
 ];
 
+/** The pack types a delegated content key may sign (`DELEGABLE_PACK_TYPES`, plans/P4-19.md §2.5, decision 5). A delegation's `types` outside this list are ignored; `godot.pck`, `godot.zip`, `audio.bank`, `ml.model` and `custom.*` are never delegable. `delegationCases` pins them. */
+export const DelegablePackType = {
+  filesTree: "files.tree",
+  dataJson: "data.json",
+  l10nTable: "l10n.table",
+} as const;
+export type DelegablePackType =
+  (typeof DelegablePackType)[keyof typeof DelegablePackType];
+
+/** Every `DelegablePackType` value, in source order. */
+export const DELEGABLE_PACK_TYPE_VALUES: readonly DelegablePackType[] = [
+  "files.tree",
+  "data.json",
+  "l10n.table",
+];
+
+/** The file extensions a delegated install may hold (`DATA_ONLY_EXTENSIONS`, plans/P4-19.md §2.5 rule 2): the final segment's text after its last `.`, ASCII-lowercased. An allow-list: anything else is refused (`pack-not-data-only`, rule `extension`). `dataOnlyCases` pins them. */
+export const DataOnlyExtension = {
+  json: "json",
+  csv: "csv",
+  tsv: "tsv",
+  po: "po",
+  txt: "txt",
+  png: "png",
+  jpg: "jpg",
+  jpeg: "jpeg",
+  webp: "webp",
+  ogg: "ogg",
+  wav: "wav",
+  mp3: "mp3",
+  ttf: "ttf",
+  otf: "otf",
+} as const;
+export type DataOnlyExtension =
+  (typeof DataOnlyExtension)[keyof typeof DataOnlyExtension];
+
+/** Every `DataOnlyExtension` value, in source order. */
+export const DATA_ONLY_EXTENSION_VALUES: readonly DataOnlyExtension[] = [
+  "json",
+  "csv",
+  "tsv",
+  "po",
+  "txt",
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "ogg",
+  "wav",
+  "mp3",
+  "ttf",
+  "otf",
+];
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 export const HeaderName = {
   arch: "X-PKey-Arch",
@@ -1078,6 +1137,21 @@ export const MAX_FEED_REVOCATIONS = 64;
 
 /** Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`). */
 export const REVOCATION_REASON_MAX_BYTES = 512;
+
+/** Wire contract v4 limit `MAX_DELEGATION_TTL_SECONDS` (`@polaris-key/protocol/core`). */
+export const MAX_DELEGATION_TTL_SECONDS = 31622400;
+
+/** Wire contract v4 limit `MAX_DELEGATION_TYPES` (`@polaris-key/protocol/core`). */
+export const MAX_DELEGATION_TYPES = 8;
+
+/** Wire contract v4 limit `DATA_ONLY_HEAD_BYTES` (`@polaris-key/protocol/core`). */
+export const DATA_ONLY_HEAD_BYTES = 64;
+
+/** Wire contract v4 limit `DATA_ONLY_TAIL_BYTES` (`@polaris-key/protocol/core`). */
+export const DATA_ONLY_TAIL_BYTES = 65557;
+
+/** Wire contract v4 limit `MAX_DELEGATIONS_PER_CHECK` (`@polaris-key/protocol/core`). */
+export const MAX_DELEGATIONS_PER_CHECK = 16;
 
 /** Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
 export const MAX_PACK_VARIANTS = 32;
@@ -1250,6 +1324,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "outlet.detect": { status: "implemented", service: "update", na: [] },
   "packs.record": { status: "implemented", service: "release", na: [] },
   "packs.revoke": { status: "implemented", service: "release", na: [] },
+  "packs.delegation": { status: "implemented", service: "release", na: [] },
   "packs.plan": { status: "implemented", service: "release", na: [] },
   "packs.index.files": { status: "implemented", service: "release", na: [] },
   "packs.index.chunks": { status: "planned", service: "release", na: [] },
@@ -1296,4 +1371,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "24cc02fb206c89c4f1c22c9681eba68fe26371a45dceebca640fb411b0bc40b6";
+  "58a77d6435d9de3a8c652f60cc7e8d312be7a56c1f24c7087c60d3981da6719b";

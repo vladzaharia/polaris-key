@@ -88,6 +88,13 @@
 //                                                                         packSetId
 //   stampCases        `expect.holds`, when present                     → holdsOf
 //
+// and, from P4-19 (plans/P4-19.md §4, §5 order 1), content-key delegation:
+//
+//   delegationCases   §2.3's delegated steps 12–16, recordRevoked,      → verifyReleaseRecord,
+//                     delegation revocations and the feed entry `kind`    verifyRevocation,
+//                                                                         recordRevoked, verifyFeed
+//   dataOnlyCases     §2.5's data-only rule (content/cases.json)       → dataOnlyRefusal
+//
 // `filesIndexCases` and `applyCases` run once per zstd backend the runner hands over (the Node
 // runner: the WASM decoder, `node:zlib` where its probe passes, and a failed probe; the browser:
 // the WASM decoder), so a verdict cannot depend on the decoder.
@@ -131,6 +138,8 @@ import {
 import {
   CHANNEL_ALIASES,
   CHANNEL_BETA,
+  DATA_ONLY_HEAD_BYTES,
+  DATA_ONLY_TAIL_BYTES,
   CHANNEL_DEV,
   CHANNEL_NAME_PATTERN,
   CHANNEL_PR,
@@ -164,6 +173,8 @@ import {
   verifyFeed,
   verifyReleaseRecord,
   verifyRevocation,
+  recordRevoked,
+  dataOnlyRefusal,
   feedContent,
   holdsOf,
   newerRevocation,
@@ -368,6 +379,43 @@ interface RevocationCase extends NonWire {
     | { verify: "fail"; step: string };
 }
 
+/** plans/P4-19.md §4.2: one `delegationCases` vector. */
+interface DelegationCase {
+  id: string;
+  description: string;
+  mode: "record" | "release-only" | "revocation" | "feed";
+  jws: string;
+  delegation?: string | null;
+  releaseKeys?: TrustSet;
+  productTrust?: TrustSet;
+  expectedAud: string;
+  expectedHash?: string;
+  pin?: { kind?: string; deliverable: string; version: string; seq: number } | null;
+  revoked?: string[];
+  entry?: {
+    record: string;
+    pack: string;
+    target: string;
+    version: string;
+    seq: number;
+    kind?: string;
+  };
+  trust?: TrustSet;
+  channel?: string;
+  platform?: string;
+  now?: number;
+  checkFreshness?: boolean;
+  expect: {
+    verify: "ok" | "fail";
+    step?: string;
+    kind?: string;
+    delegation?: Record<string, unknown> | null;
+    revoked?: string | null;
+    revocation?: Record<string, unknown>;
+    content?: { packSets: unknown; packFloors: unknown; revocations: unknown };
+  };
+}
+
 /** plans/P4-01.md §4.6: one `packRecordCases` vector. `pin.kind` defaults to `app`. */
 export interface PackRecordCase extends NonWire {
   id: string;
@@ -426,6 +474,8 @@ export interface Corpus {
   revocationCases: RevocationCase[];
   packRecordCases: PackRecordCase[];
   markerCases: MarkerCase[];
+  /** plans/P4-19.md §4.1: content-key delegation. */
+  delegationCases: DelegationCase[];
 }
 
 export interface MatrixRow {
@@ -1684,6 +1734,81 @@ export function defineCorpusSuites({
         expect(feedContent(row.input.feed).packFloors).not.toBeNull();
     });
   });
+
+  // ── plans/P4-19.md §5 order 1 — content-key delegation ──────────────────────────────────────
+
+  // @pkey-feature packs.delegation
+  describe(`conformance corpus v${corpus.corpusVersion} — delegationCases (plans/P4-19.md §2.3)`, () => {
+    it("has every delegationCases vector", () => {
+      expect(corpus.delegationCases.length).toBe(46);
+    });
+    for (const c of corpus.delegationCases) {
+      const want = c.expect.verify === "ok" ? "ok" : c.expect.step;
+      it(`${c.mode} ${c.id} → ${want}`, async () => {
+        if (c.mode === "feed") {
+          const r = await verifyFeed(c.jws, {
+            trust: c.trust!,
+            expectedAud: c.expectedAud,
+            channel: c.channel!,
+            platform: c.platform!,
+            now: c.now!,
+            checkFreshness: c.checkFreshness!,
+          });
+          expect(r, c.description).toMatchObject({ ok: true });
+          if (r.ok) expect(r.content, c.description).toEqual(c.expect.content);
+          return;
+        }
+        if (c.mode === "revocation") {
+          const r = await verifyRevocation(c.jws, {
+            releaseKeys: c.releaseKeys!,
+            productTrust: c.productTrust!,
+            expectedAud: c.expectedAud,
+            entry: c.entry!,
+          });
+          if (c.expect.verify === "fail") {
+            expect(r.ok, c.description).toBe(false);
+            if (!r.ok) expect(r.step, c.description).toBe(c.expect.step);
+            return;
+          }
+          expect(r, c.description).toMatchObject({ ok: true });
+          if (!r.ok) return;
+          const { pack, target, replacement, reason, issuedAt } = r.revocation;
+          expect({ pack, target, replacement, reason, issuedAt }).toEqual(
+            c.expect.revocation,
+          );
+          return;
+        }
+        const r = await verifyReleaseRecord(c.jws, {
+          releaseKeys: c.releaseKeys!,
+          productTrust: c.productTrust!,
+          expectedAud: c.expectedAud,
+          expectedHash: c.expectedHash!,
+          ...(c.pin ? { pin: c.pin } : {}),
+          ...(c.mode === "record" && typeof c.delegation === "string"
+            ? { delegation: c.delegation }
+            : {}),
+        });
+        if (c.expect.verify === "fail") {
+          expect(r.ok, c.description).toBe(false);
+          if (!r.ok) expect(r.step, c.description).toBe(c.expect.step);
+          return;
+        }
+        expect(r, c.description).toMatchObject({ ok: true });
+        if (!r.ok) return;
+        expect(r.record.kind).toBe(c.expect.kind);
+        expect(r.delegation, c.description).toEqual(c.expect.delegation);
+        if (c.revoked !== undefined)
+          expect(
+            recordRevoked(
+              c.expectedHash!,
+              r.delegation?.sha256 ?? null,
+              new Set(c.revoked),
+            ),
+            c.description,
+          ).toBe(c.expect.revoked);
+      });
+    }
+  });
 }
 
 // ── plans/P4-01.md §5 order 0 (P4-04) — the content corpus's pure sections ───────────────────
@@ -1731,6 +1856,13 @@ export interface ContentCorpus {
   frameWindowCases: (ContentCase & {
     header: string;
     expect: { window: number | null };
+  })[];
+  /** plans/P4-19.md §4.3. */
+  dataOnlyCases: (ContentCase & {
+    path: string;
+    head: string;
+    tail: string;
+    expect: { ok: true } | { ok: false; rule: string };
   })[];
   /** plans/P4-10.md §4.3. */
   chunkIndexCases: (ContentCase & {
@@ -2025,4 +2157,38 @@ export function defineContentSuites({
       });
     }
   });
+
+  // @pkey-feature packs.delegation
+  describe(`content corpus v${content.contentCorpusVersion} — dataOnlyCases (plans/P4-19.md §2.5)`, () => {
+    it("has every dataOnlyCases vector", () => {
+      expect(content.dataOnlyCases.length).toBe(64);
+    });
+    for (const c of content.dataOnlyCases) {
+      const want = c.expect.ok ? "ok" : c.expect.rule;
+      it(`data-only ${c.id} → ${want}`, () => {
+        const head = base64Bytes(c.head);
+        const tail = base64Bytes(c.tail);
+        const file = new Uint8Array(head.length + tail.length);
+        file.set(head, 0);
+        file.set(tail, head.length);
+        const rule = dataOnlyRefusal(
+          c.path,
+          file.subarray(0, DATA_ONLY_HEAD_BYTES),
+          file.subarray(Math.max(0, file.length - DATA_ONLY_TAIL_BYTES)),
+        );
+        expect(
+          rule === null ? { ok: true } : { ok: false, rule },
+          c.description,
+        ).toEqual(c.expect);
+      });
+    }
+  });
+}
+
+/** Standard (padded) base64, decoded without a Node builtin (this module runs in a browser). */
+function base64Bytes(s: string): Uint8Array {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let k = 0; k < bin.length; k++) out[k] = bin.charCodeAt(k);
+  return out;
 }

@@ -64,6 +64,10 @@ __all__ = [
     "PATCH_STRATEGY_VALUES",
     "Transport",
     "TRANSPORT_VALUES",
+    "DelegablePackType",
+    "DELEGABLE_PACK_TYPE_VALUES",
+    "DataOnlyExtension",
+    "DATA_ONLY_EXTENSION_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -83,6 +87,11 @@ __all__ = [
     "MAX_RECORD_JWS_BYTES",
     "MAX_FEED_REVOCATIONS",
     "REVOCATION_REASON_MAX_BYTES",
+    "MAX_DELEGATION_TTL_SECONDS",
+    "MAX_DELEGATION_TYPES",
+    "DATA_ONLY_HEAD_BYTES",
+    "DATA_ONLY_TAIL_BYTES",
+    "MAX_DELEGATIONS_PER_CHECK",
     "MAX_PACK_VARIANTS",
     "MAX_VARIANT_DELTAS",
     "MAX_CONTENT_PINS",
@@ -248,6 +257,7 @@ class ErrorCode:
     PACK_NOT_ENTITLED: Final = "pack-not-entitled"
     PACK_STATE_UNREADABLE: Final = "pack-state-unreadable"
     PACK_REVOKED: Final = "pack-revoked"
+    PACK_NOT_DATA_ONLY: Final = "pack-not-data-only"
     MARKER_REJECTED: Final = "marker-rejected"
 
 
@@ -381,6 +391,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "pack-not-entitled",
     "pack-state-unreadable",
     "pack-revoked",
+    "pack-not-data-only",
     "marker-rejected",
 )
 
@@ -516,6 +527,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "pack-not-entitled": "client",
         "pack-state-unreadable": "client",
         "pack-revoked": "client",
+        "pack-not-data-only": "client",
         "marker-rejected": "client",
     }
 )
@@ -566,6 +578,7 @@ class Feature:
     OUTLET_DETECT: Final = "outlet.detect"
     PACKS_RECORD: Final = "packs.record"
     PACKS_REVOKE: Final = "packs.revoke"
+    PACKS_DELEGATION: Final = "packs.delegation"
     PACKS_PLAN: Final = "packs.plan"
     PACKS_INDEX_FILES: Final = "packs.index.files"
     PACKS_INDEX_CHUNKS: Final = "packs.index.chunks"
@@ -630,6 +643,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "outlet.detect",
     "packs.record",
     "packs.revoke",
+    "packs.delegation",
     "packs.plan",
     "packs.index.files",
     "packs.index.chunks",
@@ -1133,6 +1147,60 @@ TRANSPORT_VALUES: Tuple[str, ...] = (
 )
 
 
+class DelegablePackType:
+    """The pack types a delegated content key may sign (`DELEGABLE_PACK_TYPES`, plans/P4-19.md §2.5, decision 5). A delegation's `types` outside this list are ignored; `godot.pck`, `godot.zip`, `audio.bank`, `ml.model` and `custom.*` are never delegable. `delegationCases` pins them."""
+
+    FILES_TREE: Final = "files.tree"
+    DATA_JSON: Final = "data.json"
+    L10N_TABLE: Final = "l10n.table"
+
+
+#: Every ``DelegablePackType`` value, in source order.
+DELEGABLE_PACK_TYPE_VALUES: Tuple[str, ...] = (
+    "files.tree",
+    "data.json",
+    "l10n.table",
+)
+
+
+class DataOnlyExtension:
+    """The file extensions a delegated install may hold (`DATA_ONLY_EXTENSIONS`, plans/P4-19.md §2.5 rule 2): the final segment's text after its last `.`, ASCII-lowercased. An allow-list: anything else is refused (`pack-not-data-only`, rule `extension`). `dataOnlyCases` pins them."""
+
+    JSON: Final = "json"
+    CSV: Final = "csv"
+    TSV: Final = "tsv"
+    PO: Final = "po"
+    TXT: Final = "txt"
+    PNG: Final = "png"
+    JPG: Final = "jpg"
+    JPEG: Final = "jpeg"
+    WEBP: Final = "webp"
+    OGG: Final = "ogg"
+    WAV: Final = "wav"
+    MP3: Final = "mp3"
+    TTF: Final = "ttf"
+    OTF: Final = "otf"
+
+
+#: Every ``DataOnlyExtension`` value, in source order.
+DATA_ONLY_EXTENSION_VALUES: Tuple[str, ...] = (
+    "json",
+    "csv",
+    "tsv",
+    "po",
+    "txt",
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "ogg",
+    "wav",
+    "mp3",
+    "ttf",
+    "otf",
+)
+
+
 class HeaderName:
     """The `X-PKey-*` request header names (wire contract v3 §5)."""
 
@@ -1233,6 +1301,26 @@ MAX_FEED_REVOCATIONS: Final[int] = 64
 
 #: Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`).
 REVOCATION_REASON_MAX_BYTES: Final[int] = 512
+
+
+#: Wire contract v4 limit `MAX_DELEGATION_TTL_SECONDS` (`@polaris-key/protocol/core`).
+MAX_DELEGATION_TTL_SECONDS: Final[int] = 31622400
+
+
+#: Wire contract v4 limit `MAX_DELEGATION_TYPES` (`@polaris-key/protocol/core`).
+MAX_DELEGATION_TYPES: Final[int] = 8
+
+
+#: Wire contract v4 limit `DATA_ONLY_HEAD_BYTES` (`@polaris-key/protocol/core`).
+DATA_ONLY_HEAD_BYTES: Final[int] = 64
+
+
+#: Wire contract v4 limit `DATA_ONLY_TAIL_BYTES` (`@polaris-key/protocol/core`).
+DATA_ONLY_TAIL_BYTES: Final[int] = 65557
+
+
+#: Wire contract v4 limit `MAX_DELEGATIONS_PER_CHECK` (`@polaris-key/protocol/core`).
+MAX_DELEGATIONS_PER_CHECK: Final[int] = 16
 
 
 #: Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
@@ -1438,6 +1526,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "outlet.detect": CapabilityRow("implemented", "update", ()),
         "packs.record": CapabilityRow("implemented", "release", ()),
         "packs.revoke": CapabilityRow("implemented", "release", ()),
+        "packs.delegation": CapabilityRow("planned", "release", ()),
         "packs.plan": CapabilityRow("implemented", "release", ()),
         "packs.index.files": CapabilityRow("implemented", "release", ()),
         "packs.index.chunks": CapabilityRow("planned", "release", ()),
@@ -1460,4 +1549,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "744dffe1dcd0dd30dce7882efb8e9b0a9cb4ab5082fcc045879d0ce145830d35"
+CAPABILITY_DIGEST: Final[str] = "0928af74e8477944350e8fab4f88c749e0c37b251092d79748cdbf36d14e978c"

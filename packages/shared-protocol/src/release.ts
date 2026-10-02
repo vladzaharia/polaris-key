@@ -33,14 +33,19 @@ export const DEFAULT_RELEASE_ACCESS: ReleaseAccessPolicy = {
  *  The release-descriptor validator imports it as its build-id rule. */
 export const BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
-/** The record kinds a P4 SDK acts on: `app`, `pack` (plans/P4-01.md §2.13, V4 §2.5.1) and
- *  `revocation` (plans/P4-13.md §2.3, V4 §2.5.3). */
-export const RECORD_KINDS = ["app", "pack", "revocation"] as const;
+/** The record kinds a P4 SDK acts on: `app`, `pack` (plans/P4-01.md §2.13, V4 §2.5.1),
+ *  `revocation` (plans/P4-13.md §2.3, V4 §2.5.3) and `delegation` (plans/P4-19.md §2.2,
+ *  V4 §2.5.4). */
+export const RECORD_KINDS = ["app", "pack", "revocation", "delegation"] as const;
 
-/** Record kinds a client verifies and never acts on (P4-19). `pack` and `revocation` left this
- *  list when their packages filled the slot (plans/P4-01.md, plans/P4-13.md); a v4 SDK that
- *  predates them still verifies such a record and never acts on it. */
-export const RESERVED_RECORD_KINDS = ["delegation"] as const;
+/** Record kinds a client verifies and never acts on. Empty since P4-19 filled `delegation`'s
+ *  slot; a v4 SDK that predates a kind still verifies such a record and never acts on it. */
+export const RESERVED_RECORD_KINDS = [] as const;
+
+/** The kid of a pack record signed by a delegated content key (plans/P4-19.md §2.2): `pkd1-`
+ *  and the delegation's record hash. 69 bytes, longer than any declared release-key kid, so a
+ *  release key can never collide with it; an SDK refuses a pinned release kid matching it. */
+export const DELEGATED_KID_PATTERN = /^pkd1-[0-9a-f]{64}$/;
 
 export interface ReleaseRecordArtifact {
   name: string;
@@ -118,6 +123,38 @@ export interface RevocationRecordDoc {
   replacement?: RevocationReplacement;
   /** 1–`REVOCATION_REASON_MAX_BYTES` bytes, display only. */
   reason: string;
+  tag?: string;
+  channel?: string;
+  title?: string;
+  notes?: string;
+  provenance?: { commit?: string; workflowRun?: string };
+}
+
+/**
+ * A `pkey-release+jws` payload with `kind: "delegation"` (plans/P4-19.md §2.2, V4 §2.5.4), signed
+ * in CI by a pinned release key and never by a product or content key. It lets one content key
+ * (`delegate.publicKey`) sign tree-layout pack records of the effective `types` under the pack-id
+ * scope `deliverable` (whole segments), with `issuedAt` inside `[issuedAt, expiresAt]`. A pack
+ * record signed under it carries the header kid `pkd1-<this record's hash>`.
+ */
+export interface DelegationRecordDoc {
+  schemaVersion: 1;
+  aud: string;
+  /** The scope root: a pack id, never `app`. */
+  deliverable: string;
+  kind: "delegation";
+  /** Display only; the CLI writes the decimal `seq`. */
+  version: string;
+  /** Per (product, deliverable), ≥ 1. */
+  seq: number;
+  /** The window opens. */
+  issuedAt: number;
+  /** The window closes; `issuedAt < expiresAt ≤ issuedAt + MAX_DELEGATION_TTL_SECONDS`. */
+  expiresAt: number;
+  /** The content key: base64url of its 32 raw Ed25519 bytes. */
+  delegate: { publicKey: string };
+  /** 1–`MAX_DELEGATION_TYPES` unique pack types; only those in `DELEGABLE_PACK_TYPES` count. */
+  types: string[];
   tag?: string;
   channel?: string;
   title?: string;

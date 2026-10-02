@@ -211,7 +211,7 @@
       "code": "release_record_rejected",
       "kind": "wire",
       "service": "release",
-      "description": "A trusted-publishing submit carried a release record (pkey-release+jws), or a release whose packs, the ingest refused; nothing was stored. `reason` names the check: typ, kid, product-key, signature, claims, scheme, descriptor-mismatch or seq; for a pack record (P4-02) pack-unknown, pack-type, pack-variant, pack-entitlement, pack-index or pack-object; for an app release's content content-api, pin-unknown, pin-mismatch, pin-yanked, pin-missing, pin-gated, embeds or pack-unreadable (a declared pack's stored declaration does not read back; resync the manifest); for compatible and standalone packs (P4-12) pack-requires, pack-channel or pack-unsatisfiable on a pack record, pin-requires, hold-unknown, hold-mismatch, hold-yanked, hold-binding, hold-requires, hold-unsatisfiable, content-unsatisfied or pack-channels-conflict on an app release, and pack-sets-bound when resolution cannot finish inside its bounds; for a revocation record (P4-13) revocation-body, revocation-target, revocation-stale, revocation-replacement or revocation-replacement-incompatible, and pin-revoked or hold-revoked on an app release."
+      "description": "A trusted-publishing submit carried a release record (pkey-release+jws), or a release whose packs, the ingest refused; nothing was stored. `reason` names the check: typ, kid, product-key, signature, claims, scheme, descriptor-mismatch or seq; for a pack record (P4-02) pack-unknown, pack-type, pack-variant, pack-entitlement, pack-index or pack-object; for an app release's content content-api, pin-unknown, pin-mismatch, pin-yanked, pin-missing, pin-gated, embeds or pack-unreadable (a declared pack's stored declaration does not read back; resync the manifest); for compatible and standalone packs (P4-12) pack-requires, pack-channel or pack-unsatisfiable on a pack record, pin-requires, hold-unknown, hold-mismatch, hold-yanked, hold-binding, hold-requires, hold-unsatisfiable, content-unsatisfied or pack-channels-conflict on an app release, and pack-sets-bound when resolution cannot finish inside its bounds; for a revocation record (P4-13) revocation-body, revocation-target, revocation-stale, revocation-replacement or revocation-replacement-incompatible, and pin-revoked or hold-revoked on an app release; for content-key delegation (P4-19) delegation-body, delegation-key, delegation-window or seq on a delegation record, delegation-unknown, delegation-revoked, delegation-key, delegation-scope, delegation-window, delegation-binding or delegation-data-only on a delegated pack record, pin-delegated or hold-delegated on an app release, and revocation-target or revocation-replacement for a delegation revocation."
     },
     {
       "code": "release_tag_is_pack_release",
@@ -517,7 +517,7 @@
       "code": "record-rejected",
       "kind": "client",
       "service": "update",
-      "description": "A release record (pkey-release+jws) was refused before use: its hash did not match the feed's pin, or its signature or claims failed; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 12–14)."
+      "description": "A release record (pkey-release+jws) was refused before use: its hash did not match the feed's pin, or its signature or claims failed; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 12–14), or, for a pack record signed by a delegated content key (plans/P4-19.md §2.3), `delegation` (the delegation it names was refused) or `scope` (the record is outside the delegation's scope, types, layout or window)."
     },
     {
       "code": "record-mismatch",
@@ -769,7 +769,13 @@
       "code": "pack-revoked",
       "kind": "client",
       "service": "update",
-      "description": "The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5)."
+      "description": "The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5), or a delegated release whose delegation a verified revocation names (detail `delegation`, plans/P4-19.md §2.6)."
+    },
+    {
+      "code": "pack-not-data-only",
+      "kind": "client",
+      "service": "update",
+      "description": "A pack release signed by a delegated content key holds a file the data-only rule refuses (plans/P4-19.md §2.5): its extension is not in `DATA_ONLY_EXTENSIONS` (detail `extension`, checked over the files index before any payload object is fetched), or its first 64 or last 65,557 decoded bytes carry a Godot resource, pack, script, archive or native-binary magic (detail `content`). The plan is aborted and staging discarded; `path` names the file."
     },
     {
       "code": "marker-rejected",

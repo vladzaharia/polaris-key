@@ -580,6 +580,12 @@ export const WIRE_LIMIT_EXPORTS = [
   "MAX_RECORD_JWS_BYTES",
   "MAX_FEED_REVOCATIONS",
   "REVOCATION_REASON_MAX_BYTES",
+  // plans/P4-19.md §2.8: content-key delegation.
+  "MAX_DELEGATION_TTL_SECONDS",
+  "MAX_DELEGATION_TYPES",
+  "DATA_ONLY_HEAD_BYTES",
+  "DATA_ONLY_TAIL_BYTES",
+  "MAX_DELEGATIONS_PER_CHECK",
 ] as const;
 /** The packs-on-the-wire limits and format strings every SDK applies (plans/P4-01.md §2.13). */
 export const PACK_LIMIT_EXPORTS = [
