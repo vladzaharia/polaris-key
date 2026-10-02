@@ -251,6 +251,15 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `estimate`, `confirm` and `rollback` refuse at the top when the state is unreadable. Node's
   `syncDir` raises EIO and the like, swallowing only EISDIR/EPERM/EBADF/EINVAL; macOS has no
   `F_FULLFSYNC` from Node, documented.
+- **Review round 3.** Node's `list()` (and the staged-object size and kept-index reads) treat
+  only ENOENT/ENOTDIR as "nothing there" and rethrow anything else, so a store directory that
+  cannot be listed suspends garbage collection instead of producing a partial listing. The torn
+  hold's first snapshot is saved atomically beside the quarantine (`state.json.torn.list`, through
+  the optional `readHoldList`/`writeHoldList` store members) and reused across restarts; an
+  unreadable snapshot suspends garbage collection entirely. Carry-over is documented, not
+  changed: a deferred active carried over by a fresh commit replaces an older verified `previous`
+  (it is the most recent install), and `rollback` refuses while it is still unreadable rather
+  than reaching further back.
 - **Follow-ups.** `content.appRelease` (the running app record's hash, plan §2.11) is optional
   and not sent yet. **OPFS writes cost grows quadratically** with a file's size (each
   `createWritable({keepExistingData})` copies the file), so moving staging to a worker's sync

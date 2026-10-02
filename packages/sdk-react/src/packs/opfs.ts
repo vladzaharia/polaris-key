@@ -513,7 +513,17 @@ export async function opfsPackStore(opts: {
     quarantined: async () =>
       (await readText("state.json.torn").catch(() => "")) !== null,
     async clearQuarantine() {
+      await remove(root, ["state.json.torn.list"]);
       await remove(root, ["state.json.torn"]);
+    },
+    readHoldList: () => readText("state.json.torn.list"),
+    async writeHoldList(text) {
+      if ((await readText("state.json.torn.list")) !== null) return;
+      // `createWritable` replaces the file on `close()`, so the list is never half written.
+      await writeWhole(
+        await root.getFileHandle("state.json.torn.list", { create: true }),
+        new TextEncoder().encode(text),
+      );
     },
   };
 
