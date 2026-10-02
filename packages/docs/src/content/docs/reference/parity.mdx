@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 45 | 3 | 3 | 7 |
-| React | `web`, `desktop-bridge` | 37 | 12 | 3 | 6 |
-| Python | `python` | 37 | 3 | 11 | 7 |
-| Swift | `macos`, `ios` | 38 | 3 | 11 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 39 | 0 | 16 | 3 |
+| Node | `node` | 47 | 3 | 3 | 7 |
+| React | `web`, `desktop-bridge` | 39 | 12 | 3 | 6 |
+| Python | `python` | 37 | 3 | 13 | 7 |
+| Swift | `macos`, `ios` | 38 | 3 | 13 | 6 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 39 | 0 | 18 | 3 |
 
 ## Core
 
@@ -85,6 +85,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | planned (P4-23) | planned (P4-23) | planned (P4-24) | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ios: outlet |
 | `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
@@ -94,6 +95,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `packs.record` | Verify kind: pack records, app content and embeds, and embedded-pack markers | `cases.json` `packRecordCases` + `cases.json` `markerCases` | ✓ | ✓ | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
+| `packs.revoke` | Revocation records: verify, supersede, persist, refuse revoked mounts | `cases.json` `revocationCases` + unit | ✓ | ✓ | planned (P4-23) | planned (P4-23) | planned (P4-24) | — |
 | `packs.plan` | The install planner | `plan-matrix.json` | ✓ | ✓ | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
 | `packs.index.files` | Files index parsing (`pkey-files/1`), path rules, `treeDigest` | `content/` | ✓ | ✓ | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
 | `packs.index.chunks` | Chunk index parsing | `content/` | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |

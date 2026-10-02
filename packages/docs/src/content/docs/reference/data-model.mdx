@@ -70,6 +70,7 @@ this page or fails the freshness gate.
 | `release_set_state` | 0046_a_pack_sets.sql | `product`, `generation`, `token`, `modified_at` |
 | `release_holds` | 0046_a_pack_sets.sql | `product`, `app_release_id`, `pack_deliverable`, `pack_release_id`, `record_sha256`, `reason`, `created_at` |
 | `release_pack_floors` | 0046_a_pack_sets.sql | `product`, `deliverable_id`, `channel`, `content_api`, `min_version`, `source`, `created_at`, `modified_at`, `modified_by` |
+| `release_revocations` | 0047_release_revocations.sql | `product`, `deliverable_id`, `target_release_id`, `target_sha256`, `record_sha256`, `kid`, `jws`, `replacement_release_id`, `replacement_sha256`, `reason`, `issued_at`, `ingested_at` |
 
 ## distribution
 
