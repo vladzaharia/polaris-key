@@ -104,7 +104,10 @@
     "update.check": { "status": "implemented" },
     "update.feed": { "status": "implemented" },
     "update.decide": { "status": "implemented" },
-    "update.content": { "status": "planned", "wp": "P4-24" },
+    "update.content": {
+      "status": "implemented",
+      "note": "P4-24: core/feed.gd feed_content (packSets, packFloors, revocations parsed beside the claims with the token rule), distribution/decision.gd's content decision (select_pack_rows, composition, prestage, content-floor, revoked-content, packs; boot required only for revoked required content), services/update/flow.gd content steps 10-14; every feedContentCases and contentRows vector, stamp holds, on the editor and the release template."
+    },
     "update.driver": {
       "status": "implemented",
       "except": [{ "runtime": "ios", "reason": "outlet" }],
@@ -122,7 +125,10 @@
       "status": "implemented",
       "note": "P4-08: core/release_record.gd applies the pack claims and pin.kind (PKeyPackClaims), packs/marker.gd verifies embedded-pack markers; the packs suite drives every packRecordCases and markerCases vector, the content stamps and packSetIdCases."
     },
-    "packs.revoke": { "status": "planned", "wp": "P4-24" },
+    "packs.revoke": {
+      "status": "implemented",
+      "note": "P4-24: core/release_record.gd revocation_of / verify_revocation / newer_revocation (every revocationCases vector), packs/revocations.gd (the sibling content/revocations.json: written only with a first entry and revocationsStored first, re-verified on load, torn quarantined with relearn, unreadable writes nothing, the 256 cap, recover_state clears relearn) and the engine's pack-revoked."
+    },
     "packs.plan": {
       "status": "implemented",
       "note": "P4-08: packs/select.gd (select_variant, plan_target, plan), a port of client-core; every plan-matrix.json (v2) row, variant case and target case on the editor and the release template; plan_target applies the P4-10 §2.5 chunk rule when given a chunk index (Godot parses none until P4-11)."

@@ -888,12 +888,12 @@ static func capabilities() -> Dictionary:
 		"update.check": {"status": "implemented", "service": "update", "na": []},
 		"update.feed": {"status": "implemented", "service": "update", "na": []},
 		"update.decide": {"status": "implemented", "service": "update", "na": []},
-		"update.content": {"status": "planned", "service": "update", "na": []},
+		"update.content": {"status": "implemented", "service": "update", "na": []},
 		"update.driver": {"status": "implemented", "service": "update", "na": [{"runtime": "ios", "reason": "outlet"}]},
 		"update.bootguard": {"status": "implemented", "service": "update", "na": []},
 		"outlet.detect": {"status": "implemented", "service": "update", "na": []},
 		"packs.record": {"status": "implemented", "service": "release", "na": []},
-		"packs.revoke": {"status": "planned", "service": "release", "na": []},
+		"packs.revoke": {"status": "implemented", "service": "release", "na": []},
 		"packs.plan": {"status": "implemented", "service": "release", "na": []},
 		"packs.index.files": {"status": "implemented", "service": "release", "na": []},
 		"packs.index.chunks": {"status": "planned", "service": "release", "na": []},
@@ -915,4 +915,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "c148e9b8dd38b23712764abddf5acbab3a314b5dee7e7882bf4ff8c5805f3967"
+const CAPABILITY_DIGEST := "d38af29e3d9fc001a67e02a3b02eb3d05f7639b4e07b7c1b5ecae3b067715332"
