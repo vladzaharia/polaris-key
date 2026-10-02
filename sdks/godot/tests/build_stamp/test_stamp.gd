@@ -80,6 +80,9 @@ func _outlet_ids(t: PKeyTestContext) -> void:
 func _tags_platform_arch(t: PKeyTestContext) -> void:
 	t.check("tags: outlet and channel, - mapped to _", PKeyBuildStamp.feature_tags("app-store", "pr-12") == PackedStringArray(["pkey_outlet_app_store", "pkey_channel_pr_12"]))
 	t.check("tags: steam and beta", PKeyBuildStamp.feature_tags("steam", "beta") == PackedStringArray(["pkey_outlet_steam", "pkey_channel_beta"]))
+	t.check("tags: an outlet id that is not a kind adds its kind", PKeyBuildStamp.feature_tags("steam-demo", "beta", "steam") == PackedStringArray(["pkey_outlet_steam_demo", "pkey_outlet_steam", "pkey_channel_beta"]))
+	t.check("tags: a kind id adds no second outlet tag", PKeyBuildStamp.feature_tags("app-store", "stable", "app-store") == PackedStringArray(["pkey_outlet_app_store", "pkey_channel_stable"]))
+	t.check("tags: an outlet kind outside the 17 adds nothing", PKeyBuildStamp.feature_tags("steam-demo", "", "bogus") == PackedStringArray(["pkey_outlet_steam_demo"]))
 	for row in [["Linux", "linux"], ["Windows Desktop", "windows"], ["macOS", "macos"], ["Android", "android"], ["iOS", "ios"], ["Web", "web"]]:
 		var feats := PackedStringArray([row[1]]) if row[0] == "Windows Desktop" else PackedStringArray()
 		t.check("platform: %s -> %s" % row, PKeyBuildStamp.platform_for(row[0], feats) == row[1])

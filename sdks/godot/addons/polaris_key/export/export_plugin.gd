@@ -99,7 +99,7 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 
 func _get_export_features(platform: EditorExportPlatform, _debug: bool) -> PackedStringArray:
 	var v := _values(S.platform_for(platform.get_os_name(), PackedStringArray()))
-	return S.feature_tags(v["outlet"], v["channel"])
+	return S.feature_tags(v["outlet"], v["channel"], v["outlet_kind"])
 
 
 func _export_begin(features: PackedStringArray, is_debug: bool, _path: String, _flags: int) -> void:

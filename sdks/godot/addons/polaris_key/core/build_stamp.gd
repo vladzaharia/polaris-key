@@ -348,11 +348,15 @@ static func resolve_bundle_id(raw: String) -> String:
 
 
 ## The feature tags for an outlet and channel: pkey_outlet_<id>, pkey_channel_<channel>, with
-## `-` mapped to `_` (pkey_outlet_app_store, pkey_channel_pr_12).
-static func feature_tags(outlet: String, channel: String) -> PackedStringArray:
+## `-` mapped to `_` (pkey_outlet_app_store, pkey_channel_pr_12). When the outlet id is not itself
+## a kind (`steam-demo`), its `outlet_kind` (one of the 17) adds pkey_outlet_<outletKind> too, so a
+## build without build.json can still fall back to its kind (PKeyOutletSignals.feature_tag_stamp).
+static func feature_tags(outlet: String, channel: String, outlet_kind: String = "") -> PackedStringArray:
 	var out := PackedStringArray()
 	if outlet != "":
 		out.append("pkey_outlet_" + outlet.replace("-", "_"))
+		if not OUTLETS.has(outlet) and OUTLETS.has(outlet_kind):
+			out.append("pkey_outlet_" + outlet_kind.replace("-", "_"))
 	if channel != "":
 		out.append("pkey_channel_" + channel.replace("-", "_"))
 	return out

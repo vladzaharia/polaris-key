@@ -171,7 +171,8 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   repo root). `bundleId` comes from the preset (`application/bundle_identifier`,
   `package/unique_name`) and wins over the option's.
 - `_get_export_features` adds `pkey_outlet_<id>` and `pkey_channel_<channel>`, `-` mapped to `_`
-  (`pkey_outlet_app_store`). Custom feature tags do not exist in the editor.
+  (`pkey_outlet_app_store`), plus `pkey_outlet_<outletKind>` when the id is not itself a kind.
+  Custom feature tags do not exist in the editor.
 - An export plugin cannot fail an export: an unknown outlet, a channel outside the vocabulary, a
   non-semver `application/config/version` and a bad `outlet_ids` value are dialog warnings, and
   at export a `push_warning` (naming `PKEY_OUTLET_IDS` when the environment supplied it) that a
