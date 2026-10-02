@@ -17,6 +17,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import type {
   DeliverablesResponse,
+  PackFilesResponse,
   PackReleasesResponse,
   ReleaseDto,
 } from "../src/api.js";
@@ -26,11 +27,22 @@ import { sha } from "./releaseFixture.js";
 const deliverables = vi.fn<(slug: string) => Promise<DeliverablesResponse>>();
 const packReleases =
   vi.fn<(slug: string, id: string) => Promise<PackReleasesResponse>>();
+const packFiles =
+  vi.fn<
+    (
+      slug: string,
+      id: string,
+      releaseId: string,
+      variant: string,
+    ) => Promise<PackFilesResponse>
+  >();
 vi.mock("../src/api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/api.js")>()),
   api: {
     deliverables: (slug: string) => deliverables(slug),
     packReleases: (slug: string, id: string) => packReleases(slug, id),
+    packFiles: (slug: string, id: string, releaseId: string, variant: string) =>
+      packFiles(slug, id, releaseId, variant),
   },
 }));
 
@@ -185,6 +197,7 @@ beforeEach(() => {
   resetCache();
   deliverables.mockReset().mockResolvedValue(LIST);
   packReleases.mockReset().mockResolvedValue(RELEASES);
+  packFiles.mockReset();
 });
 
 afterEach(() => {
@@ -318,6 +331,53 @@ describe("a pack's page", () => {
     expect(within(variants).getByText("payload")).toBeTruthy();
     expect(within(variants).getByText("1.0.0")).toBeTruthy();
     expect(within(variants).getByText(/40 KB/)).toBeTruthy();
+  });
+
+  it("reads a variant's files on demand, one index per request", async () => {
+    packFiles.mockResolvedValue({
+      deliverable: CORE,
+      releaseId: `${CORE}@1.4.0`,
+      variant: "texture=s3tc",
+      total: 2,
+      files: [
+        {
+          path: "assets/core/a.bin",
+          size: 100,
+          sha256: sha(7),
+          offset: 10,
+          blob: { sha256: sha(7), bytes: 100, codec: "none" },
+        },
+        {
+          path: "assets/core/b.bin",
+          size: 50,
+          sha256: sha(8),
+          offset: 120,
+          blob: { sha256: sha(8), bytes: 50, codec: "none" },
+        },
+      ],
+    });
+    render(<DeliverableDetail slug={SLUG} id={CORE} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show variants of 1.4.0" }),
+    );
+    expect(packFiles).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Show files of texture=s3tc in 1.4.0",
+      }),
+    );
+    const list = await screen.findByRole("list", {
+      name: "Files of texture=s3tc",
+    });
+    expect(within(list).getByText("assets/core/a.bin")).toBeTruthy();
+    expect(within(list).getByText("assets/core/b.bin")).toBeTruthy();
+    expect(screen.getByText("2 files")).toBeTruthy();
+    expect(packFiles).toHaveBeenCalledWith(
+      SLUG,
+      CORE,
+      `${CORE}@1.4.0`,
+      "texture=s3tc",
+    );
   });
 
   it("shows the load error", async () => {

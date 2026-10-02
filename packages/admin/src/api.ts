@@ -900,6 +900,25 @@ export interface PackReleasesResponse {
   releases: PackReleaseDto[];
 }
 
+/** One file of a pack variant, from its files index (never where its blob is stored). */
+export interface PackFileDto {
+  path: string;
+  size: number;
+  sha256: string;
+  /** Container layout only. */
+  offset: number | null;
+  blob: { sha256: string; bytes: number; codec: string };
+}
+
+export interface PackFilesResponse {
+  deliverable: string;
+  releaseId: string;
+  variant: string;
+  /** At most 2,000; `total` is how many the index lists. */
+  files: PackFileDto[];
+  total: number;
+}
+
 export interface ReleaseChannelDto {
   channel: string;
   releaseId: string;
@@ -1467,6 +1486,16 @@ export const api = {
   packReleases: (slug: string, deliverable: string) =>
     call<PackReleasesResponse>(
       `${p(slug)}/release/deliverables/${enc(deliverable)}/releases`,
+    ),
+  /** P4-09: one variant's files (`variant` is `""` for an unvaried pack), read from its index. */
+  packFiles: (
+    slug: string,
+    deliverable: string,
+    releaseId: string,
+    variant: string,
+  ) =>
+    call<PackFilesResponse>(
+      `${p(slug)}/release/deliverables/${enc(deliverable)}/releases/${enc(releaseId)}/files?variant=${enc(variant)}`,
     ),
   // ── release channel policy (P2-05 admin routes; worker `release/admin.ts`) ────
   /** Every deliverable's channels: policy, source, and what each resolves to, per platform. */

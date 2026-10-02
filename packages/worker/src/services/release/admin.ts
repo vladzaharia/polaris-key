@@ -15,6 +15,8 @@
  *
  *     GET    …/release/deliverables                     the app and every pack, with latest release
  *     GET    …/release/deliverables/<id>/releases       a pack's releases and who pins each
+ *     GET    …/release/deliverables/<id>/releases/<releaseId>/files?variant=<key>
+ *                                                        one variant's files, from its index
  *
  * All of them are narrative-only (the console's API is not in the wire spec), audited with the
  * session's subject, and invalidate the product's cached resolutions.
@@ -74,6 +76,7 @@ import {
   appPinsByRelease,
   deliverablesView,
   embedsOf,
+  packFilesView,
   packReleasesView,
 } from "./packs/adminView.js";
 import {
@@ -379,7 +382,9 @@ async function handlePackViews(
   if (rest[0] !== "deliverables") return null;
   const isList = rest.length === 1;
   const isReleases = rest.length === 3 && rest[2] === "releases";
-  if (!isList && !isReleases) return null;
+  const isFiles =
+    rest.length === 5 && rest[2] === "releases" && rest[4] === "files";
+  if (!isList && !isReleases && !isFiles) return null;
   if (req.method !== "GET")
     return err(405, ErrorCode.BadRequest, "method not allowed");
   const catalog = hooks.releaseCatalog();
@@ -391,6 +396,15 @@ async function handlePackViews(
     );
   const deliverable = segment(rest[1] as string);
   if (deliverable === null) return adminNotFound();
+  if (isFiles) {
+    const releaseId = segment(rest[3] as string);
+    // The variant key (`""` for an unvaried pack) rides in the query: it is not a path segment.
+    const variant = new URL(req.url).searchParams.get("variant");
+    if (releaseId === null || variant === null) return adminNotFound();
+    const files = await packFilesView(catalog, deliverable, releaseId, variant);
+    if (!files) return adminNotFound();
+    return adminJson({ deliverable, releaseId, variant, ...files });
+  }
   const releases = await packReleasesView(db, slug, catalog, deliverable);
   if (!releases) return adminNotFound();
   return adminJson({ deliverable, releases });

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type {
   DeliverableDto,
+  PackFilesResponse,
   PackReleaseDto,
   PackVariantDto,
   PinnedByDto,
@@ -97,6 +98,8 @@ export function DeliverableDetail({
         <Declaration d={decl} gateKnown={list.data?.gateKnown ?? true} />
       ) : null}
       <ReleasesCard
+        slug={slug}
+        deliverable={id}
         releases={releases.data?.releases ?? []}
         loading={releases.loading && !releases.data}
       />
@@ -168,9 +171,13 @@ function Declaration({
 }
 
 function ReleasesCard({
+  slug,
+  deliverable,
   releases,
   loading,
 }: {
+  slug: string;
+  deliverable: string;
   releases: PackReleaseDto[];
   loading: boolean;
 }): React.ReactElement {
@@ -278,7 +285,9 @@ function ReleasesCard({
           rowKey={(r) => r.releaseId}
           loading={loading}
           expanded={(r) =>
-            open.has(r.releaseId) ? <Variants release={r} /> : null
+            open.has(r.releaseId) ? (
+              <Variants slug={slug} deliverable={deliverable} release={r} />
+            ) : null
           }
           empty={
             <EmptyState
@@ -318,8 +327,12 @@ function PinnedBy({ pins }: { pins: PinnedByDto[] }): React.ReactElement {
 }
 
 function Variants({
+  slug,
+  deliverable,
   release,
 }: {
+  slug: string;
+  deliverable: string;
   release: PackReleaseDto;
 }): React.ReactElement {
   if (!release.variants.length)
@@ -363,11 +376,23 @@ function Variants({
               <th scope="col" className="px-3 py-2 font-medium">
                 Delta menu
               </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                <span className="sr-only">Files</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {release.variants.map((v) => (
-              <VariantRow key={v.variantKey} v={v} />
+              <VariantRow
+                key={v.variantKey}
+                v={v}
+                files={{
+                  slug,
+                  deliverable,
+                  releaseId: release.releaseId,
+                  version: release.version,
+                }}
+              />
             ))}
           </tbody>
         </table>
@@ -376,43 +401,151 @@ function Variants({
   );
 }
 
-function VariantRow({ v }: { v: PackVariantDto }): React.ReactElement {
+interface FilesTarget {
+  slug: string;
+  deliverable: string;
+  releaseId: string;
+  version: string;
+}
+
+function VariantRow({
+  v,
+  files,
+}: {
+  v: PackVariantDto;
+  files: FilesTarget;
+}): React.ReactElement {
+  const [shown, setShown] = React.useState(false);
+  const label = v.variantKey || "default";
   return (
-    <tr className="border-t border-border align-top first:border-0">
-      <td className="px-3 py-2 font-mono text-xs">
-        {v.variantKey || "default"}
-      </td>
-      <td className="px-3 py-2">{v.engine ?? "—"}</td>
-      <td className="px-3 py-2">
-        <span className="inline-flex flex-wrap items-center gap-2">
-          {formatBytes(v.payload.size)}
-          <Sha256 value={v.payload.sha256} />
-        </span>
-      </td>
-      <td className="px-3 py-2">{formatBytes(v.fullBytes)}</td>
-      <td className="px-3 py-2">
-        {v.deltas.length ? (
-          <ul className="space-y-0.5 text-xs">
-            {v.deltas.map((d, i) => (
-              <li key={i}>
-                <span className="font-medium">{d.scope}</span>
-                {d.method ? (
-                  <span className="text-muted-foreground"> {d.method}</span>
-                ) : null}{" "}
-                from{" "}
-                <span className="font-mono">
-                  {d.fromVersion ??
-                    (d.from ? `${d.from.slice(0, 12)}…` : "unknown")}
-                </span>
-                : {formatBytes(d.bytes)}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span className="text-muted-foreground">full only</span>
-        )}
-      </td>
-    </tr>
+    <>
+      <tr className="border-t border-border align-top first:border-0">
+        <td className="px-3 py-2 font-mono text-xs">
+          {v.variantKey || "default"}
+        </td>
+        <td className="px-3 py-2">{v.engine ?? "—"}</td>
+        <td className="px-3 py-2">
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {formatBytes(v.payload.size)}
+            <Sha256 value={v.payload.sha256} />
+          </span>
+        </td>
+        <td className="px-3 py-2">{formatBytes(v.fullBytes)}</td>
+        <td className="px-3 py-2">
+          {v.deltas.length ? (
+            <ul className="space-y-0.5 text-xs">
+              {v.deltas.map((d, i) => (
+                <li key={i}>
+                  <span className="font-medium">{d.scope}</span>
+                  {d.method ? (
+                    <span className="text-muted-foreground"> {d.method}</span>
+                  ) : null}{" "}
+                  from{" "}
+                  <span className="font-mono">
+                    {d.fromVersion ??
+                      (d.from ? `${d.from.slice(0, 12)}…` : "unknown")}
+                  </span>
+                  : {formatBytes(d.bytes)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span className="text-muted-foreground">full only</span>
+          )}
+        </td>
+        <td className="px-3 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-expanded={shown}
+            aria-label={`${shown ? "Hide" : "Show"} files of ${label} in ${files.version}`}
+            onClick={() => setShown((x) => !x)}
+          >
+            {shown ? "Hide files" : "Files"}
+          </Button>
+        </td>
+      </tr>
+      {shown ? (
+        <tr>
+          <td colSpan={6} className="px-3 pb-3 pt-0">
+            <FileList target={files} variantKey={v.variantKey} />
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * One variant's files, fetched on demand: the server decodes one files index per request, so
+ * the page never asks for every variant's index at once.
+ */
+function FileList({
+  target,
+  variantKey,
+}: {
+  target: FilesTarget;
+  variantKey: string;
+}): React.ReactElement {
+  const [state, setState] = React.useState<
+    | { kind: "loading" }
+    | { kind: "error"; message: string }
+    | { kind: "ok"; data: PackFilesResponse }
+  >({ kind: "loading" });
+  React.useEffect(() => {
+    let live = true;
+    api
+      .packFiles(target.slug, target.deliverable, target.releaseId, variantKey)
+      .then((data) => live && setState({ kind: "ok", data }))
+      .catch(
+        (e: unknown) =>
+          live &&
+          setState({
+            kind: "error",
+            message: e instanceof Error ? e.message : "Request failed.",
+          }),
+      );
+    return () => {
+      live = false;
+    };
+  }, [target.slug, target.deliverable, target.releaseId, variantKey]);
+
+  if (state.kind === "loading") return <Skeleton className="h-10 w-full" />;
+  if (state.kind === "error")
+    return (
+      <p className="text-xs text-warning">
+        Couldn’t read this variant’s files index: {state.message}
+      </p>
+    );
+  const { files, total } = state.data;
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">
+        {total === files.length
+          ? `${total} files`
+          : `The first ${files.length} of ${total} files`}
+      </p>
+      <ul
+        className="max-h-80 space-y-0.5 overflow-y-auto text-xs"
+        aria-label={`Files of ${variantKey || "default"}`}
+      >
+        {files.map((f) => (
+          <li
+            key={f.path}
+            className="flex flex-wrap items-center gap-x-3 gap-y-0.5"
+          >
+            <span className="break-all font-mono">{f.path}</span>
+            <span className="text-muted-foreground">{formatBytes(f.size)}</span>
+            {f.blob.codec !== "none" ? (
+              <span className="text-muted-foreground">
+                {f.blob.codec} {formatBytes(f.blob.bytes)}
+              </span>
+            ) : null}
+            <Sha256 value={f.sha256} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

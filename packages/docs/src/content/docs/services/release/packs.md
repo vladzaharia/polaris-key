@@ -127,7 +127,8 @@ Packs appear in the Release section beside the app; there is no separate content
   for each release **which app releases pin it** (an app release that is itself yanked is
   marked). A yanked pack release keeps its pins, so check this column before yanking. Expanding a
   release shows each variant's engine, payload size, full-download bytes and its delta menu (each
-  delta's base version and download bytes), as the signed record gives them.
+  delta's base version and download bytes), as the signed record gives them, and a variant's
+  files on request.
 - **Releases**: an app release's expanded row shows its `contentApi`, the pack release it pins
   for each pack (with `required`, `delivery` and whether the pinned release is yanked) and an
   **Embeds** column, the packs each build ships embedded.
@@ -136,11 +137,12 @@ Everything here is read-only. The console never shows where a pack's objects are
 their sizes and hashes. Its admin routes, all under `/manage/api/products/<slug>/release/` and
 behind the same platform-admin session as the rest of the console:
 
-| Method and path                  | Answers                                                                                                                                            |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET deliverables`               | `deliverables[]` (the app first, then packs by id) with their declaration, `gate` and `latest`, and `gateKnown` (false while Distribution is off). |
-| `GET deliverables/<id>/releases` | A pack's `releases[]`, newest first, each with its `variants[]` (sizes and `deltas[]`), `yank` and `pinnedBy[]`. 404 for the app or an unknown id. |
-| `GET releases`                   | As before, plus each app release's `contentApi` and `pins[]` and each build's `embeds`.                                                            |
+| Method and path                                                  | Answers                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET deliverables`                                               | `deliverables[]` (the app first, then packs by id) with their declaration, `gate` and `latest`, and `gateKnown` (false while Distribution is off).                                                                                                                         |
+| `GET deliverables/<id>/releases`                                 | A pack's `releases[]`, newest first (at most 100), each with its `variants[]` (sizes and `deltas[]`), `yank` and `pinnedBy[]`. 404 for the app or an unknown id.                                                                                                           |
+| `GET deliverables/<id>/releases/<releaseId>/files?variant=<key>` | One variant's files (`variant` empty for an unvaried pack), read from its files index one index per request: `files[]` (path, size, SHA-256, offset, blob size and codec; at most 2,000) and `total`. 404 when the release is not that pack's or its index cannot be read. |
+| `GET releases`                                                   | The app's releases ([Channels](/docs/services/release/channels/)), each with its `contentApi` and `pins[]` and each build's `embeds`.                                                                                                                                      |
 
 ## Reading packs
 

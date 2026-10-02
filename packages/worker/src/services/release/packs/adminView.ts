@@ -232,8 +232,15 @@ function variantView(v: CatalogPackRelease["variants"][number]): VariantView {
   };
 }
 
+/** The most releases one pack page lists (each reads and decodes its stored record). */
+export const MAX_PACK_RELEASES_VIEW = 100;
+
+/** The most files one files view returns; `total` says how many the index lists. */
+export const MAX_PACK_FILES_VIEW = 2000;
+
 /**
- * A pack's releases, newest first, or null when `deliverable` is not a pack this product has.
+ * A pack's releases, newest first (at most `MAX_PACK_RELEASES_VIEW`), or null when `deliverable`
+ * is not a pack this product has.
  * Every release lists the app releases that pin it, a yanked one included (a yank never changes
  * existing pins, CONTENT §6.7).
  */
@@ -263,7 +270,8 @@ export async function packReleasesView(
     ).map((r) => [r.release_id, r.version]),
   );
   const out: PackReleaseView[] = [];
-  for (const r of await catalog.releases(deliverable)) {
+  const all = await catalog.releases(deliverable);
+  for (const r of all.slice(0, MAX_PACK_RELEASES_VIEW)) {
     const pr = await catalog.packRelease(deliverable, r.releaseId);
     const pins = await catalog.pinnedBy(r.releaseId);
     out.push({
@@ -299,6 +307,42 @@ export async function packReleasesView(
           ? (versionOf.get(`${v.variantKey}\n${d.from}`) ?? null)
           : null;
   return out;
+}
+
+/** One file of a pack variant as the console shows it: never its blob-store key. */
+export interface PackFileView {
+  path: string;
+  size: number;
+  sha256: string;
+  offset: number | null;
+  blob: { sha256: string; bytes: number; codec: string };
+}
+
+/**
+ * One variant's files, read from its files index through the hook's `packFiles` (one index per
+ * request, at most `MAX_PUBLISHED_INDEX_BYTES`), or null when the release is not this pack's, or
+ * the variant or a readable index does not exist.
+ */
+export async function packFilesView(
+  catalog: ReleaseCatalog,
+  deliverable: string,
+  releaseId: string,
+  variantKey: string,
+): Promise<{ files: PackFileView[]; total: number } | null> {
+  if (deliverable === APP) return null;
+  if (!(await catalog.packRelease(deliverable, releaseId))) return null;
+  const files = await catalog.packFiles(releaseId, variantKey);
+  if (!files) return null;
+  return {
+    total: files.length,
+    files: files.slice(0, MAX_PACK_FILES_VIEW).map((f) => ({
+      path: f.path,
+      size: f.size,
+      sha256: f.sha256,
+      offset: f.offset,
+      blob: { sha256: f.blob.sha256, bytes: f.blob.bytes, codec: f.blob.codec },
+    })),
+  };
 }
 
 /** One pin of an app release, with the pinned pack release's version and yank. */

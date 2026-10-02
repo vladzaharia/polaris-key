@@ -1537,6 +1537,36 @@ describe("console pack views (P4-09)", () => {
     expect(raw).not.toContain("blobs/sha256/");
   });
 
+  it("a variant's files come from its index, without blob-store keys; unknown ones are 404", async () => {
+    await seedPins();
+    const base = `/deliverables/${encodeURIComponent(CORE)}/releases/${encodeURIComponent(`${CORE}@1.4.0`)}/files`;
+    const body = await getJson(
+      `${base}?variant=${encodeURIComponent("texture=s3tc")}`,
+    );
+    expect(body.total).toBe(2);
+    expect(body.files.map((f: any) => f.path)).toEqual([
+      "assets/core/a.bin",
+      "assets/core/b.bin",
+    ]);
+    expect(body.files[0]).toMatchObject({ size: 100, blob: { bytes: 100 } });
+    expect(JSON.stringify(body)).not.toContain('"key"');
+    expect(
+      (await admin(env, db, "GET", `${base}?variant=texture%3Dnope`)).status,
+    ).toBe(404);
+    expect((await admin(env, db, "GET", base)).status).toBe(404);
+    // A release of another deliverable is not this pack's.
+    expect(
+      (
+        await admin(
+          env,
+          db,
+          "GET",
+          `/deliverables/${encodeURIComponent(L10N)}/releases/${encodeURIComponent(`${CORE}@1.4.0`)}/files?variant=`,
+        )
+      ).status,
+    ).toBe(404);
+  });
+
   it("an app release carries its contentApi, its pins and each build's embeds", async () => {
     const core = await seedPins();
     const body = await getJson("/releases");
