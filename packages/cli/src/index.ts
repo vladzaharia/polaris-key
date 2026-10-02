@@ -30,6 +30,7 @@ import {
 import { CHANNEL_USAGE, movePointer, yankRelease } from "./channels.js";
 import { publishPack } from "./packPublish.js";
 import { CONTENT_STAMP_USAGE, writeContentStampFile } from "./contentStamp.js";
+import { REVOKE_USAGE, revokePackRelease } from "./revoke.js";
 import {
   DISTRIBUTION_CI_USAGE,
   ROLLOUT_COMMANDS,
@@ -101,15 +102,26 @@ export {
   embedsFor,
   markerPins,
   mergePins,
+  parseHoldFlag,
   parsePinFlag,
   readContentStamp,
   readMarker,
+  resolveHolds,
   resolvePins,
   stampText,
   writeContentStampFile,
   type ContentStampOptions,
   type SourcedPin,
 } from "./contentStamp.js";
+export {
+  REVOKE_USAGE,
+  checkReason,
+  requireRevocationsDiscovery,
+  revocationRecord,
+  revokePackRelease,
+  type RevokeOptions,
+  type RevokeResult,
+} from "./revoke.js";
 export {
   checkPckHeader,
   PCK_STRIP_PATHS,
@@ -756,6 +768,10 @@ async function cmdRelease(
     case "content-stamp": {
       if (parsed.bare.has("pin"))
         throw new Error("--pin needs a value: --pin <packId>@<version>.");
+      if (parsed.bare.has("hold"))
+        throw new Error(
+          "--hold needs a value: --hold <packId>@<version>[=<reason>].",
+        );
       // `pkey release content-stamp` (P4-03): the pkey-content/1 stamp a build embeds.
       const outFile = flagString(parsed, "out");
       if (!product || !outFile) throw new Error(CONTENT_STAMP_USAGE);
@@ -766,6 +782,29 @@ async function cmdRelease(
         out: outFile,
         embedded: flagString(parsed, "embedded"),
         pins: parsed.multi["pin"] ?? [],
+        holds: parsed.multi["hold"] ?? [],
+      });
+      return 0;
+    }
+    case "revoke": {
+      // `pkey release revoke` (P4-13): a CI-signed revocation of one pack release.
+      const reason = flagString(parsed, "reason");
+      if (!product || !releaseId || !reason) throw new Error(REVOKE_USAGE);
+      const releaseKeyPem = flagString(parsed, "release-key-file")
+        ? await readFile(
+            path.resolve(cwd, flagString(parsed, "release-key-file")!),
+            "utf8",
+          )
+        : undefined;
+      await revokePackRelease({
+        ...common,
+        cwd,
+        product,
+        target: releaseId,
+        replacement: flagString(parsed, "replacement"),
+        reason,
+        dryRun: flagBool(parsed, "dry-run"),
+        ...(releaseKeyPem !== undefined ? { releaseKeyPem } : {}),
       });
       return 0;
     }
@@ -914,7 +953,9 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey release publish --product slug --version v --dir path --deliverable packId
               [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
   pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
-              [--pin packId@version ...] [--base-url url]
+              [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
+  pkey release revoke packId@version --reason text --product slug [--replacement version]
+              [--release-key-file pem] [--base-url url] [--dry-run]
   pkey release keys generate --kid kid --out file [--force]
   pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
   pkey release unpin --channel c --product slug [--deliverable id]
@@ -948,6 +989,12 @@ project.binary and the class cache, linted, indexed (pkey-files/1), with a full 
 blobs, a gaps object and deltas against the releases --bases keeps (zstd >= 1.5.5 on PATH); it
 signs the pack record, uploads in stage rounds, submits it, and writes a marker beside each
 payload. --out keeps the record and payloads for the next publish's --bases.
+pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one
+release for this app release (written into the stamp's holds; never a pinned pack).
+pkey release revoke signs a kind: revocation release record with the release key and submits it:
+devices stop using that pack release, and --replacement names the release of the same pack they
+take instead. Revocations are permanent; a later revoke of the same release supersedes the
+replacement or reason, never the revoked status.
 --meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
 payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
 read into the descriptor for the storefront feeds. The CI commands

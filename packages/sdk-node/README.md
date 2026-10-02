@@ -387,9 +387,17 @@ as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed
   them.
 - **The clock** is the effective clock, `max(system clock, highWaterMark)`: winding the system
   clock back cannot revive an expired feed.
-- **No v4 answer stops play.** `binary`, `store` and `platform` with `mandatory: true`, and every
-  `blocked {app-floor}`, are prompts the user cannot dismiss: show them as a persistent notice
-  with no dismiss control over an app that keeps running, never as a window that covers it.
+- **Floors never stop play.** `binary`, `store` and `platform` with `mandatory: true`, every
+  `blocked {app-floor}` and every `blocked {content-floor}` are prompts the user cannot dismiss:
+  show them as a persistent notice with no dismiss control over an app that keeps running, never
+  as a window that covers it.
+- **Revoked required content stops the boot.** When CI revokes a pack the build marks
+  `required` and no usable replacement exists, the decision is `blocked {revoked-content}` (or an
+  offer with `mandatory: true` and `contentBlock: "revoked-content"`) and its boot value is
+  `required`. Show the host's own text instead of the generic update copy: "Some of this game's
+  content was withdrawn by its developer and can't be used. Update the app to keep playing."
+  (with the offer's button when the answer is an offer, none for `blocked`). A revoked optional
+  pack is unmounted and play continues; `packs` answers are applied by the boot's fetch.
 - `feed({channel})` returns the verified feed `decide()` would use, without the record;
   `releaseRecord(sha256)` verifies one record by hash (cross-checked and cached when a committed
   feed pins it). Handing off to Velopack, electron-updater or a self-replace is the host's.

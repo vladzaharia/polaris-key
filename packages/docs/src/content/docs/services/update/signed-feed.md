@@ -82,12 +82,30 @@ never sends a raw signal anywhere. The rules are one function, pinned row for ro
 
 ## Floors prompt, they never block
 
-A floor — the channel's `min_supported`, or a release published with
-`pkey release publish --min-supported-seq <n>` — reaches every install of that platform below it
-as an update prompt **the player cannot dismiss**. Play continues: no v4 answer stops an app from
-running, even on an outlet that has nothing newer to offer. When an old build must stop working,
-use License's [compatibility window](/docs/services/license/document/), which the licence document enforces
-on the device.
+A floor — the channel's `min_supported`, a release published with
+`pkey release publish --min-supported-seq <n>`, or a pack floor — reaches every install of that
+platform below it as an update prompt **the player cannot dismiss**. Play continues: no floor
+stops an app from running, even on an outlet that has nothing newer to offer. When an old build
+must stop working, use License's [compatibility window](/docs/services/license/document/), which
+the licence document enforces on the device.
+
+One answer does stop play: a CI-signed revocation of a **required** pack with no usable
+replacement (`pkey release revoke`). The decision then answers `blocked {revoked-content}` (or
+makes an offer mandatory with `contentBlock: revoked-content`), and the boot value is
+`required`: the boot stops at a confirmed `blocked`, with the host's own copy — "Some of this
+game's content was withdrawn by its developer and can't be used. Update the app to keep
+playing." A revoked optional pack is simply unmounted.
+
+| Answer                                                                            | Boot value |
+| --------------------------------------------------------------------------------- | ---------- |
+| `blocked {revoked-content}`, or any answer with `contentBlock: "revoked-content"` | `required` |
+| `packs`                                                                           | `none`     |
+| `blocked {content-floor}`, and any answer with `contentBlock: "content-floor"`    | `optional` |
+| `none`, and a `platform` answer that is not mandatory                             | `none`     |
+| everything else                                                                   | `optional` |
+
+Only the release key held in CI can sign a revocation, so the Worker can never cause this
+answer on its own.
 
 ## Recovering after a signer compromise
 

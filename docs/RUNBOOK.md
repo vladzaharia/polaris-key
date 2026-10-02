@@ -355,6 +355,52 @@ Release records are not affected: they are signed in CI with release keys the Wo
 holds. If a **release** key leaked, rotate it in CI, add the new key to `.pkey/release`
 `releaseKeys`, and ship an app build that pins it.
 
+A stolen release key can also sign revocations (below). Devices that verified a revocation of a
+required pack stay stopped until an app build that pins the rotated key ships; on load, an SDK
+forgets every stored revocation whose key is no longer pinned.
+
+### Revoke a pack
+
+A revocation tells devices to stop using a pack release they already hold (a yank only stops
+new serving). It is a `kind: revocation` release record signed in CI with the release key
+(`PKEY_RELEASE_KEY`), never by the Worker:
+
+```sh
+pkey release revoke <packId>@<version> --reason "<text>" [--replacement <version>] [--dry-run]
+```
+
+- `--reason` is 1–512 bytes, shown to operators (display only).
+- `--replacement` names a newer release of the **same** pack. It must be stored, not yanked, not
+  revoked, and cover the target (every variant key with an equal `requires.engine`; for a
+  compatible pack, every live or pinned level the target admitted). Devices swap it in.
+- `--dry-run` resolves both records through the uploads preflight and self-checks the signed
+  record without submitting.
+- The Worker refuses the command unless discovery advertises `revocations: true`.
+
+On ingest the Worker also writes a `release_yanks` row for the target (reason `revoked`, by
+`ci:<kid>`), re-resolves the product's sets, and lists the revocation in every feed whose
+channel still has a stored app release that pins, holds or embeds the target.
+
+**Revocations are permanent.** There is no un-revoke; a wrong revocation is fixed by publishing a
+newer release. To add or change the replacement later, run `revoke` again for the same target
+with `--replacement`: the newer revocation (newest `issuedAt`) supersedes the stored one, which
+is updated in place. An older submit is refused (`revocation-stale`).
+
+**Effect on devices.** A revoked optional pack is unmounted and play continues. A revoked
+**required** pack with no usable replacement stops the boot (`blocked {revoked-content}`, boot
+`required`) until a replacement or an app update arrives. SDKs older than P4-13 ignore
+revocations and keep mounting the revoked release until the host upgrades its SDK; the yank only
+stops new installs.
+
+### Do not roll back past P4-13 without the yank
+
+A Worker rolled back to a build older than P4-13 does not read `release_revocations` and does not
+list revocations in feeds. The `release_yanks` row that ingest writes is what keeps a revoked
+target out of an old Worker's sets: never delete those rows (reason `revoked`) during a rollback,
+and never roll back the migration. Devices that already learned a revocation keep refusing the
+target. Every SDK release note must state that SDKs older than P4-13 keep using revoked content
+until upgraded.
+
 ## CI gates
 
 `.github/workflows/ci.yml` runs on PRs and `main` pushes:

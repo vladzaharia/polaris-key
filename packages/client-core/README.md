@@ -128,8 +128,29 @@ The signed update path of WIRE-CONTRACT-V4, in the contract's order (plans/P3-01
   selects the key from the pinned release keys only (refusing one whose bytes are also a product
   key), then checks the claims and the cross-check against the pin.
 - `decideUpdate` is synchronous and total; `rolloutBucket` (WebCrypto, so async) is computed
-  first and passed in. `bootDecision` never answers `required`: a mandatory offer and `blocked`
-  are prompts the player cannot dismiss (`isUndismissable`), and play goes on.
+  first and passed in. With an optional `content` input (plans/P4-13.md §2.6) it also composes
+  the device's pack set (`selectPackRows` picks one row per group at the device's level,
+  platform and exact engine), answers `packs`, fills `binary.prestage`, and adds the content
+  blocks. `bootDecision` maps the answers:
+
+  | Answer                                                                            | Boot value |
+  | --------------------------------------------------------------------------------- | ---------- |
+  | `blocked {revoked-content}`, or any answer with `contentBlock: "revoked-content"` | `required` |
+  | `packs`                                                                           | `none`     |
+  | `blocked {content-floor}`, and any answer with `contentBlock: "content-floor"`    | `optional` |
+  | `none`, and a `platform` answer that is not mandatory                             | `none`     |
+  | everything else                                                                   | `optional` |
+
+  Floors never stop play: a mandatory offer and `blocked` are prompts the player cannot dismiss
+  (`isUndismissable`). Only a CI-signed revocation of a **required** pack gives `required`.
+
+- Content in the feed (plans/P4-13.md §2.2–§2.4), each read beside the claims so a malformed
+  member is unusable and never refuses anything: `feedContent` parses `packSets`, `packFloors`
+  and `revocations` (each, or `null`); `holdsOf` reads an app record's or stamp's `holds`
+  (`null` when unusable); `revocationOf` reads a `kind: revocation` body; `verifyRevocation`
+  checks a revocation record against a feed entry with the pinned release keys (steps 12–16);
+  `newerRevocation` picks the winner of two revocations of one target (newest `issuedAt`, then
+  the higher record hash).
 - `runUpdateCheck` takes the two fetches as callbacks and the cache slices, and returns the
   `UpdateCheck` plus the slices to write — the shared core of `update.decide()` in both JS SDKs.
 

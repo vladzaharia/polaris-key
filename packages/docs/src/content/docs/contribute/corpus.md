@@ -197,6 +197,30 @@ decision row and detection row, and fails when a result differs from the row's e
 also runs its own claim checks for all six `typ`s, so every per-claim integer case is proved to
 break its claim alone. A corpus change that edits a row is plan-mode: amend the plan first.
 
+P4-13 (`plans/P4-13.md` §4) appends content sections without moving any version:
+
+- `cases.json` gains three `feedCases` (`feed-valid-content-members-populated`,
+  `feed-valid-content-members-per-platform`, `feed-valid-content-at-cap`, a payload of exactly
+  65,536 bytes), so every existing runner proves a populated feed still verifies; a new
+  `feedContentCases` section (about 32 cases) after `feedCases`, each a signed, valid feed built
+  from one base by one mutation, with `expect.content` (each of `packSets`, `packFloors` and
+  `revocations` parsed, or `null`); and a new `revocationCases` section (about 18 cases) after
+  `releaseRecordCases`, each with an `entry` (the feed entry) and `mode`
+  (`revocation` or `replacement`), expecting the parsed revocation or a failing step (`hash`,
+  `jws`, `claims`, `cross-check`, `revocation`). The superseding cases also name the case they
+  supersede and are checked with `newerRevocation`.
+- `update-matrix.json` gains `packs` in `vocabulary.actions`, `content-floor` and
+  `revoked-content` in `vocabulary.blockedReasons`, and 44 `contentRows` after `rows`: the same
+  shape plus `input.content`, and on a `packs` answer an `expect.packSetId` the runner recomputes
+  as `packSetId(decision.set)`. The self-check that no row answers `required` stays for `rows`;
+  `contentRows` must answer `required` exactly on the revoked-content rows.
+- `content/cases.json` gains four `stampCases` with `expect.holds`. `parseContentStamp`'s result
+  is unchanged; a runner that implements holds runs `holdsOf` on the parsed stamp and compares it
+  **only when `expect.holds` is present**, so the section stays append-only.
+
+A runner that does not yet implement a new section ignores it; the count assertions move
+(`feedCases` 77 → 80, `stampCases` 6 → 10) in every runner in the same change.
+
 ## HTTP transcripts
 
 Registration, activation and sync are conversations, not pure functions, so the corpus cannot
