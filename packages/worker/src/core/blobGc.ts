@@ -71,8 +71,8 @@
  *   mark    `unreferenced_since := now` on objects with no ref and no stamp; `:= NULL` on stamped
  *           objects that have a ref again. A re-promote (`recordObject`) clears it too.
  *   claim   one conditional UPDATE: `gc_claimed_at := token` where still unclaimed, stamped past
- *           the grace period (a delta whose endpoint is gone or unreferenced needs no grace: it is
- *           a disposable cache, E8 §5.7), created before the lock age, and still without a ref.
+ *           the grace period (a delta whose endpoint is gone or unreferenced needs only the minimum
+ *           grace, one day: it is a disposable cache, E8 §5.7), created before the lock age, and still without a ref.
  *           `recordObject` refuses a claimed object, so `promote` answers `changed` and no ref can
  *           be earned while the delete runs. The claim and `recordObject` are each one atomic
  *           statement, and a promote clears the stamp, so the two can never both win.
@@ -766,7 +766,8 @@ export interface SweepCandidate {
   storageKey: string;
   size: number;
   kind: string;
-  /** `grace` (unreferenced past the grace period) or `delta-endpoint` (its base is collectable). */
+  /** `grace` (unreferenced past the grace period) or `delta-endpoint` (its base is collectable, and
+   *  it has been unreferenced for at least `MIN_GC_GRACE_SECONDS`). */
   why: "grace" | "delta-endpoint";
 }
 
@@ -811,10 +812,11 @@ export async function sweepCandidates(
   }>(
     `SELECT storage_key, size, kind FROM blob_objects o
       WHERE o.kind = 'delta' AND o.gc_claimed_at IS NULL AND o.unreferenced_since IS NOT NULL
-        AND o.unreferenced_since > ? AND o.created_at <= ?
+        AND o.unreferenced_since > ? AND o.unreferenced_since <= ? AND o.created_at <= ?
         AND NOT EXISTS (SELECT 1 FROM blob_refs r WHERE r.storage_key = o.storage_key)
       ORDER BY o.unreferenced_since, o.storage_key LIMIT ?`,
     graceCutoff,
+    now - MIN_GC_GRACE_SECONDS,
     lockCutoff,
     limit - out.length,
   );
@@ -911,10 +913,11 @@ export async function sweepObjects(
       `UPDATE blob_objects SET gc_claimed_at = ?
         WHERE storage_key IN (SELECT value FROM json_each(?))
           AND kind = 'delta' AND gc_claimed_at IS NULL AND unreferenced_since IS NOT NULL
-          AND created_at <= ?
+          AND unreferenced_since <= ? AND created_at <= ?
           AND NOT EXISTS (SELECT 1 FROM blob_refs r WHERE r.storage_key = blob_objects.storage_key)`,
       token,
       JSON.stringify(deltas),
+      now - MIN_GC_GRACE_SECONDS,
       lockCutoff,
     );
   const claimed = await db.all<{ storage_key: string; size: number }>(
