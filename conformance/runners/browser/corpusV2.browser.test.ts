@@ -1,10 +1,12 @@
 // The browser conformance runner for corpus v2 / wire contract v4 (P1b-05). It drives the SAME
 // suites as the Node runner (`../node/suites.ts`, through `@polaris-key/client-core`) inside a
 // real browser engine, so WebCrypto's Ed25519 and SHA-256, not Node's, verify every vector in
-// `cases.json`, `gate-matrix.json`, `update-matrix.json` and `outlet-matrix.json`. The files come
-// in through Vite's JSON import rather than node:fs. The content corpus (`content/cases.json`) runs
-// too: its blobs are read raw through Vitest's `readFile` command, and the files index decodes
-// through `@polaris-key/zstd-wasm`'s module compiled by this engine. `fingerprint.json` stays
+// `cases.json`, `gate-matrix.json`, `update-matrix.json`, `outlet-matrix.json` and
+// `plan-matrix.json`. The files come in through Vite's JSON import rather than node:fs. The
+// content corpus (`content/cases.json`) runs too: its blobs are read raw through Vitest's
+// `readFile` command (harness only), and the files index and every apply case decode through
+// `@polaris-key/zstd-wasm`'s browser entry (`loadZstdWasm`), the decoder `@polaris-key/react`
+// ships, compiled by this engine (wasm32: P = 30). `fingerprint.json` stays
 // Node-only (the web has no fingerprint, PARITY §5.4), as do `stage-matrix.json`, `headers.json`
 // and the transcripts.
 //
@@ -14,10 +16,10 @@ import corpus from "../../corpus/v2/cases.json";
 import matrix from "../../corpus/v2/gate-matrix.json";
 import updateMatrix from "../../corpus/v2/update-matrix.json";
 import outletMatrix from "../../corpus/v2/outlet-matrix.json";
+import planMatrix from "../../corpus/v2/plan-matrix.json";
 import content from "../../corpus/v2/content/cases.json";
 import { commands } from "@vitest/browser/context";
-import { createZstdWasm } from "@polaris-key/zstd-wasm/core";
-import zdecUrl from "@polaris-key/zstd-wasm/zdec.wasm?url";
+import { loadZstdWasm } from "@polaris-key/zstd-wasm/browser";
 import {
   defineContentSuites,
   defineCorpusSuites,
@@ -33,6 +35,7 @@ defineCorpusSuites({
   matrix: matrix as unknown as CorpusFiles["matrix"],
   updateMatrix: updateMatrix as unknown as CorpusFiles["updateMatrix"],
   outletMatrix: outletMatrix as unknown as CorpusFiles["outletMatrix"],
+  planMatrix: planMatrix as unknown as CorpusFiles["planMatrix"],
 });
 
 // Every file under content/blobs/: the glob lists them (its URLs are unused: Vite's dev server
@@ -54,10 +57,7 @@ function fromBase64(b64: string): Uint8Array {
   return out;
 }
 
-const zdec = await fetch(zdecUrl);
-const zstd = createZstdWasm(
-  await WebAssembly.compile(await zdec.arrayBuffer()),
-);
+const zstd = await loadZstdWasm();
 
 defineContentSuites({
   content: content as unknown as ContentCorpus,
@@ -73,5 +73,14 @@ defineContentSuites({
         ),
       ),
     ),
-  decode: zstd.decode,
+  backends: [
+    {
+      label: "wasm (browser entry)",
+      zstd: {
+        pointerBits: 30,
+        decode: zstd.decode,
+        decodeWithPrefix: zstd.decodeWithPrefix,
+      },
+    },
+  ],
 });

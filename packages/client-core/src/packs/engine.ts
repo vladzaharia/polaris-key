@@ -384,6 +384,12 @@ export class PackEngine {
     };
   }
 
+  /** The bytes of a pack's running install (its files, its payload), or null. */
+  async open(packId: string): Promise<InstalledPayload | null> {
+    const i = this.running.get(packId);
+    return i ? this.opts.storage.installed(i) : null;
+  }
+
   /** `packSetId` of the running set (plans/P4-01.md §2.9), for `devices/report`'s `content`. */
   packSetId(): Promise<string | null> {
     return packSetId(
