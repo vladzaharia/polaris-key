@@ -137,6 +137,9 @@ public actor PolarisKeyClient {
     public nonisolated let identity: IdentityClient
 
     private let probes: [ProbeDeclaration]
+    /// The capability engine `supports()` reads (P1b-10): the generated table, this build's
+    /// runtime and the SDK's detectors.
+    private nonisolated let capabilityEngine: Capabilities
     private let fingerprintEnabled: Bool
     private let refreshIntervalSeconds: Double?
     private var refreshTask: Task<Void, Never>?
@@ -161,6 +164,7 @@ public actor PolarisKeyClient {
         }
         self.release = ReleaseClient(core: core)
         self.probes = options.probes
+        self.capabilityEngine = Capabilities.sdk()
         self.fingerprintEnabled = options.license.fingerprint
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
@@ -203,6 +207,23 @@ public actor PolarisKeyClient {
     /// What this client currently believes the product runs.
     public func capabilities() async -> ServicesMap {
         await core.services()
+    }
+
+    // ── Typed "unsupported here" (PARITY §2.2, P1b-10) ───────────────────────────────────
+    /// Whether `feature` (a `Feature` constant) works here and now: `.supported`, or
+    /// `.unsupported` with the `reason` (`runtime`, `outlet`, `product`, `dependency`,
+    /// `version`) and a `detail`. Offline and side-effect free: it reads the capability table
+    /// generated from `parity.json`, the services this client believes the product runs
+    /// (discovery > `expectedServices` > the default) and state already held. `async` only
+    /// because the services live on the `CoreContext` actor.
+    public func supports(_ feature: String) async -> Support {
+        capabilityEngine.supports(feature, services: await core.services())
+    }
+
+    /// The feature ids `supports()` answers `.supported` for right now, in registry order. Sent
+    /// as `caps` with every device report.
+    public func caps() async -> [String] {
+        capabilityEngine.caps(services: await core.services())
     }
 
     // ── Sync ─────────────────────────────────────────────────────────────────────────────
@@ -293,10 +314,13 @@ public actor PolarisKeyClient {
             entitlements[key] = entry.value
         }
         let facts = Facts.collect(probes: probes)
+        // `caps` rides EVERY report: the Worker overwrites the stored report each time, so a
+        // report without it would erase the fleet's capability view (P1b-10).
+        let caps = Capabilities.sdk().caps(services: await core.services())
         let body = SnapshotBody(
             os: facts.os, hardware: facts.hardware, runtime: facts.runtime,
             locale: facts.locale, timezone: facts.timezone, probes: facts.probes,
-            config: config, entitlements: entitlements)
+            config: config, entitlements: entitlements, caps: caps)
         return await core.reportSnapshot((try? JSONEncoder().encode(body)) ?? Data("{}".utf8))
     }
 
@@ -469,6 +493,8 @@ private struct SnapshotBody: Encodable {
     let probes: [String: ProbeResult]?
     let config: [String: JSONValue]
     let entitlements: [String: JSONValue]
+    /// The supported feature ids (P1b-10).
+    let caps: [String]
 }
 
 // ── The §7.3 local-only profile ────────────────────────────────────────────────────

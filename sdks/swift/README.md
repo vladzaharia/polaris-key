@@ -272,6 +272,34 @@ floor, `lastVerifiedAt`, each channel's feed `seq` floor) is derived from that r
 content; `core.feedFloors` shows the floors. A record from any other cache
 version is **discarded, never migrated**.
 
+## supports() and capabilities
+
+`client.supports(_:)` says whether a feature works here and now, without a request:
+
+```swift
+switch await client.supports(Feature.updateDriver) {
+case .supported:
+    break  // offer the native updater
+case .unsupported(let why):
+    // why.reason: runtime | outlet | product | dependency | version; why.detail: human text
+    print(why)
+}
+```
+
+The answer comes from the capability table generated from `parity.json` into
+`Constants.generated.swift` (`CAPABILITIES`, `pnpm gen:constants`), so it always matches the
+parity page. In order: an unknown id or a `planned` feature is `version`; an N/A declared for this
+runtime (`macos` or `ios`) is `runtime`; a feature of a service the product does not run (from
+`discover()`, else `expectedServices`, else the default) is `product`; `update.driver` on iOS is
+`outlet` (iOS updates through its outlet, so the SDK offers a store link only). A call into an
+unsupported feature throws `UnsupportedError` (code `unsupported`) with the same `feature`,
+`reason` and `detail`. Both calls are `async` because the services live on the `CoreContext`
+actor; neither touches the network.
+
+`client.caps()` lists the supported feature ids in registry order. Every device report carries it
+as `caps`, so the console can show what the fleet can do. It names SDK features only: no hardware
+value, no installed software.
+
 ## Offline
 
 Three depths, all first-class:
