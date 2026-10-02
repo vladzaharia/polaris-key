@@ -475,7 +475,10 @@ export interface ReleaseCatalog {
   // ── Pack sets (P4-12): what P4-13 composes the feed from, P4-14 checks and P4-15 shows ──
   /** The live contentApi levels of `appDeliverable` on `channel` (every non-yanked app release
    *  the channel serves at or above its floor), ascending. `[]` for an unknown channel. */
-  liveLevels(appDeliverable: string, channel: string): Promise<CatalogLiveLevel[]>;
+  liveLevels(
+    appDeliverable: string,
+    channel: string,
+  ): Promise<CatalogLiveLevel[]>;
   /** The stored resolved sets of `channel`, by selector. */
   packSets(channel: string): Promise<CatalogPackSet[]>;
   /** The pack floors per contentApi line on `channel`, by pack then level. A level-free floor is
