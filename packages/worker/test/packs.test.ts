@@ -13,6 +13,7 @@ import { KvMock } from "./kvMock.js";
 import { NOW } from "./seed.js";
 import { asR2, installDigestStream, R2Mock } from "./r2Mock.js";
 import {
+  admin,
   call,
   CONSOLE,
   envFor,
@@ -1376,5 +1377,326 @@ describe("pack declarations are checked closed (N1, N4)", () => {
       "pack-unreadable",
     ]);
     expect(res.body.message).toContain(SKINS);
+  });
+});
+
+// ── The console's pack views (P4-09) ────────────────────────────────────────
+
+describe("console pack views (P4-09)", () => {
+  async function getJson(path: string): Promise<Record<string, any>> {
+    const res = await admin(env, db, "GET", path);
+    expect(res.status, await res.clone().text()).toBe(200);
+    return (await res.json()) as Record<string, any>;
+  }
+
+  /** core3d 1.0.0 and 1.4.0, app 1.5.0 pinning 1.4.0 (embedded on iOS), then 1.4.0 yanked. */
+  async function seedPins(): Promise<string> {
+    await publishCore("1.0.0", 1);
+    const core = await publishCore("1.4.0", 12);
+    const res = await submitApp(
+      appDescriptor(
+        "1.5.0",
+        15,
+        content([{ pack: CORE, sha256: core, seq: 12, version: "1.4.0" }]),
+        { web: [], ios: [CORE] },
+      ),
+    );
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    await db.run(
+      "INSERT INTO release_yanks (product, release_id, reason, at, by) VALUES (?, ?, 'broken', ?, 'admin:u1')",
+      SLUG,
+      `${CORE}@1.4.0`,
+      NOW,
+    );
+    return core;
+  }
+
+  it("an empty product lists no deliverables", async () => {
+    await db.run("DELETE FROM release_deliverables WHERE product = ?", SLUG);
+    expect(await getJson("/deliverables")).toEqual({
+      deliverables: [],
+      gateKnown: true,
+    });
+  });
+
+  it("app only: the app row has no pack fields and no pin count", async () => {
+    await db.run(
+      "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack'",
+      SLUG,
+    );
+    const body = await getJson("/deliverables");
+    expect(body.deliverables).toEqual([
+      {
+        id: "app",
+        kind: "app",
+        type: null,
+        declared: true,
+        binding: null,
+        required: null,
+        baseline: null,
+        delivery: null,
+        variantKeys: [],
+        assertedEntitlement: null,
+        gate: null,
+        latest: null,
+        releaseCount: 0,
+        pinnedByAppReleases: null,
+      },
+    ]);
+  });
+
+  it("lists the app and every pack with kind, type, binding, required, latest release and pin count", async () => {
+    await seedPins();
+    await setGate(SKINS, "skins");
+    await setGate(CORE, "vip");
+    const body = await getJson("/deliverables");
+    expect(body.gateKnown).toBe(true);
+    const rows = body.deliverables as Record<string, any>[];
+    // The app first, then the packs by id.
+    expect(rows.map((r) => [r.id, r.kind, r.type])).toEqual([
+      ["app", "app", null],
+      [CORE, "pack", "godot.pck"],
+      [L10N, "pack", "files.tree"],
+      [SKINS, "pack", "files.tree"],
+    ]);
+    const core = rows.find((r) => r.id === CORE)!;
+    expect(core).toMatchObject({
+      declared: true,
+      binding: "pinned",
+      required: true,
+      baseline: "embedded",
+      delivery: "essential",
+      variantKeys: expect.arrayContaining(["texture=s3tc", "texture=etc2"]),
+      // The gate an operator set after publishing differs from the latest record's entitlement.
+      gate: "vip",
+      latest: {
+        releaseId: `${CORE}@1.4.0`,
+        version: "1.4.0",
+        seq: 12,
+        yanked: true,
+        entitlement: null,
+      },
+      releaseCount: 2,
+      pinnedByAppReleases: 1,
+    });
+    const skins = rows.find((r) => r.id === SKINS)!;
+    expect(skins).toMatchObject({
+      required: false,
+      delivery: "on-demand",
+      assertedEntitlement: "skins",
+      gate: "skins",
+      latest: null,
+      releaseCount: 0,
+      pinnedByAppReleases: 0,
+    });
+    const app = rows.find((r) => r.id === "app")!;
+    expect(app).toMatchObject({
+      latest: { releaseId: "app@1.5.0", version: "1.5.0" },
+      pinnedByAppReleases: null,
+    });
+  });
+
+  it("a pack's releases list who pins each, a yanked one included, with sizes and the delta menu", async () => {
+    const core = await seedPins();
+    const body = await getJson(
+      `/deliverables/${encodeURIComponent(CORE)}/releases`,
+    );
+    expect(body.deliverable).toBe(CORE);
+    const releases = body.releases as Record<string, any>[];
+    expect(releases.map((r) => r.version)).toEqual(["1.4.0", "1.0.0"]);
+    const [newest, oldest] = releases as [
+      Record<string, any>,
+      Record<string, any>,
+    ];
+    expect(newest.yank).toEqual({ reason: "broken", at: NOW, by: "admin:u1" });
+    expect(newest.recordSha256).toBe(core);
+    expect(newest.pinnedBy).toEqual([
+      {
+        appReleaseId: "app@1.5.0",
+        appVersion: "1.5.0",
+        appYank: null,
+        required: true,
+        delivery: "essential",
+        recordSha256: core,
+      },
+    ]);
+    expect(oldest.yank).toBeNull();
+    expect(oldest.pinnedBy).toEqual([]);
+    expect(newest.variants).toHaveLength(2);
+    for (const v of newest.variants as Record<string, any>[]) {
+      expect(v.engine).toBe("godot-4.7");
+      expect(v.payload.size).toBeGreaterThan(0);
+      expect(v.fullBytes).toBeGreaterThan(0);
+      expect(v.indexBytes).toBeGreaterThan(0);
+      expect(v.deltas.map((d: any) => d.scope)).toEqual(["payload", "files"]);
+      for (const d of v.deltas) expect(d.bytes).toBeGreaterThan(0);
+    }
+    // No blob-store key (a gated pack's `gated/` path) ever reaches the console.
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain('"key"');
+    expect(raw).not.toContain("blobs/sha256/");
+  });
+
+  it("a variant's files come from its index, without blob-store keys; unknown ones are 404", async () => {
+    await seedPins();
+    const base = `/deliverables/${encodeURIComponent(CORE)}/releases/${encodeURIComponent(`${CORE}@1.4.0`)}/files`;
+    const body = await getJson(
+      `${base}?variant=${encodeURIComponent("texture=s3tc")}`,
+    );
+    expect(body.total).toBe(2);
+    expect(body.files.map((f: any) => f.path)).toEqual([
+      "assets/core/a.bin",
+      "assets/core/b.bin",
+    ]);
+    expect(body.files[0]).toMatchObject({ size: 100, blob: { bytes: 100 } });
+    expect(JSON.stringify(body)).not.toContain('"key"');
+    expect(
+      (await admin(env, db, "GET", `${base}?variant=texture%3Dnope`)).status,
+    ).toBe(404);
+    expect((await admin(env, db, "GET", base)).status).toBe(404);
+    // A release of another deliverable is not this pack's.
+    expect(
+      (
+        await admin(
+          env,
+          db,
+          "GET",
+          `/deliverables/${encodeURIComponent(L10N)}/releases/${encodeURIComponent(`${CORE}@1.4.0`)}/files?variant=`,
+        )
+      ).status,
+    ).toBe(404);
+  });
+
+  it("a gated pack's views never name its gated/ objects", async () => {
+    await setGate(SKINS, "skins");
+    const variants = [await treeVariant({}, "skins-gated-view")];
+    await stageOk(SKINS, variants[0]!.objects, true);
+    const jws = await signRecord(
+      packRecord({
+        aud: SLUG,
+        deliverable: SKINS,
+        version: "1.0.0",
+        seq: 1,
+        issuedAt: NOW,
+        type: "files.tree",
+        entitlement: "skins",
+        variants: variants.map((v) => v.variant),
+      }),
+    );
+    expect((await post("submit", { record: jws })).status).toBe(200);
+    const id = encodeURIComponent(SKINS);
+    const releases = await getJson(`/deliverables/${id}/releases`);
+    expect(releases.releases[0].entitlement).toBe("skins");
+    expect(releases.releases[0].variants[0].fullBytes).toBeGreaterThan(0);
+    const files = await getJson(
+      `/deliverables/${id}/releases/${encodeURIComponent(`${SKINS}@1.0.0`)}/files?variant=`,
+    );
+    expect(files.total).toBeGreaterThan(0);
+    for (const body of [releases, files, await getJson("/deliverables")]) {
+      const raw = JSON.stringify(body);
+      expect(raw).not.toContain("gated/");
+      expect(raw).not.toContain('"key"');
+    }
+  });
+
+  it("a 100-release pack page reads in a bounded number of queries", async () => {
+    let core = "";
+    for (let i = 1; i <= 100; i++) core = await publishCore(`1.0.${i}`, i);
+    const res = await submitApp(
+      appDescriptor(
+        "1.5.0",
+        15,
+        content([{ pack: CORE, sha256: core, seq: 100, version: "1.0.100" }]),
+      ),
+    );
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    let queries = 0;
+    const counting = new Proxy(db, {
+      get(target, prop, receiver) {
+        const v = Reflect.get(target, prop, receiver);
+        if (typeof v !== "function") return v;
+        return (...args: unknown[]) => {
+          if (
+            ["all", "first", "run", "runChanges", "batch"].includes(
+              String(prop),
+            )
+          )
+            queries++;
+          return (v as (...a: unknown[]) => unknown).apply(target, args);
+        };
+      },
+    });
+    const out = await admin(
+      env,
+      counting,
+      "GET",
+      `/deliverables/${encodeURIComponent(CORE)}/releases`,
+    );
+    expect(out.status).toBe(200);
+    const body = (await out.json()) as Record<string, any>;
+    expect(body.releases).toHaveLength(100);
+    expect(body.releases[0].pinnedBy.map((p: any) => p.appVersion)).toEqual([
+      "1.5.0",
+    ]);
+    expect(body.releases[1].pinnedBy).toEqual([]);
+    expect(body.releases.every((r: any) => r.variants.length === 2)).toBe(true);
+    // The session, the product and the page itself; never one query per release.
+    expect(queries).toBeLessThanOrEqual(16);
+  }, 60_000);
+
+  it("an app release carries its contentApi, its pins and each build's embeds", async () => {
+    const core = await seedPins();
+    const body = await getJson("/releases");
+    const rel = (body.releases as Record<string, any>[]).find(
+      (r) => r.releaseId === "app@1.5.0",
+    )!;
+    expect(rel.contentApi).toBe(3);
+    expect(rel.pins).toEqual([
+      {
+        pack: CORE,
+        packReleaseId: `${CORE}@1.4.0`,
+        packVersion: "1.4.0",
+        packYank: { reason: "broken", at: NOW, by: "admin:u1" },
+        required: true,
+        delivery: "essential",
+        recordSha256: core,
+      },
+    ]);
+    const embeds = Object.fromEntries(
+      (rel.builds as Record<string, any>[]).map((b) => [b.buildId, b.embeds]),
+    );
+    expect(embeds).toEqual({ ios: [CORE], web: [] });
+  });
+
+  it("refuses the app, an unknown deliverable and a write", async () => {
+    expect(
+      (await admin(env, db, "GET", "/deliverables/app/releases")).status,
+    ).toBe(404);
+    expect(
+      (await admin(env, db, "GET", "/deliverables/nope/releases")).status,
+    ).toBe(404);
+    expect((await admin(env, db, "POST", "/deliverables", {})).status).toBe(
+      405,
+    );
+    expect(
+      (
+        await admin(
+          env,
+          db,
+          "GET",
+          `/deliverables/${encodeURIComponent(CORE)}/releases`,
+        )
+      ).status,
+    ).toBe(200);
+  });
+
+  it("refuses an anonymous caller", async () => {
+    const res = await call(
+      env,
+      db,
+      noFetch,
+      `${CONSOLE}/manage/api/products/${SLUG}/release/deliverables`,
+    );
+    expect(res.status).toBe(401);
   });
 });

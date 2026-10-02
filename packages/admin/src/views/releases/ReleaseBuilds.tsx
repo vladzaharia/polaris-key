@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import type {
+  AppPinDto,
   ArtifactLocationDto,
   ReleaseArtifactDto,
   ReleaseBuildDto,
@@ -17,6 +18,10 @@ import { Badge, Button } from "../../components/ui/index.js";
  * operator's question is "which bytes does this build ship", and a `.sig` per payload doubles
  * the list without answering it. A file no descriptor tied to a build (everything the GitHub
  * sync indexed for a legacy release) is listed on its own, under the builds.
+ *
+ * P4-09: an app release of a product with packs also shows its `contentApi`, the exact pack
+ * release it pins for each pack, and an Embeds column (the packs each build ships embedded).
+ * Nothing pack-related renders for a release that carries none of it.
  */
 export function ReleaseBuilds({
   release,
@@ -31,6 +36,13 @@ export function ReleaseBuilds({
   const byBuild = new Map<string, ReleaseArtifactDto[]>();
   const loose: ReleaseArtifactDto[] = [];
   const known = new Set(release.builds.map((b) => b.buildId));
+  const pins = release.pins ?? [];
+  const hasContent =
+    (release.contentApi !== undefined && release.contentApi !== null) ||
+    pins.length > 0;
+  const showEmbeds =
+    hasContent ||
+    release.builds.some((b) => b.embeds !== undefined && b.embeds !== null);
   for (const a of visible) {
     if (a.buildId && known.has(a.buildId)) {
       byBuild.set(a.buildId, [...(byBuild.get(a.buildId) ?? []), a]);
@@ -41,6 +53,9 @@ export function ReleaseBuilds({
 
   return (
     <div className="space-y-3" aria-label={`Builds of ${release.version}`}>
+      {hasContent ? (
+        <ContentPins contentApi={release.contentApi ?? null} pins={pins} />
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">
           {release.builds.length
@@ -85,6 +100,11 @@ export function ReleaseBuilds({
                 <th scope="col" className="px-3 py-2 font-medium">
                   Payload SHA-256
                 </th>
+                {showEmbeds ? (
+                  <th scope="col" className="px-3 py-2 font-medium">
+                    Embeds
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -96,6 +116,7 @@ export function ReleaseBuilds({
                     (a) => a.buildId === b.buildId && a.role === "payload",
                   )}
                   artifacts={byBuild.get(b.buildId) ?? []}
+                  showEmbeds={showEmbeds}
                 />
               ))}
             </tbody>
@@ -121,10 +142,12 @@ function BuildRows({
   build,
   payload,
   artifacts,
+  showEmbeds,
 }: {
   build: ReleaseBuildDto;
   payload: ReleaseArtifactDto | undefined;
   artifacts: ReleaseArtifactDto[];
+  showEmbeds: boolean;
 }): React.ReactElement {
   return (
     <>
@@ -140,15 +163,86 @@ function BuildRows({
         <td className="px-3 py-2">
           {payload?.sha256 ? <Sha256 value={payload.sha256} /> : "—"}
         </td>
+        {showEmbeds ? (
+          <td className="px-3 py-2">
+            <Embeds embeds={build.embeds ?? null} />
+          </td>
+        ) : null}
       </tr>
       {artifacts.length ? (
         <tr>
-          <td colSpan={7} className="px-3 pb-3 pt-0">
+          <td colSpan={showEmbeds ? 8 : 7} className="px-3 pb-3 pt-0">
             <ArtifactList artifacts={artifacts} />
           </td>
         </tr>
       ) : null}
     </>
+  );
+}
+
+/** An app release's content: its `contentApi` and the pack release pinned for each pack. */
+function ContentPins({
+  contentApi,
+  pins,
+}: {
+  contentApi: number | null;
+  pins: AppPinDto[];
+}): React.ReactElement {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+        Content API {contentApi ?? "—"} · Pins ({pins.length})
+      </p>
+      {pins.length ? (
+        <ul className="space-y-1" aria-label="Pinned packs">
+          {pins.map((p) => (
+            <li
+              key={p.pack}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border/60 px-2 py-1.5 text-xs"
+            >
+              <span className="font-mono">{p.pack}</span>
+              <span aria-hidden>→</span>
+              <span className="font-mono">
+                {p.packVersion ?? p.packReleaseId}
+              </span>
+              {p.packYank ? (
+                <Badge
+                  variant="destructive"
+                  title={`Yanked by ${p.packYank.by}: ${p.packYank.reason}`}
+                >
+                  yanked
+                </Badge>
+              ) : null}
+              <Badge variant={p.required ? "warning" : "outline"}>
+                {p.required ? "required" : "optional"}
+              </Badge>
+              <span className="text-muted-foreground">{p.delivery}</span>
+              <Sha256 value={p.recordSha256} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          This app release pins no pack.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The packs a build embeds; "—" when its descriptor said nothing. */
+function Embeds({ embeds }: { embeds: string[] | null }): React.ReactElement {
+  if (embeds === null) return <span className="text-muted-foreground">—</span>;
+  if (!embeds.length)
+    return <span className="text-muted-foreground">none</span>;
+  return (
+    <span className="flex flex-wrap gap-1">
+      {embeds.map((e) => (
+        <Badge key={e} variant="outline">
+          <span className="font-mono">{e}</span>
+        </Badge>
+      ))}
+    </span>
   );
 }
 
