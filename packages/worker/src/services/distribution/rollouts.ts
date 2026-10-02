@@ -174,15 +174,35 @@ export function newRolloutSalt(): string {
 
 // ── Actors and refusals ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Who applies a verb. `system` is an AUTOMATIC action (P6-03's telemetry auto-halt): it may
+ * only HALT — every other verb, `set` included, is refused (`system_halt_only`) whatever the
+ * caller — and it carries the reason, with the numbers that tripped it, into the one audit row.
+ * The row's `source` becomes the system source (`auto-halt`), `updated_by` `system:<source>`.
+ */
 export type RolloutActor =
   | { kind: "admin"; session: AdminSession }
-  | { kind: "ci"; principal: CiPrincipal };
+  | { kind: "ci"; principal: CiPrincipal }
+  | {
+      kind: "system";
+      source: SystemRolloutSource;
+      label: string;
+      reason: string;
+    };
 
-/** `admin:<sub>` or `ci:<subject>` — what `updated_by` records. */
+/** The automatic actions that may halt a rollout. */
+export type SystemRolloutSource = "auto-halt";
+
+/** `admin:<sub>`, `ci:<subject>` or `system:<source>` — what `updated_by` records. */
 function actorId(actor: RolloutActor): string {
-  return actor.kind === "admin"
-    ? `admin:${actor.session.sub}`
-    : ciActor(actor.principal);
+  if (actor.kind === "admin") return `admin:${actor.session.sub}`;
+  if (actor.kind === "system") return `system:${actor.source}`;
+  return ciActor(actor.principal);
+}
+
+/** What `source` records: the actor kind, or the system source. */
+function actorSource(actor: RolloutActor): string {
+  return actor.kind === "system" ? actor.source : actor.kind;
 }
 
 /** A refusal both the console and CI can render (P2-05's `PolicyRefusal` shape). */
@@ -234,8 +254,8 @@ async function auditChange(
     product,
     id: randomId("aud"),
     at: now,
-    actor_sub: ciActor(actor.principal),
-    actor_name: "CI",
+    actor_sub: actorId(actor),
+    actor_name: actor.kind === "system" ? actor.label : "CI",
     actor_email: null,
     action,
     target_kind: target.kind,
@@ -280,6 +300,16 @@ export async function applyRollout(
 ): Promise<RolloutResult> {
   const { db, product, now } = ctx;
   const { outlet, channel } = input;
+
+  // An automatic action may only halt (THREAT-MODEL.md §9: an automatic action never gains a
+  // verb other than halt). Refused before anything is read, so no system caller can pause,
+  // resume, complete or start a rollout through this function.
+  if (actor.kind === "system" && verb !== "halt")
+    return refuse(
+      409,
+      "system_halt_only",
+      `an automatic action may only halt a rollout, not ${verb} one`,
+    );
 
   if (!CHANNEL.test(channel))
     return refuse(404, "unknown_channel", "no such channel");
@@ -391,7 +421,7 @@ export async function applyRollout(
       releaseId,
       bp,
       newRolloutSalt(),
-      actor.kind,
+      actorSource(actor),
       now,
       now,
       by,
@@ -445,7 +475,7 @@ export async function applyRollout(
     rule.to,
     verb === "complete" ? 1 : 0,
     FULL_ROLLOUT_BP,
-    actor.kind,
+    actorSource(actor),
     now,
     actorId(actor),
     product,
@@ -474,6 +504,7 @@ export async function applyRollout(
     `distribution.rollout.${verb}`,
     targetId,
     `${verbs[verb]} the ${deliverable} rollout of ${existing.release_id} on ${outlet}/${channel}` +
+      (actor.kind === "system" ? `: ${actor.reason}` : "") +
       (verb === "halt" ? ` (${HALT_CAVEAT})` : ""),
   );
   const row = await getRollout(db, product, deliverable, outlet, channel);

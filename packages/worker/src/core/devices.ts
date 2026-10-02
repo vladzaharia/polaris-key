@@ -93,6 +93,7 @@ import {
 } from "../kv.js";
 import { bearer } from "../http.js";
 import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
+import { boundedUpdates, recordUpdateEvents } from "./updateHealth.js";
 
 /**
  * What a valid device token proves, at CORE's level of authority: this token belongs to this
@@ -865,7 +866,8 @@ export async function handleDevices(
 // licensingEdge.test.ts together. The first six keys are the software-facts additions; the
 // next nine are the original v1 set and must stay; `engine` and `outlet` (P1-05) carry a game
 // engine's build facts and the store the build was published through, each with its own bound
-// below.
+// below; `updates` (P6-03) carries update outcome events, validated strictly and counted by
+// `core/updateHealth.ts`.
 export const REPORT_KEYS = [
   "os",
   "hardware",
@@ -884,6 +886,7 @@ export const REPORT_KEYS = [
   "timestamp",
   "engine",
   "outlet",
+  "updates",
 ] as const;
 
 /** The fields `engine` may carry; anything else in it is dropped. All are strings except
@@ -946,6 +949,13 @@ function boundedReport(input: unknown): Record<string, unknown> {
     const outlet = boundedOutlet(out.outlet);
     if (outlet === undefined) delete out.outlet;
     else out.outlet = outlet;
+  }
+  // `updates` (P6-03): at most 16 strictly validated events; malformed entries and unknown
+  // events are dropped, unknown fields stripped (`core/updateHealth.ts` `boundedUpdates`).
+  if (out.updates !== undefined) {
+    const updates = boundedUpdates(out.updates);
+    if (updates === undefined) delete out.updates;
+    else out.updates = updates;
   }
   return out;
 }
@@ -1055,5 +1065,19 @@ export async function handleReport(
     db,
     factsFromReport(product.slug, valid.device.device_id, report, now),
   );
+  // Count the update outcome events (P6-03) after the snapshot is stored, in the update-health
+  // Durable Object — never D1. Deduplicated on (device, eventId), so a retried report counts
+  // nothing twice; fails open, so telemetry can never cost a device its report.
+  const updates = report.updates as
+    | Parameters<typeof recordUpdateEvents>[3]
+    | undefined;
+  if (updates && updates.length > 0)
+    await recordUpdateEvents(
+      env,
+      product.slug,
+      valid.device.device_id,
+      updates,
+      now,
+    );
   return json({ ok: true });
 }

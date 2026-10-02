@@ -15,6 +15,10 @@
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
+ *     /distribution/hooks/sentry                             POST, a Sentry alert, signed with
+ *                                                            the integration's client secret;
+ *                                                            opens halt candidates (P6-03,
+ *                                                            `sentry.ts`)
  *     /distribution/{altstore,altstore-pal}/:channel/source.json   GET, storefront feeds
  *     /distribution/{obtainium,scoop,flathub}/:channel.json         (P2b-05, `feeds/`)
  *     /distribution/fdroid/:channel/repo/:path…              GET, the F-Droid repository relay
@@ -45,6 +49,7 @@ import {
 } from "./rollouts.js";
 import { applyReport } from "./availability.js";
 import { connectorOf } from "./connectors/index.js";
+import { handleSentryWebhook } from "./sentry.js";
 import { handleFeedRoutes } from "./feeds/index.js";
 import { handleDownloadModel } from "./page/index.js";
 
@@ -71,6 +76,8 @@ export async function handleDistributionRoutes(
   // A store webhook. `null` (Core's not-found) for an unknown connector, one without a webhook,
   // or a product the connector is not set up for — the connector decides the last.
   if (rest[0] === "hooks" && rest.length === 2) {
+    // The Sentry alert hook (P6-03) opens halt candidates; it is not a store connector.
+    if (rest[1] === "sentry") return handleSentryWebhook(ctx);
     const webhook = connectorOf(rest[1] as string)?.webhook;
     return webhook ? webhook(ctx) : null;
   }

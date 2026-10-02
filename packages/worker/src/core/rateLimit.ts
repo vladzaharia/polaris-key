@@ -103,6 +103,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // phased release, but not a Background Asset object only that delivery named
   // (THREAT-MODEL.md, the ASC section's Lost follow-ups and Residual).
   ascWebhook: "closed",
+  // P6-03: the Sentry alert webhook, for the same reason — the limiter runs before the
+  // `sentry-integration` credential is opened, and every open is an audit row.
+  sentryWebhook: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
