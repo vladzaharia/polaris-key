@@ -19,7 +19,8 @@ import { createSHA256, type IHasher } from "hash-wasm";
 /** `kid` → raw Ed25519 public key, base64url. */
 type TrustSet = Record<string, string>;
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
-import type { AppContent } from "@polaris-key/protocol/packs";
+import type { AppContent, ContentHold } from "@polaris-key/protocol/packs";
+import type { PackTarget, ReleasePin } from "@polaris-key/protocol/update";
 import {
   PackEngine,
   PackError,
@@ -29,6 +30,10 @@ import {
   parseContentStamp,
   readAll,
   runBootFetch,
+  stampHolds,
+  type RevocationsSnapshot,
+  type UpdateCheckContent,
+  type VerifiedRevocation,
   type BootFetchResult,
   type BootOptions,
   type ObjectResponse,
@@ -158,8 +163,17 @@ export interface BrowserPacksOptions {
    *  `defaultWebMemBudget()` (from `navigator.deviceMemory`). It bounds a delta's `memBytes` and
    *  a one-shot `full` decode (stored frame plus payload). */
   memBudget?: number;
-  /** `opfs` (the default) or `memory`, or a store of the host's own. */
-  storage?: "opfs" | "memory" | { storage: PackStorage; state: PackStateStore };
+  /** `opfs` (the default) or `memory`, or a store of the host's own (with an optional sibling
+   *  `revocations` store, plans/P4-13.md §2.5; without one, revocations last for the page's
+   *  life only). */
+  storage?:
+    | "opfs"
+    | "memory"
+    | {
+        storage: PackStorage;
+        state: PackStateStore;
+        revocations?: PackStateStore;
+      };
   /** An OPFS root other than `navigator.storage.getDirectory()` (tests). */
   opfsRoot?: DirHandle;
   /** The licence's granted flags, or null when the page cannot know them (the server gates). */
@@ -192,11 +206,35 @@ export interface BrowserPacks {
   bootOptions(): Required<
     Pick<BootOptions, "requiredPacks" | "essentialPacks">
   >;
-  bootFetch(
-    opts: Omit<RunBootFetchOptions, "stamp">,
-  ): Promise<{ result: BootFetchResult; installed: string[] }>;
+  bootFetch(opts: Omit<RunBootFetchOptions, "stamp">): Promise<{
+    result: BootFetchResult;
+    installed: string[];
+    background?: PackTarget[];
+  }>;
+  /** Install exact releases: a `packs` decision's `install` (plans/P4-13.md §2.6). */
+  ensureReleases(targets: readonly PackTarget[]): Promise<PackInstall[]>;
+  /** The stored and verified revocations and `relearn` (plans/P4-13.md §2.5). */
+  revocations(): Promise<RevocationsSnapshot>;
+  /** The update check's content input, or null without a content stamp. */
+  contentInput(): Promise<UpdateCheckContent | null>;
+  /** Keep the revocations an update check verified. */
+  recordRevocations(r: {
+    learned: { revocation: VerifiedRevocation; jws: string }[];
+    relearnCleared: string[];
+  }): Promise<void>;
   /** Ask the browser to keep the store through storage pressure (after engagement). */
   requestPersistence(): Promise<boolean>;
+}
+
+/** The stamp's holds (`holdsOf`, plans/P4-13.md §2.4): from its bytes or text, or the parsed
+ *  object's own `holds`. */
+function holdsOfStamp(
+  input: BrowserPacksOptions["contentStamp"],
+): ContentHold[] | null {
+  if (input === null) return [];
+  if (typeof input === "string" || input instanceof Uint8Array)
+    return stampHolds(input);
+  return stampHolds(JSON.stringify(input));
 }
 
 function stampOf(
@@ -258,9 +296,17 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
   const start = (): Promise<PackEngine> => {
     if (engine) return Promise.resolve(engine);
     starting ??= (async () => {
-      const store =
+      const store: {
+        storage: PackStorage;
+        state: PackStateStore;
+        revocations?: PackStateStore;
+      } =
         opts.storage === "memory"
-          ? { storage: memoryPackStorage(), state: memoryPackStateStore() }
+          ? {
+              storage: memoryPackStorage(),
+              state: memoryPackStateStore(),
+              revocations: memoryPackStateStore(),
+            }
           : typeof opts.storage === "object"
             ? opts.storage
             : await opfsPackStore({
@@ -288,6 +334,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
         oneShotBudget: budget,
         storage: store.storage,
         state: store.state,
+        ...(store.revocations ? { revocations: store.revocations } : {}),
         fetchRecord: async (sha) => {
           const t = template("release", "record");
           if (t === null)
@@ -393,6 +440,29 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
     recoverState: async () => (await start()).recoverState(),
     bootOptions: () => bootPackOptions(stamp),
     bootFetch: async (o) => runBootFetch(await start(), { ...o, stamp }),
+    ensureReleases: async (targets) => (await start()).ensureReleases(targets),
+    revocations: async () => (await start()).revocations(),
+    async contentInput() {
+      if (stamp === null) return null;
+      const e = await start();
+      const active: Record<string, ReleasePin> = {};
+      for (const [id, i] of Object.entries(e.state().running))
+        active[id] = { sha256: i.recordSha256, seq: i.seq, version: i.version };
+      const revs = e.revocations();
+      return {
+        stamp,
+        holds: holdsOfStamp(opts.contentStamp),
+        active,
+        engine: null,
+        axes: opts.axes ?? {},
+        revoked: revs.verified,
+        relearn: revs.relearn,
+      };
+    },
+    recordRevocations: async (r) =>
+      (await start()).recordRevocations(r.learned, {
+        relearnCleared: r.relearnCleared,
+      }),
     async requestPersistence() {
       const nav = (
         globalThis as {

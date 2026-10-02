@@ -22,12 +22,17 @@ import { join } from "node:path";
 import type { TrustSet } from "@polaris-key/jws";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { AppContent } from "@polaris-key/protocol/packs";
+import type { PackTarget, ReleasePin } from "@polaris-key/protocol/update";
 import {
   PackEngine,
   PackError,
   bootPackOptions,
   parseContentStamp,
   runBootFetch,
+  stampHolds,
+  type RevocationsSnapshot,
+  type UpdateCheckContent,
+  type VerifiedRevocation,
   type BootFetchResult,
   type BootOptions,
   type RunBootFetchOptions,
@@ -258,6 +263,55 @@ export class PacksClient {
     return runBootFetch(engine, { ...opts, stamp: await this.readStamp() });
   }
 
+  /**
+   * Install exact releases: a `packs` decision's `install` list (plans/P4-13.md §2.6). Raises
+   * `pack-revoked` for a release a verified revocation names.
+   */
+  async ensureReleases(targets: readonly PackTarget[]): Promise<PackInstall[]> {
+    this.w.ctx.requireService("release", Feature.packsState);
+    return (await this.start()).ensureReleases(targets);
+  }
+
+  /** The stored and this process's verified revocations, and `relearn` (plans/P4-13.md §2.5). */
+  async revocations(): Promise<RevocationsSnapshot> {
+    return (await this.start()).revocations();
+  }
+
+  /**
+   * The update check's content input (plans/P4-13.md §2.5, §2.6): the stamp and its holds, the
+   * running releases (embedded baselines included), the variant preferences and the stored
+   * revocations. Null when the host configured no content stamp.
+   */
+  async contentInput(): Promise<UpdateCheckContent | null> {
+    if (!this.configured) return null;
+    const engine = await this.start();
+    const stamp = await this.readStamp();
+    if (stamp === null) return null;
+    const active: Record<string, ReleasePin> = {};
+    for (const [id, i] of Object.entries(engine.state().running))
+      active[id] = { sha256: i.recordSha256, seq: i.seq, version: i.version };
+    const revs = engine.revocations();
+    return {
+      stamp,
+      holds: stampHolds(await this.stampBytes()),
+      active,
+      engine: this.opts.engine ?? null,
+      axes: this.opts.axes ?? {},
+      revoked: revs.verified,
+      relearn: revs.relearn,
+    };
+  }
+
+  /** Keep the revocations an update check verified (the engine's `recordRevocations`). */
+  async recordRevocations(r: {
+    learned: { revocation: VerifiedRevocation; jws: string }[];
+    relearnCleared: string[];
+  }): Promise<void> {
+    await (
+      await this.start()
+    ).recordRevocations(r.learned, { relearnCleared: r.relearnCleared });
+  }
+
   /** Which decoder serves plain and `--patch-from` frames (after the start-up probe). */
   async zstd(): Promise<NodeZstdInfo> {
     await this.start();
@@ -303,6 +357,7 @@ export class PacksClient {
       memBudget: this.opts.memBudget ?? DEFAULT_MEM_BUDGET,
       storage,
       state: storage.stateStore(),
+      revocations: storage.revocationStore(),
       fetchRecord: (sha256) => this.fetchRecord(sha256),
       fetchObject: (req) => this.fetchObject(req),
       entitlements: () => this.entitlements(),
@@ -327,18 +382,22 @@ export class PacksClient {
     return engine;
   }
 
-  private async readStamp(): Promise<AppContent | null> {
-    const src = this.opts.contentStamp;
-    if (src === undefined) return null;
-    let bytes: Uint8Array;
+  private async stampBytes(): Promise<Uint8Array> {
+    const src = this.opts.contentStamp!;
     try {
-      bytes = typeof src === "string" ? await readFile(src) : src;
+      return typeof src === "string" ? await readFile(src) : src;
     } catch {
       throw new PackError(
         ErrorCode.contentStampInvalid,
         "The content stamp cannot be read.",
       );
     }
+  }
+
+  private async readStamp(): Promise<AppContent | null> {
+    const src = this.opts.contentStamp;
+    if (src === undefined) return null;
+    const bytes = await this.stampBytes();
     const r = parseContentStamp(bytes);
     if (!r.ok)
       throw new PackError(

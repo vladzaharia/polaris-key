@@ -62,6 +62,8 @@ import {
   type HostOutlet,
   type OutletStamp,
   type ResolvedOutlet,
+  type UpdateCheckContent,
+  type VerifiedRevocation,
 } from "@polaris-key/client-core";
 import type { CapabilityContext } from "@polaris-key/client-core";
 import type {
@@ -171,6 +173,18 @@ export interface BrowserUpdateConfig {
   installed?: Partial<InstalledBuild>;
   /** What this host can do. Default `["download"]`. */
   methods?: BinaryMethod[];
+  /**
+   * The page's pack facet (`createBrowserPacks`). When given, `decideUpdate()` runs the content
+   * decision (plans/P4-13.md §2.5, §2.6) over its content stamp, running set and stored
+   * revocations, and hands the revocations it verified back to it.
+   */
+  packs?: {
+    contentInput(): Promise<UpdateCheckContent | null>;
+    recordRevocations(r: {
+      learned: { revocation: VerifiedRevocation; jws: string }[];
+      relearnCleared: string[];
+    }): Promise<void>;
+  };
 }
 
 function rawKeyBytes(key: string): string | null {
@@ -895,6 +909,11 @@ export class BrowserAdapter implements PolarisAdapter {
             releaseRecords: cache?.releaseRecords ?? {},
           }
         : this.memorySlices;
+      // plans/P4-13.md §2.5: a page with a pack facet runs the content decision; one whose facet
+      // cannot start (no OPFS, an invalid stamp) decides without it, as before P4-13.
+      const content = u.packs
+        ? await u.packs.contentInput().catch(() => null)
+        : null;
       const result = await decideBrowserUpdate({
         ...opts,
         baseUrl: this.base,
@@ -920,8 +939,11 @@ export class BrowserAdapter implements PolarisAdapter {
         outlet: this.updateOutlet,
         methods: u.methods ?? ["download"],
         cache: slices,
+        ...(content ? { content } : {}),
       });
       await this.writeSlices(result.cache);
+      if (result.revocations && u.packs)
+        await u.packs.recordRevocations(result.revocations);
       this.patch((prev) => ({
         busy: withBusy(prev.busy, "update", false),
         error: withError(prev.error, "update", null),

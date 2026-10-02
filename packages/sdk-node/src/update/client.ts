@@ -795,7 +795,11 @@ export class UpdateClient {
     const f = this.ctx.fetcher();
     const installed = this.installed();
     const ep = await this.endpoints({ feed: true, record: true });
+    // plans/P4-13.md §2.5: a host with a content stamp runs the content decision. A pack facet
+    // that cannot start (an unreadable stamp) decides without it, as before P4-13.
+    const content = await this.packs.contentInput().catch(() => null);
     const r = await runUpdateCheck({
+      ...(content ? { content } : {}),
       channel: opts.channel ?? this.ctx.channel,
       expectedAud: this.ctx.product,
       trust: trust.effective,
@@ -817,6 +821,7 @@ export class UpdateClient {
       feeds: r.cache.feeds,
       releaseRecords: r.cache.releaseRecords,
     });
+    if (r.revocations) await this.packs.recordRevocations(r.revocations);
     return r.check;
   }
 

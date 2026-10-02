@@ -6,7 +6,7 @@
 // missing. A browser session cannot post `devices/report` (the registered web N/A), so the
 // packSetId it would report is checked through `packSetId()`.
 //
-// @pkey-feature packs.state packs.handlers packs.record
+// @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -16,6 +16,7 @@ import {
   bootTransition,
   initialBootState,
   packSetId,
+  verifyRevocation,
   type BootEvent,
   type ZstdPort,
 } from "@polaris-key/client-core";
@@ -44,6 +45,7 @@ import {
   stampFor,
   treePack,
   type TreePack,
+  revocationFor,
 } from "./packFixtures.js";
 
 const BASE = "https://k.test";
@@ -560,5 +562,44 @@ describe("an OPFS entry the page cannot read", () => {
     expect((await c.p.state()).active["djdl.l10n"]!.location).toBe(i!.location);
     await c.p.ensure(["djdl.l10n"]);
     expect(c.calls.filter((x) => x.url.includes("/blobs/"))).toEqual([]);
+  });
+});
+
+describe("createBrowserPacks and revocations (plans/P4-13.md §2.5)", () => {
+  it("gives the update check its content input and keeps the revocations it verified", async () => {
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    const { p } = packs(byteServer(v1), [v1]);
+    await p.ensure(["djdl.l10n"]);
+    const before = await p.contentInput();
+    expect(before?.holds).toEqual([]);
+    expect(before?.active["djdl.l10n"]?.sha256).toBe(v1.recordSha256);
+    expect(before?.revoked).toEqual({});
+    const rev = await revocationFor(v1);
+    const v = await verifyRevocation(rev.jws, {
+      releaseKeys: RELEASE_KEYS,
+      productTrust: PRODUCT_TRUST,
+      expectedAud: PRODUCT,
+      entry: rev.entry,
+    });
+    if (!v.ok) throw new Error("fixture");
+    await p.recordRevocations({
+      learned: [{ revocation: v.revocation, jws: rev.jws }],
+      relearnCleared: [],
+    });
+    expect(Object.keys((await p.revocations()).revoked)).toEqual([
+      v1.recordSha256,
+    ]);
+    expect((await p.state()).running["djdl.l10n"]).toBeUndefined();
+    await expect(p.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-revoked",
+    });
+    expect(Object.keys((await p.contentInput())!.revoked)).toEqual([
+      v1.recordSha256,
+    ]);
   });
 });
