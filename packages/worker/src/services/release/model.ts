@@ -621,14 +621,33 @@ export async function yankRelease(
   await db.run(s.sql, ...s.params);
 }
 
+/** Lift a yank, never for a revoked release: a revocation is permanent, and its ingest yanked
+ *  the target (plans/P4-13.md §6.2), so the guard keeps that yank even under a race. */
 export function stmtUnyankRelease(
   product: string,
   releaseId: string,
 ): DbStatement {
   return {
-    sql: "DELETE FROM release_yanks WHERE product = ? AND release_id = ?",
-    params: [product, releaseId],
+    sql: `DELETE FROM release_yanks WHERE product = ? AND release_id = ?
+            AND NOT EXISTS (SELECT 1 FROM release_revocations
+                             WHERE product = ? AND target_release_id = ?)`,
+    params: [product, releaseId, product, releaseId],
   };
+}
+
+/** True when a CI-signed revocation names this release (plans/P4-13.md §6.2). */
+export async function isRevoked(
+  db: Db,
+  product: string,
+  releaseId: string,
+): Promise<boolean> {
+  return (
+    (await db.first<{ one: number }>(
+      "SELECT 1 AS one FROM release_revocations WHERE product = ? AND target_release_id = ?",
+      product,
+      releaseId,
+    )) !== null
+  );
 }
 
 /** Lift a yank. True when the release was yanked. */

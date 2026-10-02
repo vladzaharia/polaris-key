@@ -30,6 +30,7 @@ import {
   parseContentStamp,
   readAll,
   runBootFetch,
+  holdsOf,
   stampHolds,
   type RevocationsSnapshot,
   type UpdateCheckContent,
@@ -226,15 +227,16 @@ export interface BrowserPacks {
   requestPersistence(): Promise<boolean>;
 }
 
-/** The stamp's holds (`holdsOf`, plans/P4-13.md §2.4): from its bytes or text, or the parsed
- *  object's own `holds`. */
+/** The stamp's holds (`holdsOf`, plans/P4-13.md §2.4): from the original bytes or text, with
+ *  their own non-wire pointers (never re-serialised JSON, which would hide a `2.0` token); a
+ *  host that passed the parsed object has no tokens left, so its `holds` are read as given. */
 function holdsOfStamp(
   input: BrowserPacksOptions["contentStamp"],
 ): ContentHold[] | null {
   if (input === null) return [];
   if (typeof input === "string" || input instanceof Uint8Array)
     return stampHolds(input);
-  return stampHolds(JSON.stringify(input));
+  return holdsOf(input, undefined, "");
 }
 
 function stampOf(

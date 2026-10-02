@@ -1829,10 +1829,18 @@ Residuals, stated rather than defended:
 - **SDK downgrade.** A host that downgrades its SDK below P4-13 ignores `revocations.json` and
   may mount a revoked release again.
 - **A torn `revocations.json`** is quarantined and replaced by a file whose `relearn` lists the
-  stamp's pinned and embedded packs, so offline their embedded baselines are refused until a
-  fresh feed with a usable `revocations` member re-teaches the device.
+  stamp's pinned and embedded packs, so their embedded baselines are refused at every boot
+  (online the pack is fetched instead) until a fresh feed with a usable `revocations` member
+  re-teaches the device. `relearn` clears once every revocation of the pack whose target the
+  device holds, pins or would take from the feed is learned; an entry for an older release the
+  device does not hold never keeps it set.
+- **`relearn` and the size fallback's step 3.** When a feed is over the cap, step 3 keeps only
+  revocations whose target a _live_ app release pins or holds, or a row lists. A device on a
+  non-live app release can then clear `relearn` from a feed that omitted the revocation of its
+  own pinned target, and mount that embedded baseline until a feed lists the revocation again.
 - **An unreadable `revocations.json`** with `revocationsStored` set in `state.json` refuses those
-  embedded baselines offline; one **without** the flag (or with an unreadable `state.json`, so
+  embedded baselines at every boot (a torn `state.json` that lost the flag gets it back when a
+  readable `revocations.json` with entries is loaded); one **without** the flag (or with an unreadable `state.json`, so
   the flag cannot be read) refuses nothing offline and can mount a revoked baseline.
 - **An unreadable `state.json` with no network** can mount a revoked embedded baseline that the
   device's `revocations.json` does not list; within a process, a baseline a feed verified in

@@ -899,7 +899,9 @@ export class PackEngine {
 
   /** The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in
    *  `relearn`; with an unreadable `revocations.json` and `revocationsStored` set, every pack
-   *  the stamp pins or the host embeds. A product with no revocations refuses nothing. */
+   *  the stamp pins or the host embeds. These apply at every boot and every mount, online or
+   *  offline (not only offline), until a fresh feed clears `relearn` (or `recoverState()`); online, the pack is
+   *  fetched instead. A product with no revocations refuses nothing. */
   private embeddedRefused(e: PackInstall): boolean {
     if (this.isRevoked(e.recordSha256)) return true;
     if (this.revDoc.relearn.includes(e.packId)) return true;
@@ -958,6 +960,16 @@ export class PackEngine {
     this.revDoc = r.doc;
     for (const [t, v] of r.verified) this.revVerified.set(t, v);
     if (r.changed && !stateUnreadable) await this.writeRevocations();
+    else if (
+      !stateUnreadable &&
+      !isEmptyRevocations(this.revDoc) &&
+      this.doc?.revocationsStored !== true
+    ) {
+      // A torn (or replaced) `state.json` lost the flag while the sibling file kept its
+      // entries: set it again, so an unreadable `revocations.json` later still refuses.
+      this.doc = { ...this.requireLoaded(), revocationsStored: true };
+      await this.persist();
+    }
   }
 
   /** Persist the revocations: `revocationsStored` in `state.json` first, then the sibling file.
@@ -1320,6 +1332,37 @@ export class PackEngine {
   }
 
   private async ensureOne(
+    packId: string,
+    target?: { sha256: string; seq: number; version: string },
+  ): Promise<PackInstall> {
+    try {
+      return await this.ensureOneInner(packId, target);
+    } catch (e) {
+      // plans/P4-13.md §2.5: when the only copy is an embedded baseline refused for `relearn`
+      // (or for `revocationsStored` with an unreadable `revocations.json`) and the fetch cannot
+      // proceed, the typed refusal is `pack-revoked` with detail `relearn`.
+      const want =
+        target?.sha256 ??
+        this.opts.stamp?.pins.find((p) => p.pack === packId)?.release.sha256;
+      const emb = this.embedded.get(packId);
+      if (
+        e instanceof PackError &&
+        e.code !== "pack-revoked" &&
+        emb !== undefined &&
+        emb.recordSha256 === want &&
+        !this.isRevoked(emb.recordSha256) &&
+        this.embeddedRefused(emb)
+      )
+        throw new PackError(
+          "pack-revoked",
+          `${packId}'s embedded copy is refused until a fresh feed re-teaches its revocations, and it cannot be fetched (${e.code}).`,
+          { packId, detail: "relearn" },
+        );
+      throw e;
+    }
+  }
+
+  private async ensureOneInner(
     packId: string,
     target?: { sha256: string; seq: number; version: string },
   ): Promise<PackInstall> {

@@ -410,6 +410,55 @@ describe("PackEngine and revocations (plans/P4-13.md §2.5)", () => {
     expect(b.state().running["djdl.l10n"]?.embedded).toBe(true);
   });
 
+  it("offline, a baseline refused for relearn raises pack-revoked with detail relearn", async () => {
+    const { v1 } = await l10n();
+    const storage = memoryPackStorage();
+    storage.store.set("embedded/djdl.l10n", {
+      layout: "tree",
+      tree: new Map(Object.entries(v1.files)),
+      index: null,
+    });
+    const e = engine({
+      server: byteServer(), // offline: no record can be fetched
+      storage,
+      revocations: memoryPackStateStore("{torn"),
+      stamp: stampFor(v1),
+    });
+    await e.load([
+      {
+        marker: markerFor(v1),
+        payload: { kind: "tree", treeDigest: v1.treeDigest },
+        location: "embedded/djdl.l10n",
+      },
+    ]);
+    const err = await e.ensure(["djdl.l10n"]).catch((x: unknown) => x);
+    expect(err).toBeInstanceOf(PackError);
+    expect((err as PackError).code).toBe("pack-revoked");
+    expect((err as PackError).detail).toBe("relearn");
+    expect((err as PackError).packId).toBe("djdl.l10n");
+  });
+
+  it("restores revocationsStored when state.json lost it but revocations.json has entries", async () => {
+    const { v1 } = await l10n();
+    const r = await revocationFor(v1);
+    const doc = storeRevocation(
+      emptyRevocations(),
+      await verified(r),
+      r.jws,
+    ).doc;
+    const state = memoryPackStateStore("{torn state");
+    const e = engine({
+      server: byteServer(v1),
+      state,
+      revocations: memoryPackStateStore(serializeRevocations(doc)),
+      stamp: stampFor(v1),
+    });
+    await e.load();
+    expect(e.state().stateIssue).toBe("torn");
+    expect(JSON.parse(state.text!).revocationsStored).toBe(true);
+    expect(e.isRevoked(v1.recordSha256)).toBe(true);
+  });
+
   it("raises a typed PackError for a revoked pin", async () => {
     const { v1 } = await l10n();
     const e = engine({ server: byteServer(v1), stamp: stampFor(v1) });
@@ -424,7 +473,9 @@ describe("PackEngine and revocations (plans/P4-13.md §2.5)", () => {
 
 describe("runUpdateCheck content steps 10–14 (plans/P4-13.md §2.5)", () => {
   const NOW = 1_759_400_100;
-  async function setup(o: { replacement?: boolean } = {}) {
+  async function setup(
+    o: { replacement?: boolean; noPackSets?: boolean } = {},
+  ) {
     const { v1, v2 } = await l10n();
     const appRecord = {
       schemaVersion: 1,
@@ -480,21 +531,29 @@ describe("runUpdateCheck content steps 10–14 (plans/P4-13.md §2.5)", () => {
           },
         ],
       },
-      packSets: {
-        releases: {
-          [v1.recordSha256]: { pack: "djdl.l10n", version: "1.0.0", seq: 1 },
-        },
-        sets: { [setId]: [v1.recordSha256] },
-        rows: [
-          {
-            contentApi: 1,
-            platform: "macos",
-            engine: "",
-            variant: {},
-            set: setId,
-          },
-        ],
-      },
+      ...(o.noPackSets
+        ? {}
+        : {
+            packSets: {
+              releases: {
+                [v1.recordSha256]: {
+                  pack: "djdl.l10n",
+                  version: "1.0.0",
+                  seq: 1,
+                },
+              },
+              sets: { [setId]: [v1.recordSha256] },
+              rows: [
+                {
+                  contentApi: 1,
+                  platform: "macos",
+                  engine: "",
+                  variant: {},
+                  set: setId,
+                },
+              ],
+            },
+          }),
       revocations: [rev.entry],
     };
     const feedJws = await signFeedDoc(feed);
@@ -567,6 +626,40 @@ describe("runUpdateCheck content steps 10–14 (plans/P4-13.md §2.5)", () => {
       reason: "revoked-content",
     });
     expect(r.boot).toBe("required");
+  });
+
+  it("clears relearn when the feed lists only the revocation of an older release the device does not hold", async () => {
+    const { v2, rev, opts, fetched } = await setup({ noPackSets: true });
+    const pin2 = { sha256: v2.recordSha256, seq: 2, version: "1.1.0" };
+    const r = await runUpdateCheck({
+      ...opts,
+      content: {
+        ...opts.content,
+        stamp: {
+          ...opts.content.stamp,
+          pins: [{ pack: "djdl.l10n", release: pin2 }],
+        },
+        active: { "djdl.l10n": pin2 },
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    // v1 is outside H: its revocation is not fetched, and it keeps nothing in relearn.
+    expect(fetched).not.toContain(rev.record);
+    expect(r.revocations?.learned).toEqual([]);
+    expect(r.revocations?.relearnCleared).toEqual(["djdl.l10n"]);
+  });
+
+  it("keeps relearn while a considered revocation cannot be fetched", async () => {
+    const { rev, opts } = await setup();
+    const r = await runUpdateCheck({
+      ...opts,
+      fetchRecord: async (h: string) =>
+        h === rev.record
+          ? { ok: false as const, code: "network-error" }
+          : opts.fetchRecord(h),
+    });
+    expect(r.ok && r.revocations?.relearnCleared).toEqual([]);
   });
 
   it("installs a fetched, verified, usable replacement instead", async () => {

@@ -464,11 +464,17 @@ async function contentSteps(
   // Step 11.
   const stored = new Map<string, VerifiedRevocation>(Object.entries(c.revoked));
   const learned: { revocation: VerifiedRevocation; jws: string }[] = [];
+  // The feed entries step 11 considers (target in H) that are now known: already stored with
+  // that record, or fetched and verified in this check (a newer stored one may still win).
+  const known = new Set<string>();
   let fetches = 0;
   for (const entry of fc.revocations ?? []) {
     if (!H.has(entry.target)) continue;
     const have = stored.get(entry.target);
-    if (have && have.record === entry.record) continue;
+    if (have && have.record === entry.record) {
+      known.add(entry.record);
+      continue;
+    }
     if (fetches >= MAX_FEED_REVOCATIONS) break;
     fetches++;
     const got = await safeFetch(
@@ -489,6 +495,7 @@ async function contentSteps(
       errors.push({ code: RECORD_REJECTED, detail: r.step });
       continue;
     }
+    known.add(entry.record);
     if (!have || newerRevocation(r.revocation, have) === r.revocation) {
       stored.set(entry.target, r.revocation);
       learned.push({ revocation: r.revocation, jws: got.body });
@@ -551,13 +558,15 @@ async function contentSteps(
             : await rolloutBucket(gate.rollout.salt, opts.installId);
 
   // `relearn` clears only on a fresh, network-verified feed with a usable `revocations` member,
-  // once every revocation it lists for that pack is learned.
+  // once step 11 has fetched, verified and stored every revocation it considers for that pack
+  // (the entries whose target is in H). Entries for releases outside H (an older release the
+  // device does not hold) are not considered and never keep a pack in `relearn`.
   const relearnCleared: string[] = [];
   if (feedSource === "network" && fc.revocations !== null)
     for (const p of c.relearn ?? []) {
       const all = fc.revocations
-        .filter((e) => e.pack === p)
-        .every((e) => stored.get(e.target)?.record === e.record);
+        .filter((e) => e.pack === p && H.has(e.target))
+        .every((e) => known.has(e.record));
       if (all) relearnCleared.push(p);
     }
 

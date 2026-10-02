@@ -285,3 +285,22 @@ recorded deviation or a precision the plan left open; none changes a decision.
   planned for P4-23.
 - **Godot.** Only the runner count moved (`feedCases` 77 → 80). The release-template run was not
   executed locally (the installed export template is Linux x86_64); CI runs it.
+- **Corpus growth.** The source grew by about 1.38 MB (cases.json +504 KB, update-matrix.json
+  +869 KB, content/cases.json +8 KB), not the plan's ≈0.44 MB: every `contentRows` input carries
+  the whole six-target feed. With the Swift and Godot mirrors the repository grows by about
+  4.1 MB.
+- **Review fixes (lead review).**
+  - `relearn` clears once step 11 has fetched, verified and stored every revocation of the pack
+    whose target is in H (the entries step 11 considers), on a fresh, network-verified feed with
+    a usable `revocations` member. An entry for an older release the device does not hold never
+    keeps a pack in `relearn`. The threat model records the residual under size step 3's
+    narrowed set.
+  - **Amendment to plans/P4-13.md §2.5:** `relearn` (and `revocationsStored` with an unreadable
+    `revocations.json`) refuses embedded mounts at every boot, online or offline, not only
+    offline. Online the pack is fetched instead; when no copy can be fetched the engine raises
+    `pack-revoked` with detail `relearn`.
+  - A torn `state.json` that lost `revocationsStored` gets the flag back when a readable
+    `revocations.json` with entries is loaded.
+  - An admin un-yank of a revoked release is refused (`release_revoked`, 409), and the unyank
+    statement is guarded in SQL: a revocation is permanent.
+  - React reads a stamp's holds from its original bytes or text, never from re-serialised JSON.

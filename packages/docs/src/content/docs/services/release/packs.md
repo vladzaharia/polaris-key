@@ -277,7 +277,7 @@ submit route; it needs no ticket and no descriptor. Ingest checks, in order, ref
 Revocations are permanent: a resubmit of the same bytes changes nothing, and a newer revocation
 of the same target updates the stored one (adding or changing the replacement) but can never
 remove the revoked status. Ingest also yanks the target, so even a rolled-back Worker stops
-serving it, and resolution drops revoked releases from every candidate list. The feed lists the
+serving it (and the console refuses to lift that yank, `release_revoked`), and resolution drops revoked releases from every candidate list. The feed lists the
 revocations in force; devices fetch each record and verify it against their pinned release keys.
 
 ## In the console

@@ -65,6 +65,7 @@ import {
   isYanked,
   stmtSetChannelPolicy,
   stmtUnyankRelease,
+  isRevoked,
   stmtYankRelease,
   type ChannelPolicyPatch,
   type ReleaseChannelPolicyRow,
@@ -834,6 +835,13 @@ export async function unyank(
   actor: PolicyActor,
   now: number,
 ): Promise<PolicyResult<{ yank: YankView; packSets: StoreOutcome }>> {
+  // plans/P4-13.md §6.2: a revocation is permanent; its yank is never lifted.
+  if (await isRevoked(db, product, releaseId))
+    return refuse(
+      409,
+      "release_revoked",
+      "this release is revoked by a CI-signed revocation; a revocation is permanent, so its yank cannot be lifted (publish a newer release instead)",
+    );
   if (
     (await writeAndInvalidate(
       db,

@@ -679,7 +679,7 @@
       "code": "pack-revoked",
       "kind": "client",
       "service": "update",
-      "description": "The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or, offline, an embedded baseline of a pack whose revocations must be re-learned (detail `relearn`) (plans/P4-13.md §2.5)."
+      "description": "The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5)."
     },
     {
       "code": "marker-rejected",
