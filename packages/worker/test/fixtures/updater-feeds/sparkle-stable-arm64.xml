@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>djdl</title>
+    <link>https://key.example.test</link>
+    <item>
+      <title>djdl 1.2.0</title>
+      <pubDate>Sat, 12 Nov 2022 22:13:20 GMT</pubDate>
+      <sparkle:version>120</sparkle:version>
+      <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+      <sparkle:criticalUpdate sparkle:version="110" />
+      <sparkle:phasedRolloutInterval>31536000</sparkle:phasedRolloutInterval>
+      <description><![CDATA[What&apos;s new in 1.2.0 &lt;b&gt;bold&lt;/b&gt;.]]></description>
+      <enclosure url="https://dl.example.test/djdl/distribution/files/app%401.2.0/djdl-1.2.0-macos-arm64.dmg" type="application/octet-stream" length="36" sparkle:edSignature="h+2h38IFyPgK9Ptpu45dHkLM3vSAMMltgSkHMXsf0iARTDv6npKukXUXYdTnP83+EReDzUg89GWvxCCoFI2BAQ==" />
+    </item>
+    <item>
+      <title>djdl 1.1.0</title>
+      <pubDate>Sun, 15 Oct 2023 22:13:20 GMT</pubDate>
+      <sparkle:version>110</sparkle:version>
+      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[What&apos;s new in 1.1.0 &lt;b&gt;bold&lt;/b&gt;.]]></description>
+      <enclosure url="https://dl.example.test/djdl/distribution/files/app%401.1.0/djdl-1.1.0-macos-universal.dmg" type="application/octet-stream" length="40" sparkle:edSignature="0UdIczom2WwwUgdHh/BOjGb42ZqrdrugnM8P0j6945OH6GeG/BZj+qW5sL2Y+OpdZ8KA8DCMTd67D063Upk9AA==" />
+    </item>
+    <item>
+      <title>djdl 1.0.0</title>
+      <pubDate>Thu, 05 Oct 2023 22:13:20 GMT</pubDate>
+      <sparkle:version>100</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+      <description><![CDATA[What&apos;s new in 1.0.0 &lt;b&gt;bold&lt;/b&gt;.]]></description>
+      <enclosure url="https://dl.example.test/djdl/distribution/files/app%401.0.0/djdl-1.0.0-macos-arm64.dmg" type="application/octet-stream" length="36" sparkle:edSignature="/0G49FF/EK67iKQHzYBDHV9TNMjWVUqjt8waRPvn8pAQYVRcsZJ1JcvbcIZfbVtlraiqWZpr9yzZC/LFMCmFCw==" />
+    </item>
+  </channel>
+</rss>
