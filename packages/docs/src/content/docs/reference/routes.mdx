@@ -83,7 +83,11 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | POST | `/{product}/release/publish/uploads` | release | Obtain an upload ticket and R2 temporary credentials (trusted publishing) |
 | GET | `/{product}/release/records/{sha256}` | release | A CI-signed release record, by its SHA-256 |
 | POST | `/{product}/release/releases/{releaseId}/yank` | release | Yank a release (CI) |
+| GET | `/{product}/update/{channel}/{buildId}.AppImage.zsync` | update | The stable per-channel zsync control file of an AppImage build |
+| GET | `/{product}/update/{channel}/app.appinstaller` | update | The MSIX App Installer file for a channel |
 | GET | `/{product}/update/{channel}/appcast.xml` | update | The Sparkle appcast for a channel |
 | GET | `/{product}/update/{channel}/feed.jws` | update | The signed channel feed (pkey-feed+jws) |
+| GET | `/{product}/update/{channel}/velopack/releases.{velopackChannel}.json` | update | The Velopack feed for a channel |
+| GET | `/{product}/update/{channel}/winsparkle.xml` | update | The WinSparkle appcast for a channel |
 | GET | `/{product}/update/appcast.xml` | update | The Sparkle appcast (default channel) |
 | GET | `/{product}/update/version` | update | Latest-version check |

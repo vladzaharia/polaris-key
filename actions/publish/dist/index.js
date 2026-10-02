@@ -592,7 +592,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "outlet_app-installer": {
-      "description": "The identity fields a app-installer outlet reads: packageFamilyName. Other keys are ignored.",
+      "description": "The identity fields a app-installer outlet reads: packageFamilyName, publisher, updateSettings. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -600,6 +600,12 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         },
         "packageFamilyName": {
           "$ref": "#/$defs/packageFamilyName"
+        },
+        "publisher": {
+          "$ref": "#/$defs/msixPublisher"
+        },
+        "updateSettings": {
+          "$ref": "#/$defs/appInstallerUpdateSettings"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -808,6 +814,48 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "The Homebrew cask token.",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@-]{0,99}$"
+    },
+    "msixPublisher": {
+      "description": "The MSIX package Publisher (P3-09): the signing certificate's subject DN exactly as the package manifest states it.",
+      "type": "string",
+      "pattern": "^CN=[\\\\x20-\\\\x7e]{1,1021}$"
+    },
+    "appInstallerUpdateSettings": {
+      "description": "The <UpdateSettings> of the rendered .appinstaller (P3-09). updateBlocksActivation requires showPrompt: true.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hoursBetweenUpdateChecks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "showPrompt": {
+          "type": "boolean"
+        },
+        "updateBlocksActivation": {
+          "type": "boolean"
+        },
+        "automaticBackgroundTask": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "updateBlocksActivation": {
+            "const": true
+          }
+        },
+        "required": ["updateBlocksActivation"]
+      },
+      "then": {
+        "properties": {
+          "showPrompt": {
+            "const": true
+          }
+        },
+        "required": ["showPrompt"]
+      }
     },
     "scoopPath": {
       "description": "A relative path inside the Windows archive: no drive, no leading separator, no '..'.",
@@ -1792,6 +1840,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "type": "string",
           "maxLength": 127,
           "pattern": "^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$"
+        },
+        "deltaFrom": {
+          "description": "A delta artifact only (the validator checks the role): the build number the delta updates from, rendered as sparkle:deltaFrom (P3-09).",
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
         },
         "locations": {
           "type": "array",
@@ -10187,10 +10240,14 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-YYVZZX43.js
+// ../shared-protocol/dist/chunk-3WZDTVDM.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MAX_JSON_DEPTH = 64;
 var MAX_RECORD_JWS_BYTES = 88844;
+var MAX_PACK_VARIANTS = 32;
+var MAX_VARIANT_DELTAS = 16;
+var MAX_CONTENT_PINS = 256;
+var MAX_BUILD_EMBEDS = 64;
 var FINGERPRINT_TOLERANCE = {
   off: Number.POSITIVE_INFINITY,
   lenient: 4,
@@ -10284,7 +10341,7 @@ var OUTLET_CAPABILITY_DEFAULTS = {
 // ../shared-protocol/dist/release.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-42PRJNL4.js
+// ../shared-protocol/dist/chunk-U3NRTC2B.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
@@ -10424,7 +10481,7 @@ var OUTLET_IDENTITY_FIELDS = {
   obtainium: ["artifact", "packageName"],
   "fdroid-repo": ["artifact", "packageName"],
   "ms-store": ["productId", "packageFamilyName"],
-  "app-installer": ["packageFamilyName"],
+  "app-installer": ["packageFamilyName", "publisher", "updateSettings"],
   steam: ["appId", "branches"],
   itch: ["target", "gameId"],
   flathub: ["appId"],
@@ -10441,6 +10498,7 @@ var ANDROID_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 var MAX_PACKAGE_NAME_LENGTH = 255;
 var PLAY_TRACK_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:-]{0,99}$/;
 var MS_PRODUCT_ID_RE = /^[A-Za-z0-9]{12}$/;
+var MSIX_PUBLISHER_PATTERN = /^CN=[\x20-\x7e]{1,1021}$/;
 var PACKAGE_FAMILY_NAME_PATTERN = /^[A-Za-z0-9.-]{3,50}_[a-z0-9]{13}$/;
 var STEAM_BRANCH_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 var ITCH_TARGET_RE = /^[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{1,64}$/;
@@ -10528,8 +10586,34 @@ function fieldCheck(kind, field) {
       );
     case "scoop":
       return scoopCheck;
+    case "publisher":
+      return pattern(
+        MSIX_PUBLISHER_PATTERN,
+        "the MSIX package Publisher, a certificate subject DN starting CN= (printable ASCII, at most 1024 characters)"
+      );
+    case "updateSettings":
+      return updateSettingsCheck;
   }
 }
+var UPDATE_SETTINGS_KEYS = [
+  "hoursBetweenUpdateChecks",
+  "showPrompt",
+  "updateBlocksActivation",
+  "automaticBackgroundTask"
+];
+var updateSettingsCheck = (v) => {
+  const shape = "must be { hoursBetweenUpdateChecks?: an integer 0-255, showPrompt?, updateBlocksActivation?, automaticBackgroundTask?: booleans }";
+  if (!isRecord(v) || Object.keys(v).some((k) => !UPDATE_SETTINGS_KEYS.includes(k)))
+    return shape;
+  const hours = v.hoursBetweenUpdateChecks;
+  if (hours !== void 0 && !(Number.isSafeInteger(hours) && hours >= 0 && hours <= 255))
+    return shape;
+  for (const k of UPDATE_SETTINGS_KEYS.slice(1))
+    if (v[k] !== void 0 && typeof v[k] !== "boolean") return shape;
+  if (v.updateBlocksActivation === true && v.showPrompt !== true)
+    return "may set updateBlocksActivation only with showPrompt: true (App Installer ignores it otherwise)";
+  return null;
+};
 var scoopPath = (v) => typeof v === "string" && SCOOP_PATH_PATTERN.test(v);
 var scoopCheck = (v) => {
   const shape = "must be { bin?: a relative path or a list of at most 16, shortcuts?: at most 16 [target, name] pairs }";
@@ -11433,6 +11517,20 @@ function validateReleaseDescriptor(descriptor, manifest) {
           "invalid_descriptor_artifact",
           "contentType must be a lower-case type/subtype."
         );
+      if (a.deltaFrom !== void 0) {
+        if (a.role !== "delta")
+          err(
+            `/builds/${bi}/artifacts/${ai}/deltaFrom`,
+            "invalid_delta_from",
+            "deltaFrom applies only to an artifact whose role is delta."
+          );
+        else if (typeof a.deltaFrom !== "string" || !BUILD_NUMBER_RE.test(a.deltaFrom))
+          err(
+            `/builds/${bi}/artifacts/${ai}/deltaFrom`,
+            "invalid_delta_from",
+            "deltaFrom must be 1-64 version characters: the build number the delta updates from."
+          );
+      }
       if (!Array.isArray(a.locations) || a.locations.length === 0 || a.locations.length > MAX_ARTIFACT_LOCATIONS) {
         err(
           `/builds/${bi}/artifacts/${ai}/locations`,
@@ -16356,6 +16454,20 @@ async function verifyJws(jws, trustedKeys, opts = {}) {
 // ../client-core/dist/record.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
+// ../shared-protocol/dist/packs.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../shared-protocol/dist/chunk-4V4B6YVT.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var PACK_TYPE_PATTERN = /^[a-z][a-z0-9-]{0,31}\.[a-z][a-z0-9-]{0,31}$/;
+var VOCAB_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
+var OBJECT_FORMAT_PATTERN = /^[a-z][a-z0-9-]{0,31}\/[1-9][0-9]{0,8}$/;
+var HANDLER_PREFIX_PATTERN = /^res:\/\/([A-Za-z0-9_][A-Za-z0-9 ._@+-]*\/)+$/;
+var ENTITLEMENT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+var VARIANT_AXIS_PATTERN = /^[a-z][a-z0-9-]{0,15}$/;
+var VARIANT_VALUE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,34}$/;
+var ENGINE_PATTERN = /^godot-[0-9]+\.[0-9]+$/;
+
 // ../client-core/dist/claims.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MAX_GRACE_SECONDS = 365 * 86400;
@@ -16364,13 +16476,125 @@ function isWireInteger(value, pointer, min, nonWire) {
 }
 var NO_NON_WIRE_INTEGERS = /* @__PURE__ */ new Set();
 
-// ../client-core/dist/record.js
+// ../client-core/dist/packs/claims.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
 var DELIVERABLE_RE2 = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 var VERSION_RE2 = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 var SHA256_RE2 = /^[0-9a-f]{64}$/;
+function isObject(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function utf8Length(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 128)
+      n += 1;
+    else if (c < 2048)
+      n += 2;
+    else if (c >= 55296 && c <= 56319 && i + 1 < s.length) {
+      const d = s.charCodeAt(i + 1);
+      if (d >= 56320 && d <= 57343) {
+        n += 4;
+        i++;
+      } else
+        n += 3;
+    } else
+      n += 3;
+  }
+  return n;
+}
+function isPackId(value) {
+  return typeof value === "string" && value !== "app" && utf8Length(value) <= 64 && DELIVERABLE_RE2.test(value);
+}
+function objectRef(value, pointer, minBytes, minSize, nonWire = NO_NON_WIRE_INTEGERS) {
+  if (!isObject(value))
+    return false;
+  if (typeof value.sha256 !== "string" || !SHA256_RE2.test(value.sha256))
+    return false;
+  if (!isWireInteger(value.bytes, `${pointer}/bytes`, minBytes, nonWire))
+    return false;
+  if (!isWireInteger(value.size, `${pointer}/size`, minSize, nonWire))
+    return false;
+  if (typeof value.codec !== "string" || !VOCAB_TOKEN_PATTERN.test(value.codec))
+    return false;
+  if (value.codec === "none" && value.bytes !== value.size)
+    return false;
+  return true;
+}
+function contentClaims(value, opts = {}) {
+  const nonWire = opts.nonWire ?? NO_NON_WIRE_INTEGERS;
+  const at = opts.pointer ?? "/content";
+  try {
+    if (!isObject(value))
+      return false;
+    if (!isWireInteger(value.contentApi, `${at}/contentApi`, 1, nonWire))
+      return false;
+    const pins = value.pins;
+    if (!Array.isArray(pins) || pins.length > MAX_CONTENT_PINS)
+      return false;
+    const pinned = /* @__PURE__ */ new Set();
+    for (const [i, pin] of pins.entries()) {
+      if (!isObject(pin) || !isPackId(pin.pack))
+        return false;
+      if (pinned.has(pin.pack))
+        return false;
+      pinned.add(pin.pack);
+      const r = pin.release;
+      if (!isObject(r))
+        return false;
+      if (typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256))
+        return false;
+      if (!isWireInteger(r.seq, `${at}/pins/${i}/release/seq`, 1, nonWire))
+        return false;
+      if (typeof r.version !== "string" || !VERSION_RE2.test(r.version))
+        return false;
+    }
+    const expects = value.expects;
+    if (!Array.isArray(expects) || expects.length > MAX_CONTENT_PINS)
+      return false;
+    const expected = /* @__PURE__ */ new Set();
+    for (const e of expects) {
+      if (!isObject(e) || !isPackId(e.pack))
+        return false;
+      if (expected.has(e.pack))
+        return false;
+      expected.add(e.pack);
+      if (typeof e.required !== "boolean")
+        return false;
+      if (typeof e.delivery !== "string" || !VOCAB_TOKEN_PATTERN.test(e.delivery))
+        return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ../client-core/dist/packs/variant.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function compareBytes(a, b) {
+  if (a === b)
+    return 0;
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  const n = Math.min(x.length, y.length);
+  for (let i = 0; i < n; i++)
+    if (x[i] !== y[i])
+      return x[i] - y[i];
+  return x.length - y.length;
+}
+function variantKey(variant) {
+  return Object.keys(variant).sort(compareBytes).map((axis) => `${axis}=${variant[axis]}`).join(";");
+}
+
+// ../client-core/dist/record.js
+var DELIVERABLE_RE3 = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
+var VERSION_RE3 = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
+var SHA256_RE3 = /^[0-9a-f]{64}$/;
 var MAX_BUILDS = 64;
 var MAX_ARTIFACTS = 32;
-function isObject(v) {
+function isObject2(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function has(o, key) {
@@ -16384,11 +16608,11 @@ function claimsOk(doc, opts, nonWire) {
     return false;
   if (doc.aud !== opts.expectedAud)
     return false;
-  if (typeof doc.deliverable !== "string" || doc.deliverable.length > 64 || !DELIVERABLE_RE2.test(doc.deliverable))
+  if (typeof doc.deliverable !== "string" || doc.deliverable.length > 64 || !DELIVERABLE_RE3.test(doc.deliverable))
     return false;
   if (!nonEmpty(doc.kind))
     return false;
-  if (typeof doc.version !== "string" || !VERSION_RE2.test(doc.version))
+  if (typeof doc.version !== "string" || !VERSION_RE3.test(doc.version))
     return false;
   if (!int(doc.seq, "/seq", 1))
     return false;
@@ -16401,9 +16625,13 @@ function claimsOk(doc, opts, nonWire) {
       return false;
   if (has(doc, "provenance")) {
     const p = doc.provenance;
-    if (!isObject(p) || !optString(p, "commit") || !optString(p, "workflowRun"))
+    if (!isObject2(p) || !optString(p, "commit") || !optString(p, "workflowRun"))
       return false;
   }
+  if (doc.kind === "pack")
+    return packClaimsOk(doc, nonWire);
+  if (doc.kind === "app" && has(doc, "content") && !contentClaims(doc.content, { nonWire, pointer: "/content" }))
+    return false;
   if (!has(doc, "builds"))
     return doc.kind !== "app";
   const builds = doc.builds;
@@ -16411,7 +16639,7 @@ function claimsOk(doc, opts, nonWire) {
     return false;
   const ids = /* @__PURE__ */ new Set();
   for (const [i, build] of builds.entries()) {
-    if (!isObject(build))
+    if (!isObject2(build))
       return false;
     if (typeof build.id !== "string" || !BUILD_ID_PATTERN.test(build.id))
       return false;
@@ -16422,20 +16650,20 @@ function claimsOk(doc, opts, nonWire) {
       return false;
     if (!optString(build, "buildNumber") || !optString(build, "minOS"))
       return false;
-    if (has(build, "requires") && !isObject(build.requires))
+    if (has(build, "requires") && !isObject2(build.requires))
       return false;
     const artifacts = build.artifacts;
     if (!Array.isArray(artifacts) || artifacts.length > MAX_ARTIFACTS)
       return false;
     let payloads = 0;
     for (const [j, artifact] of artifacts.entries()) {
-      if (!isObject(artifact))
+      if (!isObject2(artifact))
         return false;
       if (!nonEmpty(artifact.name) || !nonEmpty(artifact.role))
         return false;
       if (artifact.role === "payload")
         payloads++;
-      if (typeof artifact.sha256 !== "string" || !SHA256_RE2.test(artifact.sha256))
+      if (typeof artifact.sha256 !== "string" || !SHA256_RE3.test(artifact.sha256))
         return false;
       if (!int(artifact.size, `/builds/${i}/artifacts/${j}/size`, 0))
         return false;
@@ -16444,11 +16672,166 @@ function claimsOk(doc, opts, nonWire) {
     }
     if (payloads > 1)
       return false;
+    if (doc.kind === "app" && has(build, "embeds") && !embedsOk(build.embeds))
+      return false;
+  }
+  return true;
+}
+function embedsOk(embeds) {
+  if (!Array.isArray(embeds) || embeds.length > MAX_BUILD_EMBEDS)
+    return false;
+  const seen = /* @__PURE__ */ new Set();
+  for (const id of embeds) {
+    if (!isPackId(id) || seen.has(id))
+      return false;
+    seen.add(id);
+  }
+  return true;
+}
+var optPattern = (o, key, re) => !has(o, key) || typeof o[key] === "string" && re.test(o[key]);
+function hashBytesOk(v, pointer, nonWire) {
+  return isObject2(v) && typeof v.sha256 === "string" && SHA256_RE3.test(v.sha256) && isWireInteger(v.bytes, `${pointer}/bytes`, 1, nonWire);
+}
+function packClaimsOk(doc, nonWire) {
+  const int = (v, pointer, min) => isWireInteger(v, pointer, min, nonWire);
+  if (doc.deliverable === "app")
+    return false;
+  if (has(doc, "builds"))
+    return false;
+  if (typeof doc.type !== "string" || !PACK_TYPE_PATTERN.test(doc.type))
+    return false;
+  if (!int(doc.formatVersion, "/formatVersion", 1))
+    return false;
+  if (has(doc, "handler")) {
+    const h = doc.handler;
+    if (!isObject2(h))
+      return false;
+    if (has(h, "mountOrder") && !int(h.mountOrder, "/handler/mountOrder", 0))
+      return false;
+    if (has(h, "prefixes")) {
+      const p = h.prefixes;
+      if (!Array.isArray(p) || p.length < 1 || p.length > 32)
+        return false;
+      const seen = /* @__PURE__ */ new Set();
+      for (const prefix of p) {
+        if (typeof prefix !== "string" || !HANDLER_PREFIX_PATTERN.test(prefix))
+          return false;
+        if (utf8Length(prefix) > 256 || seen.has(prefix))
+          return false;
+        seen.add(prefix);
+      }
+    }
+    if (!optPattern(h, "activation", VOCAB_TOKEN_PATTERN))
+      return false;
+  }
+  if (!optPattern(doc, "entitlement", ENTITLEMENT_PATTERN))
+    return false;
+  const variants = doc.variants;
+  if (!Array.isArray(variants) || variants.length < 1 || variants.length > MAX_PACK_VARIANTS)
+    return false;
+  const keys = /* @__PURE__ */ new Set();
+  let axes = null;
+  for (const [i, v] of variants.entries()) {
+    if (!isObject2(v))
+      return false;
+    const at = `/variants/${i}`;
+    const sel = v.variant;
+    if (!isObject2(sel))
+      return false;
+    const names = Object.keys(sel);
+    if (names.length > 4)
+      return false;
+    for (const name of names) {
+      if (!VARIANT_AXIS_PATTERN.test(name))
+        return false;
+      const value = sel[name];
+      if (typeof value !== "string" || !VARIANT_VALUE_PATTERN.test(value))
+        return false;
+    }
+    const p = v.payload;
+    if (!isObject2(p))
+      return false;
+    if (!int(p.size, `${at}/payload/size`, 0))
+      return false;
+    if (typeof p.sha256 !== "string" || !SHA256_RE3.test(p.sha256))
+      return false;
+    if (!objectRef(v.full, `${at}/full`, 0, 0, nonWire))
+      return false;
+    const f = v.files;
+    if (!isObject2(f))
+      return false;
+    if (typeof f.format !== "string" || !OBJECT_FORMAT_PATTERN.test(f.format))
+      return false;
+    if (typeof f.layout !== "string" || !VOCAB_TOKEN_PATTERN.test(f.layout))
+      return false;
+    if (!objectRef(f, `${at}/files`, 1, 1, nonWire))
+      return false;
+    if (has(f, "gaps")) {
+      if (!isObject2(f.gaps))
+        return false;
+      if (f.layout === "tree")
+        return false;
+      if (!objectRef(f.gaps, `${at}/files/gaps`, 0, 0, nonWire))
+        return false;
+    } else if (f.layout === "container")
+      return false;
+    if (has(v, "deltas")) {
+      const deltas = v.deltas;
+      if (!Array.isArray(deltas) || deltas.length > MAX_VARIANT_DELTAS)
+        return false;
+      const ids = /* @__PURE__ */ new Set();
+      for (const [j, d] of deltas.entries()) {
+        if (!isObject2(d))
+          return false;
+        const dt = `${at}/deltas/${j}`;
+        if (typeof d.method !== "string" || !VOCAB_TOKEN_PATTERN.test(d.method))
+          return false;
+        if (typeof d.scope !== "string" || !VOCAB_TOKEN_PATTERN.test(d.scope))
+          return false;
+        if (d.scope === "payload" && f.layout === "tree")
+          return false;
+        if (typeof d.from !== "string" || !SHA256_RE3.test(d.from))
+          return false;
+        if (!int(d.memBytes, `${dt}/memBytes`, 1))
+          return false;
+        let id = null;
+        if (d.scope === "payload") {
+          if (!hashBytesOk(d.artifact, `${dt}/artifact`, nonWire))
+            return false;
+          id = d.artifact.sha256;
+        } else if (d.scope === "files") {
+          if (!objectRef(d.patch, `${dt}/patch`, 1, 1, nonWire))
+            return false;
+          if (!hashBytesOk(d.data, `${dt}/data`, nonWire))
+            return false;
+          id = d.patch.sha256;
+        }
+        if (id !== null) {
+          if (ids.has(id))
+            return false;
+          ids.add(id);
+        }
+      }
+    }
+    if (has(v, "requires")) {
+      const r = v.requires;
+      if (!isObject2(r) || !optPattern(r, "engine", ENGINE_PATTERN))
+        return false;
+    }
+    const key = variantKey(sel);
+    if (keys.has(key))
+      return false;
+    keys.add(key);
+    const axisSet = JSON.stringify([...names].sort());
+    if (axes === null)
+      axes = axisSet;
+    else if (axes !== axisSet)
+      return false;
   }
   return true;
 }
 function releaseRecordClaims(payload, opts) {
-  if (!isObject(payload))
+  if (!isObject2(payload))
     return false;
   try {
     return claimsOk(payload, opts, opts.nonWire ?? NO_NON_WIRE_INTEGERS);
@@ -16562,7 +16945,8 @@ async function checkSignedRecord(jws, record, declared) {
 var PUBLISH_USAGE = "Usage: pkey release publish --product <slug> --version <v> --dir <path> [--deliverable app] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] [--meta builds.json] [--base-url <url>] [--release-key-file <pem>] [--min-supported-seq <n>] [--no-record] [--dry-run]";
 var SIDECARS = [
   [".sig", "signature"],
-  [".sha256", "checksum"]
+  [".sha256", "checksum"],
+  [".zsync", "checksum"]
 ];
 async function scanDir(dir) {
   const out = [];

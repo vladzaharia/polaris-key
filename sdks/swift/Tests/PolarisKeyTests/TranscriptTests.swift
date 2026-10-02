@@ -2,6 +2,7 @@
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
+// @pkey-feature update.feed release.record update.decide
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -13,6 +14,14 @@
 // skipped — and starts running the moment the manifest claims it. The SDK clock is
 // `CoreOptions.clock`, pinned to each step's `now`:
 // the recorded documents were signed at a fixed instant and expire an hour later.
+//
+// `updateDecide` (plans/P3-01.md §5, §6) is `UpdateClient.decide(channel:staged:skipVersion:)`,
+// and its `expect` keys are the `UpdateCheck`'s own (`channel`, `decision`, `feed`, `record`,
+// `errors`). `initial.update` is the host's configuration — `pinnedReleaseKeys`, `outlet`,
+// `platform`, `arch`, `installed` and `methods` become `UpdateClientOptions`, with
+// `installed.version` as `CoreOptions.version` — and its `cache` seeds the store's record. A
+// transcript with `initial.update` and no `initial.services` runs with Release, Distribution and
+// Update expected; one that loads no discovery itself is served the Worker's standard document.
 
 import Foundation
 import PolarisKey
@@ -20,6 +29,7 @@ import PolarisKeyCore
 import PolarisKeyIdentity
 import PolarisKeyLicense
 import PolarisKeyRelease
+import PolarisKeyUpdate
 import XCTest
 
 /// A settable clock the client reads through `CoreOptions.clock`.
@@ -49,10 +59,30 @@ enum SwiftReplay {
     /// THE mapping from transcript verbs and `expect` keys onto the Swift SDK. Kept in one place.
     static func act(
         _ client: PolarisKeyClient, store: InMemoryStore, step: Transcript.Step,
-        session: ReplaySession
+        session: ReplaySession, update: UpdateClient? = nil
     ) async throws -> [String: JSONValue] {
         var out: [String: JSONValue] = [:]
         switch step.action {
+        case "updateDecide":
+            guard let update else { throw ReplayError("updateDecide without initial.update") }
+            var staged: StagedUpdate?
+            if let s = step.args["staged"]?.objectValue, let v = s["version"]?.stringValue,
+                let c = s["channel"]?.stringValue
+            {
+                staged = StagedUpdate(version: v, channel: c)
+            }
+            do {
+                let check = try await update.decide(
+                    channel: step.args["channel"]?.stringValue, staged: staged,
+                    skipVersion: step.args["skipVersion"]?.stringValue)
+                if case .object(let fields) = check.json {
+                    for (k, v) in fields { out[k] = v }
+                }
+                out["result"] = .string("ok")
+            } catch let e as PolarisError {
+                out["result"] = .string("error")
+                out["code"] = .string(e.code)
+            }
         case "beginSignIn":
             let p = try await client.identity.beginSignIn(
                 deviceName: step.args["deviceName"]?.stringValue)
@@ -171,6 +201,20 @@ enum SwiftReplay {
         return out
     }
 
+    /// `initial.update.outlet`: a kind, or `{id, kind, subkind?}`.
+    static func hostOutlet(_ v: JSONValue?) throws -> HostOutlet? {
+        switch v {
+        case nil, .null?: return nil
+        case .string(let kind)?: return .kind(kind)
+        case .object(let o)?:
+            guard let id = o["id"]?.stringValue, let kind = o["kind"]?.stringValue else {
+                throw ReplayError("initial.update.outlet needs a string id and kind")
+            }
+            return .outlet(id: id, kind: kind, subkind: o["subkind"]?.stringValue)
+        default: throw ReplayError("initial.update.outlet is not an outlet")
+        }
+    }
+
     /// A changelog entry in the transcript's JSON vocabulary (nil ⇒ `null`).
     static func entryValue(_ e: ChangelogEntry) -> JSONValue {
         .object([
@@ -199,18 +243,37 @@ enum SwiftReplay {
         let clock = ReplayClock(t.now)
         let store = InMemoryStore(productSlug: t.product, deviceId: t.initial.deviceId)
         if let token = t.initial.token { await store.setToken(token) }
+        let u = t.initial.update
+        if let cache = u?.cache {
+            await store.writeCache(
+                CacheRecord(feeds: cache.feeds ?? [:], releaseRecords: cache.releaseRecords ?? [:]))
+        }
+        let services = t.initial.services ?? (u != nil ? ["release", "distribution", "update"] : nil)
         let core = CoreOptions(
-            productSlug: t.product, baseUrl: t.baseUrl, version: t.initial.version,
+            productSlug: t.product, baseUrl: t.baseUrl,
+            version: u?.installed.version ?? t.initial.version,
             pinnedKeys: t.trust, store: store, transport: ReplayTransport(server: server),
             requestTimeoutSeconds: 0,
-            expectedServices: t.initial.services?.compactMap(ServiceSlug.init(rawValue:)),
+            expectedServices: services?.compactMap(ServiceSlug.init(rawValue:)),
             clock: { clock.now })
         let client = try await PolarisKeyClient.create(options: PolarisKeyClientOptions(core: core))
+        var update: UpdateClient?
+        if let u {
+            update = try UpdateClient(
+                core: client.core,
+                options: UpdateClientOptions(
+                    pinnedReleaseKeys: u.pinnedReleaseKeys, outlet: try hostOutlet(u.outlet),
+                    buildNumber: u.installed.buildNumber, format: u.installed.format,
+                    methods: u.methods ?? [BinaryMethod.download],
+                    binaryVersion: u.installed.binaryVersion, engine: u.installed.engine,
+                    platform: u.platform, arch: u.arch))
+        }
         let session = ReplaySession()
         for i in t.steps.indices {
             let step = await server.beginStep(i)
             clock.now = step.now ?? t.now
-            let observed = try await act(client, store: store, step: step, session: session)
+            let observed = try await act(
+                client, store: store, step: step, session: session, update: update)
             try await server.endStep()
             for (key, want) in step.expect.sorted(by: { $0.key < $1.key }) {
                 guard let got = observed[key], got == want else {
@@ -291,5 +354,16 @@ final class TranscriptTests: XCTestCase {
             "license": .string("applied"), "config": .string("applied"),
         ])
         await assertReplayFails(t, matching: "step 1 (sync): documents")
+    }
+
+    /// The update transcripts are held as tightly: an `UpdateCheck` member that disagrees fails.
+    func testADoctoredUpdateDecisionFails() async throws {
+        var t = try XCTUnwrap(try transcripts().first { $0.id == "update-feed-rollback" })
+        t.steps[0].expect["channel"] = .string("latest")
+        await assertReplayFails(t, matching: "step 0 (updateDecide): channel")
+        var u = try XCTUnwrap(try transcripts().first { $0.id == "update-record-by-hash" })
+        u.steps[1].exchanges.items.append(u.steps[0].exchanges.items[1])
+        await assertReplayFails(
+            u, matching: "expected request not sent: GET /djdl/release/records/")
     }
 }

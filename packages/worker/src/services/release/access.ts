@@ -76,7 +76,12 @@ export function selectorFor(
   kind: ReleaseKind,
   params: ReleaseParams,
 ): string | undefined {
-  return kind === "appcast" || kind === "channelAppcast"
+  return kind === "appcast" ||
+    kind === "channelAppcast" ||
+    kind === "winsparkle" ||
+    kind === "velopack" ||
+    kind === "appinstaller" ||
+    kind === "zsync"
     ? (params.channel ?? params.version ?? "stable")
     : (params.version ?? params.channel);
 }

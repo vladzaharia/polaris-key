@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import * as barrel from "../src/index.js";
 import * as core from "../src/core.js";
 import * as distribution from "../src/distribution.js";
+import * as packs from "../src/packs.js";
 import * as release from "../src/release.js";
 import * as update from "../src/update.js";
 import { DEFAULT_RELEASE_ACCESS } from "../src/release.js";
@@ -136,11 +137,8 @@ describe("@polaris-key/protocol layout", () => {
     ]);
     expect(update.NONE_REASONS).toHaveLength(10);
     expect(release.BUILD_ID_PATTERN.source).toBe("^[a-z0-9][a-z0-9._-]{0,63}$");
-    expect(release.RESERVED_RECORD_KINDS).toEqual([
-      "pack",
-      "revocation",
-      "delegation",
-    ]);
+    expect(release.RECORD_KINDS).toEqual(["app", "pack"]);
+    expect(release.RESERVED_RECORD_KINDS).toEqual(["revocation", "delegation"]);
     expect(barrel.FEED_VERSION_SCHEMES).toBe(update.FEED_VERSION_SCHEMES);
     expect(barrel.BUILD_ID_PATTERN).toBe(release.BUILD_ID_PATTERN);
     expect(barrel.MAX_WIRE_INTEGER).toBe(core.MAX_WIRE_INTEGER);
@@ -184,5 +182,61 @@ describe("@polaris-key/protocol layout", () => {
       "stamp",
     ]);
     expect(barrel.OUTLET_KINDS).toBe(distribution.OUTLET_KINDS);
+  });
+
+  it("the /packs subpath and the pack limits (plans/P4-01.md §2.3, §2.13)", () => {
+    expect(core.MAX_PACK_VARIANTS).toBe(32);
+    expect(core.MAX_VARIANT_DELTAS).toBe(16);
+    expect(core.MAX_CONTENT_PINS).toBe(256);
+    expect(core.MAX_BUILD_EMBEDS).toBe(64);
+    expect(core.MAX_INDEX_FILES).toBe(100000);
+    expect(core.MAX_FILES_INDEX_BYTES).toBe(32 * 1024 * 1024);
+    expect(core.MAX_PACK_PATH_BYTES).toBe(1024);
+    expect(core.FILES_FORMAT).toBe("pkey-files/1");
+    expect(core.PATCH_FORMAT).toBe("pkey-patch/1");
+    expect(core.MARKER_FORMAT).toBe("pkey-marker/1");
+    expect(core.CONTENT_STAMP_FORMAT).toBe("pkey-content/1");
+    expect(packs.PACK_TYPE_PATTERN.source).toBe(
+      "^[a-z][a-z0-9-]{0,31}\\.[a-z][a-z0-9-]{0,31}$",
+    );
+    expect(packs.VOCAB_TOKEN_PATTERN.source).toBe("^[a-z][a-z0-9-]{0,31}$");
+    expect(packs.OBJECT_FORMAT_PATTERN.test("pkey-files/1")).toBe(true);
+    expect(packs.OBJECT_FORMAT_PATTERN.test("pkey-files/01")).toBe(false);
+    expect(packs.HANDLER_PREFIX_PATTERN.test("res://assets/kaykit/")).toBe(
+      true,
+    );
+    expect(packs.HANDLER_PREFIX_PATTERN.test("res://assets")).toBe(false);
+    expect(packs.ENTITLEMENT_PATTERN.source).toBe(
+      "^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$",
+    );
+    expect(packs.VARIANT_AXIS_PATTERN.source).toBe("^[a-z][a-z0-9-]{0,15}$");
+    expect(packs.VARIANT_VALUE_PATTERN.source).toBe(
+      "^[A-Za-z0-9][A-Za-z0-9-]{0,34}$",
+    );
+    expect(packs.ENGINE_PATTERN.test("godot-4.7")).toBe(true);
+    expect(packs.PACK_TYPES).toEqual(["godot.pck", "files.tree"]);
+    expect(packs.FILES_LAYOUTS).toEqual(["container", "tree"]);
+    expect(packs.CONTENT_CODECS).toEqual(["zstd", "none"]);
+    expect(packs.PATCH_METHODS).toEqual(["zstd-patch-from"]);
+    expect(packs.RESERVED_PATCH_METHODS).toEqual([
+      "godot-delta-pck",
+      "hdiffpatch",
+      "bsdiff",
+    ]);
+    expect(packs.PATCH_SCOPES).toEqual(["payload", "files"]);
+    expect(packs.PACK_DELIVERIES).toEqual([
+      "essential",
+      "prefetch",
+      "on-demand",
+    ]);
+    expect(packs.PACK_ACTIVATIONS).toEqual(["restart", "hot"]);
+    expect(packs.VARIANT_AXES).toEqual(["texture", "locale", "quality"]);
+    expect(packs.ZSTD_DICTIONARY_MAGIC).toBe("37a430ec");
+    expect(packs.MARKER_SUFFIX).toBe(".pkey.json");
+    expect(packs.TREE_MARKER_PATH).toBe(".pkey/pack.json");
+    expect(packs.CONTENT_STAMP_FILE).toBe("pkey-content.json");
+    expect(barrel.PACK_TYPES).toBe(packs.PACK_TYPES);
+    expect(barrel.MAX_FILES_INDEX_BYTES).toBe(core.MAX_FILES_INDEX_BYTES);
+    expect(barrel.RECORD_KINDS).toBe(release.RECORD_KINDS);
   });
 });

@@ -77,6 +77,10 @@
     "./check": {
       "types": "./dist/check.d.ts",
       "default": "./dist/check.js"
+    },
+    "./packs": {
+      "types": "./dist/packs/index.d.ts",
+      "default": "./dist/packs/index.js"
     }
   },
   "files": [

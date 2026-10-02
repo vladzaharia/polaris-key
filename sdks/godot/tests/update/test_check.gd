@@ -31,8 +31,9 @@ func _check_once(served: Dictionary, version: String, channel := "") -> Array:
 	var seen: Array = []
 	sdk.update.update_available.connect(func(c): seen.append(c))
 	var r: PKeyVersionCheck = await sdk.update.check(channel)
+	var last = sdk.update.last_available
 	sdk.queue_free()
-	return [r, seen]
+	return [r, seen, last]
 
 
 func _compare(t: PKeyTestContext) -> void:
@@ -63,6 +64,7 @@ func _compare(t: PKeyTestContext) -> void:
 		var label: String = "check: %s served, host %s -> %s" % [row[0]["version"], row[1], row[2]]
 		t.check(label, r.ok and r.update_available == row[2] and r.update_available == (PKeySemver.compare(row[1], row[0]["version"]) < 0), str(r))
 		t.check(label + " (signal %s)" % ("once" if row[2] else "never"), got[1].size() == (1 if row[2] else 0), str(got[1].size()))
+		t.check(label + " (last_available)", got[2] == (r if row[2] else null))
 
 
 func _channel(t: PKeyTestContext) -> void:

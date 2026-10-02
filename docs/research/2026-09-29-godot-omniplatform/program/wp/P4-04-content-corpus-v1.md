@@ -189,3 +189,17 @@ and index-blob plan rows, bumping `contentCorpusVersion` if its plan says so. Th
 
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Notes from P4-21's review
+
+- P4-21 already wrote a "Decoding is bounded before it starts" bullet in `docs/security/THREAT-MODEL.md`
+  (zstd-wasm's header window check, `MAX_FILES_INDEX_BYTES`). Merge your decode sentences into that
+  bullet rather than adding a second one, and correct its claim that the Worker and browser use the
+  decoder today (P4-02 and P4-06 are its first consumers).
+- `@polaris-key/zstd-wasm`'s C sources sit at `packages/zstd-wasm/wasm/` (`zdec.c`, `stub/*.h`,
+  `build.sh`), not `src/` as plan §2.13 says; the built `src/zdec.wasm` and its `.sha256` rebuild byte
+  for byte with Apple clang and rust-lld.
+- The decoded `size` values in `tools/sign-corpus.ts`'s `PACK_OBJECTS` are placeholders, not measured
+  figures; you re-sign everything over the real content-set refs.
+- `packages/docs/src/content/docs/build/wire/corpus.md`'s hand-written family table is stale (no
+  `feedCases`, `releaseRecordCases`, `packRecordCases`, `markerCases`); plan §4.8 gives it to you.

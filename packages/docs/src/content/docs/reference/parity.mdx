@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 35 | 3 | 11 | 7 |
-| React | `web`, `desktop-bridge` | 27 | 12 | 11 | 6 |
-| Python | `python` | 35 | 3 | 11 | 7 |
-| Swift | `macos`, `ios` | 33 | 3 | 14 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 33 | 0 | 20 | 3 |
+| Node | `node` | 35 | 3 | 12 | 7 |
+| React | `web`, `desktop-bridge` | 27 | 12 | 12 | 6 |
+| Python | `python` | 35 | 3 | 12 | 7 |
+| Swift | `macos`, `ios` | 36 | 3 | 12 | 6 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 35 | 0 | 19 | 3 |
 
 ## Core
 
@@ -81,10 +81,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` + transcripts | ✓ | ✓ | ✓ | planned (P3-07) | ✓ | — |
+| `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | planned (P3-07) | ✓ | — |
-| `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | planned (P3-07) | ✓ | — |
+| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | planned (P3-10) | ios: outlet |
 | `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P3-10) | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | planned (P3-11) | — |
@@ -93,6 +93,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `packs.record` | Verify kind: pack records, app content and embeds, and embedded-pack markers | `cases.json` `packRecordCases` + `cases.json` `markerCases` | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
 | `packs.plan` | The install planner | `plan-matrix.json` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
 | `packs.index` | Chunk and files index parsing, path rules | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
 | `packs.apply.full` | Full apply | `content/` (P4-04) | planned (P4-06) | planned (P4-06) | planned (P4-07) | planned (P4-07) | planned (P4-08) | — |
@@ -112,8 +113,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | planned (P1-10) | — |
-| `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | planned (P1-10) | headless: runtime |
+| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | headless: runtime |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts (P6-01) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (P6-01) | — |
 
 ## Unowned gaps

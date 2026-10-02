@@ -186,26 +186,91 @@ already have partial kits to mirror (notes/A2 §10).
 
 ## Acceptance criteria
 
-- [ ] The Godot runner passes every `stage-matrix.json` row (stage sequence, emitted events,
+- [x] The Godot runner passes every `stage-matrix.json` row (stage sequence, emitted events,
       outcome) on the 4.7.2 editor and release template.
-- [ ] `PKeyBoot` driven by a fake host reproduces each row's stage sequence in its signals, and
+- [x] `PKeyBoot` driven by a fake host reproduces each row's stage sequence in its signals, and
       `PolarisKey.boot()` returns the row's outcome.
-- [ ] Snapshot tests exist for every gate status, every activation-panel capability combination
+- [x] Snapshot tests exist for every gate status, every activation-panel capability combination
       (License on/off, Identity on/off, enrolment on/off, web), the sign-in dialog (pending,
       expired, cancelled), and a settings catalog with `enforced`, `default`, `hidden`,
       `dependsOn` and `advanced` entries; they pass.
-- [ ] A focus-traversal test reaches every interactive control on each scene with `ui_down` and
+- [x] A focus-traversal test reaches every interactive control on each scene with `ui_down` and
       `ui_accept` alone.
-- [ ] An enforced setting shows a disabled control and "Set by <product>"; editing a default
+- [x] An enforced setting shows a disabled control and "Set by <product>"; editing a default
       setting writes the override store and changes `get_source()` to `local`.
-- [ ] No visible string bypasses `PKeyUiCopy`/`tr()` (a test walks every `Label` and `Button`).
-- [ ] Editor screenshots of each scene are attached to the PR.
-- [ ] The `stage-matrix` suite drives `PKeyStages` through every row, every probe and every guard
+- [x] No visible string bypasses `PKeyUiCopy`/`tr()` (a test walks every `Label` and `Button`).
+- [ ] Editor screenshots of each scene are attached to the PR. (`tools/ui_screenshots.gd`
+      rendered all 67 states from an editor run; there is no PR from this branch yet to attach
+      them to.)
+- [x] The `stage-matrix` suite drives `PKeyStages` through every row, every probe and every guard
       case of `stage-matrix.json`, and the fake-server tests drive `PKeyBoot` through the sync
       classes above.
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
-- [ ] `sdks/godot/parity.json` marks `ui.stages` and `ui.kit` implemented, with test tags (once
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job (run locally: the
+      editor and the 4.7.2 macOS release template, and the new suites on the 4.4.1 floor editor;
+      CI's Linux legs run on push).
+- [x] `sdks/godot/parity.json` marks `ui.stages` and `ui.kit` implemented, with test tags (once
       P1b-01 has landed).
+
+## Implementation notes (P1-10)
+
+Where the code and this brief differ, the code is right; these are the corrections.
+
+- **The gate's class is `PKeyGateView`.** `PKeyGate` is already the licence-gate logic
+  (`core/gate.gd`, `license_state` and `is_usable`), so the scene's script cannot take the name.
+  The scene file is `ui/gate/pkey_gate.tscn` and its root node is still named `PKeyGate`.
+- **Stage matrix version 2.** P3-02 had landed, so `PKeyStages` also has `boot_confirmation`,
+  `BOOT_OK_SECONDS`, `BOOT_CONFIRMATIONS` and `BOOT_DECISIONS`, and the runner reads
+  `confirmCases` and `vocabulary.confirmations`. The suite file is `suite_stage_matrix.gd`;
+  `--pkey-test stage-matrix` is an alias in the runner's `SETS`.
+- **DECIDE uses the signed decision.** P3-08 had landed, so the decide stage calls
+  `PolarisKey.update.decide()` and sends `optional` when its boot decision is `optional`; it falls
+  back to the v3 `update.check()` only when `decide()` answers `service-unavailable` or
+  `not-configured`. No decision sends `required` (plans/P3-01.md decision 1), so an update floor
+  never stops play; a mandatory or blocked answer is a persistent banner with no dismiss that
+  never covers the game (`PKeyUpdatePrompt`, React's `UpdatePrompt` states).
+- **The no-answer status was not kept.** `PKeySyncResult.documents` held only each document's
+  kind, so this package adds `PKeySyncResult.errors` (`{status, code}` per failed document, status
+  0 for no answer) and `classify()`. A document that fails verification now reports status 200
+  (an unusable answer), not 0. Transport refusals of an answer that did arrive
+  (`response-too-large`, `too-many-redirects`, `insecure-redirect`) count as unusable.
+- **"Continue free" is the game's choice** (`offer_enrollment`, off by default). The Worker
+  advertises the enrolment endpoint for every product with License, so discovery cannot say
+  whether a free tier exists.
+- **The binary action needs a page.** A v4 decision carries no URL, so a binary answer on a direct
+  build opens the `release_url` the game gives (the v3 answer's own `url` otherwise); without one
+  the prompt shows no action. A store, Steam or itch build never opens a download page.
+- **The offline request code is the device id**, which is what the console's offline-bundle
+  dialog asks for (32 characters); the product slug is shown beside it, and the QR code holds the
+  id.
+- **`PolarisKey.boot()` resolves at the first stop.** A stop reached after a Retry on the card
+  arrives as `PKeyBoot.boot_finished` and `PolarisKey.boot_finished`.
+- **Never covering, measured.** PKeyBoot and PKeyGateView are Containers, which ignore a child's
+  anchors, so PKeyBoot hosts the update prompt on a plain full-rect `Overlay` Control with mouse
+  ignore, the prompt's banner mode asks a container for its own height only
+  (`SIZE_SHRINK_BEGIN`) and trims itself to its minimum height outside one, and the gate's
+  `BannerSlot` shrinks to the top in grace (its `Center` ignores the mouse there). `suite_ui`
+  checks rendered heights on a 1152x900 screen, not anchors.
+- **The prompt outlives a drop-in boot.** `PolarisKey.boot()` without a view frees its PKeyBoot at
+  READY, but a visible prompt is handed to the CanvasLayer first (`PolarisKey.boot_prompt`): a
+  locked answer stays, a dismissable one is freed on dismiss. `keep_update_prompt: false` opts
+  out. `PolarisKey.update.last_available` (new) keeps the last announced answer so a
+  `PKeyUpdatePrompt` added later replays it. `suite_boot`'s `dropin` group covers it.
+- **Channel lock.** The dev-menu channel picker is locked when the build's outlet does not allow a
+  channel switch (`PKeyDecision.effective_capabilities(kind).channelSwitch`, so only a direct
+  build or the editor may switch); picking a channel emits `channel_selected` for the game to
+  apply at the next configure.
+- **Progress.** The sliced verify's progress is `PolarisKey.verify_progress(fraction)`
+  (`PKeyEd25519Job.progress()`, reported by `PKeyJws.run_job` in sliced mode).
+- **Fixtures.** One snapshot file per scene with a section per state, under
+  `tests/ui/snapshots/`, included in the exported pack so the template runs them too.
+- **Timings** (M-series Mac, 4.7.2, editor / macOS release template, after the review fixes):
+  `stage_matrix` 16 / 15 ms (56 rows, 6,594 probe transitions); `boot` 6.8 / 7.4 s (five
+  deliberate 1 s request deadlines, plus the drop-in group); `ui` 13.6 / 11.7 s (67 states, each
+  snapshotted, focus-walked and copy-checked, plus the measured never-covering checks). The new
+  suites also pass on the 4.4.1 floor editor.
+- **Screenshots.** `sdks/godot/tools/ui_screenshots.gd` renders all 67 pinned states with the
+  default theme (needs a display). The branch is not pushed here, so attaching them to the PR is
+  left to whoever opens it.
 
 ## Verify
 

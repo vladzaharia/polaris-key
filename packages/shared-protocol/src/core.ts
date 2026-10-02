@@ -22,6 +22,33 @@ export const MAX_JSON_DEPTH = 64;
  *  is refused before it is hashed (WIRE-CONTRACT-V4 §3, client step 12). */
 export const MAX_RECORD_JWS_BYTES = 88844;
 
+// ── Packs on the wire (plans/P4-01.md §2.3, §2.4, §2.7, §2.8; WIRE-CONTRACT-V4 §2.5.1–§2.7) ──
+// Bounds a v1 SDK and the claims share. `MAX_FILES_INDEX_BYTES` is a client limit, not a
+// claim: a later version may raise it, and a v1 SDK then finds a larger index unusable.
+
+/** `variants`: 1–this many per pack record. */
+export const MAX_PACK_VARIANTS = 32;
+/** `variants[].deltas`: at most this many per variant. */
+export const MAX_VARIANT_DELTAS = 16;
+/** `content.pins` and `content.expects`: at most this many each. */
+export const MAX_CONTENT_PINS = 256;
+/** `builds[].embeds`: at most this many per build. */
+export const MAX_BUILD_EMBEDS = 64;
+/** `pkey-files/1` and `pkey-patch/1`: at most this many entries. */
+export const MAX_INDEX_FILES = 100000;
+/** The largest decoded files index (or patch descriptor) a client fetches: 32 MiB. */
+export const MAX_FILES_INDEX_BYTES = 33554432;
+/** A pack file path: 1–this many UTF-8 bytes. */
+export const MAX_PACK_PATH_BYTES = 1024;
+/** The files index's `format`. */
+export const FILES_FORMAT = "pkey-files/1";
+/** A `files`-scope delta set's descriptor `format`. */
+export const PATCH_FORMAT = "pkey-patch/1";
+/** An embedded pack's marker `format`. */
+export const MARKER_FORMAT = "pkey-marker/1";
+/** The content stamp's `format`. */
+export const CONTENT_STAMP_FORMAT = "pkey-content/1";
+
 /** The `iss` every Polaris Key document carries. A FIXED string, never derived from the base URL
  *  or the serving host — an attacker-controlled host must not be able to name its own issuer.
  *  (Amendment A1: the host-neutral `plrs.im` spelling was withdrawn; a future host move is a

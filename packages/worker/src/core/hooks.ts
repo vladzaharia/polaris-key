@@ -118,6 +118,12 @@ export interface CatalogArtifact {
   contentType: string | null;
   sizeBytes: number | null;
   sha256: string | null;
+  /**
+   * The descriptor's per-artifact facts that the release record does not carry
+   * (`release_artifacts.metadata_json`): today a `delta`'s `deltaFrom` (P3-09). `null` when there
+   * are none.
+   */
+  metadata: Record<string, unknown> | null;
 }
 
 /** The operator-owned channel policy for one deliverable on one channel. */
@@ -432,6 +438,92 @@ export interface DeliveryOutlet {
 }
 
 /**
+ * What one feed lists (P2b-05's selection, `services/distribution/feeds/select.ts`, offered to
+ * Update's app-updater feeds through `Delivery.feedSelection`, P3-09). Declarative on purpose: a
+ * hook answers questions about state with plain data, so the filters are values, not callbacks.
+ */
+export interface FeedSelectionQuery {
+  /** The REQUESTED channel name; the answer carries the canonical one. */
+  channel: string;
+  /** The request's origin: a delivery URL minted as a path (no bytes host) is made absolute. */
+  origin: string;
+  /** Outlet kinds that may carry the feed (the outlet whose id is a kind wins, else the first). */
+  kinds: readonly string[];
+  /** `?outlet=<id>`: one specific live outlet of those kinds. */
+  outletId?: string | null;
+  /** The platform the feed's builds target. */
+  platform: string;
+  /** Keep only builds of these arches; omitted keeps every arch. */
+  arches?: readonly string[];
+  /** Keep only these build ids (artifact-map ids); omitted keeps every build. */
+  buildIds?: readonly string[];
+  /** Keep only builds whose payload name ends with one of these (ASCII case-insensitive). */
+  payloadSuffixes?: readonly string[];
+  /** Consider only these releases (P3-09: the ones with a stored release record). */
+  releaseIds?: readonly string[];
+  /** `availability`: live on the outlet; `bytes`: our payload exists (P2b-05 step 3). */
+  liveness: "availability" | "bytes";
+  /** The most releases listed (default 20). */
+  limit?: number;
+  /** Every matching build of a release rather than the first. */
+  allBuilds?: boolean;
+  /**
+   * `hold` (the default, P2b-05 step 4): a release whose rollout on the outlet is not complete is
+   * held back and the previous release listed. `phase` (Sparkle, which phases on the client): a
+   * release in an ACTIVE rollout above 0 bp is listed and carries its rollout; paused, halted and
+   * 0 bp still hold.
+   */
+  rollouts?: "hold" | "phase";
+  /** Also return each listed build's other artifacts (deltas, signatures, sidecars). */
+  withArtifacts?: boolean;
+}
+
+/** One artifact of a listed build, with its immutable delivery URL (`null` when it has none). */
+export interface FeedSelectionArtifact extends CatalogSourceArtifact {
+  url: string | null;
+}
+
+/** One listed release: the release, the outlet's build of it, and that build's payload. */
+export interface FeedSelectionEntry {
+  releaseId: string;
+  version: string;
+  publishedAt: number | null;
+  title: string | null;
+  /** `null` also when the product's metadata is not public. */
+  notes: string | null;
+  buildId: string;
+  platform: string | null;
+  arch: string;
+  format: string | null;
+  buildNumber: string | null;
+  minOs: string | null;
+  metadata: Record<string, unknown> | null;
+  /** The payload's file name, digest, size and absolute immutable URL. */
+  name: string;
+  sha256: string | null;
+  size: number | null;
+  url: string;
+  payload: CatalogSourceArtifact;
+  /** The rollout this release is listed under (`rollouts: "phase"` only), else `null`. */
+  rollout: { bp: number; salt: string; startedAt: number } | null;
+  /** The build's other artifacts (`withArtifacts` only), else empty. */
+  artifacts: FeedSelectionArtifact[];
+}
+
+/** A feed's selection: the canonical channel, the outlet it is rendered for, its entries. */
+export interface FeedSelection {
+  channel: string;
+  outlet: {
+    id: string;
+    kind: string;
+    identity: Record<string, unknown>;
+    listing: Record<string, unknown> | null;
+  };
+  entries: FeedSelectionEntry[];
+  notesPublic: boolean;
+}
+
+/**
  * Distribution's read-only view of how releases reach devices and outlets (README §3.2).
  * P2b-01 shipped it with no outlets (the default transport, empty availability); P2b-04 added
  * rollouts, delivery access and delivery URLs; P2b-03 added availability, submissions and the key
@@ -482,6 +574,20 @@ export interface Delivery {
     name?: string;
     outlet?: string;
   }): Promise<string | null>;
+  /**
+   * P3-09: the releases one feed lists (`FeedSelectionQuery`), by P2b-05's rules: the channel's
+   * history from Release, a build for the outlet, live on it, not yanked, not held by a rollout,
+   * with an immutable delivery URL. ACCESS IS NOT CHECKED: the caller has enforced the delivery
+   * access first (Update's feed routes, through the release gateway's access rule). `null` = no
+   * such channel or outlet, or nothing to read; an existing feed with nothing to list is empty.
+   */
+  feedSelection(q: FeedSelectionQuery): Promise<FeedSelection | null>;
+  /**
+   * P3-09: a stamp of the delivery state a feed must follow at once (P2b-05's `feedStateStamp`:
+   * rollouts, yanks, availability, outlets, registered feed files, whether notes are public), for
+   * a feed cache key. `null` when Release is off.
+   */
+  feedStamp(): Promise<string | null>;
 }
 
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────

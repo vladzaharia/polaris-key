@@ -123,16 +123,59 @@ parts iOS needs must live in `PolarisKeyCore`.
 
 ## Acceptance criteria
 
-- [ ] `swift test` passes every `feedCases`, `releaseRecordCases`, `update-matrix.json` row and
+- [x] `swift test` passes every `feedCases`, `releaseRecordCases`, `update-matrix.json` row and
       bucket vector, with the same ids as the other runners.
-- [ ] The decision functions compile and run for iOS (no Sparkle import in `PolarisKeyCore`).
-- [ ] A reload refuses a feed with a lower `seq`, using a floor derived from a re-verified cached
+- [x] The decision functions compile and run for iOS (no Sparkle import in `PolarisKeyCore`).
+- [x] A reload refuses a feed with a lower `seq`, using a floor derived from a re-verified cached
       JWS.
-- [ ] A record with a mismatched hash is refused before signature verification; a record signed
+- [x] A record with a mismatched hash is refused before signature verification; a record signed
       by the product key is refused.
-- [ ] `check(channel:)` and the Sparkle feed helpers behave as before.
-- [ ] The green gate passes (`AGENTS.md`), including the Swift job.
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] `check(channel:)` and the Sparkle feed helpers behave as before.
+- [x] The green gate passes (`AGENTS.md`), including the Swift job.
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+
+## Corrections from the implementation
+
+- **Branch.** The branch is `wp/P3-07-swift-v4`.
+- **Already landed.** P3-02 had added `JwsTyp.feed` and `.release`, `wireInteger`, the pattern
+  helper `wholeMatches` and the generated constants (`MAX_RECORD_JWS_BYTES`, the error codes, the
+  `outletKind`/`updateAction`/… enums); nothing was re-declared.
+- **Files.** `PolarisKeyCore` gains `Version.swift` (plan §5's name), `Feed.swift`,
+  `ReleaseRecord.swift`, `UpdateDecision.swift` (the compiled outlet tables, asserted equal to
+  `outlet-matrix.json`) and `UpdateCheck.swift`, which ports client-core's `runUpdateCheck`
+  (steps 2–18, the fallback order and the error map), so `UpdateClient` is transport, storage and
+  options only, as in Node and Python. The claims run over the decoded `JSONValue` tree (member
+  presence is part of the contract); only a payload that passes becomes a `ChannelFeedDoc` or
+  `ReleaseRecordDoc`, each carrying its decoded `json`. `UpdateDecision` is an enum whose `json`
+  has exactly its action's members.
+- **Method names.** `feed(channel:)` already names the Sparkle helper, which must behave as
+  before, so the v4 feed is `channelFeed(channel:)`; `releaseRecord(hash:)`,
+  `decide(channel:staged:skipVersion:)` and `buildURL(version:buildId:)` are as proposed.
+- **Options.** `UpdateClientOptions` (`pinnedReleaseKeys`, `outlet` as `HostOutlet`, `stamp`,
+  `detected`, `buildNumber` defaulting to `CFBundleVersion`, `format`, `methods` defaulting to
+  `["native", "download"]` on macOS and `["download"]` on iOS, `binaryVersion`, `engine`,
+  `platform`, `arch`) goes to `UpdateClient(core:options:)`, which throws `invalid-options`.
+  `UpdateClient(core:)` keeps working for `check()` and Sparkle; its `decide()` raises
+  `not-configured`. `PolarisKeyUpdate` builds for iOS (only the Sparkle product and files are
+  conditioned), so the client is there for iOS hosts too.
+- **Core changes.** `PolarisError` gains an optional `detail` (the refused step);
+  `PolarisRequest` gains `maxBodyBytes`, which `URLSessionTransport` honours by streaming, for
+  the 88 845-byte record read (the client truncates again whatever the transport does);
+  `KeychainStore`'s cache-file bound rises from 1 MiB to 4 MiB for the two slices. Core
+  re-verifies the slices on load and after a trust-manifest change (platform-agnostic: it does
+  not know the update client's platform or keys, which `runUpdateCheck` applies on every call)
+  and exposes the derived `feedFloors`. A deactivation (`clearAll`) and a bundle import carry
+  the slices, as in Node and Python.
+- **Docs.** `packages/docs/src/content/docs/build/sdks/swift.mdx` renders `sdks/swift/README.md`
+  whole, so the README is the one file edited; `pnpm --filter @polaris-key/docs gen` updates
+  `reference/parity.mdx`.
+- **iOS proof.** `xcodebuild -scheme PolarisKeyCore -destination 'generic/platform=iOS' build`
+  and the same for `PolarisKeyUpdate` succeed without building Sparkle, and `xcodebuild test` on
+  the iOS 26 simulator runs `ConformanceTests`, `UpdateMatrixTests`, `UpdateDecideTests` and
+  `TranscriptTests` green (50 tests).
+- **No UI helper.** The Swift SDK has no update prompt view; `isUndismissable(_:)` and the README
+  tell a host to render `mandatory` and `blocked` as a persistent notice that does not cover the
+  app.
 
 ## Verify
 

@@ -71,6 +71,7 @@
       "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
     "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "packs.record": { "status": "planned", "wp": "P4-07" },
     "packs.plan": { "status": "planned", "wp": "P4-07" },
     "packs.index": { "status": "planned", "wp": "P4-07" },
     "packs.apply.full": { "status": "planned", "wp": "P4-07" },

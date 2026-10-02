@@ -52,10 +52,10 @@
     "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
-    "release.record": { "status": "planned", "wp": "P3-07" },
+    "release.record": { "status": "implemented" },
     "update.check": { "status": "implemented" },
-    "update.feed": { "status": "planned", "wp": "P3-07" },
-    "update.decide": { "status": "planned", "wp": "P3-07" },
+    "update.feed": { "status": "implemented" },
+    "update.decide": { "status": "implemented" },
     "update.driver": {
       "status": "implemented",
       "except": [{ "runtime": "ios", "reason": "outlet" }],
@@ -67,6 +67,7 @@
       "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
     "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "packs.record": { "status": "planned", "wp": "P4-07" },
     "packs.plan": { "status": "planned", "wp": "P4-07" },
     "packs.index": { "status": "planned", "wp": "P4-07" },
     "packs.apply.full": { "status": "planned", "wp": "P4-07" },

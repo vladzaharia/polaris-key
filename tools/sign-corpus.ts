@@ -1762,8 +1762,12 @@ async function buildV2(): Promise<unknown> {
     bundleCases: await buildBundleCases(),
     feedCases: await buildFeedCases(),
     releaseRecordCases: await buildReleaseRecordCases(RECORDS),
+    // plans/P4-01.md §4.6 (P4-21): two new JWS families after the record cases.
+    packRecordCases: await buildPackRecordCases(),
+    markerCases: await buildMarkerCases(),
   };
   checkCorpusV4(corpus as unknown as Record<string, AnyCase[]>);
+  checkPackClaimCases(corpus as unknown as Record<string, AnyCase[]>);
   return corpus;
 }
 
@@ -6559,7 +6563,8 @@ const ctxOf = (text: string, off: Iterable<string> = []): ClaimCtx => ({
   off: new Set(off),
 });
 
-/** §2.2 "Minimums": the 21 integer-claim paths (`*` is any index or member). */
+/** §2.2 "Minimums": the 21 integer-claim paths (`*` is any index or member), and plans/P4-01.md
+ *  §2.5's 16 pack and `content` paths (37 in all). */
 const INTEGER_CLAIM_MINIMUMS: Readonly<Record<string, Record<string, number>>> =
   {
     envelope: { "/issuedAt": 0, "/expiresAt": 0, "/graceUntil": 0 },
@@ -6582,6 +6587,24 @@ const INTEGER_CLAIM_MINIMUMS: Readonly<Record<string, Record<string, number>>> =
       "/minSupportedSeq": 1,
       "/builds/*/artifacts/*/size": 0,
     },
+    // plans/P4-01.md §2.5: the pack record's 14 paths and the app record's two `content` paths.
+    pack: {
+      "/formatVersion": 1,
+      "/handler/mountOrder": 0,
+      "/variants/*/payload/size": 0,
+      "/variants/*/full/bytes": 0,
+      "/variants/*/full/size": 0,
+      "/variants/*/files/bytes": 1,
+      "/variants/*/files/size": 1,
+      "/variants/*/files/gaps/bytes": 0,
+      "/variants/*/files/gaps/size": 0,
+      "/variants/*/deltas/*/memBytes": 1,
+      "/variants/*/deltas/*/artifact/bytes": 1,
+      "/variants/*/deltas/*/patch/bytes": 1,
+      "/variants/*/deltas/*/patch/size": 1,
+      "/variants/*/deltas/*/data/bytes": 1,
+    },
+    content: { "/content/contentApi": 1, "/content/pins/*/release/seq": 1 },
   };
 /** A concrete pointer's path (`/app/targets/0/release/seq` → `/app/targets/*\/release/seq`). */
 function claimPathOf(family: string, pointer: string): string | null {
@@ -7229,6 +7252,13 @@ function refRecordClaims(doc: unknown, ctx: ClaimCtx, aud: string): boolean {
     for (const k of ["commit", "workflowRun"])
       if (hasOwn(p, k) && typeof p[k] !== "string") return false;
   }
+  // plans/P4-01.md §2.2: §2.3 for `kind: pack`, §2.4 for `kind: app`, the common claims only
+  // for any other kind (whose `content` and `embeds` are ignored).
+  if (doc.kind === "pack") return refPackClaims(doc, ctx);
+  const app = doc.kind === "app";
+  if (app && hasOwn(doc, "content") && on(ctx, "content")) {
+    if (!refContentClaims(doc.content, ctx, "/content")) return false;
+  }
   if (!hasOwn(doc, "builds")) return doc.kind !== "app";
   if (
     !Array.isArray(doc.builds) ||
@@ -7262,6 +7292,9 @@ function refRecordClaims(doc: unknown, ctx: ClaimCtx, aud: string): boolean {
         return false;
     }
     if (payloads > 1) return false;
+    if (app && hasOwn(b, "embeds") && on(ctx, "embeds")) {
+      if (!refEmbedsClaims(b.embeds, ctx)) return false;
+    }
   }
   return true;
 }
@@ -8563,11 +8596,14 @@ async function buildReleaseRecordCases(
       expect: ok(),
     },
   );
+  // plans/P4-01.md §4.6: rewritten in place to sign `djdl.levels@1.1.0`, a pack record a P4
+  // verifier accepts at `claims`; same ids, same `expect`.
+  const packLevels = (await packRecords()).get("djdl.levels@1.1.0")!;
   await mk(
     "record-valid-kind-pack-verify-only",
-    "`kind: pack` verifies when no pin asks for an app (verify only).",
+    "`kind: pack` (`djdl.levels@1.1.0`) verifies when no pin asks for an app (verify only).",
     {
-      doc: rd({ kind: "pack", deliverable: "core3d", builds: undefined }),
+      jws: packLevels.jws,
       pin: null,
       expect: ok("pack"),
     },
@@ -8786,9 +8822,9 @@ async function buildReleaseRecordCases(
   );
   await mk(
     "record-kind-pack-refused-as-app",
-    "Step 15: a reserved kind is verified, then refused where an app record is expected.",
+    "Step 15: a pack record (`djdl.levels@1.1.0`) is verified, then refused where an app record is expected.",
     {
-      doc: rd({ kind: "pack", builds: undefined }),
+      jws: packLevels.jws,
       expect: fail("cross-check"),
     },
   );
@@ -12099,11 +12135,2555 @@ const STAGE_CONFIRM_CASES = [
   { outcome: "error", expect: "never" },
 ];
 
+// ── plans/P4-01.md §4.6: packs on the wire — `packRecordCases` and `markerCases` (P4-21) ─────
+//
+// Two new JWS families after `releaseRecordCases`, which the v4 record runners of P3-04 to P3-08
+// never read. P4-21 signs them over the FIXED object-ref table below (§4.2): every `sha256` is
+// the SHA-256 of the blob's name and every size is §4.3's figure, because the content set does
+// not exist yet and no claim fetches an object, so every verdict holds. P4-04 then re-signs the
+// valid records, their twins, the markers and the two rewritten P3-02 cases over the content
+// set's real refs: their bytes change, never their ids or `expect`.
+
+/** The generator's registry of the 80 claim checks (§4.6's table). A check id outside it
+ *  throws; the per-check self-check proves each has a case its check alone refuses. */
+const PACK_CLAIM_CHECKS = [
+  // kind: pack (1–55)
+  "deliverable.not-app",
+  "builds.absent",
+  "type",
+  "formatVersion",
+  "handler",
+  "handler.mountOrder",
+  "handler.prefixes",
+  "handler.prefixes.count",
+  "handler.prefixes.item",
+  "handler.prefixes.length",
+  "handler.prefixes.unique",
+  "handler.activation",
+  "entitlement",
+  "variants",
+  "variants.count",
+  "variants.item",
+  "variants.key-unique",
+  "variants.axes-same",
+  "variant",
+  "variant.count",
+  "variant.axis",
+  "variant.value",
+  "payload",
+  "payload.size",
+  "payload.sha256",
+  "full",
+  "ref.sha256",
+  "ref.bytes",
+  "ref.size",
+  "ref.codec",
+  "ref.none-bytes",
+  "files",
+  "files.format",
+  "files.layout",
+  "files.gaps",
+  "files.gaps-container",
+  "files.gaps-tree",
+  "deltas",
+  "deltas.count",
+  "deltas.item",
+  "deltas.id-unique",
+  "delta.method",
+  "delta.scope",
+  "delta.scope-tree",
+  "delta.from",
+  "delta.memBytes",
+  "delta.artifact",
+  "delta.artifact.sha256",
+  "delta.artifact.bytes",
+  "delta.patch",
+  "delta.data",
+  "delta.data.sha256",
+  "delta.data.bytes",
+  "requires",
+  "requires.engine",
+  // kind: app (56–80)
+  "content",
+  "content.contentApi",
+  "content.pins",
+  "content.pins.count",
+  "content.pins.item",
+  "content.pins.unique",
+  "pin.pack",
+  "pin.pack.not-app",
+  "pin.release",
+  "pin.release.sha256",
+  "pin.release.seq",
+  "pin.release.version",
+  "content.expects",
+  "content.expects.count",
+  "content.expects.item",
+  "content.expects.unique",
+  "expect.pack",
+  "expect.pack.not-app",
+  "expect.required",
+  "expect.delivery",
+  "embeds",
+  "embeds.count",
+  "embeds.item",
+  "embeds.not-app",
+  "embeds.unique",
+] as const;
+type PackCheck = (typeof PACK_CLAIM_CHECKS)[number];
+const PACK_CHECK_SET: ReadonlySet<string> = new Set(PACK_CLAIM_CHECKS);
+
+/** A registered check is on unless `check:<id>` is switched off. Switching a check off skips
+ *  that member and everything under it. */
+function on(ctx: ClaimCtx, id: PackCheck): boolean {
+  if (!PACK_CHECK_SET.has(id)) throw new Error(`unregistered pack check ${id}`);
+  return !ctx.off.has(`check:${id}`);
+}
+
+// §2.3's patterns, restated as literals (the generator imports nothing it checks).
+const REF_PACK_TYPE_RE = /^[a-z][a-z0-9-]{0,31}\.[a-z][a-z0-9-]{0,31}$/;
+const REF_VOCAB_RE = /^[a-z][a-z0-9-]{0,31}$/;
+const REF_OBJECT_FORMAT_RE = /^[a-z][a-z0-9-]{0,31}\/[1-9][0-9]{0,8}$/;
+const REF_HANDLER_PREFIX_RE = /^res:\/\/([A-Za-z0-9_][A-Za-z0-9 ._@+-]*\/)+$/;
+const REF_ENTITLEMENT_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const REF_AXIS_RE = /^[a-z][a-z0-9-]{0,15}$/;
+const REF_AXIS_VALUE_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,34}$/;
+const REF_ENGINE_RE = /^godot-[0-9]+\.[0-9]+$/;
+
+/** A pack id: `DELIVERABLE_ID_PATTERN`, at most 64 bytes (`not-app` is its own check). */
+const refPackIdShape = (v: unknown): v is string =>
+  typeof v === "string" &&
+  utf8Bytes(v).length <= 64 &&
+  REF_DELIVERABLE_RE.test(v);
+const refHex64 = (v: unknown): boolean =>
+  typeof v === "string" && REF_SHA256_RE.test(v);
+/** "absent or …": a present `null` is refused (V4 §3.3 rule 3). */
+const refVocab = (v: unknown): boolean =>
+  typeof v === "string" && REF_VOCAB_RE.test(v);
+
+/** The one object-ref check (checks 27–31), at every site. */
+function refObjectRef(
+  ctx: ClaimCtx,
+  v: Record<string, unknown>,
+  at: string,
+): boolean {
+  if (on(ctx, "ref.sha256") && !refHex64(v.sha256)) return false;
+  if (on(ctx, "ref.bytes")) {
+    if (typeof v.bytes !== "number") return false;
+    if (!refInt(ctx, "pack", v.bytes, `${at}/bytes`)) return false;
+  }
+  if (on(ctx, "ref.size")) {
+    if (typeof v.size !== "number") return false;
+    if (!refInt(ctx, "pack", v.size, `${at}/size`)) return false;
+  }
+  if (on(ctx, "ref.codec") && !refVocab(v.codec)) return false;
+  if (on(ctx, "ref.none-bytes") && v.codec === "none" && v.bytes !== v.size)
+    return false;
+  return true;
+}
+
+/** A `{sha256, bytes}` member (a delta's `artifact` or `data`). */
+function refHashBytes(
+  ctx: ClaimCtx,
+  v: Record<string, unknown>,
+  at: string,
+  sha: PackCheck,
+  bytes: PackCheck,
+): boolean {
+  if (on(ctx, sha) && !refHex64(v.sha256)) return false;
+  if (on(ctx, bytes)) {
+    if (typeof v.bytes !== "number") return false;
+    if (!refInt(ctx, "pack", v.bytes, `${at}/bytes`)) return false;
+  }
+  return true;
+}
+
+/** §2.3: the pack record's claims, after the common ones. */
+function refPackClaims(doc: Record<string, unknown>, ctx: ClaimCtx): boolean {
+  if (on(ctx, "deliverable.not-app") && doc.deliverable === "app") return false;
+  if (on(ctx, "builds.absent") && hasOwn(doc, "builds")) return false;
+  if (
+    on(ctx, "type") &&
+    !(typeof doc.type === "string" && REF_PACK_TYPE_RE.test(doc.type))
+  )
+    return false;
+  if (on(ctx, "formatVersion")) {
+    if (typeof doc.formatVersion !== "number") return false;
+    if (!refInt(ctx, "pack", doc.formatVersion, "/formatVersion")) return false;
+  }
+  if (hasOwn(doc, "handler") && on(ctx, "handler")) {
+    const h = doc.handler;
+    if (!isObj(h)) return false;
+    if (hasOwn(h, "mountOrder") && on(ctx, "handler.mountOrder")) {
+      if (typeof h.mountOrder !== "number") return false;
+      if (!refInt(ctx, "pack", h.mountOrder, "/handler/mountOrder"))
+        return false;
+    }
+    if (hasOwn(h, "prefixes") && on(ctx, "handler.prefixes")) {
+      const p = h.prefixes;
+      if (!Array.isArray(p)) return false;
+      if (on(ctx, "handler.prefixes.count") && (p.length < 1 || p.length > 32))
+        return false;
+      for (const x of p) {
+        if (
+          on(ctx, "handler.prefixes.item") &&
+          !(typeof x === "string" && REF_HANDLER_PREFIX_RE.test(x))
+        )
+          return false;
+        if (
+          on(ctx, "handler.prefixes.length") &&
+          typeof x === "string" &&
+          utf8Bytes(x).length > 256
+        )
+          return false;
+      }
+      if (
+        on(ctx, "handler.prefixes.unique") &&
+        new Set(p.map((x) => JSON.stringify(x))).size !== p.length
+      )
+        return false;
+    }
+    if (
+      hasOwn(h, "activation") &&
+      on(ctx, "handler.activation") &&
+      !refVocab(h.activation)
+    )
+      return false;
+  }
+  if (
+    hasOwn(doc, "entitlement") &&
+    on(ctx, "entitlement") &&
+    !(
+      typeof doc.entitlement === "string" &&
+      REF_ENTITLEMENT_RE.test(doc.entitlement)
+    )
+  )
+    return false;
+  if (on(ctx, "variants")) {
+    const vs = doc.variants;
+    if (!Array.isArray(vs)) return false;
+    if (on(ctx, "variants.count") && (vs.length < 1 || vs.length > 32))
+      return false;
+    const keys: string[] = [];
+    const axisSets: string[] = [];
+    for (const [i, v] of vs.entries()) {
+      if (!on(ctx, "variants.item")) continue;
+      if (!isObj(v)) return false;
+      const sel = refVariantClaims(v, i, ctx);
+      if (sel === false) return false;
+      const names = Object.keys(sel).sort();
+      keys.push(names.map((n) => `${n}=${String(sel[n])}`).join(";"));
+      axisSets.push(JSON.stringify(names));
+    }
+    if (on(ctx, "variants.key-unique") && new Set(keys).size !== keys.length)
+      return false;
+    if (on(ctx, "variants.axes-same") && new Set(axisSets).size > 1)
+      return false;
+  }
+  return true;
+}
+
+/** One variant's claims; its axis selection when they hold. */
+function refVariantClaims(
+  v: Record<string, unknown>,
+  i: number,
+  ctx: ClaimCtx,
+): Record<string, unknown> | false {
+  const at = `/variants/${i}`;
+  let sel: Record<string, unknown> = {};
+  if (on(ctx, "variant")) {
+    if (!isObj(v.variant)) return false;
+    sel = v.variant;
+    const names = Object.keys(sel);
+    if (on(ctx, "variant.count") && names.length > 4) return false;
+    for (const n of names) {
+      if (on(ctx, "variant.axis") && !REF_AXIS_RE.test(n)) return false;
+      if (
+        on(ctx, "variant.value") &&
+        !(typeof sel[n] === "string" && REF_AXIS_VALUE_RE.test(sel[n]))
+      )
+        return false;
+    }
+  }
+  if (on(ctx, "payload")) {
+    const p = v.payload;
+    if (!isObj(p)) return false;
+    if (on(ctx, "payload.size")) {
+      if (typeof p.size !== "number") return false;
+      if (!refInt(ctx, "pack", p.size, `${at}/payload/size`)) return false;
+    }
+    if (on(ctx, "payload.sha256") && !refHex64(p.sha256)) return false;
+  }
+  if (on(ctx, "full")) {
+    if (!isObj(v.full)) return false;
+    if (!refObjectRef(ctx, v.full, `${at}/full`)) return false;
+  }
+  let layout: unknown = undefined;
+  if (on(ctx, "files")) {
+    const f = v.files;
+    if (!isObj(f)) return false;
+    layout = f.layout;
+    if (
+      on(ctx, "files.format") &&
+      !(typeof f.format === "string" && REF_OBJECT_FORMAT_RE.test(f.format))
+    )
+      return false;
+    if (on(ctx, "files.layout") && !refVocab(f.layout)) return false;
+    if (!refObjectRef(ctx, f, `${at}/files`)) return false;
+    if (hasOwn(f, "gaps") && on(ctx, "files.gaps")) {
+      if (!isObj(f.gaps)) return false;
+      if (!refObjectRef(ctx, f.gaps, `${at}/files/gaps`)) return false;
+    }
+    if (
+      on(ctx, "files.gaps-container") &&
+      f.layout === "container" &&
+      !hasOwn(f, "gaps")
+    )
+      return false;
+    if (on(ctx, "files.gaps-tree") && f.layout === "tree" && hasOwn(f, "gaps"))
+      return false;
+  }
+  if (hasOwn(v, "deltas") && on(ctx, "deltas")) {
+    const ds = v.deltas;
+    if (!Array.isArray(ds)) return false;
+    if (on(ctx, "deltas.count") && ds.length > 16) return false;
+    const ids: string[] = [];
+    for (const [j, d] of ds.entries()) {
+      if (!on(ctx, "deltas.item")) continue;
+      if (!isObj(d)) return false;
+      const dt = `${at}/deltas/${j}`;
+      if (on(ctx, "delta.method") && !refVocab(d.method)) return false;
+      if (on(ctx, "delta.scope") && !refVocab(d.scope)) return false;
+      if (
+        on(ctx, "delta.scope-tree") &&
+        d.scope === "payload" &&
+        layout === "tree"
+      )
+        return false;
+      if (on(ctx, "delta.from") && !refHex64(d.from)) return false;
+      if (on(ctx, "delta.memBytes")) {
+        if (typeof d.memBytes !== "number") return false;
+        if (!refInt(ctx, "pack", d.memBytes, `${dt}/memBytes`)) return false;
+      }
+      if (d.scope === "payload" && on(ctx, "delta.artifact")) {
+        if (!isObj(d.artifact)) return false;
+        if (
+          !refHashBytes(
+            ctx,
+            d.artifact,
+            `${dt}/artifact`,
+            "delta.artifact.sha256",
+            "delta.artifact.bytes",
+          )
+        )
+          return false;
+        ids.push(String(d.artifact.sha256));
+      }
+      if (d.scope === "files") {
+        if (on(ctx, "delta.patch")) {
+          if (!isObj(d.patch)) return false;
+          if (!refObjectRef(ctx, d.patch, `${dt}/patch`)) return false;
+          ids.push(String(d.patch.sha256));
+        }
+        if (on(ctx, "delta.data")) {
+          if (!isObj(d.data)) return false;
+          if (
+            !refHashBytes(
+              ctx,
+              d.data,
+              `${dt}/data`,
+              "delta.data.sha256",
+              "delta.data.bytes",
+            )
+          )
+            return false;
+        }
+      }
+    }
+    if (on(ctx, "deltas.id-unique") && new Set(ids).size !== ids.length)
+      return false;
+  }
+  if (hasOwn(v, "requires") && on(ctx, "requires")) {
+    const r = v.requires;
+    if (!isObj(r)) return false;
+    if (
+      hasOwn(r, "engine") &&
+      on(ctx, "requires.engine") &&
+      !(typeof r.engine === "string" && REF_ENGINE_RE.test(r.engine))
+    )
+      return false;
+  }
+  return sel;
+}
+
+/** §2.4's `content` (checks 57–75), at `at` (`/content` in a record). */
+function refContentClaims(c: unknown, ctx: ClaimCtx, at: string): boolean {
+  if (!isObj(c)) return false;
+  if (on(ctx, "content.contentApi")) {
+    if (typeof c.contentApi !== "number") return false;
+    if (!refInt(ctx, "content", c.contentApi, `${at}/contentApi`)) return false;
+  }
+  if (on(ctx, "content.pins")) {
+    const pins = c.pins;
+    if (!Array.isArray(pins)) return false;
+    if (on(ctx, "content.pins.count") && pins.length > 256) return false;
+    const packs: unknown[] = [];
+    for (const [i, p] of pins.entries()) {
+      if (!on(ctx, "content.pins.item")) continue;
+      if (!isObj(p)) return false;
+      packs.push(p.pack);
+      if (on(ctx, "pin.pack") && !refPackIdShape(p.pack)) return false;
+      if (on(ctx, "pin.pack.not-app") && p.pack === "app") return false;
+      if (on(ctx, "pin.release")) {
+        const r = p.release;
+        if (!isObj(r)) return false;
+        if (on(ctx, "pin.release.sha256") && !refHex64(r.sha256)) return false;
+        if (on(ctx, "pin.release.seq")) {
+          if (typeof r.seq !== "number") return false;
+          if (!refInt(ctx, "content", r.seq, `${at}/pins/${i}/release/seq`))
+            return false;
+        }
+        if (
+          on(ctx, "pin.release.version") &&
+          !(
+            typeof r.version === "string" &&
+            REF_RECORD_VERSION_RE.test(r.version)
+          )
+        )
+          return false;
+      }
+    }
+    if (
+      on(ctx, "content.pins.unique") &&
+      new Set(packs.map((x) => JSON.stringify(x))).size !== packs.length
+    )
+      return false;
+  }
+  if (on(ctx, "content.expects")) {
+    const es = c.expects;
+    if (!Array.isArray(es)) return false;
+    if (on(ctx, "content.expects.count") && es.length > 256) return false;
+    const packs: unknown[] = [];
+    for (const e of es) {
+      if (!on(ctx, "content.expects.item")) continue;
+      if (!isObj(e)) return false;
+      packs.push(e.pack);
+      if (on(ctx, "expect.pack") && !refPackIdShape(e.pack)) return false;
+      if (on(ctx, "expect.pack.not-app") && e.pack === "app") return false;
+      if (on(ctx, "expect.required") && typeof e.required !== "boolean")
+        return false;
+      if (on(ctx, "expect.delivery") && !refVocab(e.delivery)) return false;
+    }
+    if (
+      on(ctx, "content.expects.unique") &&
+      new Set(packs.map((x) => JSON.stringify(x))).size !== packs.length
+    )
+      return false;
+  }
+  return true;
+}
+
+/** §2.4's `builds[].embeds` (checks 77–80). */
+function refEmbedsClaims(e: unknown, ctx: ClaimCtx): boolean {
+  if (!Array.isArray(e)) return false;
+  if (on(ctx, "embeds.count") && e.length > 64) return false;
+  for (const x of e) {
+    if (on(ctx, "embeds.item") && !refPackIdShape(x)) return false;
+    if (on(ctx, "embeds.not-app") && x === "app") return false;
+  }
+  if (
+    on(ctx, "embeds.unique") &&
+    new Set(e.map((x) => JSON.stringify(x))).size !== e.length
+  )
+    return false;
+  return true;
+}
+
+// ── §4.2's fixed object-ref table and §4.3's records ─────────────────────────────────────────
+
+/** Every object a §4.6 record pins, by the blob name it has in the content set (§4.3). Each
+ *  `sha256` is the SHA-256 of the name; `bytes` and `size` are §4.3's figures. `refs` marks the
+ *  four objects the content set records in `content/blobs/refs.json` instead of shipping. */
+const PACK_OBJECTS: Record<
+  string,
+  { bytes: number; size?: number; refs?: true }
+> = {
+  "payload/v1.full.zst": { bytes: 1196151, size: 5258960 },
+  "payload/v2.full.zst": { bytes: 1201876, size: 5256232, refs: true },
+  "files/v1.files.zst": { bytes: 13505, size: 41870 },
+  "files/v1.gaps.zst": { bytes: 4698, size: 41232, refs: true },
+  "files/v2.files.zst": { bytes: 13783, size: 42700 },
+  "files/v2.gaps.zst": { bytes: 4702, size: 41616 },
+  "deltas/v1-v2.pf.zst": { bytes: 312704 },
+  "patch/v1-v2.files.zst": { bytes: 4009, size: 12950 },
+  "patch/v1-v2.files.data": { bytes: 314899 },
+  "tree/v1.files.zst": { bytes: 13500, size: 39500 },
+  "tree/v2.files.zst": { bytes: 13800, size: 40300 },
+  "patch/v1-v2.tree.zst": { bytes: 4000, size: 12800 },
+  "tree/v1.full.zst": { bytes: 1190000, size: 5217728, refs: true },
+  "tree/v2.full.zst": { bytes: 1195000, size: 5214616, refs: true },
+  "tree/t1.files.zst": { bytes: 1000, size: 3300 },
+  "tree/t1.full.zst": { bytes: 1898, size: 9421 },
+};
+const PACK_OBJECT_HASHES = new Set(
+  Object.keys(PACK_OBJECTS).map((n) => sha256Hex(n)),
+);
+
+/** An object ref `{sha256, bytes, size, codec}` from the table. */
+function objRef(name: string): Record<string, unknown> {
+  const o = PACK_OBJECTS[name];
+  if (!o || o.size === undefined) throw new Error(`no object ref ${name}`);
+  return {
+    sha256: sha256Hex(name),
+    bytes: o.bytes,
+    size: o.size,
+    codec: "zstd",
+  };
+}
+/** A `{sha256, bytes}` member (a delta's `artifact` or `data`). */
+function hashBytes(name: string): Record<string, unknown> {
+  const o = PACK_OBJECTS[name];
+  if (!o) throw new Error(`no object ${name}`);
+  return { sha256: sha256Hex(name), bytes: o.bytes };
+}
+
+/** The payloads. A container's `sha256` is its payload file's; a tree's is its `treeDigest`;
+ *  both stand in as the SHA-256 of a name until P4-04 computes them. The tree sizes are the
+ *  container sizes less their gaps. */
+const PACK_PAYLOADS = {
+  v1: { size: 5258960, sha256: sha256Hex("pkey-corpus-payload:v1") },
+  v2: { size: 5256232, sha256: sha256Hex("pkey-corpus-payload:v2") },
+  treeV1: { size: 5217728, sha256: sha256Hex("pkey-corpus-tree:v1") },
+  treeV2: { size: 5214616, sha256: sha256Hex("pkey-corpus-tree:v2") },
+  t1: { size: 9421, sha256: sha256Hex("pkey-corpus-tree:t1") },
+};
+
+const LEVELS_HANDLER = {
+  mountOrder: 2,
+  prefixes: ["res://levels/"],
+  activation: "restart",
+};
+
+function packDoc(
+  deliverable: string,
+  version: string,
+  seq: number,
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    schemaVersion: 1,
+    aud: AUD_V3,
+    deliverable,
+    kind: "pack",
+    version,
+    seq,
+    issuedAt: RECORD_ISSUED,
+    tag: `${deliverable}-v${version}`,
+    channel: "stable",
+    ...body,
+  };
+}
+
+/** `djdl.levels@1.1.0`'s `{texture: s3tc}` variant: one delta of each scope from v1. */
+function levelsV2Variant(): Record<string, unknown> {
+  return {
+    variant: { texture: "s3tc" },
+    payload: { ...PACK_PAYLOADS.v2 },
+    full: objRef("payload/v2.full.zst"),
+    files: {
+      format: "pkey-files/1",
+      layout: "container",
+      ...objRef("files/v2.files.zst"),
+      gaps: objRef("files/v2.gaps.zst"),
+    },
+    deltas: [
+      {
+        method: "zstd-patch-from",
+        scope: "payload",
+        from: PACK_PAYLOADS.v1.sha256,
+        memBytes: PACK_PAYLOADS.v1.size + PACK_PAYLOADS.v2.size,
+        artifact: hashBytes("deltas/v1-v2.pf.zst"),
+      },
+      {
+        method: "zstd-patch-from",
+        scope: "files",
+        from: PACK_PAYLOADS.v1.sha256,
+        memBytes: 699312,
+        patch: objRef("patch/v1-v2.files.zst"),
+        data: hashBytes("patch/v1-v2.files.data"),
+      },
+    ],
+    requires: { engine: "godot-4.7" },
+  };
+}
+
+/** §4.3's six records. */
+function packRecordDocs(): Record<string, Record<string, unknown>> {
+  const godot = {
+    type: "godot.pck",
+    formatVersion: 4,
+    handler: LEVELS_HANDLER,
+  };
+  const tree = { type: "files.tree", formatVersion: 1 };
+  const etc2 = levelsV2Variant();
+  delete etc2.deltas;
+  etc2.variant = { texture: "etc2" };
+  return {
+    "djdl.levels@1.0.0": packDoc("djdl.levels", "1.0.0", 1, {
+      ...godot,
+      variants: [
+        {
+          variant: { texture: "s3tc" },
+          payload: { ...PACK_PAYLOADS.v1 },
+          full: objRef("payload/v1.full.zst"),
+          files: {
+            format: "pkey-files/1",
+            layout: "container",
+            ...objRef("files/v1.files.zst"),
+            gaps: objRef("files/v1.gaps.zst"),
+          },
+          requires: { engine: "godot-4.7" },
+        },
+      ],
+    }),
+    "djdl.levels@1.1.0": packDoc("djdl.levels", "1.1.0", 2, {
+      ...godot,
+      variants: [levelsV2Variant(), etc2],
+    }),
+    "djdl.assets@1.0.0": packDoc("djdl.assets", "1.0.0", 1, {
+      ...tree,
+      handler: { activation: "hot" },
+      variants: [
+        {
+          variant: {},
+          payload: { ...PACK_PAYLOADS.treeV1 },
+          full: objRef("tree/v1.full.zst"),
+          files: {
+            format: "pkey-files/1",
+            layout: "tree",
+            ...objRef("tree/v1.files.zst"),
+          },
+        },
+      ],
+    }),
+    "djdl.assets@1.1.0": packDoc("djdl.assets", "1.1.0", 2, {
+      ...tree,
+      handler: { activation: "hot" },
+      variants: [
+        {
+          variant: {},
+          payload: { ...PACK_PAYLOADS.treeV2 },
+          full: objRef("tree/v2.full.zst"),
+          files: {
+            format: "pkey-files/1",
+            layout: "tree",
+            ...objRef("tree/v2.files.zst"),
+          },
+          deltas: [
+            {
+              method: "zstd-patch-from",
+              scope: "files",
+              from: PACK_PAYLOADS.treeV1.sha256,
+              memBytes: 699312,
+              patch: objRef("patch/v1-v2.tree.zst"),
+              data: hashBytes("patch/v1-v2.files.data"),
+            },
+          ],
+        },
+      ],
+    }),
+    // The minimal record: no handler, no entitlement, no deltas, no requires.
+    "djdl.docs@1.0.0": packDoc("djdl.docs", "1.0.0", 1, {
+      ...tree,
+      variants: [
+        {
+          variant: {},
+          payload: { ...PACK_PAYLOADS.t1 },
+          full: objRef("tree/t1.full.zst"),
+          files: {
+            format: "pkey-files/1",
+            layout: "tree",
+            ...objRef("tree/t1.files.zst"),
+          },
+        },
+      ],
+    }),
+  };
+}
+
+/** The signed pack records (built once per run; the rewritten P3-02 cases sign the same). */
+let PACK_RECORDS: Map<string, RecordVector> | null = null;
+async function packRecords(): Promise<Map<string, RecordVector>> {
+  if (PACK_RECORDS) return PACK_RECORDS;
+  const out = new Map<string, RecordVector>();
+  for (const [name, doc] of Object.entries(packRecordDocs())) {
+    const jws = await signAs(doc, REL_KID, "pkey-release+jws");
+    out.set(name, { name, doc, jws, sha256: sha256Hex(jws) });
+  }
+  PACK_RECORDS = out;
+  return out;
+}
+
+/** The app twin of §4.6's app checks: R15's envelope with two builds, `content` pinning the
+ *  two v1.1.0 pack records and the minimal one, and `embeds` on the desktop build. */
+function appTwin(packs: Map<string, RecordVector>): Record<string, unknown> {
+  const pin = (name: string): Record<string, unknown> => {
+    const r = packs.get(name)!;
+    return {
+      pack: r.doc.deliverable,
+      release: { sha256: r.sha256, seq: r.doc.seq, version: r.doc.version },
+    };
+  };
+  const builds = r15Builds("1.5.0", ["macos-dmg", "web"]);
+  builds[0]!.embeds = ["djdl.levels"];
+  builds[1]!.embeds = [];
+  return recordDoc({
+    content: {
+      contentApi: 4,
+      pins: [pin("djdl.levels@1.1.0"), pin("djdl.assets@1.1.0")],
+      expects: [
+        { pack: "djdl.levels", required: true, delivery: "essential" },
+        { pack: "djdl.assets", required: false, delivery: "prefetch" },
+      ],
+    },
+    builds,
+  });
+}
+
+// ── `packRecordCases` (159) ──────────────────────────────────────────────────────────────────
+
+interface PackPin {
+  kind?: string;
+  deliverable: string;
+  version: string;
+  seq: number;
+}
+
+interface PackRecordCase {
+  id: string;
+  description: string;
+  jws: string;
+  releaseKeys: Record<string, string>;
+  productTrust: Record<string, string>;
+  expectedAud: string;
+  expectedHash: string;
+  pin?: PackPin;
+  nonWireIntegers?: string[];
+  expect:
+    | { verify: "ok"; kind: string; doc?: unknown }
+    | { verify: "fail"; step: "hash" | "jws" | "claims" | "cross-check" };
+}
+
+/** Steps 12–14 over a record body (shared by pack cases and markers). */
+function refRecordSteps(
+  body: string,
+  expectedHash: string,
+  releaseKeys: Record<string, string>,
+  productTrust: Record<string, string>,
+  aud: string,
+):
+  | { ok: true; doc: Record<string, unknown> }
+  | { ok: false; step: "hash" | "jws" | "claims" } {
+  if (utf8Bytes(body).length > 88844 || /[^\x00-\x7f]/.test(body))
+    return { ok: false, step: "hash" };
+  if (sha256Hex(body) !== expectedHash) return { ok: false, step: "hash" };
+  let kid: unknown;
+  try {
+    kid = (
+      JSON.parse(
+        new TextDecoder().decode(base64UrlDecode(body.split(".")[0] ?? "")),
+      ) as Record<string, unknown>
+    ).kid;
+  } catch {
+    return { ok: false, step: "jws" };
+  }
+  if (typeof kid !== "string" || !hasOwn(releaseKeys, kid))
+    return { ok: false, step: "jws" };
+  const key = releaseKeys[kid]!;
+  if (Object.values(productTrust).includes(key))
+    return { ok: false, step: "jws" };
+  const v = refVerifyJws(body, { [kid]: key }, "pkey-release+jws");
+  if (!v) return { ok: false, step: "jws" };
+  if (!refRecordClaims(v.payload, ctxOf(v.text), aud))
+    return { ok: false, step: "claims" };
+  return { ok: true, doc: v.payload };
+}
+
+/** V4 §3.5 steps 12–15 with plans/P4-01.md §2.6's step 15: `kind` equals the pin's, `app`
+ *  when the pin names none. */
+function refVerifyPackCase(c: PackRecordCase): PackRecordCase["expect"] {
+  const r = refRecordSteps(
+    c.jws,
+    c.expectedHash,
+    c.releaseKeys,
+    c.productTrust,
+    c.expectedAud,
+  );
+  if (!r.ok) return { verify: "fail", step: r.step };
+  const d = r.doc;
+  if (c.pin) {
+    if (d.kind !== (c.pin.kind ?? "app") || d.deliverable !== c.pin.deliverable)
+      return { verify: "fail", step: "cross-check" };
+    if (d.version !== c.pin.version || d.seq !== c.pin.seq)
+      return { verify: "fail", step: "cross-check" };
+  }
+  return { verify: "ok", kind: d.kind as string };
+}
+
+/** A structure case's generator-only facts: its check, its twin and the property it breaks. */
+interface StructureCase {
+  check: PackCheck;
+  twin: Record<string, unknown>;
+  prop: string;
+}
+/** Filled by `buildPackRecordCases`, read by the per-check self-check; never in the corpus. */
+const PACK_STRUCTURE = new Map<string, StructureCase>();
+/** The per-integer-path rows for §2.5's 16 paths (token, bound, minimum case ids). */
+const PACK_PER_CLAIM: [string, string, string, string][] = [];
+
+const clone = <T>(v: T): T => structuredClone(v);
+
+async function buildPackRecordCases(): Promise<PackRecordCase[]> {
+  const RK: Record<string, string> = { [REL_KID]: pub(REL_KID) };
+  const PT = { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) };
+  const packs = await packRecords();
+  const rec = (name: string): RecordVector => packs.get(name)!;
+  const LV1 = rec("djdl.levels@1.0.0");
+  const LV2 = rec("djdl.levels@1.1.0");
+  const AS2 = rec("djdl.assets@1.1.0");
+  const MIN = rec("djdl.docs@1.0.0").doc;
+  /** The one-variant container twin: v2's s3tc variant, one delta of each scope. */
+  const ONE: Record<string, unknown> = {
+    ...clone(LV2.doc),
+    variants: [levelsV2Variant()],
+  };
+  const APP = appTwin(packs);
+  const cases: PackRecordCase[] = [];
+  PACK_STRUCTURE.clear();
+  PACK_PER_CLAIM.length = 0;
+
+  const mk = async (
+    id: string,
+    description: string,
+    o: {
+      doc?: Record<string, unknown>;
+      text?: string;
+      jws?: string;
+      kid?: string;
+      expectedHash?: string;
+      pin?: PackPin;
+      expect: PackRecordCase["expect"];
+    },
+  ): Promise<void> => {
+    const kid = o.kid ?? REL_KID;
+    const jws =
+      o.jws ??
+      (o.text !== undefined
+        ? await signText(o.text, kid, "pkey-release+jws")
+        : await signAs(o.doc!, kid, "pkey-release+jws"));
+    const c: PackRecordCase = {
+      id,
+      description,
+      jws,
+      releaseKeys: RK,
+      productTrust: PT,
+      expectedAud: AUD_V3,
+      expectedHash: o.expectedHash ?? sha256Hex(jws),
+      ...(o.pin ? { pin: o.pin } : {}),
+      expect: o.expect,
+    };
+    const v = hasOwn(RK, kid)
+      ? refVerifyJws(jws, { [kid]: RK[kid]! }, "pkey-release+jws")
+      : null;
+    const nonWire = v ? refNonWire(v.text) : [];
+    cases.push(
+      placeNonWire(nonWire.length > 0 ? { ...c, nonWireIntegers: nonWire } : c),
+    );
+  };
+  const ok = (kind: string, doc?: unknown): PackRecordCase["expect"] =>
+    doc === undefined ? { verify: "ok", kind } : { verify: "ok", kind, doc };
+  const fail = (
+    step: "hash" | "jws" | "claims" | "cross-check",
+  ): PackRecordCase["expect"] => ({ verify: "fail", step });
+
+  // ── Valid (13) ──
+  await mk(
+    "pack-valid-container",
+    "`djdl.levels@1.1.0`: a `godot.pck` container with two texture variants, the first with one delta of each scope.",
+    { jws: LV2.jws, expect: ok("pack", LV2.doc) },
+  );
+  await mk(
+    "pack-valid-tree",
+    "`djdl.assets@1.1.0`: an unvaried `files.tree` pack with a `files` delta and no gaps.",
+    { jws: AS2.jws, expect: ok("pack") },
+  );
+  await mk(
+    "pack-valid-pinned",
+    "`djdl.levels@1.1.0` cross-checked against a pack pin `{kind: pack, djdl.levels, 1.1.0, 2}` (plans/P4-01.md §2.6).",
+    {
+      jws: LV2.jws,
+      pin: {
+        kind: "pack",
+        deliverable: "djdl.levels",
+        version: "1.1.0",
+        seq: 2,
+      },
+      expect: ok("pack"),
+    },
+  );
+  await mk(
+    "pack-valid-minimal",
+    "`djdl.docs@1.0.0`: only the required members (no handler, entitlement, deltas or requires).",
+    { jws: rec("djdl.docs@1.0.0").jws, expect: ok("pack") },
+  );
+  {
+    const d = clone(MIN);
+    d.type = "l10n.table";
+    await mk(
+      "pack-valid-unknown-type",
+      "An unknown pack type (`l10n.table`) verifies; the pack is unusable on a v1 SDK (`pack-type-unsupported`).",
+      { doc: d, expect: ok("pack") },
+    );
+  }
+  {
+    const d = clone(ONE);
+    const v = (d.variants as Record<string, any>[])[0]!;
+    v.deltas[0].method = "godot-delta-pck";
+    v.deltas.push({
+      method: "zstd-patch-from",
+      scope: "chunks",
+      from: PACK_PAYLOADS.v1.sha256,
+      memBytes: 1048576,
+    });
+    v.files.format = "pkey-files/2";
+    v.full.codec = "lz4";
+    (d.handler as Record<string, unknown>).activation = "lazy";
+    await mk(
+      "pack-valid-unknown-vocabulary",
+      "Values outside v1's vocabularies (a `godot-delta-pck` method, a `chunks` scope, a `pkey-files/2` index, an `lz4` object, activation `lazy`) verify; each only makes its thing unusable.",
+      { doc: d, expect: ok("pack") },
+    );
+  }
+  {
+    const d = clone(ONE);
+    (d.variants as Record<string, any>[])[0]!.files.layout = "strata";
+    await mk(
+      "pack-valid-unknown-layout",
+      "An unknown layout (`strata`) carrying `gaps` and a `payload` delta verifies: it neither needs nor refuses them, and the variant is unusable.",
+      { doc: d, expect: ok("pack") },
+    );
+  }
+  {
+    const d = clone(ONE);
+    const v = (d.variants as Record<string, any>[])[0]!;
+    v.full.size = v.payload.size + 1;
+    await mk(
+      "pack-valid-full-size-differs",
+      "`full.size` differs from `payload.size`: not a claim (no claim relates two integer members); `full` is unusable.",
+      { doc: d, expect: ok("pack") },
+    );
+  }
+  {
+    const d = clone(ONE);
+    const v = (d.variants as Record<string, any>[])[0]!;
+    v.deltas[0].patch = null;
+    v.deltas[0].data = 5;
+    v.deltas[1].artifact = "x";
+    await mk(
+      "pack-valid-foreign-delta-members",
+      'A `payload` delta with `patch: null` and `data: 5`, and a `files` delta with `artifact: "x"`: a member of the other scope is ignored, not refused.',
+      { doc: d, expect: ok("pack") },
+    );
+  }
+  {
+    const d = clone(ONE);
+    const v = (d.variants as Record<string, any>[])[0]!;
+    v.chunks = {
+      format: "pkey-chunks/1",
+      ...objRef("files/v2.files.zst"),
+      params: { avg: 65536 },
+    };
+    v.conflicts = ["djdl.other"];
+    v.requires = {
+      engine: "godot-4.7",
+      contentApi: 1,
+      packs: ["djdl.assets"],
+      features: ["x"],
+    };
+    d.provides = ["djdl.levels-hd"];
+    d.removes = [];
+    d.content = 5;
+    await mk(
+      "pack-valid-reserved-members",
+      "Every reserved member (`chunks`, `conflicts`, `requires.{contentApi, packs, features}`, `provides`, `removes`) and `content: 5`, which a pack record ignores.",
+      { doc: d, expect: ok("pack") },
+    );
+  }
+  {
+    const jws = await signAs(APP, REL_KID, "pkey-release+jws");
+    await mk(
+      "app-valid-content",
+      "An app record with `content` (two pins, two expects) and `builds[].embeds`.",
+      { jws, expect: ok("app", APP) },
+    );
+  }
+  {
+    const d = clone(APP);
+    const c = d.content as Record<string, any>;
+    c.expects.push({
+      pack: "djdl.music",
+      required: false,
+      delivery: "background",
+    });
+    c.holds = [];
+    c.packChannels = { "djdl.levels": "beta" };
+    await mk(
+      "app-valid-content-forward",
+      "Forward members: an unpinned expect, `holds`, `packChannels` and delivery `background` verify (cross-record rules are publish rules, never claims).",
+      { doc: d, expect: ok("app") },
+    );
+  }
+  {
+    const builds = r15Builds("1.5.0", ["web"]);
+    builds[0]!.embeds = 7;
+    await mk(
+      "content-valid-ignored-on-unknown-kind",
+      "A record of an unknown kind with `content: 5` and a build with `embeds: 7`: only the common claims apply.",
+      {
+        doc: recordDoc({ kind: "future", content: 5, builds }),
+        expect: ok("future"),
+      },
+    );
+  }
+
+  // ── Structure (92): one property of a twin, refused by its check alone ──
+  const brk = async (
+    id: string,
+    check: PackCheck,
+    twin: Record<string, unknown>,
+    prop: string,
+    description: string,
+    mutate: (d: Record<string, any>) => void,
+  ): Promise<void> => {
+    const d = clone(twin) as Record<string, any>;
+    mutate(d);
+    PACK_STRUCTURE.set(id, { check, twin, prop });
+    await mk(id, description, { doc: d, expect: fail("claims") });
+  };
+  const V0 = "/variants/0";
+  const v0 = (d: Record<string, any>): Record<string, any> => d.variants[0];
+  const pd = (d: Record<string, any>): Record<string, any> => v0(d).deltas[0];
+  const fd = (d: Record<string, any>): Record<string, any> => v0(d).deltas[1];
+
+  await brk(
+    "pack-deliverable-app",
+    "deliverable.not-app",
+    ONE,
+    "/deliverable",
+    "A pack record whose `deliverable` is `app`.",
+    (d) => {
+      d.deliverable = "app";
+    },
+  );
+  await brk(
+    "pack-builds-present",
+    "builds.absent",
+    ONE,
+    "/builds",
+    "A pack record with `builds: []`.",
+    (d) => {
+      d.builds = [];
+    },
+  );
+  await brk("pack-type-missing", "type", ONE, "/type", "No `type`.", (d) => {
+    delete d.type;
+  });
+  await brk(
+    "pack-type-bad-pattern",
+    "type",
+    ONE,
+    "/type",
+    '`type: "godot"`, outside `PACK_TYPE_PATTERN`.',
+    (d) => {
+      d.type = "godot";
+    },
+  );
+  await brk(
+    "pack-type-trailing-newline",
+    "type",
+    ONE,
+    "/type",
+    'Whole-string patterns: `type` `"godot.pck\\n"`.',
+    (d) => {
+      d.type = "godot.pck\n";
+    },
+  );
+  await brk(
+    "pack-format-version-missing",
+    "formatVersion",
+    ONE,
+    "/formatVersion",
+    "No `formatVersion`.",
+    (d) => {
+      delete d.formatVersion;
+    },
+  );
+  await brk(
+    "pack-handler-null",
+    "handler",
+    ONE,
+    "/handler",
+    "`handler: null`.",
+    (d) => {
+      d.handler = null;
+    },
+  );
+  await brk(
+    "pack-mount-order-null",
+    "handler.mountOrder",
+    ONE,
+    "/handler/mountOrder",
+    "`handler.mountOrder: null`.",
+    (d) => {
+      d.handler.mountOrder = null;
+    },
+  );
+  await brk(
+    "pack-handler-prefixes-null",
+    "handler.prefixes",
+    ONE,
+    "/handler/prefixes",
+    "`handler.prefixes: null`.",
+    (d) => {
+      d.handler.prefixes = null;
+    },
+  );
+  await brk(
+    "pack-handler-prefixes-empty",
+    "handler.prefixes.count",
+    ONE,
+    "/handler/prefixes",
+    "`handler.prefixes: []` (1–32 items).",
+    (d) => {
+      d.handler.prefixes = [];
+    },
+  );
+  await brk(
+    "pack-handler-prefixes-over-max",
+    "handler.prefixes.count",
+    ONE,
+    "/handler/prefixes",
+    "33 distinct prefixes (1–32 items).",
+    (d) => {
+      d.handler.prefixes = Array.from({ length: 33 }, (_, k) => `res://p${k}/`);
+    },
+  );
+  await brk(
+    "pack-handler-prefix-bad",
+    "handler.prefixes.item",
+    ONE,
+    "/handler/prefixes",
+    "A prefix without its trailing slash (`res://levels`).",
+    (d) => {
+      d.handler.prefixes = ["res://levels"];
+    },
+  );
+  await brk(
+    "pack-handler-prefix-not-string",
+    "handler.prefixes.item",
+    ONE,
+    "/handler/prefixes",
+    "A prefix that is a number.",
+    (d) => {
+      d.handler.prefixes = [7];
+    },
+  );
+  await brk(
+    "pack-handler-prefix-over-256-bytes",
+    "handler.prefixes.length",
+    ONE,
+    "/handler/prefixes",
+    "A 257-byte prefix that matches `HANDLER_PREFIX_PATTERN`.",
+    (d) => {
+      d.handler.prefixes = [`res://${"a".repeat(250)}/`];
+    },
+  );
+  await brk(
+    "pack-handler-prefixes-duplicate",
+    "handler.prefixes.unique",
+    ONE,
+    "/handler/prefixes",
+    "The same prefix twice.",
+    (d) => {
+      d.handler.prefixes = ["res://levels/", "res://levels/"];
+    },
+  );
+  await brk(
+    "pack-handler-activation-empty",
+    "handler.activation",
+    ONE,
+    "/handler/activation",
+    '`handler.activation: ""`.',
+    (d) => {
+      d.handler.activation = "";
+    },
+  );
+  await brk(
+    "pack-handler-activation-null",
+    "handler.activation",
+    ONE,
+    "/handler/activation",
+    "`handler.activation: null`.",
+    (d) => {
+      d.handler.activation = null;
+    },
+  );
+  await brk(
+    "pack-entitlement-bad",
+    "entitlement",
+    ONE,
+    "/entitlement",
+    '`entitlement: "-hd"`, outside `ENTITLEMENT_PATTERN`.',
+    (d) => {
+      d.entitlement = "-hd";
+    },
+  );
+  await brk(
+    "pack-variants-missing",
+    "variants",
+    ONE,
+    "/variants",
+    "No `variants`.",
+    (d) => {
+      delete d.variants;
+    },
+  );
+  await brk(
+    "pack-variants-empty",
+    "variants.count",
+    ONE,
+    "/variants",
+    "`variants: []` (1–32 items).",
+    (d) => {
+      d.variants = [];
+    },
+  );
+  await brk(
+    "pack-variants-over-max",
+    "variants.count",
+    ONE,
+    "/variants",
+    "33 variants with distinct keys (1–32 items).",
+    (d) => {
+      const base = v0(d);
+      delete base.deltas;
+      d.variants = Array.from({ length: 33 }, (_, k) => ({
+        ...clone(base),
+        variant: { texture: `t${k}` },
+      }));
+    },
+  );
+  await brk(
+    "pack-variant-not-object",
+    "variants.item",
+    ONE,
+    "/variants/0",
+    "A variant that is a number.",
+    (d) => {
+      d.variants[0] = 7;
+    },
+  );
+  await brk(
+    "pack-variant-key-duplicate",
+    "variants.key-unique",
+    ONE,
+    "/variants",
+    "Two variants with the key `texture=s3tc`.",
+    (d) => {
+      d.variants.push(clone(v0(d)));
+    },
+  );
+  await brk(
+    "pack-variant-axes-differ",
+    "variants.axes-same",
+    ONE,
+    "/variants",
+    "A second variant declaring `locale` where the first declares `texture`.",
+    (d) => {
+      d.variants.push({ ...clone(v0(d)), variant: { locale: "fr" } });
+    },
+  );
+  await brk(
+    "pack-variant-member-missing",
+    "variant",
+    ONE,
+    `${V0}/variant`,
+    "A variant without its `variant` member.",
+    (d) => {
+      delete v0(d).variant;
+    },
+  );
+  await brk(
+    "pack-variant-five-axes",
+    "variant.count",
+    ONE,
+    `${V0}/variant`,
+    "A variant with five axes (0–4 members).",
+    (d) => {
+      v0(d).variant = {
+        texture: "s3tc",
+        locale: "fr",
+        quality: "hd",
+        tier: "a",
+        size: "b",
+      };
+    },
+  );
+  await brk(
+    "pack-variant-axis-bad",
+    "variant.axis",
+    ONE,
+    `${V0}/variant`,
+    "An axis name `Texture`, outside `VARIANT_AXIS_PATTERN`.",
+    (d) => {
+      v0(d).variant = { Texture: "s3tc" };
+    },
+  );
+  await brk(
+    "pack-variant-value-non-ascii",
+    "variant.value",
+    ONE,
+    `${V0}/variant/texture`,
+    "An axis value `s3tç`: `VARIANT_VALUE_PATTERN` is ASCII.",
+    (d) => {
+      v0(d).variant.texture = "s3tç";
+    },
+  );
+  await brk(
+    "pack-variant-value-trailing-newline",
+    "variant.value",
+    ONE,
+    `${V0}/variant/texture`,
+    'Whole-string patterns: an axis value `"s3tc\\n"`.',
+    (d) => {
+      v0(d).variant.texture = "s3tc\n";
+    },
+  );
+  await brk(
+    "pack-variant-value-not-string",
+    "variant.value",
+    ONE,
+    `${V0}/variant/texture`,
+    "An axis value that is a number.",
+    (d) => {
+      v0(d).variant.texture = 7;
+    },
+  );
+  await brk(
+    "pack-payload-missing",
+    "payload",
+    ONE,
+    `${V0}/payload`,
+    "A variant without `payload`.",
+    (d) => {
+      delete v0(d).payload;
+    },
+  );
+  await brk(
+    "pack-payload-size-missing",
+    "payload.size",
+    ONE,
+    `${V0}/payload/size`,
+    "`payload` without `size`.",
+    (d) => {
+      delete v0(d).payload.size;
+    },
+  );
+  await brk(
+    "pack-payload-sha256-uppercase",
+    "payload.sha256",
+    ONE,
+    `${V0}/payload/sha256`,
+    "`payload.sha256` in uppercase hex.",
+    (d) => {
+      v0(d).payload.sha256 = String(v0(d).payload.sha256).toUpperCase();
+    },
+  );
+  await brk(
+    "pack-full-missing",
+    "full",
+    ONE,
+    `${V0}/full`,
+    "A variant without `full`.",
+    (d) => {
+      delete v0(d).full;
+    },
+  );
+  await brk(
+    "pack-ref-sha256-short",
+    "ref.sha256",
+    ONE,
+    `${V0}/full/sha256`,
+    "`full.sha256` with 63 hex digits (standing for every object ref).",
+    (d) => {
+      v0(d).full.sha256 = String(v0(d).full.sha256).slice(1);
+    },
+  );
+  await brk(
+    "pack-ref-bytes-missing",
+    "ref.bytes",
+    ONE,
+    `${V0}/full/bytes`,
+    "`full` without `bytes`.",
+    (d) => {
+      delete v0(d).full.bytes;
+    },
+  );
+  await brk(
+    "pack-ref-size-missing",
+    "ref.size",
+    ONE,
+    `${V0}/full/size`,
+    "`full` without `size`.",
+    (d) => {
+      delete v0(d).full.size;
+    },
+  );
+  await brk(
+    "pack-ref-codec-missing",
+    "ref.codec",
+    ONE,
+    `${V0}/full/codec`,
+    "`full` without `codec` (required even for `none`).",
+    (d) => {
+      delete v0(d).full.codec;
+    },
+  );
+  await brk(
+    "pack-ref-codec-bad-pattern",
+    "ref.codec",
+    ONE,
+    `${V0}/full/codec`,
+    '`full.codec: "ZSTD"`, outside `VOCAB_TOKEN_PATTERN`.',
+    (d) => {
+      v0(d).full.codec = "ZSTD";
+    },
+  );
+  await brk(
+    "pack-ref-none-bytes-mismatch",
+    "ref.none-bytes",
+    ONE,
+    `${V0}/full/codec`,
+    "`full.codec: none` while `bytes` ≠ `size`.",
+    (d) => {
+      v0(d).full.codec = "none";
+    },
+  );
+  await brk(
+    "pack-files-missing",
+    "files",
+    ONE,
+    `${V0}/files`,
+    "A variant without `files`.",
+    (d) => {
+      delete v0(d).files;
+    },
+  );
+  await brk(
+    "pack-files-format-empty",
+    "files.format",
+    ONE,
+    `${V0}/files/format`,
+    '`files.format: ""`.',
+    (d) => {
+      v0(d).files.format = "";
+    },
+  );
+  await brk(
+    "pack-files-layout-empty",
+    "files.layout",
+    ONE,
+    `${V0}/files/layout`,
+    '`files.layout: ""`.',
+    (d) => {
+      v0(d).files.layout = "";
+    },
+  );
+  await brk(
+    "pack-files-gaps-null",
+    "files.gaps",
+    ONE,
+    `${V0}/files/gaps`,
+    "`files.gaps: null` on a container.",
+    (d) => {
+      v0(d).files.gaps = null;
+    },
+  );
+  await brk(
+    "pack-files-gaps-missing",
+    "files.gaps-container",
+    ONE,
+    `${V0}/files/gaps`,
+    "A container without `files.gaps`.",
+    (d) => {
+      delete v0(d).files.gaps;
+    },
+  );
+  await brk(
+    "pack-files-gaps-on-tree",
+    "files.gaps-tree",
+    MIN,
+    `${V0}/files/gaps`,
+    "A tree carrying `files.gaps`.",
+    (d) => {
+      v0(d).files.gaps = objRef("files/v2.gaps.zst");
+    },
+  );
+  await brk(
+    "pack-deltas-null",
+    "deltas",
+    ONE,
+    `${V0}/deltas`,
+    "`deltas: null`.",
+    (d) => {
+      v0(d).deltas = null;
+    },
+  );
+  await brk(
+    "pack-deltas-over-max",
+    "deltas.count",
+    ONE,
+    `${V0}/deltas`,
+    "17 `payload` deltas with distinct ids (at most 16).",
+    (d) => {
+      const base = pd(d);
+      v0(d).deltas = Array.from({ length: 17 }, (_, k) => ({
+        ...clone(base),
+        artifact: {
+          sha256: sha256Hex(`pkey-corpus-delta:${k}`),
+          bytes: 312704,
+        },
+      }));
+    },
+  );
+  await brk(
+    "pack-delta-not-object",
+    "deltas.item",
+    ONE,
+    `${V0}/deltas/0`,
+    "A delta that is a number.",
+    (d) => {
+      v0(d).deltas[0] = 7;
+    },
+  );
+  await brk(
+    "pack-delta-id-duplicate",
+    "deltas.id-unique",
+    ONE,
+    `${V0}/deltas`,
+    "Two `payload` deltas with one id (`artifact.sha256`).",
+    (d) => {
+      v0(d).deltas = [clone(pd(d)), clone(pd(d))];
+    },
+  );
+  await brk(
+    "pack-delta-method-bad",
+    "delta.method",
+    ONE,
+    `${V0}/deltas/0/method`,
+    '`method: "Zstd"`, outside `VOCAB_TOKEN_PATTERN`.',
+    (d) => {
+      pd(d).method = "Zstd";
+    },
+  );
+  await brk(
+    "pack-delta-scope-empty",
+    "delta.scope",
+    ONE,
+    `${V0}/deltas/0/scope`,
+    '`scope: ""`.',
+    (d) => {
+      pd(d).scope = "";
+    },
+  );
+  await brk(
+    "pack-delta-payload-on-tree",
+    "delta.scope-tree",
+    MIN,
+    `${V0}/deltas`,
+    "A `payload` delta on a tree variant.",
+    (d) => {
+      v0(d).deltas = [
+        {
+          method: "zstd-patch-from",
+          scope: "payload",
+          from: PACK_PAYLOADS.treeV1.sha256,
+          memBytes: 19000,
+          artifact: hashBytes("deltas/v1-v2.pf.zst"),
+        },
+      ];
+    },
+  );
+  await brk(
+    "pack-delta-from-bad",
+    "delta.from",
+    ONE,
+    `${V0}/deltas/0/from`,
+    "`from` that is not 64 lowercase hex.",
+    (d) => {
+      pd(d).from = "088b";
+    },
+  );
+  await brk(
+    "pack-delta-mem-bytes-missing",
+    "delta.memBytes",
+    ONE,
+    `${V0}/deltas/0/memBytes`,
+    "A delta without `memBytes`.",
+    (d) => {
+      delete pd(d).memBytes;
+    },
+  );
+  await brk(
+    "pack-delta-artifact-missing",
+    "delta.artifact",
+    ONE,
+    `${V0}/deltas/0/artifact`,
+    "A `payload` delta without `artifact`.",
+    (d) => {
+      delete pd(d).artifact;
+    },
+  );
+  await brk(
+    "pack-delta-artifact-sha256-bad",
+    "delta.artifact.sha256",
+    ONE,
+    `${V0}/deltas/0/artifact/sha256`,
+    "`artifact.sha256` in uppercase hex.",
+    (d) => {
+      pd(d).artifact.sha256 = String(pd(d).artifact.sha256).toUpperCase();
+    },
+  );
+  await brk(
+    "pack-delta-artifact-bytes-missing",
+    "delta.artifact.bytes",
+    ONE,
+    `${V0}/deltas/0/artifact/bytes`,
+    "`artifact` without `bytes`.",
+    (d) => {
+      delete pd(d).artifact.bytes;
+    },
+  );
+  await brk(
+    "pack-delta-patch-missing",
+    "delta.patch",
+    ONE,
+    `${V0}/deltas/1/patch`,
+    "A `files` delta without `patch`.",
+    (d) => {
+      delete fd(d).patch;
+    },
+  );
+  await brk(
+    "pack-delta-data-missing",
+    "delta.data",
+    ONE,
+    `${V0}/deltas/1/data`,
+    "A `files` delta without `data`.",
+    (d) => {
+      delete fd(d).data;
+    },
+  );
+  await brk(
+    "pack-delta-data-sha256-bad",
+    "delta.data.sha256",
+    ONE,
+    `${V0}/deltas/1/data/sha256`,
+    "`data.sha256` with 63 hex digits.",
+    (d) => {
+      fd(d).data.sha256 = String(fd(d).data.sha256).slice(1);
+    },
+  );
+  await brk(
+    "pack-delta-data-bytes-missing",
+    "delta.data.bytes",
+    ONE,
+    `${V0}/deltas/1/data/bytes`,
+    "`data` without `bytes`.",
+    (d) => {
+      delete fd(d).data.bytes;
+    },
+  );
+  await brk(
+    "pack-requires-null",
+    "requires",
+    ONE,
+    `${V0}/requires`,
+    "`requires: null`.",
+    (d) => {
+      v0(d).requires = null;
+    },
+  );
+  await brk(
+    "pack-requires-engine-bad",
+    "requires.engine",
+    ONE,
+    `${V0}/requires/engine`,
+    '`requires.engine: "godot-4"`, outside `ENGINE_PATTERN`.',
+    (d) => {
+      v0(d).requires.engine = "godot-4";
+    },
+  );
+
+  // kind: app, on the app twin.
+  const C = "/content";
+  const ct = (d: Record<string, any>): Record<string, any> => d.content;
+  const pin0 = (d: Record<string, any>): Record<string, any> => ct(d).pins[0];
+  const exp0 = (d: Record<string, any>): Record<string, any> =>
+    ct(d).expects[0];
+  const B0 = "/builds/0/embeds";
+  await brk("app-content-null", "content", APP, C, "`content: null`.", (d) => {
+    d.content = null;
+  });
+  await brk(
+    "app-content-api-missing",
+    "content.contentApi",
+    APP,
+    `${C}/contentApi`,
+    "`content` without `contentApi`.",
+    (d) => {
+      delete ct(d).contentApi;
+    },
+  );
+  await brk(
+    "app-pins-missing",
+    "content.pins",
+    APP,
+    `${C}/pins`,
+    "`content` without `pins`.",
+    (d) => {
+      delete ct(d).pins;
+    },
+  );
+  await brk(
+    "app-pins-over-max",
+    "content.pins.count",
+    APP,
+    `${C}/pins`,
+    "257 pins with distinct packs (at most 256).",
+    (d) => {
+      const base = pin0(d);
+      ct(d).pins = Array.from({ length: 257 }, (_, k) => ({
+        ...clone(base),
+        pack: `p${k}`,
+      }));
+    },
+  );
+  await brk(
+    "app-pin-not-object",
+    "content.pins.item",
+    APP,
+    `${C}/pins/0`,
+    "A pin that is a number.",
+    (d) => {
+      ct(d).pins[0] = 7;
+    },
+  );
+  await brk(
+    "app-pins-duplicate-pack",
+    "content.pins.unique",
+    APP,
+    `${C}/pins/1/pack`,
+    "Two pins of `djdl.levels`.",
+    (d) => {
+      ct(d).pins[1].pack = "djdl.levels";
+    },
+  );
+  await brk(
+    "app-pin-pack-bad",
+    "pin.pack",
+    APP,
+    `${C}/pins/0/pack`,
+    '`pins[].pack: "Djdl.levels"`, outside the pack-id pattern.',
+    (d) => {
+      pin0(d).pack = "Djdl.levels";
+    },
+  );
+  await brk(
+    "app-pin-pack-over-64-bytes",
+    "pin.pack",
+    APP,
+    `${C}/pins/0/pack`,
+    "A 65-byte pack id.",
+    (d) => {
+      pin0(d).pack = "a".repeat(65);
+    },
+  );
+  await brk(
+    "app-pin-pack-app",
+    "pin.pack.not-app",
+    APP,
+    `${C}/pins/0/pack`,
+    '`pins[].pack: "app"`.',
+    (d) => {
+      pin0(d).pack = "app";
+    },
+  );
+  await brk(
+    "app-pin-release-missing",
+    "pin.release",
+    APP,
+    `${C}/pins/0/release`,
+    "A pin without `release`.",
+    (d) => {
+      delete pin0(d).release;
+    },
+  );
+  await brk(
+    "app-pin-sha256-bad",
+    "pin.release.sha256",
+    APP,
+    `${C}/pins/0/release/sha256`,
+    "`release.sha256` in uppercase hex.",
+    (d) => {
+      pin0(d).release.sha256 = String(pin0(d).release.sha256).toUpperCase();
+    },
+  );
+  await brk(
+    "app-pin-seq-missing",
+    "pin.release.seq",
+    APP,
+    `${C}/pins/0/release/seq`,
+    "`release` without `seq`.",
+    (d) => {
+      delete pin0(d).release.seq;
+    },
+  );
+  await brk(
+    "app-pin-version-trailing-newline",
+    "pin.release.version",
+    APP,
+    `${C}/pins/0/release/version`,
+    'Whole-string patterns: `release.version` `"1.1.0\\n"`.',
+    (d) => {
+      pin0(d).release.version = "1.1.0\n";
+    },
+  );
+  await brk(
+    "app-expects-missing",
+    "content.expects",
+    APP,
+    `${C}/expects`,
+    "`content` without `expects`.",
+    (d) => {
+      delete ct(d).expects;
+    },
+  );
+  await brk(
+    "app-expects-over-max",
+    "content.expects.count",
+    APP,
+    `${C}/expects`,
+    "257 expects with distinct packs (at most 256).",
+    (d) => {
+      const base = exp0(d);
+      ct(d).expects = Array.from({ length: 257 }, (_, k) => ({
+        ...clone(base),
+        pack: `p${k}`,
+      }));
+    },
+  );
+  await brk(
+    "app-expect-not-object",
+    "content.expects.item",
+    APP,
+    `${C}/expects/0`,
+    "An expect that is a number.",
+    (d) => {
+      ct(d).expects[0] = 7;
+    },
+  );
+  await brk(
+    "app-expects-duplicate-pack",
+    "content.expects.unique",
+    APP,
+    `${C}/expects/1/pack`,
+    "Two expects of `djdl.levels`.",
+    (d) => {
+      ct(d).expects[1].pack = "djdl.levels";
+    },
+  );
+  await brk(
+    "app-expect-pack-bad",
+    "expect.pack",
+    APP,
+    `${C}/expects/0/pack`,
+    '`expects[].pack: "djdl..levels"`, outside the pack-id pattern.',
+    (d) => {
+      exp0(d).pack = "djdl..levels";
+    },
+  );
+  await brk(
+    "app-expect-pack-over-64-bytes",
+    "expect.pack",
+    APP,
+    `${C}/expects/0/pack`,
+    "A 65-byte pack id.",
+    (d) => {
+      exp0(d).pack = "b".repeat(65);
+    },
+  );
+  await brk(
+    "app-expect-pack-app",
+    "expect.pack.not-app",
+    APP,
+    `${C}/expects/0/pack`,
+    '`expects[].pack: "app"`.',
+    (d) => {
+      exp0(d).pack = "app";
+    },
+  );
+  await brk(
+    "app-expect-required-not-boolean",
+    "expect.required",
+    APP,
+    `${C}/expects/0/required`,
+    '`required: "yes"`.',
+    (d) => {
+      exp0(d).required = "yes";
+    },
+  );
+  await brk(
+    "app-expect-delivery-empty",
+    "expect.delivery",
+    APP,
+    `${C}/expects/0/delivery`,
+    '`delivery: ""`.',
+    (d) => {
+      exp0(d).delivery = "";
+    },
+  );
+  await brk(
+    "app-embeds-null",
+    "embeds",
+    APP,
+    B0,
+    "`builds[].embeds: null`.",
+    (d) => {
+      d.builds[0].embeds = null;
+    },
+  );
+  await brk(
+    "app-embeds-over-max",
+    "embeds.count",
+    APP,
+    B0,
+    "65 distinct embedded packs (at most 64).",
+    (d) => {
+      d.builds[0].embeds = Array.from({ length: 65 }, (_, k) => `p${k}`);
+    },
+  );
+  await brk(
+    "app-embeds-item-bad",
+    "embeds.item",
+    APP,
+    B0,
+    "An embedded pack id `Djdl`.",
+    (d) => {
+      d.builds[0].embeds = ["Djdl"];
+    },
+  );
+  await brk(
+    "app-embeds-item-over-64-bytes",
+    "embeds.item",
+    APP,
+    B0,
+    "A 65-byte embedded pack id.",
+    (d) => {
+      d.builds[0].embeds = ["c".repeat(65)];
+    },
+  );
+  await brk(
+    "app-embeds-app",
+    "embeds.not-app",
+    APP,
+    B0,
+    "`app` among the embedded packs.",
+    (d) => {
+      d.builds[0].embeds = ["app"];
+    },
+  );
+  await brk(
+    "app-embeds-duplicate",
+    "embeds.unique",
+    APP,
+    B0,
+    "One pack embedded twice.",
+    (d) => {
+      d.builds[0].embeds = ["djdl.levels", "djdl.levels"];
+    },
+  );
+
+  // ── Cross-check, hash and key (6) ──
+  const PACK_PIN: PackPin = {
+    kind: "pack",
+    deliverable: "djdl.levels",
+    version: "1.1.0",
+    seq: 2,
+  };
+  await mk(
+    "pack-pin-version-mismatch",
+    "Step 15: the pack record's version is not the pin's.",
+    {
+      jws: LV2.jws,
+      pin: { ...PACK_PIN, version: "1.0.0" },
+      expect: fail("cross-check"),
+    },
+  );
+  await mk(
+    "pack-pin-seq-mismatch",
+    "Step 15: the pack record's `seq` is not the pin's.",
+    {
+      jws: LV2.jws,
+      pin: { ...PACK_PIN, seq: 1 },
+      expect: fail("cross-check"),
+    },
+  );
+  await mk(
+    "pack-pin-deliverable-mismatch",
+    "Step 15: the pack record's `deliverable` is not the pin's pack id.",
+    {
+      jws: LV2.jws,
+      pin: { ...PACK_PIN, deliverable: "djdl.assets" },
+      expect: fail("cross-check"),
+    },
+  );
+  await mk(
+    "pack-pin-kind-app",
+    "Step 15: an app record where a pack is pinned (`kind` differs; deliverable, version and `seq` match).",
+    {
+      doc: APP,
+      pin: { kind: "pack", deliverable: "app", version: "1.5.0", seq: 15 },
+      expect: fail("cross-check"),
+    },
+  );
+  await mk(
+    "pack-hash-mismatch",
+    "Step 12: the body's SHA-256 is not the pin (another valid pack record).",
+    {
+      jws: LV2.jws,
+      expectedHash: LV1.sha256,
+      expect: fail("hash"),
+    },
+  );
+  await mk(
+    "pack-signed-by-product-key",
+    "A pack record signed by the PRODUCT key: its kid is not among the pinned release keys.",
+    {
+      doc: LV2.doc,
+      kid: PIN_KID,
+      expect: fail("jws"),
+    },
+  );
+
+  // ── Integers (48): token, bound and minimum per §2.5 path, each breaking its path alone ──
+  const intRow = async (
+    pointer: string,
+    twin: Record<string, unknown>,
+    ids: [string, string, string],
+    tokens: [string, string],
+    member: string,
+  ): Promise<void> => {
+    const at = (d: Record<string, any>, token: unknown): void => {
+      const parts = pointer.split("/").slice(1);
+      let o: any = d;
+      for (const p of parts.slice(0, -1)) o = o[p];
+      o[parts[parts.length - 1]!] = token;
+    };
+    const [tokenId, boundId, minId] = ids;
+    const t = clone(twin) as Record<string, any>;
+    at(t, raw(tokens[0]));
+    await mk(
+      tokenId,
+      `V4 §3: the ${member} token \`${tokens[0]}\` at \`${pointer}\`.`,
+      {
+        text: rawJson(t),
+        expect: fail("claims"),
+      },
+    );
+    const b = clone(twin) as Record<string, any>;
+    at(b, raw(BIG_OVER));
+    await mk(boundId, `V4 §3: ${member} ${BIG_OVER} at \`${pointer}\`.`, {
+      text: rawJson(b),
+      expect: fail("claims"),
+    });
+    const m = clone(twin) as Record<string, any>;
+    at(m, tokens[1] === "0" ? 0 : -1);
+    await mk(
+      minId,
+      `V4 §3 minimums: ${member} ${tokens[1] === "0" ? 0 : -1} at \`${pointer}\` (minimum ${tokens[1] === "0" ? 1 : 0}).`,
+      {
+        doc: m,
+        expect: fail("claims"),
+      },
+    );
+    PACK_PER_CLAIM.push([pointer, tokenId, boundId, minId]);
+  };
+  const tok = (pointer: string, twin: Record<string, unknown>): number => {
+    let o: any = twin;
+    for (const p of pointer.split("/").slice(1)) o = o[p];
+    return o as number;
+  };
+  const IF = (p: string, tw: Record<string, unknown>): string =>
+    `${tok(p, tw)}.0`;
+  const NI = (p: string, tw: Record<string, unknown>): string =>
+    `${tok(p, tw)}.0000000000000001`;
+  const EX = (p: string, tw: Record<string, unknown>): string =>
+    `${tok(p, tw)}e0`;
+  const rows: [
+    string,
+    Record<string, unknown>,
+    string,
+    (p: string, t: Record<string, unknown>) => string,
+    "0" | "-1",
+    string,
+  ][] = [
+    ["/formatVersion", ONE, "pack-format-version", IF, "0", "`formatVersion`"],
+    ["/handler/mountOrder", ONE, "pack-mount-order", NI, "-1", "`mountOrder`"],
+    [
+      `${V0}/payload/size`,
+      ONE,
+      "pack-payload-size",
+      IF,
+      "-1",
+      "`payload.size`",
+    ],
+    [`${V0}/full/bytes`, ONE, "pack-full-bytes", NI, "-1", "`full.bytes`"],
+    [`${V0}/full/size`, ONE, "pack-full-size", EX, "-1", "`full.size`"],
+    [`${V0}/files/bytes`, ONE, "pack-files-bytes", IF, "0", "`files.bytes`"],
+    [`${V0}/files/size`, ONE, "pack-files-size", NI, "0", "`files.size`"],
+    [
+      `${V0}/files/gaps/bytes`,
+      ONE,
+      "pack-gaps-bytes",
+      IF,
+      "-1",
+      "`gaps.bytes`",
+    ],
+    [`${V0}/files/gaps/size`, ONE, "pack-gaps-size", NI, "-1", "`gaps.size`"],
+    [`${V0}/deltas/0/memBytes`, ONE, "pack-mem-bytes", EX, "0", "`memBytes`"],
+    [
+      `${V0}/deltas/0/artifact/bytes`,
+      ONE,
+      "pack-artifact-bytes",
+      NI,
+      "0",
+      "`artifact.bytes`",
+    ],
+    [
+      `${V0}/deltas/1/patch/bytes`,
+      ONE,
+      "pack-patch-bytes",
+      IF,
+      "0",
+      "`patch.bytes`",
+    ],
+    [
+      `${V0}/deltas/1/patch/size`,
+      ONE,
+      "pack-patch-size",
+      NI,
+      "0",
+      "`patch.size`",
+    ],
+    [
+      `${V0}/deltas/1/data/bytes`,
+      ONE,
+      "pack-data-bytes",
+      IF,
+      "0",
+      "`data.bytes`",
+    ],
+    ["/content/contentApi", APP, "app-content-api", NI, "0", "`contentApi`"],
+    [
+      "/content/pins/0/release/seq",
+      APP,
+      "app-pin-seq",
+      IF,
+      "0",
+      "`pins[].release.seq`",
+    ],
+  ];
+  for (const [pointer, twin, stem, token, min, member] of rows) {
+    const kind =
+      token === IF
+        ? "integral-fraction"
+        : token === NI
+          ? "near-integer"
+          : "exponent";
+    await intRow(
+      pointer,
+      twin,
+      [
+        `${stem}-${kind}`,
+        `${stem}-over-max`,
+        `${stem}-${min === "0" ? "zero" : "negative"}`,
+      ],
+      [token(pointer, twin), min],
+      member,
+    );
+  }
+
+  if (cases.length !== 159)
+    throw new Error(`packRecordCases: ${cases.length} != 159`);
+  for (const c of cases) {
+    const want = refVerifyPackCase(c);
+    if (
+      JSON.stringify({ ...want, doc: undefined }) !==
+      JSON.stringify({ ...c.expect, doc: undefined })
+    )
+      throw new Error(
+        `packRecordCases: the reference answers ${JSON.stringify(want)} for ${c.id}`,
+      );
+  }
+  return cases;
+}
+
+// ── `markerCases` (17), V4 §3.7 ──────────────────────────────────────────────────────────────
+
+interface MarkerCase {
+  id: string;
+  description: string;
+  marker: string;
+  releaseKeys: Record<string, string>;
+  productTrust: Record<string, string>;
+  expectedAud: string;
+  nonWireIntegers?: string[];
+  expect:
+    | { verify: "ok"; packId: string; version: string; recordSha256: string }
+    | {
+        verify: "fail";
+        step: "format" | "hash" | "jws" | "claims" | "cross-check";
+      };
+}
+
+/** The marker's `release` when the marker text is a JSON object holding a string there. */
+function markerRelease(text: string): string | null {
+  try {
+    const m = JSON.parse(text) as unknown;
+    return isObj(m) && typeof m.release === "string" ? m.release : null;
+  } catch {
+    return null;
+  }
+}
+
+/** V4 §3.7 (plans/P4-01.md §2.6), from first principles. */
+function refVerifyMarkerCase(c: MarkerCase): MarkerCase["expect"] {
+  const text = c.marker;
+  if (text.charCodeAt(0) === 0xfeff) return { verify: "fail", step: "format" };
+  const parsed = refParseStrict(text);
+  if (!parsed.ok || !isObj(parsed.value))
+    return { verify: "fail", step: "format" };
+  const m = parsed.value as Record<string, unknown>;
+  if (m.format !== "pkey-marker/1") return { verify: "fail", step: "format" };
+  if (!refPackIdShape(m.packId) || m.packId === "app")
+    return { verify: "fail", step: "format" };
+  if (typeof m.version !== "string" || !REF_RECORD_VERSION_RE.test(m.version))
+    return { verify: "fail", step: "format" };
+  if (typeof m.release !== "string") return { verify: "fail", step: "format" };
+  const body = m.release;
+  const r = refRecordSteps(
+    body,
+    utf8Bytes(body).length > 88844 || /[^\x00-\x7f]/.test(body)
+      ? ""
+      : sha256Hex(body),
+    c.releaseKeys,
+    c.productTrust,
+    c.expectedAud,
+  );
+  if (!r.ok) return { verify: "fail", step: r.step };
+  if (
+    r.doc.kind !== "pack" ||
+    r.doc.deliverable !== m.packId ||
+    r.doc.version !== m.version
+  )
+    return { verify: "fail", step: "cross-check" };
+  return {
+    verify: "ok",
+    packId: m.packId,
+    version: m.version,
+    recordSha256: sha256Hex(body),
+  };
+}
+
+async function buildMarkerCases(): Promise<MarkerCase[]> {
+  const RK: Record<string, string> = { [REL_KID]: pub(REL_KID) };
+  const PT = { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) };
+  const packs = await packRecords();
+  const LV2 = packs.get("djdl.levels@1.1.0")!;
+  const AS2 = packs.get("djdl.assets@1.1.0")!;
+  const DOC1 = packs.get("djdl.docs@1.0.0")!;
+  const cases: MarkerCase[] = [];
+  const marker = (o: Record<string, unknown>): string => JSON.stringify(o);
+  const of = (r: RecordVector, over: Record<string, unknown> = {}): string =>
+    marker({
+      format: "pkey-marker/1",
+      packId: r.doc.deliverable,
+      version: r.doc.version,
+      release: r.jws,
+      ...over,
+    });
+  const mk = (
+    id: string,
+    description: string,
+    text: string,
+    expect: MarkerCase["expect"],
+    releaseKeys: Record<string, string> = RK,
+  ): void => {
+    const c: MarkerCase = {
+      id,
+      description,
+      marker: text,
+      releaseKeys,
+      productTrust: PT,
+      expectedAud: AUD_V3,
+      expect,
+    };
+    const release = markerRelease(text);
+    let nonWire: string[] = [];
+    if (release !== null) {
+      const parts = release.split(".");
+      let kid: unknown;
+      try {
+        kid = (
+          JSON.parse(
+            new TextDecoder().decode(base64UrlDecode(parts[0] ?? "")),
+          ) as Record<string, unknown>
+        ).kid;
+      } catch {
+        kid = undefined;
+      }
+      const v =
+        typeof kid === "string" && hasOwn(releaseKeys, kid)
+          ? refVerifyJws(
+              release,
+              { [kid]: releaseKeys[kid]! },
+              "pkey-release+jws",
+            )
+          : null;
+      if (v) nonWire = refNonWire(v.text);
+    }
+    cases.push(
+      placeNonWire(nonWire.length > 0 ? { ...c, nonWireIntegers: nonWire } : c),
+    );
+  };
+  const okOf = (r: RecordVector): MarkerCase["expect"] => ({
+    verify: "ok",
+    packId: r.doc.deliverable as string,
+    version: r.doc.version as string,
+    recordSha256: r.sha256,
+  });
+  const fail = (
+    step: "format" | "hash" | "jws" | "claims" | "cross-check",
+  ): MarkerCase["expect"] => ({ verify: "fail", step });
+
+  mk(
+    "marker-valid",
+    "`djdl.levels.pck.pkey.json`: the marker beside a single-file payload, carrying `djdl.levels@1.1.0`.",
+    of(LV2),
+    okOf(LV2),
+  );
+  mk(
+    "marker-valid-tree",
+    "`.pkey/pack.json` inside a tree, carrying `djdl.assets@1.1.0`.",
+    of(AS2),
+    okOf(AS2),
+  );
+  {
+    const jws = await signAs(DOC1.doc, REL2_KID, "pkey-release+jws");
+    const r = { ...DOC1, jws, sha256: sha256Hex(jws) };
+    mk(
+      "marker-valid-rotation-second-key",
+      "A marker whose record is signed by the 2027 release key while both are pinned.",
+      of(r),
+      okOf(r),
+      { ...RK, [REL2_KID]: pub(REL2_KID) },
+    );
+  }
+  mk(
+    "marker-not-object",
+    "Step 1: the marker is a JSON array.",
+    "[]",
+    fail("format"),
+  );
+  mk(
+    "marker-duplicate-member",
+    "Step 1: strict JSON refuses a marker that declares `version` twice.",
+    of(LV2).replace('"version":"1.1.0"', '"version":"1.1.0","version":"1.0.0"'),
+    fail("format"),
+  );
+  mk(
+    "marker-leading-bom",
+    "Step 1: a leading byte-order mark.",
+    `\ufeff${of(LV2)}`,
+    fail("format"),
+  );
+  mk(
+    "marker-format-unknown",
+    "Step 2: `format: pkey-marker/2`.",
+    of(LV2, { format: "pkey-marker/2" }),
+    fail("format"),
+  );
+  mk(
+    "marker-pack-id-bad",
+    "Step 2: `packId` outside the pack-id pattern.",
+    of(LV2, { packId: "djdl.Levels" }),
+    fail("format"),
+  );
+  mk(
+    "marker-release-not-string",
+    "Step 2: `release` is an object.",
+    of(LV2, { release: { jws: LV2.jws } }),
+    fail("format"),
+  );
+  {
+    const [h, p, s] = LV2.jws.split(".") as [string, string, string];
+    const padded = `${h}.${p}${"A".repeat(88845 - LV2.jws.length)}.${s}`;
+    if (padded.length !== 88845)
+      throw new Error("marker-release-over-bound length");
+    mk(
+      "marker-release-over-bound",
+      "Step 3: a `release` of 88,845 ASCII bytes, one over the bound, refused before hashing.",
+      of(LV2, { release: padded }),
+      fail("hash"),
+    );
+  }
+  mk(
+    "marker-release-non-ascii",
+    "Step 3: a `release` with a byte outside ASCII, refused before hashing.",
+    of(LV2, { release: `${LV2.jws}é` }),
+    fail("hash"),
+  );
+  {
+    const jws = await signAs(LV2.doc, PIN_KID, "pkey-release+jws");
+    mk(
+      "marker-signed-by-product-key",
+      "Step 3: the record is signed by the PRODUCT key, whose kid is not a pinned release key.",
+      of(LV2, { release: jws }),
+      fail("jws"),
+    );
+  }
+  mk(
+    "marker-key-dropped",
+    "Step 3: the record is signed by the 2026 key after it left the pinned set.",
+    of(LV2),
+    fail("jws"),
+    { [REL2_KID]: pub(REL2_KID) },
+  );
+  {
+    const jws = await signAs(
+      { ...LV2.doc, type: "godot" },
+      REL_KID,
+      "pkey-release+jws",
+    );
+    mk(
+      "marker-record-claims",
+      'Step 3: the record fails the pack claims (`type: "godot"`).',
+      of(LV2, { release: jws }),
+      fail("claims"),
+    );
+  }
+  mk(
+    "marker-pack-id-mismatch",
+    "Step 4: the marker names `djdl.assets`, the record `djdl.levels`.",
+    of(LV2, { packId: "djdl.assets" }),
+    fail("cross-check"),
+  );
+  mk(
+    "marker-version-mismatch",
+    "Step 4: the marker names 1.0.0, the record 1.1.0.",
+    of(LV2, { version: "1.0.0" }),
+    fail("cross-check"),
+  );
+  {
+    const jws = await signAs(appTwin(packs), REL_KID, "pkey-release+jws");
+    mk(
+      "marker-record-is-app",
+      "Step 4: the record is a valid app record, not a pack record.",
+      of(LV2, { release: jws, packId: "djdl.levels", version: "1.5.0" }),
+      fail("cross-check"),
+    );
+  }
+
+  if (cases.length !== 17)
+    throw new Error(`markerCases: ${cases.length} != 17`);
+  for (const c of cases) {
+    const want = refVerifyMarkerCase(c);
+    if (JSON.stringify(want) !== JSON.stringify(c.expect))
+      throw new Error(
+        `markerCases: the reference answers ${JSON.stringify(want)} for ${c.id}`,
+      );
+  }
+  return cases;
+}
+
+/** §4.2's per-check self-check: the registry is §4.6's table, every registered id has a case,
+ *  and every structure case breaks its one property and is refused by its check alone. */
+function checkPackClaimCases(corpus: Record<string, AnyCase[]>): void {
+  const fail = (m: string): never => {
+    throw new Error(`packRecordCases self-check: ${m}`);
+  };
+  if (PACK_CLAIM_CHECKS.length !== 80 || PACK_CHECK_SET.size !== 80)
+    fail("the registry must hold 80 distinct checks");
+  const byId = new Map(corpus.packRecordCases!.map((c) => [c.id as string, c]));
+  const covered = new Set<string>();
+  for (const [id, s] of PACK_STRUCTURE) {
+    const c = byId.get(id) ?? fail(`${id} is not a packRecordCases case`);
+    covered.add(s.check);
+    const text = payloadTextOf(c.jws)!;
+    const doc = JSON.parse(text) as unknown;
+    const diff = leafDiff(s.twin, doc);
+    if (diff.length === 0) fail(`${id} equals its twin`);
+    for (const p of diff)
+      if (p !== s.prop && !p.startsWith(`${s.prop}/`))
+        fail(`${id} differs from its twin at ${p}, outside ${s.prop}`);
+    if (!refRecordClaims(s.twin, ctxOf(JSON.stringify(s.twin)), AUD_V3))
+      fail(`${id}'s twin fails the claims`);
+    if (refRecordClaims(doc, ctxOf(text), AUD_V3))
+      fail(`${id}: the claims accept it`);
+    if (!refRecordClaims(doc, ctxOf(text, [`check:${s.check}`]), AUD_V3))
+      fail(`${id}: it fails beyond check ${s.check}`);
+  }
+  for (const id of PACK_CLAIM_CHECKS)
+    if (!covered.has(id)) fail(`check ${id} has no case`);
+  if (PACK_STRUCTURE.size !== 92)
+    fail(`${PACK_STRUCTURE.size} structure cases, not 92`);
+  if (PACK_PER_CLAIM.length !== 16)
+    fail(`${PACK_PER_CLAIM.length} integer paths, not 16`);
+  // The valid pack records pin only §4.2's table.
+  for (const r of PACK_RECORDS!.values()) {
+    const refs: string[] = [];
+    const walk = (v: unknown): void => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (isObj(v)) {
+        if (typeof v.sha256 === "string" && typeof v.bytes === "number")
+          refs.push(v.sha256);
+        Object.values(v).forEach(walk);
+      }
+    };
+    walk(r.doc.variants);
+    for (const h of refs)
+      if (!PACK_OBJECT_HASHES.has(h))
+        fail(`${r.name} pins ${h}, outside the object table`);
+  }
+}
+
 // ── §4.9 self-checks over the assembled corpus ───────────────────────────────────────────────
 
 type AnyCase = Record<string, any>;
 
-/** The seven JWS families of §4.1: where each keeps its JWS, its keys, its `typ` and its cap. */
+/** The seven JWS families of §4.1 and plans/P4-01.md §4.6's two: where each keeps its JWS, its
+ *  keys, its `typ` and its cap. */
 const JWS_FAMILIES: Record<
   string,
   (c: AnyCase) => {
@@ -12155,6 +14735,19 @@ const JWS_FAMILIES: Record<
     typ: "pkey-release+jws",
     cap: 65536,
   }),
+  packRecordCases: (c) => ({
+    jws: c.jws,
+    keys: c.releaseKeys,
+    typ: "pkey-release+jws",
+    cap: 65536,
+  }),
+  // A marker's JWS is its `release` (plans/P4-01.md §4.6).
+  markerCases: (c) => ({
+    jws: markerRelease(c.marker) ?? "",
+    keys: c.releaseKeys,
+    typ: "pkey-release+jws",
+    cap: 65536,
+  }),
 };
 
 /** Each family's claim step, from the generator's own claim checks, with `off` switched off. */
@@ -12186,6 +14779,7 @@ function claimStep(family: string, c: AnyCase, off: string[]): boolean {
         }) === null
       );
     case "releaseRecordCases":
+    case "packRecordCases":
       return refRecordClaims(doc, ctx, c.expectedAud);
     default:
       throw new Error(family);
@@ -12358,6 +14952,8 @@ const FAMILY_CLAIM_KEYS: Record<string, string[]> = {
   bundleCases: ["bundle"],
   feedCases: ["feed"],
   releaseRecordCases: ["record"],
+  packRecordCases: ["record", "pack", "content"],
+  markerCases: ["record", "pack", "content"],
 };
 
 function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
@@ -12382,6 +14978,8 @@ function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
     bundleCases: 16,
     feedCases: 77,
     releaseRecordCases: 49,
+    packRecordCases: 159,
+    markerCases: 17,
   };
   for (const [family, n] of Object.entries(counts))
     if (corpus[family]!.length !== n)
@@ -12412,7 +15010,21 @@ function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
 
   // Per claim: token, bound and minimum cases break their path alone.
   const breakers = new Set(EXTRA_BREAKERS);
-  for (const [family, pointer, token, bound, min] of PER_CLAIM) {
+  // plans/P4-01.md §4.2: P3-02's loop extended with §2.5's 16 pack and `content` paths.
+  const perClaim: [string, string, string, string | null, string | null][] = [
+    ...PER_CLAIM,
+    ...PACK_PER_CLAIM.map(
+      ([pointer, token, bound, min]) =>
+        ["packRecordCases", pointer, token, bound, min] as [
+          string,
+          string,
+          string,
+          string,
+          string,
+        ],
+    ),
+  ];
+  for (const [family, pointer, token, bound, min] of perClaim) {
     for (const [kind, id] of [
       ["token", token],
       ["bound", bound],
