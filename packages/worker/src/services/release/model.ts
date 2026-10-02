@@ -65,6 +65,8 @@ export interface ReleaseBuildRow {
   min_os: string | null;
   /** The descriptor's `builds[].metadata` (P2b-05, migration 0043), JSON; NULL when absent. */
   metadata_json: string | null;
+  /** The descriptor's `builds[].embeds` (P4-02, migration 0045), a JSON array; NULL when absent. */
+  embeds_json: string | null;
   created_at: number;
   modified_at: number;
 }
@@ -268,6 +270,8 @@ export interface BuildInput {
   minOs?: string | null;
   /** The descriptor's `builds[].metadata`, serialised (P2b-05). */
   metadataJson?: string | null;
+  /** The descriptor's `builds[].embeds`, serialised (P4-02); NULL when it omits them. */
+  embedsJson?: string | null;
 }
 
 export async function listBuilds(
@@ -289,8 +293,9 @@ export function stmtUpsertBuild(b: BuildInput, now: number): DbStatement {
   return {
     sql: `INSERT INTO release_builds
             (product, release_id, build_id, platform, arch, format, build_number,
-             variant_json, requires_json, min_os, metadata_json, created_at, modified_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+             variant_json, requires_json, min_os, metadata_json, embeds_json, created_at,
+            modified_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
           ON CONFLICT(product, release_id, build_id) DO UPDATE SET
             platform = excluded.platform,
             arch = excluded.arch,
@@ -300,6 +305,7 @@ export function stmtUpsertBuild(b: BuildInput, now: number): DbStatement {
             requires_json = excluded.requires_json,
             min_os = excluded.min_os,
             metadata_json = excluded.metadata_json,
+            embeds_json = excluded.embeds_json,
             modified_at = excluded.modified_at`,
     params: [
       b.product,
@@ -313,6 +319,7 @@ export function stmtUpsertBuild(b: BuildInput, now: number): DbStatement {
       b.requiresJson ?? null,
       b.minOs ?? null,
       b.metadataJson ?? null,
+      b.embedsJson ?? null,
       now,
       now,
     ],

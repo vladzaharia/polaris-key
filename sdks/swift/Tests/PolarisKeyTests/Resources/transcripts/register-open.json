@@ -156,7 +156,8 @@
                   "entitlements",
                   "timestamp",
                   "engine",
-                  "outlet"
+                  "outlet",
+                  "content"
                 ]
               }
             },

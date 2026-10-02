@@ -347,6 +347,7 @@ const TABLE_OWNERS = {
     "release_channel_policy",
     "release_yanks",
     "release_records",
+    "release_pins",
   ],
   distribution: [
     "dist_outlets",

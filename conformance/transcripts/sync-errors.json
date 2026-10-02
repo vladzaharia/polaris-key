@@ -201,7 +201,8 @@
                   "entitlements",
                   "timestamp",
                   "engine",
-                  "outlet"
+                  "outlet",
+                  "content"
                 ]
               }
             },
@@ -354,7 +355,8 @@
                   "entitlements",
                   "timestamp",
                   "engine",
-                  "outlet"
+                  "outlet",
+                  "content"
                 ]
               }
             },
@@ -504,7 +506,8 @@
                   "entitlements",
                   "timestamp",
                   "engine",
-                  "outlet"
+                  "outlet",
+                  "content"
                 ]
               }
             },

@@ -35,6 +35,7 @@ import {
 import { floorRelease, installationToken } from "./gateway.js";
 import {
   listChannelFloors,
+  listForeignDeliverableReleaseIds,
   listStoredReleaseIds,
   releaseStoreStatements,
   type ReleaseChannelFloorRow,
@@ -103,10 +104,45 @@ export async function releaseStoreSyncStatements(
   fetchImpl: FetchImpl,
   opts: { app?: ManifestAppDeliverable | null } = {},
 ): Promise<DbStatement[]> {
-  if (!isResolved(cfg)) return [];
+  return (await releaseStoreSync(env, db, cfg, now, fetchImpl, opts))
+    .statements;
+}
+
+/** What one truth-store sync planned, and what it refused to merge. */
+export interface ReleaseStoreSync {
+  statements: DbStatement[];
+  /**
+   * GitHub release tags skipped because a pack release (P4-02) already holds that release id
+   * (`<packId>@<version>`; git allows `@` in a tag). Such a release is never merged into the
+   * pack's row: no metadata, file, build, health or channel candidate comes from it.
+   */
+  packTagConflicts: string[];
+}
+
+/** `releaseStoreSyncStatements`, with the tags it skipped as pack-release conflicts. */
+export async function releaseStoreSync(
+  env: Env,
+  db: Db,
+  cfg: ReleaseConfigRow,
+  now: number,
+  fetchImpl: FetchImpl,
+  opts: { app?: ManifestAppDeliverable | null } = {},
+): Promise<ReleaseStoreSync> {
+  const none: ReleaseStoreSync = { statements: [], packTagConflicts: [] };
+  if (!isResolved(cfg)) return none;
   try {
     const floors = await listChannelFloors(db, cfg.product);
     const stored = await listStoredReleaseIds(db, cfg.product);
+    const foreign = new Set(
+      await listForeignDeliverableReleaseIds(db, cfg.product),
+    );
+    const packTagConflicts = new Set<string>();
+    const appOnly = (rs: Release[]): Release[] =>
+      rs.filter((r) => {
+        if (!foreign.has(r.tag_name)) return true;
+        packTagConflicts.add(r.tag_name);
+        return false;
+      });
     const app =
       opts.app !== undefined
         ? opts.app
@@ -120,28 +156,27 @@ export async function releaseStoreSyncStatements(
       fetchImpl,
       { maxPages: RELEASE_PAGE_CAP.sync },
     );
-    const held = await heldFloorReleases(
-      token,
-      cfg,
-      floors,
-      listing.releases,
-      fetchImpl,
+    // The list as read decides whether the floors were reached; everything after sees app
+    // releases only.
+    const held = appOnly(
+      await heldFloorReleases(token, cfg, floors, listing.releases, fetchImpl),
     );
+    const releases = appOnly(listing.releases);
     const descriptors = await ingestGithubDescriptors(
       db,
       cfg,
       token,
-      listing.releases,
+      releases,
       held,
       app,
       now,
       fetchImpl,
     );
-    return [
+    const statements = [
       ...releaseStoreStatements(
         cfg.product,
         cfg,
-        listing.releases,
+        releases,
         now,
         floors,
         held,
@@ -155,10 +190,11 @@ export async function releaseStoreSyncStatements(
       ),
       ...descriptors.tail,
     ];
+    return { statements, packTagConflicts: [...packTagConflicts].sort() };
   } catch {
     // No log line: the worker carries no logging sink by design. The absence of a `releases`
     // entry in the sync result — and `release_health`'s unchanged `checked_at` — is the signal.
-    return [];
+    return none;
   }
 }
 
@@ -209,13 +245,28 @@ export async function syncReleaseStore(
   now: number,
   fetchImpl: FetchImpl = fetch,
 ): Promise<number> {
+  return (await syncReleaseStoreReport(env, db, product, now, fetchImpl))
+    .statements;
+}
+
+/** `syncReleaseStore`, with the GitHub tags it skipped as pack-release conflicts (P4-02). */
+export async function syncReleaseStoreReport(
+  env: Env,
+  db: Db,
+  product: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<{ statements: number; packTagConflicts: string[] }> {
   const cfg = await getReleaseConfig(db, product);
-  if (!cfg) return 0;
-  const stmts = await releaseStoreSyncStatements(env, db, cfg, now, fetchImpl);
-  if (stmts.length > 0) {
-    await db.batch(stmts);
+  if (!cfg) return { statements: 0, packTagConflicts: [] };
+  const sync = await releaseStoreSync(env, db, cfg, now, fetchImpl);
+  if (sync.statements.length > 0) {
+    await db.batch(sync.statements);
     // What GitHub publishes may have changed: no cached resolution survives a sync (P2-05).
     await bumpReleaseGeneration(env, product, now);
   }
-  return stmts.length;
+  return {
+    statements: sync.statements.length,
+    packTagConflicts: sync.packTagConflicts,
+  };
 }

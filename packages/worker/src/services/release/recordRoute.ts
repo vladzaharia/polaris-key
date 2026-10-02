@@ -18,7 +18,9 @@
  *   3. under `entitled`, the blob route's rule applied to the record's own release: the licence's
  *      version window must admit that release's STORED version (`fixedVersion`, never a
  *      selector). A hash learned elsewhere unlocks nothing the device could not already
- *      download from that release. A device refused here decides with no record.
+ *      download from that release. A device refused here decides with no record. A `kind: pack`
+ *      record (P4-02) skips this app version rule: (1) governs, and the pack's bytes are gated
+ *      per request by Distribution's blob route (P4-05).
  */
 
 import type { ServiceContext } from "../../core/registry.js";
@@ -83,8 +85,10 @@ export async function handleRecordRoute(
   const row = await getRecordByHash(db, product.slug, rawHash);
   if (!row) return harden(notFound());
 
-  // 3. Under `entitled`, the record's own release's stored version, pinned.
-  if (mode === "entitled") {
+  // 3. Under `entitled`, the record's own release's stored version, pinned. Not for a pack
+  //    record (P4-02): the version window is an APP version rule, so the metadata mode's
+  //    request-level check (1) governs, and the pack's bytes are gated by Distribution (P4-05).
+  if (mode === "entitled" && row.kind !== "pack") {
     const release = await db.first<{ version: string }>(
       "SELECT version FROM release_metadata WHERE product = ? AND release_id = ?",
       product.slug,

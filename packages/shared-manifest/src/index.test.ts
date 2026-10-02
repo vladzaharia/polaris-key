@@ -25,6 +25,8 @@ import {
   normalizeAutoIssue,
   parseManifest,
   parseManifestAppDeliverable,
+  parseManifestPackDeliverable,
+  packVariantKeys,
   validateIngestDocuments,
   validateManifestDocuments,
   webOriginProblem,
@@ -1723,12 +1725,32 @@ describe("deliverables and the artifact map (P2-04)", () => {
             },
           ],
         },
-        "acme.core3d": { kind: "pack", type: "godot.pck" },
+        "acme.l10n": { kind: "pack", type: "files.tree" },
       },
     });
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.manifest.release?.app).toEqual({
+    expect(res.ok).toBe(false);
+    const withContent = parseWith({
+      deliverables: {
+        app: {
+          kind: "app",
+          content: { contentApi: 2 },
+          channels: { beta: { includes: ["stable"] } },
+          artifacts: [
+            {
+              id: "macos",
+              platform: "macos",
+              arch: "universal",
+              format: "dmg",
+              match: "Acme-*.dmg",
+            },
+          ],
+        },
+        "acme.l10n": { kind: "pack", type: "files.tree" },
+      },
+    });
+    expect(withContent.ok).toBe(true);
+    if (!withContent.ok) return;
+    expect(withContent.manifest.release?.app).toEqual({
       kind: "app",
       versioning: { scheme: "semver", buildNumber: null },
       channels: { beta: { includes: ["stable"] } },
@@ -1742,6 +1764,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
           match: "Acme-*.dmg",
         },
       ],
+      content: { contentApi: 2 },
     });
   });
 
@@ -1784,21 +1807,89 @@ describe("deliverables and the artifact map (P2-04)", () => {
     expect(res.errors.join("\n")).toContain("keep one spelling");
   });
 
-  it("a pack deliverable is a warning, not an error", () => {
-    const res = validateManifestDocuments({
+  it("a pack deliverable is validated and normalised with its v1 defaults (P4-02)", () => {
+    const docs = (deliverables: Record<string, unknown>) => ({
       product: { ...PRODUCT, modules: { releases: true } },
       schema: catalogWithSecretDelivery(),
       release: {
-        release: {
-          ...(release().release as object),
-          deliverables: { "acme.ui": { kind: "pack" } },
+        release: { ...(release().release as object), deliverables },
+      },
+    });
+    // A bare pack: no type, and no app with content.
+    const bare = validateManifestDocuments(
+      docs({ "acme.ui": { kind: "pack" } }),
+    );
+    expect(bare.errors.map((e) => e.code).sort()).toEqual([
+      "invalid_app_content",
+      "invalid_pack_type",
+    ]);
+    expect(bare.warnings).toEqual([]);
+    const ok = parseWith({
+      deliverables: {
+        app: { kind: "app", content: { contentApi: 1 } },
+        "acme.ui": {
+          kind: "pack",
+          type: "godot.pck",
+          handler: { prefixes: ["res://ui/"] },
+          requires: { engine: "godot-4.7" },
+        },
+        "acme.l10n": {
+          kind: "pack",
+          type: "files.tree",
+          variants: { locale: ["fr", "en"] },
+          patch: { deltaBases: 2 },
         },
       },
     });
-    expect(res.errors).toEqual([]);
-    expect(res.warnings.map((w) => w.code)).toEqual([
-      "pack_deliverables_not_supported",
+    expect(ok.ok).toBe(true);
+    if (!ok.ok) return;
+    expect(ok.manifest.release?.packDeliverables).toEqual([
+      {
+        kind: "pack",
+        id: "acme.l10n",
+        type: "files.tree",
+        binding: "pinned",
+        baseline: "none",
+        required: false,
+        delivery: "on-demand",
+        contentPolicy: { dataOnly: true },
+        handler: { activation: "hot" },
+        variants: { locale: ["fr", "en"] },
+        requires: {},
+        entitlement: null,
+        patch: { strategies: ["delta", "file"], deltaBases: 2 },
+        versioning: { scheme: "semver" },
+      },
+      {
+        kind: "pack",
+        id: "acme.ui",
+        type: "godot.pck",
+        binding: "pinned",
+        baseline: "none",
+        required: false,
+        delivery: "on-demand",
+        contentPolicy: { dataOnly: true },
+        handler: { activation: "restart", prefixes: ["res://ui/"] },
+        variants: {},
+        requires: { engine: "godot-4.7" },
+        entitlement: null,
+        patch: { strategies: ["delta", "file"], deltaBases: 1 },
+        versioning: { scheme: "semver" },
+      },
     ]);
+    // The persisted def_json reads back to the same declaration.
+    const [l10n] = ok.manifest.release!.packDeliverables;
+    expect(parseManifestPackDeliverable(JSON.stringify(l10n))).toEqual(l10n);
+    expect(parseManifestPackDeliverable('{"kind":"pack","id":"app"}')).toBe(
+      null,
+    );
+    expect(packVariantKeys(l10n!)).toEqual(["locale=en", "locale=fr"]);
+    expect(packVariantKeys({ variants: {} })).toEqual([""]);
+    expect(
+      packVariantKeys({
+        variants: { texture: ["s3tc", "astc"], locale: ["en"] },
+      }),
+    ).toEqual(["locale=en;texture=astc", "locale=en;texture=s3tc"]);
   });
 
   it("includes may name a manual channel, and a cycle is refused", () => {

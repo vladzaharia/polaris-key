@@ -182,3 +182,46 @@ description if they differ from the plan, and amend the plan. Then
 
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from the code (P4-02 implementation)
+
+Recorded while implementing; the plan and the code are right where this brief differs.
+
+- **`products/` fixtures.** No product under `products/` has a `.pkey/release` (`products/djdl`
+  is `catalog.json` and `product.json` only), so none changed, as plan §3 says. The pack example
+  lives in `schema-parity.test.ts`'s valid base document instead (two packs, `deliverables.app.content`
+  and a build's `embeds`).
+- **`requires.contentApi` and `requires.packs` at ingest.** The Scope and acceptance rows that
+  refuse "a pin whose `requires.contentApi` excludes the app's level" and "an unmet
+  `requires.packs`" are P4-12's: plan §2.3 reserves `requires.{contentApi, packs, features}` (v1
+  ignores them), §3 refuses them in the manifest (`invalid_pack_requires`), and §6's ingest
+  reasons have no such check. The app-content reasons are §6's: `content-api`, `pin-unknown`,
+  `pin-mismatch`, `pin-yanked`, `pin-missing`, `pin-gated` and `embeds`.
+- **The telemetry key** is `content {packSetId, appRelease?}` (plan §2.11), each member kept only
+  when it is 64 lowercase hex.
+- **`release_pins`** has `record_sha256` and `delivery` beside the brief's columns (plan §6).
+- **Line references.** `REPORT_KEYS` is at `packages/worker/src/core/devices.ts:869` and
+  `TABLE_OWNERS` at `packages/docs/scripts/gen-reference.mjs:312`; the migration is two files,
+  one bare ALTER each (the 0018 convention): `0045_a_pack_deliverables.sql` (`release_pins`, its
+  index, then `release_metadata.content_api`) and `0045_b_release_builds_embeds.sql`
+  (`release_builds.embeds_json`).
+- **A pack release's id** is `<packId>@<version>` (never the record's `tag`); the plan names no
+  id. Git allows `@` in a tag, so a GitHub release CAN carry a pack release's id. The truth-store
+  sync is guarded instead: it skips a GitHub release whose tag a pack release holds and reports it
+  (`packTagConflicts` in the webhook result, `release_tag_is_pack_release` in a resync's
+  `refused`), and every row it writes for a release is guarded at write time so it never updates
+  a non-app row or its builds and files. App-only readers (sync health's stored ids, the customer
+  portal's listing, the console Releases list, `knownChannels`, the floor's version lookup,
+  `latestReleaseHasDmg`) filter `deliverable_id = 'app'`. Its variants are
+  `release_builds` rows with `build_id` the variant key (`default` for none), and its objects'
+  `release_artifacts` ids are `<build_id>/<role>[-<n>]`.
+- **Hand-off to P4-05.** Before P4-05, a pack object is servable through
+  `distribution/files/<releaseId>/<name>` under the pack's (or, with no pack row, the app's)
+  delivery mode, ungated by any pin. P4-05 must close that ungated pack-object serving when it
+  routes packs.
+- **A pack declaration that does not read back** (`def_json` unparseable) makes an app release's
+  ingest refuse with `release_record_rejected` reason `pack-unreadable` (fail closed) rather than
+  skip that pack's `content-api`, `required` and embedded-baseline checks.
+- **Check order.** `pack-unknown` is checked before `scheme`, because the scheme is the pack's
+  declaration; a different record for an existing pack version is refused as P2-04's
+  `release_exists` (409), and the same record again answers `outcome: "unchanged"`.

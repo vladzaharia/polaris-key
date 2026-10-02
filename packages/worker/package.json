@@ -24,6 +24,7 @@
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/manifest": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
+    "@polaris-key/zstd-wasm": "workspace:*",
     "jose": "^5.9.6",
     "yaml": "^2.6.1"
   },

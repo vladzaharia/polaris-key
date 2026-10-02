@@ -359,6 +359,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
+      '@polaris-key/zstd-wasm':
+        specifier: workspace:*
+        version: link:../zstd-wasm
       jose:
         specifier: ^5.9.6
         version: 5.10.0

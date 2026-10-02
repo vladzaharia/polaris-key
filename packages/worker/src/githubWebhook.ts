@@ -11,7 +11,7 @@ import {
   getReleaseConfig,
   isManifestPath,
   resyncRepo,
-  syncReleaseStore,
+  syncReleaseStoreReport,
   type FetchImpl,
 } from "./services/release/sync.js";
 
@@ -58,6 +58,11 @@ interface ReleaseEventResult {
   /** Truth-store statements applied; 0 when the product was refused or the sync did not run. */
   statements: number;
   error?: string;
+  /**
+   * GitHub release tags the sync skipped because a pack release already holds that id (P4-02:
+   * `<packId>@<version>`). Never merged into the pack. Absent when none.
+   */
+  packTagConflicts?: string[];
 }
 
 function hexToBytes(hex: string): Uint8Array | null {
@@ -197,7 +202,7 @@ async function handleReleaseEvent(
     }
     // Idempotent and bounded (P0-02's capped pagination), so it is safe on every delivery;
     // bursts are not coalesced. `syncReleaseStore` never throws and applies all or nothing.
-    const statements = await syncReleaseStore(
+    const { statements, packTagConflicts } = await syncReleaseStoreReport(
       env,
       db,
       product.slug,
@@ -206,7 +211,12 @@ async function handleReleaseEvent(
     );
     results.push(
       statements > 0
-        ? { product: product.slug, ok: true, statements }
+        ? {
+            product: product.slug,
+            ok: true,
+            statements,
+            ...(packTagConflicts.length > 0 ? { packTagConflicts } : {}),
+          }
         : {
             product: product.slug,
             ok: false,

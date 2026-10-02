@@ -1,5 +1,6 @@
 /**
- * The manifest's deliverable declarations, written at link and on every resync (P2-04).
+ * The manifest's deliverable declarations, written at link and on every resync (P2-04; packs
+ * P4-02).
  *
  * `release_deliverables` gets the `app` row with the declaration as `def_json`
  * (`def_source = 'manifest'`) — or NULL when `.pkey/release` declares no `deliverables`, the
@@ -15,6 +16,7 @@
 import {
   APP_DELIVERABLE_ID,
   type ManifestAppDeliverable,
+  type ManifestPackDeliverable,
 } from "@polaris-key/manifest";
 import type { DbStatement } from "../../core/platform.js";
 import { stmtSetChannelPolicy, stmtUpsertDeliverable } from "./model.js";
@@ -23,6 +25,7 @@ export function manifestDeliverableStatements(
   product: string,
   app: ManifestAppDeliverable | null,
   now: number,
+  packs: readonly ManifestPackDeliverable[] = [],
 ): DbStatement[] {
   const stmts: DbStatement[] = [
     stmtUpsertDeliverable(
@@ -58,6 +61,47 @@ export function manifestDeliverableStatements(
       APP_DELIVERABLE_ID,
       JSON.stringify(channels.map(([name]) => name)),
     ],
+  });
+  stmts.push(...packDeliverableStatements(product, packs, now));
+  return stmts;
+}
+
+/** The pack rows (P4-02): upsert each declared pack unless an operator owns its row, then drop
+ *  the manifest-owned rows of packs no longer declared. */
+function packDeliverableStatements(
+  product: string,
+  packs: readonly ManifestPackDeliverable[],
+  now: number,
+): DbStatement[] {
+  const stmts: DbStatement[] = packs.map((p) => {
+    const upsert = stmtUpsertDeliverable(
+      {
+        product,
+        deliverableId: p.id,
+        kind: "pack",
+        packType: p.type,
+        defJson: JSON.stringify(p),
+        defSource: "manifest",
+      },
+      now,
+    );
+    // The operator-ownership guard: ON CONFLICT ... DO UPDATE applies only to a manifest-owned
+    // row (a row of kind `app` under this id is impossible: the validator reserves `app`).
+    return {
+      sql: `${upsert.sql}
+          WHERE release_deliverables.def_source = 'manifest'
+            AND release_deliverables.kind = 'pack'`,
+      params: upsert.params,
+    };
+  });
+  stmts.push({
+    sql: `DELETE FROM release_deliverables
+           WHERE product = ? AND kind = 'pack' AND def_source = 'manifest'
+             AND deliverable_id NOT IN (SELECT value FROM json_each(?))
+             AND NOT EXISTS (SELECT 1 FROM release_channel_policy c
+                              WHERE c.product = release_deliverables.product
+                                AND c.deliverable_id = release_deliverables.deliverable_id)`,
+    params: [product, JSON.stringify(packs.map((p) => p.id))],
   });
   return stmts;
 }

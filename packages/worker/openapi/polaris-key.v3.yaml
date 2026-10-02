@@ -184,6 +184,7 @@ paths:
                           [
                             d8f1a6a3f0b2a1c7e6d9b4c3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3,
                           ]
+                        packs: true
                       distribution:
                         enabled: true
                         configured: true
@@ -597,14 +598,15 @@ paths:
         per report; deleted with the device.
 
 
-        Seventeen top-level keys survive the allowlist; anything else is dropped SILENTLY
+        Eighteen top-level keys survive the allowlist; anything else is dropped SILENTLY
         rather than refused, so a newer SDK reporting a field this worker does not know still
         succeeds. `os`/`hardware`/`runtime`/`locale`/`timezone`/`probes` are projected into
         typed columns (strings truncated to 128 chars, probe ids and probe versions to 64);
         the rest are kept as an opaque blob. A probe entry whose `present` is not a boolean is
         skipped. `engine` keeps only its known fields (strings truncated to 128 chars,
         `debug` only as a boolean) and `outlet` is truncated to 64 chars; either is dropped
-        when it has the wrong type. An empty body is valid and means `{}`. Auth requires a usable license only
+        when it has the wrong type. `content` (P4-02) keeps only `packSetId` and `appRelease`,
+        each only when it is 64 lowercase hex, and is dropped when neither is. An empty body is valid and means `{}`. Auth requires a usable license only
         when the product enables the License service (D-08).
       security: [{ deviceToken: [] }]
       parameters: [{ $ref: "#/components/parameters/Product" }]
@@ -3709,6 +3711,14 @@ paths:
         release that exists (the GitHub sync may have created it first), else the next one for
         its deliverable, counting the new releases named before it. CI signs that `seq` into
         the release record and the descriptor; a re-run gets the stored value again.
+        P4-02: an existing release's entry also carries `recordSha256`, its record's hash (CI
+        resolves `--pin <packId>@<version>` with it and proves its cached delta bases). A pack's
+        entry carries `entitlement`, the pack's delivery gate (the `entitlement` of its own
+        `dist_access` row, read through Distribution's `delivery.entitlement`; `null` when
+        ungated): CI stages every object `gated` exactly when it is set and signs it into the
+        record. A request with a non-empty `releases` may omit `objects`: the PREFLIGHT, which
+        issues no ticket and answers only `seqs`. An `objects` array that is present stays
+        non-empty. A pack named while Distribution is off is `distribution_disabled` (409).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3718,7 +3728,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [objects]
+              description: "`objects`, or (the P4-02 preflight) a non-empty `releases` alone."
+              anyOf:
+                - required: [objects]
+                - required: [releases]
+                  properties: { releases: { minItems: 1 } }
               properties:
                 objects:
                   type: array
@@ -3751,13 +3765,14 @@ paths:
                         }
       responses:
         "200":
-          description: The ticket, the credentials, the staging keys and `nextSeq`.
+          description: >
+            The ticket, the credentials, the staging keys and `nextSeq`; or, for the preflight,
+            `seqs` alone.
           content:
             application/json:
               schema:
                 type: object
-                required:
-                  [ticket, expiresAt, credentials, prefix, objects, nextSeq]
+                required: [seqs]
                 properties:
                   ticket: { type: string, pattern: "^pkeyup_" }
                   expiresAt: { type: integer }
@@ -3811,10 +3826,74 @@ paths:
                         deliverable: { type: string }
                         version: { type: string }
                         seq: { type: integer, minimum: 1 }
+                        recordSha256:
+                          type: string
+                          pattern: "^[0-9a-f]{64}$"
+                          description: "P4-02: the existing release's record hash."
+                        entitlement:
+                          type: [string, "null"]
+                          description: "P4-02, a pack only: its delivery gate, `null` when ungated."
         "400": { $ref: "#/components/responses/CiRefusal" }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }
         "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/publish/stage:
+    post:
+      operationId: ciPublishStage
+      tags: [release]
+      summary: A stage round of a pack's objects (trusted publishing)
+      description: >
+        P4-02 (plans/P4-01.md §6, decision 28). Requires a `pkeyci_` token with `release:publish`
+        and a ticket that token obtained (at most 256 objects, 64 KiB, as `uploads`).
+        `deliverable` must be a pack the product declares (`unknown_pack_deliverable`). Every
+        ticket object the product does not already reference is verified in its staging prefix
+        (`staged_object_missing`, `staged_object_mismatch`), and must be `gated` exactly when the
+        pack's delivery gate is set (`gated_mismatch`); then the ticket is claimed (once,
+        `ticket_redeemed`), each object promoted into the blob store and one `blob_refs` row
+        written per object, kind `pack-upload` with the pack id. A failure gives the claim back
+        (`promote_failed`, 409, `retryable`); objects already promoted keep their refs. A pack
+        whose product has Distribution off is `distribution_disabled` (409). `staged` lists the
+        keys promoted by this round, `present` the ones the product already referenced. A
+        `pack-upload` ref is possession, not liveness: it lets the record submit name the
+        object. No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket, deliverable]
+              properties:
+                ticket: { type: string, pattern: "^pkeyup_" }
+                deliverable:
+                  {
+                    type: string,
+                    pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+                    maxLength: 64,
+                  }
+      responses:
+        "200":
+          description: The round's promoted and already-present keys.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, deliverable, staged, present]
+                properties:
+                  ok: { type: boolean, const: true }
+                  deliverable: { type: string }
+                  staged: { type: array, items: { type: string } }
+                  present: { type: array, items: { type: string } }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiRefusal" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
 
   /{product}/release/publish/submit:
     post:
@@ -3855,6 +3934,22 @@ paths:
         refused by the ingest (`seq_not_increasing` or the retryable `release_exists`) with
         nothing stored. A re-run whose release already holds a record keeps it
         (`record.stored: false`).
+        P4-02: an app record's `content` and `builds[].embeds` are its descriptor's (the
+        `descriptor-mismatch` comparison covers them), and the release's packs are checked
+        against the stored records, refused as `release_record_rejected` with `content-api`
+        (packs declared, no `content`), `pin-unknown`, `pin-mismatch`, `pin-yanked`,
+        `pin-missing`, `pin-gated`, `embeds` or `pack-unreadable` (a declared pack's stored
+        declaration does not read back; resync the manifest); a descriptor submitted without a record is
+        checked the same way. A PACK release is `{ticket?, record, dryRun?}` with NO
+        descriptor (the body at most 92,940 bytes): a `kind: pack` record, refused after the
+        shared checks with `pack-unknown`, `scheme`, `seq` (409), `pack-type`,
+        `pack-variant`, `pack-entitlement` (not the pack's delivery gate, or not the
+        manifest's assertion), `pack-index` (an index over 8 MiB, the indexes over 64 MiB in
+        all, or an index `parseFilesIndex` refuses) or `pack-object` (an object the record or
+        an index names is not stored with that length under this product's refs and the pack's
+        prefix, or a `full` whose size is not its payload's). The optional ticket is promoted as
+        a stage round first; a dry run checks without promoting and lists in `unverified` the
+        ticket objects not uploaded yet. The release id is `<packId>@<version>`.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3864,7 +3959,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ticket, descriptor]
+              description: "`{ticket, descriptor, record?, dryRun?}`, or (P4-02) a pack release: `{ticket?, record, dryRun?}`."
+              anyOf:
+                - required: [ticket, descriptor]
+                - required: [record]
+                  not: { required: [descriptor] }
               properties:
                 ticket: { type: string, pattern: "^pkeyup_" }
                 descriptor:
@@ -3882,14 +3981,23 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [ok, dryRun, releaseId, outcome, descriptorSha256]
+                required: [ok, dryRun, releaseId, outcome]
                 properties:
                   ok: { type: boolean, const: true }
                   dryRun: { type: boolean }
                   releaseId: { type: string }
                   outcome:
                     { type: string, enum: [created, enriched, unchanged] }
-                  descriptorSha256: { type: string }
+                  descriptorSha256:
+                    type: string
+                    description: A descriptor submit's (absent for a pack release).
+                  staged:
+                    type: array
+                    items: { type: string }
+                    description: "P4-02, a pack release: the keys its own ticket promoted."
+                  files:
+                    type: integer
+                    description: "P4-02, a pack dry run: how many file blobs the indexes named."
                   planned:
                     {
                       type: [object, "null"],
@@ -7189,6 +7297,17 @@ components:
             build stamp's outlet, refined on the device by outlet detection. An outlet id or
             kind only, never a raw signal, and absent when unknown. Truncated to 64
             characters; the id itself is not validated.
+        content:
+          type: object
+          description: >
+            P4-02 (plans/P4-01.md §2.11): the running build's packs. `packSetId` is the active
+            pack set's id (the SHA-256 of its `<packId> <recordSha256>` lines); `appRelease` the
+            running app release's record hash, when the SDK has verified it. Only these two are
+            kept, each only when it is 64 lowercase hex.
+          additionalProperties: false
+          properties:
+            packSetId: { type: string, pattern: "^[0-9a-f]{64}$" }
+            appRelease: { type: string, pattern: "^[0-9a-f]{64}$" }
     RegistrationResult:
       type: object
       description: Keyless registration's answer — the token and the device id it is bound to.

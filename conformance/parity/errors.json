@@ -205,7 +205,13 @@
       "code": "release_record_rejected",
       "kind": "wire",
       "service": "release",
-      "description": "A trusted-publishing submit carried a release record (pkey-release+jws) the ingest refused; nothing was stored. `reason` names the check: typ, kid, product-key, signature, claims, scheme, descriptor-mismatch or seq."
+      "description": "A trusted-publishing submit carried a release record (pkey-release+jws), or a release whose packs, the ingest refused; nothing was stored. `reason` names the check: typ, kid, product-key, signature, claims, scheme, descriptor-mismatch or seq; for a pack record (P4-02) pack-unknown, pack-type, pack-variant, pack-entitlement, pack-index or pack-object; for an app release's content content-api, pin-unknown, pin-mismatch, pin-yanked, pin-missing, pin-gated, embeds or pack-unreadable (a declared pack's stored declaration does not read back; resync the manifest)."
+    },
+    {
+      "code": "release_tag_is_pack_release",
+      "kind": "wire",
+      "service": "release",
+      "description": "A manifest resync's `refused` entry (P4-02): a GitHub release whose tag equals a pack release id (`<packId>@<version>`; git allows `@` in a tag) was skipped by the truth-store sync and never merged into the pack's row. The rest of the resync applied; rename the tag."
     },
     {
       "code": "feed_not_composable",
