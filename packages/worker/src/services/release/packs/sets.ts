@@ -547,6 +547,19 @@ export async function resolveAndStore(
   product: string,
   now: number,
 ): Promise<StoreOutcome> {
+  // One query decides whether there is anything to do: a product with no compatible or standalone
+  // pack and no stored set (every product before it declares one) pays nothing more.
+  const any = await db.first<{ packs: number; sets: number }>(
+    `SELECT EXISTS (SELECT 1 FROM release_deliverables
+                     WHERE product = ? AND kind = 'pack'
+                       AND (CASE WHEN json_valid(def_json)
+                                 THEN json_extract(def_json, '$.binding') END)
+                           IN ('compatible', 'standalone')) AS packs,
+            EXISTS (SELECT 1 FROM release_sets WHERE product = ?) AS sets`,
+    product,
+    product,
+  );
+  if (!any?.packs && !any?.sets) return { ok: true, sets: 0 };
   const state = await loadResolutionState(db, product);
   if (!state) {
     await db.run("DELETE FROM release_sets WHERE product = ?", product);

@@ -224,3 +224,64 @@ Downstream packages rely on these names (propose, then keep):
 
 Set the status in the PR that completes the work:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-12 done`.
+
+## Corrections from implementation
+
+Where this brief and the code disagreed, the code is the fact; these are the choices the
+implementation made, recorded here in the same branch.
+
+- **Pack floors live in their own table.** `release_channel_policy`'s primary key is
+  (product, deliverable_id, channel), and every reader and both upserts (`model.ts`,
+  `deliverables.ts`, `resolve.ts`, `gateway.ts`) key on that triple. Floors per contentApi line
+  are `release_pack_floors(product, deliverable_id, channel, content_api, min_version, source, …)`
+  (primary key with `content_api`), operator-owned (`source = 'admin'`). A pack's level-free
+  `min_supported` still applies; resolution honours both.
+- **Migrations 0046_a and 0046_b.** 0046_a creates `release_sets` (with an `unsatisfied_json`
+  column), `release_holds` (with `record_sha256`) and `release_pack_floors`, then adds
+  `release_metadata.pack_channels_json` last; 0046_b adds `release_builds.conflicts_json`.
+- **Requirements come from the signed record.** A pack release's `requires.contentApi`,
+  `requires.packs` and `conflicts` are its record's per-variant reserved members (CONTENT §6.9;
+  plans/P4-01.md §2.3 reserved them for P4-12), mirrored into `release_builds` at ingest. The
+  `.pkey/release` values are the defaults CI signs. Ingest gains `pack-requires` (the signed
+  values against the binding and the declared packs) and `pack-channel` (a channel the pack does
+  not publish to). Client-core claims are unchanged: clients still ignore those members.
+- **Engines.** A build that declares no `requires.engine` adds no engine constraint (the server
+  cannot know it; the device's `selectVariant` still matches). Sets have no engine dimension, so
+  two engines live at one (channel, level, platform) share no `godot.pck` release: an engine bump
+  bumps contentApi or waits for the older app release to fall below the floor. The row-7 test is
+  written that way. P4-13, which freezes the selector, may add an engine key.
+- **`requires.features` stays refused.** No app-side value exists to check it against; this is a
+  plan gap, reported rather than invented.
+- **Validator codes.** New: `missing_content_api_range`, `standalone_with_content_api`,
+  `unknown_content_api_app`, `invalid_pack_conflicts` (conflicts needed a code),
+  `invalid_pack_channels` (the app's `content.packChannels`, as proposed) and
+  `unknown_pack_channels_target` (also refuses a target channel a matched pack does not publish
+  to). A pack's own `channels` list reuses `invalid_channel` with a pack-path mutation.
+  `deliverables.app.content.holds` stays refused: holds are chosen per app release at publish.
+  The descriptor's `content` accepts `holds` (`{pack, release {sha256, seq, version}, reason?}`,
+  never a pinned pack) and `packChannels` (equal to the manifest's), both under
+  `invalid_descriptor_content`.
+- **P4-02's v1 pin rules narrowed.** Every expected **pinned** pack is pinned; an expected
+  compatible or standalone pack needs no pin unless a build embeds it as a baseline; the
+  "required means pinned" rule applies to pinned packs (a required compatible pack is checked
+  against the resolved sets, `content-unsatisfied`).
+- **New ingest reasons** (`release_record_rejected`): `pack-requires`, `pack-channel`,
+  `pack-unsatisfiable`, `pack-sets-bound`, `pin-requires`, `hold-unknown`, `hold-mismatch`,
+  `hold-yanked`, `hold-binding`, `hold-requires`, `hold-unsatisfiable`, `content-unsatisfied`,
+  `pack-channels-conflict`.
+- **Hook functions bind the product**, as every `ReleaseCatalog` method does:
+  `liveLevels(appDeliverable, channel)`, `packSets(channel)`, `packFloors(channel)`,
+  `holdsFor(appReleaseId)`, plus `heldBy(packReleaseId)` for P4-14's live references.
+- **The floor operation is the admin API only.** `PUT …/release/channels/{channel}` takes
+  `{deliverable, contentApi, minSupported}`. There is no CI floor route today (CI promotes, pins
+  and yanks), floors are operator-owned, and a CI route would be a rule-10 change this brief's
+  gates exclude, so no `pkey release` floor command was added.
+- **The dry run is the Worker's.** The submit (pack and app) answers `packSets`, dry run or
+  not; `dryRun: true` writes nothing. P4-03 (the CLI's `--dry-run`) is still `todo`, so printing
+  the report, and joining it with Distribution's availability, is P4-03's.
+- **Not checked, for want of an input:** the data-only lint result (P4-03 does not exist yet, and
+  a pack record has no descriptor), and a `standalone` pack's format version against the app
+  (no app-side handler version exists).
+- **A trigger that hits a bound leaves the stored sets as they were**; a publish that would is
+  refused (`pack-sets-bound`).
+- **Console read** is the hook functions; the console view is P4-15's.
