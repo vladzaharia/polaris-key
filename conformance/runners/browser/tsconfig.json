@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "lib": ["ES2023", "DOM"],
+    "types": [],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true
+  },
+  "include": ["*.ts"]
+}

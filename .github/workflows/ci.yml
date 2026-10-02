@@ -102,18 +102,135 @@ jobs:
       - run: pnpm --filter @polaris-key/worker typecheck:workerd
       - run: pnpm --filter @polaris-key/worker test:workerd
 
+  # P1b-05 Part B: the Node conformance runner and the Node SDK suites on the LOWEST Node that
+  # `engines.node` allows. One runtime is not proof: notes/A7 §6 found decoder behaviour that only
+  # a run on the minimum version shows. The floor is read from the three packages that declare it
+  # (they must agree, as `>=X.Y.Z`) and installed exactly. If it fails, raise the declared floor to
+  # the lowest version that passes; never skip or weaken a test. The install is filtered to the
+  # runner's dependency closure, so nothing the floor does not run (the worker's native modules,
+  # the docs site) has to build on it.
+  node-floor:
+    name: Node floor (engines.node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: floor
+        run: |
+          floors=$(jq -r '.engines.node' packages/sdk-node/package.json packages/client-core/package.json packages/sdk-react/package.json | sort -u)
+          if [ "$(printf '%s\n' "$floors" | wc -l)" -ne 1 ]; then
+            echo "::error::engines.node differs between sdk-node, client-core and sdk-react: $floors"; exit 1
+          fi
+          if ! printf '%s' "$floors" | grep -Eq '^>=[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::engines.node must be '>=X.Y.Z', got '$floors'"; exit 1
+          fi
+          echo "version=${floors#>=}" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.floor.outputs.version }}
+          cache: pnpm
+      # The banner, and proof that the runtime under test IS the floor (setup-node resolves an
+      # exact version, but a cached toolcache must not silently stand in for it).
+      - run: |
+          node -p "JSON.stringify(process.versions, null, 2)"
+          test "$(node --version)" = "v${{ steps.floor.outputs.version }}"
+      - run: pnpm install --frozen-lockfile --filter=@polaris-key/conformance-node...
+      - run: pnpm exec turbo run build --filter=@polaris-key/conformance-node...
+      - run: >-
+          pnpm exec turbo run test --filter=@polaris-key/conformance-node
+          --filter=@polaris-key/client-core --filter=@polaris-key/node
+
+  # P1b-05 Part A: the conformance corpus in real Chromium. conformance/runners/browser drives the
+  # SAME suites as the Node runner (conformance/runners/node/suites.ts) through client-core, so
+  # WebCrypto's Ed25519 and SHA-256 verify every cases.json, gate-matrix.json, update-matrix.json
+  # and outlet-matrix.json vector. The runner prints navigator.userAgent. The root `pnpm test`
+  # leaves this package out (it needs a Playwright browser), which is why it is its own job.
+  browser:
+    name: Browser conformance (Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: >-
+          pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
+          --filter=@polaris-key/conformance-node...
+      - run: pnpm --filter @polaris-key/conformance-browser exec playwright install --with-deps chromium
+      - run: pnpm exec turbo run build --filter=@polaris-key/conformance-browser...
+      - run: pnpm --filter @polaris-key/conformance-browser test
+
+  # P1b-05 Part D: the same runner in Firefox 155.0, the build bundled with playwright 1.63.0 (the
+  # engine S-04 measured), in Playwright's own image, which already carries that browser. Firefox
+  # refuses to run as root under a $HOME another user owns, and Actions sets HOME=/github/home, so
+  # the test step points HOME back at /root (Playwright's documented container setup).
+  browser-firefox:
+    name: Browser conformance (Firefox, Linux)
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: >-
+          pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
+          --filter=@polaris-key/conformance-node...
+      - run: pnpm exec turbo run build --filter=@polaris-key/conformance-browser...
+      - run: pnpm --filter @polaris-key/conformance-browser test --browser=firefox
+        env:
+          HOME: /root
+
+  # P1b-05 Part D: WebKit 26.6 on macOS. playwright 1.63.0 pins an OLDER WebKit build on macOS 14
+  # (browsers.json revisionOverrides mac14), so this runs on macos-15. Do NOT add a Linux WebKit
+  # leg: Linux Playwright WebKit, like WebKitGTK 2.52.6 with libgcrypt 1.10.3, kills the web
+  # process when WebCrypto Ed25519 verifies a message of about 64 KiB or more, so payload-at-cap
+  # and bundle-payload-at-cap fail on every run (notes/S-04). That failure is correct and loud;
+  # never skip, cap or special-case those rows. Linux WebKit waits for an (unowned) size-aware
+  # Ed25519 fallback in shared-jws/client-core, which is a plan-mode change.
+  browser-webkit:
+    name: Browser conformance (WebKit, macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: >-
+          pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
+          --filter=@polaris-key/conformance-node...
+      - run: pnpm --filter @polaris-key/conformance-browser exec playwright install webkit
+      - run: pnpm exec turbo run build --filter=@polaris-key/conformance-browser...
+      - run: pnpm --filter @polaris-key/conformance-browser test --browser=webkit
+
+  # The Python SDK on the lowest and the highest CPython that `requires-python` admits (3.9 and
+  # 3.14 differ in zstd, PARITY §4.3) on Linux, and the current one on macOS. tests/conftest.py
+  # prints the interpreter and the cryptography (with its OpenSSL) and httpx versions first.
   python:
-    name: Python SDK
+    name: Python SDK (${{ matrix.python }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        include:
+          - os: ubuntu-latest
+            python: "3.9"
+          - os: ubuntu-latest
+            python: "3.14"
+          - os: macos-14
+            python: "3.12"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
       - name: Create venv + install (editable, dev extras)
         working-directory: sdks/python
         run: |

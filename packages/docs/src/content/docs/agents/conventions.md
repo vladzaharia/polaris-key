@@ -40,6 +40,7 @@ pnpm --filter @polaris-key/worker assemble
 pnpm --filter @polaris-key/docs check:links
 pnpm --filter @polaris-key/worker typecheck:workerd
 pnpm --filter @polaris-key/worker test:workerd
+pnpm test:browser
 ( cd sdks/python && .venv/bin/python -m pytest -q )
 ( cd sdks/swift && swift build && swift test )
 sdks/godot/tools/run_tests.sh

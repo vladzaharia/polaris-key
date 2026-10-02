@@ -12,6 +12,30 @@
 | Human input | none                                  |
 | Repo        | `vladzaharia/polaris-key`             |
 
+> **Corrections from implementation (2026-10-01).** The code is the fact; where this brief and
+> the branch disagree, the branch wins.
+>
+> - **Four corpus files, not two.** Since P3-02/P3-05, `corpusV2.test.ts` also drives
+>   `update-matrix.json` and `outlet-matrix.json`. The shared module moves all of it, so the
+>   signature is `defineCorpusSuites({ corpus, matrix, updateMatrix, outletMatrix })`, and the
+>   browser runner runs all four files (865 cases, the same names as the Node runner).
+> - **`suites.ts` names its files.** `parity:check` rule 2 accepts a corpus proof only from a
+>   tagged file that names the corpus file as a string literal. The `@pkey-feature` tags moved
+>   with the cases, so `suites.ts` exports `CORPUS_FILES`, which both runners load from.
+> - **Root `pnpm test` leaves the browser package out.** Otherwise the `js`, deploy and release
+>   jobs would need a Playwright browser. It runs as `pnpm test:browser` (turbo, after `^build`)
+>   or with `pnpm --filter @polaris-key/conformance-browser test`, plus `--browser=firefox` or
+>   `--browser=webkit`. The Verify lines' `test -- --browser=…` form also works.
+> - **WebKit 26.6 needs `macos-15`.** playwright-core 1.63.0's `browsers.json` pins an older
+>   WebKit build (revision 2251) on macOS 14 (`revisionOverrides.mac14`).
+> - **The Node floor is 22.0.0.** It is declared as `"engines": { "node": ">=22.0.0" }` in all
+>   three packages. The conformance runner, client-core and the Node SDK suites pass on 22.0.0
+>   on macOS and on Linux, running as a non-root user. One SDK store test assumes `chmod`
+>   binds, which is false for root in a container. CI runs as a normal user.
+> - **Python on macOS stays on 3.12**, the version CI already used. Its leg names now carry the
+>   interpreter, which is a HANDOFF item for the required checks.
+> - **The docs heading is "The runners"**, not "Four runners".
+
 ## Goal
 
 - **A:** CI runs `client-core` over `cases.json` and `gate-matrix.json` in real Chromium.
@@ -127,11 +151,17 @@
 - [ ] The CI `node-floor` job runs on the version in `engines.node`, which is declared in
       `sdk-node`, `client-core` and `sdk-react`.
 - [ ] The Python job passes on 3.9 and 3.14.
-- [ ] Each runner's log shows its runtime and library versions.
-- [ ] The runner docs list the new jobs.
-- [ ] `parity.json` manifests are updated for every SDK this changes (for example, React's `core.verify`
+- [x] Each runner's log shows its runtime and library versions.
+- [x] The runner docs list the new jobs.
+- [x] `parity.json` manifests are updated for every SDK this changes (for example, React's `core.verify`
       proof now includes the Chromium runner).
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
+
+> The four CI rows above wait for the branch's first CI run. Locally on 2026-10-01, the browser
+> runner passed all 865 cases in Chromium 153 and WebKit 26.6 (macOS), and in Firefox 155.0 in
+> `mcr.microsoft.com/playwright:v1.63.0-noble`. The Node conformance runner, client-core and
+> the Node SDK passed on Node 22.0.0 (macOS, and Linux as a non-root user). The Python suite
+> passed on CPython 3.9 and 3.14 (1750 tests each).
 
 ## Verify
 
