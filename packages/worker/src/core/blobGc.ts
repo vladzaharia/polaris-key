@@ -35,7 +35,8 @@
  *   g. the replacement of every revocation in force;
  *   h. every not-yanked, not-revoked release NEWER than the newest live release of its pack (or
  *      every one, when none is live): a release published ahead of the app release that will use
- *      it is not dead.
+ *      it is not dead;
+ *   i. the `GC_KEEP_RECENT_RELEASES` newest not-yanked, not-revoked releases of each pack.
  *
  * REVOKED releases are never live (plans/P4-13.md §8.5): no client installs one, whatever pins it.
  * A yanked release stays live only through (a), (e) or (f).
@@ -54,7 +55,16 @@
  *                                   `packChunks` (the P4-22 hook point, P4-10 decision 16)
  *
  * and only once the ref is older than the grace period, so an upload or an ingest in flight is
- * never undercut. Each drop is logged (`blob_gc_log`) and summarised in the product's audit.
+ * never undercut (re-earning a ref moves its `created_at` forward, `core/blobs.ts`). Each drop is
+ * logged (`blob_gc_log`) and summarised in the product's audit.
+ *
+ * SELF-HEALING. The plan also RESTORES refs a live release needs and lacks: a record object without
+ * its `pack-object` ref, or an indexed file this product holds no ref to. That closes the races a
+ * plan computed before a concurrent publish could open (an ingest whose files CI skipped as
+ * `present` landing between plan and apply, an app release pinning a release that just lost its
+ * refs): the next tick, long inside the grace period, puts the ref back and the mark clears the
+ * stamp, so the sweep never reaches a live object. Possession was proven at that release's ingest,
+ * so restoring is not earning (THREAT-MODEL §3), and only a still-stored, unclaimed object is.
  *
  * ── MARK, CLAIM, SWEEP ──────────────────────────────────────────────────────────────────────
  *
@@ -122,6 +132,8 @@ export const GC_MARK_PASSES = 10;
 export const GC_SWEEP_KEYS = 1000;
 /** A claim this old was left by a tick that died mid-sweep: the next sweep finishes it. */
 export const GC_STALE_CLAIM_SECONDS = 60 * 60;
+/** The newest releases of each pack the collector always keeps live (rule i). */
+export const GC_KEEP_RECENT_RELEASES = 3;
 /** Availability states in which an outlet still lists a release. */
 const UNLISTED_STATES: ReadonlySet<string> = new Set(["rejected", "removed"]);
 /** Keys per `json_each` parameter (well inside D1's 2 MB value limit). */
@@ -170,6 +182,13 @@ export interface ProductGcPlan {
   liveReleases: string[];
   /** The refs to drop (at most `GC_DROPS_PER_PRODUCT`). */
   drops: PlannedDrop[];
+  /**
+   * The refs to RESTORE: a live release's record object without its `pack-object` ref, or a file
+   * its verified index names with no ref of this product at all (a drop that raced an ingest, or
+   * a release pinned again after it lost its refs). Possession was proven when the release was
+   * ingested; the collector puts back what it took (only for objects still stored and unclaimed).
+   */
+  restores: PlannedDrop[];
   /** Whether more drops were found than one tick takes. */
   truncated: boolean;
   /** When the dropped refs' objects become deletable at the earliest, if nothing else holds them. */
@@ -284,6 +303,14 @@ export async function livePackReleases(
       )
         live.add(r.releaseId);
   }
+  // (i) the newest `GC_KEEP_RECENT_RELEASES` not-yanked, not-revoked releases of each pack, so a
+  // release an app release pins again soon after it left every live reference keeps its bytes.
+  for (const [, list] of packs)
+    list
+      .filter((r) => !r.yanked && !revoked.has(r.releaseId))
+      .sort((a, b) => (b.seq ?? Infinity) - (a.seq ?? Infinity))
+      .slice(0, GC_KEEP_RECENT_RELEASES)
+      .forEach((r) => live.add(r.releaseId));
   return { live, packs };
 }
 
@@ -303,6 +330,7 @@ export async function planProductGc(
     incomplete: null,
     liveReleases: [],
     drops: [],
+    restores: [],
     truncated: false,
     earliestDeletion: null,
   };
@@ -347,50 +375,114 @@ export async function planProductGc(
     });
   }
 
-  // The live keys: every live release's record objects, files and chunks.
+  // The live keys: every live release's record objects, files and chunks. Records need no budget;
+  // an unreadable one only makes the plan incomplete (no `pack-upload` drops).
   const liveKeys = new Set<string>();
   const hasChunks = typeof catalog.packChunks === "function";
+  const recordKeys = new Map<string, Set<string>>(); // release id → record object keys
+  const fileKeys = new Map<string, string>(); // file key → the pack whose live index names it
+  const incomplete = (why: string) => {
+    if (plan.complete) plan.incomplete = why;
+    plan.complete = false;
+  };
   for (const id of plan.liveReleases) {
     const pack = packOf.get(id);
     if (!pack) continue;
     const rec = await catalog.packRelease(pack, id);
     if (!rec) {
-      plan.complete = false;
-      plan.incomplete = `the record of live release ${id} could not be read`;
-      break;
+      incomplete(`the record of live release ${id} could not be read`);
+      continue;
     }
+    const keys = new Set<string>();
+    for (const v of rec.variants)
+      for (const o of v.objects) {
+        keys.add(o.key);
+        liveKeys.add(o.key);
+      }
+    recordKeys.set(id, keys);
     for (const v of rec.variants) {
-      for (const o of v.objects) liveKeys.add(o.key);
       if (v.objects.some((o) => o.role === "files-index")) {
         if (ctx.budget.indexReads <= 0) {
-          plan.complete = false;
-          plan.incomplete =
-            "the tick's index-read budget is spent; the next tick resumes";
-          break;
+          incomplete(
+            "the tick's index-read budget is spent; the next tick resumes",
+          );
+          continue;
         }
         ctx.budget.indexReads--;
         const files = await catalog.packFiles(id, v.variantKey);
         if (!files) {
-          plan.complete = false;
-          plan.incomplete = `the files index of live release ${id} (${v.variantKey || "default"}) could not be read`;
-          break;
+          incomplete(
+            `the files index of live release ${id} (${v.variantKey || "default"}) could not be read`,
+          );
+          continue;
         }
-        for (const f of files) liveKeys.add(f.blob.key);
+        for (const f of files) {
+          liveKeys.add(f.blob.key);
+          if (!fileKeys.has(f.blob.key)) fileKeys.set(f.blob.key, pack);
+        }
       }
       if (hasChunks) {
         if (ctx.budget.indexReads <= 0) {
-          plan.complete = false;
-          plan.incomplete =
-            "the tick's index-read budget is spent; the next tick resumes";
-          break;
+          incomplete(
+            "the tick's index-read budget is spent; the next tick resumes",
+          );
+          continue;
         }
         ctx.budget.indexReads--;
         const chunks = await catalog.packChunks!(id, v.variantKey);
-        if (chunks) for (const c of chunks) liveKeys.add(c.bundleKey);
+        if (chunks)
+          for (const c of chunks) {
+            liveKeys.add(c.bundleKey);
+            if (!fileKeys.has(c.bundleKey)) fileKeys.set(c.bundleKey, pack);
+          }
       }
     }
-    if (!plan.complete) break;
   }
+
+  // Restores: a live release's record object without its pack-object ref.
+  if (recordKeys.size > 0) {
+    const have = new Set(
+      (
+        await db.all<{ storage_key: string; ref_id: string }>(
+          `SELECT storage_key, ref_id FROM blob_refs
+            WHERE product = ? AND ref_kind = 'pack-object'`,
+          product,
+        )
+      ).map((r) => `${r.ref_id}\u0000${r.storage_key}`),
+    );
+    for (const [id, keys] of recordKeys)
+      for (const k of keys)
+        if (!have.has(`${id}\u0000${k}`))
+          plan.restores.push({
+            storageKey: k,
+            refKind: "pack-object",
+            refId: id,
+            createdAt: now,
+          });
+  }
+  // Restores: a file (or chunk bundle) a live index names that this product holds no ref to.
+  if (fileKeys.size > 0) {
+    const keys = [...fileKeys.keys()];
+    const held = new Set<string>();
+    for (let i = 0; i < keys.length; i += JSON_KEYS)
+      for (const r of await db.all<{ storage_key: string }>(
+        `SELECT DISTINCT storage_key FROM blob_refs
+          WHERE product = ? AND storage_key IN (SELECT value FROM json_each(?))`,
+        product,
+        JSON.stringify(keys.slice(i, i + JSON_KEYS)),
+      ))
+        held.add(r.storage_key);
+    for (const k of keys)
+      if (!held.has(k))
+        plan.restores.push({
+          storageKey: k,
+          refKind: "pack-upload",
+          refId: fileKeys.get(k)!,
+          createdAt: now,
+        });
+  }
+  if (plan.restores.length > GC_DROPS_PER_PRODUCT)
+    plan.restores = plan.restores.slice(0, GC_DROPS_PER_PRODUCT);
 
   // Dead pack-upload refs, only when the whole live set was read.
   if (plan.complete) {
@@ -482,7 +574,8 @@ export async function applyProductGc(
   now: number,
   settings: BlobGcSettings,
 ): Promise<number> {
-  if (plan.drops.length === 0) return 0;
+  const restored = await applyRestores(db, plan, now);
+  if (plan.drops.length === 0) return restored;
   const cutoff = now - settings.graceSeconds;
   // Group by (kind, ref id): one statement per group per chunk of keys.
   const groups = new Map<string, PlannedDrop[]>();
@@ -550,7 +643,87 @@ export async function applyProductGc(
       ).slice(0, 1000),
     });
   }
-  return dropped;
+  return dropped + restored;
+}
+
+/**
+ * Put back the plan's restores: one INSERT per (kind, ref id, chunk), only for objects still stored
+ * and not claimed by the sweep (`ON CONFLICT DO NOTHING`, so an existing ref is left as it is).
+ * Logged and audited. Returns the refs restored.
+ */
+async function applyRestores(
+  db: Db,
+  plan: ProductGcPlan,
+  now: number,
+): Promise<number> {
+  if (plan.restores.length === 0) return 0;
+  const groups = new Map<string, PlannedDrop[]>();
+  for (const d of plan.restores) {
+    const k = `${d.refKind}\u0000${d.refId}`;
+    const list = groups.get(k) ?? [];
+    list.push(d);
+    groups.set(k, list);
+  }
+  let restored = 0;
+  for (const list of groups.values()) {
+    const { refKind, refId } = list[0]!;
+    for (let i = 0; i < list.length; i += JSON_KEYS) {
+      const keys = JSON.stringify(
+        list.slice(i, i + JSON_KEYS).map((d) => d.storageKey),
+      );
+      const results = await batchCounts(db, [
+        {
+          sql: `INSERT INTO blob_gc_log (at, action, storage_key, product, ref_kind, ref_id)
+                SELECT ?, 'ref-restored', o.storage_key, ?, ?, ?
+                  FROM blob_objects o
+                 WHERE o.storage_key IN (SELECT value FROM json_each(?))
+                   AND o.gc_claimed_at IS NULL
+                   AND NOT EXISTS (SELECT 1 FROM blob_refs r
+                                    WHERE r.product = ? AND r.storage_key = o.storage_key
+                                      AND r.ref_kind = ? AND r.ref_id = ?)`,
+          params: [
+            now,
+            plan.product,
+            refKind,
+            refId,
+            keys,
+            plan.product,
+            refKind,
+            refId,
+          ],
+        },
+        {
+          sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+                SELECT ?, o.storage_key, ?, ?, ?
+                  FROM blob_objects o
+                 WHERE o.storage_key IN (SELECT value FROM json_each(?))
+                   AND o.gc_claimed_at IS NULL
+                ON CONFLICT(product, storage_key, ref_kind, ref_id) DO NOTHING`,
+          params: [plan.product, refKind, refId, now, keys],
+        },
+      ]);
+      restored += results[1] ?? 0;
+    }
+  }
+  if (restored > 0)
+    await appendAudit(db, {
+      product: plan.product,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: "system:blob-gc",
+      actor_name: "Blob collector",
+      actor_email: null,
+      action: "core.blob_gc.refs_restored",
+      target_kind: "blob-refs",
+      target_id: plan.product,
+      parent_id: null,
+      summary:
+        `Restored ${restored} blob ref(s) a live pack release needs (its record or files index names the object, whose possession its ingest proved)`.slice(
+          0,
+          1000,
+        ),
+    });
+  return restored;
 }
 
 /** An atomic batch answering each statement's changed rows (`batchChanges`, which both real
@@ -963,6 +1136,10 @@ export async function handleBlobGcAdmin(
       packUpload: plan.drops.filter((d) => d.refKind === "pack-upload").length,
       truncated: plan.truncated,
       listed: plan.drops.slice(0, GC_DRY_RUN_LIST),
+    },
+    restores: {
+      count: plan.restores.length,
+      listed: plan.restores.slice(0, GC_DRY_RUN_LIST),
     },
     earliestDeletion: plan.earliestDeletion,
   });

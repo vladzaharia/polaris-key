@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS dist_readiness (
 CREATE TABLE IF NOT EXISTS blob_gc_log (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   at          INTEGER NOT NULL,
-  action      TEXT NOT NULL CHECK (action IN ('ref-dropped', 'deleted', 'delete-failed')),
+  action      TEXT NOT NULL CHECK (action IN ('ref-dropped', 'ref-restored', 'deleted', 'delete-failed')),
   storage_key TEXT NOT NULL,
   product     TEXT,
   ref_kind    TEXT,

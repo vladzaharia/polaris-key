@@ -564,6 +564,10 @@ export interface BlobRef {
  * required the upload), or (b) for a key it already references. Never on the strength of
  * `isStored`/`storedKeys`: that would let a tenant claim another product's gated build by
  * naming its hash (which the other product's signed manifests publish).
+ *
+ * Re-earning a ref that exists moves its `created_at` forward: the collector (P4-14) drops a ref
+ * only once it is older than its grace period, which therefore counts from the last time it was
+ * earned.
  */
 export async function recordRef(
   db: Db,
@@ -573,7 +577,8 @@ export async function recordRef(
   await db.run(
     `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
      VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(product, storage_key, ref_kind, ref_id) DO NOTHING`,
+     ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
+            created_at = MAX(blob_refs.created_at, excluded.created_at)`,
     ref.product,
     ref.storageKey,
     ref.refKind,
@@ -591,7 +596,8 @@ export function stmtRecordRef(ref: BlobRef, now: number): DbStatement {
   return {
     sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
           VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(product, storage_key, ref_kind, ref_id) DO NOTHING`,
+          ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
+            created_at = MAX(blob_refs.created_at, excluded.created_at)`,
     params: [ref.product, ref.storageKey, ref.refKind, ref.refId, now],
   };
 }
