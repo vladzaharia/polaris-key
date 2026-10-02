@@ -239,7 +239,10 @@ func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
 
 ## A marker's `release`, when its text is a JSON object holding a string there; otherwise "".
 static func _marker_release(text: String) -> String:
-	var m = JSON.parse_string(text)
+	var r := PKeyJson.parse(text)
+	if not r["ok"]:
+		return ""
+	var m = r["value"]
 	if m is Dictionary and m.get("release") is String:
 		return m["release"]
 	return ""

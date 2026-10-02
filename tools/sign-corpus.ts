@@ -16,14 +16,17 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
-// Eight files: `cases.json` (signed vectors, the v4 feed and release-record families
-// included), `gate-matrix.json` (§5), `fingerprint.json` (the hardware-hash formulas),
-// `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`, client boot
-// behaviour outside the wire contract, read by conformance/runners/node/stageMatrix.test.ts and
-// the Python, Swift and Godot runners; version 2 adds boot confirmation), `headers.json` (the
+// Nine files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// pack families included), `gate-matrix.json` (§5), `fingerprint.json` (the hardware-hash
+// formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,
+// client boot behaviour outside the wire contract, read by
+// conformance/runners/node/stageMatrix.test.ts and the Python, Swift and Godot runners; version
+// 2 adds boot confirmation, version 3 adds packs, plans/P4-01.md §2.10), `headers.json` (the
 // client metadata header values, §5.2), `config-matrix.json` (config resolution and environment
-// values, §2.2.1), `update-matrix.json` (the update decision, plans/P3-01.md §2.8) and
-// `outlet-matrix.json` (outlet kinds, capabilities and detection, plans/P3-01.md §2.9).
+// values, §2.2.1), `update-matrix.json` (the update decision, plans/P3-01.md §2.8),
+// `outlet-matrix.json` (outlet kinds, capabilities and detection, plans/P3-01.md §2.9),
+// `plan-matrix.json` (the pack plan, plans/P4-01.md) and `content/` (the content corpus:
+// `cases.json` plus `blobs/`, plans/P4-01.md §4.4, P4-04).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
 // `CARRIED_MATRIX_ROWS` below before deletion. Fourteen are still emitted; one, the pre-R3-01
@@ -15521,8 +15524,8 @@ async function main(): Promise<void> {
   });
 
   // ── corpus v2 (wire contract v3) ───────────────────────────────────────────
-  // Eight files in one directory so a runner can point at `corpus/v2/` and find everything
-  // it needs, and so `--check` guards the whole set. The `fingerprint.json` formulas are
+  // Nine files and the `content/` directory in one place so a runner can point at `corpus/v2/`
+  // and find everything it needs, and so `--check` guards the whole set. The `fingerprint.json` formulas are
   // unchanged across the wire revisions (`fingerprintVersion` stays 1) and deliberately NOT
   // rebranded — the `pkey-hw:`/`pkey-device:` prefixes are hash domains baked into every
   // enrolled digest, not user-visible identifiers. `stage-matrix.json` pins client boot

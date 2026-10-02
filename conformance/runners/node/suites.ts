@@ -24,7 +24,7 @@
 //
 // and, for wire contract v4 (docs/security/WIRE-CONTRACT-V4.md, plans/P3-01.md §5 order 0):
 //
-//   the pointer sets  §4.1 nonWireIntegers over the seven JWS families → verifyJws
+//   the pointer sets  §4.1 nonWireIntegers over the nine JWS families  → verifyJws
 //   versionCases      update-matrix.json, the version comparator      → compareVersions
 //   feedCases         steps 4–6 over every case that reaches them     → feedClaims
 //   releaseRecordCases step 14 over every case that reaches it        → releaseRecordClaims

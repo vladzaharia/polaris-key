@@ -200,6 +200,11 @@ and index-blob plan rows, bumping `contentCorpusVersion` if its plan says so. Th
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
 
+- Two Scope bullets above are overridden by the amendment: the stage matrix goes to
+  `stageMatrixVersion: 3`, not 2 (P3-02 took version 2; plans/P4-01.md §2.10, §4.7), and
+  `content/` is not mirrored (§4.1), so the Godot runner reads `conformance/corpus/v2/content/`
+  from the checkout and the `Conformance (Linux)` preset's `include_filter` is unchanged.
+
 ## Notes from P4-21's review
 
 - P4-21 already wrote a "Decoding is bounded before it starts" bullet in `docs/security/THREAT-MODEL.md`
