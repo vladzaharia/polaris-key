@@ -83,6 +83,7 @@ import {
   type BuildInput,
 } from "./model.js";
 import { guardStatement, RELEASE_DESCRIBED_BY_SQL } from "./guard.js";
+import { readPackDeliverableIds } from "./packs/deliverables.js";
 import {
   artifactContentType,
   artifactKind,
@@ -402,11 +403,12 @@ export async function planDescriptorIngest(
 ): Promise<Plan> {
   const { product, source, now, cfg, app, github } = input;
 
-  // 1. Shape and the declared map.
+  // 1. Shape and the declared map (and, P4-02, the declared packs `content` and `embeds` name).
   const manual = parseManualChannels(cfg?.manual_channels_json);
+  const packs = await readPackDeliverableIds(db, product);
   const v = validateReleaseDescriptor(input.descriptor, {
     product: { slug: product },
-    release: { app, manualChannels: manual },
+    release: { app, manualChannels: manual, packs },
   });
   if (!v.ok)
     return refuse(

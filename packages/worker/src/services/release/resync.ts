@@ -590,7 +590,14 @@ async function applyRepoManifest(
   // The app deliverable's declaration (P2-04): `release_deliverables.def_json` and the channels'
   // `includes`. Before the truth store below, which classifies by the same declaration.
   if (rel) {
-    stmts.push(...manifestDeliverableStatements(slug, rel.app, now));
+    stmts.push(
+      ...manifestDeliverableStatements(
+        slug,
+        rel.app,
+        now,
+        rel.packDeliverables,
+      ),
+    );
     updated.push("deliverables");
   }
 
