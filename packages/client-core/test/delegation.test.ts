@@ -13,6 +13,7 @@ import {
   decodeWithPrefix as wasmDecodeWithPrefix,
 } from "@polaris-key/zstd-wasm";
 import type { ChannelFeedDoc } from "@polaris-key/protocol/update";
+import { MAX_DELEGATIONS_PER_CHECK } from "@polaris-key/protocol/core";
 import {
   PackEngine,
   PackError,
@@ -33,6 +34,7 @@ import {
   contentKeyPair,
   delegationFor,
   delegationRevocationFor,
+  revocationFor,
   sha,
   signFeedDoc,
   signReleaseDoc,
@@ -215,6 +217,168 @@ describe("PackEngine and delegated releases (plans/P4-19.md §2.4, §2.5)", () =
     expect(e.state().running[pack.packId]).toBeUndefined();
     expect(e.revokedBy(pack.recordSha256, d.sha256)).toBe("delegation");
     await expect(e.ensureReleases([target(pack)])).rejects.toMatchObject({
+      code: "pack-revoked",
+      detail: "delegation",
+    });
+  });
+
+  it("re-sniffs a reused install on a noop plan: same payload, release-signed first (Amendment A1)", async () => {
+    const files = {
+      "cfg.txt": 'x = Object(GDScript,"script/source":"extends Node")\n',
+    };
+    const released = await treePack({
+      packId: "djdl.events.halloween",
+      version: "0.9.0",
+      seq: 1,
+      files,
+    });
+    const ck = contentKeyPair();
+    const d = await delegationFor({
+      deliverable: "djdl.events",
+      publicKey: ck.pub,
+    });
+    const delegated = await treePack({
+      packId: "djdl.events.halloween",
+      version: "1.0.0",
+      seq: 2,
+      files,
+      issuedAt: 1759250000,
+      signer: { pem: ck.pem, kid: d.kid },
+    });
+    expect(delegated.treeDigest).toBe(released.treeDigest);
+    const server = byteServer(released, delegated);
+    const e = engine({
+      server,
+      delegations: new Map([[d.sha256, d.jws]]),
+    });
+    await e.load();
+    await e.ensureReleases([target(released)]);
+    const before = server.calls.length;
+    await expect(e.ensureReleases([target(delegated)])).rejects.toMatchObject({
+      code: "pack-not-data-only",
+      detail: "content",
+      path: "cfg.txt",
+    });
+    expect(e.state().active[released.packId]?.recordSha256).toBe(
+      released.recordSha256,
+    );
+    // A noop plan: no payload object was fetched for the delegated release.
+    expect(
+      server.calls.slice(before).some((c) => c.sha256 === delegated.fullSha256),
+    ).toBe(false);
+  });
+
+  it("never takes the delegated path for the stamp's hold for the pack (a release-key surface)", async () => {
+    const { pack, delegations, server } = await fixture();
+    const e = engine({
+      server,
+      delegations,
+      stamp: {
+        contentApi: 1,
+        pins: [],
+        expects: [],
+        holds: [{ ...target(pack), reason: "held" }],
+      } as unknown as PackEngineOptions["stamp"],
+    });
+    await e.load();
+    await expect(e.ensureReleases([target(pack)])).rejects.toMatchObject({
+      code: "record-rejected",
+      detail: "jws",
+    });
+  });
+
+  it("never takes the delegated path for a stored revocation's replacement", async () => {
+    const { pack, delegations } = await fixture();
+    const old = await treePack({
+      packId: pack.packId,
+      version: "0.9.0",
+      seq: 1,
+      files: { "a.json": "[]" },
+    });
+    const rev = await revocationFor(old, { replacement: pack });
+    const v = await verifyRevocation(rev.jws, {
+      releaseKeys: RELEASE_KEYS,
+      productTrust: PRODUCT_TRUST,
+      expectedAud: PRODUCT,
+      entry: rev.entry,
+    });
+    if (!v.ok) throw new Error(v.step);
+    const e = engine({ server: byteServer(old, pack), delegations });
+    await e.load();
+    await e.recordRevocations([{ revocation: v.revocation, jws: rev.jws }]);
+    await expect(e.ensureReleases([target(pack)])).rejects.toMatchObject({
+      code: "record-rejected",
+      detail: "jws",
+    });
+  });
+
+  it(`fetches at most MAX_DELEGATIONS_PER_CHECK (${MAX_DELEGATIONS_PER_CHECK}) distinct delegations per call`, async () => {
+    const ck = contentKeyPair();
+    const delegations = new Map<string, string>();
+    const packs: TreePack[] = [];
+    for (let k = 0; k <= MAX_DELEGATIONS_PER_CHECK; k++) {
+      const d = await delegationFor({
+        deliverable: "djdl.events",
+        publicKey: ck.pub,
+        seq: k + 1,
+      });
+      delegations.set(d.sha256, d.jws);
+      packs.push(
+        await treePack({
+          packId: `djdl.events.p${k}`,
+          version: "1.0.0",
+          seq: 1,
+          files: { "a.json": `[${k}]` },
+          issuedAt: 1759250000,
+          signer: { pem: ck.pem, kid: d.kid },
+        }),
+      );
+    }
+    const e = engine({ server: byteServer(...packs), delegations });
+    await e.load();
+    const est = await e.estimateReleases(packs.map(target));
+    expect(est.packs).toHaveLength(MAX_DELEGATIONS_PER_CHECK);
+    expect(est.refused).toEqual([
+      {
+        packId: `djdl.events.p${MAX_DELEGATIONS_PER_CHECK}`,
+        code: "network-error",
+      },
+    ]);
+    // The next call has a fresh bound, and the fetched delegations are kept in the process.
+    const again = await e.estimateReleases([target(packs.at(-1)!)]);
+    expect(again.refused).toEqual([]);
+  });
+
+  it("at boot, a stored delegation revocation keeps the delegated install from running (pack-revoked, detail delegation)", async () => {
+    const { d, pack, delegations, server } = await fixture();
+    const state = memoryPackStateStore();
+    const storage = memoryPackStorage();
+    const revocations = memoryPackStateStore();
+    const e = engine({ server, delegations, state, storage, revocations });
+    await e.load();
+    await e.ensureReleases([target(pack)]);
+    const rev = await delegationRevocationFor(d, "djdl.events");
+    const v = await verifyRevocation(rev.jws, {
+      releaseKeys: RELEASE_KEYS,
+      productTrust: PRODUCT_TRUST,
+      expectedAud: PRODUCT,
+      entry: rev.entry,
+    });
+    if (!v.ok) throw new Error(v.step);
+    await e.recordRevocations([{ revocation: v.revocation, jws: rev.jws }]);
+    const boot = engine({
+      server: byteServer(),
+      delegations: new Map(),
+      state,
+      storage,
+      revocations,
+    });
+    await boot.load();
+    expect(boot.state().active[pack.packId]?.recordSha256).toBe(
+      pack.recordSha256,
+    );
+    expect(boot.state().running[pack.packId]).toBeUndefined();
+    await expect(boot.ensureReleases([target(pack)])).rejects.toMatchObject({
       code: "pack-revoked",
       detail: "delegation",
     });

@@ -185,16 +185,38 @@ no live GC reference").
 
 Recorded by the implementer; the code is the fact where this brief, the plan and the code differ.
 
-- **`dataOnlyCases` has 64 cases, not 54.** The plan's 54, plus nine path-normalisation cases
-  (`..`, a leading or inner `.`, an empty segment, a trailing `/` or `/.`, a leading `/`, a
-  backslash, a `res://` scheme) and one tail-bound case (`tail-bound-eocd-outside-accepted`, which
-  pins `DATA_ONLY_TAIL_BYTES` the way the plan's whitespace case pins the head bound). It adds
-  about 88 KB to `content/cases.json`, well inside P4-10's 4.6 MB target.
+- **`dataOnlyCases` has 72 cases, not 54.** The plan's 54; nine path-normalisation cases (`..`, a
+  leading or inner `.`, an empty segment, a trailing `/` or `/.`, a leading `/`, a backslash, a
+  `res://` scheme); one tail-bound case (`tail-bound-eocd-outside-accepted`, which pins
+  `DATA_ONLY_TAIL_BYTES` the way the whitespace cases pin the head bound, its 65,557-byte tail
+  written compactly as `tailFill`); and Amendment A1's eight (below).
+- **Budget.** The content source set (`content/` plus `plan-matrix.json`) was 4,638,353 B with the
+  first 64 cases, over P4-10's 4.6 MB target (an earlier version of this note wrongly said it was
+  inside it). With the tail-bound case's tail written as `tailFill` and Amendment A1's cases it is
+  4,553,997 B (`content/` 4,022,074 B, `plan-matrix.json` 619,270 B): under the 4.6 MB target and
+  the 5 MB budget.
 - **`dataOnlyRefusal` checks rule 1 itself.** A path that fails the files index's path rules (not
   already normalised: nothing Godot's `simplify_path()` would change) is refused with rule
   `extension`, so the rule holds even where `checkPaths` was not run first (the lesson of P4-08).
-  Which files are sniffed is decided by content (the head magics and the tail), never by
-  extension.
+  Which files are sniffed is decided by content (the head magics, the tail, and A1's text rule by
+  extension class), never admitted by extension alone.
+- **Amendment A1 (data-only hardening, lead-approved 2026-10-02; `plans/P4-19.md`).** Client-core,
+  CLI and corpus only; the Worker's ingest stays extension-only.
+  - A full 64-byte head window that is all whitespace (after a BOM), or that cuts a refused head
+    (a prefix of a magic, or `extends`/`class_name` whose following byte lies beyond the window),
+    is refused (`content`): Godot's text-resource loader and the GDScript tokenizer skip any
+    amount of leading whitespace. `head-bound-whitespace-accepted` now expects `content` (its id
+    is kept); `head-bound-all-whitespace-refused`, `head-bound-short-whitespace-accepted` and
+    `head-word-straddle-refused` are added.
+  - Text files (`json`, `csv`, `tsv`, `po`, `txt`) pass rule 5 over their whole decoded bytes
+    (`dataOnlyTextRefusal`): invalid UTF-8 or a NUL, any of P4-08's script markers (`GDScript`,
+    `CSharpScript`, `ScriptExtension`, `script/source`, `source_code`) in the text or in the text
+    with every backslash removed, or any `\u`/`\U` escape, is `content`. `dataOnlyRefusal` gains
+    a fourth argument, the whole file; a text file without it is refused. Cases with a whole-file
+    `content` field: `text-object-script-refused`, `text-escaped-marker-refused`,
+    `text-u-escape-refused`, `text-marker-png-ignored` and `text-invalid-utf8-refused`.
+  - The engine's `noop` plan (a delegated release reusing an install that already holds the same
+    payload) now re-sniffs that install's files instead of trusting how they were first admitted.
 - **A feed `revocations[].kind` that is a string but not a vocabulary token** makes the member
   unusable, like a non-string `kind` (the plan named only the two outer cases). The member's
   `record`-uniqueness check counts entries that are later dropped for a forward `kind`.
@@ -202,24 +224,28 @@ Recorded by the implementer; the code is the fact where this brief, the plan and
   after a restart instead of re-planning. Both are optional; `PACK_STATE_VERSION` stays 1.
 - **The engine's delegated surface** is "a release that is neither the stamp's pin or hold for
   that pack nor a stored revocation's replacement" (§2.4). So `ensure()` (the stamp's pins) never
-  takes the delegated path; `ensureReleases()` and `estimateReleases()` (feed targets) do. A
-  `noop` plan that reuses an install already holding the same payload runs no head or tail sniff,
-  because its bytes were already admitted (the extension rule still ran over the index).
+  takes the delegated path; `ensureReleases()` and `estimateReleases()` (feed targets) do.
+- **Where delegated installs live.** The storage ports root every committed payload at
+  `<store>/<packId>/<payloadSha256>/` (Node `packages/sdk-node/src/packs/storage.ts`, `commit`;
+  React OPFS `store/<packId>/<payloadSha256>/`, `packages/sdk-react/src/packs/opfs.ts`). A
+  delegated pack id is its own directory, so it never overlaps another pack's tree; it shares a
+  directory only with an install of the same pack and the same payload digest, which the `noop`
+  re-sniff covers.
 - **`runUpdateCheck`'s content input gains `delegated`**, the engine's `delegatedReleases()`
   (record hash → pack and delegation hash: stored and running delegated installs plus delegated
   feed targets verified in the process). Step 11's delegation relevance and the decision-input
   expansion read it. A stored revocation whose target is a known delegation has its replacement
   ignored.
-- **The CLI fetches a delegation from the record route without a credential** (access rule (1)
-  governs it). On a product whose release metadata is not `public` that fetch is refused, and the
-  content-key publish and `revoke --delegation <sha256>` cannot proceed; `revoke --delegation
-<file>` still can. Proposed follow-up below.
-- **`gen:constants` gains a GDScript naming rule.** `dataOnlyExtension`'s `json` maps to
-  `JSON`, which shadows Godot's native `JSON` class (a parse error that broke the Godot runner).
-  The GDScript renderer now writes a member whose UPPER*SNAKE name is one of Godot's all-caps
-  native class or built-in type names (`AABB`, `IP`, `JSON`, `OS`, `RID`, `UPNP`) with a trailing
-  `*` (`PKeyConstants.DataOnlyExtension.JSON\_`); every other language keeps `JSON`. A generator
-  test pins it.
+- **The delegations read route returns each delegation's `jws` and `version`.** The CLI reads a
+  stored delegation there (behind the publisher token) for both the content-key publish and
+  `pkey release revoke --delegation <sha256>`, never from the record route, so both work whatever
+  the product's release metadata access.
+- **`gen:constants` gains a GDScript naming rule.** `dataOnlyExtension`'s `json` maps to `JSON`,
+  which shadows Godot's native `JSON` class (a parse error that broke the Godot runner). The
+  GDScript renderer now writes a member whose upper-snake name is one of Godot's all-caps native
+  class or built-in type names (`AABB`, `IP`, `JSON`, `OS`, `RID`, `UPNP`) with a trailing
+  underscore (`PKeyConstants.DataOnlyExtension.JSON_`); every other language keeps `JSON`. A
+  generator test pins it.
 - **Python, Swift and Godot** list `packs.delegation` as `planned` (P4-25, P4-25, P4-26) in their
   `parity.json`; their generated constants carry the new limits and enums.
 
@@ -227,6 +253,5 @@ Proposed follow-ups (not in this package):
 
 - P2-02: a second publisher entry scoped to packs under a prefix, so content CI need not run the
   release workflow (plan §8.2 risk 6).
-- P2-06 / the CLI: let the record-route fetch in `pkey release publish --delegation` and
-  `pkey release revoke --delegation <sha256>` carry the publisher bearer, for products whose
-  release metadata is not public.
+- P4-25 and P4-26 port Amendment A1 with the rest of `dataOnlyRefusal` (the four-argument form and
+  the `content` and `tailFill` case fields).

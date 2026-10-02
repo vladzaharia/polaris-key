@@ -261,13 +261,17 @@ delegation: {sha256, deliverable, types, issuedAt, expiresAt} | null, revoked?}`
   The generator's own reference `delegationOf`, delegated steps 12–16 and `recordRevoked` refuse
   each failing case at exactly its step.
 
-- `content/cases.json` gains `dataOnlyCases` (64), after `frameWindowCases`: `{id, description,
-path, head, tail, expect}`, where `head` and `tail` are standard base64 and the file is
-  `head ‖ tail`. A runner passes `dataOnlyRefusal` the path, the file's first 64 bytes and its last
-  65,557 bytes, and expects `{ok: true}` or `{ok: false, rule}` with `rule` `extension` or
-  `content`. The cases cover each allowed extension, the refused loader extensions, every refused
-  head, the tail sniff, both bounds, an empty file and nine paths that are not already
-  normalised.
+- `content/cases.json` gains `dataOnlyCases` (72), after `frameWindowCases`:
+  `{id, description, path, head, tail, tailFill?, content?, expect}`. `head`, `tail` and
+  `content` are standard base64. The file is `head ‖ tail`, where a `tailFill` (`{byte, length}`)
+  stands in for a long tail of `length` copies of `byte`; or, when `content` is present (Amendment
+  A1), the file is `content` and `head` and `tail` are empty. A runner passes `dataOnlyRefusal`
+  the path, the file's first 64 bytes, its last 65,557 bytes and the whole file, and expects
+  `{ok: true}` or `{ok: false, rule}` with `rule` `extension` or `content`. The cases cover each
+  allowed extension, the refused loader extensions, every refused head, the head window's cut
+  (whitespace to its end, a word head it cuts), the tail sniff and its bound, an empty file, nine
+  paths that are not already normalised, and the text rule (script markers, backslash-split
+  markers, `\u` escapes, invalid UTF-8; a marker in a `.png` is ignored).
 
 ## HTTP transcripts
 

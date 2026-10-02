@@ -31,10 +31,12 @@ import {
   delegationHashOf,
   newerRevocation,
   recordHash,
+  recordRevoked,
   verifyReleaseRecord,
   type VerifiedRevocation,
 } from "../record.js";
 import {
+  dataOnlyFileRefusal,
   dataOnlyPathRefusal,
   dataOnlyTreeSink,
   type DataOnlyRefusalSeen,
@@ -939,10 +941,11 @@ export class PackEngine {
     delegationSha256: string | null,
   ): "record" | "delegation" | null {
     // `recordRevoked` over this engine's targets (stored, or verified in this process).
-    if (this.isRevoked(recordSha256)) return "record";
-    if (delegationSha256 !== null && this.isRevoked(delegationSha256))
-      return "delegation";
-    return null;
+    const targets = new Set<string>([
+      ...Object.keys(this.revDoc.revoked),
+      ...this.revVerified.keys(),
+    ]);
+    return recordRevoked(recordSha256, delegationSha256, targets);
   }
 
   /** Whether an install is revoked: its record, or the delegation it was signed under. */
@@ -1564,6 +1567,27 @@ export class PackEngine {
       const same = installs.find(
         (i) => i.payloadSha256 === variant.payload.sha256,
       )!;
+      // plans/P4-19.md Amendment A1: a delegated release that reuses an install holding the same
+      // payload re-sniffs that install's files, so the data-only rule holds whatever admitted
+      // the bytes first (a release-signed install, or an older rule).
+      if (delegation !== null) {
+        const files = seeds.get(same.location)?.files ?? null;
+        if (files === null)
+          throw new PackError(
+            "pack-not-data-only",
+            `${packId}'s reused install cannot be re-checked by the data-only rule.`,
+            { packId, detail: "content" },
+          );
+        for (const f of files) {
+          const rule = dataOnlyFileRefusal(f.path, await readAll(f.source));
+          if (rule !== null)
+            throw new PackError(
+              "pack-not-data-only",
+              `${packId} holds ${f.path}, which a delegated content key may not ship (${rule}).`,
+              { packId, path: f.path, detail: rule },
+            );
+        }
+      }
       return this.commit(
         packId,
         got.body,

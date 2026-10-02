@@ -168,6 +168,8 @@ describe("pkey release delegate", () => {
       expiresAt: NOW + DAY,
       origin: "submit",
       revoked: true,
+      version: "1",
+      jws: "x",
     });
     const { io, o } = delegateOpts(cwd, server, ck.publicKey, {
       notes: "Events team",
@@ -222,6 +224,8 @@ describe("pkey release delegate", () => {
       expiresAt: NOW + DAY,
       origin: "revocation",
       revoked: true,
+      version: "1",
+      jws: "x",
     });
     const { o } = delegateOpts(cwd, server, ck.publicKey);
     await expect(delegateContentKey(o)).rejects.toThrow(
@@ -380,6 +384,10 @@ describe("pkey release publish with a content key", () => {
       ...dataFiles(),
       "default/scripts/boot.gd": new TextEncoder().encode("extends Node\n"),
       "default/data/scene.json": new TextEncoder().encode("[gd_scene]\n"),
+      // plans/P4-19.md Amendment A1: an inline script object in a text file.
+      "default/data/cfg.txt": new TextEncoder().encode(
+        'x = Object(GDScript,"script/source":"extends Node")\n',
+      ),
     });
     const ck = await contentKey();
     const err = await publishPack(
@@ -388,10 +396,18 @@ describe("pkey release publish with a content key", () => {
         delegation: "d".repeat(64),
       }).o,
     ).catch((e: Error) => e);
-    expect((err as Error).message).toMatch(/data-only rule refused 2 files/);
+    expect((err as Error).message).toMatch(/data-only rule refused 3 files/);
+    expect((err as Error).message).toContain("default/data/cfg.txt");
     expect((err as Error).message).toContain("default/scripts/boot.gd");
     expect((err as Error).message).toContain("default/data/scene.json");
     expect(server.calls).toHaveLength(0);
+  });
+
+  it("names the content key, never PKEY_RELEASE_KEY, when its PEM is unreadable", async () => {
+    const { publicKeyOfPem } = await import("../src/releaseKeys.js");
+    expect(() =>
+      publicKeyOfPem("not a pem", "The content key (PKEY_CONTENT_KEY)"),
+    ).toThrow(/^The content key \(PKEY_CONTENT_KEY\) is not a PEM/);
   });
 
   it("refuses a pinned pack and a release key beside a content key", async () => {
@@ -476,6 +492,8 @@ describe("pkey release revoke --delegation", () => {
     });
     expect(server.submits.at(-1)).toEqual({ record: res.jws });
     expect(revocationOf(payloadOf(res.jws))?.target).toBe(d);
+    // The delegation came from the authenticated read route, never the record route.
+    expect(server.to("/release/records/")).toHaveLength(0);
   });
 
   it("supplies a delegation from a file the Worker never stored as {record, delegation}", async () => {

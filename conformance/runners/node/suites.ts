@@ -1867,6 +1867,10 @@ export interface ContentCorpus {
     path: string;
     head: string;
     tail: string;
+    /** A whole-file case (plans/P4-19.md Amendment A1): the file itself; head and tail empty. */
+    content?: string;
+    /** A compact tail (Amendment A1): `length` copies of `byte`, in place of `tail`. */
+    tailFill?: { byte: number; length: number };
     expect: { ok: true } | { ok: false; rule: string };
   })[];
   /** plans/P4-10.md §4.3. */
@@ -2166,20 +2170,27 @@ export function defineContentSuites({
   // @pkey-feature packs.delegation
   describe(`content corpus v${content.contentCorpusVersion} — dataOnlyCases (plans/P4-19.md §2.5)`, () => {
     it("has every dataOnlyCases vector", () => {
-      expect(content.dataOnlyCases.length).toBe(64);
+      expect(content.dataOnlyCases.length).toBe(72);
     });
     for (const c of content.dataOnlyCases) {
       const want = c.expect.ok ? "ok" : c.expect.rule;
       it(`data-only ${c.id} → ${want}`, () => {
-        const head = base64Bytes(c.head);
-        const tail = base64Bytes(c.tail);
-        const file = new Uint8Array(head.length + tail.length);
-        file.set(head, 0);
-        file.set(tail, head.length);
+        let file: Uint8Array;
+        if (c.content !== undefined) file = base64Bytes(c.content);
+        else {
+          const head = base64Bytes(c.head);
+          const tail = c.tailFill
+            ? new Uint8Array(c.tailFill.length).fill(c.tailFill.byte)
+            : base64Bytes(c.tail);
+          file = new Uint8Array(head.length + tail.length);
+          file.set(head, 0);
+          file.set(tail, head.length);
+        }
         const rule = dataOnlyRefusal(
           c.path,
           file.subarray(0, DATA_ONLY_HEAD_BYTES),
           file.subarray(Math.max(0, file.length - DATA_ONLY_TAIL_BYTES)),
+          file,
         );
         expect(
           rule === null ? { ok: true } : { ok: false, rule },

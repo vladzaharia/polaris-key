@@ -67,6 +67,62 @@ function startsWith(
   return true;
 }
 
+/** True when the window ends inside `magic` read from `at`: what is visible is its prefix. */
+function straddles(
+  bytes: Uint8Array,
+  at: number,
+  magic: readonly number[],
+): boolean {
+  if (at + magic.length <= bytes.length) return false;
+  for (let k = at; k < bytes.length; k++)
+    if (bytes[k] !== magic[k - at]) return false;
+  return true;
+}
+
+/** The extensions whose files are text a VariantParser reader could parse (plans/P4-19.md
+ *  Amendment A1): the whole decoded file passes the text rule. */
+export const DATA_ONLY_TEXT_EXTENSIONS: readonly string[] = [
+  "json",
+  "csv",
+  "tsv",
+  "po",
+  "txt",
+];
+
+/** The script markers a text file may not hold (plans/P4-19.md Amendment A1): the script types,
+ *  then the properties that hold a script's source. The same list as P4-08's `packLint`
+ *  `SCRIPT_MARKERS`, restated so client-core stays self-contained. */
+export const DATA_ONLY_SCRIPT_MARKERS: readonly string[] = [
+  "GDScript",
+  "CSharpScript",
+  "ScriptExtension",
+  "script/source",
+  "source_code",
+];
+
+/**
+ * Rule 5 (Amendment A1), over a text file's whole decoded bytes: `content` when the bytes are not
+ * valid UTF-8 or hold a NUL; when the text, or the text with every backslash removed, holds a
+ * script marker; or when it holds any `\u` or `\U` escape. A VariantParser reader
+ * (`str_to_var`, `ConfigFile`, `JSON.to_native` with objects) builds an inline
+ * `Object(GDScript, "script/source": …)`, which compiles when set; this refuses every spelling of
+ * one, failing closed. Null when admitted.
+ */
+export function dataOnlyTextRefusal(bytes: Uint8Array): "content" | null {
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return "content";
+  }
+  if (text.includes("\u0000")) return "content";
+  if (/\\[uU]/.test(text)) return "content";
+  const bare = text.replaceAll("\\", "");
+  for (const m of DATA_ONLY_SCRIPT_MARKERS)
+    if (text.includes(m) || bare.includes(m)) return "content";
+  return null;
+}
+
 /** Rule 2: the final segment's text after its last `.`, ASCII-lowercased; null without one. */
 export function dataOnlyExtension(path: string): string | null {
   const last = path.slice(path.lastIndexOf("/") + 1);
@@ -98,7 +154,13 @@ export function dataOnlyPathRefusal(path: string): "extension" | null {
  *  2. its extension is in `DATA_ONLY_EXTENSIONS`, else `extension`;
  *  3. after a UTF-8 BOM and then ASCII whitespace inside `head`, what remains starts with none of
  *     the refused heads, else `content`;
- *  4. `tail` does not end with `GDPC` and holds no `PK\x05\x06`, else `content`.
+ *     When `head` is a full window (it may cut the file), the skip reaching its end, or a refused
+ *     head that the window's end cuts (a prefix of it, or a word head whose following byte lies
+ *     beyond the window), is `content` too (Amendment A1: Godot's text-resource loader and the
+ *     GDScript tokenizer skip any amount of leading whitespace);
+ *  4. `tail` does not end with `GDPC` and holds no `PK\x05\x06`, else `content`;
+ *  5. a text file (`DATA_ONLY_TEXT_EXTENSIONS`) passes `dataOnlyTextRefusal` over `full`, its
+ *     whole decoded bytes (Amendment A1). Without `full` such a file is refused (`content`).
  *
  * Null when the file is admitted. Never throws.
  */
@@ -106,6 +168,7 @@ export function dataOnlyRefusal(
   path: string,
   head: Uint8Array,
   tail: Uint8Array,
+  full?: Uint8Array,
 ): DataOnlyRule | null {
   const p = dataOnlyPathRefusal(path);
   if (p !== null) return p;
@@ -113,12 +176,17 @@ export function dataOnlyRefusal(
   let at = 0;
   if (h[0] === 0xef && h[1] === 0xbb && h[2] === 0xbf) at = 3;
   while (at < h.length && isWs(h[at]!)) at++;
-  for (const m of HEADS) if (startsWith(h, at, m)) return "content";
+  // A full window may cut the file: what it cannot see is refused (fails closed).
+  const cut = h.length === DATA_ONLY_HEAD_BYTES;
+  if (cut && at === h.length) return "content";
+  for (const m of HEADS)
+    if (startsWith(h, at, m) || (cut && straddles(h, at, m))) return "content";
   for (const m of WORD_HEADS)
     if (startsWith(h, at, m)) {
       const next = h[at + m.length];
       if (next === 0x20 || next === 0x09) return "content";
-    }
+      if (next === undefined && cut) return "content";
+    } else if (cut && straddles(h, at, m)) return "content";
   const t =
     tail.length > DATA_ONLY_TAIL_BYTES
       ? tail.subarray(tail.length - DATA_ONLY_TAIL_BYTES)
@@ -126,6 +194,8 @@ export function dataOnlyRefusal(
   if (t.length >= 4 && startsWith(t, t.length - 4, GDPC)) return "content";
   for (let k = 0; k + 4 <= t.length; k++)
     if (t[k] === 0x50 && startsWith(t, k, ZIP_EOCD)) return "content";
+  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path)!))
+    return full === undefined ? "content" : dataOnlyTextRefusal(full);
   return null;
 }
 
@@ -138,6 +208,7 @@ export function dataOnlyFileRefusal(
     path,
     bytes.subarray(0, DATA_ONLY_HEAD_BYTES),
     bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)),
+    bytes,
   );
 }
 
