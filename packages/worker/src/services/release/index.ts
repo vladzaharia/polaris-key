@@ -86,6 +86,10 @@ export const releaseService: ServiceDescriptor = {
       // P4-13: this Worker ingests CI-signed `kind: revocation` records, serves them on the
       // record route and lists them in the channel feed. `pkey release revoke` requires it.
       revocations: true,
+      // P4-19: this Worker ingests `kind: delegation` records and delegated pack records, serves
+      // delegations on the record route and answers `…/release/publish/delegations`.
+      // `pkey release delegate` and a content-key publish require it.
+      delegations: true,
     };
   },
 };

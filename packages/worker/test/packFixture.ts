@@ -162,12 +162,13 @@ export function containerVariant(
 export async function treeVariant(
   variant: Record<string, string>,
   seed: string,
+  paths: readonly [string, string] = ["locale/a.txt", "locale/b.txt"],
 ): Promise<BuiltVariant> {
   const fileA = bytesFrom(`${seed}/a`, 64);
   const fileB = bytesFrom(`${seed}/b`, 32);
   const entries = [
-    { path: "locale/a.txt", size: fileA.length, sha256: sha(fileA) },
-    { path: "locale/b.txt", size: fileB.length, sha256: sha(fileB) },
+    { path: paths[0], size: fileA.length, sha256: sha(fileA) },
+    { path: paths[1], size: fileB.length, sha256: sha(fileB) },
   ];
   const digest = await treeDigest(entries);
   const full = obj(new Uint8Array(Buffer.concat([fileA, fileB])));

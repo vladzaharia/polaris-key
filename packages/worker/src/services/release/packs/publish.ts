@@ -48,6 +48,7 @@ import { randomId } from "../../../core/platform.js";
 import type { DbStatement } from "../../../core/platform.js";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
+import { DATA_ONLY_EXTENSIONS } from "@polaris-key/protocol/packs";
 import { bumpReleaseGeneration } from "../ghCache.js";
 import {
   artifactsAccessSnapshot,
@@ -65,6 +66,14 @@ import { checkPackPublish } from "./checks.js";
 import { resolveAndStore } from "./sets.js";
 import { handleRevocationSubmit } from "./revocations.js";
 import {
+  delegatedKidOf,
+  delegatedRecordStatement,
+  handleDelegationSubmit,
+  verifyDelegatedRecord,
+  yankDelegatedStatement,
+  type DelegationRow,
+} from "./delegations.js";
+import {
   checkPackAgainstDeclaration,
   checkPackRequires,
   checkPackScheme,
@@ -77,6 +86,11 @@ import {
 
 /** A record submit carries no descriptor: the record, a ticket and a flag. */
 export const MAX_PACK_SUBMIT_BODY_BYTES = MAX_RECORD_JWS_BYTES + 4 * 1024;
+const DATA_ONLY_LIST = DATA_ONLY_EXTENSIONS.map((e) => `.${e}`).join(", ");
+
+/** A revocation submitted with the delegation it revokes (P4-19): two records. */
+export const MAX_REVOCATION_WITH_DELEGATION_BYTES =
+  2 * MAX_RECORD_JWS_BYTES + 4 * 1024;
 
 function refusal(
   status: number,
@@ -367,35 +381,62 @@ export async function handlePackSubmit(
 ): Promise<Response> {
   const { db, env, product, now } = ctx;
   const bucket = env.BLOBS!;
-  if (
-    new TextEncoder().encode(JSON.stringify(body)).length >
-    MAX_PACK_SUBMIT_BODY_BYTES
-  )
+  const cap =
+    body.delegation !== undefined
+      ? MAX_REVOCATION_WITH_DELEGATION_BYTES
+      : MAX_PACK_SUBMIT_BODY_BYTES;
+  if (new TextEncoder().encode(JSON.stringify(body)).length > cap)
     return refusal(
       400,
       ErrorCode.BadRequest,
       "bad_body",
-      `a pack record submit is at most ${MAX_PACK_SUBMIT_BODY_BYTES} bytes`,
+      `a ${body.delegation !== undefined ? "revocation submitted with its delegation" : "pack record submit"} is at most ${cap} bytes`,
     );
   const dryRun = body.dryRun === true;
 
-  // 1. The checks every record shares, then the pack's own, reading only.
+  // 1. The checks every record shares, then the pack's own, reading only. A `pkd1-` kid names a
+  //    delegation (P4-19): the delegated branch's checks a–e instead of the release keys.
   const cfg = await getReleaseConfig(db, product.slug);
-  const shared = await verifyRecordJws(db, {
-    product: product.slug,
-    jws: body.record,
-    cfg,
-  });
+  const delegatedHash = delegatedKidOf(body.record);
+  let delegation: DelegationRow | null = null;
+  let shared: Awaited<ReturnType<typeof verifyRecordJws>>;
+  if (delegatedHash !== null) {
+    const d = await verifyDelegatedRecord(db, {
+      product: product.slug,
+      jws: body.record as string,
+      cfg,
+      now,
+    });
+    if (!d.ok) return recordRefusal(d.reason, d.message);
+    delegation = d.delegation;
+    shared = d;
+  } else
+    shared = await verifyRecordJws(db, {
+      product: product.slug,
+      jws: body.record,
+      cfg,
+    });
   if (!shared.ok) return recordRefusal(shared.reason, shared.message);
-  // P4-13: a revocation record is submitted alone too (no ticket, no descriptor).
+  // P4-13: a revocation record is submitted alone too (no ticket, no descriptor); P4-19 lets it
+  // carry the delegation it revokes.
   if (shared.payload.kind === "revocation")
-    return handleRevocationSubmit(ctx, holder, shared, dryRun);
+    return handleRevocationSubmit(ctx, holder, shared, dryRun, body.delegation);
+  if (body.delegation !== undefined)
+    return refusal(
+      400,
+      ErrorCode.BadRequest,
+      "bad_body",
+      "delegation is carried only by a revocation of that delegation",
+    );
+  // P4-19: a delegation record is submitted alone.
+  if (shared.payload.kind === "delegation")
+    return handleDelegationSubmit(ctx, holder, shared, dryRun);
   if (shared.payload.kind !== "pack")
     return refusal(
       400,
       ErrorCode.BadRequest,
       "bad_body",
-      "an app record is submitted with its release descriptor; only a kind: pack or kind: revocation record is submitted alone",
+      "an app record is submitted with its release descriptor; only a kind: pack, kind: revocation or kind: delegation record is submitted alone",
     );
   const record = shared.payload as unknown as PackRecordDoc;
   const recordSha256 = await sha256HexOfAscii(shared.jws);
@@ -519,6 +560,7 @@ export async function handlePackSubmit(
   const store = await checkPackStore(db, bucket, product.slug, record, {
     pending,
     unverified,
+    dataOnly: delegation !== null,
   });
   if (!store.ok) return recordRefusal(store.reason, store.message);
 
@@ -531,6 +573,19 @@ export async function handlePackSubmit(
     cfg,
   );
   if (!sets.ok) return recordRefusal(sets.reason, sets.message);
+  // 5. P4-19: a delegated release is a compatible or standalone pack of data-only files.
+  if (delegation !== null) {
+    if (pack.binding !== "compatible" && pack.binding !== "standalone")
+      return recordRefusal(
+        "delegation-binding",
+        `${record.deliverable} is a ${pack.binding} pack; a content key publishes only compatible or standalone packs (a pinned or embedded release is the release key vouching for exact bytes).`,
+      );
+    if (store.dataOnlyRefused)
+      return recordRefusal(
+        "delegation-data-only",
+        `${store.dataOnlyRefused} is not a data-only file: a delegated release holds only ${DATA_ONLY_LIST} files (plans/P4-19.md §2.5).`,
+      );
+  }
   if (dryRun)
     return json({
       ok: true,
@@ -545,8 +600,8 @@ export async function handlePackSubmit(
 
   // 5. The rows, in one batch; a lost race writes nothing.
   const policy = cfg ? artifactPolicy(cfg) : null;
-  await db.batch(
-    packReleaseStatements({
+  await db.batch([
+    ...packReleaseStatements({
       product: product.slug,
       record,
       recordSha256,
@@ -558,7 +613,20 @@ export async function handlePackSubmit(
       ),
       now,
     }),
-  );
+    ...(delegation !== null
+      ? [
+          delegatedRecordStatement({
+            product: product.slug,
+            recordSha256,
+            delegationSha256: delegation.record_sha256,
+            guard: {
+              sql: PACK_RELEASE_RECORD_SQL,
+              params: [product.slug, releaseId, recordSha256],
+            },
+          }),
+        ]
+      : []),
+  ]);
   const mine = await db.first<{ one: number }>(
     `SELECT 1 AS one WHERE ${PACK_RELEASE_RECORD_SQL}`,
     product.slug,
@@ -573,6 +641,24 @@ export async function handlePackSubmit(
       `${record.deliverable} ${record.version} changed while this record was being checked; submit it again.`,
       { retryable: true },
     );
+  if (delegation !== null) {
+    // A revocation of the delegation that landed while this release was being checked yanked
+    // only the releases it could see: yank this one too (idempotent).
+    const now2 = await db.first<{ revocation_kid: string | null }>(
+      "SELECT revocation_kid FROM release_delegations WHERE product = ? AND record_sha256 = ?",
+      product.slug,
+      delegation.record_sha256,
+    );
+    if (now2?.revocation_kid)
+      await db.batch([
+        yankDelegatedStatement(
+          product.slug,
+          delegation.record_sha256,
+          `ci:${now2.revocation_kid}`,
+          now,
+        ),
+      ]);
+  }
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),
@@ -584,7 +670,7 @@ export async function handlePackSubmit(
     target_kind: "release",
     target_id: releaseId,
     parent_id: null,
-    summary: `Published pack release ${releaseId} through trusted publishing with release record ${recordSha256.slice(0, 12)}`,
+    summary: `Published pack release ${releaseId} through trusted publishing with release record ${recordSha256.slice(0, 12)}${delegation !== null ? ` (signed by the content key of delegation ${delegation.record_sha256.slice(0, 12)})` : ""}`,
   });
   await bumpReleaseGeneration(env, product.slug, now);
   // Store the rows the check resolved (re-resolving only if a concurrent trigger moved them).

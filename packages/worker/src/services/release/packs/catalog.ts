@@ -40,7 +40,7 @@ import type { Db, Env } from "../../../core/platform.js";
 import { blobKey } from "../../../core/blobs.js";
 import { readPackDeliverables } from "./deliverables.js";
 import { packObjects, storedRecordPayload, variantBuildId } from "./ingest.js";
-import { readRevocations } from "./revocations.js";
+import { readAllRevocations } from "./revocations.js";
 
 type PackCatalog = Pick<
   ReleaseCatalog,
@@ -135,18 +135,23 @@ interface PackRecordRow {
   channel: string | null;
   published_at: number | null;
   yanked: number;
+  /** P4-19: the delegation a content key signed it under, or null (a release key). */
+  delegation: string | null;
 }
 
 interface FoundPackRecord {
   record: PackRecordDoc;
   sha256: string;
+  delegation: string | null;
   release: CatalogRelease;
 }
 
 const PACK_RECORD_SELECT = `SELECT r.release_id, r.jws, r.record_sha256, m.deliverable_id, m.version, m.seq,
             m.channel, m.published_at,
             EXISTS (SELECT 1 FROM release_yanks y
-                     WHERE y.product = m.product AND y.release_id = m.release_id) AS yanked
+                     WHERE y.product = m.product AND y.release_id = m.release_id) AS yanked,
+            (SELECT d.delegation_sha256 FROM release_delegated_records d
+              WHERE d.product = r.product AND d.record_sha256 = r.record_sha256) AS delegation
        FROM release_records r
        JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id`;
 
@@ -156,6 +161,7 @@ function foundOf(row: PackRecordRow): FoundPackRecord | null {
   return {
     record: payload as unknown as PackRecordDoc,
     sha256: row.record_sha256,
+    delegation: row.delegation ?? null,
     release: {
       deliverableId: row.deliverable_id,
       releaseId: row.release_id,
@@ -190,6 +196,7 @@ function packReleaseView(found: FoundPackRecord): CatalogPackRelease {
   return {
     release: found.release,
     recordSha256: found.sha256,
+    delegation: found.delegation,
     type: record.type,
     formatVersion: record.formatVersion,
     entitlement: record.entitlement ?? null,
@@ -469,7 +476,7 @@ export function packCatalog(ctx: {
     },
 
     async revocations(): Promise<CatalogRevocation[]> {
-      return readRevocations(db, slug);
+      return readAllRevocations(db, slug);
     },
   };
 }

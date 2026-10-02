@@ -98,6 +98,7 @@ import {
   handleStageRound,
 } from "./packs/publish.js";
 import { getReleaseConfig } from "./config.js";
+import { handleDelegationsRead } from "./packs/delegations.js";
 import {
   checkReleaseRecord,
   getRecordForRelease,
@@ -112,7 +113,12 @@ const MAX_TOKEN_BODY_BYTES = 16 * 1024;
 const MAX_UPLOADS_BODY_BYTES = 64 * 1024;
 /** A submit: the descriptor, the release record (P3-03), the ticket and a flag. */
 const MAX_SUBMIT_BODY_BYTES =
-  MAX_DESCRIPTOR_BYTES + MAX_RECORD_JWS_BYTES + 4 * 1024;
+  Math.max(
+    MAX_DESCRIPTOR_BYTES + MAX_RECORD_JWS_BYTES,
+    // P4-19: a revocation submitted with the delegation it revokes carries two records.
+    2 * MAX_RECORD_JWS_BYTES,
+  ) +
+  4 * 1024;
 /** At most this many releases per ticket request's `releases` (P3-03). */
 const MAX_TICKET_RELEASES = 16;
 /** `@polaris-key/manifest`'s deliverable and version shapes, for the `releases` entries. */
@@ -143,7 +149,20 @@ export async function handlePublishRoute(
   if (action === "uploads") return handleUploads(ctx);
   if (action === "submit") return handleSubmit(ctx);
   if (action === "stage") return handleStage(ctx);
+  if (action === "delegations") return handleDelegations(ctx);
   return null;
+}
+
+// ── POST /<p>/release/publish/delegations (P4-19) ───────────────────────────────────────────
+
+/** The product's delegations, for `pkey release delegate` (plans/P4-19.md §6.3). Same token,
+ *  scope and body cap as `uploads`; no blob store needed (a delegation is a signature). */
+async function handleDelegations(ctx: ServiceContext): Promise<Response> {
+  const holder = await requirePublisher(ctx);
+  if (holder instanceof Response) return holder;
+  const body = await readCiJson(ctx.req, MAX_UPLOADS_BODY_BYTES);
+  if (body instanceof Response) return body;
+  return handleDelegationsRead(ctx, body);
 }
 
 // ── POST /<p>/release/publish/stage (P4-02) ─────────────────────────────────────────────────

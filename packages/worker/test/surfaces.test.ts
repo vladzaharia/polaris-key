@@ -254,6 +254,8 @@ describe("worker surfaces", () => {
       packs: true,
       // P4-13: revocation records are ingested and served.
       revocations: true,
+      // P4-19: delegations are ingested and served.
+      delegations: true,
     });
     expect(body.services.update).toEqual({
       enabled: true,

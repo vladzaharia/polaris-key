@@ -529,6 +529,78 @@ describe("review fixes: nothing live is ever deleted (P4-14 B1–B4)", () => {
     expect(live.has(foes[5]!.releaseId)).toBe(true);
     expect(live.has(foes[0]!.releaseId)).toBe(false);
   });
+
+  it("P4-19: a release a delegation revocation yanks is no live reference, not through pins, rollouts or outlet listings", async () => {
+    const { w, foes } = await world();
+    const hooks = await w.hooks(T);
+    const catalog = hooks.releaseCatalog()!;
+    const delivery = hooks.delivery()!;
+    const dead = foes[5]!;
+    const appId = (await catalog.releases("app"))[0]!.releaseId;
+    // Before: foes 1.0.5 is live (a current set member).
+    expect((await livePackReleases(hooks))!.live.has(dead.releaseId)).toBe(
+      true,
+    );
+    const wrapped = {
+      ...hooks,
+      releaseCatalog: () => ({
+        ...catalog,
+        revocations: async () => [
+          {
+            kind: "delegation" as const,
+            deliverableId: "djdl.events",
+            targetReleaseId: "",
+            targetSha256: "d".repeat(64),
+            recordSha256: "e".repeat(64),
+            version: "1",
+            seq: 1,
+            kid: "k",
+            replacement: null,
+            reason: "content key retired",
+            issuedAt: NOW,
+            ingestedAt: NOW,
+            delegatedReleaseIds: [dead.releaseId],
+          },
+        ],
+        // (a): the live app release pins it.
+        pins: async (app: string) => [
+          ...(await catalog.pins(app)),
+          ...(app === appId
+            ? [
+                {
+                  appReleaseId: appId,
+                  pack: FOES,
+                  packReleaseId: dead.releaseId,
+                  recordSha256: dead.sha256,
+                  required: true,
+                  delivery: "essential",
+                },
+              ]
+            : []),
+        ],
+      }),
+      delivery: () => ({
+        ...delivery,
+        // (e): a rollout names it; (f): an outlet lists it.
+        rollouts: async () => [
+          ...(await delivery.rollouts()),
+          {
+            deliverableId: FOES,
+            releaseId: dead.releaseId,
+            state: "complete",
+          } as never,
+        ],
+        reportedAvailability: async () => [
+          ...(await delivery.reportedAvailability()),
+          { releaseId: dead.releaseId, state: "available" } as never,
+        ],
+      }),
+    };
+    const live = (await livePackReleases(wrapped as never))!.live;
+    expect(live.has(dead.releaseId)).toBe(false);
+    // The other releases are untouched (the previous one stays live through the set).
+    expect(live.has(foes[4]!.releaseId)).toBe(true);
+  });
 });
 
 describe("review fixes: tenancy (P4-14 S3)", () => {

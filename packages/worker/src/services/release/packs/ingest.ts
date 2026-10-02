@@ -56,7 +56,11 @@ import {
   type ManifestPackDeliverable,
   type PackObjectRole,
 } from "@polaris-key/manifest";
-import { parseFilesIndex, variantKey } from "@polaris-key/client-core/packs";
+import {
+  dataOnlyPathRefusal,
+  parseFilesIndex,
+  variantKey,
+} from "@polaris-key/client-core/packs";
 import { parseVersion } from "@polaris-key/client-core/version";
 import type {
   FilesDelta,
@@ -408,6 +412,8 @@ export interface ObjectCheckOptions {
   pending?: ReadonlyMap<string, PendingObject>;
   /** Ticket objects not yet uploaded, by target key: a dry run lists them as unverified. */
   unverified?: ReadonlySet<string>;
+  /** P4-19: a delegated release; note the first index path the data-only rule refuses. */
+  dataOnly?: boolean;
 }
 
 /** `pack-object` for `pairs`, honouring a dry run's pending and unverified objects. */
@@ -449,6 +455,8 @@ export interface PackStoreCheck {
   files: number;
   /** Index keys a dry run could not read yet (not uploaded), so their files went unchecked. */
   unreadIndexes: string[];
+  /** With `dataOnly` (P4-19): the first index path the data-only extension rule refuses. */
+  dataOnlyRefused?: string;
 }
 
 /**
@@ -479,6 +487,7 @@ export async function checkPackStore(
   const gated = record.entitlement !== undefined;
   let files = 0;
   const unreadIndexes: string[] = [];
+  let dataOnlyRefused: string | undefined;
   for (const [i, v] of record.variants.entries()) {
     const key = blobKey(v.files.sha256, { gated });
     const pending = opts.pending?.get(key);
@@ -507,8 +516,15 @@ export async function checkPackStore(
       );
     // The index's file blobs: each once, then the index is dropped before the next is read.
     const blobs = new Map<string, number>();
-    for (const e of parsed.index.files)
+    for (const e of parsed.index.files) {
       blobs.set(blobKey(e.blob.sha256, { gated }), e.blob.bytes);
+      if (
+        opts.dataOnly &&
+        dataOnlyRefused === undefined &&
+        dataOnlyPathRefusal(e.path) !== null
+      )
+        dataOnlyRefused = e.path;
+    }
     const fileCheck = await checkPairs(
       db,
       product,
@@ -519,7 +535,12 @@ export async function checkPackStore(
     if (fileCheck) return fileCheck;
     files += blobs.size;
   }
-  return { ok: true, files, unreadIndexes };
+  return {
+    ok: true,
+    files,
+    unreadIndexes,
+    ...(dataOnlyRefused !== undefined ? { dataOnlyRefused } : {}),
+  };
 }
 
 /** An object's bytes, or null when it is not there or not exactly `bytes` long. */

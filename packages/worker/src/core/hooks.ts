@@ -291,6 +291,9 @@ export interface CatalogPackRelease {
   release: CatalogRelease;
   /** The record's hash: what an app release pins. */
   recordSha256: string;
+  /** P4-19: the hash of the delegation a content key signed the record under, or null when a
+   *  release key signed it (plans/P4-19.md §6.1). */
+  delegation: string | null;
   type: string;
   formatVersion: number;
   /** The record's `entitlement` (the gate CI signed at publish), or null. */
@@ -415,6 +418,9 @@ export interface CatalogRevocation {
   reason: string;
   issuedAt: number;
   ingestedAt: number;
+  /** P4-19, `kind: "delegation"` only: the pack releases signed under the revoked delegation
+   *  (yanked by its ingest, reason `delegation-revoked`); never live for the blob collector. */
+  delegatedReleaseIds?: string[];
 }
 
 /**

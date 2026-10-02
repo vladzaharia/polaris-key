@@ -186,6 +186,7 @@ paths:
                           ]
                         packs: true
                         revocations: true
+                        delegations: true
                       distribution:
                         enabled: true
                         configured: true
@@ -4116,6 +4117,84 @@ paths:
         "404": { $ref: "#/components/responses/CiRefusal" }
         "409": { $ref: "#/components/responses/CiRefusal" }
 
+  /{product}/release/publish/delegations:
+    post:
+      operationId: ciPublishDelegations
+      tags: [release]
+      summary: The product's content-key delegations (trusted publishing)
+      description: >
+        P4-19 (plans/P4-19.md §6.3). Requires a `pkeyci_` token with `release:publish`; the body
+        cap is `uploads`' (64 KiB). Lists every stored `kind: delegation` record of the product —
+        its record hash, scope root, `seq`, the lowercase hex SHA-256 of the delegated key's raw
+        bytes (`keyFingerprint`, as `releaseKeyFingerprints`), its signing window, its `origin`
+        (`submit`, or `revocation` for one first seen supplied with its revocation) and whether
+        it is revoked. With `deliverable`, `nextSeq` is one more than that scope's highest
+        `origin: submit` `seq` (1 when none). `pkey release delegate` reads it before signing, to
+        refuse a key any delegation already names and to take its `seq`. A delegation is a
+        signature, never bytes, so the route needs no blob store. A `deliverable` that is not a
+        pack id is `bad_body`. No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deliverable:
+                  {
+                    type: string,
+                    pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+                    maxLength: 64,
+                    description: "A scope root (a pack id): ask for its `nextSeq`.",
+                  }
+      responses:
+        "200":
+          description: The product's delegations.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [delegations]
+                properties:
+                  delegations:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          sha256,
+                          deliverable,
+                          seq,
+                          keyFingerprint,
+                          issuedAt,
+                          expiresAt,
+                          origin,
+                          revoked,
+                        ]
+                      properties:
+                        sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                        deliverable: { type: string }
+                        seq: { type: integer, minimum: 1 }
+                        keyFingerprint:
+                          { type: string, pattern: "^[0-9a-f]{64}$" }
+                        issuedAt: { type: integer }
+                        expiresAt: { type: integer }
+                        origin: { type: string, enum: [submit, revocation] }
+                        revoked: { type: boolean }
+                  nextSeq:
+                    {
+                      type: integer,
+                      minimum: 1,
+                      description: "Present only when `deliverable` was given.",
+                    }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiRefusal" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+
   /{product}/release/publish/submit:
     post:
       operationId: ciPublishSubmit
@@ -4202,6 +4281,29 @@ paths:
         stored one (`superseded`); nothing ever removes one. Ingest also yanks the target (reason
         `revoked`) and re-resolves the pack sets, which skip revoked releases. An app release is
         also refused with `pin-revoked` or `hold-revoked` (a pinned or held release is revoked).
+        P4-19 (plans/P4-19.md §6.2): a DELEGATION is `{record, dryRun?}` — a `kind: delegation`
+        record signed by a declared release key, refused after the shared checks with
+        `delegation-body` (client-core's `delegationOf` finds it unusable, or a listed type is not
+        delegable), `delegation-key` (the delegated key is a declared release key, a product
+        signing key, or the key of any stored delegation), `seq` (409: not above the scope's last
+        delegation's) or `delegation-window` (`issuedAt` over 300 s ahead, or `expiresAt` past); a
+        byte-identical resubmit is `unchanged`; the answer carries `delegation`. A pack record
+        whose kid is `pkd1-<delegation hash>` is signed by that delegation's content key: before
+        the pack checks it is refused with `kid` (a revocation, delegation or app record under a
+        `pkd1-` kid), `delegation-unknown`, `delegation-revoked`, `product-key` or
+        `delegation-key` (the delegated key is a product or release key), `signature`, `claims`,
+        `delegation-scope` (not a tree-layout pack of a delegated type under the scope, issued
+        inside the window) or `delegation-window` (the window has closed, or `issuedAt` is more
+        than a day old or 300 s ahead); after them with `delegation-binding` (not a compatible or
+        standalone pack) or `delegation-data-only` (an index path outside the data-only extension
+        allow-list). An app release is refused with `pin-delegated` or `hold-delegated`. A
+        REVOCATION may name a delegation by hash: stored, or supplied alongside as
+        `{record, delegation, dryRun?}` (the body at most 181,784 bytes), which must hash to
+        `revokes`, verify against the release keys and be usable; it is then stored already
+        revoked. `deliverable`, `version` and `seq` must be the delegation's
+        (`revocation-target`); a replacement on a delegation target, or a replacement signed
+        under a delegation, is `revocation-replacement`. Ingest yanks every release signed under
+        the delegation (reason `delegation-revoked`).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -4211,7 +4313,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: "`{ticket, descriptor, record?, dryRun?}`, or (P4-02) a pack release: `{ticket?, record, dryRun?}`, or (P4-13) a revocation: `{record, dryRun?}`."
+              description: "`{ticket, descriptor, record?, dryRun?}`, or (P4-02) a pack release: `{ticket?, record, dryRun?}`, or (P4-13) a revocation: `{record, dryRun?}`, which (P4-19) may carry the delegation it revokes: `{record, delegation, dryRun?}`, or (P4-19) a delegation: `{record, dryRun?}`."
               anyOf:
                 - required: [ticket, descriptor]
                 - required: [record]
@@ -4225,6 +4327,10 @@ paths:
                   type: string
                   maxLength: 88844
                   description: "P3-03: the compact JWS of the release record (`pkey-release+jws`)."
+                delegation:
+                  type: string
+                  maxLength: 88844
+                  description: "P4-19, a revocation of a delegation the Worker never stored: that delegation's compact JWS."
                 dryRun: { type: boolean }
       responses:
         "200":
@@ -4234,7 +4340,7 @@ paths:
               schema:
                 type: object
                 required: [ok, dryRun, outcome]
-                description: "`releaseId` is present on every answer except a revocation's (P4-13), which carries `revocation` instead."
+                description: "`releaseId` is present on every answer except a revocation's (P4-13), which carries `revocation` instead, and a delegation's (P4-19), which carries `delegation`."
                 properties:
                   ok: { type: boolean, const: true }
                   dryRun: { type: boolean }
@@ -4256,6 +4362,27 @@ paths:
                       target: { type: string, pattern: "^[0-9a-f]{64}$" }
                       replacement:
                         { type: [string, "null"], pattern: "^[0-9a-f]{64}$" }
+                      kind:
+                        {
+                          type: string,
+                          enum: [delegation],
+                          description: "P4-19: present when the target is a delegation.",
+                        }
+                      stored: { type: boolean }
+                  delegation:
+                    type: object
+                    description: >
+                      P4-19, a delegation: its record hash, the content kid a delegated record
+                      carries (`pkd1-<sha256>`), scope, `seq`, effective types, window, and
+                      whether this submit stored it.
+                    properties:
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      kid: { type: string, pattern: "^pkd1-[0-9a-f]{64}$" }
+                      deliverable: { type: string }
+                      seq: { type: integer }
+                      types: { type: array, items: { type: string } }
+                      issuedAt: { type: integer }
+                      expiresAt: { type: integer }
                       stored: { type: boolean }
                   descriptorSha256:
                     type: string
@@ -4394,7 +4521,10 @@ paths:
         A `kind: pack` record (P4-02) and a `kind: revocation` record (P4-13) skip that version
         rule: the request-level check governs. A revocation record is served by its hash too,
         and only the CURRENT revocation of a target is stored: one superseded by a newer
-        revocation is the plain 404 (the feed lists the current one).
+        revocation is the plain 404 (the feed lists the current one). P4-19: a `kind: delegation`
+        record, and the current revocation of a delegation, are served by their hashes the same
+        way (the request-level check governs); a delegated pack record names its delegation in
+        its kid (`pkd1-<hash>`), and the device fetches the delegation here.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: sha256
@@ -4603,7 +4733,10 @@ paths:
         read them beside the claims (`feedContent`); a malformed member is unusable, never a
         refusal. When the per-platform document is still over the cap, content is shed in a
         fixed order, each step audited: `packSets`, `packFloors`, the unreferenced revocations,
-        every revocation; content alone never causes `feed_not_composable`.
+        every revocation; content alone never causes `feed_not_composable`. P4-19: a revocation of
+        a delegation is listed with `kind: delegation` and `pack` = the delegation's scope root;
+        it counts as referenced, so it is kept under the 64-entry cap and at the third shedding
+        step, and leaves only when `revocations` is omitted.
         Governed by the release METADATA access mode; under `entitled` the licence's
         entitlements must hold the canonical channel (403 `channel_not_allowed`). `public`
         caches `public, max-age=60, no-transform`, every other mode `private, no-store,
