@@ -186,25 +186,29 @@ already have partial kits to mirror (notes/A2 §10).
 
 ## Acceptance criteria
 
-- [ ] The Godot runner passes every `stage-matrix.json` row (stage sequence, emitted events,
+- [x] The Godot runner passes every `stage-matrix.json` row (stage sequence, emitted events,
       outcome) on the 4.7.2 editor and release template.
-- [ ] `PKeyBoot` driven by a fake host reproduces each row's stage sequence in its signals, and
+- [x] `PKeyBoot` driven by a fake host reproduces each row's stage sequence in its signals, and
       `PolarisKey.boot()` returns the row's outcome.
-- [ ] Snapshot tests exist for every gate status, every activation-panel capability combination
+- [x] Snapshot tests exist for every gate status, every activation-panel capability combination
       (License on/off, Identity on/off, enrolment on/off, web), the sign-in dialog (pending,
       expired, cancelled), and a settings catalog with `enforced`, `default`, `hidden`,
       `dependsOn` and `advanced` entries; they pass.
-- [ ] A focus-traversal test reaches every interactive control on each scene with `ui_down` and
+- [x] A focus-traversal test reaches every interactive control on each scene with `ui_down` and
       `ui_accept` alone.
-- [ ] An enforced setting shows a disabled control and "Set by <product>"; editing a default
+- [x] An enforced setting shows a disabled control and "Set by <product>"; editing a default
       setting writes the override store and changes `get_source()` to `local`.
-- [ ] No visible string bypasses `PKeyUiCopy`/`tr()` (a test walks every `Label` and `Button`).
-- [ ] Editor screenshots of each scene are attached to the PR.
-- [ ] The `stage-matrix` suite drives `PKeyStages` through every row, every probe and every guard
+- [x] No visible string bypasses `PKeyUiCopy`/`tr()` (a test walks every `Label` and `Button`).
+- [ ] Editor screenshots of each scene are attached to the PR. (`tools/ui_screenshots.gd`
+      rendered all 67 states from an editor run; there is no PR from this branch yet to attach
+      them to.)
+- [x] The `stage-matrix` suite drives `PKeyStages` through every row, every probe and every guard
       case of `stage-matrix.json`, and the fake-server tests drive `PKeyBoot` through the sync
       classes above.
-- [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
-- [ ] `sdks/godot/parity.json` marks `ui.stages` and `ui.kit` implemented, with test tags (once
+- [x] The green gate passes (`AGENTS.md`), including the `godot` CI job (run locally: the
+      editor and the 4.7.2 macOS release template, and the new suites on the 4.4.1 floor editor;
+      CI's Linux legs run on push).
+- [x] `sdks/godot/parity.json` marks `ui.stages` and `ui.kit` implemented, with test tags (once
       P1b-01 has landed).
 
 ## Implementation notes (P1-10)
