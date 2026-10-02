@@ -56,7 +56,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P1b-02](wp/P1b-02-sdk-constants.md)               | Generate SDK constants: error codes, header values, enums, feature ids                                                       | P1b-01, P0-09        | implementer | 1        | done   |
 | [P1b-03](wp/P1b-03-http-transcripts.md)            | Capture HTTP transcripts from Worker tests and replay them in every SDK                                                      | P1b-01               | implementer | 2–3      | done   |
 | [P1b-04](wp/P1b-04-headers-config-corpora.md) ⚑    | Add `headers.json` and `config-matrix.json` to the corpus                                                                    | P1b-02               | sdk-porter  | 0.75–1   | done   |
-| [P1b-05](wp/P1b-05-runners.md)                     | Add Chromium and minimum-version runners                                                                                     | P0-04                | implementer | 0.5–0.75 | todo   |
+| [P1b-05](wp/P1b-05-runners.md)                     | Add Chromium and minimum-version runners                                                                                     | P0-04                | implementer | 0.5–0.75 | done   |
 | [P1b-06](wp/P1b-06-reregister-401.md)              | Re-register on 401 for licence-less devices, in every SDK                                                                    | P1b-03               | sdk-porter  | 0.75–1   | done   |
 | [P1b-07](wp/P1b-07-license-config-release-gaps.md) | Close licence, config and release gaps: `entitledChannels`, catalog fetch, release client, React bundle import and telemetry | P1b-03               | sdk-porter  | 1.5–2    | done   |
 | [P1b-08](wp/P1b-08-devicecode-edgemint-ports.md)   | Port device-code sign-in and edge-mint to Node, Python and Swift                                                             | P1b-03, P1-06, P0-12 | sdk-porter  | 1–1.5    | done   |
@@ -88,7 +88,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P2b-03](wp/P2b-03-availability-keys.md)       | Availability, submissions (CI-reported first) and the key inventory                     | P2b-02, P2-06        | implementer | 1     | done   |
 | [P2b-04](wp/P2b-04-rollouts-delivery.md)       | Outlet-scoped rollouts and halts; delivery access and byte serving move to distribution | P2b-02, P2-05        | implementer | 1.5–2 | done   |
 | [P2b-05](wp/P2b-05-storefront-feeds.md)        | Storefront feeds: AltStore/SideStore/PAL, Obtainium, F-Droid, Scoop/Flathub JSON        | P2b-03, P2b-04, S-07 | implementer | 2–3   | done   |
-| [P2b-06](wp/P2b-06-download-page-matrix.md)    | Public download page v1 and the console distribution matrix v1                          | P2b-03, P2b-04       | implementer | 1     | todo   |
+| [P2b-06](wp/P2b-06-download-page-matrix.md)    | Public download page v1 and the console distribution matrix v1                          | P2b-03, P2b-04       | implementer | 1     | done   |
 
 ## P3: Signed feed, decision, feeds (wire v4)
 

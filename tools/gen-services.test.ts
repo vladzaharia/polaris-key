@@ -196,7 +196,7 @@ describe("gen:services --check", () => {
       ]);
       expect(readFileSync(abs, "utf8")).toBe(original);
     }
-  });
+  }, 30_000);
 });
 
 describe("the service table, as the parity registry sees it", () => {

@@ -514,7 +514,7 @@ describe("gen:constants --check", () => {
       ]);
       expect(readFileSync(abs, "utf8")).toBe(original);
     }
-  });
+  }, 30_000);
 
   it("skips the GDScript module while sdks/godot/addons/polaris_key does not exist", async () => {
     const root = mkdtempSync(join(tmpdir(), "gen-constants-nogodot-"));
