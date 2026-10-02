@@ -17,14 +17,24 @@ import { parseFilesIndex, variantKey } from "@polaris-key/client-core/packs";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
 import type {
+  CatalogHold,
   CatalogBuildEmbeds,
   CatalogPackDeliverable,
   CatalogPackFile,
+  CatalogPackFloor,
   CatalogPackRelease,
   CatalogPin,
   CatalogRelease,
   ReleaseCatalog,
 } from "../../../core/hooks.js";
+import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
+import { canonicalChannel } from "../resolve.js";
+import {
+  canonicalPackChannel,
+  loadResolutionState,
+  readStoredSets,
+} from "./sets.js";
+import { PackResolver } from "./resolve.js";
 import type { Db, Env } from "../../../core/platform.js";
 import { blobKey } from "../../../core/blobs.js";
 import { readPackDeliverables } from "./deliverables.js";
@@ -38,9 +48,32 @@ type PackCatalog = Pick<
   | "pins"
   | "pinnedBy"
   | "embeds"
+  | "liveLevels"
+  | "packSets"
+  | "packFloors"
+  | "holdsFor"
+  | "heldBy"
   | "pinnedByMany"
   | "embedsOf"
 >;
+
+interface HoldRow {
+  app_release_id: string;
+  pack_deliverable: string;
+  pack_release_id: string;
+  record_sha256: string;
+  reason: string | null;
+}
+
+function holdRecord(r: HoldRow): CatalogHold {
+  return {
+    appReleaseId: r.app_release_id,
+    pack: r.pack_deliverable,
+    packReleaseId: r.pack_release_id,
+    recordSha256: r.record_sha256,
+    reason: r.reason,
+  };
+}
 
 /** Ids per `IN` list: one parameter is the product, D1 binds at most 100. */
 const IN_IDS = 90;
@@ -259,6 +292,76 @@ export function packCatalog(ctx: {
           packReleaseId,
         )
       ).map(pinRecord);
+    },
+
+    async liveLevels(appDeliverable, channel) {
+      if (appDeliverable !== APP_DELIVERABLE_ID) return [];
+      const state = await loadResolutionState(db, slug);
+      if (!state) return [];
+      const canonical = canonicalChannel(channel, state.input.app.manual);
+      if (!canonical || !state.input.channels.includes(canonical)) return [];
+      const levels = new Map<number, string[]>();
+      for (const r of new PackResolver(state.input).live(canonical)) {
+        const list = levels.get(r.contentApi) ?? [];
+        list.push(r.releaseId);
+        levels.set(r.contentApi, list);
+      }
+      return [...levels.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([contentApi, appReleases]) => ({ contentApi, appReleases }));
+    },
+
+    async packSets(channel) {
+      return readStoredSets(db, slug, channel);
+    },
+
+    async packFloors(channel): Promise<CatalogPackFloor[]> {
+      const canonical = await canonicalPackChannel(db, slug, channel);
+      return (
+        await db.all<{
+          deliverable_id: string;
+          channel: string;
+          content_api: number;
+          min_version: string;
+          modified_at: number;
+        }>(
+          `SELECT deliverable_id, channel, content_api, min_version, modified_at
+             FROM release_pack_floors WHERE product = ? AND channel = ?
+            ORDER BY deliverable_id, content_api`,
+          slug,
+          canonical,
+        )
+      ).map((r) => ({
+        deliverableId: r.deliverable_id,
+        channel: r.channel,
+        contentApi: r.content_api,
+        minSupported: r.min_version,
+        modifiedAt: r.modified_at,
+      }));
+    },
+
+    async holdsFor(appReleaseId) {
+      return (
+        await db.all<HoldRow>(
+          `SELECT app_release_id, pack_deliverable, pack_release_id, record_sha256, reason
+             FROM release_holds WHERE product = ? AND app_release_id = ?
+            ORDER BY pack_deliverable`,
+          slug,
+          appReleaseId,
+        )
+      ).map(holdRecord);
+    },
+
+    async heldBy(packReleaseId) {
+      return (
+        await db.all<HoldRow>(
+          `SELECT app_release_id, pack_deliverable, pack_release_id, record_sha256, reason
+             FROM release_holds WHERE product = ? AND pack_release_id = ?
+            ORDER BY app_release_id`,
+          slug,
+          packReleaseId,
+        )
+      ).map(holdRecord);
     },
 
     async embeds(appReleaseId, buildId) {

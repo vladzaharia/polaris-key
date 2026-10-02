@@ -66,9 +66,15 @@ export class D1Db implements Db {
   }
 
   async batch(statements: DbStatement[]): Promise<void> {
+    await this.batchChanges(statements);
+  }
+
+  async batchChanges(statements: DbStatement[]): Promise<number[]> {
     const results = await this.d1.batch(
       statements.map((s) => this.stmt(s.sql, s.params)),
     );
-    results.forEach((r, i) => assertOk(r, statements[i]?.sql ?? "batch"));
+    return results.map(
+      (r, i) => assertOk(r, statements[i]?.sql ?? "batch").meta?.changes ?? 0,
+    );
   }
 }

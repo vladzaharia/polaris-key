@@ -438,6 +438,47 @@ describe("--dry-run", () => {
   });
 });
 
+describe("a compatible pack (P4-12)", () => {
+  it("signs the declaration's requires.contentApi, requires.packs and conflicts into every variant", async () => {
+    const extraPacks = `    diceroll.foes:
+      kind: pack
+      type: files.tree
+      binding: compatible
+      requires:
+        contentApi: { app: ">=4 <5" }
+        packs: { diceroll.lore: ">=1.0.0" }
+      conflicts: [diceroll.l10n]
+    diceroll.lore:
+      kind: pack
+      type: files.tree
+      binding: standalone
+`;
+    const { cwd, server } = await setup(
+      { extraPacks },
+      {
+        "default/foes.json": new TextEncoder().encode('{"foes":1}'),
+        ...l10nTrees(),
+        "default/diceroll.core3d.pck": pck(kaykitUnstripped()),
+      },
+    );
+    const { io, o } = opts(cwd, server, {
+      deliverable: "diceroll.foes",
+      dryRun: true,
+    });
+    const res = await publishPack(o);
+    expect(io.err()).toBe("");
+    for (const v of res.record!.variants) {
+      expect(v.requires).toEqual({
+        contentApi: { app: ">=4 <5" },
+        packs: { "diceroll.lore": ">=1.0.0" },
+      });
+      expect((v as { conflicts?: unknown }).conflicts).toEqual([
+        "diceroll.l10n",
+      ]);
+    }
+  });
+});
+
 describe("a Diceroll-sized pack", () => {
   it("625 entries in three variants with deltas: the signed record stays under the cap and every zstd ref carries size", async () => {
     const variants = "      variants:\n        texture: [s3tc, etc2, astc]\n";

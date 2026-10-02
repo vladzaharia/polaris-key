@@ -1106,11 +1106,11 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => delete l10n(d).type,
   },
   {
-    // Only pinned delivers in v1; P4-12 adds compatible and standalone.
+    // pinned, compatible or standalone (P4-12).
     code: "invalid_pack_binding",
     file: "release",
     schema: "rejects",
-    mutate: (d) => (core3d(d).binding = "compatible"),
+    mutate: (d) => (core3d(d).binding = "floating"),
   },
   {
     code: "invalid_pack_policy",
@@ -1201,11 +1201,95 @@ const MUTATIONS: Mutation[] = [
       }),
   },
   {
-    // contentApi, packs and features wait for P4-12.
+    // features has no meaning yet (P4-12 adds contentApi and packs only).
     code: "invalid_pack_requires",
     file: "release",
     schema: "rejects",
-    mutate: (d) => (core3d(d).requires.contentApi = { app: ">=3" }),
+    mutate: (d) => (core3d(d).requires.features = ["physics"]),
+  },
+  {
+    // A contentApi range is comparators over levels, not a semver range.
+    code: "invalid_pack_requires",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).requires.contentApi = { app: "^3.0" }),
+  },
+  {
+    code: "invalid_pack_requires",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).requires.packs = { "acme.l10n": "~1.2" }),
+  },
+  {
+    // requires.packs names a compatible or standalone pack: acme.l10n is pinned.
+    code: "invalid_pack_requires",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (core3d(d).requires.packs = { "acme.l10n": ">=1.0.0" }),
+  },
+  // ── compatible and standalone (P4-12) ──
+  {
+    code: "missing_content_api_range",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (l10n(d).binding = "compatible"),
+  },
+  {
+    code: "standalone_with_content_api",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => {
+      core3d(d).binding = "standalone";
+      core3d(d).requires.contentApi = { app: ">=3" };
+    },
+  },
+  {
+    // Keyed by app deliverable; the product's only one is app.
+    code: "unknown_content_api_app",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => {
+      core3d(d).binding = "compatible";
+      core3d(d).requires.contentApi = { client: ">=3" };
+    },
+  },
+  {
+    code: "invalid_pack_conflicts",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).conflicts = ["app"]),
+  },
+  {
+    // conflicts names other declared packs.
+    code: "invalid_pack_conflicts",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (core3d(d).conflicts = ["acme.audio"]),
+  },
+  {
+    // The pack path of the existing code: a pack's channels are canonical names.
+    code: "invalid_channel",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (l10n(d).channels = ["Events"]),
+  },
+  {
+    code: "invalid_pack_channels",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) =>
+      (app(d).content = { contentApi: 3, packChannels: { "acme.*": "Ev" } }),
+  },
+  {
+    // A packChannels key matches a declared pack that publishes to its channel.
+    code: "unknown_pack_channels_target",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) =>
+      (app(d).content = {
+        contentApi: 3,
+        packChannels: { "other.*": "events" },
+      }),
   },
   {
     code: "invalid_pack_requires",
@@ -1248,7 +1332,7 @@ const MUTATIONS: Mutation[] = [
     code: "pack_field_not_supported",
     file: "release",
     schema: "rejects",
-    mutate: (d) => (l10n(d).channels = ["events"]),
+    mutate: (d) => (l10n(d).removes = ["res://x/"]),
   },
   {
     code: "pack_field_not_supported",
@@ -1273,8 +1357,8 @@ const MUTATIONS: Mutation[] = [
     code: "invalid_app_content",
     file: "release",
     schema: "rejects",
-    mutate: (d) =>
-      (app(d).content = { contentApi: 3, packChannels: { "acme.*": "x" } }),
+    // Holds are chosen per app release at publish, never declared.
+    mutate: (d) => (app(d).content = { contentApi: 3, holds: [] }),
   },
   {
     // Required whenever a pack is declared.
@@ -2156,6 +2240,73 @@ describe("valid manifests pass both validators", () => {
   });
 });
 
+describe("compatible and standalone packs (P4-12)", () => {
+  it("a Diceroll-shaped set of bindings, requires, conflicts, channels and packChannels passes both", () => {
+    const docs = base();
+    rel(docs).deliverables["acme.foes"] = {
+      kind: "pack",
+      type: "files.tree",
+      binding: "compatible",
+      requires: {
+        contentApi: { app: ">=3 <5" },
+        packs: { "acme.lore": ">=1.0.0 <2.0.0" },
+      },
+      conflicts: ["acme.audio"],
+    };
+    rel(docs).deliverables["acme.lore"] = {
+      kind: "pack",
+      type: "files.tree",
+      binding: "standalone",
+    };
+    rel(docs).deliverables["acme.audio"] = {
+      kind: "pack",
+      type: "files.tree",
+      binding: "compatible",
+      requires: { contentApi: { app: "3" } },
+    };
+    rel(docs).deliverables["acme.events.halloween"] = {
+      kind: "pack",
+      type: "files.tree",
+      binding: "compatible",
+      channels: ["events"],
+      requires: { contentApi: { app: ">=3" } },
+    };
+    app(docs).content = {
+      contentApi: 3,
+      packChannels: { "acme.events.*": "events" },
+    };
+    expect(tsCodes(docs)).toEqual([]);
+    expect(
+      validateRelease(docs.release),
+      JSON.stringify(validateRelease.errors),
+    ).toBe(true);
+    const m = parseManifest({
+      product: JSON.stringify(docs.product),
+      schema: JSON.stringify(docs.schema),
+      release: JSON.stringify(docs.release),
+    });
+    if (!m.ok) throw new Error(m.errors.join("; "));
+    const foes = m.manifest.release!.packDeliverables.find(
+      (p) => p.id === "acme.foes",
+    )!;
+    expect(foes.binding).toBe("compatible");
+    expect(foes.requires).toEqual({
+      contentApi: { app: ">=3 <5" },
+      packs: { "acme.lore": ">=1.0.0 <2.0.0" },
+    });
+    expect(foes.conflicts).toEqual(["acme.audio"]);
+    expect(
+      m.manifest.release!.packDeliverables.find(
+        (p) => p.id === "acme.events.halloween",
+      )!.channels,
+    ).toEqual(["events"]);
+    expect(m.manifest.release!.app!.content).toEqual({
+      contentApi: 3,
+      packChannels: { "acme.events.*": "events" },
+    });
+  });
+});
+
 describe("the pack schema's vocabularies are the validator's constants (P4-02)", () => {
   it("packDeliverable enums", () => {
     const schema = JSON.parse(
@@ -2431,9 +2582,39 @@ const DESCRIPTOR_MUTATIONS: DescriptorMutation[] = [
     mutate: (d) => (d.content = { ...CONTENT(), contentApi: 0 }),
   },
   {
+    // A hold is a pin's shape (P4-12).
     code: "invalid_descriptor_content",
     schema: "rejects",
-    mutate: (d) => (d.content = { ...CONTENT(), holds: [] }),
+    mutate: (d) =>
+      (d.content = { ...CONTENT(), holds: [{ pack: "acme.l10n" }] }),
+  },
+  {
+    code: "invalid_descriptor_content",
+    schema: "rejects",
+    mutate: (d) =>
+      (d.content = { ...CONTENT(), packChannels: { "acme.*": "Ev" } }),
+  },
+  {
+    // packChannels is the manifest's, stamped as declared.
+    code: "invalid_descriptor_content",
+    schema: "accepts",
+    mutate: (d) =>
+      (d.content = { ...CONTENT(), packChannels: { "acme.*": "events" } }),
+  },
+  {
+    // A held pack is a declared one.
+    code: "invalid_descriptor_content",
+    schema: "accepts",
+    mutate: (d) =>
+      (d.content = {
+        ...CONTENT(),
+        holds: [
+          {
+            pack: "acme.audio",
+            release: { sha256: "c".repeat(64), seq: 2, version: "1.0.1" },
+          },
+        ],
+      }),
   },
   {
     code: "invalid_descriptor_content",

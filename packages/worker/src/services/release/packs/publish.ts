@@ -59,9 +59,12 @@ import {
   verifyRecordJws,
   type RecordRefusalReason,
 } from "../records.js";
-import { readPackDeliverable } from "./deliverables.js";
+import { readPackDeliverable, readPackDeliverables } from "./deliverables.js";
+import { checkPackPublish } from "./checks.js";
+import { resolveAndStore } from "./sets.js";
 import {
   checkPackAgainstDeclaration,
+  checkPackRequires,
   checkPackScheme,
   checkPackStore,
   packReleaseId,
@@ -448,6 +451,14 @@ export async function handlePackSubmit(
   if (g instanceof Response) return g;
   const declared = checkPackAgainstDeclaration(record, pack, g.gate);
   if (declared) return recordRefusal(declared.reason, declared.message);
+  // P4-12: the signed requirements against the binding and the declared packs, and the channel.
+  const all = await readPackDeliverables(db, product.slug);
+  const required = checkPackRequires(
+    record,
+    pack,
+    new Map(all.packs.map((p) => [p.id, p.binding])),
+  );
+  if (required) return recordRefusal(required.reason, required.message);
 
   // 2. The optional ticket: a round of its own (a dry run only verifies what is staged).
   let ticket: TicketRecord | null = null;
@@ -503,6 +514,16 @@ export async function handlePackSubmit(
     unverified,
   });
   if (!store.ok) return recordRefusal(store.reason, store.message);
+
+  // 4. The resolution check (P4-12): the sets every live selector would resolve with it.
+  const sets = await checkPackPublish(
+    db,
+    product.slug,
+    record,
+    recordSha256,
+    cfg,
+  );
+  if (!sets.ok) return recordRefusal(sets.reason, sets.message);
   if (dryRun)
     return json({
       ok: true,
@@ -512,9 +533,10 @@ export async function handlePackSubmit(
       record: { sha256: recordSha256, kid: shared.kid },
       files: store.files,
       unverified: [...unverified].sort(),
+      ...(sets.report ? { packSets: sets.report } : {}),
     });
 
-  // 4. The rows, in one batch; a lost race writes nothing.
+  // 5. The rows, in one batch; a lost race writes nothing.
   const policy = cfg ? artifactPolicy(cfg) : null;
   await db.batch(
     packReleaseStatements({
@@ -558,6 +580,9 @@ export async function handlePackSubmit(
     summary: `Published pack release ${releaseId} through trusted publishing with release record ${recordSha256.slice(0, 12)}`,
   });
   await bumpReleaseGeneration(env, product.slug, now);
+  // Store the rows the check resolved (re-resolving only if a concurrent trigger moved them).
+  if (sets.resolved)
+    await resolveAndStore(db, product.slug, now, sets.resolved);
   return json({
     ok: true,
     dryRun: false,
@@ -565,5 +590,6 @@ export async function handlePackSubmit(
     outcome: "created",
     record: { sha256: recordSha256, stored: true },
     staged,
+    ...(sets.report ? { packSets: sets.report } : {}),
   });
 }

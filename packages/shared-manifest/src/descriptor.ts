@@ -29,6 +29,8 @@ import {
   ARTIFACT_ROLES,
   BUILT_IN_CHANNELS,
   isCanonicalChannelName,
+  MAX_PACK_CHANNEL_MAP,
+  PACK_CHANNELS_KEY_PATTERN,
   matchesArtifactGlob,
   RELEASE_ARCHES,
   RELEASE_PLATFORMS,
@@ -303,9 +305,34 @@ export interface ReleaseDescriptor {
    * without its `format`. Moved unchanged into the record's `content` by
    * {@link descriptorToRecord} (decision 37).
    */
-  content?: AppContent;
+  content?: DescriptorContent;
   builds: DescriptorBuild[];
 }
+
+/**
+ * A hold (P4-12, CONTENT §6.1 "per-app-release overrides"): this app release keeps a `compatible`
+ * pack at one release (`release` is a pin's shape, naming a pack record), with an optional
+ * human-readable `reason` of at most {@link MAX_HOLD_REASON} characters.
+ */
+export interface ContentHold {
+  pack: string;
+  release: { sha256: string; seq: number; version: string };
+  reason?: string;
+}
+
+/**
+ * A descriptor's `content`: the record's `content` claims (`contentApi`, `pins`, `expects`) plus
+ * P4-12's `holds` and `packChannels`, which clients ignore (reserved slots, plans/P4-01.md §2.4)
+ * and the Worker resolves and checks.
+ */
+export type DescriptorContent = AppContent & {
+  holds?: ContentHold[];
+  /** Equal to `.pkey/release`'s `deliverables.app.content.packChannels` (the validator checks). */
+  packChannels?: Record<string, string>;
+};
+
+/** The longest hold `reason`. */
+export const MAX_HOLD_REASON = 200;
 
 /** What a descriptor is checked against: the parsed manifest, or the persisted equivalent. */
 export interface DescriptorManifest {
@@ -490,13 +517,12 @@ function isPackIdString(v: unknown): v is string {
 
 /**
  * What is wrong with a descriptor's `content`, or `null`: §2.4's `content` claims (so a
- * descriptor that passes never moves into a record ingest refuses at `claims`), and `holds` and
- * `packChannels` refused until P4-12, as in the manifest.
+ * descriptor that passes never moves into a record ingest refuses at `claims`), and P4-12's
+ * `holds` (0–256, a pin's shape plus an optional `reason`, never a pinned pack) and
+ * `packChannels` (pack id or `prefix.*` → a canonical channel).
  */
 export function descriptorContentProblem(c: unknown): string | null {
   if (!isRecord(c)) return "content must be an object";
-  if (c.holds !== undefined || c.packChannels !== undefined)
-    return "content.holds and content.packChannels come with P4-12";
   if (!(Number.isSafeInteger(c.contentApi) && (c.contentApi as number) >= 1))
     return "content.contentApi must be an integer from 1 to 9007199254740991";
   const pins = c.pins;
@@ -533,7 +559,62 @@ export function descriptorContentProblem(c: unknown): string | null {
     if (typeof e.delivery !== "string" || !VOCAB_TOKEN_PATTERN.test(e.delivery))
       return `the expects entry of ${e.pack} needs a delivery token`;
   }
+  if (c.holds !== undefined) {
+    const holds = c.holds;
+    if (!Array.isArray(holds) || holds.length > MAX_CONTENT_PINS)
+      return `content.holds must be an array of at most ${MAX_CONTENT_PINS} holds`;
+    const held = new Set<string>();
+    for (const h of holds) {
+      if (!isRecord(h) || !isPackIdString(h.pack))
+        return "each hold is { pack: a pack id, release, reason? }";
+      if (held.has(h.pack)) return `${h.pack} is held twice`;
+      if (pinned.has(h.pack))
+        return `${h.pack} is both pinned and held; a hold keeps a compatible pack, a pin fixes a pinned one`;
+      held.add(h.pack);
+      const r = h.release;
+      if (
+        !isRecord(r) ||
+        typeof r.sha256 !== "string" ||
+        !SHA256_RE.test(r.sha256) ||
+        !(Number.isSafeInteger(r.seq) && (r.seq as number) >= 1) ||
+        typeof r.version !== "string" ||
+        !VERSION_RE.test(r.version)
+      )
+        return `the hold of ${h.pack} needs release { sha256, seq ≥ 1, version }`;
+      if (
+        h.reason !== undefined &&
+        (typeof h.reason !== "string" || h.reason.length > MAX_HOLD_REASON)
+      )
+        return `the hold of ${h.pack} has a reason of at most ${MAX_HOLD_REASON} characters`;
+    }
+  }
+  if (c.packChannels !== undefined) {
+    const map = c.packChannels;
+    if (
+      !isRecord(map) ||
+      Object.keys(map).length === 0 ||
+      Object.keys(map).length > MAX_PACK_CHANNEL_MAP ||
+      !Object.entries(map).every(
+        ([k, v]) =>
+          k.length <= 64 &&
+          k !== APP_DELIVERABLE_ID &&
+          PACK_CHANNELS_KEY_PATTERN.test(k) &&
+          isCanonicalChannelName(v),
+      )
+    )
+      return `content.packChannels maps 1 to ${MAX_PACK_CHANNEL_MAP} pack ids or prefixes ending in .* to a canonical channel name`;
+  }
   return null;
+}
+
+/** A packChannels map as one comparable string (keys in byte order), or null when absent. */
+function canonicalMap(
+  map: Readonly<Record<string, string>> | undefined,
+): string | null {
+  if (!map) return null;
+  return JSON.stringify(
+    Object.entries(map).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
 }
 
 /** UTF-8 bytes of a JSON value's serialisation (0 when absent). */
@@ -1057,6 +1138,24 @@ export function validateReleaseDescriptor(
           "invalid_descriptor_content",
           `${e.pack} is not a pack deliverable this product declares.`,
         );
+    for (const [i, h] of (desc.content.holds ?? []).entries())
+      if (!packs.has(h.pack))
+        err(
+          `/content/holds/${i}/pack`,
+          "invalid_descriptor_content",
+          `${h.pack} is not a pack deliverable this product declares.`,
+        );
+    // The mapping is the manifest's, stamped as declared: a release cannot route packs on its own.
+    if (
+      app.content &&
+      canonicalMap(desc.content.packChannels) !==
+        canonicalMap(app.content.packChannels)
+    )
+      err(
+        "/content/packChannels",
+        "invalid_descriptor_content",
+        `content.packChannels must equal .pkey/release's deliverables.app.content.packChannels (${canonicalMap(app.content.packChannels) ?? "none"}).`,
+      );
   }
   for (const [bi, b] of desc.builds.entries())
     for (const [ei, e] of (b.embeds ?? []).entries())

@@ -1889,6 +1889,54 @@ blob store, and stores it. What the Worker newly does is parse CI-supplied bytes
   denial of publish, not a takeover: a repo writer who pushes the tag first makes that pack
   version's publish refuse with `release_exists` (409).
 
+**Pack-set resolution (P4-12).** Release now resolves `compatible` and `standalone` packs into
+stored sets (`release_sets`) on every publish, pointer move, floor change, yank and resync. The
+Worker still signs nothing; what changes:
+
+- **What resolution reads, and who controls it.** A pack release's `contentApi` range,
+  dependencies (`requires.packs`) and `conflicts` are read from its CI-signed record (the
+  variants' reserved members, mirrored into `release_builds` at ingest), never from the request,
+  so a push cannot re-range a release already published. Holds are the signed `content.holds` of
+  the app record (`descriptor-mismatch` holds the descriptor to it), mirrored into
+  `release_holds` and never edited. Floors per contentApi line (`release_pack_floors`) are
+  operator-owned (the admin PUT, `source = 'admin'`); no resync and no CI route writes them. But a
+  pack's **binding, declared variants, channels and `required`** come from the pushed manifest
+  (`release_deliverables.def_json`, rewritten on every resync), as does the app's
+  `packChannels`: a repo writer can, by pushing, move a pack between pinned and resolved, change
+  which variants a set is resolved for, which channels a pack's releases may use and whether an
+  app publish insists on it. None of that can put an unsigned release in a set: every member is a
+  CI-signed pack record, so P4-13's feed carries only signed records and the two-signer property
+  holds.
+- **A floor or a yank is never refused because of resolution.** A floor that leaves a line empty
+  is the operator's deliberate block (`unsatisfied: content-floor`); and a resolution that FAILS
+  (its bound, or an error) never refuses the yank, unyank, floor change, pointer move or resync
+  that triggered it. It fails closed instead: the product's stored sets are cleared (so no stale
+  set, which may still hold the release just yanked, survives), an audit row
+  (`release.pack_sets.failed`) is written, and the route answers `packSets: {ok: false, reason}`.
+  A publish whose resolution fails is refused (`pack-sets-bound`).
+- **Concurrent triggers cannot store an older resolution.** Each write claims the product's
+  `release_set_state` generation it read before resolving, in the same batch as its rows; a
+  writer that finds it moved writes nothing and re-resolves once.
+- **Bounded computation and memory per request.** Resolution is pure computation over D1 rows
+  inside the triggering request. Variants are projected per group of packs (packs with the same
+  axes, merged across dependencies and conflicts), so rows grow as the sum over groups, not the
+  product over every pack's axes; at most `MAX_SELECTORS` (4,096) rows per product, and ONE work
+  budget, `MAX_RESOLUTION_WORK` (1,000,000 work units), for the whole resolution (not per
+  problem): grouping, stage candidates, building each candidate's constraints, every dependency
+  probe and range check of the pruning pass, the component split and every solver try are all
+  charged. Measured on Node 22, the adversarial cases (64 packs × 200 releases with 63
+  dependencies each, exhaustive searches over dependency chains, 64-entry conflict lists, three
+  coupled 16-value axes, 500 live app releases × 4,000 rows) spend the budget, or finish, in
+  15–60 ms with under 25 MB of heap. A CI publish runs one resolution (its check's, reused to
+  store); the GitHub sync path can run two for a descriptor it ingests (the descriptor's check,
+  then the sync's own re-resolution). A policy change clears the stored sets in its own batch, so
+  even a CPU kill before the re-resolution leaves no stale set. The inputs
+  are bounded already: at most 64 declared packs, 32 variant combinations each, and conflicts and
+  dependencies lists of at most 64. A repo writer who can publish can make resolution slow only up
+  to those bounds, and only for their own product.
+- **Release never reads Distribution.** Which app releases are live is the channel floor's
+  answer, not store availability, so the chain release ← distribution ← update stays one-way.
+
 **Pack publish lint (P4-03).** A v1 pack is data-only (S-07 row 13: App Review 2.5.2, Play's
 interpreted-code rule and Microsoft Store 10.2.2 forbid downloaded code on store builds), and
 `pkey release publish` is the first place that is enforced: besides script files, native
@@ -2160,7 +2208,10 @@ domain-separation note in the audit report — the two realms share HMAC key mat
 a CI scope is added, the publisher policy gains a field, a manifest is allowed to set any part of
 it beyond the workflow and environment, or `UPLOAD_CREDENTIAL_ACTIONS` changes (P2-02); a new
 way to earn a blob ref is added (P4-02's stage round is the second), or the Worker's index bound
-(`MAX_PUBLISHED_INDEX_BYTES`) is raised; a route other than the blob route serves a pack's object
+(`MAX_PUBLISHED_INDEX_BYTES`) is raised; pack-set resolution reads a new input, an input moves
+between signed, operator-owned and manifest-owned, a resolution failure is allowed to refuse an
+operator action or to leave stored sets in place, or its bounds (`MAX_SELECTORS`,
+`MAX_RESOLUTION_WORK`) are raised (P4-12); a route other than the blob route serves a pack's object
 or reads a `gated/` key, a ref kind other than `pack-upload` or `pack-object` authorises a
 `gated/` key, or a gated object is authorised by anything but the pack's current
 `dist_access.entitlement` (P4-05);
