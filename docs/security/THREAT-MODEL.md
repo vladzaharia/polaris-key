@@ -818,7 +818,10 @@ writer can push.
   (fails open), check delivery access on every request, and keep the built model in the feed
   cache under the feeds' stamp plus the key inventory's. A build is one selection per declared
   outlet over memoised catalog reads (bounded by `MAX_OUTLETS` and `MAX_FEED_SCAN`; a ceiling
-  test pins a ten-outlet product).
+  test pins a ten-outlet product). Release notes are repo-writer text and the cache keeps only a
+  finished answer, so the notes summary reads at most the first 8,192 characters and uses only
+  linear-time patterns (no lazy body between the `pkey:summary` markers, no `\s` at a line
+  start); a test pins 20,000-character adversarial notes finishing in well under a second.
 - **Residual.** The page is rendered from what CI and the operator recorded: a CI report can make
   a store link appear (a `live` claim) or a self-hosted release disappear, as for the feeds
   above; a wrong listing is the repo writer's own text, shown escaped. A visitor reaching the

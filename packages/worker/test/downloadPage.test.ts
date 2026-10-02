@@ -827,6 +827,45 @@ describe("notesSummary", () => {
     expect(notesSummary(null)).toBeNull();
     expect(notesSummary("x".repeat(700))!.length).toBe(601);
   });
+
+  it("strips list markers, headings, links and comments; a split marker pair still counts", () => {
+    expect(
+      notesSummary(
+        "<!--\n  pkey:summary\n-->\n- **Faster** saves\n<!-- note -->\n<!-- /pkey:summary -->",
+      ),
+    ).toBe("Faster saves");
+    expect(notesSummary("  # Title\n\nBody")).toBe("Title");
+    // A closing marker before the opening one is not a block.
+    expect(notesSummary("<!-- /pkey:summary -->x<!-- pkey:summary -->")).toBe(
+      "x",
+    );
+  });
+
+  // Release notes are repo-writer text (a descriptor allows 20,000 code points, a GitHub release
+  // body more) and the summary is built on the public, unauthenticated request path. Each input
+  // here took seconds to minutes against the earlier single-pattern implementation.
+  it("runs in linear time on adversarial notes", () => {
+    const n = 20_000;
+    const inputs = [
+      `<!-- pkey:summary -->${" ".repeat(n)}`,
+      `<!-- pkey:summary -->${" ".repeat(n)}x`,
+      `<!-- pkey:summary -->${"\n".repeat(n)}`,
+      `<!-- pkey:summary -->x${"\n".repeat(n)}<!-- /pkey:summary -->`,
+      `x${"\n".repeat(n)}`,
+      `${"\n ".repeat(n)}x`,
+      "[".repeat(n),
+      "<!--".repeat(n),
+      `${"<!-- pkey:summary ".repeat(n / 10)}`,
+      `- ${" ".repeat(n)}`,
+      "\t".repeat(n) + "#",
+      "x".repeat(200_000),
+    ];
+    for (const notes of inputs) {
+      const started = performance.now();
+      notesSummary(notes);
+      expect(performance.now() - started).toBeLessThan(250);
+    }
+  });
 });
 
 // ── Configuration ────────────────────────────────────────────────────────────────────────────

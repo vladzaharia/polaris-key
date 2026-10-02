@@ -297,28 +297,63 @@ export function httpsUrl(v: unknown): string | null {
   }
 }
 
+/** The most of a release's notes {@link notesSummary} looks at. Notes are product-supplied
+ *  (up to 20,000 code points in a descriptor, longer from a GitHub release body) and the summary
+ *  is built on the public, unauthenticated request path, so the input is capped before any
+ *  pattern runs. */
+export const NOTES_SCAN_MAX = 8192;
+
+const SUMMARY_OPEN = /<!--[ \t\r\n]*pkey:summary[ \t\r\n]*-->/;
+const SUMMARY_CLOSE = /<!--[ \t\r\n]*\/pkey:summary[ \t\r\n]*-->/;
+
+/** Drops every `<!-- … -->` comment (an unclosed one runs to the end) with one forward scan. */
+function stripComments(s: string): string {
+  let out = "";
+  let at = 0;
+  for (;;) {
+    const open = s.indexOf("<!--", at);
+    if (open < 0) return out + s.slice(at);
+    out += s.slice(at, open);
+    const close = s.indexOf("-->", open + 4);
+    if (close < 0) return out;
+    at = close + 3;
+  }
+}
+
+/** Light Markdown stripped to plain text. Every pattern here is linear in its input: no nested
+ *  or adjacent unbounded quantifiers over overlapping classes, and line-start patterns match
+ *  only spaces and tabs (a `\s` there would cross newlines and go quadratic). */
+function stripMarkdown(s: string): string {
+  return stripComments(s)
+    .replace(/\[([^\]\n]{1,200})\]\([^)\n]{0,500}\)/g, "$1")
+    .replace(/[*_`]+/g, "")
+    .replace(/^[ \t]*[-*+][ \t]+/gm, "")
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, "")
+    .trim();
+}
+
 /** A plain-text summary of release notes: the `pkey:summary` block, else the first paragraph
- *  above the first `## ` heading, light Markdown stripped, at most 600 characters. */
+ *  above the first `## ` heading, light Markdown stripped, at most 600 characters. Only the first
+ *  {@link NOTES_SCAN_MAX} characters are read, and every step runs in linear time. */
 export function notesSummary(notes: string | null): string | null {
   if (!notes) return null;
-  const strip = (s: string) =>
-    s
-      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-      .replace(/[*_`]+/g, "")
-      .replace(/^\s*[-*+]\s+/gm, "")
-      .replace(/^\s*#{1,6}\s+/gm, "")
-      .replace(/<!--[\s\S]*?-->/g, "")
-      .trim();
-  const fenced = notes.match(
-    /<!--\s*pkey:summary\s*-->\s*([\s\S]*?)\s*<!--\s*\/pkey:summary\s*-->/,
-  )?.[1];
-  let text = fenced && fenced.trim() ? strip(fenced) : "";
+  const scan = notes.slice(0, NOTES_SCAN_MAX);
+  let text = "";
+  // The markers are found one at a time (an exec, then a second exec on the rest), never by
+  // one pattern with a lazy body between them: that form backtracks super-linearly when an
+  // opening marker is followed by a long run of whitespace and no closing marker.
+  const open = SUMMARY_OPEN.exec(scan);
+  if (open) {
+    const rest = scan.slice(open.index + open[0].length);
+    const close = SUMMARY_CLOSE.exec(rest);
+    if (close) text = stripMarkdown(rest.slice(0, close.index));
+  }
   if (!text) {
-    const head = notes.split(/^##\s/m)[0] ?? "";
+    const head = scan.split(/^##[ \t]/m)[0] ?? "";
     text =
       head
-        .split(/\n\s*\n/)
-        .map(strip)
+        .split(/\n[ \t\r]*\n/)
+        .map(stripMarkdown)
         .find((p) => p.length > 0) ?? "";
   }
   if (!text) return null;
