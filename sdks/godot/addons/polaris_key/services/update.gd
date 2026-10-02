@@ -18,6 +18,11 @@ extends RefCounted
 ##   appcast_url(channel, arch)    the Sparkle feed URL out of this session's discovery document,
 ##                                 or "" before discover() or with Update off. Godot has no
 ##                                 Sparkle; it exists for parity
+##   outlet()                      the outlet decide() uses: {id, kind, subkind} (Node and Python
+##                                 `update.outlet`, Swift `outlet()`; PKeyCore.update_outlet())
+##   detected()                    the run-time detection result {kind, subkind, confidence,
+##                                 source}, or null when PKeyOptions.update_outlet names the
+##                                 outlet or update_detect is off (PKeyCore.detected_outlet())
 ##
 ## Usable before configure() (like `config`), so a signal connected early survives a later
 ## configure(); every call then answers `not-configured`.
@@ -72,6 +77,22 @@ func attach(core: PKeyCore) -> void:
 
 func _core() -> PKeyCore:
 	return _core_ref.get_ref() as PKeyCore if _core_ref != null else null
+
+
+## The outlet decide() uses (PKeyCore.update_outlet()): {id, kind, subkind}, `unknown` before
+## configure().
+func outlet() -> Dictionary:
+	var core := _core()
+	if core == null:
+		return {"id": null, "kind": PKeyDecision.OUTLET_UNKNOWN, "subkind": null}
+	return core.update_outlet()
+
+
+## The run-time outlet detection result (PKeyCore.detected_outlet()), or null when the host names
+## the outlet, update_detect is off, or before configure().
+func detected() -> Variant:
+	var core := _core()
+	return core.detected_outlet() if core != null else null
 
 
 ## The newest build on `channel` and whether this build is behind it. A coroutine.

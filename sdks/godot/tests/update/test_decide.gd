@@ -258,6 +258,7 @@ func _detected(t: PKeyTestContext) -> void:
 	t.check("detected: an App Store receipt and leaf move the direct stamp to app-store (its store entry is live at 1.4.0: up-to-date, never the direct dmg)", r.ok and r.decision.get("action") == "none" and r.decision.get("reason") == "up-to-date", str(r))
 	t.check("detected: the attested source is reported", sdk.core.detected_outlet().get("source") == "macos.masReceipt" and sdk.core.update_outlet() == {"id": null, "kind": "app-store", "subkind": null})
 	t.check("detected: the device report carries the detected kind", sdk.core.reported_outlet() == "app-store")
+	t.check("detected: PolarisKey.update.outlet() and detected() are the core's update_outlet() and detected_outlet()", sdk.update.outlet() == sdk.core.update_outlet() and sdk.update.detected() == sdk.core.detected_outlet())
 	sdk.queue_free()
 
 	_serve(feeds["feed-valid"]["jws"])
@@ -272,6 +273,7 @@ func _detected(t: PKeyTestContext) -> void:
 	got[0].core.outlet_env = _mac_install(true)
 	r = await got[0].update.decide()
 	t.check("detected: the host's update_outlet wins over detection", r.ok and r.decision.get("action") == "binary" and got[0].core.detected_outlet() == null, str(r))
+	t.check("detected: with a host outlet update.detected() is null and update.outlet() is the host's", got[0].update.detected() == null and got[0].update.outlet().get("id") == "direct")
 	got[0].queue_free()
 
 

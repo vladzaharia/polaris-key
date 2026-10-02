@@ -249,7 +249,8 @@ Where this brief and the code disagreed when P3-11 was built, the code won:
   `update_detect` in Godot (beside `update_outlet`); the readers take a fakeable environment
   (`outletEnvironment` / `outlet_environment` / `PKeyCore.outlet_env`); the result is exposed as
   `outlet` and `detected` (`client.update.outlet`/`.detected`, `adapter.outlet`/`.detected`,
-  Swift `outlet()`/`detected()`, Godot `update_outlet()`/`detected_outlet()`). Node adds
+  Swift `outlet()`/`detected()`, Godot `PolarisKey.update.outlet()`/`.detected()`, which
+  delegate to `PKeyCore.update_outlet()`/`detected_outlet()`, kept for the device report). Node adds
   `packageName` for `node.packageManager`'s identity condition. Every SDK exports
   `detectionStamp`/`detection_stamp`, the build stamp as detection reads it.
 - **`homebrewFormula`'s pattern stays [I].** `^[a-z0-9][a-z0-9.@+_-]{0,99}$` as plan §3 wrote it;
