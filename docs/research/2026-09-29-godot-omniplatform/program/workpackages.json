@@ -1681,7 +1681,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": ["plans/P4-13.md §2.5 §2.6 §5"],
-      "status": "todo",
+      "status": "done",
       "planRef": "P4-13",
       "id": "P4-24",
       "title": "Content decision, feed pack members and revocations in Godot",
