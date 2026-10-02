@@ -35,12 +35,15 @@ def build_snapshot(
     cache: "CacheManager",
     probes: Optional[List["ProbeDeclaration"]] = None,
     caps: Optional[Callable[[], List[str]]] = None,
+    pack_set_id: Optional[Callable[[], Optional[str]]] = None,
 ) -> Dict[str, Any]:
     """Assemble the report body from re-verified content plus this host's software facts.
 
     ``caps`` gives the feature ids ``supports()`` answers Supported for (P1b-10, PARITY
     §2.2). It rides EVERY report: the Worker overwrites the stored report each time, so a
-    list sent only when it changed would vanish from the next one."""
+    list sent only when it changed would vanish from the next one. ``pack_set_id`` gives the
+    active pack set's id (plans/P4-01.md §2.11), sent as ``content: {packSetId}`` when the host
+    has packs."""
     config: Dict[str, Any] = {}
     entitlements: Dict[str, Any] = {}
     config_doc = cache.config_doc()
@@ -70,6 +73,13 @@ def build_snapshot(
         except Exception:
             # Diagnostic like the facts: never able to fail a sync.
             pass
+    if pack_set_id is not None:
+        try:
+            set_id = pack_set_id()
+        except Exception:
+            set_id = None
+        if set_id is not None:
+            out["content"] = {"packSetId": set_id}
     return out
 
 

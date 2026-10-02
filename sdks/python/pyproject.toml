@@ -21,6 +21,10 @@ classifiers = [
 dependencies = [
   "cryptography>=41",
   "httpx>=0.24",
+  # Packs (plans/P4-01.md §2.7): zstd for every strategy. CPython 3.14+ has `compression.zstd`;
+  # below it `zstandard` (BSD-3) is a hard dependency, never an extra (PARITY allows no N/A for
+  # packs.apply.full).
+  "zstandard>=0.22; python_version < '3.14'",
 ]
 
 [project.optional-dependencies]

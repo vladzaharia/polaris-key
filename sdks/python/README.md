@@ -22,7 +22,8 @@ pip install polaris-key
 pip install "polaris-key[keyring,click,typer]"
 ```
 
-Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`.
+Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`, and below Python 3.14 `zstandard`
+(packs decode zstd; 3.14 uses the stdlib's `compression.zstd`).
 
 ## Quickstart
 
@@ -476,6 +477,69 @@ evidence the outlet is `unknown`, which is never offered an update. `client.upda
 `compare_versions`) are exported for hosts that drive their own transport, and
 `tests/test_conformance.py` and `tests/test_update_matrix.py` run every `feedCases`,
 `releaseRecordCases` and `update-matrix.json` vector through them.
+
+## Packs (`client.update.packs`)
+
+Packs are content delivered beside the app (plans/P4-01.md; CONTENT §10): each release is a
+CI-signed `kind: pack` record, pinned by the app build's **content stamp**
+(`pkey-content.json`, written by CI and shipped among the app's own read-only resources). A host
+without a stamp has no packs.
+
+```python
+from polaris_key import PolarisKeyClient, UpdateClientOptions
+from polaris_key import EmbeddedPack, PacksOptions
+
+client = PolarisKeyClient.create(
+    product_slug="djdl",
+    version="1.2.0",
+    trust=TRUST,
+    expected_services=["release", "distribution", "update"],
+    update=UpdateClientOptions(
+        pinned_release_keys={"<your-release-key-id>": "<your-release-key-b64url>"},
+        outlet="direct",
+        packs=PacksOptions(
+            content_stamp="/path/to/app/resources/pkey-content.json",
+            embedded=[EmbeddedPack(path="/path/to/app/resources/pkey_packs/djdl.l10n")],
+            axes={"locale": ["fr", "en"]},      # variant preferences, best first
+        ),
+    ),
+)
+client.discover()
+
+off = client.update.packs.on(lambda e: print(e.phase, e.done, e.total))
+client.update.packs.ensure(["djdl.l10n"])          # fetch, verify, commit, activate
+client.update.packs.path("djdl.l10n")              # the running tree's directory
+client.update.packs.state().active                 # also previous, inflight, running, state_issue
+client.update.packs.confirm()                      # this boot is healthy
+client.update.packs.rollback("djdl.l10n")          # back to the install it replaced
+```
+
+What `ensure` does, per pack: the stamp's pin, the record fetched by hash from
+`release.endpoints.record` and verified against `pinned_release_keys` with `pin.kind: "pack"`,
+a handler for its `type` (`files.tree` is built in; `register_handler` adds more), the
+licence's entitlement, `select_variant`, the files index, `plan_target` and `plan`; then a
+journal, each object fetched from `distribution.endpoints.blobs` with `Range`/`If-Range` (a
+dropped download resumes on the next `ensure`, the staged bytes re-hashed, never trusted), the
+applier (`full`, `file` or a `zstd-patch-from` delta), and the commit: the payload moves into
+`<data dir>/packs/store/` (excluded from backups) before an atomic, fsynced pointer swap in
+`state.json`. Failures raise `PackError` with a registered code (`not-configured`,
+`pack-not-pinned`, `record-rejected`, `pack-type-unsupported`, `pack-not-entitled`,
+`pack-no-variant`, a `plan-*` or applier code, `network-error`, `pack-state-unreadable`).
+
+The state is never trusted from disk: every entry's record is re-verified and its payload
+re-hashed at load. A `state.json` that does not parse is held aside as `state.json.torn` and
+garbage collection waits (`state().state_issue == "torn"`) until `recover_state()`; one that
+cannot be read at all (`"unreadable"`) blocks every write until the process restarts with it
+readable. The running set's `packSetId` rides on `devices/report` as `content`.
+
+zstd comes from the stdlib's `compression.zstd` on 3.14 (`ZstdDict(base, is_raw=True).as_prefix`
+for deltas) and from `zstandard` below it (`DICT_TYPE_RAWCONTENT`); a start-up probe gates
+`zstd-patch-from` (`client.update.packs.zstd()`), and every delta frame's window is checked from
+its header before it is decoded. The pure functions (`parse_files_index`, `check_paths`,
+`tree_digest`, `plan`, `select_variant`, `plan_target`, `apply_full`, `apply_file`, `apply_delta`,
+`verify_marker`, `pack_set_id`, `parse_content_stamp`, `frame_window`) live in
+`polaris_key.update.packs`; `tests/test_content_conformance.py` and `tests/test_plan_matrix.py`
+run the content corpus and `plan-matrix.json` through them.
 
 ## Trust, caching, and the offline gate
 

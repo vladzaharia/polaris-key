@@ -234,6 +234,9 @@ class PolarisKeyClient:
             options=update,
         )
 
+        # `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).
+        self.devices.pack_set_id = self.update.packs.pack_set_id
+
         self._discovery_doc: Optional[Dict[str, Any]] = None
         # The detectors behind the table's conditional N/As (P1b-10). Checked against the
         # generated table here, so a manifest that gains or loses one fails loudly.
@@ -408,7 +411,9 @@ class PolarisKeyClient:
         if not token:
             return
         report_snapshot(
-            self.core, token, build_snapshot(self._cache, self._probes, self.caps)
+            self.core,
+            token,
+            build_snapshot(self._cache, self._probes, self.caps, self.update.packs.pack_set_id),
         )
 
     def _on_license_acquired(self) -> None:
