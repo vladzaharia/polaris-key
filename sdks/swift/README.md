@@ -581,6 +581,18 @@ try await update.packs.confirm()                             // this boot is hea
 - **Handlers.** `registerHandler(_:)` adds a type (`layout` `tree` or `container`, `activation`
   `hot` or `restart`, `supports(formatVersion)`, optional `activate`/`deactivate`).
 
+### Source changes (P4-23)
+
+The content decision changes some public Swift signatures. Callers that switch exhaustively or
+destructure positionally need updating:
+
+- `UpdateDecision` gains a `.packs` case.
+- `.binary`, `.store`, `.platform` and `.blocked` gain a trailing `contentBlock: String?`
+  (default `nil`); positional patterns need one more `_`.
+- `binary`'s `prestage` is now `[PackTarget]`.
+- `RESERVED_RECORD_KINDS` is removed (`revocation` is now a real record kind).
+- `runBootFetch` and `PacksClient.bootFetch` return a 3-tuple that adds `background`.
+
 ## Channels
 
 The channel names are WIRE-CONTRACT-V3 §5.1's: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and a

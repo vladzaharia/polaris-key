@@ -332,8 +332,9 @@ def release_record_claims(payload: Any, *, expected_aud: str) -> bool:
     """Client step 14 over a verified record payload: true when every claim of §2.4 holds.
 
     A ``kind: pack`` record must pass the pack claims (plans/P4-01.md §2.3) and a ``kind: app``
-    record's ``content`` and ``builds[].embeds`` the app ones (§2.4); reserved kinds
-    (``revocation``, ``delegation``) and unknown kinds keep the common claims only. The
+    record's ``content`` and ``builds[].embeds`` the app ones (§2.4); the ``revocation`` kind
+    (checked further by ``verify_revocation``), the reserved ``delegation`` kind and unknown kinds
+    keep the common claims only. The
     cross-check refuses them where an app record is expected. Never raises.
     """
     if not isinstance(payload, dict):
