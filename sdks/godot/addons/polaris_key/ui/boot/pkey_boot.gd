@@ -20,8 +20,12 @@ extends PKeyUiView
 ## Options for `run()`: allow_offline (default true), allow_grace (true), required_packs ([],
 ## accepted; nothing installs packs until P4-08), sync_timeout_seconds (20, or 45 on a build
 ## without threads, where a bundle verify runs in frame slices: never under 10 s natively or 30 s
-## sliced, S-04), offer_enrollment (false), release_url (""), options (a PKeyOptions used when
-## PolarisKey is not configured yet), host (replaces PKeyBootHost: tests, a custom pipeline).
+## sliced, S-04), offer_enrollment (false), release_url (""), keep_update_prompt (true: see the
+## property), options (a PKeyOptions used when PolarisKey is not configured yet), host (replaces
+## PKeyBootHost: tests, a custom pipeline).
+##
+## The update prompt sits on a plain full-rect overlay that takes no input, so its answer is a
+## strip at the top: a mandatory or blocked answer never covers the boot view or the game.
 ##
 ## The signals are the machine's emits (stage-matrix.json `vocabulary.emits`); `boot_ready` is not
 ## `ready` because a Control cannot redeclare `ready` (plan decision 10).
@@ -57,6 +61,12 @@ const PROGRESS_AFTER_MSEC := 250
 @export var show_default_view := true
 ## Free this node once READY has been announced (PolarisKey.boot() sets it on the view it makes).
 var free_on_ready := false
+## When this node is freed at READY with an update answer on screen, hand the prompt to the
+## parent (PolarisKey.boot()'s CanvasLayer) so it stays over the game: a mandatory or blocked
+## answer stays until the build changes, a dismissable one until the player dismisses it. The
+## `keep_update_prompt` option of run() overrides it (false: the game shows its own prompt, which
+## replays the answer from PolarisKey.update.last_available).
+var keep_update_prompt := true
 
 ## The machine's state (PKeyStages), the last stop's result, and the host doing the work.
 var state: Dictionary = PKeyStages.initial_boot_state()
@@ -64,6 +74,8 @@ var result: PKeyBootResult = null
 var host = null
 var stages: Array = []
 var update_result: PKeyResult = null
+## The prompt handed over at READY (see keep_update_prompt), or null.
+var kept_prompt: PKeyUpdatePrompt = null
 var rolled_back := false
 var verify_progress := -1.0
 
@@ -92,6 +104,7 @@ var _retry: Button
 var _play_offline: Button
 var gate: PKeyGateView
 var prompt: PKeyUpdatePrompt
+var _overlay: Control
 
 
 func _build() -> void:
@@ -133,10 +146,18 @@ func _build() -> void:
 	gate.managed_retry = true
 	gate.retry_requested.connect(retry)
 	add_child(gate)
+	# PKeyBoot is a Container, which ignores a child's anchors: the prompt lives on a plain
+	# full-rect Control that takes no input, so its top-wide anchors hold and a locked answer is
+	# a strip at the top, never a sheet over the boot view or the game behind it.
+	_overlay = Control.new()
+	_overlay.name = "Overlay"
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_overlay)
 	prompt = PKeyUpdatePrompt.new()
 	prompt.auto_sdk = false
 	prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	add_child(prompt)
+	_overlay.add_child(prompt)
 	set_process(false)
 
 
@@ -334,10 +355,32 @@ func _stopped() -> void:
 	if outcome == READY and free_on_ready:
 		_running = false
 		var owner_layer := get_parent()
-		if owner_layer is CanvasLayer:
+		if _keep_prompt(owner_layer):
+			queue_free()
+		elif owner_layer is CanvasLayer:
 			owner_layer.queue_free()
 		else:
 			queue_free()
+
+
+## Hand the visible update prompt to `to` (the layer or parent this node is freed from) so it
+## outlives the boot view; false when there is nothing to keep.
+func _keep_prompt(to: Node) -> bool:
+	if to == null or not bool(_opts.get("keep_update_prompt", keep_update_prompt)) or not prompt.visible:
+		return false
+	var kept := prompt
+	_overlay.remove_child(kept)
+	to.add_child(kept)
+	kept.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE, Control.PRESET_MODE_MINSIZE)
+	kept.follow_updates()
+	if not kept.model.get("locked", false):
+		kept.dismissed.connect(kept.queue_free)
+	prompt = PKeyUpdatePrompt.new()
+	prompt.auto_sdk = false
+	prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_overlay.add_child(prompt)
+	kept_prompt = kept
+	return true
 
 
 ## The verified-bundle progress (PolarisKey.verify_progress) for the bar while a sliced verify

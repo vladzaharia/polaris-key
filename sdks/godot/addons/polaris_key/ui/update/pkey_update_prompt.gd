@@ -38,6 +38,7 @@ var _action: Button
 var _dismiss: Button
 var _bound := false
 var _covering := false
+var _fit_queued := false
 
 
 func _build() -> void:
@@ -48,13 +49,49 @@ func _build() -> void:
 	var actions := hbox(_card, "Actions")
 	_action = button(actions, "Action", _on_action, "PKeyPrimary")
 	_dismiss = button(actions, "Dismiss", _on_dismiss)
+	minimum_size_changed.connect(_queue_fit)
 
 
 func _ready() -> void:
 	super()
-	if sdk != null and not _bound and sdk.get("update") != null:
+	follow_updates()
+
+
+# A Control grows to its minimum size but never shrinks back: a strip laid out while its parent
+# was still narrow (wrapped text, a tall strip) would stay tall once the parent widens. Outside a
+# Container (which sizes it), a banner strip is trimmed to its own minimum height each time that
+# height changes.
+func _queue_fit() -> void:
+	if not _fit_queued:
+		_fit_queued = true
+		_fit.call_deferred()
+
+
+func _fit() -> void:
+	_fit_queued = false
+	if _covering or not is_inside_tree() or get_parent() is Container or anchor_top != anchor_bottom:
+		return
+	var h := get_combined_minimum_size().y
+	if size.y > h:
+		# Offsets, not `size`: setting the size of a wide-anchored Control warns and is undone.
+		if grow_vertical == Control.GROW_DIRECTION_BEGIN:
+			offset_top = offset_bottom - h
+		else:
+			offset_bottom = offset_top + h
+
+
+## Follow PolarisKey.update.update_available from now on, and show the answer already announced
+## (PolarisKey.update.last_available) when this prompt has none yet: a prompt added after the boot
+## still shows a mandatory or blocked answer. Called from `_ready`; safe to call again.
+func follow_updates() -> void:
+	if sdk == null or sdk.get("update") == null:
+		return
+	if not _bound:
 		_bound = true
 		sdk.update.update_available.connect(show_result)
+	var last = sdk.update.get("last_available")
+	if result == null and last is PKeyResult:
+		show_result(last)
 
 
 func show_result(r: PKeyResult) -> void:
@@ -87,14 +124,19 @@ func _render() -> void:
 	var as_modal := modal and not locked
 	if as_modal:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		size_flags_vertical = Control.SIZE_FILL
 		theme_type_variation = ""
 		_covering = true
 	else:
-		# Never left full-rect: a locked answer must not cover the running game.
+		# Never left full-rect: a locked answer must not cover the running game. The anchors hold
+		# under a plain Control or a CanvasLayer; a Container parent ignores anchors, so the
+		# banner also asks a container for its own height only, at the top.
 		if _covering:
 			set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 			_covering = false
+		size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		theme_type_variation = "PKeyBanner"
+		_queue_fit()
 	show_text(_title, t.text(model["title"]) if model["title"] != "" else "")
 	show_text(_body, t.text(model["body"], model["body_arg"]) if model["body"] != "" else "")
 	show_text(_action, t.text(model["action"]) if model["action"] != "" else "")

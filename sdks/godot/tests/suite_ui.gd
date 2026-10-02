@@ -183,6 +183,7 @@ func _copy(t: PKeyTestContext, all: Array) -> void:
 func _behaviour(t: PKeyTestContext) -> void:
 	await _settings(t)
 	await _update_prompt(t)
+	await _never_covering(t)
 	_activation_copy(t)
 	_sign_in_copy(t)
 	await _gate(t)
@@ -261,6 +262,62 @@ func _update_prompt(t: PKeyTestContext) -> void:
 	t.check("update: a v3 answer on a Steam build offers no download page", m["action"] == "" and m["visible"])
 	m = PKeyUpdatePromptController.model(PKeyVersionCheck.of("2.0.0", "", "https://example.com/r", true), "direct")
 	t.check("update: a v3 answer on a direct build opens its release page", m["action_url"] == "https://example.com/r")
+
+
+# A locked update answer and grace's banner are strips, measured: a Container parent ignores a
+# child's anchors, so `anchor_bottom == 0` proves nothing once the view sits in PKeyBoot, the
+# gate or a game's own layout. Each check compares rendered heights after a layout pass.
+func _never_covering(t: PKeyTestContext) -> void:
+	# The headless runner's window is tiny; measure on a game-sized screen.
+	var saved_size := _tree().root.size
+	_tree().root.size = Vector2i(1152, 900)
+	var rel := {"version": "1.5.0", "seq": 15, "sha256": "ab"}
+	var answers := {
+		"mandatory": _sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false}),
+		"blocked": _sc.update_check({"action": "blocked", "reason": "app-floor", "discardStaged": false}),
+	}
+	for kind in answers:
+		var boot := PKeyBoot.new()
+		_sc.add(boot)
+		boot.prompt.modal = true
+		boot.prompt.show_result(answers[kind])
+		boot.refresh_view()
+		await _tree().process_frame
+		await _tree().process_frame
+		var pr := boot.prompt.get_global_rect()
+		var br := boot.get_global_rect()
+		var dismiss := boot.prompt.get_node("Body/Actions/Dismiss") as Button
+		t.check("never covering: a %s answer in PKeyBoot is a strip at the top" % kind, boot.prompt.is_visible_in_tree() and boot.prompt.presentation() == "banner" and pr.size.y > 0.0 and pr.size.y < br.size.y * 0.25 and is_equal_approx(pr.position.y, br.position.y), "prompt %s in boot %s" % [pr, br])
+		t.check("never covering: a %s answer in PKeyBoot has no dismiss" % kind, not dismiss.visible)
+		t.check("never covering: PKeyBoot's prompt overlay takes no input", boot.get_node("Overlay").mouse_filter == Control.MOUSE_FILTER_IGNORE)
+		_free(boot)
+	# A game's own layout: the prompt inside a container still asks only for its own height.
+	var frame := PanelContainer.new()
+	frame.size = Vector2(900, 1400)
+	_tree().root.add_child(frame)
+	var p := PKeyUpdatePrompt.new()
+	p.auto_sdk = false
+	p.modal = true
+	frame.add_child(p)
+	p.show_result(answers["blocked"])
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("never covering: a locked answer inside a game's container is a strip", p.size.y > 0.0 and p.size.y < frame.size.y * 0.25, str(p.get_rect()))
+	frame.get_parent().remove_child(frame)
+	frame.queue_free()
+	# Grace: the gate shows only the banner strip and lets the game take its input.
+	var g := PKeyGateView.new()
+	_sc.add(g)
+	g.show_state({"status": "grace", "grace_until": 0})
+	await _tree().process_frame
+	await _tree().process_frame
+	var slot := g.get_node("BannerSlot") as Control
+	var gr := g.get_global_rect()
+	var sr := slot.get_global_rect()
+	t.check("never covering: grace's banner is a strip at the top of the gate", slot.is_visible_in_tree() and sr.size.y > 0.0 and sr.size.y < gr.size.y * 0.25 and is_equal_approx(sr.position.y, gr.position.y), "banner %s in gate %s" % [sr, gr])
+	t.check("never covering: in grace no full-rect control catches the game's clicks", g.mouse_filter == Control.MOUSE_FILTER_IGNORE and (g.get_node("Center") as Control).mouse_filter == Control.MOUSE_FILTER_IGNORE and slot.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	_free(g)
+	_tree().root.size = saved_size
 
 
 func _activation_copy(t: PKeyTestContext) -> void:

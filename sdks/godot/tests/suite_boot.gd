@@ -11,6 +11,10 @@ extends RefCounted
 #           stage_changed sequence equals expect.stages, the final stage and outcome, PKeyBoot did
 #           a stage's work exactly once per entry, and boot() resolves with the first stop while
 #           the last boot_finished carries the row's outcome (no result for running or waiting).
+#   dropin  PolarisKey.boot() without a view (its own CanvasLayer): a mandatory or blocked update
+#           answer outlives the boot view at READY as a top-wide prompt with no dismiss that is
+#           not full-screen, keep_update_prompt false drops it, a dismissable one goes on
+#           dismiss, and a PKeyUpdatePrompt the game adds later replays update.last_available.
 #   server  PKeyBootHost against PKeyFakeServer with the real SDK: each sync class (answered 200,
 #           304, 401, 403, 429 -> ok; no answer -> offline; 5xx and a document that does not
 #           verify -> error), the keyless registration (minted, no answer, refused), an offline
@@ -38,6 +42,9 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	var groups := 0
 	if only == "" or only == "rows":
 		await _rows(t)
+		groups += 1
+	if only == "" or only == "dropin":
+		await _dropin(t)
 		groups += 1
 	if only == "" or only == "server":
 		await _server(t)
@@ -146,6 +153,97 @@ func _row(t: PKeyTestContext, row: Dictionary) -> bool:
 func _capture(sdk: Node, opts: Dictionary, out: Array) -> void:
 	var r: PKeyBootResult = await sdk.boot(opts)
 	out.append(r)
+
+
+# ── Drop-in ──────────────────────────────────────────────────────────────────────────────
+
+const SC := preload("res://tests/ui/scenarios.gd")
+
+
+## PolarisKey.boot({host}) without a view, every stage answered, decide carrying `answer`.
+func _boot_to_ready(sdk: Node, answer: PKeyResult, extra := {}) -> PKeyBootResult:
+	var host := PKeyFakeBootHost.new()
+	host.update_result = answer
+	var opts := {"host": host, "sync_timeout_seconds": 1000}
+	opts.merge(extra)
+	var first: Array = []
+	_capture(sdk, opts, first)
+	for e in [
+		{"type": "shell.done"}, {"type": "guard.done", "result": "ok"}, {"type": "sync.done", "result": "ok"},
+		{"type": "gate.status", "status": "ok"}, {"type": "decide.done", "decision": "optional"},
+		{"type": "fetch.done", "result": "ok", "installed": []}, {"type": "mount.done"},
+	]:
+		host.answer(e)
+	var tree := Engine.get_main_loop() as SceneTree
+	await tree.process_frame
+	await tree.process_frame
+	await tree.process_frame
+	return first[0] if not first.is_empty() else null
+
+
+func _dropin(t: PKeyTestContext) -> void:
+	var sc = SC.new()
+	var tree := Engine.get_main_loop() as SceneTree
+	var rel := {"version": "1.5.0", "seq": 15, "sha256": "ab"}
+	var answers := {
+		"mandatory": sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false}),
+		"blocked": sc.update_check({"action": "blocked", "reason": "app-floor", "discardStaged": false}),
+	}
+	# The headless runner's window is tiny; measure on a game-sized screen.
+	var saved_size := tree.root.size
+	tree.root.size = Vector2i(1152, 900)
+	var screen := Vector2(tree.root.get_visible_rect().size)
+	for kind in answers:
+		var sdk := PKeyTestFixtures.new_sdk()
+		var r := await _boot_to_ready(sdk, answers[kind])
+		t.check("dropin: a %s answer boots to READY (never stops play)" % kind, r != null and r.outcome == PKeyBoot.READY and r.update == answers[kind], str(r))
+		var p = sdk.boot_prompt
+		var kept: bool = p is PKeyUpdatePrompt and is_instance_valid(p) and p.is_inside_tree()
+		t.check("dropin: the boot view is gone after READY", sdk.boot_view == null or not is_instance_valid(sdk.boot_view))
+		t.check("dropin: a %s answer's prompt outlives the boot view" % kind, kept and p.is_visible_in_tree() and p.result == answers[kind])
+		if kept:
+			var rect: Rect2 = p.get_global_rect()
+			t.check("dropin: the kept %s prompt is a strip at the top, not full-screen" % kind, rect.size.y > 0.0 and rect.size.y < screen.y * 0.25 and is_equal_approx(rect.position.y, 0.0) and p.presentation() == "banner", "%s on %s" % [rect, screen])
+			t.check("dropin: the kept %s prompt has no dismiss" % kind, not (p.get_node("Body/Actions/Dismiss") as Button).visible)
+			p._on_dismiss()
+			await tree.process_frame
+			t.check("dropin: the kept %s prompt cannot be dismissed" % kind, is_instance_valid(p) and p.is_visible_in_tree())
+		# A prompt the game adds later (its own title scene) replays the announced answer.
+		sdk.update.last_available = answers[kind]
+		var own := PKeyUpdatePrompt.new()
+		own.sdk = sdk
+		tree.root.add_child(own)
+		t.check("dropin: a prompt added after the boot replays update.last_available", own.visible and own.result == answers[kind] and own.model.get("locked", false))
+		own.queue_free()
+		sdk.queue_free()
+		await tree.process_frame
+
+	# keep_update_prompt false: the game shows its own prompt, nothing stays on the layer.
+	var sdk2 := PKeyTestFixtures.new_sdk()
+	var r2 := await _boot_to_ready(sdk2, answers["blocked"], {"keep_update_prompt": false})
+	t.check("dropin: keep_update_prompt false keeps nothing", r2 != null and r2.outcome == PKeyBoot.READY and sdk2.boot_prompt == null)
+	sdk2.queue_free()
+
+	# A dismissable answer stays until the player dismisses it, then goes.
+	var sdk3 := PKeyTestFixtures.new_sdk()
+	var optional = sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false})
+	await _boot_to_ready(sdk3, optional)
+	var p3 = sdk3.boot_prompt
+	var ok3: bool = p3 is PKeyUpdatePrompt and p3.is_visible_in_tree() and (p3.get_node("Body/Actions/Dismiss") as Button).visible
+	t.check("dropin: a dismissable answer stays with its dismiss", ok3)
+	if ok3:
+		p3._on_dismiss()
+		await tree.process_frame
+		await tree.process_frame
+		t.check("dropin: a dismissed kept prompt is freed", not is_instance_valid(p3) and sdk3.boot_prompt == null)
+	sdk3.queue_free()
+
+	# No answer to show: the whole layer goes at READY, as before.
+	var sdk4 := PKeyTestFixtures.new_sdk()
+	var r4 := await _boot_to_ready(sdk4, null)
+	t.check("dropin: with no answer nothing stays after READY", r4 != null and r4.outcome == PKeyBoot.READY and sdk4.boot_prompt == null and sdk4.get_node_or_null("PKeyBootLayer") == null)
+	sdk4.queue_free()
+	tree.root.size = saved_size
 
 
 # ── Server ───────────────────────────────────────────────────────────────────────────────

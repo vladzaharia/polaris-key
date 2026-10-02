@@ -51,6 +51,7 @@ var _error: Label
 var _update: Button
 var _retry: Button
 var _banner_slot: MarginContainer
+var _center: CenterContainer
 var _bound := false
 var _was_usable := false
 
@@ -58,9 +59,10 @@ var _was_usable := false
 func _build() -> void:
 	name = "PKeyGate"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var center := CenterContainer.new()
-	center.name = "Center"
-	add_child(center)
+	_center = CenterContainer.new()
+	_center.name = "Center"
+	add_child(_center)
+	var center := _center
 	_card = PanelContainer.new()
 	_card.name = "Card"
 	_card.theme_type_variation = "PKeyCard"
@@ -83,6 +85,9 @@ func _build() -> void:
 	_banner_slot.name = "BannerSlot"
 	_banner_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_banner_slot.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	# The gate is a Container, which ignores a child's anchors: the slot asks for its own height
+	# only, at the top, so grace shows a strip and never covers the game.
+	_banner_slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	add_child(_banner_slot)
 	banner = PKeyStatusBanner.new()
 	banner.auto_sdk = false
@@ -137,6 +142,8 @@ func _render() -> void:
 	_card.visible = not is_usable
 	# Grace lets the game run: no backdrop, no input captured, only the banner strip.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if is_usable else Control.MOUSE_FILTER_STOP
+	# The full-rect CenterContainer would catch the game's clicks (a Container passes by default).
+	_center.mouse_filter = Control.MOUSE_FILTER_IGNORE if is_usable else Control.MOUSE_FILTER_PASS
 	self_modulate.a = 0.0 if is_usable else 1.0
 	_banner_slot.visible = ctl["banner"]
 	if ctl["banner"]:

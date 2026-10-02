@@ -61,6 +61,19 @@ var release := PKeyRelease.new()
 
 ## The PKeyBoot view `boot()` made (on a CanvasLayer under this node), or null.
 var boot_view: Node = null
+## The update prompt `boot()` left over the game at READY (a mandatory or blocked answer, or a
+## dismissable one not yet dismissed), or null. See PKeyBoot.keep_update_prompt.
+var boot_prompt: Node:
+	get:
+		if boot_view != null and is_instance_valid(boot_view) and is_instance_valid(boot_view.kept_prompt):
+			return boot_view.kept_prompt
+		if _boot_layer != null and is_instance_valid(_boot_layer):
+			for c in _boot_layer.get_children():
+				if c is PKeyUpdatePrompt and not c.is_queued_for_deletion():
+					return c
+		return null
+
+var _boot_layer: CanvasLayer = null
 
 var _timer: Timer = null
 var _syncing := false
@@ -103,19 +116,26 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 ## sync_timeout_seconds, offer_enrollment, release_url, options, and `view` (a PKeyBoot already
 ## in the game's own boot scene). Without a view, one is shown on a CanvasLayer above the game
 ## and freed once READY has been announced; on BLOCKED, OFFLINE or ERROR it stays, with Retry,
-## and a later stop arrives as `boot_finished`. A coroutine.
+## and a later stop arrives as `boot_finished`. An update answer on screen at READY outlives the
+## view: its prompt stays on the layer, top-wide, as `boot_prompt` (`keep_update_prompt: false`
+## when the game shows its own PKeyUpdatePrompt, which replays update.last_available). A coroutine.
 func boot(opts: Dictionary = {}) -> PKeyBootResult:
 	var view = opts.get("view")
 	if view == null:
-		if boot_view == null or not is_instance_valid(boot_view):
-			var layer := CanvasLayer.new()
-			layer.name = "PKeyBootLayer"
-			layer.layer = 100
-			add_child(layer)
+		if boot_view == null or not is_instance_valid(boot_view) or boot_view.is_queued_for_deletion():
+			if _boot_layer == null or not is_instance_valid(_boot_layer) or _boot_layer.is_queued_for_deletion():
+				_boot_layer = CanvasLayer.new()
+				_boot_layer.name = "PKeyBootLayer"
+				_boot_layer.layer = 100
+				add_child(_boot_layer)
+			# A prompt kept from an earlier boot gives way to the new boot's own.
+			for c in _boot_layer.get_children():
+				if c is PKeyUpdatePrompt:
+					c.queue_free()
 			boot_view = (load(BOOT_SCENE) as PackedScene).instantiate()
 			boot_view.free_on_ready = true
 			boot_view.sdk = self
-			layer.add_child(boot_view)
+			_boot_layer.add_child(boot_view)
 		view = boot_view
 	view.sdk = self
 	if not view.boot_finished.is_connected(_on_boot_finished):
