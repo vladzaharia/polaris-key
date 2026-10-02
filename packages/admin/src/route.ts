@@ -10,6 +10,7 @@
  *   #/p/<slug>/licenses                 -> licenses list for a product
  *   #/p/<slug>/licenses/<id>            -> a license detail
  *   #/p/<slug>/profiles/<id>            -> a profile detail (the managed-payload editor)
+ *   #/p/<slug>/deliverables/<id>        -> a pack deliverable's releases and their pins
  *   #/p/<slug>/<tab>                    -> any other per-product view
  *
  * Every per-product view carries the slug as the first path segment so deep links + the
@@ -48,6 +49,7 @@ export type Tab =
   | "profiles"
   // release
   | "releases"
+  | "deliverables"
   // distribution
   | "distribution"
   | "distribution-matrix"
@@ -58,11 +60,14 @@ export type Tab =
   | "identity";
 
 /**
- * The full set of per-product views: every nav tab plus the two DETAIL LEAVES. A leaf is not a
+ * The full set of per-product views: every nav tab plus the DETAIL LEAVES. A leaf is not a
  * tab — nothing in the sidebar points at one — but it is a first-class route so an operator can
  * link to "the license/profile that is misconfigured" and so back/forward work through an edit.
  */
-export type View = Tab | "license" | "profile";
+export type View = Tab | Leaf;
+
+/** The detail leaves: a license, a profile, and a deliverable (P4-09's pack page). */
+export type Leaf = "license" | "profile" | "deliverable";
 
 /**
  * A section's `data-service` token (D-17). Each service's token is its service-table row's
@@ -180,6 +185,11 @@ export const SECTIONS: NavSection[] = [
         label: "Releases",
         docs: "/docs/services/release/truth-store/",
       },
+      {
+        tab: "deliverables",
+        label: "Deliverables",
+        docs: "/docs/services/release/packs/",
+      },
     ],
   },
   {
@@ -288,8 +298,7 @@ export function isTabEnabled(tab: Tab, services: ServiceState): boolean {
   return isSectionEnabled(sectionOf(tab), services);
 }
 
-export function normalizeView(view: View): Tab | "license" | "profile" {
-  if (view === "license" || view === "profile") return view;
+export function normalizeView(view: View): View {
   return view;
 }
 
@@ -297,14 +306,24 @@ export type Route =
   | { kind: "dashboard" }
   | { kind: "products" }
   | { kind: "product"; slug: string; view: Tab }
-  | { kind: "product"; slug: string; view: "license"; id: string }
-  | { kind: "product"; slug: string; view: "profile"; id: string };
+  | { kind: "product"; slug: string; view: Leaf; id: string };
 
 /** The list view a detail leaf hangs off, and the URL segment it is nested under. */
-const LEAF_PARENT: Record<"license" | "profile", Tab> = {
+export const LEAF_PARENT: Record<Leaf, Tab> = {
   license: "licenses",
   profile: "profiles",
+  deliverable: "deliverables",
 };
+
+/** Is `view` a detail leaf (a route that carries an id)? */
+export function isLeaf(view: View): view is Leaf {
+  return Object.prototype.hasOwnProperty.call(LEAF_PARENT, view);
+}
+
+/** The leaf nested under list tab `tab`, if any. */
+const LEAF_OF: Partial<Record<Tab, Leaf>> = Object.fromEntries(
+  Object.entries(LEAF_PARENT).map(([leaf, tab]) => [tab, leaf]),
+) as Partial<Record<Tab, Leaf>>;
 
 const PRODUCT = /^#\/p\/([^/]+)(?:\/([^/]+))?(?:\/([^/?]+))?/;
 
@@ -316,19 +335,12 @@ export function parseRoute(hash: string): Route {
   if (m && m[1]) {
     const slug = decodeURIComponent(m[1]);
     const view = (m[2] as View | undefined) ?? "overview";
-    if (view === "licenses" && m[3]) {
+    const leaf = LEAF_OF[view as Tab];
+    if (leaf && m[3]) {
       return {
         kind: "product",
         slug,
-        view: "license",
-        id: decodeURIComponent(m[3]),
-      };
-    }
-    if (view === "profiles" && m[3]) {
-      return {
-        kind: "product",
-        slug,
-        view: "profile",
+        view: leaf,
         id: decodeURIComponent(m[3]),
       };
     }
@@ -348,14 +360,14 @@ export function parseRoute(hash: string): Route {
 export function tabOf(route: Route): Tab | null {
   if (route.kind !== "product") return null;
   const view = normalizeView(route.view);
-  if (view === "license" || view === "profile") return LEAF_PARENT[view];
+  if (isLeaf(view)) return LEAF_PARENT[view];
   return view;
 }
 
 export function hashFor(route: Route): string {
   if (route.kind === "dashboard") return "#/";
   if (route.kind === "products") return "#/products";
-  if (route.view === "license" || route.view === "profile") {
+  if ("id" in route) {
     const parent = LEAF_PARENT[route.view];
     return `#/p/${encodeURIComponent(route.slug)}/${parent}/${encodeURIComponent(route.id)}`;
   }

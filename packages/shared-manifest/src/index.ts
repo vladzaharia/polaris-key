@@ -319,7 +319,15 @@ export interface ManifestAppDeliverable {
    * validator when the product declares any pack; absent otherwise. P4-12 resolves compatible
    * packs by it.
    */
-  content?: { contentApi: number };
+  content?: {
+    contentApi: number;
+    /**
+     * `content.packChannels` (P4-12): pack id or `prefix.*` → the pack channel every app channel
+     * consumes for those packs (`{"diceroll.events.*": "events"}`). Stamped into each app
+     * release's `content`; absent when undeclared.
+     */
+    packChannels?: Record<string, string>;
+  };
 }
 
 /**
@@ -343,7 +351,23 @@ export interface ManifestPackDeliverable {
   };
   /** axis → the values CI publishes a variant for (`{}` = one variant, key `default`). */
   variants: Partial<Record<VariantAxis, string[]>>;
-  requires: { engine?: string };
+  /**
+   * The defaults CI signs into each variant's `requires` (P4-12): `engine`; `contentApi`, app
+   * deliverable id → a {@link CONTENT_API_RANGE_PATTERN} range (required for `compatible`,
+   * refused for `standalone`); `packs`, pack id → a {@link PACK_VERSION_RANGE_PATTERN} range.
+   */
+  requires: {
+    engine?: string;
+    contentApi?: Record<string, string>;
+    packs?: Record<string, string>;
+  };
+  /** Pack ids this pack never shares a resolved set with (P4-12). `[]` when undeclared. */
+  conflicts: string[];
+  /**
+   * The channels this pack's releases may be published to beyond `stable` and `beta` (P4-12,
+   * README §3.12 `channels: [events]`). `[]` when undeclared.
+   */
+  channels: string[];
   /**
    * The licence flag the repo ASSERTS gates this pack, or null. Never the gate: the gate is the
    * pack's own `dist_access` row, operator-owned (decision 35); a publish whose gate differs from
@@ -664,8 +688,13 @@ export const MAX_PUBLISHED_INDEX_BYTES = 8388608;
 /** The most decoded index bytes one pack record's ingest decodes in all (64 MiB): bounds the
  *  submit's CPU, not its memory (one index is held at a time). */
 export const MAX_INGEST_INDEX_BYTES = 67108864;
-/** v1 pack bindings: only `pinned` delivers until P4-12 brings resolution. */
-export const PACK_BINDINGS = ["pinned"] as const;
+/**
+ * Pack bindings (CONTENT §6.1): `pinned` (each app release pins the exact pack release, P4-02),
+ * `compatible` (the server resolves the newest release whose `requires.contentApi` range holds
+ * the app's live contentApi level, P4-12) and `standalone` (resolved for every level; depends
+ * only on its type's format, P4-12).
+ */
+export const PACK_BINDINGS = ["pinned", "compatible", "standalone"] as const;
 export type PackBinding = (typeof PACK_BINDINGS)[number];
 /** Whether a pack ships inside app builds (`embedded`) or only over the network (`none`). */
 export const PACK_BASELINES = ["embedded", "none"] as const;
@@ -673,13 +702,100 @@ export type PackBaseline = (typeof PACK_BASELINES)[number];
 /** The patch strategies a pack may ask CI to publish (`patch.strategies`). */
 export const PACK_PATCH_STRATEGIES = ["delta", "file"] as const;
 export type PackPatchStrategy = (typeof PACK_PATCH_STRATEGIES)[number];
-/** Pack fields a later package brings (P4-12, P4-20); v1 refuses them. */
-export const PACK_FIELDS_NOT_SUPPORTED = [
-  "channels",
-  "conflicts",
-  "provides",
-  "removes",
-] as const;
+/** Pack fields a later package brings (P4-20); refused until then. */
+export const PACK_FIELDS_NOT_SUPPORTED = ["provides", "removes"] as const;
+/**
+ * A `requires.contentApi.<app>` range (P4-12, CONTENT §6.2): one to four space-separated
+ * comparators, each an optional `>=`, `<=`, `>`, `<` or `=` and a contentApi level (`">=3 <5"`,
+ * `"4"`). A bare level means `=`. Every comparator must hold.
+ */
+export const CONTENT_API_RANGE_PATTERN =
+  /^(?:>=|<=|>|<|=)?[1-9][0-9]{0,15}(?: (?:>=|<=|>|<|=)?[1-9][0-9]{0,15}){0,3}$/;
+/**
+ * A `requires.packs.<packId>` range (P4-12): one to four space-separated comparators, each an
+ * optional operator and a version (P2-04's `VERSION_RE` charset), compared under the TARGET
+ * pack's version scheme (`">=1.2.0 <2.0.0"`).
+ */
+export const PACK_VERSION_RANGE_PATTERN =
+  /^(?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}(?: (?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}){0,3}$/;
+/** A `content.packChannels` key (P4-12): a pack id, or a prefix of pack-id segments ending in
+ *  `.*` (`diceroll.events.*`), at most 64 characters. */
+export const PACK_CHANNELS_KEY_PATTERN =
+  /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*(\.\*)?$/;
+/** At most this many `conflicts` per pack, and `content.packChannels` entries per app. */
+export const MAX_PACK_CONFLICTS = 64;
+export const MAX_PACK_CHANNEL_MAP = 64;
+/** At most this many channels a pack declares beyond `stable` and `beta`. */
+export const MAX_PACK_CHANNELS = 32;
+
+/** One comparator of a P4-12 range. */
+export interface RangeComparator {
+  op: ">=" | "<=" | ">" | "<" | "=";
+  value: string;
+}
+
+/**
+ * The comparators of a `requires.contentApi.<app>` or `requires.packs.<packId>` range, or null
+ * when `range` does not match `pattern`. A bare value reads as `=`.
+ */
+export function parseRange(
+  range: unknown,
+  pattern: RegExp,
+): RangeComparator[] | null {
+  if (typeof range !== "string" || !pattern.test(range)) return null;
+  return range.split(" ").map((part) => {
+    const m = /^(>=|<=|>|<|=)?(.+)$/.exec(part)!;
+    return { op: (m[1] ?? "=") as RangeComparator["op"], value: m[2]! };
+  });
+}
+
+/** Does the integer `level` satisfy every comparator of `cmp` (a contentApi range)? */
+export function contentApiInRange(
+  cmp: readonly RangeComparator[],
+  level: number,
+): boolean {
+  return cmp.every((c) => {
+    const v = Number(c.value);
+    if (!Number.isSafeInteger(v)) return false;
+    switch (c.op) {
+      case ">=":
+        return level >= v;
+      case "<=":
+        return level <= v;
+      case ">":
+        return level > v;
+      case "<":
+        return level < v;
+      default:
+        return level === v;
+    }
+  });
+}
+
+/**
+ * The channel `content.packChannels` routes pack `packId` to, or null when no entry matches: an
+ * exact pack-id entry wins, else the longest `prefix.*` entry whose prefix is a whole leading run
+ * of the id's segments (`diceroll.events.*` matches `diceroll.events.halloween`, never
+ * `diceroll.eventsx`).
+ */
+export function packChannelFor(
+  map: Readonly<Record<string, string>> | null | undefined,
+  packId: string,
+): string | null {
+  if (!map) return null;
+  if (Object.hasOwn(map, packId)) return map[packId] ?? null;
+  let best: string | null = null;
+  let bestLen = -1;
+  for (const [key, channel] of Object.entries(map)) {
+    if (!key.endsWith(".*")) continue;
+    const prefix = key.slice(0, -1); // keeps the trailing dot
+    if (packId.startsWith(prefix) && prefix.length > bestLen) {
+      best = channel;
+      bestLen = prefix.length;
+    }
+  }
+  return best;
+}
 const MAX_PACK_VARIANT_VALUES = 16;
 const MAX_PACK_VARIANT_COMBINATIONS = 32;
 const MAX_PACK_MOUNT_ORDER = 1000;
@@ -2516,6 +2632,17 @@ function validateDeliverables(
     );
   }
   const packIds = new Set<string>();
+  // Every declared pack and its binding, for the cross-references below (P4-12: `requires.packs`,
+  // `conflicts`, `content.packChannels`).
+  const declaredPacks = new Map<string, unknown>();
+  for (const [id, def] of Object.entries(raw))
+    if (
+      id !== APP_DELIVERABLE_ID &&
+      isDeliverableId(id) &&
+      isRecord(def) &&
+      def.kind === "pack"
+    )
+      declaredPacks.set(id, def.binding ?? "pinned");
   for (const [id, def] of Object.entries(raw)) {
     if (!isDeliverableId(id)) {
       add(
@@ -2550,13 +2677,14 @@ function validateDeliverables(
     }
     if (kind === "pack") {
       packIds.add(id);
-      if (!tooManyPacks) validatePackDeliverable(errors, id, def, flagKeys);
+      if (!tooManyPacks)
+        validatePackDeliverable(errors, id, def, flagKeys, declaredPacks);
       continue;
     }
   }
   const app = raw[APP_DELIVERABLE_ID];
   if (isRecord(app) && app.kind === "app")
-    validateAppDeliverable(errors, relRoot, app, packIds);
+    validateAppDeliverable(errors, relRoot, app, packIds, raw);
   else if (packIds.size > 0) {
     add(
       errors,
@@ -2574,6 +2702,7 @@ function validatePackDeliverable(
   id: string,
   def: Record<string, unknown>,
   flagKeys: ReadonlySet<string>,
+  declaredPacks: ReadonlyMap<string, unknown>,
 ): void {
   const at = `/release/deliverables/${id}`;
   for (const field of PACK_FIELDS_NOT_SUPPORTED) {
@@ -2583,7 +2712,7 @@ function validatePackDeliverable(
         "release",
         `${at}/${field}`,
         "pack_field_not_supported",
-        `${field} is not supported for packs yet (pinned packs only in v1; P4-12 adds channels and conflicts, P4-20 provides and removes).`,
+        `${field} is not supported for packs yet (P4-20 adds provides and removes).`,
       );
   }
   // ── type ──
@@ -2603,7 +2732,7 @@ function validatePackDeliverable(
       "release",
       `${at}/binding`,
       "invalid_pack_binding",
-      "binding must be pinned in v1 (the app release pins the exact pack release; compatible and standalone come with P4-12).",
+      `binding must be one of ${PACK_BINDINGS.join(", ")}: pinned (each app release pins the exact pack release), compatible (the newest release whose requires.contentApi range holds the app's contentApi) or standalone (the newest release, whatever the contentApi).`,
     );
   // ── policy: baseline, required, delivery, contentPolicy ──
   if (def.baseline !== undefined && !isOneOf(def.baseline, PACK_BASELINES))
@@ -2783,19 +2912,118 @@ function validatePackDeliverable(
   if (requires !== undefined) {
     if (
       !isRecord(requires) ||
-      Object.keys(requires).some((k) => k !== "engine") ||
+      Object.keys(requires).some(
+        (k) => k !== "engine" && k !== "contentApi" && k !== "packs",
+      ) ||
       (requires.engine !== undefined &&
         (typeof requires.engine !== "string" ||
-          !ENGINE_PATTERN.test(requires.engine)))
+          !ENGINE_PATTERN.test(requires.engine))) ||
+      (requires.contentApi !== undefined &&
+        !isRangeMap(requires.contentApi, CONTENT_API_RANGE_PATTERN)) ||
+      (requires.packs !== undefined &&
+        !isRangeMap(requires.packs, PACK_VERSION_RANGE_PATTERN))
     )
       add(
         errors,
         "release",
         `${at}/requires`,
         "invalid_pack_requires",
-        `requires is { engine } in v1, engine matching ${ENGINE_PATTERN.source}; contentApi, packs and features come with P4-12.`,
+        `requires is { engine?, contentApi?, packs? }: engine matching ${ENGINE_PATTERN.source}; contentApi an object of app deliverable id → a range such as ">=3 <5"; packs an object of pack id → a version range such as ">=1.2.0 <2.0.0" (features has no meaning yet).`,
       );
   }
+  const req = asRecord(requires);
+  const binding = isOneOf(def.binding, PACK_BINDINGS) ? def.binding : "pinned";
+  // ── requires.contentApi against the binding (P4-12) ──
+  if (binding === "compatible" && req.contentApi === undefined)
+    add(
+      errors,
+      "release",
+      `${at}/requires/contentApi`,
+      "missing_content_api_range",
+      `a compatible pack declares requires.contentApi (for example { ${APP_DELIVERABLE_ID}: ">=3 <5" }): the contentApi levels its releases support.`,
+    );
+  if (binding === "standalone" && req.contentApi !== undefined)
+    add(
+      errors,
+      "release",
+      `${at}/requires/contentApi`,
+      "standalone_with_content_api",
+      "a standalone pack depends only on its type's format, never on the app's contentApi; drop requires.contentApi or make it compatible.",
+    );
+  if (isRecord(req.contentApi))
+    for (const key of Object.keys(req.contentApi))
+      if (key !== APP_DELIVERABLE_ID)
+        add(
+          errors,
+          "release",
+          `${at}/requires/contentApi/${key}`,
+          "unknown_content_api_app",
+          `requires.contentApi is keyed by app deliverable; ${key} is not one (the product's app deliverable is ${APP_DELIVERABLE_ID}).`,
+        );
+  // ── requires.packs: declared, resolvable packs (P4-12) ──
+  if (isRecord(req.packs))
+    for (const target of Object.keys(req.packs)) {
+      const targetBinding = declaredPacks.get(target);
+      if (
+        target === id ||
+        targetBinding === undefined ||
+        (targetBinding !== "compatible" && targetBinding !== "standalone")
+      )
+        add(
+          errors,
+          "release",
+          `${at}/requires/packs/${target}`,
+          "invalid_pack_requires",
+          `requires.packs names another declared compatible or standalone pack; ${target} is ${target === id ? "this pack" : targetBinding === undefined ? "not a declared pack" : "pinned, and a pinned pack never enters a resolved set"}.`,
+        );
+    }
+  // ── conflicts (P4-12) ──
+  const conflicts = def.conflicts;
+  if (conflicts !== undefined) {
+    if (
+      !Array.isArray(conflicts) ||
+      conflicts.length === 0 ||
+      conflicts.length > MAX_PACK_CONFLICTS ||
+      new Set(conflicts).size !== conflicts.length ||
+      !conflicts.every((c) => isDeliverableId(c) && c !== APP_DELIVERABLE_ID)
+    )
+      add(
+        errors,
+        "release",
+        `${at}/conflicts`,
+        "invalid_pack_conflicts",
+        `conflicts lists 1 to ${MAX_PACK_CONFLICTS} distinct pack ids this pack never shares a resolved set with.`,
+      );
+    else
+      for (const [i, c] of conflicts.entries())
+        if (c === id || !declaredPacks.has(c as string))
+          add(
+            errors,
+            "release",
+            `${at}/conflicts/${i}`,
+            "invalid_pack_conflicts",
+            `conflicts names other declared packs; ${String(c)} is ${c === id ? "this pack" : "not a declared pack"}.`,
+          );
+  }
+  // ── channels: where this pack's releases may be published, beyond stable and beta (P4-12) ──
+  const channels = def.channels;
+  if (channels !== undefined) {
+    if (
+      !Array.isArray(channels) ||
+      channels.length === 0 ||
+      channels.length > MAX_PACK_CHANNELS ||
+      new Set(channels).size !== channels.length ||
+      !channels.every(isCanonicalChannelName)
+    )
+      add(
+        errors,
+        "release",
+        `${at}/channels`,
+        "invalid_channel",
+        `a pack's channels lists 1 to ${MAX_PACK_CHANNELS} distinct canonical channel names (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`,
+      );
+  }
+
   if (type === "godot.pck" && asRecord(requires).engine === undefined)
     add(
       errors,
@@ -2871,6 +3099,26 @@ function validatePackDeliverable(
     );
 }
 
+/** `record` with its keys in byte order (a stable `def_json`). */
+function sortedRecord(record: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(record).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
+}
+
+/** A non-empty object of deliverable id → a range matching `pattern` (P4-12 `requires`). */
+function isRangeMap(value: unknown, pattern: RegExp): boolean {
+  return (
+    isRecord(value) &&
+    Object.keys(value).length > 0 &&
+    Object.keys(value).length <= MAX_PACK_DELIVERABLES &&
+    Object.entries(value).every(
+      ([k, v]) =>
+        isDeliverableId(k) && typeof v === "string" && pattern.test(v),
+    )
+  );
+}
+
 /** `handler.prefixes`: 1–32 distinct `HANDLER_PREFIX_PATTERN` strings of at most 256 bytes. */
 function isPackPrefixList(value: unknown): value is string[] {
   return (
@@ -2892,8 +3140,9 @@ function validateAppDeliverable(
   relRoot: Record<string, unknown>,
   def: Record<string, unknown>,
   packIds: ReadonlySet<string>,
+  deliverables: Record<string, unknown>,
 ): void {
-  // ── content (P4-02) ──
+  // ── content (P4-02; packChannels P4-12) ──
   const content = def.content;
   if (content !== undefined) {
     if (
@@ -2903,7 +3152,6 @@ function validateAppDeliverable(
         (content.contentApi as number) >= 1 &&
         (content.contentApi as number) <= MAX_CONTENT_API
       ) ||
-      content.packChannels !== undefined ||
       content.holds !== undefined
     )
       add(
@@ -2911,8 +3159,53 @@ function validateAppDeliverable(
         "release",
         "/release/deliverables/app/content",
         "invalid_app_content",
-        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API} }; packChannels and holds come with P4-12.`,
+        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API}, packChannels? }; holds are chosen per app release at publish (the content stamp), never declared here.`,
       );
+    const map = isRecord(content) ? content.packChannels : undefined;
+    if (map !== undefined) {
+      if (
+        !isRecord(map) ||
+        Object.keys(map).length === 0 ||
+        Object.keys(map).length > MAX_PACK_CHANNEL_MAP ||
+        !Object.entries(map).every(
+          ([k, v]) =>
+            k.length <= MAX_DELIVERABLE_ID_LENGTH &&
+            PACK_CHANNELS_KEY_PATTERN.test(k) &&
+            k !== APP_DELIVERABLE_ID &&
+            isCanonicalChannelName(v),
+        )
+      )
+        add(
+          errors,
+          "release",
+          "/release/deliverables/app/content/packChannels",
+          "invalid_pack_channels",
+          `content.packChannels maps 1 to ${MAX_PACK_CHANNEL_MAP} pack ids or prefixes ending in .* (diceroll.events.*) to a canonical channel name.`,
+        );
+      else
+        for (const [key, channel] of Object.entries(map)) {
+          const matched = [...packIds].filter(
+            (p) => packChannelFor({ [key]: channel as string }, p) !== null,
+          );
+          const reachable = matched.filter((p) => {
+            const decl = asRecord(deliverables[p]);
+            const own = Array.isArray(decl.channels) ? decl.channels : [];
+            return (
+              (BUILT_IN_CHANNELS as readonly string[]).includes(
+                channel as string,
+              ) || own.includes(channel)
+            );
+          });
+          if (matched.length === 0 || reachable.length !== matched.length)
+            add(
+              errors,
+              "release",
+              `/release/deliverables/app/content/packChannels/${key}`,
+              "unknown_pack_channels_target",
+              `content.packChannels ${key} must match a declared pack, and every pack it matches must publish to ${String(channel)} (stable, beta or one of the pack's channels).`,
+            );
+        }
+    }
   } else if (packIds.size > 0) {
     add(
       errors,
@@ -3480,6 +3773,12 @@ function normalizePackDeliverable(
   const engine = asRecord(raw.requires).engine;
   if (typeof engine === "string" && ENGINE_PATTERN.test(engine))
     requires.engine = engine;
+  const rawContentApi = asRecord(raw.requires).contentApi;
+  if (isRangeMap(rawContentApi, CONTENT_API_RANGE_PATTERN))
+    requires.contentApi = sortedRecord(rawContentApi as Record<string, string>);
+  const rawPacks = asRecord(raw.requires).packs;
+  if (isRangeMap(rawPacks, PACK_VERSION_RANGE_PATTERN))
+    requires.packs = sortedRecord(rawPacks as Record<string, string>);
   const patch = asRecord(raw.patch);
   const strategies = Array.isArray(patch.strategies)
     ? PACK_PATCH_STRATEGIES.filter((s) =>
@@ -3490,7 +3789,7 @@ function normalizePackDeliverable(
     kind: "pack",
     id,
     type,
-    binding: "pinned",
+    binding: isOneOf(raw.binding, PACK_BINDINGS) ? raw.binding : "pinned",
     baseline: isOneOf(raw.baseline, PACK_BASELINES) ? raw.baseline : "none",
     required: raw.required === true,
     delivery: isOneOf(raw.delivery, PACK_DELIVERIES)
@@ -3500,6 +3799,19 @@ function normalizePackDeliverable(
     handler,
     variants,
     requires,
+    conflicts: Array.isArray(raw.conflicts)
+      ? [
+          ...new Set(
+            (raw.conflicts as unknown[]).filter(
+              (c): c is string =>
+                isDeliverableId(c) && c !== APP_DELIVERABLE_ID && c !== id,
+            ),
+          ),
+        ].sort()
+      : [],
+    channels: Array.isArray(raw.channels)
+      ? [...new Set((raw.channels as unknown[]).filter(isCanonicalChannelName))]
+      : [],
     entitlement:
       typeof raw.entitlement === "string" &&
       ENTITLEMENT_PATTERN.test(raw.entitlement)
@@ -3660,8 +3972,23 @@ function normalizeAppDeliverable(raw: unknown): ManifestAppDeliverable | null {
     artifacts,
   };
   const contentApi = asRecord(def.content).contentApi;
-  if (Number.isSafeInteger(contentApi) && (contentApi as number) >= 1)
+  if (Number.isSafeInteger(contentApi) && (contentApi as number) >= 1) {
     app.content = { contentApi: contentApi as number };
+    const map = asRecord(def.content).packChannels;
+    if (
+      isRecord(map) &&
+      Object.keys(map).length > 0 &&
+      Object.entries(map).every(
+        ([k, v]) =>
+          PACK_CHANNELS_KEY_PATTERN.test(k) && isCanonicalChannelName(v),
+      )
+    )
+      app.content.packChannels = Object.fromEntries(
+        Object.entries(map as Record<string, string>).sort(([a], [b]) =>
+          a < b ? -1 : a > b ? 1 : 0,
+        ),
+      );
+  }
   return app;
 }
 

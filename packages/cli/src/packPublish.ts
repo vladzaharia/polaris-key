@@ -754,9 +754,24 @@ export async function publishPack(
         full: b.full.ref,
         files: filesRefOf(b),
         ...(deltas.length ? { deltas } : {}),
-        ...(pack.requires.engine
-          ? { requires: { engine: pack.requires.engine } }
+        // P4-12: the declaration's requirements, signed into every variant (the record is the
+        // truth resolution reads: a release keeps the range it was published with).
+        ...(pack.requires.engine ||
+        pack.requires.contentApi ||
+        pack.requires.packs
+          ? {
+              requires: {
+                ...(pack.requires.engine
+                  ? { engine: pack.requires.engine }
+                  : {}),
+                ...(pack.requires.contentApi
+                  ? { contentApi: pack.requires.contentApi }
+                  : {}),
+                ...(pack.requires.packs ? { packs: pack.requires.packs } : {}),
+              },
+            }
           : {}),
+        ...(pack.conflicts.length > 0 ? { conflicts: pack.conflicts } : {}),
       });
     }
 

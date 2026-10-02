@@ -331,15 +331,18 @@ release:
 ### Pack deliverables
 
 Any deliverable other than `app` is a content pack (`kind: pack`): data the app loads at run
-time, released on its own versions and pinned by app releases. See
-[Packs](/docs/services/release/packs/) for what Release does with them. v1 accepts this
-subset, so a manifest never declares behaviour v1 does not deliver:
+time, released on its own versions, and pinned by app releases or resolved per live contentApi
+level. See [Packs](/docs/services/release/packs/) for what Release does with them. The
+validator accepts this set of fields, so a manifest never declares behaviour that is not
+delivered:
 
 ```yaml
 deliverables:
   app:
     kind: app
-    content: { contentApi: 3 } # required once any pack is declared
+    content:
+      contentApi: 3 # required once any pack is declared
+      packChannels: { "diceroll.events.*": events } # optional: route pack families
     artifacts:
       - {
           id: macos,
@@ -352,7 +355,7 @@ deliverables:
   diceroll.core3d:
     kind: pack
     type: godot.pck # or files.tree
-    binding: pinned # the only v1 binding (the default)
+    binding: pinned # pinned (the default) | compatible | standalone
     baseline: embedded # store builds ship it; default none
     required: true # a required pack is essential and ungated
     delivery: essential # essential | prefetch | on-demand (default)
@@ -367,6 +370,25 @@ deliverables:
     handler: { prefixes: ["res://skins/"] }
     requires: { engine: godot-4.7 }
     entitlement: extras.diceSkins # an assertion of the operator's gate (below)
+  diceroll.foes:
+    kind: pack
+    type: files.tree
+    binding: compatible # the newest release whose contentApi range holds each live level
+    requires:
+      contentApi: { app: ">=3 <5" } # required for compatible, refused for standalone
+      packs: { diceroll.l10n: ">=2.0.0" } # other compatible or standalone packs
+    conflicts: [diceroll.supporter.skins]
+  diceroll.l10n:
+    kind: pack
+    type: files.tree
+    binding: standalone # every level's newest release; no contentApi
+    variants: { locale: [en, fr] }
+  diceroll.events.halloween:
+    kind: pack
+    type: files.tree
+    binding: compatible
+    channels: [events] # where its releases may be published beyond stable and beta
+    requires: { contentApi: { app: ">=3" } }
 ```
 
 - At most **64** packs (`too_many_pack_deliverables`).
@@ -375,14 +397,26 @@ deliverables:
   activates on `restart`, and declares `requires.engine` (`godot-<major>.<minor>`). A
   `files.tree` pack takes no `prefixes` or `mountOrder` and activates `hot` by default
   (`invalid_pack_handler`, `invalid_pack_requires`).
-- **`binding`** is `pinned` only (`invalid_pack_binding`): each app release pins the exact pack
-  release it ships with. `compatible` and `standalone` come later.
+- **`binding`** is `pinned`, `compatible` or `standalone` (`invalid_pack_binding`): `pinned`
+  means each app release pins the exact pack release it ships with; `compatible` means Release
+  resolves the newest release whose `requires.contentApi` range holds each live contentApi
+  level; `standalone` means the newest release for every level.
 - **`baseline`**, **`required`**, **`delivery`** and **`contentPolicy`** (`{ dataOnly: true }`,
   the only v1 value) are `invalid_pack_policy` when malformed; a `required` pack must be
   `delivery: essential` and carry no `entitlement`.
 - **`variants`** maps an axis (`texture`, `locale`, `quality`) to 1–16 values; the product of
   the counts is at most 32 (`invalid_pack_variants`). CI publishes one variant per combination.
-- **`requires`** is `{ engine }` only in v1 (`invalid_pack_requires`).
+- **`requires`** is `{ engine?, contentApi?, packs? }` (`invalid_pack_requires`; `features` has
+  no meaning yet). `contentApi` is keyed by the app deliverable, `app`
+  (`unknown_content_api_app`), each value one to four comparators such as `">=3 <5"`; a
+  `compatible` pack declares it (`missing_content_api_range`) and a `standalone` one never does
+  (`standalone_with_content_api`). `packs` names other declared compatible or standalone packs,
+  each with a version range under that pack's scheme. CI signs these into each variant of every
+  pack record.
+- **`conflicts`** lists 1–64 other declared packs this one never shares a resolved set with
+  (`invalid_pack_conflicts`).
+- **`channels`** lists 1–32 canonical channels the pack's releases may be published to beyond
+  `stable` and `beta` (`invalid_channel`).
 - **`entitlement`** asserts the licence flag that gates the pack; it must name a `flag` entry of
   `.pkey/schema` (`unknown_entitlement_ref`). It is **not** the gate: an operator gates a pack
   under Distribution → Access, and a publish whose gate differs from the assertion is refused.
@@ -390,8 +424,11 @@ deliverables:
 - **`patch`**: `strategies`, a non-empty subset of `delta` and `file`; `deltaBases`, 0–8
   (default 1) (`invalid_pack_patch`).
 - **`versioning.scheme`** as for the app (default `semver`).
-- **`channels`**, **`conflicts`**, **`provides`** and **`removes`** are refused for now
-  (`pack_field_not_supported`).
+- **`provides`** and **`removes`** are refused for now (`pack_field_not_supported`).
+- **`deliverables.app.content.packChannels`** maps 1–64 pack ids or `prefix.*` patterns to a
+  channel (`invalid_pack_channels`); each key must match a declared pack that publishes to that
+  channel (`unknown_pack_channels_target`). `content.holds` is never declared: an app release
+  holds a pack at publish, in its content stamp (`invalid_app_content`).
 
 Resync writes the declaration to `release_deliverables.def_json` (and each channel's
 `includes` to its channel policy, unless an operator owns that channel). The map also defines

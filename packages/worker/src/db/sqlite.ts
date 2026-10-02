@@ -31,10 +31,15 @@ export class SqliteDb implements Db {
   }
 
   async batch(statements: DbStatement[]): Promise<void> {
-    const tx = this.db.transaction((stmts: DbStatement[]) => {
-      for (const s of stmts)
-        this.db.prepare(s.sql).run(...s.params.map(normParam));
-    });
-    tx(statements);
+    await this.batchChanges(statements);
+  }
+
+  async batchChanges(statements: DbStatement[]): Promise<number[]> {
+    const tx = this.db.transaction((stmts: DbStatement[]) =>
+      stmts.map(
+        (s) => this.db.prepare(s.sql).run(...s.params.map(normParam)).changes,
+      ),
+    );
+    return tx(statements);
   }
 }

@@ -29,7 +29,8 @@ import { absoluteTime, relativeTime } from "../format.js";
 import type { PolicyAction } from "./PolicyActionDialog.js";
 
 /**
- * The channels of the app deliverable (packs get theirs in P4-09): per channel, what it resolves
+ * The channels of the app deliverable (a pack's releases and pins are on its Deliverables page,
+ * P4-09; per-pack channel controls are a follow-up): per channel, what it resolves
  * to on each platform, its pointer and pin, what it includes, its minimum supported version, the
  * critical flag, the anti-rollback floor, who owns the row and who changed it last.
  *

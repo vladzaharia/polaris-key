@@ -85,6 +85,12 @@ import {
 import { guardStatement, RELEASE_DESCRIBED_BY_SQL } from "./guard.js";
 import { readPackDeliverableIds } from "./packs/deliverables.js";
 import { appContentStatements, planAppContent } from "./packs/content.js";
+import {
+  resolveAndStore,
+  type PackSetReport,
+  type ResolvedForStore,
+} from "./packs/sets.js";
+import type { CheckCache } from "./packs/checks.js";
 import { RELEASE_RECORD_REJECTED } from "./records.js";
 import {
   artifactContentType,
@@ -232,6 +238,8 @@ export type IngestResult =
       /** The release's `seq`: the stored one, the descriptor's explicit one, or the next one
        *  as of the plan's read. */
       seq: number;
+      /** What the release does to the resolved pack sets (P4-12), or null. */
+      packSets: PackSetReport | null;
     }
   | {
       ok: false;
@@ -269,6 +277,11 @@ export interface IngestOptions {
    * Ignored without `dryRun`.
    */
   pendingPromotion?: ReadonlyMap<string, { sha256: string; size: number }>;
+  /**
+   * P4-12: the request's memo of pack-set checks. P2-02's submit plans a release twice (the
+   * dry-run pre-check, then the ingest) over one stored state; sharing a memo resolves once.
+   */
+  packCache?: CheckCache;
   /**
    * Statements that ride in the ingest's own batch, after the descriptor's rows (P3-03: the
    * release record). Each must carry its own guard. For an `unchanged` descriptor they run in a
@@ -381,6 +394,8 @@ interface PlanInput {
    * one, in publication order). An explicit `seq` on a new release must exceed it.
    */
   seqFloor?: number;
+  /** See `IngestOptions.packCache`. */
+  packCache?: CheckCache;
 }
 
 export type Plan =
@@ -404,6 +419,10 @@ export type Plan =
       descriptor: ReleaseDescriptor;
       /** The seq the release holds or takes (the stored, explicit or next one at this read). */
       effectiveSeq: number;
+      /** The pack-set report of the release's content (P4-12), or null. */
+      packSets: PackSetReport | null;
+      /** The rows its check resolved, stored after the batch (P4-12), or null. */
+      packResolved: ResolvedForStore | null;
     }
   | Extract<IngestResult, { ok: false }>;
 
@@ -473,6 +492,8 @@ export async function planDescriptorIngest(
         seq: null,
         descriptor: d,
         effectiveSeq: existing?.seq ?? 0,
+        packSets: null,
+        packResolved: null,
       };
     return refuse(
       "release_exists",
@@ -615,7 +636,12 @@ export async function planDescriptorIngest(
   }
 
   // 5b. The release's packs (P4-02): its `content` and `embeds` against the stored records.
-  const content = await planAppContent(db, product, d);
+  const content = await planAppContent(db, product, d, {
+    releaseId,
+    seq: seq ?? currentMax + 1,
+    cfg,
+    ...(input.packCache ? { cache: input.packCache } : {}),
+  });
   if (!content.ok)
     return {
       ok: false,
@@ -848,6 +874,8 @@ export async function planDescriptorIngest(
     seq: existing?.seq != null || d.seq === undefined ? null : d.seq,
     descriptor: d,
     effectiveSeq: seq ?? currentMax + 1,
+    packSets: content.report,
+    packResolved: content.resolved,
   };
 }
 
@@ -993,6 +1021,7 @@ export async function ingestReleaseDescriptor(
     ...(opts.dryRun === true && opts.pendingPromotion
       ? { pendingPromotion: opts.pendingPromotion }
       : {}),
+    ...(opts.packCache ? { packCache: opts.packCache } : {}),
   };
   const plan = await planDescriptorIngest(db, input);
   if (!plan.ok) return plan;
@@ -1040,6 +1069,10 @@ export async function ingestReleaseDescriptor(
         retryable: true,
       };
     }
+    // A new live app release may add a contentApi level (P4-12): store the sets its check
+    // resolved (or re-resolve, when a concurrent trigger moved the generation).
+    if (plan.descriptor.content !== undefined)
+      await resolveAndStore(db, product, opts.now, plan.packResolved);
   }
   return {
     ok: true,
@@ -1050,6 +1083,7 @@ export async function ingestReleaseDescriptor(
     planned: plan.planned,
     descriptor: plan.descriptor,
     seq: plan.effectiveSeq,
+    packSets: plan.packSets,
   };
 }
 

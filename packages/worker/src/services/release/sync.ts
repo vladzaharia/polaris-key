@@ -41,6 +41,7 @@ import {
   type ReleaseChannelFloorRow,
 } from "./store.js";
 import { semverOfTag } from "./channels.js";
+import { resolveAndStore, type StoreOutcome } from "./packs/sets.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import type { ManifestAppDeliverable } from "@polaris-key/manifest";
 import { ingestGithubDescriptors, readAppDeliverable } from "./descriptor.js";
@@ -256,17 +257,35 @@ export async function syncReleaseStoreReport(
   product: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-): Promise<{ statements: number; packTagConflicts: string[] }> {
+): Promise<{
+  statements: number;
+  packTagConflicts: string[];
+  /** P4-12: the re-resolution's outcome when it failed or stored sets. */
+  packSets?: StoreOutcome;
+}> {
   const cfg = await getReleaseConfig(db, product);
   if (!cfg) return { statements: 0, packTagConflicts: [] };
   const sync = await releaseStoreSync(env, db, cfg, now, fetchImpl);
+  let packSets: StoreOutcome | null = null;
   if (sync.statements.length > 0) {
     await db.batch(sync.statements);
     // What GitHub publishes may have changed: no cached resolution survives a sync (P2-05).
     await bumpReleaseGeneration(env, product, now);
+    // A descriptor ingested from GitHub may add a live contentApi level (P4-12). It never
+    // throws (a failure clears the sets and is answered), and the sync keeps that promise too.
+    try {
+      packSets = await resolveAndStore(db, product, now);
+    } catch (e) {
+      packSets = {
+        ok: false,
+        reason: "pack-sets-error",
+        message: e instanceof Error ? e.message : String(e),
+      };
+    }
   }
   return {
     statements: sync.statements.length,
     packTagConflicts: sync.packTagConflicts,
+    ...(packSets && (!packSets.ok || packSets.sets > 0) ? { packSets } : {}),
   };
 }

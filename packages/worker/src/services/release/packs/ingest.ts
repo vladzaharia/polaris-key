@@ -14,6 +14,14 @@
  *                     release's differs;
  *   pack-type         `type` differs from the declaration;
  *   pack-variant      a variant names an axis or a value the declaration does not;
+ *   pack-requires     (P4-12) a variant's signed `requires.contentApi`, `requires.packs` or
+ *                     `conflicts` disagrees with the pack's binding or names what the product
+ *                     does not declare: a `compatible` pack signs a `requires.contentApi.app`
+ *                     range in every variant, a `standalone` one never does, `requires.packs`
+ *                     names declared compatible or standalone packs with a version range, and
+ *                     `conflicts` names other declared packs;
+ *   pack-channel      (P4-12) the record's `channel` is not `stable`, `beta` or one of the
+ *                     channels the pack declares;
  *   pack-entitlement  `entitlement` (absent = none) differs from the delivery gate
  *                     `delivery.entitlement` answers now, or from the declaration's assertion;
  *   pack-index        a variant's `files.size` or `files.bytes` is above
@@ -36,8 +44,14 @@
  */
 
 import {
+  APP_DELIVERABLE_ID,
+  BUILT_IN_CHANNELS,
+  CONTENT_API_RANGE_PATTERN,
   MAX_INGEST_INDEX_BYTES,
+  MAX_PACK_CONFLICTS,
   MAX_PUBLISHED_INDEX_BYTES,
+  PACK_VERSION_RANGE_PATTERN,
+  isDeliverableId,
   packVariantKeys,
   type ManifestPackDeliverable,
   type PackObjectRole,
@@ -151,6 +165,108 @@ export function checkPackAgainstDeclaration(
       "pack-index",
       `the record's files indexes decode to ${total} bytes in all; one ingest decodes at most ${MAX_INGEST_INDEX_BYTES}.`,
     );
+  return null;
+}
+
+/** A variant's signed `conflicts` (a reserved member the claims ignore, P4-12), or undefined. */
+export function variantConflicts(v: object): unknown {
+  return (v as { conflicts?: unknown }).conflicts;
+}
+
+/**
+ * `pack-requires` and `pack-channel` (P4-12): the record's per-variant requirements against the
+ * pack's binding and the product's declared packs, and its channel against the pack's channels.
+ * `declared` maps every declared pack id to its binding.
+ */
+export function checkPackRequires(
+  record: PackRecordDoc,
+  pack: ManifestPackDeliverable,
+  declared: ReadonlyMap<string, string>,
+): PackRefusal | null {
+  const channel = record.channel;
+  if (
+    channel !== undefined &&
+    !BUILT_IN_CHANNELS.includes(channel) &&
+    !pack.channels.includes(channel)
+  )
+    return refuse(
+      "pack-channel",
+      `the record is on channel ${channel}; ${record.deliverable} publishes to stable, beta${pack.channels.length > 0 ? ` and ${pack.channels.join(", ")}` : ""} (declare more in the pack's channels).`,
+    );
+  for (const [i, v] of record.variants.entries()) {
+    const at = `variants[${i}]`;
+    const req = (v.requires ?? {}) as Record<string, unknown>;
+    const contentApi = req.contentApi;
+    if (pack.binding === "standalone" && contentApi !== undefined)
+      return refuse(
+        "pack-requires",
+        `${at} signs requires.contentApi, but ${record.deliverable} is standalone: it depends on no contentApi.`,
+      );
+    if (contentApi !== undefined || pack.binding === "compatible") {
+      const ok =
+        contentApi !== null &&
+        typeof contentApi === "object" &&
+        !Array.isArray(contentApi) &&
+        Object.keys(contentApi).length > 0 &&
+        Object.entries(contentApi as Record<string, unknown>).every(
+          ([k, r]) =>
+            k === APP_DELIVERABLE_ID &&
+            typeof r === "string" &&
+            CONTENT_API_RANGE_PATTERN.test(r),
+        );
+      if (!ok)
+        return refuse(
+          "pack-requires",
+          `${at}'s requires.contentApi must be { ${APP_DELIVERABLE_ID}: a range such as ">=3 <5" }${pack.binding === "compatible" ? `; ${record.deliverable} is compatible, so every variant signs one` : ""}.`,
+        );
+    }
+    const packs = req.packs;
+    if (packs !== undefined) {
+      if (
+        packs === null ||
+        typeof packs !== "object" ||
+        Array.isArray(packs) ||
+        Object.keys(packs).length === 0
+      )
+        return refuse(
+          "pack-requires",
+          `${at}'s requires.packs must be an object of pack id → version range.`,
+        );
+      for (const [target, range] of Object.entries(
+        packs as Record<string, unknown>,
+      )) {
+        const b = declared.get(target);
+        if (
+          target === record.deliverable ||
+          (b !== "compatible" && b !== "standalone") ||
+          typeof range !== "string" ||
+          !PACK_VERSION_RANGE_PATTERN.test(range)
+        )
+          return refuse(
+            "pack-requires",
+            `${at}'s requires.packs.${target} must name another declared compatible or standalone pack with a version range such as ">=1.2.0 <2.0.0".`,
+          );
+      }
+    }
+    const conflicts = variantConflicts(v);
+    if (conflicts !== undefined) {
+      if (
+        !Array.isArray(conflicts) ||
+        conflicts.length > MAX_PACK_CONFLICTS ||
+        new Set(conflicts).size !== conflicts.length ||
+        !conflicts.every(
+          (c) =>
+            isDeliverableId(c) &&
+            c !== record.deliverable &&
+            declared.has(c as string),
+        )
+      )
+        return refuse(
+          "pack-requires",
+          `${at}'s conflicts must list at most ${MAX_PACK_CONFLICTS} distinct other declared packs.`,
+        );
+    }
+  }
   return null;
 }
 
@@ -564,21 +680,26 @@ export function packReleaseStatements(r: PackRowsInput): DbStatement[] {
       "format",
       "variant_json",
       "requires_json",
+      "conflicts_json",
       "created_at",
       "modified_at",
     ],
-    record.variants.map((v) => [
-      product,
-      releaseId,
-      variantBuildId(v.variant),
-      null,
-      "any",
-      record.type,
-      JSON.stringify(v.variant),
-      v.requires ? JSON.stringify(v.requires) : null,
-      now,
-      now,
-    ]),
+    record.variants.map((v) => {
+      const conflicts = variantConflicts(v);
+      return [
+        product,
+        releaseId,
+        variantBuildId(v.variant),
+        null,
+        "any",
+        record.type,
+        JSON.stringify(v.variant),
+        v.requires ? JSON.stringify(v.requires) : null,
+        Array.isArray(conflicts) ? JSON.stringify(conflicts) : null,
+        now,
+        now,
+      ];
+    }),
     guard,
     "ON CONFLICT DO NOTHING",
   );

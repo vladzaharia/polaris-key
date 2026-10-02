@@ -757,6 +757,9 @@ export interface ReleaseBuildDto {
   format: string | null;
   buildNumber: string | null;
   minOs: string | null;
+  /** P4-09: the pack ids this build ships embedded; `null` (or absent) when its descriptor said
+   *  nothing about embedding. */
+  embeds?: string[] | null;
 }
 
 /** A release's yank (P2-05): never offered on a moving selector; resolves only by pin. */
@@ -783,6 +786,139 @@ export interface ReleaseDto {
   yank: ReleaseYankDto | null;
   /** Empty for a legacy release no descriptor described. */
   builds: ReleaseBuildDto[];
+  /** P4-09: the app release's `content.contentApi`; `null` before its product declared packs. */
+  contentApi?: number | null;
+  /** P4-09: the exact pack release each pack is pinned to (a mirror of the signed `content`). */
+  pins?: AppPinDto[];
+}
+
+/** One pin of an app release (worker `release_pins`, P4-02). */
+export interface AppPinDto {
+  pack: string;
+  packReleaseId: string;
+  /** `null` when the pinned release's row is gone. */
+  packVersion: string | null;
+  /** The pinned pack release's yank: a yank never changes an existing pin. */
+  packYank: ReleaseYankDto | null;
+  /** The app release's `expects` entry for the pack. */
+  required: boolean;
+  delivery: string;
+  recordSha256: string;
+}
+
+// ── pack deliverables (P4-09; worker `release/packs/adminView.ts`) ─────────────
+
+/** One row of `GET …/release/deliverables`: the app or a pack. */
+export interface DeliverableDto {
+  id: string;
+  /** `app` or `pack`. */
+  kind: string;
+  /** The pack type; `null` for the app. */
+  type: string | null;
+  /** False for a pack whose stored declaration does not read back (a resync rewrites it). */
+  declared: boolean;
+  binding: string | null;
+  required: boolean | null;
+  /** `embedded` or `none` for a pack. */
+  baseline: string | null;
+  delivery: string | null;
+  variantKeys: string[];
+  /** The licence flag `.pkey/release` asserts; never the gate. */
+  assertedEntitlement: string | null;
+  /** The delivery gate (Distribution's access row for this deliverable), or `null`. */
+  gate: string | null;
+  latest: {
+    releaseId: string;
+    version: string;
+    seq: number | null;
+    publishedAt: number | null;
+    yanked: boolean;
+    /** The latest pack release's signed `entitlement`, or `null`. */
+    entitlement: string | null;
+  } | null;
+  releaseCount: number;
+  /** Distinct app releases pinning some release of this pack; `null` for the app. */
+  pinnedByAppReleases: number | null;
+}
+
+export interface DeliverablesResponse {
+  deliverables: DeliverableDto[];
+  /** False while Distribution is off: `gate` is unknown then, not "ungated". */
+  gateKnown: boolean;
+}
+
+/** One entry of a pack variant's delta menu, as the signed record gives it. */
+export interface PackDeltaDto {
+  /** `payload` (one patch) or `files` (a per-entry patch set). */
+  scope: string;
+  method: string | null;
+  /** The base's `payload.sha256`. */
+  from: string | null;
+  /** The version of this pack's release that has that base, when one does. */
+  fromVersion: string | null;
+  /** Stored bytes a device downloads for this strategy. */
+  bytes: number;
+  memBytes: number | null;
+}
+
+export interface PackVariantDto {
+  /** `""` for an unvaried pack. */
+  variantKey: string;
+  variant: Record<string, string>;
+  engine: string | null;
+  payload: { size: number; sha256: string };
+  /** Stored bytes of the whole payload (the full download). */
+  fullBytes: number | null;
+  indexBytes: number | null;
+  deltas: PackDeltaDto[];
+}
+
+export interface PinnedByDto {
+  appReleaseId: string;
+  appVersion: string | null;
+  appYank: ReleaseYankDto | null;
+  required: boolean;
+  delivery: string;
+  recordSha256: string;
+}
+
+export interface PackReleaseDto {
+  releaseId: string;
+  version: string;
+  seq: number | null;
+  channel: string | null;
+  publishedAt: number | null;
+  yank: ReleaseYankDto | null;
+  recordSha256: string | null;
+  formatVersion: number | null;
+  entitlement: string | null;
+  variants: PackVariantDto[];
+  /** Every app release that pins this pack release, yanked or not. */
+  pinnedBy: PinnedByDto[];
+}
+
+export interface PackReleasesResponse {
+  deliverable: string;
+  releases: PackReleaseDto[];
+}
+
+/** One file of a pack variant, from its files index (never where its blob is stored). */
+export interface PackFileDto {
+  path: string;
+  size: number;
+  sha256: string;
+  /** Container layout only. */
+  offset: number | null;
+  blob: { sha256: string; bytes: number; codec: string };
+}
+
+export interface PackFilesResponse {
+  deliverable: string;
+  releaseId: string;
+  variant: string;
+  /** At most 2,000; `total` is how many the index lists. */
+  files: PackFileDto[];
+  total: number;
 }
 
 export interface ReleaseChannelDto {
@@ -1345,6 +1481,24 @@ export const api = {
    *  Polaris Key believes the linked repo publishes, without spending a GitHub round-trip. */
   releases: (slug: string) =>
     call<ReleaseStoreResponse>(`${p(slug)}/release/releases`),
+  /** P4-09: the app and every pack, with its declaration, gate and latest release. */
+  deliverables: (slug: string) =>
+    call<DeliverablesResponse>(`${p(slug)}/release/deliverables`),
+  /** P4-09: a pack's releases, newest first, each with the app releases that pin it. */
+  packReleases: (slug: string, deliverable: string) =>
+    call<PackReleasesResponse>(
+      `${p(slug)}/release/deliverables/${enc(deliverable)}/releases`,
+    ),
+  /** P4-09: one variant's files (`variant` is `""` for an unvaried pack), read from its index. */
+  packFiles: (
+    slug: string,
+    deliverable: string,
+    releaseId: string,
+    variant: string,
+  ) =>
+    call<PackFilesResponse>(
+      `${p(slug)}/release/deliverables/${enc(deliverable)}/releases/${enc(releaseId)}/files?variant=${enc(variant)}`,
+    ),
   // ── release channel policy (P2-05 admin routes; worker `release/admin.ts`) ────
   /** Every deliverable's channels: policy, source, and what each resolves to, per platform. */
   releaseChannels: (slug: string) =>

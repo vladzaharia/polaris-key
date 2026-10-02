@@ -429,7 +429,7 @@
       ]
     },
     "content": {
-      "description": "The packs this app release pins and expects (P4-02, plans/P4-01.md §2.4): the content stamp without its format, moved unchanged into the signed record. The validator also checks that contentApi equals deliverables.app.content.contentApi and that every pin and expect names a declared pack; pins against stored records are the Worker's ingest checks.",
+      "description": "The packs this app release pins and expects (P4-02, plans/P4-01.md §2.4): the content stamp without its format, moved unchanged into the signed record. The validator also checks that contentApi equals deliverables.app.content.contentApi and that every pin and expect names a declared pack; holds name declared packs, packChannels equals deliverables.app.content.packChannels; pins and holds against stored records are the Worker's ingest checks (P4-12).",
       "type": "object",
       "properties": {
         "contentApi": {
@@ -451,8 +451,35 @@
             "$ref": "#/$defs/contentExpect"
           }
         },
-        "holds": false,
-        "packChannels": false
+        "holds": {
+          "description": "Compatible packs this app release keeps at one release (P4-12), pack ids unique and never pinned (the validator checks).",
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/contentHold"
+          }
+        },
+        "packChannels": {
+          "description": "Pack id or prefix ending in .* → a pack channel (P4-12): the manifest's deliverables.app.content.packChannels, stamped as declared.",
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 64,
+          "propertyNames": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*(\\.\\*)?$",
+            "not": {
+              "const": "app"
+            }
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+            "not": {
+              "enum": ["staging", "latest"]
+            }
+          }
+        }
       },
       "required": ["contentApi", "pins", "expects"]
     },
@@ -511,6 +538,44 @@
         }
       },
       "required": ["pack", "required", "delivery"]
+    },
+    "contentHold": {
+      "description": "A compatible pack release this app release keeps (P4-12): the pin's shape, plus an optional reason.",
+      "type": "object",
+      "properties": {
+        "pack": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+          "not": {
+            "const": "app"
+          }
+        },
+        "release": {
+          "type": "object",
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "seq": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
+            }
+          },
+          "required": ["sha256", "seq", "version"]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": ["pack", "release"]
     }
   }
 }

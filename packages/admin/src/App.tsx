@@ -6,7 +6,9 @@ import { ThemeProvider } from "./components/theme.js";
 import { Toaster } from "./components/ui/index.js";
 import { Shell } from "./components/Shell.js";
 import {
+  isLeaf,
   isTabEnabled,
+  LEAF_PARENT,
   navigate,
   normalizeView,
   parseRoute,
@@ -29,6 +31,8 @@ import { Tiers } from "./views/Tiers.js";
 import { Profiles } from "./views/Profiles.js";
 import { ProfileDetail } from "./views/profiles/ProfileDetail.js";
 import { Releases } from "./views/Releases.js";
+import { Deliverables } from "./views/releases/Deliverables.js";
+import { DeliverableDetail } from "./views/releases/DeliverableDetail.js";
 import { UpdateSettings } from "./views/UpdateSettings.js";
 import { Distribution } from "./views/Distribution.js";
 import { DistributionMatrixView } from "./views/distribution/Matrix.js";
@@ -167,8 +171,7 @@ function ThemeBackdrop({
 
 function routeKey(route: Route): string {
   if (route.kind === "product") {
-    const id =
-      route.view === "license" || route.view === "profile" ? route.id : "";
+    const id = "id" in route ? route.id : "";
     return `${route.slug}:${route.view}:${id}`;
   }
   return route.kind;
@@ -234,8 +237,7 @@ function renderRoute(
   // A detail leaf is not a nav tab, but it is unambiguously its service's surface — gate it on
   // the tab it hangs off, or a `#/p/x/licenses/<id>` bookmark would sail past the check that
   // stops `#/p/x/licenses`.
-  const tab: Tab =
-    view === "license" ? "licenses" : view === "profile" ? "profiles" : view;
+  const tab: Tab = isLeaf(view) ? LEAF_PARENT[view] : view;
   if (!isTabEnabled(tab, services)) {
     return <ServiceDisabled slug={activeSlug} tab={tab} />;
   }
@@ -266,6 +268,19 @@ function renderRoute(
     return <ProfileDetail slug={activeSlug} id={route.id} />;
   }
 
+  if (view === "deliverable") {
+    if (route.view !== "deliverable") {
+      return (
+        <EmptyState
+          icon={<AlertTriangle aria-hidden />}
+          title="Deliverable not found"
+          description="Choose a pack from the Deliverables view."
+        />
+      );
+    }
+    return <DeliverableDetail slug={activeSlug} id={route.id} />;
+  }
+
   switch (view) {
     case "overview":
       return <ProductOverview slug={activeSlug} />;
@@ -291,6 +306,8 @@ function renderRoute(
       return <Profiles slug={activeSlug} />;
     case "releases":
       return <Releases slug={activeSlug} />;
+    case "deliverables":
+      return <Deliverables slug={activeSlug} />;
     case "distribution":
       return <Distribution slug={activeSlug} />;
     case "distribution-matrix":
