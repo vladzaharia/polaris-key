@@ -178,3 +178,8 @@ package, and every decision in §8.1 that names it as owner, override this brief
   (landing second) adds `plan_target`'s chunk rule, version 2, the planned chunk sections and the
   `put*` mutate ops (its §5 order 0).
 - **No new error codes**: every code the two SDKs raise was registered by P4-06.
+- **Review B1: a frame's declared content size is checked before decoding.** `zstandard`'s
+  `decompress()` allocates a header's Frame_Content_Size up front and ignores
+  `max_output_size` when one is present, so a 2 MiB frame claiming 1 GiB peaked at about 1 GiB.
+  Every Python decode (plain, prefix, streamed; both backends) now reads the header first and
+  refuses a declared size other than the ref's; an unknown size stays bounded by the ref.
