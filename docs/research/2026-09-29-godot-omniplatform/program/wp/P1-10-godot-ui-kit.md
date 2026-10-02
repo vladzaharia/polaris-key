@@ -244,6 +244,17 @@ Where the code and this brief differ, the code is right; these are the correctio
   id.
 - **`PolarisKey.boot()` resolves at the first stop.** A stop reached after a Retry on the card
   arrives as `PKeyBoot.boot_finished` and `PolarisKey.boot_finished`.
+- **Never covering, measured.** PKeyBoot and PKeyGateView are Containers, which ignore a child's
+  anchors, so PKeyBoot hosts the update prompt on a plain full-rect `Overlay` Control with mouse
+  ignore, the prompt's banner mode asks a container for its own height only
+  (`SIZE_SHRINK_BEGIN`) and trims itself to its minimum height outside one, and the gate's
+  `BannerSlot` shrinks to the top in grace (its `Center` ignores the mouse there). `suite_ui`
+  checks rendered heights on a 1152x900 screen, not anchors.
+- **The prompt outlives a drop-in boot.** `PolarisKey.boot()` without a view frees its PKeyBoot at
+  READY, but a visible prompt is handed to the CanvasLayer first (`PolarisKey.boot_prompt`): a
+  locked answer stays, a dismissable one is freed on dismiss. `keep_update_prompt: false` opts
+  out. `PolarisKey.update.last_available` (new) keeps the last announced answer so a
+  `PKeyUpdatePrompt` added later replays it. `suite_boot`'s `dropin` group covers it.
 - **Channel lock.** The dev-menu channel picker is locked when the build's outlet does not allow a
   channel switch (`PKeyDecision.effective_capabilities(kind).channelSwitch`, so only a direct
   build or the editor may switch); picking a channel emits `channel_selected` for the game to

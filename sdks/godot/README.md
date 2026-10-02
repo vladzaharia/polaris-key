@@ -357,7 +357,9 @@ fetches the record the target for this platform pins and verifies it hash first,
   feed plus a record is about 10 ms on a desktop release template (the conformance suite logs
   the timing on every run).
 - `update_available(result)` fires for a decision worth showing (`boot == "optional"`), and for
-  the v3 `check()` when this build is behind; test `result is PKeyUpdateCheck`.
+  the v3 `check()` when this build is behind; test `result is PKeyUpdateCheck`. `last_available`
+  holds the answer it last carried (null once a later answer has nothing to show), which a
+  `PKeyUpdatePrompt` added later replays.
 - `feed(channel)` runs steps 1–9 alone (a `PKeyUpdateFeed`) and `release_record(sha256)` one
   record by hash (a `PKeyReleaseRecordResult`; cross-checked and kept only when a committed feed
   pins it).
@@ -496,7 +498,13 @@ func _ready() -> void:
   ui_up / ui_down / ui_accept / ui_cancel operate every screen on a gamepad or a TV remote.
 - **Update answers never cover the game.** A mandatory or blocked decision is a persistent banner
   with no dismiss in `PKeyUpdatePrompt`, whatever its `modal` setting; only a dismissable answer
-  may use the modal card. P1 never downloads: a direct build opens the release page, a store
+  may use the modal card. The banner is a strip at the top in any parent: PKeyBoot hosts it on a
+  plain full-rect overlay that takes no input, and inside a game's own Container it asks for its
+  own height only. `PolarisKey.boot()` without a view keeps a visible prompt past READY: the boot
+  view is freed and the prompt stays on its CanvasLayer as `PolarisKey.boot_prompt` (a locked
+  answer for good, a dismissable one until dismissed); pass `keep_update_prompt = false` when the
+  game shows its own prompt, which replays `PolarisKey.update.last_available`. Grace in
+  `PKeyGate` is the same: only the status strip, and no full-rect control takes the game's input. P1 never downloads: a direct build opens the release page, a store
   answer its listing, and a store, Steam or itch build the store link or nothing.
 - **Sliced verifies report progress**: `PolarisKey.verify_progress(fraction)` (web builds without
   threads), which PKeyBoot's progress bar follows; the bar shows once a stage passes 250 ms.
