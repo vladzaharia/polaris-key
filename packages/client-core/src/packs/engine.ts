@@ -250,6 +250,32 @@ export interface PacksSnapshot {
   bootSeq: number;
 }
 
+/** `preflight`'s answer. */
+type Preflight =
+  | { kind: "current"; install: PackInstall }
+  | {
+      kind: "plan";
+      body: string;
+      recordSha256: string;
+      record: PackRecordDoc;
+      variant: PackVariant;
+      installs: PackInstall[];
+      seeds: Map<string, InstalledPayload>;
+      planId: string;
+      index: FilesIndexDoc | null;
+      plan: Exclude<PlanResult, { error: unknown }>;
+    };
+
+/** What `estimate` reports for a set of packs (the consent dialog's size disclosure). */
+export interface PackEstimate {
+  /** The bytes the chosen strategies would download, summed over the packs not yet current. */
+  bytes: number;
+  /** The packs that would download. */
+  packs: string[];
+  /** Packs that cannot be planned, with the code `ensure` would raise. */
+  refused: { packId: string; code: string }[];
+}
+
 // ── The engine ───────────────────────────────────────────────────────────────────────────────
 
 export class PackEngine {
@@ -259,6 +285,11 @@ export class PackEngine {
   private readonly embedded = new Map<string, PackInstall>();
   private readonly running = new Map<string, PackInstall>();
   private doc: PackStateDoc | null = null;
+  /** Plan ids `estimate` staged an index under, reused by the next `ensure`. */
+  private readonly preflightPlans = new Map<
+    string,
+    { planId: string; recordSha256: string }
+  >();
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(opts: PackEngineOptions) {
@@ -402,6 +433,32 @@ export class PackEngine {
     });
   }
 
+  /**
+   * Preflight each pack (CONTENT §10 step 1: record, type, entitlement, variant, index, plan)
+   * without downloading the payload, and sum the chosen strategies' bytes: the size a consent
+   * dialog discloses (Apple 4.2.3(ii)). The index each tree stages is reused by `ensure`.
+   */
+  estimate(packIds: readonly string[]): Promise<PackEstimate> {
+    return this.serialised(async () => {
+      const out: PackEstimate = { bytes: 0, packs: [], refused: [] };
+      for (const id of packIds) {
+        try {
+          const pre = await this.preflight(id);
+          if (pre.kind === "current") continue;
+          if (pre.plan.strategy === "noop") continue;
+          out.packs.push(id);
+          if ("bytes" in pre.plan) out.bytes += pre.plan.bytes;
+        } catch (e) {
+          out.refused.push({
+            packId: id,
+            code: e instanceof PolarisError ? String(e.code) : "network-error",
+          });
+        }
+      }
+      return out;
+    });
+  }
+
   // ── Internals ──────────────────────────────────────────────────────────────────────────
 
   private serialised<T>(work: () => Promise<T>): Promise<T> {
@@ -523,7 +580,9 @@ export class PackEngine {
     return out;
   }
 
-  private async ensureOne(packId: string): Promise<PackInstall> {
+  /** Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
+   *  seeds, the index and the plan. */
+  private async preflight(packId: string): Promise<Preflight> {
     const doc = this.requireLoaded();
     const stamp = this.opts.stamp;
     if (!stamp)
@@ -543,12 +602,11 @@ export class PackEngine {
     // Already current: the active install, or the embedded copy, is the pinned release.
     const current = doc.active[packId];
     if (current && current.recordSha256 === pin.release.sha256) {
-      if (!this.running.has(packId) && this.activation(current) === "hot")
-        await this.activate(current);
-      return current;
+      return { kind: "current", install: current };
     }
     const emb = this.embedded.get(packId);
-    if (emb && emb.recordSha256 === pin.release.sha256 && !current) return emb;
+    if (emb && emb.recordSha256 === pin.release.sha256 && !current)
+      return { kind: "current", install: emb };
 
     // 2. The pinned record, by hash, against the pinned release keys.
     const got = await this.opts.fetchRecord(pin.release.sha256);
@@ -630,12 +688,19 @@ export class PackEngine {
       if (p) seeds.set(i.location, p);
     }
     const prior = doc.inflight[packId];
+    const early = this.preflightPlans.get(packId);
     const planId =
       prior &&
       prior.recordSha256 === pin.release.sha256 &&
       prior.variant === variantKey(variant.variant)
         ? prior.planId
-        : this.opts.newPlanId();
+        : early && early.recordSha256 === pin.release.sha256
+          ? early.planId
+          : this.opts.newPlanId();
+    this.preflightPlans.set(packId, {
+      planId,
+      recordSha256: pin.release.sha256,
+    });
     let index: FilesIndexDoc | null = null;
     const needIndex =
       variant.files.layout === "tree" ||
@@ -691,6 +756,37 @@ export class PackEngine {
       throw new PackError(p.error, `No way to install ${packId}: ${p.error}.`, {
         packId,
       });
+    return {
+      kind: "plan",
+      body: got.body,
+      recordSha256: pin.release.sha256,
+      record,
+      variant,
+      installs,
+      seeds,
+      planId,
+      index,
+      plan: p,
+    };
+  }
+
+  private async ensureOne(packId: string): Promise<PackInstall> {
+    const pre = await this.preflight(packId);
+    if (pre.kind === "current") {
+      const current = pre.install;
+      if (
+        !current.embedded &&
+        !this.running.has(packId) &&
+        this.activation(current) === "hot"
+      )
+        await this.activate(current);
+      return current;
+    }
+    const { record, variant, installs, seeds, planId, index } = pre;
+    const p = pre.plan;
+    const got = { body: pre.body };
+    const pin = { release: { sha256: pre.recordSha256 } };
+    this.preflightPlans.delete(packId);
     if (p.strategy === "noop") {
       const same = installs.find(
         (i) => i.payloadSha256 === variant.payload.sha256,

@@ -16,7 +16,12 @@ import {
   PackEngine,
   PackError,
   applyDelta,
+  bootPackOptions,
+  bootTransition,
   commitInstall,
+  initialBootState,
+  runBootFetch,
+  type BootEvent,
   emptyPackState,
   gcRoots,
   memoryPackStateStore,
@@ -690,5 +695,98 @@ describe("applyDelta and rule 5 (a base that starts with the dictionary magic)",
     });
     expect(r.verdict).toEqual({ ok: false, error: "delta-apply-failed" });
     expect(called).toBe(false);
+  });
+});
+
+describe("the stage machine's host side (plans/P4-01.md §2.10)", () => {
+  async function toFetch(stamp: ReturnType<typeof stampFor>) {
+    let state = initialBootState(bootPackOptions(stamp));
+    const emits: string[] = [];
+    const send = (event: BootEvent) => {
+      const t = bootTransition(state, event);
+      state = t.state;
+      for (const e of t.emits)
+        emits.push(e.type === "blocked" ? `blocked:${e.reason}` : e.type);
+    };
+    for (const e of [
+      { type: "start" },
+      { type: "shell.done" },
+      { type: "guard.done", result: "ok" },
+      { type: "sync.done", result: "ok" },
+      { type: "gate.status", status: "ok" },
+      { type: "decide.done", decision: "none" },
+    ] as BootEvent[])
+      send(e);
+    return { send, emits, state: () => state };
+  }
+
+  it("asks on a metered network, downloads with progress and reaches ready", async () => {
+    const { v1 } = await releases();
+    const stamp = stampFor(v1);
+    const e = engine({ server: byteServer(v1), stamp });
+    await e.load();
+    const boot = await toFetch(stamp);
+    expect(boot.state().stage).toBe("fetch");
+    let asked = 0;
+    const r = await runBootFetch(e, {
+      stamp,
+      send: boot.send,
+      metered: true,
+      answer: async (bytes) => {
+        asked = bytes;
+        return true;
+      },
+    });
+    expect(r).toEqual({ result: "ok", installed: ["djdl.l10n"] });
+    expect(asked).toBeGreaterThan(0);
+    expect(boot.state().stage).toBe("mount");
+    boot.send({ type: "mount.done" });
+    expect(boot.state().outcome).toBe("ready");
+    expect(boot.emits).toContain("consent_needed");
+    expect(
+      boot.emits.filter((x) => x === "fetch_progress").length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("a declined required download blocks with content-declined, never error", async () => {
+    const { v1 } = await releases();
+    const stamp = stampFor(v1);
+    const e = engine({ server: byteServer(v1), stamp });
+    await e.load();
+    const boot = await toFetch(stamp);
+    const r = await runBootFetch(e, {
+      stamp,
+      send: boot.send,
+      consent: "always",
+      answer: async () => false,
+    });
+    expect(r.result).toBe("declined");
+    expect(boot.state().stage).toBe("blocked");
+    expect(boot.emits).toContain("blocked:content-declined");
+  });
+
+  it("an unreachable byte server is offline; essential-only content can still play", async () => {
+    const { v1 } = await releases();
+    const stamp = {
+      ...stampFor(v1),
+      expects: [{ pack: "djdl.l10n", required: false, delivery: "essential" }],
+    };
+    const server = byteServer(v1);
+    server.fetchObject = async () => {
+      throw new Error("offline");
+    };
+    const e = engine({ server, stamp });
+    await e.load();
+    const boot = await toFetch(stamp);
+    const r = await runBootFetch(e, {
+      stamp,
+      send: boot.send,
+      consent: "never",
+    });
+    expect(r).toEqual({ result: "offline", installed: [] });
+    expect(boot.state()).toMatchObject({
+      stage: "offline",
+      canPlayOffline: true,
+    });
   });
 });

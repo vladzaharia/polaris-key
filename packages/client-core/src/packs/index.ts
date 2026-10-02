@@ -51,6 +51,7 @@ export {
   type ObjectResponse,
   type PackEngineOptions,
   type PackHandler,
+  type PackEstimate,
   type PackProgress,
   type PacksSnapshot,
   type PackStorage,
@@ -132,3 +133,8 @@ export {
   type MemoryPackStorage,
   type MemoryPayload,
 } from "./memory.js";
+export {
+  bootPackOptions,
+  runBootFetch,
+  type RunBootFetchOptions,
+} from "./boot.js";
