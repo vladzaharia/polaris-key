@@ -56,6 +56,7 @@
     "update.check": { "status": "implemented" },
     "update.feed": { "status": "implemented" },
     "update.decide": { "status": "implemented" },
+    "update.content": { "status": "planned", "wp": "P4-23" },
     "update.driver": {
       "status": "implemented",
       "except": [{ "runtime": "ios", "reason": "outlet" }],
@@ -71,6 +72,7 @@
       "note": "PolarisKeyCore detectOutlet over PolarisKeyUpdate readOutletSignals: AppDistributor.current behind #available(iOS 17.4) (web from 17.5) raced against the 2 s deadline, AltStore's ALTBundleIdentifier, embedded.mobileprovision, the macOS _MASReceipt and ProductionSandbox, the signing leaf (SecCodeCopySigningInformation) and the product's Caskroom link. UpdateClient detects at its first decision when the host names no outlet."
     },
     "packs.record": { "status": "planned", "wp": "P4-07" },
+    "packs.revoke": { "status": "planned", "wp": "P4-23" },
     "packs.plan": { "status": "planned", "wp": "P4-07" },
     "packs.index.files": { "status": "planned", "wp": "P4-07" },
     "packs.index.chunks": { "status": "planned", "wp": "P4-11" },

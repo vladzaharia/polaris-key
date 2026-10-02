@@ -124,11 +124,12 @@ class ErrorCode:
 	const PACK_NOT_PINNED := "pack-not-pinned"
 	const PACK_NOT_ENTITLED := "pack-not-entitled"
 	const PACK_STATE_UNREADABLE := "pack-state-unreadable"
+	const PACK_REVOKED := "pack-revoked"
 	const MARKER_REJECTED := "marker-rejected"
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "marker-rejected"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pack-revoked", "marker-rejected"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -244,6 +245,7 @@ const ERROR_CODE_KINDS := {
 	"pack-not-pinned": "client",
 	"pack-not-entitled": "client",
 	"pack-state-unreadable": "client",
+	"pack-revoked": "client",
 	"marker-rejected": "client",
 }
 
@@ -286,10 +288,12 @@ class Feature:
 	const UPDATE_CHECK := "update.check"
 	const UPDATE_FEED := "update.feed"
 	const UPDATE_DECIDE := "update.decide"
+	const UPDATE_CONTENT := "update.content"
 	const UPDATE_DRIVER := "update.driver"
 	const UPDATE_BOOTGUARD := "update.bootguard"
 	const OUTLET_DETECT := "outlet.detect"
 	const PACKS_RECORD := "packs.record"
+	const PACKS_REVOKE := "packs.revoke"
 	const PACKS_PLAN := "packs.plan"
 	const PACKS_INDEX_FILES := "packs.index.files"
 	const PACKS_INDEX_CHUNKS := "packs.index.chunks"
@@ -311,7 +315,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.revoke", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -446,7 +450,7 @@ class OutletSubkind:
 const OUTLET_SUBKIND_VALUES := ["homebrew", "npm", "pnpm", "npx", "scoop", "chocolatey", "flatpak", "appimage"]
 
 
-## The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed.
+## The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8; `packs` added by plans/P4-13.md §2.6).
 class UpdateAction:
 	const NONE := "none"
 	const CODE_READY := "code-ready"
@@ -454,10 +458,11 @@ class UpdateAction:
 	const STORE := "store"
 	const PLATFORM := "platform"
 	const BLOCKED := "blocked"
+	const PACKS := "packs"
 
 
 ## Every `UpdateAction` value, in source order.
-const UPDATE_ACTION_VALUES := ["none", "code-ready", "binary", "store", "platform", "blocked"]
+const UPDATE_ACTION_VALUES := ["none", "code-ready", "binary", "store", "platform", "blocked", "packs"]
 
 
 ## Why the update decision is `none` (`NONE_REASONS`, plans/P3-01.md §2.8).
@@ -478,13 +483,15 @@ class UpdateNoneReason:
 const UPDATE_NONE_REASON_VALUES := ["up-to-date", "behind", "not-available", "halted", "out-of-bucket", "stale", "skipped", "no-method", "no-build", "unknown-version"]
 
 
-## Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed.
+## Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8; `content-floor` and `revoked-content` added by plans/P4-13.md §2.6).
 class UpdateBlockedReason:
 	const APP_FLOOR := "app-floor"
+	const CONTENT_FLOOR := "content-floor"
+	const REVOKED_CONTENT := "revoked-content"
 
 
 ## Every `UpdateBlockedReason` value, in source order.
-const UPDATE_BLOCKED_REASON_VALUES := ["app-floor"]
+const UPDATE_BLOCKED_REASON_VALUES := ["app-floor", "content-floor", "revoked-content"]
 
 
 ## How a `binary` decision installs the new build (`BINARY_METHODS`, plans/P3-01.md §2.8).
@@ -688,6 +695,12 @@ const MAX_JSON_DEPTH := 64
 ## Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`).
 const MAX_RECORD_JWS_BYTES := 88844
 
+## Wire contract v4 limit `MAX_FEED_REVOCATIONS` (`@polaris-key/protocol/core`).
+const MAX_FEED_REVOCATIONS := 64
+
+## Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`).
+const REVOCATION_REASON_MAX_BYTES := 512
+
 ## Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 const MAX_PACK_VARIANTS := 32
 
@@ -830,10 +843,12 @@ static func capabilities() -> Dictionary:
 		"update.check": {"status": "implemented", "service": "update", "na": []},
 		"update.feed": {"status": "implemented", "service": "update", "na": []},
 		"update.decide": {"status": "implemented", "service": "update", "na": []},
+		"update.content": {"status": "planned", "service": "update", "na": []},
 		"update.driver": {"status": "implemented", "service": "update", "na": [{"runtime": "ios", "reason": "outlet"}]},
 		"update.bootguard": {"status": "implemented", "service": "update", "na": []},
 		"outlet.detect": {"status": "implemented", "service": "update", "na": []},
 		"packs.record": {"status": "planned", "service": "release", "na": []},
+		"packs.revoke": {"status": "planned", "service": "release", "na": []},
 		"packs.plan": {"status": "planned", "service": "release", "na": []},
 		"packs.index.files": {"status": "planned", "service": "release", "na": []},
 		"packs.index.chunks": {"status": "planned", "service": "release", "na": []},
@@ -855,4 +870,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "da1638bab077730e11197c923cd34502d085a84b337f16f824ed92a0b0f43eee"
+const CAPABILITY_DIGEST := "8735e40f68ba3fabe72b3733bfb9fae48b1bb597d7bf17fdd0d84667bc0b766b"

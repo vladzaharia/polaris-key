@@ -676,6 +676,12 @@
       "description": "The pack install state could not be read (an I/O error, not a missing file), so the pack pipeline refuses to write it or install anything this process: an install recorded over an unread state could lose the installs it holds."
     },
     {
+      "code": "pack-revoked",
+      "kind": "client",
+      "service": "update",
+      "description": "The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or, offline, an embedded baseline of a pack whose revocations must be re-learned (detail `relearn`) (plans/P4-13.md §2.5)."
+    },
+    {
       "code": "marker-rejected",
       "kind": "client",
       "service": "release",

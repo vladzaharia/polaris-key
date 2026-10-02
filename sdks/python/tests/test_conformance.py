@@ -419,7 +419,7 @@ _AFTER_CLAIMS = {"freshness", "not-newer", "rollback"}
 
 
 def test_has_every_feed_case_of_the_plan() -> None:
-    assert len(_FEED_CASES) == 77
+    assert len(_FEED_CASES) == 80
 
 
 @pytest.mark.parametrize(

@@ -507,6 +507,27 @@
       "allowedNa": []
     },
     {
+      "id": "update.content",
+      "family": "release",
+      "title": "The content decision: feed pack sets, floors and revocations, packs and prestage",
+      "service": "update",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "update-matrix.json",
+          "family": "contentRows",
+          "wp": "P4-13"
+        },
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "feedContentCases",
+          "wp": "P4-13"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
       "id": "update.driver",
       "family": "release",
       "title": "Hand off to the native updater, or a store link",
@@ -558,6 +579,22 @@
           "family": "markerCases",
           "wp": "P4-21"
         }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.revoke",
+      "family": "packs",
+      "title": "Revocation records: verify, supersede, persist, refuse revoked mounts",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "revocationCases",
+          "wp": "P4-13"
+        },
+        { "kind": "unit" }
       ],
       "allowedNa": []
     },
