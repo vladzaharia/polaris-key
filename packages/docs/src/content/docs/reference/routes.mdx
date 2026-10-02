@@ -51,6 +51,7 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | GET | `/{product}/distribution/files/{releaseId}/{name}` | distribution | Download one exact file of one release |
 | GET | `/{product}/distribution/flathub/{channel}.json` | distribution | Flathub x-checker-data JSON for one channel |
 | POST | `/{product}/distribution/hooks/asc` | distribution | App Store Connect webhook notifications (Apple → Worker) |
+| POST | `/{product}/distribution/hooks/sentry` | distribution | Sentry alert webhook — opens a halt candidate (Sentry → Worker) |
 | GET | `/{product}/distribution/install.sh` | distribution | The curl-pipe install script |
 | GET | `/{product}/distribution/obtainium/{channel}.json` | distribution | Obtainium app config for one channel |
 | POST | `/{product}/distribution/report` | distribution | Report availability, a submission state or a signing key (CI) |
