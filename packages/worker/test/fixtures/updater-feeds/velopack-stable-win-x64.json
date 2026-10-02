@@ -21,17 +21,6 @@
       "Size": 32,
       "NotesMarkdown": "What's new in 1.1.0 <b>bold</b>.",
       "NotesHTML": "<p>What&apos;s new in 1.1.0 &lt;b&gt;bold&lt;/b&gt;.</p>"
-    },
-    {
-      "PackageId": "Djdl",
-      "Version": "1.0.0",
-      "Type": "Full",
-      "FileName": "https://dl.example.test/djdl/distribution/files/app%401.0.0/Djdl-1.0.0-full.nupkg",
-      "SHA1": "90C235DC496D4B8A2660FCDED846CB57E27A544D",
-      "SHA256": "93108955D8D86C2EA573C0C11FD8D78AE3701A0C931CCFD7FF27516FE9186969",
-      "Size": 31,
-      "NotesMarkdown": "What's new in 1.0.0 <b>bold</b>.",
-      "NotesHTML": "<p>What&apos;s new in 1.0.0 &lt;b&gt;bold&lt;/b&gt;.</p>"
     }
   ]
 }

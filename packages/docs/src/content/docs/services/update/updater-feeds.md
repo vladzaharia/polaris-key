@@ -79,7 +79,7 @@ Nothing is buffered except a small sidecar or a zsync control file.
 
 ## Sparkle, extended
 
-For a product that publishes release records, the appcast routes render up to five releases with
+For a product that publishes release records, the appcast routes render up to three releases with
 a macOS build for `?arch=` (`arm64` by default, as before). A universal DMG serves both
 architectures. Each item carries:
 
@@ -118,8 +118,9 @@ URL. The Velopack channel's first token is the OS (`win`, `osx`, `linux`). If th
 `x64` or `arm64` it sets the architecture; otherwise the client's `?arch=` does, and the default
 is x64. Velopack's other query parameters change nothing.
 
-`Assets` lists, for up to twenty releases, the `-full.nupkg` payload (`Type: Full`) and its
-`-delta.nupkg` delta artifacts (`Type: Delta`). `PackageId` comes from the package file name, and
+`Assets` lists the newest release's `-full.nupkg` payload (`Type: Full`) and the `-delta.nupkg`
+delta artifacts (`Type: Delta`) of up to ten releases. Velopack applies deltas to the full package
+it already holds, so older full packages are not listed. `PackageId` comes from the package file name, and
 `FileName` is the absolute delivery URL (Velopack downloads an absolute URL as it is).
 
 ## MSIX App Installer

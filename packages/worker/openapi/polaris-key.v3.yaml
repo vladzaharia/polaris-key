@@ -3920,7 +3920,7 @@ paths:
 
         EXTENDED (P3-09) for a product that publishes CI-signed release records: the feed is
         then rendered from the records and Distribution's per-outlet state, as every app-updater
-        feed is — up to five releases with a macOS build for `?arch=` (a universal DMG serves
+        feed is — up to three releases with a macOS build for `?arch=` (a universal DMG serves
         both architectures; `?outlet=` picks a `direct` outlet), `sparkle:version` the build
         number, `sparkle:hardwareRequirements` `arm64` for an Apple-silicon-only build,
         `sparkle:criticalUpdate` (with no attribute for the channel's critical pointer release;
@@ -4115,7 +4115,7 @@ paths:
       summary: The WinSparkle appcast for a channel
       description: >
         P3-09 (README §3.6, notes/E3 §A3.2). A Sparkle-format appcast for Windows installer
-        builds, one URL per channel (WinSparkle has no channels): up to five releases with a
+        builds, one URL per channel (WinSparkle has no channels): up to three releases with a
         stored release record, newest first, each one `<item>` with one `<enclosure>` per
         Windows installer build (`.exe` / `.msi` payloads only — WinSparkle runs what it
         downloads), x64 first, each with `sparkle:os` (`windows-x64`, `windows-arm64`,
@@ -4162,9 +4162,10 @@ paths:
         (`…/update/{channel}/velopack/`). The Velopack channel's first token is the OS (`win`,
         `osx`, `linux`), the second, when it is `x64` or `arm64`, the architecture; else the
         client's `?arch=` (Velopack appends it), else x64. Velopack's other parameters (`os`,
-        `rid`, `id`, `localVersion`) are ignored and key nothing. `Assets` lists, for up to
-        twenty releases with a stored record, newest first, the `-full.nupkg` payload of the
-        matching build (`Type: Full`) and its `-delta.nupkg` delta artifacts (`Type: Delta`):
+        `rid`, `id`, `localVersion`) are ignored and key nothing. `Assets` lists the newest
+        release's `-full.nupkg` payload (`Type: Full`) and the `-delta.nupkg` delta artifacts
+        (`Type: Delta`) of up to ten releases with a stored record, newest first (Velopack
+        applies deltas to the full package it holds, so older full packages are not listed):
         `PackageId` from the package file name, `Version`, `FileName` as the ABSOLUTE immutable
         distribution URL, `SHA256` from the record, `SHA1` computed by a streaming digest over
         the stored bytes (which also checks the recorded SHA-256) and memoised, `Size`, and the

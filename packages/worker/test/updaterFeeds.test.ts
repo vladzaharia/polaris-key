@@ -705,6 +705,8 @@ describe("updater feeds: content", () => {
     const doc = JSON.parse(body) as { Assets: Array<Record<string, any>> };
     const v13 = doc.Assets.filter((a) => a.Version === "1.3.0-beta.1");
     expect(v13.map((a) => a.Type)).toEqual(["Full", "Delta"]);
+    // Only the newest release's full package: Velopack applies deltas to the one it holds.
+    expect(doc.Assets.filter((a) => a.Type === "Full")).toHaveLength(1);
     for (const a of v13) {
       expect(a.PackageId).toBe("Djdl");
       expect(
@@ -717,6 +719,27 @@ describe("updater feeds: content", () => {
       expect(a.Size).toBe(bytes.length);
     }
     expect(body).not.toContain("1.1.5");
+  });
+
+  it("stored bytes that are not the recorded ones never yield a SHA1 or a signature", async () => {
+    const w = await world();
+    for (const name of [
+      "Djdl-1.1.0-full.nupkg",
+      "djdl-1.1.0-macos-universal.dmg",
+    ]) {
+      const real = bytesOf(name);
+      w.r2.seed(`blobs/sha256/${sha(real)}`, bytesOf(`${name} (tampered)`), {
+        withSha256: true,
+      });
+    }
+    const vp = JSON.parse(
+      (await text(w, "update/stable/velopack/releases.win-x64.json")).body,
+    ) as { Assets: Array<Record<string, any>> };
+    expect(vp.Assets.some((a) => a.Type === "Full")).toBe(false);
+    const sparkle = (await text(w, "update/stable/appcast.xml?arch=x86_64"))
+      .body;
+    expect(sparkle).not.toContain("djdl-1.1.0-macos-universal.dmg");
+    expect(sparkle).toContain("djdl-1.2.0-macos-universal.dmg");
   });
 
   it("Velopack: an unknown OS token or file name is not a feed", async () => {

@@ -106,9 +106,19 @@ const PUBLIC_FEED_CACHE = "public, max-age=300";
 /** The version check's moving answer (the legacy check's `MOVING_CACHE`). */
 const PUBLIC_VERSION_CACHE = "public, max-age=120";
 const PRIVATE_CACHE = "private, no-store";
-/** How many releases the appcasts list (newest first); Velopack lists more for its deltas. */
-const APPCAST_RELEASES = 5;
-const VELOPACK_RELEASES = 20;
+/**
+ * How many releases the appcasts list, newest first: the current one, and older ones a client
+ * falls back to (a Sparkle group the phased rollout has not reached yet, an older OS). Each
+ * listed enclosure costs one streamed signature verification per release, ever (memoised).
+ */
+const APPCAST_RELEASES = 3;
+/**
+ * How many releases' DELTAS the Velopack feed lists (Velopack's own default
+ * `MaximumDeltasBeforeFallback`). Only the newest release's FULL package is listed: Velopack
+ * applies deltas to the full package it already holds, so older full packages are never fetched,
+ * and listing them would cost a streamed SHA-1 each.
+ */
+const VELOPACK_RELEASES = 10;
 
 export const CONTENT_TYPES = {
   xml: "application/xml; charset=utf-8",
@@ -548,22 +558,24 @@ function serveVelopack(
         });
         if (!sel) return null;
         const assets: VelopackAsset[] = [];
-        for (const e of sel.entries) {
+        for (const [i, e] of sel.entries.entries()) {
           const packageId = velopackPackageId(e.name, e.version);
           if (!packageId || !e.sha256 || e.size === null) continue;
-          const sha1 = await artifactSha1(r.artifacts, e.payload);
-          if (!sha1) continue;
           const notes = velopackNotes(e.notes);
-          assets.push({
-            PackageId: packageId,
-            Version: e.version,
-            Type: "Full",
-            FileName: e.url,
-            SHA1: sha1.toUpperCase(),
-            SHA256: e.sha256.toUpperCase(),
-            Size: e.size,
-            ...notes,
-          });
+          if (i === 0) {
+            const sha1 = await artifactSha1(r.artifacts, e.payload);
+            if (!sha1) continue;
+            assets.push({
+              PackageId: packageId,
+              Version: e.version,
+              Type: "Full",
+              FileName: e.url,
+              SHA1: sha1.toUpperCase(),
+              SHA256: e.sha256.toUpperCase(),
+              Size: e.size,
+              ...notes,
+            });
+          }
           for (const a of e.artifacts) {
             if (
               a.role !== "delta" ||
