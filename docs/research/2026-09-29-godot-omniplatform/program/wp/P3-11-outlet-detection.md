@@ -189,16 +189,16 @@ per artifact, and so mislabels Steam, itch and sideload builds
 
 ## Acceptance criteria
 
-- [ ] Node (through `client-core`), Python, Swift and Godot pass every `outlet-matrix.json` row,
+- [x] Node (through `client-core`), Python, Swift and Godot pass every `outlet-matrix.json` row,
       with identical row names; React uses the `client-core` function.
-- [ ] Each SDK's readers have unit tests with faked signals for every outlet its runtime can see.
-- [ ] Swift's `AppDistributor` call is guarded for iOS 17.4 (the `web` case for 17.5) and raced
+- [x] Each SDK's readers have unit tests with faked signals for every outlet its runtime can see.
+- [x] Swift's `AppDistributor` call is guarded for iOS 17.4 (the `web` case for 17.5) and raced
       against a deadline, a test with a never-resolving fake returns `unavailable` (no evidence),
       and the package still builds for its iOS 17 floor.
-- [ ] Each update client uses the detected outlet when the host passes none, and the host's value
+- [x] Each update client uses the detected outlet when the host passes none, and the host's value
       when it does (a test per SDK).
-- [ ] The green gate passes (`AGENTS.md`), including the Python, Swift and Godot jobs.
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] The green gate passes (`AGENTS.md`), including the Python, Swift and Godot jobs.
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
 ## Verify
 
@@ -212,6 +212,54 @@ mise exec node@22 -- pnpm --filter @polaris-key/react test
 
 For Godot, P1-01's runner on the editor and a release template:
 `GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh`.
+
+## Corrections from implementation
+
+Where this brief and the code disagreed when P3-11 was built, the code won:
+
+- **Python does not read PEP 376 `INSTALLER`.** It names `pip`, `uv` or `conda`, none of which is a
+  kind, a subkind or a signal in `outlet-matrix.json`'s vocabulary, so reading it would need a
+  26th signal, which is a plan-mode corpus change. A pip-installed tool is `direct` with no
+  subkind, which the stamp (or the host) already says. The Python readers are the environment,
+  `sys.executable`/script/`sys.prefix` path conventions (a Homebrew `Cellar`, WinGet, Scoop,
+  Chocolatey), product-named markers (a frozen `.app`'s receipt, `Caskroom/<caskToken>/`, the
+  install's Steam `appmanifest`, the nearest itch receipt, `/.flatpak-info`) and
+  `GetCurrentPackageFamilyName` through `ctypes`.
+- **Godot does not count `FLATPAK_ID`.** An environment variable is inherited by child processes,
+  and `linux.flatpakInfo` is attested only because Flatpak writes `/.flatpak-info` read-only; the
+  reader reads the file alone.
+- **Godot's `pkey_outlet_<kind>` feature tag stands in for a lost `build.json` only.** With
+  `PKeyOptions.build_stamp_path = ""` (no stamp at all, as the tests configure) no tag stands in
+  either. A web export with no stamp synthesises `outletKind: web`.
+- **Godot's device report carries the detected outlet** (`PKeyCore.reported_outlet()`: the
+  decision's outlet id, else its kind, never `unknown`), the "detected outlet id" the privacy
+  bullet allows under P1-05's `outlet` key; `PKeyCore.outlet()` keeps answering the stamped id.
+- **Node reads product-named markers too**, not only the environment and path conventions: the
+  Mac App Store receipt (and `ProductionSandbox`) in an `.app`, `Caskroom/<caskToken>/`, the
+  install's own `appmanifest_<steamAppId>.acf`, the nearest itch receipt and `/.flatpak-info`.
+  Electron's `process.mas` gates nothing by itself (the receipt is the evidence);
+  `process.windowsStore` lets the reader take the package family name from the `WindowsApps`
+  folder. SignatureKind, the App Installer URI and the external location need WinRT, so a
+  packaged Windows install keeps its stamp in Node and Python as in Godot.
+- **Swift also reads AltStore's `ALTBundleIdentifier` and an iOS `embedded.mobileprovision`**
+  (`ios.bundleIdRewrite`, `ios.provisioningProfile`), and detects at the update client's first
+  decision rather than at construction, because `AppDistributor.current` is async. A Developer ID
+  leaf is reported without its team name.
+- **The option and accessor names.** `detect` (default true) in Node, React, Python and Swift,
+  `update_detect` in Godot (beside `update_outlet`); the readers take a fakeable environment
+  (`outletEnvironment` / `outlet_environment` / `PKeyCore.outlet_env`); the result is exposed as
+  `outlet` and `detected` (`client.update.outlet`/`.detected`, `adapter.outlet`/`.detected`,
+  Swift `outlet()`/`detected()`, Godot `update_outlet()`/`detected_outlet()`). Node adds
+  `packageName` for `node.packageManager`'s identity condition. Every SDK exports
+  `detectionStamp`/`detection_stamp`, the build stamp as detection reads it.
+- **`homebrewFormula`'s pattern stays [I].** `^[a-z0-9][a-z0-9.@+_-]{0,99}$` as plan §3 wrote it;
+  Homebrew's own naming rules were not checked against it here.
+- **`pkey distribution outlet-ids`' `bundleId`** is the build's own Apple entry's (`app-store`,
+  `testflight`, `altstore`, `altstore-pal`), else the first of those entries that declares one; a
+  Godot preset's bundle identifier still wins in the stamp.
+- **Godot's stamp writes `outletKind` always** (`""` for a custom outlet id with no kind, which
+  resolves as `unknown`), and `outletSubkind` and `format` only when set. The Godot runner's
+  stamp exports gain `kind.zip` and `nokind.zip`.
 
 ## Hand-off
 
