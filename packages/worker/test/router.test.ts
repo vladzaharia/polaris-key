@@ -379,7 +379,24 @@ describe("matchRoute — normalization + notFound", () => {
   it("returns notFound for an unknown product sub-path", () => {
     expect(matchRoute("/djdl/unknown-thing").kind).toBe("notFound");
     expect(matchRoute("/djdl/activation").kind).toBe("notFound");
-    expect(matchRoute("/djdl").kind).toBe("notFound"); // product with no rest
+  });
+
+  it("/<product> alone is the download page's alias (P2b-06), which only the bytes host serves", () => {
+    // Rewritten like every permanent alias; on the console host the Distribution route answers
+    // `null` for `download`, so the console still serves nothing at `/<product>`.
+    expect(matchRoute("/djdl")).toEqual({
+      kind: "service",
+      slug: "distribution",
+      product: "djdl",
+      rest: ["download"],
+      alias: true,
+    });
+    expect(matchRoute("/djdl/")).toEqual(matchRoute("/djdl"));
+    expect(matchRoute("/DJDL").kind).toBe("notFound");
+    expect(matchRoute("/djdl.html").kind).toBe("notFound");
+    // A reserved slug is never a product.
+    for (const reserved of ["/download", "/webhooks", "/magic", "/assets"])
+      expect(matchRoute(reserved).kind, reserved).toBe("notFound");
   });
 
   it("returns notFound for an uppercase / illegal slug", () => {
