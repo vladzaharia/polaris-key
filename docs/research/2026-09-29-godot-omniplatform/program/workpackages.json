@@ -1471,7 +1471,7 @@
       "optional": false,
       "refs": ["CONTENT §6.4 §6.7 §11", "README §3.8"],
       "brief": "wp/P4-14-readiness-gc-rollouts.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-15",
