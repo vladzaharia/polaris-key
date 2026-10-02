@@ -62,8 +62,8 @@ them once is cheaper than reconciling five PRs.
   `docs/security/WIRE-CONTRACT-V3.md` §1 (the 65,536-byte decoded payload cap) and §9;
   `tools/sign-corpus.ts` (`reconcile`, `main`, `SWIFT_V2_RESOURCES`);
   `packages/shared-manifest/src/index.ts`, `schemas/v1/release.schema.json`,
-  `test/schema-parity.test.ts`; `packages/worker/src/core/devices.ts:859` (`REPORT_KEYS`);
-  `packages/docs/scripts/gen-reference.mjs` (`corpusInventory`, `TABLE_OWNERS` at line 248);
+  `test/schema-parity.test.ts`; `packages/worker/src/core/devices.ts:869` (`REPORT_KEYS`);
+  `packages/docs/scripts/gen-reference.mjs` (`corpusInventory` at line 458, `TABLE_OWNERS` at line 312);
   `.prettierignore`; `sdks/swift/Package.swift` (the `.copy("Resources/v2")` test resource).
 
 ## Scope
@@ -77,7 +77,7 @@ them once is cheaper than reconciling five PRs.
   pack release, an app release carrying `content`, a marker, and one `plan-matrix.json` row.
 - **The pack rows of the stage machine** (from [P1-09's plan §8](../plans/P1-09.md)): the rows for a
   `true` `canPlayOffline`, the `accepts` change that lets `offline` accept `play-offline`, fetch
-  consent and progress, and the bump to `stageMatrixVersion: 2`. P4-04 emits them and updates the
+  consent and progress, and the bump to `stageMatrixVersion: 3` (P3-02 takes version 2). P4-04 emits them and updates the
   machine in every port that exists by then; P4-06, P4-07 and P4-08 implement only the host side.
 - Status changes in `workpackages.json` (`planning`, then `awaiting-approval`).
 
@@ -173,7 +173,7 @@ uniqueness or order is ASCII by pattern.
 12. **Error registry** (A7 §3.5) is contract. Say where it lives (`shared-protocol`, emitted per
     language by P1b-02's `gen-sdk-constants`) and that `plan.*` results are verdicts, not throws.
 13. **Telemetry.** `packSetId` (and `appRelease`, if kept) in the report body: `DeviceFacts` in
-    `packages/shared-protocol/src/core.ts` and `REPORT_KEYS` in `core/devices.ts:859`, which drops
+    `packages/shared-protocol/src/core.ts` and `REPORT_KEYS` in `core/devices.ts:869`, which drops
     unknown keys silently.
 14. **Feed.** Pinned packs need no feed entry (CONTENT §6.3). Recommend v1 adds no feed fields and
     say so, because CONTENT §16 lists "the pack part of the channel feed" under v1.
@@ -260,7 +260,7 @@ uniqueness or order is ASCII by pattern.
 - [ ] One names table covers every identifier downstream briefs will quote, and every name that
       P3-01 reserved (`kind: pack`, `content`, the record hash) is used as P3-01 defined it.
 - [ ] The plan names the pack rows of `stage-matrix.json` (`canPlayOffline`, `play-offline` in
-      `accepts`, fetch consent and progress) and the move to `stageMatrixVersion: 2`.
+      `accepts`, fetch consent and progress) and the move to `stageMatrixVersion: 3`.
 - [ ] `workpackages.json` shows `awaiting-approval`; `node check.mjs` and prettier pass.
 
 ## Verify
