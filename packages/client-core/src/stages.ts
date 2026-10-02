@@ -317,7 +317,10 @@ function gateHolds(state: BootState, status: LicenseStatus): BootTransition {
   return go(state, "gate", "waiting", { type: "waiting", status });
 }
 
-function missing(ids: readonly string[], installed: readonly string[]): boolean {
+function missing(
+  ids: readonly string[],
+  installed: readonly string[],
+): boolean {
   return ids.some((id) => !installed.includes(id));
 }
 
