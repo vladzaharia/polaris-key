@@ -151,11 +151,17 @@
 - [ ] The CI `node-floor` job runs on the version in `engines.node`, which is declared in
       `sdk-node`, `client-core` and `sdk-react`.
 - [ ] The Python job passes on 3.9 and 3.14.
-- [ ] Each runner's log shows its runtime and library versions.
-- [ ] The runner docs list the new jobs.
-- [ ] `parity.json` manifests are updated for every SDK this changes (for example, React's `core.verify`
+- [x] Each runner's log shows its runtime and library versions.
+- [x] The runner docs list the new jobs.
+- [x] `parity.json` manifests are updated for every SDK this changes (for example, React's `core.verify`
       proof now includes the Chromium runner).
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
+
+> The four CI rows above wait for the branch's first CI run. Locally on 2026-10-01, the browser
+> runner passed all 865 cases in Chromium 153 and WebKit 26.6 (macOS), and in Firefox 155.0 in
+> `mcr.microsoft.com/playwright:v1.63.0-noble`. The Node conformance runner, client-core and
+> the Node SDK passed on Node 22.0.0 (macOS, and Linux as a non-root user). The Python suite
+> passed on CPython 3.9 and 3.14 (1750 tests each).
 
 ## Verify
 
