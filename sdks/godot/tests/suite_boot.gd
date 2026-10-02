@@ -202,7 +202,10 @@ func _revoked_content(t: PKeyTestContext, sc: Variant, rel: Dictionary) -> void:
 		if t.check("dropin: revoked-content %s keeps the boot view" % kind, view is PKeyBoot and is_instance_valid(view)):
 			t.check("dropin: revoked-content %s shows the revoked-content copy" % kind, view._title.text == copy.text("update_revoked_title") and view._body.text == copy.text("update_revoked_body"), "%s / %s" % [view._title.text, view._body.text])
 			var button_shown: bool = view._update_action.visible and view._update_action.text != ""
-			t.check("dropin: revoked-content %s %s" % [kind, "offers the update button" if kind == "offer" else "offers no update button"], button_shown == (kind == "offer"))
+			# What this build's outlet would offer for the answer (a stamped Steam template offers no
+			# link; the editor's direct build opens release_url): an offer keeps it, blocked never.
+			var offered := PKeyUpdatePromptController.update_url(answer, view.gate._outlet(), "https://example.com/releases") != ""
+			t.check("dropin: revoked-content %s %s" % [kind, "keeps the outlet's update button" if kind == "offer" else "offers no update button"], button_shown == (kind == "offer" and offered), "shown=%s offered=%s outlet=%s" % [button_shown, offered, view.gate._outlet()])
 		sdk.queue_free()
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	# A content floor never gives `required`.
