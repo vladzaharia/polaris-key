@@ -438,7 +438,10 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
   staged bytes re-hashed. The state holds each pack record verbatim and is re-verified on every
   load, the payload included: **every load re-hashes the active and previous payloads**, so
   start-up cost grows with installed content. Payload files and `state.json` are fsynced before
-  their renames.
+  their renames (on macOS that is `fsync(2)`, not `F_FULLFSYNC`, which Node does not expose:
+  the drive's own write cache can still lose the last writes on a power cut). "Cannot read" is
+  never read as "missing": an EACCES or EIO on a payload keeps the install, out of use, for the
+  next load that can read it.
 - **A state file that cannot be trusted loses nothing.** One that does not parse (a torn write)
   is moved aside as `state.json.torn`, and garbage collection is suspended while it exists:
   `state().stateIssue` is `torn`, and only `recoverState()` (an operator action) clears it and

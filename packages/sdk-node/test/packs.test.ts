@@ -6,7 +6,14 @@
 // @pkey-feature packs.state packs.handlers packs.record
 
 import { createServer, type Server } from "node:http";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -540,4 +547,42 @@ describe("state.json that cannot be trusted (Node)", () => {
     );
     c.close();
   });
+});
+
+describe("a payload the process cannot read (Node, EACCES)", () => {
+  it.skipIf(process.getuid?.() === 0)(
+    "throws from verify and keeps the install across two loads",
+    async () => {
+      work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+      const v1 = await treePack({
+        packId: "djdl.l10n",
+        version: "1.0.0",
+        seq: 1,
+        files: v1Files,
+      });
+      srv.packs = [v1];
+      let c = await client({ stamp: [v1] });
+      await c.update.packs.ensure(["djdl.l10n"]);
+      const dir = (await c.update.packs.path("djdl.l10n"))!;
+      c.close();
+      await chmod(dir, 0o000);
+      try {
+        for (let n = 0; n < 2; n++) {
+          c = await client({ stamp: [v1] });
+          const s = await c.update.packs.state();
+          expect(s.active["djdl.l10n"]).toBeUndefined();
+          expect(s.running["djdl.l10n"]).toBeUndefined();
+          c.close();
+        }
+      } finally {
+        await chmod(dir, 0o755);
+      }
+      c = await client({ stamp: [v1] });
+      expect((await c.update.packs.state()).active["djdl.l10n"]!.location).toBe(
+        dir,
+      );
+      expect(await treeOnDisk(dir, v1.files)).toBe(true);
+      c.close();
+    },
+  );
 });

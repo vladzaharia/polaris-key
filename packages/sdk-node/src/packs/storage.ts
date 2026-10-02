@@ -65,12 +65,17 @@ export function fileSource(path: string, size: number): ByteSource {
   };
 }
 
+/** Whether `path` exists: false ONLY for ENOENT and ENOTDIR. Anything else (EACCES, EIO)
+ *  throws, so "cannot read" is never mistaken for "missing" (`verify`, `installed`,
+ *  `quarantined` and `commit` all rely on that). */
 async function exists(path: string): Promise<boolean> {
   try {
     await stat(path);
     return true;
-  } catch {
-    return false;
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return false;
+    throw e;
   }
 }
 
@@ -133,18 +138,34 @@ function payloadFile(install: PackInstall): string {
     : join(install.location, CONTAINER_FILE);
 }
 
-/** fsync a directory, so a rename or a new entry in it survives a power loss. Windows cannot
- *  open a directory for syncing; there it is a no-op. */
+/** The errors a file system answers when it cannot sync a directory at all. */
+const DIR_SYNC_UNSUPPORTED = new Set(["EISDIR", "EPERM", "EBADF", "EINVAL"]);
+
+/**
+ * fsync a directory, so a rename or a new entry in it survives a power loss. Windows cannot open
+ * a directory for syncing; there it is a no-op. On macOS Node's `fsync` is `fsync(2)`, which
+ * reaches the drive but not through its write cache (`F_FULLFSYNC`, which Node does not expose),
+ * so a power loss there can still lose the last writes; the rename stays atomic either way.
+ */
 async function syncDir(dir: string): Promise<void> {
+  if (process.platform === "win32") return; // Windows cannot open a directory for syncing.
+  let fh;
   try {
-    const fh = await open(dir, "r");
-    try {
-      await fh.sync();
-    } finally {
-      await fh.close();
-    }
-  } catch {
-    // Not supported here (Windows): the rename itself is still atomic.
+    fh = await open(dir, "r");
+  } catch (e) {
+    if (DIR_SYNC_UNSUPPORTED.has((e as NodeJS.ErrnoException).code ?? ""))
+      return;
+    throw e;
+  }
+  try {
+    await fh.sync();
+  } catch (e) {
+    // A file system that cannot sync a directory says so with one of these; EIO and the like
+    // mean the data may not be on disk, and are raised.
+    if (!DIR_SYNC_UNSUPPORTED.has((e as NodeJS.ErrnoException).code ?? ""))
+      throw e;
+  } finally {
+    await fh.close();
   }
 }
 
