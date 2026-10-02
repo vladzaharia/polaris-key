@@ -1380,7 +1380,7 @@
       "optional": false,
       "refs": ["CONTENT §8 §9", "notes/A7 §3.1", "notes/A6"],
       "brief": "wp/P4-10-chunk-indexes.md",
-      "status": "todo"
+      "status": "awaiting-approval"
     },
     {
       "id": "P4-11",
