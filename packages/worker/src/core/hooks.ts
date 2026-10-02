@@ -311,6 +311,15 @@ export interface CatalogPackFile {
   blob: { sha256: string; bytes: number; codec: string; key: string };
 }
 
+/** One build of an app release with its `embeds` (`ReleaseCatalog.embedsOf`, P4-05). */
+export interface CatalogBuildEmbeds {
+  releaseId: string;
+  buildId: string;
+  platform: string | null;
+  /** The packs the build embeds, or null when its descriptor said nothing. */
+  embeds: string[] | null;
+}
+
 /** One pin: app release → the exact pack release it pins (a mirror of the signed `content`). */
 export interface CatalogPin {
   appReleaseId: string;
@@ -391,6 +400,8 @@ export interface ReleaseCatalog {
   deliverables(): Promise<CatalogDeliverable[]>;
   /** A deliverable's releases, newest publication first. */
   releases(deliverableId: string): Promise<CatalogRelease[]>;
+  /** One release by id, whatever its deliverable, or null (one read; P4-05). */
+  release(releaseId: string): Promise<CatalogRelease | null>;
   /** A release's builds, by build id. */
   builds(releaseId: string): Promise<CatalogBuild[]>;
   /** A release's artifact records, with where their bytes live; narrowed to one build when
@@ -492,6 +503,16 @@ export interface ReleaseCatalog {
   holdsFor(appReleaseId: string): Promise<CatalogHold[]>;
   /** Which app releases hold pack release `packReleaseId` (live references for GC). */
   heldBy(packReleaseId: string): Promise<CatalogHold[]>;
+  /**
+   * The pins of every pack release in `packReleaseIds`, in bulk (P4-05: availability reads them
+   * for a page of pack releases in a bounded number of queries). By pack release, then app release.
+   */
+  pinnedByMany(packReleaseIds: readonly string[]): Promise<CatalogPin[]>;
+  /**
+   * Every build of every app release in `appReleaseIds`, with its `embeds`, in bulk (P4-05). By
+   * release, then build.
+   */
+  embedsOf(appReleaseIds: readonly string[]): Promise<CatalogBuildEmbeds[]>;
 }
 
 // ── delivery (Distribution) ─────────────────────────────────────────────────────────────────
@@ -767,9 +788,10 @@ export interface Delivery {
    * to its stored version, which can be a channel-like tag (`latest`) a `builds/<selector>` URL
    * would re-read as moving (P2-05's fixedVersion rule). On the bytes host when `BLOB_ORIGIN` is
    * set, else a path on this origin. `null` when the release, file, build or build payload does
-   * not exist, when the payload's name is not the one the `files` route serves for that name, or
-   * when `outlet` delivers the deliverable by a transport other than `pkey-cdn` (the bytes are
-   * not ours to serve there).
+   * not exist, when the payload's name is not the one the `files` route serves for that name, when
+   * the release is not the app's (`files` serves the app deliverable only; a pack's objects are
+   * reached by SHA-256 on the blob route, P4-05), or when `outlet` delivers the deliverable by a
+   * transport other than `pkey-cdn` (the bytes are not ours to serve there).
    */
   deliveryUrl(q: {
     releaseId: string;

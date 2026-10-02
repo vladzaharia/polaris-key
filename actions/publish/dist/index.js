@@ -14149,7 +14149,7 @@ function distributionDeliverables(relRoot) {
   return out;
 }
 function routedDeliverables(relRoot) {
-  return distributionDeliverables(relRoot).filter((d) => d.kind !== "pack");
+  return distributionDeliverables(relRoot);
 }
 function validatePublishing(errors, relRoot) {
   if (relRoot.publishing === void 0) return;

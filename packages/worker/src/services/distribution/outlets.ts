@@ -125,19 +125,49 @@ export function manifestIngestStatements(
     params: [now, now, product, ...declared],
   });
 
-  // The resolved transport for every (deliverable, live outlet) pair, replaced wholesale.
+  // The resolved transport for every (deliverable, live outlet) pair, replaced wholesale. Packs
+  // are routed too (P4-05), so a manifest at the bounds — 64 packs and the app across 32 outlets
+  // — resolves 2,080 pairs: written TRANSPORT_ROWS_PER_INSERT to a statement (four parameters
+  // each, inside D1's 100), at most 84 statements in the ingest batch (THREAT-MODEL R10).
   stmts.push({
     sql: "DELETE FROM dist_transports WHERE product = ?",
     params: [product],
   });
-  for (const route of dist.routes) {
+  for (let i = 0; i < dist.routes.length; i += TRANSPORT_ROWS_PER_INSERT) {
+    const chunk = dist.routes.slice(i, i + TRANSPORT_ROWS_PER_INSERT);
     stmts.push({
       sql: `INSERT INTO dist_transports (product, deliverable_id, outlet_id, transport, config_json)
-            VALUES (?, ?, ?, ?, NULL)`,
-      params: [product, route.deliverableId, route.outletId, route.transport],
+            VALUES ${chunk.map(() => "(?, ?, ?, ?, NULL)").join(", ")}`,
+      params: chunk.flatMap((r) => [
+        product,
+        r.deliverableId,
+        r.outletId,
+        r.transport,
+      ]),
     });
   }
   return stmts;
+}
+
+/** `dist_transports` rows per INSERT: four bound parameters each, 100 per statement (D1). */
+export const TRANSPORT_ROWS_PER_INSERT = 25;
+
+/**
+ * The transports Polaris Key acts on in v1 (P4-05): its own CDN (`pkey-cdn`), the web build
+ * (`web`) and embedded baselines (`embedded`). Any other transport a manifest names (`apple-ba`,
+ * `play-pad`, `steam-depot`, …; P5-08's) is still STORED in `dist_transports` and listed, marked
+ * unsupported: no availability is derived for it and no byte is routed for it. A device whose
+ * outlet names one plans nothing for it (`plan.transport_unsupported`), never a silent CDN
+ * fallback.
+ */
+export const SUPPORTED_TRANSPORTS: readonly string[] = [
+  "pkey-cdn",
+  "web",
+  "embedded",
+];
+
+export function transportSupported(transport: string): boolean {
+  return SUPPORTED_TRANSPORTS.includes(transport);
 }
 
 /** Every outlet row of a product, live first, then by id. */

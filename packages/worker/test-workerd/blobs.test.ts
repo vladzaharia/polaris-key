@@ -17,7 +17,9 @@ import {
   isStored,
   promote,
   putVerified,
+  recordObject,
   recordRef,
+  refHolders,
   stagingKey,
   streamSha256,
   verifyStaged,
@@ -317,5 +319,42 @@ describe("bytes host isolation on workerd", R2_LANE, () => {
         expect(res.headers.get("set-cookie"), at).toBeNull();
       }
     }
+  });
+});
+
+// P4-05: the blob route authorises a pack object by its holders. The grouping query (`substr` /
+// `instr` over a pack release id, GROUP BY, the overflow LIMIT) runs on D1 here.
+describe("refHolders on D1 (P4-05)", () => {
+  it("collapses refs to one row per (key, kind, holder) and never reads another product's", async () => {
+    const db = new D1Db(env.DB);
+    await seedProduct(env, db, "holders-a", { schemaVersion: 1, entries: [] });
+    await seedProduct(env, db, "holders-b", { schemaVersion: 1, entries: [] });
+    const h = "ab".repeat(32);
+    const pub = blobKey(h);
+    const gated = blobKey(h, { gated: true });
+    for (const [key, isGated] of [
+      [pub, false],
+      [gated, true],
+    ] as const)
+      await recordObject(
+        db,
+        { storageKey: key, sha256: h, size: 1, kind: "blob", gated: isGated },
+        NOW,
+      );
+    const refs: Array<[string, string, string, string]> = [
+      ["holders-a", pub, "artifact", "app@1.0.0/a"],
+      ["holders-a", pub, "artifact", "app@1.1.0/a"],
+      ["holders-a", gated, "pack-object", "djdl.skins@1.0.0"],
+      ["holders-a", gated, "pack-object", "djdl.skins@1.1.0"],
+      ["holders-a", gated, "pack-upload", "djdl.skins"],
+      ["holders-b", gated, "pack-upload", "other.pack"],
+    ];
+    for (const [product, storageKey, refKind, refId] of refs)
+      await recordRef(db, { product, storageKey, refKind, refId }, NOW);
+    expect(await refHolders(db, "holders-a", [pub, gated])).toEqual([
+      { storageKey: pub, refKind: "artifact", holder: "" },
+      { storageKey: gated, refKind: "pack-object", holder: "djdl.skins" },
+      { storageKey: gated, refKind: "pack-upload", holder: "djdl.skins" },
+    ]);
   });
 });

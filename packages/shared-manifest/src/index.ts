@@ -2397,18 +2397,17 @@ function distributionDeliverables(
 }
 
 /**
- * The deliverables that get a transport route (`dist_transports` rows). Only `app` is routed
- * today, so an ingest writes at most MAX_OUTLETS transport rows. P4-02 bounds the pack count
- * (`too_many_pack_deliverables`, MAX_PACK_DELIVERABLES), which is what makes routing packs safe:
- * at most (1 + 64) × 32 rows instead of the tens of thousands an unbounded 64 KiB release.yaml
- * of `{kind: pack}` entries could produce. P4-05 retires this filter when it serves packs. The
- * validator still sees every declared deliverable (`distributionContext`), so a
- * `transports.deliverables.<pack>` entry validates now.
+ * The deliverables that get a transport route (`dist_transports` rows): every declared
+ * deliverable, the app and each pack (P4-05). Routing packs is safe because P4-02 bounds their
+ * count (`too_many_pack_deliverables`, MAX_PACK_DELIVERABLES): at most (1 + 64) × MAX_OUTLETS
+ * (32) = 2,080 rows per ingest, which Distribution writes as multi-row inserts of at most 25 rows,
+ * instead of the tens of thousands an unbounded 64 KiB release.yaml of `{kind: pack}` entries
+ * could produce (THREAT-MODEL R10).
  */
 function routedDeliverables(
   relRoot: Record<string, unknown> | null,
 ): DistributionDeliverable[] {
-  return distributionDeliverables(relRoot).filter((d) => d.kind !== "pack");
+  return distributionDeliverables(relRoot);
 }
 
 /** A `stableTagPattern` value: a string the manual-channel safety rule compiles. One rule for
