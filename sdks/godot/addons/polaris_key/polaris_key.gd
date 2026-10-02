@@ -33,6 +33,15 @@ signal state_changed(state: Dictionary)
 signal sync_finished(result: PKeySyncResult)
 ## The store failed: {op, path, error, message}.
 signal store_error(err: Dictionary)
+## The boot stopped (READY, BLOCKED, OFFLINE or ERROR); after the first stop, once per later stop
+## (a Retry on the boot card).
+signal boot_finished(result: PKeyBootResult)
+## A sliced bundle verify's progress, 0.0 to 1.0 (web builds without threads, where a bundle
+## verify takes seconds in frame slices; S-04). PKeyBoot drives its progress bar from it.
+signal verify_progress(fraction: float)
+
+## The drop-in boot scene `boot()` shows when no view is given.
+const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
 
 var core: PKeyCore = null
 ## The device principal's surface (services/devices.gd); null until configure().
@@ -49,6 +58,9 @@ var update := PKeyUpdate.new()
 ## The changelog and the install and download URLs (services/release.gd). Refuses until
 ## configure().
 var release := PKeyRelease.new()
+
+## The PKeyBoot view `boot()` made (on a CanvasLayer under this node), or null.
+var boot_view: Node = null
 
 var _timer: Timer = null
 var _syncing := false
@@ -78,6 +90,41 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	identity.attach(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	return PKeyResult.success()
+
+
+## The boot (report §5.1, §5.8): runs the P1-09 stage machine through PKeyBoot and resolves at
+## the first stop with a PKeyBootResult whose `outcome` is PKeyBoot.READY, BLOCKED, OFFLINE or
+## ERROR. Configures from `opts.options` or res://polaris_key.tres when configure() has not run.
+##
+##   var boot := await PolarisKey.boot({allow_offline = true})
+##   if boot.outcome == PKeyBoot.READY: get_tree().change_scene_to_file("res://title.tscn")
+##
+## `opts`: allow_offline, allow_grace, required_packs (accepted; empty until P4-08),
+## sync_timeout_seconds, offer_enrollment, release_url, options, and `view` (a PKeyBoot already
+## in the game's own boot scene). Without a view, one is shown on a CanvasLayer above the game
+## and freed once READY has been announced; on BLOCKED, OFFLINE or ERROR it stays, with Retry,
+## and a later stop arrives as `boot_finished`. A coroutine.
+func boot(opts: Dictionary = {}) -> PKeyBootResult:
+	var view = opts.get("view")
+	if view == null:
+		if boot_view == null or not is_instance_valid(boot_view):
+			var layer := CanvasLayer.new()
+			layer.name = "PKeyBootLayer"
+			layer.layer = 100
+			add_child(layer)
+			boot_view = (load(BOOT_SCENE) as PackedScene).instantiate()
+			boot_view.free_on_ready = true
+			boot_view.sdk = self
+			layer.add_child(boot_view)
+		view = boot_view
+	view.sdk = self
+	if not view.boot_finished.is_connected(_on_boot_finished):
+		view.boot_finished.connect(_on_boot_finished)
+	return await view.run(opts)
+
+
+func _on_boot_finished(r: PKeyBootResult) -> void:
+	boot_finished.emit(r)
 
 
 ## The offline load: device id, token, cached documents re-verified. No network. A coroutine.
@@ -179,6 +226,21 @@ func _on_license_acquired() -> void:
 func _on_license_wiped() -> void:
 	_emit_state()
 	config.refresh()
+
+
+func _enter_tree() -> void:
+	# One listener: the autoload, or the first SDK node when there is no autoload (tests).
+	if name == "PolarisKey" or not PKeyJws.progress_listener.is_valid():
+		PKeyJws.progress_listener = _on_verify_progress
+
+
+func _exit_tree() -> void:
+	if PKeyJws.progress_listener.is_valid() and PKeyJws.progress_listener.get_object() == self:
+		PKeyJws.progress_listener = Callable()
+
+
+func _on_verify_progress(fraction: float) -> void:
+	verify_progress.emit(fraction)
 
 
 func _on_store_error(err: Dictionary) -> void:
