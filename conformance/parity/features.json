@@ -518,6 +518,27 @@
       "allowedNa": []
     },
     {
+      "id": "packs.record",
+      "family": "packs",
+      "title": "Verify kind: pack records, app content and embeds, and embedded-pack markers",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "packRecordCases",
+          "wp": "P4-21"
+        },
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "markerCases",
+          "wp": "P4-21"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
       "id": "packs.plan",
       "family": "packs",
       "title": "The install planner",
