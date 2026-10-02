@@ -182,6 +182,10 @@ const bySeqDesc = (
  * delegationSha256, revoked)`. Release does not store a release's delegation hash until P4-19
  * lands, so until then only record revocations apply here, and a delegation one is ignored, as
  * the hook's contract requires of a consumer that reads `targetReleaseId` as a release.
+ *
+ * TODO(P4-19): whichever of P4-15 and P4-19 merges second wires `kind: "delegation"` here: look up
+ * the release's stored delegation hash and apply client-core's `recordRevoked`, returning
+ * `{kind: "delegation", …}` when it answers `"delegation"`.
  */
 export function revokedBy(
   release: { releaseId: string },

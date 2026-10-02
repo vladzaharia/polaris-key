@@ -74,9 +74,12 @@ value can be a preference list such as `texture=astc,etc2`), a device id and a d
   out, and the app rollout on the outlet.
 
 There is no second implementation. The Worker composes the document the feed route would sign for
-that channel and platform, signs it in memory (it is never stored or returned), and runs
-client-core's update check over it, exactly as an SDK does on a device with no cache: it verifies
-the feed and the records, fetches every revocation and replacement by hash, computes the rollout
+that channel and platform, signs it with a throwaway key generated for that one request (never the
+product's signing key), and runs client-core's update check over it, exactly as an SDK does on a
+device with no cache, except that the simulated device trusts the throwaway key for the feed. The
+feed signature itself is therefore not what the simulator tests; the conformance corpus covers it.
+The release records are the real ones, verified against the product's real release keys. The check
+verifies the feed and the records, fetches every revocation and replacement by hash, computes the rollout
 buckets from the device id and decides. The device's active set before the check is its build's
 embedded baselines. Without a device id the device is outside every client-evaluated rollout, as an
 SDK without one is.

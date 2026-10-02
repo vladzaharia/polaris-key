@@ -33,6 +33,11 @@ import { RELEASE_KID, RELEASE_PUB, signRecord } from "./releaseKeysFixture.js";
 import { sha } from "./packFixture.js";
 import { call } from "./releaseRoutesFixture.js";
 import { loadProduct } from "../src/core/products.js";
+import {
+  ephemeralSigner,
+  parseSimulateQuery,
+  simulate as runSimulate,
+} from "../src/services/update/simulate.js";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -370,6 +375,49 @@ describe("GET …/update/simulate (P4-15)", () => {
         .status,
     ).toBe(404);
     expect((await w.admin("POST", "/update/simulate")).status).toBe(405);
+  });
+
+  it("never reads the product signing key: an ephemeral key signs, the decision is the same", async () => {
+    const { w, app15 } = await world();
+    const viaRoute = await simulate(w, {
+      appRelease: app15,
+      platform: "ios",
+      outlet: "direct",
+    });
+    // No `env` (nothing that could unseal a key) and a product exposing only its slug; every other
+    // property read is recorded.
+    const reads: string[] = [];
+    const product = new Proxy({ slug: SLUG } as { readonly slug: string }, {
+      get(target, key) {
+        if (key !== "slug") reads.push(String(key));
+        return Reflect.get(target, key);
+      },
+    });
+    const direct = await runSimulate(
+      {
+        db: w.db,
+        hooks: await w.hooks(),
+        now: Math.floor(Date.now() / 1000),
+        product,
+      },
+      parseSimulateQuery(
+        new URLSearchParams({
+          appRelease: app15,
+          platform: "ios",
+          outlet: "direct",
+        }),
+      ),
+    );
+    expect(reads).toEqual([]);
+    expect(direct.decision).toEqual(viaRoute.decision);
+    expect(direct.packSetId).toBe(viaRoute.packSetId);
+    expect(direct.decision?.action).toBe("packs");
+    // Two signers are two keys: nothing persists between requests.
+    const [a, b] = await Promise.all([ephemeralSigner(), ephemeralSigner()]);
+    expect(a.publicKey).not.toBe(b.publicKey);
+    expect(a.kid).toMatch(/^sim-[0-9a-f]{16}$/);
+    const productKey = (await loadProduct(w.env, w.db, SLUG))!;
+    expect([a.publicKey, b.publicKey]).not.toContain(productKey.signingPub);
   });
 
   it("equivalence: the simulator's packSetId is client-core's for the same feed and selector", async () => {

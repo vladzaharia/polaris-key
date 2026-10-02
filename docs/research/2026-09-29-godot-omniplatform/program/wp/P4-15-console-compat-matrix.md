@@ -159,8 +159,12 @@ package, and every decision in §8.1 that names it as owner, override this brief
 - **The simulator runs the device's own check, not only the feed composer.** `GET …/update/simulate`
   builds the document the feed route would sign (`composeChannelFeed` + `documentFor`, so P4-12's
   stored sets, P4-13's floors, narrowing and revocations, P4-14's gates and the size shedding all
-  apply), signs it in memory with the product key (never stored or returned) and runs client-core's
-  `runUpdateCheck` over it, with record fetches answered from Release's record store. That is the
+  apply), signs it with an **ephemeral Ed25519 key generated per request** (never the product key:
+  the module gets only the product slug and no `env`, and a test asserts it reads nothing else),
+  and runs client-core's `runUpdateCheck` over it with the device trusting that ephemeral key (plus
+  the product's public keys, for the release-key refusal). Record fetches are answered from
+  Release's record store and verified against the real release keys. The feed signature itself is
+  not under test in the simulator; the corpus covers it. That is the
   whole of P3-01 §2.5 and P4-13 §2.5–§2.6 (pins, holds, floors, revocations and replacements,
   gates and buckets, `selectPackRows`), with no reimplementation. The device is a **fresh** one:
   no cache, no stored revocations, its active set the build's embedded baselines.
@@ -189,12 +193,13 @@ package, and every decision in §8.1 that names it as owner, override this brief
 - **P4-19 is not merged**, so `recordRevoked` is not on main. Hand-off: the matrix's
   `revokedBy` (`release/packs/compat.ts`) is the one seam — it applies `kind: record` revocations
   and ignores `kind: delegation` ones, as the hook's contract requires, until Release stores a
-  release's delegation hash and client-core exports `recordRevoked`; the simulator inherits P4-19
-  unchanged through `runUpdateCheck`.
+  release's delegation hash and client-core exports `recordRevoked`. It carries a `TODO(P4-19)`:
+  whichever of P4-15 and P4-19 merges second wires `kind: delegation` there. The simulator inherits
+  P4-19 unchanged through `runUpdateCheck`.
 - **A revocation no app release pins or holds and no row lists is not in the feed** (P4-13
   decision 14), so the simulator shows none for it; the matrix still marks the release revoked.
 - **Routes are narrative-only** (`adminApi` is in `routeCoverage`'s `NARRATIVE_ONLY`): no OpenAPI
-  change. Both are read-only; the in-memory signature has a threat-model entry
+  change. Both are read-only; the ephemeral-key signature has a threat-model entry
   ("The compatibility matrix and the device simulator (P4-15)").
 - **Test fixture**: `packWorld` gained an `android` option and `declareContentApi(level)` (a
   resync of a changed `.pkey/release`), needed to publish 1.4 at level 3 and 1.5 at level 4.

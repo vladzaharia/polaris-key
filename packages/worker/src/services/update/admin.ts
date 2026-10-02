@@ -152,7 +152,19 @@ async function handleSimulate(
     return err(405, ErrorCode.BadRequest, "method not allowed");
   try {
     const q = parseSimulateQuery(new URL(ctx.req.url).searchParams);
-    return adminJson(await simulate(ctx, q));
+    // Only the slug crosses: the simulator never sees the product's signing key (it signs with an
+    // ephemeral key of its own) and gets no `env`, so no binding that could unseal one.
+    return adminJson(
+      await simulate(
+        {
+          db: ctx.db,
+          hooks: ctx.hooks,
+          now: ctx.now,
+          product: { slug: ctx.product.slug },
+        },
+        q,
+      ),
+    );
   } catch (e) {
     if (e instanceof SimulateInputError)
       return err(400, ErrorCode.BadRequest, e.message, { field: e.field });

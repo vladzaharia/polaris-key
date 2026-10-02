@@ -8,8 +8,13 @@
  *
  *   1. the feed: `composeChannelFeed` and `documentFor` (P3-03, P4-12's stored sets, P4-13's
  *      floors, narrowing and revocations, P4-14's gates) build the document the feed route would
- *      sign for this channel and platform, signed with the product key in memory (never stored,
- *      never returned) so that…
+ *      sign for this channel and platform. It is signed with an EPHEMERAL Ed25519 key generated
+ *      for this request (WebCrypto), never the product key: this module never reads the product's
+ *      signing secret, so the console cannot be turned into a product-key signing oracle. The
+ *      simulated device trusts that ephemeral public key in place of the product key; the feed
+ *      signature itself is therefore not under test here (the conformance corpus covers it). The
+ *      product's PUBLIC keys stay in the device's trust set, so a release key equal to one is still
+ *      refused as on a device (V4 §3.5 step 13). Then…
  *   2. the device: client-core's `runUpdateCheck` verifies it, fetches and verifies the target's
  *      record and every revocation and replacement by hash from Release's records (what the record
  *      route serves), computes the rollout buckets from the device id, and runs `decideUpdate`
@@ -30,7 +35,7 @@
  * P4-19 (delegated content keys) slots in through `runUpdateCheck`: once a record carries a
  * delegation and client-core applies `recordRevoked`, this route inherits it unchanged.
  *
- * Read-only: one signature in memory, no write, no audit. Update reads Distribution only through
+ * Read-only: one ephemeral signature in memory, no write, no audit. Update reads Distribution only through
  * Core's `delivery` hook; the one service import is `update → release`.
  */
 
@@ -57,6 +62,7 @@ import { signDoc } from "../../core/signing.js";
 import { getReleaseConfig } from "../release/config.js";
 import {
   getRecordByHash,
+  productSigningKeyBytes,
   recordsByRelease,
   releaseKeyTrustSet,
 } from "../release/records.js";
@@ -293,10 +299,53 @@ function payloadOf<T>(jws: string): T | null {
 const ARCH_RANK = (arch: string): number =>
   arch === "universal" ? 1 : arch === "any" ? 2 : 0;
 
+function b64url(bytes: ArrayBuffer): string {
+  let bin = "";
+  for (const b of new Uint8Array(bytes)) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** The kid of the per-request key: no product key carries it (product kids never use `sim-`). */
+const EPHEMERAL_KID_PREFIX = "sim-";
+
+/**
+ * A fresh Ed25519 key pair for one simulation (WebCrypto): its PKCS#8 PEM (for `signDoc`), its raw
+ * public key as base64url (a trust-set entry) and a random kid. Dropped when the request ends.
+ */
+export async function ephemeralSigner(): Promise<{
+  pem: string;
+  publicKey: string;
+  kid: string;
+}> {
+  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
+  const pkcs8 = (await crypto.subtle.exportKey(
+    "pkcs8",
+    pair.privateKey,
+  )) as ArrayBuffer;
+  const raw = (await crypto.subtle.exportKey(
+    "raw",
+    pair.publicKey,
+  )) as ArrayBuffer;
+  const body = btoa(String.fromCharCode(...new Uint8Array(pkcs8)));
+  const id = new Uint8Array(8);
+  crypto.getRandomValues(id);
+  return {
+    pem: `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----\n`,
+    publicKey: b64url(raw),
+    kid: `${EPHEMERAL_KID_PREFIX}${[...id].map((b) => b.toString(16).padStart(2, "0")).join("")}`,
+  };
+}
+
 const cmpBytes = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 export async function simulate(
-  ctx: Pick<ServiceContext, "db" | "product" | "hooks" | "now">,
+  ctx: Pick<ServiceContext, "db" | "hooks" | "now"> & {
+    /** Only the slug: this module never reads the product's signing key (see the header). */
+    product: { readonly slug: string };
+  },
   q: SimulateQuery,
 ): Promise<SimulateResult> {
   const { db, product, hooks, now } = ctx;
@@ -415,21 +464,22 @@ export async function simulate(
     notes.push(
       "The product pins no release keys: a device verifies no record, so it decides nothing.",
     );
-  else if (product.signingPub === null)
-    notes.push(
-      "The product has no public signing key to verify the feed with.",
-    );
   else {
-    const jws = await signDoc(
-      doc,
-      product.signingKeyPem,
-      product.signingKid,
-      "pkey-feed+jws",
-    );
+    const signer = await ephemeralSigner();
+    const jws = await signDoc(doc, signer.pem, signer.kid, "pkey-feed+jws");
+    // The device's trust set: the ephemeral key (the only one that verifies the feed) beside every
+    // PUBLIC key the product has had (public columns only), so the release-key-is-not-a-product-key
+    // refusal still runs for real. Only the ephemeral kid can match the feed's header.
+    const trust: Record<string, string> = {};
+    for (const [i, bytes] of (await productSigningKeyBytes(db, slug)).entries())
+      trust[`${EPHEMERAL_KID_PREFIX}product-${i}`] = b64url(
+        bytes.slice().buffer,
+      );
+    trust[signer.kid] = signer.publicKey;
     const result = await runUpdateCheck({
       channel: composed.channel,
       expectedAud: slug,
-      trust: { [product.signingKid]: product.signingPub },
+      trust,
       releaseKeys,
       now,
       installId: q.device,

@@ -1920,16 +1920,24 @@ P4-15 adds two read-only routes to the console's admin API: `GET …/release/com
 `GET …/update/simulate`. Both sit behind the platform-admin session, CSRF and rate-limit gates of
 `admin/api.ts`, write nothing and audit nothing, and add no wire member.
 
-- **The simulator signs, but never publishes.** To run client-core's own update check (no second
-  implementation), `simulate` signs the document `documentFor` composes, the one the feed route
-  would sign for that channel and platform at that moment, with the product's feed key, in memory.
-  The JWS is handed to `runUpdateCheck` and dropped: it is never stored in `update_feed_docs`,
-  never returned in the response (which carries the decoded decision, not the document) and never
-  served. It holds nothing the public feed route would not sign for the same request, so it gives a
-  console session no document it could not already fetch. It does not move the channel's `seq`.
-- **Records come from Release's own store.** The simulator's record fetches read
-  `getRecordByHash`, the store the record route serves, so a release key's signature is verified
-  exactly as a device verifies it; a record that fails is reported in `errors`, never trusted.
+- **No product-key use.** To run client-core's own update check (no second implementation),
+  `simulate` must hand the device a signed feed. It signs the document `documentFor` composes with
+  an **ephemeral** Ed25519 key generated per request (WebCrypto), and the simulated device trusts
+  that ephemeral public key for the feed. The module never reads the product's signing key: the
+  admin handler passes it only the product's slug and no `env`, so nothing on this path can unseal
+  a key, and a test asserts no other product field is read. The console therefore cannot be used as
+  a product-key signing oracle, and the product key is not exercised on every console click. The
+  ephemeral key is dropped with the request; the JWS is never stored, returned or served, and the
+  channel's `seq` does not move.
+- **The feed signature is not under test here.** Because the device trusts the ephemeral key, the
+  simulator says nothing about the product key's signature over the real feed; the conformance
+  corpus and the feed route's own tests cover that. The product's PUBLIC keys (public columns
+  only) stay in the simulated trust set, so the refusal of a release key equal to a product key
+  still runs as on a device.
+- **Records stay real.** The simulator's record fetches read `getRecordByHash`, the store the
+  record route serves, and verify against the product's real release keys, so record, revocation
+  and replacement verification (P4-13, and P4-19 once it lands) runs exactly as on a device; a
+  record that fails is reported in `errors`, never trusted.
 - **No cross-tenant read.** Both routes read only the session's product; a device id passed for the
   rollout buckets is hashed in memory and echoed back, never stored.
 
