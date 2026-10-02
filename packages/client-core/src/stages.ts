@@ -60,6 +60,9 @@ export const BOOT_EVENT_TYPES = [
   "retry",
   "play-offline",
   "fail",
+  // Stage matrix v3 (plans/P4-01.md §2.10): download consent and progress.
+  "fetch.consent",
+  "fetch.progress",
 ] as const;
 
 /** The emits the machine produces, snake_case: the signal names renderers expose. */
@@ -72,6 +75,8 @@ export const BOOT_EMIT_TYPES = [
   "error",
   "boot_rolled_back",
   "boot_ready",
+  "consent_needed",
+  "fetch_progress",
 ] as const;
 
 /** What `bootGuardAction` decides at launch. */
@@ -106,8 +111,11 @@ export type BootGuardResult = "ok" | "applied" | "rolled-back";
 export type BootSyncResult = "ok" | "offline" | "error";
 export type BootDecision = (typeof BOOT_DECISIONS)[number];
 export type BootConfirmation = (typeof BOOT_CONFIRMATIONS)[number];
-export type BootFetchResult = "ok" | "offline" | "failed";
-export type BootBlockedReason = "update-required" | "not-available";
+export type BootFetchResult = "ok" | "offline" | "failed" | "declined";
+export type BootBlockedReason =
+  | "update-required"
+  | "not-available"
+  | "content-declined";
 
 export type BootEvent =
   | { type: "start" | "shell.done" | "sync.timeout" | "mount.done" }
@@ -122,6 +130,11 @@ export type BootEvent =
       /** The pack ids present after the fetch, compared by exact string. */
       installed: readonly string[];
     }
+  /** v3: the download needs the player's consent (the size disclosure and the cellular
+   *  choice). `bytes` an integer ≥ 0. */
+  | { type: "fetch.consent"; bytes: number; metered: boolean }
+  /** v3: download progress, integers with `0 <= done <= total`. */
+  | { type: "fetch.progress"; done: number; total: number }
   /** The host's own work for the current stage failed in a way its event cannot express. */
   | { type: "fail"; code: string };
 
@@ -130,8 +143,11 @@ export type BootEmit =
   | { type: "waiting"; status: LicenseStatus }
   | { type: "update_available" | "boot_rolled_back" | "boot_ready" }
   | { type: "blocked"; reason: BootBlockedReason }
-  /** `canPlayOffline` is `false` on every v1 path. */
+  /** `canPlayOffline` is true only when the required packs are present and an essential one
+   *  could not download (v3). */
   | { type: "offline"; canPlayOffline: boolean }
+  | { type: "consent_needed"; bytes: number; metered: boolean }
+  | { type: "fetch_progress"; done: number; total: number }
   /** `sync-failed`, `fetch-failed`, or the code of the host's `fail`. */
   | { type: "error"; code: string };
 
@@ -142,6 +158,9 @@ export interface BootOptions {
   allowGrace?: boolean;
   /** Pack ids that must be installed before `mount`. Default []. Copied. */
   requiredPacks?: readonly string[];
+  /** v3: pack ids the boot wants before `ready` but can play without (`delivery: essential`,
+   *  `required: false`). Default []. Copied. */
+  essentialPacks?: readonly string[];
 }
 
 export interface BootState {
@@ -152,6 +171,9 @@ export interface BootState {
   readonly sync: "pending" | BootSyncResult;
   /** Where `retry` goes: `shell` before `shell.done`, `guard` before `guard.done`, then `sync`. */
   readonly resume: "shell" | "guard" | "sync";
+  /** v3: true only at `offline` reached with every required pack present and an essential one
+   *  missing, where `play-offline` is accepted. */
+  readonly canPlayOffline: boolean;
 }
 
 export interface BootTransition {
@@ -171,7 +193,7 @@ const LICENSE_STATUSES: readonly string[] = [
   "not-applicable",
 ];
 
-/** stage idle, outcome running, sync `pending`, resume `shell`. */
+/** stage idle, outcome running, sync `pending`, resume `shell`, `canPlayOffline` false. */
 export function initialBootState(options: BootOptions = {}): BootState {
   return {
     stage: "idle",
@@ -180,9 +202,11 @@ export function initialBootState(options: BootOptions = {}): BootState {
       allowOffline: options.allowOffline ?? true,
       allowGrace: options.allowGrace ?? true,
       requiredPacks: [...(options.requiredPacks ?? [])],
+      essentialPacks: [...(options.essentialPacks ?? [])],
     },
     sync: "pending",
     resume: "shell",
+    canPlayOffline: false,
   };
 }
 
@@ -198,7 +222,8 @@ export function bootGuardAction(input: {
 
 type Patch = Partial<Omit<BootState, "options">>;
 
-/** Move to `stage` (emitting `stage_changed` first when it changes), then at most one emit. */
+/** Move to `stage` (emitting `stage_changed` first when it changes), then at most one emit.
+ *  `canPlayOffline` resets unless the patch sets it. */
 function go(
   state: BootState,
   stage: BootStage,
@@ -210,7 +235,10 @@ function go(
   if (stage !== state.stage)
     emits.push({ type: "stage_changed", stage, previous: state.stage });
   if (extra) emits.push(extra);
-  return { state: { ...state, ...patch, stage, outcome }, emits };
+  return {
+    state: { ...state, canPlayOffline: false, ...patch, stage, outcome },
+    emits,
+  };
 }
 
 function ignore(state: BootState): BootTransition {
@@ -289,8 +317,13 @@ function gateHolds(state: BootState, status: LicenseStatus): BootTransition {
   return go(state, "gate", "waiting", { type: "waiting", status });
 }
 
-function missingPacks(state: BootState, installed: readonly string[]): boolean {
-  return state.options.requiredPacks.some((id) => !installed.includes(id));
+function missing(ids: readonly string[], installed: readonly string[]): boolean {
+  return ids.some((id) => !installed.includes(id));
+}
+
+/** A non-negative safe integer (v3's consent and progress payloads). */
+function count(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
 }
 
 /**
@@ -305,6 +338,8 @@ export function bootTransition(
   const e = event as unknown as Record<string, unknown> | null;
   if (typeof e !== "object" || e === null) return ignore(state);
   const waiting = state.stage === "gate" && state.outcome === "waiting";
+  const fetching = state.stage === "fetch";
+  const consentWaiting = fetching && state.outcome === "waiting";
 
   switch (e.type) {
     case "start":
@@ -366,24 +401,66 @@ export function bootTransition(
 
     case "fetch.done": {
       if (
-        state.stage !== "fetch" ||
-        !oneOf(e.result, ["ok", "offline", "failed"]) ||
+        !fetching ||
+        !oneOf(e.result, ["ok", "offline", "failed", "declined"]) ||
         !Array.isArray(e.installed) ||
         !e.installed.every(isString)
       )
         return ignore(state);
-      if (!missingPacks(state, e.installed as readonly string[]))
-        return go(state, "mount", "running", null);
-      if (e.result === "offline")
-        return go(state, "offline", "offline", {
-          type: "offline",
-          canPlayOffline: false,
+      const installed = e.installed as readonly string[];
+      if (missing(state.options.requiredPacks, installed)) {
+        if (e.result === "offline")
+          return go(state, "offline", "offline", {
+            type: "offline",
+            canPlayOffline: false,
+          });
+        if (e.result === "declined")
+          return go(state, "blocked", "blocked", {
+            type: "blocked",
+            reason: "content-declined",
+          });
+        return go(state, "error", "error", {
+          type: "error",
+          code: "fetch-failed",
         });
-      return go(state, "error", "error", {
-        type: "error",
-        code: "fetch-failed",
-      });
+      }
+      if (
+        e.result === "offline" &&
+        missing(state.options.essentialPacks, installed)
+      )
+        return go(
+          state,
+          "offline",
+          "offline",
+          { type: "offline", canPlayOffline: true },
+          { canPlayOffline: true },
+        );
+      return go(state, "mount", "running", null);
     }
+
+    case "fetch.consent":
+      if (!fetching || consentWaiting) return ignore(state);
+      if (!count(e.bytes) || typeof e.metered !== "boolean")
+        return ignore(state);
+      return go(state, "fetch", "waiting", {
+        type: "consent_needed",
+        bytes: e.bytes,
+        metered: e.metered,
+      });
+
+    case "fetch.progress":
+      if (!fetching || !count(e.done) || !count(e.total) || e.done > e.total)
+        return ignore(state);
+      return go(state, "fetch", "running", {
+        type: "fetch_progress",
+        done: e.done,
+        total: e.total,
+      });
+
+    case "play-offline":
+      return state.stage === "offline" && state.canPlayOffline
+        ? go(state, "mount", "running", null)
+        : ignore(state);
 
     case "mount.done":
       return state.stage === "mount"
@@ -417,13 +494,12 @@ export function bootTransition(
         state.stage === "sync" ||
         (state.stage === "gate" && !waiting) ||
         state.stage === "decide" ||
-        state.stage === "fetch" ||
+        (fetching && !consentWaiting) ||
         state.stage === "mount";
       if (!failing || !isString(e.code)) return ignore(state);
       return go(state, "error", "error", { type: "error", code: e.code });
     }
 
-    // `play-offline` is accepted nowhere in v1: `canPlayOffline` is never true.
     default:
       return ignore(state);
   }

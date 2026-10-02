@@ -1,6 +1,6 @@
 {
-  "stageMatrixVersion": 2,
-  "description": "The boot stage machine (client boot behaviour, outside the wire contract), owned by `@polaris-key/client-core/stages` and ported to every SDK. Each row starts from `initialBootState(init)` (an omitted option takes its default: allowOffline true, allowGrace true, requiredPacks []) and feeds `bootTransition` its steps in order; each step lists the exact emits that event produces, `stage_changed` first. `expect.stages` is every stage entered, in order, and its last entry is the final stage; `expect.outcome` is the final outcome. Events are dotted, emits snake_case, payload keys camelCase and payload values kebab-case. An event the current stage does not accept, or a malformed one, is ignored: the state comes back unchanged with no emits. `accepts` lists what each stage accepts (`gate:waiting` is the gate while it waits for the player), and a runner sends every probe at the initial state and after every step of every row, asserting an unchanged state and no emits exactly when the probe's type is not accepted there. `guardCases` pin `bootGuardAction`, which rolls back at `maxFailedBoots`. Version 2 (plans/P3-01.md §2.10) adds boot confirmation: `confirmCases` pin `bootConfirmation(outcome)`, one per outcome (`now` for waiting, blocked and offline; `after-ok-seconds` for ready, confirmed once the outcome has been `ready` for `bootOkSeconds` with the process alive, or by the game's `confirmBoot()`; `never` for running and error), and a confirmed launch resets `failedBoots` to 0. Append-only: a change to the vocabulary, to `accepts` or to an existing row's expectation bumps `stageMatrixVersion`.",
+  "stageMatrixVersion": 3,
+  "description": "The boot stage machine (client boot behaviour, outside the wire contract), owned by `@polaris-key/client-core/stages` and ported to every SDK. Each row starts from `initialBootState(init)` (an omitted option takes its default: allowOffline true, allowGrace true, requiredPacks []) and feeds `bootTransition` its steps in order; each step lists the exact emits that event produces, `stage_changed` first. `expect.stages` is every stage entered, in order, and its last entry is the final stage; `expect.outcome` is the final outcome. Events are dotted, emits snake_case, payload keys camelCase and payload values kebab-case. An event the current stage does not accept, or a malformed one, is ignored: the state comes back unchanged with no emits. `accepts` lists what each stage accepts (`gate:waiting` is the gate while it waits for the player), and a runner sends every probe at the initial state and after every step of every row, asserting an unchanged state and no emits exactly when the probe's type is not accepted there. `guardCases` pin `bootGuardAction`, which rolls back at `maxFailedBoots`. Version 2 (plans/P3-01.md §2.10) adds boot confirmation: `confirmCases` pin `bootConfirmation(outcome)`, one per outcome (`now` for waiting, blocked and offline; `after-ok-seconds` for ready, confirmed once the outcome has been `ready` for `bootOkSeconds` with the process alive, or by the game's `confirmBoot()`; `never` for running and error), and a confirmed launch resets `failedBoots` to 0. Version 3 (plans/P4-01.md §2.10) adds packs: the option `essentialPacks` (default []: packs the boot wants before ready but can play without), `fetch.consent {bytes, metered}` (accepted in `fetch`: the outcome waits, key `fetch:waiting`, and `consent_needed` is emitted), `fetch.progress {done, total}` (integers, 0 <= done <= total; accepted in `fetch` and `fetch:waiting`: the outcome runs, `fetch_progress` is emitted), `fetch.done` accepted in `fetch:waiting` and its result `declined`. The fetch rule: with a required pack missing, `offline` stops at `offline {canPlayOffline: false}`, `declined` at `blocked {reason: content-declined}` and anything else at `error {fetch-failed}`; with every required pack present and an essential one missing, `offline` stops at `offline {canPlayOffline: true}` (key `offline:playable`, where `play-offline` goes to `mount`); otherwise `mount`. `BootState.canPlayOffline` is true only at that playable offline stop. Append-only: a change to the vocabulary, to `accepts` or to an existing row's expectation bumps `stageMatrixVersion`.",
   "maxFailedBoots": 2,
   "bootOkSeconds": 10,
   "vocabulary": {
@@ -34,7 +34,9 @@
       "background.done",
       "retry",
       "play-offline",
-      "fail"
+      "fail",
+      "fetch.consent",
+      "fetch.progress"
     ],
     "emits": [
       "stage_changed",
@@ -44,7 +46,9 @@
       "offline",
       "error",
       "boot_rolled_back",
-      "boot_ready"
+      "boot_ready",
+      "consent_needed",
+      "fetch_progress"
     ],
     "guardActions": ["none", "apply-staged", "roll-back"],
     "confirmations": ["now", "after-ok-seconds", "never"]
@@ -57,11 +61,13 @@
     "gate": ["gate.status", "fail"],
     "gate:waiting": ["gate.status", "retry"],
     "decide": ["decide.done", "fail"],
-    "fetch": ["fetch.done", "fail"],
+    "fetch": ["fetch.done", "fetch.consent", "fetch.progress", "fail"],
+    "fetch:waiting": ["fetch.done", "fetch.progress"],
     "mount": ["mount.done", "fail"],
     "ready": ["background.start"],
     "background": ["background.done"],
     "offline": ["retry"],
+    "offline:playable": ["retry", "play-offline"],
     "blocked": ["retry"],
     "error": ["retry"]
   },
@@ -79,7 +85,9 @@
     { "type": "background.done" },
     { "type": "retry" },
     { "type": "play-offline" },
-    { "type": "fail", "code": "probe" }
+    { "type": "fail", "code": "probe" },
+    { "type": "fetch.consent", "bytes": 0, "metered": false },
+    { "type": "fetch.progress", "done": 0, "total": 0 }
   ],
   "rows": [
     {
@@ -3495,6 +3503,1139 @@
       "expect": {
         "stages": ["shell", "guard", "sync", "gate"],
         "outcome": "waiting"
+      }
+    },
+    {
+      "name": "ready — a required download asks first, then fetches with progress",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.consent",
+            "bytes": 52428800,
+            "metered": false
+          },
+          "emits": [
+            { "type": "consent_needed", "bytes": 52428800, "metered": false }
+          ]
+        },
+        {
+          "event": { "type": "fetch.progress", "done": 0, "total": 52428800 },
+          "emits": [{ "type": "fetch_progress", "done": 0, "total": 52428800 }]
+        },
+        {
+          "event": {
+            "type": "fetch.progress",
+            "done": 52428800,
+            "total": 52428800
+          },
+          "emits": [
+            { "type": "fetch_progress", "done": 52428800, "total": 52428800 }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "ok",
+            "installed": ["core"]
+          },
+          "emits": [
+            { "type": "stage_changed", "stage": "mount", "previous": "fetch" }
+          ]
+        },
+        {
+          "event": { "type": "mount.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "ready", "previous": "mount" },
+            { "type": "boot_ready" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready"
+        ],
+        "outcome": "ready"
+      }
+    },
+    {
+      "name": "waiting — consent waits for the player on a metered network",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.consent",
+            "bytes": 52428800,
+            "metered": true
+          },
+          "emits": [
+            { "type": "consent_needed", "bytes": 52428800, "metered": true }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": ["shell", "guard", "sync", "gate", "decide", "fetch"],
+        "outcome": "waiting"
+      }
+    },
+    {
+      "name": "blocked — the player declines a required download",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.consent",
+            "bytes": 52428800,
+            "metered": true
+          },
+          "emits": [
+            { "type": "consent_needed", "bytes": 52428800, "metered": true }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "declined",
+            "installed": []
+          },
+          "emits": [
+            {
+              "type": "stage_changed",
+              "stage": "blocked",
+              "previous": "fetch"
+            },
+            { "type": "blocked", "reason": "content-declined" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "blocked"
+        ],
+        "outcome": "blocked"
+      }
+    },
+    {
+      "name": "ready — retry after a declined download asks again",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.consent",
+            "bytes": 52428800,
+            "metered": true
+          },
+          "emits": [
+            { "type": "consent_needed", "bytes": 52428800, "metered": true }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "declined",
+            "installed": []
+          },
+          "emits": [
+            {
+              "type": "stage_changed",
+              "stage": "blocked",
+              "previous": "fetch"
+            },
+            { "type": "blocked", "reason": "content-declined" }
+          ]
+        },
+        {
+          "event": { "type": "retry" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "blocked" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.consent",
+            "bytes": 52428800,
+            "metered": false
+          },
+          "emits": [
+            { "type": "consent_needed", "bytes": 52428800, "metered": false }
+          ]
+        },
+        {
+          "event": { "type": "fetch.progress", "done": 0, "total": 52428800 },
+          "emits": [{ "type": "fetch_progress", "done": 0, "total": 52428800 }]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "ok",
+            "installed": ["core"]
+          },
+          "emits": [
+            { "type": "stage_changed", "stage": "mount", "previous": "fetch" }
+          ]
+        },
+        {
+          "event": { "type": "mount.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "ready", "previous": "mount" },
+            { "type": "boot_ready" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "blocked",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready"
+        ],
+        "outcome": "ready"
+      }
+    },
+    {
+      "name": "ready — declining essential content that is not required plays without it",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": [],
+        "essentialPacks": ["hd"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.consent",
+            "bytes": 1048576,
+            "metered": true
+          },
+          "emits": [
+            { "type": "consent_needed", "bytes": 1048576, "metered": true }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "declined",
+            "installed": []
+          },
+          "emits": [
+            { "type": "stage_changed", "stage": "mount", "previous": "fetch" }
+          ]
+        },
+        {
+          "event": { "type": "mount.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "ready", "previous": "mount" },
+            { "type": "boot_ready" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready"
+        ],
+        "outcome": "ready"
+      }
+    },
+    {
+      "name": "offline — essential content cannot download, and the required set is present",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"],
+        "essentialPacks": ["core", "hd"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "offline",
+            "installed": ["core"]
+          },
+          "emits": [
+            {
+              "type": "stage_changed",
+              "stage": "offline",
+              "previous": "fetch"
+            },
+            { "type": "offline", "canPlayOffline": true }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "offline"
+        ],
+        "outcome": "offline"
+      }
+    },
+    {
+      "name": "ready — play-offline from that card plays what is present",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"],
+        "essentialPacks": ["core", "hd"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "offline",
+            "installed": ["core"]
+          },
+          "emits": [
+            {
+              "type": "stage_changed",
+              "stage": "offline",
+              "previous": "fetch"
+            },
+            { "type": "offline", "canPlayOffline": true }
+          ]
+        },
+        {
+          "event": { "type": "play-offline" },
+          "emits": [
+            { "type": "stage_changed", "stage": "mount", "previous": "offline" }
+          ]
+        },
+        {
+          "event": { "type": "mount.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "ready", "previous": "mount" },
+            { "type": "boot_ready" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "offline",
+          "mount",
+          "ready"
+        ],
+        "outcome": "ready"
+      }
+    },
+    {
+      "name": "ready — retry from that card syncs again",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"],
+        "essentialPacks": ["core", "hd"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "offline",
+            "installed": ["core"]
+          },
+          "emits": [
+            {
+              "type": "stage_changed",
+              "stage": "offline",
+              "previous": "fetch"
+            },
+            { "type": "offline", "canPlayOffline": true }
+          ]
+        },
+        {
+          "event": { "type": "retry" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "offline" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "ok",
+            "installed": ["core", "hd"]
+          },
+          "emits": [
+            { "type": "stage_changed", "stage": "mount", "previous": "fetch" }
+          ]
+        },
+        {
+          "event": { "type": "mount.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "ready", "previous": "mount" },
+            { "type": "boot_ready" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "offline",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready"
+        ],
+        "outcome": "ready"
+      }
+    },
+    {
+      "name": "offline — a missing required pack stays unplayable, and play-offline is ignored",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"],
+        "essentialPacks": ["core", "hd"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "offline",
+            "installed": []
+          },
+          "emits": [
+            {
+              "type": "stage_changed",
+              "stage": "offline",
+              "previous": "fetch"
+            },
+            { "type": "offline", "canPlayOffline": false }
+          ]
+        },
+        { "event": { "type": "play-offline" }, "emits": [] }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "offline"
+        ],
+        "outcome": "offline"
+      }
+    },
+    {
+      "name": "ready — a failed essential download never blocks when the required set is present",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"],
+        "essentialPacks": ["core", "hd"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "failed",
+            "installed": ["core"]
+          },
+          "emits": [
+            { "type": "stage_changed", "stage": "mount", "previous": "fetch" }
+          ]
+        },
+        {
+          "event": { "type": "mount.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "ready", "previous": "mount" },
+            { "type": "boot_ready" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready"
+        ],
+        "outcome": "ready"
+      }
+    },
+    {
+      "name": "ready — progress without a consent step",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": { "type": "fetch.progress", "done": 0, "total": 1000 },
+          "emits": [{ "type": "fetch_progress", "done": 0, "total": 1000 }]
+        },
+        {
+          "event": { "type": "fetch.progress", "done": 1000, "total": 1000 },
+          "emits": [{ "type": "fetch_progress", "done": 1000, "total": 1000 }]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "ok",
+            "installed": ["core"]
+          },
+          "emits": [
+            { "type": "stage_changed", "stage": "mount", "previous": "fetch" }
+          ]
+        },
+        {
+          "event": { "type": "mount.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "ready", "previous": "mount" },
+            { "type": "boot_ready" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready"
+        ],
+        "outcome": "ready"
+      }
+    },
+    {
+      "name": "waiting — fail, a second consent and play-offline are ignored while consent waits",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": { "type": "fetch.consent", "bytes": 1000, "metered": false },
+          "emits": [
+            { "type": "consent_needed", "bytes": 1000, "metered": false }
+          ]
+        },
+        { "event": { "type": "fail", "code": "consent-failed" }, "emits": [] },
+        {
+          "event": { "type": "fetch.consent", "bytes": 2000, "metered": false },
+          "emits": []
+        },
+        { "event": { "type": "play-offline" }, "emits": [] }
+      ],
+      "expect": {
+        "stages": ["shell", "guard", "sync", "gate", "decide", "fetch"],
+        "outcome": "waiting"
+      }
+    },
+    {
+      "name": "ready — every essential pack is present: nothing is asked",
+      "init": {
+        "allowOffline": true,
+        "allowGrace": true,
+        "requiredPacks": ["core"],
+        "essentialPacks": ["core", "hd"]
+      },
+      "steps": [
+        {
+          "event": { "type": "start" },
+          "emits": [
+            { "type": "stage_changed", "stage": "shell", "previous": "idle" }
+          ]
+        },
+        {
+          "event": { "type": "shell.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "guard", "previous": "shell" }
+          ]
+        },
+        {
+          "event": { "type": "guard.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "sync", "previous": "guard" }
+          ]
+        },
+        {
+          "event": { "type": "sync.done", "result": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "gate", "previous": "sync" }
+          ]
+        },
+        {
+          "event": { "type": "gate.status", "status": "ok" },
+          "emits": [
+            { "type": "stage_changed", "stage": "decide", "previous": "gate" }
+          ]
+        },
+        {
+          "event": { "type": "decide.done", "decision": "none" },
+          "emits": [
+            { "type": "stage_changed", "stage": "fetch", "previous": "decide" }
+          ]
+        },
+        {
+          "event": {
+            "type": "fetch.done",
+            "result": "ok",
+            "installed": ["core", "hd"]
+          },
+          "emits": [
+            { "type": "stage_changed", "stage": "mount", "previous": "fetch" }
+          ]
+        },
+        {
+          "event": { "type": "mount.done" },
+          "emits": [
+            { "type": "stage_changed", "stage": "ready", "previous": "mount" },
+            { "type": "boot_ready" }
+          ]
+        }
+      ],
+      "expect": {
+        "stages": [
+          "shell",
+          "guard",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready"
+        ],
+        "outcome": "ready"
       }
     }
   ],
