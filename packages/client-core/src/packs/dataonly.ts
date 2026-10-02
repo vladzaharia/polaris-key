@@ -101,9 +101,27 @@ export const DATA_ONLY_SCRIPT_MARKERS: readonly string[] = [
 ];
 
 /**
+ * True when the text holds a `\u` or `\U` escape that could spell ASCII (Amendment A1): `\u` not
+ * followed by exactly 4 hex digits, or `\U` not followed by exactly 6 (VariantParser's form), or
+ * either decoding below 0x80. Escapes of non-ASCII characters (surrogate halves included), which
+ * Python's `json.dumps` and .NET's `System.Text.Json` write for every non-ASCII character, pass.
+ */
+function asciiEscape(text: string): boolean {
+  for (let at = text.indexOf("\\"); at >= 0; at = text.indexOf("\\", at + 1)) {
+    const c = text[at + 1];
+    if (c !== "u" && c !== "U") continue;
+    const n = c === "u" ? 4 : 6;
+    const digits = text.slice(at + 2, at + 2 + n);
+    if (!new RegExp(`^[0-9A-Fa-f]{${n}}$`).test(digits)) return true;
+    if (parseInt(digits, 16) < 0x80) return true;
+  }
+  return false;
+}
+
+/**
  * Rule 5 (Amendment A1), over a text file's whole decoded bytes: `content` when the bytes are not
  * valid UTF-8 or hold a NUL; when the text, or the text with every backslash removed, holds a
- * script marker; or when it holds any `\u` or `\U` escape. A VariantParser reader
+ * script marker; or when it holds a `\u` or `\U` escape that could spell ASCII. A VariantParser reader
  * (`str_to_var`, `ConfigFile`, `JSON.to_native` with objects) builds an inline
  * `Object(GDScript, "script/source": …)`, which compiles when set; this refuses every spelling of
  * one, failing closed. Null when admitted.
@@ -116,7 +134,7 @@ export function dataOnlyTextRefusal(bytes: Uint8Array): "content" | null {
     return "content";
   }
   if (text.includes("\u0000")) return "content";
-  if (/\\[uU]/.test(text)) return "content";
+  if (asciiEscape(text)) return "content";
   const bare = text.replaceAll("\\", "");
   for (const m of DATA_ONLY_SCRIPT_MARKERS)
     if (text.includes(m) || bare.includes(m)) return "content";

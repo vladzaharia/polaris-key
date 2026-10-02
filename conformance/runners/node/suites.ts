@@ -2170,7 +2170,7 @@ export function defineContentSuites({
   // @pkey-feature packs.delegation
   describe(`content corpus v${content.contentCorpusVersion} — dataOnlyCases (plans/P4-19.md §2.5)`, () => {
     it("has every dataOnlyCases vector", () => {
-      expect(content.dataOnlyCases.length).toBe(72);
+      expect(content.dataOnlyCases.length).toBe(76);
     });
     for (const c of content.dataOnlyCases) {
       const want = c.expect.ok ? "ok" : c.expect.rule;

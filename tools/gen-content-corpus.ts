@@ -5032,7 +5032,13 @@ function refDataOnly(
       return "content";
     }
     if (text.indexOf(String.fromCharCode(0)) >= 0) return "content";
-    if (text.includes("\\u") || text.includes("\\U")) return "content";
+    // A `\\u` (4 hex) or `\\U` (6 hex) escape must decode to 0x80 or above.
+    for (const m of text.matchAll(/\\([uU])/g)) {
+      const n = m[1] === "u" ? 4 : 6;
+      const hex = text.slice(m.index + 2, m.index + 2 + n);
+      if (hex.length !== n || !/^[0-9a-fA-F]+$/.test(hex)) return "content";
+      if (Number.parseInt(hex, 16) < 0x80) return "content";
+    }
     const markers = [
       "GDScript",
       "CSharpScript",
@@ -5244,8 +5250,8 @@ export function buildDataOnlyCases(): Record<string, unknown>[] {
     "content",
   );
   mk(
-    "head-bound-whitespace-accepted",
-    "64 bytes of whitespace, then `[gd_`: refused since Amendment A1 (the id is kept): Godot's text-resource loader skips any amount of leading whitespace, so a full window of whitespace is refused.",
+    "head-bound-whitespace-refused",
+    "64 bytes of whitespace, then `[gd_`: refused since Amendment A1: Godot's text-resource loader skips any amount of leading whitespace, so a full window of whitespace is refused.",
     "events/padded.json",
     new Uint8Array(DO_HEAD).fill(0x20),
     bytes("[gd_scene]"),
@@ -5327,12 +5333,48 @@ export function buildDataOnlyCases(): Record<string, unknown>[] {
   );
   mk(
     "text-u-escape-refused",
-    "A `.json` with a `\\u` escape (`\\u0053` is `S`): any `\\u` or `\\U` escape is refused, so no marker can hide behind one.",
+    "A `.json` with a `\\u` escape that decodes to ASCII (`\\u0053` is `S`, spelling `GDScript`): an escape below 0x80 is refused, so no marker can hide behind one.",
     "events/cfg.json",
     empty,
     empty,
     "content",
     bytes('{"type": "GD\\u0053cript"}\n'),
+  );
+  mk(
+    "text-u-escape-nonascii-accepted",
+    "A `.json` as Python's `json.dumps` or .NET's `System.Text.Json` writes it: `\\u00e0` and a surrogate pair (`\\ud83c\\udf83`) decode to non-ASCII, so they pass.",
+    "events/fr.json",
+    empty,
+    empty,
+    "ok",
+    bytes('{"greeting": "Voil\\u00e0 \\ud83c\\udf83"}\n'),
+  );
+  mk(
+    "text-u-escape-malformed-refused",
+    "A `.json` with `\\u` followed by only three hex digits: a malformed escape is refused.",
+    "events/fr.json",
+    empty,
+    empty,
+    "content",
+    bytes('{"a": "\\u00e"}\n'),
+  );
+  mk(
+    "text-big-u-escape-nonascii-accepted",
+    "A `.txt` with VariantParser's six-digit `\\U01F383` (non-ASCII): it passes.",
+    "events/note.txt",
+    empty,
+    empty,
+    "ok",
+    bytes('x = "\\U01F383"\n'),
+  );
+  mk(
+    "text-big-u-escape-ascii-refused",
+    "A `.txt` with `\\U000053` (`S`, ASCII): refused like a four-digit escape below 0x80.",
+    "events/note.txt",
+    empty,
+    empty,
+    "content",
+    bytes('x = "\\U000053"\n'),
   );
   mk(
     "text-marker-png-ignored",
@@ -5353,6 +5395,6 @@ export function buildDataOnlyCases(): Record<string, unknown>[] {
     bytes("a,b\n", [0xff], "\n"),
   );
 
-  if (out.length !== 72) fail(`dataOnlyCases: ${out.length} != 72`);
+  if (out.length !== 76) fail(`dataOnlyCases: ${out.length} != 76`);
   return out;
 }

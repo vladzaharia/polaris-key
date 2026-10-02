@@ -4288,8 +4288,8 @@
       "expect": { "ok": false, "rule": "content" }
     },
     {
-      "id": "head-bound-whitespace-accepted",
-      "description": "64 bytes of whitespace, then `[gd_`: refused since Amendment A1 (the id is kept): Godot's text-resource loader skips any amount of leading whitespace, so a full window of whitespace is refused.",
+      "id": "head-bound-whitespace-refused",
+      "description": "64 bytes of whitespace, then `[gd_`: refused since Amendment A1: Godot's text-resource loader skips any amount of leading whitespace, so a full window of whitespace is refused.",
       "path": "events/padded.json",
       "head": "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==",
       "tail": "W2dkX3NjZW5lXQ==",
@@ -4419,11 +4419,47 @@
     },
     {
       "id": "text-u-escape-refused",
-      "description": "A `.json` with a `\\u` escape (`\\u0053` is `S`): any `\\u` or `\\U` escape is refused, so no marker can hide behind one.",
+      "description": "A `.json` with a `\\u` escape that decodes to ASCII (`\\u0053` is `S`, spelling `GDScript`): an escape below 0x80 is refused, so no marker can hide behind one.",
       "path": "events/cfg.json",
       "head": "",
       "tail": "",
       "content": "eyJ0eXBlIjogIkdEXHUwMDUzY3JpcHQifQo=",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "text-u-escape-nonascii-accepted",
+      "description": "A `.json` as Python's `json.dumps` or .NET's `System.Text.Json` writes it: `\\u00e0` and a surrogate pair (`\\ud83c\\udf83`) decode to non-ASCII, so they pass.",
+      "path": "events/fr.json",
+      "head": "",
+      "tail": "",
+      "content": "eyJncmVldGluZyI6ICJWb2lsXHUwMGUwIFx1ZDgzY1x1ZGY4MyJ9Cg==",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "text-u-escape-malformed-refused",
+      "description": "A `.json` with `\\u` followed by only three hex digits: a malformed escape is refused.",
+      "path": "events/fr.json",
+      "head": "",
+      "tail": "",
+      "content": "eyJhIjogIlx1MDBlIn0K",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "text-big-u-escape-nonascii-accepted",
+      "description": "A `.txt` with VariantParser's six-digit `\\U01F383` (non-ASCII): it passes.",
+      "path": "events/note.txt",
+      "head": "",
+      "tail": "",
+      "content": "eCA9ICJcVTAxRjM4MyIK",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "text-big-u-escape-ascii-refused",
+      "description": "A `.txt` with `\\U000053` (`S`, ASCII): refused like a four-digit escape below 0x80.",
+      "path": "events/note.txt",
+      "head": "",
+      "tail": "",
+      "content": "eCA9ICJcVTAwMDA1MyIK",
       "expect": { "ok": false, "rule": "content" }
     },
     {

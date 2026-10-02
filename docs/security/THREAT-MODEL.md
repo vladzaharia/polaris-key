@@ -1884,7 +1884,7 @@ The new trust boundary is **content CI ↔ device**, mediated by a release-key s
   real control, because Godot picks its loader by extension), a head and tail magic sniff that
   fails closed (defence in depth, which also refuses a full 64-byte head window it cannot see
   past), and, for text files, a whole-file rule refusing P4-08's script markers (even split by
-  backslashes), `\u` escapes, invalid UTF-8 and NUL (Amendment A1). It runs on the device before
+  backslashes), `\u`/`\U` escapes that could spell ASCII, invalid UTF-8 and NUL (Amendment A1); ordinary text mentioning a marker is refused too, so publishers rename such keys or text. It runs on the device before
   activation (a `noop` reuse re-sniffs the reused install), in the CLI lint before signing and,
   for the extension rule only, at ingest (`delegation-data-only`). **What it cannot do:** the
   sniffs recognise binary and structured magics plus those text markers; they cannot recognise
@@ -2401,7 +2401,7 @@ Poison the release channel
 │   ├── CAN keep its releases installed after the window closes; only a CI revocation of the delegation stops them
 │   ├── CANNOT sign an app record, a revocation, a delegation, a `godot.pck`, `godot.zip`, `audio.bank`, `ml.model`, `custom.*` or unknown-type pack, or a pack outside its scope (`jws`, `delegation` or `scope` in every SDK)
 │   ├── CANNOT ship a container-layout pack, or a file outside the extension allow-list: the device's check, the CLI lint and ingest all refuse them. The allow-list is the real control; the head and tail sniff (Godot resource, PCK, script, archive and native-binary magics, a trailing `GDPC`, a zip end record in the last 65,557 bytes) is defence in depth that fails closed but cannot enumerate every format hidden inside an allowed one
-│   ├── CANNOT smuggle a resource or script behind leading whitespace (a full 64-byte head window it cannot see past is refused) or an inline `Object(GDScript, …)` in a text file (the text rule refuses script markers, backslash-split markers and `\u` escapes); NOTE: GDScript in general is not recognisable, so apps parse delegated text with pure JSON/CSV parsers only, never `str_to_var`, `ConfigFile` or `to_native(allow_objects)`, and never write delegated bytes under a code extension (Amendment A1)
+│   ├── CANNOT smuggle a resource or script behind leading whitespace (a full 64-byte head window it cannot see past is refused) or an inline `Object(GDScript, …)` in a text file (the text rule refuses script markers, backslash-split markers and `\u`/`\U` escapes that could spell ASCII); NOTE: GDScript in general is not recognisable, so apps parse delegated text with pure JSON/CSV parsers only, never `str_to_var`, `ConfigFile` or `to_native(allow_objects)`, and never write delegated bytes under a code extension (Amendment A1)
 │   ├── CANNOT reach a pin, hold, embedded baseline or replacement
 │   ├── CANNOT re-delegate (a delegation verifies against pinned release keys only, one level deep)
 │   ├── CANNOT sign outside its window through an honest Worker

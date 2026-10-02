@@ -261,7 +261,7 @@ delegation: {sha256, deliverable, types, issuedAt, expiresAt} | null, revoked?}`
   The generator's own reference `delegationOf`, delegated steps 12–16 and `recordRevoked` refuse
   each failing case at exactly its step.
 
-- `content/cases.json` gains `dataOnlyCases` (72), after `frameWindowCases`:
+- `content/cases.json` gains `dataOnlyCases` (76), after `frameWindowCases`:
   `{id, description, path, head, tail, tailFill?, content?, expect}`. `head`, `tail` and
   `content` are standard base64. The file is `head ‖ tail`, where a `tailFill` (`{byte, length}`)
   stands in for a long tail of `length` copies of `byte`; or, when `content` is present (Amendment
@@ -271,7 +271,7 @@ delegation: {sha256, deliverable, types, issuedAt, expiresAt} | null, revoked?}`
   allowed extension, the refused loader extensions, every refused head, the head window's cut
   (whitespace to its end, a word head it cuts), the tail sniff and its bound, an empty file, nine
   paths that are not already normalised, and the text rule (script markers, backslash-split
-  markers, `\u` escapes, invalid UTF-8; a marker in a `.png` is ignored).
+  markers, ASCII or malformed `\u`/`\U` escapes, invalid UTF-8; non-ASCII escapes and a marker in a `.png` pass).
 
 ## HTTP transcripts
 

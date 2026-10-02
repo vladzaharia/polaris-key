@@ -398,6 +398,7 @@ describe("pkey release publish with a content key", () => {
     ).catch((e: Error) => e);
     expect((err as Error).message).toMatch(/data-only rule refused 3 files/);
     expect((err as Error).message).toContain("default/data/cfg.txt");
+    expect((err as Error).message).toMatch(/rename such keys or reword/);
     expect((err as Error).message).toContain("default/scripts/boot.gd");
     expect((err as Error).message).toContain("default/data/scene.json");
     expect(server.calls).toHaveLength(0);

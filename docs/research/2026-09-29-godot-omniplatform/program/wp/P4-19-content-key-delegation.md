@@ -185,15 +185,15 @@ no live GC reference").
 
 Recorded by the implementer; the code is the fact where this brief, the plan and the code differ.
 
-- **`dataOnlyCases` has 72 cases, not 54.** The plan's 54; nine path-normalisation cases (`..`, a
+- **`dataOnlyCases` has 76 cases, not 54.** The plan's 54; nine path-normalisation cases (`..`, a
   leading or inner `.`, an empty segment, a trailing `/` or `/.`, a leading `/`, a backslash, a
   `res://` scheme); one tail-bound case (`tail-bound-eocd-outside-accepted`, which pins
   `DATA_ONLY_TAIL_BYTES` the way the whitespace cases pin the head bound, its 65,557-byte tail
-  written compactly as `tailFill`); and Amendment A1's eight (below).
+  written compactly as `tailFill`); and Amendment A1's twelve (below).
 - **Budget.** The content source set (`content/` plus `plan-matrix.json`) was 4,638,353 B with the
   first 64 cases, over P4-10's 4.6 MB target (an earlier version of this note wrongly said it was
   inside it). With the tail-bound case's tail written as `tailFill` and Amendment A1's cases it is
-  4,553,997 B (`content/` 4,022,074 B, `plan-matrix.json` 619,270 B): under the 4.6 MB target and
+  4,555,403 B (`content/` 3,936,133 B, `plan-matrix.json` 619,270 B): under the 4.6 MB target and
   the 5 MB budget.
 - **`dataOnlyRefusal` checks rule 1 itself.** A path that fails the files index's path rules (not
   already normalised: nothing Godot's `simplify_path()` would change) is refused with rule
@@ -205,16 +205,18 @@ Recorded by the implementer; the code is the fact where this brief, the plan and
   - A full 64-byte head window that is all whitespace (after a BOM), or that cuts a refused head
     (a prefix of a magic, or `extends`/`class_name` whose following byte lies beyond the window),
     is refused (`content`): Godot's text-resource loader and the GDScript tokenizer skip any
-    amount of leading whitespace. `head-bound-whitespace-accepted` now expects `content` (its id
-    is kept); `head-bound-all-whitespace-refused`, `head-bound-short-whitespace-accepted` and
+    amount of leading whitespace. `head-bound-whitespace-accepted` became
+    `head-bound-whitespace-refused` (it expects `content`); `head-bound-all-whitespace-refused`, `head-bound-short-whitespace-accepted` and
     `head-word-straddle-refused` are added.
   - Text files (`json`, `csv`, `tsv`, `po`, `txt`) pass rule 5 over their whole decoded bytes
     (`dataOnlyTextRefusal`): invalid UTF-8 or a NUL, any of P4-08's script markers (`GDScript`,
     `CSharpScript`, `ScriptExtension`, `script/source`, `source_code`) in the text or in the text
-    with every backslash removed, or any `\u`/`\U` escape, is `content`. `dataOnlyRefusal` gains
+    with every backslash removed, or a `\u` escape not followed by exactly 4 hex digits, a `\U` escape not followed by exactly 6 (VariantParser's form), or either decoding below 0x80 (an escape that could spell ASCII; escapes of non-ASCII characters, surrogate halves included, pass, because Python's `json.dumps` and .NET's `System.Text.Json` write one for every non-ASCII character), is `content`. Ordinary text that mentions a marker (a string "Learn GDScript", a JSON key `source_code`) is refused too: publishers must rename such keys or reword such text. `dataOnlyRefusal` gains
     a fourth argument, the whole file; a text file without it is refused. Cases with a whole-file
     `content` field: `text-object-script-refused`, `text-escaped-marker-refused`,
-    `text-u-escape-refused`, `text-marker-png-ignored` and `text-invalid-utf8-refused`.
+    `text-u-escape-refused`, `text-u-escape-nonascii-accepted`, `text-u-escape-malformed-refused`,
+    `text-big-u-escape-nonascii-accepted`, `text-big-u-escape-ascii-refused`,
+    `text-marker-png-ignored` and `text-invalid-utf8-refused`.
   - The engine's `noop` plan (a delegated release reusing an install that already holds the same
     payload) now re-sniffs that install's files instead of trusting how they were first admitted.
 - **A feed `revocations[].kind` that is a string but not a vocabulary token** makes the member

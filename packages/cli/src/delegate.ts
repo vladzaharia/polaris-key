@@ -53,7 +53,10 @@ import {
   verifyReleaseRecord,
   type VerifiedDelegation,
 } from "@polaris-key/client-core/record";
-import { dataOnlyFileRefusal } from "@polaris-key/client-core/packs";
+import {
+  DATA_ONLY_SCRIPT_MARKERS,
+  dataOnlyFileRefusal,
+} from "@polaris-key/client-core/packs";
 import {
   canonicalDescriptorJson,
   type ManifestPackDeliverable,
@@ -548,7 +551,7 @@ export function localDelegatedChecks(
   }
   if (refused.length)
     throw new Error(
-      `The data-only rule refused ${refused.length} file${refused.length === 1 ? "" : "s"} (plans/P4-19.md §2.5); nothing was published:\n${refused.map((r) => `  ${r}`).join("\n")}`,
+      `The data-only rule refused ${refused.length} file${refused.length === 1 ? "" : "s"} (plans/P4-19.md §2.5); nothing was published:\n${refused.map((r) => `  ${r}`).join("\n")}\nA text file (json, csv, tsv, po, txt) is refused for a script marker (${DATA_ONLY_SCRIPT_MARKERS.join(", ")}) even in ordinary text, such as a string "Learn GDScript" or a JSON key source_code: rename such keys or reword such text, then publish again.`,
     );
 }
 
