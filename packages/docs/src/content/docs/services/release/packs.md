@@ -148,7 +148,40 @@ at most 8 MiB each and 64 MiB per record; every object and file blob must be sto
 recorded length under the product's own references and the pack's prefix. A pack release's id is
 `<packId>@<version>`; its variants are builds (`build_id` the variant key, `default` for none)
 and its objects artifact rows (`payload`, `files-index`, `files-gaps`, `delta`, `patch`,
-`patch-data`).
+`patch-data`, `chunk-index`).
+
+### Chunk indexes and shared bundles
+
+Every container variant (a `godot.pck`) of 4 MiB or more gets a **chunk index** when the pack's
+`patch.strategies` lists `chunk` (the default lists every strategy; an explicit `[delta, file]`
+opts out) and the Worker's discovery advertises `release.chunks`. CI cuts the payload into
+chunks of about 64 KiB with FastCDC (`fastcdc-2016-nc1`), never across two entries of the PCK,
+stores each chunk as one `zstd -19` frame (or raw when that is not smaller) and packs them into
+**bundles** of about 4 MiB. The variant's signed `chunks` names the `pkey-chunks/1` index, which
+lists every chunk's hash, length, bundle and offset; an SDK that has an earlier release's index
+fetches only the chunks it lacks, in a few `Range` requests (P4-11). The parameters are frozen
+per release and signed as `chunks.params`; they are not configurable.
+
+Bundles are **shared along a chain**: one pack, one variant key, one gating class. CI keeps each
+published index in its `--out` cache (`<variant>/chunks.<sha256>`) and, on the next publish with
+`--bases`, continues the chain from the newest proven cached release of the same gating class: a
+chunk that index already holds keeps its location, provided an upload ticket reports its bundle
+`present`; every other chunk goes into new bundles. So an N−1 update is the index plus about one
+bundle run. A lost cache, a gate change or a missing bundle only costs storage: those chunks are
+packed fresh from the payload. A gated and a free pack never share a bundle. An index above
+8 MiB is not published: the variant ships without `chunks` and the publish warns.
+
+Bundles are blobs (`blobs/sha256/<hex>`, or under `gated/`), uploaded in stage rounds like every
+other pack object and served by the blob route with `Range`; they get no artifact rows. Ingest
+also refuses, as `pack-index`, a chunk index over 8 MiB or of an unknown `format` (before
+anything is read) or one client-core's `parseChunkIndex` rejects against the variant's payload;
+and, as `pack-object`, an index or a bundle in its table that is not stored with that length and
+held by **this pack's** own upload (`pack-upload`) under the pack's prefix: a reference held by
+another pack, or by a release, does not count. A dry run lists an index neither stored nor staged,
+and a bundle not yet held, in `unverified`. The blob collector keeps every bundle a live
+release's index names, an older release's bundle included (see
+[Garbage collection](/docs/services/distribution/delivery/#garbage-collection)); repacking
+bundles whose live share has dropped has no owner yet.
 
 ## App releases: content, pins and embeds
 
@@ -318,9 +351,11 @@ Other services read packs through Release's catalog hook: the declared packs, a 
 its variants and objects, a variant's files (read from its index), what an app release pins,
 which app releases pin a pack release, and what a build embeds; and, for resolution, a channel's
 live contentApi levels, its stored pack sets, its floors per contentApi line, what an app release
-holds and which app releases hold a pack release. Discovery's Release fragment
-carries `packs: true` on a Worker that ingests packs; `pkey release publish` refuses to publish a
-pack or stamp `content` without it.
+holds and which app releases hold a pack release; and the chunks a variant reads from bundles
+(read from its chunk index). Discovery's Release fragment carries `packs: true` on a Worker that
+ingests packs; `pkey release publish` refuses to publish a pack or stamp `content` without it.
+It carries `chunks: true` on a Worker that ingests chunk indexes; without it the publish omits
+`chunks`.
 
 ## Delivering packs
 

@@ -1007,9 +1007,11 @@ each build's embeds come from the artifact map; both go into the descriptor, whi
 is moved from. --deliverable <packId> publishes a pack: per declared variant, the payload at
 <dir>/<variant key or "default">/ (one .pck file, or the tree), checked, stripped of
 project.binary and the class cache, linted, indexed (pkey-files/1), with a full object, file
-blobs, a gaps object and deltas against the releases --bases keeps (zstd >= 1.5.5 on PATH); it
-signs the pack record, uploads in stage rounds, submits it, and writes a marker beside each
-payload. --out keeps the record and payloads for the next publish's --bases.
+blobs, a gaps object and deltas against the releases --bases keeps (zstd >= 1.5.5 on PATH), and
+for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundles shared along
+the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record,
+uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the
+record, payloads and chunk indexes for the next publish's --bases.
 pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one
 release for this app release (written into the stamp's holds; never a pinned pack).
 pkey release revoke signs a kind: revocation release record with the release key and submits it:

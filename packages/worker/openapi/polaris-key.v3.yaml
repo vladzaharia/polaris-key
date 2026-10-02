@@ -4172,6 +4172,14 @@ paths:
         prefix, or a `full` whose size is not its payload's). The optional ticket is promoted as
         a stage round first; a dry run checks without promoting and lists in `unverified` the
         ticket objects not uploaded yet. The release id is `<packId>@<version>`.
+        P4-22 (plans/P4-10.md §6): a variant's `chunks` (a `pkey-chunks/1` index) is refused as
+        `pack-index` when its `size` or `bytes` is over 8 MiB or its `format` is not
+        `pkey-chunks/1` (before anything is read), or when client-core's `parseChunkIndex`
+        refuses it bound to the variant's payload; and as `pack-object` unless the index and
+        every bundle in its table are stored with that length and held by a `pack-upload` ref
+        of THIS pack under its prefix (another pack's or a release's ref does not count). A
+        dry run lists an index neither stored nor staged, and a bundle not yet held, in
+        `unverified`. Discovery advertises this as `services.release.chunks: true`.
         P4-12 (compatible and standalone packs): a pack record is also refused with
         `pack-requires` (a variant's signed `requires.contentApi`, `requires.packs` or
         `conflicts` disagrees with the pack's binding or names an undeclared pack),

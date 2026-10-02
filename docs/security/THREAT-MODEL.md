@@ -1887,8 +1887,8 @@ API and no wire member.
   from a release that is live again (a plan computed before a concurrent ingest) is RESTORED on the
   next tick, long inside the grace period, so the sweep never reaches it.
 - **Restoring is not earning.** The collector restores only a ref it took from the same product
-  (a `ref-dropped` row in `blob_gc_log`), for a key a live release's own verified record or files
-  index names, on an object still stored and unclaimed. It can never give a product a ref to
+  (a `ref-dropped` row in `blob_gc_log`), for a key a live release's own verified record, files
+  index or chunk index names, on an object still stored and unclaimed. It can never give a product a ref to
   bytes it never held, even ones another product holds.
 - **No cross-tenant oracle.** The console's dry run (`GET …/blob-gc`) lists only this product's
   refs and never says whether another product holds the same bytes.
@@ -1989,7 +1989,7 @@ markers. P4-21 lands the claims, the formats' parsers and the corpus; P4-02 (ing
   verdict. A `Range` is only ever answered from a bundle the signed index names (the request
   names the bundle by its SHA-256 and carries `If-Range` on it), and a short or clipped answer is
   `chunk-bundle-truncated`, never a partial install. Applying chunks lands in P4-11; ingest of
-  `chunks` in P4-22.
+  `chunks` in P4-22 (below, "Pack ingest").
 
 **Pack ingest (P4-02).** The Worker still signs no record: a pack record is CI-signed, and ingest
 (`services/release/packs/`) only verifies it, checks it against the pack's declaration and the
@@ -2010,6 +2010,25 @@ blob store, and stores it. What the Worker newly does is parse CI-supplied bytes
   in a stage round, in this submit's ticket, or for an earlier release. The check is a
   `json_each` join of at most 10,000 `[key, bytes]` pairs per query against `blob_objects` and
   this product's `blob_refs`, so another product's copy of the bytes never counts.
+- **Chunk indexes at ingest (P4-22, plans/P4-10.md §6).** Ingest parses one CI-supplied binary
+  `pkey-chunks/1` index at a time: its declared `size` and `bytes` are checked against
+  `MAX_PUBLISHED_INDEX_BYTES` (8 MiB) and its `format` against `pkey-chunks/1` before anything is
+  read, the stored object is read bounded by its recorded length, decoded by a fresh WASM
+  instance and parsed by client-core's `parseChunkIndex` bound to the variant's payload, which
+  compares the index length in exact arithmetic and reads every u64 as two saturated u32s, so no
+  length or offset in the index is trusted before it is bounded. The parsed records (48 bytes
+  each on the wire, at most 174,761) are held for that index only and dropped before the next;
+  chunk indexes count toward `MAX_INGEST_INDEX_BYTES`. The bundles the index's table names get the
+  stricter possession check: the index and every bundle must be stored with the recorded length
+  AND held by a `pack-upload` ref of THIS pack (`ref_id` = the pack id) under the pack's prefix.
+  A ref held by another pack or by a release does not count, so a record may name an earlier
+  release's bundle only when the same pack uploaded it, and a pack cannot borrow (and so serve,
+  and pay for) bytes another of the product's packs, or another gating class, uploaded. A gated
+  and a free chain never share an object: the key is derived from the record's own gate. Bundles
+  get no artifact rows; the collector keeps a bundle while any live release's chunk index names
+  it (`packChunks`), and a live variant whose index cannot be read keeps every `pack-upload` ref
+  that tick. The CLI publishes no `chunks` unless discovery advertises `release.chunks`, so no
+  record carrying one lands on a Worker that does not check it.
 - **Pins are signed, mirrored, never edited.** An app release's pins come from its signed
   `content` (the descriptor's, which `descriptor-mismatch` holds to the record); ingest refuses a
   pin to an unknown, mismatched or yanked pack release, an unpinned required or embedded pack, a
