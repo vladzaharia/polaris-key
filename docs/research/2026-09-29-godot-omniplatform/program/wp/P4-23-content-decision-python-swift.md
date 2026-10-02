@@ -5,7 +5,7 @@
 | Phase       | P4: Packs                                                                                                                        |
 | Size        | 1–1.5 engineer-weeks                                                                                                             |
 | Depends on  | [P4-13](P4-13-revocation-floors-decision.md), [P4-07](P4-07-python-swift-packs.md)                                               |
-| Unblocks    | none                                                                                                                             |
+| Unblocks    | [P4-25](P4-25-delegation-python-swift.md)                                                                                        |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                             |
 | Plan mode   | yes: execute the approved `plans/P4-13.md` (its P4-23 parts); the plan's approval is this package's plan-mode gate, as for P4-21 |
 | Gates       | plan mode; corpus (runners only; P4-13 owns the corpus); all SDKs                                                                |
