@@ -797,10 +797,22 @@ gained two read-only methods, `feedSelection` (P2b-05's selection, offered to Up
   `private, no-store`. No CORS is added. Responses carry `nosniff` and the platform headers.
   `application/appinstaller`, `application/x-zsync` and XML are served on the console origin
   that holds sessions, with `nosniff` and no HTML type.
-- **Cost (DoS).** Each request costs the access check, the stamp (four reads) and, on a miss, one
-  bounded selection (P2b-05's ceiling). A signature verification or a SHA-1 streams a payload
-  once per release, then is memoised (verdicts for 30 days, negatives for a day; a SHA-1 for a
-  year). The `updateFeed` per-IP limit (60 per minute) fails open.
+- **Cost (DoS).** Every request to the appcasts, the extended version check and the four new
+  feeds first reads the product's recorded release ids (one narrow `SELECT DISTINCT release_id`
+  on `release_records`, covered by its unique index; never the JWS bytes). A product with no
+  record then takes the legacy appcast path, so a legacy appcast costs that one extra read. For a
+  product with records, the `updateFeed` per-IP limit (60 per minute, fail-open) runs next, before
+  any other read. A cache hit then costs the release config, the delivery access and the stamp:
+  the metadata access, the rollouts, one row of availability and outlet counters, the yanks and
+  the channel policies. That is eight D1 reads beyond the dispatcher's own product lookup. Only a
+  miss renders: one bounded selection (P2b-05's ceiling) plus, per listed build, its `.sig`
+  sidecar (Sparkle and WinSparkle, at most three releases), or, for zsync, one `.zsync` control
+  file (at most 16 MiB). A signature verification or a SHA-1 streams a payload once per release,
+  then is memoised: verdicts for 30 days, negatives for a day, a SHA-1 for a year. A
+  non-public answer is never cached, so it pays the render on every request, behind the licence
+  check. The cache key carries every input the body depends on. That includes the
+  `.appinstaller`'s rendered `Uri`, so one spelling of `?arch=` cannot plant its `Uri` in
+  another's cached answer.
 - **Residual.** The `deltaFrom`, the App Installer identity and update settings, and the build
   format that picks WinSparkle's installer arguments are CI or manifest claims. A wrong value makes
   an updater fail or fall back to the full package. It never changes which bytes are served,

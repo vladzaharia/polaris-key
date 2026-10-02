@@ -918,6 +918,88 @@ describe("updater feeds: access", () => {
   });
 });
 
+// ── The answer cache ─────────────────────────────────────────────────────────────────────────
+
+/** A `caches.default` that keeps what is put, by URL, as the Workers Cache API does. */
+class FakeCache {
+  readonly entries = new Map<string, Response>();
+  async match(req: Request): Promise<Response | undefined> {
+    return this.entries.get(req.url)?.clone();
+  }
+  async put(req: Request, res: Response): Promise<void> {
+    this.entries.set(req.url, res.clone());
+  }
+}
+
+/** A Db that records every read statement it is handed. */
+function recordingDb(inner: Db): { db: Db; reads: string[] } {
+  const reads: string[] = [];
+  const db: Db = {
+    all: (sql, ...p) => {
+      reads.push(sql);
+      return inner.all(sql, ...p);
+    },
+    first: (sql, ...p) => {
+      reads.push(sql);
+      return inner.first(sql, ...p);
+    },
+    runChanges: (sql, ...p) => inner.runChanges(sql, ...p),
+    run: (sql, ...p) => inner.run(sql, ...p),
+    batch: (st) => inner.batch(st),
+  };
+  return { db, reads };
+}
+
+describe("updater feeds: the answer cache", () => {
+  let cache: FakeCache;
+  beforeEach(() => {
+    cache = new FakeCache();
+    vi.stubGlobal("caches", { default: cache });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("App Installer: each spelling of ?arch= gets its own Uri, even from a warm cache", async () => {
+    const w = await world();
+    const spellings = ["x64", "X64", "x86_64", "X86_64"];
+    // Twice over, so the second pass is served from the cache.
+    for (let pass = 0; pass < 2; pass++)
+      for (const spelling of spellings) {
+        const { res, body } = await text(
+          w,
+          `update/beta/app.appinstaller?arch=${spelling}`,
+        );
+        expect(res.status, spelling).toBe(200);
+        expect(body, spelling).toContain(
+          `Uri="${CONSOLE}/${SLUG}/update/beta/app.appinstaller?arch=${spelling}"`,
+        );
+      }
+    expect(cache.entries.size).toBe(spellings.length);
+  });
+
+  it("a warm appcast never reads the records' JWS bytes, and costs a bounded number of reads", async () => {
+    const w = await world();
+    const path = `${CONSOLE}/${SLUG}/update/appcast.xml`;
+    const cold = recordingDb(w.db);
+    const first = await call(w.env, cold.db, noFetch, path, {});
+    expect(first.status).toBe(200);
+    const warm = recordingDb(w.db);
+    const again = await call(w.env, warm.db, noFetch, path, {});
+    expect(await again.text()).toBe(await first.text());
+    expect(warm.reads.length).toBeLessThan(cold.reads.length);
+    // The dispatcher's three product reads (every route), then the feed's eight: the release-id
+    // read, the release config, the delivery access, and the stamp (the metadata access's
+    // release config, rollouts, availability/outlet counters, yanks, channel policies).
+    expect(warm.reads.length).toBeLessThanOrEqual(11);
+    for (const sql of [...cold.reads, ...warm.reads].filter((q) =>
+      /release_records/.test(q),
+    )) {
+      expect(sql).not.toMatch(/\bjws\b|SELECT \*/);
+    }
+  });
+});
+
 // ── The pure pieces ──────────────────────────────────────────────────────────────────────────
 
 describe("updater renderers", () => {

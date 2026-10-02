@@ -127,7 +127,7 @@ it already holds, so older full packages are not listed. `PackageId` comes from 
 
 The `.appinstaller` uses the 2021 schema. Its `Uri` is exactly the URL it is served from, because
 App Installer re-polls it. App Installer refuses a `Uri` with more than one query pair, so the
-route reads at most one: `?arch=x64|arm64` or `?outlet=<id>`. The main package (a `MainBundle`
+route reads at most one: `?arch=x64|arm64` or `?outlet=<id>`. The `Uri` keeps the requested spelling of that pair, and each spelling is cached on its own. The main package (a `MainBundle`
 for a bundle, otherwise a `MainPackage` with its architecture) takes its identity from the
 `app-installer` outlet in `.pkey/distribution`:
 

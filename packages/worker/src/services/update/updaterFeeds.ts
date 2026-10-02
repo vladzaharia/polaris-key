@@ -69,7 +69,7 @@ import {
 } from "../release/config.js";
 import { enforceReleaseAccess, type ReleaseParams } from "../release/access.js";
 import { harden } from "../release/gateway.js";
-import { recordsByRelease } from "../release/records.js";
+import { recordedReleaseIds } from "../release/records.js";
 import { listDeliverables } from "../release/model.js";
 import { versionSchemeOf } from "../release/resolve.js";
 import {
@@ -128,19 +128,19 @@ export const CONTENT_TYPES = {
   zsync: "application/x-zsync",
 } as const;
 
-/** The app's stored release records, by release id (`kind: app` only). */
-export async function recordedAppReleases(
+/**
+ * The releases with a stored `kind: app` record, sorted. One narrow read (the ids only, never the
+ * JWS bytes): every updater feed request runs it, before the cache, because it is in the stamp.
+ */
+export function recordedAppReleases(
   ctx: Pick<ServiceContext, "db" | "product">,
 ): Promise<string[]> {
-  const rows = await recordsByRelease(
+  return recordedReleaseIds(
     ctx.db,
     ctx.product.slug,
     APP_DELIVERABLE_ID,
+    "app",
   );
-  return [...rows.values()]
-    .filter((r) => r.kind === "app")
-    .map((r) => r.release_id)
-    .sort();
 }
 
 async function sha256Hex(bytes: Uint8Array | string): Promise<string> {
@@ -179,18 +179,28 @@ export interface RenderContext {
   outletParam: string | null;
 }
 
-/** Run one updater feed request: access, rate limit, cache, render, headers. */
+/** Run one updater feed request: rate limit, access, cache, render, headers. */
 async function serveFeed(
   ctx: ServiceContext,
   plan: FeedPlan,
   recorded: string[],
 ): Promise<Response> {
   const { req, env, db, product } = ctx;
+  const now = Math.floor(Date.now() / 1000);
+  // First, so a flood past the limit costs only the route's release-id read and this check.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "updateFeed", id: clientIp(req), ...UPDATER_FEED_RATE_LIMIT },
+      now,
+    ))
+  )
+    return harden(errorResponse(429, "rate_limited", "too many feed requests"));
   const cfg = await getReleaseConfig(db, product.slug);
   const catalog = ctx.hooks.releaseCatalog();
   const delivery = ctx.hooks.delivery();
   if (!cfg || !catalog || !delivery) return harden(notFound());
-  const now = Math.floor(Date.now() / 1000);
   const artifactsAccess = await delivery.accessMode(APP_DELIVERABLE_ID);
   const mode = accessModeFor(artifactPolicy(cfg, artifactsAccess), plan.kind);
   if (mode !== "public") {
@@ -207,15 +217,6 @@ async function serveFeed(
     );
     if (denied) return harden(denied);
   }
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { bucket: "updateFeed", id: clientIp(req), ...UPDATER_FEED_RATE_LIMIT },
-      now,
-    ))
-  )
-    return harden(errorResponse(429, "rate_limited", "too many feed requests"));
 
   const url = new URL(req.url);
   const outletParam = url.searchParams.get("outlet");
@@ -644,7 +645,13 @@ function serveAppInstaller(
     {
       kind: "appinstaller",
       params: { channel },
-      cacheInputs: [["arch", arch]],
+      // The body embeds `uri`, which carries the request's own spelling of its one query pair
+      // (`?arch=X64` and `?arch=x86_64` select the same build but must each get their own `Uri`),
+      // so the rendered `uri` itself is part of the key.
+      cacheInputs: [
+        ["arch", arch],
+        ["uri", uri],
+      ],
       contentType: CONTENT_TYPES.appinstaller,
       publicCache: PUBLIC_FEED_CACHE,
       render: async (r) => {
