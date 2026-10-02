@@ -7,3 +7,8 @@ sdks/godot/** text=auto eol=lf
 # The polaris-key/publish Action's GENERATED bundle (P2-06): `bundle:action -- --check` compares it
 # byte for byte, so it keeps LF on every checkout; linguist-generated collapses it in PR diffs.
 actions/publish/dist/** text eol=lf linguist-generated=true
+
+# @polaris-key/zstd-wasm's committed module and its recorded SHA-256 (P4-21): the package test
+# hashes the module, so neither may be rewritten on checkout.
+packages/zstd-wasm/src/zdec.wasm binary
+packages/zstd-wasm/src/zdec.wasm.sha256 text eol=lf

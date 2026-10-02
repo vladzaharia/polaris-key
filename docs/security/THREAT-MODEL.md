@@ -1497,6 +1497,54 @@ the composer and the `seq` ceiling script.
   devices as a prompt the player cannot dismiss, per platform, and play continues; License's
   compatibility window is the only control that stops an old build.
 
+### Packs on the wire (packs v1, P4-21)
+
+Packs v1 (`plans/P4-01.md`; WIRE-CONTRACT-V4 §2.5.1–§2.7, §3.7) adds no `typ`, no feed field and
+no device route: a pack release is one more `pkey-release+jws` record (`kind: "pack"`), an app
+record names the packs it needs in `content`, and a build carries its embedded packs beside
+markers. P4-21 lands the claims, the formats' parsers and the corpus; P4-02 (ingest), P4-04
+(appliers and the content corpus) and P4-06 to P4-08 (SDKs) extend this section.
+
+- **Pack records keep the two-signer property.** A pack record is signed in CI by a release key
+  and verified only against the pinned release keys, exactly as an app record (§3.5's steps
+  12–15, with step 15 comparing the pin's `kind`); the Worker signs none. Every object a pack
+  record names is pinned by an object ref over its stored bytes, and per-file detail lives in
+  side objects pinned by hash, so a compromised Worker or bytes host can withhold or substitute
+  bytes but every substitution fails a hash check before it is used.
+- **The content stamp is as trustworthy as the build, and no more.** `pkey-content.json` is
+  unsigned and decides which pack releases the running build requires. It is embedded in the
+  build, which is the running code, so a stamp the attacker can change is code the attacker can
+  change. Node, Python and Swift hosts must load it from the app's own read-only resources (the
+  app bundle, the install directory), never from a user-writable path such as a cache, a
+  download directory or a configuration file; Godot reads it from `res://pkey_packs/`. A changed
+  stamp can only choose among release-key-signed records, by hash, or drop packs; it cannot
+  inject bytes, because every pin is a record hash and every record is release-key signed.
+- **A marker binds embedded bytes through the signed record.** An embedded pack's marker
+  (`pkey-marker/1`) carries the pack record's compact JWS; the device verifies it (§3.7), then
+  matches the payload's SHA-256 and size, or a tree's `treeDigest`, against a variant of that
+  record, and, where the stamp pins the pack, the record's hash against the pin. A marker
+  copied beside other bytes, or naming another release, is not used.
+- **Path rules run before any byte is written.** Every path in a files index passes the path
+  rules (ASCII, no `..`, no empty or dot segment, no Windows device names, no case collision or
+  file/directory conflict, and no first segment `.pkey`, where a tree's marker lives) before an
+  applier writes anything, so an index cannot direct a write outside the pack's directory or
+  over its marker (`files-unsafe-path`, `files-duplicate-path`, `files-case-collision`,
+  `files-path-conflict`).
+- **Forward-compatible claims never make a v1 client act on what it does not know.** A value
+  outside a v1 vocabulary (a type, layout, codec, delta method or scope, delivery, axis) makes
+  that pack, variant, object or delta unusable on a v1 SDK while the record still verifies, so a
+  later CI can sign records a v1 client accepts and safely ignores; no claim lets an unknown
+  value select a code path. Cross-record rules (every expected pack pinned, `embeds` ⊆ pins, no
+  entitlement on a required pack) are publish rules, enforced by the CLI and ingest, never
+  trusted from a client.
+- **Decoding is bounded before it starts.** `@polaris-key/zstd-wasm`, the decoder-only libzstd
+  1.5.7 WASM the Worker and the browser use, decodes exactly one frame whose declared content
+  size is the caller's, and with a raw-content prefix refuses a frame whose header window is
+  above 2^`windowLogMax` before decoding, because libzstd enforces its own limit only when it
+  streams through a small buffer. Its workerd entry instantiates the module per decode, so no
+  decode's linear memory outlives the call. A files index is refused above
+  `MAX_FILES_INDEX_BYTES` (32 MiB) on a client before it is fetched or decoded.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The

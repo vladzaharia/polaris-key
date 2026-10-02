@@ -3,7 +3,7 @@
 // barrel re-exports core's values verbatim (`ISSUER` = `key.plrs.im`, the `X-PKey-*` headers),
 // so an import from here and an import from `@polaris-key/protocol/core` can never disagree.
 // Prefer the service subpaths (`/core`, `/license`, `/config`, `/release`, `/update`, `/trust`,
-// `/distribution`)
+// `/distribution`, `/packs`)
 // in new code; the barrel exists for consumers that want one import.
 
 export {
@@ -39,6 +39,17 @@ export {
   PR_NUMBER_MAX_DIGITS,
   PLATFORM_SPELLINGS,
   ARCH_SPELLINGS,
+  MAX_PACK_VARIANTS,
+  MAX_VARIANT_DELTAS,
+  MAX_CONTENT_PINS,
+  MAX_BUILD_EMBEDS,
+  MAX_INDEX_FILES,
+  MAX_FILES_INDEX_BYTES,
+  MAX_PACK_PATH_BYTES,
+  FILES_FORMAT,
+  PATCH_FORMAT,
+  MARKER_FORMAT,
+  CONTENT_STAMP_FORMAT,
 } from "./core.js";
 export type {
   JSONValue,
@@ -74,6 +85,7 @@ export type { ConfigDoc, SecretDelivery } from "./config.js";
 export {
   DEFAULT_RELEASE_ACCESS,
   BUILD_ID_PATTERN,
+  RECORD_KINDS,
   RESERVED_RECORD_KINDS,
 } from "./release.js";
 export type {
@@ -139,6 +151,55 @@ export type {
   OutletSubkind,
   OutletConfidence,
 } from "./distribution.js";
+
+export {
+  PACK_TYPE_PATTERN,
+  VOCAB_TOKEN_PATTERN,
+  OBJECT_FORMAT_PATTERN,
+  HANDLER_PREFIX_PATTERN,
+  ENTITLEMENT_PATTERN,
+  VARIANT_AXIS_PATTERN,
+  VARIANT_VALUE_PATTERN,
+  ENGINE_PATTERN,
+  PACK_TYPES,
+  FILES_LAYOUTS,
+  CONTENT_CODECS,
+  PATCH_METHODS,
+  RESERVED_PATCH_METHODS,
+  PATCH_SCOPES,
+  PACK_DELIVERIES,
+  PACK_ACTIVATIONS,
+  VARIANT_AXES,
+  ZSTD_DICTIONARY_MAGIC,
+  MARKER_SUFFIX,
+  TREE_MARKER_PATH,
+  CONTENT_STAMP_FILE,
+} from "./packs.js";
+export type {
+  PackType,
+  FilesLayout,
+  ContentCodec,
+  PatchMethod,
+  PatchScope,
+  PackDelivery,
+  PackActivation,
+  VariantAxis,
+  ObjectRef,
+  FilesRef,
+  PayloadDelta,
+  FilesDelta,
+  PackVariant,
+  PackRecordDoc,
+  ContentPin,
+  ContentExpect,
+  AppContent,
+  FilesIndexEntry,
+  FilesIndexDoc,
+  PatchEntry,
+  PatchDoc,
+  MarkerDoc,
+  ContentStampDoc,
+} from "./packs.js";
 
 export type {
   SigningKeyStatus,

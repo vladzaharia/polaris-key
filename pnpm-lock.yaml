@@ -366,6 +366,18 @@ importers:
         specifier: ^4.40.0
         version: 4.104.0(@cloudflare/workers-types@4.20260623.1)
 
+  packages/zstd-wasm:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.14.0
+        version: 22.20.0
+      esbuild:
+        specifier: 0.27.7
+        version: 0.27.7
+      miniflare:
+        specifier: 4.20260623.0
+        version: 4.20260623.0
+
   products:
     dependencies:
       '@polaris-key/catalog':

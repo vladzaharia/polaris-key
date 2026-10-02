@@ -21,7 +21,10 @@ only corpus. `corpusVersion 2`,
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
 `releaseRecordCases` families, the strict-verifier `jwsCases`, a `nonWireIntegers` member
 beside `expect` on every case whose payload holds a number that cannot be a wire integer, and the
-two decision tables below.
+two decision tables below. Packs v1 (`plans/P4-01.md` §4.6) adds `packRecordCases` (`kind: pack`
+records and an app record's `content` and `builds[].embeds`, signed over a fixed object-ref
+table until the content corpus lands) and `markerCases` (embedded-pack markers), two JWS
+families that the record runners of SDKs predating packs never read.
 
 ## Case families (`cases.json`)
 
@@ -36,6 +39,8 @@ two decision tables below.
 | `bundleCases` | 16 |
 | `feedCases` | 77 |
 | `releaseRecordCases` | 49 |
+| `packRecordCases` | 159 |
+| `markerCases` | 17 |
 
 ## Gate matrix (`gate-matrix.json`): 38 rows
 

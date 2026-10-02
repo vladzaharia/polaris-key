@@ -119,6 +119,7 @@
       "status": "planned",
       "wp": "P3-11"
     },
+    "packs.record": { "status": "planned", "wp": "P4-08" },
     "packs.plan": {
       "status": "planned",
       "wp": "P4-08"
