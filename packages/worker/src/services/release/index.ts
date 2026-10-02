@@ -83,9 +83,17 @@ export const releaseService: ServiceDescriptor = {
       // to publish a pack or stamp `content` without it, so no app record carries pins a Worker
       // did not mirror.
       packs: true,
+      // P4-22: this Worker ingests a pack variant's `chunks` (a `pkey-chunks/1` index, parsed and
+      // its bundles held by the pack) and keeps every bundle a live index names. The CLI omits
+      // `chunks` without it, so no record carrying one lands on a Worker that does not check it.
+      chunks: true,
       // P4-13: this Worker ingests CI-signed `kind: revocation` records, serves them on the
       // record route and lists them in the channel feed. `pkey release revoke` requires it.
       revocations: true,
+      // P4-19: this Worker ingests `kind: delegation` records and delegated pack records, serves
+      // delegations on the record route and answers `…/release/publish/delegations`.
+      // `pkey release delegate` and a content-key publish require it.
+      delegations: true,
     };
   },
 };

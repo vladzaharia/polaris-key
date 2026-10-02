@@ -48,6 +48,12 @@ inputs:
   release-key:
     description: The release key's PKCS#8 PEM, from a GitHub Environment secret (secrets.PKEY_RELEASE_KEY). With it the Action signs the release record (pkey-release+jws) under the .pkey/release releaseKeys entry it matches. Required when .pkey/release declares releaseKeys. Never logged or sent.
     required: false
+  content-key:
+    description: P4-19, pack only. A delegated content key's PKCS#8 PEM, from the content team's GitHub Environment secret (secrets.PKEY_CONTENT_KEY). With delegation, the Action signs the pack record under the kid pkd1-<delegation sha256> instead of a release key; the pack must be a data-only type (files.tree, data.json, l10n.table) with a compatible or standalone binding, inside the delegation's scope and window, and every file must pass the data-only rule. Exclusive of release-key. Never logged or sent.
+    required: false
+  delegation:
+    description: P4-19, pack only. With content-key, the sha256 of the delegation record that names the key (pkey release delegate prints it).
+    required: false
   min-supported-seq:
     description: The release record's minSupportedSeq — the oldest release seq installs on the platforms this release targets should be prompted up to.
     required: false

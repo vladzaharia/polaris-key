@@ -5,20 +5,26 @@
  * deliverable, never by "is a pack" (README §11 guardrails).
  *
  * A pack release's variants and objects come from its stored, signed record (the record is the
- * whole truth); its files come from its files index, read from the blob store and decoded one
- * index per call under `MAX_PUBLISHED_INDEX_BYTES` (decision 36).
+ * whole truth); its files come from its files index, and (P4-22) the chunks it reads from chunk
+ * bundles from its chunk index, each read from the blob store and decoded one index per call
+ * under `MAX_PUBLISHED_INDEX_BYTES` (decision 36).
  */
 
 import {
   MAX_PUBLISHED_INDEX_BYTES,
   packVariantKeys,
 } from "@polaris-key/manifest";
-import { parseFilesIndex, variantKey } from "@polaris-key/client-core/packs";
+import {
+  parseChunkIndex,
+  parseFilesIndex,
+  variantKey,
+} from "@polaris-key/client-core/packs";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
 import type {
   CatalogHold,
   CatalogBuildEmbeds,
+  CatalogPackChunk,
   CatalogPackDeliverable,
   CatalogPackFile,
   CatalogPackFloor,
@@ -40,13 +46,14 @@ import type { Db, Env } from "../../../core/platform.js";
 import { blobKey } from "../../../core/blobs.js";
 import { readPackDeliverables } from "./deliverables.js";
 import { packObjects, storedRecordPayload, variantBuildId } from "./ingest.js";
-import { readRevocations } from "./revocations.js";
+import { readAllRevocations } from "./revocations.js";
 
 type PackCatalog = Pick<
   ReleaseCatalog,
   | "packDeliverables"
   | "packRelease"
   | "packFiles"
+  | "packChunks"
   | "pins"
   | "pinnedBy"
   | "embeds"
@@ -135,18 +142,23 @@ interface PackRecordRow {
   channel: string | null;
   published_at: number | null;
   yanked: number;
+  /** P4-19: the delegation a content key signed it under, or null (a release key). */
+  delegation: string | null;
 }
 
 interface FoundPackRecord {
   record: PackRecordDoc;
   sha256: string;
+  delegation: string | null;
   release: CatalogRelease;
 }
 
 const PACK_RECORD_SELECT = `SELECT r.release_id, r.jws, r.record_sha256, m.deliverable_id, m.version, m.seq,
             m.channel, m.published_at,
             EXISTS (SELECT 1 FROM release_yanks y
-                     WHERE y.product = m.product AND y.release_id = m.release_id) AS yanked
+                     WHERE y.product = m.product AND y.release_id = m.release_id) AS yanked,
+            (SELECT d.delegation_sha256 FROM release_delegated_records d
+              WHERE d.product = r.product AND d.record_sha256 = r.record_sha256) AS delegation
        FROM release_records r
        JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id`;
 
@@ -156,6 +168,7 @@ function foundOf(row: PackRecordRow): FoundPackRecord | null {
   return {
     record: payload as unknown as PackRecordDoc,
     sha256: row.record_sha256,
+    delegation: row.delegation ?? null,
     release: {
       deliverableId: row.deliverable_id,
       releaseId: row.release_id,
@@ -190,6 +203,7 @@ function packReleaseView(found: FoundPackRecord): CatalogPackRelease {
   return {
     release: found.release,
     recordSha256: found.sha256,
+    delegation: found.delegation,
     type: record.type,
     formatVersion: record.formatVersion,
     entitlement: record.entitlement ?? null,
@@ -312,6 +326,47 @@ export function packCatalog(ctx: {
           key: blobKey(e.blob.sha256, { gated }),
         },
       }));
+    },
+
+    async packChunks(releaseId, key): Promise<CatalogPackChunk[] | null> {
+      // P4-22 (plans/P4-10.md decision 16): what the collector keeps a bundle alive by.
+      const found = await packRecordOf(db, slug, releaseId);
+      const bucket = env.BLOBS;
+      if (!found || !bucket) return null;
+      const v = found.record.variants.find(
+        (x) => variantKey(x.variant) === key,
+      );
+      const c = v?.chunks;
+      if (!v || !c) return null;
+      if (
+        c.size > MAX_PUBLISHED_INDEX_BYTES ||
+        c.bytes > MAX_PUBLISHED_INDEX_BYTES
+      )
+        return null;
+      const gated = found.record.entitlement !== undefined;
+      const obj = await bucket.get(blobKey(c.sha256, { gated }));
+      if (!obj || !("arrayBuffer" in obj) || obj.size !== c.bytes) return null;
+      const parsed = await parseChunkIndex(
+        new Uint8Array(await obj.arrayBuffer()),
+        c,
+        v.payload,
+        {
+          decode: (frame, size) => zstdDecode(frame, size),
+          maxBytes: MAX_PUBLISHED_INDEX_BYTES,
+        },
+      );
+      if (!parsed.ok) return null;
+      // One entry per stored location (duplicate ids share one), in record order.
+      const keys = parsed.index.bundles.map(([sha]) => blobKey(sha, { gated }));
+      const seen = new Set<string>();
+      const out: CatalogPackChunk[] = [];
+      for (const [, , clen, bundle, offset] of parsed.index.records) {
+        const at = `${bundle}:${offset}`;
+        if (seen.has(at)) continue;
+        seen.add(at);
+        out.push({ bundleKey: keys[bundle]!, offset, bytes: clen });
+      }
+      return out;
     },
 
     async pins(appReleaseId) {
@@ -469,7 +524,7 @@ export function packCatalog(ctx: {
     },
 
     async revocations(): Promise<CatalogRevocation[]> {
-      return readRevocations(db, slug);
+      return readAllRevocations(db, slug);
     },
   };
 }

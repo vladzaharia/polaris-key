@@ -53,6 +53,10 @@ import {
   type VerifiedRecordJws,
 } from "../records.js";
 import { readPackDeliverable } from "./deliverables.js";
+import {
+  handleDelegationRevocation,
+  readDelegationRevocations,
+} from "./delegations.js";
 import { storedRecordPayload } from "./ingest.js";
 import { levelInRange, PackResolver } from "./resolve.js";
 import {
@@ -124,6 +128,23 @@ export async function readRevocations(
     );
 }
 
+/** Every revocation in force: P4-13's of pack records, then (P4-19) those of delegations
+ *  (`kind: "delegation"`, no target release), in the same order. */
+export async function readAllRevocations(
+  db: Db,
+  product: string,
+): Promise<CatalogRevocation[]> {
+  return [
+    ...(await readRevocations(db, product)),
+    ...(await readDelegationRevocations(db, product)),
+  ].sort(
+    (a, b) =>
+      cmp(a.deliverableId, b.deliverableId) ||
+      a.seq - b.seq ||
+      cmp(a.targetSha256, b.targetSha256),
+  );
+}
+
 function recordRefusal(
   reason: RecordRefusalReason,
   message: string,
@@ -144,6 +165,7 @@ interface StoredPackRecord {
   seq: number;
   kind: string;
   jws: string;
+  kid: string;
   version: string | null;
   yanked: number;
   revoked: number;
@@ -155,7 +177,7 @@ async function storedRecord(
   sha256: string,
 ): Promise<StoredPackRecord | null> {
   return db.first<StoredPackRecord>(
-    `SELECT r.release_id, r.record_sha256, r.deliverable_id, r.seq, r.kind, r.jws,
+    `SELECT r.release_id, r.record_sha256, r.deliverable_id, r.seq, r.kind, r.jws, r.kid,
             m.version AS version,
             EXISTS (SELECT 1 FROM release_yanks y
                      WHERE y.product = r.product AND y.release_id = r.release_id) AS yanked,
@@ -250,6 +272,8 @@ export async function handleRevocationSubmit(
   holder: CiTokenRecord,
   shared: Extract<VerifiedRecordJws, { ok: true }>,
   dryRun: boolean,
+  /** P4-19: the delegation this revocation revokes, supplied when the Worker never stored it. */
+  suppliedDelegation?: unknown,
 ): Promise<Response> {
   const { db, env, product, now } = ctx;
   const slug = product.slug;
@@ -265,8 +289,19 @@ export async function handleRevocationSubmit(
   const version = shared.payload.version as string;
   const seq = shared.payload.seq as number;
 
-  // 3. The target.
+  // 3. The target: a stored pack record, else (P4-19) a delegation, stored or supplied.
   const target = await storedRecord(db, slug, body.target);
+  if (!target) {
+    const delegated = await handleDelegationRevocation(
+      ctx,
+      holder,
+      shared,
+      body,
+      dryRun,
+      suppliedDelegation,
+    );
+    if (delegated) return delegated;
+  }
   if (
     !target ||
     target.kind !== "pack" ||
@@ -321,7 +356,9 @@ export async function handleRevocationSubmit(
       r.seq !== body.replacement.seq ||
       r.version !== body.replacement.version ||
       r.yanked ||
-      r.revoked
+      r.revoked ||
+      // P4-19: a replacement is the release key vouching for exact bytes, never a delegated one.
+      r.kid.startsWith("pkd1-")
     )
       return recordRefusal(
         "revocation-replacement",

@@ -97,7 +97,7 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `packs: { <packId>: ">=1.2.0 <2.0.0" }` names other compatible or standalone packs),
       `conflicts` (other declared packs, `invalid_pack_conflicts`), `channels` (canonical
       channels beyond `stable` and `beta` the pack's releases go to, `invalid_channel`), `patch`
-      (`strategies` ⊆ `delta`, `file`; `deltaBases` 0–8), `versioning.scheme`, and
+      (`strategies` ⊆ `delta`, `file`, `chunk`, default all three; `deltaBases` 0–8), `versioning.scheme`, and
       `entitlement`, which must name a `flag` of `.pkey/schema` and only ASSERTS the gate an
       operator sets under Distribution → Access (a publish whose gate differs is refused).
       `provides` and `removes` are refused (`pack_field_not_supported`).

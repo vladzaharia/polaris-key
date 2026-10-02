@@ -126,7 +126,10 @@ every file blob its indexes name is a blob of the product's store. Publishing is
 2. **Stage rounds**: for each batch of at most 256 objects, an `uploads` ticket, the uploads,
    then `POST /<product>/release/publish/stage` `{ticket, deliverable}`. A round verifies each
    staged object, refuses one whose `gated` flag differs from the gate, promotes it and records
-   a `pack-upload` reference: the product now holds those bytes.
+   a `pack-upload` reference of the pack: the product now holds those bytes. A pack's ticket
+   names its pack (`deliverable`), and an object is `present`, so skipped, only when **that pack**
+   uploaded it; one another pack of the product holds is uploaded again (its stored bytes are
+   not rewritten), so a renamed pack, or two packs sharing bytes, earns its own references.
 3. **The record**: `POST /<product>/release/publish/submit` `{record, ticket?, dryRun?}`. A small
    pack can carry its objects in this ticket and publish in one request.
 
@@ -148,7 +151,41 @@ at most 8 MiB each and 64 MiB per record; every object and file blob must be sto
 recorded length under the product's own references and the pack's prefix. A pack release's id is
 `<packId>@<version>`; its variants are builds (`build_id` the variant key, `default` for none)
 and its objects artifact rows (`payload`, `files-index`, `files-gaps`, `delta`, `patch`,
-`patch-data`).
+`patch-data`, `chunk-index`).
+
+### Chunk indexes and shared bundles
+
+Every container variant (a `godot.pck`) of 4 MiB or more gets a **chunk index** when the pack's
+`patch.strategies` lists `chunk` (the default lists every strategy; an explicit `[delta, file]`
+opts out) and the Worker's discovery advertises `release.chunks`. CI cuts the payload into
+chunks of about 64 KiB with FastCDC (`fastcdc-2016-nc1`), never across two entries of the PCK,
+stores each chunk as one `zstd -19` frame (or raw when that is not smaller) and packs them into
+**bundles** of about 4 MiB. The variant's signed `chunks` names the `pkey-chunks/1` index, which
+lists every chunk's hash, length, bundle and offset; an SDK that has an earlier release's index
+fetches only the chunks it lacks, in a few `Range` requests (P4-11). The parameters are frozen
+per release and signed as `chunks.params`; they are not configurable.
+
+Bundles are **shared along a chain**: one pack, one variant key, one gating class. CI keeps each
+published index in its `--out` cache (`<variant>/chunks.<sha256>`) and, on the next publish with
+`--bases`, continues the chain from the newest proven cached release of the same gating class: a
+chunk that index already holds keeps its location, provided an upload ticket reports its bundle
+`present`; every other chunk goes into new bundles. So an N−1 update is the index plus about one
+bundle run. A lost cache, a gate change or a missing bundle only costs storage: those chunks are
+packed fresh from the payload. A gated and a free pack never share a bundle. An index above
+8 MiB is not published: the variant ships without `chunks` and the publish warns.
+
+Bundles are blobs (`blobs/sha256/<hex>`, or under `gated/`), uploaded in stage rounds like every
+other pack object and served by the blob route with `Range`; they get no artifact rows. Ingest
+also refuses, as `pack-index`, a chunk index over 8 MiB or of an unknown `format` (before
+anything is read) or one client-core's `parseChunkIndex` rejects against the variant's payload;
+and, as `pack-object`, an index or a bundle in its table that is not stored with that length and
+held by **this pack's** own upload (`pack-upload`) under the pack's prefix: a reference held by
+another pack, or by a release, does not count. A dry run lists an index neither stored nor staged,
+and a bundle not yet held, in `unverified`. The blob collector keeps every bundle a live
+release's index names, an older release's bundle included (see
+[Garbage collection](/docs/services/distribution/delivery/#garbage-collection)); each live
+chunked variant costs the collector two index reads from its per-tick budget (its files index and
+its chunk index). Repacking bundles whose live share has dropped has no owner yet.
 
 ## App releases: content, pins and embeds
 
@@ -280,6 +317,62 @@ remove the revoked status. Ingest also yanks the target, so even a rolled-back W
 serving it (and the console refuses to lift that yank, `release_revoked`), and resolution drops revoked releases from every candidate list. The feed lists the
 revocations in force; devices fetch each record and verify it against their pinned release keys.
 
+## Content keys (delegation)
+
+A release key can delegate a **content key** (P4-19): a key that may sign pack releases only of
+data-only types (`files.tree`, `data.json`, `l10n.table`), only for compatible or standalone packs
+under one pack-id scope, and only inside a signing window of at most 366 days. The grant is a
+CI-signed `kind: delegation` release record; `.pkey/release` does not declare content keys (an
+unsigned manifest cannot grant trust, so `release.contentKeys` only warns). The format is on
+[Pack byte formats](/docs/build/wire/packs/#delegated-content-keys-and-the-data-only-rule).
+
+The CLI flow, with no key ever stored by the Worker:
+
+1. **Generate the content key**: `pkey release keys generate --content --out content.pem` writes an
+   Ed25519 PKCS#8 PEM (mode 0600, never over an existing file) and prints its public key. Keep the
+   PEM in the content team's CI environment as `PKEY_CONTENT_KEY`.
+2. **Delegate**: `pkey release delegate --prefix <packId> --types files.tree,data.json
+--public-key <b64url> [--expires-in <days>] [--notes <text>] [--dry-run]`, run with
+   `PKEY_RELEASE_KEY`. It reads the product's delegations first, refuses a key any delegation
+   already names (one key, one delegation) or a declared release key, takes the next `seq`, signs,
+   self-checks and submits. It prints the delegation hash, the content kid (`pkd1-…`) and the
+   window. The default window is 180 days. When the submit fails after signing, the signed
+   delegation is written to `./pkey-delegation-<sha256>.jws` so it can still be revoked.
+3. **Publish content**: `pkey release publish` for a pack, with `PKEY_CONTENT_KEY` (or
+   `--content-key-file`) and `--delegation <sha256>`. It verifies the delegation against the
+   declared release keys, checks the key, scope, type and binding, runs the data-only rule and the
+   tree lints over every file, signs with the derived kid and submits through the usual uploads
+   preflight and ticket. It warns within 14 days of the window's end, and refuses a release key and
+   a content key together. The publish Action takes `content-key` and `delegation` instead of
+   `release-key`.
+4. **Revoke**: `pkey release revoke --delegation <sha256 | file> --reason <text>`, with the release
+   key. Given a file holding a delegation the Worker never stored, it submits the delegation
+   alongside the revocation, so a delegation minted outside CI can still be revoked.
+
+`POST /{product}/release/publish/delegations` (publisher bearer, scope `release:publish`, body
+`{"deliverable"?: "<scope root>"}`) lists the product's delegations: each one's hash, scope root,
+`seq`, key fingerprint (the hex SHA-256 of the raw key), window, origin (`submit` or `revocation`)
+whether it is revoked, its `version` and its compact JWS (`jws`), plus `nextSeq` when a scope
+root is given. It needs no blob store. The CLI reads a stored delegation's JWS here, behind the
+publisher token, for a content-key publish and for `revoke --delegation <sha256>`, so both work on
+a product whose release metadata is not public.
+
+Ingest refuses, with `release_record_rejected`: a delegation whose body is unusable or lists a
+non-delegable type (`delegation-body`), whose key is a release key, a product key or any stored
+delegation's key (`delegation-key`), whose `seq` does not follow (`seq`), or whose window is not
+open (`delegation-window`); a delegated pack release whose delegation is unknown or revoked
+(`delegation-unknown`, `delegation-revoked`), whose key is a product or release key, that is
+outside the scope, types or tree layout (`delegation-scope`), outside the window or backdated by
+more than a day (`delegation-window`), of a pinned pack (`delegation-binding`) or holding a file the
+extension allow-list refuses (`delegation-data-only`); and an app release that pins or holds a
+delegated release (`pin-delegated`, `hold-delegated`). Revoking a delegation yanks every release
+signed under it, and the feed lists the revocation with `kind: "delegation"`.
+
+Rotate by generating a new key, delegating it, re-publishing what must survive, then revoking the
+old delegation; renewing an expiring window is the same flow, and installed releases need no
+re-publish. Adopt delegation only once every live app build you care about embeds an SDK that
+verifies it: older builds simply never install delegated releases.
+
 ## In the console
 
 Packs appear in the Release section beside the app; there is no separate content section.
@@ -305,6 +398,12 @@ Packs appear in the Release section beside the app; there is no separate content
   for each pack (with `required`, `delivery` and whether the pinned release is yanked) and an
   **Embeds** column, the packs each build ships embedded.
 
+- **Content keys** lists each delegation: its scope, types, `seq`, window and status (`active`,
+  `closed` or `revoked`), the release key that signed it, the content key's fingerprint, how many
+  releases it signed and its revocation. Each pack release also shows its signer: the release key,
+  or the delegation it was signed under. Minting and revoking are CI acts, so there are no
+  controls.
+
 Everything here is read-only. The console never shows where a pack's objects are stored, only
 their sizes and hashes. Its admin routes, all under `/manage/api/products/<slug>/release/` and
 behind the same platform-admin session as the rest of the console:
@@ -322,9 +421,11 @@ Other services read packs through Release's catalog hook: the declared packs, a 
 its variants and objects, a variant's files (read from its index), what an app release pins,
 which app releases pin a pack release, and what a build embeds; and, for resolution, a channel's
 live contentApi levels, its stored pack sets, its floors per contentApi line, what an app release
-holds and which app releases hold a pack release. Discovery's Release fragment
-carries `packs: true` on a Worker that ingests packs; `pkey release publish` refuses to publish a
-pack or stamp `content` without it.
+holds and which app releases hold a pack release; and the chunks a variant reads from bundles
+(read from its chunk index). Discovery's Release fragment carries `packs: true` on a Worker that
+ingests packs; `pkey release publish` refuses to publish a pack or stamp `content` without it.
+It carries `chunks: true` on a Worker that ingests chunk indexes; without it the publish omits
+`chunks`.
 
 ## Delivering packs
 

@@ -29,6 +29,8 @@ export const ACTION_INPUTS = [
   "meta",
   "base-url",
   "release-key",
+  "content-key",
+  "delegation",
   "min-supported-seq",
   "content-stamp",
   "embedded",
@@ -144,6 +146,20 @@ export async function runAction(io: ActionIo): Promise<number> {
       );
     const deliverable = input("deliverable");
     const releaseKeyPem = input("release-key");
+    // P4-19: a content key and its delegation, exclusive of the release key.
+    const contentKeyPem = input("content-key");
+    const delegation = input("delegation");
+    if (contentKeyPem && releaseKeyPem)
+      throw new Error(
+        "release-key and content-key are exclusive: a pack release is signed by one or the other.",
+      );
+    if (
+      (contentKeyPem || delegation) &&
+      (!deliverable || deliverable === "app")
+    )
+      throw new Error(
+        "content-key and delegation apply only to a pack deliverable: a content key never signs an app record.",
+      );
     const minSupportedSeq =
       input("min-supported-seq") !== undefined
         ? Number(input("min-supported-seq"))
@@ -170,6 +186,8 @@ export async function runAction(io: ActionIo): Promise<number> {
         bases: input("bases"),
         baseUrl: input("base-url"),
         ...(releaseKeyPem ? { releaseKeyPem } : {}),
+        ...(contentKeyPem ? { contentKeyPem } : {}),
+        ...(delegation ? { delegation } : {}),
         ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
         dryRun: dryRun === "true",
         env: io.env,

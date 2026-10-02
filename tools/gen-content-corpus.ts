@@ -3880,6 +3880,8 @@ export function buildContentCorpus(
     packSetIdCases,
     stampCases,
     frameWindowCases,
+    // plans/P4-19.md §4.1: the data-only rule, appended as the last section.
+    dataOnlyCases: buildDataOnlyCases(),
   };
 
   const { planMatrix, planRealPins } = buildPlanMatrix(set, records);
@@ -4923,5 +4925,476 @@ export function contentStrays(mirrors: readonly string[]): string[] {
   for (const e of existsSync(CONTENT_DIR) ? readdirSync(CONTENT_DIR) : [])
     if (e !== CONTENT_CASES_NAME && e !== "blobs")
       out.push(join(CONTENT_DIR, e));
+  return out;
+}
+
+// ── `dataOnlyCases` (plans/P4-19.md §4.3) ────────────────────────────────────────────────────
+// The data-only rule a delegated install passes for every file (§2.5): the path is already
+// normalised, its extension is on the allow-list, and its first 64 and last 65,557 decoded bytes
+// carry no refused magic. Each case is `{id, description, path, head, tail, expect}`: the file is
+// `head ‖ tail` (both standard base64), and a runner hands the rule the file's first
+// `DATA_ONLY_HEAD_BYTES` and last `DATA_ONLY_TAIL_BYTES` bytes. The reference below restates the
+// rule from first principles.
+
+const DO_HEAD = 64;
+const DO_TAIL = 65557;
+const DO_EXTENSIONS = [
+  "json",
+  "csv",
+  "tsv",
+  "po",
+  "txt",
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "ogg",
+  "wav",
+  "mp3",
+  "ttf",
+  "otf",
+];
+const doAscii = (s: string): number[] => [...s].map((c) => c.charCodeAt(0));
+/** The 20 refused heads, named for the case ids (`extends`/`class_name` need a space or tab). */
+const DO_HEADS: [name: string, bytes: number[], word?: true][] = [
+  ["rsrc", doAscii("RSRC")],
+  ["rscc", doAscii("RSCC")],
+  ["gdpc", doAscii("GDPC")],
+  ["gdec", doAscii("GDEC")],
+  ["gcpf", doAscii("GCPF")],
+  ["gdsc", doAscii("GDSC")],
+  ["gd-bracket", doAscii("[gd_")],
+  ["zip-local", [0x50, 0x4b, 0x03, 0x04]],
+  ["elf", [0x7f, 0x45, 0x4c, 0x46]],
+  ["mz", doAscii("MZ")],
+  ["macho-32-be", [0xfe, 0xed, 0xfa, 0xce]],
+  ["macho-64-be", [0xfe, 0xed, 0xfa, 0xcf]],
+  ["macho-32-le", [0xce, 0xfa, 0xed, 0xfe]],
+  ["macho-64-le", [0xcf, 0xfa, 0xed, 0xfe]],
+  ["macho-fat", [0xca, 0xfe, 0xba, 0xbe]],
+  ["wasm", [0x00, 0x61, 0x73, 0x6d]],
+  ["shebang", doAscii("#!")],
+  ["extends", doAscii("extends"), true],
+  ["class-name", doAscii("class_name"), true],
+  ["tool", doAscii("@tool")],
+];
+
+function doStarts(b: Uint8Array, at: number, m: number[]): boolean {
+  if (at + m.length > b.length) return false;
+  return m.every((x, k) => b[at + k] === x);
+}
+
+/** §2.5's `dataOnlyRefusal`, from first principles. */
+function refDataOnly(
+  path: string,
+  file: Uint8Array,
+): "extension" | "content" | null {
+  if (!refCheckPaths([path]).ok) return "extension";
+  const last = path.slice(path.lastIndexOf("/") + 1);
+  const dot = last.lastIndexOf(".");
+  if (dot < 0) return "extension";
+  const ext = last.slice(dot + 1).replace(/[A-Z]/g, (c) => c.toLowerCase());
+  if (!DO_EXTENSIONS.includes(ext)) return "extension";
+  const head = file.subarray(0, DO_HEAD);
+  let at = 0;
+  if (head[0] === 0xef && head[1] === 0xbb && head[2] === 0xbf) at = 3;
+  while (
+    at < head.length &&
+    (head[at] === 0x20 || (head[at]! >= 0x09 && head[at]! <= 0x0d))
+  )
+    at++;
+  // Amendment A1: a full 64-byte window may cut the file, so whitespace to its end, or a head the
+  // window's end cuts, is refused.
+  const cut = head.length === DO_HEAD;
+  if (cut && at === head.length) return "content";
+  for (const [, m, word] of DO_HEADS) {
+    const visible = Array.from(head.subarray(at));
+    if (cut && visible.length < m.length) {
+      if (visible.every((b, k) => b === m[k])) return "content";
+      continue;
+    }
+    if (!doStarts(head, at, m)) continue;
+    if (!word) return "content";
+    const next = head[at + m.length];
+    if (next === 0x20 || next === 0x09) return "content";
+    if (next === undefined && cut) return "content";
+  }
+  const tail = file.subarray(Math.max(0, file.length - DO_TAIL));
+  if (doStarts(tail, tail.length - 4, doAscii("GDPC"))) return "content";
+  for (let k = 0; k + 4 <= tail.length; k++)
+    if (doStarts(tail, k, [0x50, 0x4b, 0x05, 0x06])) return "content";
+  // Amendment A1 rule 5: a text file's whole bytes.
+  if (["json", "csv", "tsv", "po", "txt"].includes(ext)) {
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(file);
+    } catch {
+      return "content";
+    }
+    if (text.indexOf(String.fromCharCode(0)) >= 0) return "content";
+    // A `\\u` (4 hex) or `\\U` (6 hex) escape must decode to 0x80 or above.
+    for (const m of text.matchAll(/\\([uU])/g)) {
+      const n = m[1] === "u" ? 4 : 6;
+      const hex = text.slice(m.index + 2, m.index + 2 + n);
+      if (hex.length !== n || !/^[0-9a-fA-F]+$/.test(hex)) return "content";
+      if (Number.parseInt(hex, 16) < 0x80) return "content";
+    }
+    const markers = [
+      "GDScript",
+      "CSharpScript",
+      "ScriptExtension",
+      "script/source",
+      "source_code",
+    ];
+    const bare = text.split("\\").join("");
+    if (markers.some((m) => text.includes(m) || bare.includes(m)))
+      return "content";
+  }
+  return null;
+}
+
+export function buildDataOnlyCases(): Record<string, unknown>[] {
+  const b64 = (b: Uint8Array): string => Buffer.from(b).toString("base64");
+  const bytes = (...parts: (string | number[])[]): Uint8Array =>
+    new Uint8Array(
+      parts.flatMap((p) => (typeof p === "string" ? doAscii(p) : p)),
+    );
+  const out: Record<string, unknown>[] = [];
+  const mk = (
+    id: string,
+    description: string,
+    path: string,
+    head: Uint8Array,
+    tail: Uint8Array,
+    want: "ok" | "extension" | "content",
+    content?: Uint8Array,
+    tailFill?: { byte: number; length: number },
+  ): void => {
+    if (content !== undefined) {
+      // A whole-file case (Amendment A1): `content` is the file; head and tail are empty.
+      if (head.length !== 0 || tail.length !== 0)
+        fail(`dataOnlyCases ${id}: content with head or tail`);
+      const got = refDataOnly(path, content);
+      if ((got ?? "ok") !== want)
+        fail(`dataOnlyCases ${id}: the reference answers ${got ?? "ok"}`);
+      if (out.some((c) => c.id === id)) fail(`dataOnlyCases: duplicate ${id}`);
+      out.push({
+        id,
+        description,
+        path,
+        head: "",
+        tail: "",
+        content: b64(content),
+        expect: want === "ok" ? { ok: true } : { ok: false, rule: want },
+      });
+      return;
+    }
+    if (tailFill !== undefined) {
+      // A compact tail (Amendment A1): `length` copies of `byte`, written as `tailFill`.
+      if (tail.length !== 0) fail(`dataOnlyCases ${id}: tailFill with tail`);
+      tail = new Uint8Array(tailFill.length).fill(tailFill.byte);
+    }
+    if (head.length > DO_HEAD) fail(`dataOnlyCases ${id}: head over 64 bytes`);
+    if (tail.length > DO_TAIL) fail(`dataOnlyCases ${id}: tail over bound`);
+    const file = new Uint8Array(head.length + tail.length);
+    file.set(head, 0);
+    file.set(tail, head.length);
+    const got = refDataOnly(path, file);
+    if ((got ?? "ok") !== want)
+      fail(`dataOnlyCases ${id}: the reference answers ${got ?? "ok"}`);
+    if (out.some((c) => c.id === id)) fail(`dataOnlyCases: duplicate ${id}`);
+    out.push({
+      id,
+      description,
+      path,
+      head: b64(head),
+      tail: tailFill === undefined ? b64(tail) : "",
+      ...(tailFill !== undefined ? { tailFill } : {}),
+      expect: want === "ok" ? { ok: true } : { ok: false, rule: want },
+    });
+  };
+  const empty = new Uint8Array(0);
+
+  // Each extension accepted, with a head typical of the format.
+  const typical: Record<string, Uint8Array> = {
+    json: bytes('{"events": []}\n'),
+    csv: bytes("key,en\nhello,Hello\n"),
+    tsv: bytes("key\ten\nhello\tHello\n"),
+    po: bytes('msgid ""\nmsgstr ""\n'),
+    txt: bytes("Happy Halloween!\n"),
+    png: bytes([0x89], "PNG", [0x0d, 0x0a, 0x1a, 0x0a]),
+    jpg: bytes([0xff, 0xd8, 0xff, 0xe0]),
+    jpeg: bytes([0xff, 0xd8, 0xff, 0xe1]),
+    webp: bytes("RIFF", [0x24, 0, 0, 0], "WEBPVP8 "),
+    ogg: bytes("OggS", [0, 2]),
+    wav: bytes("RIFF", [0x24, 0, 0, 0], "WAVEfmt "),
+    mp3: bytes("ID3", [4, 0, 0]),
+    ttf: bytes([0, 1, 0, 0, 0, 0x0e]),
+    otf: bytes("OTTO", [0, 0x0e]),
+  };
+  for (const ext of DO_EXTENSIONS)
+    mk(
+      `ext-${ext}-accepted`,
+      `A \`.${ext}\` file with a typical head is admitted.`,
+      `events/halloween/file.${ext}`,
+      typical[ext]!,
+      empty,
+      "ok",
+    );
+  mk(
+    "ext-uppercase-accepted",
+    "`A.JSON`: the extension is compared ASCII-lowercased.",
+    "events/A.JSON",
+    typical.json!,
+    empty,
+    "ok",
+  );
+
+  // Refused by extension: every loader extension Godot has is off the allow-list.
+  mk(
+    "ext-none-refused",
+    "A file with no extension.",
+    "events/README",
+    typical.txt!,
+    empty,
+    "extension",
+  );
+  for (const ext of [
+    "tres",
+    "material",
+    "theme",
+    "translation",
+    "res",
+    "gd",
+    "remap",
+    "import",
+    "pck",
+    "zip",
+    "so",
+  ])
+    mk(
+      `ext-${ext}-refused`,
+      `A \`.${ext}\` file: not on the allow-list (Godot picks its loader by extension).`,
+      `events/x.${ext}`,
+      typical.txt!,
+      empty,
+      "extension",
+    );
+  mk(
+    "ext-double-gd-refused",
+    "`x.json.gd`: only the text after the last `.` counts.",
+    "events/x.json.gd",
+    typical.json!,
+    empty,
+    "extension",
+  );
+  mk(
+    "ext-double-json-accepted",
+    "`x.gd.json`: admitted on its final extension (the content sniff still runs).",
+    "events/x.gd.json",
+    typical.json!,
+    empty,
+    "ok",
+  );
+
+  // Refused by head, inside an allowed `.json`.
+  for (const [name, m, word] of DO_HEADS)
+    mk(
+      `head-${name}-refused`,
+      `A \`.json\` whose content starts with the ${name} magic${word ? " and a space" : ""}: refused by content, never by extension.`,
+      "events/data.json",
+      bytes(m, word ? " Node\n" : "\n"),
+      empty,
+      "content",
+    );
+
+  // The tail sniff (appended archives).
+  mk(
+    "tail-gdpc-footer",
+    "A valid PNG head whose last 4 bytes are `GDPC`: a PCK appended to an image, which `load_resource_pack` finds from the end.",
+    "events/banner.png",
+    typical.png!,
+    bytes([0, 0, 0, 0], "IEND", [0xae, 0x42, 0x60, 0x82], "GDPC"),
+    "content",
+  );
+  mk(
+    "tail-zip-eocd",
+    "An OGG head with a zip end-of-central-directory record (`PK\\x05\\x06` and its 18 bytes) in its tail: an appended zip.",
+    "events/theme.ogg",
+    typical.ogg!,
+    bytes("vorbis", [0x50, 0x4b, 0x05, 0x06], new Array(18).fill(0)),
+    "content",
+  );
+  {
+    // The tail bound: an end record just before the last 65,557 bytes is outside the sniff.
+    const head = bytes("{", new Array(59).fill(0x20), [0x50, 0x4b, 0x05, 0x06]);
+    mk(
+      "tail-bound-eocd-outside-accepted",
+      "A `.json` with `PK\\x05\\x06` at bytes 60–63 followed by exactly 65,557 spaces (`tailFill`): the record lies outside the last 65,557 bytes, so the tail sniff does not see it (this pins the tail bound).",
+      "events/big.json",
+      head,
+      empty,
+      "ok",
+      undefined,
+      { byte: 0x20, length: DO_TAIL },
+    );
+  }
+
+  // The head bound and the skips.
+  mk(
+    "head-bom-whitespace-gd-scene-refused",
+    "A UTF-8 BOM, then ASCII whitespace, then `[gd_scene`: both are skipped before the sniff.",
+    "events/scene.json",
+    bytes([0xef, 0xbb, 0xbf], " \t\r\n", "[gd_scene format=3]"),
+    empty,
+    "content",
+  );
+  mk(
+    "head-bound-whitespace-refused",
+    "64 bytes of whitespace, then `[gd_`: refused since Amendment A1: Godot's text-resource loader skips any amount of leading whitespace, so a full window of whitespace is refused.",
+    "events/padded.json",
+    new Uint8Array(DO_HEAD).fill(0x20),
+    bytes("[gd_scene]"),
+    "content",
+  );
+  mk(
+    "head-bound-all-whitespace-refused",
+    "Exactly 64 spaces: the skip reaches the end of a full window, which may cut the file (Amendment A1).",
+    "events/pad.json",
+    new Uint8Array(DO_HEAD).fill(0x20),
+    empty,
+    "content",
+  );
+  mk(
+    "head-bound-short-whitespace-accepted",
+    "10 spaces and nothing else: the window holds the whole file, so nothing is cut.",
+    "events/short.json",
+    new Uint8Array(10).fill(0x20),
+    empty,
+    "ok",
+  );
+  mk(
+    "head-word-straddle-refused",
+    "57 spaces then `extends` (64 bytes): the byte that must follow the word lies beyond the window (Amendment A1).",
+    "events/straddle.json",
+    bytes(new Array(57).fill(0x20), "extends"),
+    empty,
+    "content",
+  );
+  mk(
+    "empty-file-accepted",
+    "An empty `.json`.",
+    "events/empty.json",
+    empty,
+    empty,
+    "ok",
+  );
+
+  // Rule 1: paths that are not already normalised (a delegated install refuses them even if the
+  // index's path rules were bypassed; Godot's `simplify_path()` is the identity on the rest).
+  for (const [id, path, what] of [
+    ["path-dotdot-refused", "events/../escape.json", "a `..` segment"],
+    ["path-dot-leading-refused", "./events/a.json", "a leading `.` segment"],
+    ["path-dot-segment-refused", "events/./a.json", "a `.` segment"],
+    ["path-empty-segment-refused", "events//a.json", "an empty segment"],
+    ["path-trailing-slash-refused", "events/a.json/", "a trailing `/`"],
+    ["path-trailing-dot-segment-refused", "events/a.json/.", "a trailing `/.`"],
+    ["path-leading-slash-refused", "/events/a.json", "a leading `/`"],
+    ["path-backslash-refused", "events\\a.json", "a backslash"],
+    ["path-scheme-refused", "res://events/a.json", "a `res://` scheme (`:`)"],
+  ] as const)
+    mk(
+      id,
+      `A path with ${what}: not already normalised, so refused (rule \`extension\`).`,
+      path,
+      typical.json!,
+      empty,
+      "extension",
+    );
+
+  // Amendment A1 rule 5: whole-file text cases (`content`).
+  mk(
+    "text-object-script-refused",
+    "A `.txt` holding a VariantParser object with an inline script (`str_to_var` and `ConfigFile` build it and its source compiles when set): refused on its script markers.",
+    "events/cfg.txt",
+    empty,
+    empty,
+    "content",
+    bytes('x = Object(GDScript,"script/source":"extends Node")\n'),
+  );
+  mk(
+    "text-escaped-marker-refused",
+    "A `.json` whose marker is split by a backslash (`GD\\Script`): refused after every backslash is removed.",
+    "events/cfg.json",
+    empty,
+    empty,
+    "content",
+    bytes('{"type": "GD\\Script"}\n'),
+  );
+  mk(
+    "text-u-escape-refused",
+    "A `.json` with a `\\u` escape that decodes to ASCII (`\\u0053` is `S`, spelling `GDScript`): an escape below 0x80 is refused, so no marker can hide behind one.",
+    "events/cfg.json",
+    empty,
+    empty,
+    "content",
+    bytes('{"type": "GD\\u0053cript"}\n'),
+  );
+  mk(
+    "text-u-escape-nonascii-accepted",
+    "A `.json` as Python's `json.dumps` or .NET's `System.Text.Json` writes it: `\\u00e0` and a surrogate pair (`\\ud83c\\udf83`) decode to non-ASCII, so they pass.",
+    "events/fr.json",
+    empty,
+    empty,
+    "ok",
+    bytes('{"greeting": "Voil\\u00e0 \\ud83c\\udf83"}\n'),
+  );
+  mk(
+    "text-u-escape-malformed-refused",
+    "A `.json` with `\\u` followed by only three hex digits: a malformed escape is refused.",
+    "events/fr.json",
+    empty,
+    empty,
+    "content",
+    bytes('{"a": "\\u00e"}\n'),
+  );
+  mk(
+    "text-big-u-escape-nonascii-accepted",
+    "A `.txt` with VariantParser's six-digit `\\U01F383` (non-ASCII): it passes.",
+    "events/note.txt",
+    empty,
+    empty,
+    "ok",
+    bytes('x = "\\U01F383"\n'),
+  );
+  mk(
+    "text-big-u-escape-ascii-refused",
+    "A `.txt` with `\\U000053` (`S`, ASCII): refused like a four-digit escape below 0x80.",
+    "events/note.txt",
+    empty,
+    empty,
+    "content",
+    bytes('x = "\\U000053"\n'),
+  );
+  mk(
+    "text-marker-png-ignored",
+    "A `.png` (not a text extension) whose body holds the bytes `GDScript`: the text rule never reads it.",
+    "events/a.png",
+    empty,
+    empty,
+    "ok",
+    bytes([0x89], "PNG", [0x0d, 0x0a, 0x1a, 0x0a], "....GDScript...."),
+  );
+  mk(
+    "text-invalid-utf8-refused",
+    "A `.csv` that is not valid UTF-8 (a lone 0xff byte).",
+    "events/bad.csv",
+    empty,
+    empty,
+    "content",
+    bytes("a,b\n", [0xff], "\n"),
+  );
+
+  if (out.length !== 76) fail(`dataOnlyCases: ${out.length} != 76`);
   return out;
 }

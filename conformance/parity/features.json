@@ -599,6 +599,23 @@
       "allowedNa": []
     },
     {
+      "id": "packs.delegation",
+      "family": "packs",
+      "title": "Content-key delegation: delegated pack records, the data-only rule, delegation revocations",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "delegationCases",
+          "wp": "P4-19"
+        },
+        { "kind": "corpus", "file": "content/", "wp": "P4-19" },
+        { "kind": "unit" }
+      ],
+      "allowedNa": []
+    },
+    {
       "id": "packs.plan",
       "family": "packs",
       "title": "The install planner",

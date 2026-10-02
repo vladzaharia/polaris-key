@@ -101,7 +101,10 @@ export async function verifyMarker(
       expectedAud: opts.expectedAud,
       expectedHash: recordSha256,
     });
-    if (!v.ok) return refuse(v.step);
+    // No delegation is passed (an embedded baseline is a release-key surface, plans/P4-19.md
+    // §2.4), so the step is never `delegation` or `scope`.
+    if (!v.ok)
+      return refuse(v.step as Exclude<typeof v.step, "delegation" | "scope">);
     const record = v.record as unknown as Record<string, unknown>;
     if (
       record.kind !== "pack" ||

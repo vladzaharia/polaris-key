@@ -149,6 +149,10 @@
       "status": "implemented",
       "note": "client-core verifyRevocation, newerRevocation and the PackEngine's revocations.json; the Node and browser runners drive every revocationCases vector."
     },
+    "packs.delegation": {
+      "status": "implemented",
+      "note": "client-core verifyReleaseRecord (the delegated path), verifyDelegation, recordRevoked and dataOnlyRefusal through the shared PackEngine; the Node and browser runners drive every delegationCases and dataOnlyCases vector."
+    },
     "packs.plan": {
       "status": "implemented",
       "note": "client-core plan, selectVariant and planTarget; every plan-matrix.json row and case in the Node and Chromium runners."

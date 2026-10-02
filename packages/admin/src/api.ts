@@ -862,6 +862,33 @@ export interface DeliverableDto {
   pinnedByAppReleases: number | null;
 }
 
+/** One row of `GET …/release/delegations` (P4-19, worker `release/packs/adminView.ts`): a
+ *  delegated content key. Read-only: minting and revoking are CI acts. */
+export interface DelegationDto {
+  sha256: string;
+  scope: string;
+  types: string[];
+  effectiveTypes: string[];
+  seq: number;
+  issuedAt: number;
+  expiresAt: number;
+  status: "active" | "closed" | "revoked";
+  origin: "submit" | "revocation";
+  signedBy: string;
+  keyFingerprint: string;
+  releaseCount: number;
+  revocation: {
+    sha256: string;
+    kid: string | null;
+    reason: string | null;
+    issuedAt: number | null;
+  } | null;
+}
+
+export interface DelegationsResponse {
+  delegations: DelegationDto[];
+}
+
 export interface DeliverablesResponse {
   deliverables: DeliverableDto[];
   /** False while Distribution is off: `gate` is unknown then, not "ungated". */
@@ -913,6 +940,11 @@ export interface PackReleaseDto {
   recordSha256: string | null;
   formatVersion: number | null;
   entitlement: string | null;
+  /** P4-19: who signed the record (absent from a Worker before P4-19). */
+  signer?:
+    | { kind: "release"; kid: string }
+    | { kind: "delegated"; delegation: string; scope: string; seq: number }
+    | null;
   variants: PackVariantDto[];
   /** Every app release that pins this pack release, yanked or not. */
   pinnedBy: PinnedByDto[];
@@ -1676,6 +1708,9 @@ export const api = {
   /** P4-09: the app and every pack, with its declaration, gate and latest release. */
   deliverables: (slug: string) =>
     call<DeliverablesResponse>(`${p(slug)}/release/deliverables`),
+  /** P4-19: the product's delegated content keys, read-only. */
+  delegations: (slug: string) =>
+    call<DelegationsResponse>(`${p(slug)}/release/delegations`),
   /** P4-09: a pack's releases, newest first, each with the app releases that pin it. */
   packReleases: (slug: string, deliverable: string) =>
     call<PackReleasesResponse>(

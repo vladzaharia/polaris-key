@@ -553,6 +553,7 @@ describe("releaseCatalog (Release)", () => {
       "liveLevels",
       "metadataAccess",
       "openSource",
+      "packChunks",
       "packDeliverables",
       "packFiles",
       "packFloors",

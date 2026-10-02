@@ -20,6 +20,11 @@ export {
   MAX_JSON_DEPTH,
   MAX_RECORD_JWS_BYTES,
   REVOCATION_REASON_MAX_BYTES,
+  MAX_DELEGATION_TTL_SECONDS,
+  MAX_DELEGATION_TYPES,
+  DATA_ONLY_HEAD_BYTES,
+  DATA_ONLY_TAIL_BYTES,
+  MAX_DELEGATIONS_PER_CHECK,
   MAX_BUNDLE_BYTES,
   FINGERPRINT_COMPONENTS,
   FINGERPRINT_ANCHOR,
@@ -91,6 +96,7 @@ export {
   BUILD_ID_PATTERN,
   RECORD_KINDS,
   RESERVED_RECORD_KINDS,
+  DELEGATED_KID_PATTERN,
 } from "./release.js";
 export type {
   ReleaseAccess,
@@ -100,6 +106,7 @@ export type {
   ReleaseRecordArtifact,
   RevocationRecordDoc,
   RevocationReplacement,
+  DelegationRecordDoc,
 } from "./release.js";
 
 export {
@@ -182,6 +189,8 @@ export {
   VARIANT_VALUE_PATTERN,
   ENGINE_PATTERN,
   PACK_TYPES,
+  DELEGABLE_PACK_TYPES,
+  DATA_ONLY_EXTENSIONS,
   FILES_LAYOUTS,
   CONTENT_CODECS,
   PATCH_METHODS,
@@ -197,6 +206,8 @@ export {
 } from "./packs.js";
 export type {
   PackType,
+  DelegablePackType,
+  DataOnlyExtension,
   FilesLayout,
   ContentCodec,
   PatchMethod,

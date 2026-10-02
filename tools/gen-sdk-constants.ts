@@ -489,6 +489,22 @@ const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 /** Names GDScript reserves as built-in constants; an UPPER_SNAKE member may not take one. */
 const GDSCRIPT_RESERVED = new Set(["PI", "TAU", "INF", "NAN"]);
 
+/** Godot's all-caps native class and built-in type names. A GDScript constant may not shadow
+ *  one (a parse error), so the GDScript renderer writes such a member with a trailing `_`
+ *  (`DataOnlyExtension.JSON_`); every other language keeps `upper`. */
+export const GDSCRIPT_NATIVE_CLASSES: ReadonlySet<string> = new Set([
+  "AABB",
+  "IP",
+  "JSON",
+  "OS",
+  "RID",
+  "UPNP",
+]);
+
+/** The GDScript member name: `upper`, or `upper_` where it would shadow a native class. */
+export const gdName = (m: Member): string =>
+  GDSCRIPT_NATIVE_CLASSES.has(m.upper) ? `${m.upper}_` : m.upper;
+
 // ── The model ──────────────────────────────────────────────────────────────────────────────
 
 export interface Member {
@@ -534,10 +550,12 @@ function group(
 ): Group {
   const camel = new Map<string, string>();
   const upper = new Map<string, string>();
+  const gd = new Map<string, string>();
   for (const m of members) {
     for (const [kind, ident, seen] of [
       ["camelCase", m.camel, camel],
       ["UPPER_SNAKE", m.upper, upper],
+      ["GDScript", gdName(m), gd],
     ] as const) {
       if (!IDENT.test(ident)) {
         throw new Error(
@@ -580,6 +598,12 @@ export const WIRE_LIMIT_EXPORTS = [
   "MAX_RECORD_JWS_BYTES",
   "MAX_FEED_REVOCATIONS",
   "REVOCATION_REASON_MAX_BYTES",
+  // plans/P4-19.md §2.8: content-key delegation.
+  "MAX_DELEGATION_TTL_SECONDS",
+  "MAX_DELEGATION_TYPES",
+  "DATA_ONLY_HEAD_BYTES",
+  "DATA_ONLY_TAIL_BYTES",
+  "MAX_DELEGATIONS_PER_CHECK",
 ] as const;
 /** The packs-on-the-wire limits and format strings every SDK applies (plans/P4-01.md §2.13). */
 export const PACK_LIMIT_EXPORTS = [
@@ -1166,7 +1190,7 @@ extends RefCounted
 
 ## ${g.doc}
 class ${g.name}:
-${g.members.map((m) => `\tconst ${m.upper} := ${q(m.value)}`).join("\n")}
+${g.members.map((m) => `\tconst ${gdName(m)} := ${q(m.value)}`).join("\n")}
 
 
 ## Every \`${g.name}\` value, in source order.

@@ -3860,5 +3860,625 @@
       "header": "28b52ffde0ffff",
       "expect": { "window": null }
     }
+  ],
+  "dataOnlyCases": [
+    {
+      "id": "ext-json-accepted",
+      "description": "A `.json` file with a typical head is admitted.",
+      "path": "events/halloween/file.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-csv-accepted",
+      "description": "A `.csv` file with a typical head is admitted.",
+      "path": "events/halloween/file.csv",
+      "head": "a2V5LGVuCmhlbGxvLEhlbGxvCg==",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-tsv-accepted",
+      "description": "A `.tsv` file with a typical head is admitted.",
+      "path": "events/halloween/file.tsv",
+      "head": "a2V5CWVuCmhlbGxvCUhlbGxvCg==",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-po-accepted",
+      "description": "A `.po` file with a typical head is admitted.",
+      "path": "events/halloween/file.po",
+      "head": "bXNnaWQgIiIKbXNnc3RyICIiCg==",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-txt-accepted",
+      "description": "A `.txt` file with a typical head is admitted.",
+      "path": "events/halloween/file.txt",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-png-accepted",
+      "description": "A `.png` file with a typical head is admitted.",
+      "path": "events/halloween/file.png",
+      "head": "iVBORw0KGgo=",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-jpg-accepted",
+      "description": "A `.jpg` file with a typical head is admitted.",
+      "path": "events/halloween/file.jpg",
+      "head": "/9j/4A==",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-jpeg-accepted",
+      "description": "A `.jpeg` file with a typical head is admitted.",
+      "path": "events/halloween/file.jpeg",
+      "head": "/9j/4Q==",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-webp-accepted",
+      "description": "A `.webp` file with a typical head is admitted.",
+      "path": "events/halloween/file.webp",
+      "head": "UklGRiQAAABXRUJQVlA4IA==",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-ogg-accepted",
+      "description": "A `.ogg` file with a typical head is admitted.",
+      "path": "events/halloween/file.ogg",
+      "head": "T2dnUwAC",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-wav-accepted",
+      "description": "A `.wav` file with a typical head is admitted.",
+      "path": "events/halloween/file.wav",
+      "head": "UklGRiQAAABXQVZFZm10IA==",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-mp3-accepted",
+      "description": "A `.mp3` file with a typical head is admitted.",
+      "path": "events/halloween/file.mp3",
+      "head": "SUQzBAAA",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-ttf-accepted",
+      "description": "A `.ttf` file with a typical head is admitted.",
+      "path": "events/halloween/file.ttf",
+      "head": "AAEAAAAO",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-otf-accepted",
+      "description": "A `.otf` file with a typical head is admitted.",
+      "path": "events/halloween/file.otf",
+      "head": "T1RUTwAO",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-uppercase-accepted",
+      "description": "`A.JSON`: the extension is compared ASCII-lowercased.",
+      "path": "events/A.JSON",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "ext-none-refused",
+      "description": "A file with no extension.",
+      "path": "events/README",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-tres-refused",
+      "description": "A `.tres` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.tres",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-material-refused",
+      "description": "A `.material` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.material",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-theme-refused",
+      "description": "A `.theme` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.theme",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-translation-refused",
+      "description": "A `.translation` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.translation",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-res-refused",
+      "description": "A `.res` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.res",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-gd-refused",
+      "description": "A `.gd` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.gd",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-remap-refused",
+      "description": "A `.remap` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.remap",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-import-refused",
+      "description": "A `.import` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.import",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-pck-refused",
+      "description": "A `.pck` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.pck",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-zip-refused",
+      "description": "A `.zip` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.zip",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-so-refused",
+      "description": "A `.so` file: not on the allow-list (Godot picks its loader by extension).",
+      "path": "events/x.so",
+      "head": "SGFwcHkgSGFsbG93ZWVuIQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-double-gd-refused",
+      "description": "`x.json.gd`: only the text after the last `.` counts.",
+      "path": "events/x.json.gd",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "ext-double-json-accepted",
+      "description": "`x.gd.json`: admitted on its final extension (the content sniff still runs).",
+      "path": "events/x.gd.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "head-rsrc-refused",
+      "description": "A `.json` whose content starts with the rsrc magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "UlNSQwo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-rscc-refused",
+      "description": "A `.json` whose content starts with the rscc magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "UlNDQwo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-gdpc-refused",
+      "description": "A `.json` whose content starts with the gdpc magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "R0RQQwo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-gdec-refused",
+      "description": "A `.json` whose content starts with the gdec magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "R0RFQwo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-gcpf-refused",
+      "description": "A `.json` whose content starts with the gcpf magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "R0NQRgo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-gdsc-refused",
+      "description": "A `.json` whose content starts with the gdsc magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "R0RTQwo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-gd-bracket-refused",
+      "description": "A `.json` whose content starts with the gd-bracket magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "W2dkXwo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-zip-local-refused",
+      "description": "A `.json` whose content starts with the zip-local magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "UEsDBAo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-elf-refused",
+      "description": "A `.json` whose content starts with the elf magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "f0VMRgo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-mz-refused",
+      "description": "A `.json` whose content starts with the mz magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "TVoK",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-macho-32-be-refused",
+      "description": "A `.json` whose content starts with the macho-32-be magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "/u36zgo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-macho-64-be-refused",
+      "description": "A `.json` whose content starts with the macho-64-be magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "/u36zwo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-macho-32-le-refused",
+      "description": "A `.json` whose content starts with the macho-32-le magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "zvrt/go=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-macho-64-le-refused",
+      "description": "A `.json` whose content starts with the macho-64-le magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "z/rt/go=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-macho-fat-refused",
+      "description": "A `.json` whose content starts with the macho-fat magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "yv66vgo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-wasm-refused",
+      "description": "A `.json` whose content starts with the wasm magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "AGFzbQo=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-shebang-refused",
+      "description": "A `.json` whose content starts with the shebang magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "IyEK",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-extends-refused",
+      "description": "A `.json` whose content starts with the extends magic and a space: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "ZXh0ZW5kcyBOb2RlCg==",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-class-name-refused",
+      "description": "A `.json` whose content starts with the class-name magic and a space: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "Y2xhc3NfbmFtZSBOb2RlCg==",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-tool-refused",
+      "description": "A `.json` whose content starts with the tool magic: refused by content, never by extension.",
+      "path": "events/data.json",
+      "head": "QHRvb2wK",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "tail-gdpc-footer",
+      "description": "A valid PNG head whose last 4 bytes are `GDPC`: a PCK appended to an image, which `load_resource_pack` finds from the end.",
+      "path": "events/banner.png",
+      "head": "iVBORw0KGgo=",
+      "tail": "AAAAAElFTkSuQmCCR0RQQw==",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "tail-zip-eocd",
+      "description": "An OGG head with a zip end-of-central-directory record (`PK\\x05\\x06` and its 18 bytes) in its tail: an appended zip.",
+      "path": "events/theme.ogg",
+      "head": "T2dnUwAC",
+      "tail": "dm9yYmlzUEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "tail-bound-eocd-outside-accepted",
+      "description": "A `.json` with `PK\\x05\\x06` at bytes 60–63 followed by exactly 65,557 spaces (`tailFill`): the record lies outside the last 65,557 bytes, so the tail sniff does not see it (this pins the tail bound).",
+      "path": "events/big.json",
+      "head": "eyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgUEsFBg==",
+      "tail": "",
+      "tailFill": { "byte": 32, "length": 65557 },
+      "expect": { "ok": true }
+    },
+    {
+      "id": "head-bom-whitespace-gd-scene-refused",
+      "description": "A UTF-8 BOM, then ASCII whitespace, then `[gd_scene`: both are skipped before the sniff.",
+      "path": "events/scene.json",
+      "head": "77u/IAkNCltnZF9zY2VuZSBmb3JtYXQ9M10=",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-bound-whitespace-refused",
+      "description": "64 bytes of whitespace, then `[gd_`: refused since Amendment A1: Godot's text-resource loader skips any amount of leading whitespace, so a full window of whitespace is refused.",
+      "path": "events/padded.json",
+      "head": "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==",
+      "tail": "W2dkX3NjZW5lXQ==",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-bound-all-whitespace-refused",
+      "description": "Exactly 64 spaces: the skip reaches the end of a full window, which may cut the file (Amendment A1).",
+      "path": "events/pad.json",
+      "head": "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "head-bound-short-whitespace-accepted",
+      "description": "10 spaces and nothing else: the window holds the whole file, so nothing is cut.",
+      "path": "events/short.json",
+      "head": "ICAgICAgICAgIA==",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "head-word-straddle-refused",
+      "description": "57 spaces then `extends` (64 bytes): the byte that must follow the word lies beyond the window (Amendment A1).",
+      "path": "events/straddle.json",
+      "head": "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgZXh0ZW5kcw==",
+      "tail": "",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "empty-file-accepted",
+      "description": "An empty `.json`.",
+      "path": "events/empty.json",
+      "head": "",
+      "tail": "",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "path-dotdot-refused",
+      "description": "A path with a `..` segment: not already normalised, so refused (rule `extension`).",
+      "path": "events/../escape.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "path-dot-leading-refused",
+      "description": "A path with a leading `.` segment: not already normalised, so refused (rule `extension`).",
+      "path": "./events/a.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "path-dot-segment-refused",
+      "description": "A path with a `.` segment: not already normalised, so refused (rule `extension`).",
+      "path": "events/./a.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "path-empty-segment-refused",
+      "description": "A path with an empty segment: not already normalised, so refused (rule `extension`).",
+      "path": "events//a.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "path-trailing-slash-refused",
+      "description": "A path with a trailing `/`: not already normalised, so refused (rule `extension`).",
+      "path": "events/a.json/",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "path-trailing-dot-segment-refused",
+      "description": "A path with a trailing `/.`: not already normalised, so refused (rule `extension`).",
+      "path": "events/a.json/.",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "path-leading-slash-refused",
+      "description": "A path with a leading `/`: not already normalised, so refused (rule `extension`).",
+      "path": "/events/a.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "path-backslash-refused",
+      "description": "A path with a backslash: not already normalised, so refused (rule `extension`).",
+      "path": "events\\a.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "path-scheme-refused",
+      "description": "A path with a `res://` scheme (`:`): not already normalised, so refused (rule `extension`).",
+      "path": "res://events/a.json",
+      "head": "eyJldmVudHMiOiBbXX0K",
+      "tail": "",
+      "expect": { "ok": false, "rule": "extension" }
+    },
+    {
+      "id": "text-object-script-refused",
+      "description": "A `.txt` holding a VariantParser object with an inline script (`str_to_var` and `ConfigFile` build it and its source compiles when set): refused on its script markers.",
+      "path": "events/cfg.txt",
+      "head": "",
+      "tail": "",
+      "content": "eCA9IE9iamVjdChHRFNjcmlwdCwic2NyaXB0L3NvdXJjZSI6ImV4dGVuZHMgTm9kZSIpCg==",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "text-escaped-marker-refused",
+      "description": "A `.json` whose marker is split by a backslash (`GD\\Script`): refused after every backslash is removed.",
+      "path": "events/cfg.json",
+      "head": "",
+      "tail": "",
+      "content": "eyJ0eXBlIjogIkdEXFNjcmlwdCJ9Cg==",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "text-u-escape-refused",
+      "description": "A `.json` with a `\\u` escape that decodes to ASCII (`\\u0053` is `S`, spelling `GDScript`): an escape below 0x80 is refused, so no marker can hide behind one.",
+      "path": "events/cfg.json",
+      "head": "",
+      "tail": "",
+      "content": "eyJ0eXBlIjogIkdEXHUwMDUzY3JpcHQifQo=",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "text-u-escape-nonascii-accepted",
+      "description": "A `.json` as Python's `json.dumps` or .NET's `System.Text.Json` writes it: `\\u00e0` and a surrogate pair (`\\ud83c\\udf83`) decode to non-ASCII, so they pass.",
+      "path": "events/fr.json",
+      "head": "",
+      "tail": "",
+      "content": "eyJncmVldGluZyI6ICJWb2lsXHUwMGUwIFx1ZDgzY1x1ZGY4MyJ9Cg==",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "text-u-escape-malformed-refused",
+      "description": "A `.json` with `\\u` followed by only three hex digits: a malformed escape is refused.",
+      "path": "events/fr.json",
+      "head": "",
+      "tail": "",
+      "content": "eyJhIjogIlx1MDBlIn0K",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "text-big-u-escape-nonascii-accepted",
+      "description": "A `.txt` with VariantParser's six-digit `\\U01F383` (non-ASCII): it passes.",
+      "path": "events/note.txt",
+      "head": "",
+      "tail": "",
+      "content": "eCA9ICJcVTAxRjM4MyIK",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "text-big-u-escape-ascii-refused",
+      "description": "A `.txt` with `\\U000053` (`S`, ASCII): refused like a four-digit escape below 0x80.",
+      "path": "events/note.txt",
+      "head": "",
+      "tail": "",
+      "content": "eCA9ICJcVTAwMDA1MyIK",
+      "expect": { "ok": false, "rule": "content" }
+    },
+    {
+      "id": "text-marker-png-ignored",
+      "description": "A `.png` (not a text extension) whose body holds the bytes `GDScript`: the text rule never reads it.",
+      "path": "events/a.png",
+      "head": "",
+      "tail": "",
+      "content": "iVBORw0KGgouLi4uR0RTY3JpcHQuLi4u",
+      "expect": { "ok": true }
+    },
+    {
+      "id": "text-invalid-utf8-refused",
+      "description": "A `.csv` that is not valid UTF-8 (a lone 0xff byte).",
+      "path": "events/bad.csv",
+      "head": "",
+      "tail": "",
+      "content": "YSxiCv8K",
+      "expect": { "ok": false, "rule": "content" }
+    }
   ]
 }

@@ -17,6 +17,7 @@
  *     GET    …/release/deliverables/<id>/releases       a pack's releases and who pins each
  *     GET    …/release/deliverables/<id>/releases/<releaseId>/files?variant=<key>
  *                                                        one variant's files, from its index
+ *     GET    …/release/delegations                      the content keys (P4-19), read-only
  *
  * and the compatibility matrix (P4-15, `packs/compat.ts`):
  *
@@ -79,6 +80,7 @@ import {
 import { resyncRepo } from "./resync.js";
 import {
   appPinsByRelease,
+  delegationsView,
   deliverablesView,
   embedsOf,
   packFilesView,
@@ -410,6 +412,14 @@ async function handlePackViews(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
   const { req, db, product, rest, hooks } = ctx;
+  // P4-19 (decision 11): the delegated content keys, read-only.
+  if (rest.length === 1 && rest[0] === "delegations") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    return adminJson({
+      delegations: await delegationsView(db, product.slug, ctx.now),
+    });
+  }
   if (rest[0] !== "deliverables") return null;
   const isList = rest.length === 1;
   const isReleases = rest.length === 3 && rest[2] === "releases";

@@ -172,6 +172,15 @@ describe("update options are validated at construction (invalid-options)", () =>
     expect((e as UpdateError).code).toBe("invalid-options");
   });
 
+  it("refuses a pinned pkd1- kid: a delegated key is never pinned (plans/P4-19.md §2.2)", () => {
+    // @pkey-feature packs.delegation
+    expect(
+      construct({
+        pinnedReleaseKeys: { [`pkd1-${"a".repeat(64)}`]: "x".repeat(43) },
+      }),
+    ).toThrowError(expect.objectContaining({ code: "invalid-options" }));
+  });
+
   it.each([
     ["an outlet kind outside the vocabulary", { outlet: "floppy-disk" }],
     [

@@ -40,6 +40,39 @@ export const ENGINE_PATTERN = /^godot-[0-9]+\.[0-9]+$/;
 export const PACK_TYPES = ["godot.pck", "files.tree"] as const;
 export type PackType = (typeof PACK_TYPES)[number];
 /** `files.layout`: a single-file payload with offsets and gaps, or a directory of files. */
+/** The pack types a content key may sign (plans/P4-19.md §2.5, decision 5): data-only types.
+ *  `godot.pck` and `godot.zip` mount scripts, `audio.bank` may be a Godot audio pack, `ml.model`
+ *  may need custom-op runtimes and a `custom.*` handler may execute what it loads: none of them is
+ *  ever delegable. A delegation's `types` outside this list are ignored. */
+export const DELEGABLE_PACK_TYPES = [
+  "files.tree",
+  "data.json",
+  "l10n.table",
+] as const;
+export type DelegablePackType = (typeof DELEGABLE_PACK_TYPES)[number];
+
+/** The file extensions a delegated install may hold (plans/P4-19.md §2.5 rule 2), compared with
+ *  the final segment's text after its last `.`, ASCII-lowercased. An allow-list, because Godot
+ *  chooses its resource loader by extension: anything not listed (`.tres`, `.res`, `.gd`,
+ *  `.translation`, `.import`, …) is refused. */
+export const DATA_ONLY_EXTENSIONS = [
+  "json",
+  "csv",
+  "tsv",
+  "po",
+  "txt",
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "ogg",
+  "wav",
+  "mp3",
+  "ttf",
+  "otf",
+] as const;
+export type DataOnlyExtension = (typeof DATA_ONLY_EXTENSIONS)[number];
+
 export const FILES_LAYOUTS = ["container", "tree"] as const;
 export type FilesLayout = (typeof FILES_LAYOUTS)[number];
 /** An object ref's `codec`: one zstd frame with its content size, or stored raw. */

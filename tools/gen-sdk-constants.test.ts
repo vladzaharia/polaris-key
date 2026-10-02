@@ -321,6 +321,15 @@ describe("identifiers", () => {
     );
   });
 
+  it("writes a member that would shadow a Godot native class with a trailing underscore, in GDScript only", () => {
+    const enums = [{ name: "ext", description: "d", values: ["json", "csv"] }];
+    const model = buildModel(withSources({ enums }));
+    const gd = renderGdscript(model);
+    expect(gd).toContain('const JSON_ := "json"');
+    expect(gd).not.toContain('const JSON := "json"');
+    expect(renderPython(model)).toContain('JSON: Final = "json"');
+  });
+
   it("refuses a GDScript built-in constant", () => {
     const enums = [{ name: "number", description: "d", values: ["inf"] }];
     expect(() => buildModel(withSources({ enums }))).toThrow(

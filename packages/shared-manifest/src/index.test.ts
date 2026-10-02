@@ -1859,7 +1859,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
         conflicts: [],
         channels: [],
         entitlement: null,
-        patch: { strategies: ["delta", "file"], deltaBases: 2 },
+        patch: { strategies: ["delta", "file", "chunk"], deltaBases: 2 },
         versioning: { scheme: "semver" },
       },
       {
@@ -1877,7 +1877,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
         conflicts: [],
         channels: [],
         entitlement: null,
-        patch: { strategies: ["delta", "file"], deltaBases: 1 },
+        patch: { strategies: ["delta", "file", "chunk"], deltaBases: 1 },
         versioning: { scheme: "semver" },
       },
     ]);

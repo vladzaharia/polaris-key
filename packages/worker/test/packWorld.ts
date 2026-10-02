@@ -27,7 +27,13 @@ import {
   releaseKeysJson,
   signRecord,
 } from "./releaseKeysFixture.js";
-import { packRecord, sha, treeVariant, type Obj } from "./packFixture.js";
+import {
+  chunksFor,
+  packRecord,
+  sha,
+  treeVariant,
+  type Obj,
+} from "./packFixture.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
@@ -146,6 +152,9 @@ export interface Published {
   pack: string;
   releaseId: string;
   objects: Obj[];
+  /** With `chunks` (P4-22): the chunk index and the bundle this release uploaded. */
+  chunkIndex?: Obj;
+  bundle?: Obj;
 }
 
 export const noFetch: FetchImpl = async () =>
@@ -162,7 +171,7 @@ export interface PackWorld {
   publishPack(
     pack: string,
     version: string,
-    o?: { contentApi?: string | null; seed?: string },
+    o?: PublishPackOptions,
   ): Promise<Published>;
   submitApp(
     version: string,
@@ -184,6 +193,13 @@ export interface PackWorld {
   feed(platform: string): Promise<Record<string, any>>;
   /** Re-declare the app's `content.contentApi` (a resync of a changed `.pkey/release`). */
   declareContentApi(level: number): Promise<void>;
+}
+
+export interface PublishPackOptions {
+  contentApi?: string | null;
+  seed?: string;
+  /** Give the variant a chunk index (P4-22); `reuse` names an earlier release's bundle. */
+  chunks?: { reuse?: Obj };
 }
 
 export function pinOf(p: Published) {
@@ -271,11 +287,24 @@ export async function packWorld(
   async function publishPack(
     pack: string,
     version: string,
-    o: { contentApi?: string | null; seed?: string } = {},
+    o: PublishPackOptions = {},
   ): Promise<Published> {
     const seq = (seqs.get(pack) ?? 0) + 1;
-    const built = await treeVariant({}, o.seed ?? `${pack}-${version}`);
-    await stage(pack, built.objects);
+    const seed = o.seed ?? `${pack}-${version}`;
+    const built = await treeVariant({}, seed);
+    const chunked = o.chunks
+      ? chunksFor(
+          built.objects[0]!.bytes,
+          built.variant.payload as { size: number; sha256: string },
+          seed,
+          { reuse: o.chunks.reuse },
+        )
+      : null;
+    if (chunked) built.variant.chunks = chunked.chunks;
+    await stage(pack, [
+      ...built.objects,
+      ...(chunked ? [chunked.index, chunked.bundle] : []),
+    ]);
     const contentApi = o.contentApi === undefined ? ">=4" : o.contentApi;
     const record = packRecord({
       aud: SLUG,
@@ -305,6 +334,7 @@ export async function packWorld(
       pack,
       releaseId: `${pack}@${version}`,
       objects: built.objects,
+      ...(chunked ? { chunkIndex: chunked.index, bundle: chunked.bundle } : {}),
     };
   }
 

@@ -359,4 +359,55 @@ describe("feed content under the payload cap (plans/P4-13.md §6.3)", () => {
     for (const platform of PLATFORMS) sign(c, platform);
     expect(performance.now() - t0).toBeLessThan(1000);
   });
+
+  it("P4-19: a delegation's revocation (always referenced) survives size step 3; only step 4 drops it", async () => {
+    const base = await composed({
+      packs: 64,
+      longIds: true,
+      levels: 1,
+      platforms: ["android"],
+      engines: [""],
+      groups: 0,
+      values: 0,
+      floors: 0,
+      revocations: 64,
+    });
+    // 63 unreferenced pack-record revocations and one delegation revocation, referenced.
+    const delegation: FeedRevocation = {
+      record: hex("rev:delegation"),
+      pack: "pk000.events",
+      target: hex("delegation"),
+      version: "1",
+      seq: 1,
+      kind: "delegation",
+    };
+    const revocations = [...base.content.revocations!.slice(1), delegation];
+    const c: ComposedFeed = {
+      ...base,
+      content: {
+        ...base.content,
+        packSets: null,
+        revocations,
+        referenced: new Set([delegation.record]),
+      },
+    };
+    const kept = (n: number) =>
+      documentFor(
+        "djdl",
+        { ...c, targets: [target("android", n)] },
+        "android",
+        7,
+        NOW,
+      ).doc.revocations as FeedRevocation[] | undefined;
+    // Pad the app part until every revocation no longer fits (the first shed is step 3).
+    let extra = 0;
+    while (kept(extra)?.length === revocations.length) extra++;
+    const d = sign({ ...c, targets: [target("android", extra)] }, "android");
+    expect(d.ok).toBe(true);
+    expect(d.doc.revocations).toEqual([delegation]);
+    expect(d.audits.map((a) => a.action)).toContain(
+      "update.feed.revocations_trimmed",
+    );
+    expect(feedContent(d.doc).revocations).toEqual([delegation]);
+  });
 });

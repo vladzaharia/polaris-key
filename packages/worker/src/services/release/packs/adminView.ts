@@ -22,6 +22,11 @@ import type {
 import type { Db } from "../../../core/platform.js";
 import { listYanks, type ReleaseYankRow } from "../model.js";
 import { packReleasesMany } from "./catalog.js";
+import {
+  delegationTypes,
+  keyFingerprint,
+  readDelegationRows,
+} from "./delegations.js";
 
 /** The app deliverable's id; every other deliverable id names a pack. */
 const APP = "app";
@@ -181,9 +186,16 @@ export interface PackReleaseView {
   recordSha256: string | null;
   formatVersion: number | null;
   entitlement: string | null;
+  /** P4-19: who signed the record — a release key, or a delegated content key (the delegation's
+   *  hash, its scope root and `seq`). Null when the release has no stored record. */
+  signer: SignerView | null;
   variants: VariantView[];
   pinnedBy: PinnedByView[];
 }
+
+export type SignerView =
+  | { kind: "release"; kid: string }
+  | { kind: "delegated"; delegation: string; scope: string; seq: number };
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 const num = (v: unknown): number | null =>
@@ -280,6 +292,37 @@ export async function packReleasesView(
   // Bounded: the records and the pins of the whole page in chunked `IN` reads, never one query
   // per release.
   const records = await packReleasesMany(db, slug, deliverable, ids);
+  // P4-19: each record's signer, in one read over the pack's records.
+  const signers = new Map<string, SignerView>();
+  for (const x of await db.all<{
+    release_id: string;
+    kid: string;
+    delegation: string | null;
+    scope: string | null;
+    dseq: number | null;
+  }>(
+    `SELECT r.release_id, r.kid, d.delegation_sha256 AS delegation,
+            g.deliverable_id AS scope, g.seq AS dseq
+       FROM release_records r
+       LEFT JOIN release_delegated_records d
+         ON d.product = r.product AND d.record_sha256 = r.record_sha256
+       LEFT JOIN release_delegations g
+         ON g.product = d.product AND g.record_sha256 = d.delegation_sha256
+      WHERE r.product = ? AND r.deliverable_id = ? AND r.kind = 'pack'`,
+    slug,
+    deliverable,
+  ))
+    signers.set(
+      x.release_id,
+      x.delegation !== null
+        ? {
+            kind: "delegated",
+            delegation: x.delegation,
+            scope: x.scope ?? "",
+            seq: x.dseq ?? 0,
+          }
+        : { kind: "release", kid: x.kid },
+    );
   const pinsOf = new Map<string, CatalogPin[]>();
   for (const p of await catalog.pinnedByMany(ids))
     pinsOf.set(p.packReleaseId, [...(pinsOf.get(p.packReleaseId) ?? []), p]);
@@ -296,6 +339,7 @@ export async function packReleasesView(
       recordSha256: pr?.recordSha256 ?? null,
       formatVersion: pr?.formatVersion ?? null,
       entitlement: pr?.entitlement ?? null,
+      signer: signers.get(r.releaseId) ?? null,
       variants: pr ? pr.variants.map(variantView) : [],
       pinnedBy: pins.map((p) => ({
         appReleaseId: p.appReleaseId,
@@ -435,4 +479,83 @@ export function embedsOf(json: string | null): string[] | null {
   } catch {
     return null;
   }
+}
+
+// ── Content keys (P4-19, plans/P4-19.md §6.3, decision 11) ───────────────────────────────────
+
+/** One row of `GET …/release/delegations`: a delegated content key, read-only (minting and
+ *  revoking are CI acts). */
+export interface DelegationView {
+  sha256: string;
+  /** The scope root. */
+  scope: string;
+  /** The listed types, and the effective (delegable) ones. */
+  types: string[];
+  effectiveTypes: string[];
+  seq: number;
+  issuedAt: number;
+  expiresAt: number;
+  /** `revoked` (a revocation names it), else `closed` (its window has passed), else `active`. */
+  status: "active" | "closed" | "revoked";
+  origin: "submit" | "revocation";
+  /** The release key that signed the delegation. */
+  signedBy: string;
+  keyFingerprint: string;
+  /** How many pack releases its content key signed. */
+  releaseCount: number;
+  revocation: {
+    sha256: string;
+    kid: string | null;
+    reason: string | null;
+    issuedAt: number | null;
+  } | null;
+}
+
+export async function delegationsView(
+  db: Db,
+  slug: string,
+  now: number,
+): Promise<DelegationView[]> {
+  const counts = new Map(
+    (
+      await db.all<{ delegation_sha256: string; n: number }>(
+        `SELECT delegation_sha256, COUNT(*) AS n FROM release_delegated_records
+          WHERE product = ? GROUP BY delegation_sha256`,
+        slug,
+      )
+    ).map((r) => [r.delegation_sha256, r.n]),
+  );
+  const out: DelegationView[] = [];
+  for (const r of await readDelegationRows(db, slug)) {
+    const t = delegationTypes(r);
+    out.push({
+      sha256: r.record_sha256,
+      scope: r.deliverable_id,
+      types: t.listed,
+      effectiveTypes: t.effective,
+      seq: r.seq,
+      issuedAt: r.issued_at,
+      expiresAt: r.expires_at,
+      status:
+        r.revocation_sha256 !== null
+          ? "revoked"
+          : now >= r.expires_at
+            ? "closed"
+            : "active",
+      origin: r.origin,
+      signedBy: r.kid,
+      keyFingerprint: await keyFingerprint(r.public_key),
+      releaseCount: counts.get(r.record_sha256) ?? 0,
+      revocation:
+        r.revocation_sha256 !== null
+          ? {
+              sha256: r.revocation_sha256,
+              kid: r.revocation_kid,
+              reason: r.revocation_reason,
+              issuedAt: r.revocation_issued_at,
+            }
+          : null,
+    });
+  }
+  return out;
 }

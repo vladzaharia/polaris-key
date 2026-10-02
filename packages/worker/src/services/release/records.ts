@@ -95,7 +95,18 @@ export type RecordRefusalReason =
   | "revocation-replacement"
   | "revocation-replacement-incompatible"
   | "pin-revoked"
-  | "hold-revoked";
+  | "hold-revoked"
+  // P4-19: content-key delegation (plans/P4-19.md §6.2).
+  | "delegation-body"
+  | "delegation-key"
+  | "delegation-window"
+  | "delegation-unknown"
+  | "delegation-revoked"
+  | "delegation-scope"
+  | "delegation-binding"
+  | "delegation-data-only"
+  | "pin-delegated"
+  | "hold-delegated";
 
 export type RecordCheck =
   | {
@@ -516,7 +527,10 @@ export function stmtInsertReleaseRecord(r: {
 }
 
 /** The record stored under a hash, or null. A current revocation record (P4-13,
- *  `release_revocations`) reads back as a row of `kind: revocation` naming its target's release. */
+ *  `release_revocations`) reads back as a row of `kind: revocation` naming its target's release;
+ *  a delegation record (P4-19, `release_delegations`) as a row of `kind: delegation`, and a
+ *  delegation's current revocation as a row of `kind: revocation`, both with an empty
+ *  `release_id` (a delegation is no release). */
 export async function getRecordByHash(
   db: Db,
   product: string,
@@ -528,7 +542,7 @@ export async function getRecordByHash(
     sha256,
   );
   if (row) return row;
-  return db.first<ReleaseRecordRow>(
+  const revocation = await db.first<ReleaseRecordRow>(
     `SELECT v.product, v.deliverable_id, v.target_release_id AS release_id,
             COALESCE(m.seq, 0) AS seq, 'revocation' AS kind, v.record_sha256, v.kid, v.jws,
             v.ingested_at
@@ -536,6 +550,22 @@ export async function getRecordByHash(
        LEFT JOIN release_metadata m
          ON m.product = v.product AND m.release_id = v.target_release_id
       WHERE v.product = ? AND v.record_sha256 = ?`,
+    product,
+    sha256,
+  );
+  if (revocation) return revocation;
+  return db.first<ReleaseRecordRow>(
+    `SELECT product, deliverable_id, '' AS release_id, seq, 'delegation' AS kind,
+            record_sha256, kid, jws, ingested_at
+       FROM release_delegations WHERE product = ? AND record_sha256 = ?
+     UNION ALL
+     SELECT product, deliverable_id, '' AS release_id, seq, 'revocation' AS kind,
+            revocation_sha256 AS record_sha256, revocation_kid AS kid, revocation_jws AS jws,
+            ingested_at
+       FROM release_delegations WHERE product = ? AND revocation_sha256 = ?
+     LIMIT 1`,
+    product,
+    sha256,
     product,
     sha256,
   );
