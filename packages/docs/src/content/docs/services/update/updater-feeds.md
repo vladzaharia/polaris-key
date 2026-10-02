@@ -59,6 +59,12 @@ changes `bp`. So 1–14 % opens one group, 15–28 % opens two, and so on. At 10
 the interval goes and the real date comes back. A release that is critical to everyone is never
 phased.
 
+Rollouts are kept per outlet **and channel**, and the Sparkle appcast phases a release only by the
+rendered channel's own rollout, the row the signed channel feed reads. A release complete on
+`stable` but still rolling out on `beta` is listed unphased on the stable appcast. A paused or
+halted rollout on any channel still holds the release back, which is the safe side. The other
+feeds hold a release while any channel's rollout of it on that outlet is not complete.
+
 ## Signatures and hashes
 
 The Worker never signs an updater payload and never passes through a value it did not check.
@@ -169,7 +175,10 @@ descriptor named for the build.
 `size`, `downloadUrl`, `minOS` and `critical` when the request names `?platform=` (required for
 the extended answer), and optionally `?arch=`, `?outlet=` or `?build=`. The answer is the newest
 recorded release that the outlet delivers for that platform, with one build of it (the exact arch
-before a universal build, or the named build). These fields are documented in the API reference
+before a universal build, or the named build). Without `?platform=`, or for a product that
+publishes no release records, the answer stays the legacy one: `?arch=`, `?outlet=` and `?build=`
+on their own are discarded, so every URL that worked before keeps working. With records, an
+unknown platform or no matching recorded build is `404`. These fields are documented in the API reference
 only. The SDKs read the three v3 fields in `check()` and use the signed feed for everything else.
 
 ## Access

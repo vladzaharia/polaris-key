@@ -187,15 +187,19 @@ interface RolloutStanding {
 }
 
 /**
- * Releases held back on `outlet` (step 4): under `hold`, any rollout there that is not complete;
- * under `phase`, only a paused or halted one, or one active at 0 bp — an active rollout above 0
- * bp lists its release with the rollout, for a client that phases itself (Sparkle).
+ * Releases held back on `outlet` (step 4): under `hold`, any rollout there that is not complete,
+ * on any channel; under `phase`, a paused or halted one on any channel, or one of `channel`'s own
+ * active at 0 bp — `channel`'s own active rollout above 0 bp lists its release with THAT rollout,
+ * for a client that phases itself (Sparkle). Another channel's active rollout never phases or
+ * holds this channel's feed: dist_rollouts holds one row per (outlet, channel), and the signed
+ * feed reads only the matching one (compose.ts).
  */
 async function rolloutStanding(
   db: Db,
   product: string,
   outletId: string,
   mode: "hold" | "phase",
+  channel: string,
 ): Promise<RolloutStanding> {
   const rows = await db.all<
     Pick<
@@ -209,8 +213,7 @@ async function rolloutStanding(
     >
   >(
     `SELECT release_id, rollout_bp, rollout_salt, state, started_at, channel FROM dist_rollouts
-      WHERE product = ? AND deliverable_id = ? AND outlet_id = ?
-      ORDER BY channel`,
+      WHERE product = ? AND deliverable_id = ? AND outlet_id = ?`,
     product,
     APP_DELIVERABLE_ID,
     outletId,
@@ -225,14 +228,17 @@ async function rolloutStanding(
       r.state === "complete" ||
       (r.state === "active" && r.rollout_bp >= FULL_ROLLOUT_BP);
     if (done) continue;
-    if (mode === "phase" && r.state === "active" && r.rollout_bp > 0) {
-      if (!phased.has(r.release_id))
+    if (mode === "phase" && r.state === "active") {
+      // Only the rendered channel's own row phases (or, at 0 bp, holds) its release.
+      if (r.channel !== channel) continue;
+      if (r.rollout_bp > 0) {
         phased.set(r.release_id, {
           bp: r.rollout_bp,
           salt: r.rollout_salt,
           startedAt: r.started_at,
         });
-      continue;
+        continue;
+      }
     }
     held.add(r.release_id);
   }
@@ -374,6 +380,7 @@ export async function selectFeedWith(
     slug,
     outlet.id,
     spec.rollouts ?? "hold",
+    history.channel,
   );
   const only = spec.releaseIds ? new Set(spec.releaseIds) : null;
   const limit = spec.limit ?? MAX_FEED_VERSIONS;

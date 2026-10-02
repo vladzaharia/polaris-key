@@ -769,12 +769,13 @@ function serveZsync(
 
 // ── The extended version check ───────────────────────────────────────────────────────────────
 
-/** Is this a version check that asks for the extended answer? */
+/**
+ * Is this a version check that asks for the extended answer? Only `?platform=` asks: the legacy
+ * check documents `?arch=` as accepted and discarded, so `?arch=`, `?outlet=` or `?build=` on
+ * their own keep the legacy answer.
+ */
 export function isExtendedVersionRequest(req: Request): boolean {
-  const q = new URL(req.url).searchParams;
-  return (
-    q.has("platform") || q.has("arch") || q.has("outlet") || q.has("build")
-  );
+  return new URL(req.url).searchParams.has("platform");
 }
 
 export function serveExtendedVersion(

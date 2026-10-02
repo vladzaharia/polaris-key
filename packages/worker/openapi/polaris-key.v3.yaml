@@ -3925,8 +3925,9 @@ paths:
         number, `sparkle:hardwareRequirements` `arm64` for an Apple-silicon-only build,
         `sparkle:criticalUpdate` (with no attribute for the channel's critical pointer release;
         with `sparkle:version` = the floor's build number for a release above the channel floor),
-        `sparkle:phasedRolloutInterval` while the direct outlet's rollout is active (an active
-        rollout of `bp` opens `ceil(bp × 7 / 10000)` of Sparkle's seven groups and holds them,
+        `sparkle:phasedRolloutInterval` while the direct outlet's rollout on this channel is
+        active (only the channel's own rollout row phases; an active rollout of `bp` opens
+        `ceil(bp × 7 / 10000)` of Sparkle's seven groups and holds them,
         by a one-year interval and a backdated `pubDate`), and `<sparkle:deltas>` from delta
         artifacts that name their `deltaFrom`. A paused or halted rollout, or a yank, serves the
         previous release. Enclosures are the immutable `/distribution/files/…` URLs (on the
@@ -4319,14 +4320,14 @@ paths:
         `?channel=` accepts the same vocabulary as a channel appcast path segment — held to
         the same `[a-z0-9-]` alphabet, refused 404 beyond it, resolved 404 for a well-formed
         unknown name — and the entitled gate evaluates it exactly as it does a path channel.
-        `?arch=` is accepted and discarded: the answer names a release, not an asset. Gated
-        by the METADATA access mode, which is why a product can leave this open while
-        closing its appcasts. `version` is the tag with one leading `v` stripped; `tag` is
+        Without `?platform=`, `?arch=` is accepted and discarded: the answer names a release,
+        not an asset. Gated by the METADATA access mode, which is why a product can leave this
+        open while closing its appcasts. `version` is the tag with one leading `v` stripped; `tag` is
         GitHub's verbatim.
 
 
-        EXTENDED (P3-09) when the request names `?platform=` (required then), `?arch=`,
-        `?outlet=` or `?build=`, for a product that publishes release records: the answer is
+        EXTENDED (P3-09) when the request names `?platform=` (optionally with `?arch=`,
+        `?outlet=` or `?build=`), for a product that publishes release records: the answer is
         the newest release with a stored record that the outlet (default `direct`; `?outlet=`
         names any self-hosted outlet) delivers for that platform, by the same rules as every
         app-updater feed — yanks removed, a release whose rollout on the outlet is not complete
@@ -4336,8 +4337,9 @@ paths:
         and adds `build`, `sha256`, `size`, `downloadUrl` (immutable, on the bytes host),
         `minOS` and `critical` (the channel's critical pointer release). Documented here only:
         no SDK reads the extended fields (they read the v3 three in `check()` and the signed
-        feed for everything else). Without a record, an extended request is 404; without the
-        parameters the answer is the legacy one above.
+        feed for everything else). Without `?platform=`, or for a product with no record, the
+        answer is the legacy one above (`?arch=`, `?outlet=` and `?build=` alone are discarded).
+        With records, an unknown `?platform=` or no matching recorded build is 404.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: channel

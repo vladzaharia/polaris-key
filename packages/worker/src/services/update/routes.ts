@@ -80,11 +80,12 @@ export async function handleUpdateRoutes(
       // could not express is refused here (→ the registry's 404) before any resolution.
       const channel = new URL(req.url).searchParams.get("channel");
       if (channel !== null && !CHANNEL.test(channel)) return null;
+      // Extended only when `?platform=` is named AND the product publishes release records;
+      // otherwise the legacy answer, so every URL that worked before keeps working.
       if (isExtendedVersionRequest(req)) {
         const recorded = await recordedAppReleases(ctx);
-        return recorded.length > 0
-          ? serveExtendedVersion(ctx, channel ?? "stable", recorded)
-          : null;
+        if (recorded.length > 0)
+          return serveExtendedVersion(ctx, channel ?? "stable", recorded);
       }
       return handleUpdate(
         req,

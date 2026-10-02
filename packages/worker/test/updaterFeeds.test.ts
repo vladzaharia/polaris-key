@@ -362,17 +362,19 @@ async function setRollout(
   releaseId: string,
   bp: number,
   state: string,
+  channel = "stable",
 ): Promise<void> {
   await w.db.run(
     `INSERT INTO dist_rollouts
        (product, deliverable_id, outlet_id, channel, release_id, rollout_bp, rollout_salt,
         state, mirrored, source, started_at, updated_at, updated_by)
-     VALUES (?, 'app', ?, 'stable', ?, ?, ?, ?, 0, 'admin', ?, ?, 'u1')
+     VALUES (?, 'app', ?, ?, ?, ?, ?, ?, 0, 'admin', ?, ?, 'u1')
      ON CONFLICT (product, deliverable_id, outlet_id, channel) DO UPDATE SET
        release_id = excluded.release_id, rollout_bp = excluded.rollout_bp,
        state = excluded.state, updated_at = excluded.updated_at`,
     SLUG,
     outlet,
+    channel,
     releaseId,
     bp,
     "0123456789abcdef0123456789abcdef",
@@ -672,6 +674,30 @@ describe("updater feeds: content", () => {
     expect(body).toContain("<sparkle:version>110</sparkle:version>");
   });
 
+  it("Sparkle: only the rendered channel's own rollout phases its appcast", async () => {
+    const w = await world();
+    const id = w.releases["1.2.0"]!;
+    // The world rolls 1.2.0 out at 25% on direct/stable: two of seven groups.
+    const baseline = (await text(w, "update/appcast.xml")).body;
+    expect(baseline).toContain(
+      `<sparkle:phasedRolloutInterval>${PHASE_INTERVAL_SECONDS}</sparkle:phasedRolloutInterval>`,
+    );
+    // Beta rolling the same release out at 90% (sorting before "stable") changes nothing here.
+    await setRollout(w, "direct", id, 9000, "active", "beta");
+    expect((await text(w, "update/appcast.xml")).body).toBe(baseline);
+    // Complete on stable, still at 5% on beta: the stable appcast lists it unphased.
+    await setRollout(w, "direct", id, 10000, "complete");
+    await setRollout(w, "direct", id, 500, "active", "beta");
+    const done = (await text(w, "update/appcast.xml")).body;
+    expect(done).toContain("<sparkle:version>120</sparkle:version>");
+    expect(done).not.toContain("phasedRolloutInterval");
+    // Another channel's paused or halted rollout still holds the release (the safe side).
+    await setRollout(w, "direct", id, 500, "paused", "beta");
+    const held = (await text(w, "update/appcast.xml")).body;
+    expect(held).not.toContain("<sparkle:version>120</sparkle:version>");
+    expect(held).toContain("<sparkle:version>110</sparkle:version>");
+  });
+
   it("Sparkle and WinSparkle drop an enclosure whose sidecar signature does not verify", async () => {
     const w = await world({ sparklePub: sparkleKeyPair().pubB64 });
     expect((await text(w, "update/appcast.xml")).body).not.toContain("<item>");
@@ -891,6 +917,16 @@ describe("updater feeds: content", () => {
     // A platform outside the vocabulary is not found.
     expect((await get(w, "update/version?platform=amiga")).status).toBe(404);
   });
+
+  it("/update/version without ?platform= keeps the legacy answer: ?arch=, ?outlet=, ?build= are discarded", async () => {
+    const w = await world();
+    // The legacy check resolves on GitHub (unreachable here, so it throws asking for an
+    // installation token): the extended renderer is not used, and nothing answers 404.
+    for (const q of ["arch=x86_64", "outlet=direct", "build=win-x64"])
+      await expect(get(w, `update/version?${q}`), q).rejects.toThrow(
+        /installation token/,
+      );
+  });
 });
 
 // ── Yanks and halts reach every feed at once ─────────────────────────────────────────────────
@@ -970,6 +1006,10 @@ describe("updater feeds: access", () => {
       (await text(w, "update/stable/velopack/releases.win-x64.json")).body,
     );
     expect(vp).toEqual({ Assets: [] });
+    // The version check asked for a platform falls back to the legacy answer, not a 404.
+    await expect(get(w, "update/version?platform=windows")).rejects.toThrow(
+      /installation token/,
+    );
   });
 });
 
