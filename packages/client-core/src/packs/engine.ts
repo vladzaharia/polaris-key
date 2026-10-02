@@ -413,7 +413,9 @@ export class PackEngine {
       if (held) {
         // Bound the hold: what exists now may belong to the lost document and is kept; what
         // this process creates and drops later is collected as usual.
-        const listed = await this.opts.storage.list().catch(() => null);
+        // The first hold's snapshot is kept beside the quarantine and reused by later loads, so
+        // the store stays bounded across restarts; one that cannot be read holds GC entirely.
+        const listed = await this.holdList(st);
         if (listed === null) this.gcHold = true;
         else
           this.holdSnapshot = {
@@ -618,6 +620,54 @@ export class PackEngine {
         // A listener never fails an install.
       }
     }
+  }
+
+  /** The torn hold's snapshot: the saved one, else `storage.list()` now (saved when the store
+   *  can keep it). Null when it cannot be known (an unreadable snapshot or listing). */
+  private async holdList(
+    st: PackStateStore,
+  ): Promise<{ locations: string[]; plans: string[] } | null> {
+    if (typeof st.readHoldList === "function") {
+      let saved: string | null;
+      try {
+        saved = await st.readHoldList();
+      } catch {
+        return null;
+      }
+      if (saved !== null) {
+        try {
+          const d = JSON.parse(saved) as {
+            locations?: unknown;
+            plans?: unknown;
+          };
+          if (
+            Array.isArray(d.locations) &&
+            Array.isArray(d.plans) &&
+            [...d.locations, ...d.plans].every((x) => typeof x === "string")
+          )
+            return {
+              locations: d.locations as string[],
+              plans: d.plans as string[],
+            };
+        } catch {
+          // Torn too: fall through to the full hold.
+        }
+        return null;
+      }
+    }
+    let listed: { locations: string[]; plans: string[] };
+    try {
+      listed = await this.opts.storage.list();
+    } catch {
+      return null;
+    }
+    if (typeof st.writeHoldList === "function")
+      try {
+        await st.writeHoldList(JSON.stringify(listed));
+      } catch {
+        return null;
+      }
+    return listed;
   }
 
   private refuseUnreadable(): void {

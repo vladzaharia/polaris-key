@@ -1101,3 +1101,71 @@ describe("PackEngine: round-2 state safety", () => {
     expect(storage.store.has("djdl.l10n/new-orphan")).toBe(false);
   });
 });
+
+describe("PackEngine: the torn hold's snapshot (round 3)", () => {
+  async function tornSetup() {
+    const { v1, v2 } = await releases();
+    const server = byteServer(v1, v2);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i1] = await e.ensure(["djdl.l10n"]);
+    state.text = state.text!.slice(0, 15);
+    return { v1, v2, server, storage, state, i1: i1! };
+  }
+  const later = {
+    layout: "tree",
+    tree: new Map<string, Uint8Array>(),
+    index: null,
+  };
+
+  it("a listing that errors holds GC entirely", async () => {
+    const { v2, server, storage, state, i1 } = await tornSetup();
+    const failing = {
+      ...storage,
+      list: async () => Promise.reject(new Error("EACCES")),
+    };
+    const e = engine({ server, storage: failing, state, stamp: stampFor(v2) });
+    await e.load();
+    storage.store.set("djdl.l10n/new-orphan", later);
+    await e.ensure(["djdl.l10n"]);
+    expect(storage.store.has(i1.location)).toBe(true);
+    expect(storage.store.has("djdl.l10n/new-orphan")).toBe(true);
+  });
+
+  it("saves the first snapshot and reuses it on later loads, so the store stays bounded", async () => {
+    const { v1, server, storage, state, i1 } = await tornSetup();
+    await engine({ server, storage, state, stamp: stampFor(v1) }).load();
+    expect(JSON.parse(state.holdList!).locations).toEqual([i1.location]);
+    // Between restarts something unnamed appears: the saved snapshot does not protect it.
+    storage.store.set("djdl.l10n/later", later);
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    expect(e.state().stateIssue).toBe("torn");
+    expect(storage.store.has(i1.location)).toBe(true);
+    expect(storage.store.has("djdl.l10n/later")).toBe(false);
+    await e.recoverState();
+    expect(state.holdList).toBeNull();
+  });
+
+  it("an unreadable saved snapshot holds GC entirely", async () => {
+    const { v1, server, storage, state, i1 } = await tornSetup();
+    await engine({ server, storage, state, stamp: stampFor(v1) }).load();
+    storage.store.set("djdl.l10n/later", later);
+    const broken = {
+      ...state,
+      readHoldList: async (): Promise<string | null> => {
+        throw new Error("EIO");
+      },
+    };
+    await engine({
+      server,
+      storage,
+      state: broken,
+      stamp: stampFor(v1),
+    }).load();
+    expect(storage.store.has(i1.location)).toBe(true);
+    expect(storage.store.has("djdl.l10n/later")).toBe(true);
+  });
+});

@@ -174,10 +174,12 @@ export function memoryPackStateStore(
 ): PackStateStore & {
   text: string | null;
   torn: string | null;
+  holdList: string | null;
 } {
   const s = {
     text: initial,
     torn: null as string | null,
+    holdList: null as string | null,
     read: async () => s.text,
     replace: async (text: string) => {
       s.text = text;
@@ -188,6 +190,11 @@ export function memoryPackStateStore(
     quarantined: async () => s.torn !== null,
     clearQuarantine: async () => {
       s.torn = null;
+      s.holdList = null;
+    },
+    readHoldList: async () => s.holdList,
+    writeHoldList: async (text: string) => {
+      s.holdList ??= text;
     },
   };
   return s;

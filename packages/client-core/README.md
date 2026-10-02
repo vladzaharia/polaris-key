@@ -164,7 +164,10 @@ same code runs in Node, in a browser and under the corpus runner. Nothing here d
   nothing (`pack-state-unreadable`), a torn one is quarantined and suspends garbage collection of
   what existed when the hold started until `recoverState()`, and an entry whose payload check
   throws is kept but not used (an active one carried over as `previous` by the next commit,
-  re-verified before a rollback). The quarantine members of `PackStateStore` are required; a
+  re-verified before a rollback; it replaces an older verified `previous`, because it is the most
+  recent install, so a rollback while it is still unreadable refuses rather than reaching further
+  back). The torn hold's first snapshot is saved beside the quarantine (`readHoldList`,
+  `writeHoldList`) and reused across restarts. The quarantine members of `PackStateStore` are required; a
   store that lacks them at run time has a torn document treated as unreadable.
 - **`PackEngine`**: CONTENT §10's pipeline — preflight, journal, `Range`/`If-Range` fetch whose
   resume re-hashes what is staged, apply with fallbacks, commit (the pointer swap), activation,

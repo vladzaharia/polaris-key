@@ -93,8 +93,14 @@ export interface PackStateStore {
   quarantine(text: string): Promise<void>;
   /** Whether a quarantined document is held. */
   quarantined(): Promise<boolean>;
-  /** Drop the quarantined document (operator recovery). */
+  /** Drop the quarantined document and its hold list (operator recovery). */
   clearQuarantine(): Promise<void>;
+  /** The torn hold's saved snapshot of the store (`state.json.torn.list`): null when none was
+   *  saved; throws when it cannot be read. Optional: without it the snapshot is retaken at
+   *  every load. */
+  readHoldList?(): Promise<string | null>;
+  /** Save the hold's snapshot, atomically, the first time a hold starts. */
+  writeHoldList?(text: string): Promise<void>;
 }
 
 export function emptyPackState(): PackStateDoc {
