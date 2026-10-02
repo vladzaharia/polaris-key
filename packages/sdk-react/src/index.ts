@@ -113,6 +113,19 @@ export {
   type BrowserAdapterOptions,
 } from "./browser/browserAdapter.js";
 export { fetchCatalog } from "./browser/catalog.js";
+// Outlet detection (plans/P3-01.md §2.9): the mapping is client-core's, re-exported so a React
+// host reaches it through this package; the reader is the page's own.
+export {
+  detectOutlet,
+  detectionStamp,
+  type DetectedOutlet,
+  type DetectionStamp,
+  type OutletSignals,
+} from "@polaris-key/client-core";
+export {
+  readOutletSignals,
+  type WebOutletEnvironment,
+} from "./browser/outlet.js";
 export {
   buildDownloadUrl,
   buildInstallUrl,
