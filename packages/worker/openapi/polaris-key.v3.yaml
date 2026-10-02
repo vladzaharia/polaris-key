@@ -185,6 +185,7 @@ paths:
                             d8f1a6a3f0b2a1c7e6d9b4c3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3,
                           ]
                         packs: true
+                        revocations: true
                       distribution:
                         enabled: true
                         configured: true
@@ -4185,6 +4186,22 @@ paths:
         cannot finish inside its bounds. When the product resolves pack sets, the answer (dry
         run or not) carries `packSets`: the resulting sets with the selectors and app releases
         that receive them, and every selector whose set changed. A dry run writes nothing.
+        P4-13 (plans/P4-13.md §6.2): a REVOCATION is `{record, dryRun?}` with no descriptor and
+        no ticket — a `kind: revocation` record signed by a declared release key (a product key
+        is refused at `product-key`, an undeclared one at `kid`), naming a stored pack record by
+        hash (`revokes`) and optionally a `replacement` of the same pack. After the shared
+        checks it is refused, in order, with `revocation-body` (client-core's `revocationOf`
+        finds the body unusable), `revocation-target` (not a stored pack record of that
+        deliverable, version and `seq`), `revocation-stale` (409: the target already has a
+        revocation that is newer by `issuedAt`, ties by record hash), `revocation-replacement`
+        (not a stored, non-yanked, non-revoked record of the same pack) or
+        `revocation-replacement-incompatible` (a variant of the target is missing from the
+        replacement or runs on another engine, or a live level the target admits — or that of an
+        app release pinning or holding it — is outside the replacement's range). A byte-identical
+        resubmit answers `outcome: unchanged`; a newer revocation of the same target updates the
+        stored one (`superseded`); nothing ever removes one. Ingest also yanks the target (reason
+        `revoked`) and re-resolves the pack sets, which skip revoked releases. An app release is
+        also refused with `pin-revoked` or `hold-revoked` (a pinned or held release is revoked).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -4194,7 +4211,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: "`{ticket, descriptor, record?, dryRun?}`, or (P4-02) a pack release: `{ticket?, record, dryRun?}`."
+              description: "`{ticket, descriptor, record?, dryRun?}`, or (P4-02) a pack release: `{ticket?, record, dryRun?}`, or (P4-13) a revocation: `{record, dryRun?}`."
               anyOf:
                 - required: [ticket, descriptor]
                 - required: [record]
@@ -4216,13 +4233,30 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [ok, dryRun, releaseId, outcome]
+                required: [ok, dryRun, outcome]
+                description: "`releaseId` is present on every answer except a revocation's (P4-13), which carries `revocation` instead."
                 properties:
                   ok: { type: boolean, const: true }
                   dryRun: { type: boolean }
                   releaseId: { type: string }
                   outcome:
-                    { type: string, enum: [created, enriched, unchanged] }
+                    {
+                      type: string,
+                      enum: [created, enriched, unchanged, superseded],
+                    }
+                  revocation:
+                    type: object
+                    description: >
+                      P4-13, a revocation: its record hash (the record route's path), the target
+                      and replacement record hashes, `kid` on a dry run, and whether this submit
+                      stored it (`stored`).
+                    properties:
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      kid: { type: string }
+                      target: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      replacement:
+                        { type: [string, "null"], pattern: "^[0-9a-f]{64}$" }
+                      stored: { type: boolean }
                   descriptorSha256:
                     type: string
                     description: A descriptor submit's (absent for a pack release).
@@ -4357,6 +4391,10 @@ paths:
         404, so the route is no oracle for which records exist; under `entitled` the licence's
         version window must also admit the record's own release (its stored version, pinned —
         the byte blob route's rule). Discovery advertises it as `release.endpoints.record`.
+        A `kind: pack` record (P4-02) and a `kind: revocation` record (P4-13) skip that version
+        rule: the request-level check governs. A revocation record is served by its hash too,
+        and only the CURRENT revocation of a target is stored: one superseded by a newer
+        revocation is the plain 404 (the feed lists the current one).
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: sha256
@@ -4557,6 +4595,15 @@ paths:
         while its payload fits 65 536 bytes, else the per-platform one (`selector:
         {platform}`); a document that fails the composer's self-check (the v4 claims and the
         strict JSON profile) or does not fit is never signed: `500 feed_not_composable`.
+        P4-13 (plans/P4-13.md §2.2, §6.3): the document may carry the content members
+        `packSets` (the resolved pack sets of the app's live levels: a release table by record
+        hash, sets keyed by `packSetId`, one row per (contentApi, platform, engine, variant
+        group), and per-outlet `pinned` narrowing), `packFloors` (per pack and live level) and
+        `revocations` (the revocation records in force, by hash, with their targets). Clients
+        read them beside the claims (`feedContent`); a malformed member is unusable, never a
+        refusal. When the per-platform document is still over the cap, content is shed in a
+        fixed order, each step audited: `packSets`, `packFloors`, the unreferenced revocations,
+        every revocation; content alone never causes `feed_not_composable`.
         Governed by the release METADATA access mode; under `entitled` the licence's
         entitlements must hold the canonical channel (403 `channel_not_allowed`). `public`
         caches `public, max-age=60, no-transform`, every other mode `private, no-store,

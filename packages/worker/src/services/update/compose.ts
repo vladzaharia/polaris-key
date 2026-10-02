@@ -36,6 +36,9 @@
  *                capabilities      the effective capabilities, only when an operator narrowed.
  *
  * `composeOutletView` is the per-outlet view on its own, for P3-09's updater feeds.
+ *
+ * P4-13 adds the content members (`packParts.ts`: `packSets`, `packFloors`, `revocations`), composed
+ * only for a channel that offers a target; `feedDoc.ts` fits them under the payload cap.
  */
 
 import { APP_DELIVERABLE_ID, RELEASE_PLATFORMS } from "@polaris-key/manifest";
@@ -67,6 +70,17 @@ import {
   type DeliverableState,
 } from "../release/resolve.js";
 import { recordsByRelease, type ReleaseRecordRow } from "../release/records.js";
+import {
+  composePackParts,
+  NO_PACK_PARTS,
+  type ComposedPackParts,
+} from "./packParts.js";
+
+export {
+  composePackParts,
+  effectivePackBindings,
+  type ComposedPackParts,
+} from "./packParts.js";
 
 /** How far below the target `live` looks for an outlet's newest live release. */
 export const LIVE_LOOKBACK_RELEASES = 16;
@@ -90,11 +104,13 @@ export function canonicalFeedChannel(
   return sel.raw;
 }
 
-/** What the composer produced for one canonical channel: every platform's target. */
+/** What the composer produced for one canonical channel: every platform's target, and the
+ *  content members (P4-13, `packParts.ts`), before any size shedding. */
 export interface ComposedFeed {
   channel: string;
   versionScheme: FeedVersionScheme;
   targets: FeedTarget[];
+  content: ComposedPackParts;
 }
 
 export interface ComposeContext {
@@ -361,7 +377,13 @@ export async function composeChannelFeed(
     ctx.cfg,
   );
   const scheme: FeedVersionScheme = state?.scheme ?? "semver";
-  if (!state) return { channel, versionScheme: scheme, targets: [] };
+  if (!state)
+    return {
+      channel,
+      versionScheme: scheme,
+      targets: [],
+      content: NO_PACK_PARTS,
+    };
 
   const records = await recordsByRelease(
     ctx.db,
@@ -422,5 +444,7 @@ export async function composeChannelFeed(
       outlets: outletEntries,
     });
   }
-  return { channel, versionScheme: scheme, targets };
+  const content =
+    targets.length > 0 ? await composePackParts(ctx, channel) : NO_PACK_PARTS;
+  return { channel, versionScheme: scheme, targets, content };
 }

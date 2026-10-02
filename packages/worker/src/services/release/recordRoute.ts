@@ -20,7 +20,9 @@
  *      selector). A hash learned elsewhere unlocks nothing the device could not already
  *      download from that release. A device refused here decides with no record. A `kind: pack`
  *      record (P4-02) skips this app version rule: (1) governs, and the pack's bytes are gated
- *      per request by Distribution's blob route (P4-05).
+ *      per request by Distribution's blob route (P4-05). So does a `kind: revocation` record
+ *      (P4-13, `release_revocations`, served by its hash like any record): (1) governs. Only the
+ *      CURRENT revocation of a target is stored, so a superseded one is the plain not-found.
  */
 
 import type { ServiceContext } from "../../core/registry.js";
@@ -86,9 +88,9 @@ export async function handleRecordRoute(
   if (!row) return harden(notFound());
 
   // 3. Under `entitled`, the record's own release's stored version, pinned. Not for a pack
-  //    record (P4-02): the version window is an APP version rule, so the metadata mode's
-  //    request-level check (1) governs, and the pack's bytes are gated by Distribution (P4-05).
-  if (mode === "entitled" && row.kind !== "pack") {
+  //    record (P4-02) or a revocation (P4-13): the version window is an APP version rule, so the
+  //    metadata mode's request-level check (1) governs.
+  if (mode === "entitled" && row.kind !== "pack" && row.kind !== "revocation") {
     const release = await db.first<{ version: string }>(
       "SELECT version FROM release_metadata WHERE product = ? AND release_id = ?",
       product.slug,

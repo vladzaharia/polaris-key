@@ -37,6 +37,10 @@
  *   hold-requires  the held release's signed requirements exclude this app release (as
  *                  pin-requires);
  *
+ * and, since P4-13, `pin-revoked` and `hold-revoked`: the pinned or held release is revoked (checked
+ * before the yank its revocation also wrote). App releases already stored keep their signed pins;
+ * devices refuse the revoked release themselves (plans/P4-13.md §2.6);
+ *
  * then the resolution check (`checks.ts`: pack-channels-conflict, content-unsatisfied,
  * hold-unsatisfiable, pack-sets-bound), whose report the submit returns.
  *
@@ -223,11 +227,14 @@ export async function planAppContent(
     jws: string;
     version: string | null;
     yanked: number;
+    revoked: number;
   }>(
     `SELECT r.record_sha256, r.kind, r.deliverable_id, r.release_id, r.seq, r.jws,
             m.version AS version,
             EXISTS (SELECT 1 FROM release_yanks y
-                     WHERE y.product = r.product AND y.release_id = r.release_id) AS yanked
+                     WHERE y.product = r.product AND y.release_id = r.release_id) AS yanked,
+            EXISTS (SELECT 1 FROM release_revocations v
+                     WHERE v.product = r.product AND v.target_sha256 = r.record_sha256) AS revoked
        FROM release_records r
        LEFT JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id
       WHERE r.product = ? AND r.record_sha256 IN (SELECT value FROM json_each(?))`,
@@ -262,6 +269,11 @@ export async function planAppContent(
       return refuse(
         "pin-mismatch",
         `record ${p.release.sha256} is ${r.kind === "pack" ? `${r.deliverable_id} ${r.version ?? "?"} (seq ${r.seq})` : `a ${r.kind} record`}, not ${p.pack} ${p.release.version} (seq ${p.release.seq}).`,
+      );
+    if (r.revoked)
+      return refuse(
+        "pin-revoked",
+        `${p.pack} ${p.release.version} is revoked: no app release may pin it (plans/P4-13.md §6.2).`,
       );
     if (r.yanked)
       return refuse(
@@ -319,6 +331,11 @@ export async function planAppContent(
       return refuse(
         "hold-binding",
         `${h.pack} is ${bindingOf.get(h.pack) ?? "not declared"}; only a compatible pack is held (a pinned pack is pinned).`,
+      );
+    if (r.revoked)
+      return refuse(
+        "hold-revoked",
+        `${h.pack} ${h.release.version} is revoked: no app release may hold it (plans/P4-13.md §6.2).`,
       );
     if (r.yanked)
       return refuse(

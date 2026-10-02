@@ -426,7 +426,7 @@ describe("decision helpers (§2.8)", () => {
     expect(isValidHostOutlet(42)).toBe(false);
   });
 
-  it("names the prompts the player cannot dismiss, and none of them stops play", () => {
+  it("names the prompts the player cannot dismiss, and none outside revoked content stops play", () => {
     const release = { version: "1.5.0", seq: 15 };
     const blocked = {
       action: "blocked",
@@ -451,6 +451,63 @@ describe("decision helpers (§2.8)", () => {
     expect(isUndismissable(platform)).toBe(false);
     expect(bootDecision(blocked)).toBe("optional");
     expect(bootDecision(platform)).toBe("none");
+    // Floors never stop play (plans/P4-13.md decision 4).
+    expect(
+      bootDecision({
+        action: "blocked",
+        reason: "content-floor",
+        discardStaged: false,
+      }),
+    ).toBe("optional");
+    expect(bootDecision({ ...store, contentBlock: "content-floor" })).toBe(
+      "optional",
+    );
+    expect(
+      bootDecision({
+        action: "packs",
+        install: [],
+        revoke: ["diceroll.skins"],
+        set: [],
+        discardStaged: false,
+      }),
+    ).toBe("none");
+  });
+
+  it("answers required only for revoked required content (plans/P4-13.md decision 4)", () => {
+    const release = { version: "1.5.0", seq: 15 };
+    expect(
+      bootDecision({
+        action: "blocked",
+        reason: "revoked-content",
+        discardStaged: false,
+      }),
+    ).toBe("required");
+    expect(
+      bootDecision({
+        action: "blocked",
+        reason: "app-floor",
+        discardStaged: false,
+        contentBlock: "revoked-content",
+      }),
+    ).toBe("required");
+    expect(
+      bootDecision({
+        action: "store",
+        release,
+        listingUrl: null,
+        mandatory: true,
+        critical: false,
+        discardStaged: false,
+        contentBlock: "revoked-content",
+      }),
+    ).toBe("required");
+    expect(
+      isUndismissable({
+        action: "blocked",
+        reason: "revoked-content",
+        discardStaged: false,
+      }),
+    ).toBe(true);
   });
 
   it("decides from a feed whose outlet keys shadow Object.prototype", () => {

@@ -109,6 +109,28 @@ export function delivery(ctx: HookContext): Delivery {
 
     entitlement: (deliverable: string) => entitlementOf(db, slug, deliverable),
 
+    async transports() {
+      return (
+        await db.all<{
+          deliverable_id: string;
+          outlet_id: string;
+          transport: string;
+        }>(
+          `SELECT t.deliverable_id, t.outlet_id, t.transport
+             FROM dist_transports t
+             JOIN dist_outlets o
+               ON o.product = t.product AND o.outlet_id = t.outlet_id AND o.removed_at IS NULL
+            WHERE t.product = ?
+            ORDER BY t.deliverable_id, t.outlet_id`,
+          slug,
+        )
+      ).map((r) => ({
+        deliverable: r.deliverable_id,
+        outlet: r.outlet_id,
+        transport: r.transport,
+      }));
+    },
+
     async deliveryUrl({ releaseId, buildId, name, outlet }) {
       if ((buildId === undefined) === (name === undefined)) return null;
       const catalog = ctx.hooks.releaseCatalog();

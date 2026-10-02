@@ -164,6 +164,7 @@ record, so the record's packs are exactly the descriptor's. Ingest refuses with
 | `pin-unknown`     | a pin names no ingested record                                                   |
 | `pin-mismatch`    | the pinned record is not that pack, version or `seq`                             |
 | `pin-yanked`      | the pinned pack release is yanked                                                |
+| `pin-revoked`     | the pinned pack release is revoked (P4-13)                                       |
 | `pin-missing`     | an expected, `required` or embedded-baseline pack has no pin, or a pin no expect |
 | `pin-gated`       | a `required` expect pins a gated pack release                                    |
 | `embeds`          | a build embeds a pack the release does not pin                                   |
@@ -240,6 +241,7 @@ message naming the selector and the constraint:
 | `hold-unknown`           | a hold names no ingested record                                                                                                                                                                                                    |
 | `hold-mismatch`          | the held record is not that pack, version or `seq`                                                                                                                                                                                 |
 | `hold-yanked`            | the held pack release is yanked                                                                                                                                                                                                    |
+| `hold-revoked`           | the held pack release is revoked (P4-13)                                                                                                                                                                                           |
 | `hold-binding`           | the held pack is not `compatible`                                                                                                                                                                                                  |
 | `hold-requires`          | the held release's signed requirements exclude the app release                                                                                                                                                                     |
 | `hold-unsatisfiable`     | the app release's set with its holds substituted breaks a dependency or a conflict                                                                                                                                                 |
@@ -254,6 +256,29 @@ of the older engine keep their set throughout.
 
 Either submit, dry run or not, answers `packSets`: the resulting sets with the selectors and app
 releases that receive them, and every selector whose set changed. `dryRun: true` writes nothing.
+
+## Revocations
+
+A revocation (P4-13, `kind: revocation`) is a release record signed in CI by a **release key**,
+never by a product key and never by a delegated content key. It names the revoked pack record by
+hash (`revokes`) and may name a replacement of the same pack. `pkey release revoke
+<packId>@<version> [--replacement <version>] --reason <text>` signs and submits it on the same
+submit route; it needs no ticket and no descriptor. Ingest checks, in order, refusing with
+`release_record_rejected`:
+
+| Reason                                | When                                                                                                                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `revocation-body`                     | the body is unusable: not a pack id, `revokes` not 64 hex, a bad replacement, or a `reason` outside 1–512 bytes                                        |
+| `revocation-target`                   | the target is not a stored `kind: pack` record of that pack, version and `seq`                                                                         |
+| `revocation-stale`                    | the target already has a revocation with a newer `issuedAt` (ties: the higher record hash)                                                             |
+| `revocation-replacement`              | the replacement is not a stored, non-yanked, non-revoked record of the same pack                                                                       |
+| `revocation-replacement-incompatible` | the replacement does not cover the target: a variant key or engine is missing, or a live (or pinning or holding) contentApi level is outside its range |
+
+Revocations are permanent: a resubmit of the same bytes changes nothing, and a newer revocation
+of the same target updates the stored one (adding or changing the replacement) but can never
+remove the revoked status. Ingest also yanks the target, so even a rolled-back Worker stops
+serving it, and resolution drops revoked releases from every candidate list. The feed lists the
+revocations in force; devices fetch each record and verify it against their pinned release keys.
 
 ## In the console
 

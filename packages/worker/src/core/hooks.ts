@@ -387,6 +387,29 @@ export interface CatalogHold {
 }
 
 /**
+ * One revocation in force (P4-13, `release_revocations`): the CURRENT CI-signed `kind: revocation`
+ * record of one revoked pack release, with the target's version and `seq` (the record's own) and
+ * the replacement it names. A superseding revocation replaces it in place; none is ever removed.
+ */
+export interface CatalogRevocation {
+  /** The revoked pack's id. */
+  deliverableId: string;
+  targetReleaseId: string;
+  /** The revoked pack record's hash. */
+  targetSha256: string;
+  /** The revocation record's hash (served on the record route). */
+  recordSha256: string;
+  /** The target's version and `seq`. */
+  version: string;
+  seq: number;
+  kid: string;
+  replacement: { releaseId: string; sha256: string } | null;
+  reason: string;
+  issuedAt: number;
+  ingestedAt: number;
+}
+
+/**
  * Release's read-only view of what exists (README §3.2). Every method reads; none writes.
  * Results are ordered deterministically so a consumer's output is stable.
  *
@@ -513,6 +536,11 @@ export interface ReleaseCatalog {
    * release, then build.
    */
   embedsOf(appReleaseIds: readonly string[]): Promise<CatalogBuildEmbeds[]>;
+  /**
+   * Every revocation in force (P4-13), by revoked pack, then target `seq`: what the channel feed
+   * lists, P4-14 excludes from GC's live references and P4-15 shows.
+   */
+  revocations(): Promise<CatalogRevocation[]>;
 }
 
 // ── delivery (Distribution) ─────────────────────────────────────────────────────────────────
@@ -813,6 +841,15 @@ export interface Delivery {
    * a feed cache key. `null` when Release is off.
    */
   feedStamp(): Promise<string | null>;
+  /**
+   * P4-13: every stored transport row (`dist_transports`) of a LIVE outlet — which transport
+   * carries each deliverable on each outlet — by deliverable, then outlet. A (deliverable, outlet)
+   * with no row uses `defaultTransport`. Update narrows a pack whose transport cannot float
+   * (`TRANSPORT_FLOATS`) to pinned on that outlet.
+   */
+  transports(): Promise<
+    { deliverable: string; outlet: string; transport: TransportId }[]
+  >;
 }
 
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────

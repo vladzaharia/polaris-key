@@ -7,7 +7,8 @@
  *
  *   POST /<p>/release/publish/stage   `{ticket, deliverable}` → `{staged, present}`
  *   POST /<p>/release/publish/submit  `{ticket?, record, dryRun?}` with NO descriptor → a pack
- *                                     release (the record is the whole truth)
+ *                                     release (the record is the whole truth), or (P4-13) a
+ *                                     `kind: revocation` record (`revocations.ts`)
  *
  * WHY ROUNDS. One submit verifies and promotes inside one request, at up to five R2 calls and
  * one D1 query per object, against 10,000 subrequests per invocation (notes/E5, E7). A
@@ -62,6 +63,7 @@ import {
 import { readPackDeliverable, readPackDeliverables } from "./deliverables.js";
 import { checkPackPublish } from "./checks.js";
 import { resolveAndStore } from "./sets.js";
+import { handleRevocationSubmit } from "./revocations.js";
 import {
   checkPackAgainstDeclaration,
   checkPackRequires,
@@ -383,12 +385,15 @@ export async function handlePackSubmit(
     cfg,
   });
   if (!shared.ok) return recordRefusal(shared.reason, shared.message);
+  // P4-13: a revocation record is submitted alone too (no ticket, no descriptor).
+  if (shared.payload.kind === "revocation")
+    return handleRevocationSubmit(ctx, holder, shared, dryRun);
   if (shared.payload.kind !== "pack")
     return refusal(
       400,
       ErrorCode.BadRequest,
       "bad_body",
-      "an app record is submitted with its release descriptor; only a kind: pack record is submitted alone",
+      "an app record is submitted with its release descriptor; only a kind: pack or kind: revocation record is submitted alone",
     );
   const record = shared.payload as unknown as PackRecordDoc;
   const recordSha256 = await sha256HexOfAscii(shared.jws);
