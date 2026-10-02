@@ -18,6 +18,8 @@
  * refuses against a Worker whose discovery does not advertise `release.revocations`.
  */
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { verifyJws } from "@polaris-key/jws";
 import { REVOCATION_REASON_MAX_BYTES } from "@polaris-key/protocol/core";
 import type {
@@ -35,6 +37,12 @@ import { resolveCiToken, type CiEnv } from "./oidc.js";
 import { packContext } from "./packManifest.js";
 import { sha256Hex } from "./packArtifacts.js";
 import { RELEASE_KEY_ENV, recordSigner } from "./releaseKeys.js";
+import {
+  checkDelegation,
+  delegationVersion,
+  fetchRecordByHash,
+  requireDelegationsDiscovery,
+} from "./delegate.js";
 
 export const REVOKE_USAGE =
   "Usage: pkey release revoke <packId>@<version> --reason <text> --product <slug> " +
@@ -263,4 +271,149 @@ export async function revokePackRelease(
     `Revoked ${pack}@${version} (${String(server.outcome ?? "submitted")})\n`,
   );
   return { record, jws, sha256, server };
+}
+
+// ── P4-19: revoking a delegation (plans/P4-19.md §2.6, §6.2, §6.4) ──────────────────────────
+
+export const REVOKE_DELEGATION_USAGE =
+  "Usage: pkey release revoke --delegation <sha256 | file> --reason <text> --product <slug> " +
+  "[--release-key-file pem] [--base-url <url>] [--dry-run]";
+
+export interface RevokeDelegationOptions extends Omit<
+  RevokeOptions,
+  "target" | "replacement"
+> {
+  /** The delegation's record hash, or a file holding its compact JWS. */
+  delegation: string;
+}
+
+export interface RevokeDelegationResult extends RevokeResult {
+  /** Whether the delegation was supplied alongside (`{record, delegation}`). */
+  supplied: boolean;
+}
+
+/**
+ * `pkey release revoke --delegation <sha256 | file>`: P4-13's revocation record, unchanged, naming
+ * a delegation (`deliverable`, `version` and `seq` are the delegation's, `revokes` its hash; never a
+ * replacement). Given a file holding a delegation JWS that Polaris Key does not serve, the
+ * delegation is submitted alongside (`{record, delegation}`), so the release-key holder can revoke
+ * one minted outside CI or kept after a failed submit. Every pack release signed under it is then
+ * refused by devices and yanked by the Worker.
+ */
+export async function revokeDelegation(
+  opts: RevokeDelegationOptions,
+): Promise<RevokeDelegationResult> {
+  const out = opts.stdout;
+  checkReason(opts.reason);
+  const loaded = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded);
+  if (!validation.ok)
+    throw new Error(
+      `.pkey/ is invalid; run pkey validate:\n${validation.errors
+        .map((e) => `  ${e.file}${e.path}: ${e.message}`)
+        .join("\n")}`,
+    );
+  const ctx = packContext(loaded);
+  if (ctx.slug !== opts.product)
+    throw new Error(
+      `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`,
+    );
+
+  // A file is read before the network; a hash is fetched from the record route.
+  const byHash = /^[0-9a-f]{64}$/.test(opts.delegation);
+  let fileJws: string | null = null;
+  if (!byHash) {
+    try {
+      fileJws = (
+        await readFile(path.resolve(opts.cwd, opts.delegation), "utf8")
+      ).trim();
+    } catch (e) {
+      throw new Error(
+        `--delegation is neither a sha256 nor a readable file (${(e as Error).message}).\n${REVOKE_DELEGATION_USAGE}`,
+      );
+    }
+  }
+
+  const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? undefined;
+  const sign =
+    opts.signRecord ?? (pem ? recordSigner(pem, ctx.releaseKeys) : null);
+  if (!sign)
+    throw new Error(
+      `A revocation is a signed release record: set ${RELEASE_KEY_ENV} (the release key) or --release-key-file.`,
+    );
+
+  const token = await resolveCiToken({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    env: opts.env,
+    out,
+    log: opts.stderr,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+  });
+  const client = ciClient({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    token,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    log: opts.stderr,
+  });
+  await requireRevocationsDiscovery(client, opts.fetchImpl);
+  await requireDelegationsDiscovery(client, opts.fetchImpl);
+
+  let jws: string;
+  let hash: string;
+  let supplied = false;
+  if (fileJws !== null) {
+    jws = fileJws;
+    hash = sha256Hex(jws);
+    const served = await fetchRecordByHash(client, hash, opts.fetchImpl).catch(
+      () => null,
+    );
+    supplied = served !== jws;
+  } else {
+    hash = opts.delegation;
+    const served = await fetchRecordByHash(client, hash, opts.fetchImpl);
+    if (served === null)
+      throw new Error(
+        `Polaris Key stores no delegation ${hash.slice(0, 12)}…; to revoke one it never saw, pass the file holding its JWS (--delegation <file>).`,
+      );
+    jws = served;
+  }
+  const d = await checkDelegation(jws, hash, opts.product, ctx.releaseKeys);
+  const record = revocationRecord({
+    product: opts.product,
+    pack: d.deliverable,
+    target: { sha256: hash, seq: d.seq, version: delegationVersion(jws) },
+    reason: opts.reason,
+    issuedAt: opts.now ? opts.now() : Math.floor(Date.now() / 1000),
+  });
+  const signed = await sign(record as unknown as ReleaseRecordDoc);
+  const trust: Record<string, string> = {};
+  for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
+  if (!opts.signRecord) await checkSignedRevocation(signed, record, trust);
+  const sha256 = sha256Hex(signed);
+  out.write(
+    `Revocation of delegation ${hash.slice(0, 12)}… (${d.deliverable}, seq ${d.seq})` +
+      `${supplied ? ", supplied alongside" : ""}\nSigned the revocation record (sha256 ${sha256})\n`,
+  );
+  if (opts.dryRun) {
+    out.write(
+      `\nRevocation record:\n${JSON.stringify(record, null, 2)}\n${signed}\n`,
+    );
+    out.write("Dry run: nothing submitted.\n");
+    return { record, jws: signed, sha256, server: null, supplied };
+  }
+  const server = await client.postJson<Record<string, unknown>>(
+    "release/publish/submit",
+    {
+      what: "Submitting the delegation's revocation",
+      body: supplied ? { record: signed, delegation: jws } : { record: signed },
+    },
+  );
+  out.write(
+    `Revoked delegation ${hash.slice(0, 12)}… (${String(server.outcome ?? "submitted")}); every pack release signed under it is refused from now on.\n`,
+  );
+  return { record, jws: signed, sha256, server, supplied };
 }

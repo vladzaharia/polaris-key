@@ -493,8 +493,10 @@ releaseKeys:
   retired (`release_key_is_product_key`), and keeps the previous `releaseKeys`.
 - Apps pin the same keys in their binaries; a record verifies only against pinned release
   keys, never against the product's trust set.
-- `contentKeys` is reserved for content-key delegation and ignored with a warning
-  (`content_keys_not_supported`).
+- `contentKeys` is not used and draws a warning (`content_keys_not_supported`). The manifest is
+  unsigned, so it can never grant trust: delegate a content key with `pkey release delegate`,
+  which signs a `kind: delegation` record with the release key. That signed delegation is the
+  only grant (P4-19).
 
 Without `releaseKeys` a publish carries no record and the signed update feed offers none of that
 product's releases.

@@ -30,7 +30,19 @@ import {
 import { CHANNEL_USAGE, movePointer, yankRelease } from "./channels.js";
 import { publishPack } from "./packPublish.js";
 import { CONTENT_STAMP_USAGE, writeContentStampFile } from "./contentStamp.js";
-import { REVOKE_USAGE, revokePackRelease } from "./revoke.js";
+import {
+  REVOKE_DELEGATION_USAGE,
+  REVOKE_USAGE,
+  revokeDelegation,
+  revokePackRelease,
+} from "./revoke.js";
+import {
+  CONTENT_KEYS_USAGE,
+  DELEGATE_USAGE,
+  delegateContentKey,
+  generateContentKey,
+  generatedContentKeyText,
+} from "./delegate.js";
 import {
   DISTRIBUTION_CI_USAGE,
   ROLLOUT_COMMANDS,
@@ -114,7 +126,32 @@ export {
   type SourcedPin,
 } from "./contentStamp.js";
 export {
+  CONTENT_KEY_ENV,
+  CONTENT_KEYS_USAGE,
+  DEFAULT_DELEGATION_DAYS,
+  DELEGATE_USAGE,
+  MAX_DELEGATION_DAYS,
+  WINDOW_WARN_DAYS,
+  contentSigner,
+  delegateContentKey,
+  generateContentKey,
+  generatedContentKeyText,
+  listDelegations,
+  localDelegatedChecks,
+  parseDelegationTypes,
+  requireDelegationsDiscovery,
+  type ContentSigner,
+  type DelegateOptions,
+  type DelegateResult,
+  type GeneratedContentKey,
+  type ListedDelegation,
+} from "./delegate.js";
+export {
+  REVOKE_DELEGATION_USAGE,
   REVOKE_USAGE,
+  revokeDelegation,
+  type RevokeDelegationOptions,
+  type RevokeDelegationResult,
   checkReason,
   requireRevocationsDiscovery,
   revocationRecord,
@@ -715,6 +752,13 @@ async function cmdRelease(
           : undefined;
       if (parsed.bare.has("pin"))
         throw new Error("--pin needs a value: --pin <packId>@<version>.");
+      const contentKeyPem = flagString(parsed, "content-key-file")
+        ? await readFile(
+            path.resolve(cwd, flagString(parsed, "content-key-file")!),
+            "utf8",
+          )
+        : undefined;
+      const delegation = flagString(parsed, "delegation");
       if (deliverable && deliverable !== "app") {
         refuseFlags(
           parsed,
@@ -735,6 +779,8 @@ async function cmdRelease(
           bases: flagString(parsed, "bases"),
           dryRun: flagBool(parsed, "dry-run"),
           ...(releaseKeyPem !== undefined ? { releaseKeyPem } : {}),
+          ...(contentKeyPem !== undefined ? { contentKeyPem } : {}),
+          ...(delegation !== undefined ? { delegation } : {}),
           ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
         });
         return 0;
@@ -743,6 +789,11 @@ async function cmdRelease(
         parsed,
         ["out", "bases"],
         "they keep and read a pack's earlier releases; the app takes neither",
+      );
+      refuseFlags(
+        parsed,
+        ["content-key-file", "delegation"],
+        "a content key signs only data-only pack releases, never an app record",
       );
       await publishRelease({
         ...common,
@@ -789,6 +840,33 @@ async function cmdRelease(
     case "revoke": {
       // `pkey release revoke` (P4-13): a CI-signed revocation of one pack release.
       const reason = flagString(parsed, "reason");
+      const delegationFlag = flagString(parsed, "delegation");
+      if (delegationFlag !== undefined) {
+        // P4-19: the revocation of a delegation (by hash, or a file holding its JWS).
+        if (!product || !reason || releaseId)
+          throw new Error(REVOKE_DELEGATION_USAGE);
+        refuseFlags(
+          parsed,
+          ["replacement"],
+          "no release replaces a delegation",
+        );
+        const pem = flagString(parsed, "release-key-file")
+          ? await readFile(
+              path.resolve(cwd, flagString(parsed, "release-key-file")!),
+              "utf8",
+            )
+          : undefined;
+        await revokeDelegation({
+          ...common,
+          cwd,
+          product,
+          delegation: delegationFlag,
+          reason,
+          dryRun: flagBool(parsed, "dry-run"),
+          ...(pem !== undefined ? { releaseKeyPem: pem } : {}),
+        });
+        return 0;
+      }
       if (!product || !releaseId || !reason) throw new Error(REVOKE_USAGE);
       const releaseKeyPem = flagString(parsed, "release-key-file")
         ? await readFile(
@@ -808,10 +886,47 @@ async function cmdRelease(
       });
       return 0;
     }
+    case "delegate": {
+      // `pkey release delegate` (P4-19): a CI-signed delegation of a content key.
+      const prefix = flagString(parsed, "prefix");
+      const types = flagString(parsed, "types");
+      const publicKey = flagString(parsed, "public-key");
+      if (!product || !prefix || !types || !publicKey)
+        throw new Error(DELEGATE_USAGE);
+      const expires = flagString(parsed, "expires-in");
+      const pem = flagString(parsed, "release-key-file")
+        ? await readFile(
+            path.resolve(cwd, flagString(parsed, "release-key-file")!),
+            "utf8",
+          )
+        : undefined;
+      await delegateContentKey({
+        ...common,
+        cwd,
+        product,
+        prefix,
+        types,
+        publicKey,
+        ...(expires !== undefined ? { expiresInDays: Number(expires) } : {}),
+        notes: flagString(parsed, "notes"),
+        dryRun: flagBool(parsed, "dry-run"),
+        ...(pem !== undefined ? { releaseKeyPem: pem } : {}),
+      });
+      return 0;
+    }
     case "keys": {
-      // `pkey release keys generate --kid <kid> --out <file>` (P3-03).
+      // `pkey release keys generate --kid <kid> --out <file>` (P3-03), or `--content` (P4-19).
       const kid = flagString(parsed, "kid");
       const outFile = flagString(parsed, "out");
+      if (flagBool(parsed, "content")) {
+        if (parsed.positional[1] !== "generate" || !outFile || kid)
+          throw new Error(CONTENT_KEYS_USAGE);
+        const generated = await generateContentKey({
+          out: path.resolve(cwd, outFile),
+        });
+        stdout.write(generatedContentKeyText(generated));
+        return 0;
+      }
       if (parsed.positional[1] !== "generate" || !kid || !outFile)
         throw new Error(KEYS_USAGE);
       const generated = await generateReleaseKey({
@@ -952,11 +1067,18 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--dry-run]
   pkey release publish --product slug --version v --dir path --deliverable packId
               [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
+              [--content-key-file pem --delegation sha256]
   pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
               [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
   pkey release revoke packId@version --reason text --product slug [--replacement version]
               [--release-key-file pem] [--base-url url] [--dry-run]
+  pkey release revoke --delegation sha256|file --reason text --product slug
+              [--release-key-file pem] [--base-url url] [--dry-run]
   pkey release keys generate --kid kid --out file [--force]
+  pkey release keys generate --content --out file
+  pkey release delegate --product slug --prefix packId --types type,... --public-key key
+              [--expires-in days] [--notes text] [--release-key-file pem] [--base-url url]
+              [--dry-run]
   pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
   pkey release unpin --channel c --product slug [--deliverable id]
   pkey release yank releaseId --reason text --product slug
@@ -995,6 +1117,13 @@ pkey release revoke signs a kind: revocation release record with the release key
 devices stop using that pack release, and --replacement names the release of the same pack they
 take instead. Revocations are permanent; a later revoke of the same release supersedes the
 replacement or reason, never the revoked status.
+pkey release keys generate --content writes a new content key (no kid) and prints its public
+key; pkey release delegate signs a kind: delegation record with the release key that lets that
+key sign data-only pack releases (files.tree, data.json, l10n.table) of compatible or standalone
+packs under --prefix (whole segments) for --expires-in days (default 180, at most 366). A content
+team then publishes with PKEY_CONTENT_KEY (or --content-key-file) and --delegation <sha256>:
+the files must pass the data-only rule, and the record is signed under the kid pkd1-<sha256>.
+pkey release revoke --delegation revokes a delegation and every pack release signed under it.
 --meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
 payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
 read into the descriptor for the storefront feeds. The CI commands
