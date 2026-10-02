@@ -130,6 +130,11 @@ every file blob its indexes name is a blob of the product's store. Publishing is
 3. **The record**: `POST /<product>/release/publish/submit` `{record, ticket?, dryRun?}`. A small
    pack can carry its objects in this ticket and publish in one request.
 
+`pkey release publish --deliverable <packId>` (and the `polaris-key/publish` Action) runs all
+three: it strips and lints each variant's payload, builds the objects and deltas, signs the
+record and writes a marker beside each payload; `pkey release content-stamp` writes the stamp an
+app build embeds. See [Publishing a pack](/docs/build/ci/#publishing-a-pack).
+
 Ingest checks the record against the declaration and the store, refusing with
 `release_record_rejected` and a `reason`, in this order: the checks every record shares (`typ`,
 `kid`, `product-key`, `signature`, `claims`), then `pack-unknown` (not a declared pack),

@@ -9,7 +9,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
-import { actionInput, isActionInvocation, runAction } from "../src/action.js";
+import {
+  ACTION_INPUTS,
+  actionInput,
+  ensureZstd,
+  isActionInvocation,
+  pinsInput,
+  runAction,
+} from "../src/action.js";
 import { runPkey, signV4 } from "../src/index.js";
 import {
   actionsEnv,
@@ -216,6 +223,91 @@ describe("the standalone bundle", () => {
       "utf8",
     );
     expect(actionYml).toMatch(/^\s+main:\s*dist\/index\.js\s*$/m);
+  });
+});
+
+describe("the Action's pack inputs (P4-03)", () => {
+  it("declares exactly the inputs the entry reads, in order", async () => {
+    const yml = await readFile(
+      path.join(repoRoot, "actions/publish/action.yml"),
+      "utf8",
+    );
+    const block = yml.slice(
+      yml.indexOf("\ninputs:\n"),
+      yml.indexOf("\noutputs:\n"),
+    );
+    const names = [...block.matchAll(/^ {2}([a-z-]+):$/gm)].map((m) => m[1]);
+    expect(names).toEqual([...ACTION_INPUTS]);
+  });
+
+  it("splits pins on whitespace and commas", () => {
+    expect(pinsInput(undefined)).toEqual([]);
+    expect(pinsInput("a.b@1.0.0, c.d@2.0.0\ne.f@3")).toEqual([
+      "a.b@1.0.0",
+      "c.d@2.0.0",
+      "e.f@3",
+    ]);
+  });
+
+  it("installs zstd with apt-get update then install when it is missing or old, and fails with the minimum otherwise", () => {
+    const out = { write: () => true };
+    // Missing, then present after the install: fixed argv, no shell.
+    const calls: string[][] = [];
+    let installed = false;
+    ensureZstd({
+      stdout: out,
+      platform: "linux",
+      exec: (cmd, args) => {
+        calls.push([cmd, ...args]);
+        if (cmd === "zstd") {
+          if (!installed) throw new Error("ENOENT");
+          return "*** Zstandard CLI (64-bit) v1.5.5, by Yann Collet ***";
+        }
+        if (args.includes("install")) installed = true;
+        return "";
+      },
+    });
+    expect(calls).toEqual([
+      ["zstd", "-V"],
+      ["sudo", "-n", "apt-get", "update", "-q"],
+      ["sudo", "-n", "apt-get", "install", "-y", "-q", "zstd"],
+      ["zstd", "-V"],
+    ]);
+    // apt still gives an old version.
+    expect(() =>
+      ensureZstd({
+        stdout: out,
+        platform: "linux",
+        exec: (cmd) => (cmd === "zstd" ? "v1.4.8" : ""),
+      }),
+    ).toThrow(/needs zstd ≥ 1\.5\.5; apt-get installed 1\.4\.8/);
+    // apt-get fails.
+    expect(() =>
+      ensureZstd({
+        stdout: out,
+        platform: "linux",
+        exec: (cmd) => {
+          throw new Error(`${cmd} failed`);
+        },
+      }),
+    ).toThrow(/needs zstd ≥ 1\.5\.5, and installing it with apt-get failed/);
+    // Not Linux: no install attempt.
+    const mac: string[] = [];
+    expect(() =>
+      ensureZstd({
+        stdout: out,
+        platform: "darwin",
+        exec: (cmd) => (mac.push(cmd), "v1.5.2"),
+      }),
+    ).toThrow(/needs zstd ≥ 1\.5\.5; this runner has 1\.5\.2/);
+    expect(mac).toEqual(["zstd"]);
+  });
+
+  it("installs zstd only when it is missing", () => {
+    const calls: string[] = [];
+    const out = { write: () => true };
+    ensureZstd({ stdout: out, exec: (cmd) => (calls.push(cmd), "v1.5.7") });
+    expect(calls).toEqual(["zstd"]);
   });
 });
 

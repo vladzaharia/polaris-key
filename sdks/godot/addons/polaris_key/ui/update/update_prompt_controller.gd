@@ -14,11 +14,14 @@ extends RefCounted
 ## no v4 answer stops play (plans/P3-01.md §2.8, decision 1). Only a dismissable answer may use
 ## the modal mode.
 ##
-## The action in P1 never downloads (P3-10 owns install and apply): a store answer opens its
-## `listingUrl`; a binary answer on a direct build opens the release page the game gave
-## (`release_url`) or, for the v3 check, the answer's `url`; code-ready, platform and blocked
-## offer no action; and a store, Steam or itch build never opens a download page (store link or
-## nothing).
+## For a v4 answer the action is the outlet adapter's plan (PKeyOutletAdapter.describe, P3-10;
+## README §6.3): a store opens its listing or the compiled source page, TestFlight and AltStore
+## open themselves, Steam, itch, Flathub, Snap, App Installer and winget stay silent with their
+## own message, a web export offers a reload, and a direct build installs through its native
+## updater (falling back to the build's download link), stages a sidecar pack, or restarts into a
+## staged one (code-ready: "Restart now"). `behaviour` says which; PKeyUpdatePrompt carries it out
+## through PolarisKey.update.apply(). For the v3 check a direct build opens the answer's `url`
+## (or `release_url`), and a store, Steam or itch build never opens a download page.
 
 ## Only a direct build (or the editor, which has no outlet) may open a download page; every other
 ## outlet installs through its store, platform or package manager.
@@ -26,19 +29,23 @@ const DOWNLOAD_OUTLETS := ["", "direct"]
 
 
 ## The prompt's model for `result` (or null): {visible, state, title, body, body_arg, action,
-## action_url, locked, version}. `state` is the action (code-ready, binary, store, platform,
-## blocked), `version` for the v3 check, `current` for an up-to-date answer shown on request, or
-## "" when nothing shows. `outlet` is the build's outlet ("" in the editor).
-static func model(result: Variant, outlet := "", release_url := "", show_when_current := false) -> Dictionary:
-	return _only_https(_model(result, outlet, release_url, show_when_current))
+## action_url, behaviour, locked, version}. `state` is the action (code-ready, binary, store,
+## platform, blocked), `version` for the v3 check, `current` for an up-to-date answer shown on
+## request, or "" when nothing shows. `outlet` is the build's outlet kind ("" in the editor, read
+## as direct). `plan` is the adapter's plan for a v4 answer (PolarisKey.update.plan(result));
+## without one it is computed from `outlet` and `release_url` alone.
+static func model(result: Variant, outlet := "", release_url := "", show_when_current := false, plan: Dictionary = {}) -> Dictionary:
+	return _only_https(_model(result, outlet, release_url, show_when_current, plan))
 
 
 ## A prompt never offers a non-https link: the v3 answer's `url` comes from unsigned JSON, and
-## `OS.shell_open` would hand a `file:` or custom-scheme URL to a local handler.
+## `OS.shell_open` would hand a `file:` or custom-scheme URL to a local handler. Actions that are
+## not links (a restart, a native hook, staging, a reload) carry no URL.
 static func _only_https(out: Dictionary) -> Dictionary:
-	if out["action_url"] != "" and not _is_https(out["action_url"]):
+	if out["behaviour"] == PKeyApplyResult.LINK and not _is_https(out["action_url"]):
 		out["action"] = ""
 		out["action_url"] = ""
+		out["behaviour"] = PKeyApplyResult.SILENT
 	return out
 
 
@@ -46,8 +53,8 @@ static func _is_https(url: String) -> bool:
 	return url.begins_with("https://") and url.length() > 8
 
 
-static func _model(result: Variant, outlet: String, release_url: String, show_when_current: bool) -> Dictionary:
-	var out := {"visible": false, "state": "", "title": "", "body": "", "body_arg": null, "action": "", "action_url": "", "locked": false, "version": ""}
+static func _model(result: Variant, outlet: String, release_url: String, show_when_current: bool, plan: Dictionary) -> Dictionary:
+	var out := {"visible": false, "state": "", "title": "", "body": "", "body_arg": null, "action": "", "action_url": "", "behaviour": "", "locked": false, "version": ""}
 	if result is PKeyVersionCheck:
 		var v: PKeyVersionCheck = result
 		if not v.ok:
@@ -61,6 +68,7 @@ static func _model(result: Variant, outlet: String, release_url: String, show_wh
 		if url != "" and not _store_outlet(outlet):
 			out["action"] = "update_action"
 			out["action_url"] = url
+			out["behaviour"] = PKeyApplyResult.LINK
 		return out
 	if not (result is PKeyUpdateCheck) or not result.ok:
 		return out
@@ -83,14 +91,6 @@ static func _model(result: Variant, outlet: String, release_url: String, show_wh
 			out["title"] = "update_ready_title"
 			out["body"] = "update_ready_body"
 			out["body_arg"] = null
-		"binary":
-			if release_url != "" and not _store_outlet(outlet):
-				out["action"] = "update_action"
-				out["action_url"] = release_url
-		"store":
-			if d.get("listingUrl") is String and d["listingUrl"] != "":
-				out["action"] = "update_store"
-				out["action_url"] = d["listingUrl"]
 		"platform":
 			out["body"] = "update_platform_body"
 			out["body_arg"] = null
@@ -98,6 +98,15 @@ static func _model(result: Variant, outlet: String, release_url: String, show_wh
 			out["title"] = "update_blocked_title"
 			out["body"] = "update_blocked_body"
 			out["body_arg"] = null
+	var p := plan
+	if p.is_empty():
+		p = PKeyOutletAdapters.for_kind(outlet if outlet != "" else "direct").describe(d, {"release_url": release_url})
+	out["behaviour"] = String(p.get("behaviour", PKeyApplyResult.SILENT))
+	out["action"] = String(p.get("action", ""))
+	out["action_url"] = String(p.get("url", ""))
+	if String(p.get("body", "")) != "":
+		out["body"] = p["body"]
+		out["body_arg"] = null
 	if mandatory:
 		out["body"] = "update_mandatory_body"
 		out["body_arg"] = null
@@ -121,6 +130,6 @@ static func _store_outlet(outlet: String) -> bool:
 ## from a decision, the v3 answer's page on a non-store build, or `release_url` on a direct build.
 static func update_url(result: Variant, outlet := "", release_url := "") -> String:
 	var m := model(result, outlet, release_url)
-	if m["action_url"] != "":
+	if m["behaviour"] == PKeyApplyResult.LINK and m["action_url"] != "":
 		return m["action_url"]
 	return release_url if _is_https(release_url) and not _store_outlet(outlet) else ""

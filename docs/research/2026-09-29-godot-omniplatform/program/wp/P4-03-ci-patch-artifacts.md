@@ -225,3 +225,72 @@ must agree with this lint. Diceroll (D-04) publishes through this command. Then
 
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+Recorded by P4-03 against `main` at `1133addf` (P4-02, P4-04 and P4-21 merged). Where this brief
+and the code or the approved plan disagreed, the code and `plans/P4-01.md` won:
+
+- **Payload location.** The brief locates each variant's payload "through the `.pkey/release`
+  artifact map (P2-04)", but P4-02's pack declaration (`ManifestPackDeliverable`) has no artifact
+  map, and adding one is a rule-9 manifest change outside this package. The CLI reads each declared
+  variant's payload at `<dir>/<variant key, or "default">/` instead (the one `*.pck` file there,
+  or the directory as the tree), the same layout plan §6's `--out` writes, so a cached release is
+  also a valid `--dir`. Documented in `build/ci.md` and the Action's `dir` input.
+- **Delta bases** come from `--out`/`--bases`, proven by the preflight's `seqs[].recordSha256` and
+  the cached payload's hash (plan decision 32), not "fetched from the blob store by hash": CI
+  credentials cannot read the store.
+- **The preflight first** (decision 35): the gate from `seqs[].entitlement` is checked against the
+  manifest's `entitlement` assertion before any upload and signed as the record's `entitlement`;
+  every ticket object is requested with `gated` set exactly when the gate is.
+- **Stage rounds, then the record submit** (decision 28): rounds of at most 256 objects, a PUT only
+  for objects the ticket does not report `present`, `publish/stage`, one retry with a new ticket;
+  the record submit carries no ticket. `--dry-run` requests tickets only to count new and
+  deduplicated objects, and runs no round.
+- **App content** (decision 37): `--content-stamp` (and the in-process `--embedded`/`--pin`) and the
+  artifact map's `embeds` fill the release descriptor, never the record; `descriptorToRecord`
+  builds the record. A product that declares packs must pass one of them. `pkey release
+content-stamp` is new (plan §6), and the CLI's `--pin` is repeatable (`parseArgs` gained
+  multi-value flags).
+- **The discovery check**: the CLI refuses a pack publish, a stamp with `--pin`, and an app publish
+  of a product that declares packs unless discovery's `services.release.packs` is `true`.
+- **PCK entry flags.** Besides the brief's encrypted entry, a removal or delta entry (a patch pack's,
+  flags 2 and 4) and unknown flags are refused with their path: a published pack stands alone. v2
+  PCKs are parsed and rewritten (directory after the 16 reserved words, `res://` paths), not
+  refused.
+- **Strategies.** File blobs are always published (every files index entry names one and ingest
+  checks it), so `patch.strategies` without `file` changes nothing in v1; without `delta` no delta
+  is built. A payload delta that is not smaller than `full` is skipped and reported, as is a files
+  set with no changed file.
+- **Nondeterminism report** prints as warnings prefixed with the variant key, against each base.
+- **The Action** installs zstd with `apt-get` only when it is missing on a Linux runner; GitHub's
+  hosted runners carry zstd ≥ 1.5.5. The Action has no README of its own: `build/ci.md` is its
+  documentation, and `action.yml` lists the new inputs (`content-stamp`, `embedded`, `pins`, `out`,
+  `bases`), pinned to `ACTION_INPUTS` by a test.
+- **Test keys** are generated per run (`testReleaseKey()`), never committed.
+- **Embedded code (review fix, lead decision).** The admission list went by extension only, so a
+  `.tscn`/`.tres` with `[sub_resource type="GDScript"]` or `script/source`, or a binary
+  `.scn`/`.res`, passed. The lint now refuses, with the path, any text resource (`.tscn`, `.tres`,
+  `.escn`) whose section headers name `GDScript`/`CSharpScript` or that sets `script/source`, and
+  any binary resource (`.scn`, `.res`, or anything under `.godot/exported/`) that contains one of
+  those as a Godot length-prefixed string (u32 length incl. NUL, then the bytes; either byte
+  order), is compressed (`RSCC`) or is not a Godot resource at all (`embeddedCode` in
+  `packLint.ts`). The binary scan cannot tell an internal script from a reference to an app
+  script, so it fails closed; such scenes must be exported as text. Scope: every pack. The plan
+  defines no code pack in v1 (§3: `contentPolicy` is `{dataOnly: true}` and `false` is refused;
+  S-07 row 13), and `pack-type-unsupported`/`pack-no-variant` are vocabulary verdicts, not a
+  code-pack class, so the rule applies to all v1 packs; P4-12 or later revisits it only with a
+  `downloadedScripts` capability.
+- **P4-08 must reuse the same check device-side**: the extension list, the remap rule and
+  `embeddedCode`'s text and binary scans, over the same fixtures (`test/packFixtures.ts`,
+  `binaryResource`), before a pack is mounted. The CLI lint is a publisher guard, not a trust
+  boundary (threat model, "Pack publish lint (P4-03)").
+- **Review fixes:** a dry run documents that it mints upload tickets (one per 256 objects for a
+  pack; rows expire within the hour) and that a pack dry run has no server verdict; the Action's
+  `ensureZstd` checks the version (≥ 1.5.5), runs `apt-get update` before the install with fixed
+  arguments and no shell, and fails with the minimum version when apt still gives an older one; a
+  stage round refuses a ticket that leaves out a requested object; inputs that do not apply are
+  refused, not ignored (`content-stamp`/`embedded`/`pins` for a pack, `out`/`bases` for the app,
+  a bare `--pin`), in the CLI and the Action. The record payload cap (65,536) stays a CLI constant:
+  neither `@polaris-key/protocol` nor `@polaris-key/manifest` exports it (only `shared-jws`, as a
+  private constant), and exporting it would be a constants change of its own.
