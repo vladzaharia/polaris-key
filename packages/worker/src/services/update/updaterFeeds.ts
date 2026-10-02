@@ -46,6 +46,7 @@ import { BUILD_ID_PATTERN } from "@polaris-key/protocol/release";
 import type { ServiceContext } from "../../core/registry.js";
 import type {
   CatalogChannelPolicy,
+  CatalogSourceArtifact,
   Delivery,
   FeedSelection,
   FeedSelectionEntry,
@@ -390,7 +391,11 @@ export function serveSparkle(
           const deltas: SparkleSource["deltas"] = [];
           for (const a of entry.artifacts) {
             const from = a.metadata?.deltaFrom;
-            if (a.role !== "delta" || typeof from !== "string" || !a.url)
+            if (
+              !isBuildFile(a, entry.buildId, "delta") ||
+              typeof from !== "string" ||
+              !a.url
+            )
               continue;
             const dsig = await verifiedSidecarSignature(
               r.artifacts,
@@ -579,7 +584,7 @@ function serveVelopack(
           }
           for (const a of e.artifacts) {
             if (
-              a.role !== "delta" ||
+              !isBuildFile(a, e.buildId, "delta") ||
               !a.url ||
               !a.sha256 ||
               a.sizeBytes === null ||
@@ -695,6 +700,21 @@ function serveAppInstaller(
   );
 }
 
+/**
+ * Is `a` a file the descriptor named for this build, in this role? Every file a feed points a
+ * client at beside the payload (a delta, a control file) must be: the CI-signed release record
+ * covers those. A release-level row (build_id NULL: a GitHub asset the descriptor did not name,
+ * whose only digest is GitHub's own) is never one, so whoever can write to the GitHub release
+ * without holding the release key cannot reach a feed through it.
+ */
+function isBuildFile(
+  a: CatalogSourceArtifact,
+  buildId: string,
+  role: "delta" | "checksum",
+): boolean {
+  return a.buildId !== null && a.buildId === buildId && a.role === role;
+}
+
 // ── zsync ────────────────────────────────────────────────────────────────────────────────────
 
 function serveZsync(
@@ -725,8 +745,14 @@ function serveZsync(
         });
         const head = sel?.entries[0];
         if (!head || head.size === null) return null;
+        // Only the build's own descriptor-named control file, which the CI-signed record
+        // covers. A release-level `.zsync` (a GitHub asset the descriptor did not name, synced
+        // with build_id NULL and GitHub's own digest) is never served: whoever can write to the
+        // GitHub release without holding the release key must not reach this route.
         const control = head.artifacts.find(
-          (a) => a.name === `${head.name}.zsync`,
+          (a) =>
+            a.name === `${head.name}.zsync` &&
+            isBuildFile(a, head.buildId, "checksum"),
         );
         if (!control) return null;
         const bytes = await readSmallArtifact(

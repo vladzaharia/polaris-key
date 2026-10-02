@@ -792,6 +792,61 @@ describe("updater feeds: content", () => {
     );
   });
 
+  it("zsync: a release-level .zsync the descriptor did not name is never served", async () => {
+    // What the GitHub webhook sync writes for an asset a described release's descriptor does
+    // not name: build_id NULL, the role its kind implies, GitHub's own digest. Its bytes match
+    // that digest, so only the build and role check keeps it off the route.
+    const w = await world();
+    await w.db.run(
+      "UPDATE release_artifacts SET build_id = NULL WHERE product = ? AND name LIKE '%.AppImage.zsync'",
+      SLUG,
+    );
+    expect((await get(w, "update/stable/appimage.AppImage.zsync")).status).toBe(
+      404,
+    );
+  });
+
+  it("zsync: a control file of the build in another role is never served", async () => {
+    const w = await world();
+    await w.db.run(
+      "UPDATE release_artifacts SET role = 'payload' WHERE product = ? AND name LIKE '%.AppImage.zsync'",
+      SLUG,
+    );
+    expect((await get(w, "update/stable/appimage.AppImage.zsync")).status).toBe(
+      404,
+    );
+  });
+
+  it("Velopack and Sparkle list only deltas the descriptor named for the build", async () => {
+    const w = await world();
+    await w.db.run(
+      "UPDATE release_artifacts SET build_id = NULL WHERE product = ? AND role = 'delta'",
+      SLUG,
+    );
+    const vp = JSON.parse(
+      (await text(w, "update/beta/velopack/releases.win-x64.json")).body,
+    ) as { Assets: Array<Record<string, unknown>> };
+    expect(vp.Assets.map((a) => a.Type)).not.toContain("Delta");
+    expect(vp.Assets.filter((a) => a.Type === "Full")).toHaveLength(1);
+    const { body } = await text(w, "update/stable/appcast.xml?arch=x86_64");
+    expect(body).toContain("<item>");
+    expect(body).not.toContain("sparkle:deltas");
+    expect(body).not.toContain("from-110.delta");
+  });
+
+  it("a release-level .sig sidecar is never consulted for an edSignature", async () => {
+    const w = await world();
+    const before = (await text(w, "update/stable/appcast.xml?arch=x86_64"))
+      .body;
+    expect(before).toContain("sparkle:edSignature");
+    await w.db.run(
+      "UPDATE release_artifacts SET build_id = NULL WHERE product = ? AND role = 'signature'",
+      SLUG,
+    );
+    const after = (await text(w, "update/stable/appcast.xml?arch=x86_64")).body;
+    expect(after).not.toContain("sparkle:edSignature");
+  });
+
   it("/update/version keeps version, tag and url and adds the extended fields when asked", async () => {
     const w = await world();
     const { res, body } = await text(
@@ -1050,6 +1105,22 @@ describe("updater renderers", () => {
     ).toBeNull();
     const ok = rewriteZsync(z, "https://dl/x", target.length)!;
     expect(new TextDecoder().decode(ok)).toContain("URL: https://dl/x\n");
+  });
+
+  it("rewriteZsync refuses a control file that names another source or a recompress command", () => {
+    const target = bytesOf("x");
+    const z = new TextDecoder("latin1").decode(zsyncFor("x", target));
+    for (const extra of [
+      "Z-URL: https://evil.example/x.gz",
+      "Z-Map2: 12",
+      "Recompress: gzip --best",
+    ]) {
+      const forged = new TextEncoder().encode(
+        z.replace("URL: x\n", `URL: x\n${extra}\n`),
+      );
+      expect(new TextDecoder().decode(forged)).toContain(extra);
+      expect(rewriteZsync(forged, "https://dl/x", target.length)).toBeNull();
+    }
   });
 
   it("renderAppInstaller escapes identity values", () => {

@@ -195,7 +195,16 @@ export async function verifiedSidecarSignature(
   publicKey: string | null,
 ): Promise<string | null> {
   if (!publicKey || !target.sha256) return null;
-  const sidecar = siblings.find((a) => a.name === `${target.name}.sig`);
+  // The descriptor-named sidecar of the same build only (the CI-signed record covers it); a
+  // release-level `.sig` the GitHub sync picked up is not consulted. Verification below would
+  // refuse a forged one anyway; this keeps the lookup to recorded files.
+  const sidecar = siblings.find(
+    (a) =>
+      a.name === `${target.name}.sig` &&
+      a.buildId !== null &&
+      a.buildId === target.buildId &&
+      a.role === "signature",
+  );
   if (!sidecar) return null;
   const bytes = await readSmallArtifact(ctx, sidecar, MAX_SIGNATURE_BYTES);
   if (!bytes) return null;

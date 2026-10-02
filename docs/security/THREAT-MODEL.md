@@ -778,8 +778,13 @@ gained two read-only methods, `feedSelection` (P2b-05's selection, offered to Up
 - **Only signed releases, only through the selection.** A feed lists only releases with a stored
   release record (P3-03's ingest checks), chosen by P2b-05's rules: not yanked, not held by a
   rollout on the outlet, live there, with an immutable delivery URL. So a halt or a yank removes a
-  release from every feed on the next request, and the cache stamp moves with them. A compromised
-  pipeline that cannot sign a record cannot reach these feeds.
+  release from every feed on the next request, and the cache stamp moves with them. Every file a
+  feed points a client at beside the payload (a Sparkle or Velopack delta, a `.zsync` control
+  file, a `.sig` sidecar) must be one the descriptor named for that build, in that role
+  (`release_artifacts.build_id` and `role`). A release-level row is never used: that is what the
+  GitHub sync writes for an asset the descriptor did not name, with build_id NULL and only
+  GitHub's own digest. So whoever can write to the GitHub release without holding the release key
+  can neither list a release nor add a file to a listed one.
 - **No updater payload is signed or trusted here.** `sparkle:edSignature` is CI's sidecar,
   verified over the payload's stored bytes against the configured Sparkle key before it is
   rendered. The verifier is P0-10's streaming one, so nothing is buffered, and verdicts are
@@ -787,7 +792,9 @@ gained two read-only methods, `feedSelection` (P2b-05's selection, offered to Up
   unverifiable enclosure is left out. Velopack's `SHA1` is computed by a streaming digest that
   checks the recorded SHA-256 and size first. A `.zsync` control file is read whole (at most
   16 MiB), checked against its recorded SHA-256, and refused unless its `Length:` matches the
-  AppImage. Only its `URL:` header is rewritten, to our own immutable delivery URL. Bytes are read
+  AppImage. A header that names another source or process (`Z-URL:`, `Z-Map2:`, `Recompress:`)
+  is refused, so `URL:` is the only place a client is sent. Only that header is rewritten, to our
+  own immutable delivery URL. Bytes are read
   only from R2 (a non-gated content address this product holds a ref to) or from GitHub through
   Release's `openSource`, never from an external URL.
 - **Access is the appcast's.** Each feed runs the release gateway's access rule. The delivery

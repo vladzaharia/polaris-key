@@ -424,10 +424,19 @@ export function renderAppInstaller(input: AppInstallerInput): string {
 /** How far into a `.zsync` file its header may run. */
 const MAX_ZSYNC_HEADER = 64 * 1024;
 
+/** Headers that would point a zsync client at bytes or a command other than `URL:` (see below). */
+const ZSYNC_REFUSED_HEADERS = ["Z-URL:", "Z-Map2:", "Recompress:"] as const;
+
 /**
  * CI's `.zsync` control file with its `URL:` header replaced by `url` (absolute), or `null` when
  * the file has no header, or its `Length:` is not `expectedLength` (it then describes some other
  * AppImage, and a client would rebuild the wrong file). The checksum blocks are untouched.
+ *
+ * A header that names another place or process to get bytes from is refused outright, not
+ * rewritten: `Z-URL:` (a compressed source the client fetches instead of, or as well as, `URL:`),
+ * `Z-Map2:` (the block map that goes with it) and `Recompress:` (a gzip command line the zsync
+ * client runs over the result). An AppImage's control file (`appimagetool -u`, plain
+ * `zsyncmake`) carries none of them, so `URL:` stays the only source a client is pointed at.
  */
 export function rewriteZsync(
   bytes: Uint8Array,
@@ -445,6 +454,8 @@ export function rewriteZsync(
   const header = new TextDecoder("latin1").decode(bytes.subarray(0, end));
   if (/[^\x20-\x7e\n]/.test(header)) return null;
   const lines = header.split("\n");
+  if (lines.some((l) => ZSYNC_REFUSED_HEADERS.some((h) => l.startsWith(h))))
+    return null;
   const length = lines.find((l) => l.startsWith("Length: "));
   if (
     !length ||

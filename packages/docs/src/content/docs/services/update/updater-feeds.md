@@ -152,9 +152,16 @@ own package family name and pick it with `?outlet=`.
 
 `<buildId>` is the artifact-map id of a Linux build whose payload is an `.AppImage`, so the URL
 stays the same across versions. The body is CI's `<AppImage>.zsync` control file (the
-`appimagetool -u` / `zsyncmake` output, uploaded as a `checksum` artifact) for the current
-release. Its `URL:` header is rewritten to the AppImage's absolute, Range-capable delivery URL. A
-control file whose `Length:` is not the AppImage's size is refused.
+`appimagetool -u` / `zsyncmake` output) for the current release. It must be named in the release
+descriptor as a `checksum` artifact of the same build, which `pkey release publish` does when the
+file sits beside the AppImage. An asset uploaded to the GitHub release that the descriptor does
+not name is never served. Its `URL:` header is rewritten to the AppImage's absolute, Range-capable
+delivery URL. A control file is refused when its `Length:` is not the AppImage's size, or when it
+carries `Z-URL:`, `Z-Map2:` or `Recompress:` (a compressed `zsyncmake -z` control file is not
+supported).
+
+Deltas follow the same rule: a Sparkle or Velopack feed lists only `delta` artifacts the
+descriptor named for the build.
 
 ## The extended version check
 
