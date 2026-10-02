@@ -221,6 +221,20 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 - [ ] For an `entitled` product: a pinned non-semver version (`/release/builds/1.2.3.4/<build>`) with
       a valid device token → 403 `version_blocked` (needs a real device token).
 
+## v0.7.0 (2026-10-01): deployed and checked (wire v4)
+
+- [x] Deploy run 36957908932 succeeded, smoke check included (P3-02..P3-12, P2b-05, P2-07, P1-10,
+      P4-21; migrations `0043`, `0044`). Production `check:representable` was clean beforehand.
+- [x] Discovery reports `protocolVersion: 4`; `update.endpoints` gains `feed`
+      (`/djdl/update/{channel}/feed.jws`), `winsparkle`, `velopack`, `appInstaller`, `zsync`;
+      `release.endpoints.record` is `/djdl/release/records/{sha256}`.
+- [x] Legacy paths unchanged: `/djdl/update/version` answers the v3 three-field document,
+      `install.sh` 200, `/djdl/distribution/dl/latest/djdl-arm64` 200.
+- [ ] `djdl`'s signed feed (`/djdl/update/stable/feed.jws`) and storefront feeds answer 404 until
+      djdl publishes a release through CI with a release key (`.pkey/release` `releaseKeys` plus the
+      Action's record signing, P3-03). No v4 SDK can decide an update for djdl until then; v3 clients
+      are unaffected.
+
 ## v0.6.0 (2026-10-01): deployed and checked
 
 - [x] Deploy run 36886345061 succeeded (P2-02, P2-06, P2b-02, P2b-04, P1-04; migrations `0035_a/b`,
