@@ -20725,10 +20725,19 @@ function readPck(b, name = "the payload") {
         );
       if (flags !== 0)
         throw new PckError(`${path10}: unknown entry flags ${flags}.`);
+      if (!pckPathOk(path10))
+        throw new PckError(
+          `${path10}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
+        );
       if (offset + size > b.byteLength)
         throw new PckError(`${path10}: its bytes run past the end of the file.`);
       entries.push({ rawPath, path: path10, offset, size, md5, flags });
     }
+    const all = checkPaths(entries.map((e) => e.path));
+    if (!all.ok)
+      throw new PckError(
+        `${all.path}: a path the directory names twice (${all.error}).`
+      );
     return { header, entries };
   } catch (e) {
     if (e instanceof PckError)
@@ -20737,6 +20746,10 @@ function readPck(b, name = "the payload") {
       `${name}: the PCK directory does not parse (${e.message}).`
     );
   }
+}
+function pckPathOk(path10) {
+  if (!checkPaths([path10]).ok) return false;
+  return !(path10.includes("..") || path10.includes("./") || path10.includes("//") || path10.endsWith("/") || path10.endsWith("/."));
 }
 function pad(n, align) {
   const r = n % align;
@@ -20834,18 +20847,40 @@ function resPath(p) {
 }
 function remapTargets(text) {
   const out = /* @__PURE__ */ new Set();
-  for (const m of text.matchAll(
-    /^\s*path(?:\.[A-Za-z0-9_-]+)?\s*=\s*"([^"]*)"/gm
-  )) {
-    const p = resPath(m[1]);
+  for (const v of remapValues(text)) {
+    const p = resPath(v);
     if (p !== null) out.add(p);
   }
-  for (const m of text.matchAll(/^\s*dest_files\s*=\s*\[([^\]]*)\]/gm))
-    for (const s of m[1].matchAll(/"([^"]*)"/g)) {
-      const p = resPath(s[1]);
-      if (p !== null) out.add(p);
-    }
   return [...out];
+}
+function remapValues(text) {
+  const out = /* @__PURE__ */ new Set();
+  for (const m of text.matchAll(
+    /^\s*path(?:\.[A-Za-z0-9_-]+)?\s*=\s*"([^"]*)"/gm
+  ))
+    out.add(m[1]);
+  for (const m of text.matchAll(/^\s*dest_files\s*=\s*\[([^\]]*)\]/gm))
+    for (const s of m[1].matchAll(/"([^"]*)"/g)) out.add(s[1]);
+  return [...out];
+}
+function uidCacheProblem(data, inPack) {
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  if (data.byteLength < 4) return "a malformed uid cache";
+  const n = dv.getUint32(0, true);
+  let p = 4;
+  const dec2 = new TextDecoder("utf-8", { fatal: false });
+  for (let i = 0; i < n; i++) {
+    if (p + 12 > data.byteLength) return "a malformed uid cache";
+    const ln = dv.getUint32(p + 8, true);
+    if (p + 12 + ln > data.byteLength) return "a malformed uid cache";
+    const raw = dec2.decode(data.subarray(p + 12, p + 12 + ln));
+    p += 12 + ln;
+    const t = resPath(raw);
+    if (t === null || !pckPathOk(t) || !(inPack.has(t) || inPack.has(`${t}.remap`) || inPack.has(`${t}.import`)))
+      return `names a path outside the pack (${raw})`;
+  }
+  if (p !== data.byteLength) return "a malformed uid cache";
+  return null;
 }
 function lintPck(dir, bytes, opts) {
   const errors = [];
@@ -20870,6 +20905,7 @@ function lintPck(dir, bytes, opts) {
   const named = /* @__PURE__ */ new Set();
   const deferred = [];
   const text = new TextDecoder("utf-8", { fatal: false });
+  const inPack = new Set(dir.entries.map((e) => e.path));
   for (const e of dir.entries) {
     const p = e.path;
     if (stripped.has(p)) {
@@ -20886,7 +20922,15 @@ function lintPck(dir, bytes, opts) {
       );
       continue;
     }
-    if (p === ".godot/uid_cache.bin") continue;
+    if (p === ".godot/uid_cache.bin") {
+      const why = uidCacheProblem(
+        bytes.subarray(e.offset, e.offset + e.size),
+        inPack
+      );
+      if (why !== null)
+        errors.push(`${p}: ${why}; a pack registers only its own UIDs.`);
+      continue;
+    }
     const code = embeddedCode(p, bytes.subarray(e.offset, e.offset + e.size));
     if (code !== null) {
       errors.push(`${p}: ${code}; a pack carries data only.`);
@@ -20902,6 +20946,19 @@ function lintPck(dir, bytes, opts) {
         if (SCRIPT_RE.test(source) || script !== void 0) {
           errors.push(
             `${p}: remaps a script${script ? ` (${script})` : ""}; a pack carries data only.`
+          );
+          continue;
+        }
+        const outside = remapValues(
+          text.decode(bytes.subarray(e.offset, e.offset + e.size))
+        ).find((v) => {
+          if (v === "") return false;
+          const t = resPath(v);
+          return t === null || !pckPathOk(t) || !inPack.has(t);
+        });
+        if (outside !== void 0) {
+          errors.push(
+            `${p}: remaps a path outside the pack (${outside}); a pack loads only its own files.`
           );
           continue;
         }
@@ -20928,17 +20985,21 @@ var TEXT_RESOURCE_RE = /\.(tscn|tres|escn)$/i;
 var BINARY_RESOURCE_RE = /\.(scn|res)$/i;
 var SCRIPT_TYPES = ["GDScript", "CSharpScript"];
 function embeddedCode(p, data) {
-  if (TEXT_RESOURCE_RE.test(p)) return textResourceCode(data);
-  if (!BINARY_RESOURCE_RE.test(p) && !p.startsWith(".godot/exported/"))
-    return null;
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
   if (magic === "RSCC")
     return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed";
-  if (magic !== "RSRC") {
-    const text = Buffer.from(data.subarray(0, 64)).toString("latin1");
-    if (/^\s*\[gd_(scene|resource)\b/.test(text)) return textResourceCode(data);
+  if (magic === "RSRC") return binaryResourceCode(data);
+  if (sniffsTextResource(data)) return textResourceCode(data);
+  if (TEXT_RESOURCE_RE.test(p)) return textResourceCode(data);
+  if (BINARY_RESOURCE_RE.test(p) || p.startsWith(".godot/exported/"))
     return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
-  }
+  return null;
+}
+function sniffsTextResource(data) {
+  const head = Buffer.from(data.subarray(0, 64)).toString("latin1").replace(/\0/g, " ");
+  return /^[ \t\n\v\f\r]*\[gd_(scene|resource)\b/.test(head);
+}
+function binaryResourceCode(data) {
   const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
   for (const s of [...SCRIPT_TYPES, "script/source"]) {
     const str = Buffer.from(`${s}\0`, "utf8");
